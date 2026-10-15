@@ -52,7 +52,7 @@ const quiet=(errs)=>(w)=>{
   const src=readPage('kingdoms-call-player-portal.html');
   const fallbacks=src.match(/duelStance:document\.getElementById\(`ep-duel-[^`]+`\)\?\.value\|\|'(\w+)'/g)||[];
   ok(fallbacks.length>=5&&fallbacks.every(f=>/'refuse'$/.test(f)),`the submitted plan falls back to Refuse in all ${fallbacks.length} places`);
-  const opens=src.match(/DUEL_STANCES\.map\(d=>`<option value="\$\{d\.code\}"\$\{[^?]*\?' selected'/g)||[];
+  const opens=src.match(/DUEL_STANCES\.map\(d=>kcHtml`<option value="\$\{d\.code\}"\$\{[^?]*\?' selected'/g)||[];
   ok(opens.length>=4&&opens.every(o=>/'refuse'/.test(o)&&!/'accept'/.test(o)),`every Duel stance select opens on Refuse (${opens.length})`);
 
   const allErrs=errs.concat(perr);

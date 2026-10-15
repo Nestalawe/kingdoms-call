@@ -905,7 +905,7 @@ function realmOfP(playerIdx, report){
   return ((rep.allKingdoms)||[]).find(k=>k&&k.index===playerIdx)||null;
 }
 function realmNameP(playerIdx, report){ const k=realmOfP(playerIdx,report); return k?k.name:'enemy'; }
-function realmOptStyleP(playerIdx, report){ const k=realmOfP(playerIdx,report); return (k&&k.color)?` style="color:${reportColour(k.color)};font-weight:600"`:''; }
+function realmOptStyleP(playerIdx, report){ const k=realmOfP(playerIdx,report); return (k&&k.color)?kcHtml` style="color:${reportColour(k.color)};font-weight:600"`:''; }
 // ── WHOSE HERO WAS THIS? (2026-09-27, Toby item 10) ────
 // Resurrect will raise only your OWN fallen and true wanderers — a body that ever served another
 // crown is refused — so every place a dead hero is shown must say which realm held them when they
@@ -1001,7 +1001,7 @@ function updateRumourTarget(charId, ph){
   hidden.value=boxes.filter(b=>b.checked).map(b=>b.value).join(',');
   const tot=document.getElementById(`po-rumour-total-${charId}-${ph}`);
   if(tot){ let sum=0; boxes.filter(b=>b.checked).forEach(b=>{ const m=(b.parentNode.textContent||'').match(/(\d+)g\s*$/); if(m) sum+=parseInt(m[1]); });
-    tot.innerHTML=tot.innerHTML.replace(/Cost of the ticked lairs: <strong>\d+g<\/strong>/,`Cost of the ticked lairs: <strong>${sum}g</strong>`); }
+    const cost=tot.querySelector('strong'); if(cost) cost.textContent=`${sum}g`; } // the first <strong> is the cost of the ticked lairs
 }
 function updateEquipTarget(charId, ph){
   const wrap=document.getElementById(`po-equip-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
@@ -1076,7 +1076,7 @@ function gdHintFor(report){
   const al=(r.kingdom&&r.kingdom.alignment)||null;
   const gd=al?GD_BY_ALIGNMENT[al]:null;
   if(!gd) return L79_ORDERS['Grand Design'].hint;
-  return `Sage 9 · ONCE EVER, and only in a province you hold. Your ${al} realm raises the <strong>${gd.name}</strong> — ${gd.desc} The Wonder stands in the province it is built in: hold that ground and its blessing flows, lose the province and the blessing lapses until you take it back. The Wonder itself is never destroyed, and a conqueror gains nothing from it but the view.`;
+  return kcHtml`Sage 9 · ONCE EVER, and only in a province you hold. Your ${al} realm raises the <strong>${gd.name}</strong> — ${gd.desc} The Wonder stands in the province it is built in: hold that ground and its blessing flows, lose the province and the blessing lapses until you take it back. The Wonder itself is never destroyed, and a conqueror gains nothing from it but the view.`;
 }
 const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
 // ── A CHARACTER WHOSE SHEET THE PLAYER CANNOT READ ──────────────────────────────────────────────
@@ -1196,7 +1196,7 @@ let discoveryChoices = {};
 function _pendingDiscChoices(){ return ((currentReport&&currentReport.pendingDiscoveryChoices)||[]).filter(p=>p&&p.key&&Array.isArray(p.options)&&p.options.length); }
 function discoveryChoiceBlockHTML(){
   const pend=_pendingDiscChoices(); if(!pend.length) return '';
-  return `<div id="orders-discovery-top" class="orders-char-block" style="background:#f4f7ec">
+  return kcHtml`<div id="orders-discovery-top" class="orders-char-block" style="background:#f4f7ec">
       <div class="orders-char-head" style="background:#3e5a1c">
         <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
         💡 Research — choose which discover${pend.length!==1?'ies':'y'} to keep
@@ -1207,15 +1207,14 @@ function discoveryChoiceBlockHTML(){
 function renderDiscoveryChoices(){
   const w=document.getElementById('orders-discovery-choice'); if(!w) return;
   const pend=_pendingDiscChoices();
-  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  w.innerHTML=`<div style="font-size:.72rem;color:var(--stone);margin-bottom:6px">Your scholars turned up two leads for each discovery below, but only one can be pursued. Keep one — the other is <strong>forgotten for good</strong> and will never come up again. Left unchosen, one is kept at random.</div>`+
-    pend.map((p,i)=>`<div style="${i?'border-top:1px solid var(--parchment-dark);margin-top:8px;padding-top:8px;':''}">
-      <div style="font-family:Cinzel,serif;font-size:.78rem;font-weight:600;color:var(--ink);margin-bottom:4px">Found by ${esc(p.charName||'a scholar')}${p.category?` — ${esc(p.category)} research`:''}${p.turn?` (turn ${esc(p.turn)})`:''}</div>
-      ${p.options.map(o=>`<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;margin:3px 0;border:1px solid ${discoveryChoices[p.key]===o.id?'var(--forest)':'var(--parchment-dark)'};border-radius:3px;background:${discoveryChoices[p.key]===o.id?'#e8f1dc':'#fffdf6'};cursor:pointer;font-size:.76rem;line-height:1.4">
-          <input type="radio" name="dc-${esc(p.key)}" value="${esc(o.id)}" ${discoveryChoices[p.key]===o.id?'checked':''} onchange="setDiscoveryChoice('${esc(p.key)}','${esc(o.id)}')" style="margin-top:3px">
-          <span><strong>${esc(o.name)}</strong> <span style="color:var(--stone)">(${esc(o.category)})</span><br>${esc(o.desc)}</span>
-        </label>`).join('')}
-    </div>`).join('');
+  w.innerHTML=kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-bottom:6px">Your scholars turned up two leads for each discovery below, but only one can be pursued. Keep one — the other is <strong>forgotten for good</strong> and will never come up again. Left unchosen, one is kept at random.</div>${
+    pend.map((p,i)=>kcHtml`<div style="${i?'border-top:1px solid var(--parchment-dark);margin-top:8px;padding-top:8px;':''}">
+      <div style="font-family:Cinzel,serif;font-size:.78rem;font-weight:600;color:var(--ink);margin-bottom:4px">Found by ${p.charName||'a scholar'}${p.category?` — ${p.category} research`:''}${p.turn?` (turn ${p.turn})`:''}</div>
+      ${p.options.map(o=>kcHtml`<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;margin:3px 0;border:1px solid ${discoveryChoices[p.key]===o.id?'var(--forest)':'var(--parchment-dark)'};border-radius:3px;background:${discoveryChoices[p.key]===o.id?'#e8f1dc':'#fffdf6'};cursor:pointer;font-size:.76rem;line-height:1.4">
+          <input type="radio" name="dc-${p.key}" value="${o.id}" ${discoveryChoices[p.key]===o.id?'checked':''} onchange="setDiscoveryChoice(${kcArg(String(p.key))},${kcArg(String(o.id))})" style="margin-top:3px">
+          <span><strong>${o.name}</strong> <span style="color:var(--stone)">(${o.category})</span><br>${o.desc}</span>
+        </label>`)}
+    </div>`)}`;
 }
 function setDiscoveryChoice(key,id){ discoveryChoices[key]=id; renderDiscoveryChoices(); }
 function renderConcede(){
@@ -4040,12 +4039,12 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           // care about tax) and only when the tax base is actually known for that province.
           const taxLbl=(selSpell==='Bless Province'&&p.tax!=null)?` · tax base ${p.tax}g`:'';
           const label=(p.name||`Unknown province (${provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?'})`)+(pid===curId?' (here)':'')+(t?` — ${t}`:'')+taxLbl;
-          return `<option value="${pid}" ${extra==pid?'selected':''}>${label}</option>`;
-        }).filter(Boolean).join('');
-        secondaryHtml=provOpts
-          ?`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
+          return kcHtml`<option value="${pid}" ${extra==pid?'selected':''}>${label}</option>`;
+        }).filter(Boolean);
+        secondaryHtml=provOpts.length
+          ?kcHtml`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`
-          :`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Lairs'?'No discovered lairs here or adjacent':'No valid target province in reach'}" disabled>
+          :kcHtml`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Lairs'?'No discovered lairs here or adjacent':'No valid target province in reach'}" disabled>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else if(NEEDS_CHAR.has(selSpell)){
         const casterLoc=predictedLocation(c.id,ph)?.id??c.locationId;
@@ -4072,10 +4071,10 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           }).sort((a,b)=>(b._r?1:0)-(a._r?1:0));
           charOpts=_bodies.map(x=>{
             const who=x.isMonarch?' 👑 (your fallen monarch — reclaims the throne)':(x.wasOwnHero?'':` ⚔ (${x.player!=null?realmNameP(x.player,report)+' hero':'wandering hero'})`);
-            if(!x._r) return `<option value="" disabled>${x.isMonarch?'👑 ':''}${x.name} — cannot be raised: ${x._w}</option>`;
-            return `<option value="${x.id}"${x.wasOwnHero?'':realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — died turn ${x.killedOnTurn||'?'}</option>`;
-          }).join('');
-          if(!charOpts) charOpts=`<option value="" disabled>No fallen hero lies in ${casterHereName||'this province'} — only bodies in the caster's province can be raised; move there first</option>`;
+            if(!x._r) return kcHtml`<option value="" disabled>${x.isMonarch?'👑 ':''}${x.name} — cannot be raised: ${x._w}</option>`;
+            return kcHtml`<option value="${x.id}"${x.wasOwnHero?'':realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — died turn ${x.killedOnTurn||'?'}</option>`;
+          });
+          if(!charOpts.length) charOpts=kcHtml`<option value="" disabled>No fallen hero lies in ${casterHereName||'this province'} — only bodies in the caster's province can be raised; move there first</option>`;
         } else if(selSpell==='Charm'){
           // Charm: a LONE hero (leading no armies) in the caster's province — wandering (joins you)
           // or enemy (command seized for the turn). Kings are immune, army-leaders are beyond its
@@ -4085,61 +4084,61 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           const targets=(report.visibleChars||[]).filter(x=>
             x.alive!==false && x.locationId===casterLoc && !x.isKing && !leadsArmiesP(x) && !x.charmImmune &&
             (x.player===null || x.player!==c.player));
-          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':` ⚔ (${realmNameP(x.player,report)}, no armies — yours for the turn)`} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune, and so is anyone charmed last turn)</option>';
+          charOpts=targets.map(x=>kcHtml`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':` ⚔ (${realmNameP(x.player,report)}, no armies — yours for the turn)`} — ${x.locationName||'?'}</option>`);
+          if(!charOpts.length) charOpts=kcHtml`<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune, and so is anyone charmed last turn)</option>`;
         } else if(selSpell==='Oratory'){
           // Oratory: self, or own characters predicted to be in the same province this phase.
-          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
+          const selfOpt=kcHtml`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
           const allies=orderTargetCharsP(report,ph,{allowCharmEnemy:true}).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
-          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}${preOrderTagP(x)}</option>`).join('');
+          charOpts=[selfOpt,...allies.map(x=>kcHtml`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}${preOrderTagP(x)}</option>`)];
         } else if(selSpell==='Phantasmal Armies'){
           // Phantasmal Armies: self, or any friendly hero in the SAME province this phase. The buff
           // no longer requires armies at cast time — it sits on the target and is spent by their
           // next battle, so it still helps if they pick up or recruit armies in a later phase.
-          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
+          const selfOpt=kcHtml`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
           const allies=orderTargetCharsP(report,ph,{allowCharmEnemy:true}).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
-          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}${preOrderTagP(x)}</option>`).join('');
+          charOpts=[selfOpt,...allies.map(x=>kcHtml`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}${preOrderTagP(x)}</option>`)];
         } else if(selSpell==='Clairvoyance'){
           // Clairvoyance: any character you have seen AT ANY POINT in the game — drawn from the
           // persistent sighting record (everSeenChars), plus anyone visible right now.
           const seen=(report.everSeenChars&&report.everSeenChars.length?report.everSeenChars:(report.visibleChars||[]))
             .filter(x=>x && x.player!=null && !x.isWandering) // neutral/wandering heroes are not valid Clairvoyance targets
             .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-          charOpts=seen.map(x=>`<option value="${x.id}"${x.player===c.player?'':realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===c.player?' (yours)':` ⚔ (${realmNameP(x.player,report)})`} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>You have not seen any enemy characters yet</option>';
+          charOpts=seen.map(x=>kcHtml`<option value="${x.id}"${x.player===c.player?'':realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===c.player?' (yours)':` ⚔ (${realmNameP(x.player,report)})`} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`);
+          if(!charOpts.length) charOpts=kcHtml`<option value="" disabled>You have not seen any enemy characters yet</option>`;
         } else if(selSpell==='Control Undead'){
           // Control Undead: seize an undead unit from an enemy/neutral hero here, OR scan this
           // province to reveal the dead army units lying in it. 2026-09-15: the province scan is
           // the DEFAULT. The scan is now preselected whenever no other target is saved, so the
           // obvious reading of "cast Control Undead here" is also what happens.
           const _cuNoTarget=(extra===''||extra==null);
-          const scanOpt=`<option value="__scan__" ${(extra==='__scan__'||_cuNoTarget)?'selected':''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
+          const scanOpt=kcHtml`<option value="__scan__" ${(extra==='__scan__'||_cuNoTarget)?'selected':''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
           const targets=(report.visibleChars||[]).filter(x=>x.player!==c.player && x.locationId===casterLoc);
-          const enemyOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — seize one undead unit from them</option>`).join('');
-          charOpts=scanOpt+enemyOpts;
+          const enemyOpts=targets.map(x=>kcHtml`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — seize one undead unit from them</option>`);
+          charOpts=[scanOpt,...enemyOpts];
         } else if(selSpell==='Telekinetic Storm'){
           // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
           // there is nothing to scatter around a hero marching alone.
           const targets=(report.visibleChars||[]).filter(x=>
             x.player!==c.player && x.locationId===casterLoc && leadsArmiesP(x));
-          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.armyBand||(x.armies+' unit'+(x.armies!==1?'s':''))} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral hero leading armies in this province</option>';
+          charOpts=targets.map(x=>kcHtml`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.armyBand||(x.armies+' unit'+(x.armies!==1?'s':''))} — ${x.locationName||'?'}</option>`);
+          if(!charOpts.length) charOpts=kcHtml`<option value="" disabled>No enemy/neutral hero leading armies in this province</option>`;
         } else {
           // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
           // Target visible enemy/neutral characters in the same province.
           const targets=(report.visibleChars||[]).filter(x=>
             x.player!==c.player && x.locationId===casterLoc);
-          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral heroes in this province</option>';
+          charOpts=targets.map(x=>kcHtml`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}</option>`);
+          if(!charOpts.length) charOpts=kcHtml`<option value="" disabled>No enemy/neutral heroes in this province</option>`;
         }
         // Control Undead is the one spell here whose default is a PROVINCE, not a character, so it
         // gets its own placeholder — "— Target character —" above a preselected province scan reads
         // as though nothing has been chosen.
         const _ph0=(selSpell==='Control Undead')?'— Choose what to cast it on —':'— Target character —';
-        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${c.id}',${ph});syncCharmCard('${c.id}',${ph})"><option value="">${_ph0}</option>${charOpts}</select>
+        secondaryHtml=kcHtml`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard(${kcArg(String(c.id))},${kcArg(ph)});syncCharmCard(${kcArg(String(c.id))},${kcArg(ph)})"><option value="">${_ph0}</option>${charOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else {
-        secondaryHtml=`<input id="po-extra-${c.id}-${ph}" type="hidden" value=""><div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
+        secondaryHtml=kcHtml`<input id="po-extra-${c.id}-${ph}" type="hidden" value=""><div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       }
       return secondaryHtml;
 }
@@ -4163,11 +4162,11 @@ function castChanceNote(c, spellName, opts){
   const school=SPELL_TO_SCHOOL[spellName];
   if(!school) return '';
   const rec=(c&&c.castChance&&c.castChance[school])||null;
-  if(opts.itemCast) return `<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>95%</strong> — worked from the item, whatever your own skill.</div>`;
+  if(opts.itemCast) return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>95%</strong> — worked from the item, whatever your own skill.</div>`;
   const lvl=rec?rec.level:effMagicLvl(c,school);
-  if(lvl<=0) return `<div style="font-size:.72rem;color:var(--crimson);margin-top:2px">🎲 No ${SKILL_LABELS[school]||school} skill yet — this cast will fail unless a Practice order earlier this turn raises it.</div>`;
+  if(lvl<=0) return kcHtml`<div style="font-size:.72rem;color:var(--crimson);margin-top:2px">🎲 No ${SKILL_LABELS[school]||school} skill yet — this cast will fail unless a Practice order earlier this turn raises it.</div>`;
   if(school==='necromancy'&&c&&c.necroAutoReady)
-    return `<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>100%</strong> — your Wailing Phylactery makes this turn's first Necromancy spell certain.</div>`;
+    return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>100%</strong> — your Wailing Phylactery makes this turn's first Necromancy spell certain.</div>`;
   const chance=rec?rec.chance:Math.min(95,30+lvl*10); // base 30 everywhere
   // Name what lifted it above the base, so the number is explainable.
   const bits=[`${SKILL_LABELS[school]||school} ${lvl}`];
@@ -4175,7 +4174,7 @@ function castChanceNote(c, spellName, opts){
   if(rec&&rec.mastery) bits.push(`+${rec.mastery}% school mastery`);
   if(rec&&rec.discovery) bits.push(`+${rec.discovery}% discoveries`);
   const capped=chance>=95?' — the 95% cap':'';
-  return `<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>${chance}%</strong> (${bits.join(', ')}${capped}). A failed cast is spent — the spell fizzles and the phase is used.</div>`;
+  return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>${chance}%</strong> (${bits.join(', ')}${capped}). A failed cast is spent — the spell fizzles and the phase is used.</div>`;
 }
 
 // ── ORDER SUCCESS CHANCE ────
@@ -4185,7 +4184,7 @@ function castChanceNote(c, spellName, opts){
 // ends up practising alongside — the note says so instead of pretending the number is final.
 function chanceLine(txt, tone){
   const col=tone==='bad'?'var(--crimson)':(tone==='sure'?'#2d6a2d':'var(--forest)');
-  return `<div style="font-size:.72rem;color:${col};margin-top:2px">🎲 ${txt}</div>`;
+  return kcHtml`<div style="font-size:.72rem;color:${col};margin-top:2px">🎲 ${txt}</div>`;
 }
 // Rebuild one order's target field in place — used when a choice within the field changes the odds
 // quoted beneath it (picking a different skill to practise). Mirrors what onSpellChange does.
@@ -4200,33 +4199,33 @@ function rebuildTargetWrap(charId, ph){
 }
 function orderChanceNote(c, action, ph){
   const oc=(c&&c.orderChance)||null; if(!oc) return '';
-  const pct=(n)=>`<strong>${Math.max(0,Math.min(100,floorNumP(n)))}%</strong>`;
+  const pct=(n)=>kcHtml`<strong>${Math.max(0,Math.min(100,floorNumP(n)))}%</strong>`;
   switch(action){
     case 'Spy':{
       const o=oc.spy||{};
-      if(o.auto) return chanceLine(`Success is <strong>certain</strong> — ${o.autoWhy||'your craft'} never fails. Only an enemy's counter-espionage could trouble it.`,'sure');
-      if(!o.level) return chanceLine(`No Spy skill — ${pct(o.chance||20)} at best. Espionage rewards training.`,'bad');
-      return chanceLine(`Success: ${pct(o.chance)} (Spy ${o.level}). A realm with Cipher Scripts is up to 25% harder to spy on.`);
+      if(o.auto) return chanceLine(kcHtml`Success is <strong>certain</strong> — ${o.autoWhy||'your craft'} never fails. Only an enemy's counter-espionage could trouble it.`,'sure');
+      if(!o.level) return chanceLine(kcHtml`No Spy skill — ${pct(o.chance||20)} at best. Espionage rewards training.`,'bad');
+      return chanceLine(kcHtml`Success: ${pct(o.chance)} (Spy ${o.level}). A realm with Cipher Scripts is up to 25% harder to spy on.`);
     }
     case 'Research':{
       const o=oc.research||{};
       if((o.rawLevel||0)<1) return chanceLine('Research needs Sage 1+ — without it the archives yield nothing.','bad');
-      return chanceLine(`Discovery: ${pct(o.chance)} (Sage ${o.level}). A failed search still passes the season; nothing else is lost. Each failed Research this turn makes the hero's next one ×1.2 likelier (a discovery resets it).`);
+      return chanceLine(kcHtml`Discovery: ${pct(o.chance)} (Sage ${o.level}). A failed search still passes the season; nothing else is lost. Each failed Research this turn makes the hero's next one ×1.2 likelier (a discovery resets it).`);
     }
     case 'Assassinate':{
       const o=oc.assassinate||{};
-      return chanceLine(`Success: ${pct(o.chance)} (Spy ${o.level}) — but only ${pct(Math.max(0,o.chance-(o.kingPenalty||25)))} against a king, who is heavily guarded. Failure is noticed.`);
+      return chanceLine(kcHtml`Success: ${pct(o.chance)} (Spy ${o.level}) — but only ${pct(Math.max(0,o.chance-(o.kingPenalty||25)))} against a king, who is heavily guarded. Failure is noticed.`);
     }
     case 'Steal':{
       const o=oc.steal||{};
-      return chanceLine(`Success: ${pct(o.chance)} (Thief ${o.level}), halved if the target leads troops or the paymaster is guarded. Fail and you are seen unless you slip away (${pct(o.escape)}).`);
+      return chanceLine(kcHtml`Success: ${pct(o.chance)} (Thief ${o.level}), halved if the target leads troops or the paymaster is guarded. Fail and you are seen unless you slip away (${pct(o.escape)}).`);
     }
     case 'Grand Heist':{
       const o=oc.grandHeist||{};
-      return chanceLine(`Success: ${pct(o.chance)} (Thief ${o.level}), halved if the vaults are guarded — a garrison, or an enemy commander here with troops. Fail and you are seen unless you slip away (${pct(o.escape)}).`);
+      return chanceLine(kcHtml`Success: ${pct(o.chance)} (Thief ${o.level}), halved if the vaults are guarded — a garrison, or an enemy commander here with troops. Fail and you are seen unless you slip away (${pct(o.escape)}).`);
     }
     case 'Blockade':
-      return chanceLine(`The blockade forms ${pct((oc.blockade||{}).chance||50)} of the time — wind and tide decide the rest.`);
+      return chanceLine(kcHtml`The blockade forms ${pct((oc.blockade||{}).chance||50)} of the time — wind and tide decide the rest.`);
     case 'Practice Skill':{
       const o=oc.practice||{}; const by=o.byLevel||[25,20,15,10,5];
       const _pick=KC_SKILLS.indexOf(document.getElementById(`po-target-${c.id}-${ph}`)?.value||'');
@@ -4235,7 +4234,7 @@ function orderChanceNote(c, action, ph){
       const base=(lvl==null)?null:by[lvl]+(o.astro||0)+(o.discovery||0)+((o.bySkill&&sel)?(o.bySkill[sel]||0):0); // + skill-scoped practice discoveries
       const scale=`Chance falls as mastery grows: ${by.map((v,i)=>`${v}% at ${i}`).join(', ')}.`;
       const extra=`Practising alongside someone of equal level adds half again; anyone of HIGHER level teaches you, and the lesson cannot fail. A run of failures makes the next attempt likelier.`;
-      return chanceLine(base==null?`${scale} ${extra}`:`Improvement: ${pct(base)} at ${SKILL_LABELS[sel]||sel} ${lvl}. ${extra}`);
+      return chanceLine(base==null?`${scale} ${extra}`:kcHtml`Improvement: ${pct(base)} at ${SKILL_LABELS[sel]||sel} ${lvl}. ${extra}`);
     }
     default: return '';
   }
@@ -4643,15 +4642,15 @@ function poMoveModeNote(ch, destProv, host, fromProv){
     const diff=(A.length)-(H.base||0);
     const _same=(H.sameFrom||[]);
     if(diff!==0||H.gained) bits.push(`counting your ${_same.length?`orders this turn, including this phase's hand-overs (${_same.join('; ')} — these resolve before any move)`:'earlier orders this turn'} — ${A.length} unit${A.length!==1?'s':''} under command by then${diff>0?` (${diff} more than now)`:diff<0?` (${-diff} fewer than now)`:''}`);
-    if((H.uncounted||[]).length) bits.push(`<strong>not counted:</strong> ${H.uncounted.join(', ')} — there is no telling in advance what they will bring`);
-    return bits.length?`<div style="opacity:.85;margin-top:2px">${bits.join(' · ')}.</div>`:'';
+    if((H.uncounted||[]).length) bits.push(kcHtml`<strong>not counted:</strong> ${H.uncounted.join(', ')} — there is no telling in advance what they will bring`);
+    return bits.length?kcHtml`<div style="opacity:.85;margin-top:2px">${kcJoinP(bits,' · ')}.</div>`:'';
   })();
-  const box=(bg,bd,fg,html)=>`<div style="font-size:.72rem;color:${fg};background:${bg};border:1px solid ${bd};border-radius:2px;padding:3px 6px;margin-top:3px">${html}${_foot}</div>`;
+  const box=(bg,bd,fg,html)=>kcHtml`<div style="font-size:.72rem;color:${fg};background:${bg};border:1px solid ${bd};border-radius:2px;padding:3px 6px;margin-top:3px">${html}${_foot}</div>`;
   const good=h=>box('#eaf5e2','#7ea45f','#1f4410',h);
   const warn=h=>box('#fff3e0','#e0b070','#7a3c00',h);
   const bad =h=>box('#fdeaea','#c06060','#7a1010',h);
-  const where=destProv?` into <strong>${destProv.name||'that province'}</strong>`:'';
-  if(!A.length) return good(`🚶 <strong>Solo ride</strong> — ${ch.name} leads no troops${where}, and travels by land or takes passage over water freely.`);
+  const where=destProv?kcHtml` into <strong>${destProv.name||'that province'}</strong>`:'';
+  if(!A.length) return good(kcHtml`🚶 <strong>Solo ride</strong> — ${ch.name} leads no troops${where}, and travels by land or takes passage over water freely.`);
   // ── SHIPS CANNOT CROSS LAND (2026-09-27, Toby item 6) ───────────────────────────────────────────
   // The engine refuses a land→land step outright while the column leads ANY naval unit — fleet or
   // sea-beast, coastal or not ("cannot march overland while leading naval units"). The old note
@@ -4661,23 +4660,23 @@ function poMoveModeNote(ch, destProv, host, fromProv){
   const _navalAboard=an.hulls+an.seaBeasts;
   if(_navalAboard>0 && !fromSea && !destSea && fromKnown && destKnown){
     const _names=[...new Set(A.filter(a=>PO_SEA_TYPES.has(a.type)).map(a=>a.unitName||a.type))];
-    return bad(`⛔ <strong>This move will be refused — ships cannot cross land.</strong> ${ch.name} would be marching from one land province${fromProv?` (<strong>${fromProv.name||'here'}</strong>)`:''} to another${where} while leading ${_navalAboard} naval unit${_navalAboard!==1?'s':''} (${_names.slice(0,3).join(', ')}${_names.length>3?'…':''}). There is no coast-to-coast march for a fleet. Either <strong>Leave/Transfer</strong> the ships into this province's garrison in an earlier phase and march without them, or sail instead — from a land province a fleet may only move to an <strong>adjacent sea province</strong>.`);
+    return bad(kcHtml`⛔ <strong>This move will be refused — ships cannot cross land.</strong> ${ch.name} would be marching from one land province${fromProv?kcHtml` (<strong>${fromProv.name||'here'}</strong>)`:''} to another${where} while leading ${_navalAboard} naval unit${_navalAboard!==1?'s':''} (${_names.slice(0,3).join(', ')}${_names.length>3?'…':''}). There is no coast-to-coast march for a fleet. Either <strong>Leave/Transfer</strong> the ships into this province's garrison in an earlier phase and march without them, or sail instead — from a land province a fleet may only move to an <strong>adjacent sea province</strong>.`);
   }
   // A column that can fly crosses anything.
-  if(an.allAerial) return good(`🦅 <strong>Flying move</strong> — every unit is winged, so the column crosses land and sea alike and needs no fleet.`);
-  if(an.lifted)   return good(`🦅 <strong>Flying move</strong> — the ${an.flyers} humanoid flyer${an.flyers!==1?'s':''} lift the whole column${where}; land and sea are both open to it.`);
+  if(an.allAerial) return good(kcHtml`🦅 <strong>Flying move</strong> — every unit is winged, so the column crosses land and sea alike and needs no fleet.`);
+  if(an.lifted)   return good(kcHtml`🦅 <strong>Flying move</strong> — the ${an.flyers} humanoid flyer${an.flyers!==1?'s':''} lift the whole column${where}; land and sea are both open to it.`);
   if(an.allSea){
-    if(destSea) return good(`⛵ <strong>Naval move</strong> — a fleet of ${an.total} at sea${where}.`);
+    if(destSea) return good(kcHtml`⛵ <strong>Naval move</strong> — a fleet of ${an.total} at sea${where}.`);
     return fromSea
-      ? good(`⛵ <strong>Coastal landing</strong> — the fleet puts in${where}. A landing is only possible on a <strong>coastal</strong> province; an inland hex will turn it back.`)
-      : warn(`⛵ <strong>Naval move</strong> — this column is all ships and sea-beasts. From a land province its only legal move is to an <strong>adjacent sea province</strong>; it cannot march overland.`);
+      ? good(kcHtml`⛵ <strong>Coastal landing</strong> — the fleet puts in${where}. A landing is only possible on a <strong>coastal</strong> province; an inland hex will turn it back.`)
+      : warn(kcHtml`⛵ <strong>Naval move</strong> — this column is all ships and sea-beasts. From a land province its only legal move is to an <strong>adjacent sea province</strong>; it cannot march overland.`);
   }
   if(destSea){
     if(an.cap!=='land'){
       const carried=an.landCount;
-      return good(`⛵ <strong>Naval move</strong> — ${an.hulls} hull${an.hulls!==1?'s':''}${an.navalL8?' (Naval 8: each carries double)':''}${an.flyers?` and ${an.flyers} flyer${an.flyers!==1?'s':''}`:''} carry ${carried} land unit${carried!==1?'s':''} out to sea.`);
+      return good(kcHtml`⛵ <strong>Naval move</strong> — ${an.hulls} hull${an.hulls!==1?'s':''}${an.navalL8?' (Naval 8: each carries double)':''}${an.flyers?` and ${an.flyers} flyer${an.flyers!==1?'s':''}`:''} carry ${carried} land unit${carried!==1?'s':''} out to sea.`);
     }
-    return bad(`⚠ <strong>Not enough lift for a sea crossing.</strong> ${ch.name} leads ${an.landCount} land unit${an.landCount!==1?'s':''} but only ${an.hulls} hull${an.hulls!==1?'s':''}${an.flyers?` and ${an.flyers} humanoid flyer${an.flyers!==1?'s':''}`:' and no flyers'}. About ${an.short} unit${an.short!==1?'s':''} would be left ashore${an.shortNames.length?` (${an.shortNames.slice(0,3).join(', ')}${an.shortNames.length>3?'…':''})`:''}. Recruit or bring more ships, send the surplus elsewhere, or choose a land province.`);
+    return bad(kcHtml`⚠ <strong>Not enough lift for a sea crossing.</strong> ${ch.name} leads ${an.landCount} land unit${an.landCount!==1?'s':''} but only ${an.hulls} hull${an.hulls!==1?'s':''}${an.flyers?` and ${an.flyers} humanoid flyer${an.flyers!==1?'s':''}`:' and no flyers'}. About ${an.short} unit${an.short!==1?'s':''} would be left ashore${an.shortNames.length?` (${an.shortNames.slice(0,3).join(', ')}${an.shortNames.length>3?'…':''})`:''}. Recruit or bring more ships, send the surplus elsewhere, or choose a land province.`);
   }
   // Land destination (or an unmapped hex).
   const bits=[];
@@ -4686,10 +4685,10 @@ function poMoveModeNote(ch, destProv, host, fromProv){
     // Reaching here means the hard case above did not apply: either the column sets out from SEA
     // (a legal coastal landing), or one of the two hexes is not mapped yet and the ban cannot be
     // confirmed — which is a risk worth naming.
-    if(fromSea) return good(`⛵ <strong>Coastal landing</strong>${where} — the ships put in and the land units come ashore.${bits.length?` (${bits.join('; ')}.)`:''} Once ashore the column cannot march on while it still leads ships: leave them in the garrison first.`);
-    return warn(`⚠ <strong>Land march with ships in the column.</strong> ${ch.name} leads ${_navalAboard} naval unit${_navalAboard!==1?'s':''}, and a column carrying ships or sea-beasts <strong>cannot step from one land province to another</strong> — if this leg turns out to start and end on land the order will be refused. Leave the hulls behind to march, or sail to an adjacent sea province.${bits.length?` (${bits.join('; ')}.)`:''}`);
+    if(fromSea) return good(kcHtml`⛵ <strong>Coastal landing</strong>${where} — the ships put in and the land units come ashore.${bits.length?` (${bits.join('; ')}.)`:''} Once ashore the column cannot march on while it still leads ships: leave them in the garrison first.`);
+    return warn(kcHtml`⚠ <strong>Land march with ships in the column.</strong> ${ch.name} leads ${_navalAboard} naval unit${_navalAboard!==1?'s':''}, and a column carrying ships or sea-beasts <strong>cannot step from one land province to another</strong> — if this leg turns out to start and end on land the order will be refused. Leave the hulls behind to march, or sail to an adjacent sea province.${bits.length?` (${bits.join('; ')}.)`:''}`);
   }
-  return good(`🛡 <strong>Land march</strong>${where}${destKnown?'':' (destination not yet mapped)'}${bits.length?` — ${bits.join('; ')}.`:'.'}`);
+  return good(kcHtml`🛡 <strong>Land march</strong>${where}${destKnown?'':' (destination not yet mapped)'}${bits.length?` — ${bits.join('; ')}.`:'.'}`);
 }
 // The province a Move order SETS OUT from at this phase, with its terrain — predictedLocation gives
 // only {id,name}, so the full worldMeta record is looked up for the terrain the note needs.
@@ -4804,28 +4803,28 @@ function heirSelectorHTML(chars){
     const displayName=SKILL_LABELS[skill]||skill;
     const minusOff=added<=0;                              // may not reduce below the crowned base
     const plusOff=remaining<=0||added>=2;                 // 4-point budget, +2-per-skill cap
-    return`<div class="skill-pip">
-      <button onclick="allocateHeirSkill(${heir.id},'${skill}',-1)" ${minusOff?'disabled':''}>−</button>
-      <span class="sk-name" onmousemove="showSkillTip(event,'${skill}')" onmouseleave="hideSkillTip()">${displayName}</span>
+    return kcHtml`<div class="skill-pip">
+      <button onclick="allocateHeirSkill(${kcArg(heir.id)},${kcArg(String(skill))},-1)" ${minusOff?'disabled':''}>−</button>
+      <span class="sk-name" onmousemove="showSkillTip(event,${kcArg(String(skill))})" onmouseleave="hideSkillTip()">${displayName}</span>
       <span class="sk-val">${lvl}</span>
-      <button onclick="allocateHeirSkill(${heir.id},'${skill}',1)" ${plusOff?'disabled':''}>+</button>
+      <button onclick="allocateHeirSkill(${kcArg(heir.id)},${kcArg(String(skill))},1)" ${plusOff?'disabled':''}>+</button>
     </div>`;
   };
-  const grid=`<div class="skill-cols">`+SKILL_COLUMNS.map(col=>
-    `<div class="skill-col"><div class="skill-col-head">${col.head}</div>${col.skills.map(pip).join('')}</div>`
-  ).join('')+`</div>`;
-  return`<div style="background:#fff8e8;border:2px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:14px">
+  const grid=kcHtml`<div class="skill-cols">${SKILL_COLUMNS.map(col=>
+    kcHtml`<div class="skill-col"><div class="skill-col-head">${col.head}</div>${col.skills.map(pip)}</div>`
+  )}</div>`;
+  return kcHtml`<div style="background:#fff8e8;border:2px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:14px">
     <div style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold);margin-bottom:4px">👑 Royal Succession — Name, Temper &amp; Skills</div>
     <div style="font-size:.76rem;color:#444;margin-bottom:8px">A new monarch has risen. Name them, choose their Temper, and spend their <strong>${remaining}</strong> remaining skill point${remaining!==1?'s':''} before submitting orders. New skills take effect this turn — buy a magic school and you can cast from it right away.</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
       <label style="font-size:.74rem;color:#231e16">Name
-        <input id="heir-name" value="${(heir.name||'').replace(/"/g,'&quot;')}" maxlength="40" oninput="setHeirName(${heir.id},this.value)"
+        <input id="heir-name" value="${heir.name||''}" maxlength="40" oninput="setHeirName(${kcArg(heir.id)},this.value)"
           style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px;width:200px">
       </label>
       <label style="font-size:.74rem;color:#231e16">Temper
-        <select id="heir-temper" onchange="setHeirTemper(${heir.id},this.value)"
+        <select id="heir-temper" onchange="setHeirTemper(${kcArg(heir.id)},this.value)"
           style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px">
-          ${HEIR_TEMPERS_LIST.map(t=>`<option value="${t}"${heir.temper===t?' selected':''}>${t}</option>`).join('')}
+          ${HEIR_TEMPERS_LIST.map(t=>kcHtml`<option value="${t}"${heir.temper===t?' selected':''}>${t}</option>`)}
         </select>
       </label>
       <span class="pts-remaining" style="margin-left:auto">${remaining} point${remaining!==1?'s':''} remaining</span>
@@ -5003,19 +5002,19 @@ function renderOrderLedgerP(){
   if(!currentReport||!currentReport.kingdom||!document.querySelector('#orders-form select[id^="po-action-"]')){ el.style.display='none'; return; }
   const L=computeOrderLedgerP();
   const LBL={armies:'⚔ Armies',mercs:'🗡 Mercenaries',heroes:'🧙 Heroes',intel:'🕵 Intelligence',other:'✦ Rites'};
-  const parts=Object.entries(L.cats).filter(([,x])=>x.g>0).map(([key,x])=>`<span style="white-space:nowrap">${LBL[key]} <strong>${x.g}g</strong>${x.n>1?` <span style="color:var(--stone)">(${x.n})</span>`:''}</span>`);
+  const parts=Object.entries(L.cats).filter(([,x])=>x.g>0).map(([key,x])=>kcHtml`<span style="white-space:nowrap">${LBL[key]} <strong>${x.g}g</strong>${x.n>1?kcHtml` <span style="color:var(--stone)">(${x.n})</span>`:''}</span>`);
   const neg=L.left<0, pneg=L.projected<0;
   el.style.display='block';
-  el.innerHTML=`<div style="font-size:.78rem;line-height:1.45;padding:3px 2px 6px">
+  el.innerHTML=kcHtml`<div style="font-size:.78rem;line-height:1.45;padding:3px 2px 6px">
     <div style="display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline">
       <span>💰 Treasury <strong>${L.gold}g</strong></span>
       <span>Spent in orders <strong style="color:${L.spend>0?'#8a1c1c':'inherit'}">${L.spend}g</strong></span>
       <span>Left <strong style="color:${neg?'#c00':'var(--forest)'}">${L.left}g</strong></span>
     </div>
-    ${parts.length?`<div style="display:flex;flex-wrap:wrap;gap:2px 10px;font-size:.72rem;margin-top:1px">${parts.join('')}</div>`:''}
-    ${neg?`<div style="font-size:.7rem;color:#c00;margin-top:2px">⚠ These orders cost more than the treasury holds — tax only arrives at the end of the turn, so whatever is paid for last will fail for want of gold.</div>`:''}
+    ${parts.length?kcHtml`<div style="display:flex;flex-wrap:wrap;gap:2px 10px;font-size:.72rem;margin-top:1px">${parts}</div>`:''}
+    ${neg?kcHtml`<div style="font-size:.7rem;color:#c00;margin-top:2px">⚠ These orders cost more than the treasury holds — tax only arrives at the end of the turn, so whatever is paid for last will fail for want of gold.</div>`:''}
     <div style="font-size:.72rem;color:#4a3a1a;margin-top:2px" title="Estimate: treasury − orders + this turn's tax − army wages − hero wages − the wages of units and heroes these orders add. Failed orders cost nothing; disbanding or releasing lowers wages.">📅 End of turn ≈ <strong style="color:${pneg?'#c00':'inherit'}">${L.projected}g</strong> <span style="color:var(--stone)">(+${L.tax} tax − ${L.armyW} army wages − ${L.heroW} hero wages${L.newWages?` − ${L.newWages} new wages`:''})</span></div>
-    ${L.notes.length?`<div style="font-size:.66rem;color:var(--stone)">${L.notes.join(' · ')}</div>`:''}
+    ${L.notes.length?kcHtml`<div style="font-size:.66rem;color:var(--stone)">${L.notes.join(' · ')}</div>`:''}
   </div>`;
 }
 let _ledgerT=null;
@@ -5061,7 +5060,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // null button.
 
   if(alreadySubmitted){
-    msg.innerHTML=`<div class="msg-success" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    msg.innerHTML=kcHtml`<div class="msg-success" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span>✓ Orders submitted — awaiting the GM to run the turn.</span>
       <button class="btn btn-ghost" style="padding:6px 14px;font-size:.8rem" onclick="reviseOrders()">✏ Revise Orders</button>
     </div>`;
@@ -5069,29 +5068,29 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     // button here — the orders below are read-only, so a Save Draft would write a blank draft and
     // un-submit.)
     { const _w=document.getElementById('orders-submit-wrap');
-      if(_w){ _w.innerHTML=`<button class="btn btn-crimson btn-full" id="submit-btn" disabled style="flex:1;padding:12px;font-size:.85rem;opacity:.7;cursor:default">Orders Submitted ✓</button>`;
+      if(_w){ _w.innerHTML=kcHtml`<button class="btn btn-crimson btn-full" id="submit-btn" disabled style="flex:1;padding:12px;font-size:.85rem;opacity:.7;cursor:default">Orders Submitted ✓</button>`;
         _w.style.display='flex'; } }
     { const _lg=document.getElementById('orders-ledger'); if(_lg) _lg.style.display='none'; } // no live orders → no running account
     // Show existing orders read-only so the player can see what they sent
     const savedOrders=typeof existingOrders==='string'?JSON.parse(existingOrders):existingOrders||{};
     const savedO=savedOrders.orders||savedOrders||{};
     const SEASONS_RO=KC_SEASONS.slice();
-    el.innerHTML=`<div style="opacity:.65;pointer-events:none;user-select:none">
+    el.innerHTML=kcHtml`<div style="opacity:.65;pointer-events:none;user-select:none">
       <div style="font-family:Cinzel,serif;font-size:.72rem;color:var(--stone);text-transform:uppercase;letter-spacing:.08em;padding:6px 0 8px">Submitted orders (read-only):</div>
       ${chars.filter(c=>c.alive!==false).map(c=>{
         const cOrders=savedO[c.id]||[];
         const hasAny=cOrders.some(o=>o&&o.action&&o.action!=='Defend'&&o.action!=='defend');
-        return`<div style="margin-bottom:12px;border:1px solid var(--stone);border-radius:3px;overflow:hidden">
+        return kcHtml`<div style="margin-bottom:12px;border:1px solid var(--stone);border-radius:3px;overflow:hidden">
           <div style="font-family:Cinzel,serif;font-size:.85rem;padding:6px 10px;background:var(--parchment-dark)">${c.isKing?'👑':'⚔'} ${c.name}</div>
           <div style="padding:6px 10px">
             ${SEASONS_RO.map((season,ph)=>{
               const o=cOrders[ph];
-              if(!o||!o.action||o.action==='Defend'||o.action==='defend') return`<div style="font-size:.78rem;padding:2px 0;color:var(--stone)">${season}: <em>Defend</em></div>`;
-              return`<div style="font-size:.78rem;padding:2px 0">${season}: <strong>${o.action}</strong>${o.target?' — '+o.target:''}</div>`;
-            }).join('')}
+              if(!o||!o.action||o.action==='Defend'||o.action==='defend') return kcHtml`<div style="font-size:.78rem;padding:2px 0;color:var(--stone)">${season}: <em>Defend</em></div>`;
+              return kcHtml`<div style="font-size:.78rem;padding:2px 0">${season}: <strong>${o.action}</strong>${o.target?' — '+o.target:''}</div>`;
+            })}
           </div>
         </div>`;
-      }).join('')}
+      })}
       ${(()=>{
         // pre-order cards (hire / raise / charm) are synthetic ids that are not in `chars`, so the
         // read-only view showed nothing for them — a player who reloaded after submitting could not
@@ -5108,18 +5107,18 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
                  ||Object.values(_rp.provinceOrderData||{}).flatMap(pd=>pd.availableHeroes||[]).find(x=>String(x.id)===heroId)?.name // a Broker hire stands elsewhere
                  ||((_rp.knownDeadHeroes||_rp.graveyard||[]).find(x=>String(x.id)===heroId)||{}).name||'Hero';
           const from=parseInt(String(k).match(/_ph(\d+)$/)?.[1]||'0');
-          return`<div style="margin-bottom:12px;border:1px dashed var(--stone);border-radius:3px;overflow:hidden">
+          return kcHtml`<div style="margin-bottom:12px;border:1px dashed var(--stone);border-radius:3px;overflow:hidden">
             <div style="font-family:Cinzel,serif;font-size:.85rem;padding:6px 10px;background:var(--parchment-dark)">\u2694 ${nm} <span style="font-size:.68rem;color:var(--stone)">(${LABEL[kind]||kind})</span></div>
             <div style="padding:6px 10px">
               ${SEASONS_SY.map((season,ph)=>{
-                if(ph<=from) return`<div style="font-size:.78rem;padding:2px 0;color:var(--stone)"><em>${season}: \u2014</em></div>`;
+                if(ph<=from) return kcHtml`<div style="font-size:.78rem;padding:2px 0;color:var(--stone)"><em>${season}: \u2014</em></div>`;
                 const o=(ords||[])[ph];
-                if(!o||!o.action||o.action==='Defend'||o.action==='defend') return`<div style="font-size:.78rem;padding:2px 0;color:var(--stone)">${season}: <em>Defend</em></div>`;
-                return`<div style="font-size:.78rem;padding:2px 0">${season}: <strong>${o.action}</strong>${o.target?' \u2014 '+o.target:''}</div>`;
-              }).join('')}
+                if(!o||!o.action||o.action==='Defend'||o.action==='defend') return kcHtml`<div style="font-size:.78rem;padding:2px 0;color:var(--stone)">${season}: <em>Defend</em></div>`;
+                return kcHtml`<div style="font-size:.78rem;padding:2px 0">${season}: <strong>${o.action}</strong>${o.target?' \u2014 '+o.target:''}</div>`;
+              })}
             </div>
           </div>`;
-        }).join('');
+        });
       })()}
     </div>`;
     return;
@@ -5143,7 +5142,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
       console.warn('Discarding draft written for turn',_staleTurn,'— this is turn',_liveTurn);
       rawSaved={};
       const _m=document.getElementById('orders-msg');
-      if(_m) _m.innerHTML=`<div class="msg-info">Your saved draft was written for Turn ${_staleTurn} and has been set aside — the GM has resolved that turn since. These orders start fresh.</div>`;
+      if(_m) _m.innerHTML=kcHtml`<div class="msg-info">Your saved draft was written for Turn ${_staleTurn} and has been set aside — the GM has resolved that turn since. These orders start fresh.</div>`;
     } }
   const savedOrders=rawSaved.orders||rawSaved; // unwrap {orders:{...}, encounterPlans:{...}}
   _draftOrdersSnapshot=savedOrders||{}; // lets target defaults see companions' saved orders on first paint
@@ -5164,7 +5163,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // read without waiting for a turn. Nothing else changes: the engine still understands an
   // `orders.messages` payload, and dispatch lines already written into past turn reports still
   // render in the Chronicle, so no history is lost.
-  const _realmTop=`<div id="orders-realm-top" class="orders-char-block" style="background:#fdf8ee">
+  const _realmTop=kcHtml`<div id="orders-realm-top" class="orders-char-block" style="background:#fdf8ee">
       <div class="orders-char-head" style="background:#5c3d14">
         <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
         🏰 Realm — diplomacy &amp; concession
@@ -5184,9 +5183,9 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   const _orderChars=chars.filter(c=>c.alive!==false);
   // tell players the arrows exist — the feature is invisible otherwise.
   const _reorderNote=_orderChars.length>1
-    ? `<div style="font-size:.72rem;color:var(--stone);padding:2px 2px 8px">Use the <strong>▲ ▼</strong> arrows on a hero's header to move them up or down this column — group your heroes however suits your planning. The arrangement is kept from turn to turn.</div>`
+    ? kcHtml`<div style="font-size:.72rem;color:var(--stone);padding:2px 2px 8px">Use the <strong>▲ ▼</strong> arrows on a hero's header to move them up or down this column — group your heroes however suits your planning. The arrangement is kept from turn to turn.</div>`
     : '';
-  el.innerHTML=_realmTop+discoveryChoiceBlockHTML()+_reorderNote+heirSelectorHTML(chars)+_orderChars.map((c,_hi)=>{
+  el.innerHTML=kcHtml`${_realmTop}${discoveryChoiceBlockHTML()}${_reorderNote}${heirSelectorHTML(chars)}${_orderChars.map((c,_hi)=>{
     const _hn=_orderChars.length; // for the ▲ ▼ reorder arrows below
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
     const savedEP=savedEncounterPlans[c.id]||c.encounterPlan||{tactics:['ME'],notes:''};
@@ -5198,15 +5197,15 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     const epOrdered=currentTactics.filter(t=>!String(t).toUpperCase().startsWith('CS:'));
     const epPreSchool=(currentTactics.find(t=>String(t).toUpperCase().startsWith('CS:'))||'').slice(3).toLowerCase();
 
-    return`
+    return kcHtml`
     <div class="orders-char-block" data-hero="${c.id}">
       <div class="orders-char-head">
         <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise this hero's orders" onclick="toggleSection(this)">&#9662;</button>
         ${c.isKing?'👑':'⚔'} ${c.name}
-        ${hiredPh>=0?`<span style="background:#c8922a;color:#1a1208;font-size:.65rem;padding:1px 6px;border-radius:2px;margin-left:6px">Hired ${SEASONS[hiredPh]} — acts from ${SEASONS[hiredPh+1]||'next turn'}</span>`:''}
+        ${hiredPh>=0?kcHtml`<span style="background:#c8922a;color:#1a1208;font-size:.65rem;padding:1px 6px;border-radius:2px;margin-left:6px">Hired ${SEASONS[hiredPh]} — acts from ${SEASONS[hiredPh+1]||'next turn'}</span>`:''}
         <span style="margin-left:auto;font-size:.7rem;opacity:.85">📍 ${provLinkHtml(c.locationId,c.locationName||'?','on-dark')} · Land: ${c.effectiveSpeed||3}/turn${(c.skills?.march||0)>0?` (March ${c.skills.march})`:''}${c.effectiveSeaSpeed?` · Sea: ${c.effectiveSeaSpeed}/turn${(c.skills?.naval||0)>0?` (Naval ${c.skills.naval})`:''}`:''}</span>
-        <button type="button" class="hero-move hero-move-up" ${_hi===0?'disabled':''} title="Move this hero up the orders column" onclick="moveHeroBlock('${c.id}',-1)">&#9650;</button>
-        <button type="button" class="hero-move hero-move-down" ${_hi>=_hn-1?'disabled':''} title="Move this hero down the orders column" onclick="moveHeroBlock('${c.id}',1)">&#9660;</button>
+        <button type="button" class="hero-move hero-move-up" ${_hi===0?'disabled':''} title="Move this hero up the orders column" onclick="moveHeroBlock(${kcArg(String(c.id))},-1)">&#9650;</button>
+        <button type="button" class="hero-move hero-move-down" ${_hi>=_hn-1?'disabled':''} title="Move this hero down the orders column" onclick="moveHeroBlock(${kcArg(String(c.id))},1)">&#9660;</button>
       </div>
       <div style="padding:5px 10px 6px;background:#fdf5e0;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;display:flex;flex-wrap:wrap;gap:8px;line-height:1.6">
         <span style="flex-basis:100%;width:100%;color:var(--stone)">${formatRace(c.race)} · ${c.alignment||'—'} · ${c.temper||'—'}</span>
@@ -5214,17 +5213,17 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
         ${skillRowHTML(c,'inline')}
         ${(()=>{
           const armies=c.armies||[];
-          if(armies.length===0) return '<span style="color:#aaa">No armies</span>';
+          if(armies.length===0) return kcHtml`<span style="color:#aaa">No armies</span>`;
           const druLevel=effSkillP(c,'druid');
           return armies.map(a=>{
             // 2026-09-27: this copy ignored the Druidic, Dragon Taming and skeleton waivers and lacked
             // level 1, so it showed penalties the engine never applies (and missed one it does).
             const {req,effDru,shortfall}=druidNeedP(a,c);
-            const penalty=shortfall>0?` <span style="color:var(--crimson);font-size:.7rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
-            return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
-          }).join('');
+            const penalty=shortfall>0?kcHtml` <span style="color:var(--crimson);font-size:.7rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
+            return kcHtml`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
+          });
         })()}
-        ${itemsForDisplayP(c).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(it)}🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` <span style="color:var(--item-desc);font-weight:400">(${it.desc})</span>`:''}</div>`).join('')}
+        ${itemsForDisplayP(c).map(it=>kcHtml`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(it)}🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?kcHtml` <span style="color:var(--item-desc);font-weight:400">(${it.desc})</span>`:''}</div>`)}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -5232,24 +5231,24 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           const locked=hiredPh>=0&&ph<=hiredPh;
           const saved=(savedOrders[c.id]||[])[ph]||{};
           if(locked){
-            return`<div class="phase-order" style="opacity:.45;pointer-events:none">
+            return kcHtml`<div class="phase-order" style="opacity:.45;pointer-events:none">
               <div class="phase-label">${season}</div>
               <div style="font-size:.78rem;color:var(--stone);font-style:italic;grid-column:2/-1;padding:5px 0">
                 (Not yet hired this phase)
               </div>
             </div>`;
           }
-          return`<div class="phase-order">
+          return kcHtml`<div class="phase-order">
             <div class="phase-label">${season}</div>
-            <select id="po-action-${c.id}-${ph}" onchange="onActionChange('${c.id}',${ph},${chars.indexOf(c)})">
+            <select id="po-action-${c.id}-${ph}" onchange="onActionChange(${kcArg(String(c.id))},${kcArg(ph)},${kcArg(chars.indexOf(c))})">
               <option value="">— Choose —</option>
-              ${actionsFor(c).map(a=>`<option value="${a}" ${saved.action===a?'selected':''}>${a}</option>`).join('')}
+              ${actionsFor(c).map(a=>kcHtml`<option value="${a}" ${saved.action===a?'selected':''}>${a}</option>`)}
             </select>
             <div id="po-target-wrap-${c.id}-${ph}" style="position:relative">
               ${buildTargetField(c, ph, saved)}
             </div>
           </div>`;
-        }).join('')}
+        })}
 
         <!-- Encounter Plan -->
         <div style="margin-top:10px;padding:8px;background:#fdf5e0;border:1px solid #c8922a;border-radius:2px">
@@ -5261,15 +5260,15 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           </div>
           <div id="ep-list-${c.id}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px"
             ondragover="event.preventDefault()"
-            ondrop="epDropTactic(event,'${c.id}')">
-            ${epOrdered.map((t,i)=>epRowHtml(String(c.id),t,i,epOrdered.length)).join('')}
+            ondrop="epDropTactic(event,${kcArg(String(c.id))})">
+            ${epOrdered.map((t,i)=>epRowHtml(String(c.id),t,i,epOrdered.length))}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>{
               const noThief=t.code==='ST'&&((c.skills?.thief||0)<1)&&!skillsUnseenP(c); // skills unseen → offer it; the engine judges
-              return `<button onclick="addEncounterTactic('${c.id}','${t.code}')" ${noThief?'disabled':''}
+              return kcHtml`<button onclick="addEncounterTactic(${kcArg(String(c.id))},${kcArg(String(t.code))})" ${noThief?'disabled':''}
               style="font-size:.7rem;padding:3px 8px;border:1px solid ${noThief?'#ddd':'var(--stone)'};background:${noThief?'#f0f0f0':'var(--parchment-dark)'};color:${noThief?'#bbb':'inherit'};cursor:${noThief?'not-allowed':'pointer'};border-radius:2px"
-              title="${noThief?'Requires Thief skill (level 1+)':t.label}">+ ${t.code}</button>`;}).join('')}
+              title="${noThief?'Requires Thief skill (level 1+)':t.label}">+ ${t.code}</button>`;})}
           </div>
           <input type="hidden" id="ep-tactics-${c.id}" value="${epOrdered.join(',')}">
 
@@ -5288,13 +5287,13 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
               🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#3a3224">— single combat at the start of an army battle (not encounters)</span>
             </div>
             <select id="ep-duel-${c.id}" style="font-size:.8rem;width:100%">
-              ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'refuse')===d.code?' selected':''}>${d.label}</option>`).join('')}
+              ${DUEL_STANCES.map(d=>kcHtml`<option value="${d.code}"${(savedEP.duelStance||'refuse')===d.code?' selected':''}>${d.label}</option>`)}
             </select>
             <div style="font-size:.68rem;color:#2f281c;margin-top:2px">
               A refused challenge costs the refusing commander's force <strong>20% strength</strong>. So does losing the duel — whether by falling or by breaking off.
             </div>
           </div>
-          ${report.kingdom?.alignment==='Evil'?`
+          ${report.kingdom?.alignment==='Evil'?kcHtml`
           <!-- EVIL — conquest doctrine: Terror (loot + fear) or Enslave (chained garrisons) -->
           <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
             <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a1010;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
@@ -5317,7 +5316,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
 
       </div>
     </div>`;
-  }).join('');
+  })}`;
 
   // (The turn-bound dispatch composer that used to be restored here was retired 2026-09-27 — see
   // collectMessages. A saved draft in `rawSaved.messages` is simply ignored; the ✉ Dispatches tab
@@ -5386,13 +5385,13 @@ function renderPreSchool(charId){
   if(!disp||!hidden) return;
   const school=(hidden.value||'').toLowerCase();
   if(school){
-    disp.innerHTML=`<span style="display:inline-flex;align-items:center;gap:6px;background:#fff8e8;border:1px solid #c8922a;border-radius:2px;padding:3px 8px;font-size:.78rem">
+    disp.innerHTML=kcHtml`<span style="display:inline-flex;align-items:center;gap:6px;background:#fff8e8;border:1px solid #c8922a;border-radius:2px;padding:3px 8px;font-size:.78rem">
         <span style="color:#5a4208">Random <strong>${SKILL_LABELS[school]||school}</strong> spell</span>
-        <button onclick="clearPreSchool('${charId}')" title="Remove" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:0 6px;cursor:pointer;font-size:.7rem">✕</button>
+        <button onclick="clearPreSchool(${kcArg(String(charId))})" title="Remove" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:0 6px;cursor:pointer;font-size:.7rem">✕</button>
       </span>
-      <button onclick="openPreSchoolPicker('${charId}')" style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">Change</button>`;
+      <button onclick="openPreSchoolPicker(${kcArg(String(charId))})" style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">Change</button>`;
   } else {
-    disp.innerHTML=`<button onclick="openPreSchoolPicker('${charId}')" style="font-size:.72rem;padding:3px 10px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">+ Choose spell school</button>
+    disp.innerHTML=kcHtml`<button onclick="openPreSchoolPicker(${kcArg(String(charId))})" style="font-size:.72rem;padding:3px 10px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">+ Choose spell school</button>
       <span style="font-size:.72rem;color:#aaa">None set</span>`;
   }
 }
@@ -5432,13 +5431,13 @@ function openPreSchoolPicker(charId){
   const spicker=document.createElement('div');
   spicker.id=`ep-school-picker-${charId}`;
   spicker.style.cssText='background:#fff8e8;border:1px solid #c8922a;border-radius:3px;padding:8px 10px;margin:4px 0;flex-basis:100%';
-  spicker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#5a4208;margin-bottom:6px">Choose a school — a random battle spell from it is cast in the pre-battle magic phase:${_csUnknown?`<div style="font-weight:normal;font-family:serif;color:var(--stone);font-size:.68rem;margin-top:3px">All four are offered — ${(char&&char.name)||'this hero'}’s training is not known to you, and a school they never learned yields no spell.</div>`:''}</div>
+  spicker.innerHTML=kcHtml`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#5a4208;margin-bottom:6px">Choose a school — a random battle spell from it is cast in the pre-battle magic phase:${_csUnknown?kcHtml`<div style="font-weight:normal;font-family:serif;color:var(--stone);font-size:.68rem;margin-top:3px">All four are offered — ${(char&&char.name)||'this hero'}’s training is not known to you, and a school they never learned yields no spell.</div>`:''}</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">
-      ${options.map(o=>`<button onclick="confirmEPSchool('${charId}','${o.key}')"
+      ${options.map(o=>kcHtml`<button onclick="confirmEPSchool(${kcArg(String(charId))},${kcArg(String(o.key))})"
           style="font-size:.75rem;padding:4px 9px;border:1px solid ${o.practising?'#c8922a':'var(--stone)'};background:${o.practising?'#fffbef':'#fdf8ee'};cursor:pointer;border-radius:2px">
-          ${o.label}${o.lvl==null&&!o.practising?'':` <span style="color:var(--stone);font-size:.63rem">(${o.practising?'practising':'Lv '+o.lvl})</span>`}
-        </button>`).join('')}
-      <button onclick="document.getElementById('ep-school-picker-${charId}').remove()"
+          ${o.label}${o.lvl==null&&!o.practising?'':kcHtml` <span style="color:var(--stone);font-size:.63rem">(${o.practising?'practising':'Lv '+o.lvl})</span>`}
+        </button>`)}
+      <button onclick="document.getElementById(${kcArg(`ep-school-picker-${charId}`)}).remove()"
         style="font-size:.75rem;padding:4px 9px;border:1px solid var(--stone);background:#f0e8d8;cursor:pointer;border-radius:2px;color:var(--stone)">Cancel</button>
     </div>`;
   disp.after(spicker);
@@ -5537,7 +5536,7 @@ function addEncounterTactic(charId, code){
     // Levels unseen (hired this turn / charmed): every school is listed without a level, so the
     // picker's heading says why rather than implying the hero knows them all.
     const _epUnknownNote=_epUnknown
-      ?`<div style="font-size:.68rem;color:var(--stone);margin-top:6px">Every school is offered — ${(char&&char.name)||'this hero'}’s training is not known to you, and a spell from a school they never learned simply fails when the encounter comes.</div>`
+      ?kcHtml`<div style="font-size:.68rem;color:var(--stone);margin-top:6px">Every school is offered — ${(char&&char.name)||'this hero'}’s training is not known to you, and a spell from a school they never learned simply fails when the encounter comes.</div>`
       :'';
 
     // Show a mini-picker inline
@@ -5556,34 +5555,34 @@ function addEncounterTactic(charId, code){
     // another.
     const _epTally={};
     availSpells.forEach(x=>{ if(!_epTally[x.school]) _epTally[x.school]={limit:x.limit,used:x.used}; });
-    const _epTallyHtml=Object.entries(_epTally).map(([sch,t])=>{
+    const _epTallyHtml=kcJoinP(Object.entries(_epTally).map(([sch,t])=>{
       const full=t.used>=t.limit;
-      return `<span style="font-size:.62rem;padding:1px 6px;border-radius:2px;background:${full?'#f2dede':'#e8f0e0'};color:${full?'#a33':'#3a5a2a'};border:1px solid ${full?'#d8a0a0':'#b8c9a8'}">${SKILL_LABELS[sch]||sch} ${t.used}/${t.limit}${full?' — full':''}</span>`;
-    }).join(' ');
-    picker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#5a4208;margin-bottom:4px">Choose a combat spell — casts used this encounter, per school:</div>
+      return kcHtml`<span style="font-size:.62rem;padding:1px 6px;border-radius:2px;background:${full?'#f2dede':'#e8f0e0'};color:${full?'#a33':'#3a5a2a'};border:1px solid ${full?'#d8a0a0':'#b8c9a8'}">${SKILL_LABELS[sch]||sch} ${t.used}/${t.limit}${full?' — full':''}</span>`;
+    }),' ');
+    picker.innerHTML=kcHtml`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#5a4208;margin-bottom:4px">Choose a combat spell — casts used this encounter, per school:</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">${_epTallyHtml}</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
         ${availSpells.map(({school,spell,level,practising,blocked,reason,used,limit})=>{
           const limitNote=` ${used}/${limit}`;
           const labelExtra=practising
-            ? `<span style="color:#5a3f08;font-size:.63rem">(${SKILL_LABELS[school]||school} — practising${limitNote})</span>`
-            : `<span style="color:${blocked?'#bbb':'var(--stone)'};font-size:.63rem">(${SKILL_LABELS[school]||school}${level==null?'':' '+level}${limitNote})</span>`;
-          const blockedNote=blocked?`<span style="color:#c44;font-size:.6rem"> ✗ ${reason}</span>`:'';
+            ? kcHtml`<span style="color:#5a3f08;font-size:.63rem">(${SKILL_LABELS[school]||school} — practising${limitNote})</span>`
+            : kcHtml`<span style="color:${blocked?'#bbb':'var(--stone)'};font-size:.63rem">(${SKILL_LABELS[school]||school}${level==null?'':' '+level}${limitNote})</span>`;
+          const blockedNote=blocked?kcHtml`<span style="color:#c44;font-size:.6rem"> ✗ ${reason}</span>`:'';
           return blocked
-            ?`<button disabled style="font-size:.75rem;padding:4px 9px;border:1px solid #ddd;background:#f5f5f5;color:#bbb;border-radius:2px;cursor:not-allowed">
+            ?kcHtml`<button disabled style="font-size:.75rem;padding:4px 9px;border:1px solid #ddd;background:#f5f5f5;color:#bbb;border-radius:2px;cursor:not-allowed">
                 ${spell} ${labelExtra}${blockedNote}
               </button>`
-            :`<button onclick="confirmEPSpell('${charId}','${spell}','${school}',${level},${limit})" 
+            :kcHtml`<button onclick="confirmEPSpell(${kcArg(String(charId))},${kcArg(String(spell))},${kcArg(String(school))},${kcArg(level)},${kcArg(limit)})" 
                 style="font-size:.75rem;padding:4px 9px;border:1px solid ${practising?'#c8922a':'var(--stone)'};background:${practising?'#fffbef':'#fdf8ee'};cursor:pointer;border-radius:2px">
                 ${spell} ${labelExtra}
               </button>`;
-        }).join('')}
-        <button onclick="document.getElementById('ep-spell-picker-${charId}').remove()" 
+        })}
+        <button onclick="document.getElementById(${kcArg(`ep-spell-picker-${charId}`)}).remove()" 
           style="font-size:.75rem;padding:4px 9px;border:1px solid var(--stone);background:#f0e8d8;cursor:pointer;border-radius:2px;color:var(--stone)">
           Cancel
         </button>
       </div>
-      ${practisingSchoolsEP.size>0?`<div style="font-size:.68rem;color:#5a3f08;margin-top:6px">⚠ Spells marked "practising, may unlock" are only available if your practice order succeeds this turn.</div>`:''}${_epUnknownNote}`;
+      ${practisingSchoolsEP.size>0?kcHtml`<div style="font-size:.68rem;color:#5a3f08;margin-top:6px">⚠ Spells marked "practising, may unlock" are only available if your practice order succeeds this turn.</div>`:''}${_epUnknownNote}`;
     wrap.after(picker);
     return;
   }
@@ -5649,18 +5648,18 @@ function confirmEPSchool(charId, school){
 // ONE row renderer for the encounter plan, used by the initial build AND refreshEncounterPlan. ▲/▼
 // buttons give touch devices — which have no HTML5 drag — the same reordering.
 function epRowHtml(charId, t, i, n){
-  return`<div draggable="true" data-char="${charId}" data-idx="${i}"
-      ondragstart="epDragStart(event,'${charId}',${i})"
+  return kcHtml`<div draggable="true" data-char="${charId}" data-idx="${i}"
+      ondragstart="epDragStart(event,${kcArg(String(charId))},${kcArg(i)})"
       ondragover="event.preventDefault();this.style.outline='2px solid var(--crimson)'"
       ondragleave="this.style.outline=''"
-      ondrop="epDropTactic(event,'${charId}',${i});this.style.outline=''"
+      ondrop="epDropTactic(event,${kcArg(String(charId))},${kcArg(i)});this.style.outline=''"
       style="display:flex;align-items:center;gap:6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 8px;cursor:grab">
       <span style="color:#bbb;font-size:.9rem;cursor:grab" title="Drag to reorder">⠿</span>
       <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);min-width:16px">${i+1}.</span>
       <span style="font-size:.8rem;flex:1">${tacticLabel(t)}</span>
-      <button type="button" onclick="epMoveTactic('${charId}',${i},-1)" ${i===0?'disabled':''} title="Move up" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▲</button>
-      <button type="button" onclick="epMoveTactic('${charId}',${i},1)" ${i>=n-1?'disabled':''} title="Move down" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▼</button>
-      <button type="button" onclick="removeEncounterTactic('${charId}',${i})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
+      <button type="button" onclick="epMoveTactic(${kcArg(String(charId))},${kcArg(i)},-1)" ${i===0?'disabled':''} title="Move up" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▲</button>
+      <button type="button" onclick="epMoveTactic(${kcArg(String(charId))},${kcArg(i)},1)" ${i>=n-1?'disabled':''} title="Move down" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▼</button>
+      <button type="button" onclick="removeEncounterTactic(${kcArg(String(charId))},${kcArg(i)})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
     </div>`;
 }
 function epMoveTactic(charId, idx, dir){
@@ -5722,7 +5721,7 @@ function tacticLabel(code){
 function refreshEncounterPlan(charId, tactics){
   const list=document.getElementById(`ep-list-${charId}`);
   if(!list)return;
-  list.innerHTML=tactics.map((t,i)=>epRowHtml(String(charId),t,i,tactics.length)).join('');
+  list.innerHTML=kcHtml`${tactics.map((t,i)=>epRowHtml(String(charId),t,i,tactics.length))}`;
 }
 
 
@@ -5763,13 +5762,13 @@ function refreshOncePerTurnOptions(charId){
     if(cur&&taken.has(cur)){ cleared=cur; cur=''; }
     if(want.join('|')!==have.join('|')){
       const blank=(sel.options[0]&&!sel.options[0].value)?sel.options[0].textContent:'\u2014 Choose \u2014';
-      sel.innerHTML=`<option value="">${blank}</option>`+want.map(a=>`<option value="${a}">${a}</option>`).join('');
+      sel.innerHTML=kcHtml`<option value="">${blank}</option>${want.map(a=>kcHtml`<option value="${a}">${a}</option>`)}`;
       sel.value=cur;
     }
     if(cleared){
       const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
       const ch=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
-      if(wrap){ try{ wrap.innerHTML=(ch?buildTargetField(ch,ph,{action:''}):'')+`<div style="font-size:.72rem;color:#8a2a2a;margin-top:3px">${cleared} can be ordered only once a turn and is already set in an earlier phase \u2014 choose another action here.</div>`; }catch(_){} }
+      if(wrap){ try{ wrap.innerHTML=kcHtml`${ch?buildTargetField(ch,ph,{action:''}):''}<div style="font-size:.72rem;color:#8a2a2a;margin-top:3px">${cleared} can be ordered only once a turn and is already set in an earlier phase \u2014 choose another action here.</div>`; }catch(_){} }
     }
     if(ONCE_PER_TURN_ACTIONS.has(sel.value)) taken.add(sel.value);
   }
@@ -6033,7 +6032,7 @@ function injectResurrectOrders(charId, ph, heroId, casters){
     note.id=`resurrect-note-${heroId}`;
     note.className='orders-char-block';
     note.style.cssText='border:2px dashed #b9a7c9;opacity:0.85;margin-top:8px';
-    note.innerHTML=`
+    note.innerHTML=kcHtml`
       <div class="orders-char-head" style="background:#f5eeff;color:#2e2e2e">
         \u2728 ${dead.name}
         <span style="color:#46275f;font-size:.7rem;margin-left:6px">(raised in Early Winter \u2014 no orders to give)</span>
@@ -6075,7 +6074,7 @@ function injectResurrectOrders(charId, ph, heroId, casters){
   card.setAttribute('data-firstph',String(ph));
   card.className='orders-char-block';
   card.style.cssText='border:2px dashed #5a3a7a;opacity:0.9;margin-top:8px';
-  card.innerHTML=`
+  card.innerHTML=kcHtml`
     <div class="orders-char-head" style="background:#f5eeff;color:#2e2e2e">
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
       \u2728 ${dead.name}
@@ -6098,14 +6097,14 @@ function injectResurrectOrders(charId, ph, heroId, casters){
     row.className='phase-order';
     if(phIdx<firstActable){
       row.style.cssText='opacity:.35;pointer-events:none';
-      row.innerHTML=`<div class="phase-label">${season}</div>
+      row.innerHTML=kcHtml`<div class="phase-label">${season}</div>
         <div style="font-size:.76rem;color:var(--stone);font-style:italic;grid-column:2/-1">(still dead)</div>`;
     } else {
-      row.innerHTML=`
+      row.innerHTML=kcHtml`
         <div class="phase-label">${season}</div>
-        <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange('${fakeId}',${phIdx},99)">
+        <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange(${kcArg(String(fakeId))},${kcArg(phIdx)},99)">
           <option value="">\u2014 Choose \u2014</option>
-          ${actionsFor(fakeChar).map(a=>`<option value="${a}">${a}</option>`).join('')}
+          ${actionsFor(fakeChar).map(a=>kcHtml`<option value="${a}">${a}</option>`)}
         </select>
         <div id="po-target-wrap-${fakeId}-${phIdx}">
           <input id="po-target-${fakeId}-${phIdx}" type="text" placeholder="Details">
@@ -6116,21 +6115,21 @@ function injectResurrectOrders(charId, ph, heroId, casters){
 
   const epDiv=document.createElement('div');
   epDiv.style.cssText='padding:10px;border-top:1px solid var(--parchment-dark);background:#faf6ff';
-  epDiv.innerHTML=`
+  epDiv.innerHTML=kcHtml`
     <div style="font-family:Cinzel,serif;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">\u2694 Encounter Plan</div>
     <div id="ep-list-${fakeId}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">
       <div style="font-size:.8rem;padding:4px 8px;background:#faf6ff;border:1px solid var(--stone);border-radius:2px">ME \u2014 Melee</div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>`<button onclick="addEncounterTactic('${fakeId}','${t.code}')"
+      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>kcHtml`<button onclick="addEncounterTactic(${kcArg(String(fakeId))},${kcArg(String(t.code))})"
         style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px"
-        title="${t.label}">+ ${t.code}</button>`).join('')}
+        title="${t.label}">+ ${t.code}</button>`)}
     </div>
     <input type="hidden" id="ep-tactics-${fakeId}" value="ME">
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cdb8e0">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#46275f;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
       <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>kcHtml`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`)}
       </select>
     </div>
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
@@ -6225,7 +6224,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
   card.setAttribute('data-fakeid',fakeId);
   card.className='orders-char-block';
   card.style.cssText='border:2px dashed #2a7a8a;opacity:0.9;margin-top:8px';
-  card.innerHTML=`
+  card.innerHTML=kcHtml`
     <div class="orders-char-head" style="background:#eaf6f8;color:#2e2e2e">
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
       \u2728 ${wanderer.name}
@@ -6248,14 +6247,14 @@ function injectCharmOrders(charId, ph, heroId, containerId){
     row.className='phase-order';
     if(phIdx<firstActable){
       row.style.cssText='opacity:.35;pointer-events:none';
-      row.innerHTML=`<div class="phase-label">${season}</div>
+      row.innerHTML=kcHtml`<div class="phase-label">${season}</div>
         <div style="font-size:.76rem;color:var(--stone);font-style:italic;grid-column:2/-1">(not yet charmed)</div>`;
     } else {
-      row.innerHTML=`
+      row.innerHTML=kcHtml`
         <div class="phase-label">${season}</div>
-        <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange('${fakeId}',${phIdx},99)">
+        <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange(${kcArg(String(fakeId))},${kcArg(phIdx)},99)">
           <option value="">\u2014 Choose \u2014</option>
-          ${actionsFor(fakeChar).map(a=>`<option value="${a}">${a}</option>`).join('')}
+          ${actionsFor(fakeChar).map(a=>kcHtml`<option value="${a}">${a}</option>`)}
         </select>
         <div id="po-target-wrap-${fakeId}-${phIdx}">
           <input id="po-target-${fakeId}-${phIdx}" type="text" placeholder="Details">
@@ -6267,21 +6266,21 @@ function injectCharmOrders(charId, ph, heroId, containerId){
   // Encounter plan, matching the hired-hero / resurrect cards.
   const epDiv=document.createElement('div');
   epDiv.style.cssText='padding:10px;border-top:1px solid var(--parchment-dark);background:#f2fafb';
-  epDiv.innerHTML=`
+  epDiv.innerHTML=kcHtml`
     <div style="font-family:Cinzel,serif;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">\u2694 Encounter Plan</div>
     <div id="ep-list-${fakeId}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">
       <div style="font-size:.8rem;padding:4px 8px;background:#f2fafb;border:1px solid var(--stone);border-radius:2px">ME \u2014 Melee</div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>`<button onclick="addEncounterTactic('${fakeId}','${t.code}')"
+      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>kcHtml`<button onclick="addEncounterTactic(${kcArg(String(fakeId))},${kcArg(String(t.code))})"
         style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px"
-        title="${t.label}">+ ${t.code}</button>`).join('')}
+        title="${t.label}">+ ${t.code}</button>`)}
     </div>
     <input type="hidden" id="ep-tactics-${fakeId}" value="ME">
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #b8dde0">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#185562;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
       <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>kcHtml`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`)}
       </select>
     </div>
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
@@ -6373,10 +6372,10 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     if(sk.length) hireTop={skill:sk[0][0],level:sk[0][1]};
   }
   const skillStr=hireTop
-    ?`<span style="color:var(--forest)"><strong>${skillFameLabel(hireTop.level)}</strong> ${SKILL_LABELS[hireTop.skill]||hireTop.skill}</span>`
-    :'<span style="color:#aaa">No notable skills</span>';
+    ?kcHtml`<span style="color:var(--forest)"><strong>${skillFameLabel(hireTop.level)}</strong> ${SKILL_LABELS[hireTop.skill]||hireTop.skill}</span>`
+    :kcHtml`<span style="color:#aaa">No notable skills</span>`;
 
-  card.innerHTML=`
+  card.innerHTML=kcHtml`
     <div class="orders-char-head" style="background:#fdf5e0;color:#2e2e2e">
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise this hero's orders" onclick="toggleSection(this)">&#9662;</button>
       ⚔ ${heroData.name}
@@ -6399,16 +6398,16 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     row.className='phase-order';
     if(phIdx<firstActable){
       row.style.cssText='opacity:.35;pointer-events:none';
-      row.innerHTML=`<div class="phase-label">${season}</div>
+      row.innerHTML=kcHtml`<div class="phase-label">${season}</div>
         <div style="font-size:.76rem;color:var(--stone);font-style:italic;grid-column:2/-1">(not yet hired)</div>`;
     } else {
       const actionSelId=`po-action-${hiredCharId}-${phIdx}`;
       const targetWrapId=`po-target-wrap-${hiredCharId}-${phIdx}`;
-      row.innerHTML=`
+      row.innerHTML=kcHtml`
         <div class="phase-label">${season}</div>
-        <select id="${actionSelId}" onchange="onActionChange('${hiredCharId}',${phIdx},99)">
+        <select id="${actionSelId}" onchange="onActionChange(${kcArg(String(hiredCharId))},${kcArg(phIdx)},99)">
           <option value="">— Choose —</option>
-          ${actionsFor(fakeChar).map(a=>`<option value="${a}">${a}</option>`).join('')}
+          ${actionsFor(fakeChar).map(a=>kcHtml`<option value="${a}">${a}</option>`)}
         </select>
         <div id="${targetWrapId}">
           <input id="po-target-${hiredCharId}-${phIdx}" type="text" placeholder="Details">
@@ -6420,15 +6419,15 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   // Build encounter plan section for the hired hero
   const epDiv=document.createElement('div');
   epDiv.style.cssText='padding:10px;border-top:1px solid var(--parchment-dark);background:#fdf8ee';
-  epDiv.innerHTML=`
+  epDiv.innerHTML=kcHtml`
     <div style="font-family:Cinzel,serif;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">⚔ Encounter Plan</div>
     <div id="ep-list-${hiredCharId}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">
       <div style="font-size:.8rem;padding:4px 8px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px">ME — Melee</div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>`<button onclick="addEncounterTactic('${hiredCharId}','${t.code}')"
+      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>kcHtml`<button onclick="addEncounterTactic(${kcArg(String(hiredCharId))},${kcArg(String(t.code))})"
         style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px"
-        title="${t.label}">+ ${t.code}</button>`).join('')}
+        title="${t.label}">+ ${t.code}</button>`)}
     </div>
     <input type="hidden" id="ep-tactics-${hiredCharId}" value="ME">
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
@@ -6436,7 +6435,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
         🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#3a3224">— single combat at the start of an army battle</span>
       </div>
       <select id="ep-duel-${hiredCharId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>kcHtml`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`)}
       </select>
     </div>
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
@@ -6519,10 +6518,10 @@ async function submitOrders(){
     // The warning goes in the bottom block's message slot and its buttons REPLACE the submit
     // buttons in the wrap directly beneath it, so every control to do with submitting stays in one
     // place.
-    msg.innerHTML=`<div class="msg-warning">${missingCount>0?`⚠ ${missingCount} phase${missingCount!==1?'s':''} still have no action selected. You can submit anyway, and the GM will treat unfilled phases as Defend.`:''}${_dcUnpicked>0?`${missingCount>0?'<br>':''}⚠ ${_dcUnpicked} research discover${_dcUnpicked!==1?'ies are':'y is'} still unchosen (💡 Research box near the top of your orders). If you submit anyway, one of each pair will be kept at random.`:''}</div>`;
+    msg.innerHTML=kcHtml`<div class="msg-warning">${missingCount>0?`⚠ ${missingCount} phase${missingCount!==1?'s':''} still have no action selected. You can submit anyway, and the GM will treat unfilled phases as Defend.`:''}${_dcUnpicked>0?kcHtml`${missingCount>0?kcHtml`<br>`:''}⚠ ${_dcUnpicked} research discover${_dcUnpicked!==1?'ies are':'y is'} still unchosen (💡 Research box near the top of your orders). If you submit anyway, one of each pair will be kept at random.`:''}</div>`;
     const w=document.getElementById('orders-submit-wrap');
     if(w){
-      w.innerHTML=`
+      w.innerHTML=kcHtml`
         <button class="btn btn-crimson btn-full" style="flex:1;padding:12px;font-size:.85rem" onclick="doSubmitOrders()">Submit Anyway</button>
         <button class="btn btn-ghost" style="flex:0 0 auto;padding:10px 16px" onclick="cancelSubmit()">← Go Back</button>`;
       w.style.display='flex';
@@ -6736,7 +6735,7 @@ function updateTemperDesc(){
 // whole submit control stays in the sticky bottom block, together, at all times.
 function normalSubmitWrapHtml(verb){
   const turn=(currentReport?._liveTurn||currentReport?.turn||1);
-  return`
+  return kcHtml`
     <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
     <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
       ${verb||'Submit'} Orders for Turn ${turn}
@@ -6841,7 +6840,7 @@ async function doSubmitOrders(){
   const {data:freshGame}=await sb.from('games').select('turn').eq('id',currentGamePlayer?.game_id).single();
   const expectedTurn=currentReport?._liveTurn||currentReport?.turn||1;
   if(freshGame&&freshGame.turn!==expectedTurn){
-    document.getElementById('orders-msg').innerHTML=`<div class="msg-error">⚠ The GM has already resolved this turn. Your orders were not saved — please reload the page to see your new turn report.</div>`;
+    document.getElementById('orders-msg').innerHTML=kcHtml`<div class="msg-error">⚠ The GM has already resolved this turn. Your orders were not saved — please reload the page to see your new turn report.</div>`;
     restoreSubmitWrap('Submit');return; // rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
   if(!currentGamePlayer?.id){
@@ -6943,7 +6942,7 @@ async function doSubmitOrders(){
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
   if(error){
-    document.getElementById('orders-msg').innerHTML=`<div class="msg-error">Error: ${error.message}</div>`;
+    document.getElementById('orders-msg').innerHTML=kcHtml`<div class="msg-error">Error: ${error.message}</div>`;
     restoreSubmitWrap('Submit');return; // rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
   // 2026-09-23: keep the in-memory copy equal to what was SUBMITTED. Only a draft save updated it,
@@ -6951,7 +6950,7 @@ async function doSubmitOrders(){
   // after that draft was silently lost from the revised form.
   if(currentGamePlayer) currentGamePlayer.orders=_subPayload;
   document.getElementById('orders-msg').innerHTML='';
-  document.getElementById('orders-submit-wrap').innerHTML=`
+  document.getElementById('orders-submit-wrap').innerHTML=kcHtml`
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%">
       <span style="color:var(--forest);font-size:.85rem;flex:1">✓ Orders submitted successfully! The GM will be notified.</span>
       <button class="btn btn-ghost" style="padding:8px 16px;font-size:.8rem" onclick="resubmitOrders()">↺ Resubmit Orders</button>
@@ -7483,11 +7482,11 @@ function exploreProjectionNote(c, ph){
   const pd=loc?((report.provinceOrderData)||{})[loc.id]:null;
   const wm=loc?((report.worldMeta&&report.worldMeta.provinces)||[]).find(x=>x.id===loc.id):null;
   const terr=(pd&&pd.terrain)||(wm&&wm.terrain)||null;
-  if(!loc) return `🧭 Explores the province ${c.name} stands in.`;
+  if(!loc) return kcHtml`🧭 Explores the province ${c.name} stands in.`;
   // 2026-09-24 (Toby): was _unknownSkills only, so a CHARMED hero fell through to the real note below
   // and its figure — computed from Explorer 0 — told the charmer exactly what the hero has not got.
-  if(skillsUnseenP(c)) return `🧭 Explores ${loc.name}. The gain depends on an Explorer level ${c._unknownSkills?`not known until ${c.name} has joined`:`hidden from you`}.`;
-  if(!terr) return `🧭 Explores ${loc.name||'the province'} — its ground is still unknown to you, so how much it will yield cannot be judged from here.`;
+  if(skillsUnseenP(c)) return kcHtml`🧭 Explores ${loc.name}. The gain depends on an Explorer level ${c._unknownSkills?`not known until ${c.name} has joined`:`hidden from you`}.`;
+  if(!terr) return kcHtml`🧭 Explores ${loc.name||'the province'} — its ground is still unknown to you, so how much it will yield cannot be judged from here.`;
   const gain=exploreGainFor(c,terr);
   // Everything already mapped, or that WILL be mapped before this order resolves:
   // known — what this realm has charted of the province so far
@@ -7507,8 +7506,8 @@ function exploreProjectionNote(c, ph){
   if(moved>0) priorBits.push(`+${moved}% from marching in`);
   if(queued>0) priorBits.push(`+${queued}% from earlier Explore orders this turn`);
   const prior=priorBits.length?` (${known}% mapped now, ${priorBits.join(', ')})`:'';
-  if(before>=100) return `🧭 ${loc.name} is already fully mapped${prior?` ${prior}`:''} — this Explore order would add nothing.`;
-  return `🧭 ${loc.name} (${capitalise(terr)}) is <strong>${before}%</strong> mapped; this order adds about <strong>+${gain}%</strong> → <strong>${after}%</strong>${after>=100?' — fully explored':''}${prior}.`;
+  if(before>=100) return kcHtml`🧭 ${loc.name} is already fully mapped${prior?` ${prior}`:''} — this Explore order would add nothing.`;
+  return kcHtml`🧭 ${loc.name} (${capitalise(terr)}) is <strong>${before}%</strong> mapped; this order adds about <strong>+${gain}%</strong> → <strong>${after}%</strong>${after>=100?' — fully explored':''}${prior}.`;
 }
 function refreshExploreNotes(){
   const chars=(currentReport&&currentReport.characters)||[];
@@ -7707,9 +7706,9 @@ function buildTargetField(c, ph, saved){
     // Every mastery-order branch appends hintHtml, so folding the odds in here covers them all at
     // once — Assassinate, Blockade, Grand Heist and any future one. orderChanceNote returns '' for
     // an order with no roll behind it, so the deterministic masteries are unaffected.
-    const hintHtml=`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">${action==='Grand Design'?gdHintFor(report):cfg.hint}</div>${orderChanceNote(c,action,ph)}`;
+    const hintHtml=kcHtml`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">${action==='Grand Design'?gdHintFor(report):cfg.hint}</div>${orderChanceNote(c,action,ph)}`;
     if(cfg.target==='none'){
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${action} — no target needed" readonly>${hintHtml}`;
+      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${action} — no target needed" readonly>${hintHtml}`;
     }
     if(cfg.target==='province'){
       const wmProvs=(report.worldMeta?.provinces)||[];
@@ -7717,25 +7716,25 @@ function buildTargetField(c, ph, saved){
         const curLoc=predictedLocation(c.id,ph); const curId=curLoc?curLoc.id:c.locationId;
         const curP=wmProvs.find(p=>p.id===curId);
         const candIds=((curP&&curP.neighbors)||[]);
-        const opts=candIds.map(pid=>{const p=wmProvs.find(x=>x.id===pid); if(!p) return ''; return `<option value="${pid}" ${target==pid?'selected':''}>${p.name||('Unknown province ('+(provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?')+')')}${p.ownerName?` — ${p.ownerName}`:''}</option>`;}).filter(Boolean).join('');
-        return opts
-          ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
-          :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No adjacent province to march into" disabled>${hintHtml}`;
+        const opts=candIds.map(pid=>{const p=wmProvs.find(x=>x.id===pid); if(!p) return ''; return kcHtml`<option value="${pid}" ${target==pid?'selected':''}>${p.name||('Unknown province ('+(provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?')+')')}${p.ownerName?` — ${p.ownerName}`:''}</option>`;}).filter(Boolean);
+        return opts.length
+          ?kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
+          :kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No adjacent province to march into" disabled>${hintHtml}`;
       }
       if(cfg.provKind==='sea_adjacent'){
         const curLoc=predictedLocation(c.id,ph); const curId=curLoc?curLoc.id:c.locationId;
         const curP=wmProvs.find(p=>p.id===curId);
         const candIds=[curId,...((curP&&curP.neighbors)||[])];
-        const opts=candIds.map(pid=>{const p=wmProvs.find(x=>x.id===pid); if(!p||p.terrain!=='sea') return ''; return `<option value="${pid}" ${target==pid?'selected':''}>${p.name||('Sea ('+pid+')')}${pid===curId?' (here)':''}</option>`;}).filter(Boolean).join('');
-        return opts
-          ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
-          :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No sea province here or adjacent to seal" disabled>${hintHtml}`;
+        const opts=candIds.map(pid=>{const p=wmProvs.find(x=>x.id===pid); if(!p||p.terrain!=='sea') return ''; return kcHtml`<option value="${pid}" ${target==pid?'selected':''}>${p.name||('Sea ('+pid+')')}${pid===curId?' (here)':''}</option>`;}).filter(Boolean);
+        return opts.length
+          ?kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
+          :kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No sea province here or adjacent to seal" disabled>${hintHtml}`;
       }
       const seen=wmProvs.filter(p=>p.name&&p.terrain&&p.terrain!=='sea'&&p.owner!=null&&p.owner!==c.player);
-      const opts=seen.map(p=>`<option value="${p.id}" ${target==p.id?'selected':''}>${p.name}${p.ownerName?` — ${p.ownerName}`:''}</option>`).join('');
-      return opts
-        ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
-        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy province in view to strike" disabled>${hintHtml}`;
+      const opts=seen.map(p=>kcHtml`<option value="${p.id}" ${target==p.id?'selected':''}>${p.name}${p.ownerName?` — ${p.ownerName}`:''}</option>`);
+      return opts.length
+        ?kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
+        :kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy province in view to strike" disabled>${hintHtml}`;
     }
     // ── 'here_or_adjacent' — this province or one bordering it (Chart the Unknown). ──
     if(cfg.target==='here_or_adjacent'){
@@ -7747,15 +7746,15 @@ function buildTargetField(c, ph, saved){
         const p=wm.find(x=>x.id===pid);
         const nm=(p&&p.name)||(pid===here?'this province':`Unknown province (${provDirectionLabel(here,pid,wm,report.worldMeta?.cols)||'?'})`);
         const sel=(String(target)===String(pid)||(!target&&pid===here))?'selected':'';
-        return`<option value="${pid}" ${sel}>${nm}${pid===here?' (here)':''}${p&&p.explored!=null?` — ${Math.min(100,p.explored)}% mapped`:''}</option>`;
-      }).join('');
-      return`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`;
+        return kcHtml`<option value="${pid}" ${sel}>${nm}${pid===here?' (here)':''}${p&&p.explored!=null?` — ${Math.min(100,p.explored)}% mapped`:''}</option>`;
+      });
+      return kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`;
     }
     // ── 'lair_tier' — name a class of lair (Discover Lost Ruin). ──
     if(cfg.target==='lair_tier'){
       const TIERS=[['Weak','Weak lairs'],['Moderate','Moderate lairs'],['Powerful','Powerful lairs'],['Legendary','Legendary lairs'],['Ritual','Ritual sites (the old stones)']];
-      const opts=TIERS.map(([v,lbl])=>`<option value="${v}" ${(target===v||(!target&&v==='Weak'))?'selected':''}>${lbl}</option>`).join('');
-      return`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`;
+      const opts=TIERS.map(([v,lbl])=>kcHtml`<option value="${v}" ${(target===v||(!target&&v==='Weak'))?'selected':''}>${lbl}</option>`);
+      return kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`;
     }
     // ── 'here' — the order acts on the province this character stands in (Grand Heist). No target
     // is chosen; the field simply reports whether this ground can be robbed and why.
@@ -7767,20 +7766,20 @@ function buildTargetField(c, ph, saved){
       const owner=hp?hp.owner:null;
       const rich=!!hp&&(hp.wealth==='Rich'||(hp.tax!=null&&hp.tax>=7));
       const home=!!(hp&&hp.isHomeCapitalOfOwner);
-      const no=(why)=>`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>${hintHtml}`;
+      const no=(why)=>kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>${hintHtml}`;
       if(owner==null||owner===c.player) return no('A Grand Heist needs enemy ground — this province is not held by a rival realm');
       if(!atWar(owner)) return no(`You are not at war with ${hp.ownerName||'this realm'} — declare war first`);
       if(!rich&&!home) return no(`${hp.name||'This province'} is not worth robbing — a heist needs their capital or rich country (tax 7+)`);
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${hp.name} — ${hp.ownerName||'the enemy realm'}" readonly>
+      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${hp.name} — ${hp.ownerName||'the enemy realm'}" readonly>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">🏦 You will crack the vaults of <strong>${hp.name}</strong> — ${home?`${hp.ownerName||'the enemy'}'s home capital`:'rich country'}.</div>${hintHtml}`;
     }
     if(cfg.target==='character'){
       const here=predictedLocation(c.id,ph)?.id??c.locationId;
       const foes=(report.visibleChars||[]).filter(x=>x.locationId===here&&(x.player===null||x.player!==c.player));
-      const opts=foes.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}</option>`).join('');
-      return opts
-        ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
-        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy hero in your province this phase" disabled>${hintHtml}`;
+      const opts=foes.map(x=>kcHtml`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}</option>`);
+      return opts.length
+        ?kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
+        :kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy hero in your province this phase" disabled>${hintHtml}`;
     }
   }
 
@@ -7833,8 +7832,8 @@ function buildTargetField(c, ph, saved){
     const nidOut=curProv_?(curProv_.row+(curProv_.row%2===0?EVEN_OFF:ODD_OFF)[HEX_DIRS_BUILD.indexOf(v)][0])*wCols+(((curProv_.col+(curProv_.row%2===0?EVEN_OFF:ODD_OFF)[HEX_DIRS_BUILD.indexOf(v)][1])%wCols+wCols)%wCols):null;
     const valOut=nidOut!=null?`prov:${nidOut}`:`dir:${v}`;
     const selOut=(target===valOut||target==='dir:'+v)?'selected':((!target&&_defaultDir===v)?'selected':'');
-    return`<option value="${valOut}" ${selOut}>${l}${provLabel}</option>`;
-  }).filter(Boolean).join('');
+    return kcHtml`<option value="${valOut}" ${selOut}>${l}${provLabel}</option>`;
+  }).filter(Boolean);
   // the character's OWN province is offered as a move target too. Orders are written before the
   // turn resolves, so a character can be displaced mid-turn — thrown back by a lost battle, routed
   // by Terror — and land somewhere the player never chose. Naming the province they expected to be
@@ -7842,14 +7841,14 @@ function buildTargetField(c, ph, saved){
   // engine simply logs "already in X — the move order is moot" and spends no movement, so it is
   // safe either way.
   const stayOpt=curProv_
-    ? `<option value="prov:${curProv_.id}" ${target===`prov:${curProv_.id}`?'selected':''}>Stay in ${curProv_.name||'this province'} (return here if displaced)</option>`
+    ? kcHtml`<option value="prov:${curProv_.id}" ${target===`prov:${curProv_.id}`?'selected':''}>Stay in ${curProv_.name||'this province'} (return here if displaced)</option>`
     : '';
 
   switch(action){
     // ── MOVE ──
     case 'Move':{
       const edgeNote=(blockedNorth||blockedSouth)
-        ? `<div style="font-size:.72rem;color:var(--stone);margin-top:3px">\u2744 The impassable icy wastelands to the ${blockedNorth&&blockedSouth?'north and south':blockedNorth?'north':'south'} bar any further movement in that direction — the world does not extend beyond them.</div>`
+        ? kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">\u2744 The impassable icy wastelands to the ${blockedNorth&&blockedSouth?'north and south':blockedNorth?'north':'south'} bar any further movement in that direction — the world does not extend beyond them.</div>`
         : '';
       // editing THIS move changes where the character stands for every later phase, so onMoveEdited
       // re-renders the character's later Move orders (their direction labels update relative to the
@@ -7858,12 +7857,12 @@ function buildTargetField(c, ph, saved){
       // is a land march, a voyage or a flight, and warns when the column is being sent to sea with
       // too little lift. Built here for whichever option opens selected, and recomputed by
       // refreshMoveModeNote whenever the player changes it.
-      const _allOpts=dirOpts+stayOpt;
+      const _allOpts=String(kcHtml`${dirOpts}${stayOpt}`); // the options' markup, read for the one that opens selected
       const _initSel=(()=>{ const m=_allOpts.match(/<option value="([^"]+)" selected>/); if(m) return m[1];
         const f=_allOpts.match(/<option value="([^"]+)"/); return f?f[1]:''; })();
       const _initDest=(()=>{ if(!_initSel.startsWith('prov:')) return null; const id=parseInt(_initSel.slice(5));
         return isNaN(id)?null:(wProvs.find(p=>p.id===id)||null); })();
-      return`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited('${c.id}',${ph})">${dirOpts}${stayOpt}</select>${edgeNote}
+      return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited(${kcArg(String(c.id))},${kcArg(ph)})">${dirOpts}${stayOpt}</select>${edgeNote}
         <div id="po-move-mode-${c.id}-${ph}">${poMoveModeNote(c,_initDest,projectedMoveHost(c.id,ph),moveOriginProv(c.id,ph))}</div>
         <div id="po-move-note-${c.id}-${ph}" style="display:none;font-size:.72rem;color:#8a4a00;background:#fff3e0;border:1px solid #e0b070;border-radius:2px;padding:3px 6px;margin-top:3px"></div>`;
     }
@@ -7874,7 +7873,7 @@ function buildTargetField(c, ph, saved){
     // the province's exploration once this order resolves. Recomputed live by
     // refreshExploreNotes().
     case 'Explore':{
-      return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+      return kcHtml`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
         <div id="po-explore-note-${c.id}-${ph}" style="font-size:.72rem;color:var(--forest)">${exploreProjectionNote(c,ph)}</div>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Higher Explorer skill and better terrain reveal more each time; lairs surface as the map fills.</div>`;}
 
@@ -7890,28 +7889,28 @@ function buildTargetField(c, ph, saved){
       // 25% +10% per Spy level — so a hired hero's card read "~25%" and gave away that he has no Spy
       // training. Drop the figure until he has joined; the note below carries the formula.
       const _spHide=skillsUnseenP(c);
-      const opts=foes.map(x=>`<option value="char:${x.id}"${realmOptStyleP(x.player,report)} ${target===`char:${x.id}`?'selected':''}>Spy on ${x.name}${x.isKing?' 👑 (king)':''}${x.isWandering?' (wandering)':(x.player!=null?` ⚔ (${realmNameP(x.player,report)})`:'')}${_spHide?' — learns their skills, items and army':` — ~${charPct}% to learn their skills, items and army`}</option>`).join('');
-      return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})"><option value="" ${!target?'selected':''}>Spy on the province (${here?here.name:'here'})</option>${opts}</select>
+      const opts=foes.map(x=>kcHtml`<option value="char:${x.id}"${realmOptStyleP(x.player,report)} ${target===`char:${x.id}`?'selected':''}>Spy on ${x.name}${x.isKing?' 👑 (king)':''}${x.isWandering?' (wandering)':(x.player!=null?` ⚔ (${realmNameP(x.player,report)})`:'')}${_spHide?' — learns their skills, items and army':` — ~${charPct}% to learn their skills, items and army`}</option>`);
+      return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap(${kcArg(String(c.id))},${kcArg(ph)})"><option value="" ${!target?'selected':''}>Spy on the province (${here?here.name:'here'})</option>${opts}</select>
         ${_spHide
-          ?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 25% +10% per Spy level — ${unseenSuffixP(c)}.</div>`
+          ?kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 25% +10% per Spy level — ${unseenSuffixP(c)}.</div>`
           :String(target||'').startsWith('char:')
-          ?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`
+          ?kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`
           :orderChanceNote(c,'Spy',ph)}`;}
     case 'Rest':
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
+      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
 
     // ── DEFEND (AK [3.15]) ── A general on Defend keeps watch for the REST of the turn over the
     // province he stands in and the provinces of his realm adjacent to it, reacting to enemy
     // incursions — a column marching in, or a host raised/summoned/seized inside one.
     case 'Defend':{
       if((c.armies||[]).length===0){
-        return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+        return kcHtml`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
           <div style="font-size:.72rem;color:var(--forest)">🗡 Lies in wait around ${curProv_?curProv_.name:'the province they stand in'} and its neighbours.</div>
           <div style="font-size:.7rem;color:var(--stone);margin-top:3px">With no column at their back they cannot bar a road, but they will try to <em>ambush</em> any enemy character who marches into their province or one adjacent — springing a personal battle. Their <strong>Spy</strong> skill decides the odds of catching them (harder against a commander leading an army). A crowned king cannot be ambushed this way unless the ambusher is also a king. Done once an ambush is sprung (a Defend order in a later season sets a new watch); cancelled by a later Move or Encounter order.</div>`;
       }
       // Defend no longer takes a target — it always guards the province the character stands in.
       // The engine reads no target for Defend; a hidden field keeps the order shape consistent.
-      return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+      return kcHtml`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
         <div style="font-size:.72rem;color:var(--forest)">🛡 Guards ${curProv_?curProv_.name:'the province they stand in'} and its neighbours.</div>
         <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn, starting this phase. If an enemy army marches into a neighbouring province <em>of yours</em> — or an enemy hero <strong>raises, summons or seizes troops</strong> inside one — they march there at once (1 movement point) and are in the line <em>before</em> the enemy can take it, fighting as the <strong>defender</strong> with the garrison at their side, however strong the foe. A column with ships or sea-beasts in it can only answer by sea — it never rides overland from one land province to another. One ride-out per phase; if their own province is attacked they hold it instead. The watch then carries on from wherever they stand — until it brings them to a battle: win or lose, the Defend order is then done, and only a Defend order in a <em>later</em> season sets a new watch. Also ended by a later Move or Encounter order.</div>
         <div style="font-size:.7rem;color:var(--stone);margin-top:3px">They ride out only <em>after</em> every non-moving order of the phase has resolved — so a spell cast on them, a column handed over or an item passed to them <strong>in the same phase</strong> reaches them first, and they still arrive before any invader marches in. Only support ordered for a phase <em>after</em> they have gone misses them: a spell on them is then never worked (no casting slot lost), a transfer is refused with the troops kept, and a Send Item follows by courier.</div>`;
@@ -7931,10 +7930,10 @@ function buildTargetField(c, ph, saved){
       const allSeen=(report.encounterTargets||[]).filter(x=>x.id!==c.id);
       const reasonOf=(x)=>x.untargetable==='faceless'?'no face anyone can remember — cannot be hunted':(x.isKing&&!c.isKing)?'only your king may hunt a king':null;
       const targets=allSeen.filter(x=>!reasonOf(x));
-      if(allSeen.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
-      const opts=allSeen.map(x=>{ const why=reasonOf(x); return `<option value="${why?'':x.id}"${realmOptStyleP(x.player,report)} ${why?'disabled':''} ${(!why&&target==x.id)?'selected':''}>${x.name}${x.isKing?' 👑 (king)':''}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}${why?` — ${why}`:''}</option>`; }).join('');
-      if(targets.length===0) return`<select id="po-target-${c.id}-${ph}"><option value="" selected>— No character here can be hunted by ${c.name} —</option>${opts}</select>`;
-      return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character to hunt down —</option>${opts}</select>
+      if(allSeen.length===0) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
+      const opts=allSeen.map(x=>{ const why=reasonOf(x); return kcHtml`<option value="${why?'':x.id}"${realmOptStyleP(x.player,report)} ${why?'disabled':''} ${(!why&&target==x.id)?'selected':''}>${x.name}${x.isKing?' 👑 (king)':''}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}${why?` — ${why}`:''}</option>`; });
+      if(targets.length===0) return kcHtml`<select id="po-target-${c.id}-${ph}"><option value="" selected>— No character here can be hunted by ${c.name} —</option>${opts}</select>`;
+      return kcHtml`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character to hunt down —</option>${opts}</select>
         <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Your hero sets out after this character and chases them across provinces — one province per phase, a movement point each (the chase stalls if they run out of movement). Once you share a province, the chance to corner them each phase is 70%, +5% per level of your Spy, −5% per level of theirs (5–100%). When they catch up: two columns give battle; otherwise it is a personal duel — but to reach a quarry leading troops your hero must first slip through their camp: 60% less 8% per unit they lead, plus 5% per level of your Spy, less 5% per level of their Tactical (5–95%). Turned away by the sentries, the chase ends. Talk/Steal/Scout tactics don't apply — only combat tactics.</div>`;
     }
 
@@ -7953,7 +7952,7 @@ function buildTargetField(c, ph, saved){
       const _elsewhere=_allVisEnemy.length-visibleEnemyChars.length;
       const pdS=loc?provOrderData[loc.id]:null;
       const garrN=(pdS&&pdS.owner!=null&&pdS.owner!==c.player)?((pdS.garrisonArmies||[]).length):0;
-      if(visibleEnemyChars.length===0&&garrN===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from in ${loc?loc.name:'this province'}${_elsewhere>0?` (${_elsewhere} rival${_elsewhere!==1?'s':''} in sight elsewhere — a thief must stand in the same province; move there first)`:' — you need a rival character or an enemy garrison'}" disabled>`;
+      if(visibleEnemyChars.length===0&&garrN===0) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from in ${loc?loc.name:'this province'}${_elsewhere>0?` (${_elsewhere} rival${_elsewhere!==1?'s':''} in sight elsewhere — a thief must stand in the same province; move there first)`:' — you need a rival character or an enemy garrison'}" disabled>`;
       const base=50+10*Math.min(thiefLvl,5);
       // 2026-09-24 (Toby): the per-target "~N% chance" is 50% +10% per Thief level, so a hired
       // hero's placeholder card (skills:{} → thiefLvl 0) quoted a flat ~50% and told the player the
@@ -7964,11 +7963,11 @@ function buildTargetField(c, ph, saved){
       // the target's pack is NEVER described — the thief takes a random magic item if one can be
       // lifted (weighted toward the lesser ones), or gold if there is none.
       const opts=visibleEnemyChars.map(x=>{
-        return`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''} ⚔ (${realmNameP(x.player,report)})${x.armies>0?' — leads troops (halved)':''}${_stPct(x.armies>0)}</option>`;
-      }).join('');
-      const garrOpt=garrN>0?`<option value="garrison" ${target==='garrison'?'selected':''}>The garrison paymaster of ${pdS.name||'this province'} (${garrN} unit${garrN!==1?'s':''})${_stPct(true)}</option>`:'';
-      const _stNote=_stHide?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 50% +10% per Thief level (halved if the mark leads troops or the paymaster is guarded) — ${unseenSuffixP(c)}, and without Thief training the attempt fails.</div>`:'';
-      return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose target —</option>${opts}${garrOpt}</select>
+        return kcHtml`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''} ⚔ (${realmNameP(x.player,report)})${x.armies>0?' — leads troops (halved)':''}${_stPct(x.armies>0)}</option>`;
+      });
+      const garrOpt=garrN>0?kcHtml`<option value="garrison" ${target==='garrison'?'selected':''}>The garrison paymaster of ${pdS.name||'this province'} (${garrN} unit${garrN!==1?'s':''})${_stPct(true)}</option>`:'';
+      const _stNote=_stHide?kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 50% +10% per Thief level (halved if the mark leads troops or the paymaster is guarded) — ${unseenSuffixP(c)}, and without Thief training the attempt fails.</div>`:'';
+      return kcHtml`<select id="po-target-${c.id}-${ph}"><option value="">— Choose target —</option>${opts}${garrOpt}</select>
         <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Only characters in ${loc?loc.name:'the same province'} are listed — a thief never chases; move there in an earlier phase first.${_elsewhere>0?` (${_elsewhere} other rival${_elsewhere!==1?'s':''} in sight elsewhere.)`:''} You cannot tell what a rival carries: a successful theft lifts one of their magic items at random (the lesser trinkets come to hand far more readily than a legendary relic), or 5% of their realm's treasury if they carry no magic. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${_stNote}${orderChanceNote(c,'Steal',ph)}`;
     }
 
@@ -7986,10 +7985,10 @@ function buildTargetField(c, ph, saved){
       // the dropdown names the guardian and its KIND as well as the grade, so a player choosing
       // which lair to send a hero to can see they are picking a fight with an undead thing (White
       // Magic doubles) rather than a beast, without opening the Known Lairs card.
-      const feats=(pd?.features||[]).filter(f=>!f.ritualSite).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||''); /* ritual sites cannot be searched — only a Pagan's Perform Rite uses them */const _g=f.ritualSite?'':[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ');return `<option value="${f.idx}" ${_lairSel===String(f.idx)?'selected':''}>${f.name}${diff?` (${diff})`:''}${_g?` — ${_g}`:''}</option>`;}).join('');
-      return feats
-        ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
-        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in current province" disabled>`;}
+      const feats=(pd?.features||[]).filter(f=>!f.ritualSite).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||''); /* ritual sites cannot be searched — only a Pagan's Perform Rite uses them */const _g=f.ritualSite?'':[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ');return kcHtml`<option value="${f.idx}" ${_lairSel===String(f.idx)?'selected':''}>${f.name}${diff?` (${diff})`:''}${_g?` — ${_g}`:''}</option>`;});
+      return feats.length
+        ?kcHtml`<select id="po-target-${c.id}-${ph}">${feats}</select>`
+        :kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in current province" disabled>`;}
 
     // ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ── Tick any of the known lairs in the
     // province the character will stand in; target = comma-separated feature idx (the same idx
@@ -8001,14 +8000,14 @@ function buildTargetField(c, ph, saved){
       const loc=predictedLocation(c.id,ph);
       const pd=(loc?provOrderData[loc.id]:null)||provOrderData[c.locationId]||null;
       const feats=(pd?.features||[]).filter(f=>!f.ritualSite&&f.monster);
-      if(!feats.length) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in ${loc?loc.name:'this province'} to ask about — explore, or move to a province with a known lair" disabled>`;
+      if(!feats.length) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in ${loc?loc.name:'this province'} to ask about — explore, or move to a province with a known lair" disabled>`;
       const chosen=new Set(String(target||'').split(',').map(t=>t.trim()).filter(Boolean));
       const gold=(report.kingdom&&report.kingdom.gold!=null)?report.kingdom.gold:null;
       const rows=feats.map(f=>{ const price=RUMOUR_COST_BY_POWER_P[f.monsterPower]||1;
         const kind=[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ');
-        return `<label style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:.78rem;cursor:pointer"><input type="checkbox" value="${f.idx}" ${chosen.has(String(f.idx))?'checked':''} onchange="updateRumourTarget('${c.id}',${ph})"> <span>${f.name} <span style="color:var(--stone)">(${f.monsterPower||'?'})</span> — ${kind} — <strong>${price}g</strong></span></label>`; }).join('');
+        return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:.78rem;cursor:pointer"><input type="checkbox" value="${f.idx}" ${chosen.has(String(f.idx))?'checked':''} onchange="updateRumourTarget(${kcArg(String(c.id))},${kcArg(ph)})"> <span>${f.name} <span style="color:var(--stone)">(${f.monsterPower||'?'})</span> — ${kind} — <strong>${price}g</strong></span></label>`; });
       const total=[...chosen].reduce((s,ix)=>{ const f=feats.find(x=>String(x.idx)===String(ix)); return s+(f?(RUMOUR_COST_BY_POWER_P[f.monsterPower]||1):0); },0);
-      return `<div id="po-rumour-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
+      return kcHtml`<div id="po-rumour-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
         <div id="po-rumour-total-${c.id}-${ph}" style="font-size:.72rem;color:var(--stone);margin-top:3px">Cost of the ticked lairs: <strong>${total}g</strong>${gold!=null?` (treasury ${gold}g)`:''} — paid per lair, in the order listed, until the purse runs dry.</div>
         <div style="font-size:.72rem;color:var(--stone);margin-top:3px">For every lair paid for, ${c.name} learns all three: the guardian's <strong>weakness</strong> (marked on your Known Lairs for good), its <strong>hoard</strong> (exact gold and the magic that lies there), and <strong>your own odds</strong> of defeating it as you stand today — told as one of five bands, from no chance to almost certain.</div>
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${[...chosen].join(',')}"></div>`;
@@ -8024,18 +8023,18 @@ function buildTargetField(c, ph, saved){
       // information, not an empty pack. The old placeholder read it as fact and announced "Nothing to
       // wear or wield", which tells the player something definite about a pack they have no right to
       // see (and is very likely false — a wandering hero of any standing is carrying something).
-      if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`What ${c.name} carries is not yours to see — they wear and wield their own gear as they see fit`:'Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or combat items)'}" disabled>`;
+      if(held.length===0) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`What ${c.name} carries is not yours to see — they wear and wield their own gear as they see fit`:'Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or combat items)'}" disabled>`;
       const chosen=(target||'').split(',').map(t=>t.trim()).filter(Boolean);
       const rows=ITEM_SLOT_ORDER_P.map(sl=>{
         const opts=held.filter(it=>itemSlotP(it)===sl); if(opts.length===0) return '';
         const cap=ITEM_SLOT_CAP_P[sl]; const pre=chosen.length?chosen.filter(n=>opts.some(o=>o.name===n)):opts.filter(o=>o.equipped!==false).map(o=>o.name);
-        const sels=Array.from({length:cap},(_,k)=>`<select data-slot="${sl}" onchange="updateEquipTarget('${c.id}',${ph})" style="font-size:.75rem;flex:1"><option value="">— none —</option>${opts.map(o=>`<option value="${o.name.replace(/"/g,'&quot;')}" ${pre[k]===o.name?'selected':''}>${o.name}${isLegendaryItemP(o)?'✨ ':''}</option>`).join('')}</select>`).join('');
-        return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);min-width:110px">${ITEM_SLOT_LABEL_P[sl]}</span>${sels}</div>`;
-      }).join('');
+        const sels=Array.from({length:cap},(_,k)=>kcHtml`<select data-slot="${sl}" onchange="updateEquipTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="font-size:.75rem;flex:1"><option value="">— none —</option>${opts.map(o=>kcHtml`<option value="${o.name}" ${pre[k]===o.name?'selected':''}>${o.name}${isLegendaryItemP(o)?'✨ ':''}</option>`)}</select>`);
+        return kcHtml`<div style="display:flex;align-items:center;gap:6px;padding:2px 0"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);min-width:110px">${ITEM_SLOT_LABEL_P[sl]}</span>${sels}</div>`;
+      });
       const init=chosen.length?chosen:held.filter(o=>o.equipped!==false).map(o=>o.name);
-      return `<div id="po-equip-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
+      return kcHtml`<div id="po-equip-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
         <div style="font-size:.68rem;color:#2f281c;margin-top:3px">Only equipped items in these slots give their bonus; everything else you carry is always active. Equipped items can still be sent to other characters.</div>
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${init.join(',').replace(/"/g,'&quot;')}"></div>`;
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${init.join(',')}"></div>`;
     }
     case 'Use Item':{
       const ACTIVE_ITEM_STATS=new Set(['massPromote','castSpell']);
@@ -8043,21 +8042,21 @@ function buildTargetField(c, ph, saved){
       const active=predictedItems(c.id,ph).filter(it=>it&&it.effect&&ACTIVE_ITEM_STATS.has(it.effect.stat)&&!it._spent);
       // Same reasoning as Equip Items above: "No usable items" is a claim about a pack the player
       // cannot see. A charmed hero will use their own tricks or not; you do not get to inventory them.
-      if(active.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`Whatever ${c.name} carries is hidden from you — you cannot order the use of an item you cannot see`:'No usable (active) items — most items are passive'}" disabled>`;
-      const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${isLegendaryItemP(it)?'✨ Legendary — ':(ITEM_TIER_NAME_P[it.tier||1]+' — ')}${it.name} — ${it.desc}</option>`).join('');
+      if(active.length===0) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`Whatever ${c.name} carries is hidden from you — you cannot order the use of an item you cannot see`:'No usable (active) items — most items are passive'}" disabled>`;
+      const opts=active.map(it=>kcHtml`<option value="${it.id}" ${target==it.id?'selected':''}>${isLegendaryItemP(it)?'✨ Legendary — ':(ITEM_TIER_NAME_P[it.tier||1]+' — ')}${it.name} — ${it.desc}</option>`);
       // a spell item needs the spell's own target (province / character) — same field as Cast
       // Spell.
       const selIt=active.find(it=>String(it.id)===String(target))||active[0];
-      const sec=(selIt&&selIt.effect&&selIt.effect.stat==='castSpell')?castChanceNote(c,selIt.effect.spell,{itemCast:true})+spellSecondaryHtml(report,c,ph,selIt.effect.spell,extra,selIt.effect.spell):'';
-      return `<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${opts}</select>${sec}`;
+      const sec=(selIt&&selIt.effect&&selIt.effect.stat==='castSpell')?kcHtml`${castChanceNote(c,selIt.effect.spell,{itemCast:true})}${spellSecondaryHtml(report,c,ph,selIt.effect.spell,extra,selIt.effect.spell)}`:'';
+      return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange(${kcArg(String(c.id))},${kcArg(ph)},this.value)">${opts}</select>${sec}`;
     }
 
     // ── CAST SPELL ── ── DIVINE: CONSECRATE ──
     case 'Consecrate':{
       if(report.kingdom?.alignment!=='Divine')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine realms may consecrate" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine realms may consecrate" disabled>`;
       if(!c.isKing)
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
       const loc=predictedLocation(c.id,ph);
       const wmP=((report.worldMeta&&report.worldMeta.provinces)||[]);
       const curP=loc?wmP.find(p=>p.id===loc.id):null;
@@ -8083,35 +8082,35 @@ function buildTargetField(c, ph, saved){
       else if(consecIds.size>=white) warn=`You already hold ${consecIds.size}/${white} consecrated province${white!==1?'s':''} (your White limit). One must be lost or captured first, or raise White to hold more.`;
       const okMsg=`Consecrates ${loc?loc.name:'current province'} — holy ground (${consecIds.size}/${white||0} held).`;
       const inputBox=warn
-        ? `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
-        : `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
-      return inputBox+
-        `<div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your <strong>White skill level</strong> at once; a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;}
+        ? kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
+        : kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
+      return kcHtml`${inputBox}
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your <strong>White skill level</strong> at once; a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;}
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms':{
       if(report.kingdom?.alignment!=='Good')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Good realms may call the folk to arms" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Good realms may call the folk to arms" disabled>`;
       if(!c.isKing)
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING's voice carries the Call" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING's voice carries the Call" disabled>`;
       const human=(report.ownedProvinces||[]).filter(p=>p.terrain!=='sea'&&!(p.race||'').startsWith('Primal'));
-      if(!human.length) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No owned humanoid provinces to raise" disabled>`;
-      const ctaOpts=human.map(p=>`<option value="${p.id}" ${target==p.id?'selected':''}>${p.name} — raises a Green ${(p.armyTypes&&p.armyTypes[0]&&(p.armyTypes[0].type||p.armyTypes[0]))||'levy'}</option>`).join('');
-      return`<select id="po-target-${c.id}-${ph}">${ctaOpts}</select>
+      if(!human.length) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No owned humanoid provinces to raise" disabled>`;
+      const ctaOpts=human.map(p=>kcHtml`<option value="${p.id}" ${target==p.id?'selected':''}>${p.name} — raises a Green ${(p.armyTypes&&p.armyTypes[0]&&(p.armyTypes[0].type||p.armyTypes[0]))||'levy'}</option>`);
+      return kcHtml`<select id="po-target-${c.id}-${ph}">${ctaOpts}</select>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Free Green garrison unit of the province's native type. The king need not be present — the province just has to be yours when the order resolves. Once per turn.</div>`;}
     // ── NEUTRAL: BROKER ──
     case 'Broker':{
       if(report.kingdom?.alignment!=='Neutral')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Neutral realms keep brokers" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Neutral realms keep brokers" disabled>`;
       if(!c.isKing)
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING commands the brokers" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING commands the brokers" disabled>`;
       const hireOpts=Object.values(provOrderData||{}).flatMap(pd=>(pd.availableHeroes||[])).map(h=>{
         const w=heroHireWageOfP(h,report);
         if(w==null) return '';
-        return`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${heroFameTextP(h)} — ${w}g/turn</option>`;
-      }).filter(Boolean).join('');
+        return kcHtml`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${heroFameTextP(h)} — ${w}g/turn</option>`;
+      }).filter(Boolean);
       const spyOpts=((report.worldMeta?.provinces)||[]).filter(p=>p.name&&p.terrain).map(p=>
-        `<option value="spy:${p.id}" ${target==='spy:'+p.id?'selected':''}>🕵 Buy word from ${p.name} (2g — full Spy result)</option>`).join('');
-      if(!hireOpts&&!spyOpts) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Your brokers have nothing within reach" disabled>`;
+        kcHtml`<option value="spy:${p.id}" ${target==='spy:'+p.id?'selected':''}>🕵 Buy word from ${p.name} (2g — full Spy result)</option>`);
+      if(!hireOpts.length&&!spyOpts.length) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Your brokers have nothing within reach" disabled>`;
       // BROKER BUG. The select had no placeholder and no onchange, so (a) the browser silently
       // pre-selected the FIRST hire option the moment Broker was chosen, which popped that hero's
       // future-orders card unasked, and (b) changing the choice — to another hero, or to a Spy
@@ -8119,26 +8118,26 @@ function buildTargetField(c, ph, saved){
       // session. Both fixed the way Hire Hero already does it: an explicit "choose" placeholder,
       // and the card re-synced on change.
       const _bHasPick=(typeof target==='string'&&(target.startsWith('hire:')||target.startsWith('spy:')));
-      const _bPh=`<option value="" ${_bHasPick?'':'selected'}>— choose what the brokers are to buy —</option>`;
-      return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${_bPh}${hireOpts}${spyOpts}</select>
+      const _bPh=kcHtml`<option value="" ${_bHasPick?'':'selected'}>— choose what the brokers are to buy —</option>`;
+      return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard(${kcArg(String(c.id))},${kcArg(ph)})">${_bPh}${hireOpts}${spyOpts}</select>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Money moves what armies cannot: hire any wandering hero the realm can see (they stay where they are and act next phase), or buy a guaranteed Spy report on any province the realm has seen — 2g.</div>`;}
     // ── UNDEAD: HARVEST THE FIELD ──
     case 'Harvest the Field':{
       if(report.kingdom?.alignment!=='Undead')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Undead realms keep corpse-carters" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Undead realms keep corpse-carters" disabled>`;
       const loc=predictedLocation(c.id,ph);
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Harvests the graves of ${loc?loc.name:'current province'}" readonly>
+      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Harvests the graves of ${loc?loc.name:'current province'}" readonly>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">No magic required: 2g raises ONE random battlefield grave in the province ${c.name} stands in as a Skeletal unit (keeps its type and quality; 1g upkeep). Needs battlefield dead present — fields where armies have fallen.</div>`;}
     case 'Perform Rite':{
       // PAGAN only — rites are performed at a DISCOVERED ritual site (Standing Stones and their
       // kin) in the province the character will be standing in this phase.
       if((report.kingdom?.alignment||'Neutral')!=='Pagan')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan realms keep the old rites" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan realms keep the old rites" disabled>`;
       const loc=predictedLocation(c.id,ph);
       const pd=loc?(report.provinceOrderData||{})[loc.id]:null;
       const site=(pd?.features||[]).find(f=>f.ritualSite);
       if(!site)
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No known ritual site in ${loc.name} — Explore to find standing stones`:'Province unknown'}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No known ritual site in ${loc.name} — Explore to find standing stones`:'Province unknown'}" disabled>`;
       // Wild Hunt needs wild creatures to bind: only offered where the province's recruitable pool
       // still holds a primal unit (Creature or Monster country). The GM report names the exact type
       // the engine will bind and its price (the cost of ONE beast, however many answer), so this
@@ -8154,19 +8153,19 @@ function buildTargetField(c, ph, saved){
       const _boSaved={S:new Set(),E:new Set()};
       { const m=/S:([0-9,]*)\|E:([0-9,]*)/.exec(extra||''); if(m){ m[1].split(',').filter(Boolean).forEach(x=>_boSaved.S.add(+x)); m[2].split(',').filter(Boolean).forEach(x=>_boSaved.E.add(+x)); } }
       const _boRows=_boArmy.length
-        ? _boArmy.map((a,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0">
+        ? _boArmy.map((a,i)=>kcHtml`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0">
             <span style="flex:1">${(typeof unitEmoji==='function'?unitEmoji(a.type):'')} ${armyLabel(a)}</span>
-            <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" onchange="updateBloodOffering('${c.id}',${ph})" style="font-size:.7rem">
+            <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})" style="font-size:.7rem">
               <option value="K" ${(!_boSaved.S.has(i)&&!_boSaved.E.has(i))?'selected':''}>Keep</option>
               <option value="S" ${_boSaved.S.has(i)?'selected':''}>Sacrifice ✝</option>
               <option value="E" ${_boSaved.E.has(i)?'selected':''}>Empower +2</option>
-            </select></div>`).join('')
-        : `<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
-      return`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering('${c.id}',${ph})">
-        ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 VETERAN ${pd?.wildHuntType||'wild creatures'} (${huntCost}g — the price of one, no wages, serve until end of NEXT turn)</option>`:''}
+            </select></div>`)
+        : kcHtml`<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
+      return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})">
+        ${canHunt?kcHtml`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 VETERAN ${pd?.wildHuntType||'wild creatures'} (${huntCost}g — the price of one, no wages, serve until end of NEXT turn)</option>`:''}
         <option value="Blood Offering" ${target==='Blood Offering'||!target?'selected':''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+2 tiers each)</option>
       </select>
-      <input id="po-extra-${c.id}-${ph}" type="hidden" value="${(extra||'').replace(/"/g,'&quot;')}">
+      <input id="po-extra-${c.id}-${ph}" type="hidden" value="${extra||''}">
       <div id="bo-block-${c.id}-${ph}" style="margin-top:5px;border:1px solid var(--parchment-dark);border-radius:3px;padding:6px;background:#fdf5e0">
         <div style="font-size:.7rem;font-weight:600;color:#7a4a00;margin-bottom:3px">Blood Offering — mark units to Sacrifice, and an equal number to Empower (+2 quality tiers each, max Elite):</div>
         ${_boRows}
@@ -8190,7 +8189,7 @@ function buildTargetField(c, ph, saved){
         // the spell the target field is built for must be the same one, even when the saved spell
         // is no longer in the list.
         const _hsSel=(target&&_hsList.some(([sp])=>sp===target))?target:((_hsList[0]&&_hsList[0][0])||'');
-        return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${_hsList.map(([sp,school])=>`<option value="${sp}" ${sp===_hsSel?'selected':''}>${sp} (${SKILL_LABELS[school]})</option>`).join('')}</select>
+        return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange(${kcArg(String(c.id))},${kcArg(ph)},this.value)">${_hsList.map(([sp,school])=>kcHtml`<option value="${sp}" ${sp===_hsSel?'selected':''}>${sp} (${SKILL_LABELS[school]})</option>`)}</select>
           <div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills?`${c.name}'s training is unknown until they have joined — every base spell is offered; one from a school they have not learned simply fails.`:`You cannot see this hero's skills — a spell from a school they have not learned simply fails.`}</div>${spellSecondaryHtml(report,c,ph,_hsSel,(_hsSel===target?extra:''),target)}`;
       }
       // Only show spells that are usable as phase orders
@@ -8258,7 +8257,7 @@ function buildTargetField(c, ph, saved){
         ? target
         : ((_castable[0]&&_castable[0].spell)||(_spellRows[0]&&_spellRows[0].spell)||'');
       const spells=_spellRows.map(r=>
-        `<option value="${r.spell}" ${r.spell===_selSpell?'selected':''} ${r.atLimit?'disabled':''} style="${r.atLimit?'color:#aaa;':''}">  ${r.label}</option>`).join('');
+        kcHtml`<option value="${r.spell}" ${r.spell===_selSpell?'selected':''} ${r.atLimit?'disabled':''} style="${r.atLimit?'color:#aaa;':''}">  ${r.label}</option>`);
 
       // Check if ALL spells from known AND practising schools are at limit Note: [].every() returns
       // true in JS (vacuous truth) — guard against empty set
@@ -8267,15 +8266,15 @@ function buildTargetField(c, ph, saved){
       const allAtLimit=knownOrPractisingSchools.length>0&&knownOrPractisingSchools
         .every(([school])=>(schoolCastCount[school]||0)>=actionSpellLimit(_projLvl[school]));
 
-      if(!spells) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1, or practise one earlier this turn" disabled>`;
-      if(allAtLimit) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="All magic school casting limits reached for this turn" disabled>`;
+      if(!spells.length) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1, or practise one earlier this turn" disabled>`;
+      if(allAtLimit) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="All magic school casting limits reached for this turn" disabled>`;
 
       // The secondary target field is built for the SAME spell the dropdown will show — see the
       // note above _spellRows. `extra` (the saved target) is only meaningful for the saved spell,
       // so it is dropped when the selection has fallen back to a different one.
       const selSpell=_selSpell;
       const secondaryHtml=spellSecondaryHtml(report,c,ph,selSpell,(selSpell===target?extra:''),target);
-      return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${spells}</select>${castChanceNote(c,selSpell)}${secondaryHtml}`;}
+      return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange(${kcArg(String(c.id))},${kcArg(ph)},this.value)">${spells}</select>${castChanceNote(c,selSpell)}${secondaryHtml}`;}
 
     // ── PRACTICE SKILL ──
     case 'Practice Skill':{
@@ -8286,9 +8285,9 @@ function buildTargetField(c, ph, saved){
       // whatever THIS character practised in an earlier phase this turn (the latest one), so a
       // training week takes one click per phase.
       const defaultSk=target||practiceCompanionSkill(c,ph)||practiceOwnEarlierSkill(c,ph)||'';
-      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]}${skillsUnseenP(c)?'':` (Lv ${(c.skills||{})[sk]||0})`}</option>`).join('');
-      if(skillsUnseenP(c)) return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills?`${c.name}'s skill levels are not known until they have joined.`:`A charmed hero's skill levels are hidden from you.`}</div>`; // item 7 · 2026-09-24 item 8
-      return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})">${skillOpts}</select>${orderChanceNote(c,'Practice Skill',ph)}`;}
+      const skillOpts=ALL_SKILLS.map(sk=>kcHtml`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]}${skillsUnseenP(c)?'':` (Lv ${(c.skills||{})[sk]||0})`}</option>`);
+      if(skillsUnseenP(c)) return kcHtml`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills?`${c.name}'s skill levels are not known until they have joined.`:`A charmed hero's skill levels are hidden from you.`}</div>`; // item 7 · 2026-09-24 item 8
+      return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap(${kcArg(String(c.id))},${kcArg(ph)})">${skillOpts}</select>${orderChanceNote(c,'Practice Skill',ph)}`;}
 
     // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
     case 'Research':{
@@ -8304,10 +8303,10 @@ function buildTargetField(c, ph, saved){
       // found) is never defaulted.
       let _rsel=target||defaultResearchField(c,ph);
       if(_rsel&&cats.some(k=>k.name===_rsel&&k.known>=k.total)) _rsel='';
-      const catOpts=`<option value="" ${!_rsel?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${_rsel===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
-      return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
-        <div style="font-size:.72rem;color:var(--forest)">📜 ${skillsUnseenP(c)?`Rolls for a Sage discovery: 5% per Sage level${neutral?' (doubled for Neutral scholars)':''} — ${unseenSuffixP(c)}; without Sage training the search fails.`:`Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).`}</div>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. A successful roll turns up <strong>two</strong> discoveries in the field; in next turn's orders you keep one and the other is forgotten for good. Research trains Sage only when it makes a discovery — use Practice Skill to train it reliably. A scholar sometimes turns up a find from a field you never chose; when that happens it is the discovery you make this season <em>instead</em> of an ordinary one, not as well as it.</div>`+orderChanceNote(c,'Research',ph);}
+      const catOpts=[kcHtml`<option value="" ${!_rsel?'selected':''}>Any field of study</option>`,...cats.map(k=>{ const done=k.known>=k.total; return kcHtml`<option value="${k.name}" ${done?'disabled':''} ${_rsel===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; })];
+      return kcHtml`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
+        <div style="font-size:.72rem;color:var(--forest)">📜 ${skillsUnseenP(c)?`Rolls for a Sage discovery: 5% per Sage level${neutral?' (doubled for Neutral scholars)':''} — ${unseenSuffixP(c)}; without Sage training the search fails.`:kcHtml`Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).`}</div>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. A successful roll turns up <strong>two</strong> discoveries in the field; in next turn's orders you keep one and the other is forgotten for good. Research trains Sage only when it makes a discovery — use Practice Skill to train it reliably. A scholar sometimes turns up a find from a field you never chose; when that happens it is the discovery you make this season <em>instead</em> of an ordinary one, not as well as it.</div>${orderChanceNote(c,'Research',ph)}`;}
 
     // ── RECRUIT ARMIES ──
     case 'Recruit Armies':{
@@ -8334,35 +8333,35 @@ function buildTargetField(c, ph, saved){
       const savedSelsM=(target||'').split(',').filter(Boolean);
       const mercRows=mercsAvail.map(m=>{
         const val=`merc:${m.id}`;
-        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;background:#fbeeee;border-radius:2px">
-          <input type="checkbox" value="${val}" ${savedSelsM.includes(val)?'checked':''} onchange="updateRecruitTarget('${c.id}',${ph})" style="width:auto;margin:0">
+        return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;background:#fbeeee;border-radius:2px">
+          <input type="checkbox" value="${val}" ${savedSelsM.includes(val)?'checked':''} onchange="updateRecruitTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
           \u2694 ${m.unitName||m.type} (${m.quality} ${m.type}, ${m.cost??'?'}g) <span style="color:#701010;font-size:.72rem">[mercenary]</span>
         </label>`;
-      }).join('');
+      });
       // ── Recruit destination ── self (default), a friendly character standing in this province
       // this phase, or (in a controlled province) straight into the garrison.
       const _destSaved=((target||'').split(',').map(t=>t.trim()).find(t=>t.startsWith('to:'))||'to:self');
       const _destAllies=orderTargetCharsP(report,ph).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===(loc&&loc.id));
-      const _destRow=(allowGarrison)=>`<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:.75rem">
+      const _destRow=(allowGarrison)=>kcHtml`<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:.75rem">
           <span style="color:var(--stone)">Muster to:</span>
-          <select class="po-recruit-dest" onchange="updateRecruitTarget('${c.id}',${ph})" style="flex:1;font-size:.75rem;padding:1px 3px">
+          <select class="po-recruit-dest" onchange="updateRecruitTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="flex:1;font-size:.75rem;padding:1px 3px">
             <option value="to:self" ${_destSaved==='to:self'?'selected':''}>${c.name} (this character)</option>
-            ${_destAllies.map(x=>`<option value="to:${x.id}" ${_destSaved==='to:'+x.id?'selected':''}>${x.name} (also here this phase${preOrderTagP(x)})</option>`).join('')}
-            ${allowGarrison?`<option value="to:garrison" ${_destSaved==='to:garrison'?'selected':''}>Province garrison (defends ${loc?loc.name:'the province'})</option>`:''}
+            ${_destAllies.map(x=>kcHtml`<option value="to:${x.id}" ${_destSaved==='to:'+x.id?'selected':''}>${x.name} (also here this phase${preOrderTagP(x)})</option>`)}
+            ${allowGarrison?kcHtml`<option value="to:garrison" ${_destSaved==='to:garrison'?'selected':''}>Province garrison (defends ${loc?loc.name:'the province'})</option>`:''}
           </select>
-        </div>${allowGarrison?`<div style="font-size:.68rem;color:var(--stone);margin:-2px 0 4px;line-height:1.35">Garrison units always muster straight into the province garrison, whoever is named above.</div>`:''}`;
-      const mercWrap=(inner)=>`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+        </div>${allowGarrison?kcHtml`<div style="font-size:.68rem;color:var(--stone);margin:-2px 0 4px;line-height:1.35">Garrison units always muster straight into the province garrison, whoever is named above.</div>`:''}`;
+      const mercWrap=(inner)=>kcHtml`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
         ${_destRow(false)}
         ${inner}
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
       </div>`;
       if(!pd || (!pd.canRecruit && !conditionalRecruit)){
         // No native recruitment here — but if mercenaries are roaming the province, offer those.
-        if(mercRows) return mercWrap(`<div style="font-size:.68rem;color:#6a3030;margin-bottom:4px;line-height:1.35">Mercenaries can be hired anywhere. Native troops need control of the province.</div>${mercRows}`);
+        if(mercRows.length) return mercWrap(kcHtml`<div style="font-size:.68rem;color:#6a3030;margin-bottom:4px;line-height:1.35">Mercenaries can be hired anywhere. Native troops need control of the province.</div>${mercRows}`);
         const why = !pd ? 'Province unknown'
           : (pd.armyTypes||[]).length===0 ? `${loc.name} is not your territory — cannot recruit here`
           : `${loc.name} is not yours yet — move in with an army in an earlier phase to recruit here if you take control`;
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>`;
       }
       const alreadyRecruited=getAlreadyRecruitedThisTurn(c.id,ph);
       // Show the recruit list whenever the province has army types with capacity left this turn.
@@ -8370,17 +8369,17 @@ function buildTargetField(c, ph, saved){
       // enforced when the turn resolves.
       const anyRecruitable=(pd.armyTypes||[]).some(at=>(at.maxPerTurn-(alreadyRecruited[`${loc.id}:${at.type}`]||0))>0);
       if(!anyRecruitable){
-        if(mercRows) return mercWrap(mercRows);
+        if(mercRows.length) return mercWrap(mercRows);
         const why=(pd.armyTypes||[]).length===0
           ? `No native recruitable armies in ${pd.name}`
           : `Already recruited the maximum in ${pd.name} this turn`;
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>`;
       }
       // Multi-select: use checkboxes rendered as a scrollable list
       const checkId=`po-recruit-${c.id}-${ph}`;
       const savedSels=(target||'').split(',').filter(Boolean);
-      return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
-        ${conditionalRecruit?`<div style="font-size:.68rem;color:#6a3030;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet — plan freely. This recruit only takes effect if you <strong>control the province</strong> when the order resolves (e.g. this character seizes it in an earlier phase); otherwise it is skipped.</div>`:''}
+      return kcHtml`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+        ${conditionalRecruit?kcHtml`<div style="font-size:.68rem;color:#6a3030;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet — plan freely. This recruit only takes effect if you <strong>control the province</strong> when the order resolves (e.g. this character seizes it in an earlier phase); otherwise it is skipped.</div>`:''}
         ${/* once you conquer a province earlier in the turn it is yours when the
  recruit resolves, so the garrison is a valid muster target — offer it here too. The engine
  re-checks ownership at resolution (prov.owner===player) before mustering into the garrison. */''}
@@ -8401,17 +8400,17 @@ function buildTargetField(c, ph, saved){
           return Array.from({length:remaining},(_,i)=>{
             const val=`${at.type}|1`;
             const chk=_savedOfType>i?'checked':'';
-            return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
-              <input type="checkbox" value="${val}" ${chk} onchange="updateRecruitTarget('${c.id}',${ph})" style="width:auto;margin:0">
+            return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
+              <input type="checkbox" value="${val}" ${chk} onchange="updateRecruitTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
               1× ${at.type} (${costEach}g)${
                 CREATURE_ARMIES_UI.has(at.type)
-                  ? ' <span style="color:#1d5a1d;font-size:.72rem">[Creature]</span>'
+                  ? kcHtml` <span style="color:#1d5a1d;font-size:.72rem">[Creature]</span>`
                 : MONSTER_ARMIES_UI.has(at.type)
-                  ? ' <span style="color:#701010;font-size:.72rem">[Monster]</span>'
+                  ? kcHtml` <span style="color:#701010;font-size:.72rem">[Monster]</span>`
                 : ''}
             </label>`;
           });
-        }).join('')}
+        })}
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
       </div>`;}
 
@@ -8421,7 +8420,7 @@ function buildTargetField(c, ph, saved){
       const pd=loc?provOrderData[loc.id]:null;
       const heroes=(pd?.availableHeroes||[]);
       if(heroes.length===0){
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No wandering heroes in ${loc.name}`:'No heroes available'}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No wandering heroes in ${loc.name}`:'No heroes available'}" disabled>`;
       }
       const opts=heroes.map(h=>{
         // the hero's best skill is DESCRIBED, exactly as the Intelligence report describes it —
@@ -8432,19 +8431,19 @@ function buildTargetField(c, ph, saved){
         // (Diplomatic Protocols discovery waives the ban — the GM engine handles that at resolution).
         const kAlign=report.kingdom?.alignment||'Neutral';
         const wage=heroHireWageOfP(h,report);
-        if(wage==null) return`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;
+        if(wage==null) return kcHtml`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;
         const d=alignDistPP(kAlign,h.alignment);
         const _base=heroHireWagePP(kAlign,h.alignment), _prem=(_base!=null&&wage>_base)?wage-_base:0;
         const costNote=(d<=1?'(kindred outlook':`(${d} steps from ${kAlign}`)+(_prem?`, +${_prem}g for proven skill)`:d<=1?' — base rate)':')');
-        return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
-      }).join('');
+        return kcHtml`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
+      });
       // never let the browser silently pre-select the FIRST hero. If the saved target is not one of
       // the heroes listed here (e.g. an earlier-phase move was changed and this character's
       // predicted province — and its heroes — changed with it), show an explicit "choose"
       // placeholder so the player picks again rather than hiring someone they never chose.
       const _hasPick=heroes.some(h=>String(h.id)===String(target)&&heroHireWageOfP(h,report)!=null);
-      const _ph=`<option value="" ${_hasPick?'':'selected'}>— choose a hero to hire —</option>`;
-      return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${_ph}${opts}</select>`;}
+      const _ph=kcHtml`<option value="" ${_hasPick?'':'selected'}>— choose a hero to hire —</option>`;
+      return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard(${kcArg(String(c.id))},${kcArg(ph)})">${_ph}${opts}</select>`;}
 
     // ── GIVE ITEM ──
     case 'Send Item': case 'Give Item':{
@@ -8464,7 +8463,7 @@ function buildTargetField(c, ph, saved){
       // 2026-09-24 (Toby): a HIRED hero reaches this branch (only _hiddenSkills takes the auto-pick
       // path above) with predictedItems → [], and the old text announced "none held" — a claim about a
       // pack the player has not seen. A charmed hero never gets here.
-      if(items.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`What ${c.name} carries is not known to you until they have joined — you can only send on something you handed them yourself this turn`:'No items to give (none held, or all given away earlier this turn)'}" disabled>`;
+      if(items.length===0) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`What ${c.name} carries is not known to you until they have joined — you can only send on something you handed them yourself this turn`:'No items to give (none held, or all given away earlier this turn)'}" disabled>`;
       // ── 2026-09-24 (Toby): ADDRESS BY NAME WHEN POSITION CANNOT BE TRUSTED ──────────────────────
       // The tick values are normally indices into the engine's own item list, which is only safe while
       // this form's list and the engine's `c.items` are the same list in the same order. For a hero
@@ -8484,18 +8483,18 @@ function buildTargetField(c, ph, saved){
         const _bound=!!(it&&it.effect&&it.effect.stat==='mithrilArmour');
         const _val=_giByName?String(it.name||''):String(i);
         const chk=(!_bound&&(_giAll||_giSaved.includes(_val)))?'checked':'';
-        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:${_bound?'not-allowed':'pointer'};${_bound?'opacity:.55':''}">
-          <input type="checkbox" value="${_val.replace(/"/g,'&quot;')}" ${chk} ${_bound?'disabled':''} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
-          🔮 ${it.name}${itemTierTagP(it)}${_bound?' <span style="color:var(--stone)">— bound to its wearer, cannot be sent</span>':(startNames.has(it.name)?'':' (received earlier this turn)')}
+        return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:${_bound?'not-allowed':'pointer'};${_bound?'opacity:.55':''}">
+          <input type="checkbox" value="${_val}" ${chk} ${_bound?'disabled':''} onchange="updateLeaveTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
+          🔮 ${it.name}${itemTierTagP(it)}${_bound?kcHtml` <span style="color:var(--stone)">— bound to its wearer, cannot be sent</span>`:(startNames.has(it.name)?'':' (received earlier this turn)')}
         </label>`;
-      }).join('');
-      const _giWrap=`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
-        ${_giByName?`<div style="font-size:.68rem;color:var(--stone);padding:2px 4px;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">Only what you handed ${c.name} this turn is listed — the rest of their pack is not yours to see, or to send on.</div>`:`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
-          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${_giAll?'checked':''} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
+      });
+      const _giWrap=kcHtml`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
+        ${_giByName?kcHtml`<div style="font-size:.68rem;color:var(--stone);padding:2px 4px;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">Only what you handed ${c.name} this turn is listed — the rest of their pack is not yours to see, or to send on.</div>`:kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
+          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${_giAll?'checked':''} onchange="leaveToggleAll(${kcArg(String(c.id))},${kcArg(ph)},this.checked)" style="width:auto;margin:0">
           <strong>All items (${items.length})</strong>
         </label>`}
         ${_giBoxes}
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${(target||'').replace(/"/g,'&quot;')}">
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
       </div>`;
       // Send Item can now reach ANY of your living characters, wherever they stand. A recipient in
       // the SAME province gets the item at once (usable later this turn); one ELSEWHERE receives it
@@ -8505,7 +8504,7 @@ function buildTargetField(c, ph, saved){
       // you have merely borrowed. (`_hiddenSkills` is the charm placeholder; the engine refuses the
       // real hero as a recipient too, so a stale draft naming one cannot slip an item across.)
       const chars=orderTargetCharsP(report,ph).filter(x=> x.id!==c.id && x.player===c.player && !x._hiddenSkills );
-      if(chars.length===0) return`${_giWrap}
+      if(chars.length===0) return kcHtml`${_giWrap}
         <input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`;
       const recipOpts=chars.map(x=>{
         // 2026-09-24 (Toby): name the province each recipient is in at this phase (projected from
@@ -8513,9 +8512,9 @@ function buildTargetField(c, ph, saved){
         const _xl=predictedLocation(x.id,ph), _xn=(_xl&&_xl.name)||'unknown province';
         const _same=(_xl?.id)===(loc4?.id);
         const _where=_same?`here in ${_xn} — at once`:`in ${_xn} — arrives end of turn`;
-        return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_where}${preOrderTagP(x)})</option>`;
-      }).join('');
-      return`${_giWrap}
+        return kcHtml`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_where}${preOrderTagP(x)})</option>`;
+      });
+      return kcHtml`${_giWrap}
         <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;}
 
     // ── LEAVE / TRANSFER ARMY ──
@@ -8546,10 +8545,10 @@ function buildTargetField(c, ph, saved){
         return xl&&cLocId!=null&&xl.id===cLocId;
       });
       const recipParts=[];
-      if(canGarrison) recipParts.push(`<option value="-1" ${extra==='-1'||!extra?'selected':''}>${ownsHere?`Garrison in ${cLoc.name||'province'}`:`Garrison in ${cLoc.name||'province'} \u2691 (only if you control it when this resolves)`}</option>`);
-      othersHere.forEach(x=>recipParts.push(`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${preOrderTagP(x)}</option>`));
-      if(recipParts.length===0) recipParts.push(`<option value="" disabled selected>No valid recipient here — place another of your characters here first</option>`);
-      const recipOpts=recipParts.join('');
+      if(canGarrison) recipParts.push(kcHtml`<option value="-1" ${extra==='-1'||!extra?'selected':''}>${ownsHere?`Garrison in ${cLoc.name||'province'}`:`Garrison in ${cLoc.name||'province'} \u2691 (only if you control it when this resolves)`}</option>`);
+      othersHere.forEach(x=>recipParts.push(kcHtml`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${preOrderTagP(x)}</option>`));
+      if(recipParts.length===0) recipParts.push(kcHtml`<option value="" disabled selected>No valid recipient here — place another of your characters here first</option>`);
+      const recipOpts=recipParts;
       const allChk=savedTgts.includes('all')?'checked':'';
       // ALWAYS offer an "All armies" option, even when the projected army list is empty. A
       // character may gain armies earlier in this SAME phase in ways the order form can't foresee
@@ -8557,10 +8556,10 @@ function buildTargetField(c, ph, saved){
       // The GM resolves "all" against the character's ACTUAL armies at that phase, so it correctly
       // moves whatever they hold when the order fires — nothing if they gained none.
       if(baseArmies.length===0){
-        return`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+        return kcHtml`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
           <div style="font-size:.68rem;color:#6a3030;margin-bottom:4px;line-height:1.35">No armies to leave right now, but you can still queue <strong>All armies</strong> in case this character gains a force earlier this phase (e.g. Skeletal Armies).</div>
           <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
-            <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
+            <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll(${kcArg(String(c.id))},${kcArg(ph)},this.checked)" style="width:auto;margin:0">
             <strong>All armies</strong>
           </label>
           <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
@@ -8570,14 +8569,14 @@ function buildTargetField(c, ph, saved){
       const checkboxes=baseArmies.map((a,i)=>{
         const val=a.unitName||a.type;
         const chk=savedTgts.includes(val)||savedTgts.includes('all')?'checked':'';
-        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
-          <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
+        return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
+          <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
           ${armyLabel(a)}
         </label>`;
-      }).join('');
-      return`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
+      });
+      return kcHtml`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
         <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
-          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
+          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll(${kcArg(String(c.id))},${kcArg(ph)},this.checked)" style="width:auto;margin:0">
           <strong>All armies</strong>
         </label>
         ${checkboxes}
@@ -8589,30 +8588,30 @@ function buildTargetField(c, ph, saved){
     // wandering hero (keeping every magic item they carry) and take no further orders this turn.
     // Refused if they lead any army at that phase — hand the troops off or disband them first.
     case 'Release Hero':{
-      if(c.isKing) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="A king cannot release himself" disabled>`;
+      if(c.isKing) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="A king cannot release himself" disabled>`;
       const led=projectedLedArmies(c.id, ph);
-      const warn=led.length?`<div style="font-size:.72rem;color:#a33;margin-top:2px">⚠ ${c.name} is still leading ${led.length} unit${led.length!==1?'s':''} at this phase — the release will be refused unless they are handed off (Leave/Transfer Army) or disbanded in an earlier phase.</div>`:'';
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Releases ${c.name} from your service — no wage from next turn" readonly>
+      const warn=led.length?kcHtml`<div style="font-size:.72rem;color:#a33;margin-top:2px">⚠ ${c.name} is still leading ${led.length} unit${led.length!==1?'s':''} at this phase — the release will be refused unless they are handed off (Leave/Transfer Army) or disbanded in an earlier phase.</div>`:'';
+      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Releases ${c.name} from your service — no wage from next turn" readonly>
         <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${c.name} becomes a wandering hero, keeping their magic items, and cannot be re-hired this turn. Later phases' orders for them are dropped.</div>${warn}`;}
     case 'Disband Army':{
       // Item 7/11: the armies this character LEADS at this phase — including any PICKED UP or
       // RECRUITED earlier this turn, and minus any handed off or disbanded earlier this turn.
       const armies=projectedLedArmies(c.id, ph);
-      if(armies.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to disband" disabled>`;
+      if(armies.length===0) return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to disband" disabled>`;
       const savedTgts=(target||'').split(',').filter(Boolean);
       const checkboxes=armies.map((a,i)=>{
         const val=a.unitName||a.type;
         const chk=savedTgts.includes(val)||savedTgts.includes('all')?'checked':'';
-        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
-          <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
+        return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
+          <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
           ${armyLabel(a)}
         </label>`;
-      }).join('');
+      });
       const allChk=savedTgts.includes('all')?'checked':'';
-      return`<div style="background:#fff0f0;border:1px solid #c84a4a;border-radius:2px;padding:4px">
+      return kcHtml`<div style="background:#fff0f0;border:1px solid #c84a4a;border-radius:2px;padding:4px">
         <div style="font-size:.72rem;color:#701010;margin-bottom:4px">⚠ Disbanded armies become wandering mercenaries — they may move away or retire (25% chance/turn).</div>
         <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid #f0c0c0;margin-bottom:2px">
-          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
+          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll(${kcArg(String(c.id))},${kcArg(ph)},this.checked)" style="width:auto;margin:0">
           <strong>All armies</strong>
         </label>
         ${checkboxes}
@@ -8631,20 +8630,20 @@ function buildTargetField(c, ph, saved){
       // phase (or by another of your characters in this very phase) are now offered for pick-up.
       const garrArr=loc2?projectedGarrison(loc2.id,ph,true,c.id):[];
       if(garrArr.length===0)
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison armies here to pick up (hire mercenaries via Recruit Armies)" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison armies here to pick up (hire mercenaries via Recruit Armies)" disabled>`;
       const savedTgts=(target||'').split(',').filter(Boolean);
       const allSel=savedTgts.includes('all');
       const checkboxes=garrArr.map((a,i)=>{
         const val=`g:${i}`;
         const chk=(allSel||savedTgts.includes(val))?'checked':'';
-        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
-          <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
+        return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
+          <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
           ${armyLabel(a)} — garrison
         </label>`;
-      }).join('');
-      return`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
+      });
+      return kcHtml`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
         <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
-          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allSel?'checked':''} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
+          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allSel?'checked':''} onchange="leaveToggleAll(${kcArg(String(c.id))},${kcArg(ph)},this.checked)" style="width:auto;margin:0">
           <strong>All garrison armies (${garrArr.length})</strong>
         </label>
         ${checkboxes}
@@ -8652,7 +8651,7 @@ function buildTargetField(c, ph, saved){
       </div>`;}
 
     default:
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="${target||''}" placeholder="Details / notes">`;
+      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="${target||''}" placeholder="Details / notes">`;
   }
 }
 
@@ -10582,7 +10581,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.16-0945</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.16-1027</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
