@@ -411,8 +411,9 @@ section{display:none;}.section-active{display:block;}
 const KC_DATA_MIN='2026.10.15-1202';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
-// a database change"). Now P0-32e's: Master GM mode (P0-32g) needs the Overlord's rights on every game.
-const KC_DB_MIN='20261014044929';
+// a database change"). Now P0-25's: the game screen's switch saves games.block_eliminated_msgs. (Since P0-32e,
+// Master GM mode (P0-32g) has needed the Overlord's rights on every game.)
+const KC_DB_MIN='20261015062128';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
@@ -426,7 +427,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1800'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-2028'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -6130,7 +6131,34 @@ function renderTurnModePanel(game){
       ${turnModeFormHtml('detail',tm)}
       ${watcherNote}
       <div id="detail-turnmode-msg" style="font-size:.78rem;margin-top:4px"></div>
-    </div>${botDiplomacyPanelHtml(game)}${safeStartNoteHtml(game)}`;
+    </div>${botDiplomacyPanelHtml(game)}${safeStartNoteHtml(game)}${blockEliminatedPanelHtml(game)}`;
+}
+// R-075 (P0-25): the GM's switch for realms that are out. Until the game is over, a realm that has conceded or been
+// extinguished sends no private dispatches; with the switch on it sends none at all. Saved in
+// games.block_eliminated_msgs (the game's GM, or the Overlord as Master GM); the player portal applies it.
+function blockEliminatedPanelHtml(game){
+  const on=!!(game&&game.block_eliminated_msgs);
+  return `<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c;margin-top:8px">
+      <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--parchment);font-weight:600;cursor:pointer">
+        <input type="checkbox" id="detail-block-eliminated" ${on?'checked':''} onchange="saveBlockEliminated(this.checked)" style="width:auto;margin:0">
+        Block eliminated realms from sending dispatches
+      </label>
+      <div style="font-size:.76rem;color:var(--stone);margin-top:4px">Until the game is over, a realm that has conceded or been extinguished sends no private dispatches. Off: it may still write to All Realms. On: it can't send any. Players see a change the next time they open the game.</div>
+      <div id="detail-block-eliminated-msg" style="font-size:.78rem;margin-top:4px"></div>
+    </div>`;
+}
+async function saveBlockEliminated(on){
+  if(!currentGame) return;
+  const msg=document.getElementById('detail-block-eliminated-msg');
+  const say=(t,c)=>{ if(msg){ msg.style.color=c; msg.textContent=t; } };
+  say('Saving…','var(--stone)');
+  const {data,error}=await sb.from('games').update({block_eliminated_msgs:!!on}).eq('id',currentGame.id).select('id,block_eliminated_msgs').maybeSingle();
+  if(error||!data){
+    const b=document.getElementById('detail-block-eliminated'); if(b) b.checked=!on;
+    say('Not saved: '+(error?error.message:'this game could not be changed.'),'#e88'); return;
+  }
+  currentGame.block_eliminated_msgs=!!data.block_eliminated_msgs;
+  say(on?'Saved: realms that are out can\'t send dispatches.':'Saved: realms that are out may write to All Realms.','#8c8');
 }
 // 2026-09-26b (Toby item 10): Bot Diplomacy for a game that has bot realms — Normal (bots follow
 // their alignment; some may ally with humans) or Aggressive (every bot at war with every human realm,
@@ -13176,7 +13204,7 @@ function buildTurnReport(gameState, playerIndex){
   }
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
-    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,rawTaxBase:_rawTaxBase,sageDiscG,thiefStipend,taxBonus,perProvBonus,taxBonusCapG:_taxCapR,taxBonusCutG:_itemTaxR.cut,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
+    kingdom:{conceded:!!player.conceded,eliminated:!!player._eliminated,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,rawTaxBase:_rawTaxBase,sageDiscG,thiefStipend,taxBonus,perProvBonus,taxBonusCapG:_taxCapR,taxBonusCutG:_itemTaxR.cut,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
     exploreDiscMult:Object.fromEntries(['plain','desert','forest','mountain','jungle','sea'].map(t=>[t,discExploreMult(player,t)])), // player portal explore preview
     discoveries:(player.discoveries||[]).map(d=>{ const m=DISC_BY_ID[d.id]; return {id:d.id,name:(m&&m.name)||d.name,category:(m&&m.category)||d.category,desc:(m&&m.desc)||d.desc,turnDiscovered:d.turnDiscovered}; }), // master text wins over the copy stored at discovery time
     // the Research order's category dropdown — every category this realm is eligible for, with how
@@ -28873,7 +28901,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1800</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-2028</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

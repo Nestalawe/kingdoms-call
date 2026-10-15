@@ -755,7 +755,7 @@ section{display:none;}.section-active{display:block;}
         <div id="msg-channels"></div>
         <div id="msg-thread"><div class="msg-empty">Loading dispatches…</div></div>
         <div id="msg-composer">
-          <div class="mc-privacy">Private dispatches are seen only by the realms in the conversation and the site's Overlord. Use ⚑ Report to show one to your GM (or to the Overlord, if your GM plays in this game).</div>
+          <div class="mc-privacy">Private dispatches are seen only by the realms in the conversation and the site's Overlord. Use ⚑ Report to show one to your GM (or to the Overlord, if your GM plays in this game). Until the game is over, a realm that has conceded or been extinguished writes only to All Realms, or not at all if the GM blocks it.</div>
           <div id="msg-note"></div>
           <textarea id="msg-input" maxlength="500" rows="2" placeholder="Write your dispatch…" oninput="onMsgInput()"></textarea>
           <div id="msg-send-row">
@@ -833,7 +833,7 @@ const KC_DATA_MIN_P='2026.10.15-1202';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
-const KC_DB_MIN='20261012190236';
+const KC_DB_MIN='20261015062128';
 (function(){
   const need=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -1221,7 +1221,7 @@ function renderConcede(){
     : `<button type="button" onclick="setConcede(true)" style="font-family:'Cinzel',serif;font-size:.66rem;padding:4px 10px;border:1px solid #999;background:#f4f0e6;color:#2a2419;border-radius:2px;cursor:pointer" title="Withdraw your realm from the game">\u{1F3F3} Concede the game\u2026</button>`;
 }
 function setConcede(v){
-  if(v && !confirm('Concede the game?\n\nYour realm withdraws for good: from the turn this is submitted your heroes will only Defend, and you can never rejoin. If every other realm has conceded, or all those left are one alliance, the game ends at once and the results are shown.\n\nSubmit your orders to confirm.')) return;
+  if(v && !confirm('Concede the game?\n\nYour realm withdraws for good: from the turn this is submitted your heroes will only Defend, you send no private dispatches until the game is over, and you can never rejoin. If every other realm has conceded, or all those left are one alliance, the game ends at once and the results are shown.\n\nSubmit your orders to confirm.')) return;
   concedeGame=!!v; renderConcede();
 }
 
@@ -2946,8 +2946,9 @@ async function openReport(gamePlayerId){
   const {data:gp,error}=await sb.from('game_players').select('*').eq('id',gamePlayerId).single();
   if(error){document.getElementById('report-title').textContent='Error: '+error.message;return;}
   // Fetch game separately to avoid RLS join issue. Disk-IO (2026-09-25): the report screen reads
-  // only name / turn / status off the game row — never its world.
-  const {data:g,error:gErr}=await sb.from('games').select('id,name,gm_user_id,status,turn,max_players').eq('id',gp.game_id).single();
+  // only name / turn / status off the game row — never its world. block_eliminated_msgs is the GM's Dispatches
+  // switch (P0-25, R-075).
+  const {data:g,error:gErr}=await sb.from('games').select('id,name,gm_user_id,status,turn,max_players,block_eliminated_msgs').eq('id',gp.game_id).single();
   if(gErr){document.getElementById('report-title').textContent='Error loading game: '+gErr.message;return;}
   gp.games=g; // attach for compatibility
   currentGamePlayer=gp;
@@ -2986,7 +2987,7 @@ async function openReport(gamePlayerId){
   // DISPATCHES (2026-09-27). Started here, BEFORE the waiting-for-Turn-0 return below, because
   // messages are not part of the turn cycle: realms can write to each other from the moment the game
   // has two human players. It is awaited nowhere — a slow roster query must not hold up the report.
-  initMessaging(gp.game_id, gp.player_index, report).catch(e=>console.warn('Dispatches:',e));
+  initMessaging(gp.game_id, gp.player_index, report, g).catch(e=>console.warn('Dispatches:',e));
 
   // Turn numbering, player-facing:
   // liveTurn = the turn the realm is living through — the one being planned now, and the number
@@ -10071,6 +10072,9 @@ let _msgExtraGroups=[];      // conference channels opened this session that car
 let _msgTimer=null, _msgTick=0, _msgBusy=false, _msgSending=false;
 let _msgTableOk=null;        // null = not probed, false = the SQL has not been run
 let _msgErr=null, _msgReadsDirty=false, _msgReadSaveTimer=null;
+// R-075 (P0-25): what this realm may send. _msgOut: null, 'conceded' or 'eliminated' (its dynasty extinguished), from
+// its own turn report. _msgGameOver: the game has ended. _msgBlockOut: the GM's switch (games.block_eliminated_msgs).
+let _msgOut=null, _msgGameOver=false, _msgBlockOut=false;
 
 function _msgEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _msgNum(v){ const n=Number(v); return Number.isFinite(n)?n:null; }
@@ -10137,13 +10141,27 @@ function msgContacts(){
     .filter(r=>r&&r.met&&r.human&&r.index!==_msgMyIndex)
     .sort((a,b)=>a.index-b.index);
 }
-function msgChannelIsSendable(key){
+function msgChannelIsSendable(key){ return msgChannelOpen(key)&&!msgOutReason(key); }
+function msgChannelOpen(key){
   if(key==='public') return true;
   const others=msgParticipantsOf(key).filter(i=>i!==_msgMyIndex);
   if(!others.length) return false;
-  // Every addressee gone from the game → nothing to send to. One still standing is enough.
-  return others.some(i=>{ const r=_msgRealms[i]; return r&&r.human&&!r.conceded&&!r.eliminated; });
+  // Every addressee gone from the game → nothing to send to. One still standing is enough. Once the game is over,
+  // every realm may write privately again (R-075), to a realm that left as much as from one.
+  return others.some(i=>{ const r=_msgRealms[i]; return r&&r.human&&(_msgGameOver||(!r.conceded&&!r.eliminated)); });
 }
+// R-075 (P0-25): until the game is over, a realm that has conceded or been extinguished sends no private dispatches,
+// and none at all while the GM's switch is on. Returns the reason the composer shows, or null when it may send.
+// Enforced on this screen only: the database can't yet tell who is out (that lives in the world), until P2-04.
+function msgOutReason(key){
+  if(!_msgOut||_msgGameOver) return null;
+  if(_msgBlockOut) return msgOutWho()+', and your GM has blocked conceded and extinguished realms from sending any dispatches until the game is over.';
+  if(key!=='public') return msgOutPrivateOff()+' You can still write to 📣 All Realms.';
+  return null;
+}
+function msgOutWho(){ return _msgOut==='eliminated'?'Your dynasty is extinguished':'Your realm has conceded'; }
+// Said on the public channel too, so a realm that is out knows before it looks for a private one.
+function msgOutPrivateOff(){ return (_msgOut&&!_msgGameOver)?msgOutWho()+', so you send no private dispatches until the game is over.':''; }
 function msgChannelLabel(key){
   if(key==='public') return '📣 All Realms';
   const others=msgParticipantsOf(key).filter(i=>i!==_msgMyIndex);
@@ -10153,12 +10171,16 @@ function msgChannelLabel(key){
 }
 
 // ── ENTRY POINT ── called by openReport once the report is in hand.
-async function initMessaging(gameId, myIndex, report){
+async function initMessaging(gameId, myIndex, report, game){
   const same=(String(_msgGameId)===String(gameId) && _msgMyIndex===_msgNum(myIndex));
   _msgGameId=gameId!=null?String(gameId):null;
   _msgMyIndex=_msgNum(myIndex);
   _msgMyName=(report&&report.playerName)||'';
   _msgMyColor=(report&&report.kingdom&&report.kingdom.color)||null;
+  { const k=(report&&report.kingdom)||{};
+    _msgOut=k.conceded?'conceded':k.eliminated?'eliminated':null;
+    _msgGameOver=!!((game&&game.status==='complete')||(report&&report.titles&&report.titles.gameOver));
+    _msgBlockOut=!!(game&&game.block_eliminated_msgs); }
   if(!same){ _msgRows=[]; _msgIds=new Set(); _msgMaxId=0; _msgMinId=0; _msgMoreOlder=false; _msgReported=new Set();
              _msgReads={}; _msgChannel='public'; _msgExtraGroups=[]; _msgErr=null; }
   await loadMessageRoster(gameId, report);
@@ -10461,9 +10483,9 @@ function updateMsgComposer(){
   ta.disabled=!sendable;
   if(hint){
     hint.innerHTML=!sendable
-      ? (_msgTableOk===false?'Messaging is not active on this server.':'Every realm in this conversation has left the game.')
+      ? (_msgTableOk===false?'Messaging is not active on this server.':_msgEsc(msgOutReason(_msgChannel)||'Every realm in this conversation has left the game.'))
       : (_msgChannel==='public'
-          ? 'Public — <strong>every realm in this game</strong> will read this.'
+          ? 'Public — <strong>every realm in this game</strong> will read this.'+(msgOutPrivateOff()?' '+_msgEsc(msgOutPrivateOff()):'')
           : 'Private to '+_msgEsc(msgChannelLabel(_msgChannel))+'.')
         +' <span style="opacity:.75">Ctrl+Enter sends. '+(MSG_MAX_LEN-len)+' left.</span>';
   }
@@ -10551,7 +10573,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1202</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-2028</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
