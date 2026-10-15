@@ -9,20 +9,14 @@
 //                 the next kcHtml escapes again. Interpolate the kcHtml, or the list, instead;
 //   twice         kcEsc (or an older escaper) inside kcHtml: kcHtml escapes values itself, so the text is escaped twice;
 //   handler       a value inside an on…="…" attribute that isn't kcArg(…) or a constant;
-//   load          a page that builds HTML through the helpers (or is fully converted) doesn't load kc-safe.js as its first
-//                 <script src>.
-// LIMITS: pages not converted yet (P0-19 converts them PR by PR) may have up to their limit of findings and no more. A
-// limit only goes down: a page under its limit fails until the limit is lowered to its count. Every other file has none.
+//   load          a page that builds HTML doesn't load kc-safe.js as its first <script src>.
+// Every file must have none (P0-19 converted the pages one pull request at a time; since its last, the check is strict).
 // ALLOWED: reviewed exceptions, each with a reason; an entry that matches nothing fails, so the list can't go stale.
 const fs=require('fs'); const path=require('path');
 const acorn=require('acorn');
 const {SITE}=require('./lib/boot');
 const {JSDOM}=require('jsdom');
 
-const LIMITS={
-  'kingdoms-call-gm-portal.html':0,
-  'kingdoms-call-player-portal.html':0,
-};
 // {file, rule, line: a piece of the source line, reason}
 const ALLOWED=[
   {file:'kingdoms-call-player-portal.html',rule:'concat',line:"_provNameRe=names.length?new RegExp('(?<!",
@@ -149,7 +143,6 @@ const fail=m=>{ fails++; console.log('FAIL '+m); };
 const ok=m=>console.log('ok   '+m);
 const usedAllowed=new Set();
 const files=fs.readdirSync(SITE).filter(f=>/\.(html|js)$/.test(f)).sort();
-const seen=new Set();
 for(const f of files){
   const {src,parts,firstSrc}=scriptsOf(path.join(SITE,f));
   const lines=src.split('\n');
@@ -164,25 +157,21 @@ for(const f of files){
     if(i<0) return true;
     usedAllowed.add(i); return false;
   });
-  const limit=LIMITS[f]||0;
-  seen.add(f);
-  if(findings.length>limit){
-    fail(`${f}: ${findings.length} place(s) build HTML without kcHtml/kcEsc (limit ${limit}):`);
-    findings.slice(0,limit?20:200).forEach(x=>console.log(`       ${f}:${x.line} ${x.rule}: ${(lines[x.line-1]||'').trim().slice(0,150)}`));
-  } else if(findings.length<limit) fail(`${f}: ${findings.length} place(s) left, under its limit of ${limit}: lower LIMITS['${f}'] to ${findings.length}`);
-  else ok(`${f}: ${findings.length?findings.length+' place(s), its limit':'every piece of HTML goes through kcHtml / kcEsc'}`);
+  if(findings.length){
+    fail(`${f}: ${findings.length} place(s) build HTML without kcHtml/kcEsc:`);
+    findings.slice(0,200).forEach(x=>console.log(`       ${f}:${x.line} ${x.rule}: ${(lines[x.line-1]||'').trim().slice(0,150)}`));
+  } else ok(`${f}: every piece of HTML goes through kcHtml / kcEsc`);
 
-  // load: kc-safe.js first, on every page that uses the helpers or is converted and builds HTML
+  // load: kc-safe.js first, on every page that uses the helpers or builds HTML
   if(f.endsWith('.html')){
     const scripts=parts.map(p=>p.code).join('\n');
     const usesHelpers=/\bkc(Html|Esc|Raw|Arg)\b/.test(scripts);
     const buildsHtml=/\.(innerHTML|outerHTML)\s*\+?=|insertAdjacentHTML|document\.write/.test(scripts);
-    if((usesHelpers||(buildsHtml&&!limit))&&firstSrc!=='kc-safe.js')
+    if((usesHelpers||buildsHtml)&&firstSrc!=='kc-safe.js')
       fail(`${f}: builds HTML but its first <script src> is ${firstSrc?'"'+firstSrc+'"':'missing'}, not "kc-safe.js" (load it straight after the boot-failure reporter)`);
-    else if(usesHelpers||(buildsHtml&&!limit)) ok(`${f}: loads kc-safe.js first`);
+    else if(usesHelpers||buildsHtml) ok(`${f}: loads kc-safe.js first`);
   }
 }
-for(const f of Object.keys(LIMITS)) if(!seen.has(f)) fail(`LIMITS names ${f}, which isn't in site/: take it out`);
 ALLOWED.forEach((a,i)=>{ if(!usedAllowed.has(i)) fail(`ALLOWED entry ${i} (${a.file}, ${a.rule}, "${a.line}") matches nothing: take it out`); });
 console.log(fails?`\nFAILURES: ${fails}`:'\n0 failures');
 process.exit(fails?1:0);
