@@ -9,7 +9,8 @@
 //                         answers before a migration has run: for site code that must cope without it.
 //                         It mirrors the Game Master functions (P0-32b) over DB.game_masters and
 //                         DB.site_admins, and the Overlord's (overlord_accounts, gm_offer, gm_withdraw_offer,
-//                         gm_revoke, reassign_game: P0-32b, P0-32e); its default account, gm1, is a Game Master. It mirrors
+//                         gm_revoke, reassign_game, account_suspend, account_unsuspend, account_delete: P0-32b,
+//                         P0-32e, P0-32h); its default account, gm1, is a Game Master. It mirrors
 //                         get_game_slots (P0-20) and the one-realm-per-number and one-per-account
 //                         rules on game_players. RULES.ownSlotsOnly applies P0-21's read rule (your own
 //                         slot, or every slot of a game you run) and records 'game_players.select:other'
@@ -207,14 +208,30 @@ function makeStub(){
       if(r.accepted_at==null) r.accepted_at=new Date().toISOString(); return null; },
     gm_decline_offer:()=>{ const r=ownOffer(); if(!r||r.accepted_at!=null) throw new Error('You have no offer to decline.');
       DB.game_masters.splice(DB.game_masters.indexOf(r),1); return null; },
-    // The Overlord's functions (P0-32b, P0-32e), as their files in supabase/schemas/public/functions/. Accounts are
-    // DB.profiles (name) plus DB.accounts[id] = {email, joined, last_sign_in} where a test needs them.
+    // The Overlord's functions (P0-32b, P0-32e, P0-32h), as their files in supabase/schemas/public/functions/. Accounts
+    // are DB.profiles (name) plus DB.accounts[id] = {email, joined, last_sign_in, banned_until} where a test needs them.
     overlord_accounts:()=>{ overlordOnly('Only the Overlord can list the accounts.');
       return DB.profiles.map(p=>{ const gm=DB.game_masters.find(r=>r.user_id===p.id), a=(DB.accounts||{})[p.id]||{};
         return {user_id:p.id, name:p.name, email:a.email||null, joined:a.joined||null, last_sign_in:a.last_sign_in||null,
           gm_status:gm&&gm.accepted_at!=null?'game_master':gm?'offered':'none',
           games_run:DB.games.filter(g=>g.gm_user_id===p.id).length,
-          games_played:new Set(DB.game_players.filter(s=>s.user_id===p.id).map(s=>String(s.game_id))).size}; }); },
+          games_played:new Set(DB.game_players.filter(s=>s.user_id===p.id).map(s=>String(s.game_id))).size,
+          suspended_until:a.banned_until&&new Date(a.banned_until)>new Date()?a.banned_until:null}; }); },
+    account_suspend:(a)=>{ overlordOnly('Only the Overlord can suspend an account.'); notOverlordsOwn(a.p_user);
+      if(a.p_until!=null&&new Date(a.p_until)<=new Date()) throw new Error('A suspension must end in the future.');
+      account(a.p_user).banned_until=a.p_until!=null?a.p_until:new Date(Date.now()+100*365.25*864e5).toISOString(); return null; },
+    account_unsuspend:(a)=>{ overlordOnly('Only the Overlord can lift a suspension.'); notOverlordsOwn(a.p_user);
+      account(a.p_user).banned_until=null; return null; },
+    account_delete:(a)=>{ overlordOnly('Only the Overlord can delete an account.'); notOverlordsOwn(a.p_user); account(a.p_user);
+      const u=a.p_user, open=g=>g&&g.status!=='complete';
+      if(DB.games.some(g=>g.gm_user_id===u&&open(g))) throw new Error('That account runs an unfinished game: hand it over first.');
+      if(DB.game_players.some(s=>s.user_id===u&&open(DB.games.find(g=>String(g.id)===String(s.game_id)))))
+        throw new Error('That account plays in an unfinished game: suspend it instead until the game ends.');
+      DB.game_message_reads=DB.game_message_reads.filter(r=>r.user_id!==u);
+      DB.profiles=DB.profiles.filter(p=>p.id!==u); DB.game_masters=DB.game_masters.filter(r=>r.user_id!==u);
+      DB.games.forEach(g=>{ if(g.gm_user_id===u) g.gm_user_id=null; });
+      DB.game_players.forEach(s=>{ if(s.user_id===u) s.user_id=null; });
+      if(DB.accounts) delete DB.accounts[u]; return null; },
     gm_offer:(a)=>{ overlordOnly('Only the Overlord can offer Game Master.');
       if(DB.site_admins.some(r=>r.user_id===a.p_user)) throw new Error('The Overlord can\'t be a Game Master.');
       if(!DB.profiles.some(p=>p.id===a.p_user)) throw new Error('No such account.');
@@ -239,6 +256,9 @@ function makeStub(){
       g.gm_user_id=a.p_new_gm; return null; },
   };
   function overlordOnly(m){ if(!DB.site_admins.some(r=>r.user_id===me())) throw new Error(m); }
+  function notOverlordsOwn(u){ if(DB.site_admins.some(r=>r.user_id===u)) throw new Error('This doesn\'t work on the Overlord\'s own account.'); }
+  function account(u){ if(!DB.profiles.some(p=>p.id===u)) throw new Error('No such account.');
+    DB.accounts=DB.accounts||{}; return DB.accounts[u]=DB.accounts[u]||{}; }
   function rpc(fn,args){
     CALLS.push('rpc.'+fn);
     if(RPC_ERRORS.has(fn)) return Promise.resolve({data:null,error:{message:'TypeError: Failed to fetch'}});

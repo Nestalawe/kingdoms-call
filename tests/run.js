@@ -55,6 +55,7 @@ const SUITE=[
   ['dispatch-limits',      'tests/dispatch-limits.test.js'],
   ['report-dispatch',      'tests/report-dispatch.test.js'],
   ['overlord-page',        'tests/overlord-page.test.js'],
+  ['overlord-suspend-delete','tests/overlord-suspend-delete.test.js'],
   ['master-gm-mode',       'tests/master-gm-mode.test.js'],
   ['profiles-no-email',    'tests/profiles-no-email.test.js'],
   ['hall-of-fame-controls','tests/hall-of-fame-controls.test.js'],
