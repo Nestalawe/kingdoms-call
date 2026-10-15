@@ -187,9 +187,14 @@ ones it can't, or they cost time:
 - **Markup in a value is shown as text.** In ``kcHtml`<td>${won?'<span class="pill">won</span>':''}</td>` `` the pill
   comes out as `<span…` on screen. Make the markup `kcHtml` too: ``${won?kcHtml`<span class="pill">won</span>`:''}``.
   The same goes for a helper that returns a plain string of markup, and for an entity written in data (`'Hosts &amp;
-  armies'` now shows `&amp;`: write `&`).
+  armies'` now shows `&amp;`: write `&`). An attribute put in as a value breaks the same way: in
+  ``kcHtml`<div${dim?' style="opacity:.8"':''}>` `` the quotes are escaped, so write ``${dim?kcHtml` style="opacity:.8"`:''}``.
+  `html-lint` can't see either mistake; `same-dom.js` (below) finds it on the screens a tour visits.
 - **Never join `kcHtml` with `+`, `+=` or `.join('')`.** Each makes a plain string, which the next `kcHtml` escapes,
   so the markup shows as text. Collect pieces in an array and put the array in: ``kcHtml`<ul>${rows}</ul>` ``.
+- **In `runTurn`, `msg` may be the watcher's banner.** In an automatic run, every message given to `msg.innerHTML` is
+  also put inside the watcher's `kcHtml` banner, so each one is `kcHtml`, even a fixed one: a plain string shows its tags
+  there as text.
 - **No `kcEsc` (or an older escaper) inside `kcHtml`.** The value is escaped twice and `&` shows as `&amp;`.
 - **`kcArg` keeps a value's type.** `onclick="f('${id}')"` passed a string; `onclick="f(${kcArg(id)})"` passes `id` as
   it is, so a numeric id now arrives as a number. Write `kcArg(String(id))` where the handler compares strings.
