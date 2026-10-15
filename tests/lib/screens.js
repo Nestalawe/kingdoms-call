@@ -12,6 +12,9 @@ const {readPage,bootJsdom,serve,routeExternal,SITE}=require('./boot');
 const {makeStub,leaderboardStub}=require('./stub-db');
 
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+// A value as a JavaScript literal to put in code run in the page: JSON, with < > / and the two line separators written
+// as \u escapes, so a staged name can't end the code it sits in, wherever that code ends up.
+const lit=v=>JSON.stringify(v).replace(/[<>\/\u2028\u2029]/g,c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0'));
 
 // ── Hall of Fame ─────────────────────────────────────────────────────────────────────────────────────────────────
 // Three recorded games: one with humans and bots (the GM's own), one hidden, one an older row. Every value a player or a
@@ -47,19 +50,19 @@ const leaderboard={
     error:m.error?W.error:undefined,readError:m.readError?W.error:undefined}),
   jsdomSupabase(W,m){ const o=this.stubOptions(W,m); return {createClient:()=>leaderboardStub({...o,rows:()=>W.rows,calls:[]})}; },
   browserSupabase(W,m){
-    return `(function(){var R=${JSON.stringify(W.rows)},O=${JSON.stringify(this.stubOptions(W,m))};`
+    return `(function(){var R=${lit(W.rows)},O=${lit(this.stubOptions(W,m))};`
       +`window.supabase={createClient:function(){return (${leaderboardStub.toString()})(Object.assign({},O,{rows:function(){return R;},calls:[]}));}};})();`;
   },
   steps(W,m){
     if(m.readError) return [['the board, unreadable','']];
     const s=[['champions',"setTab('champions')"],['achievements',"setTab('achievements')"],
-      ['achievements, searched for a realm',`$('f-q').value=${JSON.stringify(W.search)};render()`],
+      ['achievements, searched for a realm',`$('f-q').value=${lit(W.search)};render()`],
       ['races and creeds',"resetFilters();setTab('peoples')"],['games',"setTab('games')"],
       ['games, every one opened',"document.querySelectorAll('tr.gamerow').forEach(r=>r.click())"]];
     if(m.isGm) s.push(['games, hidden ones shown and opened',"$('f-hidden').checked=true;render();document.querySelectorAll('tr.gamerow').forEach(r=>r.click())"],
       ['games, editing every one',"document.querySelectorAll('tr.gamerow button').forEach(b=>b.click())"]);
     if(m.error) s.push(['games, a save that fails',"document.querySelector('.gmbox .btn-gold').click()"]);
-    if(m.isOverlord) s.push(['champions, renaming a player',`setTab('champions');window.prompt=()=>${JSON.stringify(W.renameTo)};document.querySelector('#champ-table button').click()`]);
+    if(m.isOverlord) s.push(['champions, renaming a player',`setTab('champions');window.prompt=()=>${lit(W.renameTo)};document.querySelector('#champ-table button').click()`]);
     return s;
   },
   shown:W=>[W.rows[0].game_name,W.rows[0].note,W.rows[0].standings[0].race,W.rows[0].standings[1].al,W.rows[0].standings[1].outHow,
@@ -97,11 +100,11 @@ const overlord={
   },
   jsdomSupabase(W){ const S=makeStub(); this.stage(S,W); return S.supabase; },
   browserSupabase(W){
-    return `(function(){var S=(${makeStub.toString()})();(${this.stage.toString()})(S,${JSON.stringify(W)});window.supabase=S.supabase;})();`;
+    return `(function(){var S=(${makeStub.toString()})();(${this.stage.toString()})(S,${lit(W)});window.supabase=S.supabase;})();`;
   },
   steps(W){
     return [['accounts, games and reported dispatches',''],
-      ['accounts, searched',`$('acct-q').value=${JSON.stringify(W.search)};renderAccounts()`],
+      ['accounts, searched',`$('acct-q').value=${lit(W.search)};renderAccounts()`],
       ['accounts, Revoke GM open',"$('acct-q').value='';renderAccounts();document.querySelector('[data-act=revoke]').click()"],
       ['accounts, Delete open',"document.querySelector('[data-act=delete]').click()"]];
   },

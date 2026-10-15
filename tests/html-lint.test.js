@@ -17,6 +17,7 @@
 const fs=require('fs'); const path=require('path');
 const acorn=require('acorn');
 const {SITE}=require('./lib/boot');
+const {JSDOM}=require('jsdom');
 
 const LIMITS={
   'kingdoms-call-gm-portal.html':177,
@@ -129,17 +130,16 @@ function check(code){
   return found;
 }
 
-// Every file's scripts, with each finding's line in the file.
+// Every file's scripts, with the line each starts on, and a page's first <script src>. A page is read by jsdom's HTML
+// parser (nothing runs), so its scripts are found exactly as a browser finds them.
 function scriptsOf(file){
   const src=fs.readFileSync(file,'utf8');
   if(file.endsWith('.js')) return {src,parts:[{code:src,line:1}]};
-  const parts=[];
-  for(const m of src.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g)){
-    if(/\bsrc=/.test(m[1]||'')) continue;
-    const start=m.index+m[0].indexOf('>')+1;
-    parts.push({code:m[2],line:src.slice(0,start).split('\n').length});
-  }
-  return {src,parts};
+  const dom=new JSDOM(src,{includeNodeLocations:true});
+  const scripts=[...dom.window.document.querySelectorAll('script')];
+  const parts=scripts.filter(e=>!e.hasAttribute('src')).map(e=>({code:e.textContent,line:dom.nodeLocation(e).startTag.endLine}));
+  const first=scripts.find(e=>e.hasAttribute('src'));
+  return {src,parts,firstSrc:first?first.getAttribute('src'):undefined};
 }
 
 let fails=0;
@@ -149,7 +149,7 @@ const usedAllowed=new Set();
 const files=fs.readdirSync(SITE).filter(f=>/\.(html|js)$/.test(f)).sort();
 const seen=new Set();
 for(const f of files){
-  const {src,parts}=scriptsOf(path.join(SITE,f));
+  const {src,parts,firstSrc}=scriptsOf(path.join(SITE,f));
   const lines=src.split('\n');
   let findings=[];
   for(const p of parts){
@@ -175,7 +175,6 @@ for(const f of files){
     const scripts=parts.map(p=>p.code).join('\n');
     const usesHelpers=/\bkc(Html|Esc|Raw|Arg)\b/.test(scripts);
     const buildsHtml=/\.(innerHTML|outerHTML)\s*\+?=|insertAdjacentHTML|document\.write/.test(scripts);
-    const firstSrc=(/<script\s[^>]*\bsrc="([^"]+)"/.exec(src)||[])[1];
     if((usesHelpers||(buildsHtml&&!limit))&&firstSrc!=='kc-safe.js')
       fail(`${f}: builds HTML but its first <script src> is ${firstSrc?'"'+firstSrc+'"':'missing'}, not "kc-safe.js" (load it straight after the boot-failure reporter)`);
     else if(usesHelpers||(buildsHtml&&!limit)) ok(`${f}: loads kc-safe.js first`);
