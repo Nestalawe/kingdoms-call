@@ -206,7 +206,10 @@ Functions, would add a server runtime and deploy path, and isn't used):
   - the refusal needs to say why. A rule's refusal is always the same "violates row-level security policy";
     a function can say "That Game Master runs an unfinished game: hand it over first", which the page can show;
   - it reads what the site otherwise can't (`overlord_accounts()` reads accounts' emails, for the Overlord
-    only).
+    only);
+  - it writes what no API role may: `account_suspend()`, `account_unsuspend()` and `account_delete()` change Supabase
+    Auth's own `auth.users` (its `banned_until`, or the account itself), for the Overlord only (P0-32h). A suspended
+    account can't sign in or refresh its session; one already open lasts until its token expires (up to an hour).
 
   One function per action keeps each rule in one place to read and test, and leaves the table no other way
   in. The examples are the Game Master functions (P0-32b) and `kc_set_overlord()` (P0-32a).
