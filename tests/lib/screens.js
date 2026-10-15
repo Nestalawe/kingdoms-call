@@ -294,25 +294,28 @@ const gmPortal={
 };
 
 // ── The player portal ────────────────────────────────────────────────────────────────────────────────────────────
-// The lobby (P0-19 PR 3) and the turn report and Chronicle (PR 4); the orders, map and Dispatches add their screens in
-// later PRs. The player p1 is in G1 (active: a deadline, a rival's orders in, an unread dispatch, and its turn report),
+// The lobby (P0-19 PR 3), the turn report and Chronicle (PR 4) and the orders (PR 5); the map and Dispatches add their
+// screens in a later PR. The player p1 is in G1 (active: a deadline, a rival's orders in, an unread dispatch, and its turn report),
 // G2 (in setup, waiting), G3 (archived) and a game whose row it can't read (G9). Open to join: G4 (public, another
 // GM's, Divine taken) and G5 (private, p1 invited); G6 is private to others and never listed. p1 has an open offer to
 // become a Game Master. Every string a player or a GM can store comes from N, and so does the turn number the cards
 // show; every database error a screen shows does too (stub ERRORS). A player, a signed-out visitor and a page that
 // can't start each see their screens; the reader (p1 again) opens G1's report, its past turns and its title and
-// diplomacy states.
+// diplomacy states; in the orders mode, p1's saved draft is restored on that report and every order is given in turn.
 const playerPortal={
   page:'kingdoms-call-player-portal.html',
   bootWait:900,
   modes:{
     player:{url:'',user:'p1'},
     reader:{url:'',user:'p1',report:true},
+    orders:{url:'',user:'p1',orders:true},
     signedOut:{url:'',user:null},
     bootFails:{url:'',bootError:true},
   },
   world(N){
     const num=(field,v)=>N.hostile?N(field,v):v;
+    // an id the engine makes (a research choice's key and options): hostile with hostile names, the engine's shape otherwise
+    const eid=(field,i,plain)=>N.hostile?N(field,i):plain;
     const at='2026-10-10T07:00:00Z';
     const json=o=>JSON.stringify(o);
     const game=(id,name,gm,status,turn,gs,extra)=>({id,name,gm_user_id:gm,status,turn,max_players:4,max_turns:0,created_at:at,meta:null,
@@ -421,12 +424,104 @@ const playerPortal={
         {type:'combat',charId:'c0',phase:1,text:force(C.king,'#a33','attacks',[{type:'Free Lances',quality:'Green'}])},
         {type:'event',charId:'c0',phase:2,text:`${C.king} is wounded — "${T.parting}"`},
         {type:'system',text:`[Intelligence] ${N('intel',2)}`}]};
+    // ── The orders (PR 5) ── The same turn report with what the order form reads: three heroes of p1 with numeric ids,
+    // as the engine gives them (the king, crowned heir this turn, has every skill at 9, so every mastery order, spell
+    // and picker is on offer; one hero stands on the northern edge of a 4×3 map), rivals, wanderers and bodies in the
+    // king's province, a hero to hire, a band of mercenaries, lairs, a ritual site, items to equip, use and send, a
+    // research choice to make, and the odds the engine quotes. Every name comes from N.
+    const OP={home:N('province',20),rival:N('province',21),sea:N('province',22),wild:N('province',23),far:N('province',24),
+      north:N('province',25),seen:N('province',26)};
+    const sk9=Object.fromEntries(['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer',
+      'white','psychic','illusory','elemental','necromancy'].map(s=>[s,9]));
+    const at5={locationId:5,locationName:OP.home};
+    const odds={spy:{chance:60,level:9},research:{rawLevel:9,level:9,chance:45},assassinate:{chance:50,level:9,kingPenalty:25},
+      steal:{chance:70,level:9,escape:40},grandHeist:{chance:80,level:9,escape:50},blockade:{chance:50},
+      practice:{byLevel:[25,20,15,10,5],astro:5,discovery:0,bySkill:{melee:5}}};
+    const oKing={id:10,name:C.king,isKing:true,_isHeir:true,alive:true,hp:20,maxHp:30,race:'Human',alignment:'Evil',temper:'Brave',
+      ...at5,pay:0,skills:sk9,effectiveSpeed:3,effectiveSeaSpeed:2,
+      armies:[{type:'Free Lances',quality:'Veteran',unitName:N('unit',10)},{type:'Galleon Fleet',quality:'Average',unitName:N('unit',11)}],
+      items:[{id:101,name:N('item',10),tier:3,slot:'weapon',desc:N('item',11)},{id:102,name:N('item',12),tier:2,slot:'ring'},
+        {id:103,name:N('item',13),tier:4,slot:'ring',equipped:false},{id:104,name:N('item',14),tier:2,desc:N('item',15),effect:{stat:'castSpell',spell:'Charm'}},
+        {id:105,name:N('item',16),tier:3,effect:{stat:'mithrilArmour'}}],
+      castChance:{white:{level:9,chance:95,arcane:5,mastery:10,discovery:5},psychic:{level:9,chance:90}},orderChance:odds};
+    const oHero={id:11,name:C.hero,isKing:false,alive:true,hp:10,maxHp:10,race:'Elven',alignment:'Good',temper:'Cautious',...at5,pay:3,
+      skills:{thief:2,spy:1,sage:2,white:1,psychic:2,archery:4},armies:[],items:[],effectiveSpeed:3,
+      orderChance:{spy:{auto:true,autoWhy:N('perk',9)},research:{rawLevel:2,level:2,chance:10},steal:{chance:70,level:2,escape:40},practice:{}}};
+    const oEdge={id:12,name:N('hero',14),isKing:false,alive:true,hp:8,maxHp:8,race:'Orcish',alignment:'Evil',temper:'Brave',
+      locationId:1,locationName:OP.north,pay:2,skills:{melee:2},armies:[{type:'Noble Griffons',quality:'Green',unitName:N('unit',15)},
+        {type:'Cave Trolls',quality:'Average'}],items:[],effectiveSpeed:2};
+    const prov=(id,name,terrain,extra)=>({id,col:id%4,row:Math.floor(id/4),name,terrain,...(extra||{})});
+    const nb=id=>{ const r=Math.floor(id/4), c=id%4, offs=r%2?[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]]:[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+      return offs.map(([dr,dc])=>[r+dr,((c+dc)%4+4)%4]).filter(([rr])=>rr>=0&&rr<3).map(([rr,cc])=>rr*4+cc); };
+    const provinces=[prov(0,N('province',27),'plain'),prov(1,OP.north,'mountain',{owner:null,explored:40}),prov(2,OP.sea,'sea'),
+      prov(3,N('province',28),'forest'),prov(4,null,null),
+      prov(5,OP.home,'forest',{owner:0,ownerName:R.own,tier:'owned',tax:10,explored:40,features:[{name:N('lair',10)}],characters:[{name:C.king,isOwn:true}]}),
+      prov(6,OP.rival,'plain',{owner:1,ownerName:R.rival,wealth:'Rich',isHomeCapitalOfOwner:true,tax:8}),prov(7,OP.wild,'forest',{owner:null}),
+      prov(8,N('province',29),'hills'),prov(9,OP.far,'plain',{owner:1,ownerName:R.rival}),prov(10,null,null),prov(11,OP.seen,'swamp',{owner:2,ownerName:R.third})]
+      .map(p=>({...p,neighbors:nb(p.id)}));
+    const vis=(id,name,player,extra)=>({id,name,player,...at5,race:'Human',alignment:'Neutral',armies:0,...(extra||{})});
+    const ordersReport={...report,characters:[oKing,oHero,oEdge],turn:num('turn',3),
+      kingdom:{...report.kingdom,alignment:'Evil',gold:20,taxIncome:12},
+      allKingdoms:[{index:0,name:R.own,color:'#a33'},{index:1,name:R.rival,color:'#36c'},{index:2,name:R.third,color:'#3a3'}],
+      diplomacy:{known:[{index:1,name:R.rival,color:'#36c',relation:'enemy'},{index:2,name:R.third,color:'#3a3',relation:'neutral'}],alliancesAllowed:true},
+      worldMeta:{cols:4,rows:3,provinces},
+      ownedProvinces:[{id:5,name:OP.home,terrain:'forest',race:'Human',armyTypes:['Free Lances'],tax:10}],
+      visibleChars:[vis(20,C.enemy,1,{race:'Elven'}),vis(21,C.wander,null,{isWandering:true,pay:2,hp:10,maxHp:10}),
+        vis(22,N('hero',15),1,{armies:3,armyBand:N('band',2)}),vis(23,N('hero',16),1,{isKing:true}),
+        vis(24,N('hero',22),2,{locationId:6,locationName:OP.rival})],
+      encounterTargets:[vis(20,C.enemy,1,{leadsArmy:false}),vis(21,C.wander,null),vis(23,N('hero',16),1,{isKing:true}),
+        vis(25,N('hero',23),2,{untargetable:'faceless'})],
+      everSeenChars:[{id:20,name:C.enemy,player:1,lastLocName:OP.rival,lastSeenTurn:num('turn',2)},{id:24,name:N('hero',22),player:2,locationName:OP.seen}],
+      knownDeadHeroes:[{id:30,name:N('hero',17),...at5,raisable:true,player:null,killedOnTurn:num('turn',1),race:'Human',alignment:'Good'},
+        {id:31,name:N('hero',18),...at5,raisable:false,whyNot:N('reason',0),isKing:true,player:1},
+        {id:32,name:N('hero',19),...at5,isMonarch:true,raisable:true,wasOwnHero:true}],
+      provinceOrderData:{
+        5:{id:5,name:OP.home,owner:0,canRecruit:true,terrain:'forest',explored:40,
+          armyTypes:[{type:'Free Lances',maxPerTurn:2,cost:3},{type:'Forest Ents',maxPerTurn:1,cost:4},{type:'Cave Trolls',maxPerTurn:1,cost:5}],
+          features:[{idx:0,name:N('lair',10),monster:N('monster',10),monsterPower:'Weak',monsterCat:N('kind',0)},
+            {idx:1,name:N('lair',11),monster:N('monster',11),monsterPower:'Legendary',monsterCat:'Undead'},{idx:2,name:N('lair',12),ritualSite:true}],
+          availableHeroes:[{id:40,name:N('hero',20),race:'Human',alignment:'Neutral',temper:'Brave',...at5,topSkill:{skill:'melee',level:5},pay:3},
+            {id:41,name:N('hero',21),race:'Orcish',alignment:'Divine',...at5,skills:{spy:3}}],
+          garrisonArmies:[{type:'Shieldwall Levies',quality:'Green',unitName:N('unit',12)}],wildHuntType:N('unit',13),wildHuntCost:4},
+        6:{id:6,name:OP.rival,owner:1,canRecruit:false,terrain:'plain',armyTypes:[{type:'Free Lances',maxPerTurn:1,cost:3}],
+          garrisonArmies:[{type:'Free Lances',quality:'Average'}],features:[]}},
+      mercIntel:[{id:50,unitName:N('unit',14),type:'Free Lances',quality:'Veteran',cost:4,...at5,location:OP.home}],
+      researchCategories:[{name:N('field',0),known:1,total:3},{name:'Military',known:3,total:3}],
+      discoveries:[],
+      pendingDiscoveryChoices:[{key:eid('key',0,'t2-c11'),charName:C.hero,category:N('field',0),turn:num('turn',2),
+        options:[{id:eid('choice',0,'sd12'),name:N('discovery',2),category:N('field',0),desc:N('discovery',3)},
+          {id:eid('choice',1,'sd34'),name:N('discovery',4),category:'Military',desc:N('discovery',5)}]}],
+      knownFeatures:[{name:N('lair',10),province:OP.home,monster:N('monster',10),monsterPower:'Weak'}],
+      orderPrices:{brokerSpy:2,harvest:2}};
+    // p1's saved draft: orders for every hero, the hire, raise and charm cards and their own orders, the encounter
+    // plans (battle cries), the heir's name, a declaration and a research choice. Orders an older page wrote that this
+    // one no longer lists (Scout) keep their "Details".
+    const pre={hire:'hired_40_via_11_ph0',raise:'resurrect_30_via_10_ph0',charm:'charm_21_via_10_ph1'};
+    const turnNow=num('turn',3);
+    const ordersDraft={orders:{
+        10:[{action:'Cast Spell',target:'Resurrect',extra:'30'},{action:'Cast Spell',target:'Charm',extra:'21'},
+          {action:'Scout',target:N('details',0)},{action:'Equip Items',target:''},{action:'Move',target:'prov:6'}],
+        11:[{action:'Hire Hero',target:'40'},{action:'Steal',target:'20'},{action:'Research',target:N('field',0)},
+          {action:'Practice Skill',target:'thief'},{action:'Old Rite',target:N('details',1)}],
+        12:[{action:'Move',target:'prov:2'},{},{action:'Defend'},{},{}],
+        [pre.hire]:[{},{action:'Explore'},{action:'Spy',target:'char:20'},{},{action:'Scout',target:N('details',2)}],
+        [pre.raise]:[{},{action:'Rest'},{action:'Recruit Armies',target:'Free Lances|1'},{},{}],
+        [pre.charm]:[{},{},{action:'Defend'},{action:'Move',target:'prov:6'},{}]},
+      encounterPlans:{10:{tactics:['ME','CA:Fireball','ST','CS:elemental'],notes:T.cry,duelStance:'accept',evilMode:'enslave'},
+        11:{tactics:['FL'],notes:N('cry',1)},[pre.hire]:{tactics:['ME','CS:white'],notes:N('cry',2)},
+        [pre.raise]:{tactics:['ME'],notes:N('cry',3),duelStance:'refuse'},[pre.charm]:{tactics:['ME'],notes:N('cry',4)}},
+      kingSkills:{10:{skills:sk9,pending:4,name:N('heir',0),temper:'Cautious',base:sk9}},
+      diplomacy:{1:'enemy'},discoveryChoices:{[eid('key',0,'t2-c11')]:eid('choice',1,'sd34')},forTurn:turnNow};
+    const ordersShown=[...Object.values(OP),N('heir',0),N('details',0),N('details',1),N('hero',14),N('hero',15),N('hero',16),N('hero',17),
+      N('hero',18),N('hero',19),N('hero',20),N('hero',22),N('unit',10),N('unit',11),N('unit',12),N('unit',14),N('unit',15),N('item',10),N('item',11),
+      N('item',12),N('item',14),N('lair',10),N('lair',11),N('monster',10),N('field',0),N('discovery',2),N('discovery',3),N('reason',0)];
     // The game decided: the engine's end-of-game lines, flagged and (older reports) matched by shape.
     const gameEndLog=[{type:'system',gameEnd:true,text:`🏆 THE GAME IS DECIDED — ${R.own} is judged supreme`},
       {type:'system',gameEnd:true,text:`   1. ${R.own} — 30 Legacy`},
       {type:'system',text:`👑 THE RECKONING IS CALLED — by ${R.rival}`},{type:'system',text:`   2. ${R.rival} — 20 Legacy`}];
     return {
-      hostile:!!N.hostile, report, C, R, P, T, gameEndLog,
+      hostile:!!N.hostile, report, C, R, P, T, gameEndLog, orders:{report:ordersReport,draft:ordersDraft,pre,turn:turnNow,
+        shown:ordersShown,staleTurn:num('turn',9),turnLater:num('turn',4)},
       error:N('error',0), password:'kc-test-password', newName:N('player',7), king:N('king',0), kingdom:N('kingdom',0),
       signUp:{name:N('player',8),email:'new@example.test'},
       db:{
@@ -492,11 +587,62 @@ const playerPortal={
       ['registering refused',"setAuthTab('signup');"+`sb.auth.signUp=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('su-name',W.signUp.name)+val('su-email',W.signUp.email)+val('su-password',W.password)+val('su-password2',W.password)+'doSignUp()'],
     ];
+    // With hostile names, the parts a later pull request converts (the map, Dispatches) are held back: they don't escape
+    // names yet. With ordinary names (same-dom.js) everything renders, so the helpers they share are compared there too.
+    const held=W.hostile?'renderPlayerMap=function(){};initMessaging=async function(){};':'';
+    if(m.orders){
+      // The page's short timers (a field rebuilt "once the DOM exists", the running account, the hire, raise and charm
+      // cards) are queued and run in order at the end of each step, so no screen is caught halfway; longer ones are
+      // dropped, as above. Each step runs to the end, timers included, before its screen is read.
+      const timers="window.__kcQ=[];window.__kcN=0;"
+        +"window.setTimeout=(f,ms,...a)=>{ if(ms>=1000) return 0; const id=++window.__kcN; window.__kcQ.push({f,a,ms:+ms||0,id}); return id; };"
+        +"window.clearTimeout=id=>{ window.__kcQ=window.__kcQ.filter(t=>t.id!==id); };"
+        +"window.__kcRun=()=>{ for(let r=0;r<20&&window.__kcQ.length;r++){ const q=window.__kcQ.splice(0).sort((x,y)=>x.ms-y.ms||x.id-y.id);"
+        +" for(const t of q){ try{ if(typeof t.f==='function') t.f(...t.a); }catch(e){ console.error(String(e&&e.stack||e)); } } } };";
+      const step=code=>`(async()=>{ ${code}; window.__kcRun(); })()`;
+      const O=W.orders, row="supabase.stub.DB.game_players.find(r=>r.id==='s10')";
+      const stage=(draft,extra)=>`Object.assign(${row},{turn_report:${lit(JSON.stringify(O.report))},orders:${lit(JSON.stringify(draft))},orders_submitted:false${extra||''}});`;
+      // set one row's action as a player does: pick it, then the select's onchange
+      const act=(cid,ph,a)=>`{ const s=document.getElementById(${lit(`po-action-${cid}-${ph}`)}); s.value=${lit(a)}; onActionChange(${lit(String(cid))},${ph},99); window.__kcRun(); }`;
+      const val=(id,v)=>`document.getElementById(${lit(id)}).value=${lit(v)};`;
+      const rebuild='buildOrdersForm(currentReport.characters,false,currentGamePlayer.orders,currentGamePlayer._liveTurn);window.__kcRun();';
+      // Every order a hero can be given, a row at a time: in part k, a hero's j-th of R rows takes the (kR+j)th order its
+      // own picker offers (its full list, which the page keeps while a once-a-turn order is out of the later rows). `only` picks the rows: the hire, raise and charm cards' (whose heroes' rows stay as they are,
+      // so the cards stay), or the heroes' own.
+      const every=(k,only)=>`{ const rows={}; document.querySelectorAll('#orders-form select[id^="po-action-"]').forEach(s=>{
+          const m=s.id.match(/^po-action-(.+)-(\\d)$/); if(${only}.test(m[1])) (rows[m[1]]=rows[m[1]]||[]).push([s,m[1],Number(m[2])]); });
+        Object.values(rows).forEach(list=>list.forEach(([s,cid,ph],j)=>{ const opts=JSON.parse(s.dataset.allOpts||'null')||[...s.options].map(o=>o.value).filter(Boolean);
+          if(!opts.length) return; s.value=opts[(${k}*list.length+j)%opts.length]; onActionChange(cid,ph,99); window.__kcRun(); })); }`;
+      const spells=list=>list.map((sp,ph)=>act(10,ph,'Cast Spell')+`onSpellChange('10',${ph},${lit(sp)});`).join('');
+      const own={Pagan:'Perform Rite',Divine:'Consecrate',Good:'Call to Arms',Neutral:'Broker',Undead:'Harvest the Field'};
+      return [
+        ['the orders, a saved draft with hire, raise and charm cards',fixed+timers+held+step(stage(O.draft)+"await openReport('s10')")],
+        ...Array.from({length:7},(_,k)=>[`every order on the hire, raise and charm cards, part ${k+1} of 7`,step(every(k,'/^(hired|resurrect|charm)_/'))]),
+        ...Array.from({length:10},(_,k)=>[`every order, part ${k+1} of 10`,step(every(k,'/^\\d+$/'))]),
+        ...Object.entries(own).map(([al,a])=>[`${/^[AEIOU]/.test(al)?'an':'a'} ${al} realm's own order`,
+          step(`currentReport.kingdom.alignment=${lit(al)};${rebuild}${act(10,0,a)}`
+            +(a==='Broker'?`${val('po-target-10-0','hire:40')}syncHiredHeroCard('10',0);`:''))]),
+        ['spells and their targets, one',step(`currentReport.kingdom.alignment='Evil';${rebuild}`+spells(['Bless Province','Oratory','Phantasmal Armies','Clairvoyance','Control Undead']))],
+        ['spells and their targets, two',step(spells(['Telekinetic Storm','Psychic Blast','Holy Symbol','Flood','Hide Lairs']))],
+        ['a spell worked from an item, and lairs to ask about',step(act(10,0,'Use Item')+val('po-target-10-0','104')+"onSpellChange('10',0,'104');"
+          +act(11,2,'Hunting Rumours')+"document.querySelectorAll('#po-rumour-wrap-11-2 input[type=checkbox]').forEach(b=>{ b.checked=true; });updateRumourTarget('11',2);")],
+        ['a mastery order given twice, and a later move to re-check',step(act(10,1,'Sabotage')+act(10,0,'Sabotage')
+          +act(10,2,'Move')+act(10,3,'Move')+val('po-target-10-2','prov:2')+"onMoveEdited('10',2);")],
+        ['a body raised in Early Winter',step(act(10,2,'Rest')+act(10,3,'Rest')+act(10,4,'Cast Spell')+"onSpellChange('10',4,'Resurrect');"+val('po-extra-10-4','32')+"syncResurrectCard('10',4);")],
+        ['the encounter plan\'s spell pickers',step("addEncounterTactic('10','CA');openPreSchoolPicker('10');"
+          +`addEncounterTactic(${lit(O.pre.hire)},'CA');openPreSchoolPicker(${lit(O.pre.hire)});`)],
+        ['a spell school chosen, and the heir\'s skills',step("confirmEPSchool('10','white');await allocateHeirSkill(10,'melee',1)")],
+        ['submitting, with orders and a choice still to make',step("document.getElementById('po-action-12-1').value='';discoveryChoices={};await submitOrders()")],
+        ['submitting, the turn has moved on',step(`supabase.stub.DB.games[0].turn=${lit(O.turnLater)};await doSubmitOrders()`)],
+        ['submitting, refused by the database',step(`supabase.stub.DB.games[0].turn=${lit(O.turn)};${fail('game_players.update')}await doSubmitOrders()`)],
+        ['submitted',step(ok+'await doSubmitOrders()')],
+        // submitted from an older page: orders this one no longer lists show their Details
+        ['the orders as submitted',step(stage(O.draft,',orders_submitted:true')+"await openReport('s10')")],
+        ['revising the orders',step('await reviseOrders()')],
+        ['a draft from an older turn set aside',step(stage({...O.draft,forTurn:O.staleTurn})+"await openReport('s10')")],
+      ];
+    }
     if(m.report){
-      // With hostile names, the parts later pull requests convert (the orders form with its Submit button, the map,
-      // Dispatches) are held back: they don't escape names yet. With ordinary names (same-dom.js) everything renders,
-      // so the helpers this pull request converted are compared there too.
-      const held=W.hostile?'buildOrdersForm=function(){};restoreSubmitWrap=function(){};renderPlayerMap=function(){};initMessaging=async function(){};':'';
       // the orders' running account redraws 120 ms after a change, so a screen could catch it before or after: it draws
       // at once instead
       const now="scheduleOrderLedgerP=function(){ renderOrderLedgerP(); };";
@@ -560,7 +706,9 @@ const playerPortal={
       // the report and Chronicle: names, narrative, and the engine's strings, in the current and past turns
       ...Object.values(W.C),...Object.values(W.R),...Object.values(W.P),...Object.values(W.T),
       W.report.knownFeatures[0].name,W.report.knownFeatures[0].monster,W.report.discoveries[0].name,W.report.titles.gains[0].name,
-      W.report.provinceEvents[0].text,W.report.spyActivity[0].lines[0].text,W.report.characters[0].items[0].desc].filter(s=>typeof s==='string');
+      W.report.provinceEvents[0].text,W.report.spyActivity[0].lines[0].text,W.report.characters[0].items[0].desc,
+      // the orders: provinces, rivals, wanderers, bodies, the hero for hire, units, items, lairs, research and Details
+      ...W.orders.shown].filter(s=>typeof s==='string');
   },
 };
 

@@ -194,10 +194,21 @@ ones it can't, or they cost time:
 - **Never join `kcHtml` with `+`, `+=` or `.join('')`.** Each makes a plain string, which the next `kcHtml` escapes,
   so the markup shows as text. Collect pieces in an array and put the array in: ``kcHtml`<ul>${rows}</ul>` ``.
   `html-lint` sees this only when `kcHtml` is written in the line: `row(a)+row(b)`, where `row` returns `kcHtml`, and
-  `.join(', ')` on a list of `kcHtml` pass it. In the player portal, a list with a separator goes in as
-  `kcJoinP(list, ', ')` (the separator is text; write ``kcHtml`<br>` `` for markup).
+  `.join(', ')` on a list of `kcHtml` pass it, and so do `.map(…).filter(Boolean).join('')`, `.flatMap(…).join('')`
+  and `Array.from(…).join('')`. In the player portal, a list with a separator goes in as `kcJoinP(list, ', ')` (the
+  separator is text; write ``kcHtml`<br>` `` for markup).
+- **A template with no markup of its own still needs `kcHtml` if a value in it is `kcHtml`.** In
+  ``chanceLine(`Success: ${pct(n)}`)``, where `pct` returns `<strong>`, the untagged template makes a plain string and
+  the bold shows as text. Tag it: ``chanceLine(kcHtml`Success: ${pct(n)}`)``. `html-lint` only looks at templates
+  with markup in them.
+- **A helper whose result goes straight into `innerHTML` returns `kcHtml` on every path**, even a line with no
+  markup: `el.innerHTML=note(c)` reads a plain string as HTML, names and all. The orders' `exploreProjectionNote` is
+  one; `html-lint` sees the sink, not what the helper returns.
+- **Markup read back as a string.** Code that searches the markup it built (the Move field finds the option that
+  opens selected with a regular expression) reads ``String(kcHtml`…`)``, which is the markup, escaped values and all.
 - **An empty list is still true.** `html||'Nothing yet'` worked while `html` was a string; once it's an array (or
-  `kcHtml`, which is always an object), the fallback never shows. Test `html.length`, and return `''` from a helper
+  `kcHtml`, which is always an object), the fallback never shows. The orders were full of it: `opts?select:input`,
+  `if(!charOpts)`, `if(mercRows)`. Test `html.length`, and return `''` from a helper
   that has nothing to show.
 - **Fixed text with bold that a helper splits.** The player portal's `bulletizeDesc` splits a description into
   sentences, so its tables write bold as `**bold**`, not `<strong>`; it shows the text as text and turns each
