@@ -109,7 +109,7 @@ page whose content is mostly fixed builds elements instead (the Overlord page's 
 
 `npm test`'s `html-lint` refuses HTML built any other way, and each converted page has a hostile-name test. The
 player portal is converted one pull request at a time. Its lobby (signing in, the account, My Games, open games and the
-join form) and its turn report and Chronicle are done; until the rest is (the orders, the map and Dispatches),
+join form), its turn report and Chronicle, and its orders are done; until the rest is (the map and Dispatches),
 `html-lint` holds it to its current count, and `_msgEsc` is another name for `kcEsc`. Mistakes to avoid:
 [traps.md](traps.md#html-is-built-only-through-kchtml).
 
