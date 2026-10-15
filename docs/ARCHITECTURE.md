@@ -23,6 +23,7 @@ submit orders and read what they're given.
 | `kingdoms-call-leaderboard.html` | ~780 lines | Hall of Fame: leaderboard and achievement records over finished games |
 | `kingdoms-call-overlord.html` | ~450 lines | The Overlord page (P0-32f): accounts (offer, withdraw and revoke GM; suspend, lift and delete: P0-32h), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose) |
+| `kc-safe.js` | small | `kcHtml`, `kcEsc`, `kcRaw`, `kcArg`: the one way a page builds HTML from data ([below](#how-a-page-builds-html)) |
 | `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
 
 All pages sit in one folder and link each other relatively. Only `site/` is published, so URLs are the
@@ -59,14 +60,17 @@ Order inside each portal's `<head>` and body, and why it matters:
 
 1. **Boot-failure reporter**: a small inline script, first in `<head>`. While the loading spinner is
    still showing, the first `error` or `unhandledrejection` replaces it with the message, a hint and a
-   Reload button. Without it, any top-level throw looks like "Loading…" for ever.
-2. **supabase-js v2**, from the site itself (`vendor/supabase-js-<version>.min.js`, [above](#supabase-js-a-copy-served-with-the-site)).
-3. **`kc-config.js`**: `KC_CONFIG`, which database this copy of the site talks to (address and public
+   Reload button. Without it, any top-level throw looks like "Loading…" for ever. On pages that load
+   `kc-safe.js`, it puts the message and hint in as text, since it runs before the helpers exist.
+2. **`kc-safe.js`**, straight after it (the Hall of Fame and the Overlord page; each portal from the P0-19 pull
+   request that converts it): the HTML helpers ([below](#how-a-page-builds-html)).
+3. **supabase-js v2**, from the site itself (`vendor/supabase-js-<version>.min.js`, [above](#supabase-js-a-copy-served-with-the-site)).
+4. **`kc-config.js`**: `KC_CONFIG`, which database this copy of the site talks to (address and public
    key). Every page that uses the database loads it; a staging copy of the site replaces only this file.
-4. **`kingdoms-call-data.js`** (both portals; not the leaderboard).
-5. **`kc-db-guard.js`** (both portals, the leaderboard and the Overlord page), straight after `kc-config.js`: `kcDbGuard`, the
+5. **`kingdoms-call-data.js`** (both portals; not the leaderboard).
+6. **`kc-db-guard.js`** (both portals, the leaderboard and the Overlord page), straight after `kc-config.js`: `kcDbGuard`, the
    database version guard ([traps.md](traps.md#a-site-change-that-needs-a-database-change)).
-6. **The main script.** It checks the data file before anything else (below), creates the Supabase
+7. **The main script.** It checks the data file before anything else (below), creates the Supabase
    client, then `kcDbGuard(sb, KC_DB_MIN)`: only if the database is at least `KC_DB_MIN` does it call
    `init()` (the leaderboard: `loadAll()`), which hides the spinner. Otherwise the guard raises "The game is
    being updated" through the boot-failure reporter, and nothing is read or written. In the GM portal, a
@@ -74,7 +78,7 @@ Order inside each portal's `<head>` and body, and why it matters:
    anyone else, or a check that fails, sees only "You're not a Game Master" and nothing else loads. The Overlord
    gets **Master GM mode** (`_kcOverlord`, P0-32g): every game, grouped by GM, with no New Game and no automatic
    watcher; **Run turn now** on any active game, orders in or not; `?game=<id>` (the Overlord page's link) opens a game.
-7. **`kc-staging-footer.js`**, last in `<body>` (every page; the landing page and rulebooks load
+8. **`kc-staging-footer.js`**, last in `<body>` (every page; the landing page and rulebooks load
    `kc-config.js` just before it). On staging it adds "Staging · PR #N · abc1234" to the footer, plus
    "database <version>" on pages that use the database; on the live site, whose `kc-config.js` has no
    `deployed`, it does nothing.
@@ -83,6 +87,27 @@ Everything is a classic script, so **top-level `const`/`let` from every script s
 scope**. A name declared in two scripts is a `SyntaxError` that stops the page loading. A top-level
 `const` used before its line runs is a temporal-dead-zone throw that hangs the page
 ([traps.md](traps.md#top-level-declaration-order-the-items_by_tier-class)).
+
+## How a page builds HTML
+
+Every name and message on screen was typed by someone, so a page treats every value as text (P0-19).
+`site/kc-safe.js` gives each page four helpers:
+
+- **`kcHtml`**, a tagged template: in ``kcHtml`<td>${realm}</td>` `` every value is escaped, unless it is itself
+  `kcHtml` or `kcRaw`. A list is its items, one after another. It returns a marked value that goes into
+  `innerHTML` as markup.
+- **`kcEsc(v)`**: `v` as text, for the rare place that needs a plain escaped string.
+- **`kcArg(v)`**: a value inside an `on…="…"` handler, e.g. ``kcHtml`<tr onclick="toggleGame(${kcArg(id)})">` ``. The
+  browser unescapes an attribute before running it, so escaping alone isn't enough there.
+- **`kcRaw(s)`**: markup passed through unchanged. Only for markup no player can have written; each use says why.
+
+Engine narrative is escaped where it's shown, not where it's written: the report stores `**bold**`, and the page
+turns it into `<strong>` after escaping. A page whose content is mostly fixed builds elements instead (the Overlord
+page's `el()`), which is just as safe.
+
+`npm test`'s `html-lint` refuses HTML built any other way, and each converted page has a hostile-name test. The
+portals are converted one pull request at a time; until then, `html-lint` holds each to its current count. Mistakes to
+avoid: [traps.md](traps.md#html-is-built-only-through-kchtml).
 
 ## `kingdoms-call-data.js`: the one source for shared rules
 

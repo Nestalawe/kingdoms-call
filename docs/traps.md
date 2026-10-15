@@ -178,6 +178,30 @@ Before changing a rule, grep the engine and both portals for its nouns **and its
 every place in the same commit. When a number moves, grep the old number in narrative strings and the
 rulebooks.
 
+## HTML is built only through `kcHtml`
+
+Every name, message and record on screen was typed by someone, so it goes into a page as text (P0-19,
+[ARCHITECTURE.md](ARCHITECTURE.md#how-a-page-builds-html)). `npm test`'s `html-lint` catches most mistakes; these
+ones it can't, or they cost time:
+
+- **Markup in a value is shown as text.** In ``kcHtml`<td>${won?'<span class="pill">won</span>':''}</td>` `` the pill
+  comes out as `<span…` on screen. Make the markup `kcHtml` too: ``${won?kcHtml`<span class="pill">won</span>`:''}``.
+  The same goes for a helper that returns a plain string of markup, and for an entity written in data (`'Hosts &amp;
+  armies'` now shows `&amp;`: write `&`).
+- **Never join `kcHtml` with `+`, `+=` or `.join('')`.** Each makes a plain string, which the next `kcHtml` escapes,
+  so the markup shows as text. Collect pieces in an array and put the array in: ``kcHtml`<ul>${rows}</ul>` ``.
+- **No `kcEsc` (or an older escaper) inside `kcHtml`.** The value is escaped twice and `&` shows as `&amp;`.
+- **`kcArg` keeps a value's type.** `onclick="f('${id}')"` passed a string; `onclick="f(${kcArg(id)})"` passes `id` as
+  it is, so a numeric id now arrives as a number. Write `kcArg(String(id))` where the handler compares strings.
+- **`kc-safe.js` doesn't change.** Its four helpers are fixed: for a few minutes after a deploy, a browser can pair a
+  new page with its cached copy of the old file. If it must change, put `?v=<stamp>` on every page's `<script src>`.
+- **A test that runs a slice of a page in `vm`** (the Hall of Fame record tests do) must load `site/kc-safe.js` into
+  its context first if the slice calls the helpers.
+- **Show it looks the same.** Converting a page must not change it for ordinary names: run
+  `node tests/tools/same-dom.js <main's site>` and put its output in the pull request.
+- **An exception goes in `html-lint`'s `ALLOWED`** with a one-line reason, for Theo to review. Never raise a page's
+  `LIMITS`; it only goes down.
+
 ## Order is data
 
 - `KC_*` arrays are iterated for random picks, tie-breaks and dropdowns, and object keys are walked.
