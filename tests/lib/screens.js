@@ -314,6 +314,8 @@ const playerPortal={
   },
   world(N){
     const num=(field,v)=>N.hostile?N(field,v):v;
+    // an id the engine makes (a research choice's key and options): hostile with hostile names, the engine's shape otherwise
+    const eid=(field,i,plain)=>N.hostile?N(field,i):plain;
     const at='2026-10-10T07:00:00Z';
     const json=o=>JSON.stringify(o);
     const game=(id,name,gm,status,turn,gs,extra)=>({id,name,gm_user_id:gm,status,turn,max_players:4,max_turns:0,created_at:at,meta:null,
@@ -486,9 +488,9 @@ const playerPortal={
       mercIntel:[{id:50,unitName:N('unit',14),type:'Free Lances',quality:'Veteran',cost:4,...at5,location:OP.home}],
       researchCategories:[{name:N('field',0),known:1,total:3},{name:'Military',known:3,total:3}],
       discoveries:[],
-      pendingDiscoveryChoices:[{key:N('key',0),charName:C.hero,category:N('field',0),turn:num('turn',2),
-        options:[{id:N('choice',0),name:N('discovery',2),category:N('field',0),desc:N('discovery',3)},
-          {id:N('choice',1),name:N('discovery',4),category:'Military',desc:N('discovery',5)}]}],
+      pendingDiscoveryChoices:[{key:eid('key',0,'t2-c11'),charName:C.hero,category:N('field',0),turn:num('turn',2),
+        options:[{id:eid('choice',0,'sd12'),name:N('discovery',2),category:N('field',0),desc:N('discovery',3)},
+          {id:eid('choice',1,'sd34'),name:N('discovery',4),category:'Military',desc:N('discovery',5)}]}],
       knownFeatures:[{name:N('lair',10),province:OP.home,monster:N('monster',10),monsterPower:'Weak'}],
       orderPrices:{brokerSpy:2,harvest:2}};
     // p1's saved draft: orders for every hero, the hire, raise and charm cards and their own orders, the encounter
@@ -509,7 +511,7 @@ const playerPortal={
         11:{tactics:['FL'],notes:N('cry',1)},[pre.hire]:{tactics:['ME','CS:white'],notes:N('cry',2)},
         [pre.raise]:{tactics:['ME'],notes:N('cry',3),duelStance:'refuse'},[pre.charm]:{tactics:['ME'],notes:N('cry',4)}},
       kingSkills:{10:{skills:sk9,pending:4,name:N('heir',0),temper:'Cautious',base:sk9}},
-      diplomacy:{1:'enemy'},discoveryChoices:{[N('key',0)]:N('choice',1)},forTurn:turnNow};
+      diplomacy:{1:'enemy'},discoveryChoices:{[eid('key',0,'t2-c11')]:eid('choice',1,'sd34')},forTurn:turnNow};
     const ordersShown=[...Object.values(OP),N('heir',0),N('details',0),N('details',1),N('hero',14),N('hero',15),N('hero',16),N('hero',17),
       N('hero',18),N('hero',19),N('hero',20),N('hero',22),N('unit',10),N('unit',11),N('unit',12),N('unit',14),N('unit',15),N('item',10),N('item',11),
       N('item',12),N('item',14),N('lair',10),N('lair',11),N('monster',10),N('field',0),N('discovery',2),N('discovery',3),N('reason',0)];
