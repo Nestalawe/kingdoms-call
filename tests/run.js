@@ -154,6 +154,7 @@ const SUITE=[
   ['intrusion-invisible', 'tests/intrusion-invisible.test.js'], // batch 2026-10-15
   ['intrusion-lurker',    'tests/intrusion-lurker.test.js'], // batch 2026-10-15
   ['spy-eight-watch',     'tests/spy-eight-watch.test.js'], // batch 2026-10-15 (second batch)
+  ['divine-rest-words',   'tests/divine-rest-words.test.js'], // batch 2026-10-15 (second batch)
   ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
