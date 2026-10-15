@@ -20,7 +20,7 @@ const {SITE}=require('./lib/boot');
 const {JSDOM}=require('jsdom');
 
 const LIMITS={
-  'kingdoms-call-gm-portal.html':177,
+  'kingdoms-call-gm-portal.html':0,
   'kingdoms-call-player-portal.html':606,
 };
 // {file, rule, line: a piece of the source line, reason}

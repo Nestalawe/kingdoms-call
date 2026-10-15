@@ -17,7 +17,7 @@
   function hint(m){
     if(/being updated/i.test(m)) return 'Nothing was read or saved. Reload in a few minutes; if it keeps happening, tell the GM what the message above says.';
     if(/supabase is not defined/i.test(m)) return 'The Supabase library (vendor/supabase-js-2.117.3.min.js, part of this site) did not load. Check your internet connection and hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
-    if(/kingdoms-call-data\.js/i.test(m)) return 'Upload the current <b>kingdoms-call-data.js</b> to the same folder as this page, then reload.';
+    if(/kingdoms-call-data\.js/i.test(m)) return 'Upload the current kingdoms-call-data.js to the same folder as this page, then reload.';
     if(/before initialization|is not defined/i.test(m)) return 'A script error stopped the portal from starting (this build, or a stale cached copy). Hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
     return 'Hard-reload the page (Ctrl/Cmd+Shift+R). If it persists, report the message above.';
   }
@@ -27,12 +27,14 @@
       const sp=document.getElementById('spinner');
       if(!sp||sp.style.display==='none') return;   // init() already ran: not a boot failure
       shown=true;
-      const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      // Constant markup only: the message and the hint go in as text (kc-safe.js may be the script that failed).
       sp.innerHTML='<div style="max-width:640px;margin:auto;text-align:left;font-family:\'Crimson Text\',serif;letter-spacing:0;color:#f2e8d0;border:1px solid #7a1c1c;border-radius:4px;padding:14px 18px;background:#1a0c0c">'
         +'<div style="font-family:\'Cinzel\',serif;color:#e8b84b;margin-bottom:6px">⚠ The GM portal could not start</div>'
-        +'<div style="font-family:monospace;font-size:.8rem;color:#f0c0c0;word-break:break-word;margin-bottom:8px">'+esc(msg)+'</div>'
-        +'<div style="font-size:.9rem">'+hint(msg)+'</div>'
+        +'<div style="font-family:monospace;font-size:.8rem;color:#f0c0c0;word-break:break-word;margin-bottom:8px" data-boot="msg"></div>'
+        +'<div style="font-size:.9rem" data-boot="hint"></div>'
         +'<div style="margin-top:10px"><button onclick="location.reload()" style="padding:6px 14px;background:#7a1c1c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:\'Cinzel\',serif">Reload</button></div></div>';
+      sp.querySelector('[data-boot="msg"]').textContent=msg;
+      sp.querySelector('[data-boot="hint"]').textContent=hint(msg);
     };
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
   }
@@ -40,6 +42,7 @@
   window.addEventListener('unhandledrejection',e=>show((e.reason&&(e.reason.message||e.reason))||'Unhandled promise rejection'));
 })();
 </script>
+<script src="kc-safe.js"></script>
 <script src="vendor/supabase-js-2.117.3.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
@@ -427,7 +430,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-2028'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.16-0819'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -439,9 +442,9 @@ const KC_BUILD_STAMP='2026.10.15-2028'; // this build (the footer shows the same
   if(allMissing||stale){
     const title=allMissing?'data file missing':'data file out of date';
     const body=allMissing
-      ? '<b>kingdoms-call-data.js</b> was not found next to this page. Upload it to the same folder as the GM portal and reload.'
-      : `The <b>kingdoms-call-data.js</b> beside this page is ${stamp?'v'+stamp:'an old build without a version stamp'}; this portal needs v${KC_DATA_MIN} or newer${missing.length?` (missing: ${missing.join(', ')})`:''}. Upload the current data file, then hard-reload (Ctrl/Cmd+Shift+R) so the browser does not keep the old copy.`;
-    document.addEventListener('DOMContentLoaded',()=>{document.body.innerHTML=`<div style="font-family:serif;padding:40px;max-width:600px;margin:auto"><h2>Kingdoms Call — ${title}</h2><p>${body}</p></div>`;});
+      ? kcHtml`<b>kingdoms-call-data.js</b> was not found next to this page. Upload it to the same folder as the GM portal and reload.`
+      : kcHtml`The <b>kingdoms-call-data.js</b> beside this page is ${stamp?'v'+stamp:'an old build without a version stamp'}; this portal needs v${KC_DATA_MIN} or newer${missing.length?` (missing: ${missing.join(', ')})`:''}. Upload the current data file, then hard-reload (Ctrl/Cmd+Shift+R) so the browser does not keep the old copy.`;
+    document.addEventListener('DOMContentLoaded',()=>{document.body.innerHTML=kcHtml`<div style="font-family:serif;padding:40px;max-width:600px;margin:auto"><h2>Kingdoms Call — ${title}</h2><p>${body}</p></div>`;});
     throw new Error(allMissing?'kingdoms-call-data.js not loaded':`kingdoms-call-data.js out of date (${stamp||'no stamp'} < ${KC_DATA_MIN})`);
   }
 })();
@@ -1586,7 +1589,7 @@ async function doSignIn(){
     let m=error.message;
     if(m.includes('Email not confirmed')) m='Email not confirmed. In Supabase → Authentication → Providers → Email, turn off "Confirm email", then try again. Or confirm your account in Supabase → Authentication → Users.';
     if(m.includes('Invalid login')) m='Email or password incorrect.';
-    msg.innerHTML=`<div class="msg-error">${m}</div>`;return;
+    msg.innerHTML=kcHtml`<div class="msg-error">${m}</div>`;return;
   }
   currentUser=data.user;
   onSignedIn();
@@ -1630,10 +1633,10 @@ async function submitChangePassword(){
   msg.innerHTML='<span style="color:#231e16">Updating…</span>';
   try{
     const {error}=await sb.auth.updateUser({password:p1});
-    if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
+    if(error){ msg.innerHTML=kcHtml`<span style="color:#c00">${error.message}</span>`; return; }
     msg.innerHTML='<span style="color:#1d5a1d">✓ Password updated.</span>';
     setTimeout(closeChangePassword,1200);
-  }catch(e){ msg.innerHTML=`<span style="color:#c00">${e.message||'Update failed.'}</span>`; }
+  }catch(e){ msg.innerHTML=kcHtml`<span style="color:#c00">${e.message||'Update failed.'}</span>`; }
 }
 
 async function onSignedIn(){
@@ -1682,8 +1685,7 @@ async function gmPortalAllowed(){
 // ── REPORTED DISPATCHES (P0-24, rulings D-01 and D-13g) ────
 // A player reports a dispatch they received; the game's GM sees it here (gm_reported_messages), with the reporter
 // and their reason, and may delete it. A GM who plays a realm in the game sees none: its reports go to the Overlord.
-// Every player-written string is escaped (_rdEsc, until P0-19's shared helper).
-const _rdEsc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Every player-written string is shown as text (kcHtml).
 async function loadReportedDispatches(game){
   const card=document.getElementById('detail-reports-card'), el=document.getElementById('detail-reports');
   if(!card||!el) return;
@@ -1697,18 +1699,18 @@ async function loadReportedDispatches(game){
   el.innerHTML='<div class="msg-info">Loading…</div>';
   const {data,error}=await sb.rpc('gm_reported_messages',{p_game:game.id});
   if(!currentGame||String(currentGame.id)!==String(game.id)) return;   // another game was opened meanwhile
-  if(error){ el.innerHTML='<div class="msg-error">'+_rdEsc(error.message)+'</div>'; return; }
+  if(error){ el.innerHTML=kcHtml`<div class="msg-error">${error.message}</div>`; return; }
   const rows=Array.isArray(data)?data:[];
   if(!rows.length){ el.innerHTML='<div style="color:var(--stone);font-size:.85rem">No dispatches reported.</div>'; return; }
   const realm=i=>{ const p=(currentGamePlayers||[]).find(x=>Number(x.player_index)===Number(i)); return (p&&p.display_name)||('Realm '+(Number(i)+1)); };
-  el.innerHTML=rows.map(r=>{
+  el.innerHTML=kcHtml`${rows.map(r=>{
     const to=r.scope==='public'?'every realm':(r.to_indexes||[]).map(realm).join(', ');
-    return `<div class="player-slot" style="display:block">
-      <div style="font-size:.78rem;color:var(--stone)">${r.turn!=null?'Turn '+_rdEsc(r.turn)+' · ':''}from <strong>${_rdEsc(realm(r.from_index))}</strong> to ${_rdEsc(to)} · reported by <strong>${_rdEsc(realm(r.reporter_index))}</strong>${r.reason?' · “'+_rdEsc(r.reason)+'”':''}</div>
-      <div style="margin:6px 0;white-space:pre-wrap">${_rdEsc(r.body)}</div>
-      <button class="btn btn-crimson" style="font-size:.66rem" onclick="deleteReportedDispatch(${Number(r.message_id)||0})">Delete this dispatch</button>
+    return kcHtml`<div class="player-slot" style="display:block">
+      <div style="font-size:.78rem;color:var(--stone)">${r.turn!=null?'Turn '+r.turn+' · ':''}from <strong>${realm(r.from_index)}</strong> to ${to} · reported by <strong>${realm(r.reporter_index)}</strong>${r.reason?' · “'+r.reason+'”':''}</div>
+      <div style="margin:6px 0;white-space:pre-wrap">${r.body}</div>
+      <button class="btn btn-crimson" style="font-size:.66rem" onclick="deleteReportedDispatch(${kcArg(Number(r.message_id)||0)})">Delete this dispatch</button>
     </div>`;
-  }).join('');
+  })}`;
 }
 async function deleteReportedDispatch(id){
   if(!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
@@ -1727,7 +1729,7 @@ async function loadGames(){
   // never the world or the reports. See gamesListCols.
   const {data,error}=_kcOverlord?await loadEveryGame()
     :await sb.from('games').select(gamesListCols()).eq('gm_user_id',currentUser.id).order('created_at',{ascending:false});
-  if(error){el.innerHTML=`<div class="msg-error">${_rdEsc(error.message)}</div>`;return;}
+  if(error){el.innerHTML=kcHtml`<div class="msg-error">${error.message}</div>`;return;}
   _listGames=data||[];
   if(_kcOverlord){
     const ids=[...new Set(_listGames.map(g=>g.gm_user_id).filter(Boolean))];
@@ -1759,15 +1761,15 @@ function renderGameList(){
   const _archCount=data.filter(gameArchived).length;
   const _rows=data.filter(g=>gameArchived(g)===_showArchived);
   const _switch=(_archCount>0||_showArchived)
-    ? `<div class="topbar" style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    ? kcHtml`<div class="topbar" style="display:flex;justify-content:flex-end;margin-bottom:10px">
          <button class="btn btn-ghost" style="font-size:.7rem" onclick="toggleArchivedView()">${_showArchived?`← Back to active games (${data.length-_archCount})`:`🗄 Archived games (${_archCount})`}</button>
        </div>`
     : '';
   const _banner=_showArchived
-    ? `<div class="msg-info" style="margin-bottom:10px">🗄 <strong>Archived games.</strong> Everything is kept — the world, the players, every turn report, the dispatches, the statistics and the Hall-of-Fame record. Archived games are simply out of the way, and the auto-turn watcher leaves them alone. Open one and press <strong>Restore</strong> to bring it back.</div>`
+    ? kcHtml`<div class="msg-info" style="margin-bottom:10px">🗄 <strong>Archived games.</strong> Everything is kept — the world, the players, every turn report, the dispatches, the statistics and the Hall-of-Fame record. Archived games are simply out of the way, and the auto-turn watcher leaves them alone. Open one and press <strong>Restore</strong> to bring it back.</div>`
     : '';
   if(_rows.length===0){
-    el.innerHTML=_switch+_banner+`<div class="msg-info">${_showArchived?'No archived games.':_kcOverlord?'No active games.':'No active games. Click "+ New Game" to start one.'}</div>`;return;
+    el.innerHTML=kcHtml`${_switch}${_banner}<div class="msg-info">${_showArchived?'No archived games.':_kcOverlord?'No active games.':'No active games. Click "+ New Game" to start one.'}</div>`;return;
   }
   if(_kcOverlord){
     // Master GM mode: grouped by GM (by name), narrowed by the filter (game or GM name).
@@ -1777,12 +1779,12 @@ function renderGameList(){
     _rows.filter(g=>!q||String(g.name||'').toLowerCase().includes(q)||gmName(g).toLowerCase().includes(q))
       .forEach(g=>{ (groups[gmName(g)]=groups[gmName(g)]||[]).push(g); });
     const names=Object.keys(groups).sort((a,b)=>a.localeCompare(b));
-    el.innerHTML=_switch+_banner+(names.length?names.map(n=>`<div class="gm-group" data-gm="${_rdEsc(n)}">
-      <h3 style="color:var(--gold);margin:14px 0 8px">${_rdEsc(n)} <span style="font-size:.75rem;color:var(--parchment)">· ${groups[n].length} game${groups[n].length>1?'s':''}</span></h3>
-      ${groups[n].map(gameCardHtml).join('')}</div>`).join(''):'<div class="msg-info">No game matches.</div>');
+    el.innerHTML=kcHtml`${_switch}${_banner}${names.length?names.map(n=>kcHtml`<div class="gm-group" data-gm="${n}">
+      <h3 style="color:var(--gold);margin:14px 0 8px">${n} <span style="font-size:.75rem;color:var(--parchment)">· ${groups[n].length} game${groups[n].length>1?'s':''}</span></h3>
+      ${groups[n].map(g=>gameCardHtml(g))}</div>`):kcHtml`<div class="msg-info">No game matches.</div>`}`;
     return;
   }
-  el.innerHTML=_switch+_banner+_rows.map(gameCardHtml).join('');
+  el.innerHTML=kcHtml`${_switch}${_banner}${_rows.map(g=>gameCardHtml(g))}`;
 }
 function gameCardHtml(g){
   const total=g.game_players?.length||0;
@@ -1794,7 +1796,7 @@ function gameCardHtml(g){
   const _humanCap=_ab?0:(maxP-_plannedBots);
   const _botTag=_plannedBots?` +${_plannedBots}🤖`:'';
   let pill='';
-  if(g.status==='setup') pill=`<span class="pill pill-amber">Setup — ${joined}/${_humanCap} joined${_botTag}</span>`;
+  if(g.status==='setup') pill=kcHtml`<span class="pill pill-amber">Setup — ${joined}/${_humanCap} joined${_botTag}</span>`;
   else if(g.status==='active'){
     // Green once every joined human has submitted (submitted>=joined, including the all-bot
     // joined===0 case, where there are no human orders to wait on) — signals the turn is ready to
@@ -1804,13 +1806,13 @@ function gameCardHtml(g){
     const _in=_need.filter(p=>p.orders_submitted).length;
     const _allIn=_in>=_need.length;
     const _tm=turnModeOf(g);
-    pill=`<span class="pill ${_allIn?'pill-green':'pill-blue'}">Turn ${g.turn} — ${_in}/${_need.length} orders in${_allIn?' ✓':''}${_botTag}</span>${_tm.mode!=='manual'?` <span class="pill pill-amber">${turnModeSummary(_tm)}</span>`:''}`;
+    pill=kcHtml`<span class="pill ${_allIn?'pill-green':'pill-blue'}">Turn ${g.turn} — ${_in}/${_need.length} orders in${_allIn?' ✓':''}${_botTag}</span>${_tm.mode!=='manual'?kcHtml` <span class="pill pill-amber">${turnModeSummary(_tm)}</span>`:''}`;
   }
-  else if(g.status==='complete') pill=`<span class="pill pill-green">Complete</span>`;
+  else if(g.status==='complete') pill=kcHtml`<span class="pill pill-green">Complete</span>`;
   // Visibility lives in the setup-phase game_state; active/complete games no longer carry it.
   const _vis=gameVisibility(g);
   const _visTag=(g.status==='setup')
-    ? (_vis.private?` <span class="pill pill-amber" title="Only invited players can see this game">🔒 Private · ${_vis.invited.length} invited</span>`:` <span class="pill pill-blue">🌍 Public</span>`)
+    ? (_vis.private?kcHtml` <span class="pill pill-amber" title="Only invited players can see this game">🔒 Private · ${_vis.invited.length} invited</span>`:kcHtml` <span class="pill pill-blue">🌍 Public</span>`)
     : '';
   // Last turn run: G.turnMode.turnRanAt is stamped at world-gen (Turn 0) and again on every turn
   // resolution, so no schema change is needed. Setup-phase games have not run a turn yet; games
@@ -1820,12 +1822,12 @@ function gameCardHtml(g){
   const _lastRunTag=(g.status==='setup')
     ? ''
     : (_ranAt
-        ? ` · Last turn run ${_ranAt}${_ranAgo?` <span style="opacity:.75">(${_ranAgo})</span>`:''}`
-        : ` · Last turn run <span style="opacity:.75">not recorded</span>`);
-  const _archTag=gameArchived(g)?` <span class="pill pill-amber" title="Archived — all data kept">🗄 Archived${(()=>{const a=gameArchivedAt(g);return a?` ${fmtLastRun(a)}`:'';})()}</span>`:'';
-  return`<div class="game-card" data-game="${_rdEsc(g.id)}" onclick="openGame('${_rdEsc(g.id)}')"${gameArchived(g)?' style="opacity:.82"':''}>
+        ? kcHtml` · Last turn run ${_ranAt}${_ranAgo?kcHtml` <span style="opacity:.75">(${_ranAgo})</span>`:''}`
+        : kcHtml` · Last turn run <span style="opacity:.75">not recorded</span>`);
+  const _archTag=gameArchived(g)?kcHtml` <span class="pill pill-amber" title="Archived — all data kept">🗄 Archived${(()=>{const a=gameArchivedAt(g);return a?` ${fmtLastRun(a)}`:'';})()}</span>`:'';
+  return kcHtml`<div class="game-card" data-game="${g.id}" onclick="openGame(${kcArg(String(g.id))})"${gameArchived(g)?kcHtml` style="opacity:.82"`:''}>
     <div>
-      <div class="gc-name">${_rdEsc(g.name)}${pill}${_visTag}${_archTag}</div>
+      <div class="gc-name">${g.name}${pill}${_visTag}${_archTag}</div>
       <div class="gc-meta">${maxP} player slots · Sea ${seaPctOf(g)}% · Created ${new Date(g.created_at).toLocaleDateString()}${_lastRunTag}</div>
     </div>
     <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
@@ -1892,7 +1894,7 @@ async function updateGameVisibility(){
     await loadInvitablePlayers();
     renderInviteCheckboxes('new-game-invite-list','new-game-invite-search',_inviteSelected,'new-game-invite-count');
   }catch(e){
-    if(list) list.innerHTML=`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
+    if(list) list.innerHTML=kcHtml`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
   }
 }
 
@@ -1911,22 +1913,21 @@ function renderInviteCheckboxes(listId, searchId, selectedSet, countId){
   }
   else if(shown.length===0){ list.innerHTML='<div style="padding:10px;color:var(--stone);font-size:.82rem">No players match that filter.</div>'; }
   else{
-    list.innerHTML=shown.map(p=>{
+    list.innerHTML=kcHtml`${shown.map(p=>{
       const on=selectedSet.has(p.id);
-      const safeName=(p.name||'').replace(/</g,'&lt;');
 
-      return `<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #2a2015;cursor:pointer;font-weight:normal">
-        <input type="checkbox" ${on?'checked':''} onchange="toggleInvite('${listId}','${searchId}','${countId}','${p.id}',this.checked)">
+      return kcHtml`<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #2a2015;cursor:pointer;font-weight:normal">
+        <input type="checkbox" ${on?'checked':''} onchange="toggleInvite(${kcArg(listId)},${kcArg(searchId)},${kcArg(countId)},${kcArg(String(p.id))},this.checked)">
         <span style="flex:1;min-width:0">
-          <span style="color:var(--parchment)">${safeName}</span>
-          ${p.joined?`<span style="color:var(--stone);font-size:.78rem"> · joined ${p.joined}</span>`:''}
+          <span style="color:var(--parchment)">${p.name||''}</span>
+          ${p.joined?kcHtml`<span style="color:var(--stone);font-size:.78rem"> · joined ${p.joined}</span>`:''}
         </span>
       </label>`;
-    }).join('');
+    })}`;
   }
   const cnt=document.getElementById(countId);
   if(cnt){
-    cnt.innerHTML=`${selectedSet.size} player${selectedSet.size!==1?'s':''} invited`;
+    cnt.textContent=`${selectedSet.size} player${selectedSet.size!==1?'s':''} invited`;
   }
   // stash the working Set + ids on the list so toggleInvite can reach the right one
   list._selectedSet=selectedSet;
@@ -1936,7 +1937,7 @@ function toggleInvite(listId, searchId, countId, id, on){
   const set=list&&list._selectedSet; if(!set) return;
   if(on) set.add(id); else set.delete(id);
   const cnt=document.getElementById(countId);
-  if(cnt) cnt.innerHTML=`${set.size} player${set.size!==1?'s':''} invited`;
+  if(cnt) cnt.textContent=`${set.size} player${set.size!==1?'s':''} invited`;
 }
 // Map a set/array of invited ids to display names (for the detail screen).
 function invitedNames(ids){
@@ -1974,7 +1975,7 @@ async function openEditInvites(){
     renderInviteCheckboxes('edit-invite-list','edit-invite-search',_editInviteSelected,'edit-invite-count');
   }catch(e){
     const l=document.getElementById('edit-invite-list');
-    if(l) l.innerHTML=`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
+    if(l) l.innerHTML=kcHtml`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
   }
 }
 function closeEditInvites(){ const o=document.getElementById('edit-invite-overlay'); if(o) o.remove(); }
@@ -1987,7 +1988,7 @@ async function saveEditInvites(){
   cfg.visibility='private'; cfg.invited=invited;
   if(msg) msg.innerHTML='<span style="color:var(--stone)">Saving…</span>';
   const {error}=await sb.from('games').update({game_state:JSON.stringify(cfg),...metaPatch(cfg)}).eq('id',currentGame.id);
-  if(error){ if(msg) msg.innerHTML=`<span style="color:#e88">${error.message}</span>`; return; }
+  if(error){ if(msg) msg.innerHTML=kcHtml`<span style="color:#e88">${error.message}</span>`; return; }
   currentGame.game_state=JSON.stringify(cfg); Object.assign(currentGame,metaPatch(cfg)); // keep the in-memory copy fresh
   closeEditInvites();
   openGame(currentGame.id); // re-render the detail with the updated invite list
@@ -2030,7 +2031,7 @@ function updateSeaHint(){
   else if(v<=40) flavour='Coasts and channels — the classic map. Most realms touch the sea; a navy is useful but not essential.';
   else if(v<=55) flavour='Archipelagos — land splits into islands. Fleets (or flyers) are needed to reach most rivals; Naval and Part Sea become strong.';
   else flavour='A drowned world — scattered islands in open ocean. Every campaign is amphibious; expect far less land, tax and lairs per realm.';
-  hint.innerHTML=`${sea} sea · ${land} land of ${cells} provinces — about ${(land/realms).toFixed(1)} land provinces per realm. ${flavour}`;
+  hint.textContent=`${sea} sea · ${land} land of ${cells} provinces — about ${(land/realms).toFixed(1)} land provinces per realm. ${flavour}`;
 }
 // Bot realms (Phase 1): validate the bot count against map capacity and show the GM the resulting
 // human/bot split. Bots consume the same realm capacity as humans.
@@ -2050,11 +2051,11 @@ function updateBotHint(){
   const humans=allBot?0:(maxP-bots);
   hint.style.display='block';
   if(allBot){
-    hint.innerHTML=`🤖 <strong>All-bot game:</strong> all ${maxP} realms will be GM-controlled bots. No humans can join. Needs at least 2.`;
+    hint.innerHTML=kcHtml`🤖 <strong>All-bot game:</strong> all ${maxP} realms will be GM-controlled bots. No humans can join. Needs at least 2.`;
   }else if(humans<=0){
-    hint.innerHTML=`🤖 <strong>${bots} bots</strong>, no room for human players (bots fill all ${maxP} slots). Tick “All-bot game”, or lower the bot count to leave human slots.`;
+    hint.innerHTML=kcHtml`🤖 <strong>${bots} bots</strong>, no room for human players (bots fill all ${maxP} slots). Tick “All-bot game”, or lower the bot count to leave human slots.`;
   }else{
-    hint.innerHTML=`🤖 <strong>${bots} bot${bots!==1?'s':''}</strong> + up to <strong>${humans} human${humans!==1?'s':''}</strong> = ${maxP} realms. Bots are generated when you run Turn 0.`;
+    hint.innerHTML=kcHtml`🤖 <strong>${bots} bot${bots!==1?'s':''}</strong> + up to <strong>${humans} human${humans!==1?'s':''}</strong> = ${maxP} realms. Bots are generated when you run Turn 0.`;
   }
 }
 
@@ -2098,10 +2099,10 @@ async function createGame(){
   }).select().single();
   if(error){
     const isRLS=error.message?.includes('row-level security')||error.code==='42501';
-    msg.innerHTML=`<div class="msg-error">${error.message}${isRLS?'<br><small>Add an INSERT policy on the games table in your Supabase dashboard.</small>':''}</div>`;
+    msg.innerHTML=kcHtml`<div class="msg-error">${error.message}${isRLS?kcHtml`<br><small>Add an INSERT policy on the games table in your Supabase dashboard.</small>`:''}</div>`;
     return;
   }
-  msg.innerHTML=`<div class="msg-success">Game created! ${isPrivate?`Only your ${invited.length} invited player${invited.length!==1?'s':''} will see it.`:'Any registered player can now see and join it.'}</div>`;
+  msg.innerHTML=kcHtml`<div class="msg-success">Game created! ${isPrivate?`Only your ${invited.length} invited player${invited.length!==1?'s':''} will see it.`:'Any registered player can now see and join it.'}</div>`;
   setTimeout(()=>{show('sec-games');loadGames();},1500);
 }
 
@@ -2162,7 +2163,7 @@ async function openGame(gameId){
   document.getElementById('detail-run-turn0-wrap').style.display='none';
 
   const {data:game,error}=await sb.from('games').select('*, game_players(*)').eq('id',gameId).single();
-  if(error){document.getElementById('detail-msg').innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(error){document.getElementById('detail-msg').innerHTML=kcHtml`<div class="msg-error">${error.message}</div>`;return;}
   currentGame=game;
   // 2026-09-25: the legacy unit-name rewrite used to be called here on the raw game_state, which is
   // a JSON string — a silent no-op. It now runs inside runTurn on the parsed state (where the
@@ -2182,7 +2183,7 @@ async function openGame(gameId){
   const statusLabel=game.status==='setup'?'Setup':game.status==='active'?`Turn ${game.turn}`:'Complete';
   // ARCHIVE (2026-09-27 item 1) — the header says so, and the button becomes Restore.
   const _isArch=gameArchived(game);
-  document.getElementById('detail-status-pill').innerHTML=`<span class="pill ${game.status==='active'?'pill-blue':'pill-amber'}">${statusLabel}</span>${_isArch?` <span class="pill pill-amber" title="Archived — every scrap of this game is kept">🗄 Archived${(()=>{const a=gameArchivedAt(game);return a?` ${fmtLastRun(a)}`:'';})()}</span>`:''}`;
+  document.getElementById('detail-status-pill').innerHTML=kcHtml`<span class="pill ${game.status==='active'?'pill-blue':'pill-amber'}">${statusLabel}</span>${_isArch?kcHtml` <span class="pill pill-amber" title="Archived — every scrap of this game is kept">🗄 Archived${(()=>{const a=gameArchivedAt(game);return a?` ${fmtLastRun(a)}`:'';})()}</span>`:''}`;
   { const _ab=document.getElementById('detail-archive-btn');
     if(_ab){ _ab.textContent=_isArch?'♻ Restore Game':'🗄 Archive Game';
              _ab.title=_isArch
@@ -2195,38 +2196,38 @@ async function openGame(gameId){
   // Player slots (bots labelled for the GM; they stay hidden from players elsewhere)
   const slotsHtml=currentGamePlayers.map(p=>{
     const bot=isBotRow(p);
-    const statusPill=bot?'<span class="pill pill-green">🤖 Bot</span>'
-      :(p.user_id?'<span class="pill pill-green">Joined</span>':'<span class="pill pill-amber">Waiting</span>');
+    const statusPill=bot?kcHtml`<span class="pill pill-green">🤖 Bot</span>`
+      :(p.user_id?kcHtml`<span class="pill pill-green">Joined</span>`:kcHtml`<span class="pill pill-amber">Waiting</span>`);
     // Remove-player control (2026-09-26, Toby item 4). Available at EVERY stage: in setup the slot
     // simply reopens; in a live game the realm concedes and plays no further part.
     const _con=(game.status!=='setup')&&realmConcededIn(game,p.player_index);
     const _rmLabel=(game.status==='setup')?'Remove player':'Remove player (realm concedes)';
-    return `
+    return kcHtml`
     <div class="player-slot">
       <div class="slot-name">${bot?'🤖 ':''}${p.display_name||'(slot open)'}</div>
       <div class="slot-status">${statusPill}</div>
-      ${_con?'<span class="pill pill-red">🏳 Conceded</span>':''}
-      ${(p.orders_submitted&&!bot)?'<span class="pill pill-blue">Orders in</span>':''}
-      ${!p.user_id&&!bot&&p.invite_code?`<div class="slot-code">Invite: ${p.invite_code}</div>`:''}
-      <button class="btn btn-ghost" style="color:#8a1010;border-color:#8a1010;font-size:.62rem;padding:4px 9px" title="${_rmLabel}" onclick="removePlayer('${p.id}')">✖ Remove</button>
-    </div>`;}).join('');
+      ${_con?kcHtml`<span class="pill pill-red">🏳 Conceded</span>`:''}
+      ${(p.orders_submitted&&!bot)?kcHtml`<span class="pill pill-blue">Orders in</span>`:''}
+      ${!p.user_id&&!bot&&p.invite_code?kcHtml`<div class="slot-code">Invite: ${p.invite_code}</div>`:''}
+      <button class="btn btn-ghost" style="color:#8a1010;border-color:#8a1010;font-size:.62rem;padding:4px 9px" title="${_rmLabel}" onclick="removePlayer(${kcArg(String(p.id))})">✖ Remove</button>
+    </div>`;});
 
   // Reserved bot slots (setup only — the actual bot rows are created when Turn 0 runs)
-  const reservedBotHtml=Array(reservedBots).fill(0).map(()=>`
+  const reservedBotHtml=Array(reservedBots).fill(0).map(()=>kcHtml`
     <div class="player-slot" style="opacity:.7">
       <div class="slot-name">🤖 Bot realm</div>
       <div class="slot-status"><span class="pill pill-amber">Generated at Turn 0</span></div>
-    </div>`).join('');
+    </div>`);
 
   // Open human slots (setup only)
   const openHuman=game.status==='setup'?Math.max(0,humanCap-joined):0;
-  const emptySlotsHtml=Array(openHuman).fill(0).map(()=>`
+  const emptySlotsHtml=Array(openHuman).fill(0).map(()=>kcHtml`
     <div class="player-slot" style="opacity:.5">
       <div class="slot-name">(open slot)</div>
       <div class="slot-status">Waiting for player</div>
-    </div>`).join('');
+    </div>`);
 
-  document.getElementById('detail-players-list').innerHTML=slotsHtml+reservedBotHtml+emptySlotsHtml;
+  document.getElementById('detail-players-list').innerHTML=kcHtml`${slotsHtml}${reservedBotHtml}${emptySlotsHtml}`;
 
   // Visibility / invites panel (setup phase only — visibility is dropped once a game goes active).
   const _visWrap=document.getElementById('detail-visibility-wrap');
@@ -2238,15 +2239,15 @@ async function openGame(gameId){
         _visWrap.innerHTML=`<div class="msg-info" style="margin:0">🌍 <strong>Public game</strong> — any registered player can see and join it.</div>`;
       }else{
         // Names need the profile cache; load it (best-effort) so we can show who's invited.
-        let namesHtml=`<span style="color:var(--stone)">${vis.invited.length} invited</span>`;
+        let namesHtml=kcHtml`<span style="color:var(--stone)">${vis.invited.length} invited</span>`;
         try{
           await loadInvitablePlayers();
           const names=invitedNames(vis.invited);
           namesHtml = names.length
-            ? names.map(n=>`<span class="pill pill-blue" style="margin:2px 4px 2px 0">${(n||'').replace(/</g,'&lt;')}</span>`).join('')
-            : '<span style="color:#c88">nobody invited yet — no one can join</span>';
-        }catch(e){ namesHtml=`<span style="color:#c88">${vis.invited.length} invited (couldn't load names: ${e.message})</span>`; }
-        _visWrap.innerHTML=`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c">
+            ? names.map(n=>kcHtml`<span class="pill pill-blue" style="margin:2px 4px 2px 0">${n||''}</span>`)
+            : kcHtml`<span style="color:#c88">nobody invited yet — no one can join</span>`;
+        }catch(e){ namesHtml=kcHtml`<span style="color:#c88">${vis.invited.length} invited (couldn't load names: ${e.message})</span>`; }
+        _visWrap.innerHTML=kcHtml`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
             <span style="color:var(--parchment);font-weight:600">🔒 Private game</span>
             <span style="color:var(--stone);font-size:.8rem">— only the players below can see and join it.</span>
@@ -2287,19 +2288,19 @@ function renderOrdersStatus(game){
   const humansAllIn=ordersWaitingOn(players,game).length===0;
   const allIn=humansAllIn&&(players.length+bots.length)>0;
   const _tm=turnModeOf(game);
-  const _tmLine=_tm.mode==='manual'?'':`<div class="msg-info" style="margin-bottom:8px">${turnModeSummary(_tm)} — ${_tm.mode==='auto'?'the watcher runs the turn as soon as every realm\'s orders are in.':'the watcher runs the turn when every realm\'s orders are in, or at the deadline.'}</div>`;
+  const _tmLine=_tm.mode==='manual'?'':kcHtml`<div class="msg-info" style="margin-bottom:8px">${turnModeSummary(_tm)} — ${_tm.mode==='auto'?'the watcher runs the turn as soon as every realm\'s orders are in.':'the watcher runs the turn when every realm\'s orders are in, or at the deadline.'}</div>`;
 
-  document.getElementById('detail-orders-status').innerHTML=`${_tmLine}
+  document.getElementById('detail-orders-status').innerHTML=kcHtml`${_tmLine}
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      ${players.map(p=>{ const ex=realmExemptIn(game,p.player_index); return `<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
+      ${players.map(p=>{ const ex=realmExemptIn(game,p.player_index); return kcHtml`<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
         background:${p.orders_submitted?'#d4edda':ex?'#eae3d2':'#fff3cd'};
         border:1px solid ${p.orders_submitted?'#28a745':ex?'#c9bd9e':'#ffc107'}">
         ${p.display_name}: ${p.orders_submitted?'✓ Orders submitted':ex?'— exempt (conceded / no realm)':'⏳ Awaiting orders'}
-      </div>`;}).join('')}
-      ${bots.map(b=>`<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
+      </div>`;})}
+      ${bots.map(b=>kcHtml`<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
         background:#eae3d2;border:1px solid #c9bd9e">
         🤖 ${b.display_name}: auto
-      </div>`).join('')}
+      </div>`)}
     </div>`;
 
   // Master GM mode (P0-32g): the Overlord may run any game's turn now, in any turn mode, orders in or not (to rescue
@@ -2467,21 +2468,22 @@ async function loadTurnLog(gameId, turn){
         const f=JSON.parse(raw0.slice(7));
         const col=f.neutral?'#555':(f.color||'#555');
         const rows=(f.armies||[]).length
-          ? f.armies.map(a=>`<div style="padding-left:14px;font-size:.78rem">• ${a.unitName?a.unitName+' — ':''}${a.quality} ${a.type}</div>`).join('')
-          : `<div style="padding-left:14px;font-size:.78rem;opacity:.7">— no armies —</div>`;
-        return`<div class="log-entry combat" style="border-left:4px solid var(--crimson);background:#fdf0f0;padding:4px 8px;margin-top:4px"><div style="font-weight:600">⚔ <span style="color:${col}">${f.name}</span> ${f.verb||''}:</div>${rows}</div>`;
+          ? f.armies.map(a=>kcHtml`<div style="padding-left:14px;font-size:.78rem">• ${a.unitName?a.unitName+' — ':''}${a.quality} ${a.type}</div>`)
+          : kcHtml`<div style="padding-left:14px;font-size:.78rem;opacity:.7">— no armies —</div>`;
+        return kcHtml`<div class="log-entry combat" style="border-left:4px solid var(--crimson);background:#fdf0f0;padding:4px 8px;margin-top:4px"><div style="font-weight:600">⚔ <span style="color:${col}">${f.name}</span> ${f.verb||''}:</div>${rows}</div>`;
       }catch(_){ /* fall through */ }
     }
-    const rawText=raw0.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-    const isStat=rawText.startsWith('📊');
-    const isBattle=rawText.startsWith('⚔')||rawText.startsWith('⚠');
-    if(isStat) return`<div class="log-entry stat" style="font-size:.78rem;color:#231e16;padding:2px 6px;background:#f5f0e8${/│/.test(rawText)?';font-family:monospace;white-space:pre;overflow-x:auto':''}">${rawText}</div>`;
-    if(isBattle) return`<div class="log-entry combat" style="border-left:4px solid var(--crimson);background:#fdf0f0;padding:4px 8px;margin-top:4px;font-weight:600">${rawText}</div>`;
-    return`<div class="log-entry ${e.type||''}" style="padding:2px 6px">${rawText}</div>`;
+    // Narrative is shown as text, then each **bold** run becomes <strong> (the engine writes no markup into it).
+    const text=kcHtml`${raw0.split(/\*\*(.+?)\*\*/).map((s,i)=>i%2?kcHtml`<strong>${s}</strong>`:s)}`;
+    const isStat=raw0.startsWith('📊');
+    const isBattle=raw0.startsWith('⚔')||raw0.startsWith('⚠');
+    if(isStat) return kcHtml`<div class="log-entry stat" style="font-size:.78rem;color:#231e16;padding:2px 6px;background:#f5f0e8${/│/.test(raw0)?';font-family:monospace;white-space:pre;overflow-x:auto':''}">${text}</div>`;
+    if(isBattle) return kcHtml`<div class="log-entry combat" style="border-left:4px solid var(--crimson);background:#fdf0f0;padding:4px 8px;margin-top:4px;font-weight:600">${text}</div>`;
+    return kcHtml`<div class="log-entry ${e.type||''}" style="padding:2px 6px">${text}</div>`;
   }
 
   function phaseHeader(ph){
-    return`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:${PHASE_COLORS[ph]};
+    return kcHtml`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:${PHASE_COLORS[ph]};
       text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;
       border-bottom:1px dotted #ddd;margin:6px 0 3px;
       display:flex;align-items:center;gap:5px">
@@ -2511,7 +2513,7 @@ async function loadTurnLog(gameId, turn){
     // else: realm-level (no-character) lines are not shown in the GM chronicle
   });
 
-  let html='';
+  const html=[];
 
   // Group characters by player for GM view
   const playerGroups={};
@@ -2524,45 +2526,45 @@ async function loadTurnLog(gameId, turn){
   Object.entries(playerGroups).forEach(([pi,chars])=>{
     const player=allPlayers[pi]||{name:`Player ${pi}`};
     const accentColor=pi==='unowned'?'#888':'var(--crimson)';
-    html+=`<div style="margin-bottom:6px;font-family:Cinzel,serif;font-size:.78rem;color:#fff;
+    html.push(kcHtml`<div style="margin-bottom:6px;font-family:Cinzel,serif;font-size:.78rem;color:#fff;
       padding:5px 10px;background:${accentColor};border-radius:2px 2px 0 0;letter-spacing:.04em">
       👑 ${player.name||'Unknown'}
-    </div>`;
+    </div>`);
 
     chars.forEach(cg=>{
       const hasAny=cg.phases.some(ph=>ph.length>0);
       if(!hasAny) return;
-      html+=`<div style="margin-bottom:14px;border:1px solid ${cg.isKing?'var(--crimson)':'var(--stone)'};border-radius:0 0 3px 3px;overflow:hidden">
+      html.push(kcHtml`<div style="margin-bottom:14px;border:1px solid ${cg.isKing?'var(--crimson)':'var(--stone)'};border-radius:0 0 3px 3px;overflow:hidden">
         <div style="font-family:'Cinzel',serif;font-size:.82rem;color:#fff;
           padding:5px 10px;background:${cg.isKing?'var(--crimson)':'var(--forest)'};
           display:flex;align-items:center;gap:6px">
           ${cg.isKing?'👑':'⚔'} ${cg.name}
         </div>
-        <div style="padding:4px 6px">`;
+        <div style="padding:4px 6px">`);
       cg.phases.forEach((entries,ph)=>{
         if(!entries.length) return;
-        html+=phaseHeader(ph);
-        entries.forEach(e=>{html+=renderEntry(e);});
+        html.push(phaseHeader(ph));
+        entries.forEach(e=>{html.push(renderEntry(e));});
       });
-      html+=`</div></div>`;
+      html.push(kcHtml`</div></div>`);
     });
   });
 
   // Intel
   const hasIntel=Object.values(intelByPhase).some(a=>a.length>0);
   if(hasIntel){
-    html+=`<div style="margin-bottom:14px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
+    html.push(kcHtml`<div style="margin-bottom:14px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
       <div style="font-family:'Cinzel',serif;font-size:.82rem;color:#fff;padding:5px 10px;background:#c8922a;display:flex;align-items:center;gap:6px">👁 Intelligence</div>
-      <div style="padding:4px 6px">`;
+      <div style="padding:4px 6px">`);
     [0,1,2,3,4,99].forEach(ph=>{
       if(!(intelByPhase[ph]||[]).length) return;
-      if(ph<5) html+=phaseHeader(ph);
-      (intelByPhase[ph]||[]).forEach(e=>{html+=renderEntry(e);});
+      if(ph<5) html.push(phaseHeader(ph));
+      (intelByPhase[ph]||[]).forEach(e=>{html.push(renderEntry(e));});
     });
-    html+=`</div></div>`;
+    html.push(kcHtml`</div></div>`);
   }
 
-  el.innerHTML=html||'<div style="color:#3a3224;font-size:.85rem">No entries.</div>';
+  el.innerHTML=html.length?kcHtml`${html}`:'<div style="color:#3a3224;font-size:.85rem">No entries.</div>';
 }
 
 // ── DELETE GAME ────
@@ -2599,7 +2601,7 @@ async function deleteGame(gameId){
   }
   await sb.from('game_players').delete().eq('game_id',gameId);
   const {error}=await sb.from('games').delete().eq('id',gameId);
-  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(error){msg.innerHTML=kcHtml`<div class="msg-error">${error.message}</div>`;return;}
   show('sec-games');
   loadGames();
 }
@@ -2617,7 +2619,7 @@ async function runTurn0(){
   // Reload player list fresh
   const {data:players,error:pErr}=await sb.from('game_players').select('*').eq('game_id',currentGame.id);
   if(pErr){
-    msg.innerHTML=`<div class="msg-error">Could not load players: ${pErr.message}</div>`;return;
+    msg.innerHTML=kcHtml`<div class="msg-error">Could not load players: ${pErr.message}</div>`;return;
   }
 
   // Read game config from game_state
@@ -2664,7 +2666,7 @@ async function runTurn0(){
   const plannedBots=allBot?(currentGame.max_players||0):botCount;
   const totalKingdoms=humanSetups.length+plannedBots;
   if(totalKingdoms<2){
-    msg.innerHTML=`<div class="msg-error">Need at least 2 realms to start (currently ${humanSetups.length} human${humanSetups.length!==1?'s':''} + ${plannedBots} bot${plannedBots!==1?'s':''}). ${allBot?'Raise Maximum Players.':'Wait for another player to join, or add bots at game creation.'}</div>`;
+    msg.innerHTML=kcHtml`<div class="msg-error">Need at least 2 realms to start (currently ${humanSetups.length} human${humanSetups.length!==1?'s':''} + ${plannedBots} bot${plannedBots!==1?'s':''}). ${allBot?'Raise Maximum Players.':'Wait for another player to join, or add bots at game creation.'}</div>`;
     return;
   }
 
@@ -2696,15 +2698,15 @@ function renderTurn0Preview(){
   if(!_pendingTurn0){ msg.innerHTML=''; return; }
   const {humanSetups, botSetups}=_pendingTurn0;
   const skillStr=s=>Object.entries(s||{}).filter(([,v])=>v>0).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'—';
-  const row=(sp)=>`
+  const row=(sp)=>kcHtml`
     <div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:7px 10px;border:1px solid #d8cbb0;border-radius:3px;margin-bottom:6px;background:${sp.isBot?'#f4efe4':'#fff'}">
       <strong style="min-width:150px">${sp.isBot?'🤖 ':''}${sp.kingdomName}</strong>
       <span style="color:var(--stone);font-size:.82rem">${sp.kingName} · ${sp.alignment} · ${sp.race} · ${sp.temper}</span>
       <span style="font-size:.78rem;opacity:.85;margin-left:auto">Skills: ${skillStr(sp.skills)}</span>
     </div>`;
-  const humansHtml=humanSetups.length?`<div style="font-size:.8rem;color:var(--stone);margin:2px 0 4px">Human players (${humanSetups.length})</div>${humanSetups.map(row).join('')}`:'';
-  const botsHtml=`<div style="font-size:.8rem;color:var(--stone);margin:8px 0 4px">🤖 Bot realms (${botSetups.length})</div>${botSetups.map(row).join('')}`;
-  msg.innerHTML=`
+  const humansHtml=humanSetups.length?kcHtml`<div style="font-size:.8rem;color:var(--stone);margin:2px 0 4px">Human players (${humanSetups.length})</div>${humanSetups.map(sp=>row(sp))}`:'';
+  const botsHtml=kcHtml`<div style="font-size:.8rem;color:var(--stone);margin:8px 0 4px">🤖 Bot realms (${botSetups.length})</div>${botSetups.map(sp=>row(sp))}`;
+  msg.innerHTML=kcHtml`
     <div class="card" style="border-color:var(--crimson)">
       <h3 style="margin-top:0">Confirm the starting roster</h3>
       <div class="msg-info" style="margin-bottom:8px">Review the generated bot realms below. Generate the world to lock them in, or re-roll the bots.</div>
@@ -2743,7 +2745,7 @@ async function commitTurn0(){
             alignment:b.alignment, temper:b.temper, skills:b.skills
           }, status:'bot', waitingForTurn0:true})
         }).select().single();
-        if(bErr){ msg.innerHTML=`<div class="msg-error">Could not create bot realm: ${bErr.message}</div>`; return; }
+        if(bErr){ msg.innerHTML=kcHtml`<div class="msg-error">Could not create bot realm: ${bErr.message}</div>`; return; }
         b.gamePlayerId=brow.id;
       }
     }
@@ -2769,7 +2771,7 @@ async function commitTurn0(){
       game_state:JSON.stringify(gameState),
       ...metaPatch(gameState)
     }).eq('id',currentGame.id);
-    if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving game: ${saveErr.message}</div>`;return;}
+    if(saveErr){msg.innerHTML=kcHtml`<div class="msg-error">Error saving game: ${saveErr.message}</div>`;return;}
 
     // 4. Push turn reports to every realm (humans and bots alike — a bot report is harmless and
     // lets the GM inspect a bot's starting position).
@@ -2791,9 +2793,9 @@ async function commitTurn0(){
 
     const botN=setupPlayers.filter(s=>s.isBot).length, humN=setupPlayers.length-botN;
     if(reportErrors.length>0){
-      msg.innerHTML=`<div class="msg-error">Game created but some reports failed: ${reportErrors.join(', ')}</div>`;
+      msg.innerHTML=kcHtml`<div class="msg-error">Game created but some reports failed: ${reportErrors.join(', ')}</div>`;
     } else {
-      msg.innerHTML=`<div class="msg-success">✅ Turn 0 complete! Map generated for ${humN} human${humN!==1?'s':''}${botN?` + ${botN} bot${botN!==1?'s':''}`:''}. Players can now log in and see their realms.</div>`;
+      msg.innerHTML=kcHtml`<div class="msg-success">✅ Turn 0 complete! Map generated for ${humN} human${humN!==1?'s':''}${botN?` + ${botN} bot${botN!==1?'s':''}`:''}. Players can now log in and see their realms.</div>`;
     }
     _pendingTurn0=null;
     currentGame.status='active';currentGame.turn=1;
@@ -2804,7 +2806,7 @@ async function commitTurn0(){
     if(refreshed){currentGame=refreshed;currentGamePlayers=refreshed.game_players||[];}
     renderOrdersStatus(currentGame);
   }catch(e){
-    msg.innerHTML=`<div class="msg-error">Generation error: ${e.message}</div>`;
+    msg.innerHTML=kcHtml`<div class="msg-error">Generation error: ${e.message}</div>`;
     console.error(e);
   }
 }
@@ -4924,8 +4926,7 @@ let _kcHasMeta=false;
 // only through migrations, applied by the deploy before the site goes live, so there is no SQL to paste:
 // seeing this means the database is behind this copy of the site.
 function kcMissingMsg(title,what,effect){
-  return `<div class="msg-error"><strong>${title}</strong> — the database has no ${what}, so ${effect}. `
-    +`The deploy adds it to the database before the site goes live, so this copy of the site is ahead of its database: tell Theo.</div>`;
+  return kcHtml`<div class="msg-error"><strong>${title}</strong> — the database has no ${what}, so ${effect}. The deploy adds it to the database before the site goes live, so this copy of the site is ahead of its database: tell Theo.</div>`;
 }
 async function probeGameMeta(){
   try{
@@ -4934,7 +4935,7 @@ async function probeGameMeta(){
     if(error) console.warn('games.meta probe:',error.message);
   }catch(e){ _kcHasMeta=false; }
   const el=document.getElementById('msg-games');
-  if(el) el.innerHTML=_kcHasMeta?'':kcMissingMsg('Disk-IO fix not active','<code>games.meta</code> column','this tab is still pulling every game\'s full world and reports once a minute');
+  if(el) el.innerHTML=_kcHasMeta?'':kcMissingMsg('Disk-IO fix not active',kcHtml`<code>games.meta</code> column`,'this tab is still pulling every game\'s full world and reports once a minute');
   return _kcHasMeta;
 }
 function gameMetaOf(game){
@@ -4998,16 +4999,16 @@ let _showArchived=false;   // which list the GM is looking at
 async function setGameArchived(gameId, archived){
   if(!gameId) return;
   const msg=document.getElementById('detail-msg')||document.getElementById('msg-games');
-  if(msg) msg.innerHTML=`<div class="msg-info">${archived?'Archiving':'Restoring'}…</div>`;
+  if(msg) msg.innerHTML=kcHtml`<div class="msg-info">${archived?'Archiving':'Restoring'}…</div>`;
   const {data:row,error}=await sb.from('games').select('id,turn,game_state').eq('id',gameId).single();
-  if(error||!row){ if(msg) msg.innerHTML=`<div class="msg-error">${(error&&error.message)||'Game not found.'}</div>`; return; }
+  if(error||!row){ if(msg) msg.innerHTML=kcHtml`<div class="msg-error">${(error&&error.message)||'Game not found.'}</div>`; return; }
   const gs=parseGameState(row);
   if(archived){ gs.archived=true; gs.archivedAt=new Date().toISOString(); }
   else { delete gs.archived; delete gs.archivedAt; }
   let q=sb.from('games').update({game_state:JSON.stringify(gs),...metaPatch(gs)}).eq('id',gameId);
   if(row.turn!=null) q=q.eq('turn',row.turn);       // the turn must not have moved under us
   const {data:done,error:e2}=await q.select('id').maybeSingle();
-  if(e2){ if(msg) msg.innerHTML=`<div class="msg-error">${e2.message}</div>`; return; }
+  if(e2){ if(msg) msg.innerHTML=kcHtml`<div class="msg-error">${e2.message}</div>`; return; }
   if(!done){ if(msg) msg.innerHTML='<div class="msg-error">The turn advanced while you were archiving — reload and try again.</div>'; return; }
   if(msg) msg.innerHTML='';
   _showArchived=archived;    // land on the list the game just moved into
@@ -5066,9 +5067,9 @@ async function probeTelemetry(){
 function renderTelemetryBanner(){
   const el=document.getElementById('msg-telemetry'); if(!el) return;
   if(!_kcHasTel){
-    el.innerHTML=kcMissingMsg('📈 Game telemetry not active','<code>turn_events</code> / <code>game_results</code> tables','nothing is being recorded for the Stats tab or for bot training');
+    el.innerHTML=kcMissingMsg('📈 Game telemetry not active',kcHtml`<code>turn_events</code> / <code>game_results</code> tables`,'nothing is being recorded for the Stats tab or for bot training');
   } else if(_kcTelLastErr){
-    el.innerHTML=`<div class="msg-error"><strong>📈 Telemetry write failed</strong> on the last turn run: ${String(_kcTelLastErr).replace(/</g,'&lt;')}. The turn itself was saved; only the statistics row was lost.</div>`;
+    el.innerHTML=kcHtml`<div class="msg-error"><strong>📈 Telemetry write failed</strong> on the last turn run: ${_kcTelLastErr}. The turn itself was saved; only the statistics row was lost.</div>`;
   } else el.innerHTML='';
 }
 // ════════════════════════════════════════════════════════════════════════════════════════════════
@@ -5108,7 +5109,7 @@ async function probeMessaging(){
 }
 function renderMessagingBanner(){
   const el=document.getElementById('msg-messaging'); if(!el) return;
-  el.innerHTML=_kcHasMsg?'':kcMissingMsg('✉ Player messaging not active','<code>game_messages</code> / <code>game_message_reads</code> tables','the Dispatches panel in the player portal cannot send or receive');
+  el.innerHTML=_kcHasMsg?'':kcMissingMsg('✉ Player messaging not active',kcHtml`<code>game_messages</code> / <code>game_message_reads</code> tables`,'the Dispatches panel in the player portal cannot send or receive');
 }
 // ── SNAPSHOT of one realm's situation, from a parsed game state. Module level: uses only module-level
 // helpers (unitBaseStrength, relOfReport, consecratedIds), so buildGameResultRows can call it on any
@@ -5314,14 +5315,14 @@ async function openStats(force){
       _stats.rows=rows.map(r=>({...r, orders:_statsJ(r.orders), pre:_statsJ(r.pre), post:_statsJ(r.post), outcomes:_statsJ(r.outcomes)}));
       _stats.results=res.map(r=>({...r, setup:_statsJ(r.setup), final:_statsJ(r.final)}));
       _stats.games=games||[]; _stats.loadedAt=Date.now();
-    }catch(e){ msg.innerHTML=`<div class="msg-error">Could not load statistics: ${e.message||e}</div>`; return; }
+    }catch(e){ msg.innerHTML=kcHtml`<div class="msg-error">Could not load statistics: ${e.message||e}</div>`; return; }
   }
   msg.innerHTML='';
   // game picker: names from the games table; deleted games keep their rows under their id
   const sel=document.getElementById('stats-game'); const keep=sel.value;
   const names={}; (_stats.games||[]).forEach(g=>{ names[String(g.id)]=g.name; }); (_stats.results||[]).forEach(r=>{ if(!names[r.game_id]&&r.game_name) names[r.game_id]=r.game_name; });
   const ids=[...new Set(_stats.rows.map(r=>r.game_id))];
-  sel.innerHTML='<option value="">All games</option>'+ids.map(id=>`<option value="${id}">${(names[id]||('deleted game '+id.slice(0,8))).replace(/</g,'&lt;')}${_statsFinished(id)?' ✓':''}</option>`).join('');
+  sel.innerHTML=kcHtml`<option value="">All games</option>${ids.map(id=>kcHtml`<option value="${id}">${names[id]||('deleted game '+id.slice(0,8))}${_statsFinished(id)?' ✓':''}</option>`)}`;
   sel.value=ids.includes(keep)?keep:'';
   renderStats();
 }
@@ -5336,27 +5337,27 @@ function _statsFilter(){
 // ── tiny chart kit ── a horizontal bar per row: label · bar · value text. `items` = [{label, v, txt, col, sub}]
 function statsBars(items, opt){
   opt=opt||{}; const max=Math.max(1e-9,...items.map(i=>i.v||0), opt.max||0);
-  return `<div style="display:grid;grid-template-columns:${opt.labelW||150}px 1fr auto;gap:4px 8px;align-items:center;font-size:.8rem">`+items.map(i=>`
-    <div style="color:var(--ink-light);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(i.label||'').replace(/"/g,'&quot;')}">${i.label}</div>
-    <div style="background:#eee4cc;border-radius:3px;height:12px;position:relative"><div style="width:${Math.max(0,Math.min(100,100*(i.v||0)/max))}%;height:100%;border-radius:3px;background:${i.col||STATS_COL.crimson}"></div>${i.mark!=null?`<div title="expected" style="position:absolute;top:-2px;left:${Math.max(0,Math.min(100,100*i.mark/max))}%;width:2px;height:16px;background:${STATS_COL.blue}"></div>`:''}</div>
-    <div style="font-family:monospace;font-size:.74rem;color:var(--stone);white-space:nowrap">${i.txt!=null?i.txt:i.v}</div>`).join('')+'</div>';
+  return kcHtml`<div style="display:grid;grid-template-columns:${opt.labelW||150}px 1fr auto;gap:4px 8px;align-items:center;font-size:.8rem">${items.map(i=>kcHtml`
+    <div style="color:var(--ink-light);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${i.label||''}">${i.label}</div>
+    <div style="background:#eee4cc;border-radius:3px;height:12px;position:relative"><div style="width:${Math.max(0,Math.min(100,100*(i.v||0)/max))}%;height:100%;border-radius:3px;background:${i.col||STATS_COL.crimson}"></div>${i.mark!=null?kcHtml`<div title="expected" style="position:absolute;top:-2px;left:${Math.max(0,Math.min(100,100*i.mark/max))}%;width:2px;height:16px;background:${STATS_COL.blue}"></div>`:''}</div>
+    <div style="font-family:monospace;font-size:.74rem;color:var(--stone);white-space:nowrap">${i.txt!=null?i.txt:i.v}</div>`)}</div>`;
 }
 // a small SVG line chart: series = [{name, pts:[[x,y]...], col}], x = turn number
 function statsLines(series, opt){
   opt=opt||{}; const W=560,H=170,L=40,R=12,T=12,B=26;
   const xs=series.flatMap(s=>s.pts.map(p=>p[0])), ys=series.flatMap(s=>s.pts.map(p=>p[1]));
-  if(!xs.length) return '<div style="color:var(--stone);font-size:.8rem">No data.</div>';
+  if(!xs.length) return kcHtml`<div style="color:var(--stone);font-size:.8rem">No data.</div>`;
   const x0=Math.min(...xs), x1=Math.max(...xs), y1=Math.max(1e-9,...ys), y0=0;
   const X=x=>L+(x1===x0?0:(x-x0)/(x1-x0))*(W-L-R), Y=y=>T+(1-(y-y0)/(y1-y0))*(H-T-B);
   const ticks=[0,0.5,1].map(f=>y0+f*(y1-y0));
-  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;font-family:'Crimson Text',serif;font-size:10px">`;
-  ticks.forEach(t=>{ svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="#d8cbb0" stroke-width="1"/><text x="${L-4}" y="${Y(t)+3}" text-anchor="end" fill="#6b5a42">${Math.round(t*10)/10}</text>`; });
-  for(let x=x0;x<=x1;x++){ if((x1-x0)>12&&x%Math.ceil((x1-x0)/12)) continue; svg+=`<text x="${X(x)}" y="${H-8}" text-anchor="middle" fill="#6b5a42">${x}</text>`; }
-  series.forEach(s=>{ const pts=s.pts.slice().sort((a,b)=>a[0]-b[0]); if(!pts.length) return; svg+=`<polyline fill="none" stroke="${s.col}" stroke-width="2" stroke-linejoin="round" points="${pts.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ')}"/>`; pts.forEach(p=>{ svg+=`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="2.5" fill="${s.col}"><title>${s.name} · turn ${p[0]}: ${Math.round(p[1]*10)/10}</title></circle>`; }); });
-  svg+=`<text x="${W-R}" y="${H-8}" text-anchor="start" fill="#6b5a42" font-size="9" dx="6">turn</text></svg>`;
-  return `<div>${svg}<div style="font-size:.74rem;color:var(--stone);margin-top:2px">${series.map(s=>`<span style="display:inline-block;width:10px;height:10px;background:${s.col};border-radius:2px;vertical-align:middle;margin-right:4px"></span>${s.name}`).join(' &nbsp; ')}${opt.note?' · '+opt.note:''}</div></div>`;
+  const svg=[kcHtml`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;font-family:'Crimson Text',serif;font-size:10px">`];
+  ticks.forEach(t=>{ svg.push(kcHtml`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="#d8cbb0" stroke-width="1"/><text x="${L-4}" y="${Y(t)+3}" text-anchor="end" fill="#6b5a42">${Math.round(t*10)/10}</text>`); });
+  for(let x=x0;x<=x1;x++){ if((x1-x0)>12&&x%Math.ceil((x1-x0)/12)) continue; svg.push(kcHtml`<text x="${X(x)}" y="${H-8}" text-anchor="middle" fill="#6b5a42">${x}</text>`); }
+  series.forEach(s=>{ const pts=s.pts.slice().sort((a,b)=>a[0]-b[0]); if(!pts.length) return; svg.push(kcHtml`<polyline fill="none" stroke="${s.col}" stroke-width="2" stroke-linejoin="round" points="${pts.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ')}"/>`); pts.forEach(p=>{ svg.push(kcHtml`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="2.5" fill="${s.col}"><title>${s.name} · turn ${p[0]}: ${Math.round(p[1]*10)/10}</title></circle>`); }); });
+  svg.push(kcHtml`<text x="${W-R}" y="${H-8}" text-anchor="start" fill="#6b5a42" font-size="9" dx="6">turn</text></svg>`);
+  return kcHtml`<div>${svg}<div style="font-size:.74rem;color:var(--stone);margin-top:2px">${series.map((s,i)=>kcHtml`${i?kcHtml` &nbsp; `:''}<span style="display:inline-block;width:10px;height:10px;background:${s.col};border-radius:2px;vertical-align:middle;margin-right:4px"></span>${s.name}`)}${opt.note?' · '+opt.note:''}</div></div>`;
 }
-function statsCard(title, body, note){ return `<div class="card"><h2>${title}</h2>${note?`<div style="font-size:.78rem;color:var(--stone);margin:-6px 0 10px">${note}</div>`:''}${body}</div>`; }
+function statsCard(title, body, note){ return kcHtml`<div class="card"><h2>${title}</h2>${note?kcHtml`<div style="font-size:.78rem;color:var(--stone);margin:-6px 0 10px">${note}</div>`:''}${body}</div>`; }
 const _pct=(a,b)=>b>0?Math.round(100*a/b):0;
 const _avg=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:0;
 function renderStats(){
@@ -5367,63 +5368,63 @@ function renderStats(){
   const winners=new Set(results.filter(r=>r.winner).map(r=>r.game_id+'#'+r.player_index));
   const isWinner=r=>winners.has(r.game_id+'#'+r.player_index);
   const finishedGames=new Set(results.map(r=>r.game_id));
-  let html='';
+  const html=[];
   // 1. overview
   const humansRT=rows.filter(r=>!r.is_bot).length, botsRT=rows.length-humansRT;
-  html+=statsCard('Overview',`<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem">
+  html.push(statsCard('Overview',kcHtml`<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem">
     <div><div style="font-family:Cinzel,serif;font-size:1.4rem;color:var(--crimson)">${games.length}</div><div style="color:var(--stone)">games recorded</div></div>
     <div><div style="font-family:Cinzel,serif;font-size:1.4rem;color:var(--crimson)">${finishedGames.size}</div><div style="color:var(--stone)">finished</div></div>
     <div><div style="font-family:Cinzel,serif;font-size:1.4rem;color:var(--crimson)">${rows.length}</div><div style="color:var(--stone)">realm-turns (${humansRT} human · ${botsRT} bot)</div></div>
     <div><div style="font-family:Cinzel,serif;font-size:1.4rem;color:var(--crimson)">${rows.reduce((s,r)=>s+((r.outcomes||{}).battles||{}).asAttacker||0,0)}</div><div style="color:var(--stone)">battles</div></div>
     <div><div style="font-family:Cinzel,serif;font-size:1.4rem;color:var(--crimson)">${rows.reduce((s,r)=>s+((r.outcomes||{}).encounters||{}).fought||0,0)}</div><div style="color:var(--stone)">lair fights</div></div>
     <div><div style="font-family:Cinzel,serif;font-size:1.4rem;color:var(--crimson)">${rows.reduce((s,r)=>s+((r.outcomes||{}).deaths||{}).own||0,0)}</div><div style="color:var(--stone)">characters killed</div></div>
-  </div>`);
+  </div>`));
   // 2. who wins
   if(results.length){
     const by=(key)=>{ const m={}; results.forEach(r=>{ const k=key(r); if(k==null) return; const o=m[k]||(m[k]={n:0,w:0,rank:[]}); o.n++; if(r.winner) o.w++; if(r.rank) o.rank.push(r.rank); }); return Object.entries(m).map(([k,o])=>({label:k,v:_pct(o.w,o.n),txt:`${_pct(o.w,o.n)}% won · ${o.n} realm${o.n!==1?'s':''} · avg rank ${_avg(o.rank).toFixed(1)}`})).sort((a,b)=>b.v-a.v); };
     const gv={}, glen={}; results.forEach(r=>{ gv[r.game_id]=r.victory; glen[r.game_id]=r.turns; }); const vict={}; Object.values(gv).forEach(v=>{ vict[v]=(vict[v]||0)+1; });
     const gN=Object.keys(glen).length;
-    html+=statsCard('Who wins',
-      `<h3>Humans vs bots</h3>${statsBars(by(r=>r.is_bot?`Bot (${r.bot_difficulty||'?'})`:'Human'))}
+    html.push(statsCard('Who wins',
+      kcHtml`<h3>Humans vs bots</h3>${statsBars(by(r=>r.is_bot?`Bot (${r.bot_difficulty||'?'})`:'Human'))}
        <h3 style="margin-top:14px">By race</h3>${statsBars(by(r=>r.race))}
        <h3 style="margin-top:14px">By alignment</h3>${statsBars(by(r=>r.alignment))}
        <h3 style="margin-top:14px">How games end</h3>${statsBars(Object.entries(vict).map(([k,n])=>({label:k,v:n,txt:`${n} game${n!==1?'s':''}`,col:STATS_COL.forest})))}
        <div style="font-size:.8rem;margin-top:8px">Average game length: <strong>${_avg(Object.values(glen)).toFixed(1)} turns</strong> over ${gN} finished game${gN!==1?'s':''}. Realms that dropped out early: ${results.filter(r=>r.out_how).length} (${results.filter(r=>r.out_how==='conceded').length} conceded, ${results.filter(r=>r.out_how==='eliminated').length} eliminated).</div>`,
-      'From the game_results rows — one per realm per finished game. Win rates are per realm, so with 4 realms a fair race sits at 25%.');
+      'From the game_results rows — one per realm per finished game. Win rates are per realm, so with 4 realms a fair race sits at 25%.'));
     // 3. early lead → final rank
     const T5=5; let lead=0, leadWon=0; const corr=[];
     finishedGames.forEach(gid=>{ const at=allRows.filter(r=>r.game_id===gid&&r.turn===T5); if(!at.length) return; const top=at.slice().sort((a,b)=>((b.post||{}).taxShare||0)-((a.post||{}).taxShare||0))[0]; lead++; if(isWinner(top)) leadWon++; at.forEach(r=>{ const fr=results.find(x=>x.game_id===gid&&x.player_index===r.player_index); if(fr&&fr.rank) corr.push([r.post.taxShare||0, fr.rank]); }); });
     if(lead){
-      html+=statsCard('Does an early lead decide it?',`<div style="font-size:.85rem">The realm holding the most of the world's tax base at the end of turn ${T5} went on to win <strong>${leadWon} of ${lead}</strong> finished games (${_pct(leadWon,lead)}%). ${_pct(leadWon,lead)>=75?'That is a strong snowball — the mid-game may be too kind to the leader (coalitions, catch-up mechanics, lair rewards for the trailing realms are the usual levers).':_pct(leadWon,lead)<=35?'Early leads are not sticking — the game has real come-backs.':'A lead helps but does not settle it — a healthy place to be.'}</div>
+      html.push(statsCard('Does an early lead decide it?',kcHtml`<div style="font-size:.85rem">The realm holding the most of the world's tax base at the end of turn ${T5} went on to win <strong>${leadWon} of ${lead}</strong> finished games (${_pct(leadWon,lead)}%). ${_pct(leadWon,lead)>=75?'That is a strong snowball — the mid-game may be too kind to the leader (coalitions, catch-up mechanics, lair rewards for the trailing realms are the usual levers).':_pct(leadWon,lead)<=35?'Early leads are not sticking — the game has real come-backs.':'A lead helps but does not settle it — a healthy place to be.'}</div>
         <h3 style="margin-top:12px">Turn-${T5} tax share vs final rank</h3>${statsBars(corr.sort((a,b)=>b[0]-a[0]).slice(0,16).map(([sh,rk])=>({label:`${sh}% of world`,v:sh,txt:`finished #${rk}`,col:rk===1?STATS_COL.gold:STATS_COL.stone})),{labelW:110})}`,
-        'Needs finished games with at least '+T5+' turns recorded.');
+        'Needs finished games with at least '+T5+' turns recorded.'));
     }
   } else {
-    html+=statsCard('Who wins','<div style="font-size:.85rem;color:var(--stone)">No finished games in this selection yet — win rates, victory types and the early-lead test appear once a game ends (or once you Record Results for a game that finished before telemetry existed: this happens automatically at sign-in for finished games).</div>');
+    html.push(statsCard('Who wins',kcHtml`<div style="font-size:.85rem;color:var(--stone)">No finished games in this selection yet — win rates, victory types and the early-lead test appear once a game ends (or once you Record Results for a game that finished before telemetry existed: this happens automatically at sign-in for finished games).</div>`));
   }
   // 4. trajectories
   { const key=r=>isWinner(r)?'winners':(finishedGames.has(r.game_id)?'others':'running');
     const mk=(f,name)=>{ const byT={}; rows.forEach(r=>{ if(!r.post) return; const k=key(r); if(k==='running'&&finishedGames.size) return; const o=(byT[r.turn]=byT[r.turn]||{}); (o[k]=o[k]||[]).push(f(r.post)); });
       const ser=[]; ['winners','others','running'].forEach((k,i)=>{ const pts=Object.entries(byT).map(([t,o])=>o[k]?[+t,_avg(o[k])]:null).filter(Boolean); if(pts.length) ser.push({name:k==='running'?'all realms (games still running)':k==='winners'?'eventual winners':'the rest',pts,col:[STATS_COL.gold,STATS_COL.stone,STATS_COL.blue][i]}); });
-      return `<h3 style="margin-top:12px">${name}</h3>`+statsLines(ser); };
-    html+=statsCard('How realms grow', mk(p=>p.provinces,'Provinces held')+mk(p=>p.gold,'Treasury (gold)')+mk(p=>p.str,'Army strength (led + garrison)')+mk(p=>p.heroes,'Heroes in service'),
-      'Average per realm at the end of each turn. Where a game has finished, eventual winners are drawn apart from the rest — the gap between the two lines is what winning looks like in this ruleset, and the turn where it opens is where the game is decided.');
+      return kcHtml`<h3 style="margin-top:12px">${name}</h3>${statsLines(ser)}`; };
+    html.push(statsCard('How realms grow', [mk(p=>p.provinces,'Provinces held'),mk(p=>p.gold,'Treasury (gold)'),mk(p=>p.str,'Army strength (led + garrison)'),mk(p=>p.heroes,'Heroes in service')],
+      'Average per realm at the end of each turn. Where a game has finished, eventual winners are drawn apart from the rest — the gap between the two lines is what winning looks like in this ruleset, and the turn where it opens is where the game is decided.'));
   }
   // 5. orders
   { const mix=(sub)=>{ const m={}; let tot=0; sub.forEach(r=>Object.values((r.orders||{}).chars||{}).forEach(c=>(c.ph||[]).forEach(o=>{ m[o.a]=(m[o.a]||0)+1; tot++; }))); return {m,tot}; };
     const H=mix(rows.filter(r=>!r.is_bot)), Bt=mix(rows.filter(r=>r.is_bot)), Wn=mix(rows.filter(r=>isWinner(r))), Ls=mix(rows.filter(r=>finishedGames.has(r.game_id)&&!isWinner(r)));
     const acts=[...new Set([...Object.keys(H.m),...Object.keys(Bt.m)])].sort((a,b)=>((H.m[b]||0)+(Bt.m[b]||0))-((H.m[a]||0)+(Bt.m[a]||0)));
     const lab=a=>STATS_ACTION_LABEL[a]||a.replace(/_/g,' ');
-    const twoCol=(A,B,an,bn)=>`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>${an} (${A.tot} character-phases)</h3>${statsBars(acts.map(a=>({label:lab(a),v:_pct(A.m[a]||0,A.tot),txt:`${_pct(A.m[a]||0,A.tot)}%`})),{labelW:110,max:60})}</div><div><h3>${bn} (${B.tot})</h3>${statsBars(acts.map(a=>({label:lab(a),v:_pct(B.m[a]||0,B.tot),txt:`${_pct(B.m[a]||0,B.tot)}%`,col:STATS_COL.forest})),{labelW:110,max:60})}</div></div>`;
-    let ob=twoCol(H,Bt,'Humans','Bots');
-    if(Wn.tot&&Ls.tot) ob+=`<div style="margin-top:14px">${twoCol(Wn,Ls,'Eventual winners','The rest')}</div>`;
-    html+=statsCard('What players order', ob, 'Share of every character-phase given each order. Orders humans give that bots never do (and the reverse) are the first thing to teach the bots; orders winners give more than losers are the ones that matter. A "defend" share above ~40% usually means idle heroes.');
+    const twoCol=(A,B,an,bn)=>kcHtml`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>${an} (${A.tot} character-phases)</h3>${statsBars(acts.map(a=>({label:lab(a),v:_pct(A.m[a]||0,A.tot),txt:`${_pct(A.m[a]||0,A.tot)}%`})),{labelW:110,max:60})}</div><div><h3>${bn} (${B.tot})</h3>${statsBars(acts.map(a=>({label:lab(a),v:_pct(B.m[a]||0,B.tot),txt:`${_pct(B.m[a]||0,B.tot)}%`,col:STATS_COL.forest})),{labelW:110,max:60})}</div></div>`;
+    const ob=[twoCol(H,Bt,'Humans','Bots')];
+    if(Wn.tot&&Ls.tot) ob.push(kcHtml`<div style="margin-top:14px">${twoCol(Wn,Ls,'Eventual winners','The rest')}</div>`);
+    html.push(statsCard('What players order', ob, 'Share of every character-phase given each order. Orders humans give that bots never do (and the reverse) are the first thing to teach the bots; orders winners give more than losers are the ones that matter. A "defend" share above ~40% usually means idle heroes.'));
     // recruits by unit type
     const rec={}; rows.forEach(r=>Object.values((r.orders||{}).chars||{}).forEach(c=>(c.ph||[]).forEach(o=>{ if(o.a!=='recruit'||!o.t) return; const m=String(o.t).match(/^([^|]+)\|(\d+)/); if(m) rec[m[1]]=(rec[m[1]]||0)+parseInt(m[2]); })));
     const inPlay={}; rows.filter(r=>r.post).forEach(r=>(r.post.characters||[]).forEach(c=>(c.units||[]).forEach(u=>{ inPlay[u.t]=(inPlay[u.t]||0)+1; })));
     const types=Object.keys(ARMY_COST_MASTER).filter(t=>rec[t]||inPlay[t]).sort((a,b)=>(rec[b]||0)-(rec[a]||0));
     const never=Object.keys(ARMY_COST_MASTER).filter(t=>!rec[t]&&!inPlay[t]&&!/Garrison/.test(t));
-    html+=statsCard('Units recruited', statsBars(types.slice(0,24).map(t=>({label:t,v:rec[t]||0,txt:`${rec[t]||0} ordered · ${inPlay[t]||0} unit-turns led`})),{labelW:150})+(never.length?`<div style="font-size:.78rem;color:var(--stone);margin-top:8px">Never recruited or led in these rows: ${never.join(', ')}.</div>`:''), 'Units ordered by type (from Recruit orders) beside how often each type is actually seen in a led column. A unit nobody buys is either priced wrong, unavailable, or not understood.');
+    html.push(statsCard('Units recruited', [statsBars(types.slice(0,24).map(t=>({label:t,v:rec[t]||0,txt:`${rec[t]||0} ordered · ${inPlay[t]||0} unit-turns led`})),{labelW:150}),never.length?kcHtml`<div style="font-size:.78rem;color:var(--stone);margin-top:8px">Never recruited or led in these rows: ${never.join(', ')}.</div>`:''], 'Units ordered by type (from Recruit orders) beside how often each type is actually seen in a led column. A unit nobody buys is either priced wrong, unavailable, or not understood.'));
   }
   // 6. battles
   { const B=[]; const seen=new Set(); rows.forEach(r=>(((r.outcomes||{}).battles||{}).list||[]).forEach(b=>{ const k=r.game_id+'#'+r.turn+'#'+b.ph+'#'+b.prov+'#'+b.atkChar+'#'+b.atkStr+'#'+b.defStr; if(seen.has(k)) return; seen.add(k); B.push({...b, game:r.game_id, turn:r.turn, atkBot:r.is_bot&&b.atkPi===r.player_index}); }));
@@ -5433,27 +5434,27 @@ function renderStats(){
       const byT={}; B.forEach(b=>{ const o=byT[b.terrain]||(byT[b.terrain]={n:0,w:0}); o.n++; if(b.won) o.w++; });
       const byK={}; B.forEach(b=>{ const o=byK[b.kind]||(byK[b.kind]={n:0,w:0,al:0,dl:0}); o.n++; if(b.won) o.w++; o.al+=b.atkLost||0; o.dl+=b.defLost||0; });
       const kindLab={neutral:'vs neutral defenders',garrison:'vs an enemy garrison',guard:'vs a neutral chieftain',pvp:'vs an enemy commander'};
-      html+=statsCard('Battles',
-        `<div style="font-size:.85rem;margin-bottom:8px">${B.length} battles · attackers won <strong>${_pct(B.filter(b=>b.won).length,B.length)}%</strong> · average losses ${_avg(B.map(b=>b.atkLost||0)).toFixed(2)} units (attacker) / ${_avg(B.map(b=>b.defLost||0)).toFixed(2)} (defender) · ${B.filter(b=>b.carry>0).length} carried on into a later phase.</div>
+      html.push(statsCard('Battles',
+        kcHtml`<div style="font-size:.85rem;margin-bottom:8px">${B.length} battles · attackers won <strong>${_pct(B.filter(b=>b.won).length,B.length)}%</strong> · average losses ${_avg(B.map(b=>b.atkLost||0)).toFixed(2)} units (attacker) / ${_avg(B.map(b=>b.defLost||0)).toFixed(2)} (defender) · ${B.filter(b=>b.carry>0).length} carried on into a later phase.</div>
          <h3>Attacker win rate by strength ratio (attacker ÷ defender, before the dice)</h3>${statsBars(items,{labelW:130,max:100})}
          <div style="font-size:.76rem;color:var(--stone);margin:4px 0 12px">The blue tick is what the fortune-of-battle curve says should happen at that ratio (2× → 80%, 3× → 90%, 4× → certain). Bars well off their ticks over many battles mean something outside the strength maths is deciding fights — pre-battle magic, archery, or a bug.</div>
          <h3>By terrain</h3>${statsBars(Object.entries(byT).map(([t,o])=>({label:t,v:_pct(o.w,o.n),txt:`${_pct(o.w,o.n)}% attacker wins · ${o.n}`,col:STATS_COL.forest})),{max:100})}
          <h3 style="margin-top:12px">By opponent</h3>${statsBars(Object.entries(byK).map(([k,o])=>({label:kindLab[k]||k,v:_pct(o.w,o.n),txt:`${_pct(o.w,o.n)}% attacker wins · ${o.n} · losses ${(o.al/o.n).toFixed(1)} / ${(o.dl/o.n).toFixed(1)}`,col:STATS_COL.blue})),{labelW:170,max:100})}`,
-        'Every field battle, once (a battle appears in both sides\' rows; it is counted here a single time).');
+        'Every field battle, once (a battle appears in both sides\' rows; it is counted here a single time).'));
     }
   }
   // 7. lairs
   { const E=[]; rows.forEach(r=>(((r.outcomes||{}).encounters||{}).list||[]).forEach(e=>E.push({...e,bot:r.is_bot})));
     if(E.length){ const byP={}; E.forEach(e=>{ const o=byP[e.power||'?']||(byP[e.power||'?']={n:0,w:0,f:0,k:0,d:[]}); o.n++; if(e.won) o.w++; if(e.fled) o.f++; if(e.killed) o.k++; o.d.push(e.dmg||0); });
       const order=['Weak','Moderate','Powerful','Legendary'];
-      html+=statsCard('Lair fights', statsBars(Object.entries(byP).sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([p,o])=>({label:p,v:_pct(o.w,o.n),txt:`${_pct(o.w,o.n)}% cleared · ${o.n} fight${o.n!==1?'s':''} · ${o.f} fled · ${o.k} hero${o.k!==1?'es':''} killed · avg ${_avg(o.d).toFixed(1)} damage taken`})),{max:100})+`<div style="font-size:.78rem;color:var(--stone);margin-top:8px">Bots fought ${E.filter(e=>e.bot).length} of these; humans ${E.filter(e=>!e.bot).length}. The guardian ladder was tuned to a ~95% clear rate for a hero built for the band — a band far below that is being attempted too early.</div>`);
+      html.push(statsCard('Lair fights', [statsBars(Object.entries(byP).sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([p,o])=>({label:p,v:_pct(o.w,o.n),txt:`${_pct(o.w,o.n)}% cleared · ${o.n} fight${o.n!==1?'s':''} · ${o.f} fled · ${o.k} hero${o.k!==1?'es':''} killed · avg ${_avg(o.d).toFixed(1)} damage taken`})),{max:100}),kcHtml`<div style="font-size:.78rem;color:var(--stone);margin-top:8px">Bots fought ${E.filter(e=>e.bot).length} of these; humans ${E.filter(e=>!e.bot).length}. The guardian ladder was tuned to a ~95% clear rate for a hero built for the band — a band far below that is being attempted too early.</div>`]));
     }
   }
   // 8. spells
   { const S={}; rows.forEach(r=>(((r.outcomes||{}).spells||{}).list||[]).forEach(s=>{ const o=S[s.spell]||(S[s.spell]={n:0,ok:0,bot:0,ch:[]}); o.n++; if(s.ok) o.ok++; if(r.is_bot) o.bot++; o.ch.push(s.chance||0); }));
     const ents=Object.entries(S).sort((a,b)=>b[1].n-a[1].n);
     if(ents.length){ const never=Object.keys(SPELL_DEFS_P||{}).filter(n=>SPELL_DEFS_P[n]&&SPELL_DEFS_P[n].phase&&!S[n]);
-      html+=statsCard('Spells cast (phase orders)', statsBars(ents.map(([n,o])=>({label:n,v:o.n,txt:`${o.n} cast · ${_pct(o.ok,o.n)}% took (avg chance ${Math.round(_avg(o.ch))}%) · ${o.bot} by bots`})),{labelW:150})+(never.length?`<div style="font-size:.78rem;color:var(--stone);margin-top:8px">Never cast as a phase order: ${never.join(', ')}.</div>`:''), 'Battle-magic and duel spells are not counted here (they are chosen in encounter plans, not as orders).'); }
+      html.push(statsCard('Spells cast (phase orders)', [statsBars(ents.map(([n,o])=>({label:n,v:o.n,txt:`${o.n} cast · ${_pct(o.ok,o.n)}% took (avg chance ${Math.round(_avg(o.ch))}%) · ${o.bot} by bots`})),{labelW:150}),never.length?kcHtml`<div style="font-size:.78rem;color:var(--stone);margin-top:8px">Never cast as a phase order: ${never.join(', ')}.</div>`:''], 'Battle-magic and duel spells are not counted here (they are chosen in encounter plans, not as orders).')); }
   }
   // 9. deaths & captures
   { const D=[]; const seen=new Set(); rows.forEach(r=>(((r.outcomes||{}).deaths||{}).list||[]).forEach(d=>{ const k=r.game_id+'#'+r.turn+'#'+d.charId; if(seen.has(k)) return; seen.add(k); D.push({...d,game:r.game_id,turn:r.turn}); }));
@@ -5461,11 +5462,11 @@ function renderStats(){
     const byTurn={}; D.forEach(d=>{ byTurn[d.turn]=(byTurn[d.turn]||0)+1; });
     const how={}; D.forEach(d=>{ how[d.how||'other']=(how[d.how||'other']||0)+1; });
     const Dr=D.filter(d=>d.pi!=null), Dn=D.length-Dr.length;
-    html+=statsCard('Deaths and conquests', `<div style="font-size:.85rem">${Dr.length} realm character${Dr.length!==1?'s':''} killed (${Dr.filter(d=>d.king).length} king${Dr.filter(d=>d.king).length!==1?'s':''}) over ${rows.length} realm-turns — one every ${Dr.length?(rows.length/Dr.length).toFixed(1):'∞'} realm-turns — plus ${Dn} neutral hero${Dn!==1?'es':''} / chieftain${Dn!==1?'s':''} slain. ${C.length} provinces changed hands: ${C.filter(c=>c.from==null).length} taken from neutrals, ${C.filter(c=>c.from!=null).length} taken from rivals.</div>
+    html.push(statsCard('Deaths and conquests', kcHtml`<div style="font-size:.85rem">${Dr.length} realm character${Dr.length!==1?'s':''} killed (${Dr.filter(d=>d.king).length} king${Dr.filter(d=>d.king).length!==1?'s':''}) over ${rows.length} realm-turns — one every ${Dr.length?(rows.length/Dr.length).toFixed(1):'∞'} realm-turns — plus ${Dn} neutral hero${Dn!==1?'es':''} / chieftain${Dn!==1?'s':''} slain. ${C.length} provinces changed hands: ${C.filter(c=>c.from==null).length} taken from neutrals, ${C.filter(c=>c.from!=null).length} taken from rivals.</div>
       <h3 style="margin-top:12px">Deaths by cause (realm characters and neutrals)</h3>${statsBars(Object.entries(how).map(([k,n])=>({label:{character:'killed by an enemy character',neutral:'killed by a neutral / guardian',other:'other (duel, spell, execution…)'}[k]||k,v:n})),{labelW:220})}
-      <h3 style="margin-top:12px">Deaths by turn</h3>${statsBars(Object.entries(byTurn).sort((a,b)=>+a[0]-+b[0]).map(([t,n])=>({label:'turn '+t,v:n,col:STATS_COL.stone})),{labelW:70})}`);
+      <h3 style="margin-top:12px">Deaths by turn</h3>${statsBars(Object.entries(byTurn).sort((a,b)=>+a[0]-+b[0]).map(([t,n])=>({label:'turn '+t,v:n,col:STATS_COL.stone})),{labelW:70})}`));
   }
-  body.innerHTML=html;
+  body.innerHTML=kcHtml`${html}`;
 }
 // ── exports ──
 function _csv(rows, cols){ const esc=v=>{ if(v==null) return ''; const s=typeof v==='object'?JSON.stringify(v):String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }; return [cols.join(',')].concat(rows.map(r=>cols.map(c=>esc(typeof c==='function'?c(r):r[c])).join(','))).join('\n'); }
@@ -5549,9 +5550,9 @@ async function probeLeaderboard(){
 function renderLeaderboardBanner(){
   const el=document.getElementById('msg-leaderboard'); if(!el) return;
   if(!_kcHasLb){
-    el.innerHTML=kcMissingMsg('🏆 Leaderboard not active','<code>game_records</code> table','finished games are not being added to the Hall of Fame');
+    el.innerHTML=kcMissingMsg('🏆 Leaderboard not active',kcHtml`<code>game_records</code> table`,'finished games are not being added to the Hall of Fame');
   } else if(_kcLbLastErr){
-    el.innerHTML=`<div class="msg-error"><strong>🏆 Leaderboard write failed</strong>: ${String(_kcLbLastErr).replace(/</g,'&lt;')}. The turn and its statistics were saved; only the Hall-of-Fame row was lost. Use ↻ Rebuild on the Stats tab.</div>`;
+    el.innerHTML=kcHtml`<div class="msg-error"><strong>🏆 Leaderboard write failed</strong>: ${_kcLbLastErr}. The turn and its statistics were saved; only the Hall-of-Fame row was lost. Use ↻ Rebuild on the Stats tab.</div>`;
   } else el.innerHTML='';
 }
 
@@ -5952,10 +5953,10 @@ async function backfillGameRecords(force){
     }
     const el=document.getElementById('lb-build-msg');
     const t=_lbTally;
-    let out=`Recorded ${n} game${n!==1?'s':''} · ${t.humans} human realm${t.humans!==1?'s':''} · ${t.uids} with a player account · <strong>${t.named} with a name</strong> · built by <code>${KC_BUILD_STAMP} lb${KC_LB_V}</code>`;
-    if(t.humans&&!t.named) out+=`<div class="msg-warning" style="margin-top:6px"><strong>No player names were resolved.</strong> A player's name lives in the <code>profiles</code> table (<code>game_players.display_name</code> is their realm), and this build could not read one for any of them.${_lbProfErr?' The table said: <em>'+String(_lbProfErr).replace(/</g,'&lt;')+'</em>.':''}<br>Either those accounts have no name saved — each player can set one with <strong>✏ Change Display Name</strong> in the player portal — or this GM account cannot read <code>profiles</code> under its Row-Level Security policy (the same policy the invite picker needs).</div>`;
-    else if(t.uids>t.named) out+=` <span style="color:#8a5a00">(${t.uids-t.named} account${t.uids-t.named!==1?'s have':' has'} no name saved yet)</span>`;
-    if(el) el.innerHTML=out; else say(out);
+    const out=[kcHtml`Recorded ${n} game${n!==1?'s':''} · ${t.humans} human realm${t.humans!==1?'s':''} · ${t.uids} with a player account · <strong>${t.named} with a name</strong> · built by <code>${KC_BUILD_STAMP} lb${KC_LB_V}</code>`];
+    if(t.humans&&!t.named) out.push(kcHtml`<div class="msg-warning" style="margin-top:6px"><strong>No player names were resolved.</strong> A player's name lives in the <code>profiles</code> table (<code>game_players.display_name</code> is their realm), and this build could not read one for any of them.${_lbProfErr?kcHtml` The table said: <em>${_lbProfErr}</em>.`:''}<br>Either those accounts have no name saved — each player can set one with <strong>✏ Change Display Name</strong> in the player portal — or this GM account cannot read <code>profiles</code> under its Row-Level Security policy (the same policy the invite picker needs).</div>`);
+    else if(t.uids>t.named) out.push(kcHtml` <span style="color:#8a5a00">(${t.uids-t.named} account${t.uids-t.named!==1?'s have':' has'} no name saved yet)</span>`);
+    if(el) el.innerHTML=kcHtml`${out}`; else say(String(kcHtml`${out}`));
     if(btn) btn.disabled=false;
     return n;
   }catch(e){ say('Failed: '+(e&&e.message||e)); if(btn) btn.disabled=false; return 0; }
@@ -6060,18 +6061,18 @@ async function removePlayer(gamePlayerId){
         gs._gmRemovedRealms=Array.isArray(gs._gmRemovedRealms)?gs._gmRemovedRealms:[];
         if(!gs._gmRemovedRealms.includes(row.player_index)) gs._gmRemovedRealms.push(row.player_index);
         const {error:sErr}=await sb.from('games').update({game_state:JSON.stringify(gs),...metaPatch(gs)}).eq('id',currentGame.id);
-        if(sErr){ msg.innerHTML=`<div class="msg-error">Could not record the concession: ${sErr.message}</div>`; return; }
+        if(sErr){ msg.innerHTML=kcHtml`<div class="msg-error">Could not record the concession: ${sErr.message}</div>`; return; }
         currentGame.game_state=JSON.stringify(gs); Object.assign(currentGame,metaPatch(gs));
       }
     }
     const {error}=await sb.from('game_players').delete().eq('id',row.id);
-    if(error){ msg.innerHTML=`<div class="msg-error">${error.message}</div>`; return; }
-    msg.innerHTML=`<div class="msg-success">${who} has been removed${live?' — their realm has conceded and will only defend from here on.':' and their slot is open again.'}</div>`;
+    if(error){ msg.innerHTML=kcHtml`<div class="msg-error">${error.message}</div>`; return; }
+    msg.innerHTML=kcHtml`<div class="msg-success">${who} has been removed${live?' — their realm has conceded and will only defend from here on.':' and their slot is open again.'}</div>`;
     await openGame(currentGame.id);
     const _m2=document.getElementById('detail-msg'); // openGame clears the panel — say it again
-    if(_m2) _m2.innerHTML=`<div class="msg-success">${who} has been removed${live?' — their realm has conceded and will only defend from here on.':' and their slot is open again.'}</div>`;
+    if(_m2) _m2.innerHTML=kcHtml`<div class="msg-success">${who} has been removed${live?' — their realm has conceded and will only defend from here on.':' and their slot is open again.'}</div>`;
   }catch(e){
-    msg.innerHTML=`<div class="msg-error">${e.message||'Could not remove the player.'}</div>`;
+    msg.innerHTML=kcHtml`<div class="msg-error">${e.message||'Could not remove the player.'}</div>`;
   }
 }
 // {ready, reason} for the auto-turn watcher. Requires an active game with at least one realm.
@@ -6106,9 +6107,9 @@ function readTurnModeForm(prefix){
 }
 function turnModeFormHtml(prefix,tm){
   tm=normalizeTurnMode(tm);
-  return `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <select id="${prefix}-turnmode" onchange="updateTurnModeFields('${prefix}')" style="flex:1;min-width:220px">
-        ${Object.entries(TURN_MODES).map(([k,v])=>`<option value="${k}" ${tm.mode===k?'selected':''}>${v}</option>`).join('')}
+  return kcHtml`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <select id="${prefix}-turnmode" onchange="updateTurnModeFields(${kcArg(prefix)})" style="flex:1;min-width:220px">
+        ${Object.entries(TURN_MODES).map(([k,v])=>kcHtml`<option value="${k}" ${tm.mode===k?'selected':''}>${v}</option>`)}
       </select>
     </div>
     <div id="${prefix}-turnmode-fields" style="display:${tm.mode==='deadline'?'block':'none'};margin-top:6px;font-size:.84rem">
@@ -6121,8 +6122,8 @@ function renderTurnModePanel(game){
   const wrap=document.getElementById('detail-turnmode-wrap'); if(!wrap) return;
   if(!game||game.status==='complete'){ wrap.innerHTML=''; return; }
   const tm=turnModeOf(game);
-  const watcherNote=tm.mode==='manual'?'':`<div style="font-size:.76rem;color:var(--stone);margin-top:6px">${_autoWatcherTimer?'✅ This tab is watching and will run the turn automatically':'⚠ Watcher not running in this tab'} — automatic turns only fire while a signed-in GM Portal tab is open.${tm.mode==='deadline'&&tm.turnRanAt?` Last run ${fmtDeadline(tm.turnRanAt)}.`:''}</div>`;
-  wrap.innerHTML=`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c">
+  const watcherNote=tm.mode==='manual'?'':kcHtml`<div style="font-size:.76rem;color:var(--stone);margin-top:6px">${_autoWatcherTimer?'✅ This tab is watching and will run the turn automatically':'⚠ Watcher not running in this tab'} — automatic turns only fire while a signed-in GM Portal tab is open.${tm.mode==='deadline'&&tm.turnRanAt?` Last run ${fmtDeadline(tm.turnRanAt)}.`:''}</div>`;
+  wrap.innerHTML=kcHtml`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
         <span style="color:var(--parchment);font-weight:600">Turn running</span>
         <span class="pill pill-blue">${turnModeSummary(tm)}</span>
@@ -6138,7 +6139,7 @@ function renderTurnModePanel(game){
 // games.block_eliminated_msgs (the game's GM, or the Overlord as Master GM); the player portal applies it.
 function blockEliminatedPanelHtml(game){
   const on=!!(game&&game.block_eliminated_msgs);
-  return `<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c;margin-top:8px">
+  return kcHtml`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c;margin-top:8px">
       <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--parchment);font-weight:600;cursor:pointer">
         <input type="checkbox" id="detail-block-eliminated" ${on?'checked':''} onchange="saveBlockEliminated(this.checked)" style="width:auto;margin:0">
         Block eliminated realms from sending dispatches
@@ -6174,12 +6175,12 @@ function _gameHasBots(gs){
 function safeStartNoteHtml(game){
   const gs=parseGameState(game); if(!gs||!gs.safeStart) return '';
   const t=Number(game&&game.turn)||0, open=t>=SAFE_START_TURN;
-  return `<div style="border:1px solid var(--gold);border-radius:4px;padding:8px 10px;background:#20160c;margin-top:8px;color:var(--parchment);font-size:.84rem">🕊 <strong>Safe Start</strong> — no Treats or declarations of war until the orders for Turn ${SAFE_START_TURN}. ${open?'<span style="color:var(--stone)">(Diplomacy is now open.)</span>':''}</div>`;
+  return kcHtml`<div style="border:1px solid var(--gold);border-radius:4px;padding:8px 10px;background:#20160c;margin-top:8px;color:var(--parchment);font-size:.84rem">🕊 <strong>Safe Start</strong> — no Treats or declarations of war until the orders for Turn ${SAFE_START_TURN}. ${open?kcHtml`<span style="color:var(--stone)">(Diplomacy is now open.)</span>`:''}</div>`;
 }
 function botDiplomacyPanelHtml(game){
   const gs=parseGameState(game); if(!_gameHasBots(gs)) return '';
   const cur=gs.botDiplomacy==='hostile'?'hostile':'normal';
-  return `<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c;margin-top:8px">
+  return kcHtml`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c;margin-top:8px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="color:var(--parchment);font-weight:600">Bot diplomacy</span>
         <select id="detail-botdiplomacy" style="flex:1;min-width:220px;margin:0">
@@ -6198,7 +6199,7 @@ async function saveBotDiplomacy(){
   const gs=parseGameState(currentGame); gs.botDiplomacy=v;
   if(msg) msg.innerHTML='<span style="color:var(--stone)">Saving…</span>';
   const {data,error}=await sb.from('games').update({game_state:JSON.stringify(gs),...metaPatch(gs)}).eq('id',currentGame.id).eq('turn',currentGame.turn).select('id').maybeSingle();
-  if(error){ if(msg) msg.innerHTML=`<span style="color:#e88">${error.message}</span>`; return; }
+  if(error){ if(msg) msg.innerHTML=kcHtml`<span style="color:#e88">${error.message}</span>`; return; }
   if(!data){ if(msg) msg.innerHTML='<span style="color:#e88">The turn advanced while you were editing — reload the game and try again.</span>'; return; }
   currentGame.game_state=JSON.stringify(gs); Object.assign(currentGame,metaPatch(gs));
   if(msg) msg.innerHTML='<span style="color:#8c8">Saved — applies from the next turn resolved.</span>';
@@ -6219,7 +6220,7 @@ async function saveTurnMode(){
   // Optimistic-concurrency guard: refuse to overwrite a state the watcher (in another tab) has just
   // advanced.
   const {data,error}=await sb.from('games').update({game_state:JSON.stringify(gs),...metaPatch(gs)}).eq('id',currentGame.id).eq('turn',currentGame.turn).select('id').maybeSingle();
-  if(error){ if(msg) msg.innerHTML=`<span style="color:#e88">${error.message}</span>`; return; }
+  if(error){ if(msg) msg.innerHTML=kcHtml`<span style="color:#e88">${error.message}</span>`; return; }
   if(!data){ if(msg) msg.innerHTML='<span style="color:#e88">The turn advanced while you were editing — reload the game and try again.</span>'; return; }
   currentGame.game_state=JSON.stringify(gs); Object.assign(currentGame,metaPatch(gs));
   if(msg) msg.innerHTML='<span style="color:#8c8">Saved.</span>';
@@ -6286,7 +6287,7 @@ async function refreshIfNewerBuild(g){
   const dataNew=(dataStamp!=null&&_kcDataStampAtLoad!=null&&dataStamp!==_kcDataStampAtLoad);
   if(!htmlNew&&!dataNew) return false;
   try{ sessionStorage.setItem('kc_autorefresh',key); }catch(e){ return false; }
-  setAutoTurnStatus(`<strong>⚙️ Auto-turn watcher</strong> · a newer build has been uploaded (${htmlNew?'portal v'+htmlStamp:'data file v'+dataStamp}) — reloading this tab before running ${g.name||'the game'} Turn ${g.turn}…`);
+  setAutoTurnStatus(kcHtml`<strong>⚙️ Auto-turn watcher</strong> · a newer build has been uploaded (${htmlNew?'portal v'+htmlStamp:'data file v'+dataStamp}) — reloading this tab before running ${g.name||'the game'} Turn ${g.turn}…`);
   setTimeout(()=>location.reload(),400);
   return true;
 }
@@ -6322,7 +6323,7 @@ async function autoTurnTick(){
       if(await refreshIfNewerBuild(g)) return; // a newer build is uploaded — reload first, the turn runs on it after the reload
       if(!_autoLease(g.id,true)){ lines.push(`${g.name}: another GM tab is running Turn ${g.turn}`); continue; }
       lines.push(`${g.name}: ⏳ running Turn ${g.turn} (${r.reason})…`);
-      setAutoTurnStatus(`<strong>⚙️ Auto-turn watcher</strong> · checked ${new Date().toLocaleTimeString()}<br>${lines.join('<br>')}`);
+      setAutoTurnStatus(kcHtml`<strong>⚙️ Auto-turn watcher</strong> · checked ${new Date().toLocaleTimeString()}${lines.map(l=>kcHtml`<br>${l}`)}`);
       try{
         if(currentGame&&currentGame.id===g.id){ currentGame.turn=g.turn; if(g.game_state!==undefined) currentGame.game_state=g.game_state; if(g.meta!==undefined) currentGame.meta=g.meta; }
         const _res=await runTurn({auto:true,game:g,reason:r.reason});
@@ -6335,7 +6336,7 @@ async function autoTurnTick(){
       // One turn per tick: the next tick re-reads fresh rows (and the next game).
       break;
     }
-    setAutoTurnStatus(`<strong>⚙️ Auto-turn watcher</strong> · checked ${new Date().toLocaleTimeString()} · keep this tab open<br>${lines.join('<br>')}`);
+    setAutoTurnStatus(kcHtml`<strong>⚙️ Auto-turn watcher</strong> · checked ${new Date().toLocaleTimeString()} · keep this tab open${lines.map(l=>kcHtml`<br>${l}`)}`);
   }catch(e){ console.error('autoTurnTick',e); }
   finally{ _autoRunBusy=false; }
 }
@@ -13580,7 +13581,7 @@ async function runTurn(opts){
   // game.
   const msg=(!auto&&_detailMsg)?_detailMsg:{
     _v:'', get innerHTML(){ return this._v; },
-    set innerHTML(v){ this._v=v; if(v) setAutoTurnStatus(`<strong>⚙️ Auto-turn watcher</strong> · ${gameRow.name||''} (${opts.reason||'auto'})<br>${v}`); if(viewing&&_detailMsg) _detailMsg.innerHTML=v; }
+    set innerHTML(v){ this._v=v; if(v) setAutoTurnStatus(kcHtml`<strong>⚙️ Auto-turn watcher</strong> · ${gameRow.name||''} (${opts.reason||'auto'})<br>${v}`); if(viewing&&_detailMsg) _detailMsg.innerHTML=v; }
   };
 
   // Confirm before running — prevent accidental double-runs
@@ -13589,19 +13590,19 @@ async function runTurn(opts){
     msg.innerHTML='';return;
   }
 
-  msg.innerHTML='<div class="msg-info">⏳ Loading game state and player orders…</div>';
+  msg.innerHTML=kcHtml`<div class="msg-info">⏳ Loading game state and player orders…</div>`;
 
   // 1. Load fresh data
   const {data:freshGame,error:gErr}=await sb.from('games').select('*').eq('id',gameRow.id).single();
   const {data:freshPlayers,error:pErr}=await sb.from('game_players').select('*').eq('game_id',gameRow.id);
   if(gErr||pErr||!freshGame){
-    msg.innerHTML=`<div class="msg-error">Could not load game: ${gErr?.message||pErr?.message}</div>`;
+    msg.innerHTML=kcHtml`<div class="msg-error">Could not load game: ${gErr?.message||pErr?.message}</div>`;
     return {ok:false, committed:false, error:'could not load game'};
   }
 
   // Verify the turn hasn't already advanced (double-run protection)
   if(freshGame.turn!==expectedTurnToRun){
-    msg.innerHTML=`<div class="msg-error">⚠ Turn mismatch: expected Turn ${expectedTurnToRun} but game is now on Turn ${freshGame.turn}. The turn may have already been run. Reload the page.</div>`;
+    msg.innerHTML=kcHtml`<div class="msg-error">⚠ Turn mismatch: expected Turn ${expectedTurnToRun} but game is now on Turn ${freshGame.turn}. The turn may have already been run. Reload the page.</div>`;
     return {ok:false, committed:false, conflict:true, error:'turn mismatch'};
   }
 
@@ -13622,7 +13623,7 @@ async function runTurn(opts){
     // top of the turn, whatever the save held.
     (G.world&&G.world.provinces||[]).forEach(p=>{ if(p){ delete p._hadBattleThisTurn; delete p._combatPlayersThisTurn; } });
   }catch(e){
-    msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';
+    msg.innerHTML=kcHtml`<div class="msg-error">Could not parse game state JSON.</div>`;
     return {ok:false, committed:false, error:'could not parse game state'};
   }
   // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn, and
@@ -13854,7 +13855,7 @@ async function runTurn(opts){
   // merely SAVED DRAFT into a submitted turn whenever a run failed.
   const ordersSnapshot=freshPlayers.filter(p=>p.user_id&&p.orders).map(p=>({id:p.id,orders:p.orders,submitted:!!p.orders_submitted}));
   const playersWithOrders=freshPlayers.filter(p=>p.user_id&&p.orders).length;
-  msg.innerHTML=`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
+  msg.innerHTML=kcHtml`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
   // Clear orders from DB now — restored below if resolution fails
   await sb.from('game_players').update({orders:null,orders_submitted:false}).eq('game_id',gameRow.id);
   let _saveConflict=false; // set if the conditional state save finds the turn already advanced elsewhere
@@ -13873,7 +13874,7 @@ async function runTurn(opts){
   // (below) so the bot hunters' duel forecast can call the engine's personal-combat resolver, whose function
   // declarations live in that block. A bot-pass failure therefore also restores the players'
   // orders.
-  msg.innerHTML='<div class="msg-info">⏳ Resolving 5 phases…</div>';
+  msg.innerHTML=kcHtml`<div class="msg-info">⏳ Resolving 5 phases…</div>`;
 
   try{
 
@@ -28193,7 +28194,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   });
 
   // 9. Save updated game state
-  msg.innerHTML='<div class="msg-info">⏳ Saving game state…</div>';
+  msg.innerHTML=kcHtml`<div class="msg-info">⏳ Saving game state…</div>`;
   // Clear resolved orders from the saved state so they can never be re-applied next turn. Next
   // turn's runTurn rebuilds turnOrders from fresh submissions. Per-character encounter plans are
   // intentionally KEPT so a player's chosen combat plan carries over turn to turn until they change
@@ -28481,12 +28482,12 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // elimination (G.gameOver). max_turns is retained only as an optional GM hard-backstop below.
     status:(G.gameOver || (G.maxTurns&&G.maxTurns>0&&G.turn>G.maxTurns&&G.maxTurnsHardStop))?'complete':'active'
   }).eq('id',gameRow.id).eq('turn',expectedTurnToRun).select('id').maybeSingle();
-  if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving: ${saveErr.message}</div>`;return;}
+  if(saveErr){msg.innerHTML=kcHtml`<div class="msg-error">Error saving: ${saveErr.message}</div>`;return;}
   if(!_savedRow){ _saveConflict=true; throw new Error(`Turn ${expectedTurnToRun} was already run elsewhere (another GM tab or device) — this run was discarded.`); }
   _turnCommitted=true; // from here on the turn is resolved and saved: never put the orders back
 
   // 10. Generate and push new turn reports to each player
-  msg.innerHTML='<div class="msg-info">⏳ Generating turn reports…</div>';
+  msg.innerHTML=kcHtml`<div class="msg-info">⏳ Generating turn reports…</div>`;
   const activePlayers=freshPlayers.filter(p=>p.user_id);
   // ── Spy stealth — rolled ONCE per character before any report is built, so every player's
   // report reads the same result. 5% per Spy level (capped at level 5 → 25% max). A character who
@@ -28853,12 +28854,12 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // Orders and flags already cleared in step 2b before resolution began
 
   if(reportErrors.length>0){
-    msg.innerHTML=`<div class="msg-error">Turn resolved but some reports failed: ${reportErrors.join('; ')}</div>`;
+    msg.innerHTML=kcHtml`<div class="msg-error">Turn resolved but some reports failed: ${reportErrors.join('; ')}</div>`;
   } else {
-    msg.innerHTML=`<div class="msg-success">
+    msg.innerHTML=kcHtml`<div class="msg-success">
       ✅ Turn ${G.turn-1} resolved! New turn reports pushed to ${activePlayers.length} players.<br>
       <strong>Turn ${G.turn} is now open for orders.</strong> 
-      ${G.gameOver?'<strong>Game is complete!</strong>':''}
+      ${G.gameOver?kcHtml`<strong>Game is complete!</strong>`:''}
     </div>`;
   }
 
@@ -28873,7 +28874,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const _why = _saveConflict ? 'Nothing was changed by this run.'
       : _turnCommitted ? `Turn ${expectedTurnToRun} WAS resolved and saved — the failure came after the save, while writing reports. The orders for that turn are spent and have not been restored. Players may be missing this turn's report; re-push reports or check the browser console (F12).`
       : 'Check browser console (F12) for full details. Your orders have been restored.';
-    msg.innerHTML=`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_why}</small></div>`;
+    msg.innerHTML=kcHtml`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_why}</small></div>`;
     console.error('runTurn error:', e);
     // Restore orders to DB so players don't lose their submissions — unless another run already
     // consumed them, or this run already committed the turn they belonged to.
@@ -28901,7 +28902,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-2028</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.16-0819</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
