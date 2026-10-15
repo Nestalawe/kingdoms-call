@@ -26,7 +26,8 @@ async function boot(who){
   await wait(400);
   return {W:dom.window,doc:dom.window.document,calls,errs};
 }
-const editButtonFor=(doc,id)=>!!doc.querySelector(`[onclick*="toggleEdit('${id}')"]`);
+// The ✏ button's handler names the entry, as kcArg writes it: toggleEdit("g-own") (P0-19).
+const editButtonFor=(doc,id)=>!!doc.querySelector(`[onclick*='toggleEdit(${JSON.stringify(id)})']`);
 const renameButtons=doc=>doc.querySelectorAll('[onclick^="renamePlayer("]').length;
 
 (async()=>{
