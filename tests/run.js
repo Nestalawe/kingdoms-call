@@ -54,6 +54,7 @@ const SUITE=[
   ['db-guard',             'tests/db-guard.test.js'],
   ['gm-offer-and-gate',    'tests/gm-offer-and-gate.test.js'],
   ['other-realms-slots',   'tests/other-realms-slots.test.js'],
+  ['games-for-their-players','tests/games-for-their-players.test.js'],
   ['dispatch-limits',      'tests/dispatch-limits.test.js'],
   ['report-dispatch',      'tests/report-dispatch.test.js'],
   ['eliminated-dispatches','tests/eliminated-dispatches.test.js'],
