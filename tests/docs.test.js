@@ -39,7 +39,10 @@ const fail=(file,msg)=>{ fails++; console.log(`FAIL ${path.relative(ROOT,file)}:
 
 for(const file of FILES){
   if(!fs.existsSync(file)){ fail(file,'missing'); continue; }
-  const text=fs.readFileSync(file,'utf8').replace(/<!--[\s\S]*?-->/g,'');
+  // HTML comments (the PR template's hints) aren't checked. They're removed until none is left, so a comment inside
+  // another goes too.
+  let text=fs.readFileSync(file,'utf8');
+  for(let prev;prev!==text;){ prev=text; text=text.replace(/<!--[\s\S]*?-->/g,''); }
   const prose=text.replace(/^\s*```[\s\S]*?^\s*```/gm,'');
 
   for(const [,target] of prose.matchAll(/\]\(([^)\s]+)\)/g)){
