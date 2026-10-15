@@ -21,7 +21,7 @@ const {JSDOM}=require('jsdom');
 
 const LIMITS={
   'kingdoms-call-gm-portal.html':0,
-  'kingdoms-call-player-portal.html':68,
+  'kingdoms-call-player-portal.html':0,
 };
 // {file, rule, line: a piece of the source line, reason}
 const ALLOWED=[
