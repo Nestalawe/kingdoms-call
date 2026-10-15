@@ -4,10 +4,12 @@
 --   a player reads their own realm's snapshots (past turns in the Chronicle and on the map);
 --   the GM writes the snapshots and the full log for their own game, reads them, and deletes them
 --   with the game.
--- Also checked: nobody but the game's GM writes or deletes them.
+--   the Overlord reads every game's logs.
+-- Also checked: nobody but the game's GM writes or deletes them, and only the game's GM, its players and the Overlord
+-- read them (P2-16, ruling D-10).
 begin;
 \ir ../lib/world.psql
-select plan(11);
+select plan(15);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -52,6 +54,22 @@ select is(pg_temp.kc_count($$select id from public.turn_logs$$), 0,
 select is(pg_temp.kc_writes($$insert into public.turn_logs (game_id, player_index, turn, entries)
           values (pg_temp.kc_game('A'), 0, 3, '[]')$$), 0,
   'a signed-out visitor can''t write a log');
+
+-- ── only the game's GM, its players and the Overlord read them ──────────────────────────────
+
+select pg_temp.kc_as('p3');
+select is(pg_temp.kc_count($$select id from public.turn_logs where game_id = pg_temp.kc_game('A')$$), 0,
+  'a player in another game can''t read the game''s logs');
+
+select pg_temp.kc_as('gm2');
+select is(pg_temp.kc_count($$select id from public.turn_logs where game_id = pg_temp.kc_game('A')$$), 0,
+  'another GM can''t read the game''s logs');
+
+select pg_temp.kc_as('postgres');
+select is(public.kc_set_overlord('stranger@example.test', false), 'Overlord set', 'stranger is the Overlord');
+select pg_temp.kc_as('stranger');
+select is(pg_temp.kc_count($$select id from public.turn_logs where game_id = pg_temp.kc_game('A')$$), 3,
+  'the Overlord reads every game''s logs');
 
 select * from finish();
 rollback;
