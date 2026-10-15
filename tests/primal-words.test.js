@@ -100,14 +100,14 @@ for(const u of LIVE.filter(u=>ROSTER[u].type==='naval'&&u!=='Whale Cohort')) ok(
 ok((norm(rules).match(/whale and shark waters/g)||[]).length>=2,'the rulebook\'s sea-tax texts say "whale and shark waters" where they said "whale waters"');
 // The four new Creatures (2026-10-13, Creatures and Monsters IV): the Creature lists name
 // them, the Druidic realm text names every live Creature, and no page still offers eagles or griffons to the wild.
-const ppDruSummary=(/Druidic:`[^`]*`/.exec(pp)||[''])[0], ppDruDesc=(/Druidic:'🌿 <strong>Druidic:<\/strong>(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
+const ppDruSummary=(/Druidic:`[^`]*`/.exec(pp)||[''])[0], ppDruDesc=(/Druidic:'🌿 \*\*Druidic:\*\*(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
 for(const u of liveOf('Creature')) ok(ppDruSummary.includes(u),`the player portal's Druidic realm text names ${u} among the Creature armies`);
 ok(!/eagles|griffons/i.test(ppDruDesc),"the player portal's Druidic join-screen blurb no longer names griffons or eagles among the Creatures");
 const creaturesRow=norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1])), wildwarden=norm((/<tr><td>The Wildwarden<\/td>[\s\S]*?<\/tr>/.exec(rules)||[''])[0]);
 for(const w of ['bears','unicorns','mammoths','turtles']){ ok(new RegExp(w,'i').test(creaturesRow),`the kinds-of-unit Creatures row names ${w}`); ok(new RegExp(w,'i').test(wildwarden),`the Wildwarden title names ${w}`); }
 // The player portal's texts.
 ok(/Reign of Fear/.test(pp),'the player portal\'s Evil realm text names Reign of Fear');
-const ppEvilSummary=(/Evil:`[^`]*`/.exec(pp)||[''])[0], ppEvilDesc=(/Evil:'💀 <strong>Evil:<\/strong>(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
+const ppEvilSummary=(/Evil:`[^`]*`/.exec(pp)||[''])[0], ppEvilDesc=(/Evil:'💀 \*\*Evil:\*\*(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
 ok(/Druid 1 from the outset|Druid \+1/.test(ppEvilSummary)&&/Druid \+1/.test(ppEvilDesc),"the player portal's Evil texts (the realm summary and the join-screen blurb) say the king starts with Druid +1");
 // The blurbs: the retired multipliers are gone.
 const blurb=u=>(new RegExp(`\\n\\s*'${u}':'((?:[^'\\\\]|\\\\.)*)'`).exec(pp)||['',''])[1].replace(/[’‘]/g,"'");

@@ -21,10 +21,12 @@ const {JSDOM}=require('jsdom');
 
 const LIMITS={
   'kingdoms-call-gm-portal.html':0,
-  'kingdoms-call-player-portal.html':557,
+  'kingdoms-call-player-portal.html':343,
 };
 // {file, rule, line: a piece of the source line, reason}
 const ALLOWED=[
+  {file:'kingdoms-call-player-portal.html',rule:'concat',line:"_provNameRe=names.length?new RegExp('(?<!",
+    reason:"a RegExp's source, not HTML: '(?<!' is a lookbehind (the report's province names become map links as DOM nodes)"},
 ];
 
 const MARKUP=/<[a-zA-Z!\/]/;

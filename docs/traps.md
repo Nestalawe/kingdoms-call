@@ -193,6 +193,15 @@ ones it can't, or they cost time:
   `html-lint` can't see either mistake; `same-dom.js` (below) finds it on the screens a tour visits.
 - **Never join `kcHtml` with `+`, `+=` or `.join('')`.** Each makes a plain string, which the next `kcHtml` escapes,
   so the markup shows as text. Collect pieces in an array and put the array in: ``kcHtml`<ul>${rows}</ul>` ``.
+  `html-lint` sees this only when `kcHtml` is written in the line: `row(a)+row(b)`, where `row` returns `kcHtml`, and
+  `.join(', ')` on a list of `kcHtml` pass it. In the player portal, a list with a separator goes in as
+  `kcJoinP(list, ', ')` (the separator is text; write ``kcHtml`<br>` `` for markup).
+- **An empty list is still true.** `html||'Nothing yet'` worked while `html` was a string; once it's an array (or
+  `kcHtml`, which is always an object), the fallback never shows. Test `html.length`, and return `''` from a helper
+  that has nothing to show.
+- **Fixed text with bold that a helper splits.** The player portal's `bulletizeDesc` splits a description into
+  sentences, so its tables write bold as `**bold**`, not `<strong>`; it shows the text as text and turns each
+  `**…**` into `<strong>`.
 - **In `runTurn`, `msg` may be the watcher's banner.** In an automatic run, every message given to `msg.innerHTML` is
   also put inside the watcher's `kcHtml` banner, so each one is `kcHtml`, even a fixed one: a plain string shows its tags
   there as text.

@@ -852,6 +852,9 @@ if(typeof KC_CONFIG==='undefined') throw new Error('kc-config.js did not load: r
 const SUPABASE_URL = KC_CONFIG.supabaseUrl;
 const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// A list of kcHtml pieces with `sep` between them, to put into kcHtml (P0-19): .join(sep) would make them a plain
+// string, which kcHtml shows as text. `sep` is text, or kcHtml for markup (kcHtml`<br>`).
+function kcJoinP(list, sep){ return list.flatMap((x,i)=>i?[sep,x]:[x]); }
 
 
 // ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.js (KC_ITEM_SLOT_CAP) ──
@@ -918,7 +921,7 @@ function deadHeroRealmTagP(h, report, opts){
   const k=realmOfP(h?h.player:null, rep);
   const nm=(k&&k.name)||'another realm';
   const col=(k&&k.color)?(opts.dark?(_tintForDarkTooltip(k.color)||'#e8b84b'):reportColour(k.color)):null;
-  return `${lead}a hero of <span style="${col?`color:${col};`:''}font-weight:600">${nm}</span>`;
+  return kcHtml`${lead}a hero of <span style="${col?`color:${col};`:''}font-weight:600">${nm}</span>`;
 }
 // ── PACK ORDER ────
 // A hero's pack is LISTED equipped-first, in slot order (weapon, armour, shield, cloak, helm,
@@ -964,7 +967,7 @@ const ITEM_TIER_COLOUR_P={1:'var(--stone)',2:'#2c4a1e',3:'#6a3d08',4:'#7a5806'};
 function itemTierTagP(it){
   const n=(it&&it.tier)||1;
   const leg=n===4;
-  return `<span style="color:${ITEM_TIER_COLOUR_P[n]};font-weight:${leg?700:600};font-size:.9em">${leg?' \u2728 Legendary':' \u00b7 '+ITEM_TIER_NAME_P[n]}</span>`;
+  return kcHtml`<span style="color:${ITEM_TIER_COLOUR_P[n]};font-weight:${leg?700:600};font-size:.9em">${leg?' \u2728 Legendary':' \u00b7 '+ITEM_TIER_NAME_P[n]}</span>`;
 }
 function itemSlotP(it){ if(!it) return null;
   // A shield is a shield even when its power is a once-per-fight ward (Anvil-Brand Shield) -
@@ -978,16 +981,16 @@ function itemSlotP(it){ if(!it) return null;
 const _ITEM_RACE_ALIAS_P={...KC_ITEM_RACE_ALIAS}; // 2026-09-10 item 3: mirrors GM itemRaceOf()
 function itemRaceOfP(it){ const r=it&&it.race; return r?(_ITEM_RACE_ALIAS_P[r]||r):r; }
 function itemUsableByP(it,c){ if(!it) return false; if(it.race&&(!c||c.race!==itemRaceOfP(it))) return false; if(it.alignment&&(!c||c.alignment!==it.alignment)) return false; return true; }
-function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${itemRaceOfP(it)} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':` <span style="color:#7a1010;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
+function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${itemRaceOfP(it)} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':kcHtml` <span style="color:#7a1010;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
 function itemSlotTag(it,c){
   // name the slot AND how many of that slot the character still has free.
   const sl=itemSlotP(it);
-  if(!sl) return ` <span style="color:#2a2419;font-size:.72rem">[carried — needs no slot]</span>`;
+  if(!sl) return kcHtml` <span style="color:#2a2419;font-size:.72rem">[carried — needs no slot]</span>`;
   const cap=ITEM_SLOT_CAP_P[sl]||1;
   const used=c?((c.items||[]).filter(o=>o&&itemSlotP(o)===sl&&o.equipped!==false&&itemUsableByP(o,c)).length):(it.equipped===false?0:1);
   const free=Math.max(0,cap-used);
   const st=it.equipped===false?'not equipped':'equipped';
-  return ` <span style="color:${it.equipped===false?'#5b5b5b':'#43350f'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
+  return kcHtml` <span style="color:${it.equipped===false?'#5b5b5b':'#43350f'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
 }
 // Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
 const RUMOUR_COST_BY_POWER_P={...KC_RUMOUR_COST_BY_POWER}; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
@@ -2391,8 +2394,8 @@ async function doJoinGame(gameId){
 // dispatches, standings, [Intelligence] lines). On the current-turn view it ends with #report-intel,
 // which renderReportView fills with the province reports, spied provinces and spy activity.
 function intelSectionShell(inner){
-  const host=(viewedTurn==null)?'<div id="report-intel"></div>':'';
-  return `<div class="char-chronicle intel-plain" id="intel-reports-section" style="margin-bottom:22px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
+  const host=(viewedTurn==null)?kcHtml`<div id="report-intel"></div>`:'';
+  return kcHtml`<div class="char-chronicle intel-plain" id="intel-reports-section" style="margin-bottom:22px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
         <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
           padding:7px 12px;background:#c8922a;display:flex;align-items:center;gap:8px">
           <span style="font-size:1rem">👁</span>
@@ -2416,44 +2419,54 @@ function buildChronicle(log, chars_for_log){
   const _GE_HEAD_RE=/^\s*(👑 THE RECKONING IS CALLED —|🏆 THE GAME IS DECIDED —)/;
   const _GE_STAND_RE=/^\s+\d+\.\s.+ — -?\d+ Legacy\b/;
   const _isGameEnd=e=>!!e && (e.gameEnd || (_goActive && e.charId==null && (_GE_HEAD_RE.test(e.text||'') || _GE_STAND_RE.test(e.text||''))));
+  // A line of report text with some runs marked up (P0-19): the text stays text. _markRuns splits every piece of
+  // text, and the inside of every earlier mark, at each match of `re`, as the old replace on the HTML string did;
+  // wrap(inner) is a match's markup. _showRuns turns the pieces into a list for kcHtml.
+  const _markRuns=(nodes,re,wrap)=>nodes.flatMap(n=>{
+    if(typeof n!=='string') return [{wrap:n.wrap,kids:_markRuns(n.kids,re,wrap)}];
+    const out=[]; let last=0, m; re.lastIndex=0;
+    while((m=re.exec(n))){ if(!m[0]){ re.lastIndex++; continue; } out.push(n.slice(last,m.index),{wrap,kids:[m[0]]}); last=m.index+m[0].length; }
+    out.push(n.slice(last)); return out.filter(x=>x!=='');
+  });
+  const _showRuns=nodes=>nodes.map(n=>typeof n==='string'?n:n.wrap(_showRuns(n.kids)));
+  const _reText=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const _gameEndLines=(log||[]).filter(_isGameEnd);
   if(_gameEndLines.length) log=log.filter(e=>!_isGameEnd(e));
   const _gameEndHtml=(()=>{
     if(!_gameEndLines.length) return '';
-    const _esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const _realms=((currentReport&&currentReport.allKingdoms)||[]).filter(k=>k&&k.name).sort((a,b)=>b.name.length-a.name.length);
-    const _tint=txt=>{ let h=_esc(txt); _realms.forEach(k=>{ if(!k.color) return; const n=_esc(k.name); if(h.includes(n)) h=h.split(n).join(`<strong style="color:${reportColour(k.color)}">${n}</strong>`); }); return h; };
+    const _tint=txt=>{ let h=[String(txt==null?'':txt)]; _realms.forEach(k=>{ if(!k.color) return; h=_markRuns(h,new RegExp(_reText(k.name),'g'),x=>kcHtml`<strong style="color:${reportColour(k.color)}">${x}</strong>`); }); return _showRuns(h); };
     const heads=_gameEndLines.filter(e=>!_GE_STAND_RE.test(e.text||''));
     const rows=_gameEndLines.filter(e=>_GE_STAND_RE.test(e.text||''));
-    return heads.map(e=>`<div style="font-size:.8rem;color:#231e16;margin-top:6px;line-height:1.5">${_tint((e.text||'').trim())}</div>`).join('')
-      +(rows.length?`<div style="margin-top:8px;border-top:1px solid #d9c48f;padding-top:6px"><div style="font-family:'Cinzel',serif;font-size:.8rem;color:#5a4410;margin-bottom:3px">Final Legacy standings</div>`
-        +rows.map((e,i)=>`<div style="font-size:.8rem;color:#231e16;line-height:1.55;${i===0?'font-weight:600;':''}">${_tint((e.text||'').trim())}</div>`).join('')+`</div>`:'');
+    return kcHtml`${heads.map(e=>kcHtml`<div style="font-size:.8rem;color:#231e16;margin-top:6px;line-height:1.5">${_tint((e.text||'').trim())}</div>`)}${
+      rows.length?kcHtml`<div style="margin-top:8px;border-top:1px solid #d9c48f;padding-top:6px"><div style="font-family:'Cinzel',serif;font-size:.8rem;color:#5a4410;margin-bottom:3px">Final Legacy standings</div>${
+        rows.map((e,i)=>kcHtml`<div style="font-size:.8rem;color:#231e16;line-height:1.55;${i===0?'font-weight:600;':''}">${_tint((e.text||'').trim())}</div>`)}</div>`:''}`;
   })();
   const _reckoningBanner=(()=>{
     const t=(currentReport&&currentReport.titles)||{};
     if(t.gameOver){
       const go=t.gameOver;
-      return `<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
+      return kcHtml`<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
         <div style="font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson)">🏆 ${go.byConcession?'The game is decided':'The Reckoning is complete'} — ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field as every rival concedes':'is judged supreme'}!</div>
-        ${_gameEndHtml||`<div style="font-size:.76rem;color:#231e16;margin-top:3px">The game is over. See Titles &amp; Victory for the final standings.</div>`}
+        ${_gameEndHtml||kcHtml`<div style="font-size:.76rem;color:#231e16;margin-top:3px">The game is over. See Titles &amp; Victory for the final standings.</div>`}
       </div>`;
     }
     if(_gameEndHtml){
-      return `<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
+      return kcHtml`<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
         <div style="font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson)">🏆 The game is decided</div>${_gameEndHtml}</div>`;
     }
     if(t.reckoning){
       const r=t.reckoning;
-      return `<div style="background:#fdeaea;border:2px solid var(--crimson);border-radius:3px;padding:9px 12px;margin-bottom:12px">
+      return kcHtml`<div style="background:#fdeaea;border:2px solid var(--crimson);border-radius:3px;padding:9px 12px;margin-bottom:12px">
         <div style="font-family:'Cinzel',serif;font-size:.9rem;color:var(--crimson)">👑 The Reckoning has been called${r.byName?` by ${r.byName}`:''}!</div>
-        <div style="font-size:.78rem;color:#444;margin-top:3px;line-height:1.5">The world will be judged at the end of <strong>Turn ${r.resolveAtTurn}</strong> unless the claim is broken before then. ${r.mine?'<strong>This is your claim — hold your dominance to the end.</strong>':'Drive the claimant\u2019s bloc below the threshold to shatter it and play on.'}</div>
+        <div style="font-size:.78rem;color:#444;margin-top:3px;line-height:1.5">The world will be judged at the end of <strong>Turn ${r.resolveAtTurn}</strong> unless the claim is broken before then. ${r.mine?kcHtml`<strong>This is your claim — hold your dominance to the end.</strong>`:'Drive the claimant\u2019s bloc below the threshold to shatter it and play on.'}</div>
       </div>`;
     }
     return '';
   })();
 
   if(!log.length){
-    document.getElementById('report-log').innerHTML=_reckoningBanner+'<em style="color:#3a3224;font-size:.85rem">No events yet.</em>'+(viewedTurn==null?intelSectionShell(''):'');
+    document.getElementById('report-log').innerHTML=kcHtml`${_reckoningBanner}<em style="color:#3a3224;font-size:.85rem">No events yet.</em>${viewedTurn==null?intelSectionShell(''):''}`;
   } else {
     // ── SORT ENTRIES INTO STRUCTURE ────
     // charEntries: charId → { name, isKing, phases: [ [], [], [], [], [] ] }
@@ -2465,7 +2478,6 @@ function buildChronicle(log, chars_for_log){
     const intelByPhase= {0:[],1:[],2:[],3:[],4:[],99:[]};
     const titleIntel=[]; // imperial-title perk lines ([The Throne], [The Sea Lord] …) — their own subsection
     const dispatches=[]; // player-to-player messages received/sent this turn — their own section
-    const escapeHtml=(s)=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     // The imperial titles whose per-turn perk is an intelligence line (emitted end-of-turn to the
     // holder).
     // ANY "[The …]" dispatch is a title's intel — matched by shape, not by a list of names. (The old
@@ -2585,18 +2597,16 @@ function buildChronicle(log, chars_for_log){
     // the more specific colours already set win (first-registered-wins).
     (_chronRep.allKingdoms||[]).forEach(k=>{ if(k&&k.name&&k.color) _registerName(k.name, k.color, false); });
     (_chronRep.nameColors||[]).forEach(n=>{ if(n&&n.name) _registerName(n.name, n.color||null, !!n.neutral, !!n.guard); });
-    function _escapeRe(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     const _nameKeys=[...nameColors.keys()].filter(Boolean).sort((a,b)=>b.length-a.length);
-    function colorizeNames(html, bold){
-      if(!_nameKeys.length) return html;
-      let out=html;
+    // Tints each name this viewer knows in `nodes` (text, or _markRuns pieces), longest first; returns pieces.
+    function colorizeNames(nodes, bold){
       const wt=bold?';font-weight:700':'';
       _nameKeys.forEach(nm=>{
         const info=nameColors.get(nm); const col=info.neutral?NEUTRAL_COLOR:info.color; if(!col) return;
-        const re=new RegExp('\\b'+_escapeRe(nm)+'\\b','g');
-        out=out.replace(re, m=>`<span style="color:${col}${wt}">${m}</span>`);
+        const re=new RegExp('\\b'+_reText(nm)+'\\b','g');
+        nodes=_markRuns(nodes, re, m=>kcHtml`<span style="color:${col}${wt}">${m}</span>`);
       });
-      return out;
+      return nodes;
     }
     function renderForceBlock(f, compact){
       const col=f.guard?CHIEFTAIN_MARKER_COLOR:(f.neutral?NEUTRAL_COLOR:(reportColour(f.color)||NEUTRAL_COLOR));
@@ -2607,13 +2617,13 @@ function buildChronicle(log, chars_for_log){
         const n=(f.armies||[]).length;
         const verb=String(f.verb||'').replace(/,\s*(with|leading)\s*$/,'').replace(/\s*—\s*\d+ defending units?\s*$/,'');
         const kinds=Object.keys(cnt).map(k=>`${unitEmoji(k)} ${cnt[k]>1?cnt[k]+'× ':''}${k}`).join(', ');
-        return `<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:3px;font-size:.8rem">⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${verb} — ${n?`${n} unit${n!==1?'s':''}: ${kinds}`:'no armies'}</div>`;
+        return kcHtml`<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:3px;font-size:.8rem">⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${verb} — ${n?`${n} unit${n!==1?'s':''}: ${kinds}`:'no armies'}</div>`;
       }
-      const header=`⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${f.verb||''}:`;
+      const header=kcHtml`⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${f.verb||''}:`;
       const rows=(f.armies||[]).length
-        ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem${a.phantom?';opacity:.75;font-style:italic':''}">${a.phantom?'✨':unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('')
-        : `<div style="padding-left:16px;font-size:.82rem;opacity:.7">— no armies —</div>`;
-      return `<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:6px"><div>${header}</div>${rows}</div>`;
+        ? f.armies.map(a=>kcHtml`<div style="padding-left:16px;font-size:.82rem${a.phantom?';opacity:.75;font-style:italic':''}">${a.phantom?'✨':unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`)
+        : kcHtml`<div style="padding-left:16px;font-size:.82rem;opacity:.7">— no armies —</div>`;
+      return kcHtml`<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:6px"><div>${header}</div>${rows}</div>`;
     }
 
     // ── HELPER: render a single log entry ──
@@ -2633,19 +2643,20 @@ function buildChronicle(log, chars_for_log){
       const isStat=rawText.startsWith('📊');
       const isTally=rawText.startsWith('⚰');
       const isBattleHeader=rawText.startsWith('⚔')||rawText.startsWith('⚠');
-      let text=rawText.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      // the line is text; each **bold** run becomes <strong>
+      const bold=rawText.split(/\*\*(.+?)\*\*/).map((s,i)=>i%2?{wrap:k=>kcHtml`<strong>${k}</strong>`,kids:[s]}:s).filter(x=>x!=='');
       // tint EVERY character's name in EVERY section — in the controlling player's colour
       // (neutrals dark grey) — not only battle/stat lines.
-      text=colorizeNames(text);
-      const tail=opt.tail?`<span style="flex:1"></span>${opt.tail}`:'';
+      const text=_showRuns(colorizeNames(bold));
+      const tail=opt.tail?kcHtml`<span style="flex:1"></span>${opt.tail}`:'';
       const flex=opt.tail?'display:flex;align-items:flex-start;gap:6px;':'';
-      const inner=opt.tail?`<span style="min-width:0">${text}</span>${tail}`:text;
+      const inner=opt.tail?kcHtml`<span style="min-width:0">${text}</span>${tail}`:text;
       const sub=(_ind>0&&!opt.compact)?`margin-left:${Math.min(4,Math.ceil(_ind/2))*12}px;font-size:.76rem;padding-top:2px;padding-bottom:2px;margin-bottom:1px;`:'';
       const _gridLine=/│/.test(rawText)?'white-space:pre;overflow-x:auto;':'';   // 2026-10-11: a battle-lines grid keeps its columns
-      if(isStat) return`<div class="log-entry stat" style="${flex}${sub}${_gridLine}">${inner}</div>`;
-      if(isTally) return`<div class="log-entry combat" style="${flex}border-left-width:4px;background:#f6ecdf;font-weight:600">${inner}</div>`;
-      if(isBattleHeader&&!sub) return`<div class="log-entry combat" style="${flex}border-left-width:4px;background:#fdf0f0;margin-top:6px;font-weight:600">${inner}</div>`;
-      return`<div class="log-entry ${e.type||''}" style="${flex}${sub}">${inner}</div>`;
+      if(isStat) return kcHtml`<div class="log-entry stat" style="${flex}${sub}${_gridLine}">${inner}</div>`;
+      if(isTally) return kcHtml`<div class="log-entry combat" style="${flex}border-left-width:4px;background:#f6ecdf;font-weight:600">${inner}</div>`;
+      if(isBattleHeader&&!sub) return kcHtml`<div class="log-entry combat" style="${flex}border-left-width:4px;background:#fdf0f0;margin-top:6px;font-weight:600">${inner}</div>`;
+      return kcHtml`<div class="log-entry ${e.type||''}" style="${flex}${sub}">${inner}</div>`;
     }
     // ── BATTLE FOLDING (2026-09-23d, Toby item 1) ── The engine tags every line of a battle with its
     // battleId and a tier (k key · d detail · t losses tally · s onlookers' one-line summary). A run
@@ -2654,28 +2665,28 @@ function buildChronicle(log, chars_for_log){
     // exactly as they always did.
     function renderBattleGroup(g){
       const hasDetail=g.some(e=>e.bTier==='d');
-      if(!hasDetail) return g.filter(e=>e.bTier!=='t').map(e=>renderEntry(e)).join(''); // an onlooker's lone summary line
+      if(!hasDetail) return g.filter(e=>e.bTier!=='t').map(e=>renderEntry(e)); // an onlooker's lone summary line
       const shortE=g.filter(e=>e.bTier==='k'||e.bTier==='t'), fullE=g.filter(e=>e.bTier!=='t'&&e.bTier!=='s');
-      const btn=(open)=>`<button type="button" class="secall-btn bf-toggle" style="flex-shrink:0;font-weight:400" aria-expanded="${open?'true':'false'}" onclick="toggleBattleFold(this)">${open?'&#9662; short summary':'&#9656; full report'}</button>`;
+      const btn=(open)=>kcHtml`<button type="button" class="secall-btn bf-toggle" style="flex-shrink:0;font-weight:400" aria-expanded="${open?'true':'false'}" onclick="toggleBattleFold(this)">${open?'▾ short summary':'▸ full report'}</button>`;
       const view=(list,open,compact)=>{
         let hi=list.findIndex(e=>/^\s*⚔ \*\*Battle for /.test(e.text||'')); if(hi<0) hi=0;
-        return list.map((e,i)=>renderEntry(e,{compact, tail:(i===hi?btn(open):null)})).join('');
+        return list.map((e,i)=>renderEntry(e,{compact, tail:(i===hi?btn(open):null)}));
       };
-      return `<div class="battle-fold"><div class="bf-short">${view(shortE,false,true)}</div><div class="bf-full" style="display:none">${view(fullE,true,false)}</div></div>`;
+      return kcHtml`<div class="battle-fold"><div class="bf-short">${view(shortE,false,true)}</div><div class="bf-full" style="display:none">${view(fullE,true,false)}</div></div>`;
     }
     function renderEntryList(list){
-      let out='';
+      let out=[];
       for(let i=0;i<list.length;){
         const e=list[i];
-        if(e&&e.battleId!=null){ let j=i; while(j<list.length&&list[j]&&list[j].battleId===e.battleId) j++; out+=renderBattleGroup(list.slice(i,j)); i=j; continue; }
-        out+=renderEntry(e); i++;
+        if(e&&e.battleId!=null){ let j=i; while(j<list.length&&list[j]&&list[j].battleId===e.battleId) j++; out.push(renderBattleGroup(list.slice(i,j))); i=j; continue; }
+        out.push(renderEntry(e)); i++;
       }
       return out;
     }
 
     // ── HELPER: render a phase sub-header ──
     function phaseHeader(ph,color){
-      return`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:${color||'var(--stone)'};
+      return kcHtml`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:${color||'var(--stone)'};
         text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;
         border-bottom:1px dotted var(--parchment-dark);margin:6px 0 4px;
         display:flex;align-items:center;gap:6px">
@@ -2684,7 +2695,7 @@ function buildChronicle(log, chars_for_log){
       </div>`;
     }
 
-    let html='';
+    let html=[];
 
     // ════
     // SECTION 1: Characters — king first, then heroes Each character shows all 5 phases that have
@@ -2697,16 +2708,16 @@ function buildChronicle(log, chars_for_log){
       if(!hasAny)return;
 
       const accentColor=c.isKing?'var(--crimson)':'var(--forest)';
-      html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid ${c.isKing?'var(--crimson)':'var(--stone)'};border-radius:3px;overflow:hidden">
+      html.push(kcHtml`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid ${c.isKing?'var(--crimson)':'var(--stone)'};border-radius:3px;overflow:hidden">
         <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
           padding:7px 12px;background:${accentColor};
           display:flex;align-items:center;gap:8px">
           <span style="font-size:1rem">${c.isKing?'👑':'⚔'}</span>
           <span style="font-weight:600">${c.name}</span>
-          ${c.isKing?'<span style="font-size:.68rem;opacity:.8;margin-left:auto">King</span>':''}
+          ${c.isKing?kcHtml`<span style="font-size:.68rem;opacity:.8;margin-left:auto">King</span>`:''}
           <button type="button" class="cc-toggle" title="Minimise / maximise this character" aria-expanded="true" onclick="toggleSection(this)" style="${c.isKing?'margin-left:8px':''}">&#9662;</button>
         </div>
-        <div style="padding:6px 8px">`;
+        <div style="padding:6px 8px">`);
 
       let hasContent=false;
       ce.phases.forEach((entries,ph)=>{
@@ -2717,36 +2728,36 @@ function buildChronicle(log, chars_for_log){
         // fighting-not-marching before the battle narrative that follows. Stable sort keeps every
         // other line in its original order.
         const ordered=[...entries].sort((a,b)=>((b.pinNotice?1:0)-(a.pinNotice?1:0)));
-        html+=phaseHeader(ph,PHASE_COLORS[ph]);
-        html+=renderEntryList(ordered);
+        html.push(phaseHeader(ph,PHASE_COLORS[ph]));
+        html.push(renderEntryList(ordered));
       });
 
-      if(!hasContent) html+=`<em style="color:#aaa;font-size:.8rem;padding:4px 8px;display:block">No activity this turn.</em>`;
-      html+=`</div></div>`;
+      if(!hasContent) html.push(kcHtml`<em style="color:#aaa;font-size:.8rem;padding:4px 8px;display:block">No activity this turn.</em>`);
+      html.push(kcHtml`</div></div>`);
     });
 
     // ════
     // SECTION: Dispatches — player-to-player messages. Shown prominently above Realm Events.
     if(dispatches.length>0){
-      html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid #6b8ec8;border-radius:3px;overflow:hidden">
+      html.push(kcHtml`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid #6b8ec8;border-radius:3px;overflow:hidden">
         <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
           padding:7px 12px;background:#4a6ea5;display:flex;align-items:center;gap:8px">
           <span style="font-size:1rem">📨</span>
           <span style="font-weight:600">Dispatches</span>
           <button type="button" class="cc-toggle" title="Minimise / maximise" aria-expanded="true" onclick="toggleSection(this)">&#9662;</button>
         </div>
-        <div style="padding:6px 10px">`;
+        <div style="padding:6px 10px">`);
       dispatches.forEach(e=>{
-        html+=`<div class="log-entry" style="padding:5px 4px;border-bottom:1px dotted var(--parchment-dark)">${escapeHtml(e.text||'')}</div>`;
+        html.push(kcHtml`<div class="log-entry" style="padding:5px 4px;border-bottom:1px dotted var(--parchment-dark)">${e.text||''}</div>`);
       });
-      html+=`</div></div>`;
+      html.push(kcHtml`</div></div>`);
     }
 
     // ════
     // SECTION 2: Realm Events — system events grouped by phase
     const hasSystemEvents=Object.values(systemByPhase).some(a=>a.length>0);
     if(hasSystemEvents){
-      html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid var(--stone);border-radius:3px;overflow:hidden">
+      html.push(kcHtml`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid var(--stone);border-radius:3px;overflow:hidden">
         <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
           padding:7px 12px;background:var(--stone);display:flex;align-items:center;gap:8px">
           <span style="font-size:1rem">⚙</span>
@@ -2754,27 +2765,27 @@ function buildChronicle(log, chars_for_log){
           <span style="font-size:.7rem;opacity:.7;margin-left:auto">Battles · Conquests · Tax &amp; Wages</span>
           <button type="button" class="cc-toggle" title="Minimise / maximise" aria-expanded="true" onclick="toggleSection(this)" style="margin-left:8px">&#9662;</button>
         </div>
-        <div style="padding:6px 8px">`;
+        <div style="padding:6px 8px">`);
 
       // Phased events (0-4) first
       [0,1,2,3,4].forEach(ph=>{
         const entries=systemByPhase[ph]||[];
         if(!entries.length)return;
-        html+=phaseHeader(ph,PHASE_COLORS[ph]);
-        html+=renderEntryList(entries);
+        html.push(phaseHeader(ph,PHASE_COLORS[ph]));
+        html.push(renderEntryList(entries));
       });
 
       // Unphased events (wages, tax, turn-level) last
       const unphased=systemByPhase[99]||[];
       if(unphased.length){
-        html+=`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);
+        html.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);
           text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;
           border-bottom:1px dotted var(--parchment-dark);margin:6px 0 4px">
           End of Turn
-        </div>`;
-        html+=renderEntryList(unphased);
+        </div>`);
+        html.push(renderEntryList(unphased));
       }
-      html+=`</div></div>`;
+      html.push(kcHtml`</div></div>`);
     }
 
     // ════
@@ -2790,52 +2801,52 @@ function buildChronicle(log, chars_for_log){
     // intelligence that used to have its own "Intelligence" card (filled by renderReportView into
     // #report-intel). A past-turn view shows only that turn's logged intel.
     if(hasIntel||viewedTurn==null){
-      let html0=html; html='';
+      let html0=html; html=[];
+      // an intel line: its first "[Intelligence]" becomes the small [Intel] tag; the rest is text
+      const _intelLine=t=>{ const i=t.indexOf('[Intelligence]'); return i<0?t:kcHtml`${t.slice(0,i)}<span style="color:#c8922a;font-family:Cinzel,serif;font-size:.68rem">[Intel]</span>${t.slice(i+14)}`; };
 
       // ── Imperial Titles subsection ── the per-turn intel your held titles grant (rival
       // treasuries, strongest armies/fleets, rival discoveries, and so on), grouped apart from
       // field intelligence.
-      const _subHead=(t)=>`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:#9a6a1a;
+      const _subHead=(t)=>kcHtml`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:#9a6a1a;
           text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;
           border-bottom:1px dotted var(--parchment-dark);margin:2px 0 4px">${t}</div>`;
       if(titleIntel.length){
-        html+=_subHead('👑 Imperial Titles');
+        html.push(_subHead('👑 Imperial Titles'));
         // ONE block per title: the tag once, then every piece of that title's report together.
         const byTitle=new Map();
         titleIntel.forEach(e=>{ const m=TITLE_INTEL_RE.exec(e.text||''); const k=m?m[1]:'Titles';
           if(!byTitle.has(k)) byTitle.set(k,[]); byTitle.get(k).push((e.text||'').replace(TITLE_INTEL_RE,'')); });
         byTitle.forEach((parts,k)=>{
-          const tag=`<span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">[${k}]</span>`;
+          const tag=kcHtml`<span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">[${k}]</span>`;
           // every character and realm name bold + tinted in its realm's colour
-          const body=parts.map(t=>`<div class="ti-line">${colorizeNames(t,true)}</div>`).join('');
-          html+=`<div class="log-entry system">${tag}${body}</div>`;
+          const body=parts.map(t=>kcHtml`<div class="ti-line">${_showRuns(colorizeNames([t],true))}</div>`);
+          html.push(kcHtml`<div class="log-entry system">${tag}${body}</div>`);
         });
       }
 
       [0,1,2,3,4].forEach(ph=>{
         const entries=intelByPhase[ph]||[];
         if(!entries.length)return;
-        html+=phaseHeader(ph,'#c8922a');
+        html.push(phaseHeader(ph,'#c8922a'));
         entries.forEach(e=>{
-          const text=(e.text||'').replace('[Intelligence]','<span style="color:#c8922a;font-family:Cinzel,serif;font-size:.68rem">[Intel]</span>');
-          html+=`<div class="log-entry system">${text}</div>`;
+          html.push(kcHtml`<div class="log-entry system">${_intelLine(e.text||'')}</div>`);
         });
       });
 
       const unphased=(intelByPhase[99]||[]);
       if(unphased.length){
-        html+=`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:#c8922a;
+        html.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:#c8922a;
           text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;
-          border-bottom:1px dotted var(--parchment-dark);margin:6px 0 4px">General</div>`;
+          border-bottom:1px dotted var(--parchment-dark);margin:6px 0 4px">General</div>`);
         unphased.forEach(e=>{
-          const text=(e.text||'').replace('[Intelligence]','<span style="color:#c8922a;font-family:Cinzel,serif;font-size:.68rem">[Intel]</span>');
-          html+=`<div class="log-entry system">${text}</div>`;
+          html.push(kcHtml`<div class="log-entry system">${_intelLine(e.text||'')}</div>`);
         });
       }
-      html=html0+intelSectionShell(html);
+      html=[...html0,intelSectionShell(html)];
     }
 
-      document.getElementById('report-log').innerHTML=_reckoningBanner+(html||'<em style="color:#3a3224;font-size:.85rem">No events yet.</em>');
+      document.getElementById('report-log').innerHTML=kcHtml`${_reckoningBanner}${html.length?html:kcHtml`<em style="color:#3a3224;font-size:.85rem">No events yet.</em>`}`;
   } // end else (log.length > 0)
 } // end buildChronicle
 
@@ -2865,8 +2876,7 @@ async function loadPastReport(gameId, playerIndex, turn){
     }
   }catch(err){ snapshot=null; }
 
-  banner.innerHTML=`Viewing Turn ${snapshotTurnLabel(turn)}${turn===0?' (founding)':''} — read only. `
-    +`<button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
+  banner.innerHTML=kcHtml`Viewing Turn ${snapshotTurnLabel(turn)}${turn===0?' (founding)':''} — read only. <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
 
   if(snapshot){
     // Whole report body straight from the snapshot — map, chronicle, AND every other section revert
@@ -2902,11 +2912,9 @@ async function loadPastReport(gameId, playerIndex, turn){
   if(entries.length>0){
     buildChronicle(entries, allChars.filter(c=>c.player===pi));
   }else if(turn===0){
-    document.getElementById('report-log').innerHTML='<div class="log-entry system">Your realm is founded. The realm awaits your first commands.</div>';
+    document.getElementById('report-log').innerHTML=kcHtml`<div class="log-entry system">Your realm is founded. The realm awaits your first commands.</div>`;
   }
-  banner.innerHTML=`Viewing Turn ${snapshotTurnLabel(turn)} — read only. `
-    +`<span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> `
-    +`<button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
+  banner.innerHTML=kcHtml`Viewing Turn ${snapshotTurnLabel(turn)} — read only. <span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
 }
 
 function returnToCurrentReport(){
@@ -3088,22 +3096,22 @@ function renderReportView(report){
   const alignSummary=ALIGNMENT_SUMMARIES[playerAlignment]||'';
   const alignColours={Divine:'#c8922a',Good:'#2d6a2d',Druidic:'#1a5e1a',Neutral:'#555',Pagan:'#7a4a00',Evil:'#8a1c1c',Undead:'#3a1a6a'};
   const alignIcons={Divine:'✨',Good:'⚔',Druidic:'🌿',Neutral:'⚖',Pagan:'🔥',Evil:'💀',Undead:'💀'};
-  const alignBanner=alignSummary?`
+  const alignBanner=alignSummary?kcHtml`
     <div style="background:#fdf8ee;border-left:4px solid ${alignColours[playerAlignment]||'#888'};padding:8px 12px;margin-bottom:10px;border-radius:0 3px 3px 0">
       <div style="font-family:'Cinzel',serif;font-size:.72rem;color:${alignColours[playerAlignment]||'#888'};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:700">${alignIcons[playerAlignment]||''} ${playerAlignment} Realm</div>
       <div style="font-size:.78rem;color:#444;line-height:1.5">${bulletizeDesc(alignSummary)}</div>
     </div>`:'';
 
-  const cmGuide=(playerAlignment==='Druidic'||playerAlignment==='Evil')?`
+  const cmGuide=(playerAlignment==='Druidic'||playerAlignment==='Evil')?kcHtml`
     <div style="font-size:.72rem;color:var(--stone);background:#f5f0e8;border:1px solid var(--stone);border-radius:2px;padding:5px 8px;margin-bottom:8px">
-      ${playerAlignment==='Druidic'?'🌿 <strong>Druidic bonuses</strong> — <span style="color:#1d5a1d"><strong>[C] Creature</strong></span> armies get no Druid penalty and fight at ×1.5 in forest/jungle; every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1.':''}
-      ${playerAlignment==='Evil'?'💀 <strong>Evil bonuses</strong> — <span style="color:#701010"><strong>[M] Monster</strong></span> armies get no Druid penalty and lift the whole host to ×1.25 in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 attacking ground your Terror grips. On province conquest: instant 50% loot.':''}
+      ${playerAlignment==='Druidic'?kcHtml`🌿 <strong>Druidic bonuses</strong> — <span style="color:#1d5a1d"><strong>[C] Creature</strong></span> armies get no Druid penalty and fight at ×1.5 in forest/jungle; every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1.`:''}
+      ${playerAlignment==='Evil'?kcHtml`💀 <strong>Evil bonuses</strong> — <span style="color:#701010"><strong>[M] Monster</strong></span> armies get no Druid penalty and lift the whole host to ×1.25 in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 attacking ground your Terror grips. On province conquest: instant 50% loot.`:''}
       <br><span style="color:#1d5a1d;font-weight:600">[C] Creatures:</span> Thunderbirds, Forest Ents, Great Bears, Stone Giants, Unicorn Herd, Mammoth Host, Crimson Rocs, Whale Cohort, Great Turtles
-      ${playerAlignment==='Evil'?'<br><span style="color:#701010;font-weight:600">[M] Monsters:</span> Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras, Shark Shoals':''}
+      ${playerAlignment==='Evil'?kcHtml`<br><span style="color:#701010;font-weight:600">[M] Monsters:</span> Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras, Shark Shoals`:''}
     </div>`:'';
   // Royal-succession skill allocation is rendered at the TOP of the orders column now
   // (see heirSelectorHTML in buildOrdersForm), not here in the realm section.
-  document.getElementById('report-kingdom').innerHTML=alignBanner+cmGuide+`
+  document.getElementById('report-kingdom').innerHTML=kcHtml`${alignBanner}${cmGuide}
     <div class="report-grid">
       <div class="stat-box"><div class="stat-label">Treasury</div><div class="stat-value">${kingdom.gold||0}g</div></div>
       <div class="stat-box"><div class="stat-label">Tax Income</div><div class="stat-value">${taxIncome}g/turn</div>${(()=>{
@@ -3127,23 +3135,23 @@ function renderReportView(report){
         const bonusSum=bonuses.reduce((a,b)=>a+b[0],0);
         // older saved reports carry no rawTaxBase — derive it so the ledger still sums
         const rawBase=kingdom.rawTaxBase!=null?kingdom.rawTaxBase:Math.max(0,taxIncome-bonusSum+eq+ens);
-        const row=(txt,col)=>`<div style="font-size:.62rem;color:${col};margin-top:1px;line-height:1.3">${txt}</div>`;
-        const incl=row(`Base province tax: ${rawBase}g`,'var(--stone)')
-          +bonuses.map(b=>row(`+${b[0]}g ${b[1]}`,'#2d7a2d')).join('')
-          +(bonuses.length?'':row('no bonuses','var(--stone)'))
+        const row=(txt,col)=>kcHtml`<div style="font-size:.62rem;color:${col};margin-top:1px;line-height:1.3">${txt}</div>`;
+        const incl=[row(`Base province tax: ${rawBase}g`,'var(--stone)'),
+          bonuses.map(b=>row(`+${b[0]}g ${b[1]}`,'#2d7a2d')),
+          bonuses.length?'':row('no bonuses','var(--stone)'),
           // 2026-09-24: every tax-gold source is capped at 5% of the base province tax; say so when
           // the cap actually bit on the item gold (the discovery lines are capped one by one).
-          +(K('taxBonusCutG')>0?row(`−${K('taxBonusCutG')}g of item tax gold above the ${K('taxBonusCapG')}g cap (5% of base tax)`,'#8a6d1f'):'');
+          K('taxBonusCutG')>0?row(`−${K('taxBonusCutG')}g of item tax gold above the ${K('taxBonusCapG')}g cap (5% of base tax)`,'#8a6d1f'):''];
         const eqLine=eq>0?row(`−${eq}g lost to earthquake damage`,'#c00'):'';
         const ensLine=ens>0?row(`−${ens}g enslaved provinces seethe`,'#c00'):'';
         // The box projects NEXT turn's collection from the realm as it stands now; what was
         // actually banked this turn (with any one-turn Bless / Earthquake / Sabotage effects) is
         // the "collects...g in taxes" line under Kingdom Events.
-        const noteLine=`<div style="font-size:.6rem;color:var(--stone);margin-top:2px;line-height:1.3">projected for next turn — this turn's actual take is under Kingdom Events</div>`;
-        return incl+eqLine+ensLine+noteLine;
+        const noteLine=kcHtml`<div style="font-size:.6rem;color:var(--stone);margin-top:2px;line-height:1.3">projected for next turn — this turn's actual take is under Kingdom Events</div>`;
+        return kcHtml`${incl}${eqLine}${ensLine}${noteLine}`;
       })()}</div>
-      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div>${(kingdom.hostLeaderG||0)>0?`<div style="font-size:.62rem;color:#1d5a1d;margin-top:2px;line-height:1.3">after −${kingdom.hostLeaderG}g the Host-Leader</div>`:''}${(kingdom.orcSpoilsG||0)>0?`<div style="font-size:.62rem;color:#1d5a1d;margin-top:2px;line-height:1.3">after −${kingdom.orcSpoilsG}g Orcish war-spoils</div>`:''}${(kingdom.nextArmyWages!=null&&kingdom.nextArmyWages!==kingdom.armyWages)?`<div style="font-size:.62rem;color:#2a2419;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextArmyWages}g</div>`:''}</div>
-      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div>${(kingdom.heroWageDisc||0)>0?`<div style="font-size:.62rem;color:#1d5a1d;margin-top:2px;line-height:1.3">after −${kingdom.heroWageDisc}g wage discounts</div>`:''}${(kingdom.nextHeroWages!=null&&kingdom.nextHeroWages!==kingdom.heroWages)?`<div style="font-size:.62rem;color:#2a2419;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextHeroWages}g</div>`:''}</div>
+      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div>${(kingdom.hostLeaderG||0)>0?kcHtml`<div style="font-size:.62rem;color:#1d5a1d;margin-top:2px;line-height:1.3">after −${kingdom.hostLeaderG}g the Host-Leader</div>`:''}${(kingdom.orcSpoilsG||0)>0?kcHtml`<div style="font-size:.62rem;color:#1d5a1d;margin-top:2px;line-height:1.3">after −${kingdom.orcSpoilsG}g Orcish war-spoils</div>`:''}${(kingdom.nextArmyWages!=null&&kingdom.nextArmyWages!==kingdom.armyWages)?kcHtml`<div style="font-size:.62rem;color:#2a2419;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextArmyWages}g</div>`:''}</div>
+      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div>${(kingdom.heroWageDisc||0)>0?kcHtml`<div style="font-size:.62rem;color:#1d5a1d;margin-top:2px;line-height:1.3">after −${kingdom.heroWageDisc}g wage discounts</div>`:''}${(kingdom.nextHeroWages!=null&&kingdom.nextHeroWages!==kingdom.heroWages)?kcHtml`<div style="font-size:.62rem;color:#2a2419;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextHeroWages}g</div>`:''}</div>
       <div class="stat-box"><div class="stat-label">Net Income</div><div class="stat-value" style="color:${netIncome>=0?'#2d7a2d':'#c00'}">${netIncome>=0?'+':''}${netIncome}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Provinces</div><div class="stat-value">${(report.ownedProvinces||[]).length}</div></div>
     </div>
@@ -3153,7 +3161,7 @@ function renderReportView(report){
       // this card disagreed with both the orders column and the engine. Now the shared renderer.
       const skillRow=skillRowHTML(c,'inline'); // match the orders column's inline style
       const effSpd=(c.armies||[]).length===0?5:(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...(c.armies||[]).map(a=>a.speed||3)));
-      return`<div class="char-card">
+      return kcHtml`<div class="char-card">
         <div class="char-card-head">
           <span style="font-size:.9rem">${c.isKing?'👑':'⚔'}</span>
           <span class="cname">${c.name} ${c.isKing?'(Your King)':'(Hero)'}</span>
@@ -3161,26 +3169,26 @@ function renderReportView(report){
           <span style="font-size:.7rem;color:var(--stone)">HP ${c.hp}/${c.maxHp}</span>
         </div>
         <div class="char-detail" style="background:#fdf5e0;border:1px solid var(--parchment-dark);border-radius:2px;padding:5px 10px 6px;font-size:.76rem;line-height:1.6;display:flex;flex-wrap:wrap;gap:8px">
-          <span style="flex-basis:100%;width:100%;color:var(--stone)">${formatRace(c.race)} · ${c.alignment||'—'} · ${c.temper||'—'}${(c.temperEff&&c.temperEff!==c.temper)?` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''}</span>
+          <span style="flex-basis:100%;width:100%;color:var(--stone)">${formatRace(c.race)} · ${c.alignment||'—'} · ${c.temper||'—'}${(c.temperEff&&c.temperEff!==c.temper)?kcHtml` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''}</span>
           <span><strong>HP:</strong> ${c.hp}/${c.maxHp}</span>
           <span>📍 In ${provLinkHtml(c.locationId,c.locationName||'Unknown')}</span>
           <span style="color:var(--forest)" title="1 province per phase used to move, +1 per province conquered"><strong>Move:</strong> ${effSpd} province${effSpd!==1?'s':''}/turn</span>
-          ${!c.isKing?`<span><strong>Pay:</strong> ${c.pay||1}g/turn</span>`:''}
+          ${!c.isKing?kcHtml`<span><strong>Pay:</strong> ${c.pay||1}g/turn</span>`:''}
           ${skillRow}
-          ${itemsForDisplayP(c).map(i=>`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(i)}🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` <span style="color:var(--item-desc);font-weight:400">(${i.desc})</span>`:''}</div>`).join('')}
+          ${itemsForDisplayP(c).map(i=>kcHtml`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(i)}🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?kcHtml` <span style="color:var(--item-desc);font-weight:400">(${i.desc})</span>`:''}</div>`)}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
             if(!maj.length && !min.length) return '';
-            const majH=maj.map(tt=>`<div style="font-size:.72rem;margin-top:3px"><span style="background:#fdf3d8;border:1px solid var(--gold);border-radius:2px;padding:0 4px;font-family:'Cinzel',serif;color:#5a3f08">🏆 ${tt.name}</span> <span style="color:#231e16">${tt.perk||''}</span></div>`).join('');
-            const minH=min.map(tt=>`<div style="font-size:.72rem;margin-top:2px"><span style="background:#eef3e6;border:1px solid #b8c9a8;border-radius:2px;padding:0 4px;color:#3a5a2a">🎖 ${tt.name}</span> <span style="color:#231e16">${tt.perk||''}</span></div>`).join('');
-            return `<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Titles &amp; perks</div>${majH}${minH}</div>`;
+            const majH=maj.map(tt=>kcHtml`<div style="font-size:.72rem;margin-top:3px"><span style="background:#fdf3d8;border:1px solid var(--gold);border-radius:2px;padding:0 4px;font-family:'Cinzel',serif;color:#5a3f08">🏆 ${tt.name}</span> <span style="color:#231e16">${tt.perk||''}</span></div>`);
+            const minH=min.map(tt=>kcHtml`<div style="font-size:.72rem;margin-top:2px"><span style="background:#eef3e6;border:1px solid #b8c9a8;border-radius:2px;padding:0 4px;color:#3a5a2a">🎖 ${tt.name}</span> <span style="color:#231e16">${tt.perk||''}</span></div>`);
+            return kcHtml`<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Titles &amp; perks</div>${majH}${minH}</div>`;
           })()}
           ${(()=>{
             // Item: Armies Leading — the force under this character, with a summary of total
             // strength, move rate, upkeep, and which units need Druid skill to command.
             const arr=c.armies||[];
-            const head=`<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
-            if(arr.length===0) return head+`<div style="font-size:.75rem;color:#3a3224">No armies led — moves 5 provinces/turn on its own.</div></div>`;
+            const head=kcHtml`<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
+            if(arr.length===0) return kcHtml`${head}<div style="font-size:.75rem;color:#3a3224">No armies led — moves 5 provinces/turn on its own.</div></div>`;
             const druLevel=effSkillP(c,'druid');
             // Druid requirement, waivers and shortfall: ONE rule, druidNeedP (mirrors the engine).
             let totalStr=0,totalCost=0,druidUnits=0,druidShort=0;
@@ -3216,13 +3224,13 @@ function renderReportView(report){
               const mastery=(!a.skeletal&&(creature||monster))?Math.min(100,20*Math.max(0,Math.min(9,druLevel)-req)):0;
               if(mastery>0) bs=Math.round(bs*(1+mastery/100));
               totalStr+=bs; totalCost+=(a.cost!=null?a.cost:2);
-              const mast=mastery>0?` <span style="color:#1d5a1d;font-size:.66rem">+${mastery}% Druid mastery</span>`:'';
-              const pen=shortfall>0?` <span style="color:var(--crimson);font-size:.68rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
-              const raceBoost=(kingRaceMatch||leadRaceMatch)?` <span style="color:#1d5a1d;font-size:.66rem">+${kingRaceMatch&&leadRaceMatch?44:20}% kin</span>`:'';
-              const feudTag=feudLed?` <span style="color:var(--crimson);font-size:.66rem">−20% feud</span>`:'';
-              const tag=(creature||monster)?` <span style="color:#1d5a1d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
-              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(reportColour(kingdom.color)||'var(--ink)')+'">'+armyLabel(a,{noMove:true})+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}${a.moveRate!=null?` · move ${a.moveRate}${a.moveKind==='sea'?' (sea)':a.moveKind==='air'?' (air)':''}`:''}</span>${tag}${raceBoost}${feudTag}${mast}${pen}</div>`;
-            }).join('');
+              const mast=mastery>0?kcHtml` <span style="color:#1d5a1d;font-size:.66rem">+${mastery}% Druid mastery</span>`:'';
+              const pen=shortfall>0?kcHtml` <span style="color:var(--crimson);font-size:.68rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
+              const raceBoost=(kingRaceMatch||leadRaceMatch)?kcHtml` <span style="color:#1d5a1d;font-size:.66rem">+${kingRaceMatch&&leadRaceMatch?44:20}% kin</span>`:'';
+              const feudTag=feudLed?kcHtml` <span style="color:var(--crimson);font-size:.66rem">−20% feud</span>`:'';
+              const tag=(creature||monster)?kcHtml` <span style="color:#1d5a1d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
+              return kcHtml`<div style="font-size:.75rem">${unitAbilityTip(a.type, kcHtml`${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color)||'var(--ink)'}">${armyLabel(a,{noMove:true})}</span>`)} <span style="color:var(--stone);font-size:.66rem">str ${bs}${a.moveRate!=null?` · move ${a.moveRate}${a.moveKind==='sea'?' (sea)':a.moveKind==='air'?' (air)':''}`:''}</span>${tag}${raceBoost}${feudTag}${mast}${pen}</div>`;
+            });
             const effSpd2=(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...arr.map(a=>a.speed||3)));
             // FLYING CARRY note. If humanoid flyers are lifting foot soldiers (a mixed airborne
             // column that can cross sea), tell the player so the raised speed and sea reach make
@@ -3233,7 +3241,7 @@ function renderReportView(report){
             const _hasFlyer=arr.some(a=>_FLY_UI2.has(a.type));
             const _hasFoot=arr.some(a=>!_AER_UI2.has(a.type)&&!_SEA_UI2.has(a.type));
             const _airborne=_hasFlyer&&_hasFoot&&!arr.some(a=>_SEA_UI2.has(a.type))&&(c.effectiveSeaSpeed>0);
-            const _airNote=_airborne?` · <span style="color:#2d6a8a">🦅 Airborne — the flyers carry the foot soldiers, so the whole force flies (crosses sea, moves at the flyers' pace)</span>`:'';
+            const _airNote=_airborne?kcHtml` · <span style="color:#2d6a8a">🦅 Airborne — the flyers carry the foot soldiers, so the whole force flies (crosses sea, moves at the flyers' pace)</span>`:'';
             // sea transport — how many hulls this force needs to enter a sea province, and how many
             // it has. Mirrors the engine's getSeaCapability: only the six carrier fleets carry (a
             // hull each); light foot (levies, Men-at-Arms, archers incl. Black Arrows, gun-crews,
@@ -3249,12 +3257,12 @@ function renderReportView(report){
             const _hullNeedShown=Math.ceil(_hullNeed);
             const _hullHave=arr.reduce((n,a)=>n+(_CARRIER_UI2.has(a.type)?((KC_CARRIER_BERTHS&&KC_CARRIER_BERTHS[a.type])||1):0),0);   // berths: a turtle's Island Back offers two
             let _seaNote='';
-            if(_landUnits.length===0) _seaNote=` · ⚓ <span style="color:#2d6a8a">Sea: every unit sails or flies on its own</span>`;
+            if(_landUnits.length===0) _seaNote=kcHtml` · ⚓ <span style="color:#2d6a8a">Sea: every unit sails or flies on its own</span>`;
             else if(_airborne) _seaNote='';
-            else if(_hullHave>=_hullNeed) _seaNote=` · ⚓ <span style="color:#1d5a1d">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown!==1?'s':''}, has ${_hullHave} — can put to sea</span>`;
-            else _seaNote=` · ⚓ <span style="color:var(--crimson)">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown!==1?'s':''}, has ${_hullHave} — ${_hullNeedShown-_hullHave} more fleet unit${_hullNeedShown-_hullHave!==1?'s':''} to carry the whole force</span>`;
-            const druNote=druidUnits>0?` · 🌿 ${druidUnits} unit${druidUnits!==1?'s':''} need Druid ${druidShort>0?`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>`:`<span style="color:#1d5a1d">(${c.name.split(' ')[0]} qualifies)</span>`}`:'';
-            const summary=`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2!==1?'s':''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
+            else if(_hullHave>=_hullNeed) _seaNote=kcHtml` · ⚓ <span style="color:#1d5a1d">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown!==1?'s':''}, has ${_hullHave} — can put to sea</span>`;
+            else _seaNote=kcHtml` · ⚓ <span style="color:var(--crimson)">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown!==1?'s':''}, has ${_hullHave} — ${_hullNeedShown-_hullHave} more fleet unit${_hullNeedShown-_hullHave!==1?'s':''} to carry the whole force</span>`;
+            const druNote=druidUnits>0?kcHtml` · 🌿 ${druidUnits} unit${druidUnits!==1?'s':''} need Druid ${druidShort>0?kcHtml`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>`:kcHtml`<span style="color:#1d5a1d">(${c.name.split(' ')[0]} qualifies)</span>`}`:'';
+            const summary=kcHtml`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2!==1?'s':''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
             // ONE line stands for the whole army — strength, a count of each unit type, and the
             // land / flying / sea pace — with a button that unfolds the full unit list (and the
             // upkeep/druid/sea-transport notes) beneath it. The list starts folded.
@@ -3262,69 +3270,69 @@ function renderReportView(report){
             const _typeLine=Object.keys(_typeCounts).map(k=>`${unitEmoji(k)} ${_typeCounts[k]>1?_typeCounts[k]+'× ':''}${k}`).join(', ');
             const _airSpd=(c.effectiveAirSpeed!=null)?c.effectiveAirSpeed:0;
             const _seaSpd=(c.effectiveSeaSpeed!=null)?c.effectiveSeaSpeed:0;
-            const _paceBits=[`🏃 Land <strong>${effSpd2}</strong>`];
-            if(_airSpd>0) _paceBits.push(`🦅 Flying <strong>${_airSpd}</strong>`);
-            if(_seaSpd>0) _paceBits.push(`⚓ Sea <strong>${_seaSpd}</strong>`);
+            const _paceBits=[kcHtml`🏃 Land <strong>${effSpd2}</strong>`];
+            if(_airSpd>0) _paceBits.push(kcHtml`🦅 Flying <strong>${_airSpd}</strong>`);
+            if(_seaSpd>0) _paceBits.push(kcHtml`⚓ Sea <strong>${_seaSpd}</strong>`);
             // Item 24 (2026-10-12): a hero leads at most as many Creature and Monster units as his Druid level.
             const _bLed=arr.filter(beastCommandCountP).length;
-            const _bNote=_bLed>0?` · <span style="color:${_bLed>druLevel?'var(--crimson)':'#1d5a1d'}" title="A hero may lead only as many Creature and Monster units as his Druid level">🐾 beasts ${_bLed}/${druLevel}${_bLed>druLevel?' — over his Druid, he takes on no more':''}</span>`:'';
-            const _oneLine=`<div style="font-size:.74rem;line-height:1.5;display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap">
-              <span style="flex:1;min-width:0">⚔ <strong>${arr.length}</strong> unit${arr.length!==1?'s':''} · strength <strong>${totalStr}</strong>${druidShort>0?` <span style="color:var(--crimson);font-size:.66rem">(${druidShort} under-led)</span>`:''}${_bNote} · ${_typeLine} · ${_paceBits.join(' · ')}</span>
+            const _bNote=_bLed>0?kcHtml` · <span style="color:${_bLed>druLevel?'var(--crimson)':'#1d5a1d'}" title="A hero may lead only as many Creature and Monster units as his Druid level">🐾 beasts ${_bLed}/${druLevel}${_bLed>druLevel?' — over his Druid, he takes on no more':''}</span>`:'';
+            const _oneLine=kcHtml`<div style="font-size:.74rem;line-height:1.5;display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap">
+              <span style="flex:1;min-width:0">⚔ <strong>${arr.length}</strong> unit${arr.length!==1?'s':''} · strength <strong>${totalStr}</strong>${druidShort>0?kcHtml` <span style="color:var(--crimson);font-size:.66rem">(${druidShort} under-led)</span>`:''}${_bNote} · ${_typeLine} · ${kcJoinP(_paceBits,' · ')}</span>
               <button type="button" class="secall-btn" style="flex-shrink:0" aria-expanded="false" onclick="var d=this.parentNode.nextElementSibling;var open=d.style.display==='none';d.style.display=open?'block':'none';this.setAttribute('aria-expanded',open?'true':'false');this.textContent=open?'▾ hide units':'▸ show units'">&#9656; show units</button>
             </div>`;
-            return head+_oneLine+`<div style="display:none">`+lines+summary+`</div></div>`;
+            return kcHtml`${head}${_oneLine}<div style="display:none">${lines}${summary}</div></div>`;
           })()}
         </div>
       </div>`;
-    }).join('')}`;
+    })}`;
 
   // Provinces list your provinces alphabetically by name (a copy — never sort the report array in
   // place).
   const provs=[...(report.ownedProvinces||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   document.getElementById('report-provinces').innerHTML=provs.length
-    ?provs.map(p=>`<div class="prov-entry">
+    ?provs.map(p=>kcHtml`<div class="prov-entry">
         <div class="prov-name">${p.name} <span style="font-size:.7rem;color:var(--stone);font-family:serif">${capitalise(p.terrain)}</span></div>
         <div class="prov-detail">
           Tax: ${p.tax}g/turn · ${formatRace(p.race)} · Explored: ${p.explored||0}%<br>
           ${(p.features||[]).filter(f=>f.discovered&&!f.cleared).length>0
-            ?`Known lairs: ${p.features.filter(f=>f.discovered&&!f.cleared).map(f=>_lairName(f)).join(', ')}`
+            ?kcHtml`Known lairs: ${kcJoinP(p.features.filter(f=>f.discovered&&!f.cleared).map(f=>_lairName(f)),', ')}`
             :'No lairs discovered yet'}
           ${(p.features||[]).filter(f=>f.cleared).length>0
-            ?`<br>Cleared: ${p.features.filter(f=>f.cleared).map(f=>_lairName(f)).join(', ')}`
+            ?kcHtml`<br>Cleared: ${kcJoinP(p.features.filter(f=>f.cleared).map(f=>_lairName(f)),', ')}`
             :''}
-          <br>Recruitable: ${(p.armyTypes||[]).map(t=>unitAbilityTip(t, `${unitEmoji(t)} ${t}`)).join(' · ')||'none'}
-          ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color)||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
-          ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} <span style="color:#231e16">${armyLabel(d)}</span>`)).join('')}`:''}
+          <br>Recruitable: ${(p.armyTypes||[]).length?kcJoinP(p.armyTypes.map(t=>unitAbilityTip(t, `${unitEmoji(t)} ${t}`)),' · '):'none'}
+          ${(p.garrisonArmies||[]).length?kcHtml`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>kcHtml`<br>${unitAbilityTip(a.type, kcHtml`${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color)||'var(--ink)'}">${armyLabel(a)}</span>`)}`)}`:''}
+          ${(p.neutralDefenders||[]).length?kcHtml`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>kcHtml`<br>${unitAbilityTip(d.type, kcHtml`${unitEmoji(d.type)} <span style="color:#231e16">${armyLabel(d)}</span>`)}`)}`:''}
           ${provinceGrandDesignHTML(p)}
           ${terrorNoteP(p,true)}
         </div>
-      </div>`).join('')
-    :'<div style="color:#3a3224;font-size:.85rem">No provinces owned yet.</div>';
+      </div>`)
+    :kcHtml`<div style="color:#3a3224;font-size:.85rem">No provinces owned yet.</div>`;
 
   // Intel — province info + hero sightings
   const intel=report.intel||[];
   const sightings=report.heroSightings||[];
   const knownFeatures=report.knownFeatures||[];
   const mercs=report.mercIntel||[];
-  let intelHtml='';
-  let otherForcesHtml=''; // item: mercenary bands + wandering heroes + enemy heroes sighted → own card
-  let lairsHtml='';       // item: known lairs → own card
+  let intelHtml=[];
+  let otherForcesHtml=[]; // item: mercenary bands + wandering heroes + enemy heroes sighted → own card
+  let lairsHtml=[];       // item: known lairs → own card
 
   // Dead heroes visible to this player — listed here in the Other Armies & Heroes card (a dead
   // character whose body-province you can see, plus any you witnessed fall this turn). They also
   // get a "(dead)" marker on the map (see renderPlayerMap).
   const visDeadHeroes=report.visibleDeadHeroes||[];
   if(visDeadHeroes.length>0){
-    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#46275f;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Fallen Heroes</div>`;
-    otherForcesHtml+=visDeadHeroes.map(h=>`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
+    otherForcesHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#46275f;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Fallen Heroes</div>`);
+    otherForcesHtml.push(visDeadHeroes.map(h=>kcHtml`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
       <strong>${h.name}</strong> <span style="color:#701010">(dead)</span>${(h.race||h.alignment)?` (${[h.race,h.alignment].filter(Boolean).join(', ')})`:''} ${deadHeroRealmTagP(h,report)} when they fell — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
-      <span style="font-size:.78rem">${h.topSkill?`${skillFameLabel(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill]||h.topSkill.skill}</span>`:'No notable skills'}</span><br>
+      <span style="font-size:.78rem">${h.topSkill?kcHtml`${skillFameLabel(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill]||h.topSkill.skill}</span>`:'No notable skills'}</span><br>
       ${(h.servedOther!==undefined?h.servedOther:(h.player!=null&&!h.isOwn))
-        ?'<span style="font-size:.72rem;color:#701010">⛔ Sworn to another crown in life — Resurrect will not raise them for you. Only your own fallen and heroes who never served a rival can be brought back.</span>'
+        ?kcHtml`<span style="font-size:.72rem;color:#701010">⛔ Sworn to another crown in life — Resurrect will not raise them for you. Only your own fallen and heroes who never served a rival can be brought back.</span>`
         :(h.inVisibleProv
-          ?'<span style="font-size:.72rem;color:#46275f">💀 A hero with the Resurrect spell can raise them from this province.</span>'
-          :'<span style="font-size:.72rem;color:#332c20">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>')}
-    </div>`).join('');
+          ?kcHtml`<span style="font-size:.72rem;color:#46275f">💀 A hero with the Resurrect spell can raise them from this province.</span>`
+          :kcHtml`<span style="font-size:.72rem;color:#332c20">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>`)}
+    </div>`));
   }
 
   // ── GRAVEYARDS KNOWN ────
@@ -3340,71 +3348,71 @@ function renderReportView(report){
   // not repeated in this section.
   const graveIntel=(report.graveIntel||[]).filter(g=>g&&g.detail&&g.detail.length>0);
   if(graveIntel.length>0){
-    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2e2e2e;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Graveyards Known</div>`;
-    otherForcesHtml+=graveIntel.map(g=>{
+    otherForcesHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2e2e2e;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Graveyards Known</div>`);
+    otherForcesHtml.push(graveIntel.map(g=>{
       // a PARTIAL reading (the Deathpriest's Grave-sight) names only the crack and elite dead — say
       // "at least", because lesser ranks may lie beside them unseen.
       const det=(g.detail&&g.detail.length)
-        ? `<span style="color:#46275f">The dead:</span> ${g.detailPartial?'at least ':''}${g.detail.map(d=>`${d.n}× ${d.k}`).join(', ')}${g.detailPartial?' <span style="color:#332c20">— Grave-sight names only the crack and elite; lesser dead may lie here unseen.</span>':''}${(g.detailTurn&&g.detailTurn!==g.turn)?` <span style="color:#3a3224">(read turn ${g.detailTurn})</span>`:''}`
-        : '<span style="color:#2f281c">Graves lie here — how many, and what they hold, is unknown.</span>';
-      return `<div class="intel-entry" style="border-left-color:#4a4a4a;background:#f6f6f4">
+        ? kcHtml`<span style="color:#46275f">The dead:</span> ${g.detailPartial?'at least ':''}${g.detail.map(d=>`${d.n}× ${d.k}`).join(', ')}${g.detailPartial?kcHtml` <span style="color:#332c20">— Grave-sight names only the crack and elite; lesser dead may lie here unseen.</span>`:''}${(g.detailTurn&&g.detailTurn!==g.turn)?kcHtml` <span style="color:#3a3224">(read turn ${g.detailTurn})</span>`:''}`
+        : kcHtml`<span style="color:#2f281c">Graves lie here — how many, and what they hold, is unknown.</span>`;
+      return kcHtml`<div class="intel-entry" style="border-left-color:#4a4a4a;background:#f6f6f4">
         <strong>${g.name}</strong> <span style="color:#332c20;font-size:.78rem">(seen on turn ${g.turn!=null?g.turn:'?'})</span><br>
         <span style="font-size:.78rem">${det}</span><br>
         <span style="font-size:.72rem;color:#332c20">Older knowledge — these graves may since have been raised or rotted away.</span>
       </div>`;
-    }).join('');
+    }));
   }
 
   // Mercenary bands visible in accessible provinces → Other Armies & Heroes card
   if(mercs.length>0){
-    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#701010;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Mercenary Bands</div>`;
-    otherForcesHtml+=mercs.map(m=>`<div class="intel-entry" style="border-left-color:#8a1c1c;background:#fff8f8">
+    otherForcesHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#701010;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Mercenary Bands</div>`);
+    otherForcesHtml.push(mercs.map(m=>kcHtml`<div class="intel-entry" style="border-left-color:#8a1c1c;background:#fff8f8">
       <strong>${m.unitName||m.type}</strong> (${m.quality} ${m.type}) — ${m.location}<br>
       <span style="font-size:.72rem;color:#6a3030">Available for hire — use Recruit Armies in ${m.location}.</span>
-    </div>`).join('');
+    </div>`));
   }
   if(sightings.length>0){
     const wanderers=sightings.filter(s=>s.type==='wandering');
     const chieftains=sightings.filter(s=>s.type==='neutral_guard'); // neutral province defenders
     const enemies=sightings.filter(s=>s.type==='enemy');
     if(wanderers.length>0){
-      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Wandering Heroes</div>`;
-      otherForcesHtml+=wanderers.map(s=>{
-        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
+      otherForcesHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Wandering Heroes</div>`);
+      otherForcesHtml.push(wanderers.map(s=>{
+        const topStr=s.topSkill?kcHtml`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
-          ? `<span style="color:#1d5a1d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
-          : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
-        return`<div class="intel-entry" style="border-left-color:#c8922a">
+          ? kcHtml`<span style="color:#1d5a1d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
+          : (s.topSkill?kcHtml`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
+        return kcHtml`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?kcHtml` · <span style="color:#2f281c">${s.armyBand}</span>`:''} · ${s.pay!=null?kcHtml`Hire for <strong>${s.pay}g/turn</strong>`:kcHtml`<span style="color:#a33">Will not serve your crown (alignment gulf)</span>`}${s.inOwnedProvince?kcHtml` · <span style="color:#8fbc5a">In your province</span>`:''}</span>
         </div>`;
-      }).join('');
+      }));
     }
     if(chieftains.length>0){
-      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#8a6a2a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Local Chieftains</div>`;
-      otherForcesHtml+=chieftains.map(s=>{
-        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
+      otherForcesHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#8a6a2a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Local Chieftains</div>`);
+      otherForcesHtml.push(chieftains.map(s=>{
+        const topStr=s.topSkill?kcHtml`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
-          ? `<span style="color:#1d5a1d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
-          : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
-        return`<div class="intel-entry" style="border-left-color:#8a6a2a">
+          ? kcHtml`<span style="color:#1d5a1d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
+          : (s.topSkill?kcHtml`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
+        return kcHtml`<div class="intel-entry" style="border-left-color:#8a6a2a">
           🛡 <strong style="color:${CHIEFTAIN_MARKER_COLOR}">${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?kcHtml` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?kcHtml` · <span style="color:#8fbc5a">In your province</span>`:''}</span>
         </div>`;
-      }).join('');
+      }));
     }
     if(enemies.length>0){
-      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a1c1c;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Enemy Heroes</div>`;
-      otherForcesHtml+=enemies.map(s=>{
-        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
+      otherForcesHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a1c1c;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Enemy Heroes</div>`);
+      otherForcesHtml.push(enemies.map(s=>{
+        const topStr=s.topSkill?kcHtml`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
-          ? `<span style="color:#1d5a1d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
-          : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
-        return`<div class="intel-entry" style="border-left-color:#7a1c1c">
+          ? kcHtml`<span style="color:#1d5a1d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
+          : (s.topSkill?kcHtml`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
+        return kcHtml`<div class="intel-entry" style="border-left-color:#7a1c1c">
           👁 <strong>${s.name}</strong> of ${s.kingdom}${(s.race||s.alignment)?` (${[s.race,s.alignment].filter(Boolean).join(', ')})`:''} — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?kcHtml` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?kcHtml` · <span style="color:#e05050">In your territory</span>`:''}</span>
         </div>`;
-      }).join('');
+      }));
     }
   }
 
@@ -3413,7 +3421,7 @@ function renderReportView(report){
   // Events are grouped by province and ordered by the phase they happened in.
   const provinceEvents=report.provinceEvents||[];
   if(provinceEvents.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Province Reports</div>`;
+    intelHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Province Reports</div>`);
     const SEASONS_E=KC_SEASONS.slice();
     const _evByProv=new Map();
     provinceEvents.forEach(ev=>{
@@ -3425,12 +3433,12 @@ function renderReportView(report){
       const evs=_evByProv.get(prov).slice().sort((a,b)=>((a.phase??99)-(b.phase??99)));
       const rows=evs.map(ev=>{
         const phLbl=(ev.phase!=null&&ev.phase>=0&&ev.phase<=4)?SEASONS_E[ev.phase]:null;
-        return `<div style="padding:1px 0;font-size:.76rem">${phLbl?`<span style="color:var(--stone);font-size:.66rem">${phLbl}: </span>`:''}${ev.text}</div>`;
-      }).join('');
-      intelHtml+=`<div class="intel-entry" style="border-left-color:#7a4fa0">
+        return kcHtml`<div style="padding:1px 0;font-size:.76rem">${phLbl?kcHtml`<span style="color:var(--stone);font-size:.66rem">${phLbl}: </span>`:''}${ev.text}</div>`;
+      });
+      intelHtml.push(kcHtml`<div class="intel-entry" style="border-left-color:#7a4fa0">
         <strong style="font-family:'Cinzel',serif;font-size:.76rem">${prov}</strong>
         ${rows}
-      </div>`;
+      </div>`);
     });
   }
 
@@ -3438,27 +3446,27 @@ function renderReportView(report){
   // END of turn (even if your agent has since moved on). Only non-your characters shown.
   const spiedProvIntel=(report.provinceCharIntel||[]).filter(p=>p.spied);
   if(spiedProvIntel.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#1d5a1d;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">🔍 Spied Provinces</div>`;
+    intelHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#1d5a1d;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">🔍 Spied Provinces</div>`);
     spiedProvIntel.forEach(pc=>{
       const others=(pc.characters||[]).filter(ch=>ch.category!=='own');
       const roster=others.length>0
         ? others.map(ch=>{
             const who=ch.category==='enemy'
-              ? `<strong${ch.color?` style="color:${reportColour(ch.color)}"`:''}>${ch.name}</strong>${ch.isKing?' 👑':''} of ${ch.kingdom||'an enemy realm'}`
-              : `<strong${ch.isNeutralGuard?` style="color:${CHIEFTAIN_MARKER_COLOR}"`:''}>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
+              ? kcHtml`<strong${ch.color?kcHtml` style="color:${reportColour(ch.color)}"`:''}>${ch.name}</strong>${ch.isKing?' 👑':''} of ${ch.kingdom||'an enemy realm'}`
+              : kcHtml`<strong${ch.isNeutralGuard?kcHtml` style="color:${CHIEFTAIN_MARKER_COLOR}"`:''}>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
             const force=(ch.armies&&ch.armies.length>0)
               ? ` — ${ch.armies.map(a=>armyLabel(a,{short:true})).join(', ')}`
               : (ch.armyBand?(ch.armyBand==='no armies'?'':` — leads ${ch.armyBand}`):(ch.armyCount>0?` — leads ${ch.armyCount} unit${ch.armyCount!==1?'s':''}`:''));
             const sk=(ch.spiedSkills&&Object.keys(ch.spiedSkills).some(k=>ch.spiedSkills[k]>0))
-              ? `<br><span style="font-size:.72rem;color:#1d5a1d">🔍 Skills:</span> ${Object.entries(ch.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
+              ? kcHtml`<br><span style="font-size:.72rem;color:#1d5a1d">🔍 Skills:</span> ${Object.entries(ch.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
               : '';
-            return `<div style="padding:1px 0;font-size:.78rem">${who}${force}${sk}</div>`;
-          }).join('')
-        : `<div style="padding:1px 0;font-size:.76rem;color:#2f281c">No other characters present at turn's end.</div>`;
-      intelHtml+=`<div class="intel-entry" style="border-left-color:#2d7a2d;background:#f2faf2">
+            return kcHtml`<div style="padding:1px 0;font-size:.78rem">${who}${force}${sk}</div>`;
+          })
+        : kcHtml`<div style="padding:1px 0;font-size:.76rem;color:#2f281c">No other characters present at turn's end.</div>`;
+      intelHtml.push(kcHtml`<div class="intel-entry" style="border-left-color:#2d7a2d;background:#f2faf2">
         <strong style="font-family:'Cinzel',serif;font-size:.76rem">${pc.provName}</strong>
         ${roster}
-      </div>`;
+      </div>`);
     });
   }
 
@@ -3467,17 +3475,17 @@ function renderReportView(report){
   const spyActivity=report.spyActivity||[];
   if(spyActivity.length>0){
     const SEASONS_SA=KC_SEASONS.slice();
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d6a7a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">🔍 Spy Activity Reports</div>`;
+    intelHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d6a7a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">🔍 Spy Activity Reports</div>`);
     spyActivity.forEach(sa=>{
       const rows=(sa.lines||[]).map(l=>{
         const phLbl=(l.phase!=null&&l.phase>=0&&l.phase<=4)?SEASONS_SA[l.phase]:null;
-        return `<div style="padding:1px 0;font-size:.76rem">${phLbl?`<span style="color:var(--stone);font-size:.66rem">${phLbl}: </span>`:''}${l.text}</div>`;
-      }).join('');
-      intelHtml+=`<div class="intel-entry" style="border-left-color:#2d6a7a;background:#f2f8fa">
+        return kcHtml`<div style="padding:1px 0;font-size:.76rem">${phLbl?kcHtml`<span style="color:var(--stone);font-size:.66rem">${phLbl}: </span>`:''}${l.text}</div>`;
+      });
+      intelHtml.push(kcHtml`<div class="intel-entry" style="border-left-color:#2d6a7a;background:#f2f8fa">
         <strong style="font-family:'Cinzel',serif;font-size:.76rem">${sa.provName}</strong>
         <div style="font-size:.68rem;color:#2f281c;margin-bottom:2px">Watched by your agent from ${SEASONS_SA[sa.sincePhase]||'later that turn'} onward:</div>
         ${rows}
-      </div>`;
+      </div>`);
     });
   }
 
@@ -3486,14 +3494,14 @@ function renderReportView(report){
 
   // Known features
   if(knownFeatures.length>0){
-    lairsHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Known Lairs</div>`;
-    lairsHtml+=`<div style="font-size:.73rem;color:var(--stone);margin-bottom:6px;line-height:1.8">
+    lairsHtml.push(kcHtml`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Known Lairs</div>`);
+    lairsHtml.push(kcHtml`<div style="font-size:.73rem;color:var(--stone);margin-bottom:6px;line-height:1.8">
       Guardian difficulty: 
       <span style="background:#4a8a4a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">🐾 Weak</span> can be handled by a lone hero ·
       <span style="background:#c8922a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">⚔ Moderate</span> needs skill or good tactics ·
       <span style="background:#8a1c1c;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">💀 Powerful</span> very dangerous, prepare carefully ·
       <span style="background:#5a0a9a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">🔥 Legendary</span> near-impossible alone
-    </div>`;
+    </div>`);
     const POWER_COLORS={...GUARD_POWER_COLORS_P};
     const POWER_ICONS={Weak:'🐾',Moderate:'⚔',Powerful:'💀',Legendary:'🔥'};
     // Group features by the province they sit in, so a player can see at a glance which province
@@ -3507,18 +3515,18 @@ function renderReportView(report){
       const pColor=POWER_COLORS[f.monsterPower]||'#7a5510';
       const pIcon=POWER_ICONS[f.monsterPower]||'?';
       const powerBadge=f.monsterPower&&!f.cleared
-        ?`<span style="background:${pColor};color:#fff;font-size:.65rem;padding:1px 5px;border-radius:2px;margin-left:4px">${pIcon} ${f.monsterPower}</span>`:'';
+        ?kcHtml`<span style="background:${pColor};color:#fff;font-size:.65rem;padding:1px 5px;border-radius:2px;margin-left:4px">${pIcon} ${f.monsterPower}</span>`:'';
       // Ritual sites have no guardian — they are sacred ground usable only by a Pagan realm's
       // Perform Rite. Show that instead of an empty "Guardian:" line.
       if(f.ritualSite){
-        return`<div class="intel-entry" style="border-left-color:#5a0a9a">
+        return kcHtml`<div class="intel-entry" style="border-left-color:#5a0a9a">
           🌙 <strong>${f.name}</strong>
           <br><span style="font-size:.78rem;color:#5a0a9a">A sacred site of the old faith — only a Pagan realm may Perform Rites here.</span>
         </div>`;
       }
-      return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
-        ${f.cleared?'✓':'⭐'} <strong${f.cleared?'':` style="color:${pColor}"`}>${f.name}</strong>${powerBadge}
-        ${f.cleared?'<span style="color:#332c20">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}${f.monsterCat?` <span style="opacity:.8">(${f.monsterCat.toLowerCase()})</span>`:''}</span>${(!f.cleared&&_knownWeak[f.monster])?`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}${_rumourLine(f)}`}
+      return kcHtml`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
+        ${f.cleared?'✓':'⭐'} <strong${f.cleared?'':kcHtml` style="color:${pColor}"`}>${f.name}</strong>${powerBadge}
+        ${f.cleared?kcHtml`<span style="color:#332c20">(cleared — no guardian)</span>`:kcHtml`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}${f.monsterCat?kcHtml` <span style="opacity:.8">(${f.monsterCat.toLowerCase()})</span>`:''}</span>${(!f.cleared&&_knownWeak[f.monster])?kcHtml`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}${_rumourLine(f)}`}
       </div>`;
     };
     // what Hunting Rumours learned of the hoard, remembered on the realm and shipped as `f.rumour`
@@ -3527,53 +3535,53 @@ function renderReportView(report){
     const _rumourLine=(f)=>{
       const r=f.rumour; if(!r||f.cleared) return '';
       const items=(r.items||[]).length?`, and ${(r.items||[]).join(', ')}`:((r.stolen||[]).length?` \u2014 its magic (${r.stolen.join(', ')}) was already lifted by a thief`:' \u2014 no magic lies there');
-      const wield=(r.wields||[]).length?` <span style="color:#701010">It wields ${r.wields.join(', ')} against all comers.</span>`:'';
-      return `<br><span style="font-size:.76rem;color:#6b5a2a">\u{1F4B0} Hoard known (turn ${r.turn}) \u2014 exactly <strong>${r.gold}g</strong>${items}.${wield}</span>`;
+      const wield=(r.wields||[]).length?kcHtml` <span style="color:#701010">It wields ${r.wields.join(', ')} against all comers.</span>`:'';
+      return kcHtml`<br><span style="font-size:.76rem;color:#6b5a2a">\u{1F4B0} Hoard known (turn ${r.turn}) \u2014 exactly <strong>${r.gold}g</strong>${items}.${wield}</span>`;
     };
     const featuresByProvince={};
     knownFeatures.forEach(f=>{
       const key=f.province||'Unknown province';
       (featuresByProvince[key]=featuresByProvince[key]||[]).push(f);
     });
-    lairsHtml+=Object.keys(featuresByProvince).sort((a,b)=>a.localeCompare(b)).map(prov=>{
+    lairsHtml.push(Object.keys(featuresByProvince).sort((a,b)=>a.localeCompare(b)).map(prov=>{
       const feats=featuresByProvince[prov];
-      const cards=feats.map(featureCard).join('');
+      const cards=feats.map(featureCard);
       // 2026-09-24 (Toby item 4): province headings bold and in a darker ink than the gold they wore.
-      return`<div style="font-family:'Cinzel',serif;font-size:.76rem;color:#3a2a10;font-weight:700;margin:8px 0 2px;letter-spacing:.03em">📍 ${prov} <span style="color:var(--stone);font-weight:normal;font-size:.68rem">(${feats.length} lair${feats.length!==1?'s':''})</span></div>${cards}`;
-    }).join('');
+      return kcHtml`<div style="font-family:'Cinzel',serif;font-size:.76rem;color:#3a2a10;font-weight:700;margin:8px 0 2px;letter-spacing:.03em">📍 ${prov} <span style="color:var(--stone);font-weight:normal;font-size:.68rem">(${feats.length} lair${feats.length!==1?'s':''})</span></div>${cards}`;
+    }));
   }
 
   { const _ri=document.getElementById('report-intel');
     if(_ri){ const _sec=document.getElementById('intel-reports-section'); const _other=_sec?_sec.querySelectorAll('.log-entry').length:0;
-      _ri.innerHTML=intelHtml||(_other?'':'<em style="color:#3a3224;font-size:.85rem">No intelligence gathered yet. Visit or spy provinces to learn more.</em>'); } }
+      _ri.innerHTML=intelHtml.length?kcHtml`${intelHtml}`:(_other?'':kcHtml`<em style="color:#3a3224;font-size:.85rem">No intelligence gathered yet. Visit or spy provinces to learn more.</em>`); } }
   const _ofEl=document.getElementById('report-other-forces');
-  if(_ofEl) _ofEl.innerHTML=otherForcesHtml||
-    '<em style="color:#3a3224;font-size:.85rem">No mercenary bands or loose heroes sighted yet.</em>';
+  if(_ofEl) _ofEl.innerHTML=otherForcesHtml.length?kcHtml`${otherForcesHtml}`:
+    kcHtml`<em style="color:#3a3224;font-size:.85rem">No mercenary bands or loose heroes sighted yet.</em>`;
   const _lrEl=document.getElementById('report-lairs');
-  if(_lrEl) _lrEl.innerHTML=lairsHtml||
-    '<em style="color:#3a3224;font-size:.85rem">No lairs discovered yet. Explore or scout provinces to find them.</em>';
+  if(_lrEl) _lrEl.innerHTML=lairsHtml.length?kcHtml`${lairsHtml}`:
+    kcHtml`<em style="color:#3a3224;font-size:.85rem">No lairs discovered yet. Explore or scout provinces to find them.</em>`;
 
   // ── Sage Discoveries ──
   const discoveries=report.discoveries||[];
   const discEl=document.getElementById('report-discoveries');
   if(discEl){
     if(discoveries.length===0){
-      discEl.innerHTML='<em style="color:#3a3224;font-size:.85rem">No discoveries yet. Give Research orders to your scholars (Sage 1+).</em>';
+      discEl.innerHTML=kcHtml`<em style="color:#3a3224;font-size:.85rem">No discoveries yet. Give Research orders to your scholars (Sage 1+).</em>`;
     } else {
       // Group by category
       const catMap={};
       discoveries.forEach(d=>{if(!catMap[d.category])catMap[d.category]=[];catMap[d.category].push(d);});
       const catColors={Military:'#7a1c1c',Economy:'#2d7a2d',Espionage:'#1a4a6e',Scholarship:'#6a3a9a',Heroic:'#8a6a1a',Special:'#3a7a6a'};
-      discEl.innerHTML=Object.entries(catMap).map(([cat,discs])=>`
+      discEl.innerHTML=Object.entries(catMap).map(([cat,discs])=>kcHtml`
         <div style="margin-bottom:12px">
           <div style="font-family:Cinzel,serif;font-size:.72rem;color:${catColors[cat]||'#555'};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">
             ${cat}
           </div>
-          ${discs.map(d=>`<div class="intel-entry" style="border-left-color:${catColors[cat]||'#555'}">
+          ${discs.map(d=>kcHtml`<div class="intel-entry" style="border-left-color:${catColors[cat]||'#555'}">
             <strong>${d.name}</strong> <span style="color:#3a3224;font-size:.72rem">(Turn ${d.turnDiscovered})</span><br>
             <span style="font-size:.8rem">${d.desc}</span>
-          </div>`).join('')}
-        </div>`).join('');
+          </div>`)}
+        </div>`);
     }
   }
 
@@ -3614,22 +3622,22 @@ function _renderDiplomacyInto(el, report, withControls){
   const _ssLive=Number(report&&(report._liveTurn||report.turn))||1;
   const safeLocked=_ssUntil>0 && _ssLive<_ssUntil;
   if(!known.length){
-    el.innerHTML='<em style="color:#3a3224;font-size:.85rem">You have not yet encountered another realm. Once you see a rival\'s province or one of their characters, you may treat with them here.</em>';
+    el.innerHTML=kcHtml`<em style="color:#3a3224;font-size:.85rem">You have not yet encountered another realm. Once you see a rival's province or one of their characters, you may treat with them here.</em>`;
     return;
   }
   const relBadge=(r)=> r==='allied'
-      ? '<span class="pill" style="background:#dff0d8;color:#1d541d">🤝 Allied</span>'
+      ? kcHtml`<span class="pill" style="background:#dff0d8;color:#1d541d">🤝 Allied</span>`
       : r==='enemy'
-      ? '<span class="pill" style="background:#f7d7d7;color:#701010">⚔ At war</span>'
-      : '<span class="pill" style="background:#efe6cc;color:#3a2e18">🕊 Neutral</span>';
-  const btn=(idx,val,label,bg)=>`<button onclick="setDiploChoice(${idx},'${val}')" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
+      ? kcHtml`<span class="pill" style="background:#f7d7d7;color:#701010">⚔ At war</span>`
+      : kcHtml`<span class="pill" style="background:#efe6cc;color:#3a2e18">🕊 Neutral</span>`;
+  const btn=(idx,val,label,bg)=>kcHtml`<button onclick="setDiploChoice(${kcArg(idx)},${kcArg(val)})" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
   const pendingLabel=(k)=>{
     const p=diploChoices[k.index];
     if(p==='enemy') return k.relation==='allied'?'Break Alliance':'Declare War';
     if(p==='treat') return k.relation==='enemy'?'Propose Peace':'Propose Alliance';
     return '';
   };
-  el.innerHTML = known.map(k=>{
+  el.innerHTML = kcHtml`${known.map(k=>{
     const pending=diploChoices[k.index];
     let controls;
     // 2026-09-27 (Toby item 7): a realm that has CONCEDED (or been extinguished) has left the game.
@@ -3638,17 +3646,16 @@ function _renderDiplomacyInto(el, report, withControls){
     // void.
     if(k.conceded||k.eliminated){
       if(pending!=null) delete diploChoices[k.index];
-      controls=`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated&&!k.conceded?'This dynasty is extinguished':'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
+      controls=kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated&&!k.conceded?'This dynasty is extinguished':'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
     } else if(safeLocked){
       if(pending!=null) delete diploChoices[k.index];
-      controls=withControls?`<div style="font-size:.78rem;color:#3a3224"><em>🕊 Safe Start — no Treat or declaration of war may be made until the orders for Turn ${_ssUntil}.</em></div>`:'';
+      controls=withControls?kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>🕊 Safe Start — no Treat or declaration of war may be made until the orders for Turn ${_ssUntil}.</em></div>`:'';
     } else if(!withControls){
-      controls=pending?`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`:'';
+      controls=pending?kcHtml`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`:'';
     } else if(pending){
-      controls=`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;`
-        +`<button onclick="setDiploChoice(${k.index},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
+      controls=kcHtml`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;<button onclick="setDiploChoice(${kcArg(k.index)},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
     } else if(k.relation==='neutral'){
-      controls=(alliancesAllowed?btn(k.index,'treat','Propose Alliance','#2d6a2d')+' ':'')+btn(k.index,'enemy','Declare War','#8a1c1c');
+      controls=kcHtml`${alliancesAllowed?kcHtml`${btn(k.index,'treat','Propose Alliance','#2d6a2d')} `:''}${btn(k.index,'enemy','Declare War','#8a1c1c')}`;
     } else if(k.relation==='enemy'){
       controls=btn(k.index,'treat','Propose Peace','#2d6a2d');
     } else { // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
@@ -3656,20 +3663,20 @@ function _renderDiplomacyInto(el, report, withControls){
       const _darkSelf=['Evil','Undead'].includes((report.kingdom||{}).alignment);
       controls=btn(k.index,'enemy',_darkSelf?'Break Alliance — War':'Break Alliance','#8a1c1c');
     }
-    return `<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
+    return kcHtml`<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <strong style="color:${reportColour(k.color)||'#333'}">${k.name}</strong>
         <span style="font-size:.72rem;color:#332c20">${k.alignment||''}</span>
-        ${(k.conceded||k.eliminated)?`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated&&!k.conceded?'\u2620 Extinguished':'\u{1F3F3} Conceded'}${(k.conceded&&k.concededTurn)?` (turn ${k.concededTurn})`:''}</span>`:relBadge(k.relation)}
-        ${(!k.conceded&&!k.eliminated&&k.offeredUs)?`<span class="pill" style="background:#e3eefa;color:#1c3e6a" title="They proposed this last turn. Propose it back this turn to seal it.">🕊 Offered ${k.offeredUs==='peace'?'peace':'an alliance'} last turn</span>`:''}
+        ${(k.conceded||k.eliminated)?kcHtml`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated&&!k.conceded?'\u2620 Extinguished':'\u{1F3F3} Conceded'}${(k.conceded&&k.concededTurn)?` (turn ${k.concededTurn})`:''}</span>`:relBadge(k.relation)}
+        ${(!k.conceded&&!k.eliminated&&k.offeredUs)?kcHtml`<span class="pill" style="background:#e3eefa;color:#1c3e6a" title="They proposed this last turn. Propose it back this turn to seal it.">🕊 Offered ${k.offeredUs==='peace'?'peace':'an alliance'} last turn</span>`:''}
       </div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
     </div>`;
-  }).join('')
-   + (withControls&&safeLocked?`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">🕊 <strong>Safe Start:</strong> this is a Safe Start game — diplomacy opens with the orders for <strong>Turn ${_ssUntil}</strong> (this is Turn ${_ssLive}).</div>`:'')
-   + (withControls&&!safeLocked?`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${alliancesAllowed
-       ? 'An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.'
-       : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`:'');
+  })}${
+    withControls&&safeLocked?kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">🕊 <strong>Safe Start:</strong> this is a Safe Start game — diplomacy opens with the orders for <strong>Turn ${_ssUntil}</strong> (this is Turn ${_ssLive}).</div>`:''}${
+    withControls&&!safeLocked?kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${alliancesAllowed
+       ? kcHtml`An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.`
+       : kcHtml`In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).`} Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`:''}`;
 }
 function setDiploChoice(idx, val){
   if(val==null||val==='null') delete diploChoices[idx]; else diploChoices[idx]=val;
@@ -3747,13 +3754,13 @@ function renderMastery(report){
       const lvl=sk[k];
       const effs=[];
       for(let L=6;L<=lvl;L++){ const d=MASTERY_EFFECTS[k][L]; if(d) effs.push({L,d}); }
-      const lines=effs.map(e=>`<div style="font-size:.76rem;padding:1px 0 1px 10px"><span style="color:var(--gold);font-family:Cinzel,serif;font-size:.68rem">L${e.L}</span> ${e.d}</div>`).join('');
-      return `<div style="margin:3px 0 5px">
+      const lines=effs.map(e=>kcHtml`<div style="font-size:.76rem;padding:1px 0 1px 10px"><span style="color:var(--gold);font-family:Cinzel,serif;font-size:.68rem">L${e.L}</span> ${e.d}</div>`);
+      return kcHtml`<div style="margin:3px 0 5px">
         <div style="font-size:.8rem"><strong>${SKILL_LABELS[k]||k} ${lvl}</strong></div>
         ${lines}
       </div>`;
-    }).join('');
-    rows.push(`<div class="intel-entry" style="border-left-color:#8a6a1a">
+    });
+    rows.push(kcHtml`<div class="intel-entry" style="border-left-color:#8a6a1a">
       <div style="font-family:'Cinzel',serif;font-size:.82rem;color:#6a4a10">${c.isKing?'👑':'⚔'} ${c.name}</div>
       ${skillBlocks}
     </div>`);
@@ -3761,7 +3768,7 @@ function renderMastery(report){
   const _rjM=document.getElementById('rj-mastery'); // the jump-bar button follows the card
   if(rows.length===0){ card.style.display='none'; el.innerHTML=''; if(_rjM) _rjM.style.display='none'; return; }
   card.style.display=''; if(_rjM) _rjM.style.display='';
-  el.innerHTML=`<div style="font-size:.72rem;color:#332c20;margin-bottom:6px">A standing reference to the mastery each of your characters has earned — consult it whenever you plan their orders.</div>`+rows.join('');
+  el.innerHTML=kcHtml`<div style="font-size:.72rem;color:#332c20;margin-bottom:6px">A standing reference to the mastery each of your characters has earned — consult it whenever you plan their orders.</div>${rows}`;
 }
 
 // ── TITLES & VICTORY (Reckoning) ────
@@ -3770,13 +3777,13 @@ const _TITLE_ORDER=[['throne','The Throne',20],['vault','The Vaultkeeper',10],['
 // (titleRaceFor in the GM portal). Shared by the Titles card and the Intelligence Reports block.
 function titleRaceLine(r){
   if(!r) return '';
-  const who=r.charName?`<strong>${r.charName}</strong>`:'';
+  const who=r.charName?kcHtml`<strong>${r.charName}</strong>`:'';
   if(r.mine) return r.unchallenged
-    ? `${who||'Your realm'} holds this title <strong>unchallenged</strong> — no rival has any standing.`
-    : `${who||'Your realm'} holds this title, <strong>${r.leadPct} percentage point${r.leadPct===1?'':'s'}</strong> ahead of the closest rival${r.leadPct===0?' — level with them, and holding it only by precedence':''}.`;
+    ? kcHtml`${who||'Your realm'} holds this title <strong>unchallenged</strong> — no rival has any standing.`
+    : kcHtml`${who||'Your realm'} holds this title, <strong>${r.leadPct} percentage point${r.leadPct===1?'':'s'}</strong> ahead of the closest rival${r.leadPct===0?' — level with them, and holding it only by precedence':''}.`;
   if(r.vacant) return `Vacant — no character in the world has any standing yet.`;
   if(!r.charName||!(r.pct>0)) return `None of your characters has any standing toward this title yet.`;
-  return `Your best: ${who} — at <strong>${r.pct}%</strong> of the holder's standing.`;
+  return kcHtml`Your best: ${who} — at <strong>${r.pct}%</strong> of the holder's standing.`;
 }
 // (titleStandingIntelHTML removed 2026-09-21 — the Intelligence card's "Your standing in the
 // Imperial Titles" block duplicated the per-title percentages that 🏆 Titles & Victory already
@@ -3788,14 +3795,14 @@ function renderTitles(report){
   if(t.gameOver){
     const go=t.gameOver;
     const board=(go.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
-      `<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${reportColour(s.color)||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#2f281c">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`).join('');
-    el.innerHTML=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:8px">
+      kcHtml`<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${reportColour(s.color)||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#2f281c">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`);
+    el.innerHTML=kcHtml`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:8px">
       <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson)">🏆 ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field — every rival has conceded':'is judged supreme at the Reckoning'}!</div></div>
       <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#332c20;font-size:.72rem;text-align:left"><th style="padding:3px 8px">#</th><th style="padding:3px 8px">Realm</th><th style="padding:3px 8px;text-align:right">Legacy</th><th style="padding:3px 8px">Titles held</th></tr></thead><tbody>${board}</tbody></table>`;
     return;
   }
   if(!t.public){
-    el.innerHTML=`<em style="color:#3a3224;font-size:.85rem">The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5}. Standings appear then.</em>`;
+    el.innerHTML=kcHtml`<em style="color:#3a3224;font-size:.85rem">The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5}. Standings appear then.</em>`;
     return;
   }
   const nPlayers=(t.standings||[]).length||2;
@@ -3815,30 +3822,30 @@ function renderTitles(report){
       ? `🏅 The Imperial Titles are now public — title${gains.length!==1?'s':''} you hold`
       : `🎉 New title${gains.length!==1?'s':''} won this turn`;
     const verb=initial?'Earned by':'Won by';
-    gainsHtml=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:8px 10px;margin-bottom:10px">
+    gainsHtml=kcHtml`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:8px 10px;margin-bottom:10px">
       <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--crimson);margin-bottom:4px">${header}</div>
-      ${gains.map(g=>`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
+      ${gains.map(g=>kcHtml`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
         <strong>${g.scope==='minor'?'🎖':'🏆'} ${g.name}</strong> — ${g.charName?`${g.charName} of `:''}<span style="color:var(--forest)">${g.kingdomName||'your realm'}</span>.
         <br><span style="color:#2a2419">${verb}: ${g.req||''}</span>
-        <br><span style="color:#1d541d">Effect: ${g.perk||''}</span></div>`).join('')}</div>`;
+        <br><span style="color:#1d541d">Effect: ${g.perk||''}</span></div>`)}</div>`;
   }
 
   // ── titles LOST this turn — the old holder is told a rival took it, or it fell vacant. ──
   let lossesHtml='';
   const losses=t.losses||[];
   if(losses.length){
-    lossesHtml=`<div style="background:#f6e0e0;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-bottom:10px">
+    lossesHtml=kcHtml`<div style="background:#f6e0e0;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-bottom:10px">
       <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--crimson);margin-bottom:4px">⚔ Title${losses.length!==1?'s':''} lost this turn</div>
-      ${losses.map(l=>`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
+      ${losses.map(l=>kcHtml`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
         <strong>${l.scope==='minor'?'🎖':'🏆'} ${l.name}</strong> — ${l.vacant
-          ? 'now stands <span style="color:#3a3224">vacant</span>.'
-          : `claimed by ${l.newCharName?`${l.newCharName} of `:''}<span style="color:var(--crimson)">${l.newHolderName||'a rival'}</span>.`}</div>`).join('')}</div>`;
+          ? kcHtml`now stands <span style="color:#3a3224">vacant</span>.`
+          : kcHtml`claimed by ${l.newCharName?`${l.newCharName} of `:''}<span style="color:var(--crimson)">${l.newHolderName||'a rival'}</span>.`}</div>`)}</div>`;
   }
 
   // ── Reckoning status banner (once called) ──
   let banner='';
   if(t.reckoning){
-    banner=`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:8px 10px;margin-bottom:10px;font-size:.85rem">
+    banner=kcHtml`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:8px 10px;margin-bottom:10px;font-size:.85rem">
       👑 <strong>The Reckoning has been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of <strong>Turn ${t.reckoning.resolveAtTurn}</strong> unless the claim is broken. ${t.reckoning.mine?'This is your claim — hold your dominance.':'Drive the claimant\'s bloc below the threshold to shatter it.'}</div>`;
   }
 
@@ -3849,7 +3856,7 @@ function renderTitles(report){
   // blank on the map rather than a realm someone has oddly named.
   const _unmetStyle='color:#5a5348;font-style:italic';
   const board=(t.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
-    `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;${s.unmet?_unmetStyle:`color:${reportColour(s.color)||'#333'}`}">${s.name}${s.unmet?' <span style="font-size:.66rem;opacity:.8">(not yet encountered)</span>':''}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
+    kcHtml`<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;${s.unmet?_unmetStyle:`color:${reportColour(s.color)||'#333'}`}">${s.name}${s.unmet?kcHtml` <span style="font-size:.66rem;opacity:.8">(not yet encountered)</span>`:''}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`);
 
   // ── the Imperial Titles — holder (character + realm), how earned, perk while held ──
   const holders=t.holders||{};
@@ -3882,16 +3889,16 @@ function renderTitles(report){
     const h=holders[k]||{};
     // Your realm's place in the race for this title (percentages only — see titleRaceFor).
     const r=h.race||null;
-    const raceLine=r?titleRaceLine(r):`<span style="color:#3a3224">Standing percentages are missing from this turn report — it was resolved by ${(report&&report.engineStamp)?`<strong>GM Portal v${report.engineStamp}</strong>, which predates them`:'a GM Portal build that predates them'}. They appear once a turn is resolved on GM Portal v2026.09.20-0153 or later.</span>`;
-    const raceHtml=raceLine?`<div style="font-size:.74rem;margin:1px 0;color:${r&&r.mine?'var(--forest)':'#5a4a2a'}">📊 ${raceLine}</div>`:'';
+    const raceLine=r?titleRaceLine(r):kcHtml`<span style="color:#3a3224">Standing percentages are missing from this turn report — it was resolved by ${(report&&report.engineStamp)?kcHtml`<strong>GM Portal v${report.engineStamp}</strong>, which predates them`:'a GM Portal build that predates them'}. They appear once a turn is resolved on GM Portal v2026.09.20-0153 or later.</span>`;
+    const raceHtml=raceLine?kcHtml`<div style="font-size:.74rem;margin:1px 0;color:${r&&r.mine?'var(--forest)':'#5a4a2a'}">📊 ${raceLine}</div>`:'';
     const who = h.holderName
       ? (h.unmet
-          ? `<span style="${_unmetStyle}">${h.charName?`${h.charName} of `:''}${h.holderName}</span> <span style="font-size:.66rem;color:#5a5348">— a realm you have not yet encountered</span>`
+          ? kcHtml`<span style="${_unmetStyle}">${h.charName?`${h.charName} of `:''}${h.holderName}</span> <span style="font-size:.66rem;color:#5a5348">— a realm you have not yet encountered</span>`
           : (h.kingdomLevel
-            ? `${h.charName?`${h.charName} — `:''}<span style="color:${h.mine?'var(--forest)':'#333'};font-weight:${h.mine?'700':'400'}">${h.holderName}</span>`
-            : `${h.charName||'—'} <span style="color:${h.mine?'var(--forest)':'#777'};font-weight:${h.mine?'700':'400'}">(${h.holderName})</span>`))
-      : '<span style="color:#3a3224">— vacant —</span>';
-    return `<div style="border-bottom:1px solid var(--parchment-dark);padding:5px 0">
+            ? kcHtml`${h.charName?`${h.charName} — `:''}<span style="color:${h.mine?'var(--forest)':'#333'};font-weight:${h.mine?'700':'400'}">${h.holderName}</span>`
+            : kcHtml`${h.charName||'—'} <span style="color:${h.mine?'var(--forest)':'#777'};font-weight:${h.mine?'700':'400'}">(${h.holderName})</span>`))
+      : kcHtml`<span style="color:#3a3224">— vacant —</span>`;
+    return kcHtml`<div style="border-bottom:1px solid var(--parchment-dark);padding:5px 0">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
         <strong style="font-size:.82rem">🏆 ${name}</strong>
         <span style="color:#3a3224;font-size:.72rem;white-space:nowrap">${prize} pts</span>
@@ -3900,14 +3907,14 @@ function renderTitles(report){
       ${raceHtml}
       <div style="font-size:.7rem;color:#2f281c;line-height:1.4">Earn: ${h.req||''}<br><span style="color:#1d541d">While held: ${h.perk||''}</span></div>
     </div>`;
-  }).join('');
+  });
 
   // ── how to Call the Reckoning (always shown while titles are public) ──
   const _minTurn=t.reckoningMinTurn||10;
   const _solo=Math.ceil(floorNumP((t.soloThreshold!=null?t.soloThreshold:(t.threshold||0))*100*1e6)/1e6);
   const _step=Math.round((t.allyStep||0)*100);
   const _nAllies=Math.max(0,(t.blocSize||1)-1);
-  const reckoningInfo=`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#231e16;line-height:1.5">
+  const reckoningInfo=kcHtml`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#231e16;line-height:1.5">
     <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;font-weight:700">Calling the Reckoning</div>
     There is no turn limit — the game ends only when one realm is left standing, or when a dominant realm <strong>Calls the Reckoning</strong> and forces a final scoring. To call it:
     <ul style="margin:4px 0 4px 16px;padding:0">
@@ -3925,15 +3932,15 @@ function renderTitles(report){
   let callCtrl='';
   if(t.canCallReckoning){
     callCtrl = reckoningCall
-      ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-top:10px;font-size:.85rem">👑 <strong>You will Call the Reckoning this turn.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button onclick="setReckoningCall(false)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer;margin-left:6px">cancel</button></div>`
-      : `<div style="margin-top:10px"><button onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:7px 14px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
+      ? kcHtml`<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-top:10px;font-size:.85rem">👑 <strong>You will Call the Reckoning this turn.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button onclick="setReckoningCall(false)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer;margin-left:6px">cancel</button></div>`
+      : kcHtml`<div style="margin-top:10px"><button onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:7px 14px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
         <div style="font-size:.72rem;color:#2f281c;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
   } else if(!t.reckoning && t.callBlockedReason==='tooEarly'){
-    callCtrl = `<div style="font-size:.72rem;color:#3a3224;margin-top:10px">The throne cannot be claimed before <strong>Turn ${t.reckoningMinTurn||10}</strong>. Your bloc commands ${pct}% of the world; ${thr}% will be needed when the claim opens.</div>`;
+    callCtrl = kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:10px">The throne cannot be claimed before <strong>Turn ${t.reckoningMinTurn||10}</strong>. Your bloc commands ${pct}% of the world; ${thr}% will be needed when the claim opens.</div>`;
   } else if(!t.reckoning){
     callCtrl = (t.callBlockedReason==='callerShort')
-      ? `<div style="font-size:.72rem;color:#3a3224;margin-top:10px">Your bloc commands ${pct}% of the world — enough to Call the Reckoning — but your own realm holds just ${ownPct}% of it, and a claimant must personally hold ${minPct}%. The claim must be lodged by the greatest realm in your alliance.</div>`
-      : `<div style="font-size:.72rem;color:#3a3224;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
+      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:10px">Your bloc commands ${pct}% of the world — enough to Call the Reckoning — but your own realm holds just ${ownPct}% of it, and a claimant must personally hold ${minPct}%. The claim must be lodged by the greatest realm in your alliance.</div>`
+      : kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
   }
 
   // ── Always show the realm's share of the world's total tax base (land AND sea) and the Reckoning
@@ -3941,28 +3948,26 @@ function renderTitles(report){
   // holder — who by definition commands the largest tax base — is called out by name.
   const throneMine=!!(t.holders&&t.holders.throne&&t.holders.throne.mine);
   const _gap=thr-pct;
-  const shareLine=`<div style="background:#f0f4ea;border:1px solid #cdd8bf;border-radius:3px;padding:7px 10px;margin-bottom:10px;font-size:.78rem;color:#3a4a2a;line-height:1.5">
-    ${throneMine?'👑 <strong>You hold The Throne</strong> — the largest tax base in the world. ':''}Your bloc commands <strong>${pct}%</strong> of the world's tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?` <span style="color:#2f281c">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:(t.callBlockedReason==='callerShort'?` <span style="color:#654c0c">Your bloc meets the threshold, but your own realm holds ${ownPct}% and a claimant must personally hold ${minPct}% — your strongest ally must lodge the claim.</span>`:' <span style="color:#1d541d">You meet the threshold.</span>')}
+  const shareLine=kcHtml`<div style="background:#f0f4ea;border:1px solid #cdd8bf;border-radius:3px;padding:7px 10px;margin-bottom:10px;font-size:.78rem;color:#3a4a2a;line-height:1.5">
+    ${throneMine?kcHtml`👑 <strong>You hold The Throne</strong> — the largest tax base in the world. `:''}Your bloc commands <strong>${pct}%</strong> of the world's tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?kcHtml` <span style="color:#2f281c">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:(t.callBlockedReason==='callerShort'?kcHtml` <span style="color:#654c0c">Your bloc meets the threshold, but your own realm holds ${ownPct}% and a claimant must personally hold ${minPct}% — your strongest ally must lodge the claim.</span>`:kcHtml` <span style="color:#1d541d">You meet the threshold.</span>`)}
   </div>`;
-  el.innerHTML = gainsHtml + lossesHtml + banner + shareLine
-    + `<div style="font-size:.75rem;color:#332c20;margin-bottom:3px">Standings (Legacy)</div>
+  el.innerHTML = kcHtml`${gainsHtml}${lossesHtml}${banner}${shareLine}<div style="font-size:.75rem;color:#332c20;margin-bottom:3px">Standings (Legacy)</div>
        <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:12px"><tbody>${board}</tbody></table>
        <div style="font-size:.75rem;color:#332c20;margin-bottom:2px">The Imperial Titles — who holds them &amp; how they are won <span style="color:#aaa">(yours first, then the ones you stand closest to winning)</span></div>
-       ${majorHtml}`
-    + callCtrl + reckoningInfo + renderMinorTitles(t);
+       ${majorHtml}${callCtrl}${reckoningInfo}${renderMinorTitles(t)}`;
 }
 function renderMinorTitles(t){
   const m=t&&t.minor; if(!m) return '';
   // list ONLY the minor titles held by this player's own characters.
   const mine=(m.mine||[]);
   const mineHtml = mine.length
-    ? mine.map(x=>`<div style="border-bottom:1px dotted var(--parchment-dark);padding:4px 0;font-size:.76rem">
+    ? mine.map(x=>kcHtml`<div style="border-bottom:1px dotted var(--parchment-dark);padding:4px 0;font-size:.76rem">
         <span class="pill" style="background:#eef3e6;color:#3a5a2a;margin:0">🎖 ${x.name}</span>
         <span style="color:#231e16"> — ${x.holderName||''}</span>
         <div style="font-size:.68rem;color:#2f281c;line-height:1.4">Earn: ${x.req||''}<br><span style="color:#1d541d">Perk: ${x.perk||''}</span></div>
-      </div>`).join('')
-    : `<div style="font-size:.78rem;color:#3a3224;margin-top:4px">Your characters hold no minor titles yet. Each is awarded to the single best character in the world by its measure — win one and it appears here.</div>`;
-  return `<div style="margin-top:14px;border-top:1px dashed var(--parchment-dark);padding-top:8px">
+      </div>`)
+    : kcHtml`<div style="font-size:.78rem;color:#3a3224;margin-top:4px">Your characters hold no minor titles yet. Each is awarded to the single best character in the world by its measure — win one and it appears here.</div>`;
+  return kcHtml`<div style="margin-top:14px;border-top:1px dashed var(--parchment-dark);padding-top:8px">
     <div style="font-size:.8rem;color:#332c20;margin-bottom:4px">🎖 Your minor titles <span style="font-size:.72rem">(honorary — each grants a perk but never counts toward victory)</span></div>
     ${mineHtml}
   </div>`;
@@ -3977,28 +3982,28 @@ function renderReckoningOrders(){
   const pct=floorNumP((t.myShare||0)*100), thr=Math.ceil(floorNumP((t.threshold||0)*100*1e6)/1e6); // a 41.6% share shows 41, never "42% (need 42%)"
   // the caller's OWN share and the personal floor (half the bar).
   const ownPct=floorNumP((t.myOwnShare!=null?t.myOwnShare:(t.myShare||0))*100), minPct=Math.ceil(floorNumP((t.callerMin||0)*100*1e6)/1e6);
-  if(t.gameOver){ w.innerHTML=`<div style="color:#2f281c">The game is over — there is nothing left to call.</div>`; return; }
+  if(t.gameOver){ w.innerHTML=kcHtml`<div style="color:#2f281c">The game is over — there is nothing left to call.</div>`; return; }
   if(t.reckoning){
-    w.innerHTML=`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:6px 8px">👑 <strong>The Reckoning has already been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of Turn ${t.reckoning.resolveAtTurn} unless the claim is broken.</div>`;
+    w.innerHTML=kcHtml`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:6px 8px">👑 <strong>The Reckoning has already been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of Turn ${t.reckoning.resolveAtTurn} unless the claim is broken.</div>`;
     return;
   }
   if(t.canCallReckoning){
     w.innerHTML = reckoningCall
-      ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px;font-size:.78rem">👑 <strong>You will Call the Reckoning with these orders.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button type="button" onclick="setReckoningCall(false)" style="margin-left:6px;font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`
-      : `<div><button type="button" onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:6px 12px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
+      ? kcHtml`<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px;font-size:.78rem">👑 <strong>You will Call the Reckoning with these orders.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button type="button" onclick="setReckoningCall(false)" style="margin-left:6px;font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`
+      : kcHtml`<div><button type="button" onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:6px 12px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
           <div style="color:#2f281c;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
     return;
   }
   // Not available — say why, and where the button will appear.
   let why;
-  if(t.callBlockedReason==='tooEarly') why=`The throne cannot be claimed before <strong>Turn ${t.reckoningMinTurn||10}</strong> — the realms are still settling and the world will not yet be judged.`;
+  if(t.callBlockedReason==='tooEarly') why=kcHtml`The throne cannot be claimed before <strong>Turn ${t.reckoningMinTurn||10}</strong> — the realms are still settling and the world will not yet be judged.`;
   else if(t.public===false) why=`The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5} — the Reckoning cannot be called before then.`;
-  else if(t.kingAlive===false) why=`Only a living <strong>King</strong> may call it — your king is dead, so the call must wait for the heir.`;
-  else if(t.callBlockedReason==='callerShort') why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base — enough to call it — but the claim belongs to whoever lodges it, and your own realm holds only <strong>${ownPct}%</strong>. A claimant must personally hold <strong>${minPct}%</strong> (half the ${thr}% bar), so the greatest realm in your alliance must be the one to call it.`;
+  else if(t.kingAlive===false) why=kcHtml`Only a living <strong>King</strong> may call it — your king is dead, so the call must wait for the heir.`;
+  else if(t.callBlockedReason==='callerShort') why=kcHtml`Your bloc commands <strong>${pct}%</strong> of the world's tax base — enough to call it — but the claim belongs to whoever lodges it, and your own realm holds only <strong>${ownPct}%</strong>. A claimant must personally hold <strong>${minPct}%</strong> (half the ${thr}% bar), so the greatest realm in your alliance must be the one to call it.`;
   else if(pct<thr){ const _na=Math.max(0,(t.blocSize||1)-1), _so=Math.ceil(floorNumP((t.soloThreshold!=null?t.soloThreshold:(t.threshold||0))*100*1e6)/1e6);
-    why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#2f281c">(${thr-pct} more percentage point${thr-pct!==1?'s':''} to go)</span>.${_na>0?` <span style="color:#654c0c">Standing alone the bar would be ${_so}% — each of your ${_na} all${_na===1?'y':'ies'} raises it by ${Math.round((t.allyStep||0)*100)} points.</span>`:''}`; }
-  else why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%).`;
-  w.innerHTML=`<div style="color:#231e16;line-height:1.5">${why} The <strong>👑 Call the Reckoning</strong> button will appear here when you qualify.</div>`;
+    why=kcHtml`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#2f281c">(${thr-pct} more percentage point${thr-pct!==1?'s':''} to go)</span>.${_na>0?kcHtml` <span style="color:#654c0c">Standing alone the bar would be ${_so}% — each of your ${_na} all${_na===1?'y':'ies'} raises it by ${Math.round((t.allyStep||0)*100)} points.</span>`:''}`; }
+  else why=kcHtml`Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%).`;
+  w.innerHTML=kcHtml`<div style="color:#231e16;line-height:1.5">${why} The <strong>👑 Call the Reckoning</strong> button will appear here when you qualify.</div>`;
 }
 
 // the spell-target (secondary) field builder, extracted from the Cast Spell form so the Use Item
@@ -4400,8 +4405,8 @@ function armyLabel(a, opts={}){
   const detail=[lead,a.type,a.quality,`Base str ${str}`,_mv].filter(Boolean).join(', ');
   // beasts bound by the Rite of the Wild Hunt are flagged wherever an army line is rendered — they
   // draw no wages and leave when the binding fails.
-  const wild=(a.wildHunt||a._wildHuntUntilTurn!=null)?` <span style="color:#7a4a10;font-size:.72rem">[Wild Hunt — bound until end of turn ${a.wildHuntUntil!=null?a.wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:'?')}, no wages]</span>`:'';
-  return (name?`${name} (${detail})`:`${detail}`)+wild;
+  const wild=(a.wildHunt||a._wildHuntUntilTurn!=null)?kcHtml` <span style="color:#7a4a10;font-size:.72rem">[Wild Hunt — bound until end of turn ${a.wildHuntUntil!=null?a.wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:'?')}, no wages]</span>`:'';
+  return kcHtml`${name?`${name} (${detail})`:detail}${wild}`;
 }
 
 // an icon representing the *kind* of unit (land / sea / flying / creature / monster) so players can
@@ -6597,13 +6602,13 @@ function updateAlignmentDesc(){
   // serve you (the further a hero's own alignment sits from yours, the more they cost; Divine and
   // Undead will never serve one another). Only ONE realm per game may be Divine, and one Undead.
   const DESCS={
-    Divine:'✨ <strong>Divine:</strong> The holy crown. Best battle fervour in the game (50% chance your host fights fanatically). Your king may <strong>Consecrate</strong> provinces: +50% tax and much stiffer defence. A fallen character returns to life one turn later on consecrated ground — no other realm can do that. Heroes heal twice as fast resting. Will not hire Undead heroes, and dark ones cost extra. One Divine realm per game.',
-    Good:'⚔ <strong>Good:</strong> The steady defender. 40% fervour, +10% strength defending land you own, and better odds that your armies join up for a combined attack. <strong>Call to Arms</strong> gives the king a free garrison unit in one of your provinces every turn. Heroes of most alignments are cheap to hire. A forgiving choice.',
-    Druidic:'🌿 <strong>Druidic:</strong> The wild crown. Your king starts with Druid +1, and every character leads <strong>Creature</strong> armies (thunderbirds, ents, bears, giants, unicorns, mammoths, rocs, whales and great turtles) with no Druid penalty, and every level of Druid they do hold makes those beasts stronger; a hero leads at most as many beasts as his Druid level. Creature armies fight at ×1.5 in forest and jungle.',
-    Neutral:'⚖ <strong>Neutral:</strong> The merchant crown, and the easiest to learn. <strong>+20% tax from every province</strong>, the cheapest heroes in the world (2–3g whatever their alignment), and Sage discoveries come twice as often. <strong>Broker</strong> lets the king hire a distant wandering hero, or buy a spy report on anywhere you have seen, without leaving home.',
-    Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods, for a price. King starts with Explorer +1. At a discovered ritual site you may <strong>Perform Rite</strong>: the <strong>Wild Hunt</strong> binds that province\'s beasts to your host — the only way to field Creatures or Monsters with no Druid magic — or a <strong>Blood Offering</strong> sacrifices units to make an equal number far better. You also earn +1g for every enemy unit you destroy in a victory.',
-    Evil:'💀 <strong>Evil:</strong> The tyrant. Your king starts with Druid +1, and every character leads <strong>Monster</strong> armies (trolls, basilisks, manticores, dragons, krakens) with no Druid penalty, at most as many as his Druid level; a Monster in the host lifts the whole host to ×1.25 in every battle. A crushing win leaves the enemy in Terror (−10% in their next fight), and your Monsters fight ×1.5 attacking ground your Terror grips (<strong>Reign of Fear</strong>). Each conquest is either <strong>looted</strong> for half the province\'s tax value in gold, or <strong>enslaved</strong> for a free garrison unit at the cost of its tax for three turns — your choice, character by character.',
-    Undead:'💀 <strong>Undead:</strong> The deathless. King starts with Necromancy +1 and a free skeletal unit. Skeletal armies cost just 1g, need no Druid skill, <strong>always</strong> fight fanatically (+50% under the king, +30% under a hero), and never lose men fleeing a lost battle. <strong>Harvest the Field</strong> raises a grave as a soldier for 2g with no magic at all. Will not hire Divine heroes. One Undead realm per game.',
+    Divine:'✨ **Divine:** The holy crown. Best battle fervour in the game (50% chance your host fights fanatically). Your king may **Consecrate** provinces: +50% tax and much stiffer defence. A fallen character returns to life one turn later on consecrated ground — no other realm can do that. Heroes heal twice as fast resting. Will not hire Undead heroes, and dark ones cost extra. One Divine realm per game.',
+    Good:'⚔ **Good:** The steady defender. 40% fervour, +10% strength defending land you own, and better odds that your armies join up for a combined attack. **Call to Arms** gives the king a free garrison unit in one of your provinces every turn. Heroes of most alignments are cheap to hire. A forgiving choice.',
+    Druidic:'🌿 **Druidic:** The wild crown. Your king starts with Druid +1, and every character leads **Creature** armies (thunderbirds, ents, bears, giants, unicorns, mammoths, rocs, whales and great turtles) with no Druid penalty, and every level of Druid they do hold makes those beasts stronger; a hero leads at most as many beasts as his Druid level. Creature armies fight at ×1.5 in forest and jungle.',
+    Neutral:'⚖ **Neutral:** The merchant crown, and the easiest to learn. **+20% tax from every province**, the cheapest heroes in the world (2–3g whatever their alignment), and Sage discoveries come twice as often. **Broker** lets the king hire a distant wandering hero, or buy a spy report on anywhere you have seen, without leaving home.',
+    Pagan:'\u{1F525} **Pagan:** The old gods, for a price. King starts with Explorer +1. At a discovered ritual site you may **Perform Rite**: the **Wild Hunt** binds that province\'s beasts to your host — the only way to field Creatures or Monsters with no Druid magic — or a **Blood Offering** sacrifices units to make an equal number far better. You also earn +1g for every enemy unit you destroy in a victory.',
+    Evil:'💀 **Evil:** The tyrant. Your king starts with Druid +1, and every character leads **Monster** armies (trolls, basilisks, manticores, dragons, krakens) with no Druid penalty, at most as many as his Druid level; a Monster in the host lifts the whole host to ×1.25 in every battle. A crushing win leaves the enemy in Terror (−10% in their next fight), and your Monsters fight ×1.5 attacking ground your Terror grips (**Reign of Fear**). Each conquest is either **looted** for half the province\'s tax value in gold, or **enslaved** for a free garrison unit at the cost of its tax for three turns — your choice, character by character.',
+    Undead:'💀 **Undead:** The deathless. King starts with Necromancy +1 and a free skeletal unit. Skeletal armies cost just 1g, need no Druid skill, **always** fight fanatically (+50% under the king, +30% under a hero), and never lose men fleeing a lost battle. **Harvest the Field** raises a grave as a soldier for 2g with no magic at all. Will not hire Divine heroes. One Undead realm per game.',
   };
   desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
@@ -6684,12 +6689,12 @@ function itemLoreTip(it, inner){
 // which the game already uses elsewhere — now 🆕), in the Chronicle and in the orders form alike.
 function itemAcquiredTagP(it){
   if(!it||!it.acquiredThisTurn) return '';
-  return `<span title="Acquired this turn" style="display:inline-block;font-size:.7rem;color:#123008;background:#eaf5e2;border:1px solid #5d8a3c;border-radius:2px;padding:0 5px;margin-right:5px;vertical-align:1px;white-space:nowrap">🆕 Acquired this turn</span>`;
+  return kcHtml`<span title="Acquired this turn" style="display:inline-block;font-size:.7rem;color:#123008;background:#eaf5e2;border:1px solid #5d8a3c;border-radius:2px;padding:0 5px;margin-right:5px;vertical-align:1px;white-space:nowrap">🆕 Acquired this turn</span>`;
 }
 function unitAbilityTip(type, inner){
   const ab=unitAbilityText(type);
   if(!ab) return inner;
-  return `<span title="${ab.replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dotted var(--stone)">${inner}</span>`;
+  return kcHtml`<span title="${ab}" style="cursor:help;border-bottom:1px dotted var(--stone)">${inner}</span>`;
 }
 
 function updateRaceDesc(){
@@ -6701,10 +6706,10 @@ function updateRaceDesc(){
   // needs no Druid skill for them, and the two ancient feuds (Human↔Orc, Elf↔Dwarf) cost a
   // commander 20% when leading the rival kin's troops.
   const DESCS={
-    Human:'🛡 <strong>Human:</strong> The all-rounders — the widest choice of troops (Levies and sturdy Men-at-Arms, Longbows, the best horse in the game) and the strongest navy (the Galleons). Their units also <strong>learn twice as fast</strong>, so a Human army improves quickly with drilling and battle. No terrain is closed to them. Feud with Orcs. The easiest race to play.',
-    Elven:'🏹 <strong>Elven:</strong> Archers and woodsmen. Elven troops fight at <strong>×1.5 in forest and jungle</strong>, and an Elven unit that would be destroyed often slips away home instead of dying. Swift Eagle Riders scout and strike, and Stag Riders are the one cavalry at home among the trees. Weakest in the open. Feud with Dwarves.',
-    Dwarven:'⛏ <strong>Dwarven:</strong> The anvil. Dwarven troops fight at <strong>×1.5 whenever they defend</strong>, and every Dwarven character of a Dwarven realm wears <strong>Mithril Armour</strong> — 2 less damage from every blow and arrow they take. Mountain Guns and armoured Ironclads hit very hard, and Ironhoof Rams are the one cavalry sure-footed in the mountains. Slow to march. Feud with Elves.',
-    Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, fast troops you can afford in numbers — Goblin Hordes (two a turn), Black Arrows, Warg Riders, Berserkers and flying Wyvern Riders. Orcish characters start with <strong>18 HP instead of 15</strong> and harden faster. Quality is poor; you win by numbers and speed. Feud with Humans.',
+    Human:'🛡 **Human:** The all-rounders — the widest choice of troops (Levies and sturdy Men-at-Arms, Longbows, the best horse in the game) and the strongest navy (the Galleons). Their units also **learn twice as fast**, so a Human army improves quickly with drilling and battle. No terrain is closed to them. Feud with Orcs. The easiest race to play.',
+    Elven:'🏹 **Elven:** Archers and woodsmen. Elven troops fight at **×1.5 in forest and jungle**, and an Elven unit that would be destroyed often slips away home instead of dying. Swift Eagle Riders scout and strike, and Stag Riders are the one cavalry at home among the trees. Weakest in the open. Feud with Dwarves.',
+    Dwarven:'⛏ **Dwarven:** The anvil. Dwarven troops fight at **×1.5 whenever they defend**, and every Dwarven character of a Dwarven realm wears **Mithril Armour** — 2 less damage from every blow and arrow they take. Mountain Guns and armoured Ironclads hit very hard, and Ironhoof Rams are the one cavalry sure-footed in the mountains. Slow to march. Feud with Elves.',
+    Orcish:'⚔ **Orcish:** The horde. Cheap, fast troops you can afford in numbers — Goblin Hordes (two a turn), Black Arrows, Warg Riders, Berserkers and flying Wyvern Riders. Orcish characters start with **18 HP instead of 15** and harden faster. Quality is poor; you win by numbers and speed. Feud with Humans.',
   };
   desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
@@ -6716,10 +6721,10 @@ function updateTemperDesc(){
   // Temper is how your KING behaves in personal combat — duels, lair guardians, ambushes. It does
   // nothing in army battles. It is the single biggest factor in whether your king survives.
   const DESCS={
-    Berserk:'🔥 <strong>Berserk:</strong> The hammer. +18% to hit and +3 damage in melee — far the hardest hitter — and shrugs off 12% of every blow and arrow. But enemies hit them 10% more easily, and they fight on until nearly dead. The most likely of all to be killed.',
-    Brave:'🦁 <strong>Brave:</strong> The soldier. Good at everything (+12% melee, +8% archery, +1 damage) and, once per fight, <strong>Second Wind</strong>: when first badly wounded they recover about a quarter of their health. No weakness. The safe default.',
-    Cautious:'🧭 <strong>Cautious:</strong> The survivor. Enemies are 14% less likely to hit them (and can never beat 66% however skilled), every melee blow that does land does 2 less damage, and a missed attack draws a <strong>40% riposte</strong>. No attack bonus — they win by outlasting. The hardest king to kill.',
-    Cowardly:'🏃 <strong>Cowardly:</strong> The archer and the spy. +22% archery, +15% to Steal, best in the game at breaking off and fleeing, and if struck down they may beg for mercy and be spared. Poor with a blade. The sensible choice for a king you cannot afford to lose.',
+    Berserk:'🔥 **Berserk:** The hammer. +18% to hit and +3 damage in melee — far the hardest hitter — and shrugs off 12% of every blow and arrow. But enemies hit them 10% more easily, and they fight on until nearly dead. The most likely of all to be killed.',
+    Brave:'🦁 **Brave:** The soldier. Good at everything (+12% melee, +8% archery, +1 damage) and, once per fight, **Second Wind**: when first badly wounded they recover about a quarter of their health. No weakness. The safe default.',
+    Cautious:'🧭 **Cautious:** The survivor. Enemies are 14% less likely to hit them (and can never beat 66% however skilled), every melee blow that does land does 2 less damage, and a missed attack draws a **40% riposte**. No attack bonus — they win by outlasting. The hardest king to kill.',
+    Cowardly:'🏃 **Cowardly:** The archer and the spy. +22% archery, +15% to Steal, best in the game at breaking off and fleeing, and if struck down they may beg for mercy and be spared. Poor with a blade. The sensible choice for a king you cannot afford to lose.',
   };
   desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
@@ -7030,7 +7035,7 @@ function skillRowHTML(c, style){
     // ── one coloured delta per SOURCE KIND, on the skill itself ── `bonus` is what the always-on
     // extras are actually WORTH after the engine's cap, so the kinds are shaved pro-rata to it: the
     // chips can never add up to more than the turn will use.
-    let chips='';
+    const chips=[];
     if(always.length && bonus!==0){
       const byKind={}; const order=[];
       always.forEach(s=>{ if(byKind[s.kind]===undefined){byKind[s.kind]=0;order.push(s.kind);} byKind[s.kind]+=(s.delta||0); });
@@ -7044,46 +7049,45 @@ function skillRowHTML(c, style){
         if(v>0){ shown=(posRaw>0)?Math.min(left,Math.round(v*posShown/posRaw)):0; left-=shown; }
         if(!shown) return;
         legendKinds.add(kind);
-        chips+=`<span style="color:${st.c};font-weight:600">${shown>0?'+':''}${shown}</span>`;
+        chips.push(kcHtml`<span style="color:${st.c};font-weight:600">${shown>0?'+':''}${shown}</span>`);
       });
     } else if(bonus!==0){
-      chips=`<span style="color:${bonus>0?'var(--gold)':'var(--crimson)'};font-weight:600">${bonus>0?'+':''}${bonus}</span>`;
+      chips.push(kcHtml`<span style="color:${bonus>0?'var(--gold)':'var(--crimson)'};font-weight:600">${bonus>0?'+':''}${bonus}</span>`);
     }
     // ── the scoped extras, each with the marker that says WHEN it bites ──
     const scoped={}; const scOrder=[];
     srcs.filter(s=>s.scope!=='always').forEach(s=>{ if(!scoped[s.scope]){scoped[s.scope]={};scOrder.push(s.scope);} scoped[s.scope][s.kind]=(scoped[s.scope][s.kind]||0)+(s.delta||0); });
     scOrder.forEach(sc=>Object.keys(scoped[sc]).forEach(kind=>{
       const v=scoped[sc][kind]; if(!v) return; const st=_bonusKindP(kind); legendKinds.add(kind);
-      chips+=`<span style="color:${st.c};font-weight:600">(${v>0?'+':''}${v}${BONUS_SCOPE_MARK_P[sc]||''})</span>`;
+      chips.push(kcHtml`<span style="color:${st.c};font-weight:600">(${v>0?'+':''}${v}${BONUS_SCOPE_MARK_P[sc]||''})</span>`);
     }));
     // ── every source NAMED, collected for the breakdown line under the skills ──
     if(srcs.length){
       const bits=srcs.map(s=>{ const st=_bonusKindP(s.kind);
-        return `<span style="background:${st.bg};color:${st.c};border-radius:2px;padding:0 4px;white-space:nowrap">${s.delta>0?'+':''}${s.delta} ${s.label}${s.scope!=='always'?` ${BONUS_SCOPE_MARK_P[s.scope]||''}`:''}</span>`; });
-      if(rawTotal>0&&bonus<rawTotal) bits.push(`<span style="color:#3a3224">(capped at ${(ITEM_UNCAPPED_SKILLS_P.has(k)||k==='druid')?9:5})</span>`);
-      detail.push(`<span style="white-space:normal"><strong style="color:#231e16">${label}</strong> ${bits.join(' ')}</span>`);
+        return kcHtml`<span style="background:${st.bg};color:${st.c};border-radius:2px;padding:0 4px;white-space:nowrap">${s.delta>0?'+':''}${s.delta} ${s.label}${s.scope!=='always'?` ${BONUS_SCOPE_MARK_P[s.scope]||''}`:''}</span>`; });
+      if(rawTotal>0&&bonus<rawTotal) bits.push(kcHtml`<span style="color:#3a3224">(capped at ${(ITEM_UNCAPPED_SKILLS_P.has(k)||k==='druid')?9:5})</span>`);
+      detail.push(kcHtml`<span style="white-space:normal"><strong style="color:#231e16">${label}</strong> ${kcJoinP(bits,' ')}</span>`);
     }
     // melee and archery let item/aura bonuses stack above trained 5 to the ceiling of 9; every
     // other skill still stops at 5. Mirrors ITEM_UNCAPPED_SKILLS in the GM engine.
     const _ceil=(ITEM_UNCAPPED_SKILLS_P.has(k)||k==='druid')?9:5;
     const parts=srcs.map(s=>`${s.delta>0?'+':''}${s.delta} ${s.label}${s.scope!=='always'?` (${BONUS_SCOPE_TEXT_P[s.scope]||''})`:''}`);
     if(rawTotal>0&&bonus<rawTotal) parts.push('capped at '+_ceil);
-    const tip=parts.length?` title="${(label+' '+base+' — '+parts.join(', ')).replace(/"/g,'&quot;')}"`:'';
+    const tip=parts.length?kcHtml` title="${label+' '+base+' — '+parts.join(', ')}"`:'';
     return style==='tags'
-      ? `<span class="skill-tag"${tip}>${label} ${base}${chips}</span>`
-      : `<span style="color:var(--forest)"${tip}><strong>${label}:</strong> ${base}${chips}</span>`;
+      ? kcHtml`<span class="skill-tag"${tip}>${label} ${base}${chips}</span>`
+      : kcHtml`<span style="color:var(--forest)"${tip}><strong>${label}:</strong> ${base}${chips}</span>`;
   }).filter(Boolean);
-  if(!rows.length) return style==='tags'?'':'<span style="color:#aaa">No skills</span>';
-  let out=rows.join('');
+  if(!rows.length) return style==='tags'?'':kcHtml`<span style="color:#aaa">No skills</span>`;
+  const out=[rows];
   if(detail.length){
-    const legend=[...legendKinds].map(kd=>{ const st=_bonusKindP(kd); return `<span style="color:${st.c}">● ${st.label}</span>`; }).join(' ');
-    out+=`<span style="flex-basis:100%;width:100%;margin-top:3px;font-size:.68rem;color:#2a2419;line-height:1.8;display:block">`
-      +`<span style="color:#3a3224;text-transform:uppercase;letter-spacing:.04em">Skill bonuses</span> ${legend}`
-      +`<span style="display:block;margin-top:2px">${detail.join(' &nbsp; ')}</span>`
-      +`<span style="display:block;color:#3a3224;margin-top:1px">⚔ personal combat &middot; ⚑ army battles &middot; ➤ movement &middot; ✎ that order&rsquo;s roll — these never change the skill itself</span>`
-      +`</span>`;
+    const legend=kcJoinP([...legendKinds].map(kd=>{ const st=_bonusKindP(kd); return kcHtml`<span style="color:${st.c}">● ${st.label}</span>`; }),' ');
+    out.push(kcHtml`<span style="flex-basis:100%;width:100%;margin-top:3px;font-size:.68rem;color:#2a2419;line-height:1.8;display:block">${[
+      kcHtml`<span style="color:#3a3224;text-transform:uppercase;letter-spacing:.04em">Skill bonuses</span> ${legend}`,
+      kcHtml`<span style="display:block;margin-top:2px">${kcJoinP(detail,kcHtml` &nbsp; `)}</span>`,
+      kcHtml`<span style="display:block;color:#3a3224;margin-top:1px">⚔ personal combat &middot; ⚑ army battles &middot; ➤ movement &middot; ✎ that order&rsquo;s roll — these never change the skill itself</span>`]}</span>`);
   }
-  return out;
+  return kcHtml`${out}`;
 }
 
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
@@ -8744,17 +8748,18 @@ function makeTerrainIcon(svgNS, cx, cy, terrain){
 // alignment description as a scannable bullet list instead of one dense paragraph. Splits on a
 // period followed by whitespace, so decimals (×1.5), ranges (2–5) and mid-clause em-dashes stay
 // intact (their period isn't followed by a space). Curated wording is preserved verbatim; only the
-// presentation changes. Any embedded HTML (e.g. <strong>) is kept.
+// presentation changes. `text` is shown as text, and each **bold** run becomes <strong> (P0-19).
 function bulletizeDesc(text){
   if(!text) return '';
+  const bold=s=>s.split(/\*\*(.+?)\*\*/).map((x,i)=>i%2?kcHtml`<strong>${x}</strong>`:x);
   const raw=String(text).trim();
   const parts=raw.split(/\.\s+/).map(s=>s.trim()).filter(Boolean);
-  if(parts.length<=1) return text;
+  if(parts.length<=1) return kcHtml`${bold(String(text))}`;
   const lis=parts.map(p=>{
     const needsDot=!/[.!?]$/.test(p); // last clause keeps its period; earlier ones had theirs stripped
-    return `<li style="margin-bottom:4px">${p}${needsDot?'.':''}</li>`;
-  }).join('');
-  return `<ul style="margin:2px 0 0;padding-left:1.15em;line-height:1.45">${lis}</ul>`;
+    return kcHtml`<li style="margin-bottom:4px">${bold(p)}${needsDot?'.':''}</li>`;
+  });
+  return kcHtml`<ul style="margin:2px 0 0;padding-left:1.15em;line-height:1.45">${lis}</ul>`;
 }
 function neutralCharLabel(c){
   const base=String(c&&c.name||'').replace(/\s*\(wandering\)/gi,'').trim();
@@ -9010,7 +9015,7 @@ function _graveNote(pd){
 function _lairName(f){
   if(!f) return '';
   const col=GUARD_POWER_COLORS_P[f.monsterPower||f.power]||null;
-  return col?`<span style="color:${col}">${f.name}</span>`:(f.name||'');
+  return col?kcHtml`<span style="color:${col}">${f.name}</span>`:(f.name||'');
 }
 // GRAND DESIGN: a Wonder of the age is no secret — anyone who can see the province sees the Wonder
 // standing in it, and who raised it. Its powers, though, serve only the realm that built it, and
@@ -9025,7 +9030,7 @@ function beastCommandCountP(a){ const C=new Set([...KC_UNIT_CLASS.creature,...KC
 function terrorNoteP(pd, light){
   const t=pd&&pd.terror; if(!t||!(t.pct>0)) return '';
   const col=light?'#701010':'#e08a8a';
-  return `<br><span style="color:${col}">\u{1F480} Terror ${t.pct}% \u2014 ${t.stacks} stack${t.stacks!==1?'s':''}${t.byYou?' of your own':''}: its next defenders fight at \u2212${t.pct}%${t.byYou?' (yours are spared where you hold the ground)':''}</span>`;
+  return kcHtml`<br><span style="color:${col}">\u{1F480} Terror ${t.pct}% \u2014 ${t.stacks} stack${t.stacks!==1?'s':''}${t.byYou?' of your own':''}: its next defenders fight at \u2212${t.pct}%${t.byYou?' (yours are spared where you hold the ground)':''}</span>`;
 }
 function _grandDesignNote(pd){
   const gd=pd&&pd.grandDesign; if(!gd) return '';
@@ -9053,10 +9058,10 @@ function provinceGrandDesignHTML(p){
   const gd=p&&p.grandDesign; if(!gd) return '';
   const desc=grandDesignDesc(gd.name);
   const mine=!!gd.active;   // active === the builder still holds the ground, i.e. its powers are working
-  return `<div style="margin-top:4px;border-left:3px solid ${mine?'#8a6208':'#7a7160'};background:${mine?'#fdf3d8':'#efe9dc'};border-radius:2px;padding:4px 7px">
+  return kcHtml`<div style="margin-top:4px;border-left:3px solid ${mine?'#8a6208':'#7a7160'};background:${mine?'#fdf3d8':'#efe9dc'};border-radius:2px;padding:4px 7px">
       <div style="font-family:Cinzel,serif;font-size:.76rem;color:#4a3105;font-weight:700">\u{1F3DB} ${gd.name}
         <span style="font-weight:400;font-size:.7rem;color:${mine?'#1d541d':'#7a1010'}">\u2014 ${mine?'active':'dormant'}</span></div>
-      ${desc?`<div style="font-size:.73rem;color:#2a2419;line-height:1.45;margin-top:1px">${desc}</div>`:''}
+      ${desc?kcHtml`<div style="font-size:.73rem;color:#2a2419;line-height:1.45;margin-top:1px">${desc}</div>`:''}
       <div style="font-size:.68rem;color:#4a4335;margin-top:1px">Raised by <strong>${gd.ownerName||'a fallen realm'}</strong>.
         ${mine?'A realm may raise only one Grand Design, and its powers last while that realm holds this province.'
               :'Its powers serve only the realm that built it \u2014 while another crown holds this ground it is dormant stonework.'}</div>
@@ -9069,10 +9074,10 @@ function leadsArmiesP(x){ return x&&x.leadsArmies!=null?!!x.leadsArmies:((x&&x.a
 // carried and the army units they led, as of that spy. Empty for a hero never spied on.
 function spiedExtraP(s){
   if(!s) return '';
-  let h='';
-  if(Array.isArray(s.spiedItems)) h+=`<br><span style="color:#1d5a1d">🔍 Items:</span> ${s.spiedItems.length?s.spiedItems.join(', '):'none'}`;
-  if(Array.isArray(s.spiedArmies)) h+=`<br><span style="color:#1d5a1d">🔍 Leads:</span> ${s.spiedArmies.length?s.spiedArmies.map(a=>armyLabel(a,{short:true})).join(', '):'no armies'}`;
-  return h;
+  const h=[];
+  if(Array.isArray(s.spiedItems)) h.push(kcHtml`<br><span style="color:#1d5a1d">🔍 Items:</span> ${s.spiedItems.length?s.spiedItems.join(', '):'none'}`);
+  if(Array.isArray(s.spiedArmies)) h.push(kcHtml`<br><span style="color:#1d5a1d">🔍 Leads:</span> ${s.spiedArmies.length?kcJoinP(s.spiedArmies.map(a=>armyLabel(a,{short:true})),', '):'no armies'}`);
+  return h.length?kcHtml`${h}`:'';
 }
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
@@ -9173,7 +9178,7 @@ const CHIEFTAIN_MARKER_COLOR='#8f6a38'; // darkened from #b08a5a — luminance 1
 // the whole map (pointer-events:none) so it never blocks the hex popup.
 function provLinkHtml(id, name, extraCls){
   if(id==null||id==='') return name;
-  return `<span class="prov-link${extraCls?' '+extraCls:''}" onmouseenter="highlightMapProv(${Number(id)},true)" onmouseleave="highlightMapProv(${Number(id)},false)" onclick="locateOnMap(${Number(id)})" title="Hover to light up ${String(name).replace(/"/g,'&quot;')} on the map — click or tap to show it">${name}</span>`;
+  return kcHtml`<span class="prov-link${extraCls?' '+extraCls:''}" onmouseenter="highlightMapProv(${kcArg(Number(id))},true)" onmouseleave="highlightMapProv(${kcArg(Number(id))},false)" onclick="locateOnMap(${kcArg(Number(id))})" title="Hover to light up ${name} on the map — click or tap to show it">${name}</span>`;
 }
 // ── EVERY PROVINCE NAME IN THE REPORT IS A MAP LINK (2026-09-20, Toby) ── Rather than editing the
 // ~40 places the report prints a province name (Chronicle lines, Realm Events, Your Provinces, Known
@@ -10577,7 +10582,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.16-0852</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.16-0945</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
