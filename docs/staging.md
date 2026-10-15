@@ -4,8 +4,25 @@
 <https://kingdoms-call-staging.github.io/>. It has its own database with made-up accounts and games and no
 real players. Nothing done there touches the live game.
 
-Every pull request that changes something players or the GM can notice is tried on staging **before it's
-merged**, whether it changes the site, the database, or both (as two stacked pull requests: below).
+Staging is used **when a change needs it**: the agent decides for each pull request, from the risk, and says
+in one line of the pull request "Staging: needed / not needed, because …". Toby can always ask for it.
+
+## When a change needs staging
+
+Staging is needed when the change involves any of these:
+1. **A migration** whose effect on existing rows, or on what a page can read, isn't fully covered by the
+   access-rule tests and the stand-in database (`tests/lib/stub-db.js`): a new rule over data already there, a
+   contract step.
+2. **Sign-in or account flows:** sign-up, the Overlord, Game Master offers, suspension.
+3. **What only a real browser shows:** layout, the map, printing, reload and caching after a deploy.
+4. **Several accounts acting together:** a GM and players, invitations, dispatches, two GM tabs.
+5. **A screen Toby will judge by eye**, where the question is "is this what I meant?".
+6. **A change to how games are saved,** run on realistic saves, or the first deploy of a change to how the site
+   is built.
+
+It's not needed for rules and numbers the tests cover, wording, docs or tests. Before skipping it, list the risks
+staging would close and move each into a test or a proof in the pull request (for example, a comparison of the
+pages before and after the change). If Toby finds a problem on staging, that's a missing test: add it.
 
 ## Trying a pull request
 
