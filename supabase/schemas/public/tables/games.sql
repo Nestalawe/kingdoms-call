@@ -10,6 +10,9 @@ CREATE TABLE "public"."games" (
   "updated_at"  timestamp with time zone DEFAULT now(),
   "max_players" integer                  NOT NULL DEFAULT 4,
   "meta"        jsonb,
+  -- The GM's switch "Block eliminated realms from sending dispatches" (P0-25, ruling R-075): off, an eliminated or
+  -- conceded realm may still post publicly until the game ends; on, it may not post at all. Enforced on screen for now.
+  "block_eliminated_msgs" boolean          NOT NULL DEFAULT false,
   CONSTRAINT "games_gm_user_id_fkey" FOREIGN KEY (gm_user_id) REFERENCES auth.users(id) ON DELETE SET NULL,
   CONSTRAINT "games_pkey" PRIMARY KEY (id)
 );
