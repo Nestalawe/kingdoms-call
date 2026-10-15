@@ -363,6 +363,19 @@ reads other slots directly would quietly see only its own. If it needs more than
 a database change first. `tests/other-realms-slots.test.js` switches P0-21's rule on in the stand-in database
 (`RULES.ownSlotsOnly`) and fails on any read that asks for another realm's row.
 
+## Another game reads as nothing
+
+From P2-16 (ruling D-10), an account reads a running or finished game, and its turn logs, only if it runs the game
+or holds a realm in it; the Overlord reads every game. A game in setup is read by any signed-in account if it's
+public, or by the accounts it invites if it's private. Asking for any other game gives no row and no error, so a new
+feature that reads another game directly would quietly find nothing. `tests/games-for-their-players.test.js`
+switches the rule on in the stand-in database (`RULES.ownGamesOnly`) and fails on any read that asks for another
+game or its logs.
+
+The same goes for **access rules that look at `games`**: a rule's subquery on another table runs under the caller's
+own read rules on that table. "Is there no such game?" asked that way is also true of a game the caller can't read.
+Ask a `security definer` function instead, as the Hall of Fame record rules ask `game_exists`.
+
 ## A sort comparator must give the same answer every time
 
 `.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is

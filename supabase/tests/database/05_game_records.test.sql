@@ -3,14 +3,14 @@
 -- What the game needs:
 --   everyone, signed in or not, reads the Hall of Fame;
 --   the game's GM writes its record, edits its name, note and date, hides it, and removes it, also after
---   deleting the game (the record keeps its GM);
+--   deleting the game (the record keeps its GM), but not while the game, handed to another GM, still exists;
 --   the Overlord edits and removes any record, and corrects a player's name on the board with
 --   rename_player (P0-22, rulings D-09 and D-11): the name only, never blank.
 -- Also checked: players, other GMs and signed-out visitors can't write it; nobody but the Overlord renames a
 -- player.
 begin;
 \ir ../lib/world.psql
-select plan(24);
+select plan(27);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -71,6 +71,23 @@ select is(pg_temp.kc_writes($$update public.game_records set hidden = true$$), 0
   'a signed-out visitor can''t edit a record');
 select is(pg_temp.kc_writes($$delete from public.game_records$$), 0,
   'a signed-out visitor can''t remove a record');
+
+-- ── a game handed to another GM: its record goes with it ─────────────────────────────────────
+
+select pg_temp.kc_as('postgres');
+update public.games set gm_user_id = pg_temp.kc_uid('gm2') where id = pg_temp.kc_game('C');
+select pg_temp.kc_as('gm');
+select is(pg_temp.kc_writes($$update public.game_records set note = 'Mine still'
+          where game_id = pg_temp.kc_game('C')::text$$), 0,
+  'the GM named on a record can''t edit it once another GM runs the game');
+select is(pg_temp.kc_writes($$delete from public.game_records where game_id = pg_temp.kc_game('C')::text$$), 0,
+  'nor remove it');
+select pg_temp.kc_as('gm2');
+select is(pg_temp.kc_writes($$update public.game_records set note = 'Handed over'
+          where game_id = pg_temp.kc_game('C')::text$$), 1,
+  'the game''s new GM edits it');
+select pg_temp.kc_as('postgres');
+update public.games set gm_user_id = pg_temp.kc_uid('gm') where id = pg_temp.kc_game('C');
 
 -- ── the Overlord (stranger, in no game) ─────────────────────────────────────────────────────
 

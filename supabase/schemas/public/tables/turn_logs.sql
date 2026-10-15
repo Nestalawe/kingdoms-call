@@ -19,10 +19,12 @@ CREATE POLICY "tl1" ON "public"."turn_logs"
    FROM public.games
   WHERE (games.gm_user_id = auth.uid()))));
 
-CREATE POLICY "tl2" ON "public"."turn_logs"
+-- A game's turn logs are read by its players (P2-16, ruling D-10), as well as its GM (tl1) and the Overlord (below).
+-- Which rows within the game a player reads stays as it is until P2-07.
+CREATE POLICY "a game's players read its turn logs" ON "public"."turn_logs"
   FOR SELECT
-  TO PUBLIC
-  USING (true);
+  TO "authenticated"
+  USING (public.is_game_member(game_id));
 
 -- The Overlord writes any game's turn log, as its GM does (P0-32e, D-13).
 CREATE POLICY "the Overlord writes any turn log" ON "public"."turn_logs"

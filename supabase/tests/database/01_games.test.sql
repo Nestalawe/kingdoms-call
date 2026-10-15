@@ -3,12 +3,16 @@
 -- What the game needs:
 --   the GM creates, reads, saves (the conditional turn save), archives and deletes their own games;
 --   a player reads the games they're in (name, turn, status, meta: My Games and the report screen);
---   any signed-in account lists open public games, and an invited one sees a private game in setup.
+--   any signed-in account lists open public games, and an invited one sees a private game in setup, whether its
+--   settings are saved as text (as the portals write them) or as an object;
+--   the Overlord sees every game.
+-- Also checked: a running or finished game is seen only by its GM, its players and the Overlord, and a private game
+-- in setup only by its GM and the accounts it invites (P2-16, ruling D-10).
 -- Also checked: nobody but the game's GM changes or deletes it, a game is created only in its creator's
 -- own name, and a game is never handed to another account by editing it.
 begin;
 \ir ../lib/world.psql
-select plan(20);
+select plan(29);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -85,6 +89,42 @@ select is(pg_temp.kc_writes($$delete from public.games where id = pg_temp.kc_gam
 select pg_temp.kc_as('anon');
 select is(pg_temp.kc_writes($$delete from public.games$$), 0,
   'a signed-out visitor can''t delete a game');
+
+-- ── who sees a game ──────────────────────────────────────────────────────────────────────────
+
+select pg_temp.kc_as('p3');
+select is(pg_temp.kc_count($$select id from public.games where id = pg_temp.kc_game('A')$$), 0,
+  'a player in another game doesn''t see a running game');
+
+select pg_temp.kc_as('gm2');
+select is(pg_temp.kc_count($$select id from public.games where id = pg_temp.kc_game('A')$$), 0,
+  'another GM doesn''t see a running game');
+
+select pg_temp.kc_as('stranger');
+select is(pg_temp.kc_count($$select id from public.games where status <> 'setup'$$), 0,
+  'an account in no game sees no running or finished game');
+select is(pg_temp.kc_count($$select id from public.games where id = pg_temp.kc_game('P')$$), 0,
+  'an account that isn''t invited doesn''t see a private game in setup');
+
+-- the portals save a game's settings as JSON text
+select pg_temp.kc_as('postgres');
+update public.games set game_state = to_jsonb(game_state::text) where id in (pg_temp.kc_game('S'), pg_temp.kc_game('P'));
+
+select pg_temp.kc_as('invitee');
+select is(pg_temp.kc_count($$select id from public.games where id = pg_temp.kc_game('P')$$), 1,
+  'an invited account sees the private game, its settings saved as text');
+
+select pg_temp.kc_as('stranger');
+select is(pg_temp.kc_count($$select id from public.games where id = pg_temp.kc_game('P')$$), 0,
+  'an account that isn''t invited doesn''t see it');
+select is(pg_temp.kc_count($$select id from public.games where id = pg_temp.kc_game('S')$$), 1,
+  'any signed-in account sees an open public game, its settings saved as text');
+
+select pg_temp.kc_as('postgres');
+select is(public.kc_set_overlord('stranger@example.test', false), 'Overlord set', 'stranger is the Overlord');
+select pg_temp.kc_as('stranger');
+select is(pg_temp.kc_count($$select id from public.games$$), 5,
+  'the Overlord sees every game');
 
 select * from finish();
 rollback;
