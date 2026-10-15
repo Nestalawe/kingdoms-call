@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.15-1117
+// Data file v2026.10.15-1202
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.15-1117';
+const KC_DATA_STAMP='2026.10.15-1202';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1227,7 +1227,7 @@ const TITLE_DEFS=[
   {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians (a pacified guardian counts half).', perk:'Each turn you are named the foremost monster-slayer of every rival realm, with their province and tally.'},
   {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest Sage skill, plus one point per Sage discovery made.', perk:'Each turn you are shown every discovery each rival realm holds \u2014 and copy one you lack, for free.'},
   {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'Each turn you are told the strongest mage of each magic school outside your own realm.'},
-  {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest White skill, plus Bless / Consecrate / Resurrection casts.', perk:'Each turn the dead give up their secrets: every fallen hero your realm can see is read out with the skills they carried in life.'},
+  {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest White skill, plus Bless Province, Holy Symbol and Resurrect casts.', perk:'Each turn the dead give up their secrets: every fallen hero your realm can see is read out with the skills they carried in life.'},
   {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead \u2014 and files each one under Graveyards Known in your report.'},
   // ── 2026-09-17: FOUR NEW TITLES ────
   // Espionage, cartography and the two beast-leading traditions had no prize of their own; the Spy
@@ -1345,7 +1345,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"rh15","name":"Shieldwall Drill","category":"Human Heritage","race":"Human","desc":"Shieldwall Levies of your realm are 60% less likely to be destroyed in battle.","effect":{"kind":"deathRed","pct":0.6,"types":["Shieldwall Levies"]}},
   {"id":"rh16","name":"Wool Trade","category":"Human Heritage","race":"Human","desc":"Every plain province you own whose folk are Human yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"race":"Human","terrains":["plain"]}},
   {"id":"rh17","name":"Free Lance Contracts","category":"Human Heritage","race":"Human","desc":"Free Lances of your realm cost 1g less upkeep each turn (never below 1g a unit), saving at most 5% of your realm's base tax income a turn in all.","effect":{"kind":"upkeep","delta":-1,"types":["Free Lances"],"max":1}},
-  {"id":"rh18","name":"Letters of Marque","category":"Human Heritage","race":"Human","desc":"Corsair Fleet of your realm fight at +30% strength when attacking.","effect":{"kind":"unitStr","pct":0.3,"types":["Corsair Fleet"],"side":"atk"}},
+  {"id":"rh18","name":"Letters of Marque","category":"Human Heritage","race":"Human","desc":"Galleon Fleets of your realm fight at +30% strength when attacking.","effect":{"kind":"unitStr","pct":0.3,"types":["Galleon Fleet"],"side":"atk"}},
   {"id":"rh19","name":"Burgher Levies","category":"Human Heritage","race":"Human","desc":"Human Garrison of your realm fight at +19% strength.","effect":{"kind":"unitStr","pct":0.19,"types":["Human Garrison"]}},
   {"id":"rh20","name":"Archery Contests","category":"Human Heritage","race":"Human","desc":"Each Yeoman Longbows unit you recruit has a 40% chance to start at Veteran quality instead of Average.","effect":{"kind":"recruitQ","pct":0.4,"types":["Yeoman Longbows"]}},
   // ── Elven Heritage ──

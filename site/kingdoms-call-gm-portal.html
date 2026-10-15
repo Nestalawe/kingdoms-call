@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.15-1117';
+const KC_DATA_MIN='2026.10.15-1202';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1117'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1218'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -3830,7 +3830,7 @@ function detRoll(turn,viewerPi,charId,provId){
 // Chance = your exploration% of the province, −20%/enemy Spy level (cap L5), +10%/highest friendly
 // (own or allied) Spy level present (cap L5), clamped 5–95%. Replaces the flat _unspottedTurn cloak
 // for owned provinces. Kings roll exactly as heroes do. Returns true if spotted.
-function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
+function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn){   // turn: the report's turn (default gs.turn)
   // 2026-09-21 — A PROVINCE YOU HOLD IS GROUND YOU KNOW.
   // This read `exploredBy[viewerPi]`, and NOTHING writes that on conquest — only marching in does,
   // at +10% (+5%/Explorer) a visit. So a province taken by the sword sat at 10–20% "explored" for
@@ -3858,7 +3858,7 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
   // twentieth, so a hunt can always eventually be brought to him. Shimmer still halves it.
   let chance=Math.max(25, Math.min(95, explored - 20*enemySpy + 10*friendlySpy + discSumOf(gs.players&&gs.players[viewerPi],'spotLurker','pct',e=>(!e.terrains||e.terrains.includes(prov.terrain))&&(!e.home||homeFounderOf(gs,prov.id)===viewerPi)&&(!e.coastal||discProvCoastal(gs,prov))))); // + spotLurker discoveries (sd60 Watch Houses)
   if(perkTier(enemyChar,'illusory')>=1) chance=Math.max(5, chance*0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
-  return detRoll(gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
+  return detRoll(turn!=null?turn:gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
 }
 
 // ── Items 1 & 12: ONE visibility rule for non-own characters ────
@@ -11899,6 +11899,14 @@ function castChanceFor(c, school, player, opts){
   const disc=discSumOf(player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='action'));
   return {level:lvl,chance:Math.min(95,SPELL_CAST_BASE+lvl*10+arcane+l8+disc),arcane,l8,disc};
 }
+// 2026-10-15 (Toby, D7): a hero guarding a neutral province casts at the same odds as a player's hero —
+// 30% + 10% a level (the school as effSkillOf counts it: training to 5, items on top), the mastery bonus,
+// at most 95%. A guard holds no Sage discoveries. (Was 30% + 15% a level, at most 90%.)
+function guardCastChance(c, school, chars){
+  const lvl=effSkillOf(c,school,chars||[]);
+  if(lvl<=0) return 0;
+  return Math.min(95,SPELL_CAST_BASE+lvl*10+magicL8CastBonus(c));
+}
 function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
 function _legendaryNames(){ return new Set((ITEMS_BY_TIER[4]||[]).map(it=>it.name)); }
 // THE SEA LORD NO LONGER COUNTS THE WAVES. `SEA_LORD_PROVINCE_PTS` gave one merit point per sea
@@ -15824,7 +15832,7 @@ const BATTLE_ARMY_SPELLS={
         const school=sdef?.school||'elemental';
         const defSpellLvl=effStat(defHero,school);
         if(defSpellLvl>0){
-          const castChance=Math.min(90,30+defSpellLvl*15);
+          const castChance=guardCastChance(defHero,school,G.characters); // D7: the same odds as a player's hero
           const castRoll=d100();
           telSpell(defHero,defSpellName,school,defSpellLvl,castChance,castRoll,'battle');
           narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${SKILL_LABELS[school]||school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll<=castChance?'✓':'✗'}]`);
@@ -21769,7 +21777,8 @@ const BATTLE_ARMY_SPELLS={
         if(_cList.length>=_cLimit){
           log('system',`${c.name}: your White faith can sustain only ${_cLimit} consecrated province${_cLimit!==1?'s':''} at once (${_cList.map(id=>G.world.provinces[id]?.name).filter(Boolean).join(', ')||'—'}). One must be lost or captured before you can hallow ${prov.name}. (Raise your White skill to consecrate more.)`,{actor:c.player,targets:[c.player]});break;}
         _cList.push(prov.id);
-        TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
+        // 2026-10-15 (Toby, D8): no Hierophant merit — only a Divine king can consecrate, so it was a
+        // creed-only route to a title. Bless Province, Holy Symbol and Resurrect still count.
         log('explore',`✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and your fallen can be restored only here — they rise in the nearest consecrated province, which then gives up its consecration. If it is captured the consecration breaks at once and the conquerors are emboldened. (${_cList.length}/${_cLimit} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,env:true});
         break;
       }
@@ -24479,7 +24488,13 @@ const BATTLE_ARMY_SPELLS={
         actingChars.forEach(ac=>{
           const acProv=G.world.provinces[ac.location];
           if(!acProv) return;
+          if(ac._invisTurn===G.turn) return; // 2026-10-15 (Toby): a hero under Invisibility is not noticed
           const inOwnedProv=targetOwnedProvs.has(ac.location);
+          // 2026-10-15 (Toby): a lone enemy lurking in your land with none of your heroes there is
+          // reported only if your people spot them — the same roll the report makes for this hero,
+          // province and turn (the report is built after the turn counter advances, hence G.turn+1).
+          if(inOwnedProv&&!targetCharProvs.has(ac.location)&&!(ac.armies||[]).length&&relOfReport(G,targetPi,actingPi)==='enemy'
+             &&!spotEnemyInOwnedProvince(G,targetPi,acProv,ac,G.turn+1)) return;
           const inKnownProv=targetKnownProvs.has(ac.location);
           if(!inKnownProv) return; // target doesn't know about this province
 
@@ -28793,7 +28808,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1117</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1218</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
