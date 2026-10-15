@@ -255,6 +255,11 @@ database). A private dispatch is read by the realms in the conversation and the 
 **⚑ Report** a dispatch they received (`message_reports`); the game's GM sees reports on the game's screen
 (`gm_reported_messages`), unless the GM plays in that game, when only the Overlord does (P0-24).
 
+Until the game is over, a realm that has conceded or been extinguished sends no private dispatches, and none at
+all while the game's `block_eliminated_msgs` switch is on (P0-25, R-075). The player portal decides this from the
+realm's own turn report (`kingdom.conceded`, `kingdom.eliminated`) and the game's light row (`status`,
+`block_eliminated_msgs`); the database doesn't check it yet, because who is out lives in `game_state` (P2-04).
+
 ## Version stamps
 
 Each page carries a New Zealand-time build stamp (`YYYY.MM.DD-HHMM`) in its footer. The GM portal also
