@@ -23,7 +23,9 @@
 //                         (the `sbStub` pasted into six engine harnesses).
 //   nullStub()            every read is empty; enough for a page to boot
 //                         (from claude_jsdomboot_0927.js).
-//   leaderboardStub(o)    serves Hall-of-Fame rows and records edits (from claude_lb_render_0927.js).
+//   leaderboardStub(o)    serves Hall-of-Fame rows and records edits (from claude_lb_render_0927.js). Optional:
+//                         profiles (rows of {id,name}), error (every write and rename_player fails with that
+//                         message), readError (reading game_records fails with that message) (P0-19).
 //   messagingStubInstall  in-memory database for the dispatch tests in Chromium, including a
 //                         mirror of the player-side read and insert rules (from stub_supabase_0927.js).
 //   pagedEventsStub(o)    serves one game's turn_events in pages the way Postgres may: rows that tie
@@ -299,12 +301,13 @@ function nullStub(){ const res=d=>Promise.resolve({data:d,error:null});
 // rows(): the Hall-of-Fame rows to serve. calls: array; every non-select is pushed as {table,op,filters,payload},
 // every rpc as {rpc,args}. me: the signed-in account (default gm-1); isGm: it runs a game; isOverlord: it's the
 // Overlord (is_site_admin, P0-22).
-function leaderboardStub({rows,calls,signedIn,isGm,isOverlord,me='gm-1'}){
+function leaderboardStub({rows,calls,signedIn,isGm,isOverlord,me='gm-1',profiles,error,readError}){
   const q=(table)=>{
     const st={table,op:'select',filters:[]};
     const res=()=>{
-      if(st.op!=='select') { calls.push({table,op:st.op,filters:st.filters,payload:st.payload}); return {data:null,error:null}; }
-      if(table==='game_records') return {data:st.range&&st.range[0]>0?[]:rows(),error:null};
+      if(st.op!=='select') { calls.push({table,op:st.op,filters:st.filters,payload:st.payload}); return {data:null,error:error?{message:error}:null}; }
+      if(table==='game_records') return readError?{data:null,error:{message:readError}}:{data:st.range&&st.range[0]>0?[]:rows(),error:null};
+      if(table==='profiles') return {data:profiles||[],error:null};
       if(table==='games') return {data:isGm?[{id:'g0'}]:[],error:null};
       return {data:[],error:null};
     };
@@ -322,7 +325,7 @@ function leaderboardStub({rows,calls,signedIn,isGm,isOverlord,me='gm-1'}){
   };
   const rpc=async(fn,args)=>{ calls.push({rpc:fn,args});
     if(fn==='is_site_admin') return {data:!!(signedIn&&isOverlord),error:null};
-    return {data:null,error:null}; };
+    return {data:null,error:error&&fn==='rename_player'?{message:error}:null}; };
   return {from:q, rpc, auth:{getSession:async()=>({data:{session:signedIn?{user:{id:me}}:null}})}};
 }
 
