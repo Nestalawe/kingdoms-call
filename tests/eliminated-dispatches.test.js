@@ -3,7 +3,7 @@
 // the game's light row), and the dispatch is written through the composer:
 //   - a realm still in the game sends privately and publicly, whatever the GM's switch says;
 //   - a realm that has conceded, or whose dynasty is extinguished, can't send privately (the composer says why) but
-//     can write to All Realms while the game's switch is off, and can't send at all once it is on;
+//     can write to All Realms while the game's switch is off (where it is told too), and can't send at all once it is on;
 //   - once the game is over, everyone sends privately again, both ways: to a realm that is out, and from it;
 //   - the Dispatches note says so.
 // GM portal: the game's screen has the switch "Block eliminated realms from sending dispatches"; it saves
@@ -76,7 +76,9 @@ const noErrors=(errs,who)=>check(!errs.length,`${who}: no page errors`+(errs.len
   for(const block of [false,true]){
     const P=await player({block});
     const sw=block?'switch on':'switch off';
-    can(await trySend(P,'public','Grain for iron'),`in the game, ${sw}: sends to All Realms`);
+    const pub=await trySend(P,'public','Grain for iron');
+    can(pub,`in the game, ${sw}: sends to All Realms`);
+    check(!/private/.test(pub.hint),`in the game, ${sw}: nothing said about private sending (${pub.hint})`);
     can(await trySend(P,PRIV,'Meet at the ford'),`in the game, ${sw}: sends privately`);
     noErrors(P.errs,`in the game, ${sw}`); P.W.close();
   }
@@ -92,7 +94,9 @@ const noErrors=(errs,who)=>check(!errs.length,`${who}: no page errors`+(errs.len
     {
       const P=await player({me});
       cannot(await trySend(P,PRIV,'Strike Veyholt now'),`${how}, switch off: can't send privately`,new RegExp(word.source+'[^]*private[^]*until the game is over'));
-      can(await trySend(P,'public','Farewell, all'),`${how}, switch off: still writes to All Realms`);
+      const pub=await trySend(P,'public','Farewell, all');
+      can(pub,`${how}, switch off: still writes to All Realms`);
+      check(/no private dispatches until the game is over/.test(pub.hint),`${how}, switch off: and the public channel says private sending is off (${pub.hint})`);
       noErrors(P.errs,`${how}, switch off`); P.W.close();
     }
     {

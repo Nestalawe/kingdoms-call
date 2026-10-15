@@ -10155,11 +10155,13 @@ function msgChannelOpen(key){
 // Enforced on this screen only: the database can't yet tell who is out (that lives in the world), until P2-04.
 function msgOutReason(key){
   if(!_msgOut||_msgGameOver) return null;
-  const who=_msgOut==='eliminated'?'Your dynasty is extinguished':'Your realm has conceded';
-  if(_msgBlockOut) return who+', and your GM has blocked conceded and extinguished realms from sending any dispatches until the game is over.';
-  if(key!=='public') return who+', so your realm sends no private dispatches until the game is over. You can still write to 📣 All Realms.';
+  if(_msgBlockOut) return msgOutWho()+', and your GM has blocked conceded and extinguished realms from sending any dispatches until the game is over.';
+  if(key!=='public') return msgOutPrivateOff()+' You can still write to 📣 All Realms.';
   return null;
 }
+function msgOutWho(){ return _msgOut==='eliminated'?'Your dynasty is extinguished':'Your realm has conceded'; }
+// Said on the public channel too, so a realm that is out knows before it looks for a private one.
+function msgOutPrivateOff(){ return (_msgOut&&!_msgGameOver)?msgOutWho()+', so you send no private dispatches until the game is over.':''; }
 function msgChannelLabel(key){
   if(key==='public') return '📣 All Realms';
   const others=msgParticipantsOf(key).filter(i=>i!==_msgMyIndex);
@@ -10483,7 +10485,7 @@ function updateMsgComposer(){
     hint.innerHTML=!sendable
       ? (_msgTableOk===false?'Messaging is not active on this server.':_msgEsc(msgOutReason(_msgChannel)||'Every realm in this conversation has left the game.'))
       : (_msgChannel==='public'
-          ? 'Public — <strong>every realm in this game</strong> will read this.'
+          ? 'Public — <strong>every realm in this game</strong> will read this.'+(msgOutPrivateOff()?' '+_msgEsc(msgOutPrivateOff()):'')
           : 'Private to '+_msgEsc(msgChannelLabel(_msgChannel))+'.')
         +' <span style="opacity:.75">Ctrl+Enter sends. '+(MSG_MAX_LEN-len)+' left.</span>';
   }
