@@ -42,26 +42,27 @@ CREATE POLICY "gp3" ON "public"."game_players"
   TO PUBLIC
   USING ((user_id = auth.uid()));
 
+-- gp4, gp5, gp6: the game's GM adds, changes and removes realms, while still a Game Master (P0-32i, R-097).
 CREATE POLICY "gp4" ON "public"."game_players"
   FOR INSERT
   TO PUBLIC
-  WITH CHECK ((game_id IN ( SELECT games.id
+  WITH CHECK (((game_id IN ( SELECT games.id
    FROM public.games
-  WHERE (games.gm_user_id = auth.uid()))));
+  WHERE (games.gm_user_id = auth.uid()))) AND ( SELECT public.is_game_master() AS is_game_master)));
 
 CREATE POLICY "gp5" ON "public"."game_players"
   FOR UPDATE
   TO PUBLIC
-  USING ((game_id IN ( SELECT games.id
+  USING (((game_id IN ( SELECT games.id
    FROM public.games
-  WHERE (games.gm_user_id = auth.uid()))));
+  WHERE (games.gm_user_id = auth.uid()))) AND ( SELECT public.is_game_master() AS is_game_master)));
 
 CREATE POLICY "gp6" ON "public"."game_players"
   FOR DELETE
   TO PUBLIC
-  USING ((game_id IN ( SELECT games.id
+  USING (((game_id IN ( SELECT games.id
    FROM public.games
-  WHERE (games.gm_user_id = auth.uid()))));
+  WHERE (games.gm_user_id = auth.uid()))) AND ( SELECT public.is_game_master() AS is_game_master)));
 
 -- The Overlord is Master GM of every game (P0-32e, D-13): reads, changes and removes any realm, and adds bot realms
 -- (no account) when starting a game, as its GM does.

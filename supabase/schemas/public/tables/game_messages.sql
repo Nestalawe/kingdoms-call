@@ -44,6 +44,15 @@ CREATE POLICY "the Overlord tidies game_messages" ON "public"."game_messages"
   TO "authenticated"
   USING (( SELECT public.is_site_admin() AS is_site_admin));
 
+-- Revoked GMs keep nothing (P0-32i, R-097): a GM's writes need them still to be a Game Master, or the Overlord. A
+-- revoked GM's unfinished games were handed over first (gm_revoke insists), so this stops them changing their finished
+-- ones. Restrictive: it narrows every other rule. Players delete no dispatches; reads are untouched.
+CREATE POLICY "GM writes need a Game Master (delete)" ON "public"."game_messages"
+  AS RESTRICTIVE
+  FOR DELETE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
 -- Who reads a dispatch: the realms in it (any realm, for a public one); the game's GM the public channel and any
 -- dispatch reported to them (P0-24, D-01, D-13g); the Overlord every dispatch (D-13 follow-up 1). The Dispatches
 -- note and both rulebooks say so.

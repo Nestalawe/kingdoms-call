@@ -82,6 +82,21 @@ CREATE POLICY "a save keeps the game's GM" ON "public"."games"
   USING (true)
   WITH CHECK ((NOT (gm_user_id IS DISTINCT FROM public.game_gm(id))));
 
+-- Revoked GMs keep nothing (P0-32i, R-097): a GM's writes need them still to be a Game Master, or the Overlord. A
+-- revoked GM's unfinished games were handed over first (gm_revoke insists), so this stops them changing their finished
+-- ones. Restrictive: it narrows every other rule. Reads are untouched.
+CREATE POLICY "GM writes need a Game Master (update)" ON "public"."games"
+  AS RESTRICTIVE
+  FOR UPDATE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
+CREATE POLICY "GM writes need a Game Master (delete)" ON "public"."games"
+  AS RESTRICTIVE
+  FOR DELETE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
 CREATE POLICY "the Overlord deletes any game" ON "public"."games"
   FOR DELETE
   TO "authenticated"

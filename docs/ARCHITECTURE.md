@@ -184,7 +184,7 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | `game_results` | One row per realm when a game ends |
 | `game_records` | Hall of Fame: one precomputed row per finished game |
 | `site_admins` | The Overlord (P0-32a): at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. The GM portal asks `is_site_admin()` after sign-in (P0-32c) |
-| `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`. The player portal reads the account's own row for the offer banner (Accept / No thanks call `gm_accept_offer` / `gm_decline_offer`); the GM portal lets in only a Game Master or the Overlord (P0-32c). The Overlord offers, withdraws and revokes GM on the Overlord page (P0-32f) |
+| `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`: creating a game needs it (P0-32d), and so does every GM write (P0-32i). The player portal reads the account's own row for the offer banner (Accept / No thanks call `gm_accept_offer` / `gm_decline_offer`); the GM portal lets in only a Game Master or the Overlord (P0-32c). The Overlord offers, withdraws and revokes GM on the Overlord page (P0-32f) |
 | `game_messages`, `game_message_reads`, `message_reports` | Dispatches between players, each realm's read markers, and the dispatches players have reported (P0-24) |
 
 ### Where a rule is enforced: access rules or database functions
@@ -197,7 +197,7 @@ Functions, would add a server runtime and deploy path, and isn't used):
   for **plain reads and writes of a row**: who may see which rows, who may insert, update or delete their own.
   Most tables work this way. Rules are normally permissive: a write is allowed if any one allows it. A
   **restrictive** rule is ANDed with them instead, so it narrows a write without rewriting the others ("only
-  Game Masters create games" on `games`, "the Overlord holds no realm" on `game_players`, P0-32d; "a save keeps the game's GM" on `games`, P0-32e).
+  Game Masters create games" on `games`, "the Overlord holds no realm" on `game_players`, P0-32d; "a save keeps the game's GM" on `games`, P0-32e; "GM writes need a Game Master" on every table a GM writes but players don't, P0-32i: a revoked GM keeps no write to their finished games).
 - **Database functions** that the page calls by name (`rpc`), on a table no API role may write. Use them for
   **actions with conditions**, which rules express badly:
   - the check spans other tables (`gm_revoke` is refused while that GM runs an unfinished game);
