@@ -71,7 +71,9 @@ Order inside each portal's `<head>` and body, and why it matters:
    `init()` (the leaderboard: `loadAll()`), which hides the spinner. Otherwise the guard raises "The game is
    being updated" through the boot-failure reporter, and nothing is read or written. In the GM portal, a
    signed-in account is then checked (`gmPortalAllowed`: `is_game_master()` or `is_site_admin()`, P0-32c);
-   anyone else, or a check that fails, sees only "You're not a Game Master" and nothing else loads.
+   anyone else, or a check that fails, sees only "You're not a Game Master" and nothing else loads. The Overlord
+   gets **Master GM mode** (`_kcOverlord`, P0-32g): every game, grouped by GM, with no New Game and no automatic
+   watcher; **Run turn now** on any active game, orders in or not; `?game=<id>` (the Overlord page's link) opens a game.
 7. **`kc-staging-footer.js`**, last in `<body>` (every page; the landing page and rulebooks load
    `kc-config.js` just before it). On staging it adds "Staging · PR #N · abc1234" to the footer, plus
    "database <version>" on pages that use the database; on the live site, whose `kc-config.js` has no
@@ -126,7 +128,8 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   Steps 2–3 are **post-commit**: a failure there must never restore orders or retry the turn
   ([traps.md](traps.md#post-commit-work-in-runturn)). `runTurn` catches its own errors and **returns** an
   outcome `{ok, committed, conflict, error}`; it doesn't throw.
-- **Automatic turns.** While a GM tab is open, `autoTurnTick` runs every 60 s (`AUTO_WATCH_MS`). For
+- **Automatic turns.** While a GM tab is open, `autoTurnTick` runs every 60 s (`AUTO_WATCH_MS`). Never in the
+  Overlord's tab (Master GM mode, P0-32g): each game's own GM tab runs its automatic turns. For
   each live, non-archived game in automatic mode it checks whether all orders are in or the deadline
   has passed, and if so runs `runTurn`. A failed run parks that game for 15 minutes
   (`_autoFailUntil`, `AUTO_FAIL_COOLDOWN_MS`). This cooldown is per tab and in memory; the conditional
