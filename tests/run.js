@@ -63,6 +63,7 @@ const SUITE=[
   ['hostile-overlord',     'tests/hostile-overlord.test.js'],
   ['hostile-leaderboard',  'tests/hostile-leaderboard.test.js'],
   ['hostile-gm-portal',    'tests/hostile-gm-portal.test.js'],
+  ['hostile-player-portal','tests/hostile-player-portal.test.js'],
   ['master-gm-mode',       'tests/master-gm-mode.test.js'],
   ['profiles-no-email',    'tests/profiles-no-email.test.js'],
   ['hall-of-fame-controls','tests/hall-of-fame-controls.test.js'],
