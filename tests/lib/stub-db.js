@@ -18,7 +18,9 @@
 //                         ("table.column") mirrors a column privilege taken away: a select of '*', or
 //                         naming that column, is refused with 42501, whoever's row it is (P0-31).
 //                         INSERT_ERRORS[table] answers every insert into that table with that error, as
-//                         a database check or trigger would (P0-23).
+//                         a database check or trigger would (P0-23). ERRORS["table.op"] (op: select, insert, upsert,
+//                         update, delete) or ERRORS["rpc.name"] answers every such call with that error (P0-19: an
+//                         error message a test chooses).
 //   cannedStub(o)         answers every read with fixed rows and records every write
 //                         (the `sbStub` pasted into six engine harnesses).
 //   nullStub()            every read is empty; enough for a page to boot
@@ -45,6 +47,7 @@ function makeStub(){
   const RULES={ownSlotsOnly:false};
   const REVOKED_COLS=new Set();     // "table.column": not granted to the signed-in role
   const INSERT_ERRORS={};           // table -> the error every insert into it gets
+  const ERRORS={};                  // "table.op" or "rpc.name" -> the error every such call gets
   let SESSION={user:{id:'gm1'}};
   let NEXT=1;
   const CALLS=[];
@@ -98,6 +101,7 @@ function makeStub(){
     }
     function run(){
       CALLS.push(st.table+'.'+st.op);
+      if(ERRORS[st.table+'.'+st.op]) return {data:null,error:ERRORS[st.table+'.'+st.op]};
       if(st.op==='select'){
         const revoked=[...REVOKED_COLS].filter(k=>k.startsWith(table+'.')).map(k=>k.slice(table.length+1));
         const top=(st.selectStr||'*').replace(/\([^)]*\)/g,'').split(',').map(x=>x.trim().split(/[:\s]/)[0]);
@@ -264,6 +268,7 @@ function makeStub(){
   function rpc(fn,args){
     CALLS.push('rpc.'+fn);
     if(RPC_ERRORS.has(fn)) return Promise.resolve({data:null,error:{message:'TypeError: Failed to fetch'}});
+    if(ERRORS['rpc.'+fn]) return Promise.resolve({data:null,error:ERRORS['rpc.'+fn]});
     if(!RPC[fn]) return Promise.resolve({data:[],error:null});
     try{ return Promise.resolve({data:RPC[fn](args),error:null}); }
     catch(e){ return Promise.resolve({data:null,error:{message:e.message,code:'P0001'}}); }
@@ -275,7 +280,7 @@ function makeStub(){
            signOut:async()=>({error:null}), signInWithPassword:async()=>({data:{},error:null}) },
     channel:()=>({on(){return this;},subscribe(){return this;},unsubscribe(){}}), removeChannel(){},
     storage:{from:()=>({upload:async()=>({data:null,error:null}),download:async()=>({data:null,error:null}),getPublicUrl:()=>({data:{publicUrl:''}})})} };
-  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, REVOKED_COLS, INSERT_ERRORS, RPC_ERRORS, RULES, CALLS,
+  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, REVOKED_COLS, INSERT_ERRORS, ERRORS, RPC_ERRORS, RULES, CALLS,
            setUser(id){ SESSION=id?{user:{id}}:null; } };
 }
 

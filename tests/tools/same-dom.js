@@ -8,7 +8,7 @@
 //   node tests/tools/same-dom.js /tmp/main/site site leaderboard     # one tour
 //
 // The DOM is compared as parsed, so text escaped differently but read the same (' or &#39;) counts as the same. Ignored:
-// script and style contents, build stamps (v2026.10.16-1200), and the quotes around a string passed to a handler
+// script and style contents, build stamps (v2026.10.16-1200, with or without the v), and the quotes around a string passed to a handler
 // (kcArg writes "g1" where the old code wrote 'g1'). Exits 1 if any screen differs.
 const path=require('path');
 const {TOURS,runJsdom}=require('../lib/screens');
@@ -16,7 +16,7 @@ const {names}=require('../lib/hostile');
 
 const [before,after='site',...only]=process.argv.slice(2);
 if(!before){ console.log('usage: node tests/tools/same-dom.js <before-site> [<after-site>] [tour…]'); process.exit(2); }
-const STAMP=/v\d{4}\.\d{2}\.\d{2}-\d{4}/g;
+const STAMP=/v?\d{4}\.\d{2}\.\d{2}-\d{4}/g;
 
 // One line per element and text, in document order; attributes sorted.
 function lines(node,depth=0,out=[]){

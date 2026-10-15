@@ -70,6 +70,10 @@ async function hostileTest(tourName){
   let fails=0;
   const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };
   const seen=new Set(), want=tour.shown(W).filter(Boolean);
+  // A page that can't start (a mode with bootError) must say so; every other mode runs with no page error at all.
+  const checkErrors=(mode,errs,where)=>tour.modes[mode].bootError
+    ?check(errs.length>0,`${where}${tour.page} (${mode}): the page fails to start, as staged`)
+    :check(!errs.length,`${where}${tour.page} (${mode}): no page errors`+(errs.length?': '+errs[0].split('\n')[0]:''));
   for(const mode of Object.keys(tour.modes)){
     const errs=await runJsdom(tour,mode,W,(label,doc,w)=>{
       const problems=inspect(doc);
@@ -78,7 +82,7 @@ async function hostileTest(tourName){
       const text=doc.body.textContent;
       want.forEach(s=>{ if(text.includes(s)) seen.add(s); });
     });
-    check(!errs.length,`${tour.page} (${mode}): no page errors`+(errs.length?': '+errs[0].split('\n')[0]:''));
+    checkErrors(mode,errs,'');
   }
   const missing=want.filter(s=>!seen.has(s));
   check(!missing.length,`${tour.page}: each of the ${want.length} staged names appears somewhere, exactly as typed`+(missing.length?`; not found: ${missing.map(s=>s.split(' ')[0]).join(', ')}`:''));
@@ -90,7 +94,7 @@ async function hostileTest(tourName){
       const r=await p.evaluate(()=>{ const pwned=!!window.__kcPwned; window.__kcPwned=undefined; return {pwned,made:document.querySelectorAll('img[onerror],svg[onload],[data-kc-bold]').length}; });
       check(!r.pwned&&!r.made,`Chromium: ${tour.page} (${mode}) ${label}: names show as text`+(r.pwned?' (window.__kcPwned was set)':'')+(r.made?` (${r.made} element(s) made from a name)`:''));
     });
-    check(!errs.length,`Chromium: ${tour.page} (${mode}): no page errors`+(errs.length?': '+errs[0].split('\n')[0]:''));
+    checkErrors(mode,errs,'Chromium: ');
   }
   await browser.close();
   console.log(fails?`\nFAILURES: ${fails}`:'\n0 failures');
