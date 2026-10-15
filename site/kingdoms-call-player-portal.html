@@ -16,7 +16,7 @@
   function hint(m){
     if(/being updated/i.test(m)) return 'Nothing was read or saved. Reload in a few minutes; if it keeps happening, tell the GM what the message above says.';
     if(/supabase is not defined/i.test(m)) return 'The Supabase library (vendor/supabase-js-2.117.3.min.js, part of this site) did not load. Check your internet connection and hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
-    if(/kingdoms-call-data\.js/i.test(m)) return 'The game data file <b>kingdoms-call-data.js</b> is missing or out of date on the server. Please tell your Game Master; if you are the GM, upload the current file beside this page, then hard-reload (Ctrl/Cmd+Shift+R).';
+    if(/kingdoms-call-data\.js/i.test(m)) return 'The game data file kingdoms-call-data.js is missing or out of date on the server. Please tell your Game Master; if you are the GM, upload the current file beside this page, then hard-reload (Ctrl/Cmd+Shift+R).';
     if(/before initialization|is not defined/i.test(m)) return 'A script error stopped the portal from starting (this build, or a stale cached copy). Hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
     return 'Hard-reload the page (Ctrl/Cmd+Shift+R). If it persists, report the message above.';
   }
@@ -26,12 +26,14 @@
       const sp=document.getElementById('spinner');
       if(!sp||sp.style.display==='none') return;   // init() already ran: not a boot failure
       shown=true;
-      const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      // Constant markup only: the message and the hint go in as text (kc-safe.js may be the script that failed).
       sp.innerHTML='<div style="max-width:640px;margin:auto;text-align:left;font-family:\'Crimson Text\',serif;letter-spacing:0;color:#f2e8d0;border:1px solid #7a1c1c;border-radius:4px;padding:14px 18px;background:#1a0c0c">'
         +'<div style="font-family:\'Cinzel\',serif;color:#e8b84b;margin-bottom:6px">⚠ The Player portal could not start</div>'
-        +'<div style="font-family:monospace;font-size:.8rem;color:#f0c0c0;word-break:break-word;margin-bottom:8px">'+esc(msg)+'</div>'
-        +'<div style="font-size:.9rem">'+hint(msg)+'</div>'
+        +'<div style="font-family:monospace;font-size:.8rem;color:#f0c0c0;word-break:break-word;margin-bottom:8px" data-boot="msg"></div>'
+        +'<div style="font-size:.9rem" data-boot="hint"></div>'
         +'<div style="margin-top:10px"><button onclick="location.reload()" style="padding:6px 14px;background:#7a1c1c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:\'Cinzel\',serif">Reload</button></div></div>';
+      sp.querySelector('[data-boot="msg"]').textContent=msg;
+      sp.querySelector('[data-boot="hint"]').textContent=hint(msg);
     };
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
   }
@@ -39,6 +41,7 @@
   window.addEventListener('unhandledrejection',e=>show((e.reason&&(e.reason.message||e.reason))||'Unhandled promise rejection'));
 })();
 </script>
+<script src="kc-safe.js"></script>
 <script src="vendor/supabase-js-2.117.3.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
@@ -1582,7 +1585,7 @@ async function doSignIn(){
     let m=error.message;
     if(m.includes('Email not confirmed')) m='Account not confirmed yet. Ask your GM, or check your email for a confirmation link.';
     if(m.includes('Invalid login')) m='Email or password incorrect. Check your details and try again.';
-    msg.innerHTML=`<div class="msg-error">${m}</div>`;return;
+    msg.innerHTML=kcHtml`<div class="msg-error">${m}</div>`;return;
   }
   currentUser=data.user;
   await onSignedIn();
@@ -1599,7 +1602,7 @@ async function doSignUp(){
   if(pwd.length<6){msg.innerHTML='<div class="msg-error">Password must be at least 6 characters.</div>';return;}
   msg.innerHTML='<div class="msg-info">Creating account…</div>';
   const {data,error}=await sb.auth.signUp({email,password:pwd,options:{data:{display_name:name}}});
-  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(error){msg.innerHTML=kcHtml`<div class="msg-error">${error.message}</div>`;return;}
   if(data.user&&!data.session){
     msg.innerHTML='<div class="msg-success">Account created! Check your email for a confirmation link, then sign in.</div>';
     setTimeout(()=>setAuthTab('signin'),3000);
@@ -1628,12 +1631,12 @@ function changeDisplayName(){
   const ov=document.createElement('div');
   ov.id='dn-overlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999';
-  ov.innerHTML=`
+  ov.innerHTML=kcHtml`
     <div style="background:#f5ecd8;color:#1a1208;border:2px solid #c8922a;border-radius:6px;padding:20px;max-width:380px;width:90%">
       <div style="font-family:'Cinzel',serif;font-size:1rem;margin-bottom:6px;color:#7a1c1c">✏ Change Display Name</div>
       <div style="font-size:.8rem;margin-bottom:12px;color:#4a3a22">This is <strong>you</strong>, not your realm. Your realm is named afresh in every game you join; this name follows you across all of them and is what the Hall of Fame records your wins under. Changing it updates your name on every game you have played.</div>
       <label style="font-size:.75rem;display:block;margin-bottom:2px">Display name</label>
-      <input type="text" id="dn-name" maxlength="40" value="${String(cur).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="How other players will see you" style="width:100%;padding:7px;margin-bottom:8px;border:1px solid #c8922a;border-radius:3px;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitDisplayName()">
+      <input type="text" id="dn-name" maxlength="40" value="${cur}" placeholder="How other players will see you" style="width:100%;padding:7px;margin-bottom:8px;border:1px solid #c8922a;border-radius:3px;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitDisplayName()">
       <div id="dn-msg" style="font-size:.78rem;margin-bottom:10px;min-height:16px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="closeDisplayName()" style="padding:7px 14px;border:1px solid #999;background:#eee;border-radius:3px;cursor:pointer">Cancel</button>
@@ -1652,13 +1655,13 @@ async function submitDisplayName(){
   try{
     // upsert, not update: an account created before the profiles trigger existed has no row yet
     const {error}=await sb.from('profiles').upsert({id:currentUser.id,name},{onConflict:'id'});
-    if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
+    if(error){ msg.innerHTML=kcHtml`<span style="color:#c00">${error.message}</span>`; return; }
     try{ await sb.auth.updateUser({data:{display_name:name}}); }catch(e){}   // keep the auth copy in step; not fatal
     currentProfile=Object.assign({},currentProfile||{},{id:currentUser.id,name});
     const el=document.getElementById('player-name-display'); if(el) el.textContent=name;
     msg.innerHTML='<span style="color:#1d5a1d">✓ Saved — this is your name on every game you have played.</span>';
     setTimeout(closeDisplayName,1400);
-  }catch(e){ msg.innerHTML=`<span style="color:#c00">${e.message||'Could not save the name.'}</span>`; }
+  }catch(e){ msg.innerHTML=kcHtml`<span style="color:#c00">${e.message||'Could not save the name.'}</span>`; }
 }
 
 // ── Change Password (Supabase updateUser — requires the active signed-in session) ──
@@ -1693,10 +1696,10 @@ async function submitChangePassword(){
   msg.innerHTML='<span style="color:#231e16">Updating…</span>';
   try{
     const {error}=await sb.auth.updateUser({password:p1});
-    if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
+    if(error){ msg.innerHTML=kcHtml`<span style="color:#c00">${error.message}</span>`; return; }
     msg.innerHTML='<span style="color:#1d5a1d">✓ Password updated.</span>';
     setTimeout(closeChangePassword,1200);
-  }catch(e){ msg.innerHTML=`<span style="color:#c00">${e.message||'Update failed.'}</span>`; }
+  }catch(e){ msg.innerHTML=kcHtml`<span style="color:#c00">${e.message||'Update failed.'}</span>`; }
 }
 
 async function onSignedIn(){
@@ -1853,7 +1856,7 @@ async function loadMyGames(){
   const el=document.getElementById('my-games-list');
   // Step 1: get player's own slots
   const {data:mySlots,error}=await sb.from('game_players').select('*').eq('user_id',currentUser.id);
-  if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(error){el.innerHTML=kcHtml`<div class="msg-error">${error.message}</div>`;return;}
   if(!mySlots||mySlots.length===0){
     el.innerHTML='<div style="color:#3a3224;font-size:.85rem;font-style:italic">You are not enrolled in any games yet. Join an open game below.</div>';
     return;
@@ -1862,7 +1865,7 @@ async function loadMyGames(){
   // only — the cards need name / turn / status and the meta summary, never the world.
   const gameIds=mySlots.map(s=>s.game_id);
   const {data:games,error:gErr}=await fetchGamesLite(gameIds);
-  if(gErr){el.innerHTML=`<div class="msg-error">${gErr.message}</div>`;return;}
+  if(gErr){el.innerHTML=kcHtml`<div class="msg-error">${gErr.message}</div>`;return;}
   const gamesById=Object.fromEntries((games||[]).map(g=>[g.id,g]));
   // every slot in those games, so each card can show HOW MANY realms have sent their orders. Counts
   // only — never which realms, and never what they ordered.
@@ -1873,27 +1876,28 @@ async function loadMyGames(){
   const unreadByGame=await fetchUnreadDispatchCounts(mySlots, allSlots);
   const cardOf=slot=>{
     const g=gamesById[slot.game_id];
-    if(!g) return `<div class="msg-info">Game data not available yet — the GM may still be setting up.</div>`;
+    if(!g) return kcHtml`<div class="msg-info">Game data not available yet — the GM may still be setting up.</div>`;
     const statusLabel=slot.orders_submitted?'Orders submitted':g.status==='active'?'Orders needed':g.status==='setup'?'Waiting to start':'Complete';
     const pillClass=slot.orders_submitted?'pill-blue':g.status==='active'?'pill-amber':g.status==='setup'?'pill-green':'';
     // 2026-09-27 (Toby item 1): the GM can ARCHIVE a game — it is put away, not deleted. The card
     // still opens and the whole Chronicle is still readable; the pill just says no turn is coming.
-    const _arch=gameArchivedP(g)?' <span class="pill" style="background:#e4d4b0;color:#4a3105">🗄 Archived by the GM</span>':'';
-    return`<div class="game-card clickable" onclick="openGameFresh('${slot.id}')"${gameArchivedP(g)?' style="opacity:.85"':''}>
+    const _arch=gameArchivedP(g)?kcHtml` <span class="pill" style="background:#e4d4b0;color:#4a3105">🗄 Archived by the GM</span>`:'';
+    const tally=ordersInTextP(g,slotsByGame[slot.game_id]), deadline=turnDeadlineText(g);
+    return kcHtml`<div class="game-card clickable" onclick="openGameFresh(${kcArg(String(slot.id))})"${gameArchivedP(g)?kcHtml` style="opacity:.85"`:''}>
       <div class="gc-name">${g.name} <span class="pill ${pillClass}">${statusLabel}</span>${_arch}${unreadDispatchPillP(unreadByGame[String(slot.game_id)])}</div>
       <div class="gc-meta">
         Your realm: <strong>${slot.display_name||'(joining…)'}</strong> ·
         Turn ${g.turn||0}
       </div>
-      ${(()=>{ const t=ordersInTextP(g,slotsByGame[slot.game_id]); return t?`<div class="gc-meta" style="margin-top:3px">${t}</div>`:''; })()}
-      ${(()=>{ const t=turnDeadlineText(g); return t?`<div class="gc-meta" style="margin-top:3px">${t}</div>`:''; })()}
+      ${tally?kcHtml`<div class="gc-meta" style="margin-top:3px">${tally}</div>`:''}
+      ${deadline?kcHtml`<div class="gc-meta" style="margin-top:3px">${deadline}</div>`:''}
     </div>`;
   };
   // 2026-09-28 (Toby item 2): archived games move to their own card below Open Games.
   const _liveSlots=mySlots.filter(slot=>{ const g=gamesById[slot.game_id]; return !(g&&gameArchivedP(g)); });
   const _archSlots=mySlots.filter(slot=>{ const g=gamesById[slot.game_id]; return !!(g&&gameArchivedP(g)); });
   el.innerHTML=_liveSlots.length
-    ? _liveSlots.map(cardOf).join('')
+    ? kcHtml`${_liveSlots.map(cardOf)}`
     : '<div style="color:#3a3224;font-size:.85rem;font-style:italic">No active games — your archived games are listed further down.</div>';
   renderArchivedGamesCard(_archSlots.map(cardOf));
 }
@@ -1908,7 +1912,7 @@ function renderArchivedGamesCard(cards){
   if(!cards.length){ card.style.display='none'; return; }
   card.style.display='';
   const cnt=document.getElementById('archived-games-count'); if(cnt) cnt.textContent=`(${cards.length})`;
-  const list=document.getElementById('archived-games-list'); if(list) list.innerHTML=cards.join('');
+  const list=document.getElementById('archived-games-list'); if(list) list.innerHTML=kcHtml`${cards}`;
   applyArchivedCardState();
 }
 function applyArchivedCardState(){
@@ -1958,7 +1962,7 @@ async function fetchUnreadDispatchCounts(mySlots, allSlots){
 }
 function unreadDispatchPillP(n){
   if(!n) return '';
-  return ` <span class="pill" style="background:#a32020;color:#fff" title="${n} unread dispatch${n!==1?'es':''} — open the game and choose ✉ Dispatches">✉ ${n>99?'99+':n} new</span>`;
+  return kcHtml` <span class="pill" style="background:#a32020;color:#fff" title="${n} unread dispatch${n!==1?'es':''} — open the game and choose ✉ Dispatches">✉ ${n>99?'99+':n} new</span>`;
 }
 
 // ── Orders-in tally ────
@@ -2013,10 +2017,10 @@ function ordersInTextP(g,slots){
   if(need.length===0) return '';
   const inN=need.filter(p=>p.orders_submitted).length;
   const waiting=need.length-inN;
-  const head=`📜 <strong>${inN} of ${need.length}</strong> realm${need.length!==1?'s':''} have sent orders`;
+  const head=kcHtml`📜 <strong>${inN} of ${need.length}</strong> realm${need.length!==1?'s':''} have sent orders`;
   return waiting===0
-    ? `${head} — every realm is in, so the turn can be run.`
-    : `${head} — still waiting on ${waiting} more.`;
+    ? kcHtml`${head} — every realm is in, so the turn can be run.`
+    : kcHtml`${head} — still waiting on ${waiting} more.`;
 }
 
 // ── Turn running mode (mirror of the GM portal's turnMode; read-only here) ────
@@ -2034,10 +2038,10 @@ function fmtDeadlineP(iso){
 function turnDeadlineText(g){
   if(!g||g.status!=='active') return '';
   const tm=turnModeOfGame(g);
-  if(tm.mode==='auto') return `⚙️ Turn ${g.turn} resolves automatically as soon as every realm has sent its orders.`;
+  if(tm.mode==='auto') return kcHtml`⚙️ Turn ${g.turn} resolves automatically as soon as every realm has sent its orders.`;
   if(tm.mode==='deadline'&&tm.nextDeadlineAt){
     const late=Date.now()>=new Date(tm.nextDeadlineAt).getTime();
-    return `⏱ Turn ${g.turn} deadline: <strong>${fmtDeadlineP(tm.nextDeadlineAt)}</strong> (your local time)${late?' — passed; the turn is being resolved':''}. It resolves at that time, or sooner if every realm has sent its orders. Orders not in by then hold (Defend).`;
+    return kcHtml`⏱ Turn ${g.turn} deadline: <strong>${fmtDeadlineP(tm.nextDeadlineAt)}</strong> (your local time)${late?' — passed; the turn is being resolved':''}. It resolves at that time, or sooner if every realm has sent its orders. Orders not in by then hold (Defend).`;
   }
   return '';
 }
@@ -2050,7 +2054,7 @@ async function loadOpenGames(){
 
   // Fetch setup-status games separately (no join — avoids RLS blocking)
   const {data:games,error}=await sb.from('games').select('*').eq('status','setup');
-  if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(error){el.innerHTML=kcHtml`<div class="msg-error">${error.message}</div>`;return;}
   if(!games||games.length===0){
     el.innerHTML='<div style="color:#3a3224;font-size:.85rem;font-style:italic">No open games at the moment. Ask your GM to create one.</div>';
     return;
@@ -2118,18 +2122,17 @@ async function loadOpenGames(){
     el.innerHTML='<div style="color:#3a3224;font-size:.85rem;font-style:italic">No open games at the moment. Ask your GM to create one.</div>';
     return;
   }
-  el.innerHTML=openGames.map(g=>{
+  el.innerHTML=kcHtml`${openGames.map(g=>{
     const joined=(slotsByGame[g.id]||[]).filter(p=>!p.is_bot).length;
     const maxP=humanCapOf(g); // human-facing capacity; reserved bot slots stay hidden
     const info=gameInfo(g);
-    const gmEsc=info.gm.replace(/'/g,"\\'");
-    const privBadge=visOf(g).private?' <span class="pill pill-blue">🔒 Invited</span>':'';
-    return`<div class="game-card clickable" onclick="showJoinGame('${g.id}','${g.name.replace(/'/g,"\\'")}',${maxP},${joined},'${gmEsc}','${info.size}')">
+    const privBadge=visOf(g).private?kcHtml` <span class="pill pill-blue">🔒 Invited</span>`:'';
+    return kcHtml`<div class="game-card clickable" onclick="showJoinGame(${kcArg(String(g.id))},${kcArg(g.name)},${kcArg(maxP)},${kcArg(joined)},${kcArg(info.gm)},${kcArg(info.size)})">
       <div class="gc-name">${g.name} <span class="pill pill-green">Open</span>${privBadge}</div>
       <div class="gc-meta">GM: <strong>${info.gm}</strong> · World: ${info.size} · ${joined}/${maxP} players joined</div>
       <div class="gc-meta" style="opacity:.7">Click to join this game</div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 // ── JOIN GAME ────
@@ -2165,13 +2168,13 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
   // Show info about taken alignments
   const infoEl=document.getElementById('join-game-info');
   const takenNote=warningParts.length>0
-    ?`<div class="msg-warning" style="margin-top:6px">⚠ <strong>${warningParts.join(' and ')}</strong> alignment${warningParts.length>1?'s are':' is'} already taken in this game — only one player per game may be Divine or Undead.</div>`
+    ?kcHtml`<div class="msg-warning" style="margin-top:6px">⚠ <strong>${warningParts.join(' and ')}</strong> alignment${warningParts.length>1?'s are':' is'} already taken in this game — only one player per game may be Divine or Undead.</div>`
     :'';
-  const gmBox=`<div style="background:#f5f0e8;border:1px solid var(--gold);border-radius:3px;padding:8px 12px;font-size:.82rem;line-height:1.6;margin-bottom:8px">
+  const gmBox=kcHtml`<div style="background:#f5f0e8;border:1px solid var(--gold);border-radius:3px;padding:8px 12px;font-size:.82rem;line-height:1.6;margin-bottom:8px">
       <div>\u{1F451} <strong>Game Master:</strong> ${joiningGame?.gmName||'the Game Master'}</div>
       <div>\u{1F5FA}\uFE0F <strong>World size:</strong> ${joiningGame?.worldSize||'—'}</div>
     </div>`;
-  infoEl.innerHTML=`${gmBox}<div class="msg-info">${joined}/${maxP} players have already joined. There ${maxP-joined===1?'is':'are'} ${maxP-joined} open slot${maxP-joined===1?'':'s'}.</div>${takenNote}`;
+  infoEl.innerHTML=kcHtml`${gmBox}<div class="msg-info">${joined}/${maxP} players have already joined. There ${maxP-joined===1?'is':'are'} ${maxP-joined} open slot${maxP-joined===1?'':'s'}.</div>${takenNote}`;
   updateAlignmentDesc();
   updateRaceDesc();
   updateTemperDesc();
@@ -2180,14 +2183,14 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
 // Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
 const SKILL_INFO={
   melee:'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
-  archery:'Ranged combat. In an army battle it sharpens the <strong>pre-battle volley</strong> your ranged units loose before the lines close (each shot does 30% of the shooting unit\'s own strength, +10% per Archery level, doubled against winged riders; no unit can lose more than 40% of its strength to arrows, 80% for a winged rider) — and every level lifts the missile units you lead by <strong>+5% strength</strong> in the battle itself (Archery 5 = +25%). In personal combat a Fire action hits at 30% + 10% per level (then +5% a level past 5, capped 80%) for 1–3 damage plus half your Archery; at <strong>Archery 3 and above you loose two arrows per Fire action</strong>. A Fire action must first reach bow range — from spell range that is a speed check, from melee you must break away — and <strong>every level of Archery adds +5% to both of those checks</strong> (fieldcraft). An archer standing at bow range also gets a free <strong>parting shot</strong> at any foe who closes into melee. The King starts with Archery 1.',
+  archery:kcHtml`Ranged combat. In an army battle it sharpens the <strong>pre-battle volley</strong> your ranged units loose before the lines close (each shot does 30% of the shooting unit's own strength, +10% per Archery level, doubled against winged riders; no unit can lose more than 40% of its strength to arrows, 80% for a winged rider) — and every level lifts the missile units you lead by <strong>+5% strength</strong> in the battle itself (Archery 5 = +25%). In personal combat a Fire action hits at 30% + 10% per level (then +5% a level past 5, capped 80%) for 1–3 damage plus half your Archery; at <strong>Archery 3 and above you loose two arrows per Fire action</strong>. A Fire action must first reach bow range — from spell range that is a speed check, from melee you must break away — and <strong>every level of Archery adds +5% to both of those checks</strong> (fieldcraft). An archer standing at bow range also gets a free <strong>parting shot</strong> at any foe who closes into melee. The King starts with Archery 1.`,
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land and air units — flyers included; fleets use Naval instead; land battles only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and speeds your march: every unit you lead except flyers gains +0/+0/+1/+1/+2/+3 movement at March 0-5, and the column moves at its slowest unit\'s pace.',
-  naval:'Seamanship. Boosts the strength of your fleets and sea creatures in every battle, on land or at sea (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: every ship and sea-beast gains +0/+0/+1/+1/+2/+3 at Naval 0-5, whatever its speed. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
+  naval:kcHtml`Seamanship. Boosts the strength of your fleets and sea creatures in every battle, on land or at sea (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: every ship and sea-beast gains +0/+0/+1/+1/+2/+3 at Naval 0-5, whatever its speed. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.`,
   sage:'Scholarship. Unlocks the Research order (Sage 1+): each level gives a 5% chance per Research to make a permanent Sage Discovery (realm-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — via the Steal order (a hero\'s pack, their strongbox, or a garrison paymaster), by pickpocketing during encounters, and when lifting a lair\'s hoard (10% of the original hoard per level, capped at 5).',
-  druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength, and <strong>each level you hold above a Creature or Monster unit\'s requirement adds +20%</strong> (Druid counted to 9, up to +100%; where your realm waives the requirement every level counts). From Druid 3 a natural beast\'s blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful Creatures and Monsters.',
+  druid:kcHtml`Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army's requirement costs it ~20% strength, and <strong>each level you hold above a Creature or Monster unit's requirement adds +20%</strong> (Druid counted to 9, up to +100%; where your realm waives the requirement every level counts). From Druid 3 a natural beast's blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful Creatures and Monsters.`,
   explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden lairs and terrain sooner so you can search and settle faster.',
   white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine realms start with White 1).',
   psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
@@ -2211,23 +2214,23 @@ function renderSkillGrid(){
   const pip=skill=>{
     const lvl=joinSkills[skill]||0;
     const displayName=SKILL_LABELS[skill]||skill;
-    return`<div class="skill-pip">
-      <button onclick="adjustSkill('${skill}',-1)" ${lvl<=0?'disabled':''}>−</button>
-      <span class="sk-name" onmousemove="showSkillTip(event,'${skill}')" onmouseleave="hideSkillTip()">${displayName}</span>
+    return kcHtml`<div class="skill-pip">
+      <button onclick="adjustSkill(${kcArg(skill)},-1)" ${lvl<=0?'disabled':''}>−</button>
+      <span class="sk-name" onmousemove="showSkillTip(event,${kcArg(skill)})" onmouseleave="hideSkillTip()">${displayName}</span>
       <span class="sk-val">${lvl}</span>
-      <button onclick="adjustSkill('${skill}',1)" ${remaining<=0||lvl>=2?'disabled':''}>+</button>
+      <button onclick="adjustSkill(${kcArg(skill)},1)" ${remaining<=0||lvl>=2?'disabled':''}>+</button>
     </div>`;
   };
   document.getElementById('join-skills-grid').innerHTML=
-    `<div class="skill-cols">`+SKILL_COLUMNS.map(col=>
-      `<div class="skill-col"><div class="skill-col-head">${col.head}</div>${col.skills.map(pip).join('')}</div>`
-    ).join('')+`</div>`;
+    kcHtml`<div class="skill-cols">${SKILL_COLUMNS.map(col=>
+      kcHtml`<div class="skill-col"><div class="skill-col-head">${col.head}</div>${col.skills.map(pip)}</div>`
+    )}</div>`;
 }
 
 function showSkillTip(ev, skill){
   let tip=document.getElementById('skill-info-tip');
   if(!tip){ tip=document.createElement('div'); tip.id='skill-info-tip'; document.body.appendChild(tip); }
-  tip.innerHTML=`<strong>${SKILL_LABELS[skill]||skill}</strong><br>${SKILL_INFO[skill]||''}`;
+  tip.innerHTML=kcHtml`<strong>${SKILL_LABELS[skill]||skill}</strong><br>${SKILL_INFO[skill]||''}`;
   tip.style.display='block';
   // Keep the tooltip on-screen near the cursor
   const pad=14, w=tip.offsetWidth||250, h=tip.offsetHeight||80;
@@ -2262,7 +2265,7 @@ async function joinGame(){
   if(!kingName){msg.innerHTML='<div class="msg-error">Please enter your King\'s name.</div>';return;}
   if(!kingdomName){msg.innerHTML='<div class="msg-error">Please name your Realm.</div>';return;}
   const spent=Object.values(joinSkills).reduce((s,v)=>s+v,0);
-  if(spent<4){msg.innerHTML=`<div class="msg-warning">You still have ${4-spent} skill point${4-spent!==1?'s':''} to spend. Are you sure? <button class="btn btn-gold" style="padding:4px 10px;margin-left:8px" onclick="doJoinGame('${joiningGame.id}')">Join Anyway</button></div>`;return;}
+  if(spent<4){msg.innerHTML=kcHtml`<div class="msg-warning">You still have ${4-spent} skill point${4-spent!==1?'s':''} to spend. Are you sure? <button class="btn btn-gold" style="padding:4px 10px;margin-left:8px" onclick="doJoinGame(${kcArg(String(joiningGame.id))})">Join Anyway</button></div>`;return;}
   await doJoinGame(joiningGame.id);
 }
 
@@ -2287,7 +2290,7 @@ async function joinGame(){
 let _joinInFlight=false;
 // One sentence for "you are already in this game", wherever it is detected — portal check or
 // database constraint. Kept in one place so the three guards can never word it differently.
-const JOIN_DUP_MSG='You have already joined this game — a player may hold only one realm in any game. Open it from <strong>My Games</strong> instead.';
+const JOIN_DUP_MSG=kcHtml`You have already joined this game — a player may hold only one realm in any game. Open it from <strong>My Games</strong> instead.`;
 async function doJoinGame(gameId){
   if(_joinInFlight) return;
   const kingName=document.getElementById('join-king-name').value.trim();
@@ -2303,7 +2306,7 @@ async function doJoinGame(gameId){
     const {data:slots2}=await fetchGameSlots([gameId]);
     const takenNow=new Set((slots2||[]).map(s=>s.alignment).filter(Boolean));
     if(takenNow.has(alignment)){
-      msg.innerHTML=`<div class="msg-error">⚠ The <strong>${alignment}</strong> alignment is already taken in this game. Only one player per game may choose Divine or Undead. Please choose a different alignment.</div>`;
+      msg.innerHTML=kcHtml`<div class="msg-error">⚠ The <strong>${alignment}</strong> alignment is already taken in this game. Only one player per game may choose Divine or Undead. Please choose a different alignment.</div>`;
       return;
     }
   }
@@ -2311,9 +2314,9 @@ async function doJoinGame(gameId){
   {
     const {data:mine,error:meErr}=await sb.from('game_players')
       .select('id,player_index').eq('game_id',gameId).eq('user_id',currentUser.id);
-    if(meErr){ msg.innerHTML=`<div class="msg-error">${meErr.message}</div>`; return; }
+    if(meErr){ msg.innerHTML=kcHtml`<div class="msg-error">${meErr.message}</div>`; return; }
     if(mine&&mine.length){
-      msg.innerHTML=`<div class="msg-error">${JOIN_DUP_MSG}</div>`;
+      msg.innerHTML=kcHtml`<div class="msg-error">${JOIN_DUP_MSG}</div>`;
       setTimeout(()=>{show('sec-games');loadAllGames();},2500);
       return;
     }
@@ -2374,11 +2377,11 @@ async function doJoinGame(gameId){
     }
     const _dup=error.code==='23505'||/duplicate key|unique constraint|one_per_user/i.test(error.message||'');
     if(_dup){
-      msg.innerHTML=`<div class="msg-error">${JOIN_DUP_MSG}</div>`;
+      msg.innerHTML=kcHtml`<div class="msg-error">${JOIN_DUP_MSG}</div>`;
       setTimeout(()=>{show('sec-games');loadAllGames();},2500);
       return;
     }
-    msg.innerHTML=`<div class="msg-error">${error.message}<br><small>If this keeps happening, try refreshing the page and joining again.</small></div>`;return;
+    msg.innerHTML=kcHtml`<div class="msg-error">${error.message}<br><small>If this keeps happening, try refreshing the page and joining again.</small></div>`;return;
   }
   msg.innerHTML='<div class="msg-success">You have joined the game! Waiting for the GM to start Turn 0.</div>';
   setTimeout(()=>{show('sec-games');loadAllGames();},2000);
@@ -10076,7 +10079,8 @@ let _msgErr=null, _msgReadsDirty=false, _msgReadSaveTimer=null;
 // its own turn report. _msgGameOver: the game has ended. _msgBlockOut: the GM's switch (games.block_eliminated_msgs).
 let _msgOut=null, _msgGameOver=false, _msgBlockOut=false;
 
-function _msgEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// kcEsc under its older name, for the screens not converted to kcHtml yet (P0-19)
+function _msgEsc(s){ return kcEsc(s); }
 function _msgNum(v){ const n=Number(v); return Number.isFinite(n)?n:null; }
 function _msgArr(v){ return Array.isArray(v)?v:[]; }
 
@@ -10573,7 +10577,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-2028</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.16-0852</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

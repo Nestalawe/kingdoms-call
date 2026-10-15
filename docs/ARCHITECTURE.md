@@ -62,8 +62,8 @@ Order inside each portal's `<head>` and body, and why it matters:
    still showing, the first `error` or `unhandledrejection` replaces it with the message, a hint and a
    Reload button. Without it, any top-level throw looks like "Loading…" for ever. On pages that load
    `kc-safe.js`, it puts the message and hint in as text, since it runs before the helpers exist.
-2. **`kc-safe.js`**, straight after it (the GM portal, the Hall of Fame and the Overlord page; the player portal from
-   the P0-19 pull request that converts it): the HTML helpers ([below](#how-a-page-builds-html)).
+2. **`kc-safe.js`**, straight after it (both portals, the Hall of Fame and the Overlord page): the HTML helpers
+   ([below](#how-a-page-builds-html)).
 3. **supabase-js v2**, from the site itself (`vendor/supabase-js-<version>.min.js`, [above](#supabase-js-a-copy-served-with-the-site)).
 4. **`kc-config.js`**: `KC_CONFIG`, which database this copy of the site talks to (address and public
    key). Every page that uses the database loads it; a staging copy of the site replaces only this file.
@@ -106,8 +106,10 @@ turns it into `<strong>` after escaping. A page whose content is mostly fixed bu
 page's `el()`), which is just as safe.
 
 `npm test`'s `html-lint` refuses HTML built any other way, and each converted page has a hostile-name test. The
-player portal is converted one pull request at a time; until then, `html-lint` holds it to its current count. Mistakes to
-avoid: [traps.md](traps.md#html-is-built-only-through-kchtml).
+player portal is converted one pull request at a time. Its lobby (signing in, the account, My Games, open games and the
+join form) is done; until the rest is (the report and Chronicle, the orders, the map and Dispatches), `html-lint` holds it
+to its current count, and `_msgEsc` is another name for `kcEsc`. Mistakes to avoid:
+[traps.md](traps.md#html-is-built-only-through-kchtml).
 
 ## `kingdoms-call-data.js`: the one source for shared rules
 

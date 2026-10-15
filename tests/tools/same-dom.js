@@ -8,15 +8,28 @@
 //   node tests/tools/same-dom.js /tmp/main/site site leaderboard     # one tour
 //
 // The DOM is compared as parsed, so text escaped differently but read the same (' or &#39;) counts as the same. Ignored:
-// script and style contents, build stamps (v2026.10.16-1200, with or without the v), and the quotes around a string passed to a handler
-// (kcArg writes "g1" where the old code wrote 'g1'). Exits 1 if any screen differs.
+// script and style contents, build stamps (v2026.10.16-1200, with or without the v), and how a string passed to a handler is
+// quoted (kcArg writes "O'Rourke" where the old code wrote 'O\'Rourke': each string in a handler is compared by its value).
+// Exits 1 if any screen differs.
 const path=require('path');
+const acorn=require('acorn');
 const {TOURS,runJsdom}=require('../lib/screens');
 const {names}=require('../lib/hostile');
 
 const [before,after='site',...only]=process.argv.slice(2);
 if(!before){ console.log('usage: node tests/tools/same-dom.js <before-site> [<after-site>] [tour…]'); process.exit(2); }
 const STAMP=/v?\d{4}\.\d{2}\.\d{2}-\d{4}/g;
+
+// A handler's code with every string written the same way (JSON), so only what it does is compared. Code that doesn't
+// parse is left as it is.
+function sameQuotes(code){
+  try{
+    let out=[];
+    for(const t of acorn.tokenizer(code,{ecmaVersion:'latest',allowReturnOutsideFunction:true}))
+      out.push(t.type.label==='string'?JSON.stringify(t.value):code.slice(t.start,t.end));
+    return out.join(' ');
+  }catch(e){ return code; }
+}
 
 // One line per element and text, in document order; attributes sorted.
 function lines(node,depth=0,out=[]){
@@ -27,7 +40,7 @@ function lines(node,depth=0,out=[]){
     const tag=c.tagName.toLowerCase();
     const attrs=[...c.attributes].map(a=>{
       let v=a.value.replace(STAMP,'v<stamp>');
-      if(/^on/i.test(a.name)) v=v.replace(/"((?:[^"'\\]|\\.)*)"/g,"'$1'");
+      if(/^on/i.test(a.name)) v=sameQuotes(v);
       return `${a.name}=${JSON.stringify(v)}`;
     }).sort();
     out.push(`${pad}<${tag}${attrs.length?' '+attrs.join(' '):''}>`);

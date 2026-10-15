@@ -293,26 +293,155 @@ const gmPortal={
   },
 };
 
-const TOURS={leaderboard,overlord,gmPortal};
+// ── The player portal ────────────────────────────────────────────────────────────────────────────────────────────
+// The lobby (P0-19 PR 3; the report, orders, map and Dispatches add their screens in later PRs). The player p1 is in
+// G1 (active: a deadline, a rival's orders in, an unread dispatch), G2 (in setup, waiting), G3 (archived) and a game
+// whose row it can't read (G9). Open to join: G4 (public, another GM's, Divine taken) and G5 (private, p1 invited); G6
+// is private to others and never listed. p1 has an open offer to become a Game Master. Every string a player or a GM
+// can store comes from N, and so does the turn number the cards show; every database error a screen shows does too
+// (stub ERRORS). A player, a signed-out visitor and a page that can't start each see their screens.
+const playerPortal={
+  page:'kingdoms-call-player-portal.html',
+  bootWait:900,
+  modes:{
+    player:{url:'',user:'p1'},
+    signedOut:{url:'',user:null},
+    bootFails:{url:'',bootError:true},
+  },
+  world(N){
+    const num=(field,v)=>N.hostile?N(field,v):v;
+    const at='2026-10-10T07:00:00Z';
+    const json=o=>JSON.stringify(o);
+    const game=(id,name,gm,status,turn,gs,extra)=>({id,name,gm_user_id:gm,status,turn,max_players:4,max_turns:0,created_at:at,meta:null,
+      game_state:json(gs),...(extra||{})});
+    const slot=(id,game_id,player_index,user_id,display_name,extra)=>({id,game_id,player_index,user_id,display_name,orders_submitted:false,
+      orders:null,turn_report:null,...(extra||{})});
+    const joined=a=>json({playerSetup:{kingName:N('king',9),kingdomName:N('kingdom',9),alignment:a},status:'joined',waitingForTurn0:true});
+    return {
+      error:N('error',0), password:'kc-test-password', newName:N('player',7), king:N('king',0), kingdom:N('kingdom',0),
+      signUp:{name:N('player',8),email:'new@example.test'},
+      db:{
+        profiles:[{id:'p1',name:N('player',1),created_at:at},{id:'p2',name:N('player',2),created_at:at},
+          {id:'gm1',name:N('gm',1),created_at:at},{id:'gm2',name:N('gm',2),created_at:at}],
+        game_masters:[{user_id:'gm1',offered_at:at,offered_by:'ov1',accepted_at:at},{user_id:'gm2',offered_at:at,offered_by:'ov1',accepted_at:at},
+          {user_id:'p1',offered_at:at,offered_by:'ov1',accepted_at:null}],
+        site_admins:[{user_id:'ov1'}],
+        games:[
+          game('G1',N('game',1),'gm1','active',num('turn',3),{},{meta:{v:1,exempt:[],
+            turnMode:{mode:'deadline',time:'20:00',everyDays:2,nextDeadlineAt:'2099-01-01T07:00:00Z'}}}),
+          game('G2',N('game',2),'gm1','setup',0,{mapSize:'p4',botCount:0}),
+          game('G3',N('game',3),'gm1','complete',13,{archived:true},{meta:{v:1,archived:true}}),
+          game('G4',N('game',4),'gm2','setup',0,{mapSize:'p4',botCount:1,seaPct:40}),
+          game('G5',N('game',5),'gm1','setup',0,{mapSize:'p3',visibility:'private',invited:['p1']}),
+          game('G6',N('game',6),'gm1','setup',0,{mapSize:'p3',visibility:'private',invited:['p2']}),
+        ],
+        game_players:[
+          slot('s10','G1',0,'p1',N('realm',0)), slot('s11','G1',1,'p2',N('realm',1),{orders_submitted:true}),
+          slot('s12','G1',2,null,N('realm',2),{turn_report:json({isBot:true})}),
+          slot('s20','G2',0,'p1',N('realm',20),{turn_report:joined('Neutral')}),
+          slot('s30','G3',0,'p1',N('realm',30)),
+          slot('s90','G9',0,'p1',N('realm',90)),
+          slot('s40','G4',0,'p2',N('realm',40),{turn_report:joined('Divine')}),
+        ],
+        game_messages:[{id:7,game_id:'G1',turn:2,from_index:1,to_indexes:[0],scope:'private',body:N('dispatch',0),created_at:at}],
+        game_message_reads:[], message_reports:[], turn_logs:[], turn_events:[], game_results:[], game_records:[],
+      },
+    };
+  },
+  // Self-contained: it also runs inside Chromium, as text. Steps reach the stand-in database as supabase.stub.
+  stage:function(S,W,user){
+    Object.keys(W.db).forEach(t=>{ S.DB[t]=JSON.parse(JSON.stringify(W.db[t])); });
+    S.supabase.stub=S;
+    S.setUser(user);
+  },
+  jsdomSupabase(W,m){
+    if(m.bootError) return {createClient(){ throw new Error(W.error); }};
+    const S=makeStub(); this.stage(S,W,m.user); return S.supabase;
+  },
+  browserSupabase(W,m){
+    if(m.bootError) return `window.supabase={createClient:function(){throw new Error(${lit(W.error)});}};`;
+    return `(function(){var S=(${makeStub.toString()})();(${this.stage.toString()})(S,${lit(W)},${lit(m.user)});window.supabase=S.supabase;})();`;
+  },
+  steps(W,m){
+    if(m.bootError) return [['the page could not start','']];
+    const E=lit({message:W.error});
+    const fail=k=>`supabase.stub.ERRORS[${lit(k)}]=${E};`;
+    const ok='Object.keys(supabase.stub.ERRORS).forEach(k=>{ delete supabase.stub.ERRORS[k]; });';
+    const val=(id,v)=>`document.getElementById(${lit(id)}).value=${lit(v)};`;
+    // the same answers on every run: dialogs say yes, random draws repeat, and the page's delayed moves (back to My
+    // Games after joining, closing a dialog after saving) are held, so each screen stays as its step left it
+    const fixed="window.confirm=()=>true;window.alert=()=>{};"
+      +"Math.random=(()=>{let s=7;return ()=>(s=s*16807%2147483647)/2147483647;})();"
+      +"{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms>=1000?0:st(f,ms,...a); }";
+    if(!m.user) return [
+      ['sign-in refused',fixed+`sb.auth.signInWithPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
+        +val('si-email','player@example.test')+val('si-password',W.password)+'doSignIn()'],
+      ['registering refused',"setAuthTab('signup');"+`sb.auth.signUp=async()=>({data:{},error:{message:${lit(W.error)}}});`
+        +val('su-name',W.signUp.name)+val('su-email',W.signUp.email)+val('su-password',W.password)+val('su-password2',W.password)+'doSignUp()'],
+    ];
+    const card="document.querySelector('#open-games-list .game-card').click()";
+    const join=val('join-king-name',W.king)+val('join-kingdom-name',W.kingdom);
+    return [
+      ['my games, open games and the Game Master offer',fixed],
+      ['archived games minimised','toggleArchivedGamesCard()'],
+      ['the Game Master offer, accepting fails',fail('rpc.gm_accept_offer')+'acceptGmOffer()'],
+      ['the Game Master offer, accepted',ok+'acceptGmOffer()'],
+      ['my games, unreadable',fail('game_players.select')+'loadMyGames()'],
+      ['my games, the games unreadable',ok+fail('games.select')+'loadMyGames()'],
+      ['open games, unreadable','loadOpenGames()'],
+      ['open games, read again',ok+'loadAllGames()'],
+      ['the join form, from an open game\'s card',card],
+      ['the join form, a skill chosen and described',"adjustSkill('archery',1);showSkillTip({clientX:20,clientY:20},'archery')"],
+      ['joining with points unspent',"hideSkillTip();"+join+'joinGame()'],
+      ['joining, the alignment taken',val('join-alignment','Divine')+'doJoinGame(joiningGame.id)'],
+      ['joining, your slots unreadable',val('join-alignment','Neutral')+fail('game_players.select')+'doJoinGame(joiningGame.id)'],
+      ['joining, the game\'s slots unreadable',ok+fail('rpc.get_game_slots')+'doJoinGame(joiningGame.id)'],
+      ['joining refused by the database',ok+fail('game_players.insert')+'doJoinGame(joiningGame.id)'],
+      ['joined',ok+'doJoinGame(joiningGame.id)'],
+      ['joining a second time','doJoinGame(joiningGame.id)'],
+      ['display name, the dialog',"show('sec-games');loadAllGames();changeDisplayName()"],
+      ['display name, not saved',val('dn-name',W.newName)+fail('profiles.upsert')+'submitDisplayName()'],
+      ['display name, failing',ok+`{ const f=sb.from; sb.from=function(t){ if(t==='profiles') throw new Error(${lit(W.error)}); return f.apply(this,arguments); };`
+        +'submitDisplayName().finally(()=>{ sb.from=f; }); }'],
+      ['display name, saved','submitDisplayName()'],
+      ['change password, refused',`closeDisplayName();sb.auth.updateUser=async()=>({error:{message:${lit(W.error)}}});changePassword();`
+        +val('cp-new',W.password)+val('cp-new2',W.password)+'submitChangePassword()'],
+      ['change password, failed',`sb.auth.updateUser=async()=>{ throw new Error(${lit(W.error)}); };submitChangePassword()`],
+    ];
+  },
+  shown:W=>{
+    const D=W.db;
+    return [W.error,W.newName,D.profiles[0].name,D.profiles[3].name,D.profiles[2].name,...D.games.slice(0,5).map(g=>g.name),D.games[0].turn,
+      D.game_players[0].display_name,D.game_players[3].display_name,D.game_players[4].display_name].filter(s=>typeof s==='string');
+  },
+};
+
+const TOURS={leaderboard,overlord,gmPortal,playerPortal};
 
 // Runs a tour's mode in jsdom against the site in `site` (a folder). visit(label, document, window) after each step.
 async function runJsdom(tour,mode,W,visit,{site=SITE}={}){
   const m=tour.modes[mode], errs=[];
-  const dom=bootJsdom(readPage(path.join(site,tour.page)),{supabase:tour.jsdomSupabase(W,m),url:'https://example.test/'+tour.page+m.url,
-    setup(w){
-      w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
-      w.onunhandledrejection=e=>errs.push(String(e.reason&&e.reason.stack||e.reason));
-      w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' '));
-      w.console.warn=()=>{}; w.console.log=()=>{};
-    }});
-  const w=dom.window;
-  await wait(tour.bootWait||400);
-  for(const [label,code] of tour.steps(W,m)){
-    try{ if(code) w.eval(code); }catch(e){ errs.push(`${label}: ${e.message}`); }
-    await wait(80);
-    await visit(label,w.document,w);
-  }
-  w.close();
+  // jsdom never fires the page's unhandledrejection: a promise the page leaves rejected reaches Node instead, which
+  // would end the whole test. It's recorded as a page error, like any other.
+  const rejected=e=>errs.push(String(e&&e.stack||e));
+  process.on('unhandledRejection',rejected);
+  try{
+    const dom=bootJsdom(readPage(path.join(site,tour.page)),{supabase:tour.jsdomSupabase(W,m),url:'https://example.test/'+tour.page+m.url,
+      setup(w){
+        w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
+        w.onunhandledrejection=e=>errs.push(String(e.reason&&e.reason.stack||e.reason));
+        w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' '));
+        w.console.warn=()=>{}; w.console.log=()=>{};
+      }});
+    const w=dom.window;
+    await wait(tour.bootWait||400);
+    for(const [label,code] of tour.steps(W,m)){
+      try{ if(code) w.eval(code); }catch(e){ errs.push(`${label}: ${e.message}`); }
+      await wait(80);
+      await visit(label,w.document,w);
+    }
+    w.close();
+  }finally{ process.off('unhandledRejection',rejected); }
   return errs;
 }
 

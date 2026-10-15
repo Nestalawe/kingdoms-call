@@ -186,7 +186,8 @@ ones it can't, or they cost time:
 
 - **Markup in a value is shown as text.** In ``kcHtml`<td>${won?'<span class="pill">won</span>':''}</td>` `` the pill
   comes out as `<span…` on screen. Make the markup `kcHtml` too: ``${won?kcHtml`<span class="pill">won</span>`:''}``.
-  The same goes for a helper that returns a plain string of markup, and for an entity written in data (`'Hosts &amp;
+  The same goes for a helper that returns a plain string of markup, for a table of fixed text with markup in it (the
+  player portal's `SKILL_INFO`: write those entries as ``kcHtml`…` ``), and for an entity written in data (`'Hosts &amp;
   armies'` now shows `&amp;`: write `&`). An attribute put in as a value breaks the same way: in
   ``kcHtml`<div${dim?' style="opacity:.8"':''}>` `` the quotes are escaped, so write ``${dim?kcHtml` style="opacity:.8"`:''}``.
   `html-lint` can't see either mistake; `same-dom.js` (below) finds it on the screens a tour visits.
