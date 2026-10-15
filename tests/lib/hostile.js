@@ -2,8 +2,8 @@
 // rendered screen must pass. Screen tours (which page, which world, which screens) are in lib/screens.js.
 //
 //   names('hostile')  (field, i) → the field's name and number, then every payload below, so one string tries them all
-//                     and a leak says where it came from. Its .hostile is true: a tour then makes the numbers a GM can
-//                     type into stored JSON (ranks, counts) hostile too;
+//                     and a leak says where it came from. Its .hostile is true: a tour then makes stored numbers hostile
+//                     too;
 //   names('ordinary') (field, i) → a plain name with apostrophes, accents or hyphens (no < or &, which now show as
 //                     typed: the one change players can see). Used to show a converted page looks the same.
 //   inspect(doc)      what a screen got wrong: a value that became an element (<img onerror>, <svg onload>, <b>, a

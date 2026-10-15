@@ -14,11 +14,8 @@ const {makeStub,leaderboardStub}=require('./stub-db');
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
 // ── Hall of Fame ─────────────────────────────────────────────────────────────────────────────────────────────────
-// Three recorded games: one with humans and bots (the GM's own), one hidden, one an older row. Every string a player
-// chose, or a GM typed, is from N: realm, player, race and creed (stored as text, so treated as typed), fate, game name,
-// note, the winner's realm and name, record details and labels, the map's name, the build, the profile names. With
-// hostile names, so are the numbers the GM's portal writes into the record's JSON (setup, standings, records), which the
-// database stores as given: counts, ranks, turns and one realm's account id.
+// Three recorded games: one with humans and bots (the GM's own), one hidden, one an older row. Every value a player or a
+// GM can store in a recorded game comes from N (with hostile names, numbers too), and so do the profile names.
 const leaderboard={
   page:'kingdoms-call-leaderboard.html',
   modes:{
@@ -31,17 +28,17 @@ const leaderboard={
   world(N){
     const num=(field,v)=>N.hostile?N(field,v):v;
     const st=(g,pi,o)=>({pi,realm:N('realm',g*10+pi),player:N('player',g*10+pi),uid:o.bot?null:(g===1&&pi===1?num('uid','u11'):'u'+(g*10+pi)),
-      race:N('race',pi),al:N('creed',pi),bot:!!o.bot,winner:!!o.winner,rank:num('rank',pi+1),score:300-pi*40,prov:9-pi,gold:120+pi,str:400-pi*30,titles:o.winner?['t']:[],
-      outHow:o.out?N('fate',g*10+pi):null,outTurn:o.out?7:null});
-    const rec=(g,pi,v,extra)=>({v,pi,t:num('turn',3),who:N('hero',g*10+pi),det:N('detail',g*10+pi),...(extra||{})});
+      race:N('race',pi),al:N('creed',pi),bot:!!o.bot,winner:!!o.winner,rank:num('rank',pi+1),score:num('score',300-pi*40),prov:num('prov',9-pi),gold:num('gold',120+pi),str:num('str',400-pi*30),titles:o.winner?['t']:[],
+      outHow:o.out?N('fate',g*10+pi):null,outTurn:o.out?num('outTurn',7):null});
+    const rec=(g,pi,v,extra)=>({v:num('value',v),pi,t:num('turn',3),who:N('hero',g*10+pi),det:N('detail',g*10+pi),...(extra||{})});
     const row=(g,o)=>({game_id:'g'+g,game_name:N('game',g),gm_user_id:o.gm||'gm-1',note:o.note?N('note',g):null,hidden:!!o.hidden,
-      build:o.legacy?'lb1':'lb3 '+N('build',g),finished_at:`2026-09-1${g}T10:00:00Z`,started_at:`2026-08-1${g}T10:00:00Z`,turns:12+g,
-      victory:N('victory',g),winner_realm:N('realm',g*10),winner_player:N('player',g*10),winner_is_bot:!!o.botWin,
+      build:o.legacy?'lb1':'lb3 '+N('build',g),finished_at:`2026-09-1${g}T10:00:00Z`,started_at:`2026-08-1${g}T10:00:00Z`,
+      victory:N('victory',g),turns:num('turns',12+g),winner_realm:N('realm',g*10),winner_player:N('player',g*10),winner_is_bot:!!o.botWin,
       setup:{mapSize:N('map',g),realms:num('realms',3),bots:num('bots',1),humans:num('humans',2),diplomacy:g===1?'hostile':'normal',seaPct:num('sea',30)},
       standings:[st(g,0,{winner:true}),st(g,1,{out:true}),st(g,2,{bot:true,out:true})],
       records:{most_provinces:[rec(g,0,9),rec(g,1,7)],greatest_upset:[rec(g,1,0.5)],[`title_${N('key',g)}`]:[rec(g,0,2,{lbl:N('label',g)})],
         biggest_world:{v:60,pi:null}},
-      totals:{battles:4,casualties:9,captures:3,lairs:2,spells:5,deaths:1}});
+      totals:{battles:num('battles',4),casualties:num('casualties',9),captures:num('captures',3),lairs:num('lairs',2),spells:num('spells',5),deaths:num('deaths',1)}});
     return {rows:[row(1,{note:true}),row(2,{hidden:true,note:true}),row(3,{legacy:true,gm:'gm-2',botWin:true})],
       profiles:[0,1].flatMap(pi=>[1,2,3].map(g=>({id:'u'+(g*10+pi),name:N('profile',g*10+pi)}))),
       renameTo:N('rename',0), search:N('realm',10), error:N('error',0)};
