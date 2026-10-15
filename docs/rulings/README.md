@@ -176,3 +176,4 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-114](R-114-hints-not-names.md) | The rulebooks may hint at mastery, never name it | 2026-10-15 | Confirmed | [`mastery-hints-words`](../../tests/mastery-hints-words.test.js) |
 | [R-115](R-115-one-cast-chance.md) | One cast chance for everyone, and what raises it | 2026-10-15 | Confirmed | [`guard-cast-chance`](../../tests/guard-cast-chance.test.js), [`rulebook-review-words`](../../tests/rulebook-review-words.test.js) |
 | [R-116](R-116-hierophant-without-consecrate.md) | Consecrate does not count toward the Hierophant | 2026-10-15 | Confirmed | [`hierophant-no-consecrate`](../../tests/hierophant-no-consecrate.test.js) |
+| [R-117](R-117-spy-eight-ever-watchful.md) | Spy 8 reads the province a hero stands in, every turn, for nothing | 2026-10-15 | Confirmed | [`spy-eight-watch`](../../tests/spy-eight-watch.test.js) |
