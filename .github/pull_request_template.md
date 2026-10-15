@@ -20,12 +20,13 @@ Recorded: the new docs/rulings/R-NNN-name.md file(s) in this PR, the ruling in T
 
 None.
 
-## What to try on staging
+## Staging
 
-<!-- A numbered checklist Toby can follow without reading code: which game, which screen, what to do,
-what he should see. Every PR, database ones included, is tried there before merging: docs/staging.md. -->
+<!-- One line: "Needed / not needed, because …" (docs/staging.md, "When a change needs staging").
+If needed: a numbered checklist Toby can follow without reading code: which game, which screen, what to do,
+what he should see. If not: which tests or proofs below cover the risks staging would have closed. -->
 
-1. …
+Not needed, because …
 
 ---
 

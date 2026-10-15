@@ -65,10 +65,10 @@ Run `npm test` before every push, and the access-rule tests too when `supabase/`
   phases; a **unit** is a set of steps done together in one sitting (e.g. the cutover).
 - Open a **draft PR early**, and fill in the template as you go.
 
-**Staging** is a separate test site with its own database and no real players. How a change is tried
-there: **[docs/staging.md](docs/staging.md)**. Every PR, database ones included, goes on staging before
-merging (label `staging`): its database is rebuilt from `main` plus the PR's own migrations, with made-up
-games and test accounts. A site PR that needs a database PR is stacked on its branch; it merges only after the database PR, once its `merges-into-main` check is green
+**Staging** is a separate test site with its own database and no real players (how: **[docs/staging.md](docs/staging.md)**).
+**Whether a PR goes there is your call, from the risk** ([when](docs/staging.md#when-a-change-needs-staging)): say in
+one line of the PR "Staging: needed / not needed, because …". If not needed, move the risks it would close into tests
+or proofs in the PR. Label `staging` rebuilds its database from `main` plus the PR's migrations. A site PR that needs a database PR is stacked on its branch; it merges only after the database PR, once its `merges-into-main` check is green
 ([traps.md](docs/traps.md#a-stacked-pull-request-merges-into-its-base-branch-not-main)). Nothing is applied by hand.
 
 ## Rules
@@ -169,13 +169,13 @@ nothing on GitHub enforces it.
   STATUS row has ✓ in the Theo column, or any step of a unit (e.g. the cutover). Say so in the first
   line of the PR description. If unsure, say so.
 
-Labels: `staging` (ready for Toby to try: it puts the PR on the staging site, with its own database, and comments with the link; `.github/workflows/staging.yml`), `refactor-only`.
+Labels: `staging` (when the PR needs staging and is ready to try: it puts the PR on the staging site, with its own database, and comments with the link; `.github/workflows/staging.yml`), `refactor-only`.
 
 ## Opening the PR for review
 
 Use the template in `.github/pull_request_template.md`. Write the top half for Toby, in game terms;
-keep engineering detail in the lower sections for Theo. "What to try on staging" is a numbered
-checklist he can follow without reading code.
+keep engineering detail in the lower sections for Theo. "Staging" says whether it's needed and why; if it is,
+a numbered checklist he can follow without reading code.
 
 **Playtester notes, every time.** Any PR that changes something players can notice starts its
 description with a `## For playtesters` section: one short, friendly paragraph per change, written for
