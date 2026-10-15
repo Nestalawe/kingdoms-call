@@ -225,8 +225,12 @@ ones it can't, or they cost time:
   its context first if the slice calls the helpers.
 - **Show it looks the same.** Converting a page must not change it for ordinary names: run
   `node tests/tools/same-dom.js <main's site>` and put its output in the pull request.
-- **An exception goes in `html-lint`'s `ALLOWED`** with a one-line reason, for Theo to review. Never raise a page's
-  `LIMITS`; it only goes down.
+- **An exception goes in `html-lint`'s `ALLOWED`** with a one-line reason, for Theo to review. The check is strict: no
+  page may build HTML outside `kcHtml` / `kcEsc`.
+- **A `?:` followed by `+` adds the tail to one branch only.** In `h.innerHTML=!ok?'Why not.':'Who reads it.'+' 12 left.'`
+  the tail belongs to the second branch. Converting it to ``kcHtml`${!ok?…:…} 12 left.` `` adds it to both. Keep each branch
+  whole: ``!ok?kcHtml`…`:kcHtml`… 12 left.` ``. `same-dom.js` finds it when a tour reaches both branches (it did, in the player
+  portal's Dispatches).
 
 ## Order is data
 

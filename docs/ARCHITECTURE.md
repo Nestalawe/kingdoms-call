@@ -107,11 +107,8 @@ line's text at every bold run and every name, and wraps only those pieces in `kc
 list of `kcHtml` pieces with a separator between them goes in through the player portal's `kcJoinP(list, sep)`. A
 page whose content is mostly fixed builds elements instead (the Overlord page's `el()`), which is just as safe.
 
-`npm test`'s `html-lint` refuses HTML built any other way, and each converted page has a hostile-name test. The
-player portal is converted one pull request at a time. Its lobby (signing in, the account, My Games, open games and the
-join form), its turn report and Chronicle, and its orders are done; until the rest is (the map and Dispatches),
-`html-lint` holds it to its current count, and `_msgEsc` is another name for `kcEsc`. Mistakes to avoid:
-[traps.md](traps.md#html-is-built-only-through-kchtml).
+Every page builds its HTML this way. `npm test`'s `html-lint` refuses HTML built any other way, and each page that
+builds HTML from data has a hostile-name test. Mistakes to avoid: [traps.md](traps.md#html-is-built-only-through-kchtml).
 
 ## `kingdoms-call-data.js`: the one source for shared rules
 

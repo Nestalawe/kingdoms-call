@@ -294,14 +294,15 @@ const gmPortal={
 };
 
 // ── The player portal ────────────────────────────────────────────────────────────────────────────────────────────
-// The lobby (P0-19 PR 3), the turn report and Chronicle (PR 4) and the orders (PR 5); the map and Dispatches add their
-// screens in a later PR. The player p1 is in G1 (active: a deadline, a rival's orders in, an unread dispatch, and its turn report),
+// The lobby (P0-19 PR 3), the turn report and Chronicle (PR 4), the orders (PR 5), and the map and Dispatches (PR 6).
+// The player p1 is in G1 (active: a deadline, a rival's orders in, an unread dispatch, and its turn report),
 // G2 (in setup, waiting), G3 (archived) and a game whose row it can't read (G9). Open to join: G4 (public, another
 // GM's, Divine taken) and G5 (private, p1 invited); G6 is private to others and never listed. p1 has an open offer to
 // become a Game Master. Every string a player or a GM can store comes from N, and so does the turn number the cards
 // show; every database error a screen shows does too (stub ERRORS). A player, a signed-out visitor and a page that
 // can't start each see their screens; the reader (p1 again) opens G1's report, its past turns and its title and
-// diplomacy states; in the orders mode, p1's saved draft is restored on that report and every order is given in turn.
+// diplomacy states; in the orders mode, p1's saved draft is restored on that report and every order is given in turn;
+// the map mode opens every kind of province's popup, and the Dispatches mode every conversation and composer state.
 const playerPortal={
   page:'kingdoms-call-player-portal.html',
   bootWait:900,
@@ -309,6 +310,8 @@ const playerPortal={
     player:{url:'',user:'p1'},
     reader:{url:'',user:'p1',report:true},
     orders:{url:'',user:'p1',orders:true},
+    map:{url:'',user:'p1',map:true},
+    dispatches:{url:'',user:'p1',dispatches:true},
     signedOut:{url:'',user:null},
     bootFails:{url:'',bootError:true},
   },
@@ -515,13 +518,58 @@ const playerPortal={
     const ordersShown=[...Object.values(OP),N('heir',0),N('details',0),N('details',1),N('hero',14),N('hero',15),N('hero',16),N('hero',17),
       N('hero',18),N('hero',19),N('hero',20),N('hero',22),N('unit',10),N('unit',11),N('unit',12),N('unit',14),N('unit',15),N('item',10),N('item',11),
       N('item',12),N('item',14),N('lair',10),N('lair',11),N('monster',10),N('field',0),N('discovery',2),N('discovery',3),N('reason',0)];
+    // ── The map (PR 6) ── The same turn report with a map holding every kind of province its popup describes: three of
+    // p1's own (one with lairs, local defenders and their leader, heroes of every kind, bodies, a garrison, a Grand
+    // Design, Terror and graves; one cleared of lairs, with a ritual site; one fully mapped, with none), a rival's seen
+    // now, one remembered, one on the border, one whose tier the popup doesn't name (its last branch) and one unknown.
+    // Every name comes from N, and so do the engine's strings and the turns a reading was taken.
+    const MP={cleared:N('province',30),mapped:N('province',31),live:N('province',32),remembered:N('province',33),border:N('province',34),
+      other:N('province',35)};
+    const mp=(id,extra)=>({id,col:id%4,row:Math.floor(id/4),...extra});
+    const mapReport={...report,turnNumber:3,
+      worldMeta:{cols:4,rows:2,provinces:[
+        mp(0,{name:MP.cleared,terrain:'hills',tier:'owned',tax:4,race:'Dwarven',explored:100,armyTypes:[],
+          features:[{name:N('lair',30),cleared:true},{name:N('lair',33),ritualSite:true}]}),
+        // merged with the report's own province of this id (P.home): its lairs, garrison, defenders, Grand Design, Terror
+        mp(1,{name:P.home,terrain:'forest',tier:'owned',consecrated:true,neutralGuard:{name:N('hero',30)},
+          characters:[{id:'c0',name:C.king,isOwn:true,isKing:true,ownerColor:'#a33',armyCount:3},{id:'c1',name:C.hero,isOwn:true,armyBand:'no armies'},
+            {id:'e1',name:C.enemy,isKing:true,ownerName:R.rival,ownerColor:'#36c',armyBand:N('band',30)},
+            {id:'w1',name:C.wander,isWanderer:true,armyCount:1},{id:'w2',name:C.chief,isWanderer:true,isNeutralGuard:true,armyCount:2}]}),
+        mp(2,{name:MP.mapped,terrain:'plain',tier:'owned',explored:100,features:[],armyTypes:[N('unitType',1)]}),
+        mp(3,{name:MP.live,terrain:'plain',tier:'live',owner:1,ownerName:R.rival,ownerColor:'#36c',wealth:N('wealth',0),race:'Elven',explored:60,
+          features:[{name:N('lair',31),monsterPower:'Legendary',monsterCat:N('kind',30)},{name:N('lair',32),ritualSite:true}],
+          armyTypes:['Free Lances',N('unitType',2)],garrisonArmies:[{type:N('unitType',3)},{type:N('unitType',3)},{type:'Free Lances'}],
+          grandDesign:{name:N('design',30),active:false},characters:[{id:'e2',name:N('hero',31),ownerName:R.rival,ownerColor:'#36c'}]}),
+        mp(4,{name:MP.remembered,terrain:'swamp',tier:'remembered',owner:2,ownerName:R.third,wealth:'Poor',seenTurn:num('turn',1),armyTypes:[]}),
+        mp(5,{name:MP.border,terrain:'mountain',tier:'border',owner:3,ownerName:N('realm',3),ownerColor:'#999',armyTypes:[N('unitType',4)],
+          terror:{pct:20,stacks:2,byYou:false}}),
+        mp(6,{name:N('province',36),terrain:'sea',tier:'unknown'}),
+        mp(7,{name:MP.other,terrain:'forest',tier:'distant',ownerName:R.rival,wealth:N('wealth',1),grandDesign:{name:N('design',31),ownerName:R.rival,active:true}}),
+      ]},
+      graveIntel:[...report.graveIntel,{provinceId:1,turn:3,detail:[{n:2,k:N('unit',30)}],detailPartial:true},{provinceId:3,turn:num('turn',1)},
+        {provinceId:7,turn:3,detail:[{n:1,k:'Free Lances'}]}],
+      visibleDeadHeroes:[...report.visibleDeadHeroes,{id:'d1',name:N('hero',32),locationId:1,isKing:true,player:1},{id:'d2',name:N('hero',33),locationId:1,player:null}]};
+    const mapShown=[...Object.values(MP),N('hero',30),N('hero',31),N('hero',32),N('hero',33),N('band',30),N('lair',31),N('lair',32),N('lair',33),
+      N('wealth',0),N('wealth',1),N('design',30),N('design',31),N('unit',30),N('unitType',1),N('unitType',2),N('unitType',3),N('unitType',4),num('turn',1)];
+    // ── Dispatches (PR 6) ── G1 with a third human realm (index 3, met in the report), and dispatches in every shape the
+    // thread draws: to every realm, private, a conversation of three, p1's own, one already reported, one new since p1
+    // last read, over three days. The turn a dispatch was sent in is stored by the sender's page, so it comes from N too.
+    const msg=(id,from,to,day,body)=>({id,game_id:'G1',turn:num('turn',2),from_index:from,to_indexes:to,scope:to.length?'private':'public',body,
+      created_at:`2026-10-${String(day).padStart(2,'0')}T07:00:00Z`});
+    const dispatches={slot:slot('s13','G1',3,'p3',N('realm',3)),
+      messages:[msg(7,1,[0],8,N('dispatch',0)),msg(8,0,[1],8,N('dispatch',2)),msg(9,1,[],9,N('dispatch',3)),msg(10,0,[],9,N('dispatch',4)),
+        msg(11,3,[0,1],10,N('dispatch',5))],
+      reports:[{id:1,message_id:9,game_id:'G1',reporter_index:0,reason:N('reason',2),created_at:at}],
+      reads:{game_id:'G1',player_index:0,user_id:'p1',reads:{public:9}},
+      draft:N('dispatch',6), reason:N('reason',3),
+      shown:[N('dispatch',2),N('dispatch',3),N('dispatch',4),N('dispatch',5)]};
     // The game decided: the engine's end-of-game lines, flagged and (older reports) matched by shape.
     const gameEndLog=[{type:'system',gameEnd:true,text:`🏆 THE GAME IS DECIDED — ${R.own} is judged supreme`},
       {type:'system',gameEnd:true,text:`   1. ${R.own} — 30 Legacy`},
       {type:'system',text:`👑 THE RECKONING IS CALLED — by ${R.rival}`},{type:'system',text:`   2. ${R.rival} — 20 Legacy`}];
     return {
       hostile:!!N.hostile, report, C, R, P, T, gameEndLog, orders:{report:ordersReport,draft:ordersDraft,pre,turn:turnNow,
-        shown:ordersShown,staleTurn:num('turn',9),turnLater:num('turn',4)},
+        shown:ordersShown,staleTurn:num('turn',9),turnLater:num('turn',4)}, map:{report:mapReport,shown:mapShown}, dispatches,
       error:N('error',0), password:'kc-test-password', newName:N('player',7), king:N('king',0), kingdom:N('kingdom',0),
       signUp:{name:N('player',8),email:'new@example.test'},
       db:{
@@ -577,19 +625,59 @@ const playerPortal={
     const ok='Object.keys(supabase.stub.ERRORS).forEach(k=>{ delete supabase.stub.ERRORS[k]; });';
     const val=(id,v)=>`document.getElementById(${lit(id)}).value=${lit(v)};`;
     // the same answers on every run: dialogs say yes, random draws repeat, and the page's delayed moves (back to My
-    // Games after joining, closing a dialog after saving) are held, so each screen stays as its step left it
+    // Games after joining, closing a dialog after saving) and the Dispatches poll are held, so each screen stays as its
+    // step left it
     const fixed="window.confirm=()=>true;window.alert=()=>{};"
       +"Math.random=(()=>{let s=7;return ()=>(s=s*16807%2147483647)/2147483647;})();"
-      +"{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms>=1000?0:st(f,ms,...a); }";
+      +"{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms>=1000?0:st(f,ms,...a); }"
+      +"startMessagePolling=function(){};";
     if(!m.user) return [
       ['sign-in refused',fixed+`sb.auth.signInWithPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('si-email','player@example.test')+val('si-password',W.password)+'doSignIn()'],
       ['registering refused',"setAuthTab('signup');"+`sb.auth.signUp=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('su-name',W.signUp.name)+val('su-email',W.signUp.email)+val('su-password',W.password)+val('su-password2',W.password)+'doSignUp()'],
     ];
-    // With hostile names, the parts a later pull request converts (the map, Dispatches) are held back: they don't escape
-    // names yet. With ordinary names (same-dom.js) everything renders, so the helpers they share are compared there too.
-    const held=W.hostile?'renderPlayerMap=function(){};initMessaging=async function(){};':'';
+    const row="supabase.stub.DB.game_players.find(r=>r.id==='s10')";
+    if(m.map){
+      // a click on a hex opens its popup, as a tap does
+      const hex=(svg,id)=>`document.querySelector(${lit(`${svg} g[data-prov="${id}"]`)}).dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:40,clientY:40}));`;
+      const map='#report-map-svg';
+      return [
+        ['the map, its legend and its icon buttons',fixed+`Object.assign(${row},{turn_report:${lit(JSON.stringify(W.map.report))}});`+"openReport('s10')"],
+        ['the map, your province with lairs, heroes, bodies, a garrison and graves',hex(map,1)],
+        ['the map, your province cleared of lairs',hex(map,0)],
+        ['the map, your province fully mapped',hex(map,2)],
+        ['the map, a rival\'s province seen now',hex(map,3)],
+        ['the map, a province remembered',hex(map,4)],
+        ['the map, a province on the border',hex(map,5)],
+        ['the map, a province whose tier the popup doesn\'t name',hex(map,7)],
+        ['the map in full screen, a province','showFullscreenMap();'+hex('#map-fullscreen-modal',1)],
+      ];
+    }
+    if(m.dispatches){
+      const D=W.dispatches;
+      const stage=`supabase.stub.DB.game_players.push(${lit(D.slot)});supabase.stub.DB.game_messages=${lit(D.messages)};`
+        +`supabase.stub.DB.message_reports=${lit(D.reports)};supabase.stub.DB.game_message_reads=${lit([D.reads])};`;
+      return [
+        ['Dispatches, to every realm',fixed+stage+"openReport('s10')"],
+        ['Dispatches, a private conversation',"setMsgChannel('p:0-1')"],
+        ['Dispatches, a conversation of three',"setMsgChannel('p:0-1-3')"],
+        ['Dispatches, choosing realms for a new conversation','toggleMsgGroupPicker(true)'],
+        ['Dispatches, a new conversation with nothing in it yet',"document.querySelector('#msg-group-list input[value=\"3\"]').checked=true;createMsgGroup()"],
+        ['Dispatches, earlier dispatches to load',"_msgMoreOlder=true;setMsgChannel('public')"],
+        ['Dispatches, earlier dispatches loading','_msgLoadingOlder=true;renderMessageThread()'],
+        ['Dispatches, a report refused',"_msgMoreOlder=false;_msgLoadingOlder=false;setMsgChannel('p:0-1');"+`window.prompt=()=>${lit(D.reason)};`
+          +fail('message_reports.insert')+'reportMessage(7)'],
+        ['Dispatches, a dispatch refused',ok+val('msg-input',D.draft)+fail('game_messages.insert')+'sendMessage()'],
+        ['Dispatches, your realm has conceded',ok+"_msgErr=null;_msgOut='conceded';updateMsgComposer()"],
+        ['Dispatches, your realm has conceded, to every realm',"setMsgChannel('public')"],
+        ['Dispatches, blocked by your GM',"_msgBlockOut=true;setMsgChannel('p:0-1')"],
+        ['Dispatches, the dispatches table missing',"_msgOut=null;_msgBlockOut=false;_msgTableOk=null;"+fail('game_messages.select')+'refreshMessages(true)'],
+        ['Dispatches, no one to write to',ok+fail('rpc.get_game_slots')
+          +"_msgTableOk=true;initMessaging('G1',0,currentReport,null).then(()=>{ renderMessageThread();updateMsgComposer(); })"],
+        ['Dispatches, no realm met yet',ok+'_msgRealms={};toggleMsgGroupPicker(true)'],
+      ];
+    }
     if(m.orders){
       // The page's short timers (a field rebuilt "once the DOM exists", the running account, the hire, raise and charm
       // cards) are queued and run in order at the end of each step, so no screen is caught halfway; longer ones are
@@ -600,7 +688,7 @@ const playerPortal={
         +"window.__kcRun=()=>{ for(let r=0;r<20&&window.__kcQ.length;r++){ const q=window.__kcQ.splice(0).sort((x,y)=>x.ms-y.ms||x.id-y.id);"
         +" for(const t of q){ try{ if(typeof t.f==='function') t.f(...t.a); }catch(e){ console.error(String(e&&e.stack||e)); } } } };";
       const step=code=>`(async()=>{ ${code}; window.__kcRun(); })()`;
-      const O=W.orders, row="supabase.stub.DB.game_players.find(r=>r.id==='s10')";
+      const O=W.orders;
       const stage=(draft,extra)=>`Object.assign(${row},{turn_report:${lit(JSON.stringify(O.report))},orders:${lit(JSON.stringify(draft))},orders_submitted:false${extra||''}});`;
       // set one row's action as a player does: pick it, then the select's onchange
       const act=(cid,ph,a)=>`{ const s=document.getElementById(${lit(`po-action-${cid}-${ph}`)}); s.value=${lit(a)}; onActionChange(${lit(String(cid))},${ph},99); window.__kcRun(); }`;
@@ -616,7 +704,7 @@ const playerPortal={
       const spells=list=>list.map((sp,ph)=>act(10,ph,'Cast Spell')+`onSpellChange('10',${ph},${lit(sp)});`).join('');
       const own={Pagan:'Perform Rite',Divine:'Consecrate',Good:'Call to Arms',Neutral:'Broker',Undead:'Harvest the Field'};
       return [
-        ['the orders, a saved draft with hire, raise and charm cards',fixed+timers+held+step(stage(O.draft)+"await openReport('s10')")],
+        ['the orders, a saved draft with hire, raise and charm cards',fixed+timers+step(stage(O.draft)+"await openReport('s10')")],
         ...Array.from({length:7},(_,k)=>[`every order on the hire, raise and charm cards, part ${k+1} of 7`,step(every(k,'/^(hired|resurrect|charm)_/'))]),
         ...Array.from({length:10},(_,k)=>[`every order, part ${k+1} of 10`,step(every(k,'/^\\d+$/'))]),
         ...Object.entries(own).map(([al,a])=>[`${/^[AEIOU]/.test(al)?'an':'a'} ${al} realm's own order`,
@@ -651,7 +739,7 @@ const playerPortal={
       const titles=o=>`Object.assign(currentReport.titles,${lit(o)});renderTitles(currentReport);${wrap}renderReckoningOrders();`;
       const dip=`_renderDiplomacyInto(document.getElementById('report-diplomacy'),currentReport,true);`;
       return [
-        ['the turn report and Chronicle',fixed+now+held+"openReport('s10')"],
+        ['the turn report and Chronicle',fixed+now+"openReport('s10')"],
         ['the Chronicle, every battle in full',"document.querySelectorAll('.bf-toggle').forEach(b=>b.click())"],
         ['diplomacy with its controls',"diploChoices={};"+dip],
         ['diplomacy, a declaration pending',"diploChoices={1:'enemy'};"+dip+"renderDiplomacy(currentReport)"],
@@ -708,7 +796,9 @@ const playerPortal={
       W.report.knownFeatures[0].name,W.report.knownFeatures[0].monster,W.report.discoveries[0].name,W.report.titles.gains[0].name,
       W.report.provinceEvents[0].text,W.report.spyActivity[0].lines[0].text,W.report.characters[0].items[0].desc,
       // the orders: provinces, rivals, wanderers, bodies, the hero for hire, units, items, lairs, research and Details
-      ...W.orders.shown].filter(s=>typeof s==='string');
+      ...W.orders.shown,
+      // the map's popups and Dispatches
+      ...W.map.shown,...W.dispatches.shown].filter(s=>typeof s==='string');
   },
 };
 

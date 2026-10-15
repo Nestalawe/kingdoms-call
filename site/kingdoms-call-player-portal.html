@@ -8795,8 +8795,8 @@ function _ownerLineP(pd){
   const col=_tintForDarkTooltip(pd.ownerColor||(k&&k.color))||'#f2e8d0';
   const rel=k?k.relation:null;
   const REL={neutral:['Neutral','#e8d8b0'],allied:['Allied','#9be07a'],enemy:['Enemy','#ff7a6a']};
-  const tag=rel&&REL[rel]?` <span style="color:${REL[rel][1]};font-weight:600">(${REL[rel][0]})</span>`:'';
-  return `Owned by <strong style="color:${col}">${pd.ownerName}</strong>${tag}`;
+  const tag=rel&&REL[rel]?kcHtml` <span style="color:${REL[rel][1]};font-weight:600">(${REL[rel][0]})</span>`:'';
+  return kcHtml`Owned by <strong style="color:${col}">${pd.ownerName}</strong>${tag}`;
 }
 function _tintForDarkTooltip(hex){ return _shiftForContrast(hex,'#1a1208',6,255); }
 // text on the light report parchment (checked against its palest card, #fdf5e0)
@@ -8896,7 +8896,7 @@ function mapSymHtml(sym, colour, size){
     const raw=(colour!=null?colour:(sym.fill||sym.legend));
     const col=raw?_tintForDarkTooltip(raw):'currentColor';
     const b=sym.box||10, sz=size||'1em';
-    return `<svg viewBox="${-b/2} ${-b/2} ${b} ${b}" style="width:${sz};height:${sz};vertical-align:-0.15em" aria-hidden="true"><path d="${sym.path}" fill="${col}" fill-rule="evenodd" stroke="#000" stroke-width="0.4" paint-order="stroke" stroke-linejoin="round"></path></svg>`;
+    return kcHtml`<svg viewBox="${-b/2} ${-b/2} ${b} ${b}" style="width:${sz};height:${sz};vertical-align:-0.15em" aria-hidden="true"><path d="${sym.path}" fill="${col}" fill-rule="evenodd" stroke="#000" stroke-width="0.4" paint-order="stroke" stroke-linejoin="round"></path></svg>`;
   }
   // The variation selector matters as much as the glyph: VS15 pins TEXT presentation so a phone's
   // emoji font cannot hijack ☠ or ✝ and draw a colour picture that ignores our fill.
@@ -8904,14 +8904,14 @@ function mapSymHtml(sym, colour, size){
   const vs=sym.text?'\uFE0E':'\uFE0F';
   const raw=(colour!=null?colour:(sym.fill||sym.legend));
   const col=(sym.text&&raw)?`color:${_tintForDarkTooltip(raw)};`:'';
-  return `<span style="${col}font-family:${MAP_SYMBOL_FONT}${size?';font-size:'+size:''}">${sym.glyph}${vs}</span>`;
+  return kcHtml`<span style="${col}font-family:${MAP_SYMBOL_FONT}${size?';font-size:'+size:''}">${sym.glyph}${vs}</span>`;
 }
 // Any OTHER text-presentation symbol printed as HTML (the popup's ♛ before a king's name, the ⚔ on
 // a wandering-hero line). Same font stack, same VS15 pin — otherwise a phone draws these two in its
 // emoji font at emoji size and in emoji colour, which is exactly the desktop/mobile drift item 2 is
 // about.
 function txtGlyph(ch, colour){
-  return `<span style="${colour?`color:${colour};`:''}font-family:${MAP_SYMBOL_FONT}">${ch}︎</span>`;
+  return kcHtml`<span style="${colour?`color:${colour};`:''}font-family:${MAP_SYMBOL_FONT}">${ch}︎</span>`;
 }
 // ── THE LEGEND IS DRAWN FROM THE SAME TABLE AS THE MAP ────
 // Each legend swatch is an empty <span data-mapsym="key"> in the markup; this fills it in from
@@ -8929,9 +8929,7 @@ function applyMapSymLegend(root){
 // emoji.
 function mapRaceBadgeHtml(race){
   const rb=MAP_RACE_BADGE[race]; if(!rb) return '';
-  return `<svg width="13" height="13" viewBox="0 0 13 13" style="vertical-align:-2px" aria-hidden="true">`
-    +`<circle cx="6.5" cy="6.5" r="6" fill="${rb.fill}"></circle>`
-    +`<text x="6.5" y="9.2" text-anchor="middle" font-size="8" font-weight="700" font-family="Cinzel,serif" fill="${rb.text}">${rb.glyph}</text></svg>`;
+  return kcHtml`<svg width="13" height="13" viewBox="0 0 13 13" style="vertical-align:-2px" aria-hidden="true"><circle cx="6.5" cy="6.5" r="6" fill="${rb.fill}"></circle><text x="6.5" y="9.2" text-anchor="middle" font-size="8" font-weight="700" font-family="Cinzel,serif" fill="${rb.text}">${rb.glyph}</text></svg>`;
 }
 // each lair in a province popup gets its OWN star, tinted by the guardian's
 // difficulty (Weak→green, Moderate→gold, Powerful→orange, Legendary→crimson).
@@ -8942,10 +8940,10 @@ function _lairStar(f){
   // through to the default brown. Difficulty now colours the map popup as everywhere else.
   const _pw=f.monsterPower||f.power;
   const col=_tintForDarkTooltip(GUARD_POWER_COLORS_P[_pw]||'#7a5510'); // lightened for the dark popup
-  const _tag=_pw?` <span style="font-size:.68rem;opacity:.8">(${_pw})</span>`:'';
+  const _tag=_pw?kcHtml` <span style="font-size:.68rem;opacity:.8">(${_pw})</span>`:'';
   // the guardian's kind rides along in the popup too.
-  const _cat=(!f.cleared&&f.monsterCat)?` <span style="font-size:.68rem;opacity:.7">${f.monsterCat.toLowerCase()}</span>`:'';
-  return `<span style="color:${col}">\u2b50 ${f.name}${_tag}${_cat}</span>`;
+  const _cat=(!f.cleared&&f.monsterCat)?kcHtml` <span style="font-size:.68rem;opacity:.7">${f.monsterCat.toLowerCase()}</span>`:'';
+  return kcHtml`<span style="color:${col}">\u2b50 ${f.name}${_tag}${_cat}</span>`;
 }
 // ── LAIRS CLEARED ────
 // The popup lists only lairs that still STAND, so a province whose lairs have all been cleared
@@ -8959,9 +8957,9 @@ function _lairStar(f){
 function _lairsClearedNote(pd){
   if(!pd || (pd.explored==null) || pd.explored<100) return '';
   const lairs=(pd.features||[]).filter(f=>f&&!f.ritualSite);
-  if(lairs.length===0) return `<br><span style="color:${_tintForDarkTooltip('#6a7f5a')};font-style:italic">\u{1F5FA} Fully mapped \u2014 no lair was ever found in this province.</span>`;
+  if(lairs.length===0) return kcHtml`<br><span style="color:${_tintForDarkTooltip('#6a7f5a')};font-style:italic">\u{1F5FA} Fully mapped \u2014 no lair was ever found in this province.</span>`;
   if(lairs.some(f=>!f.cleared)) return '';
-  return `<br><span style="color:${_tintForDarkTooltip('#4a8a4a')};font-weight:600">\u2705 Cleared of all lairs \u2014 ${lairs.length===1?'its lair has':`all ${lairs.length} lairs have`} been put to the sword. Nothing is left to fight here.</span>`;
+  return kcHtml`<br><span style="color:${_tintForDarkTooltip('#4a8a4a')};font-weight:600">\u2705 Cleared of all lairs \u2014 ${lairs.length===1?'its lair has':`all ${lairs.length} lairs have`} been put to the sword. Nothing is left to fight here.</span>`;
 }
 // ── GRAVES ON THE MAP ────
 // If this realm knows battlefield dead lie in a province, say so in the hex popup — the same lore
@@ -8990,7 +8988,7 @@ function _garrisonNote(pd){
   const counts={};
   g.forEach(a=>{ const k=a.type||'unit'; counts[k]=(counts[k]||0)+1; });
   const list=Object.keys(counts).map(k=>`${unitEmoji(k)} ${counts[k]>1?counts[k]+'× ':''}${k}`).join(', ');
-  return `<br>\u{1F6E1} <span style="color:${col}">${g.length} unit${g.length!==1?'s':''} garrisoned${pd.tier==='live'&&pd.ownerName?` (${pd.ownerName})`:''}</span> <span style="opacity:.8;font-size:.9em">— ${list}</span>`;
+  return kcHtml`<br>\u{1F6E1} <span style="color:${col}">${g.length} unit${g.length!==1?'s':''} garrisoned${pd.tier==='live'&&pd.ownerName?` (${pd.ownerName})`:''}</span> <span style="opacity:.8;font-size:.9em">— ${list}</span>`;
 }
 function _graveNote(pd){
   if(!pd||pd.id==null||!_graveIntelById) return '';
@@ -9001,12 +8999,12 @@ function _graveNote(pd){
   const fresh=(g.turn!=null && _graveIntelTurn!=null && g.turn===_graveIntelTurn);
   const sym=fresh?MAP_SYM.gravesFresh:MAP_SYM.gravesStale;
   const gcol=_tintForDarkTooltip(sym.fill);
-  const stamp=`<span style="opacity:.75">(known turn ${g.turn!=null?g.turn:'?'})</span>`;
+  const stamp=kcHtml`<span style="opacity:.75">(known turn ${g.turn!=null?g.turn:'?'})</span>`;
   if(g.detail&&g.detail.length){
     const list=g.detail.map(d=>`${d.n}× ${d.k}`).join(', ');
-    return `<br>${mapSymHtml(sym)} <span style="color:${gcol}">Battlefield graves: ${g.detailPartial?'at least ':''}${list}</span> ${stamp}${g.detailPartial?`<br><span style="opacity:.7;font-style:italic">Grave-sight names only the crack and elite — lesser dead may lie here unseen.</span>`:''}`;
+    return kcHtml`<br>${mapSymHtml(sym)} <span style="color:${gcol}">Battlefield graves: ${g.detailPartial?'at least ':''}${list}</span> ${stamp}${g.detailPartial?kcHtml`<br><span style="opacity:.7;font-style:italic">Grave-sight names only the crack and elite — lesser dead may lie here unseen.</span>`:''}`;
   }
-  return `<br>${mapSymHtml(sym)} <span style="color:${gcol}">Battlefield graves lie here</span> <span style="opacity:.7;font-style:italic">— how many, and what they hold, is unknown</span> ${stamp}`;
+  return kcHtml`<br>${mapSymHtml(sym)} <span style="color:${gcol}">Battlefield graves lie here</span> <span style="opacity:.7;font-style:italic">— how many, and what they hold, is unknown</span> ${stamp}`;
 }
 // tint a lair name by its guardian's difficulty (Weak→Legendary), for inline
 // lists (owned-province cards, etc.). Ritual sites and unknown-difficulty lairs render in plain
@@ -9033,9 +9031,7 @@ function terrorNoteP(pd, light){
 }
 function _grandDesignNote(pd){
   const gd=pd&&pd.grandDesign; if(!gd) return '';
-  return `<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span>`
-    +`<span style="opacity:.85"> \u2014 a Grand Design raised by <strong>${gd.ownerName||'a fallen realm'}</strong>`
-    +(gd.active?`.` :`, dormant while another crown holds this ground.`)+`</span>`;
+  return kcHtml`<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span><span style="opacity:.85"> \u2014 a Grand Design raised by <strong>${gd.ownerName||'a fallen realm'}</strong>${gd.active?'.':', dormant while another crown holds this ground.'}</span>`;
 }
 // \u2500\u2500 GRAND DESIGN in YOUR PROVINCES (2026-09-27, Toby item 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 // The map popup has named the Wonder standing in a province for a while, but the Your Provinces list
@@ -9088,25 +9084,26 @@ function popupKnownChars(pd, deadHeroes){
   const deadIds=new Set(dead.map(d=>d.id));
   if(!chars.length && !dead.length) return '';
   // 2026-10-15 (D1): your own heroes' exact count; anyone else's rough size (armyBand), never a number
-  const cnt=(c)=>c.armyBand?(c.armyBand==='no armies'?'':` <span style="opacity:.7">(${c.armyBand})</span>`):(c.armyCount>0?` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'');
+  const cnt=(c)=>c.armyBand?(c.armyBand==='no armies'?'':kcHtml` <span style="opacity:.7">(${c.armyBand})</span>`):(c.armyCount>0?kcHtml` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'');
+  const crown=(c)=>c.isKing?kcHtml`${txtGlyph('\u265B')} `:'';
   const own=chars.filter(c=>c.isOwn && !deadIds.has(c.id));
   const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer && !deadIds.has(c.id));
   const wand=chars.filter(c=>c.isWanderer && !deadIds.has(c.id));
-  let s='';
+  const s=[];
   // colour character names by owner — own & enemy in their realm colour (lightened if needed for
   // the dark tooltip), wandering heroes and local chieftains (neutral) in grey.
   const NEUTRAL_GREY='#9a9a9a';
-  if(own.length)   s+=own.map(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#f2e8d0';return `<br>\u{1F464} <span style="color:${col}">${(c.isKing?txtGlyph('\u265B')+' ':'')}${c.name}</span>${cnt(c)}`;}).join('');
-  if(enemy.length) s+=enemy.map(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#e05050';return `<br>\u{1F441} <span style="color:${col}">${(c.isKing?txtGlyph('\u265B')+' ':'')}${c.name}${c.ownerName?' of '+c.ownerName:''}</span>${cnt(c)}`;}).join('');
-  if(wand.length)  s+=wand.map(c=>`<br>${txtGlyph('\u2694')} <span style="color:${c.isNeutralGuard?_tintForDarkTooltip(CHIEFTAIN_MARKER_COLOR):NEUTRAL_GREY}">${neutralCharLabel(c)}</span>${cnt(c)}`).join(''); // chieftains in their marker brown
+  own.forEach(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#f2e8d0';s.push(kcHtml`<br>\u{1F464} <span style="color:${col}">${crown(c)}${c.name}</span>${cnt(c)}`);});
+  enemy.forEach(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#e05050';s.push(kcHtml`<br>\u{1F441} <span style="color:${col}">${crown(c)}${c.name}${c.ownerName?' of '+c.ownerName:''}</span>${cnt(c)}`);});
+  wand.forEach(c=>s.push(kcHtml`<br>${txtGlyph('\u2694')} <span style="color:${c.isNeutralGuard?_tintForDarkTooltip(CHIEFTAIN_MARKER_COLOR):NEUTRAL_GREY}">${neutralCharLabel(c)}</span>${cnt(c)}`)); // chieftains in their marker brown
   // dead heroes whose bodies lie here — labelled '(dead)', mirroring the '(wandering)' tag.
   // 2026-09-17: the map's own ☠ in the map's own crimson, not a purple \u{1F480}.
   // 2026-09-27 (Toby item 10): name the realm the body served when it fell (or say it served none),
   // so a player reading the map can tell at a glance whose dead they are looking at — Resurrect
   // raises only your own fallen and heroes who never served a rival crown.
   if(dead.length){ const _dc=_tintForDarkTooltip(MAP_SYM.dead.fill);
-    s+=dead.map(d=>`<br>${mapSymHtml(MAP_SYM.dead)} <span style="color:${_dc}">${(d.isKing?txtGlyph('\u265B')+' ':'')}${d.name} (dead)</span> <span style="font-size:.9em;opacity:.9">${deadHeroRealmTagP(d,null,{dark:true,bare:true})}</span>`).join(''); }
-  return s;
+    dead.forEach(d=>s.push(kcHtml`<br>${mapSymHtml(MAP_SYM.dead)} <span style="color:${_dc}">${crown(d)}${d.name} (dead)</span> <span style="font-size:.9em;opacity:.9">${deadHeroRealmTagP(d,null,{dark:true,bare:true})}</span>`)); }
+  return s.length?kcHtml`${s}`:'';
 }
 // Single function renders into any SVG element (inline or fullscreen)
 // map marker colour for local chieftains (neutral-province guards). Wandering heroes stay #888 grey
@@ -9838,55 +9835,53 @@ function renderMapIntoSvg(svgEl, report){
       // click must draw the popup itself — before 2026-09-20 it only made it sticky, and a dismissed
       // popup could not be re-opened until the view was switched.
       const showTip=ev=>{
-        let h=`<strong style="font-family:\'Cinzel\',serif;font-size:.8rem">${pd.name||capitalise(pd.terrain)||'Unknown'}</strong><br>`;
-        if(isOwned){
-          h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
-          if(pd.consecrated) h+=`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (+50% tax, defenders twice as fanatical, Undead/Evil attackers \u221215%, resurrections return here)</span>`;
-          h+=_grandDesignNote(pd);
-          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
-          h+=`<br>${mapRaceBadgeHtml(formatRace(pd.race))} ${formatRace(pd.race)}`;   // the hex's own race badge
-          if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
+        const h=[kcHtml`<strong style="font-family:'Cinzel',serif;font-size:.8rem">${pd.name||capitalise(pd.terrain)||'Unknown'}</strong><br>`];
+        // the province's native armies, one per line, or a note that it has none
+        const natives=()=>pd.armyTypes?.length?pd.armyTypes.map(t=>kcHtml`<br>${unitEmoji(t)} ${t}`)
+          :kcHtml`<br>${txtGlyph('\u2694')} <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
+        // its standing lairs, one per line (2026-09-24, Toby item 9), and its ritual sites (item 4)
+        const lairsAndRites=()=>{
           const kf=(pd.features||[]).filter(f=>!f.cleared);
-          const kfLairs=kf.filter(f=>!f.ritualSite), kfRituals=kf.filter(f=>f.ritualSite);
-          if(kfLairs.length) h+=`<br>${kfLairs.map(_lairStar).join('<br>')}`; // 2026-09-24 (Toby item 9): one lair per line
-          h+=_lairsClearedNote(pd);
-          if(kfRituals.length) h+=`<br>\u{1F319} ${kfRituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kfRituals.length!==1?'s':''})</span>`; // item 4
-          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
-          else h+=`<br>${txtGlyph('\u2694')} <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
-          const _kc=popupKnownChars(pd, report.visibleDeadHeroes);
-          if(_kc) h+=_kc;
-          if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} <span style="color:#d8cfbd">${armyLabel(d)}</span>`).join('')}`;
-          h+=_garrisonNote(pd); // the standing garrison
-          h+=_graveNote(pd); // known battlefield graves
+          const lairs=kf.filter(f=>!f.ritualSite), rituals=kf.filter(f=>f.ritualSite);
+          return [lairs.length?kcHtml`<br>${kcJoinP(lairs.map(_lairStar),kcHtml`<br>`)}`:'',
+            _lairsClearedNote(pd),
+            rituals.length?kcHtml`<br>\u{1F319} ${rituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${rituals.length!==1?'s':''})</span>`:''];
+        };
+        if(isOwned){
+          h.push(kcHtml`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`);
+          if(pd.consecrated) h.push(kcHtml`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (+50% tax, defenders twice as fanatical, Undead/Evil attackers \u221215%, resurrections return here)</span>`);
+          h.push(_grandDesignNote(pd));
+          h.push(terrorNoteP(pd)); // item 23: an Evil realm sees the Terror
+          h.push(kcHtml`<br>${mapRaceBadgeHtml(formatRace(pd.race))} ${formatRace(pd.race)}`);   // the hex's own race badge
+          if(pd.explored!==undefined) h.push(kcHtml`<br>\u{1F50D} ${pd.explored}% explored`);
+          h.push(lairsAndRites());
+          h.push(natives());
+          h.push(popupKnownChars(pd, report.visibleDeadHeroes));
+          if(pd.neutralDefenders?.length) h.push(kcHtml`${pd.neutralGuard?kcHtml`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>kcHtml`<br>${unitEmoji(d.type)} <span style="color:#d8cfbd">${armyLabel(d)}</span>`)}`);
+          h.push(_garrisonNote(pd)); // the standing garrison
+          h.push(_graveNote(pd)); // known battlefield graves
         } else if(isVisited){
-          h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
-          if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
-          h+=`<br>${_ownerLineP(pd)}`;
-          h+=_grandDesignNote(pd);
-          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
-          if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
-          const kf2=(pd.features||[]).filter(f=>!f.cleared);
-          const kf2Lairs=kf2.filter(f=>!f.ritualSite), kf2Rituals=kf2.filter(f=>f.ritualSite);
-          if(kf2Lairs.length) h+=`<br>${kf2Lairs.map(_lairStar).join('<br>')}`; // 2026-09-24 (Toby item 9): one lair per line
-          h+=_lairsClearedNote(pd);
-          if(kf2Rituals.length) h+=`<br>\u{1F319} ${kf2Rituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kf2Rituals.length!==1?'s':''})</span>`; // item 4
-          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
-          else h+=`<br>${txtGlyph('\u2694')} <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
-          if(pd.tier==='remembered') h+=`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`;
-          const _kcV=popupKnownChars(pd, report.visibleDeadHeroes);
-          if(_kcV) h+=_kcV;
-          h+=_garrisonNote(pd); // a garrison seen by a character standing here
-          h+=_graveNote(pd); // known battlefield graves
+          h.push(`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`);
+          if(pd.race!==undefined) h.push(` · ${formatRace(pd.race)}`);
+          h.push(kcHtml`<br>${_ownerLineP(pd)}`);
+          h.push(_grandDesignNote(pd));
+          h.push(terrorNoteP(pd)); // item 23: an Evil realm sees the Terror
+          if(pd.explored!==undefined) h.push(kcHtml`<br>\u{1F50D} ${pd.explored}% explored`);
+          h.push(lairsAndRites());
+          h.push(natives());
+          if(pd.tier==='remembered') h.push(kcHtml`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`);
+          h.push(popupKnownChars(pd, report.visibleDeadHeroes));
+          h.push(_garrisonNote(pd)); // a garrison seen by a character standing here
+          h.push(_graveNote(pd)); // known battlefield graves
         } else {
-          h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
-          h+=`<br>${_ownerLineP(pd)}`;
-          h+=_grandDesignNote(pd);
-          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
-          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
-          else h+=`<br>${txtGlyph('\u2694')} <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
-          h+=_graveNote(pd); // grave lore is remembered even for distant ground
+          h.push(`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`);
+          h.push(kcHtml`<br>${_ownerLineP(pd)}`);
+          h.push(_grandDesignNote(pd));
+          h.push(terrorNoteP(pd)); // item 23: an Evil realm sees the Terror
+          h.push(natives());
+          h.push(_graveNote(pd)); // grave lore is remembered even for distant ground
         }
-        tt.innerHTML=h+`<div style="text-align:right;margin-top:8px;border-top:1px solid #4a3a1a;padding-top:6px"><button onclick="_closeMapTip(event)" style="background:#7a1c1c;color:#fff;border:none;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:Cinzel,serif;font-size:.72rem;pointer-events:auto">\u2715 Close</button></div>`;
+        tt.innerHTML=kcHtml`${h}<div style="text-align:right;margin-top:8px;border-top:1px solid #4a3a1a;padding-top:6px"><button onclick="_closeMapTip(event)" style="background:#7a1c1c;color:#fff;border:none;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:Cinzel,serif;font-size:.72rem;pointer-events:auto">\u2715 Close</button></div>`;
         tt.style.display='block';
         tt.style.left=(ev.clientX+16)+'px';
         tt.style.top=(ev.clientY+16)+'px';
@@ -9972,15 +9967,14 @@ function buildMapIconToggles(){
   // platform.
   const swatch=t=>{
     if(t.sym && MAP_SYM[t.sym]) return mapSymHtml(MAP_SYM[t.sym], null, '.8rem');
-    if(t.emoji) return `<span style="font-size:.8rem">${t.emoji}\uFE0F</span>`;
-    if(t.dot) return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${t.dot};vertical-align:0"></span>`;
+    if(t.emoji) return kcHtml`<span style="font-size:.8rem">${t.emoji}\uFE0F</span>`;
+    if(t.dot) return kcHtml`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${t.dot};vertical-align:0"></span>`;
     if(t.badge) return mapRaceBadgeHtml(t.badge);
     return '';
   };
-  bar.innerHTML=MAP_ICON_TYPES.map(t=>
-    `<button type="button" data-icon="${t.key}" onclick="toggleMapIcon('${t.key}')" title="Show/hide ${t.label}" `
-    +`style="background:#241810;color:#e8b84b;border:1px solid #4a3418;border-radius:2px;padding:2px 6px;cursor:pointer;font-size:.62rem;line-height:1.3;display:inline-flex;align-items:center;gap:4px">${swatch(t)}${t.label}</button>`
-  ).join('');
+  bar.innerHTML=kcHtml`${MAP_ICON_TYPES.map(t=>
+    kcHtml`<button type="button" data-icon="${t.key}" onclick="toggleMapIcon(${kcArg(t.key)})" title="Show/hide ${t.label}" style="background:#241810;color:#e8b84b;border:1px solid #4a3418;border-radius:2px;padding:2px 6px;cursor:pointer;font-size:.62rem;line-height:1.3;display:inline-flex;align-items:center;gap:4px">${swatch(t)}${t.label}</button>`
+  )}`;
   applyMapIconVisibility();
 }
 function renderPlayerMap(report){
@@ -10083,8 +10077,6 @@ let _msgErr=null, _msgReadsDirty=false, _msgReadSaveTimer=null;
 // its own turn report. _msgGameOver: the game has ended. _msgBlockOut: the GM's switch (games.block_eliminated_msgs).
 let _msgOut=null, _msgGameOver=false, _msgBlockOut=false;
 
-// kcEsc under its older name, for the screens not converted to kcHtml yet (P0-19)
-function _msgEsc(s){ return kcEsc(s); }
 function _msgNum(v){ const n=Number(v); return Number.isFinite(n)?n:null; }
 function _msgArr(v){ return Array.isArray(v)?v:[]; }
 
@@ -10372,18 +10364,18 @@ function renderMessageChannels(){
   const el=document.getElementById('msg-channels'); if(!el) return;
   const keys=msgChannelKeys();
   if(!keys.includes(_msgChannel)) _msgChannel='public';
-  el.innerHTML=keys.map(k=>{
+  el.innerHTML=kcHtml`${keys.map(k=>{
     const others=msgParticipantsOf(k).filter(i=>i!==_msgMyIndex);
     const gone=k!=='public'&&!msgChannelIsSendable(k);
     const dot=(k==='public')
-      ? '<span class="mc-dot" style="background:#7d5fb5"></span>'
-      : (others.length===1?'<span class="mc-dot" style="background:'+_msgEsc(msgRealmColour(others[0]))+'"></span>'
-                          :'<span class="mc-dot" style="background:linear-gradient(90deg,'+others.slice(0,3).map(i=>_msgEsc(msgRealmColour(i))).join(',')+')"></span>');
+      ? kcHtml`<span class="mc-dot" style="background:#7d5fb5"></span>`
+      : (others.length===1?kcHtml`<span class="mc-dot" style="background:${msgRealmColour(others[0])}"></span>`
+                          :kcHtml`<span class="mc-dot" style="background:linear-gradient(90deg,${others.slice(0,3).map(i=>msgRealmColour(i)).join(',')})"></span>`);
     const u=msgUnreadIn(k);
-    return '<button type="button" class="msg-chan'+(k===_msgChannel?' active':'')+(gone?' gone':'')+'" data-ch="'+_msgEsc(k)+'" title="'+_msgEsc(msgChannelLabel(k))+(gone?' — no longer in the game':'')+'">'
-      +dot+'<span class="mc-label">'+_msgEsc(msgChannelLabel(k))+'</span>'
-      +(u?'<span class="mc-unread">'+(u>99?'99+':u)+'</span>':'')+'</button>';
-  }).join('');
+    return kcHtml`<button type="button" class="msg-chan${k===_msgChannel?' active':''}${gone?' gone':''}" data-ch="${k}" title="${msgChannelLabel(k)}${gone?' — no longer in the game':''}">${
+      dot}<span class="mc-label">${msgChannelLabel(k)}</span>${
+      u?kcHtml`<span class="mc-unread">${u>99?'99+':u}</span>`:''}</button>`;
+  })}`;
   updateMsgComposer();
 }
 // One delegated listener rather than an inline onclick per chip: a channel key would otherwise have to
@@ -10410,8 +10402,8 @@ function renderMessageThread(){
   const el=document.getElementById('msg-thread'); if(!el) return;
   if(!_msgEnabled){ el.innerHTML='<div class="msg-empty">This game has only one human realm, so there is no one to send dispatches to.</div>'; return; }
   if(_msgTableOk===false){
-    el.innerHTML='<div class="msg-empty">Dispatches are not switched on for this server yet — the <strong>game_messages</strong> table is missing. Ask your GM to run the messaging SQL shown on their portal.'
-      +(_msgErr?'<br><span style="font-size:.72rem;opacity:.7">'+_msgEsc(_msgErr)+'</span>':'')+'</div>';
+    el.innerHTML=kcHtml`<div class="msg-empty">Dispatches are not switched on for this server yet — the <strong>game_messages</strong> table is missing. Ask your GM to run the messaging SQL shown on their portal.${
+      _msgErr?kcHtml`<br><span style="font-size:.72rem;opacity:.7">${_msgErr}</span>`:''}</div>`;
     updateMsgComposer(); return;
   }
   // Keep the thread pinned to the foot when it already was — a dispatch arriving mid-read must not
@@ -10419,36 +10411,35 @@ function renderMessageThread(){
   const atBottom=(el.scrollHeight-el.scrollTop-el.clientHeight)<60;
   const rows=msgRowsOf(_msgChannel);
   const older=_msgMoreOlder
-    ? '<button type="button" class="msg-chan" style="align-self:center" onclick="loadOlderMessages()"'+(_msgLoadingOlder?' disabled':'')+'>'
-      +(_msgLoadingOlder?'Loading…':'↑ Earlier dispatches')+'</button>'
+    ? kcHtml`<button type="button" class="msg-chan" style="align-self:center" onclick="loadOlderMessages()"${_msgLoadingOlder?kcHtml` disabled`:''}>${
+      _msgLoadingOlder?'Loading…':'↑ Earlier dispatches'}</button>`
     : '';
   if(!rows.length){
     const who=_msgChannel==='public'?'every realm in the game':msgChannelLabel(_msgChannel);
-    el.innerHTML=older+'<div class="msg-empty">No dispatches here yet.<br>Anything you write goes to <strong>'+_msgEsc(who)+'</strong>.</div>';
+    el.innerHTML=kcHtml`${older}<div class="msg-empty">No dispatches here yet.<br>Anything you write goes to <strong>${who}</strong>.</div>`;
     updateMsgComposer(); return;
   }
   const seen=_msgNum(_msgReads[_msgChannel])||0;
-  let lastDay=null, html=older;
+  let lastDay=null; const html=[older];
   rows.forEach(r=>{
     const day=_msgDay(r.created_at);
-    if(day&&day!==lastDay){ lastDay=day; html+='<div class="msg-day">'+_msgEsc(day)+'</div>'; }
+    if(day&&day!==lastDay){ lastDay=day; html.push(kcHtml`<div class="msg-day">${day}</div>`); }
     const from=_msgNum(r.from_index);
     const mine=from===_msgMyIndex;
     const pub=(r.scope==='public'||!_msgArr(r.to_indexes).length);
     const others=_msgArr(r.to_indexes).map(_msgNum).filter(i=>i!=null&&i!==from);
     const showTo=pub?'to all realms':(others.length>1?('to '+others.map(i=>msgRealmName(i)).join(', ')):'');
     const fresh=!mine&&(_msgNum(r.id)||0)>seen;
-    html+='<div class="msg-bubble'+(mine?' mine':'')+(pub&&!mine?' pub':'')+'">'
-      +'<div class="msg-meta">'
-        +'<span class="msg-from" style="color:'+_msgEsc(msgRealmColour(from))+'">'+_msgEsc(mine?(msgRealmName(from)+' (you)'):msgRealmName(from))+'</span>'
-        +(showTo?'<span class="msg-to">'+_msgEsc(showTo)+'</span>':'')
-        +'<span class="msg-when">'+(r.turn!=null?('T'+_msgEsc(r.turn)+' · '):'')+_msgEsc(_msgWhen(r.created_at))+'</span>'
-        +(fresh?'<span class="mc-unread" title="New since you last read this thread">new</span>':'')
-        +(mine?'':_msgReported.has(String(r.id))?'<span class="msg-reported" title="Your GM (or the Overlord) can see this dispatch">⚑ Reported</span>'
-          :'<button type="button" class="msg-report" title="Show this dispatch to your GM" onclick="reportMessage('+(_msgNum(r.id)||0)+')">⚑ Report</button>')
-      +'</div>'+_msgEsc(r.body)+'</div>';
+    const meta=[
+      kcHtml`<span class="msg-from" style="color:${msgRealmColour(from)}">${mine?(msgRealmName(from)+' (you)'):msgRealmName(from)}</span>`,
+      showTo?kcHtml`<span class="msg-to">${showTo}</span>`:'',
+      kcHtml`<span class="msg-when">${r.turn!=null?('T'+r.turn+' · '):''}${_msgWhen(r.created_at)}</span>`,
+      fresh?kcHtml`<span class="mc-unread" title="New since you last read this thread">new</span>`:'',
+      mine?'':_msgReported.has(String(r.id))?kcHtml`<span class="msg-reported" title="Your GM (or the Overlord) can see this dispatch">⚑ Reported</span>`
+        :kcHtml`<button type="button" class="msg-report" title="Show this dispatch to your GM" onclick="reportMessage(${kcArg(_msgNum(r.id)||0)})">⚑ Report</button>`];
+    html.push(kcHtml`<div class="msg-bubble${mine?' mine':''}${pub&&!mine?' pub':''}"><div class="msg-meta">${meta}</div>${r.body}</div>`);
   });
-  el.innerHTML=html;
+  el.innerHTML=kcHtml`${html}`;
   if(atBottom) el.scrollTop=el.scrollHeight;
   updateMsgComposer();
 }
@@ -10490,12 +10481,12 @@ function updateMsgComposer(){
   btn.disabled=!sendable||!len||_msgSending;
   ta.disabled=!sendable;
   if(hint){
+    // a realm that can't send sees why; one that can sees who will read it and how much room is left
     hint.innerHTML=!sendable
-      ? (_msgTableOk===false?'Messaging is not active on this server.':_msgEsc(msgOutReason(_msgChannel)||'Every realm in this conversation has left the game.'))
-      : (_msgChannel==='public'
-          ? 'Public — <strong>every realm in this game</strong> will read this.'+(msgOutPrivateOff()?' '+_msgEsc(msgOutPrivateOff()):'')
-          : 'Private to '+_msgEsc(msgChannelLabel(_msgChannel))+'.')
-        +' <span style="opacity:.75">Ctrl+Enter sends. '+(MSG_MAX_LEN-len)+' left.</span>';
+      ? kcHtml`${_msgTableOk===false?'Messaging is not active on this server.':(msgOutReason(_msgChannel)||'Every realm in this conversation has left the game.')}`
+      : kcHtml`${_msgChannel==='public'
+          ? kcHtml`Public — <strong>every realm in this game</strong> will read this.${msgOutPrivateOff()?' '+msgOutPrivateOff():''}`
+          : 'Private to '+msgChannelLabel(_msgChannel)+'.'} <span style="opacity:.75">Ctrl+Enter sends. ${MSG_MAX_LEN-len} left.</span>`;
   }
   if(note){ note.style.display=_msgErr&&_msgTableOk!==false?'block':'none'; note.textContent=_msgErr||''; }
 }
@@ -10551,9 +10542,8 @@ function toggleMsgGroupPicker(force){
   const list=document.getElementById('msg-group-list');
   const cs=msgContacts();
   if(list) list.innerHTML=cs.length
-    ? cs.map(r=>'<label><input type="checkbox" value="'+r.index+'">'
-        +'<span style="color:'+_msgEsc(msgRealmColour(r.index))+'">'+_msgEsc(r.name)+'</span>'
-        +((r.conceded||r.eliminated)?' <span style="opacity:.6;font-size:.72rem">(out)</span>':'')+'</label>').join('')
+    ? kcHtml`${cs.map(r=>kcHtml`<label><input type="checkbox" value="${r.index}"><span style="color:${msgRealmColour(r.index)}">${r.name}</span>${
+        (r.conceded||r.eliminated)?kcHtml` <span style="opacity:.6;font-size:.72rem">(out)</span>`:''}</label>`)}`
     : '<span style="font-size:.76rem;color:#8a7a5c">You have not met another player\'s realm yet.</span>';
 }
 function createMsgGroup(){
@@ -10581,7 +10571,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.16-1027</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.16-1127</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
