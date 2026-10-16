@@ -1,10 +1,12 @@
 // Engine fuzz (2026-09-27): whole games run end to end through runTurn, with random human orders
 // and live bots, against the in-memory Supabase. Expect 0 page errors, 0 failed runs, and every
-// turn to leave orders_submitted cleared (the runaway-turn guard).
+// turn to keep the invariants (lib/invariants.ts, P1-04b), among them orders_submitted cleared
+// (the runaway-turn guard).
 // The same KC_SEED plays the same games (P1-04a): the page's clock is pinned (some ids are made from
 // it), and the games are in manual turn mode, so the auto-turn watcher neither reads the clock nor
 // runs a turn by itself at a moment that depends on load.
 const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
+const {checkTurn,describeBreaches}=require('./lib/invariants.ts');
 
 const GAMES=parseInt(process.argv[2]||'10'), TURNS=parseInt(process.argv[3]||'6');
 const DIRS=['NW','NE','W','E','SW','SE'];
@@ -30,7 +32,7 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
   const MAPS=[{k:'p4',cols:9,rows:7,n:4},{k:'p5',cols:12,rows:7,n:5},{k:'p6',cols:15,rows:7,n:6},{k:'p3',cols:8,rows:7,n:3}];
   const ri=n=>Math.floor(Math.random()*n);
 
-  let totalTurns=0, failedRuns=0, leaks=0, crashes=[];
+  let totalTurns=0, failedRuns=0, breaches=0, crashes=[];
   const t0=Date.now();
 
   for(let gi=0; gi<GAMES; gi++){
@@ -79,7 +81,7 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
         r.orders_submitted=true;
       }
       errs.length=0;
-      const before=row.turn;
+      const before=row.turn, nLogs=S.DB.turn_logs.length, nEvents=S.DB.turn_events.length;
       W.__game=JSON.parse(JSON.stringify(row));
       let res=null, thrown=null;
       try{ res=await W.eval('runTurn({auto:true,game:__game,reason:"fuzz"})'); }
@@ -89,15 +91,17 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
       if(thrown) crashes.push(`G${gi} T${before} host-throw: ${thrown}`);
       if(res&&res.ok===false){ failedRuns++; crashes.push(`G${gi} T${before} run failed: ${res.error}`); }
       if(errs.length) crashes.push(`G${gi} T${before} page error: ${errs[0].split('\n').slice(0,2).join(' | ')}`);
-      // the runaway guard: after any run, no human row may still be flagged submitted
-      const stillIn=S.DB.game_players.filter(p=>p.user_id&&p.orders_submitted).length;
-      if(stillIn){ leaks++; crashes.push(`G${gi} T${before} LEFT ${stillIn} realm(s) flagged submitted after the run`); }
+      // the invariants, on the state the turn started from and the one it saved
+      const broke=checkTurn({before:live,after:JSON.parse(S.DB.games[0].game_state),
+        gmLog:S.DB.turn_logs.slice(nLogs).filter(l=>l.player_index===-1).flatMap(l=>l.entries),
+        telemetry:S.DB.turn_events.slice(nEvents),players:S.DB.game_players});
+      if(broke.length){ breaches+=broke.length; crashes.push(describeBreaches(`G${gi} T${before} invariant`,broke)); }
     }
     process.stdout.write(`\r  games ${gi+1}/${GAMES} · turns ${totalTurns} · issues ${crashes.length}   `);
   }
   const secs=((Date.now()-t0)/1000).toFixed(0);
   console.log(`\n\nfuzz: ${GAMES} games · ${totalTurns} turns resolved · ${secs}s`);
-  console.log(`failed runs: ${failedRuns} · submitted-flag leaks: ${leaks} · total issues: ${crashes.length}`);
+  console.log(`failed runs: ${failedRuns} · invariant breaches: ${breaches} · total issues: ${crashes.length}`);
   [...new Set(crashes)].slice(0,15).forEach(c=>console.log('  '+c));
   process.exit(crashes.length?1:0);
 })().catch(e=>{ console.error('HARNESS',e); process.exit(2); });

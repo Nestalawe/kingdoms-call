@@ -334,7 +334,9 @@ dangerous path.
 The balance matrix (`npm run balance`, `tools/balance/`, P1-02a) measures engine changes: 60 seeded games played in
 the GM portal (48 all-bot, 12 with a realm whose orders the runner writes), each game's per-turn hashes and
 statistics compared with the committed baseline in `tests/balance/baseline/`, statistics paired by seed against the
-noise of a second seed set. It isn't part of `npm test`: about 20 s on 14 cores ([tests/README.md](../tests/README.md#the-balance-matrix)).
+noise of a second seed set. After every turn it checks the **invariants** (`tests/lib/invariants.ts`, P1-04b: no NaN or
+`undefined`, HP in range, unique ids, items matching the ledger of found items, armies on the map, the dead taking no
+actions, `orders_submitted` cleared), as `turn-fuzz` does; a breach fails the game. It isn't part of `npm test`: about 20 s on 14 cores ([tests/README.md](../tests/README.md#the-balance-matrix)).
 CI's `balance` job (P1-02b) plays it when a pull request or a merge changes an engine path
 (`tools/balance/engine-paths.ts`: the GM portal and the scripts its page loads, the data file, the balance code and
 baselines, the test helpers it boots the page with, and `package-lock.json` and `.nvmrc`, since a jsdom or Node
