@@ -6,6 +6,8 @@
 // Options (after `--`): --set B (play the noise set and compare its statistics), --jobs N (games side by side; default
 // one per core), --only id,id (some games; no baseline check of the scripted cases), --out FILE (also write this run
 // in the baseline's form, e.g. to compare two runs). KC_SITE plays another copy of the site.
+// npm run balance -- <scenario> plays a named scenario on the base branch's site and on this one instead (scenario-run.ts;
+// options --base REF, --runs N, --jobs N).
 // Not part of npm test or npm run check: it takes about 20 s on 14 cores, too slow for every edit. CI's balance job runs
 // it when an engine path changed (engine-paths.ts); it stops first if its page loads a file that isn't on that list,
 // because CI wouldn't play the matrix when that file changed.
@@ -27,6 +29,7 @@ import { matrix, type GameSpec, type SeedSet } from './matrix.ts';
 import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
 import { CASE_NAMES, type GameResult } from './play.ts';
 import { show, showDiff, showRange } from './report.ts';
+import { playScenario } from './scenario-run.ts';
 import { forkPool } from './sides.ts';
 import type { Job, Reply } from './worker.ts';
 
@@ -77,8 +80,11 @@ export const unlistedPageFiles = (): string[] =>
     .filter((f) => !isEnginePath(f));
 
 async function main(): Promise<number> {
-  const { values } = parseArgs({
+  const { values, positionals } = parseArgs({
+    allowPositionals: true,
     options: {
+      base: { type: 'string', default: 'main' },
+      runs: { type: 'string' },
       update: { type: 'boolean', default: false },
       set: { type: 'string', default: 'A' },
       jobs: { type: 'string' },
@@ -96,6 +102,11 @@ async function main(): Promise<number> {
       `The matrix's page loads files that aren't engine paths, so CI wouldn't play it when they change: ${unlisted.join(', ')}. Add them to tools/balance/engine-paths.ts.`,
     );
     return 1;
+  }
+  const [scenario] = positionals;
+  if (scenario != null) {
+    const runs = Number(values.runs) || undefined;
+    return playScenario(scenario, { base: values.base, jobs, ...(runs ? { runs } : {}) });
   }
 
   for (const set of sets) {
