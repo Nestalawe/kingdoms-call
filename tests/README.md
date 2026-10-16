@@ -23,7 +23,7 @@ node tests/<name>.test.js   # one test script on its own (unseeded, its own defa
   shows the end of its output. They become real Vitest tests over P1-14. To add or quarantine a script, edit
   `suite.ts`.
 - **The same answer every time.** The run stops at once on any Node but `.nvmrc`'s (`setup/global.ts`). The time
-  zone is UTC and the locale `en_US`, there are no retries, and a `.only` fails the run. A test that logs with
+  zone is UTC and the locale `en_US`. A test set to retry or repeat fails, and so does a `.only`. A test that logs with
   `console.error` or leaves a rejected promise unhandled fails, unless it says it expects that with
   `vi.spyOn(console, 'error')` (`setup/each.ts`).
 - **Failures say how to repeat them.** Under Vitest's report, a footer (`setup/reporter.ts`) prints the seed and,
