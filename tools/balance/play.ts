@@ -8,7 +8,9 @@
 // - turn mode is manual: in "auto" mode the auto-turn watcher runs a turn by itself, at a moment that depends on load;
 // - the stand-in database's own stamps and ids are left out of the hashes (hash.ts);
 // - the runner stops at gameOver: runTurn doesn't stop a finished game.
+// After every turn it checks the invariants (tests/lib/invariants.ts, P1-04b): a breach fails the game. They only read.
 import { bootJsdom, readPage, type PageWindow } from '../../tests/lib/boot.js';
+import { checkTurn, describeBreaches } from '../../tests/lib/invariants.ts';
 import { makeStub, type Row } from '../../tests/lib/stub-db.js';
 import { h, reportSectionHashes, turnHashes, withoutStamps, playHash } from './hash.ts';
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM, START, type GameSpec } from './matrix.ts';
@@ -178,6 +180,14 @@ export async function playGame(
         .filter((l) => l['player_index'] === -1)
         .flatMap((l) => l['entries'] as LogEntry[]);
       const telemetry = DB['turn_events'].slice(nEvents);
+      const breaches = checkTurn({
+        before,
+        after: state,
+        gmLog: log,
+        telemetry,
+        players: DB['game_players'] ?? [],
+      });
+      if (breaches.length) throw fail('an invariant broke\n' + describeBreaches(`turn ${String(t)}`, breaches));
       const report = scripted && me ? (JSON.parse(String(me['turn_report'])) as Record<string, unknown>) : null;
       turns.push(turnHashes({ state, gmLog: log, telemetry, report }));
       gmLog.push(...log);
