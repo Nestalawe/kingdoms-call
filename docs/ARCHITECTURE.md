@@ -331,6 +331,11 @@ JavaScript files, quarantined tests and tests on `tests/lib/stub-db.js`. `tests/
 of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a
 dangerous path.
 
+The balance matrix (`npm run balance`, `tools/balance/`, P1-02a) measures engine changes: 60 seeded games played in
+the GM portal (48 all-bot, 12 with a realm whose orders the runner writes), each game's per-turn hashes and
+statistics compared with the committed baseline in `tests/balance/baseline/`, statistics paired by seed against the
+noise of a second seed set. It isn't part of `npm test`: about 20 s on 14 cores ([tests/README.md](../tests/README.md#the-balance-matrix)).
+
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
 (`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet, the static tests), the
 unit and scenario tests, the simulations, the page tests, the browser specs, and `db` (the access-rule tests and

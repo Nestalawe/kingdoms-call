@@ -15,7 +15,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "tsx tools/check.ts",
-    "ratchet": "tsx tools/ratchet.ts"
+    "ratchet": "tsx tools/ratchet.ts",
+    "balance": "tsx tools/balance/run.ts",
+    "balance:update": "tsx tools/balance/run.ts --update"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
