@@ -4,6 +4,6 @@
 // list (live and archived), a new game and its invites, a game in setup with its Turn 0 roster, an active game with its
 // orders, turn log, reported dispatches and settings, the auto-turn watcher, removing a player, archiving, the Stats tab
 // and its banners, changing the password, signing in and a page that can't start, as a GM and as the Overlord (tour:
-// lib/screens.js). Nothing may become markup or code, every handler still parses, and each name appears as typed. Then
-// the same in Chromium, where a broken image really fires its onerror.
+// lib/screens.js). Nothing may become markup or code, every handler still parses, and each name appears as typed. The
+// same in Chromium, where a broken image really fires its onerror: tests/browser/hostile-names.spec.ts.
 require('./lib/hostile').hostileTest('gmPortal');

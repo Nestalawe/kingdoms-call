@@ -1,4 +1,6 @@
 // Types for the parts of tests/lib/boot.js that TypeScript tests use. Add to them as tests need more.
+import type { Server } from 'node:http';
+import type { BrowserContext, Page } from '@playwright/test';
 
 /** A page's window as a test reaches it: run code in the page, read and set its globals. */
 export interface PageWindow {
@@ -29,3 +31,8 @@ export function seededRandom(seed: number | string): () => number;
 export function pinnedDate(RealDate: DateConstructor, now: number | string): DateConstructor;
 export const SITE: string;
 export const DB_VERSION: string;
+
+/** A static file server for Chromium: the folder as deployed. `url` is where it listens (http://127.0.0.1:<port>). */
+export function serve(dir?: string, port?: number): Promise<Server & { url: string }>;
+/** Answers supabase-js with `stubBody` (a script) and Google Fonts with nothing, in a Playwright page or context. */
+export function routeExternal(target: Page | BrowserContext, stubBody: string): Promise<void>;

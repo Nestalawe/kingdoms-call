@@ -1,21 +1,24 @@
 // The harness checks itself (P1-01b; plan "The harness, enforced, not remembered"). Fails if a setting that keeps the
-// tests honest is missing or weakened: the compiler flags, the lint rules' severities, no retries and no .only, the
-// test run's own checks, the Node pin, the Claude Code hooks and their stop limit, the dangerous paths, and the
-// ratchet. Every later step that adds a guarantee adds its check here. Level 1 (static): it reads settings files
-// and the counts, and runs nothing.
+// tests honest is missing or weakened: the compiler flags, the lint rules' severities, no retries and no .only (in
+// Vitest and in Playwright), the test runs' own checks, the Node pin, the Claude Code hooks and their stop limit, the
+// CI jobs and the required "ci" check, the dangerous paths, and the ratchet. Every later step that adds a guarantee
+// adds its check here. Level 1 (static): it reads settings files and the counts, and runs nothing.
 import fs from 'node:fs';
 import path from 'node:path';
 import { ESLint, type Linter } from 'eslint';
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
+import playwright from 'eslint-plugin-playwright';
 import tseslint from 'typescript-eslint';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 import config from '../../vitest.config.mts';
+import pwConfig from '../../playwright.config.ts';
 import dangerous from '../../.github/scripts/dangerous-paths.js';
 import { CHECK_LEVELS } from '../../tools/check.ts';
 import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
 import { BASELINE_FILE, compare, measure, readBaseline } from '../../tools/ratchet.ts';
+import { LEVELS } from '../suite.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const read = (f: string) => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -82,24 +85,44 @@ describe('the lint rules', () => {
   for (const c of [js.configs.recommended, ...tseslint.configs.strictTypeChecked]) Object.assign(expected, c.rules);
   const formatting = new Set(Object.keys(prettier.rules));
 
-  test.for(['tests/static/harness.test.ts', 'tools/check.ts', 'vitest.config.mts'])(
-    '%s gets the strict rules at full strength',
-    async (file) => {
-      expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
-      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
-      const weaker = Object.entries(expected)
-        .filter(([rule, v]) => !formatting.has(rule) && level(rules[rule]) < level(v))
-        .map(([rule]) => rule);
-      expect(weaker).toEqual([]);
-      expect(level(rules['@typescript-eslint/switch-exhaustiveness-check'])).toBe(2);
-    },
-  );
+  test.for([
+    'tests/static/harness.test.ts',
+    'tools/check.ts',
+    'vitest.config.mts',
+    'playwright.config.ts',
+    'tests/browser/x.spec.ts',
+    'tests/browser/third-party-requests.spec.ts',
+  ])('%s gets the strict rules at full strength', async (file) => {
+    expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
+    const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+    const weaker = Object.entries(expected)
+      .filter(([rule, v]) => !formatting.has(rule) && level(rules[rule]) < level(v))
+      .map(([rule]) => rule);
+    expect(weaker).toEqual([]);
+    expect(level(rules['@typescript-eslint/switch-exhaustiveness-check'])).toBe(2);
+  });
 
   test('a focused or skipped test is an error', async () => {
     const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'tests/static/x.test.ts'))) as Linter.Config)
       .rules;
     expect(level(rules?.['vitest/no-focused-tests'])).toBe(2);
     expect(level(rules?.['vitest/no-disabled-tests'])).toBe(2);
+  });
+
+  // Playwright's recommended rules at full strength in every spec, and a focused or skipped spec, or a fixed wait, an
+  // error. One spec may wait for the network to go quiet: that is its check (eslint.config.js).
+  test.for([
+    ['tests/browser/x.spec.ts', []],
+    ['tests/browser/third-party-requests.spec.ts', ['playwright/no-networkidle']],
+  ] as const)('%s: a focused or skipped spec, or a fixed wait, is an error', async ([file, allowedOff]) => {
+    const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+    for (const rule of ['playwright/no-focused-test', 'playwright/no-skipped-test', 'playwright/no-wait-for-timeout']) {
+      expect(level(rules[rule]), rule).toBe(2);
+    }
+    const weaker = Object.entries(playwright.configs['flat/recommended'].rules ?? {})
+      .filter(([rule, v]) => level(rules[rule]) < level(v))
+      .map(([rule]) => rule);
+    expect(weaker).toEqual(allowedOff);
   });
 });
 
@@ -137,6 +160,27 @@ describe('the test run', () => {
     ]) {
       expect(each, piece).toContain(piece);
     }
+  });
+});
+
+describe('the browser specs', () => {
+  test('no retries, no .only, the Node pin, a fixed time zone and locale, traces kept on failure', () => {
+    expect(pwConfig.retries).toBe(0);
+    expect(pwConfig.forbidOnly).toBe(true);
+    expect(pwConfig.testDir).toBe('tests/browser');
+    expect(pwConfig.globalSetup).toBe('./tests/setup/global.ts');
+    expect(pwConfig.use).toMatchObject({ timezoneId: 'UTC', locale: 'en-US', trace: 'retain-on-failure' });
+    expect(read('playwright.config.ts')).toContain('Object.assign(process.env, FIXED,');
+    // Projects could set their own retries or options: there are none.
+    expect(pwConfig.projects).toBeUndefined();
+  });
+
+  test('they open the site from site/ or $KC_SITE, never from a server that was already running', () => {
+    const ws = pwConfig.webServer;
+    expect(Array.isArray(ws)).toBe(false);
+    expect(ws && !Array.isArray(ws) ? ws.reuseExistingServer : undefined).toBe(false);
+    expect(ws && !Array.isArray(ws) ? ws.command : '').toContain('tests/browser/server.ts');
+    expect(read('tests/browser/server.ts')).toContain('serve(SITE, ');
   });
 });
 
@@ -223,6 +267,66 @@ describe('the Claude Code hooks', () => {
   });
 });
 
+describe('CI', () => {
+  // The jobs in ci.yml, read from its text (it keeps one layout: each job's id two spaces in, under "jobs:").
+  const ci = read('.github/workflows/ci.yml');
+  const jobs = new Map<string, string>();
+  for (const block of (ci.split(/^jobs:\n/m)[1] ?? '').split(/^(?= {2}[\w-]+:\n)/m)) {
+    const id = /^ {2}([\w-]+):\n/.exec(block)?.[1];
+    if (id) jobs.set(id, block);
+  }
+  const field = (id: string, key: string) => new RegExp(`^ {4}${key}: (.+)$`, 'm').exec(jobs.get(id) ?? '')?.[1];
+  const runs = (id: string) => [...(jobs.get(id) ?? '').matchAll(/^ +(?:- )?run: (.+)$/gm)].map((m) => m[1] ?? '');
+  const ids = [...jobs.keys()];
+
+  test('the required checks keep their names, ci and db', () => {
+    expect(field('ci', 'name')).toBe('ci');
+    expect(field('db', 'name')).toBe('db');
+  });
+
+  test('the static checks have their own job: type check, lint, format, ratchet and the static tests', () => {
+    expect(runs('static')).toEqual([
+      'npm ci',
+      'npm run typecheck',
+      'npm run lint',
+      'npm run format:check',
+      'npm run ratchet',
+      'npm test -- --project static',
+    ]);
+  });
+
+  test('every test level runs in exactly one job, and the browser specs in theirs', () => {
+    const tests = ids.flatMap((id) => runs(id).filter((r) => r.startsWith('npm test')));
+    for (const r of tests) expect(r).toMatch(/^npm test -- --project \w+( --project \w+)*$/);
+    const levels = tests.flatMap((r) => [...r.matchAll(/--project (\w+)/g)].map((m) => m[1]));
+    expect([...levels].sort()).toEqual([...LEVELS].sort());
+    expect(ids.filter((id) => runs(id).includes('npx playwright test'))).toEqual(['browser']);
+  });
+
+  test('ci needs every job but db, runs even when one failed, and passes only if all of them passed', () => {
+    const needs = /^ {4}needs: \[(.*)\]$/m.exec(jobs.get('ci') ?? '')?.[1]?.split(', ') ?? [];
+    expect([...needs].sort()).toEqual(ids.filter((id) => id !== 'ci' && id !== 'db').sort());
+    expect(field('ci', 'if')).toBe('always()');
+    expect(jobs.get('ci')).toContain(`length == ${String(needs.length)} and all(.[]; .result == "success")`);
+  });
+
+  test('no job lets a failure through, retries or repeats', () => {
+    for (const weak of ['continue-on-error', '|| true', '--retries', '--retry', '--repeat-each', '--bail', '--pass']) {
+      expect(ci, weak).not.toContain(weak);
+    }
+  });
+
+  test("the db job lints the database's functions and fails on any finding", () => {
+    expect(runs('db')).toContain('supabase db lint --local --level warning --fail-on warning');
+  });
+
+  test('deploy runs this workflow and publishes only when all of it passed', () => {
+    const deploy = read('.github/workflows/deploy.yml');
+    expect(deploy).toMatch(/^ {2}ci:\n {4}uses: \.\/\.github\/workflows\/ci\.yml$/m);
+    expect(deploy).toContain("needs.ci.result == 'success'");
+  });
+});
+
 describe('dangerous paths', () => {
   test('every harness file gets the warning', () => {
     const globs = dangerous.parsePaths(read('.github/dangerous-paths')) as string[];
@@ -240,6 +344,7 @@ describe('dangerous paths', () => {
       'package-lock.json',
       'tests/setup/each.ts',
       'tests/setup/global.ts',
+      'tests/setup/fixed.ts',
       'tests/legacy.test.ts',
       'tests/ratchet.json',
       'tests/static/harness.test.ts',

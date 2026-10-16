@@ -6,7 +6,7 @@
     "eslintDisable": 0,
     "stubDbTests": 79,
     "allowlistEntries": 1,
-    "javascriptFiles": 182,
+    "javascriptFiles": 176,
     "quarantinedTests": 4
   }
 }

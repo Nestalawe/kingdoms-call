@@ -84,7 +84,7 @@ column of `game_players`:
   - **Cope**, for an optional extra: it checks first and switches the feature off quietly
     ([traps.md](../docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), and its pull request has a
     page test where the stand-in database hides the new table or column (`__DB.hide(...)`, as
-    `tests/gm-messaging-boot.test.js` does).
+    `tests/browser/gm-messaging-boot.spec.ts` does).
   - **Declare**, when the page can't sensibly work without it (say, a permission the GM portal relies on to
     run turns): raise the page's `KC_DB_MIN` to that migration's version. On a database older than that, the
     page stops before its first read with "The game is being updated. Try again in a few minutes." and a

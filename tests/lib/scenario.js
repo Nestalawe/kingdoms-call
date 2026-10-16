@@ -9,7 +9,8 @@
 //
 // Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living
 // character not given orders Rests all turn. `inject` adds lines at exact anchors in the GM portal
-// (see tests/README.md, code-anchor hooks): each anchor must appear exactly once.
+// (see tests/README.md, code-anchor hooks): each anchor must appear exactly once. `seed` fixes the page's own
+// Math.random (bootJsdom's opts.seed); by default it comes from KC_SEED and how many pages this process has booted.
 const {readPage,bootJsdom}=require('./boot'); const {cannedStub}=require('./stub-db');
 
 async function bootScenario(opts={}){
@@ -19,7 +20,7 @@ async function bootScenario(opts={}){
     html=html.replace(a,()=>b);
   }
   let ROWS={}; const WRITES=[]; const errs=[];
-  const d=bootJsdom(html,{supabase:{createClient:()=>cannedStub({rows:()=>ROWS,writes:WRITES})},
+  const d=bootJsdom(html,{seed:opts.seed,supabase:{createClient:()=>cannedStub({rows:()=>ROWS,writes:WRITES})},
     setup(w){
       w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
       w.console.error=(...a)=>{ const t=a.map(String).join(' '); if(/Could not load|stub|fetch/i.test(t)) return; errs.push('console.error: '+t); };

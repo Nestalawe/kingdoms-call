@@ -3,20 +3,19 @@
 // in npm run test:quarantine.
 //
 // The same answer every time: Node pinned (tests/setup/global.ts), time zone and locale fixed, the seed fixed
-// (KC_SEED; the default below), no retries and no .only. A test that logs console.error fails
+// (KC_SEED; the default in tests/setup/fixed.ts), no retries and no .only. A test that logs console.error fails
 // (tests/setup/each.ts). The footer prints the seed and how to repeat each failure (tests/setup/reporter.ts).
 //
-// This file is .mts and imports only types from tests/: package.json has no "type" (the test scripts are CommonJS),
-// so this is how Node and Vite load the config as an ES module without warnings.
+// This file is .mts and imports only types and constants from tests/: package.json has no "type" (the test scripts
+// are CommonJS), so this is how Node and Vite load the config as an ES module without warnings.
 import os from 'node:os';
 import { defineConfig, type TestProjectInlineConfiguration } from 'vitest/config';
 import type { Level } from './tests/suite.ts';
+import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.ts';
 
 // The levels, slowest first so the longest script starts at once. tests/legacy.test.ts checks that they are the
 // levels in tests/suite.ts, so no script is left without a project to run it.
 const LEVELS: Level[] = ['page', 'simulation', 'scenario', 'unit', 'static'];
-const DEFAULT_SEED = '20261001';
-const FIXED = { TZ: 'UTC', LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8' };
 // Set here as well as in `env`, so the worker processes start with them (the locale is read at start-up).
 Object.assign(process.env, FIXED, { KC_SEED: process.env['KC_SEED'] || DEFAULT_SEED });
 // How many test scripts run at once: up to one per core in each of two projects at a time (more only overloads the

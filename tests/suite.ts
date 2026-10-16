@@ -187,12 +187,6 @@ export function suite(full: boolean): Script[] {
       'tests/fuzz-advance-masking.test.js',
       full ? [GM, '6', '20', '6', '20000'] : [GM, '3', '10', '5', '4000'],
     ],
-    ['page', 'chromium-boot', 'tests/chromium-boot.test.js'],
-    ['page', 'third-party-requests', 'tests/third-party-requests.test.js'],
-    ['page', 'orders-buttons-visible', 'tests/orders-buttons-visible.test.js'],
-    ['page', 'map-fits-panel', 'tests/map-fits-panel.test.js'],
-    ['page', 'dispatches-badge', 'tests/dispatches-badge.test.js'],
-    ['page', 'gm-messaging-boot', 'tests/gm-messaging-boot.test.js'],
   ];
   return rows.map(([level, name, file, args = [], env = {}]) => ({ level, name, file, args, env }));
 }
