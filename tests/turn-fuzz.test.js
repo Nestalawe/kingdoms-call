@@ -1,7 +1,7 @@
 // Engine fuzz (2026-09-27): whole games run end to end through runTurn, with random human orders
 // and live bots, against the in-memory Supabase. Expect 0 page errors, 0 failed runs, and every
 // turn to keep the invariants (lib/invariants.ts, P1-04b), among them orders_submitted cleared
-// (the runaway-turn guard).
+// (the runaway-turn guard), and the human realms' reports to pass the leak check (lib/report-leaks.ts).
 // The same KC_SEED plays the same games (P1-04a): the page's clock is pinned (some ids are made from
 // it), and the games are in manual turn mode, so the auto-turn watcher neither reads the clock nor
 // runs a turn by itself at a moment that depends on load.
@@ -91,10 +91,12 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
       if(thrown) crashes.push(`G${gi} T${before} host-throw: ${thrown}`);
       if(res&&res.ok===false){ failedRuns++; crashes.push(`G${gi} T${before} run failed: ${res.error}`); }
       if(errs.length) crashes.push(`G${gi} T${before} page error: ${errs[0].split('\n').slice(0,2).join(' | ')}`);
-      // the invariants, on the state the turn started from and the one it saved
+      // the invariants and the leak check, on the state the turn started from, the one it saved and its reports
+      const rows=S.DB.turn_logs.slice(nLogs);
       const broke=checkTurn({before:live,after:JSON.parse(S.DB.games[0].game_state),
-        gmLog:S.DB.turn_logs.slice(nLogs).filter(l=>l.player_index===-1).flatMap(l=>l.entries),
-        telemetry:S.DB.turn_events.slice(nEvents),players:S.DB.game_players});
+        gmLog:rows.filter(l=>l.player_index===-1).flatMap(l=>l.entries),
+        telemetry:S.DB.turn_events.slice(nEvents),players:S.DB.game_players,
+        reports:rows.filter(l=>l.player_index>=0).map(l=>({realm:l.player_index,report:l.entries}))});
       if(broke.length){ breaches+=broke.length; crashes.push(describeBreaches(`G${gi} T${before} invariant`,broke)); }
     }
     process.stdout.write(`\r  games ${gi+1}/${GAMES} · turns ${totalTurns} · issues ${crashes.length}   `);

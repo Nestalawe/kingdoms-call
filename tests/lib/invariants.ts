@@ -3,8 +3,11 @@
 // game_players rows. They only read. turn-fuzz and the balance matrix (tools/balance/play.ts) run them after every
 // turn; a breach fails that game. Each has a unit test with a made-up turn that breaks it (unit/invariants.test.ts).
 //
+// checkTurn also runs the report-leak check (report-leaks.ts, P1-04c) on the turn's reports, where the harness has them.
+//
 // Test code until P1-05 makes src/. The balance code imports it, so it is an engine path (tools/balance/engine-paths.ts):
 // a change to it plays the matrix.
+import { LEAK_CHECKS, type RealmReport } from './report-leaks.ts';
 
 /** An item, held by a character or in a lair's hoard. */
 export interface Item {
@@ -14,12 +17,16 @@ export interface Item {
 export interface Character {
   id?: unknown;
   name?: unknown;
+  player?: unknown;
   alive?: unknown;
   hp?: unknown;
   maxHp?: unknown;
   location?: unknown;
   armies?: unknown[];
   items?: Item[];
+  /** The turn the character cast Invisibility, and the turn a Charm seized them. */
+  _invisTurn?: unknown;
+  _charmedTurn?: unknown;
 }
 export interface Province {
   id?: unknown;
@@ -30,9 +37,20 @@ export interface Mercenary {
   unitName?: unknown;
   location?: unknown;
 }
+/** A realm in the saved state. */
+export interface Realm {
+  name?: unknown;
+  /** The realms this one has met. */
+  _encountered?: unknown[];
+  /** The character it watches by Clairvoyance this turn. */
+  _clairCharThisTurn?: unknown;
+}
 /** The saved game_state, as far as the checks read it. */
 export interface SavedState {
+  turn?: unknown;
+  gameOver?: unknown;
   world: { provinces: Province[] };
+  players?: Realm[];
   characters: Character[];
   mercenaries?: Mercenary[];
   _awardedItems?: unknown[];
@@ -43,6 +61,9 @@ export interface LogEntry {
   text?: unknown;
   charId?: unknown;
   phase?: unknown;
+  /** The realm whose action it is, and the realms it is addressed to. */
+  actor?: unknown;
+  targets?: unknown;
   [key: string]: unknown;
 }
 /** A telemetry row (turn_events), as far as the checks read it: who died, and in which phase. */
@@ -66,6 +87,8 @@ export interface Turn {
   telemetry: TelemetryRow[];
   /** Every realm's game_players row, read after the run. */
   players: PlayerRow[];
+  /** The realms' reports the turn wrote (none in an all-bot game). */
+  reports?: RealmReport[];
 }
 export interface Breach {
   check: string;
@@ -239,20 +262,44 @@ export const INVARIANTS: readonly { name: string; check: (t: Turn) => string[] }
 ];
 
 /** Breaches known on main, each let through, in exactly this form, until its fix lands (Theo, 2026-10-17: no engine
- *  fixes during the refactor). Each fix is parked in the plan's STATUS; its pull request removes the entry. `line`
- *  matches one line of what broke. */
+ *  fixes during the refactor; the leak check's three, the same day). Each fix is parked in the plan's STATUS; its pull
+ *  request removes the entry. `line` matches one line of what broke. */
 export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string }[] = [
   {
     check: 'no NaN or undefined',
     line: /^GM log line \d+: "⚑FORCE⚑\{"name":"[^"()]+ \(undefined\)","color":null,"neutral":true,"guard":false,"role":"defender",/,
     why: "A hero with no realm defends a province: the battle header's realm name is undefined (the GM portal's defender forceMarker)",
   },
+  {
+    check: 'an unmet realm',
+    line: /^realm \d+ hasn't met realm \d+, but its report names it at intel\[\d+\]: "[^"():]+ \([a-z ]+\): controlled by [^",.:;]+\."$/,
+    why: "A province the realm once visited names its owner now, met or not (buildTurnReport's province intelligence; R-046)",
+  },
+  {
+    check: 'an unseen hero',
+    line: /^realm \d+ reads of [^"]+ \(id \d+, invisible from phase \d\) in phase \d+, in a line of its own order, at lastTurnLog\[\d+\]: "[^"]*"(?: \(and \d+ more lines like it that phase\))?$/,
+    why: "Enemy orders and reactions still reach a hero after he turns invisible (the Defend ambush, Encounter and Pursue, a chase under way, Spy on a hero, Steal, Curse: they check cloaks and Vanish, not Invisibility), and the acting realm's report tells it so",
+  },
+  {
+    check: 'an unseen hero',
+    line: /^realm \d+ sees [^"]+ \(id \d+, invisible from phase \d\) at ownedProvinces\[\d+\]\.characters\[\d+\]$/,
+    why: "The list of the heroes in a realm's own provinces skips the sight rule (buildTurnReport's ownedProvinces)",
+  },
 ];
 const known = (check: string, line: string) => KNOWN_BREACHES.some((k) => k.check === check && k.line.test(line));
 
-/** Every invariant `turn` breaks, less the KNOWN_BREACHES; [] when it keeps them all. */
+/** Every invariant and leak check `turn` breaks, less the KNOWN_BREACHES; [] when it keeps them all. */
 export function checkTurn(turn: Turn): Breach[] {
-  return INVARIANTS.flatMap(({ name, check }) => {
+  return run([...INVARIANTS, ...LEAK_CHECKS], turn);
+}
+
+/** The leak checks alone, for a harness without the turn's telemetry or game_players rows (report-privacy). */
+export function checkLeaks(turn: Turn): Breach[] {
+  return run(LEAK_CHECKS, turn);
+}
+
+function run(checks: readonly { name: string; check: (t: Turn) => string[] }[], turn: Turn): Breach[] {
+  return checks.flatMap(({ name, check }) => {
     const what = check(turn).filter((line) => !known(name, line));
     if (!what.length) return [];
     const more = what.length - MAX_LISTED;
