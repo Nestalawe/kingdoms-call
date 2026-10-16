@@ -1,6 +1,6 @@
 // Boot check: every page in site/ starts under jsdom (data file inlined, Supabase stubbed with an
 // empty database) without an uncaught error, an unhandled rejection or a console.error.
-// The real-browser boot of the three portal pages is chromium-boot.test.js.
+// The real-browser boot of the three portal pages is tests/browser/chromium-boot.spec.ts.
 const fs=require('fs');
 const {SITE,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 

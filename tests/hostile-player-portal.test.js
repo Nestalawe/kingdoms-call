@@ -9,6 +9,6 @@
 // the map (its icon buttons, and the popup of every kind of province, on the page and in full screen) and Dispatches
 // (every conversation, a new one, earlier dispatches, a report or a dispatch refused, a realm that is out, the table
 // missing, no one to write to) (tour: lib/screens.js). Nothing may become markup or code, every handler still parses,
-// and each name appears as typed. Then the same in Chromium, where a broken image
-// really fires its onerror.
+// and each name appears as typed. The same in Chromium, where a broken image
+// really fires its onerror: tests/browser/hostile-names.spec.ts.
 require('./lib/hostile').hostileTest('playerPortal');

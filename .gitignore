@@ -11,3 +11,6 @@ node_modules/
 plan/
 # Vitest's coverage report (npm test -- --coverage).
 coverage/
+# Playwright Test's output: the traces of failing browser specs, and its report.
+test-results/
+playwright-report/

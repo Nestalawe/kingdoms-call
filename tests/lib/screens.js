@@ -831,23 +831,24 @@ async function runJsdom(tour,mode,W,visit,{site=SITE}={}){
   return errs;
 }
 
-// The same in Chromium (Playwright `browser`), with the site served from one folder as deployed. visit(label, page).
-async function runChromium(browser,tour,mode,W,visit,{site=SITE}={}){
+// The same in Chromium (Playwright `browser`), with the site served from one folder as deployed: `url`, a server that
+// is already serving it (the browser specs' own), or else a server of `site` started here. visit(label, page).
+async function runChromium(browser,tour,mode,W,visit,{site=SITE,url}={}){
   const m=tour.modes[mode], errs=[];
-  const srv=await serve(site);
+  const srv=url?null:await serve(site);
   const ctx=await browser.newContext();
   await routeExternal(ctx,tour.browserSupabase(W,m));
   const p=await ctx.newPage();
   p.on('pageerror',e=>errs.push(String(e.message||e)));
   p.on('console',x=>{ if(x.type()==='error'&&!/Failed to load resource/.test(x.text())) errs.push('console: '+x.text()); });
-  await p.goto(srv.url+'/'+tour.page+m.url,{waitUntil:'load'});
+  await p.goto((url||srv.url)+'/'+tour.page+m.url,{waitUntil:'load'});
   await p.waitForTimeout(Math.max(600,tour.bootWait||0));
   for(const [label,code] of tour.steps(W,m)){
     try{ if(code) await p.evaluate(code); }catch(e){ errs.push(`${label}: ${e.message}`); }
     await p.waitForTimeout(300);   // long enough for a broken <img src=x> to fail and fire its onerror
     await visit(label,p);
   }
-  await ctx.close(); srv.close();
+  await ctx.close(); if(srv) srv.close();
   return errs;
 }
 

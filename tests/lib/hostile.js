@@ -8,7 +8,8 @@
 //                     typed: the one change players can see). Used to show a converted page looks the same.
 //   inspect(doc)      what a screen got wrong: a value that became an element (<img onerror>, <svg onload>, <b>, a
 //                     <script>), a value that became code in a handler, or a handler that no longer parses.
-// jsdom never loads images, so onerror never fires there; window.__kcPwned is only a real check in Chromium.
+// jsdom never loads images, so onerror never fires there; window.__kcPwned is only a real check in Chromium: the same
+// tours with hostile names in Chromium are tests/browser/hostile-names.spec.ts.
 const acorn=require('acorn');
 
 const PAYLOADS=[
@@ -61,19 +62,20 @@ function inspect(doc){
   return out;
 }
 
-// One page's hostile-name test: every mode and screen of its tour (lib/screens.js) with hostile names, in jsdom (nothing
-// becomes markup or code, no handler breaks, every staged name appears as text exactly as typed) and in Chromium
-// (window.__kcPwned stays unset, with images really loading and failing). Exits the process with the result.
+// One page's hostile-name test: every mode and screen of its tour (lib/screens.js) with hostile names, in jsdom: nothing
+// becomes markup or code, no handler breaks, every staged name appears as text exactly as typed. Exits the process
+// with the result. Its Chromium half (window.__kcPwned stays unset, with images really loading and failing) is
+// tests/browser/hostile-names.spec.ts (P1-01c).
 async function hostileTest(tourName){
-  const {TOURS,runJsdom,runChromium}=require('./screens');
+  const {TOURS,runJsdom}=require('./screens');
   const tour=TOURS[tourName], W=tour.world(names('hostile'));
   let fails=0;
   const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };
   const seen=new Set(), want=tour.shown(W).filter(Boolean);
   // A page that can't start (a mode with bootError) must say so; every other mode runs with no page error at all.
-  const checkErrors=(mode,errs,where)=>tour.modes[mode].bootError
-    ?check(errs.length>0,`${where}${tour.page} (${mode}): the page fails to start, as staged`)
-    :check(!errs.length,`${where}${tour.page} (${mode}): no page errors`+(errs.length?': '+errs[0].split('\n')[0]:''));
+  const checkErrors=(mode,errs)=>tour.modes[mode].bootError
+    ?check(errs.length>0,`${tour.page} (${mode}): the page fails to start, as staged`)
+    :check(!errs.length,`${tour.page} (${mode}): no page errors`+(errs.length?': '+errs[0].split('\n')[0]:''));
   for(const mode of Object.keys(tour.modes)){
     const errs=await runJsdom(tour,mode,W,(label,doc,w)=>{
       const problems=inspect(doc);
@@ -82,21 +84,10 @@ async function hostileTest(tourName){
       const text=doc.body.textContent;
       want.forEach(s=>{ if(text.includes(s)) seen.add(s); });
     });
-    checkErrors(mode,errs,'');
+    checkErrors(mode,errs);
   }
   const missing=want.filter(s=>!seen.has(s));
   check(!missing.length,`${tour.page}: each of the ${want.length} staged names appears somewhere, exactly as typed`+(missing.length?`; not found: ${missing.map(s=>s.split(' ')[0]).join(', ')}`:''));
-  const {chromium}=require('playwright');
-  const browser=await chromium.launch();
-  for(const mode of Object.keys(tour.modes)){
-    const errs=await runChromium(browser,tour,mode,W,async(label,p)=>{
-      // cleared after each screen, so a failure names the screen that set it
-      const r=await p.evaluate(()=>{ const pwned=!!window.__kcPwned; window.__kcPwned=undefined; return {pwned,made:document.querySelectorAll('img[onerror],svg[onload],[data-kc-bold]').length}; });
-      check(!r.pwned&&!r.made,`Chromium: ${tour.page} (${mode}) ${label}: names show as text`+(r.pwned?' (window.__kcPwned was set)':'')+(r.made?` (${r.made} element(s) made from a name)`:''));
-    });
-    checkErrors(mode,errs,'Chromium: ');
-  }
-  await browser.close();
   console.log(fails?`\nFAILURES: ${fails}`:'\n0 failures');
   process.exit(fails?1:0);
 }

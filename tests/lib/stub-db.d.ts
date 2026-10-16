@@ -11,3 +11,17 @@ export interface Stub {
 }
 
 export function makeStub(): Stub;
+
+/** Each stand-in as a script for Chromium (addInitScript, or routeExternal's supabase-js answer). `messaging` also
+ *  gives the page window.__DB, to stage rows and inject dispatches. */
+export const browserSource: { messaging: string; null: string };
+
+/** The browser stand-in's handle (browserSource.messaging): window.__DB. */
+export interface BrowserDB {
+  db: Record<string, Row[]>;
+  reset(): void;
+  hide(table: string): void;
+  show(table: string): void;
+  /** A dispatch written by somebody else, straight into the table. Gives its id. */
+  inject(message: Row): number;
+}

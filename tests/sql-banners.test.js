@@ -1,7 +1,7 @@
 // SQL banners check: since P0-17 the database changes only through migrations (supabase/), applied by the
 // deploy pipeline, so the GM portal no longer carries SQL for the GM to paste into Supabase. Static
 // (nothing runs): the GM portal holds no KC_*_SQL string, no "SQL Editor" instruction and no paste box.
-// A missing table is still reported, as a plain error message (checked in gm-messaging-boot).
+// A missing table is still reported, as a plain error message (checked in tests/browser/gm-messaging-boot.spec.ts).
 // Reads site/ (or $KC_SITE).
 const fs=require('fs'), path=require('path');
 const {SITE}=require('./lib/boot');

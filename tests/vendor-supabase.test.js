@@ -4,7 +4,8 @@
 //   - no page loads a script from another site, or writes one in with document.write;
 //   - every page that creates the database client loads that file, before the script that uses it;
 //   - docs/ARCHITECTURE.md names the same version and the file's SHA-256, so an edited or swapped copy is caught.
-// The real-browser side (which requests a page makes) is third-party-requests.test.js. Reads site/ (or $KC_SITE).
+// The real-browser side (which requests a page makes) is tests/browser/third-party-requests.spec.ts. Reads site/
+// (or $KC_SITE).
 const fs=require('fs'), path=require('path'), crypto=require('crypto');
 const {SITE}=require('./lib/boot');
 

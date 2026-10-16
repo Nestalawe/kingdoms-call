@@ -3,5 +3,5 @@
 // or a GM can store in a recorded game is a payload (lib/hostile.js); the public board, GM mode, the Overlord, failing
 // saves and an unreadable table are each shown, every tab, every game opened and edited, and a player renamed
 // (tour: lib/screens.js). Nothing may become markup or code, every handler still parses, and each name appears as typed.
-// Then the same in Chromium, where a broken image really fires its onerror.
+// The same in Chromium, where a broken image really fires its onerror: tests/browser/hostile-names.spec.ts.
 require('./lib/hostile').hostileTest('leaderboard');
