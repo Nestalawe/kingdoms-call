@@ -9,6 +9,8 @@ export interface Turn<S = unknown, X = unknown> {
   log: { text?: unknown; type?: unknown; phase?: unknown; charId?: unknown; [key: string]: unknown }[];
   /** The turn's statistics rows (turn_events, one per realm), with bootScenario({telemetry:true}). */
   events: unknown[];
+  /** Each human realm's turn report, by its index, as the player portal receives it. */
+  reports: Record<number, Record<string, unknown>>;
   /** What `prepare` returned. */
   extra: X;
   text(charId?: number): string;
@@ -30,6 +32,8 @@ export interface TurnOptions<S, X> {
   /** A realm's alignment and race, by index (a realm not named keeps the one it was dealt). */
   alignments?: string[];
   races?: string[];
+  /** The realms left to the bots, by index (every other realm is human-held). */
+  bots?: number[];
   /** Edits the fresh world before the turn; what it returns is the turn's `extra`. */
   prepare?: (S: S, W: ScenarioWindow) => X;
   /** Each character's five orders, by id; every other character Rests. */
