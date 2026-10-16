@@ -1,7 +1,7 @@
 // The harness checks itself (P1-01b; plan "The harness, enforced, not remembered"). Fails if a setting that keeps the
 // tests honest is missing or weakened: the compiler flags, the lint rules' severities, no retries and no .only (in
 // Vitest and in Playwright), the test runs' own checks, the Node pin, the Claude Code hooks and their stop limit, the
-// CI jobs and the required "ci" check, the dangerous paths, and the ratchet. Every later step that adds a guarantee
+// CI jobs and the required "ci" check, the balance job and its engine paths, the dangerous paths, and the ratchet. Every later step that adds a guarantee
 // adds its check here. Level 1 (static): it reads settings files and the counts, and runs nothing.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,8 +16,10 @@ import config from '../../vitest.config.mts';
 import pwConfig from '../../playwright.config.ts';
 import dangerous from '../../.github/scripts/dangerous-paths.js';
 import { CHECK_LEVELS } from '../../tools/check.ts';
+import { ENGINE_PATHS } from '../../tools/balance/engine-paths.ts';
 import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
 import { BASELINE_FILE, compare, measure, readBaseline } from '../../tools/ratchet.ts';
+import { pageFiles } from '../lib/boot.js';
 import { LEVELS } from '../suite.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
@@ -310,6 +312,46 @@ describe('CI', () => {
     expect(jobs.get('ci')).toContain(`length == ${String(needs.length)} and all(.[]; .result == "success")`);
   });
 
+  test('pull requests run CI again when a label is added or removed (the refactor-only check)', () => {
+    expect(ci).toMatch(/^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, labeled, unlabeled\]\n/m);
+  });
+
+  test('the balance job decides first, in plain Node, and plays the matrix only when an engine path changed', () => {
+    const job = jobs.get('balance') ?? '';
+    expect(runs('balance')).toEqual(['node tools/balance/engine-paths.ts', 'npm ci', 'npm run balance']);
+    // The two steps after the decision run only on its play=true, and nothing else is skipped.
+    expect(job.match(/^ {6}- if: (.+)$/gm)).toEqual([
+      "      - if: steps.engine.outputs.play == 'true'",
+      "      - if: steps.engine.outputs.play == 'true'",
+    ]);
+    expect(job).toMatch(/^ {6}- id: engine\n {8}run: node tools\/balance\/engine-paths\.ts\n/m);
+    // The commit to compare with: a pull request's base is HEAD^1 of its merge commit; a push's is the commit before.
+    expect(job).toMatch(/^ {10}fetch-depth: 2$/m);
+    expect(job).toContain('EVENT: ${{ github.event_name }}');
+    expect(job).toContain('BEFORE: ${{ github.event.before }}');
+    expect(job).toContain("REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}");
+  });
+
+  // The plan's list (P1-02, Decisions): the GM portal and every script its page loads, the balance code and its
+  // baselines, and the test helpers the balance code imports.
+  test('the engine paths are the ones the plan lists, and the runner uses the same list', () => {
+    const page = pageFiles('kingdoms-call-gm-portal.html').map((f) => 'site/' + path.basename(f));
+    const dir = path.join(ROOT, 'tools', 'balance');
+    const helpers = fs
+      .readdirSync(dir)
+      .flatMap((f) => [
+        ...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '\.\.\/\.\.\/(tests\/lib\/[^']+)'/g),
+      ])
+      .map((m) => m[1] ?? '');
+    expect(page).toContain('site/kingdoms-call-data.js');
+    expect([...ENGINE_PATHS].sort()).toEqual(
+      [...new Set([...page, 'tools/balance/**', 'tests/balance/**', ...helpers])].sort(),
+    );
+    const runner = read('tools/balance/run.ts');
+    expect(runner).toMatch(/^import \{[^}]*\bisEnginePath\b[^}]*\} from '\.\/engine-paths\.ts';$/m);
+    expect(runner).toContain('pageFiles(');
+  });
+
   test('no job lets a failure through, retries or repeats', () => {
     for (const weak of ['continue-on-error', '|| true', '--retries', '--retry', '--repeat-each', '--bail', '--pass']) {
       expect(ci, weak).not.toContain(weak);
@@ -349,6 +391,8 @@ describe('dangerous paths', () => {
       'tests/ratchet.json',
       'tests/static/harness.test.ts',
       'tests/balance/matrix.test.ts',
+      'tools/balance/run.ts',
+      'tools/balance/engine-paths.ts',
       'tools/hooks/after-edit.ts',
       'tools/hooks/before-stop.ts',
       'tools/check.ts',
@@ -356,6 +400,13 @@ describe('dangerous paths', () => {
       '.github/workflows/ci.yml',
     ];
     expect(harness.filter((f) => !dangerous.isDangerous(f, globs))).toEqual([]);
+  });
+
+  test("the balance baselines are checked by CI's balance job, so a change to play isn't flagged for its data", () => {
+    const globs = dangerous.parsePaths(read('.github/dangerous-paths')) as string[];
+    for (const f of ['tests/balance/baseline/matrix.json', 'tests/balance/baseline/noise.json']) {
+      expect(dangerous.isDangerous(f, globs), f).toBe(false);
+    }
   });
 });
 

@@ -25,8 +25,10 @@ package.json
 package-lock.json
 
 # The test harness: the Claude Code hooks and settings, the tool settings, the Node pin, the test run's own
-# checks, the ratchet and the harness's self-test (P1-01b). Loosening any of them should be seen. Some files
-# don't exist yet (dependency-cruiser, knip, the balance matrix): listed so they're covered from the start.
+# checks, the ratchet, the harness's self-test (P1-01b) and the balance matrix's code (P1-02). Loosening any of
+# them should be seen. Some files don't exist yet (dependency-cruiser, knip): listed so they're covered from the
+# start. The balance baselines (tests/balance/baseline/) aren't listed: CI's balance job checks them, so a pull
+# request that changes play isn't flagged for its data.
 .claude/**
 tsconfig*.json
 vitest.config.*
@@ -40,7 +42,8 @@ tests/setup/**
 tests/legacy.test.ts
 tests/ratchet.json
 tests/static/harness.test.ts
-tests/balance/**
+tests/balance/*.ts
+tools/balance/**
 tools/hooks/**
 tools/check.*
 tools/ratchet.*

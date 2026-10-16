@@ -6,12 +6,15 @@
 // Options (after `--`): --set B (play the noise set and compare its statistics), --jobs N (games side by side; default
 // one per core), --only id,id (some games; no baseline check of the scripted cases), --out FILE (also write this run
 // in the baseline's form, e.g. to compare two runs). KC_SITE plays another copy of the site.
-// Not part of npm test or npm run check: it takes about 20 s on 14 cores, too slow for every edit.
+// Not part of npm test or npm run check: it takes about 20 s on 14 cores, too slow for every edit. CI's balance job runs
+// it when an engine path changed (engine-paths.ts); it stops first if its page loads a file that isn't on that list,
+// because CI wouldn't play the matrix when that file changed.
 import { fork } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { pageFiles, SITE } from '../../tests/lib/boot.js';
 import {
   BASELINE_FILE,
   diffGame,
@@ -21,6 +24,7 @@ import {
   writeBaseline,
   type KeptGame,
 } from './baseline.ts';
+import { isEnginePath } from './engine-paths.ts';
 import { matrix, type GameSpec, type SeedSet } from './matrix.ts';
 import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
 import { CASE_NAMES, type GameResult } from './play.ts';
@@ -87,6 +91,12 @@ export function describeChanges(group: string, changes: Change[]): string[] {
   );
 }
 
+/** The files the matrix's page loads (the GM portal and its scripts) that aren't engine paths, as git names them. */
+export const unlistedPageFiles = (): string[] =>
+  pageFiles('kingdoms-call-gm-portal.html')
+    .map((f) => 'site/' + path.relative(SITE, f).split(path.sep).join('/'))
+    .filter((f) => !isEnginePath(f));
+
 async function main(): Promise<number> {
   const { values } = parseArgs({
     options: {
@@ -101,6 +111,13 @@ async function main(): Promise<number> {
   const sets: SeedSet[] = values.update ? ['A', 'B'] : [values.set === 'B' ? 'B' : 'A'];
   const only = values.only?.split(',');
   let failed = false;
+  const unlisted = unlistedPageFiles();
+  if (unlisted.length) {
+    console.log(
+      `The matrix's page loads files that aren't engine paths, so CI wouldn't play it when they change: ${unlisted.join(', ')}. Add them to tools/balance/engine-paths.ts.`,
+    );
+    return 1;
+  }
 
   for (const set of sets) {
     const games = matrix(set).filter((g) => !only || only.includes(g.id));
