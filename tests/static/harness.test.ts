@@ -23,6 +23,7 @@ const pkg = JSON.parse(read('package.json')) as {
   scripts: Record<string, string>;
   engines?: { node?: string };
   packageManager?: string;
+  devDependencies?: Record<string, string>;
 };
 
 describe('the compiler', () => {
@@ -149,6 +150,11 @@ describe('the Node pin', () => {
     const global = read('tests/setup/global.ts');
     expect(global).toContain("'.nvmrc'");
     expect(global).toContain('process.version !== pinned');
+  });
+
+  test("Node's types are for the pinned Node, so code can't use what that Node lacks", () => {
+    const major = read('.nvmrc').trim().split('.')[0];
+    expect(pkg.devDependencies?.['@types/node']).toMatch(new RegExp(`^${major ?? ''}\\.\\d+\\.\\d+$`));
   });
 
   test('every workflow that sets up Node takes the version from .nvmrc', () => {
