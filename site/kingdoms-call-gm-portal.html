@@ -9305,6 +9305,14 @@ function botRecruitableTypes(prov, G, cmdr){
   const mobile=all.filter(t=>(ARMY_SPEED_MASTER[t]||3)>=2);
   return mobile.length?mobile:all;
 }
+function botUpkeep(G, pi){
+  let w=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return; w+=(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2)); }); });
+  // Sept 2026: garrison units draw wages too (the engine bills them alongside field armies) — the
+  // solvency guard must see them now that bots garrison every province.
+  (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi)(p.garrisonArmies||[]).forEach(a=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return; w+=(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2)); }); });
+  (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi&&!c.isKing) w+=(c.pay||0); });   // hero wages are real wages too
+  return w;
+}
 function botTaxIncome(G, pi){
   let inc=0; (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi) inc+=(p.tax||0); }); return inc;
 }
@@ -13560,15 +13568,6 @@ function applyPendingSynthPlan(G, hero, pi){
   if(!p) return false;
   hero.encounterPlan=p.plan;
   return true;
-}
-
-function botUpkeep(G, pi){
-  let w=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return; w+=(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2)); }); });
-  // Sept 2026: garrison units draw wages too (the engine bills them alongside field armies) — the
-  // solvency guard must see them now that bots garrison every province.
-  (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi)(p.garrisonArmies||[]).forEach(a=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return; w+=(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2)); }); });
-  (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi&&!c.isKing) w+=(c.pay||0); });   // hero wages are real wages too
-  return w;
 }
 
 async function runTurn(opts){
@@ -22188,7 +22187,7 @@ const BATTLE_ARMY_SPELLS={
           if(_prPayAfter>_prPayBefore) log('hire',`💰 ${c.name}'s growing renown raises their wage to ${_prPayAfter}g/turn (was ${_prPayBefore}g/turn).`,{actor:c.player,targets:[c.player]}); // 2026-09-21: practice raised the wage silently
         } else {
           c._practiceFailStreak={turn:G.turn,n:_streak+1}; // the next practice this turn is ×1.2 likelier
-          log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no measurable progress this season. ${fmtRoll(_prPct,_prRoll)}${bonusReason?` ${bonusReason}.`:''}${pupilNote?` ${pupilNote.slice(3)}.`:''}`,{actor:c.player,targets:[c.player]});
+          log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no real progress this season. ${fmtRoll(_prPct,_prRoll)}${bonusReason?` ${bonusReason}.`:''}${pupilNote?` ${pupilNote.slice(3)}.`:''}`,{actor:c.player,targets:[c.player]});
         }
 
         } // end !_practiceMaxed
