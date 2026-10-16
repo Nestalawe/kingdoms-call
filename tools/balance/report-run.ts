@@ -26,6 +26,7 @@ import {
   type FirstDiff,
 } from './report.ts';
 import { playAll } from './run.ts';
+import { withSiteAt } from './sides.ts';
 
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 << 20 });
 
@@ -79,44 +80,37 @@ async function main(): Promise<number> {
       const spec = specs.get(r.id);
       return spec ? [{ spec, untilTurn: r.turn }] : [];
     });
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-balance-base-'));
-    try {
-      const tar = path.join(dir, 'site.tar');
-      git('archive', '--format=tar', '-o', tar, values.base, 'site');
-      execFileSync('tar', ['-xf', tar, '-C', dir]);
-      const [onBase, onHead] = await Promise.all([
-        playAll(jobsFor, Math.max(1, Math.floor(jobs / 2)), path.join(dir, 'site')),
+    const [onBase, onHead] = await withSiteAt(values.base, (site) =>
+      Promise.all([
+        playAll(jobsFor, Math.max(1, Math.floor(jobs / 2)), site),
         playAll(jobsFor, Math.max(1, Math.ceil(jobs / 2))),
-      ]);
-      const baseById = byId(base);
-      const headById = byId(head);
-      const results = (r: { results: GameResult[] }) => new Map(r.results.map((g) => [g.id, g]));
-      const [rb, rh] = [results(onBase), results(onHead)];
-      for (const e of [...onBase.errors, ...onHead.errors])
-        replayNotes.push(`A replay failed: ${e.split('\n')[0] ?? e}`);
-      for (const { id, turn } of replays) {
-        const b = rb.get(id);
-        const h = rh.get(id);
-        if (!b || !h) continue;
-        // Each replay must match its own side's games up to that turn, or its log isn't the one that was hashed.
-        const same = (r: GameResult, g: KeptGame | undefined) =>
-          g != null && r.turns.join() === g.turns.slice(0, r.turns.length).join();
-        if (!same(b, baseById.get(id)) || !same(h, headById.get(id))) {
-          replayNotes.push(
-            `${id}: its replay didn't match its baseline, so its first difference isn't shown (does this pull request change the balance runner?).`,
-          );
-          continue;
-        }
-        // A side whose game was over before that turn has no log for it.
-        const log = (r: GameResult) => (r.turns.length === turn ? (r.log ?? []) : []);
-        firstDiffs.push(firstDifference(id, turn, log(b), log(h)));
+      ]),
+    );
+    const baseById = byId(base);
+    const headById = byId(head);
+    const results = (r: { results: GameResult[] }) => new Map(r.results.map((g) => [g.id, g]));
+    const [rb, rh] = [results(onBase), results(onHead)];
+    for (const e of [...onBase.errors, ...onHead.errors]) replayNotes.push(`A replay failed: ${e.split('\n')[0] ?? e}`);
+    for (const { id, turn } of replays) {
+      const b = rb.get(id);
+      const h = rh.get(id);
+      if (!b || !h) continue;
+      // Each replay must match its own side's games up to that turn, or its log isn't the one that was hashed.
+      const same = (r: GameResult, g: KeptGame | undefined) =>
+        g != null && r.turns.join() === g.turns.slice(0, r.turns.length).join();
+      if (!same(b, baseById.get(id)) || !same(h, headById.get(id))) {
+        replayNotes.push(
+          `${id}: its replay didn't match its baseline, so its first difference isn't shown (does this pull request change the balance runner?).`,
+        );
+        continue;
       }
-      console.log(
-        `Replayed ${String(replays.length)} changed game(s) on both sides in ${((performance.now() - t0) / 1000).toFixed(1)} s.`,
-      );
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
+      // A side whose game was over before that turn has no log for it.
+      const log = (r: GameResult) => (r.turns.length === turn ? (r.log ?? []) : []);
+      firstDiffs.push(firstDifference(id, turn, log(b), log(h)));
     }
+    console.log(
+      `Replayed ${String(replays.length)} changed game(s) on both sides in ${((performance.now() - t0) / 1000).toFixed(1)} s.`,
+    );
   }
 
   const report = buildReport({ base, head, firstDiffs, replayNotes, baselineStale });

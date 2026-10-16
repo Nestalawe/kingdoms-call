@@ -9,7 +9,6 @@
 // Not part of npm test or npm run check: it takes about 20 s on 14 cores, too slow for every edit. CI's balance job runs
 // it when an engine path changed (engine-paths.ts); it stops first if its page loads a file that isn't on that list,
 // because CI wouldn't play the matrix when that file changed.
-import { fork } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -28,6 +27,7 @@ import { matrix, type GameSpec, type SeedSet } from './matrix.ts';
 import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
 import { CASE_NAMES, type GameResult } from './play.ts';
 import { show, showDiff, showRange } from './report.ts';
+import { forkPool } from './sides.ts';
 import type { Job, Reply } from './worker.ts';
 
 const WORKER = path.join(import.meta.dirname, 'worker.ts');
@@ -43,36 +43,10 @@ export async function playAll(
   const queue = [...all].sort((a, b) => b.spec.realms - a.spec.realms); // the longest first, so none starts last
   const done = new Map<string, GameResult>();
   const errors: string[] = [];
-  const n = Math.max(1, Math.min(jobs, all.length));
-  const env = site ? { ...process.env, KC_SITE: site } : process.env;
-  await Promise.all(
-    Array.from(
-      { length: n },
-      () =>
-        new Promise<void>((resolve, reject) => {
-          const child = fork(WORKER, {
-            execArgv: ['--import', 'tsx'],
-            env,
-            stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
-          });
-          const next = () => {
-            const job = queue.shift();
-            if (job) child.send(job);
-            else child.disconnect();
-          };
-          child.on('message', (r: Reply) => {
-            if (r.ok) done.set(r.result.id, r.result);
-            else errors.push(`${r.id}: ${r.error}`);
-            next();
-          });
-          child.on('exit', (code) => {
-            if (code) reject(new Error(`a balance worker stopped (exit ${String(code)})`));
-            else resolve();
-          });
-          next();
-        }),
-    ),
-  );
+  for (const r of await forkPool<Reply>(WORKER, queue, jobs, site)) {
+    if (r.ok) done.set(r.result.id, r.result);
+    else errors.push(`${r.id}: ${r.error}`);
+  }
   return { results: all.flatMap((g) => done.get(g.spec.id) ?? []), errors };
 }
 
