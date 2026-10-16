@@ -308,15 +308,18 @@ footer says which pull request and commit is on staging, linking to the pull req
 
 ## Tests
 
-`npm test` boots the real pages in jsdom (and Chromium where needed) against an in-memory Supabase
-stand-in, with a seeded `Math.random` (and, where a test asks, a pinned clock). It runs whole all-bot games
-through the real `runTurn`. [tests/README.md](../tests/README.md) lists every test, its level and its origin.
+`npm test` boots the real pages in jsdom against an in-memory Supabase stand-in, with a seeded `Math.random` (and,
+where a test asks, a pinned clock). It runs whole all-bot games through the real `runTurn`. What only a real browser
+shows (layout, which requests a page makes, an image's onerror really firing) is in the browser specs:
+`npx playwright test` opens the pages in Chromium, served from one folder as deployed.
+[tests/README.md](../tests/README.md) lists every test, its level and its origin.
 
 The tools are the standard ones (P1-01): Vitest runs every test, one project per level (`vitest.config.mts`);
-TypeScript checks the new files strictly (`npm run typecheck`, `tsconfig.json`); ESLint with typescript-eslint
-lints them (`npm run lint`, `eslint.config.js`); Prettier formats them (`npm run format`). Node is pinned exactly
-(`.nvmrc`, `engine-strict` in `.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). The
-site itself still has no build step.
+Playwright Test runs the browser specs in `tests/browser/` (`playwright.config.ts`); TypeScript checks the new files
+strictly (`npm run typecheck`, `tsconfig.json`); ESLint with typescript-eslint lints them (`npm run lint`,
+`eslint.config.js`); Prettier formats them (`npm run format`). Node is pinned exactly (`.nvmrc`, `engine-strict` in
+`.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). The site itself still has no build
+step.
 
 The harness runs itself (P1-01b). Claude Code hooks, committed in `.claude/settings.json`, check each edited file
 (`tools/hooks/after-edit.ts`: type check, ESLint, Prettier, about 1 s) and run `npm run check` before an agent may
@@ -327,3 +330,9 @@ since the test scripts load `site/` by file name and `vitest related` can't foll
 JavaScript files, quarantined tests and tests on `tests/lib/stub-db.js`. `tests/static/harness.test.ts` fails if any
 of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a
 dangerous path.
+
+CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
+(`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet, the static tests), the
+unit and scenario tests, the simulations, the page tests, the browser specs, and `db` (the access-rule tests and
+`supabase db lint`, which checks the database's functions). The job named `ci` passes only when every job but `db`
+passed; `ci` and `db` are the checks `main` requires. `deploy.yml` runs the same workflow before it publishes.

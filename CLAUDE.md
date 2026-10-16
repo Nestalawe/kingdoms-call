@@ -27,10 +27,10 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 |---|---|
 | `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js`, `kc-config.js` (which database the site talks to), `kc-db-guard.js` (the database version guard), `kc-safe.js` (`kcHtml`/`kcEsc`, the one way a page builds HTML: [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html)), `kc-staging-footer.js` (on staging, the footer names the PR), `vendor/` (supabase-js, served with the site: [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
-| `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
-| `vitest.config.mts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, strict TypeScript, lint, formatting, the exact Node version, the Claude Code hooks |
+| `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `browser/*.spec.ts` (browser specs: Playwright Test, Chromium), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
+| `vitest.config.mts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, browser specs, strict TypeScript, lint, formatting, the exact Node version, the Claude Code hooks |
 | `tools/` | `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
-| `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
+| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js`, `.github/pull_request_template.md` | The dangerous-paths list and the warning's logic (see below); the PR template (fill in every section) |
 | `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
 
@@ -40,21 +40,22 @@ Node exactly as in `.nvmrc` (24.22.0): `npm ci` and `npm test` refuse any other.
 
 ```sh
 npm ci && npx playwright install chromium   # once
-npm test                                    # Vitest: every test, by level, side by side (about a minute); CI runs the same
+npm test                                    # Vitest: every test, by level, side by side (about 30 s); CI runs each level in its own job
+npx playwright test                         # the browser specs (tests/browser/) in Chromium, about 20 s; not part of npm test
 npm run check                               # the quick check of what you changed, about 20 s (parts: typecheck, lint, format:check, ratchet)
 npm run test:full                           # bigger fuzz runs
 npm run test:quarantine                     # quarantined harnesses (expected to fail)
 npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
 KC_SEED=123 KC_JOBS=1 npm test              # another seed, one test at a time; the footer says how to repeat a failure
 node tests/<name>.test.js                   # one test script on its own: unseeded, its own default sizes
-KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs)
+KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs); npx playwright test too
 npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
 ```
 
 **The checks run themselves** (hooks in `.claude/settings.json`): each edit is type-checked, linted and format-checked,
 and you can't finish while `npm run check` fails (after three tries, say "`npm run check` still fails: tell Theo").
-Before every push run `npm test`, and the access-rule tests too when `supabase/` changes: all green. New tests are
-TypeScript Vitest tests in `tests/<level>/` ([tests/README.md](tests/README.md)).
+Before every push run `npm test` and `npx playwright test` (and the access-rule tests when `supabase/` changes): all
+green. New tests are TypeScript, in `tests/<level>/` or `tests/browser/` ([tests/README.md](tests/README.md)).
 
 ## How work arrives
 
@@ -89,21 +90,20 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   adds or removes a random draw shifts every draw after it. If a test passes only on some seeds,
   restructure it into clear determinism (stage the state directly, or make the odds overwhelming).
   Never fix it with retries, loops, re-runs, re-seeding or a seed that happens to pass.
-- **Never "fix" a test to make it pass**, and never edit a quarantined test to pass. If a test fails
-  on the current build for a reason outside your change, quarantine it in its own commit: move it to
-  `tests/quarantine/`, take its line out of `tests/suite.ts`, and give the one-line reason as the
-  file's first line and in `tests/README.md`. It comes back, in its own PR, only once the reason no
-  longer applies (e.g. Toby confirms the behaviour the test should expect); updating it to that
-  confirmed behaviour is fine, loosening it until it passes is not.
+- **Never "fix" a test to make it pass**, and never edit a quarantined test to pass. If a test fails on the current
+  build for a reason outside your change, quarantine it in its own commit: move it to `tests/quarantine/` (a test
+  script's line leaves `tests/suite.ts`) and give the one-line reason as the file's first line and in
+  `tests/README.md`. It comes back, in its own PR, only once the reason no longer applies (e.g. Toby confirms what the
+  test should expect); updating it to that confirmed behaviour is fine, loosening it until it passes is not.
 - Tests use synthetic, seeded data only. No test, fixture or CI job may read the live database.
 
 **Changes**
 - **One concern per PR.** Never mix a refactor with a behaviour change. A bug found while refactoring
   becomes its own PR (or its own item in a batch).
-- **Design forks go to Toby:** numbered options, a recommendation, and a short example from inside the
-  game. Don't invent rules. When he rules, add the ruling in the same PR as
-  `docs/rulings/R-NNN-name.md` plus its index row ([how](docs/rulings/README.md#adding-a-ruling)), and
-  name the test that enforces it. Rulings go there and nowhere else.
+- **Design forks go to Toby:** numbered options, a recommendation, and a short example from inside the game. Don't
+  invent rules. When he rules, add it in the same PR as `docs/rulings/R-NNN-name.md` plus its index row
+  ([how](docs/rulings/README.md#adding-a-ruling)), and name the test that enforces it. Rulings go there and nowhere
+  else.
 - **Mirror rule changes everywhere a rule is restated** (engine, player-portal projections,
   rulebooks, blurbs): [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice).
 - **Data file changes bump the stamps:** [traps.md](docs/traps.md#the-data-file-stamp-guard).

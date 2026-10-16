@@ -13,7 +13,7 @@ a Hall of Fame and two rulebooks. Live at <https://nestalawe.github.io/kingdoms-
 
 Only `site/` is published, so page addresses don't change.
 
-Every pull request runs `npm test` and the database's access-rule tests in GitHub Actions
+Every pull request runs `npm test`, the browser specs and the database's checks in GitHub Actions
 (`.github/workflows/ci.yml`). Merging to `main` runs the tests again and, if they pass, publishes `site/` to
 GitHub Pages (`.github/workflows/deploy.yml`). If the merge brings a database change, it's applied to the
 live database once Toby approves, before the site is published
@@ -35,14 +35,17 @@ You need exactly the Node version in `.nvmrc` (Node 24); `npm ci` and `npm test`
 
 ```sh
 npm ci                              # install the test tools (exact versions, from package-lock.json)
-npx playwright install chromium     # once per machine: the headless browser some tests use
-npm test                            # the standard run, about a minute
+npx playwright install chromium     # once per machine: the headless browser the browser specs use
+npm test                            # the standard run, about 30 s
+npx playwright test                 # the browser specs, in Chromium, about 20 s
 npm run test:full                   # bigger fuzz runs
 ```
 
 `npm test` (Vitest) checks that every script in every page parses, that every page starts without errors,
 plays a few short all-bot games with a fixed seed, and runs every kept test. It prints the seed, and for
-each failed test the command that repeats it.
+each failed test the command that repeats it. `npx playwright test` (Playwright Test) opens the pages in a
+real browser for what only a browser shows: layout, the requests a page makes, and names that must never
+run as code.
 
 The tests use made-up games and an in-memory stand-in for the database. They never connect to the
 live game.

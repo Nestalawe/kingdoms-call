@@ -1,7 +1,8 @@
 # Tests
 
 ```sh
-npm test                    # every test, by level (about a minute)
+npm test                    # every test, by level (about 30 s)
+npx playwright test         # the browser specs, in Chromium (about 20 s): see "Browser specs" below
 npm run check               # the quick check of what this branch changes (about 20 s; the Stop hook runs it)
 npm run ratchet             # the counts in ratchet.json: none may rise
 npm run test:full           # bigger fuzz runs
@@ -12,13 +13,16 @@ KC_JOBS=1 npm test          # one test at a time (default: up to one per core in
 KC_SEED=123 npm test        # another seed (the default, 20261001, is set in vitest.config.mts)
 KC_SEED=123 npm test -- -t "^concede$"   # repeat one failure exactly (same seed and sizes): the footer prints this
 node tests/<name>.test.js   # one test script on its own (unseeded, its own default sizes)
+npx playwright test -g "map"           # only browser specs whose name matches "map"
+npx playwright show-trace test-results/<spec>/trace.zip   # step through a failed spec (kept on failure)
 ```
 
 `npm test` is [Vitest](https://vitest.dev) (`vitest.config.mts`, P1-01a). It has one project per level: `static`,
 `unit`, `scenario`, `simulation` and `page` (the levels are [below](#the-tests)).
 
-- **New tests** are TypeScript Vitest tests in `tests/<level>/`, e.g. `tests/page/deterministic-boot.test.ts`.
-  Types for the parts of `lib/` they use are in `lib/*.d.ts`.
+- **New tests** are TypeScript Vitest tests in `tests/<level>/`, e.g. `tests/page/deterministic-boot.test.ts`, or,
+  for what only a real browser shows, browser specs in `tests/browser/` ([below](#browser-specs)). Types for the parts
+  of `lib/` they use are in `lib/*.d.ts`.
 - **The test scripts** (`*.test.js`, written before Vitest) are listed in `suite.ts`, each with its level; a script
   that checks at more than one level sits at its highest. `legacy.test.ts` runs each one as a Vitest test in its own
   Node process, with the same arguments and environment as before; it passes when the script exits 0, and a failure
@@ -36,12 +40,39 @@ node tests/<name>.test.js   # one test script on its own (unseeded, its own defa
   this branch changes, the ratchet, then the tests. When only TypeScript under `tests/` or `tools/` changed, it runs
   the tests that import those files (`vitest related`). Anything else (the site, a test script, `setup/`, a config,
   the docs) runs every level but page, because `vitest related` can't see what the test scripts load: each runs in
-  its own process and reads `site/` by file name. Page runs in CI. Claude Code runs the check before an agent
+  its own process and reads `site/` by file name. Page and the browser specs run in CI. Claude Code runs the check before an agent
   finishes, and the type check, ESLint and Prettier after each edit (`.claude/settings.json`, `tools/hooks/`).
 - **The ratchet** (`npm run ratchet`, `tools/ratchet.ts`): counts of `@ts-nocheck`, `@ts-ignore` and
   `@ts-expect-error`, `eslint-disable`, allowlist entries (`html-lint`'s `ALLOWED`), JavaScript files, quarantined
   tests and test files that load `lib/stub-db.js` may not rise above `ratchet.json`. When one falls, lower it in the
   same PR (`npm run ratchet -- --update` only lowers). `harness` runs the same comparison, so `npm test` fails too.
+- **In CI** (`.github/workflows/ci.yml`, P1-01c) each part runs in its own job, side by side: the static checks
+  (type check, lint, format, ratchet and the `static` level), `unit` and `scenario`, `simulation`, `page`, the browser
+  specs, and `db`. The job named `ci` passes only when all but `db` passed; `ci` and `db` are the required checks.
+
+## Browser specs
+
+`npx playwright test` is [Playwright Test](https://playwright.dev) (`playwright.config.ts`, P1-01c). It runs the
+specs in `tests/browser/*.spec.ts` in Chromium: what only a real browser shows (layout, the requests a page makes, a
+broken image's `onerror` really firing). They are not part of `npm test`.
+
+- **The site is served from one folder, as deployed**, by `browser/server.ts` (`lib/boot.js`'s `serve`), which
+  Playwright starts on port 4173: `site/`, or the copy in `KC_SITE` (`KC_SITE=/tmp/broken-site npx playwright test`).
+  A server already on the port is never reused. Specs open pages by path (`page.goto('/kingdoms-call-gm-portal.html')`)
+  and answer supabase-js with a stand-in (`routeExternal`, `lib/stub-db.js`'s `browserSource`).
+- **The same answer every time**, as in Vitest: the Node check (`setup/global.ts`), the time zone and locale
+  (`setup/fixed.ts`, in Node and in the browser), `KC_SEED` with the same default. No retries, and a `.only` fails
+  the run. A failing spec keeps its trace in `test-results/` (in CI, the run's `playwright-traces` download).
+- **Wait for what happens, never a fixed time.** ESLint makes `waitForTimeout` an error in the specs, as well as a
+  focused or skipped spec (`eslint-plugin-playwright`). A spec waits for the page to finish starting
+  (`browser/started.ts`: the last thing each page's own start-up does), and checks with `expect.poll` or web-first
+  assertions, which retry until they pass or time out. Where a check is "it happens promptly", the poll's timeout is
+  that time (`dispatches-badge`). Code a spec runs inside the page is passed as text when it uses the page's own
+  globals, exactly as the test scripts had it.
+- **The specs from the test scripts** (P1-01c) check what the scripts checked, no more and no less. Each script's
+  checks became one spec's `expect`s; a fixed wait became a wait for the event it stood for. The hostile-name tests
+  were split: the jsdom half stays a test script (`hostile-*.test.js`), the Chromium half is `hostile-names.spec.ts`,
+  one test per page and mode.
 
 ## How the tests reach the site
 
@@ -49,7 +80,7 @@ node tests/<name>.test.js   # one test script on its own (unseeded, its own defa
   - `readPage` returns the page with `kingdoms-call-data.js` inlined and the supabase-js tag removed;
   - `bootJsdom` boots it in jsdom;
   - `serve` and `routeExternal` do the same for Chromium (Playwright): the pages are served from one
-    folder, as deployed; `vendor/supabase-js-*.js` gets a stub and the fonts get nothing.
+    folder, as deployed (`browser/server.ts`); `vendor/supabase-js-*.js` gets a stub and the fonts get nothing.
   - every stand-in database answers `rpc('kc_db_version')` with `DB_VERSION`, the newest migration in
     `supabase/migrations/`, so pages pass their database version guard (P0-34). `bootJsdom`'s
     `opts.dbVersion` sets another answer (an older version, `null` for a missing function, `'offline'`, or a
@@ -61,10 +92,12 @@ node tests/<name>.test.js   # one test script on its own (unseeded, its own defa
 - **`lib/pc-hooks.js`** hands back personal-combat functions nested inside `runTurn` (`pcAct`, `pcMonsterCombatant`, …): it boots the GM portal with the `  // 4. Run all 5 phases` hook, runs one turn of a small bot world and returns the functions, a living character to build heroes from and the guardian table; `pinned` fixes `Math.random` for one call.
 - **`lib/hostile.js`** and **`lib/screens.js`** are the hostile-name harness (P0-19). `screens.js` has one tour per
   page: a staged world whose player-chosen strings come from `names(kind)`, the page's modes (who is looking) and its
-  screens, run in jsdom (`runJsdom`) or Chromium (`runChromium`) against any copy of the site. `hostile.js` gives the
+  screens, run in jsdom (`runJsdom`) or Chromium (`runChromium`, given a browser and a server's address, or a folder
+  to serve) against any copy of the site. `hostile.js` gives the
   names (`'hostile'`: every payload at once, with the field's name in front; `'ordinary'`: apostrophes, accents and
   hyphens) and `inspect(document)`, which finds a value that became an element or code, or a handler that no longer
-  parses. `hostileTest(tour)` is a page's whole hostile-name test. Converting a page to `kcHtml` adds its tour. A tour
+  parses. `hostileTest(tour)` is a page's hostile-name test in jsdom; `browser/hostile-names.spec.ts` is the same in
+  Chromium. Converting a page to `kcHtml` adds its tour. A tour
   may give its page longer to start (`bootWait`), and a mode with `bootError` is a page that can't start: its error is
   expected, and its screen is the boot-failure message. In jsdom, a promise the page leaves rejected is a page error (jsdom
   doesn't fire `unhandledrejection`, so Node would otherwise end the test). A step may hold the page's own short timers:
@@ -90,9 +123,10 @@ node tests/<name>.test.js   # one test script on its own (unseeded, its own defa
   repeat with the same seed. A page's clock (`Date`) is pinned only when a test asks: `bootJsdom(html, {seed,
   now})` gives the page its own seed and a clock that starts at `now` and moves on 1 ms at each reading, so a turn
   run that way is byte-identical every time (`deterministic-boot`). Otherwise runs are repeatable in practice but
-  not guaranteed byte-identical. The Chromium tests are not seeded.
-- **`KC_SITE=<folder>`** points every test at another copy of the site, e.g. a deliberately broken
-  one to prove a check fails.
+  not guaranteed byte-identical. Pages opened in Chromium are not seeded; a browser spec's own jsdom turn is
+  (`map-fits-panel` gives its page the seed the script's got).
+- **`KC_SITE=<folder>`** points every test, and the browser specs' server, at another copy of the site, e.g. a
+  deliberately broken one to prove a check fails.
 
 ## The tests
 
@@ -156,10 +190,10 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `eliminated-report` | new | 2 | ✅ pass | The turn report tells a realm it is out (P0-25, R-075): after a real turn, an extinguished realm's own report has `kingdom.eliminated`, a conceded one `kingdom.conceded` (and not `eliminated`), a realm still in the game neither |
 | `overlord-page` | new | 4 | ✅ pass | The Overlord page (P0-32f, R-097): signed out, the sign-in form and nothing read; anyone but the Overlord sees "This page is for the Overlord" and nothing is read but that check (a failed check says so); the Overlord sees every account (searchable), and Offer GM / Withdraw offer call `gm_offer` / `gm_withdraw_offer`; Revoke GM lists the account's unfinished games with Hand over to… (other Game Masters only) and stays disabled until none is left, then calls `gm_revoke`; every game with its GM, status, turn mode, Hand over (`reassign_game`) and a link to it in the GM portal, read with light columns; every game's reported dispatches with realm names, and Delete; a refusal shows the database's reason; everything people wrote is shown as text |
 | `overlord-suspend-delete` | new | 4 | ✅ pass | Suspending and deleting accounts on the Overlord page (P0-32h, R-097): the page says an open session lasts up to an hour; each account but the Overlord's has Suspend (a day, a week, until lifted) and Delete…, a suspended one says until when and has Lift suspension; Suspend and Lift call `account_suspend` (with the end chosen, none for until lifted) and `account_unsuspend`; Delete… says what goes and what stays and deletes (`account_delete`) only once the account's email is typed; a refusal shows why and the account stays; a GM with an unfinished game is told to hand it over first; what people wrote is shown as text |
-| `hostile-overlord` | new | 4 | ✅ pass | Hostile names on the Overlord page (P0-19): every name, email, game and realm name, dispatch and report reason is a payload (`lib/hostile.js`); the page, its search and its Revoke and Delete panels (`lib/screens.js`) show them as text, in jsdom and in Chromium |
-| `hostile-leaderboard` | new | 4 | ✅ pass | Hostile names on the Hall of Fame (P0-19): every value a player or a GM can store in a recorded game is a payload; every tab, every game opened and edited, a failing save, a rename and an unreadable table, as the public, a GM and the Overlord, show them as text, in jsdom and in Chromium |
-| `hostile-gm-portal` | new | 4 | ✅ pass | Hostile names on the GM portal (P0-19): every string a player or a GM can store (names, game names, a player's chosen king and realm, invite codes, the saved turn log with its battle lines and bold, reported dispatches and reasons, the statistics' realms, orders and records) and every database error a screen shows is a payload; the game list, a new game and its invites, a game in setup and its Turn 0 roster, an active game (orders, turn log, reported dispatches, settings, removing a player, archiving, a failed turn), the auto-turn watcher, the Stats tab and its banners, the Hall of Fame rebuild, changing the password, signing in and a page that can't start, as a GM and as the Overlord, show them as text, in jsdom and in Chromium |
-| `hostile-player-portal` | new | 4 | ✅ pass | Hostile names on the player portal (P0-19): every string a player or a GM can store (display names, game names, realm, king and hero names, unit names, dispatches, battle cries and parting words, title holders) and the turn number a card shows are payloads, and so are the engine's strings in the saved report and every database error a screen shows; signing in and registering, a page that can't start, My Games (the orders tally, the deadline, an unread dispatch, a game it can't read, archived games), the Game Master offer, open games (public and invited), the join form (from a game's card: the skill picker and its descriptions, every refusal, joined, joining twice), the display name and the password, and the turn report (the realm, characters, provinces, intelligence, other forces, lairs, discoveries, diplomacy with and without its controls, titles and the Reckoning in each state, the game decided) with its Chronicle (bold, tinted names, folded battles, dispatches, intelligence, title reports, the game-end lines), a past turn's older saved report and a past turn with none, and the orders (a saved draft with its hire, raise and charm cards, every order each hero and each card can be given with its target field, each realm's own order, spell targets, the encounter plan's pickers, the heir's panel, the research choice, submitting in each outcome, the orders as submitted, a draft from an older turn; order Details are payloads too), the map (its icon buttons, and the popup of every kind of province: three of the player's own, a rival's seen now, one remembered, one on the border, one whose tier the popup doesn't name, and one in full screen) and Dispatches (every conversation, a new one, earlier dispatches, a report or a dispatch refused, a realm that has conceded or is blocked, the table missing, no one to write to; the turn a dispatch was sent in is a payload too), show them as text, in jsdom and in Chromium |
+| `hostile-overlord` | new | 4 | ✅ pass | Hostile names on the Overlord page (P0-19): every name, email, game and realm name, dispatch and report reason is a payload (`lib/hostile.js`); the page, its search and its Revoke and Delete panels (`lib/screens.js`) show them as text, in jsdom (in Chromium: the browser spec `hostile-names`) |
+| `hostile-leaderboard` | new | 4 | ✅ pass | Hostile names on the Hall of Fame (P0-19): every value a player or a GM can store in a recorded game is a payload; every tab, every game opened and edited, a failing save, a rename and an unreadable table, as the public, a GM and the Overlord, show them as text, in jsdom (in Chromium: the browser spec `hostile-names`) |
+| `hostile-gm-portal` | new | 4 | ✅ pass | Hostile names on the GM portal (P0-19): every string a player or a GM can store (names, game names, a player's chosen king and realm, invite codes, the saved turn log with its battle lines and bold, reported dispatches and reasons, the statistics' realms, orders and records) and every database error a screen shows is a payload; the game list, a new game and its invites, a game in setup and its Turn 0 roster, an active game (orders, turn log, reported dispatches, settings, removing a player, archiving, a failed turn), the auto-turn watcher, the Stats tab and its banners, the Hall of Fame rebuild, changing the password, signing in and a page that can't start, as a GM and as the Overlord, show them as text, in jsdom (in Chromium: the browser spec `hostile-names`) |
+| `hostile-player-portal` | new | 4 | ✅ pass | Hostile names on the player portal (P0-19): every string a player or a GM can store (display names, game names, realm, king and hero names, unit names, dispatches, battle cries and parting words, title holders) and the turn number a card shows are payloads, and so are the engine's strings in the saved report and every database error a screen shows; signing in and registering, a page that can't start, My Games (the orders tally, the deadline, an unread dispatch, a game it can't read, archived games), the Game Master offer, open games (public and invited), the join form (from a game's card: the skill picker and its descriptions, every refusal, joined, joining twice), the display name and the password, and the turn report (the realm, characters, provinces, intelligence, other forces, lairs, discoveries, diplomacy with and without its controls, titles and the Reckoning in each state, the game decided) with its Chronicle (bold, tinted names, folded battles, dispatches, intelligence, title reports, the game-end lines), a past turn's older saved report and a past turn with none, and the orders (a saved draft with its hire, raise and charm cards, every order each hero and each card can be given with its target field, each realm's own order, spell targets, the encounter plan's pickers, the heir's panel, the research choice, submitting in each outcome, the orders as submitted, a draft from an older turn; order Details are payloads too), the map (its icon buttons, and the popup of every kind of province: three of the player's own, a rival's seen now, one remembered, one on the border, one whose tier the popup doesn't name, and one in full screen) and Dispatches (every conversation, a new one, earlier dispatches, a report or a dispatch refused, a realm that has conceded or is blocked, the table missing, no one to write to; the turn a dispatch was sent in is a payload too), show them as text, in jsdom (in Chromium: the browser spec `hostile-names`) |
 | `master-gm-mode` | new | 4 | ✅ pass | Master GM mode in the GM portal (P0-32g, R-097): signed in as the Overlord, every game (grouped by GM, filtered by game or GM name), no New Game, the automatic watcher never starts and nothing is run or saved, the sign-in backfills write nothing; opening another GM's game with orders missing shows Run turn now (a GM still waits), and Run turn now resolves another GM's two-bot game in the stand-in database; Stats names every game; `?game=<id>` opens a game for the Overlord, not for a GM; a GM's portal is as before |
 | `meta-missing-turn` | new | 2 | ✅ pass | With the `games.meta` column hidden in the in-memory database, the GM portal notices, says so, and a turn still resolves and saves without writing it. The example to copy for site code that must cope without its database change ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)) |
 | `turn-fuzz` | `claude_turnfuzz_0927.js` | 3 | ✅ pass | Whole games through `runTurn` with random orders and live bots: no crash, failed run or stuck "orders submitted" flag. 4 games × 6 turns (full: 16 × 12) |
@@ -265,18 +299,24 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `report-privacy` | `claude_reportleak_0927.js` | 3 | ✅ pass | No realm's private report line reaches a second realm, over all-bot games |
 | `fuzz-wages-combat` | `claude_fuzz_0927c.js` | 3 | ✅ pass | All-bot turns and personal combat: no crash, no NaN/undefined in the narrative; Orc wage discount stays a whole, non-negative number |
 | `fuzz-advance-masking` | `claude_fuzz_0927d.js` | 3 | ✅ pass | Advance-and-strike combat, masking of unmet realms, archive round-trip |
-| `chromium-boot` | `claude_lb_chromium_0927.js` | 4 | ✅ pass | GM portal, player portal and Hall of Fame boot in real Chromium; links and footers present |
-| `third-party-requests` | new | 4 | ✅ pass | Every page, opened in Chromium with the real vendored supabase-js and no database, asks no other site for anything but Google Fonts; on the pages that use the database the library loads from `vendor/` (P0-18). Level 4: only a real browser shows which requests a page makes |
-| `orders-buttons-visible` | new | 4 | ✅ pass | In real Chromium, Save Draft and Submit Orders stay on screen over a long orders form, at the top and part-way down, on desktop windows and a phone |
-| `map-fits-panel` | new | 4 | ✅ pass | In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row |
-| `dispatches-badge` | new | 4 | ✅ pass | In real Chromium, the unread count on the left panel's ✉ Dispatches tab appears as soon as the player switches view (Map → Report) or comes back to the browser tab, and clears once Dispatches is opened |
-| `gm-messaging-boot` | `claude_msg_gm_boot_0927.js` | 4 | ✅ pass | GM portal boots; while the dispatches tables are missing, a plain error message (no SQL to paste, since P0-17) appears, and it goes once they exist; deleting a game clears its dispatches first |
-| `harness` | new | 0 | ✅ pass | The harness checks itself (P1-01b): every strict compiler flag is on; the shared lint rules are at full strength on TypeScript files, `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; Node is pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow), and Node's types (`@types/node`) are for that Node's major; the Claude Code hooks run after Edit and Write and before stopping, block at most three times in a row, and `.claude/` is closed to agents' edits; every harness file is a dangerous path; no ratchet count has risen. TypeScript, in `static/` |
+| `harness` | new | 0 | ✅ pass | The harness checks itself (P1-01b): every strict compiler flag is on; the shared lint rules are at full strength on TypeScript files, `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; Node is pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow), and Node's types (`@types/node`) are for that Node's major; the Claude Code hooks run after Edit and Write and before stopping, block at most three times in a row, and `.claude/` is closed to agents' edits; the browser specs have no retries, no `.only`, the Node check, a fixed time zone and locale, traces on failure, and a server of `site/` or `KC_SITE` that is never one already running, and in the specs a focused or skipped spec or a fixed wait is an error, with Playwright's recommended rules at full strength (one spec may wait for the network to go quiet); CI runs the static checks in their own job, every level and the browser specs in exactly one job each, with no retries or ignored failures, `ci` and `db` keep their names, `ci` needs every job but `db` and fails unless all passed, `db` lints the database's functions, and deploy waits for the whole run (P1-01c); every harness file is a dangerous path; no ratchet count has risen. TypeScript, in `static/` |
 | `deterministic-boot` | new | 4 | ✅ pass | The GM portal booted twice with the same seed and clock (`bootJsdom`'s `seed` and `now`) plays one all-bot turn the same, byte for byte: the saved world, every realm's report, the turn's log and events; a third run with another seed plays it differently (P1-01a). Level 4: the turn runs inside the booted page, on the page's own clock. TypeScript, in `page/` |
 | `quarantine/dispatches-e2e` | `claude_msg_e2e_0927.js` | 4 | ⏸ quarantined | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
 | `quarantine/one-source` | `claude_onesource_0927.js` (+ `claude_onesource_manifest_0927.json`) | 4 | ⏸ quarantined | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |
 | `quarantine/one-source-chromium` | `claude_chromium_onesource_0927.js` | 4 | ⏸ quarantined | The "good" and "missing data file" cases pass; the "stale data file" case needs the same pre-refactor build |
 | `quarantine/set-scan` | `claude_setscan_0927.js` | 0 | ⏸ quarantined | Report-only: always exits 0. On today's build it lists 40 suspect `Set`/array mix-ups, mostly the same name used in different places. The two `Set`-with-`.includes()` hits were checked by hand and are false positives. Needs triage before it can gate |
+
+**Browser specs** (`tests/browser/`, `npx playwright test`; level 4). The first six were test scripts until P1-01c.
+
+| Spec | From | Level | Status | Checks |
+|---|---|---|---|---|
+| `chromium-boot.spec.ts` | `claude_lb_chromium_0927.js`, then `chromium-boot.test.js` | 4 | ✅ pass | GM portal, player portal and Hall of Fame boot in real Chromium with no page errors; their links are present, and so are the GM portal's leaderboard functions and the Hall of Fame's tabs, empty-board message and filters. (The script's optional footer-stamp argument, never given in `npm test`, wasn't brought over.) |
+| `third-party-requests.spec.ts` | `third-party-requests.test.js` (new) | 4 | ✅ pass | Every page, opened in Chromium with the real vendored supabase-js and no database, asks no other site for anything but Google Fonts; on the pages that use the database the library loads from `vendor/` (P0-18). Level 4: only a real browser shows which requests a page makes |
+| `orders-buttons-visible.spec.ts` | `orders-buttons-visible.test.js` (new) | 4 | ✅ pass | In real Chromium, Save Draft and Submit Orders stay on screen over a long orders form, at the top and part-way down, on desktop windows and a phone |
+| `map-fits-panel.spec.ts` | `map-fits-panel.test.js` (new) | 4 | ✅ pass | In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row |
+| `dispatches-badge.spec.ts` | `dispatches-badge.test.js` (new) | 4 | ✅ pass | In real Chromium, the unread count on the left panel's ✉ Dispatches tab appears as soon as the player switches view (Map → Report) or comes back to the browser tab, and clears once Dispatches is opened |
+| `gm-messaging-boot.spec.ts` | `claude_msg_gm_boot_0927.js`, then `gm-messaging-boot.test.js` | 4 | ✅ pass | GM portal boots; while the dispatches tables are missing, a plain error message (no SQL to paste, since P0-17) appears, and it goes once they exist; deleting a game clears its dispatches first. (The script's optional folder and footer-stamp arguments, never given in `npm test`, weren't brought over.) |
+| `hostile-names.spec.ts` | the Chromium half of `hostile-*.test.js` | 4 | ✅ pass | Hostile names in Chromium (P0-19): every mode and screen of each page's tour (`lib/screens.js`), with hostile names, in a real browser where a broken image really fires its `onerror`: no screen sets `window.__kcPwned` or makes an element from a name, and every mode runs with no page error (one staged as a page that can't start fails to start). One test per page and mode |
 
 **Quarantined** tests are not part of `npm test`. Each file's first line says why. They are kept
 unchanged, never edited to pass. A quarantined test comes back only when the reason no longer

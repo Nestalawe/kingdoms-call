@@ -21,7 +21,8 @@ portal hangs on its spinner (the boot-failure reporter now shows the error).
   page doesn't load at all. New shared names start `KC_`.
 - Never move a table that references portal code into the data file.
 
-`npm test`'s `boot-pages` and `chromium-boot` catch a page that no longer boots.
+`npm test`'s `boot-pages` (jsdom) and the browser spec `chromium-boot` (`npx playwright test`) catch a page that no
+longer boots.
 
 ## The data-file stamp guard
 
