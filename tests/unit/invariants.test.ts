@@ -329,4 +329,22 @@ describe('the known breaches', () => {
     ])
       expect(checksBroken(withLine(text)), text).toEqual(['no NaN or undefined']);
   });
+
+  // Wren died in phase 2 of the made-up turn; Odo before it began. The engine's hire line, cut short as the check
+  // quotes it (seen with KC_SEED=7 and KC_SEED=3 in turn-fuzz at 16 games of 12 turns).
+  test("a dead wanderer's hire is let through, and nothing else like it", () => {
+    const withLine = (text: string, charId = 12) => turn((x) => x.gmLog.push({ type: 'hire', text, charId, phase: 3 }));
+    const hire = (who: string, kin = 'Human, Neutral') =>
+      `${who} (${kin}) agrees to serve Realm2 for 2g/turn (close in outlook — base rate). Skills: Melee 1.`;
+    expect(checksBroken(withLine(hire('Wren the Swift')))).toEqual([]);
+    expect(checksBroken(withLine(hire('Wren the Swift', 'Orcish, Undead')))).toEqual([]);
+    for (const [text, charId] of [
+      [hire('Aldo the Bold'), 12],
+      [hire('Odo the Grim'), 13],
+      [hire('Wren the Swift', 'Gnomish, Neutral'), 12],
+      ['Wren the Swift (Human, Neutral) recoils from the offer.', 12],
+      ['Wren the Swift moves to the Fens.', 12],
+    ] as const)
+      expect(checksBroken(withLine(text, charId)), text).toEqual(['the dead take no actions']);
+  });
 });
