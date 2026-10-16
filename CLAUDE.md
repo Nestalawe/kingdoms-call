@@ -27,7 +27,8 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 |---|---|
 | `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js`, `kc-config.js` (which database the site talks to), `kc-db-guard.js` (the database version guard), `kc-safe.js` (`kcHtml`/`kcEsc`, the one way a page builds HTML: [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html)), `kc-staging-footer.js` (on staging, the footer names the PR), `vendor/` (supabase-js, served with the site: [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
-| `tests/` | `run.js` (the runner), `*.test.js`, `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
+| `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
+| `vitest.config.mts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc` | The toolchain: tests by level, strict TypeScript, lint, formatting, the exact Node version |
 | `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
 | `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
@@ -36,23 +37,24 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 
 ## Commands
 
-Node 24 (`.nvmrc`).
+Node exactly as in `.nvmrc` (24.22.0): `npm ci` and `npm test` refuse any other.
 
 ```sh
 npm ci && npx playwright install chromium   # once
-npm test                                    # the standard run (under a minute, tests side by side); CI runs the same
+npm test                                    # Vitest: every test, by level, side by side (about a minute); CI runs the same
+npm run typecheck && npm run lint && npm run format:check   # the static checks; CI runs them too
 npm run test:full                           # bigger fuzz runs
 npm run test:quarantine                     # quarantined harnesses (expected to fail)
-npm test -- --only fuzz                     # tests whose name contains "fuzz"
-npm test -- --seed 123                      # another fixed seed; a failing run prints its seed
-npm test -- --jobs 1                        # one test at a time (default: one per core)
-npm test -- --only turn-fuzz --seed 123     # reproduce one failure: same test, same seed, same sizes
-node tests/<name>.test.js                   # one test on its own: unseeded, its own default sizes
+npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
+KC_SEED=123 npm test                        # another seed; the footer prints the seed and how to repeat each failure
+KC_JOBS=1 npm test                          # one test at a time
+node tests/<name>.test.js                   # one test script on its own: unseeded, its own default sizes
 KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs)
 npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
 ```
 
-Run `npm test` before every push, and the access-rule tests too when `supabase/` changes. Both must be green.
+Run `npm test` and the static checks before every push, and the access-rule tests too when `supabase/` changes. All
+must be green. New tests are TypeScript Vitest tests in `tests/<level>/` ([tests/README.md](tests/README.md)).
 
 ## How work arrives
 
@@ -89,7 +91,7 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   Never fix it with retries, loops, re-runs, re-seeding or a seed that happens to pass.
 - **Never "fix" a test to make it pass**, and never edit a quarantined test to pass. If a test fails
   on the current build for a reason outside your change, quarantine it in its own commit: move it to
-  `tests/quarantine/`, take it out of `SUITE` in `tests/run.js`, and give the one-line reason as the
+  `tests/quarantine/`, take its line out of `tests/suite.ts`, and give the one-line reason as the
   file's first line and in `tests/README.md`. It comes back, in its own PR, only once the reason no
   longer applies (e.g. Toby confirms the behaviour the test should expect); updating it to that
   confirmed behaviour is fine, loosening it until it passes is not.

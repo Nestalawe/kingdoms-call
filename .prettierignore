@@ -1,0 +1,10 @@
+*
+!*/
+!/*.ts
+!/*.mts
+!/eslint.config.js
+!/tsconfig.json
+!/.prettierrc.json
+!/.github/dependabot.yml
+!/tests/**/*.ts
+!/tools/**/*.ts

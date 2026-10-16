@@ -3,16 +3,37 @@
   "private": true,
   "description": "Kingdoms Call: the site (site/) and its tests (tests/)",
   "engines": {
-    "node": ">=24.15.0"
+    "node": "24.22.0"
   },
+  "packageManager": "npm@11.19.1",
   "scripts": {
-    "test": "node tests/run.js",
-    "test:full": "node tests/run.js --full",
-    "test:quarantine": "node tests/run.js --quarantine"
+    "test": "vitest run",
+    "test:full": "KC_FULL=1 vitest run",
+    "test:quarantine": "KC_QUARANTINE=1 vitest run --project quarantine",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.5",
+    "@vitest/eslint-plugin": "1.6.27",
     "acorn": "8.19.0",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
     "jsdom": "30.1.1",
-    "playwright": "1.63.0"
+    "playwright": "1.63.0",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "fsevents": false
   }
 }

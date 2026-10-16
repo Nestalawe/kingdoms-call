@@ -1,4 +1,4 @@
-# Runs npm test (job "ci") and the database's access-rule tests (job "db") on every pull request.
+# Runs the static checks and npm test (job "ci") and the database's access-rule tests (job "db") on every pull request.
 # Branch protection on main requires both checks, "ci" and "db".
 # deploy.yml calls this workflow before every publish, so each commit that goes live is tested first,
 # and a merge runs the tests once (inside Deploy), not twice. That's why there's no push trigger here.
@@ -26,7 +26,14 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # engine-strict (.npmrc): stops here if Node isn't exactly .nvmrc's version.
       - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm run format:check
 
       # Only Chromium is used by the tests.
       - run: npx playwright install --with-deps chromium

@@ -3,7 +3,7 @@
 //   - files are R-NNN-short-name.md, numbered 1…N with no gaps or repeats, each titled "# R-NNN: …";
 //   - each gives Decided (a date), Status (Confirmed, To confirm or Superseded), Source and Enforced by;
 //     a Superseded ruling names the ruling that replaced it;
-//   - Enforced by is "no test yet" or links, and every linked test exists and runs in npm test (tests/run.js), or is
+//   - Enforced by is "no test yet" or links, and every linked test exists and runs in npm test (tests/suite.ts), or is
 //     an access-rule test file in supabase/tests/database/;
 //   - the index in docs/rulings/README.md lists every ruling once, with the file's status, flagged "(open question)"
 //     exactly when the file has an Open point;
@@ -19,7 +19,7 @@ const fail=m=>{ fails++; console.log('FAIL '+m); };
 const readme=path.join(DIR,'README.md');
 if(!fs.existsSync(readme)){ fail('docs/rulings/README.md is missing'); console.log(`${fails} problem(s)`); process.exit(1); }
 const index=fs.readFileSync(readme,'utf8');
-const suite=fs.readFileSync(path.join(ROOT,'tests','run.js'),'utf8');
+const suite=fs.readFileSync(path.join(ROOT,'tests','suite.ts'),'utf8');
 const STATUSES=['Confirmed','To confirm','Superseded'];
 
 const files=fs.readdirSync(DIR).filter(f=>f!=='README.md'&&f.endsWith('.md')).sort();
@@ -43,7 +43,7 @@ for(const f of files){
     for(const [,name,href] of links){
       if(/\.sql$/.test(name)){
         if(!fs.existsSync(path.join(ROOT,'supabase','tests','database',name))) fail(`${f}: no access-rule test ${name}`);
-      }else if(!suite.includes(`'tests/${name}.test.js'`)) fail(`${f}: ${name} is not a test npm test runs (tests/run.js)`);
+      }else if(!suite.includes(`'tests/${name}.test.js'`)) fail(`${f}: ${name} is not a test npm test runs (tests/suite.ts)`);
       if(!href.endsWith(/\.sql$/.test(name)?name:`tests/${name}.test.js`)) fail(`${f}: the link for ${name} points at ${href}`);
     }
   }

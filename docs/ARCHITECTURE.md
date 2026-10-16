@@ -309,5 +309,11 @@ footer says which pull request and commit is on staging, linking to the pull req
 ## Tests
 
 `npm test` boots the real pages in jsdom (and Chromium where needed) against an in-memory Supabase
-stand-in, with a seeded `Math.random`. It runs whole all-bot games through the real `runTurn`.
-[tests/README.md](../tests/README.md) lists every test, its level and its origin.
+stand-in, with a seeded `Math.random` (and, where a test asks, a pinned clock). It runs whole all-bot games
+through the real `runTurn`. [tests/README.md](../tests/README.md) lists every test, its level and its origin.
+
+The tools are the standard ones (P1-01): Vitest runs every test, one project per level (`vitest.config.mts`);
+TypeScript checks the new files strictly (`npm run typecheck`, `tsconfig.json`); ESLint with typescript-eslint
+lints them (`npm run lint`, `eslint.config.js`); Prettier formats them (`npm run format`). Node is pinned exactly
+(`.nvmrc`, `engine-strict` in `.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). The
+site itself still has no build step.

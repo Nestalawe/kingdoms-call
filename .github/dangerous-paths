@@ -20,6 +20,6 @@ site/kc-config.js
 # The escaping helper. Uncomment when P0-19 creates it.
 # site/kc-safe.js
 
-# Dependencies. Uncomment from P1-17, when supabase-js becomes an npm dependency.
-# package.json
-# package-lock.json
+# Dependencies and the scripts that run the tests (from P1-01a).
+package.json
+package-lock.json

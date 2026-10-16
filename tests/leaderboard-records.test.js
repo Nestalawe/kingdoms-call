@@ -106,7 +106,7 @@ function mkGame(i){
 }
 
 let crashes=0, bad=0, rows=0, keySeen=new Set();
-// 100 games in the standard run (tests/run.js), 3000 in the full one: what the fuzz catches, it catches within the
+// 100 games in the standard run (tests/suite.ts), 3000 in the full one: what the fuzz catches, it catches within the
 // first 50 (a mutation check, 2026-10-13); the full run keeps the long tail.
 const N=Number(process.env.N||3000);
 for(let i=0;i<N;i++){
