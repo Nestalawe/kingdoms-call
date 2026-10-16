@@ -333,7 +333,7 @@ describe('CI', () => {
   });
 
   // The plan's list (P1-02, Decisions): the GM portal and every script its page loads, the balance code and its
-  // baselines, and the test helpers the balance code imports.
+  // baselines, the test helpers the balance code imports, and the tools it runs on (the locked packages, the Node pin).
   test('the engine paths are the ones the plan lists, and the runner uses the same list', () => {
     const page = pageFiles('kingdoms-call-gm-portal.html').map((f) => 'site/' + path.basename(f));
     const dir = path.join(ROOT, 'tools', 'balance');
@@ -345,7 +345,7 @@ describe('CI', () => {
       .map((m) => m[1] ?? '');
     expect(page).toContain('site/kingdoms-call-data.js');
     expect([...ENGINE_PATHS].sort()).toEqual(
-      [...new Set([...page, 'tools/balance/**', 'tests/balance/**', ...helpers])].sort(),
+      [...new Set([...page, 'tools/balance/**', 'tests/balance/**', ...helpers, 'package-lock.json', '.nvmrc'])].sort(),
     );
     const runner = read('tools/balance/run.ts');
     expect(runner).toMatch(/^import \{[^}]*\bisEnginePath\b[^}]*\} from '\.\/engine-paths\.ts';$/m);

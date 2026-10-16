@@ -24,6 +24,8 @@ describe('the engine paths', () => {
     'tests/balance/baseline/matrix.json',
     'tests/balance/scenarios/battle.ts',
     'tests/lib/boot.js',
+    'package-lock.json',
+    '.nvmrc',
   ])('%s is one', (f) => {
     expect(isEnginePath(f)).toBe(true);
   });
