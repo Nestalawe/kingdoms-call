@@ -335,9 +335,13 @@ The balance matrix (`npm run balance`, `tools/balance/`, P1-02a) measures engine
 the GM portal (48 all-bot, 12 with a realm whose orders the runner writes), each game's per-turn hashes and
 statistics compared with the committed baseline in `tests/balance/baseline/`, statistics paired by seed against the
 noise of a second seed set. It isn't part of `npm test`: about 20 s on 14 cores ([tests/README.md](../tests/README.md#the-balance-matrix)).
+CI's `balance` job (P1-02b) plays it when a pull request or a merge changes an engine path
+(`tools/balance/engine-paths.ts`: the GM portal and the scripts its page loads, the data file, the balance code and
+baselines, and the test helpers it boots the page with), and fails if any game differs from the committed baseline.
+A pull request labelled `refactor-only` fails if it changes the baseline at all.
 
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
 (`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet, the static tests), the
-unit and scenario tests, the simulations, the page tests, the browser specs, and `db` (the access-rule tests and
+unit and scenario tests, the simulations, the page tests, the browser specs, the balance matrix, and `db` (the access-rule tests and
 `supabase db lint`, which checks the database's functions). The job named `ci` passes only when every job but `db`
 passed; `ci` and `db` are the checks `main` requires. `deploy.yml` runs the same workflow before it publishes.

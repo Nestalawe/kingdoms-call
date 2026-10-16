@@ -30,7 +30,7 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 | `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `browser/*.spec.ts` (browser specs: Playwright Test, Chromium), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `vitest.config.mts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, browser specs, strict TypeScript, lint, formatting, the exact Node version, the Claude Code hooks |
 | `tools/` | `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
-| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
+| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the balance matrix when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js`, `.github/pull_request_template.md` | The dangerous-paths list and the warning's logic (see below); the PR template (fill in every section) |
 | `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
 
@@ -43,7 +43,7 @@ npm ci && npx playwright install chromium   # once
 npm test                                    # Vitest: every test, by level, side by side (about 30 s); CI runs each level in its own job
 npx playwright test                         # the browser specs (tests/browser/) in Chromium, about 20 s; not part of npm test
 npm run check                               # the quick check of what you changed, about 20 s (parts: typecheck, lint, format:check, ratchet)
-npm run balance                             # the balance matrix: 60 seeded games against tests/balance/baseline/ (about 20 s); balance:update rewrites it
+npm run balance                             # the balance matrix: 60 seeded games against tests/balance/baseline/ (about 20 s; CI plays it when an engine path changes); balance:update rewrites it
 npm run test:full                           # bigger fuzz runs (npm run test:quarantine: the quarantined harnesses, expected to fail)
 npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
 KC_SEED=123 KC_JOBS=1 npm test              # another seed, one test at a time; the footer says how to repeat a failure
@@ -83,7 +83,7 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   is nested inside `runTurn`" is a valid reason.
 - **Fail first.** Show that the new test fails without your change (on `main`, or on a copy via
   `KC_SITE`) and passes with it. A test that can't fail proves nothing. For a pure refactor, label the
-  PR `refactor-only`; then new tests must pass both before and after.
+  PR `refactor-only`; then new tests must pass both before and after, and CI fails if the balance baseline changes.
 - **When something slips through** to a simulation, staging or live play: first add a test at the
   lowest level that would have caught it, show it fails, then fix.
 - **A test's outcome must not depend on luck.** A fixed seed doesn't fix the world: any change that
