@@ -18990,7 +18990,7 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(...ladderLines('Defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {grid:_gD.grid, tact:(pvpIsLand&&defTactBonus>1)?{mult:tacMulted(defTactBonus,def),label:`Tactical ${defTact} ${ladderFm(tacMulted(defTactBonus,def))}`}:null}));
     narrative.push(`  ${fortuneNarrative(atkName,defName,atkBaseStr,defBaseStr,_fortP)}`);
 
-    const won=atkStr>=defStr*1.1;
+    const won=atkStr>=defStr;
     // ORC — Raiders' Muster (2026-10-11, Toby): an orcish province that sees an orc win this turn gains a
     // Goblin Horde at turn's end (the end-of-turn pass reads the flag).
     { const _wp=won?atk.player:def.player; if(prov.race==='Orcish'&&_wp!=null&&G.players[_wp]&&G.players[_wp].race==='Orcish') prov._raidersMuster=G.turn; }
