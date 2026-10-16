@@ -25,7 +25,8 @@ ALTER TABLE "public"."game_records"
 
 -- Written by the game's GM, or the Overlord (P0-22, ruling D-09). A record outlives its game: once the game is
 -- deleted, the GM named on the record keeps it (to edit, hide or remove). A record is written only for a game
--- that exists.
+-- that exists. "Deleted" is asked of game_exists, which sees every game, not of games under the caller's own read
+-- rules (P2-16).
 CREATE POLICY "write game_records: the game's GM or the Overlord" ON "public"."game_records"
   FOR INSERT
   TO "authenticated"
@@ -38,23 +39,17 @@ CREATE POLICY "edit game_records: its GM or the Overlord" ON "public"."game_reco
   TO "authenticated"
   USING ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
    FROM public.games g
-  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT (EXISTS ( SELECT 1
-   FROM public.games g
-  WHERE ((g.id)::text = game_records.game_id)))))))
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT public.game_exists(game_id)))))
   WITH CHECK ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
    FROM public.games g
-  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT (EXISTS ( SELECT 1
-   FROM public.games g
-  WHERE ((g.id)::text = game_records.game_id)))))));
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT public.game_exists(game_id)))));
 
 CREATE POLICY "remove game_records: its GM or the Overlord" ON "public"."game_records"
   FOR DELETE
   TO "authenticated"
   USING ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
    FROM public.games g
-  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT (EXISTS ( SELECT 1
-   FROM public.games g
-  WHERE ((g.id)::text = game_records.game_id)))))));
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT public.game_exists(game_id)))));
 
 -- Revoked GMs keep nothing (P0-32i, R-097): a GM's writes need them still to be a Game Master, or the Overlord. A
 -- revoked GM's unfinished games were handed over first (gm_revoke insists), so this stops them changing their finished

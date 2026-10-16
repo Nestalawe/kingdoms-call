@@ -22,37 +22,26 @@ COMMENT ON TABLE "public"."games" IS 'One row per game: its settings, turn and s
 ALTER TABLE "public"."games"
   ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "read games (gm, public, or invited to private setup)" ON "public"."games"
+-- Who reads a game (P2-16, ruling D-10): its GM, its players, and the Overlord (the Overlord's rule below); and, while
+-- it's in setup, any signed-in account if it's public, or an invited one if it's private. game_state holds JSON as
+-- text inside jsonb (the portals write JSON.stringify), or older rows an object: both are read, as get_game_slots
+-- does; text that isn't valid JSON reads as a public game.
+CREATE POLICY "read games: its GM, its players, and open games in setup" ON "public"."games"
   FOR SELECT
   TO "authenticated"
   USING
-    (((gm_user_id = auth.uid()) OR (status <> 'setup'::text) OR (COALESCE((game_state ->> 'visibility'::text), 'public'::text) <> 'private'::text) OR ((game_state ->
-    'invited'::text) ? (auth.uid())::text)));
-
-CREATE POLICY "allow_read_games" ON "public"."games"
-  FOR SELECT
-  TO "anon", "authenticated"
-  USING (true);
-
-CREATE POLICY "anyone_can_read_games" ON "public"."games"
-  FOR SELECT
-  TO "anon", "authenticated"
-  USING (true);
+    (((gm_user_id = ( SELECT auth.uid() AS uid)) OR public.is_game_member(id) OR ((status = 'setup'::text) AND
+    ((COALESCE((CASE jsonb_typeof(game_state) WHEN 'string'::text THEN CASE WHEN pg_input_is_valid((game_state #>>
+    '{}'::text[]), 'jsonb'::text) THEN ((game_state #>> '{}'::text[]))::jsonb ELSE NULL::jsonb END ELSE game_state END
+    ->> 'visibility'::text), 'public'::text) <> 'private'::text) OR (COALESCE((CASE jsonb_typeof(game_state) WHEN
+    'string'::text THEN CASE WHEN pg_input_is_valid((game_state #>> '{}'::text[]), 'jsonb'::text) THEN ((game_state #>>
+    '{}'::text[]))::jsonb ELSE NULL::jsonb END ELSE game_state END -> 'invited'::text), '[]'::jsonb) ? (( SELECT
+    auth.uid() AS uid))::text)))));
 
 CREATE POLICY "g1" ON "public"."games"
   FOR ALL
   TO PUBLIC
   USING ((gm_user_id = auth.uid()));
-
-CREATE POLICY "g2" ON "public"."games"
-  FOR SELECT
-  TO PUBLIC
-  USING ((status = 'setup'::text));
-
-CREATE POLICY "g3" ON "public"."games"
-  FOR SELECT
-  TO PUBLIC
-  USING (true);
 
 -- Only Game Masters create games, in their own name, and the Overlord creates none (P0-32d, D-13). Restrictive:
 -- it narrows every other rule that would allow an insert.

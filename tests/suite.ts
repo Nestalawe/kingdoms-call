@@ -50,6 +50,7 @@ export function suite(full: boolean): Script[] {
     ['page', 'db-guard', 'tests/db-guard.test.js'],
     ['page', 'gm-offer-and-gate', 'tests/gm-offer-and-gate.test.js'],
     ['page', 'other-realms-slots', 'tests/other-realms-slots.test.js'],
+    ['page', 'games-for-their-players', 'tests/games-for-their-players.test.js'],
     ['page', 'dispatch-limits', 'tests/dispatch-limits.test.js'],
     ['page', 'report-dispatch', 'tests/report-dispatch.test.js'],
     ['page', 'eliminated-dispatches', 'tests/eliminated-dispatches.test.js'],

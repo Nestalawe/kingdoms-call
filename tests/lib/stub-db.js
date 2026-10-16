@@ -14,7 +14,14 @@
 //                         get_game_slots (P0-20) and the one-realm-per-number and one-per-account
 //                         rules on game_players. RULES.ownSlotsOnly applies P0-21's read rule (your own
 //                         slot, or every slot of a game you run) and records 'game_players.select:other'
-//                         in CALLS whenever a read asked for rows that rule hides. REVOKED_COLS
+//                         in CALLS whenever a read asked for rows that rule hides. RULES.ownGamesOnly applies
+//                         P2-16's read rules on games and turn_logs: a game is read by its GM, its players and
+//                         the Overlord, and while in setup by any account if public, or invited if private (its
+//                         game_state parsed, text or object); a turn log by its game's GM, players and the
+//                         Overlord. A read that asked for a hidden running or finished game, or a hidden log,
+//                         records 'games.select:other:<columns>' or 'turn_logs.select:other:<columns>' in CALLS
+//                         (a private setup game is hidden quietly: the open-games list asks for every setup
+//                         game). REVOKED_COLS
 //                         ("table.column") mirrors a column privilege taken away: a select of '*', or
 //                         naming that column, is refused with 42501, whoever's row it is (P0-31).
 //                         INSERT_ERRORS[table] answers every insert into that table with that error, as
@@ -44,7 +51,7 @@ function makeStub(){
              site_admins:[], message_reports:[] };
   const MISSING=new Set();
   const MISSING_COLS=new Set();     // "table.column": answered as the real database does for an unknown column
-  const RULES={ownSlotsOnly:false};
+  const RULES={ownSlotsOnly:false, ownGamesOnly:false};
   const REVOKED_COLS=new Set();     // "table.column": not granted to the signed-in role
   const INSERT_ERRORS={};           // table -> the error every insert into it gets
   const ERRORS={};                  // "table.op" or "rpc.name" -> the error every such call gets
@@ -71,6 +78,18 @@ function makeStub(){
         const me=SESSION&&SESSION.user&&SESSION.user.id;
         const mayRead=x=>x.user_id===me||DB.games.some(g=>String(g.id)===String(x.game_id)&&g.gm_user_id===me);
         if(r.some(x=>!mayRead(x))) CALLS.push('game_players.select:other');
+        r=r.filter(mayRead);
+      }
+      if((table==='games'||table==='turn_logs')&&st.op==='select'&&RULES.ownGamesOnly){
+        const me=SESSION&&SESSION.user&&SESSION.user.id;
+        const ov=DB.site_admins.some(x=>x.user_id===me);
+        const inGame=gid=>{ const g=DB.games.find(x=>String(x.id)===String(gid));
+          return ov||(!!g&&g.gm_user_id===me)||DB.game_players.some(x=>String(x.game_id)===String(gid)&&x.user_id===me); };
+        const openSetup=g=>{ if(g.status!=='setup') return false; let c=g.game_state;
+          if(typeof c==='string'){ try{ c=JSON.parse(c); }catch(e){ c=null; } }
+          c=c||{}; return c.visibility!=='private'||(Array.isArray(c.invited)&&c.invited.includes(me)); };
+        const mayRead=table==='games'?(g=>inGame(g.id)||openSetup(g)):(l=>inGame(l.game_id));
+        if(r.some(x=>!mayRead(x)&&!(table==='games'&&x.status==='setup'))) CALLS.push(table+'.select:other:'+(st.selectStr||'*'));
         r=r.filter(mayRead);
       }
       if(st.order){ const [k,asc]=st.order; r.sort((a,b)=>asc?(a[k]>b[k]?1:a[k]<b[k]?-1:0):(a[k]<b[k]?1:a[k]>b[k]?-1:0)); }
