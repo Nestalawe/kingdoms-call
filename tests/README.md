@@ -5,7 +5,7 @@ npm test                    # every test, by level (about 30 s)
 npx playwright test         # the browser specs, in Chromium (about 20 s): see "Browser specs" below
 npm run check               # the quick check of what this branch changes (about 20 s; the Stop hook runs it)
 npm run ratchet             # the counts in ratchet.json: none may rise
-npm run test:full           # bigger fuzz runs
+npm run test:full           # bigger fuzz runs, and ten times the property tests' inputs (the nightly run, with a random seed)
 npm run test:quarantine     # the quarantined harnesses below (expected to fail)
 npm test -- -t fuzz         # only tests whose name matches "fuzz" (a regular expression)
 npm test -- --project unit  # one level: static, unit, scenario, simulation or page
@@ -188,7 +188,20 @@ much?". It isn't part of `npm test` or `npm run check`: it takes about 20 s on 1
   engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: a realmless
   hero's battle header reads "(undefined)"; a visited province names its unmet owner in the realm's intelligence;
   enemy orders and reactions still reach a hero after he turns invisible, and the acting realm's report says so; the
-  list of the heroes in a realm's own provinces skips the sight rule.
+  list of the heroes in a realm's own provinces skips the sight rule; a wanderer who died earlier in the turn can still
+  be hired.
+- **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
+  rule and let fast-check make up the inputs: heroes, guardians, hits, small worlds, orders. Every dice roll in the
+  page comes from a seed that is part of the input (the page's `Math.random` is reseeded, and its clock starts again,
+  for each one), so an input plays the same every time. When one fails, fast-check shrinks it to the smallest input
+  that still fails and prints it as "Counterexample", with its `seed` and `path`. fast-check's own seed is `KC_SEED`
+  (`setup/fast-check.ts`), so the footer's command repeats it. Pin a counterexample found as an entry in that
+  property's `examples` (fast-check's parameters), so every later run tries it first. A property tries 100 inputs
+  unless it sets its own number (cheap ones more, whole turns fewer); `npm run test:full` tries ten times as many.
+- **The nightly run** (`.github/workflows/nightly.yml`, P1-04d) runs `npm run test:full` every night with a random
+  `KC_SEED`, printed first in its log and summary. A red night blocks nothing: repeat it with that seed (locally, or
+  Run workflow with the seed), then add a test at the lowest level that shows the problem, or, while the refactor
+  runs, ask Theo whether to park it in `KNOWN_BREACHES`.
 - **`lib/report-leaks.ts`** (P1-04c) is what no realm's report may show it, as three pure checks on one turn and its
   reports (`turn_logs` rows with `player_index` ≥ 0), run by `checkTurn` (and `checkLeaks`, the leak checks alone):
   - **another realm's private line**: a chronicle line on the `PRIVATE_LINES` list (a hit-point rise, Invisibility,
@@ -425,6 +438,8 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `staged-turn-mode` | new | 0 | ✅ pass | Every harness that runs turns (`runTurn`, in `tests/` and `tools/`) stages its games in manual turn mode, so the auto-turn watcher never reads the clock or runs a turn in a test (P1-04a); the screenshot tour (`lib/screens.js`) is exempt, since it shows each mode on purpose. Level 0: a page test would see the watcher only when a run outlasted its first check. TypeScript, in `static/` |
 | `deterministic-boot` | new | 4 | ✅ pass | The GM portal booted twice with the same seed and clock (`bootJsdom`'s `seed` and `now`) plays one all-bot turn the same, byte for byte: the saved world, every realm's report, the turn's log and events; a third run with another seed plays it differently (P1-01a). Level 4: the turn runs inside the booted page, on the page's own clock. TypeScript, in `page/` |
 | `invariants` | new | 1 | ✅ pass | The invariants (`lib/invariants.ts`, P1-04b) on a small made-up turn that keeps them all; each planted fault (a NaN in a log line, an `undefined` in a name, HP above the maximum or below 0, two characters, provinces, bands or items with one id, a found item in two places or off the ledger, a hero or band off the map, a dead hero acting after their death or before the turn, a player's realm still marked as submitted) breaks only its own invariant, saying what broke; what they allow (a leaderless host's battle lines, a hero raised in the turn, a bot realm's flag); `KNOWN_BREACHES` lets through only its own line. Level 1: a lower level can't run a check; turn-fuzz and the matrix run them over games. TypeScript, in `unit/` |
+| `combat-properties` | new | 1 | ✅ pass | Properties of personal combat (fast-check, P1-04d), over made-up heroes (a real character with generated skills, temper, hit points and items from the game's own tables, armour as often as the rest) and any guardian, each input with its own dice: a blow or an arrow never does negative damage (`pcMeleeDamage`, `pcArrowDamage`); a hit taken (`pcTakeHit`, any kind, any size, through mirror images, a drinking ward, Melt Armour and a shield's ward) is never negative and takes exactly that from HP, unless Last-Stand Plate's second wind heals; after any fight (`resolvePersonalCombat`) a hero has from 0 HP to their maximum. 2,000 inputs each (20,000 in full). Level 1: each function is called directly; they are nested inside `runTurn` (`lib/pc-hooks.js`). TypeScript, in `unit/` |
+| `turn-properties` | new | 2 | ✅ pass | Properties of a whole turn (fast-check, P1-04d), over made-up small worlds (2 to 4 realms, some left to the bots) and any orders for the human-held heroes, as `turn-fuzz` gives them: no hero ends a phase in two provinces (at the end of each phase, every living character is named in exactly one province's list of heroes, his own: the lists are rebuilt from where each stands once a phase, and nothing else may disagree); no realm's report names a realm it hasn't met (the leak check's rule, `lib/report-leaks.ts`, with its parked breaches). 50 turns each (500 in full). Level 2: one real turn on a small staged world; the lists are read between phases inside `runTurn`, where the reports are put together too. TypeScript, in `scenario/` |
 | `report-leaks` | new | 1 | ✅ pass | The report-leak check (`lib/report-leaks.ts`, P1-04c) on a small made-up turn that passes; each planted leak (an enemy hero's hit-point rise, the `af9c247` leak; a private line two realms read; an unmet realm named in a line or another section; an invisible hero on the map, in a sighting, in a line later in the phase he cast it or after it, in spy activity) breaks only its own check, saying what leaked; what they allow (Clairvoyance, a line the reader is a party to, a realm met through its hero, the game over, a Charm's caster, a namesake, the longest name first, lines before the cast, the hero's deeds on the reader and what follows, title intelligence); `KNOWN_BREACHES` lets through only its own lines. Level 1: a lower level can't run a check; turn-fuzz, report-privacy and the matrix run them over games. TypeScript, in `unit/` |
 | `balance-hash` | new | 1 | ✅ pass | The balance matrix's hashes (P1-02a): the play hash leaves out prose (`text`, `desc`, `lore`, `flavour`) and nothing else; clock readings, the stand-in database's stamps and the build stamp are ignored (at a row's top level only); a rewording moves only the words columns. TypeScript, in `unit/` |
 | `balance-stats` | new | 1 | ✅ pass | The balance matrix's statistics from a small made-up game worked out by hand: battles counted once, the leading unit type, lairs, deaths, spells by caster, realms at turns 10 and 20 (a shorter game with its last turn), chases; a missing slice is a zero only for counts per game. TypeScript, in `unit/` |
@@ -477,6 +492,7 @@ message. That means the hook needs updating, not that the game is broken.
 | `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap`, `retreat-dry-ground`, `hp-wound-gain`, `battle-faced-turn`, `abilities-beasts`, `island-back`, `battle-tweaks`, `hp-gain-private`, `duel-refuse-default`, `march-one-rate`, `encounter-seventy`, `bolt-damage`, `arrow-damage`, and every test that uses `lib/pc-hooks.js` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
 | `concede`, `report-privacy`, `overtures` | `const activePlayers=freshPlayers.filter(p=>p.user_id);` (writes reports for bot realms too) |
 | `pursuit-one-battle` | `    const chance=pursuitCatchChance(c,quarry);` (stages a certain catch) |
+| `turn-properties` | `    syncAllMaxHp(); // a max-HP rise earned this phase heals into its headroom now` (reads the province lists at the end of each phase) |
 | `intrusion-lurker` | `  const explored=100;` in `spotEnemyInOwnedProvince` (a marked hero wins the spotting roll) |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) |
 | `battle-spells-recorded` | `  const _tel={pre:{}, orders:{}, battles:[], encounters:[], captures:[], deaths:[], spells:[], hires:[], recruits:[]};` (exposes the turn's statistics collector) |
