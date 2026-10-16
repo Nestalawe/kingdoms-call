@@ -10,7 +10,6 @@
 // it when an engine path changed (engine-paths.ts); it stops first if its page loads a file that isn't on that list,
 // because CI wouldn't play the matrix when that file changed.
 import { fork } from 'node:child_process';
-import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -18,10 +17,10 @@ import { pageFiles, SITE } from '../../tests/lib/boot.js';
 import {
   BASELINE_FILE,
   diffGame,
-  formatBaseline,
   readBaseline,
   totalCases,
   writeBaseline,
+  writeRun,
   type KeptGame,
 } from './baseline.ts';
 import { isEnginePath } from './engine-paths.ts';
@@ -153,7 +152,7 @@ async function main(): Promise<number> {
       }
     }
     const kept = results.map(keep);
-    if (values.out) fs.writeFileSync(values.out, formatBaseline('A', kept));
+    if (values.out) writeRun(values.out, kept);
     if (values.update) {
       writeBaseline(set, kept);
       console.log(`Rewrote ${path.relative(process.cwd(), BASELINE_FILE[set])}: commit it with the change.\n`);

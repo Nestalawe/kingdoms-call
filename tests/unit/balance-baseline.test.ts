@@ -2,6 +2,9 @@
 // the committed baselines themselves: every game of the matrix, every scripted case at least once, and set A against
 // set B (chance alone) called "no meaningful change" by the noise rule. Level 1 (unit): pure functions, and the
 // committed files read as data (nothing is played).
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
   diffGame,
@@ -9,6 +12,7 @@ import {
   parseBaseline,
   readBaseline,
   totalCases,
+  writeRun,
   type KeptGame,
 } from '../../tools/balance/baseline.ts';
 import { matrix } from '../../tools/balance/matrix.ts';
@@ -32,6 +36,18 @@ describe('the file form', () => {
       { ...game, id: 'scripted-01', stats: { 'items: gained': [1, 1] } },
     ]);
     expect(text.split('\n').filter((l) => l.startsWith('    {"id":'))).toHaveLength(2);
+  });
+
+  // npm run balance -- --out <file>, as CI's balance job runs it: into a folder the checkout doesn't have.
+  test("a run is written in set A's form, into a folder that doesn't exist yet", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-balance-out-'));
+    try {
+      const file = path.join(dir, 'balance-report', 'played.json');
+      writeRun(file, [game]);
+      expect(parseBaseline(fs.readFileSync(file, 'utf8'))).toEqual({ set: 'A', games: [game] });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test('set B keeps only the statistics', () => {
