@@ -7,3 +7,7 @@ node_modules/
 # files stay out.
 .claude/*
 !.claude/settings.json
+# The private plan repo, cloned here by convention (CLAUDE.md, "Never" 6): never committed.
+plan/
+# Vitest's coverage report (npm test -- --coverage).
+coverage/
