@@ -26,7 +26,7 @@ package-lock.json
 
 # The test harness: the Claude Code hooks and settings, the tool settings, the Node pin, the test run's own
 # checks, the ratchet and the harness's self-test (P1-01b). Loosening any of them should be seen. Some files
-# don't exist yet (Playwright, dependency-cruiser, knip, the balance matrix): listed so they're covered from the start.
+# don't exist yet (dependency-cruiser, knip, the balance matrix): listed so they're covered from the start.
 .claude/**
 tsconfig*.json
 vitest.config.*
