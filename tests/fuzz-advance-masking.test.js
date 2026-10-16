@@ -67,7 +67,7 @@ const dom=bootJsdom(html,{supabase:{createClient:()=>sbStub()},
   // ── archive meta round-trip ──
   let archBad=0;
   try{
-    const m1=W.buildGameMeta({archived:true,archivedAt:'2026-09-27T10:00:00Z',turnMode:{mode:'auto'}});
+    const m1=W.buildGameMeta({archived:true,archivedAt:'2026-09-27T10:00:00Z',turnMode:{mode:'manual'}});
     if(!m1.archived||m1.archivedAt!=='2026-09-27T10:00:00Z') archBad++;
     if(!W.gameArchived({meta:m1})) archBad++;
     if(W.gameArchived({meta:W.buildGameMeta({})})) archBad++;
