@@ -23,3 +23,24 @@ site/kc-config.js
 # Dependencies and the scripts that run the tests (from P1-01a).
 package.json
 package-lock.json
+
+# The test harness: the Claude Code hooks and settings, the tool settings, the Node pin, the test run's own
+# checks, the ratchet and the harness's self-test (P1-01b). Loosening any of them should be seen. Some files
+# don't exist yet (Playwright, dependency-cruiser, knip, the balance matrix): listed so they're covered from the start.
+.claude/**
+tsconfig*.json
+vitest.config.*
+playwright.config.*
+eslint.config.*
+.dependency-cruiser.*
+knip.*
+.nvmrc
+.npmrc
+tests/setup/**
+tests/legacy.test.ts
+tests/ratchet.json
+tests/static/harness.test.ts
+tests/balance/**
+tools/hooks/**
+tools/check.*
+tools/ratchet.*

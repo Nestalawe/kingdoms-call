@@ -3,3 +3,7 @@ node_modules/
 *.dump
 *.sql.gz
 .DS_Store
+# Claude Code: only the shared settings are committed; each person's own (settings.local.json) and the session
+# files stay out.
+.claude/*
+!.claude/settings.json
