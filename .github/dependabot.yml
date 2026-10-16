@@ -9,6 +9,14 @@ updates:
     groups:
       npm:
         patterns: ['*']
+    ignore:
+      # Node's types follow the Node in .nvmrc: a new major comes with a new .nvmrc, by hand
+      # (tests/static/harness.test.ts checks they match).
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # typescript-eslint supports TypeScript up to 6.0 (npm ci refuses 7.0). Take this out when it supports 7.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
