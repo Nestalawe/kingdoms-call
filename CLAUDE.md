@@ -28,11 +28,10 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 | `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js`, `kc-config.js` (which database the site talks to), `kc-db-guard.js` (the database version guard), `kc-safe.js` (`kcHtml`/`kcEsc`, the one way a page builds HTML: [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html)), `kc-staging-footer.js` (on staging, the footer names the PR), `vendor/` (supabase-js, served with the site: [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
-| `vitest.config.mts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc` | The toolchain: tests by level, strict TypeScript, lint, formatting, the exact Node version |
-| `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
+| `vitest.config.mts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, strict TypeScript, lint, formatting, the exact Node version, the Claude Code hooks |
+| `tools/` | `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
 | `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
-| `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
-| `.github/pull_request_template.md` | The PR template. Fill in every section |
+| `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js`, `.github/pull_request_template.md` | The dangerous-paths list and the warning's logic (see below); the PR template (fill in every section) |
 | `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
 
 ## Commands
@@ -42,19 +41,20 @@ Node exactly as in `.nvmrc` (24.22.0): `npm ci` and `npm test` refuse any other.
 ```sh
 npm ci && npx playwright install chromium   # once
 npm test                                    # Vitest: every test, by level, side by side (about a minute); CI runs the same
-npm run typecheck && npm run lint && npm run format:check   # the static checks; CI runs them too
+npm run check                               # the quick check of what you changed, about 20 s (parts: typecheck, lint, format:check, ratchet)
 npm run test:full                           # bigger fuzz runs
 npm run test:quarantine                     # quarantined harnesses (expected to fail)
 npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
-KC_SEED=123 npm test                        # another seed; the footer prints the seed and how to repeat each failure
-KC_JOBS=1 npm test                          # one test at a time
+KC_SEED=123 KC_JOBS=1 npm test              # another seed, one test at a time; the footer says how to repeat a failure
 node tests/<name>.test.js                   # one test script on its own: unseeded, its own default sizes
 KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs)
 npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
 ```
 
-Run `npm test` and the static checks before every push, and the access-rule tests too when `supabase/` changes. All
-must be green. New tests are TypeScript Vitest tests in `tests/<level>/` ([tests/README.md](tests/README.md)).
+**The checks run themselves** (hooks in `.claude/settings.json`): each edit is type-checked, linted and format-checked,
+and you can't finish while `npm run check` fails (after three tries, say "`npm run check` still fails: tell Theo").
+Before every push run `npm test`, and the access-rule tests too when `supabase/` changes: all green. New tests are
+TypeScript Vitest tests in `tests/<level>/` ([tests/README.md](tests/README.md)).
 
 ## How work arrives
 
@@ -107,7 +107,7 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
 - **Mirror rule changes everywhere a rule is restated** (engine, player-portal projections,
   rulebooks, blurbs): [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice).
 - **Data file changes bump the stamps:** [traps.md](docs/traps.md#the-data-file-stamp-guard).
-- Don't silence errors, lint or types to get green.
+- Don't silence errors, lint or types to get green, and don't raise a count in `tests/ratchet.json`.
 - Update `docs/ARCHITECTURE.md` and `docs/traps.md` when your change makes them wrong, and this file
   when the workflow changes.
 - Write in plain language: [ISO 24495-1:2023](#plain-language-iso-24495-12023).

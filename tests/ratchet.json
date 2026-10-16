@@ -1,0 +1,12 @@
+{
+  "about": "Baselines for npm run ratchet (tools/ratchet.ts). No count may rise; when one falls, lower it here in the same PR (npm run ratchet -- --update). Set 2026-10-16 (P1-01b).",
+  "counts": {
+    "tsNocheck": 0,
+    "tsIgnore": 0,
+    "eslintDisable": 0,
+    "stubDbTests": 79,
+    "allowlistEntries": 1,
+    "javascriptFiles": 182,
+    "quarantinedTests": 4
+  }
+}

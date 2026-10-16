@@ -61,6 +61,16 @@ test('the real paths file covers supabase/, .github/, site/vendor/ and the packa
   assert.equal(isDangerous('tests/suite.ts',globs),false);
 });
 
+test('the real paths file covers the test harness (P1-01b), and not the tests themselves',()=>{
+  const globs=parsePaths(fs.readFileSync(path.join(__dirname,'..','.github','dangerous-paths'),'utf8'));
+  for(const f of ['.claude/settings.json','tsconfig.json','tsconfig.build.json','vitest.config.mts','eslint.config.js',
+    'playwright.config.ts','.nvmrc','.npmrc','tests/setup/each.ts','tests/legacy.test.ts','tests/ratchet.json',
+    'tests/static/harness.test.ts','tests/balance/matrix.test.ts','tools/hooks/after-edit.ts','tools/check.ts','tools/ratchet.ts'])
+    assert.equal(isDangerous(f,globs),true,f);
+  for(const f of ['tests/static/other.test.ts','tests/suite.ts','tests/boot-pages.test.js','tools/legacy/README.md'])
+    assert.equal(isDangerous(f,globs),false,f);
+});
+
 test('the warning names the files, says to talk it through with Theo, and carries the marker',()=>{
   const body=commentBody(['supabase/a.sql','.github/x.yml']);
   assert.ok(body.startsWith(MARKER));
