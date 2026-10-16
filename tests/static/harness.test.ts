@@ -1,7 +1,8 @@
 // The harness checks itself (P1-01b; plan "The harness, enforced, not remembered"). Fails if a setting that keeps the
 // tests honest is missing or weakened: the compiler flags, the lint rules' severities, no retries and no .only (in
 // Vitest and in Playwright), the test runs' own checks, the Node pin, the Claude Code hooks and their stop limit, the
-// CI jobs and the required "ci" check, the balance job and its engine paths, the dangerous paths, and the ratchet. Every later step that adds a guarantee
+// CI jobs and the required "ci" check, the balance job and its engine paths, the nightly random-seed run and fast-check's
+// seed, the dangerous paths, and the ratchet. Every later step that adds a guarantee
 // adds its check here. Level 1 (static): it reads settings files and the counts, and runs nothing.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,6 +12,7 @@ import prettier from 'eslint-config-prettier';
 import playwright from 'eslint-plugin-playwright';
 import tseslint from 'typescript-eslint';
 import ts from 'typescript';
+import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import config from '../../vitest.config.mts';
 import pwConfig from '../../playwright.config.ts';
@@ -149,6 +151,13 @@ describe('the test run', () => {
       const keys = typeof p === 'object' && 'test' in p ? Object.keys(p.test ?? {}) : [];
       expect(keys.filter((k) => !['name', 'include', 'provide'].includes(k))).toEqual([]);
     }
+  });
+
+  // Read here, in a test file, after the setup files ran: what every property test gets.
+  test("fast-check's seed is KC_SEED's in every test file, so a property's inputs repeat", () => {
+    expect(t.setupFiles).toContain('tests/setup/fast-check.ts');
+    expect(fc.readConfigureGlobal().seed).toBe(Number(process.env['KC_SEED']) >>> 0 || 1);
+    for (const script of ['test', 'test:full']) expect(pkg.scripts[script], script).not.toMatch(/--(retry|repeat)/);
   });
 
   test('a test fails on a retry or repeat, on console.error and on an unhandled rejection', () => {
@@ -416,6 +425,42 @@ describe('CI', () => {
   });
 });
 
+// The nightly random-seed run (P1-04d): every night, npm run test:full with a random seed it prints first. It blocks
+// nothing, and it may only read.
+describe('the nightly run', () => {
+  const wf = read('.github/workflows/nightly.yml');
+  const runs = [...wf.matchAll(/^ +(?:- )?run: (.+)$/gm)].map((m) => m[1]);
+
+  test('it runs every night, and by hand with a seed to repeat', () => {
+    expect(wf).toMatch(/^on:\n {2}schedule:\n {4}- cron: '[\d *]+'\n {2}workflow_dispatch:\n {4}inputs:\n {6}seed:\n/m);
+  });
+
+  test('it may only read', () => {
+    expect(wf).toMatch(/^permissions:\n {2}contents: read\n\n/m);
+    expect(wf.match(/permissions:/g)).toHaveLength(1);
+    expect(wf).toContain('persist-credentials: false');
+  });
+
+  test('it runs npm run test:full with the random seed it printed first, and lets no failure through', () => {
+    expect(runs).toEqual(['npm ci', '|', 'npm run test:full']);
+    expect(wf).toMatch(
+      /^ {6}- run: npm run test:full\n {8}env:\n {10}KC_SEED: \$\{\{ steps\.seed\.outputs\.seed \}\}\n/m,
+    );
+    expect(wf).toContain('/dev/urandom');
+    expect(wf).toContain('echo "KC_SEED=$seed"');
+    expect(wf).toContain('>> "$GITHUB_STEP_SUMMARY"');
+    for (const weak of ['continue-on-error', '|| true', '--retries', '--retry', '--repeat-each', '--bail', '--pass']) {
+      expect(wf, weak).not.toContain(weak);
+    }
+    // The seed given by hand reaches the script as environment only, never inside a run line.
+    expect(wf).toContain('GIVEN: ${{ inputs.seed }}');
+    for (const block of wf.split(/\n {6}- /)) {
+      const run = /run: (\|[\s\S]*?)(?=\n {8}\w|$)|run: (.+)/.exec(block)?.[0] ?? '';
+      expect(run, block).not.toContain('${{');
+    }
+  });
+});
+
 describe('dangerous paths', () => {
   test('every harness file gets the warning', () => {
     const globs = dangerous.parsePaths(read('.github/dangerous-paths')) as string[];
@@ -448,6 +493,8 @@ describe('dangerous paths', () => {
       'tools/ratchet.ts',
       '.github/workflows/ci.yml',
       '.github/workflows/balance-report.yml',
+      '.github/workflows/nightly.yml',
+      'tests/setup/fast-check.ts',
     ];
     expect(harness.filter((f) => !dangerous.isDangerous(f, globs))).toEqual([]);
   });
