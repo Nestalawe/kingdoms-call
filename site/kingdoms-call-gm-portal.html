@@ -13571,6 +13571,7 @@ function applyPendingSynthPlan(G, hero, pi){
 }
 
 async function runTurn(opts){
+  Math.random();
   opts=opts||{};
   const auto=!!opts.auto;
   const gameRow=opts.game||currentGame;
@@ -22187,7 +22188,7 @@ const BATTLE_ARMY_SPELLS={
           if(_prPayAfter>_prPayBefore) log('hire',`💰 ${c.name}'s growing renown raises their wage to ${_prPayAfter}g/turn (was ${_prPayBefore}g/turn).`,{actor:c.player,targets:[c.player]}); // 2026-09-21: practice raised the wage silently
         } else {
           c._practiceFailStreak={turn:G.turn,n:_streak+1}; // the next practice this turn is ×1.2 likelier
-          log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no real progress this season. ${fmtRoll(_prPct,_prRoll)}${bonusReason?` ${bonusReason}.`:''}${pupilNote?` ${pupilNote.slice(3)}.`:''}`,{actor:c.player,targets:[c.player]});
+          log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no measurable progress this season. ${fmtRoll(_prPct,_prRoll)}${bonusReason?` ${bonusReason}.`:''}${pupilNote?` ${pupilNote.slice(3)}.`:''}`,{actor:c.player,targets:[c.player]});
         }
 
         } // end !_practiceMaxed
