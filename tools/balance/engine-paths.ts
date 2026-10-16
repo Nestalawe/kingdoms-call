@@ -31,6 +31,9 @@ export const ENGINE_PATHS: readonly string[] = [
   'tests/balance/**',
   'tests/lib/boot.js',
   'tests/lib/stub-db.js',
+  // The tools it runs on: a jsdom or Node bump can change the games, so a Dependabot PR plays them (Theo, 2026-10-16).
+  'package-lock.json',
+  '.nvmrc',
 ];
 
 /** The committed baselines: a refactor-only pull request may not change them. */

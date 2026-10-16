@@ -337,7 +337,8 @@ statistics compared with the committed baseline in `tests/balance/baseline/`, st
 noise of a second seed set. It isn't part of `npm test`: about 20 s on 14 cores ([tests/README.md](../tests/README.md#the-balance-matrix)).
 CI's `balance` job (P1-02b) plays it when a pull request or a merge changes an engine path
 (`tools/balance/engine-paths.ts`: the GM portal and the scripts its page loads, the data file, the balance code and
-baselines, and the test helpers it boots the page with), and fails if any game differs from the committed baseline.
+baselines, the test helpers it boots the page with, and `package-lock.json` and `.nvmrc`, since a jsdom or Node
+bump can change the games), and fails if any game differs from the committed baseline.
 A pull request labelled `refactor-only` fails if it changes the baseline at all.
 
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
