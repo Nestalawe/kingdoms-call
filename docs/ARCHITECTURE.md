@@ -339,7 +339,11 @@ CI's `balance` job (P1-02b) plays it when a pull request or a merge changes an e
 (`tools/balance/engine-paths.ts`: the GM portal and the scripts its page loads, the data file, the balance code and
 baselines, the test helpers it boots the page with, and `package-lock.json` and `.nvmrc`, since a jsdom or Node
 bump can change the games), and fails if any game differs from the committed baseline.
-A pull request labelled `refactor-only` fails if it changes the baseline at all.
+A pull request labelled `refactor-only` fails if it changes the baseline at all. On a pull request the job also
+makes the **balance report** (`tools/balance/report.ts`, P1-03a): the class of change (no change, wording only, a
+reshape judged as a whole, or a rule change judged by where games first differ and by its slices), in game terms. The
+job can only read, so it uploads the report as data; `.github/workflows/balance-report.yml`, run when CI finishes,
+posts it as one comment with the default branch's `tools/github/balance-comment.ts`, never the pull request's code.
 
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
 (`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet, the static tests), the
