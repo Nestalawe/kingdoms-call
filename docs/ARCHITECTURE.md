@@ -317,3 +317,13 @@ TypeScript checks the new files strictly (`npm run typecheck`, `tsconfig.json`);
 lints them (`npm run lint`, `eslint.config.js`); Prettier formats them (`npm run format`). Node is pinned exactly
 (`.nvmrc`, `engine-strict` in `.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). The
 site itself still has no build step.
+
+The harness runs itself (P1-01b). Claude Code hooks, committed in `.claude/settings.json`, check each edited file
+(`tools/hooks/after-edit.ts`: type check, ESLint, Prettier, about 1 s) and run `npm run check` before an agent may
+finish (`tools/hooks/before-stop.ts`). `npm run check` (`tools/check.ts`) checks what the branch changes: the
+TypeScript tests that import a changed file (`vitest related`), or every level but page when anything else changed,
+since the test scripts load `site/` by file name and `vitest related` can't follow that. `npm run ratchet`
+(`tools/ratchet.ts`) keeps the counts in `tests/ratchet.json` from rising: switched-off checks, allowlist entries,
+JavaScript files, quarantined tests and tests on `tests/lib/stub-db.js`. `tests/static/harness.test.ts` fails if any
+of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a
+dangerous path.

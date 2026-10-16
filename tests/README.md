@@ -2,6 +2,8 @@
 
 ```sh
 npm test                    # every test, by level (about a minute)
+npm run check               # the quick check of what this branch changes (about 20 s; the Stop hook runs it)
+npm run ratchet             # the counts in ratchet.json: none may rise
 npm run test:full           # bigger fuzz runs
 npm run test:quarantine     # the quarantined harnesses below (expected to fail)
 npm test -- -t fuzz         # only tests whose name matches "fuzz" (a regular expression)
@@ -30,6 +32,16 @@ node tests/<name>.test.js   # one test script on its own (unseeded, its own defa
   for each failed test, the command that repeats it.
 - **Levels run side by side**, two at a time, slowest first; within a level, up to one test script per core. More
   at once only overloads the machine.
+- **The quick check** (`npm run check`, `tools/check.ts`, P1-01b): the type check, ESLint and Prettier on the files
+  this branch changes, the ratchet, then the tests. When only TypeScript under `tests/` or `tools/` changed, it runs
+  the tests that import those files (`vitest related`). Anything else (the site, a test script, `setup/`, a config,
+  the docs) runs every level but page, because `vitest related` can't see what the test scripts load: each runs in
+  its own process and reads `site/` by file name. Page runs in CI. Claude Code runs the check before an agent
+  finishes, and the type check, ESLint and Prettier after each edit (`.claude/settings.json`, `tools/hooks/`).
+- **The ratchet** (`npm run ratchet`, `tools/ratchet.ts`): counts of `@ts-nocheck`, `@ts-ignore` and
+  `@ts-expect-error`, `eslint-disable`, allowlist entries (`html-lint`'s `ALLOWED`), JavaScript files, quarantined
+  tests and test files that load `lib/stub-db.js` may not rise above `ratchet.json`. When one falls, lower it in the
+  same PR (`npm run ratchet -- --update` only lowers). `harness` runs the same comparison, so `npm test` fails too.
 
 ## How the tests reach the site
 
@@ -115,7 +127,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `profiles-columns` | new | 0 | ✅ pass | Every read of `profiles` names its columns, and none is `email` (P0-31: with the email column's privilege taken away, a read of `*` fails even for your own row) |
 | `workflow-api-auth` | new | 0 | ✅ pass | Every call a workflow makes to GitHub's API is signed in with the job's token (unsigned calls share a small hourly limit and fail at random with 403, as the staging deploy did on 2026-10-10) |
 | `sort-comparators` | new | 0 | ✅ pass | No `.sort(...)` in the site uses a random or argument-less comparator (its result, and how many random numbers it uses, would depend on the browser's JavaScript engine); shuffles go through `shuffleP` |
-| `dangerous-paths` | new | 1 | ✅ pass | Which changed files count as dangerous (globs, case ignored, renames by their old name too) and what the warning comment says |
+| `dangerous-paths` | new | 1 | ✅ pass | Which changed files count as dangerous (globs, case ignored, renames by their old name too), that the real list covers the package files and the test harness, and what the warning comment says |
 | `staging` | new | 1 | ✅ pass | The staging deploy's logic: the `kc-config.js` it writes (staging address only, never the live one, no stray characters; the pull request number and full commit it deploys, refused unless they're exactly that), its "on staging" / "replaced by" comments, and the test accounts (made up, on a reserved domain; signed up then signed in with the shared password; one that exists is skipped; a failure stops the deploy without printing the password; the staging seed uses only their addresses) |
 | `staging-footer` | new | 4 | ✅ pass | With the staging deploy's `kc-config.js`, every page's footer says "Staging · PR #21 · abcdef1", linking to the pull request (in the page's `<footer>`, or a small fixed stamp where it has none); with the live one, nothing shows; on a page that uses the database it also names the database's version; a malformed `deployed` shows nothing and injects no markup |
 | `migrations` | new | 1 | ✅ pass | The migration pipeline's logic: a merged migration never changes and new ones are named and ordered; a pull request never changes both the database and the site; each database gets only the migrations Toby was shown before approving (anything else is refused); a database that predates the pipeline has its baseline recorded, never run; an empty one is refused; the summary Toby reads (production, then the site: staging isn't migrated on a merge); a failed CLI call never prints the database password; a staging rebuild (`reset staging`) refuses any target but staging, the live project however it's named, and any database that isn't the staging project; a connection failure says the free project may have paused; its summary; and the whole rebuild run against a stand-in CLI giving the real CLI's answers (JSON, except `DO` for the seed), every step in order |
@@ -259,6 +271,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `map-fits-panel` | new | 4 | ✅ pass | In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row |
 | `dispatches-badge` | new | 4 | ✅ pass | In real Chromium, the unread count on the left panel's ✉ Dispatches tab appears as soon as the player switches view (Map → Report) or comes back to the browser tab, and clears once Dispatches is opened |
 | `gm-messaging-boot` | `claude_msg_gm_boot_0927.js` | 4 | ✅ pass | GM portal boots; while the dispatches tables are missing, a plain error message (no SQL to paste, since P0-17) appears, and it goes once they exist; deleting a game clears its dispatches first |
+| `harness` | new | 0 | ✅ pass | The harness checks itself (P1-01b): every strict compiler flag is on; the shared lint rules are at full strength on TypeScript files, `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; Node is pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow); the Claude Code hooks run after Edit and Write and before stopping, block at most three times in a row, and `.claude/` is closed to agents' edits; every harness file is a dangerous path; no ratchet count has risen. TypeScript, in `static/` |
 | `deterministic-boot` | new | 4 | ✅ pass | The GM portal booted twice with the same seed and clock (`bootJsdom`'s `seed` and `now`) plays one all-bot turn the same, byte for byte: the saved world, every realm's report, the turn's log and events; a third run with another seed plays it differently (P1-01a). Level 4: the turn runs inside the booted page, on the page's own clock. TypeScript, in `page/` |
 | `quarantine/dispatches-e2e` | `claude_msg_e2e_0927.js` | 4 | ⏸ quarantined | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
 | `quarantine/one-source` | `claude_onesource_0927.js` (+ `claude_onesource_manifest_0927.json`) | 4 | ⏸ quarantined | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |

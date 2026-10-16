@@ -147,7 +147,7 @@ const seconds = (ms: number) => (ms / 1000).toFixed(1) + ' s';
 
 export function report(steps: Step[]): string {
   const lines = steps.map(
-    (s) => `${s.ok ? '✓' : '✗'} ${s.name} (${seconds(s.ms)})${s.ok && s.out ? ': ' + s.out : ''}`,
+    (s) => `${s.ok ? '✓' : '✗'} ${s.name} (${seconds(s.ms)})${s.ok && s.out.trim() ? ': ' + s.out.trim() : ''}`,
   );
   for (const s of steps.filter((x) => !x.ok)) lines.push('', `--- ${s.name} failed:`, s.out.trimEnd());
   return lines.join('\n');
