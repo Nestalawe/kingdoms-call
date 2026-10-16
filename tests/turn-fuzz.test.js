@@ -1,6 +1,9 @@
 // Engine fuzz (2026-09-27): whole games run end to end through runTurn, with random human orders
 // and live bots, against the in-memory Supabase. Expect 0 page errors, 0 failed runs, and every
 // turn to leave orders_submitted cleared (the runaway-turn guard).
+// The same KC_SEED plays the same games (P1-04a): the page's clock is pinned (some ids are made from
+// it), and the games are in manual turn mode, so the auto-turn watcher neither reads the clock nor
+// runs a turn by itself at a moment that depends on load.
 const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
 
 const GAMES=parseInt(process.argv[2]||'10'), TURNS=parseInt(process.argv[3]||'6');
@@ -11,7 +14,7 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
   const S=makeStub();
   let html=readPage('kingdoms-call-gm-portal.html');
   const errs=[];
-  const dom=bootJsdom(html,{supabase:S.supabase,setup(w){
+  const dom=bootJsdom(html,{supabase:S.supabase,now:'2026-10-01T12:00:00Z',setup(w){
     w.addEventListener('error',e=>errs.push(e.error&&e.error.stack||e.message));
     w.onunhandledrejection=e=>errs.push(String(e.reason&&e.reason.stack||e.reason));
     w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' '));
