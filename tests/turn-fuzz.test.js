@@ -41,7 +41,7 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
     W.__opt={seaPct}; W.__sz={cols:M.cols,rows:M.rows};
     try{
       W.eval(`(function(){ const g=generateNewGame(__sp,__sz,0,__opt);
-        g.turnMode={mode:'auto',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
+        g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
         g.botDifficulty='hard'; g.botDiplomacy=${gi%2?"'hostile'":"'normal'"}; window.__G=g; })()`);
     }catch(e){ crashes.push('worldgen: '+e.message); continue; }
 

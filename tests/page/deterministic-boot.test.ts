@@ -52,7 +52,7 @@ async function oneTurn(seed: number, now: string): Promise<string> {
       skills: { melee: 1, tactical: 1, march: 1, white: 1, naval: 0, sage: 1, explorer: 1 },
     }));
     W.eval(`(function(){ const g=generateNewGame(__sp,{cols:9,rows:7},0,{seaPct:35});
-      g.turnMode={mode:'auto',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
+      g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
       g.botDifficulty='hard'; g.botDiplomacy='normal'; window.__G=g; })()`);
     const games = S.DB['games'] ?? [];
     const players = S.DB['game_players'] ?? [];
