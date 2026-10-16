@@ -24,6 +24,7 @@ describe('the engine paths', () => {
     'tests/balance/baseline/matrix.json',
     'tests/balance/scenarios/battle.ts',
     'tests/lib/boot.js',
+    'tests/lib/scenario.js',
     'package-lock.json',
     '.nvmrc',
   ])('%s is one', (f) => {
@@ -36,7 +37,7 @@ describe('the engine paths', () => {
     'site/vendor/supabase-js-2.117.3.min.js',
     'site/kingdoms-call-gm-portal.html.bak',
     'docs/ARCHITECTURE.md',
-    'tests/lib/scenario.js',
+    'tests/lib/pc-hooks.js',
     'tests/unit/balance-hash.test.ts',
     'tools/check.ts',
     '.github/workflows/ci.yml',
@@ -52,13 +53,16 @@ describe('the engine paths', () => {
     expect(files.filter((f) => !isEnginePath(f))).toEqual([]);
   });
 
-  test('every module the balance code imports from outside tools/balance/ is one', () => {
-    const dir = path.join(ROOT, 'tools', 'balance');
-    const outside = fs
-      .readdirSync(dir)
-      .flatMap((f) => [...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '(\.\.\/[^']+)'/g)])
-      .map((m) => path.relative(ROOT, path.resolve(dir, m[1] ?? '')));
+  test('every module the balance code and the named scenarios import from outside their folder is one', () => {
+    const outside = ['tools/balance', 'tests/balance/scenarios'].flatMap((d) => {
+      const dir = path.join(ROOT, d);
+      return fs
+        .readdirSync(dir)
+        .flatMap((f) => [...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '(\.\.\/[^']+)'/g)])
+        .map((m) => path.relative(ROOT, path.resolve(dir, m[1] ?? '')));
+    });
     expect(outside).toContain('tests/lib/boot.js');
+    expect(outside).toContain('tests/lib/scenario.js');
     expect(outside.filter((f) => !isEnginePath(f))).toEqual([]);
   });
 

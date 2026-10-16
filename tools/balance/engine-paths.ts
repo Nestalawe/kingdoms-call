@@ -26,11 +26,12 @@ export const ENGINE_PATHS: readonly string[] = [
   'site/kc-config.js',
   'site/kc-db-guard.js',
   'site/kc-staging-footer.js',
-  // The matrix itself, its baselines, and the test helpers it boots the page with.
+  // The matrix itself, its baselines, the named scenarios, and the test helpers they boot the page with.
   'tools/balance/**',
   'tests/balance/**',
   'tests/lib/boot.js',
   'tests/lib/stub-db.js',
+  'tests/lib/scenario.js',
   // The tools it runs on: a jsdom or Node bump can change the games, so a Dependabot PR plays them (Theo, 2026-10-16).
   'package-lock.json',
   '.nvmrc',

@@ -1,7 +1,8 @@
 // One fixed plain-words label per statistic of the balance matrix (plan P1-03), so the balance report reads in game
 // terms on its own: "Battles won by the attacker, against an enemy commander" for 'battles: attacker won | by kind:
-// pvp'. A statistic's name is its base and, after ' | ', a slice (stats.ts). Every name in the committed baselines has
-// a label (tests/unit/balance-report.test.ts): a new statistic needs its label here.
+// pvp'. A statistic's name is its base and, after ' | ', a slice (stats.ts). Every name in the committed baselines, and
+// every figure of a named scenario, has a label (tests/unit/balance-report.test.ts, balance-scenario.test.ts): a new
+// statistic needs its label here.
 import { baseOf } from './stats.ts';
 
 /** The label of each base, and whether a figure is per battle, per game, a share…: "Lair fights per game". */
@@ -70,6 +71,11 @@ const SLICES: Readonly<Record<string, (value: string) => string | undefined>> = 
   'by grade': (v) => `${v} lairs`,
   'by how': (v) => DEATHS[v],
   'by school': (v) => `${v} magic`,
+  // A named scenario's slice (tests/balance/scenarios/encounter.ts): 'chases: caught | by Spy: 3 against 0'.
+  'by Spy': (v) => {
+    const m = /^(\d+) against (\d+)$/.exec(v);
+    return m ? `a hunter of Spy ${String(m[1])} after a quarry of Spy ${String(m[2])}` : undefined;
+  },
   // 'game: ended | by: the Reckoning': the share of the games that ended, ended this way.
   by: (v) => `by ${v}`,
 };

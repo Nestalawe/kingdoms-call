@@ -62,6 +62,27 @@ const figure = (games: Stats[], key: string, pick: number[]): number => {
 
 const quantile = (sorted: number[], q: number): number => sorted[Math.round(q * (sorted.length - 1))] ?? NaN;
 
+/** The resampled sets of games (RESAMPLES of them, n games each, drawn with replacement), the same on every call. */
+function resamples(n: number): number[][] {
+  const rnd = seeded(RESAMPLE_SEED);
+  const all = [...Array(n).keys()];
+  return Array.from({ length: RESAMPLES }, () => all.map(() => Math.floor(rnd() * n)));
+}
+
+/** One run's figure for `key` over its games, with the 95% range of the figure itself from resampling the games, and
+ *  the cases behind it: how sure one side's figure is, apart from any comparison (a named scenario quotes both). */
+export function figureRange(games: Stats[], key: string): { value: number; range95: [number, number]; cases: number } {
+  const values = resamples(games.length)
+    .map((p) => figure(games, key, p))
+    .filter((v) => Number.isFinite(v))
+    .sort((x, y) => x - y);
+  return {
+    value: figure(games, key, [...games.keys()]),
+    range95: [quantile(values, 0.025), quantile(values, 0.975)],
+    cases: games.reduce((t, g) => t + valueOf(g, key)[1], 0),
+  };
+}
+
 /** Every statistic either run has, compared game by game: base[i] and head[i] are the same game (same seed). */
 export function compareRuns(base: Stats[], head: Stats[]): Change[] {
   if (base.length !== head.length)
@@ -70,8 +91,7 @@ export function compareRuns(base: Stats[], head: Stats[]): Change[] {
   const all = [...Array(n).keys()];
   const keys = [...new Set([...base, ...head].flatMap((g) => Object.keys(g)))].sort();
   // The same resampled games for every statistic.
-  const rnd = seeded(RESAMPLE_SEED);
-  const picks = Array.from({ length: RESAMPLES }, () => all.map(() => Math.floor(rnd() * n)));
+  const picks = resamples(n);
   return keys.map((key) => {
     const cases: [number, number] = [0, 1].map((r) =>
       (r ? head : base).reduce((t, g) => t + valueOf(g, key)[1], 0),
