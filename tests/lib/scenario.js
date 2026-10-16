@@ -6,11 +6,14 @@
 //   r.log    the GM's full log for the turn ({type,text,actor,targets,charId,phase,…} entries)
 //   r.reports[playerIndex]   each human realm's turn report, as the player portal receives it
 //   r.text(charId?)   every log line (or one character's lines) as one string, for matching
+//   r.events   the turn's statistics rows (turn_events, one per realm), with bootScenario({telemetry:true})
 //
 // Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living
 // character not given orders Rests all turn. `inject` adds lines at exact anchors in the GM portal
 // (see tests/README.md, code-anchor hooks): each anchor must appear exactly once. `seed` fixes the page's own
 // Math.random (bootJsdom's opts.seed); by default it comes from KC_SEED and how many pages this process has booted.
+// `now` pins the page's clock (bootJsdom's opts.now). `telemetry` has the page write its statistics rows, as it does
+// once it has found the turn_events table: the balance scenarios (tests/balance/scenarios/) read them.
 const {readPage,bootJsdom}=require('./boot'); const {cannedStub}=require('./stub-db');
 
 async function bootScenario(opts={}){
@@ -20,13 +23,14 @@ async function bootScenario(opts={}){
     html=html.replace(a,()=>b);
   }
   let ROWS={}; const WRITES=[]; const errs=[];
-  const d=bootJsdom(html,{seed:opts.seed,supabase:{createClient:()=>cannedStub({rows:()=>ROWS,writes:WRITES})},
+  const d=bootJsdom(html,{seed:opts.seed,now:opts.now,supabase:{createClient:()=>cannedStub({rows:()=>ROWS,writes:WRITES})},
     setup(w){
       w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
       w.console.error=(...a)=>{ const t=a.map(String).join(' '); if(/Could not load|stub|fetch/i.test(t)) return; errs.push('console.error: '+t); };
       w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,500)); const W=d.window;
   if(typeof W.runTurn!=='function') throw new Error('GM portal did not boot: '+errs.slice(0,2).join(' | '));
+  if(opts.telemetry) W.eval('_kcHasTel=true');
   const rest=()=>[0,1,2,3,4].map(()=>({action:'rest',target:'',extra:'',desc:''}));
 
   // A fresh world: `realms` realms on a cols×rows map; safe start off; then prepare(S,W) edits it.
@@ -59,7 +63,8 @@ async function bootScenario(opts={}){
     const lg=WRITES.find(x=>x.table==='turn_logs'&&x.val&&x.val.player_index===-1);
     const log=(lg&&lg.val.entries)||[];
     const reports={}; WRITES.filter(x=>x.table==='turn_logs'&&x.val&&x.val.player_index>=0).forEach(x=>{ reports[x.val.player_index]=x.val.entries; });
-    return {S:before, S2:w?JSON.parse(w.val.game_state):null, log, reports, extra,
+    const events=WRITES.filter(x=>x.table==='turn_events').flatMap(x=>x.val);
+    return {S:before, S2:w?JSON.parse(w.val.game_state):null, log, reports, extra, events,
       text:(charId)=>log.filter(e=>charId==null||e.charId===charId||(e.charIds||[]).includes(charId)).map(e=>e.text).join('\n')};
   }
   return {W, errs, world, turn, rest};
