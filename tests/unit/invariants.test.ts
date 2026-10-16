@@ -10,6 +10,7 @@ import {
   type SavedState,
   type Turn,
 } from '../lib/invariants.ts';
+import { LEAK_CHECKS } from '../lib/report-leaks.ts';
 
 // Two realms on a three-province map. Wren (a hero of realm 0) died in phase 2 of this turn; Odo (realm 1) died in an
 // earlier turn. A lair in province 2 holds the Lantern of Ash; Mithril Armour is the one item off the ledger.
@@ -310,9 +311,9 @@ describe('the known breaches', () => {
     '⚑FORCE⚑' +
     JSON.stringify({ name, color: neutral ? null : '#906090', neutral, guard: false, role, verb: 'holds', armies: [] });
 
-  test('each names its check and says why', () => {
+  test('each names an invariant or a leak check and says why', () => {
     for (const k of KNOWN_BREACHES) {
-      expect(INVARIANTS.map((i) => i.name)).toContain(k.check);
+      expect([...INVARIANTS, ...LEAK_CHECKS].map((i) => i.name)).toContain(k.check);
       expect(k.why.length).toBeGreaterThan(20);
     }
   });
