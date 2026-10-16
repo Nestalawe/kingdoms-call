@@ -344,6 +344,10 @@ makes the **balance report** (`tools/balance/report.ts`, P1-03a): the class of c
 reshape judged as a whole, or a rule change judged by where games first differ and by its slices), in game terms. The
 job can only read, so it uploads the report as data; `.github/workflows/balance-report.yml`, run when CI finishes,
 posts it as one comment with the default branch's `tools/github/balance-comment.ts`, never the pull request's code.
+**Named scenarios** (`npm run balance -- <scenario>`, `tools/balance/scenario.ts`, P1-03c) answer a focused question
+("how often do these archers beat those guards in the hills?"): a scene staged in `tests/balance/scenarios/` through
+`tests/lib/scenario.js`, played 400 times on a copy of `main`'s site and on the branch, paired by seed and judged by
+the same noise rule, labels and words as the report. Run by hand, not in CI.
 
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
 (`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet, the static tests), the
