@@ -28,26 +28,37 @@ import { isEnginePath } from './engine-paths.ts';
 import { matrix, type GameSpec, type SeedSet } from './matrix.ts';
 import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
 import { CASE_NAMES, type GameResult } from './play.ts';
-import { isShare } from './stats.ts';
-import type { Reply } from './worker.ts';
+import { show, showDiff, showRange } from './report.ts';
+import type { Job, Reply } from './worker.ts';
 
 const WORKER = path.join(import.meta.dirname, 'worker.ts');
 
-/** Plays `games`, `jobs` at a time, each worker process one game at a time. Results in the order given. */
-export async function playAll(games: GameSpec[], jobs: number): Promise<{ results: GameResult[]; errors: string[] }> {
-  const queue = [...games].sort((a, b) => b.realms - a.realms); // the longest first, so none starts last
+/** Plays `games`, `jobs` at a time, each worker process one game at a time. Results in the order given. A game with
+ *  `untilTurn` is a replay (worker.ts). `site` plays another copy of the site (as KC_SITE does). */
+export async function playAll(
+  games: (GameSpec | Job)[],
+  jobs: number,
+  site?: string,
+): Promise<{ results: GameResult[]; errors: string[] }> {
+  const all = games.map((g): Job => ('spec' in g ? g : { spec: g }));
+  const queue = [...all].sort((a, b) => b.spec.realms - a.spec.realms); // the longest first, so none starts last
   const done = new Map<string, GameResult>();
   const errors: string[] = [];
-  const n = Math.max(1, Math.min(jobs, games.length));
+  const n = Math.max(1, Math.min(jobs, all.length));
+  const env = site ? { ...process.env, KC_SITE: site } : process.env;
   await Promise.all(
     Array.from(
       { length: n },
       () =>
         new Promise<void>((resolve, reject) => {
-          const child = fork(WORKER, { execArgv: ['--import', 'tsx'], stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
+          const child = fork(WORKER, {
+            execArgv: ['--import', 'tsx'],
+            env,
+            stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+          });
           const next = () => {
-            const spec = queue.shift();
-            if (spec) child.send(spec);
+            const job = queue.shift();
+            if (job) child.send(job);
             else child.disconnect();
           };
           child.on('message', (r: Reply) => {
@@ -63,7 +74,7 @@ export async function playAll(games: GameSpec[], jobs: number): Promise<{ result
         }),
     ),
   );
-  return { results: games.flatMap((g) => done.get(g.id) ?? []), errors };
+  return { results: all.flatMap((g) => done.get(g.spec.id) ?? []), errors };
 }
 
 const keep = (r: GameResult): KeptGame => {
@@ -74,11 +85,6 @@ const keep = (r: GameResult): KeptGame => {
 };
 // Set B's baseline keeps only the statistics.
 const statsOnly = (g: KeptGame): KeptGame => ({ id: g.id, turns: [], results: '', stats: g.stats });
-
-const show = (key: string, v: number) => (isShare(key) ? (100 * v).toFixed(1) + '%' : v.toFixed(2));
-const showDiff = (key: string, v: number) =>
-  (v >= 0 ? '+' : '−') + (isShare(key) ? (100 * Math.abs(v)).toFixed(1) : Math.abs(v).toFixed(2));
-const showRange = (key: string, [lo, hi]: [number, number]) => `${showDiff(key, lo)} to ${showDiff(key, hi)}`;
 
 /** The statistics that moved beyond the noise, by group, biggest first (clear, then possible). */
 export function describeChanges(group: string, changes: Change[]): string[] {
