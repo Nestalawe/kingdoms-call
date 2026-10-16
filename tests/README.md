@@ -15,6 +15,8 @@ KC_SEED=123 npm test -- -t "^concede$"   # repeat one failure exactly (same seed
 node tests/<name>.test.js   # one test script on its own (unseeded, its own default sizes)
 npx playwright test -g "map"           # only browser specs whose name matches "map"
 npx playwright show-trace test-results/<spec>/trace.zip   # step through a failed spec (kept on failure)
+npm run balance             # the balance matrix: 60 seeded games against the baseline (about 20 s): see below
+npm run balance:update      # rewrite the balance baselines, in the PR that changes play
 ```
 
 `npm test` is [Vitest](https://vitest.dev) (`vitest.config.mts`, P1-01a). It has one project per level: `static`,
@@ -73,6 +75,40 @@ broken image's `onerror` really firing). They are not part of `npm test`.
   checks became one spec's `expect`s; a fixed wait became a wait for the event it stood for. The hostile-name tests
   were split: the jsdom half stays a test script (`hostile-*.test.js`), the Chromium half is `hostile-names.spec.ts`,
   one test per page and mode.
+
+## The balance matrix
+
+`npm run balance` (`tools/balance/`, P1-02a) plays 60 seeded games in the GM portal and compares them, game by game,
+with the committed baseline in `balance/baseline/`. It answers "did this engine change change anything, and how
+much?". It isn't part of `npm test` or `npm run check`: it takes about 20 s on 14 cores (160 s one game at a time).
+
+- **The games** (`tools/balance/matrix.ts`): 48 all-bot games (3 to 6 realms, each on its rung of the map ladder ×
+  sea 20% or 50% × normal or hostile bots × 3 seeds, races and alignments rotating; up to 30 turns, which almost
+  every game needs to reach the Reckoning) and 12 with a **scripted realm** (`tools/balance/scripted.ts`): one realm
+  held by the runner, which writes its orders from the saved state each turn, with no randomness. It does what bots
+  don't: war on its nearest neighbour, Encounter and Pursue in turn (the armed king is the chaser, so the chase meets
+  battles), an armed hero pursuing any quarry in a province with an unresolved battle. Its report is hashed too: an
+  all-bot game writes none. The run fails if a scripted case (Encounter, Pursue, a chase held by an unresolved
+  battle) never happens.
+- **One fresh page per game** (`tools/balance/play.ts`), booted through `lib/boot.js` with an explicit `seed` and
+  `now`, in manual turn mode, stopping at the Reckoning. Games run side by side, one worker process per core
+  (`--jobs N` to change it). The results are identical one game at a time and many side by side, and on a second
+  run.
+- **Exact:** per game and turn, 12-character hashes (`tools/balance/hash.ts`) of the saved state without its prose,
+  the prose on its own, the GM log's structure and its text, the telemetry, and the scripted realm's report
+  (structure and text apart; per section over the game). Left out: the stand-in database's ids and stamps, the build
+  stamp, and clock readings (the pinned clock moves on at each reading).
+- **Statistics** (`tools/balance/stats.ts`), per game, from the telemetry and the GM log: battles (attacker win % by
+  kind, terrain and the realm side's leading unit type; units lost), lairs by grade, heroes' deaths by how, spells by
+  school, realms at turns 10 and 20 and at the end, items, titles, game length and how it ended, chases.
+- **The noise rule** (`tools/balance/paired.ts`): the two runs paired by seed, each statistic's change with its 95%
+  and 99% ranges from resampling whole games 2,000 times (fixed resampling seed): "clear change", "possible change",
+  "within the noise" or "too few to tell". The overall answer looks only at the bot games' headline statistics, with
+  the bar raised for their number. `balance/baseline/noise.json` is the same matrix on other seeds: against the
+  baseline, the rule must say "no meaningful change" (`unit/balance-baseline.test.ts`).
+- `KC_SITE` plays another copy of the site. `-- --set B` plays the noise set; `-- --only bots-03,scripted-01` plays
+  some games; `-- --out <file>` writes the run in the baseline's form, e.g. to compare two runs.
+- When a change is meant to change play, `npm run balance:update` rewrites both baselines; commit them with it.
 
 ## How the tests reach the site
 
@@ -301,6 +337,11 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `fuzz-advance-masking` | `claude_fuzz_0927d.js` | 3 | ✅ pass | Advance-and-strike combat, masking of unmet realms, archive round-trip |
 | `harness` | new | 0 | ✅ pass | The harness checks itself (P1-01b): every strict compiler flag is on; the shared lint rules are at full strength on TypeScript files, `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; Node is pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow), and Node's types (`@types/node`) are for that Node's major; the Claude Code hooks run after Edit and Write and before stopping, block at most three times in a row, and `.claude/` is closed to agents' edits; the browser specs have no retries, no `.only`, the Node check, a fixed time zone and locale, traces on failure, and a server of `site/` or `KC_SITE` that is never one already running, and in the specs a focused or skipped spec or a fixed wait is an error, with Playwright's recommended rules at full strength (one spec may wait for the network to go quiet); CI runs the static checks in their own job, every level and the browser specs in exactly one job each, with no retries or ignored failures, `ci` and `db` keep their names, `ci` needs every job but `db` and fails unless all passed, `db` lints the database's functions, and deploy waits for the whole run (P1-01c); every harness file is a dangerous path; no ratchet count has risen. TypeScript, in `static/` |
 | `deterministic-boot` | new | 4 | ✅ pass | The GM portal booted twice with the same seed and clock (`bootJsdom`'s `seed` and `now`) plays one all-bot turn the same, byte for byte: the saved world, every realm's report, the turn's log and events; a third run with another seed plays it differently (P1-01a). Level 4: the turn runs inside the booted page, on the page's own clock. TypeScript, in `page/` |
+| `balance-hash` | new | 1 | ✅ pass | The balance matrix's hashes (P1-02a): the play hash leaves out prose (`text`, `desc`, `lore`, `flavour`) and nothing else; clock readings, the stand-in database's stamps and the build stamp are ignored (at a row's top level only); a rewording moves only the words columns. TypeScript, in `unit/` |
+| `balance-stats` | new | 1 | ✅ pass | The balance matrix's statistics from a small made-up game worked out by hand: battles counted once, the leading unit type, lairs, deaths, spells by caster, realms at turns 10 and 20 (a shorter game with its last turn), chases; a missing slice is a zero only for counts per game. TypeScript, in `unit/` |
+| `balance-paired` | new | 1 | ✅ pass | The noise rule on made-up per-game figures with known answers: identical runs, a shift in every game (clear), in one game of 40 (noise), in a quarter of them (clear, ranges hold it), too few cases, a fixed resampling seed; the overall answer ignores slices and raises its bar with the number of statistics. TypeScript, in `unit/` |
+| `balance-scripted` | new | 1 | ✅ pass | The scripted realm's orders on a tiny map: war on the nearest neighbour, Recruit and Defend, the armed king's Encounter on odd turns and Pursue on even ones, a hero when the king has no army (never after a king), the chase into an unresolved battle (armed quarries, neutral or at war, a king only by a king), the same orders from the same state. TypeScript, in `unit/` |
+| `balance-baseline` | new | 1 | ✅ pass | The baselines' file form and the game-by-game comparison (first turn and columns that differ, a longer game, results, report sections, statistics); and the committed baselines: every game of the matrix, every scripted case at least once, set A against set B "no meaningful change". TypeScript, in `unit/` |
 | `quarantine/dispatches-e2e` | `claude_msg_e2e_0927.js` | 4 | ⏸ quarantined | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
 | `quarantine/one-source` | `claude_onesource_0927.js` (+ `claude_onesource_manifest_0927.json`) | 4 | ⏸ quarantined | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |
 | `quarantine/one-source-chromium` | `claude_chromium_onesource_0927.js` | 4 | ⏸ quarantined | The "good" and "missing data file" cases pass; the "stale data file" case needs the same pre-refactor build |
