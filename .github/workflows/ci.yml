@@ -2,7 +2,8 @@
 #   static         the type check, lint, format check, ratchet and the static tests (a minute or less)
 #   unit-scenario  the unit and scenario tests;  simulation;  page   (npm test, one Vitest project or two each)
 #   browser        the browser specs in Chromium (npx playwright test)
-#   balance        the balance matrix (P1-02b), played only when an engine path changed (tools/balance/engine-paths.ts)
+#   balance        the balance matrix (P1-02b), played only when an engine path changed (tools/balance/engine-paths.ts),
+#                  and on a pull request its report (P1-03a), posted by balance-report.yml
 #   db             the database's access-rule tests (pgTAP) and its function lint
 # and "ci", which passes only when every job but db passed. Branch protection on main requires "ci" and "db", so
 # those two names must not change; the other jobs can be added to or split without touching the settings.
@@ -157,7 +158,7 @@ jobs:
   # there. Otherwise it plays the 60 games (one per core) and fails if any differs from the committed baseline
   # (tests/balance/baseline/): a change meant to change play commits its new baseline (npm run balance:update). A pull
   # request labelled refactor-only fails at the first step if it changes the baseline at all. Only the branch is
-  # played: the base branch's figures are its committed baseline.
+  # played in full: the base branch's figures are its committed baseline (the report replays a few of its games).
   balance:
     name: balance matrix
     runs-on: ubuntu-24.04
@@ -183,8 +184,26 @@ jobs:
       - if: steps.engine.outputs.play == 'true'
         run: npm ci
 
-      - if: steps.engine.outputs.play == 'true'
-        run: npm run balance
+      - id: play
+        if: steps.engine.outputs.play == 'true'
+        run: npm run balance -- --out balance-report/played.json
+
+      # On a pull request, the balance report (P1-03a): this branch's games against the base branch's committed
+      # baseline, with up to 12 changed games replayed on both sides to find where they first differ. It runs even
+      # when the games differ from this branch's baseline (it says so). Uploaded as data, and added to the job's
+      # summary; balance-report.yml posts it as the pull request's comment. Not in deploy.yml's run (no pull request).
+      - id: report
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && (steps.play.outcome == 'success' || steps.play.outcome == 'failure') }}
+        run: npm run balance:report -- --base HEAD^1 --head balance-report/played.json
+
+      - if: ${{ !cancelled() && steps.report.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: balance-report
+          path: |
+            balance-report/report.json
+            balance-report/report.md
+          retention-days: 14
 
   # The required check. It runs even when a job before it failed or the run was cancelled (a skipped required check
   # would count as passed), and passes only if every job it needs passed.

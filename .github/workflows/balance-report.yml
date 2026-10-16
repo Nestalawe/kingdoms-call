@@ -1,0 +1,117 @@
+# Posts the balance report (plan P1-03a) on a pull request, as one comment edited in place on each push, and the
+# "What changes in play" warning (tools/github/balance-comment.ts says when). Neither blocks a merge: this isn't a
+# required check, and its jobs succeed even when they can't comment.
+#
+# CI's balance job makes the report while it runs the pull request's code, with permission only to read, and uploads
+# it as data (the balance-report artifact). This workflow has permission to comment, so it never checks out or runs
+# the pull request's code:
+# - "post" runs when CI finishes (workflow_run), always from the default branch's copy of this file and of the
+#   script. It downloads the report, checks its shape, and posts it on the pull request whose head is the run's commit.
+# - "warn" runs when a pull request's description is edited, with the script from the pull request's base commit.
+name: Balance report
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  pull_request:
+    types: [edited]
+
+permissions: {}
+
+jobs:
+  post:
+    name: post the balance report
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    # One at a time per branch, in order: the script posts only for the pull request's current head.
+    concurrency:
+      group: balance-report-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+      cancel-in-progress: false
+    steps:
+      # The default branch (workflow_run's own commit), never the pull request's.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .nvmrc
+            tools/github/balance-comment.ts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # The report, if the run made one: none when no engine path changed, or the job stopped before it.
+      - id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" \
+            --jq '[.artifacts[] | select(.name == "balance-report" and (.expired | not))][0].id // empty')
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - if: steps.artifact.outputs.id != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: balance-report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/balance-report
+
+      - run: node tools/github/balance-comment.ts post
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          REPORT_FILE: ${{ runner.temp }}/balance-report/report.json
+
+  warn:
+    name: what changes in play
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    concurrency:
+      group: balance-warning-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            .nvmrc
+            tools/github/balance-comment.ts
+          sparse-checkout-cone-mode: false
+
+      # The pull request that adds this warning has nothing on its base branch to run yet.
+      - id: base
+        run: |
+          if [ -f tools/github/balance-comment.ts ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "The base branch doesn't have the balance report yet, so there's nothing to run."
+          fi
+
+      - if: steps.base.outputs.ready == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - if: steps.base.outputs.ready == 'true'
+        run: node tools/github/balance-comment.ts warn
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
