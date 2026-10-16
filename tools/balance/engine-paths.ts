@@ -33,6 +33,7 @@ export const ENGINE_PATHS: readonly string[] = [
   'tests/lib/stub-db.js',
   'tests/lib/scenario.js',
   'tests/lib/invariants.ts',
+  'tests/lib/report-leaks.ts',
   // The tools it runs on: a jsdom or Node bump can change the games, so a Dependabot PR plays them (Theo, 2026-10-16).
   'package-lock.json',
   '.nvmrc',
