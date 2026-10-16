@@ -21,7 +21,3 @@ export async function playerPortalSignedIn(page: Page): Promise<void> {
 export async function gmPortalSignedIn(page: Page): Promise<void> {
   await page.waitForFunction('typeof _autoWatcherTimer !== "undefined" && _autoWatcherTimer !== null');
 }
-
-// Planted for the fail-first proof (P1-01c): a lint error, reverted in the next commit.
-let planted = 1;
-export { planted };
