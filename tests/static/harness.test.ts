@@ -318,18 +318,65 @@ describe('CI', () => {
 
   test('the balance job decides first, in plain Node, and plays the matrix only when an engine path changed', () => {
     const job = jobs.get('balance') ?? '';
-    expect(runs('balance')).toEqual(['node tools/balance/engine-paths.ts', 'npm ci', 'npm run balance']);
-    // The two steps after the decision run only on its play=true, and nothing else is skipped.
-    expect(job.match(/^ {6}- if: (.+)$/gm)).toEqual([
-      "      - if: steps.engine.outputs.play == 'true'",
-      "      - if: steps.engine.outputs.play == 'true'",
+    expect(runs('balance')).toEqual([
+      'node tools/balance/engine-paths.ts',
+      'npm ci',
+      'npm run balance -- --out balance-report/played.json',
+      'npm run balance:report -- --base HEAD^1 --head balance-report/played.json',
+    ]);
+    // The two steps after the decision run only on its play=true. The report runs only on a pull request, and only
+    // once the games were played (even if they differ from the baseline); the upload only after the report.
+    expect(job.match(/^ {6}- (?:id: \w+\n {8})?if: (.+)$/gm)?.map((l) => l.replace(/^.*if: /s, ''))).toEqual([
+      "steps.engine.outputs.play == 'true'",
+      "steps.engine.outputs.play == 'true'",
+      "${{ !cancelled() && github.event_name == 'pull_request' && (steps.play.outcome == 'success' || steps.play.outcome == 'failure') }}",
+      "${{ !cancelled() && steps.report.outcome == 'success' }}",
     ]);
     expect(job).toMatch(/^ {6}- id: engine\n {8}run: node tools\/balance\/engine-paths\.ts\n/m);
+    expect(job).toMatch(/^ {6}- id: play\n {8}if: .*\n {8}run: npm run balance -- /m);
+    expect(job).toMatch(/^ {6}- id: report\n {8}if: .*\n {8}run: npm run balance:report /m);
+    expect(job).toMatch(/uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: balance-report\n/);
     // The commit to compare with: a pull request's base is HEAD^1 of its merge commit; a push's is the commit before.
     expect(job).toMatch(/^ {10}fetch-depth: 2$/m);
     expect(job).toContain('EVENT: ${{ github.event_name }}');
     expect(job).toContain('BEFORE: ${{ github.event.before }}');
     expect(job).toContain("REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}");
+    // CI itself may only read: the comment is posted by balance-report.yml.
+    expect(ci).toMatch(/^permissions:\n {2}contents: read\n\n/m);
+    expect(ci).toMatch(/^name: CI$/m);
+  });
+
+  // The report comes from the pull request's own code, so the workflow that may comment never runs that code.
+  test("the balance report is posted by a workflow that never checks out or runs the pull request's code", () => {
+    const wf = read('.github/workflows/balance-report.yml');
+    expect(wf).toMatch(
+      /^on:\n {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]\n {2}pull_request:\n {4}types: \[edited\]\n/m,
+    );
+    expect(wf).toMatch(/^permissions: \{\}$/m);
+    // Checkouts: the default branch (no ref) or the pull request's base commit, only the script and the Node pin.
+    expect([...wf.matchAll(/^ +ref: (.+)$/gm)].map((m) => m[1])).toEqual(['${{ github.event.pull_request.base.sha }}']);
+    const sparse = [...wf.matchAll(/sparse-checkout: \|\n((?: {12}.+\n)+)/g)].map((m) =>
+      (m[1] ?? '').trim().split(/\s+/),
+    );
+    expect(sparse).toEqual([
+      ['.nvmrc', 'tools/github/balance-comment.ts'],
+      ['.nvmrc', 'tools/github/balance-comment.ts'],
+    ]);
+    expect(wf.match(/uses: actions\/checkout@/g)).toHaveLength(2);
+    // What it runs: the artifact lookup, the base check, and the script. Nothing installed, nothing built.
+    const commands = [...wf.matchAll(/^ +(?:- )?run: (.+)$/gm)].map((m) => m[1]);
+    expect(commands).toEqual([
+      '|',
+      'node tools/github/balance-comment.ts post',
+      '|',
+      'node tools/github/balance-comment.ts warn',
+    ]);
+    expect(wf).not.toMatch(/\b(npm|npx|tsx)\b/);
+    // Values the pull request's author controls reach the script as environment only, never inside a run line.
+    for (const block of wf.split(/\n {6}- /)) {
+      const run = /run: (\|[\s\S]*?)(?=\n {8}\w|$)|run: (.+)/.exec(block)?.[0] ?? '';
+      expect(run, block).not.toContain('${{');
+    }
   });
 
   // The plan's list (P1-02, Decisions): the GM portal and every script its page loads, the balance code and its
@@ -393,11 +440,14 @@ describe('dangerous paths', () => {
       'tests/balance/matrix.test.ts',
       'tools/balance/run.ts',
       'tools/balance/engine-paths.ts',
+      'tools/balance/report.ts',
+      'tools/github/balance-comment.ts',
       'tools/hooks/after-edit.ts',
       'tools/hooks/before-stop.ts',
       'tools/check.ts',
       'tools/ratchet.ts',
       '.github/workflows/ci.yml',
+      '.github/workflows/balance-report.yml',
     ];
     expect(harness.filter((f) => !dangerous.isDangerous(f, globs))).toEqual([]);
   });

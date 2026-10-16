@@ -70,6 +70,12 @@ export function writeBaseline(set: SeedSet, games: KeptGame[]): void {
   fs.writeFileSync(BASELINE_FILE[set], formatBaseline(set, games));
 }
 
+/** A run in set A's form (npm run balance -- --out FILE), its folder made if missing. */
+export function writeRun(file: string, games: KeptGame[]): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, formatBaseline('A', games));
+}
+
 /** How one game differs between two runs; null if it doesn't. */
 export interface GameDiff {
   id: string;

@@ -45,12 +45,22 @@ export interface GameResult {
   report?: Record<string, [string, string]>;
   stats: Stats;
   cases?: Cases;
+  /** A replay (PlayOptions.untilTurn): the GM log lines of its last turn. */
+  log?: LogEntry[];
   ms: number;
 }
 
-interface LogEntry {
+/** A GM log line, as turn_logs keeps it. */
+export interface LogEntry {
   text?: unknown;
+  type?: unknown;
   charId?: unknown;
+  [key: string]: unknown;
+}
+
+export interface PlayOptions {
+  /** Stop after this turn and keep its GM log lines (a replay, to find where two runs part). */
+  untilTurn?: number;
 }
 
 function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): void {
@@ -103,7 +113,11 @@ function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): vo
 }
 
 /** Plays `spec` on `html` (by default the GM portal of the site in KC_SITE, or site/). */
-export async function playGame(spec: GameSpec, html = readPage('kingdoms-call-gm-portal.html')): Promise<GameResult> {
+export async function playGame(
+  spec: GameSpec,
+  html = readPage('kingdoms-call-gm-portal.html'),
+  options: PlayOptions = {},
+): Promise<GameResult> {
   const t0 = performance.now();
   const S = makeStub();
   const DB = S.DB;
@@ -137,8 +151,9 @@ export async function playGame(spec: GameSpec, html = readPage('kingdoms-call-gm
     const gmLog: LogEntry[] = [];
     const sections = new Map<string, string[]>();
     const cases: Cases = { encounter: 0, pursue: 0, battleChase: 0 };
+    let lastLog: LogEntry[] = [];
 
-    for (let t = 1; t <= MAX_TURNS; t++) {
+    for (let t = 1; t <= Math.min(MAX_TURNS, options.untilTurn ?? MAX_TURNS); t++) {
       const row = game();
       const before = JSON.parse(String(row['game_state'])) as State & { gameOver?: GameOver };
       if (row['status'] !== 'active' || before.gameOver) break;
@@ -166,6 +181,7 @@ export async function playGame(spec: GameSpec, html = readPage('kingdoms-call-gm
       const report = scripted && me ? (JSON.parse(String(me['turn_report'])) as Record<string, unknown>) : null;
       turns.push(turnHashes({ state, gmLog: log, telemetry, report }));
       gmLog.push(...log);
+      lastLog = log;
       unresolved.push(state.world.provinces.filter((p) => p._battleUnresolved).length);
       if (report) {
         // Each section's hashes turn by turn; '-' for a turn without it.
@@ -198,6 +214,7 @@ export async function playGame(spec: GameSpec, html = readPage('kingdoms-call-gm
       }),
       ms: Math.round(performance.now() - t0),
     };
+    if (options.untilTurn != null) result.log = lastLog;
     if (scripted) {
       const part = (list: string[], i: number) => h(list.map((x) => x.split('/')[i] ?? '-').join(' '));
       result.report = Object.fromEntries([...sections].map(([k, list]) => [k, [part(list, 0), part(list, 1)]]));

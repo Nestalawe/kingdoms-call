@@ -29,8 +29,8 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `browser/*.spec.ts` (browser specs: Playwright Test, Chromium), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `vitest.config.mts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, browser specs, strict TypeScript, lint, formatting, the exact Node version, the Claude Code hooks |
-| `tools/` | `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
-| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the balance matrix when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
+| `tools/` | `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`; its report, `npm run balance:report`), `github/` (the script that posts the balance report on a PR), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
+| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the balance matrix and its report when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `balance-report.yml` (posts the balance report on a PR once CI finishes, and warns while "What changes in play" is missing), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js`, `.github/pull_request_template.md` | The dangerous-paths list and the warning's logic (see below); the PR template (fill in every section) |
 | `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
 
@@ -102,14 +102,15 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   becomes its own PR (or its own item in a batch).
 - **Design forks go to Toby:** numbered options, a recommendation, and a short example from inside the game. Don't
   invent rules. When he rules, add it in the same PR as `docs/rulings/R-NNN-name.md` plus its index row
-  ([how](docs/rulings/README.md#adding-a-ruling)), and name the test that enforces it. Rulings go there and nowhere
-  else.
+  ([how](docs/rulings/README.md#adding-a-ruling)), and name the test that enforces it. Rulings go there only.
 - **Mirror rule changes everywhere a rule is restated** (engine, player-portal projections,
   rulebooks, blurbs): [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice).
 - **Data file changes bump the stamps:** [traps.md](docs/traps.md#the-data-file-stamp-guard).
+- **An engine change carries its balance report** (CI's comment). Unless it says "no change", the PR's top half has
+  "What changes in play" (template): predict before the matrix runs, then write it from the report, with anything
+  unpredicted under "Not expected". A reshape says "Expected: no meaningful change", and the report must agree.
 - Don't silence errors, lint or types to get green, and don't raise a count in `tests/ratchet.json`.
-- Update `docs/ARCHITECTURE.md` and `docs/traps.md` when your change makes them wrong, and this file
-  when the workflow changes.
+- Update `docs/ARCHITECTURE.md` and `docs/traps.md` when your change makes them wrong, this file when the workflow changes.
 - Write in plain language: [ISO 24495-1:2023](#plain-language-iso-24495-12023).
 
 **Never**
@@ -165,8 +166,7 @@ Some changes get Theo's eye before Toby merges them (decision D-07). Toby and Th
 nothing on GitHub enforces it.
 - **Paths:** any PR that changes a path in `.github/dangerous-paths` (today `supabase/**`, `.github/**`
   and `site/vendor/**`) gets a warning comment from `.github/workflows/dangerous-paths.yml`. It never
-  blocks the merge. The list is read from the PR's base branch, so editing it affects later PRs, not
-  the current one.
+  blocks the merge. The list is read from the PR's base branch, so editing it affects later PRs, not the current one.
 - **Everything else that needs Theo:** a change to who can see or change data, a plan step whose
   STATUS row has ✓ in the Theo column, or any step of a unit (e.g. the cutover). Say so in the first
   line of the PR description. If unsure, say so.

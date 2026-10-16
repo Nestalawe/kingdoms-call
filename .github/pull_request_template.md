@@ -13,6 +13,22 @@ For a batch: one commit per item, message "Item N: <short title>", in the same o
 
 **Item 1: …**
 
+## What changes in play
+
+<!-- For an engine change whose balance report isn't "no change" (CI posts the report as a comment). Write it for Toby,
+in game terms: a few sentences on what players will notice, what got stronger or weaker, and anything surprising.
+1. Predict first, before running the matrix: from the item alone, write what it should change.
+2. Then write this section from the prediction, the report's first differences and slices (and, once there are named
+   scenarios, the scenario's figures for the rule's direct effect).
+3. A reshape (only the order of the dice changes) says "Expected: no meaningful change", and the report must agree.
+Delete this section for a change that isn't to the engine, or whose report is "no change". -->
+
+Expected: …
+
+### Not expected
+
+<!-- Anything that moved but wasn't predicted. Write "Nothing" if nothing did. -->
+
 ## Rulings
 
 <!-- Needed: the question, numbered options with a recommendation, and a short in-game example.
