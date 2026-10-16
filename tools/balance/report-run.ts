@@ -68,7 +68,7 @@ async function main(): Promise<number> {
     });
 
   const changes = compareGames(base, head);
-  const cls = classify(changes, head.length);
+  const cls = classify(changes, base);
   const replays = gamesToReplay(changes, cls);
   const firstDiffs: FirstDiff[] = [];
   const replayNotes: string[] = [];

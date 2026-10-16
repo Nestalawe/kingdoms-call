@@ -58,7 +58,7 @@ const BASE = IDS.map((id) => game(id));
 describe('the class of change', () => {
   test('identical games: no change', () => {
     expect(compareGames(BASE, structuredClone(BASE))).toEqual([]);
-    expect(classify([], 60)).toBe('no change');
+    expect(classify([], BASE)).toBe('no change');
     expect(buildReport({ base: BASE, head: structuredClone(BASE) }).verdict).toBe(
       'No change: all 60 games played out exactly as before.',
     );
@@ -69,7 +69,7 @@ describe('the class of change', () => {
     const changes = compareGames(BASE, head);
     expect(changes).toHaveLength(60);
     expect(changes.every((c) => c.words && !c.play)).toBe(true);
-    expect(classify(changes, 60)).toBe('wording only');
+    expect(classify(changes, BASE)).toBe('wording only');
   });
 
   test('any play hash, the length, the results, the scripted cases or a report section played: a change to play', () => {
@@ -97,12 +97,31 @@ describe('the class of change', () => {
 
   test(`a reshape is at least ${String(100 * RESHAPE_SHARE)}% of the games played out differently; fewer is a rule change`, () => {
     const changed = (n: number) => BASE.map((g, i) => (i < n ? alter(g, ['state']) : g));
-    expect(classify(compareGames(BASE, changed(54)), 60)).toBe('reshape');
-    expect(classify(compareGames(BASE, changed(53)), 60)).toBe('rule change');
-    expect(classify(compareGames(BASE, changed(1)), 60)).toBe('rule change');
+    expect(classify(compareGames(BASE, changed(54)), BASE)).toBe('reshape');
+    expect(classify(compareGames(BASE, changed(53)), BASE)).toBe('rule change');
+    expect(classify(compareGames(BASE, changed(1)), BASE)).toBe('rule change');
     // Words changing in the other games don't make it a reshape.
     const head = changed(10).map((g, i) => (i >= 10 ? alter(g, ['logText']) : g));
-    expect(classify(compareGames(BASE, head), 60)).toBe('rule change');
+    expect(classify(compareGames(BASE, head), BASE)).toBe('rule change');
+  });
+
+  // A reshape from a late turn (one more dice roll from turn 18) can't change a game that ended before it: the share
+  // counts the games still being played at the first turn any game differs.
+  test('the share counts the games still being played when the first difference appeared', () => {
+    const long = (g: KeptGame, i: number): KeptGame =>
+      i < 8 ? g : { ...g, turns: Array.from({ length: 20 }, (_, t) => `t${String(t)} ${'x '.repeat(6)}`.trim()) };
+    const base = BASE.map(long);
+    // 8 games of 5 turns ended long before; 50 of the other 52 change from turn 18.
+    const late = base.map((g, i) => (i >= 10 ? alter(g, ['state'], 18) : g));
+    expect(classify(compareGames(base, late), base)).toBe('reshape');
+    const r = buildReport({ base, head: late });
+    expect(r.games).toMatchObject({ changed: 50, total: 60, running: 52, from: 18 });
+    expect(r.verdict).toMatch(
+      /^50 of the 52 games still being played at turn 18 played out differently from then on, as when the order of the dice changes,/,
+    );
+    // The same 50 games changing from turn 4, when all 60 were being played: a rule change.
+    const early = base.map((g, i) => (i >= 10 ? alter(g, ['state'], 4) : g));
+    expect(classify(compareGames(base, early), base)).toBe('rule change');
   });
 
   test('a game missing on either side counts as played out differently', () => {
@@ -120,7 +139,7 @@ describe('the class decides how the change is judged', () => {
     const head = BASE.map((g, i) => (i < 10 ? alter(sliceMoved(g, i), ['state', 'log', 'telemetry'], 3) : g));
     const r = buildReport({ base: BASE, head });
     expect(r.class).toBe('rule change');
-    expect(r.games).toMatchObject({ changed: 10, total: 60, bots: [10, 48], scripted: [0, 12] });
+    expect(r.games).toMatchObject({ changed: 10, total: 60, running: 60, from: 3, bots: [10, 48], scripted: [0, 12] });
     expect(r.meaningful).toEqual([]);
     expect(r.slices.map((l) => l.key)).toEqual([PVP]);
     expect(r.slices[0]).toMatchObject({ base: '60.0%', head: '51.7%', verdict: 'clear change', games: 10 });

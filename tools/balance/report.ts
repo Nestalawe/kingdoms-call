@@ -6,7 +6,8 @@
 // - "wording only": every game played out the same (state, log structure, telemetry, results, the scripted realm's
 //   report structure), and only words differ;
 // - a reshape: at least RESHAPE_SHARE of the games played out differently, as when the order of the random draws
-//   changes. Every game differs, so no single game can show what changed: it is judged as a whole, by the strict
+//   changes (of the games still being played at the first turn any game differs: a change from turn 18 can't reach a
+//   game that ended at 15). Every game differs, so no single game can show what changed: it is judged as a whole, by the strict
 //   overall answer (paired.ts's meaningfulChanges), which must say "no meaningful change";
 // - a rule change: fewer games played out differently. The others are identical, so the games that changed show what
 //   the rule does: it is judged by where they first differ and by every figure and slice beyond the noise, so a change
@@ -82,12 +83,24 @@ export function compareGames(base: KeptGame[], head: KeptGame[]): GameChange[] {
   return out;
 }
 
-/** The class of change, from how many of the `total` games differ and how. */
-export function classify(changes: GameChange[], total: number): ChangeClass {
+/** How many games played out differently, of those still being played at the first turn any of them differs (a game
+ *  that ended before it can't differ). */
+export function playedShare(
+  changes: GameChange[],
+  base: KeptGame[],
+): { played: number; running: number; from: number } {
+  const played = changes.filter((c) => c.play);
+  if (!played.length) return { played: 0, running: base.length, from: 1 };
+  const from = Math.min(...played.map((c) => c.firstTurn ?? 1));
+  return { played: played.length, running: base.filter((g) => g.turns.length >= from).length, from };
+}
+
+/** The class of change, from how many of the base's games differ and how. */
+export function classify(changes: GameChange[], base: KeptGame[]): ChangeClass {
   if (!changes.length) return 'no change';
-  const played = changes.filter((c) => c.play).length;
+  const { played, running } = playedShare(changes, base);
   if (!played) return 'wording only';
-  return played >= RESHAPE_SHARE * total ? 'reshape' : 'rule change';
+  return played >= RESHAPE_SHARE * running ? 'reshape' : 'rule change';
 }
 
 /** The games to replay to find where they first differ: those that played out differently (or, for wording only,
@@ -232,7 +245,15 @@ export interface Report {
   class: ChangeClass;
   /** One line, in game terms: what Toby reads first. */
   verdict: string;
-  games: { changed: number; total: number; bots: [changed: number, total: number]; scripted: [number, number] };
+  games: {
+    changed: number;
+    total: number;
+    /** The games still being played at turn `from`, the first turn any game differs. */
+    running: number;
+    from: number;
+    bots: [changed: number, total: number];
+    scripted: [number, number];
+  };
   firstDiffs: FirstDiff[];
   /** Why some replays aren't shown. */
   replayNotes: string[];
@@ -294,7 +315,8 @@ export function buildReport(input: {
 }): Report {
   const { base, head } = input;
   const changes = compareGames(base, head);
-  const cls = classify(changes, head.length);
+  const cls = classify(changes, base);
+  const share = playedShare(changes, base);
   const ids = (group: string) => head.filter((g) => g.id.startsWith(group)).map((g) => g.id);
   const bots = ids('bots');
   const scriptedIds = ids('scripted');
@@ -325,8 +347,10 @@ export function buildReport(input: {
       break;
     case 'reshape':
       verdict =
-        `Every game played out differently (${String(played)} of ${String(total)}), as when the order of the dice ` +
-        `changes, so the games are judged as a whole: ` +
+        (share.running === total && share.from === 1
+          ? `Every game played out differently (${String(played)} of ${String(total)}), as when the order of the dice changes, `
+          : `${String(played)} of the ${String(share.running)} games still being played at turn ${String(share.from)} played out differently from then on, as when the order of the dice changes, `) +
+        'so the games are judged as a whole: ' +
         (meaningful.length ? `a meaningful change in ${meaningful.map(figure).join('; ')}.` : 'no meaningful change.');
       break;
     case 'rule change': {
@@ -346,6 +370,8 @@ export function buildReport(input: {
     games: {
       changed: cls === 'wording only' ? changes.length : played,
       total,
+      running: share.running,
+      from: share.from,
       bots: [playedIn(bots), bots.length],
       scripted: [playedIn(scriptedIds), scriptedIds.length],
     },
@@ -519,7 +545,7 @@ export function renderReport(r: Report): string {
       'change leaves most games identical, so the ones that changed show what it does.',
     '- **Clear change:** chance alone would move the figure this far less than 1 time in 100. **Possible change:** ' +
       'less than 5 times in 100. **Within the noise:** more often than that. **Too few to tell:** too few cases.',
-    `- When at least ${String(100 * RESHAPE_SHARE)}% of the games play out differently (a reshape, such as a change in ` +
+    `- When at least ${String(100 * RESHAPE_SHARE)}% of the games still being played when the first one changed play out differently (a reshape, such as a change in ` +
       'the order of the dice), every figure moves a little by chance, so only the headline figures are judged, with ' +
       'the bar raised for their number.',
     "- The figures come from the computer-played games; the scripted realm's games are shown apart.",
