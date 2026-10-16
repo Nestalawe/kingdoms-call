@@ -26,6 +26,8 @@ export interface BootOptions {
 }
 
 export function readPage(nameOrPath: string): string;
+/** The files readPage reads for a page, as full paths: the page, then each local script it inlines. */
+export function pageFiles(nameOrPath: string): string[];
 export function bootJsdom(html: string, opts?: BootOptions): { window: PageWindow };
 export function seededRandom(seed: number | string): () => number;
 export function pinnedDate(RealDate: DateConstructor, now: number | string): DateConstructor;

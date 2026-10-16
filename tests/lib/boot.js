@@ -3,6 +3,7 @@
 //   SITE, sitePath(name)        where the deployable files live (site/, or $KC_SITE)
 //   readPage(nameOrPath)        page HTML with its local scripts (kingdoms-call-data.js, kc-config.js)
 //                               inlined and the supabase-js <script> removed, ready for jsdom
+//   pageFiles(nameOrPath)       the files readPage reads for that page: the page, then each script it inlines
 //   bootJsdom(html, opts)       a jsdom with the page's scripts running and a Supabase stub installed
 //   serve(dir, port)            a static file server for Chromium (as the pages are deployed: one folder)
 //   routeExternal(target, cdn)  answers supabase-js with a stub and fonts with nothing (Playwright page/context)
@@ -28,14 +29,23 @@ const SUPABASE_TAG=/<script src="(?:vendor\/supabase-js-[^"]*|https:\/\/cdn\.jsd
 
 // A name ('kingdoms-call-gm-portal.html') is looked up in site/; a path is used as given. Local scripts are
 // the ones beside the page, as when deployed (jsdom doesn't fetch them itself).
+const pageFile=nameOrPath=>/[\\/]/.test(nameOrPath)?nameOrPath:sitePath(nameOrPath);
 function readPage(nameOrPath){
-  const file=/[\\/]/.test(nameOrPath)?nameOrPath:sitePath(nameOrPath);
+  const file=pageFile(nameOrPath);
   let html=fs.readFileSync(file,'utf8');
   html=html.replace(LOCAL_TAG,(tag,src)=>{
     const local=path.join(path.dirname(file),src);
     return fs.existsSync(local)?'<script>'+fs.readFileSync(local,'utf8')+'</script>':tag;
   });
   return html.replace(SUPABASE_TAG,'');
+}
+
+// The files readPage reads for a page, as full paths: the page, then each local script it inlines. The balance runner
+// checks they are all engine paths (tools/balance/engine-paths.ts), so CI plays the matrix when one changes.
+function pageFiles(nameOrPath){
+  const file=pageFile(nameOrPath);
+  const scripts=[...fs.readFileSync(file,'utf8').matchAll(LOCAL_TAG)].map(m=>path.join(path.dirname(file),m[1]));
+  return [file,...scripts.filter(f=>fs.existsSync(f))];
 }
 
 // sfc32, seeded through splitmix32 so nearby seeds give unrelated streams.
@@ -147,4 +157,4 @@ async function routeExternal(target,stubBody){
   await target.route('**fonts.gstatic.com/**',r=>r.fulfill({status:200,body:''}));
 }
 
-module.exports={SITE,sitePath,readPage,bootJsdom,seededRandom,pinnedDate,serve,routeExternal,withDbVersion,DB_VERSION};
+module.exports={SITE,sitePath,readPage,pageFiles,bootJsdom,seededRandom,pinnedDate,serve,routeExternal,withDbVersion,DB_VERSION};
