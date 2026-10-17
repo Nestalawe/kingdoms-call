@@ -21,6 +21,7 @@ const ctx={
   SKILL_LABELS:{melee:'Melee',archery:'Archery',tactical:'Tactical',white:'White Magic',thief:'Thief'},
   TITLE_DEFS:[{key:'throne',name:'The Throne'},{key:'sword',name:'Sword of the Realm'},{key:'vault',name:'Vaultkeeper'}],
   KC_BUILD_STAMP:'test', KC_LB_V:1,
+  kcClock:Object.assign(()=>Date.now(),{date:()=>new Date()}),   // the engine's clock (src/engine/clock.js), not in the slice
   currentUser:{id:'gm-1'},
   gameMetaOf:()=>null,
   computeStandings:(gs)=>({titles:{throne:{playerIndex:0,merit:42,charId:1},sword:{playerIndex:1,merit:17,charId:2}}}),

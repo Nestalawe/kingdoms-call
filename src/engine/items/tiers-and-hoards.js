@@ -134,11 +134,11 @@ function rollMagicItem(monsterPower, taken, takenEff){
   const t=lairItemTier(monsterPower); // the guardian's power IS the tier
   const inTier=preferFreshEffects(((ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P)
     .filter(it=>!taken.has(it.name)), takenEff);
-  if(inTier.length) return inTier[Math.floor(Math.random()*inTier.length)];
+  if(inTier.length) return inTier[Math.floor(kcRng()*inTier.length)];
   let anyLeft=ALL_MAGIC_ITEMS_P.filter(it=>!taken.has(it.name)&&itemFallbackOk(it,t));
   if(!anyLeft.length) anyLeft=ALL_MAGIC_ITEMS_P.filter(it=>!taken.has(it.name));
   anyLeft=preferFreshEffects(anyLeft, takenEff);
-  return anyLeft.length ? anyLeft[Math.floor(Math.random()*anyLeft.length)] : null;
+  return anyLeft.length ? anyLeft[Math.floor(kcRng()*anyLeft.length)] : null;
 }
 // When a tier is spent, a WEAK lair may still take any utility item of any tier (rule 1 survives
 // exhaustion); a combat item reaches a Weak lair only when the treasury is otherwise bare.
@@ -163,7 +163,7 @@ function ensureLairHoard(f, gs, opts){
   f._hoardV2=true;
   const power=(f.monster&&f.monster.power)||'Weak';
   const band=ENCOUNTER_CLEAR_GOLD_BANDS[power]||[1,5];
-  const gold=(f._clearGold!=null)?f._clearGold:(Math.floor(Math.random()*(band[1]-band[0]+1))+band[0]);
+  const gold=(f._clearGold!=null)?f._clearGold:(Math.floor(kcRng()*(band[1]-band[0]+1))+band[0]);
   delete f._clearGold;
   setFeatureTreasure(f, gold);
   // Thief revision: remember the hoard as it stood at generation — a thief's cut is a share of the
@@ -175,9 +175,9 @@ function ensureLairHoard(f, gs, opts){
   const takenEff=awardedEffectSet(gs);
   const T=LAIR_ITEM_ODDS[power]||LAIR_ITEM_ODDS.Weak;
   const roll=()=>{ const base=rollMagicItem(power,taken,takenEff); if(!base) return; taken.add(base.name); takenEff.add(itemEffectKey(base)); gs._awardedItems.push(base.name); const id=(gs.nextItemId||0); gs.nextItemId=id+1; f.hoardItems.push({...base,effect:{...base.effect},id}); };
-  if(Math.random()<T.itemChance) roll();
-  if(Math.random()<T.bonusItem) roll();
-  if(Math.random()<(T.thirdItem||0)) roll();
+  if(kcRng()<T.itemChance) roll();
+  if(kcRng()<T.bonusItem) roll();
+  if(kcRng()<(T.thirdItem||0)) roll();
 }
 // The tier a lair of this power holds. Since 2026-09-11 this is simply the guardian's own power.
 function lairItemTier(power){ return ITEM_TIER_OF_POWER[power]||1; }

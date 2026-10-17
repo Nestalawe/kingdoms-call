@@ -28,7 +28,7 @@ const _GARRETH_ESCAPES=[
   ' reels from a killing hit, staggers into the smoke, and simply isn\u2019t there when it clears.',
   ' is run through \u2014 or seems to be \u2014 but slips free, whole and unbothered.',
 ];
-function _garrethEscapeLine(ch){ return `\u{1F340} ${ch&&ch.name?ch.name:'The wanderer'}${_GARRETH_ESCAPES[Math.floor(Math.random()*_GARRETH_ESCAPES.length)]}`; }
+function _garrethEscapeLine(ch){ return `\u{1F340} ${ch&&ch.name?ch.name:'The wanderer'}${_GARRETH_ESCAPES[Math.floor(kcRng()*_GARRETH_ESCAPES.length)]}`; }
 const _usedHeroNames=new Set();
 function _toRoman(n){const M=['','X','XX','XXX'],C=['','C','CC','CCC','CD','D','DC','DCC','DCCC','CM'],X=['','X','XX','XXX','XL','L','LX','LXX','LXXX','XC'],I=['','I','II','III','IV','V','VI','VII','VIII','IX'];return M[Math.floor(n/1000)]+C[Math.floor(n%1000/100)]+X[Math.floor(n%100/10)]+I[n%10];}
 function nextHeroName(alignment){
@@ -93,7 +93,7 @@ function lairBaseNameP(name, provName){
 // `provBases` (optional): the base names the lairs already named in this province carry; none of
 // them is given again here.
 function pickLairNameP(monster, terrain, used, provName, rnd, provBases){
-  const R=rnd||Math.random;
+  const R=rnd||kcRng;
   const here=provBases||new Set();
   const isSea=(terrain==='sea');
   const cat=(monster&&monster.cat)||'beast';

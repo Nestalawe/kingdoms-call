@@ -7,7 +7,7 @@
 // log-ratio space). Win chances by ratio: 1.1× 54%, 1.3× 61%, 1.5× 68%, 2× 80%, 3× 90%, 4× 100%.
 const FORTUNE_CURVE=[[-Math.log(4),0],[-Math.log(3),0.10],[-Math.log(2),0.20],[0,0.50],[Math.log(2),0.80],[Math.log(3),0.90],[Math.log(4),1]];
 function battleFortune(){
-  const u=Math.random();
+  const u=kcRng();
   for(let i=1;i<FORTUNE_CURVE.length;i++){
     const [a,fa]=FORTUNE_CURVE[i-1],[b,fb]=FORTUNE_CURVE[i];
     if(u<=fb){ const S=a+(b-a)*((u-fa)/(fb-fa)); return {S, atk:Math.exp(S/2), def:Math.exp(-S/2)}; }
@@ -48,9 +48,9 @@ function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort){
   } else outcome=` and overturned it — ${winner} finishes ${fortuneEdgeNum(r1)} ahead and **wins**.`;
   return `${edge}. ${luck}${outcome}`;
 }
-// unbiased Fisher-Yates shuffle (returns a NEW array; rnd defaults to Math.random). Every former
+// unbiased Fisher-Yates shuffle (returns a NEW array; rnd defaults to kcRng). Every former
 // `.sort(()=>Math.random()-0.5)` now goes through here — that comparator is not a fair shuffle
 // (engine-dependent, and it leaves elements near their original positions far more often than
 // chance), which skewed "pick n at random" draws toward the front of the list.
-function shuffleP(arr, rnd=Math.random){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function shuffleP(arr, rnd=kcRng){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 const ABILITIES_P=KC_SKILLS.slice();

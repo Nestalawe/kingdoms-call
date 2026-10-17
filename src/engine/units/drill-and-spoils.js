@@ -24,7 +24,7 @@ function humanXPMult(a, ownerPi, gs){
 }
 
 
-function rP(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function rP(a,b){return Math.floor(kcRng()*(b-a+1))+a;}
 // Starting neutral defender count by wealth tier. MUST use the SAME tax thresholds as the
 // player-facing wealth label (tax>=7 Rich / tax>=4 Prosperous / else Poor) — otherwise a province
 // shown as "Prosperous"
@@ -57,7 +57,7 @@ function resyncNeutralDefenders(prov){
     const draw=pool.length?pool:(prov.armyTypes||[]);
     const proto=defs[0]||null;
     while(defs.length<want){
-      const dt=draw.length?draw[Math.floor(Math.random()*draw.length)]:(proto?proto.type:'Shieldwall Levies');
+      const dt=draw.length?draw[Math.floor(kcRng()*draw.length)]:(proto?proto.type:'Shieldwall Levies');
       defs.push({type:dt,quality:proto?proto.quality:'Average',race:(proto?proto.race:(prov.race||'Human')),unitName:armyUnitName(dt)});
     }
   }

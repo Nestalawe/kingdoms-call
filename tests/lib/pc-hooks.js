@@ -35,11 +35,11 @@ async function bootPersonalCombat(names, opts={}){
   return {W, PC, base, MON:W.eval('MONSTERS_P'), errs, state:st};
 }
 
-// Run fn with Math.random pinned to a fixed value (or a list of values used in turn, the last repeating).
+// Run fn with the page's dice (kcRng) pinned to a fixed value (or a list of values used in turn, the last repeating).
 function pinned(W, r, fn){
-  const real=W.Math.random; const seq=Array.isArray(r)?r.slice():[r];
-  W.Math.random=()=>seq.length>1?seq.shift():seq[0];
-  try{ return fn(); } finally{ W.Math.random=real; }
+  const seq=Array.isArray(r)?r.slice():[r];
+  const real=W.kcRng.use(()=>seq.length>1?seq.shift():seq[0]);
+  try{ return fn(); } finally{ W.kcRng.use(real); }
 }
 
 module.exports={bootPersonalCombat, pinned};

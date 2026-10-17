@@ -4,7 +4,7 @@
 // against a 30% chance succeeds). This gives exactly `chance` winning faces out of 100 and makes
 // the displayed integer roll honest (no float rounding artefact where a shown "30" was really 30.4
 // and missed).
-function d100(){ return Math.floor(Math.random()*100)+1; }
+function d100(){ return Math.floor(kcRng()*100)+1; }
 // ONE canonical way to show a percentage roll in the report — the success CHANCE and the actual
 // d100 ROLL, with a ✓/✗. Success is roll<=chance (the d100 convention above). The displayed % is
 // clamped to 0–100; the underlying test should use the raw chance. Roll-display contract (Sept
@@ -34,17 +34,17 @@ function armyUnitName(type){
   let name;
   let attempts=0;
   do {
-    name=pool[Math.floor(Math.random()*pool.length)];
+    name=pool[Math.floor(kcRng()*pool.length)];
     attempts++;
     if(attempts>pool.length*3){
       // Pool exhausted — compose a further DESCRIPTIVE name rather than appending a bare number.
       // With the large pools this is rarely reached; the composition space is enormous.
-      const base=pool[Math.floor(Math.random()*pool.length)];
+      const base=pool[Math.floor(kcRng()*pool.length)];
       let composed=null;
       for(const e of _NAME_EPITHETS){ const cand=`${base}, ${e}`; if(!_usedArmyUnitNames.has(cand)){ composed=cand; break; } }
       if(!composed) for(const t of _NAME_TAILS){ const cand=`${base} ${t}`; if(!_usedArmyUnitNames.has(cand)){ composed=cand; break; } }
       if(!composed) for(const e of _NAME_EPITHETS){ for(const t of _NAME_TAILS){ const cand=`${base}, ${e} ${t}`; if(!_usedArmyUnitNames.has(cand)){ composed=cand; break; } } if(composed) break; }
-      name=composed||`${base} of the ${Math.floor(Math.random()*9000+1000)}th Muster`;
+      name=composed||`${base} of the ${Math.floor(kcRng()*9000+1000)}th Muster`;
       break;
     }
   } while(_usedArmyUnitNames.has(name));

@@ -36,7 +36,7 @@ const BATTLE_RANGED_IN_FRONT=0.75, BATTLE_FLYER_BEYOND_CAP=0.5, BATTLE_FLYER_CAP
 // Own copies of the three class lists the grid reads (each consumer builds its own, see the data file).
 const GRID_FLY_TYPES=new Set(KC_UNIT_CLASS.aerial), GRID_CAV_TYPES=new Set(KC_UNIT_CLASS.cavalry), GRID_SEA_TYPES=new Set(KC_UNIT_CLASS.sea);
 // The width this battle's ground allows: ONE roll per battle, shared by both sides.
-function rollBattleWidth(terrain){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return r[0]+Math.floor(Math.random()*(r[1]-r[0]+1)); }
+function rollBattleWidth(terrain){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return r[0]+Math.floor(kcRng()*(r[1]-r[0]+1)); }
 // The middle of the range: what the bots' estimates and the Strategist's command score assume.
 function battleFrontWidth(terrain){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return Math.round((r[0]+r[1])/2); }
 function flankLineMults(){ const l=(typeof DISC_BY_ID!=='undefined'&&DISC_BY_ID.sd09&&DISC_BY_ID.sd09.effect&&DISC_BY_ID.sd09.effect.lines); return (Array.isArray(l)&&l.length===4)?l:BATTLE_LINE_MULTS_FLANK; }

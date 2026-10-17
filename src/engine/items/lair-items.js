@@ -55,7 +55,7 @@ function rollMagicItemFor(gs, playerIndex, monsterPower, taken, takenEff){
   const cats=shuffleP(live.filter(c=>(found[c]||0)===low));
   const cat=cats[0];
   const pool=preferFreshEffects(avail(cat, atTier?t:null), takenEff);
-  return pool.length?pool[Math.floor(Math.random()*pool.length)]:rollMagicItem(monsterPower, taken, takenEff);
+  return pool.length?pool[Math.floor(kcRng()*pool.length)]:rollMagicItem(monsterPower, taken, takenEff);
 }
 function ensureAllLairHoards(gs){
   const provs=(gs&&gs.world&&gs.world.provinces)||[];
@@ -75,7 +75,7 @@ function ensureAllLairHoards(gs){
     ensureLairHoard(f,gs,{noItems:true});
     if(!fresh) return;
     const T=LAIR_ITEM_ODDS[powOf(f)]||LAIR_ITEM_ODDS.Weak;
-    let slots=0; if(Math.random()<T.itemChance) slots++; if(Math.random()<T.bonusItem) slots++; if(Math.random()<(T.thirdItem||0)) slots++;
+    let slots=0; if(kcRng()<T.itemChance) slots++; if(kcRng()<T.bonusItem) slots++; if(kcRng()<(T.thirdItem||0)) slots++;
     work.push({f,slots,power:powOf(f),region:lairRegionOf(gs,prov),provId:prov.id,prov});
   });
   if(!work.length) return;
@@ -152,7 +152,7 @@ function ensureAllLairHoards(gs){
       // last lairs stocked (where the bar above would have nothing else to offer).
       { const n={}; cand.forEach(it=>{ const k=itemEffectKey(it); n[k]=(n[k]||0)+1; });
         const most=Math.max(...Object.values(n)); cand=cand.filter(it=>n[itemEffectKey(it)]===most); }
-      const pick=cand[Math.floor(Math.random()*cand.length)];
+      const pick=cand[Math.floor(kcRng()*cand.length)];
       give(w.f,pick,w.region,w.provId); w.slots--;
     }
   }

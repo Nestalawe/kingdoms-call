@@ -222,7 +222,7 @@ const gmPortal={
     // the same answers on every run: dialogs say yes, random draws (the bots' names) and the clock's time of day repeat,
     // and the watcher runs only when a step says so
     const fixed="window.confirm=()=>true;window.alert=()=>{};Date.prototype.toLocaleTimeString=function(){return '12:00:00';};"
-      +"Math.random=(()=>{let s=7;return ()=>(s=s*16807%2147483647)/2147483647;})();_autoRunBusy=true;";
+      +"kcRng.use((()=>{let s=7;return ()=>(s=s*16807%2147483647)/2147483647;})());_autoRunBusy=true;";
     const tick='_autoRunBusy=false;autoTurnTick().then(()=>{ _autoRunBusy=true; });';
     // a failure staged on purpose, which the engine also logs to the console: only that log is muted, for that step
     const quiet=code=>`{ const ce=console.error; console.error=()=>{}; Promise.resolve(${code}).finally(()=>{ console.error=ce; }); }`;

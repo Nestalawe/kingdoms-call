@@ -321,7 +321,7 @@ function runBotActions(G, botIdxSet){
       // (Sage 1+) whose pick is Sage researches instead — always once Sage is maxed at 5, otherwise
       // half the time, so the skill still grows.
       const botSageOrResearch=(sk)=>{ const sg=((c.skills||{}).sage||0);
-        if(sk==='sage'&&sg>=1&&(sg>=5||Math.random()<0.5)) return {action:'research',target:'',extra:'',desc:'Research'};
+        if(sk==='sage'&&sg>=1&&(sg>=5||kcRng()<0.5)) return {action:'research',target:'',extra:'',desc:'Research'};
         return sk?{action:'practice',target:sk,extra:'',desc:'Practice '+(SKILL_LABELS[sk]||sk)}:{action:'defend',target:'',extra:'',desc:'Hold'}; };
       // 2026-09-26 (Toby item 1): unmapped ground under a character who is standing still is explored before any
       // practice — Practice is the last resort, not the default (a host's commander still drills it).

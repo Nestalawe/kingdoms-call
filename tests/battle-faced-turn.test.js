@@ -7,7 +7,7 @@
 // Level 2 (scenario + the code-anchor hook): the battle paths, erodeGuardSurvivors, disperseDeadCharArmies and
 // handleHeroDeath live inside runTurn. The battle is staged with overwhelming odds, so the attacker always wins;
 // which fate each company draws is the dice's, so the checks hold for every line that appears rather than for
-// one line in particular. The erosion rolls are driven with a fixed Math.random.
+// one line in particular. The erosion rolls are driven with fixed dice (kcRng.use).
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const ANCHOR="  // 4. Run all 5 phases\n";
@@ -77,7 +77,7 @@ const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|w
   const BR=W.__BR; ok(!!BR,'the hook exposes the runTurn helpers'); if(!BR){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
   const G=BR.getG(); G.mercenaries=[];
   const landProv=G.world.provinces.find(p=>p&&p.terrain!=='sea');
-  const withDice=(seq,fn)=>{ const real=W.Math.random; let i=0; W.Math.random=()=>seq[Math.min(i++,seq.length-1)]; try{ return fn(); } finally{ W.Math.random=real; } };
+  const withDice=(seq,fn)=>{ let i=0; const real=W.kcRng.use(()=>seq[Math.min(i++,seq.length-1)]); try{ return fn(); } finally{ W.kcRng.use(real); } };
   const erode=(seq,victor)=>{ const lines=[]; const surv=named('Shieldwall Levies','Average',['Levy S1','Levy S2']).concat(named('Goblin Horde','Green',['Gob S1']));
     const kept=withDice(seq,()=>BR.erodeGuardSurvivors({name:'Ulric (wandering)'},landProv,surv,l=>lines.push(l),victor)); return {lines,kept}; };
   let e=erode([0],'Aldric');

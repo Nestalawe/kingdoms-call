@@ -8,9 +8,9 @@
 // chieftain is staged far too weak to win, so the outcome does not depend on the dice.
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const ROLL="    if(Math.random()<Math.min(1,chance*_humanLearn*_diminish*mult)){";
+const ROLL="    if(kcRng()<Math.min(1,chance*_humanLearn*_diminish*mult)){";
 (async()=>{
-  const sc=await bootScenario({inject:[[ROLL,"    if(window.__riseRule?window.__riseRule(skill,real):Math.random()<Math.min(1,chance*_humanLearn*_diminish*mult)){"]]}); const W=sc.W;
+  const sc=await bootScenario({inject:[[ROLL,"    if(window.__riseRule?window.__riseRule(skill,real):kcRng()<Math.min(1,chance*_humanLearn*_diminish*mult)){"]]}); const W=sc.W;
   W.__riseRule=(sk,who)=>sk==='melee'&&!!who&&who.player===0;   // the hero's Melee rises for certain; nobody else's (a chieftain duel allows one advance)
   const nb=(S,p)=>W.getNeighborsP(p,S.world.cols,S.world.rows,S.world.provinces).filter(Boolean);
   const place=(S,c,p)=>{ S.world.provinces.forEach(q=>{ q.characters=(q.characters||[]).filter(id=>id!==c.id); }); p.characters=[...(p.characters||[]),c.id]; c.location=p.id; c.locationName=p.name; };

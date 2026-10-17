@@ -49,7 +49,7 @@ Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t,d])=>{ ARMY_SPEED_MASTER[t]=d.spe
 // resolution scope. Built from KC_UNIT_CLASS (kingdoms-call-data.js), like PRIMAL_SEA_TYPES.
 const PRIMAL_SEA_NAMES=new Set(KC_UNIT_CLASS.primalSea);
 // ── DISPLAY ROUNDING ────
-// Battle maths is done in floats (flank ×0.5, tactical ×1.2, dice = Math.random()*range), but a
+// Battle maths is done in floats (flank ×0.5, tactical ×1.2, dice = kcRng()*range), but a
 // player report should never show a decimal — "roll 7.2384719283" is noise, not information. n0()
 // is a DISPLAY-ONLY rounder: use it on every number interpolated into narrative/log text. It must
 // NEVER be used on a value that feeds back into the maths, and it is deliberately NOT applied to
