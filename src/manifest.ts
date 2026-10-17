@@ -58,7 +58,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'db/game-meta.js',
         'db/telemetry.js',
         'ui/gm/stats-tab.js',
-        'views/hall-of-fame.js',
+        'ui/gm/hall-of-fame.js',
         'ui/gm/turn-mode.js',
         'ui/gm/auto-turn.js',
         'engine/bots/setup.js',

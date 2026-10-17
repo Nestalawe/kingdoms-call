@@ -513,7 +513,7 @@ in the file under `src/` named in the last column: edit it there.
 | `intrusion-lurker` | `  const explored=100;` in `spotEnemyInOwnedProvince` (a marked hero wins the spotting roll) | `engine/heroes/fame-and-consecration.js` |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) | `engine/run-turn.js` |
 | `battle-spells-recorded` | `  const _tel={pre:{}, orders:{}, battles:[], encounters:[], captures:[], deaths:[], spells:[], hires:[], recruits:[]};` (exposes the turn's statistics collector) | `engine/run-turn.js` |
-| `leaderboard-records`, `leaderboard-render`, `leaderboard-realm-bests` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` | `views/hall-of-fame.js` |
+| `leaderboard-records`, `leaderboard-render`, `leaderboard-realm-bests` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` | `ui/gm/hall-of-fame.js` |
 | `home-placement` | `  const cellIdRC=(r,c)=>r*cols+c;`, `  const eligibleCells=[];` and their end lines | `engine/world/generate.js` |
 | `druid-and-war-spoils` | the start and end of nine tables and functions (see the `slice(` calls) | `engine/units/movement.js`, `engine/world/tables.js`, `engine/discoveries.js` |
 | `duel-skill-rise` | `    if(kcRng()<Math.min(1,chance*_humanLearn*_diminish*mult)){` (decides who rises in an experience roll) | `engine/run-turn.js` |
