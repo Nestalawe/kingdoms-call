@@ -23,8 +23,8 @@ every test. **Edit `src/`, never `site/`**: the next build overwrites it.
   in its place, byte for byte. The other files (the data file, `kc-*.js`, `vendor/`) are copied as they are. When it
   landed, the build reproduced the committed `site/` exactly, every byte of every file.
 - **Each `.js` file is a stretch of whole top-level statements**, so it parses on its own; no file ends inside a
-  function (`tests/static/build.test.ts`). The GM portal's main script is 53 files; `src/engine/run-turn.js` (all of
-  `runTurn`, ~15,300 lines) stays one file until P1-18 and P1-08 take it apart. The player portal's is 20.
+  function (`tests/static/build.test.ts`). The GM portal's main script is 56 files; `src/engine/run-turn.js` (the turn,
+  `resolveTurn`, ~15,200 lines) stays one file until P1-08 takes it apart. The player portal's is 20.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report,
   the statistics snapshots, what a realm can see), `db/` (which database, the version guard, telemetry and the light `meta`
   rows), `content/` (the data file), `ui/<page>/` (each page's template, styles and the rest of its code),
@@ -33,10 +33,11 @@ every test. **Edit `src/`, never `site/`**: the next build overwrites it.
   ([traps.md](traps.md#top-level-declaration-order-the-items_by_tier-class)). P1-09 makes them modules, renaming
   `.js` to `.ts` in place, and Vite replaces the build.
 - **The engine is `engine/` and `views/`** (P1-18c): nothing in them reads the screen, the database or the page's other
-  globals as it loads, and every name they read is declared in them or the data file, but `runTurn`'s own database
-  and screen work and the reports' build stamp, which P1-18d moves out. `engineFiles()` in the manifest is the GM
-  page's main list filtered to the two folders, and `tests/lib/engine.ts` runs them in a bare Node `vm`. The Hall of
-  Fame's GM-side code reads the database and the screen, so it is `ui/gm/hall-of-fame.js`.
+  globals, and every name they read is declared in them or the data file: P1-18d moved the last exceptions, the
+  turn's database and screen work and the reports' build stamp, into the turn's shell (`ui/gm/turn-shell.js`).
+  `engineFiles()` in the manifest is the GM page's main list filtered to the two folders, and `tests/lib/engine.ts`
+  runs them in a bare Node `vm`. The Hall of Fame's GM-side code reads the database and the screen, so it is
+  `ui/gm/hall-of-fame.js`.
 - **A new file goes into its list in the manifest**, where its code should run. The build stops on a file in `src/`
   that no list names, and on a marker or a block without its partner.
 - **Who builds:** `npm test` and `npx playwright test` before any test (`tests/setup/global.ts`; not when `KC_SITE`
@@ -52,7 +53,7 @@ Built from `src/` ([above](#the-build-src-becomes-site)); `src/manifest.ts` list
 | File | Size | What it is |
 |---|---|---|
 | `index.html` | small | Landing page; links the player portal and both rulebooks |
-| `kingdoms-call-gm-portal.html` | ~28,900 lines, ~2.1 MB | GM UI, world generation, the whole turn engine (`runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, "missing from the database" messages |
+| `kingdoms-call-gm-portal.html` | ~28,900 lines, ~2.1 MB | GM UI, world generation, the whole turn engine (`resolveTurn`, and its shell `runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, "missing from the database" messages |
 | `kingdoms-call-player-portal.html` | ~10,600 lines, ~770 KB | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
 | `kingdoms-call-data.js` | ~410 KB | Content tables (items, monsters, lairs, discoveries, hero names, …) and the **shared rule tables** both portals read |
 | `kingdoms-call-leaderboard.html` | ~780 lines | Hall of Fame: leaderboard and achievement records over finished games |
@@ -177,16 +178,26 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `parseGameState(game)`.
 - **Turn 0.** `runTurn0` previews the bot roster; `commitTurn0` generates the world, saves it and
   pushes each realm's first report.
-- **`runTurn`** loads the full world and every slot, checks the game is still on the turn the GM meant to
-  run, then **clears the submitted orders in the database** (keeping a copy in memory) and stops if that
-  fails. Only then does it bring an older save up to the current tables
-  ([traps.md](traps.md#live-saves-keep-copies)) and merge the orders, and (inside the same block) run the
-  bot passes, default missing orders to Defend and resolve the five phases (look for
-  `// 4. Run all 5 phases`). Then:
-  1. **saves the world with a conditional update** (`.eq('turn', n)`): if another tab already
-     resolved this turn, nothing is written and `_saveConflict` is set;
+- **A turn is two functions** (P1-18d): the engine works it out, and a shell around it does the database and
+  screen work.
+- **`resolveTurn(G, freshPlayers, expectedTurnToRun)`** (`src/engine/run-turn.js`) is the turn itself. It takes
+  the saved state as loaded (JSON: parsing it is the turn's copy), the slot rows and the turn being run. It
+  brings an older save up to the current tables ([traps.md](traps.md#live-saves-keep-copies)), merges the
+  orders, runs the bot passes, defaults missing orders to Defend, and resolves the five phases (look for
+  `// 4. Run all 5 phases`) and the end of the turn. It is synchronous and reads no database, no screen and
+  no clock; the dice are `kcRng`'s (below). It returns `{state, log, buildReports}`: the world to save, as
+  JSON; the GM's log; and `buildReports()`, which builds every realm's report on the working copy, once, and
+  is called only after the save. `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
+  with no page.
+- **`runTurn`**, the turn's shell (`src/ui/gm/turn-shell.js`), loads the full world and every slot, checks the
+  game is still on the turn the GM meant to run, then **clears the submitted orders in the database**
+  (keeping a copy in memory) and stops if that fails. Only then does it call `resolveTurn`. Then it:
+  1. **saves the world with a conditional update** (`.eq('turn', n)`), stamped with when the turn ran
+     (`turnRanAt`, and in deadline mode `nextDeadlineAt`): if another tab already resolved this turn, nothing
+     is written and `_saveConflict` is set;
   2. sets `_turnCommitted=true` on the line after that save succeeds;
-  3. builds and pushes each realm's report (`buildTurnReport`), writes `turn_logs`, then telemetry.
+  3. calls `buildReports()` and writes each realm's report, stamped with the build that wrote it
+     (`engineStamp`), and its `turn_logs` snapshot, then the GM's log, then telemetry.
 
   Steps 2–3 are **post-commit**: a failure there must never restore orders or retry the turn
   ([traps.md](traps.md#post-commit-work-in-runturn)). Everything from the load to the save is in one `try`
@@ -204,7 +215,7 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   one browser from trying at once). Before running a due turn, the watcher re-fetches the
   page and the data file and reloads the tab once if either has a newer stamp, so the newest engine
   resolves it (`refreshIfNewerBuild`).
-- **Bots** plan their orders inside `runTurn`, in the same tab, from the same state a human saw.
+- **Bots** plan their orders inside `resolveTurn`, in the same tab, from the same state a human saw.
 - **Battle lines** (`battleGrid` and its helpers, module level beside the strength ladder). The front the
   ground allows is rolled once per battle (`rollBattleWidth`: plains and desert 6–8, forest and jungle 4–6,
   mountain 2–4, sea 8–10); each side is placed by unit type into flanks, front, second line and reserve;
@@ -230,12 +241,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
 - **Dice and the clock** (P1-07). Every random number the GM portal's code draws (dice, shuffles, bot choices, the
   world map, id suffixes) comes from `kcRng()` (`src/engine/rng.js`): one sfc32 generator, the first file of the
   page's main script, seeded once per page load from `crypto.getRandomValues`, or from the seed a test gives the page.
-  The engine and its views read the time only through `kcClock()` (`src/engine/clock.js`, `Date.now()` when called);
-  the screens read `Date` as before. `dice-and-clock` keeps `Math.random` and `Date` out
-  ([traps.md](traps.md#dice-come-from-kcrng)). P1-18 makes the seed and the time inputs of the turn. A mercenary
-  band made in a turn gets its id from `newMercId()` in `runTurn`: `merc_t<turn>_<n>`, counted afresh each turn, with
-  no dice or clock in it (P1-18b).
-- **Engine functions are nested inside `runTurn`** (combat, terrain modifiers, …). Tests reach them by
+  Since P1-18d nothing in the engine or its views reads the clock: only the turn's shell does, through `kcClock()`
+  (`src/engine/clock.js`, `Date.now()` when called), to stamp when the turn ran; the screens read `Date` as before.
+  `dice-and-clock` keeps `Math.random` and `Date` out of the source, and `engine-purity` checks that a whole game
+  reads neither ([traps.md](traps.md#dice-come-from-kcrng)). P1-18e gives each turn its own seed. A mercenary
+  band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
+  with no dice or clock in it (P1-18b).
+- **Engine functions are nested inside `resolveTurn`** (combat, terrain modifiers, …). Tests reach them by
   injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).
   Phase 1 of the roadmap lifts them out into modules.
 

@@ -80,7 +80,7 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
 - **Test first, at the lowest level that can express it:** static, then unit, scenario, simulation,
   page. Every new test gets its level, and the reason a lower one wouldn't do, in the PR (levels:
   [tests/README.md](tests/README.md#the-tests)). Until the engine is split into modules, "the function
-  is nested inside `runTurn`" is a valid reason.
+  is nested inside `resolveTurn`" is a valid reason.
 - **Fail first.** Show that the new test fails without your change (on `main`, or on a copy via
   `KC_SITE`) and passes with it. A test that can't fail proves nothing. For a pure refactor, label the
   PR `refactor-only`; then new tests must pass both before and after, and CI fails if the balance baseline changes.

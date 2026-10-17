@@ -8,9 +8,9 @@
 // TextEncoder or fetch, which a vm context doesn't have: nothing in the engine reaches them as it loads. Keep it so;
 // don't give the context more to make a file load. A file that needs more as it loads isn't engine code yet.
 //
-// The files' top-level names are the context's globals, as they are the page's: `vm.runInContext('typeof runTurn',
-// engine)`. Calling into the engine is P1-18d's purity test; today runTurn itself still reaches the screen and the
-// database.
+// The files' top-level names are the context's globals, as they are the page's: `vm.runInContext('typeof resolveTurn',
+// engine)`. The turn is resolveTurn (src/engine/run-turn.js, P1-18d), which reaches no screen and no database:
+// tests/unit/engine-purity.test.ts plays a whole game through it here. runTurn, its shell, is the page's.
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
