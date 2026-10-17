@@ -1,7 +1,8 @@
 // Docs check: the guides an agent starts from must not point at things that aren't there.
 //   - every relative link in CLAUDE.md, README.md, docs/**/*.md, tests/README.md and the PR template
 //     reaches an existing file, and a #anchor into a Markdown file matches one of its headings;
-//   - every `site/…`, `tests/…`, `tools/…` or `.github/…` path written in backticks exists
+//   - every `site/…`, `src/…`, `tests/…`, `tools/…` or `.github/…` path written in backticks exists (site/ is built
+//     first: npm test builds it)
 //     (globs and placeholders such as `**`, `<name>` or `NNN` are skipped);
 //   - CLAUDE.md stays under 200 lines, so it's still a short first read.
 // Nothing outside the repo is fetched.
@@ -54,7 +55,7 @@ for(const file of FILES){
     if(hash&&dest.endsWith('.md')&&!anchors(dest).has(hash)) fail(file,`link to ${target}: no heading with that anchor`);
   }
 
-  for(const [,p] of prose.matchAll(/`((?:site|tests|tools|\.github)\/[^`\s]*)`/g)){
+  for(const [,p] of prose.matchAll(/`((?:site|src|tests|tools|\.github)\/[^`\s]*)`/g)){
     if(/[*<>]|NNN/.test(p)) continue;
     checked++;
     if(!fs.existsSync(path.join(ROOT,p))) fail(file,`\`${p}\` doesn't exist`);
