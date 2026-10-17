@@ -5,6 +5,7 @@
 // balance job and its engine paths, the nightly random-seed run and fast-check's seed, the dangerous paths, and the
 // ratchet. Every later step that adds a guarantee
 // adds its check here. Level 1 (static): it reads settings files and the counts, and runs nothing.
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ESLint, type Linter } from 'eslint';
@@ -170,6 +171,7 @@ describe('the test run', () => {
     expect(global).toContain("execFileSync('npm', ['run', '--silent', 'build']");
     expect(global).toContain("if (!process.env['KC_SITE'])");
     expect(read('.gitignore')).toMatch(/^\/site\/$/m);
+    expect(execFileSync('git', ['ls-files', 'site'], { cwd: ROOT, encoding: 'utf8' }), 'site/ is in git').toBe('');
   });
 
   test('a test fails on a retry or repeat, on console.error and on an unhandled rejection', () => {
