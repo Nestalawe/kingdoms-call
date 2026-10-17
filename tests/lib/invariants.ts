@@ -5,8 +5,8 @@
 //
 // checkTurn also runs the report-leak check (report-leaks.ts, P1-04c) on the turn's reports, where the harness has them.
 //
-// Test code until P1-05 makes src/. The balance code imports it, so it is an engine path (tools/balance/engine-paths.ts):
-// a change to it plays the matrix.
+// Test code until P1-18's turn shell runs these checks; then it moves into src/. The balance code imports it, so it
+// is an engine path (tools/balance/engine-paths.ts): a change to it plays the matrix.
 import { LEAK_CHECKS, type RealmReport } from './report-leaks.ts';
 
 /** An item, held by a character or in a lair's hoard. */

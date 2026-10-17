@@ -6,7 +6,8 @@
 // Until P1-12 they read the report's text and today's state and log metadata (an entry's actor and targets); what they
 // can't see yet is in tests/README.md.
 //
-// Test code until P1-05 makes src/. invariants.ts imports it, so it is an engine path (tools/balance/engine-paths.ts).
+// Test code until P1-18's turn shell runs these checks; then it moves into src/. invariants.ts imports it, so it is
+// an engine path (tools/balance/engine-paths.ts).
 import type { Character, SavedState, Turn } from './invariants.ts';
 
 /** A line that is one realm's own business. `line` names the hero whose realm it belongs to (group `hero`); a line

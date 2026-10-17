@@ -318,7 +318,6 @@ describe('CI', () => {
       'npm run ratchet',
       'npm run build',
       'npm test -- --project static',
-      '|',
     ]);
   });
 
