@@ -10,7 +10,7 @@
 // - A turn changes no global but the dice (kcRng's slot) and the five caches the turn seeds afresh at its start
 //   (seedUsedHeroNames, seedUsedArmyNames, _MAXHP_PLAYERS): every table is read-only, and no new global appears.
 // - Each fault planted in the copy turns it red: Date.now(), Math.random(), document and sb, in the resolution and in
-//   the reports.
+//   the reports; and a write to a table and a new global, which the check of the globals sees.
 // Level 1 (unit): the engine alone, with no page. It plays a whole game, world generation included, so that as much of
 // the engine runs as a game reaches.
 import fs from 'node:fs';
@@ -138,13 +138,21 @@ function engineVariables(): string[] {
   return names;
 }
 
-/** A function, in the vm, that gives each of `names` as JSON (a Set or a Map as its entries). */
+/** A function that gives each of `names` as JSON (a Set or a Map as its entries), read in the vm. A top-level `let` or
+ *  `const` is no property of the vm's global object, so only code that names it can read it: the names go into that
+ *  code as plain identifiers, nothing else, and the values come back in the same order. */
 function snapshotOf({ engine }: Engine, names: string[]): () => Record<string, string> {
-  const fields = names.map((n) => `${JSON.stringify(n)}:JSON.stringify(${n},plain)`).join(',');
-  return vm.runInContext(
-    `()=>{ const plain=(k,x)=>x instanceof Set?{set:[...x]}:x instanceof Map?{map:[...x]}:x; return {${fields}}; }`,
+  const notIdentifiers = names.filter((n) => !/^[A-Za-z_$][\w$]*$/.test(n));
+  if (notIdentifiers.length) throw new Error(`not plain identifiers: ${notIdentifiers.join(' ')}`);
+  const values = vm.runInContext(
+    `()=>{ const plain=(k,x)=>x instanceof Set?{set:[...x]}:x instanceof Map?{map:[...x]}:x;
+      return [${names.join(',')}].map((v)=>JSON.stringify(v,plain)); }`,
     engine,
-  ) as () => Record<string, string>;
+  ) as () => string[];
+  return () => {
+    const now = values();
+    return Object.fromEntries(names.map((n, i) => [n, now[i] ?? '']));
+  };
 }
 
 describe('a whole game, played in the bare vm', () => {
@@ -260,5 +268,16 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     const resolved = e.resolveTurn(world, slotRows(e, world, 1), 1);
     expect(() => resolved.buildReports()).toThrow(error);
     expect(new Set(e.reaches)).toEqual(new Set([reach]));
+  });
+
+  test('planted a write to a table, and a new global: the turn changes the one and adds the other', () => {
+    const e = planted(AT.resolution, 'SKILL_LABELS.planted=1; globalThis.kcPlanted=1;');
+    const snapshot = snapshotOf(e, engineVariables());
+    const globals = vm.runInContext('()=>Object.getOwnPropertyNames(globalThis)', e.engine) as () => string[];
+    const [was, had] = [snapshot(), new Set(globals())];
+    e.resolveTurn(world, slotRows(e, world, 1), 1).buildReports();
+    const now = snapshot();
+    expect(Object.keys(now).filter((n) => now[n] !== was[n] && !RESEEDED.includes(n))).toEqual(['SKILL_LABELS']);
+    expect(globals().filter((n) => !had.has(n))).toEqual(['kcPlanted']);
   });
 });
