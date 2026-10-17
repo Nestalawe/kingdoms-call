@@ -14857,7 +14857,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // ── THE REPORTS, BUILT AFTER THE SAVE (P1-18d, 2026-10-18) ────
   // The shell calls buildReports() only once the turn is saved (_turnCommitted), so a report that fails costs reports,
   // never the turn (docs/traps.md, "Post-commit work in runTurn"). The reports are built on the working copy, as they
-  // always were: the Spy-stealth rolls below change it, and the reports read it, the turn's log and its helpers.
+  // always were: the Spy-stealth rolls below change it, and the reports read it with the turn's log and helpers.
   const _reports={built:false};
   function buildReports(){
   if(_reports.built) throw new Error('buildReports() runs once a turn');

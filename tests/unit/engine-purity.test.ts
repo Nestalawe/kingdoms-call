@@ -11,7 +11,8 @@
 //   (seedUsedHeroNames, seedUsedArmyNames, _MAXHP_PLAYERS): every table is read-only, and no new global appears.
 // - Each fault planted in the copy turns it red: Date.now(), Math.random(), document and sb, in the resolution and in
 //   the reports.
-// Level 1 (unit): the engine alone, with no page. A whole game is the smallest run that reaches all of the engine.
+// Level 1 (unit): the engine alone, with no page. It plays a whole game, world generation included, so that as much of
+// the engine runs as a game reaches.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
