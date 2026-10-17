@@ -1,10 +1,11 @@
 // The engine stands alone (plan P1-18c): tests/lib/engine.ts loads the data file and every file under src/engine/ and
 // src/views/ in a bare Node vm, with no window, document, sb or crypto, and the turn's function is there.
-// - It loads, and runTurn is a function in it; the dice are seeded from the seed given, not from crypto.
+// - It loads, and resolveTurn is a function in it, but not runTurn, the turn's shell in src/ui/gm/ (P1-18d); the dice
+//   are seeded from the seed given, not from crypto.
 // - The context is bare: none of the page's or the browser's names are in it.
 // - A file that reaches the screen or the database as it loads stops the loader (a copy of src/ with one planted).
-// Level 1 (unit): the engine's files run on their own, with no page around them; nothing calls into the engine yet
-// (P1-18d's purity test runs a turn).
+// Level 1 (unit): the engine's files run on their own, with no page around them; nothing calls into the engine here
+// (unit/engine-purity.test.ts runs a turn).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -19,8 +20,9 @@ const typeOf = (engine: vm.Context, name: string) => vm.runInContext(`typeof ${n
 describe('the engine loads in a bare vm', () => {
   const engine = loadEngine({ seed: 12345 });
 
-  test('runTurn is a function in it', () => {
-    expect(typeOf(engine, 'runTurn')).toBe('function');
+  test('resolveTurn is a function in it, and the shell runTurn is not', () => {
+    expect(typeOf(engine, 'resolveTurn')).toBe('function');
+    expect(typeOf(engine, 'runTurn')).toBe('undefined');
   });
 
   test("its dice are the seed's", () => {

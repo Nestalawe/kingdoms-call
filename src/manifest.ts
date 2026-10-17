@@ -80,6 +80,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'views/turn-report.js',
         'engine/discoveries.js',
         'engine/run-turn.js',
+        'ui/gm/turn-shell.js',
         'ui/gm/start.js',
       ],
     },
