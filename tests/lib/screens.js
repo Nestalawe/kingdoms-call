@@ -255,7 +255,7 @@ const gmPortal={
       ['turn 0: the world not generated',ok+`runTurn0().then(()=>{ window.generateNewGame=async()=>{ throw new Error(${lit(W.error)}); };${quiet('commitTurn0()')} })`],
       ['an active game',ok+"openGame('G1')"],
       ['an active game, reports unreadable',fail('rpc.gm_reported_messages')+'loadReportedDispatches(currentGame)'],
-      ['the watcher: games waiting, one run fails',ok+tick],
+      ['the watcher: games waiting, one run fails',ok+'_autoRunBusy=false;'+quiet('autoTurnTick().then(()=>{ _autoRunBusy=true; })')],
       ['the watcher: a failed game paused',tick],
       ['the watcher: a game that can\'t load',fail('game_players.select')+`runTurn({auto:true,game:{id:'G1',name:${lit(W.db.games[0].name)},turn:3},reason:${lit(W.reason)}})`],
       ['the watcher: reloading for a newer build',ok+"{ const st=window.setTimeout; window.setTimeout=(f,ms)=>ms===400?0:st(f,ms);"

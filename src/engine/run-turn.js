@@ -15,10 +15,32 @@ async function runTurn(opts){
   // Confirm before running — prevent accidental double-runs
   const expectedTurnToRun=gameRow.turn;
   if(!auto && !confirm(`Run Turn ${expectedTurnToRun}? This will resolve all submitted orders and advance the game. This cannot be undone.`)){
-    msg.innerHTML='';return;
+    msg.innerHTML='';return {ok:false, committed:false, error:'cancelled'};
   }
 
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Loading game state and player orders…</div>`;
+
+  // ── ONE FAILURE PATH (P1-18a, 2026-10-18) ────
+  // Everything from the load to the save sits in the one try below, so every failure reaches the one
+  // catch at the end of runTurn, and runTurn always RETURNS {ok, committed, conflict, error}: it never
+  // throws and never returns nothing. ordersSnapshot is what a failed run may put back; the four flags
+  // say how far the run got, which decides whether it may.
+  let ordersSnapshot=[];      // each submitted row's orders as loaded: what a failed run puts back
+  let _ordersCleared=false;   // the orders were cleared in the database: a failure before the save restores them
+  let _saveSent=false;        // the save was sent: a failure from here re-reads the turn before restoring anything
+  let _saveConflict=false; // set if the conditional state save finds the turn already advanced elsewhere
+  // ── RUNAWAY-TURN GUARD (2026-09-27) ────
+  // Set the moment the new world state is committed. Everything after that point — reports,
+  // turn_logs, telemetry — is post-commit work, and a throw there must NOT put the orders back:
+  // the turn they belonged to has already been resolved and the game has advanced past it.
+  // Restoring them re-flagged every realm as "orders in", so the auto-turn watcher ran the NEXT
+  // turn a minute later, and the next, and the next — games resolving themselves turn after turn
+  // with nobody submitting anything. (The trigger was a TypeError in buildTurnReport: SEA_UNIT_TYPES
+  // is a Set and was being called with .includes.)
+  let _turnCommitted=false;
+  let G;
+
+  try{
 
   // 1. Load fresh data
   const {data:freshGame,error:gErr}=await sb.from('games').select('*').eq('id',gameRow.id).single();
@@ -34,7 +56,27 @@ async function runTurn(opts){
     return {ok:false, committed:false, conflict:true, error:'turn mismatch'};
   }
 
-  let G;
+  // 2a. Snapshot the orders, then clear them in the database — ONCE, here, before the save is upgraded
+  // and the orders are merged (P1-18a). The upgrades and the merge below only change this run's copy
+  // in memory, so nothing but a failure notices that the clear comes first; and the clear has to come
+  // before them, because they are engine work and the engine will run as one step with no database
+  // writes inside it (plan step P1-18d). Not after resolution: a second GM tab could then wipe the
+  // NEXT turn's orders, every realm would read "orders in" while the turn ran, and a late declaration
+  // or concession would be lost.
+  // 2026-09-27: the snapshot carries each row's ORIGINAL orders_submitted flag. It used to restore
+  // `orders_submitted:true` for every row that held any `orders` value, which promoted a merely
+  // SAVED DRAFT into a submitted turn whenever a run failed.
+  ordersSnapshot=freshPlayers.filter(p=>p.user_id&&p.orders).map(p=>({id:p.id,orders:p.orders,submitted:!!p.orders_submitted}));
+  const {error:clearErr}=await sb.from('game_players').update({orders:null,orders_submitted:false}).eq('game_id',gameRow.id);
+  if(clearErr){
+    // Nothing was cleared (one update, all or nothing), so nothing needs putting back. Stop before the
+    // turn runs: a turn saved over orders still marked "in" would let the watcher run the next turn at
+    // once.
+    msg.innerHTML=kcHtml`<div class="msg-error">Could not start Turn ${expectedTurnToRun}: the submitted orders could not be cleared (${clearErr.message}). Nothing was changed, and the orders are still in. Try again.</div>`;
+    return {ok:false, committed:false, conflict:false, error:'could not clear orders'};
+  }
+  _ordersCleared=true;
+
   try{
     G=typeof freshGame.game_state==='string'?JSON.parse(freshGame.game_state):freshGame.game_state;
     seedUsedArmyNames(G); seedUsedHeroNames(G);
@@ -51,8 +93,8 @@ async function runTurn(opts){
     // top of the turn, whatever the save held.
     (G.world&&G.world.provinces||[]).forEach(p=>{ if(p){ delete p._hadBattleThisTurn; delete p._combatPlayersThisTurn; } });
   }catch(e){
-    msg.innerHTML=kcHtml`<div class="msg-error">Could not parse game state JSON.</div>`;
-    return {ok:false, committed:false, error:'could not parse game state'};
+    // the orders are already cleared: the catch at the end of runTurn puts them back
+    throw new Error(`Could not read the saved game: ${e&&e.message||e}`);
   }
   // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn, and
   // the collectors the hooks below fill (battles, lair fights, captures, deaths, spells). Written to
@@ -277,34 +319,15 @@ async function runTurn(opts){
     });
   });
 
-  // 2b. Snapshot orders to memory before clearing — we restore them if resolution fails
-  // 2026-09-27: the snapshot now carries each row's ORIGINAL orders_submitted flag. It used to
-  // restore `orders_submitted:true` for every row that held any `orders` value, which promoted a
-  // merely SAVED DRAFT into a submitted turn whenever a run failed.
-  const ordersSnapshot=freshPlayers.filter(p=>p.user_id&&p.orders).map(p=>({id:p.id,orders:p.orders,submitted:!!p.orders_submitted}));
   const playersWithOrders=freshPlayers.filter(p=>p.user_id&&p.orders).length;
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
-  // Clear orders from DB now — restored below if resolution fails
-  await sb.from('game_players').update({orders:null,orders_submitted:false}).eq('game_id',gameRow.id);
-  let _saveConflict=false; // set if the conditional state save finds the turn already advanced elsewhere
-  // ── RUNAWAY-TURN GUARD (2026-09-27) ────
-  // Set the moment the new world state is committed. Everything after that point — reports,
-  // turn_logs, telemetry — is post-commit work, and a throw there must NOT put the orders back:
-  // the turn they belonged to has already been resolved and the game has advanced past it.
-  // Restoring them re-flagged every realm as "orders in", so the auto-turn watcher ran the NEXT
-  // turn a minute later, and the next, and the next — games resolving themselves turn after turn
-  // with nobody submitting anything. (The trigger was a TypeError in buildTurnReport: SEA_UNIT_TYPES
-  // is a Set and was being called with .includes.)
-  let _turnCommitted=false;
+  // (the orders were cleared in step 2a, before the save was upgraded)
 
-  // NOTE (Sept 2026): the bot passes and the default-to-Defend pass now run INSIDE the resolution
-  // try-block
-  // (below) so the bot hunters' duel forecast can call the engine's personal-combat resolver, whose function
-  // declarations live in that block. A bot-pass failure therefore also restores the players'
-  // orders.
+  // NOTE (Sept 2026): the bot passes and the default-to-Defend pass run inside the resolution
+  // try-block, so the bot hunters' duel forecast can call the engine's personal-combat resolver,
+  // whose function declarations live in that block. A bot-pass failure therefore also restores the
+  // players' orders.
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Resolving 5 phases…</div>`;
-
-  try{
 
   migrateItemTiers(G);    // re-stamp saved items with their tier under the four-tier scheme
   ensureAllLairHoards(G); // stocks any lair from a pre-hoard save (no-op afterwards)
@@ -14902,6 +14925,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // Conditional save (.eq turn): if another GM tab / device already advanced this turn, 0 rows
   // match and we abort WITHOUT restoring orders (the other run consumed them) — the double-run
   // guard for automatic modes.
+  _saveSent=true;
   const {data:_savedRow,error:saveErr}=await sb.from('games').update({
     game_state:JSON.stringify(G),
     ...metaPatch(G),
@@ -14910,7 +14934,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // elimination (G.gameOver). max_turns is retained only as an optional GM hard-backstop below.
     status:(G.gameOver || (G.maxTurns&&G.maxTurns>0&&G.turn>G.maxTurns&&G.maxTurnsHardStop))?'complete':'active'
   }).eq('id',gameRow.id).eq('turn',expectedTurnToRun).select('id').maybeSingle();
-  if(saveErr){msg.innerHTML=kcHtml`<div class="msg-error">Error saving: ${saveErr.message}</div>`;return;}
+  if(saveErr) throw new Error(`Error saving: ${saveErr.message}`); // the catch re-reads the turn: an error doesn't prove the save failed
   if(!_savedRow){ _saveConflict=true; throw new Error(`Turn ${expectedTurnToRun} was already run elsewhere (another GM tab or device) — this run was discarded.`); }
   _turnCommitted=true; // from here on the turn is resolved and saved: never put the orders back
 
@@ -15279,7 +15303,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // Best-effort: a failure is shown on the game list, never thrown, and the turn is already saved.
   try{ await writeTurnTelemetry(G, gameRow, freshPlayers, _tel, G.turn-1); }catch(_te){ _kcTelLastErr=_te&&_te.message||String(_te); console.warn('telemetry:',_te); }
 
-  // Orders and flags already cleared in step 2b before resolution began
+  // Orders and flags already cleared in step 2a, before the save was upgraded
 
   if(reportErrors.length>0){
     msg.innerHTML=kcHtml`<div class="msg-error">Turn resolved but some reports failed: ${reportErrors.join('; ')}</div>`;
@@ -15292,25 +15316,46 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   }
 
   } catch(e){
-    // Three different situations, three different messages — and only ONE of them puts the orders
+    // Every failure from the load to the save ends here (P1-18a), and only ONE kind puts the orders
     // back. _saveConflict: another tab resolved this turn, nothing here was changed.
     // _turnCommitted: THIS run resolved and saved the turn, then something after the save failed —
     // the turn stands, the orders belonged to it and are spent, and re-arming them would make the
     // auto-turn watcher resolve the following turn on them a minute later (see the runaway-turn
-    // guard above). Otherwise: resolution failed before anything was saved, so the orders are
-    // genuinely unspent and go back exactly as they were.
-    const _why = _saveConflict ? 'Nothing was changed by this run.'
-      : _turnCommitted ? `Turn ${expectedTurnToRun} WAS resolved and saved — the failure came after the save, while writing reports. The orders for that turn are spent and have not been restored. Players may be missing this turn's report; re-push reports or check the browser console (F12).`
-      : 'Check browser console (F12) for full details. Your orders have been restored.';
-    msg.innerHTML=kcHtml`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_why}</small></div>`;
+    // guard above). Not yet _ordersCleared: the run stopped before it touched anything. Otherwise:
+    // resolution failed before anything was saved, so the orders are genuinely unspent and go back
+    // exactly as they were.
     console.error('runTurn error:', e);
+    // A save that answered with an error (or never answered) may still have landed: a request can
+    // time out after the database committed it. So before anything is put back, read the game's turn
+    // again. Moved on: the save went through, the turn counts as committed and its orders stay spent.
+    // Can't be read: put nothing back either, since orders restored onto a saved turn would set every
+    // realm to "orders in" and the watcher would run the next turn on them at once.
+    let _savedAnyway=false, _saveUnknown=false;
+    if(_saveSent&&!_turnCommitted&&!_saveConflict){
+      let _turnNow=null;
+      try{ const {data:_g,error:_gErr}=await sb.from('games').select('turn').eq('id',gameRow.id).maybeSingle(); if(!_gErr&&_g) _turnNow=_g.turn; }catch(_re){ /* unknown: handled below */ }
+      if(_turnNow==null) _saveUnknown=true;
+      else if(_turnNow!==expectedTurnToRun){ _turnCommitted=true; _savedAnyway=true; }
+    }
     // Restore orders to DB so players don't lose their submissions — unless another run already
     // consumed them, or this run already committed the turn they belonged to.
-    if(!_saveConflict&&!_turnCommitted&&ordersSnapshot&&ordersSnapshot.length>0){
-      await Promise.all(ordersSnapshot.map(snap=>
-        sb.from('game_players').update({orders:snap.orders,orders_submitted:snap.submitted}).eq('id',snap.id)
-      ));
+    let _restoreFailed=false;
+    if(_ordersCleared&&!_saveConflict&&!_turnCommitted&&!_saveUnknown&&ordersSnapshot.length>0){
+      try{
+        const _res=await Promise.all(ordersSnapshot.map(snap=>
+          sb.from('game_players').update({orders:snap.orders,orders_submitted:snap.submitted}).eq('id',snap.id)
+        ));
+        _restoreFailed=_res.some(r=>r&&r.error);
+      }catch(_re){ _restoreFailed=true; }
     }
+    const _why = _saveConflict ? 'Nothing was changed by this run.'
+      : _savedAnyway ? `The save answered with an error, but the game has moved on: Turn ${expectedTurnToRun} WAS saved. The orders for that turn are spent and have not been restored. No turn reports were sent; re-push reports or check the browser console (F12).`
+      : _turnCommitted ? `Turn ${expectedTurnToRun} WAS resolved and saved — the failure came after the save, while writing reports. The orders for that turn are spent and have not been restored. Players may be missing this turn's report; re-push reports or check the browser console (F12).`
+      : _saveUnknown ? `The save may or may not have gone through, and the game could not be read again to tell. The orders have NOT been restored, so the turn can't run twice. Reload the page: if the game is on Turn ${expectedTurnToRun+1}, the turn was saved; if it is still on Turn ${expectedTurnToRun}, ask the players to send their orders again.`
+      : !_ordersCleared ? 'Nothing was changed by this run.'
+      : _restoreFailed ? 'Check browser console (F12) for full details. The orders could NOT all be restored: ask the players to send theirs again.'
+      : 'Check browser console (F12) for full details. Your orders have been restored.';
+    msg.innerHTML=kcHtml`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_why}</small></div>`;
     return {ok:false, committed:_turnCommitted, conflict:_saveConflict, error:e.message};
   }
 
