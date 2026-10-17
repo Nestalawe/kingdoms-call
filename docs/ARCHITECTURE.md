@@ -358,3 +358,5 @@ CI runs it all on every pull request, in jobs side by side so the fastest failur
 unit and scenario tests, the simulations, the page tests, the browser specs, the balance matrix, and `db` (the access-rule tests and
 `supabase db lint`, which checks the database's functions). The job named `ci` passes only when every job but `db`
 passed; `ci` and `db` are the checks `main` requires. `deploy.yml` runs the same workflow before it publishes.
+Every night `.github/workflows/nightly.yml` (P1-04d) runs `npm run test:full` (the fuzz, the invariants, the leak check
+and the property tests at full size) with a random seed it prints; a red night blocks nothing.

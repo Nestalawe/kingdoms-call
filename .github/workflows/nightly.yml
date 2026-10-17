@@ -1,0 +1,60 @@
+# The nightly random-seed run (plan P1-04d). Every night it runs npm run test:full with a random KC_SEED: every test
+# at its full size, so the fuzz games with the invariants and the leak check (turn-fuzz, report-privacy) and the
+# property tests with ten times their inputs, in worlds and on inputs the pull requests' fixed seed never makes. It
+# also finds a test that passes only on lucky seeds before it breaks an unrelated pull request.
+#
+# The seed is printed first, in the log and in the run's summary. A red run blocks nothing (no branch requires it).
+# Repeat a failure with that seed, locally (KC_SEED=<seed> npm run test:full) or here (Run workflow, with the seed).
+# What it found becomes a test at the lowest level that shows it (tests/README.md), or, while the refactor runs, a
+# parked breach (KNOWN_BREACHES in tests/lib/invariants.ts) for Theo to decide.
+#
+# GitHub runs schedules only from main; Run workflow (workflow_dispatch) runs it on any branch.
+name: Nightly
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: The KC_SEED to repeat (a whole number); empty for a random one
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  full:
+    name: full run, random seed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # A random whole number from 1 to 2^32 - 1 (tests/lib/boot.js reads the seed as one), or the seed given.
+      - id: seed
+        env:
+          GIVEN: ${{ inputs.seed }}
+        run: |
+          seed="${GIVEN:-$(( $(od -An -N4 -tu4 /dev/urandom) % 4294967295 + 1 ))}"
+          if ! [[ "$seed" =~ ^[1-9][0-9]{0,9}$ ]] || (( seed < 1 || seed > 4294967295 )); then
+            echo "::error::The seed must be a whole number from 1 to 4294967295, not '$seed'."
+            exit 1
+          fi
+          echo "KC_SEED=$seed"
+          echo "::notice title=Seed::KC_SEED=$seed. Repeat it: KC_SEED=$seed npm run test:full"
+          echo "Seed: \`$seed\`. Repeat it: \`KC_SEED=$seed npm run test:full\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+
+      - run: npm run test:full
+        env:
+          KC_SEED: ${{ steps.seed.outputs.seed }}

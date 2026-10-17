@@ -262,13 +262,19 @@ export const INVARIANTS: readonly { name: string; check: (t: Turn) => string[] }
 ];
 
 /** Breaches known on main, each let through, in exactly this form, until its fix lands (Theo, 2026-10-17: no engine
- *  fixes during the refactor; the leak check's three, the same day). Each fix is parked in the plan's STATUS; its pull
+ *  fixes during the refactor; the leak check's three and the dead wanderer's hire, the same day). Each fix is parked in
+ *  the plan's STATUS; its pull
  *  request removes the entry. `line` matches one line of what broke. */
 export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string }[] = [
   {
     check: 'no NaN or undefined',
     line: /^GM log line \d+: "⚑FORCE⚑\{"name":"[^"()]+ \(undefined\)","color":null,"neutral":true,"guard":false,"role":"defender",/,
     why: "A hero with no realm defends a province: the battle header's realm name is undefined (the GM portal's defender forceMarker)",
+  },
+  {
+    check: 'the dead take no actions',
+    line: /^(?<hero>[^"(),]+) \(id \d+\), dead in phase \d, acts in phase \d: "\k<hero> \((?:Human|Elven|Dwarven|Orcish), (?:Divine|Good|Druidic|Neutral|Pagan|Evil|Undead)\) agrees to serve [^"]+"$/,
+    why: "A wanderer who died earlier in the turn can still be hired: the hire order checks that he serves no realm and stands in the province, not that he is alive (the GM portal's hire case)",
   },
   {
     check: 'an unmet realm',
