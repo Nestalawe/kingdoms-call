@@ -1,6 +1,6 @@
 # On main: test, then bring the live database up to date, then build site/ from src/ (npm run build, P1-05) and
-# publish it to GitHub Pages (no Jekyll). Runs on a push to main, or by hand; the jobs that change anything refuse any other branch, so a
-# manual run from a branch only tests. Needs Settings → Pages → Source set to "GitHub Actions".
+# publish it to GitHub Pages (no Jekyll). Runs on a push to main, or by hand; the jobs that change anything refuse
+# any other branch, so a manual run from a branch only tests. Needs Settings → Pages → Source set to "GitHub Actions".
 #
 # The order (P0-17, P0-33): test → migrate production → deploy site. Staging isn't touched: each pull request
 # was tried there, on a database rebuilt for it, before it merged (staging.yml).

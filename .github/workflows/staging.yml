@@ -1,5 +1,6 @@
 # Puts a pull request on the staging site (https://kingdoms-call-staging.github.io/), talking to the
-# staging database, when it carries the label "staging" (P0-13). The site is built from src/ (npm run build, P1-05). New commits on a labelled PR go up too.
+# staging database, when it carries the label "staging" (P0-13). New commits on a labelled PR go up too. The site
+# is built from src/ first (npm run build, P1-05).
 # One PR is on staging at a time: the newest one deployed. Its PR gets an "On staging" comment, and the
 # PR it replaced is told so. Merging changes nothing on staging.
 #
