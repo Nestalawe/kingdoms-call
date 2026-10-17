@@ -96,6 +96,12 @@ async function runTurn(opts){
     // the orders are already cleared: the catch at the end of runTurn puts them back
     throw new Error(`Could not read the saved game: ${e&&e.message||e}`);
   }
+  // ── MERCENARY BAND IDS (P1-18b, 2026-10-18) ── a band made this turn is `merc_t<turn>_<n>`, counted
+  // afresh each turn: no clock and no dice, so the turn's dice don't depend on how many bands it makes.
+  // The `merc_` prefix is what the hire code tests for, and an older save's `merc_<ms>_<b36>` ids can't
+  // meet these. The turn is the one being run (expectedTurnToRun), not G.turn, which advances mid-turn.
+  const _mercIds={n:0};
+  const newMercId=()=>`merc_t${expectedTurnToRun}_${++_mercIds.n}`;
   // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn, and
   // the collectors the hooks below fill (battles, lair fights, captures, deaths, spells). Written to
   // turn_events after the save, one row per realm — see writeTurnTelemetry at the end of runTurn.
@@ -6161,7 +6167,7 @@ const BATTLE_ARMY_SPELLS={
         deadArmies.forEach(army=>{
           G.mercenaries.push({type:army.type,quality:army.quality,race:army.race||'Unknown',
             unitName:army.unitName,location:deadChar.location,isSea:SEA_SET.has(army.type),
-            id:`merc_${kcClock()}_${kcRng().toString(36).slice(2)}`});
+            id:newMercId()});
         });
         log('system',_by?`${deadChar.name}'s armies, their commander slain by ${_by}, scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`
           :`${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[]});
@@ -9009,7 +9015,7 @@ const BATTLE_ARMY_SPELLS={
         const SEA_TYPES_D=new Set(KC_UNIT_CLASS.sea);
         disbanding.forEach(army=>{
           const merc={
-            id:`merc_${kcClock()}_${kcRng().toString(36).slice(2,6)}`,
+            id:newMercId(),
             type:army.type,quality:army.quality,race:army.race||'Human',
             unitName:army.unitName||army.type,
             location:prov.id,isSea:SEA_TYPES_D.has(army.type),
@@ -10726,7 +10732,7 @@ const BATTLE_ARMY_SPELLS={
     }
     if(!G.mercenaries) G.mercenaries=[];
     real.forEach(a=>G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
-      location:prov.id,isSea:SEA_TYPES.has(a.type),id:`merc_${kcClock()}_${kcRng().toString(36).slice(2)}`}));
+      location:prov.id,isSea:SEA_TYPES.has(a.type),id:newMercId()}));
     narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length===1?'is':'are'} left behind ${why} on ground the realm does not hold — leaderless, ${real.length===1?'it scatters':'they scatter'} into the mercenary bands.`);
     return false;
   }
@@ -11271,7 +11277,7 @@ const BATTLE_ARMY_SPELLS={
         if(!G.mercenaries) G.mercenaries=[];
         G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
           location:prov.id,isSea:SEA_TYPES.has(a.type),
-          id:`merc_${kcClock()}_${kcRng().toString(36).slice(2)}`});
+          id:newMercId()});
         emit(`— ${unitRef(gname,a)} break ranks and flee${_vh?` before ${_vh}`:''} — they now roam as mercenaries near ${prov.name}.`); // unified unit naming
         return;
       }
