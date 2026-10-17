@@ -8,6 +8,8 @@ export interface Stub {
   supabase: unknown;
   /** The stand-in database's tables. */
   DB: Record<string, Row[]>;
+  /** "table.op" (select, insert, upsert, update, delete) or "rpc.name": the error every such call answers with. */
+  ERRORS: Record<string, { message: string }>;
 }
 
 export function makeStub(): Stub;

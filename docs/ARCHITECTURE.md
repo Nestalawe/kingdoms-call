@@ -172,18 +172,24 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `parseGameState(game)`.
 - **Turn 0.** `runTurn0` previews the bot roster; `commitTurn0` generates the world, saves it and
   pushes each realm's first report.
-- **`runTurn`** loads the full world and every slot, brings an older save up to the current tables
-  ([traps.md](traps.md#live-saves-keep-copies)), merges the submitted orders, then (inside the
-  resolution block) runs the bot passes, defaults missing orders to Defend and resolves the five phases
-  (look for `// 4. Run all 5 phases`). Then:
+- **`runTurn`** loads the full world and every slot, checks the game is still on the turn the GM meant to
+  run, then **clears the submitted orders in the database** (keeping a copy in memory) and stops if that
+  fails. Only then does it bring an older save up to the current tables
+  ([traps.md](traps.md#live-saves-keep-copies)) and merge the orders, and (inside the same block) run the
+  bot passes, default missing orders to Defend and resolve the five phases (look for
+  `// 4. Run all 5 phases`). Then:
   1. **saves the world with a conditional update** (`.eq('turn', n)`): if another tab already
      resolved this turn, nothing is written and `_saveConflict` is set;
   2. sets `_turnCommitted=true` on the line after that save succeeds;
   3. builds and pushes each realm's report (`buildTurnReport`), writes `turn_logs`, then telemetry.
 
   Steps 2–3 are **post-commit**: a failure there must never restore orders or retry the turn
-  ([traps.md](traps.md#post-commit-work-in-runturn)). `runTurn` catches its own errors and **returns** an
-  outcome `{ok, committed, conflict, error}`; it doesn't throw.
+  ([traps.md](traps.md#post-commit-work-in-runturn)). Everything from the load to the save is in one `try`
+  (P1-18a), so `runTurn` **returns** an outcome `{ok, committed, conflict, error}` on every path; it doesn't
+  throw. A failure before the save puts the orders back as they were loaded. A save that answers with an
+  error may still have landed, so the catch reads the game's turn again first: if it has moved on, the turn
+  counts as committed and the orders stay spent; if it can't be read, nothing is put back.
+  `tests/page/turn-shell.test.ts` stages each of these failures.
 - **Automatic turns.** While a GM tab is open, `autoTurnTick` runs every 60 s (`AUTO_WATCH_MS`). Never in the
   Overlord's tab (Master GM mode, P0-32g): each game's own GM tab runs its automatic turns. For
   each live, non-archived game in automatic mode it checks whether all orders are in or the deadline

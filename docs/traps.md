@@ -155,14 +155,17 @@ it passed. Every turn report then threw.
 
 ## Post-commit work in `runTurn`
 
-The `try` in `runTurn` spans the conditional save. Everything after the save (reports, `turn_logs`,
-telemetry) runs after the turn is already resolved and stored. A throw there must not restore orders,
-re-flag `orders_submitted`, or let the watcher retry the turn: that combination once made live games
-resolve themselves once a minute.
+The one `try` in `runTurn` runs from the load to the conditional save and on to the reports. Everything
+after the save (reports, `turn_logs`, telemetry) runs after the turn is already resolved and stored. A
+throw there must not restore orders, re-flag `orders_submitted`, or let the watcher retry the turn: that
+combination once made live games resolve themselves once a minute.
 
 - `_turnCommitted` marks that the save succeeded. Any code added after the save must respect it.
-- `runTurn` **returns** `{ok, committed, conflict, error}`; it doesn't throw. Callers must check the
-  return value. A `try/catch` around the call almost never fires.
+- A save that answers with an error isn't proof that nothing was saved: a request can time out after the
+  database committed it. The catch reads the game's turn again before it restores anything (P1-18a).
+- `runTurn` **returns** `{ok, committed, conflict, error}` on every path; it doesn't throw. Callers must
+  check the return value. A `try/catch` around the call almost never fires. A new early exit returns an
+  outcome too, and `tests/page/turn-shell.test.ts` holds each failure's outcome.
 - A retry loop around a deterministic engine needs a cooldown, not a retry (`_autoFailUntil`).
 
 ## Hooks in the turn path must never fail a turn
