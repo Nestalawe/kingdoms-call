@@ -68,7 +68,7 @@ describe('dice come from kcRng() and the engine reads the time through kcClock()
   test('the sources are there to check', () => {
     expect(files).toContain('engine/run-turn.js');
     expect(files).toContain('engine/world/generate.js');
-    expect(files).toContain('views/hall-of-fame.js');
+    expect(files).toContain('views/turn-report.js');
   });
 
   test('no Math.random in src/ (but rng.js and vendor/), and no Date in src/engine/ or src/views/ (but clock.js)', () => {

@@ -28,6 +28,22 @@ function homeProvinceIdFor(gs, playerIndex){
   if(fallback!=null) pl.homeProvinceId=fallback; // freeze it from now on
   return fallback;
 }
+// ── PLAYER MAP CENTRING ────
+// Each player's map is therefore rolled horizontally so their founding capital sits in the middle
+// column; the wrap seam then falls behind them instead of through their territory. Same world,
+// different starting column per player. North-south is untouched — the grid does not wrap that way.
+//
+// Games saved before this existed have no homeProvinceId, so it is backfilled once, here, and then
+// frozen: provinces[0] was seeded with the capital at world gen, and the king's location is the
+// last resort. Backfilling from the CURRENT province list would let the centre drift as land
+// changes hands, which is exactly what this is meant to prevent. Item 4: who FOUNDED this province
+// as their capital (null if nobody). Home-ground bonuses belong only to that player — defending it,
+// or attacking to win it back.
+function homeFounderOf(gs, provId){
+  const pls=(gs&&gs.players)||[];
+  for(let i=0;i<pls.length;i++){ if(pls[i]&&homeProvinceIdFor(gs,i)===provId) return i; }
+  return null;
+}
 
 // Neutral trade bonus: +20% of province tax income, rounded down. Exact integer division so the
 // end-of-turn collector and the Tax Income forecast can never disagree by a floating-point hair.

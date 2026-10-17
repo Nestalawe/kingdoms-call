@@ -15,18 +15,7 @@ const KC_DATA_MIN='2026.10.15-1202';
 const KC_DB_MIN='20261015062128';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
-// SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
-// orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
-// make none. `turn` is the turn being resolved (games.turn when its orders are run).
-const SAFE_START_TURN=6;
-function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)||0)<SAFE_START_TURN; }
-// BOTS' reading of Safe Start (2026-09-29): true while even NEXT turn is still locked, so no war can
-// touch the realm before its next orders — the bot posts no defenders and leaves the capital
-// ungarrisoned, putting every hero and levy into expansion. On the last locked turn (Turn
-// SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
-// for the first turn on which war may be declared.
-function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.18-2030'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.18-2055'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)

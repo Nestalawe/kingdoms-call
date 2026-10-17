@@ -1,3 +1,22 @@
+// ══ BOT PLAYERS — Phase 1: existence & identity ════
+// GM-controlled bot realms. Phase 1 generates a bot's identity and persists its row; bots do NOT
+// act yet (they submit no orders, so runTurn defaults their characters to Defend). A bot is marked
+// by an `isBot:true` flag INSIDE its game_players.turn_report JSON — no Supabase column is required
+// (an unknown insert column would be rejected). Bot rows have user_id === null.
+function isBotRow(p){
+  if(!p||p.user_id) return false;
+  // Disk-IO (2026-09-25): the game list and the auto-turn watcher now fetch slots WITHOUT
+  // turn_report (it is the biggest column in the table). On such a row the only rows with no
+  // user_id are bots — commitTurn0 deletes every user_id-null row before it inserts the bots, and
+  // a human's row always carries a user_id — so a missing turn_report field reads as a bot.
+  if(p.turn_report===undefined) return true;
+  try{ const r=typeof p.turn_report==='string'?JSON.parse(p.turn_report):p.turn_report; if(r&&r.isBot===true) return true; }catch(e){}
+  return false;
+}
+function gameMetaOf(game){
+  if(!game||game.meta==null) return null;
+  try{ const m=typeof game.meta==='string'?JSON.parse(game.meta):game.meta; return (m&&typeof m==='object'&&m.v)?m:null; }catch(e){ return null; }
+}
 // Read {botCount, allBot} from a game's setup-phase config (stored in game_state at creation).
 function botConfigFor(game){
   let cfg=gameMetaOf(game)||{}; if(!cfg.v){ try{ cfg=typeof game.game_state==='string'?JSON.parse(game.game_state):game.game_state||{}; }catch(e){} }

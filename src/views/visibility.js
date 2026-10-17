@@ -47,3 +47,29 @@ function encounterUntargetableReason(c){
   return null;
 }
 
+
+// ── Per-player feature discovery ────
+// f.discovered remains the engine-internal "discovered by ANYONE" flag; player-facing views must
+// instead ask featDiscovered(f, playerIndex). Legacy saves (features with discovered:true but no
+// discoveredBy array) are grandfathered as visible to everyone who could already see them
+// (_legacyAll), so upgrading mid-game never takes knowledge away from a player.
+function featDiscovered(f, pi){
+  if(!f) return false;
+  if(pi==null) return !!f.discovered;              // engine-internal: anyone
+  if(f._legacyAll) return true;                     // pre-upgrade discovery: everyone keeps it
+  if(Array.isArray(f.discoveredBy)) return f.discoveredBy.includes(pi);
+  return !!f.discovered;                            // legacy save, array never created yet
+}
+function discoverFeat(f, pi){
+  if(!f) return false;
+  const wasKnown=featDiscovered(f, pi);
+  if(pi!=null){
+    if(!Array.isArray(f.discoveredBy)){
+      if(f.discovered) f._legacyAll=true;           // grandfather old-save global discovery
+      f.discoveredBy=[];
+    }
+    if(!f.discoveredBy.includes(pi)) f.discoveredBy.push(pi);
+  }
+  f.discovered=true;
+  return !wasKnown;
+}
