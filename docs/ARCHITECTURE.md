@@ -25,13 +25,18 @@ every test. **Edit `src/`, never `site/`**: the next build overwrites it.
 - **Each `.js` file is a stretch of whole top-level statements**, so it parses on its own; no file ends inside a
   function (`tests/static/build.test.ts`). The GM portal's main script is 53 files; `src/engine/run-turn.js` (all of
   `runTurn`, ~15,300 lines) stays one file until P1-18 and P1-08 take it apart. The player portal's is 20.
-- **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report, Hall
-  of Fame records, what a realm can see), `db/` (which database, the version guard, telemetry and the light `meta`
+- **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report,
+  the statistics snapshots, what a realm can see), `db/` (which database, the version guard, telemetry and the light `meta`
   rows), `content/` (the data file), `ui/<page>/` (each page's template, styles and the rest of its code),
   `ui/shared/` (scripts every page loads), `rulebook/`, `vendor/`. Each file is still a stretch of its page, not a
   module: the page's scripts share one global scope, so the manifest's order is the order the code runs
   ([traps.md](traps.md#top-level-declaration-order-the-items_by_tier-class)). P1-09 makes them modules, renaming
   `.js` to `.ts` in place, and Vite replaces the build.
+- **The engine is `engine/` and `views/`** (P1-18c): nothing in them reads the screen, the database or the page's other
+  globals as it loads, and every name they read is declared in them or the data file, but `runTurn`'s own database
+  and screen work and the reports' build stamp, which P1-18d moves out. `engineFiles()` in the manifest is the GM
+  page's main list filtered to the two folders, and `tests/lib/engine.ts` runs them in a bare Node `vm`. The Hall of
+  Fame's GM-side code reads the database and the screen, so it is `ui/gm/hall-of-fame.js`.
 - **A new file goes into its list in the manifest**, where its code should run. The build stops on a file in `src/`
   that no list names, and on a marker or a block without its partner.
 - **Who builds:** `npm test` and `npx playwright test` before any test (`tests/setup/global.ts`; not when `KC_SITE`
