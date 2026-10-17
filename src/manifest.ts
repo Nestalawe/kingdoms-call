@@ -151,6 +151,15 @@ export const PAGES: Readonly<Record<string, Page>> = {
   },
 };
 
+/** The engine (plan P1-18c): the GM page's main files under engine/ and views/, in page order, so the dice and the
+ *  clock come first. Folder equals layer: nothing in these folders reads the screen, the database or the page's
+ *  globals as it loads, so tests/lib/engine.ts runs them in a bare Node vm. tests/static/engine-files.test.ts checks
+ *  that every file in the two folders is on the GM page's main list, so none escapes the loader. */
+export function engineFiles(): string[] {
+  const main = PAGES['kingdoms-call-gm-portal.html']?.blocks['main'] ?? [];
+  return main.filter((f) => f.startsWith('engine/') || f.startsWith('views/'));
+}
+
 /** Files published as they are: the published name (in site/) and the file in src/. */
 export const COPIES: Readonly<Record<string, string>> = {
   'kingdoms-call-data.js': 'content/kingdoms-call-data.js',
