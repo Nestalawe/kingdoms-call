@@ -1,12 +1,13 @@
 {
-  "about": "Baselines for npm run ratchet (tools/ratchet.ts). No count may rise; when one falls, lower it here in the same PR (npm run ratchet -- --update). Set 2026-10-16 (P1-01b).",
+  "about": "Baselines for npm run ratchet (tools/ratchet.ts). No count may rise; when one falls, lower it here in the same PR (npm run ratchet -- --update). Set 2026-10-16 (P1-01b). sourceJavascriptFiles (the site's own JavaScript in src/) set 2026-10-17 (P1-05), when the site's inline code became files.",
   "counts": {
     "tsNocheck": 0,
     "tsIgnore": 0,
     "eslintDisable": 0,
     "stubDbTests": 79,
     "allowlistEntries": 1,
-    "javascriptFiles": 176,
-    "quarantinedTests": 4
+    "javascriptFiles": 170,
+    "quarantinedTests": 4,
+    "sourceJavascriptFiles": 85
   }
 }

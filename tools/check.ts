@@ -4,8 +4,8 @@
 // (tools/ratchet.ts); then the tests. The full suite, page level included, runs in CI.
 //
 // Which tests: `vitest related` finds the Vitest tests that import a changed TypeScript file. It can't see what the
-// test scripts (tests/*.test.js) read: each runs in its own process and loads site/ by file name. So when anything
-// else changes (site/, docs, a test script, tests/setup/, a config), it runs every level but page instead (Theo,
+// test scripts (tests/*.test.js) read: each runs in its own process and loads site/ (built from src/) by file name. So
+// when anything else changes (src/, docs, a test script, tests/setup/, a config), it runs every level but page instead (Theo,
 // 2026-10-16): about 17 s.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';

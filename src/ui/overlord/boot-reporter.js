@@ -1,0 +1,29 @@
+// ── BOOT-FAILURE REPORTER ── mirrors the other pages: the first uncaught error replaces the spinner with the
+// message and a hint, so a boot failure is never a silent "Loading…".
+(function(){
+  let shown=false;
+  function hint(m){
+    if(/being updated/i.test(m)) return 'Nothing was read or saved. Reload in a few minutes; if it keeps happening, tell Theo what the message above says.';
+    if(/supabase is not defined/i.test(m)) return 'The Supabase library (vendor/supabase-js-2.117.3.min.js, part of this site) did not load. Check your internet connection and hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
+    return 'Hard-reload the page (Ctrl/Cmd+Shift+R). If it persists, report the message above.';
+  }
+  function show(msg){
+    if(shown) return;
+    const go=()=>{
+      const sp=document.getElementById('spinner');
+      if(!sp||sp.style.display==='none') return;
+      shown=true;
+      // Constant markup only: the message and the hint go in as text (kc-safe.js may be the script that failed).
+      sp.innerHTML='<div style="max-width:640px;margin:auto;text-align:left;font-family:\'Crimson Text\',serif;letter-spacing:0;color:#f2e8d0;border:1px solid #7a1c1c;border-radius:4px;padding:14px 18px;background:#1a0c0c">'
+        +'<div style="font-family:\'Cinzel\',serif;color:#e8b84b;margin-bottom:6px">⚠ The Overlord page could not start</div>'
+        +'<div style="font-family:monospace;font-size:.8rem;color:#f0c0c0;word-break:break-word;margin-bottom:8px" data-boot="msg"></div>'
+        +'<div style="font-size:.9rem" data-boot="hint"></div>'
+        +'<div style="margin-top:10px"><button onclick="location.reload()" style="padding:6px 14px;background:#7a1c1c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:\'Cinzel\',serif">Reload</button></div></div>';
+      sp.querySelector('[data-boot="msg"]').textContent=msg;
+      sp.querySelector('[data-boot="hint"]').textContent=hint(msg);
+    };
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
+  }
+  window.addEventListener('error',e=>show(e.message||String(e.error||'Unknown error')));
+  window.addEventListener('unhandledrejection',e=>show((e.reason&&(e.reason.message||e.reason))||'Unhandled promise rejection'));
+})();

@@ -1,5 +1,5 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
-// entries, JavaScript not yet TypeScript, quarantined tests, tests on the hand-written database stand-in) and fails if
+// entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests, tests on the hand-written database stand-in) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -64,7 +64,11 @@ export function measure(): Counts {
   return {
     ...counts,
     allowlistEntries: ALLOWLISTS.reduce((n, a) => n + allowlistLength(a.file, a.name), 0),
-    javascriptFiles: all.filter((f) => /\.(js|mjs|cjs)$/.test(f)).length,
+    javascriptFiles: all.filter((f) => /\.(js|mjs|cjs)$/.test(f) && !f.startsWith('src/')).length,
+    // The site's own code, inline in its pages until P1-05 split it into src/ (so it wasn't counted before then). The
+    // module switch (P1-09) makes it TypeScript. The supabase-js copy in src/vendor/ isn't the site's code.
+    sourceJavascriptFiles: all.filter((f) => /\.js$/.test(f) && f.startsWith('src/') && !f.startsWith('src/vendor/'))
+      .length,
     quarantinedTests: all.filter((f) => f.startsWith('tests/quarantine/') && /\.test\.[jt]s$/.test(f)).length,
   };
 }

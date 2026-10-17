@@ -8,17 +8,22 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, test } from 'vitest';
-import { pageFiles } from '../lib/boot.js';
 import { decide, enginePathsIn, isEnginePath } from '../../tools/balance/engine-paths.ts';
+import { pageSources } from '../../tools/balance/run.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const SCRIPT = path.join(ROOT, 'tools', 'balance', 'engine-paths.ts');
 
 describe('the engine paths', () => {
   test.for([
-    'site/kingdoms-call-gm-portal.html',
-    'site/kingdoms-call-data.js',
-    'site/kc-safe.js',
+    'src/ui/gm/kingdoms-call-gm-portal.html',
+    'src/engine/run-turn.js',
+    'src/views/turn-report.js',
+    'src/content/kingdoms-call-data.js',
+    'src/ui/shared/kc-safe.js',
+    'src/db/kc-config.js',
+    'src/manifest.ts',
+    'tools/build.ts',
     'tools/balance/run.ts',
     'tools/balance/engine-paths.ts',
     'tests/balance/baseline/matrix.json',
@@ -32,10 +37,13 @@ describe('the engine paths', () => {
   });
 
   test.for([
-    'site/kingdoms-call-player-portal.html',
-    'site/index.html',
-    'site/vendor/supabase-js-2.117.3.min.js',
-    'site/kingdoms-call-gm-portal.html.bak',
+    'src/ui/player/kingdoms-call-player-portal.html',
+    'src/ui/player/map.js',
+    'src/ui/landing/index.html',
+    'src/rulebook/rulebook.css',
+    'src/vendor/supabase-js-2.117.3.min.js',
+    'src/engine.bak/run-turn.js',
+    'site/kingdoms-call-gm-portal.html',
     'docs/ARCHITECTURE.md',
     'tests/lib/pc-hooks.js',
     'tests/unit/balance-hash.test.ts',
@@ -46,10 +54,10 @@ describe('the engine paths', () => {
     expect(isEnginePath(f)).toBe(false);
   });
 
-  test('every file the matrix loads into its page is one', () => {
-    const site = path.join(ROOT, 'site');
-    const files = pageFiles('kingdoms-call-gm-portal.html').map((f) => 'site/' + path.relative(site, f));
-    expect(files).toContain('site/kingdoms-call-data.js');
+  test('every file the matrix loads into its page is built from engine paths only', () => {
+    const files = pageSources();
+    expect(files).toContain('src/content/kingdoms-call-data.js');
+    expect(files).toContain('src/engine/run-turn.js');
     expect(files.filter((f) => !isEnginePath(f))).toEqual([]);
   });
 
@@ -67,19 +75,18 @@ describe('the engine paths', () => {
   });
 
   test('enginePathsIn keeps the engine paths, in order', () => {
-    expect(enginePathsIn(['docs/a.md', 'tests/lib/boot.js', 'site/index.html', 'tools/balance/play.ts'])).toEqual([
-      'tests/lib/boot.js',
-      'tools/balance/play.ts',
-    ]);
+    expect(
+      enginePathsIn(['docs/a.md', 'tests/lib/boot.js', 'src/ui/landing/index.html', 'tools/balance/play.ts']),
+    ).toEqual(['tests/lib/boot.js', 'tools/balance/play.ts']);
   });
 });
 
 describe('the decision', () => {
-  const engine = ['site/kingdoms-call-gm-portal.html'];
+  const engine = ['src/engine/run-turn.js'];
   const baseline = ['tests/balance/baseline/matrix.json'];
 
   test('no engine path changed: nothing is played, in seconds', () => {
-    const d = decide({ base: 'HEAD^1', changed: ['docs/traps.md', 'site/index.html'], refactorOnly: false });
+    const d = decide({ base: 'HEAD^1', changed: ['docs/traps.md', 'src/ui/landing/index.html'], refactorOnly: false });
     expect(d).toMatchObject({ play: false, fail: false });
     expect(d.lines.join('\n')).toContain('No engine path changed');
   });
@@ -87,7 +94,7 @@ describe('the decision', () => {
   test('an engine path changed: the matrix is played', () => {
     const d = decide({ base: 'HEAD^1', changed: ['docs/traps.md', ...engine], refactorOnly: false });
     expect(d).toMatchObject({ play: true, fail: false });
-    expect(d.lines.join('\n')).toContain('site/kingdoms-call-gm-portal.html');
+    expect(d.lines.join('\n')).toContain('src/engine/run-turn.js');
   });
 
   test('refactor-only, the baseline unchanged: played, so the games must come out identical', () => {
@@ -167,7 +174,7 @@ describe('the step, in plain Node', () => {
 
   git('init', '-q', '-b', 'main');
   const first = commit({
-    'site/kingdoms-call-gm-portal.html': 'v1',
+    'src/engine/run-turn.js': 'v1',
     'tests/balance/baseline/matrix.json': '{}',
     'docs/a.md': 'a',
   });
@@ -179,15 +186,15 @@ describe('the step, in plain Node', () => {
     expect(r).toMatchObject({ status: 0, output: 'play=false\n' });
   });
 
-  test('a pull request that changes the GM portal: play=true', () => {
-    pullRequest({ 'site/kingdoms-call-gm-portal.html': 'v2' });
+  test('a pull request that changes the engine: play=true', () => {
+    pullRequest({ 'src/engine/run-turn.js': 'v2' });
     expect(run({ EVENT: 'pull_request', REFACTOR_ONLY: 'false' })).toMatchObject({ status: 0, output: 'play=true\n' });
   });
 
   test('a file renamed away from an engine path counts by its old name too', () => {
     git('checkout', '-q', 'main');
     git('checkout', '-q', '-B', 'pr');
-    git('mv', 'site/kingdoms-call-gm-portal.html', 'site/old-gm-portal.html');
+    git('mv', 'src/engine/run-turn.js', 'docs/old-run-turn.js');
     git('commit', '-q', '-m', 'mv');
     git('checkout', '-q', '--detach', 'main');
     git('merge', '-q', '--no-ff', '-m', 'merge', 'pr');
@@ -195,7 +202,7 @@ describe('the step, in plain Node', () => {
   });
 
   test('refactor-only with a changed baseline: exit 1, and the log says why', () => {
-    pullRequest({ 'site/kingdoms-call-gm-portal.html': 'v2', 'tests/balance/baseline/matrix.json': '{"x":1}' });
+    pullRequest({ 'src/engine/run-turn.js': 'v2', 'tests/balance/baseline/matrix.json': '{"x":1}' });
     const r = run({ EVENT: 'pull_request', REFACTOR_ONLY: 'true' });
     expect(r.status).toBe(1);
     expect(r.log).toContain('refactor-only');
@@ -208,7 +215,7 @@ describe('the step, in plain Node', () => {
     commit({ 'docs/a.md': 'c' });
     expect(run({ EVENT: 'push', BEFORE: before })).toMatchObject({ status: 0, output: 'play=false\n' });
     // A push of two commits: the engine change is in the first.
-    commit({ 'site/kingdoms-call-gm-portal.html': 'v3' });
+    commit({ 'src/engine/run-turn.js': 'v3' });
     commit({ 'docs/a.md': 'd' });
     expect(run({ EVENT: 'push', BEFORE: before })).toMatchObject({ status: 0, output: 'play=true\n' });
     expect(run({ EVENT: 'push', BEFORE: first })).toMatchObject({ status: 0, output: 'play=true\n' });

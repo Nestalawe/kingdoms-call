@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdoms Call — Player Portal</title>
+<script>
+{{kc-build:boot-reporter}}
+</script>
+<script src="kc-safe.js"></script>
+<script src="vendor/supabase-js-2.117.3.min.js"></script>
+<style>
+{{kc-build:style}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="masthead">
+    <h1>⚔ Kingdoms Call</h1>
+    <div class="sub">Player Portal</div>
+  </div>
+
+  <div id="spinner">Loading…</div>
+
+  <!-- AUTH -->
+  <section id="sec-auth">
+    <div class="card" style="max-width:440px;margin:0 auto">
+      <div class="tab-bar">
+        <button id="tab-signin" class="active" onclick="setAuthTab('signin')">Sign In</button>
+        <button id="tab-signup" onclick="setAuthTab('signup')">Register</button>
+      </div>
+      <div id="auth-msg"></div>
+
+      <div id="auth-signin">
+        <label>Email</label>
+        <input type="email" id="si-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doSignIn()">
+        <label>Password</label>
+        <input type="password" id="si-password" placeholder="Password" onkeydown="if(event.key==='Enter')doSignIn()">
+        <button class="btn btn-crimson btn-full" onclick="doSignIn()">Sign In</button>
+      </div>
+
+      <div id="auth-signup" style="display:none">
+        <label>Username / Display Name</label>
+        <input type="text" id="su-name" placeholder="How other players will see you">
+        <label>Email</label>
+        <input type="email" id="su-email" placeholder="your@email.com">
+        <label>Password</label>
+        <input type="password" id="su-password" placeholder="At least 6 characters">
+        <label>Confirm Password</label>
+        <input type="password" id="su-password2" placeholder="Repeat password" onkeydown="if(event.key==='Enter')doSignUp()">
+        <button class="btn btn-crimson btn-full" onclick="doSignUp()">Create Account</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME LIST -->
+  <section id="sec-games">
+    <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Signed in as</div>
+        <div id="player-name-display" style="font-size:.95rem;color:var(--parchment)"></div>
+      </div>
+      <a href="kingdoms-call-leaderboard.html" target="_blank" class="btn btn-gold" style="text-decoration:none;font-size:.7rem">🏆 Leaderboard</a>
+      <a href="kingdoms-call-rules.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Rules</a>
+        <button class="btn btn-ghost" onclick="changeDisplayName()">✏ Change Display Name</button>
+        <button class="btn btn-ghost" onclick="changePassword()">🔑 Change Password</button>
+        <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
+    </div>
+
+    <div id="msg-games"></div>
+
+    <!-- Game Master offer (P0-32c): shown while the Overlord's offer to this account is open (loadGmOffer) -->
+    <div class="card" id="gm-offer-banner" style="display:none">
+      <div id="gm-offer-ask">
+        <p style="margin:0 0 10px"><strong>The Overlord has offered to make you a Game Master.</strong> A Game Master creates games and runs their turns.</p>
+        <button class="btn btn-gold" id="gm-offer-accept" onclick="acceptGmOffer()">Accept</button>
+        <button class="btn btn-ghost" id="gm-offer-decline" onclick="declineGmOffer()">No thanks</button>
+      </div>
+      <div id="gm-offer-done" style="display:none">You're now a Game Master. <a href="kingdoms-call-gm-portal.html">Open the GM portal</a> to create and run games.</div>
+      <div id="gm-offer-msg"></div>
+    </div>
+
+    <!-- My active games -->
+    <div class="card">
+      <h2>⚔ Your Games</h2>
+      <div id="my-games-list"><div class="msg-info">Loading…</div></div>
+    </div>
+
+    <!-- Open games to join -->
+    <div class="card">
+      <h2>🌍 Open Games — Available to Join</h2>
+      <div id="open-games-list"><div class="msg-info">Loading…</div></div>
+    </div>
+
+    <!-- Archived games (2026-09-28, Toby item 2): games the GM has archived leave Your Games and are
+         listed here. The card can be minimised; a minimised card stays minimised on later visits
+         (remembered in this browser) until the player opens it again. Hidden when there are none. -->
+    <div class="card" id="archived-games-card" style="display:none">
+      <h2 style="display:flex;align-items:center;gap:8px">🗄 Archived Games <span id="archived-games-count" style="font-size:.75rem;color:var(--stone);font-family:'Crimson Text',serif"></span>
+        <button type="button" id="archived-games-toggle" class="secall-btn" style="margin-left:auto" onclick="toggleArchivedGamesCard()" aria-expanded="true">&#9662; minimise</button>
+      </h2>
+      <div id="archived-games-list"></div>
+    </div>
+  </section>
+
+  <!-- JOIN GAME -->
+  <section id="sec-join">
+    <div class="detail-header topbar">
+      <button class="btn btn-ghost" onclick="show('sec-games');loadAllGames()">← Back</button>
+      <h2 id="join-game-title">Join Game</h2>
+    </div>
+    <div class="card">
+      <div id="join-msg"></div>
+      <div id="join-game-info" style="margin-bottom:16px"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label>Your King's Name</label>
+          <input type="text" id="join-king-name" placeholder="e.g. King Aldric">
+        </div>
+        <div>
+          <label>Your Realm's Name</label>
+          <input type="text" id="join-kingdom-name" placeholder="e.g. the Realm of Woe">
+          <div style="font-size:.68rem;color:#2f281c;margin-top:2px">Shown in reports as "…of &lt;this&gt;". Include "the" if you want it, e.g. "the Iron Throne".</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label>Race</label>
+          <select id="join-race" onchange="updateRaceDesc()">
+            <option>Human</option><option>Elven</option><option>Dwarven</option><option>Orcish</option>
+          </select>
+          <div id="join-race-desc" style="font-size:.72rem;color:#231e16;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
+        </div>
+        <div>
+          <label>Alignment</label>
+          <select id="join-alignment" onchange="updateAlignmentDesc()">
+            <option value="Divine">Divine</option><option value="Good">Good</option><option value="Druidic">Druidic</option>
+            <option value="Neutral" selected>Neutral</option><option value="Pagan">Pagan</option><option value="Evil">Evil</option><option value="Undead">Undead</option>
+          </select>
+          <div id="join-alignment-desc" style="font-size:.72rem;color:#231e16;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
+        </div>
+        <div>
+          <label>Temper</label>
+          <select id="join-temper" onchange="updateTemperDesc()">
+            <option>Berserk</option><option selected>Brave</option><option>Cautious</option><option>Cowardly</option>
+          </select>
+          <div id="join-temper-desc" style="font-size:.72rem;color:#231e16;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
+        </div>
+      </div>
+
+      <label>Starting Skills — distribute 4 points (max 2 per skill) <span style="font-weight:normal;color:var(--stone);font-size:.72rem">· hover a skill name for details</span></label>
+      <div class="pts-remaining" id="join-pts-remaining">4 points remaining</div>
+      <div id="join-skills-grid"></div>
+
+      <div class="msg-info" style="margin-top:4px">
+        Your King also starts with Melee 2, Archery 1, Sage 1 automatically.
+        Divine alignment adds White Magic 1; Undead alignment adds Necromancy 1.
+      </div>
+      <button class="btn btn-crimson btn-full" style="margin-top:14px" onclick="joinGame()">Join this Game</button>
+    </div>
+  </section>
+
+  <!-- TURN REPORT -->
+  <section id="sec-report">
+    <div class="detail-header topbar" style="max-width:none;padding:10px 16px">
+      <button class="btn btn-ghost" onclick="show('sec-games');loadAllGames()">← My Games</button>
+      <h2 id="report-title">Turn Report</h2>
+    </div>
+    <!-- New-turn notice: shown by the background poll when the GM resolves the turn while this report is
+         open. It never reloads on its own (that would wipe unsaved orders) — the player chooses when. -->
+    <div id="new-turn-banner" style="display:none;padding:8px 14px;background:#e8f3e0;border-bottom:2px solid #2d7a2d;color:#1f5a1f;font-size:.8rem;display:none;align-items:center;gap:10px">
+      <span style="font-weight:700">✅ A new turn has been resolved.</span>
+      <span style="opacity:.85">Refresh to see the latest results — your unsaved orders won't be affected until you do.</span>
+      <button onclick="refreshOpenReport()" style="margin-left:auto;font-size:.74rem;padding:3px 10px;border:1px solid #2d7a2d;background:#2d7a2d;color:#fff;cursor:pointer;border-radius:3px;font-weight:600">↻ Refresh report</button>
+    </div>
+
+    <!-- Three-column layout: map + report content + orders (each independently scrollable) -->
+    <div id="rp-layout" style="display:flex;gap:0;align-items:flex-start;min-height:calc(100vh - 120px);width:100vw;overflow-x:hidden;box-sizing:border-box">
+
+      <!-- LEFT: Map column (sticky, fills viewport height) -->
+      <div id="rp-map-col" style="width:52%;min-width:0;position:sticky;top:0;height:calc(100vh - 120px);display:flex;flex-direction:column;background:#0e0a04;border-right:2px solid #333">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#1a1208;border-bottom:1px solid #333">
+          <span style="font-family:'Cinzel',serif;font-size:.75rem;color:#c8922a;letter-spacing:.06em">🗺 Known World</span>
+          <button onclick="showFullscreenMap()" class="btn btn-ghost" style="font-size:.65rem;padding:3px 9px">⛶ Fullscreen</button>
+        </div>
+        <div id="map-icon-toggles" style="display:flex;flex-wrap:wrap;gap:3px;padding:4px 8px;background:#160f06;border-bottom:1px solid #2a1c0c;font-size:.62rem"></div>
+        <div id="report-map-container" style="flex:1 1 0;min-height:0;min-width:0;overflow:auto;padding:6px">
+          <div id="report-map-zoomwrap" style="width:100%;height:100%">
+          <svg id="report-map-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%"></svg>
+          </div>
+        </div>
+        <!-- Map legend -->
+        <div id="map-legend" style="padding:10px 14px;background:#1a1208;border-top:1px solid #333;display:flex;flex-wrap:wrap;gap:12px;font-size:.82rem;color:#bbb;align-items:center">
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:#4a7a3a;border-radius:2px"></span> Terrain colour</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:transparent;border:2px solid #c8922a;border-radius:2px"></span> Your province</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:transparent;border:2px solid #eee;border-radius:2px"></span> Enemy province</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#c8922a" stroke="#fff" stroke-width="1"/><text x="8" y="11" text-anchor="middle" font-size="9" font-family="'Noto Sans Symbols 2','Noto Sans Symbols','Segoe UI Symbol','Apple Symbols','Symbola','DejaVu Sans',sans-serif" fill="#fff">&#x265B;&#xFE0E;</text></svg> Your King</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#c8922a" stroke="#fff" stroke-width="1"/><circle cx="8" cy="6" r="2.2" fill="#fff"/><path d="M4.2,11 Q8,7.5 11.8,11" fill="#fff"/></svg> Hero</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8a2020" stroke="#fff" stroke-width="1"/><circle cx="8" cy="6" r="2.2" fill="#fff"/><path d="M4.2,11 Q8,7.5 11.8,11" fill="#fff"/></svg> Enemy hero</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><path d="M8,8 L8,1 A7,7 0 0,1 14.06,11.5 Z" fill="#fc78c0"/><path d="M8,8 L14.06,11.5 A7,7 0 0,1 1.94,11.5 Z" fill="#90c0fc"/><path d="M8,8 L1.94,11.5 A7,7 0 0,1 8,1 Z" fill="#0cb478"/><circle cx="8" cy="8" r="7" fill="none" stroke="#fff" stroke-width="1"/><text x="8" y="11" text-anchor="middle" font-size="8" fill="#fff">3</text></svg> Heroes of several realms (one wedge per realm)</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#888" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" fill="#fff">?</text></svg> Wandering hero</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8f6a38" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">!</text></svg> Local chieftain</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="battle"></span> Battle last turn</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="duel"></span> Personal combat (duel, encounter or assassination)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="capital"></span> Home capital (left flank, in that realm's colour)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="flag"></span> Your army in the field</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="ritual"></span> Ritual site</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="lair"></span> Lair</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="garrison" data-mapsize=".95rem"></span> Defenders</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="garrison"></span> Garrison held (bottom-right)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="dead"></span> Fallen hero (bottom-left)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#FFD700;border:2px solid #FFA500;box-shadow:0 0 3px #FFD700"></span> Rich</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#C0C0C0;border:2px solid #A8A8A8"></span> Prosperous</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#CD7F32;border:2px solid #A0522D"></span> Poor</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="gravesFresh"></span> Army graves — known this turn (certainly there)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="gravesStale"></span> Army graves — older knowledge (may be gone)</span>
+          <span style="display:flex;align-items:center;gap:5px"><strong style="color:#ddd">%</strong> = explored</span>
+          <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#3a3224">Race (bottom-right):</span>
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#c9a961;color:#1a1208;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">H</span> Human
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#6fbf73;color:#0c2a0e;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">E</span> Elven
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#9fa8b8;color:#151a22;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">D</span> Dwarven
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#b8433a;color:#fff;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">O</span> Orcish
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#4fa3c9;color:#0a1f28;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">C</span> Creature
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#7d4fb5;color:#fff;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">M</span> Monster</span>
+        </div>
+      </div>
+
+      <!-- MIDDLE: Report content column (scrollable) -->
+      <div id="rp-report-col" style="width:24%;min-width:240px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);border-right:2px solid var(--stone)">
+
+        <!-- Previous turns navigator -->
+        <div style="padding:8px 10px;background:var(--parchment-dark);border-bottom:1px solid var(--stone);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.06em;font-weight:700">Turn:</span>
+          <div id="turn-nav-btns" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+          <span style="margin-left:auto;display:flex;gap:4px">
+            <button class="secall-btn" onclick="collapseAllSections('#rp-report-col',true)" title="Minimise all sections">&#9656; all</button>
+            <button class="secall-btn" onclick="collapseAllSections('#rp-report-col',false)" title="Expand all sections">&#9662; all</button>
+          </span>
+        </div>
+        <div id="prev-report-banner" style="display:none;padding:6px 10px;background:#f5e6c8;border-bottom:1px solid #c8922a;font-size:.75rem;color:#5a3f08;font-style:italic">
+          Viewing past turn — read only.
+          <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>
+        </div>
+
+        <!-- 2026-09-18 (Toby item 8): section jump-bar — sticks to the top of the report column while it
+             scrolls, so any main heading of the report is one tap away. -->
+        <div id="report-jumpbar" style="position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;background:var(--parchment-dark);border-bottom:2px solid var(--stone);box-shadow:0 2px 4px rgba(0,0,0,.15)">
+          <button class="rj-btn" onclick="jumpToReportSection('report-chronicle-card')" title="Chronicle">📜 Chronicle</button>
+          <button class="rj-btn" onclick="jumpToReportSection('intel-reports-section')" title="Intelligence Reports">🕵 Intelligence</button>
+          <button class="rj-btn" onclick="jumpToReportSection('realm-card')" title="Your Realm">👑 Realm</button>
+          <button class="rj-btn" onclick="jumpToReportSection('provinces-card')" title="Your Provinces">🗺 Provinces</button>
+          <button class="rj-btn" onclick="jumpToReportSection('other-forces-card')" title="Other Armies &amp; Heroes">⚔ Others</button>
+          <button class="rj-btn" onclick="jumpToReportSection('lairs-card')" title="Known Lairs">🐉 Lairs</button>
+          <button class="rj-btn" onclick="jumpToReportSection('diplomacy-card')" title="Diplomacy">🤝 Diplomacy</button>
+          <button class="rj-btn" onclick="jumpToReportSection('titles-card')" title="Titles &amp; Victory">🏆 Titles</button>
+          <button class="rj-btn" id="rj-mastery" onclick="jumpToReportSection('mastery-card')" title="Skill Mastery" style="display:none">🎓 Mastery</button>
+          <button class="rj-btn" onclick="jumpToReportSection('discoveries-card')" title="Sage Discoveries">💡 Discoveries</button>
+        </div>
+
+        <div class="card" id="report-chronicle-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2 style="display:flex;align-items:center;gap:8px">📜 Chronicle
+            <span style="margin-left:auto;display:flex;gap:4px">
+              <button class="secall-btn" onclick="collapseAllChronicle(true)" title="Minimise every character &amp; event">&#9656; all</button>
+              <button class="secall-btn" onclick="collapseAllChronicle(false)" title="Expand every character &amp; event">&#9662; all</button>
+            </span>
+          </h2>
+          <div id="report-log"><em style="color:#3a3224;font-size:.85rem">No events yet.</em></div>
+        </div>
+
+        <div class="card" id="realm-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>👑 Your Realm</h2>
+          <div id="report-kingdom"></div>
+        </div>
+
+        <div class="card" id="provinces-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>🗺 Your Provinces</h2>
+          <div id="report-provinces"></div>
+        </div>
+
+        <div class="card" id="other-forces-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>⚔ Other Armies &amp; Heroes</h2>
+          <div id="report-other-forces"><em style="color:#3a3224;font-size:.85rem">No mercenary bands, loose heroes or known graveyards yet.</em></div>
+        </div>
+
+        <div class="card" id="lairs-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>🐉 Known Lairs</h2>
+          <div id="report-lairs"><em style="color:#3a3224;font-size:.85rem">No lairs discovered yet.</em></div>
+        </div>
+
+        <div class="card" id="diplomacy-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>🤝 Diplomacy</h2>
+          <div id="report-diplomacy"><em style="color:#3a3224;font-size:.85rem">No realms encountered yet.</em></div>
+        </div>
+
+        <div class="card" id="titles-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>🏆 Titles &amp; Victory</h2>
+          <div id="report-titles"><em style="color:#3a3224;font-size:.85rem">The Imperial Titles are contested in secret until Turn 5.</em></div>
+        </div>
+
+        <div class="card" id="mastery-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none;display:none">
+          <h2>🎓 Skill Mastery (level 6+)</h2>
+          <div id="report-mastery"></div>
+        </div>
+
+        <div class="card" id="discoveries-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>💡 Sage Discoveries</h2>
+          <div id="report-discoveries"><em style="color:#3a3224;font-size:.85rem">No discoveries yet.</em></div>
+        </div>
+
+      </div><!-- end middle report column -->
+
+      <!-- DISPATCHES: realm-to-realm messaging (2026-09-27). A fourth column, moved by
+           setupDeskLayout() into the LEFT desktop panel (where it replaced the duplicate Report tab)
+           and shown on its own phone tab. Messages are NOT part of the turn report: they are sent
+           and read straight away against public.game_messages and they persist for the whole game.
+           Hidden altogether in a game with only one human realm. -->
+      <div id="rp-msg-col" style="width:0;min-width:0;display:none;flex-direction:column;background:#120c05;border-right:2px solid #333;height:calc(100vh - 120px)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;background:#1a1208;border-bottom:1px solid #333;flex:0 0 auto">
+          <span id="msg-col-title" style="font-family:'Cinzel',serif;font-size:.75rem;color:#c8922a;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">✉ Dispatches</span>
+          <span style="display:flex;gap:4px;align-items:center;flex:0 0 auto">
+            <button id="msg-group-btn" class="btn btn-ghost" style="font-size:.62rem;padding:3px 8px" onclick="toggleMsgGroupPicker()">＋ Group</button>
+            <button class="btn btn-ghost" style="font-size:.62rem;padding:3px 8px" onclick="refreshMessages(true)" title="Check for new dispatches now">↻</button>
+          </span>
+        </div>
+        <div id="msg-group-pick">
+          <div style="font-size:.68rem;color:#c9b189;font-family:'Cinzel',serif;letter-spacing:.04em">Address a private dispatch to several realms at once</div>
+          <div class="mg-row" id="msg-group-list"></div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="font-size:.62rem;padding:3px 9px" onclick="createMsgGroup()">Open conversation</button>
+            <button class="btn btn-ghost" style="font-size:.62rem;padding:3px 9px" onclick="toggleMsgGroupPicker(false)">Cancel</button>
+          </div>
+        </div>
+        <div id="msg-channels"></div>
+        <div id="msg-thread"><div class="msg-empty">Loading dispatches…</div></div>
+        <div id="msg-composer">
+          <div class="mc-privacy">Private dispatches are seen only by the realms in the conversation and the site's Overlord. Use ⚑ Report to show one to your GM (or to the Overlord, if your GM plays in this game). Until the game is over, a realm that has conceded or been extinguished writes only to All Realms, or not at all if the GM blocks it.</div>
+          <div id="msg-note"></div>
+          <textarea id="msg-input" maxlength="500" rows="2" placeholder="Write your dispatch…" oninput="onMsgInput()"></textarea>
+          <div id="msg-send-row">
+            <span class="mc-hint" id="msg-hint"></span>
+            <button id="msg-send-btn" onclick="sendMessage()" disabled>Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spacer between turn info and orders -->
+      <div class="rp-spacer" style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
+
+      <!-- RIGHT: Orders column (independently scrollable) -->
+      <div id="orders-column" style="width:22%;min-width:260px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);display:flex;flex-direction:column">
+        <div class="card" id="orders-card" style="margin:0;border-radius:0;border:none;flex:1;display:flex;flex-direction:column">
+          <div id="orders-sticky-top" style="position:sticky;top:0;background:var(--parchment);z-index:4;border-bottom:1px solid var(--parchment-dark)">
+          <h2 style="background:var(--parchment);margin:0;padding:8px 0;display:flex;align-items:center;gap:8px">⚜ Orders — Turn <span id="orders-turn-num"></span>
+            <span style="margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px">
+              <button class="secall-btn" onclick="groupHeroesByLocation()" title="Put heroes standing in the same province next to each other">&#128205; Group by location</button>
+              <button class="secall-btn" onclick="collapseAllSections('#orders-column',true)" title="Minimise every hero">&#9656; Collapse all</button>
+              <button class="secall-btn" onclick="collapseAllSections('#orders-column',false)" title="Expand every hero">&#9662; Expand all</button>
+            </span>
+          </h2>
+          <div id="orders-ledger" style="display:none"></div>
+          </div>
+          <div id="report-status-pill" style="padding:2px 0 6px"></div>
+          <div id="turn-deadline-line" style="display:none;font-size:.78rem;margin:0 0 8px;padding:6px 10px;border-radius:3px;background:#f3e9d2;border:1px solid #c9bd9e;color:#4a3a1a"></div>
+          <div id="orders-form" style="flex:1"></div>
+          <!-- Everything to do with SUBMITTING orders lives in this one sticky block at the foot of
+               the column: the validation message, the buttons it raises ("Submit Anyway" / "Go
+               Back"), Save Draft, Submit, and the draft-saved confirmation. orders-msg used to sit
+               at the TOP of the card, so a failed submit scrolled its buttons away from the Submit
+               button they belonged to. -->
+          <div id="orders-bottom" style="position:sticky;bottom:0;background:var(--parchment);padding:8px 0;margin-top:12px">
+            <div id="orders-msg"></div>
+            <div id="orders-submit-wrap" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
+              <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
+                Submit Orders to GM
+              </button>
+            </div>
+            <div id="save-msg" style="font-size:.76rem;color:var(--forest);padding:4px 0;display:none">✓ Draft saved — you can return and update your orders before submitting.</div>
+            <!-- Item 9 (2026-09-07): the Concede control moved to the realm block at the top of the orders form -->
+          </div>
+        </div><!-- end orders-card -->
+      </div><!-- end orders column -->
+
+      <!-- Right-edge spacer -->
+      <div class="rp-spacer" style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
+
+    </div><!-- end three-column layout -->
+
+    <!-- MOBILE bottom tab bar — only visible ≤820px (see @media block). Switches which of the three
+         columns above is shown. On desktop this is display:none and has no effect. -->
+    <nav id="mobile-tabbar" aria-label="Section switcher">
+      <button type="button" data-mv="map"    onclick="setMobileView('map')"><span class="mt-ico">🗺</span>Map</button>
+      <button type="button" data-mv="report" onclick="setMobileView('report')"><span class="mt-ico">📜</span>Report</button>
+      <button type="button" data-mv="messages" id="mt-messages" onclick="setMobileView('messages')" style="display:none"><span class="mt-ico">✉</span>Msgs<span id="mt-msg-badge"></span></button>
+      <button type="button" data-mv="orders" onclick="setMobileView('orders')"><span class="mt-ico">✍️</span>Orders</button>
+    </nav>
+  </section>
+</div>
+
+<script src="kc-config.js"></script>
+<script src="kc-db-guard.js"></script>
+<script src="kingdoms-call-data.js"></script>
+<script>
+{{kc-build:main}}
+</script>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.16-1127</div>
+<script src="kc-staging-footer.js"></script>
+</body>
+</html>

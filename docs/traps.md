@@ -4,9 +4,20 @@ Standing gotchas: mistakes that have already happened, or nearly happened, in th
 how to avoid it. Read this before changing the portals or the tests. When a new trap costs you time,
 add it here in the same PR.
 
+## Edit `src/`, never `site/`
+
+Since P1-05, `site/` is build output ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)): git-ignored, and
+rewritten from `src/` by every test run. An edit there is never committed, and the next build quietly undoes it.
+
+- Change the file in `src/`; `src/manifest.ts` says which file makes which part of a page.
+- A new file must go into its list in the manifest, at the place its code should run. The build stops otherwise.
+- `node tests/<name>.test.js` and a page opened in a browser read `site/` as last built: run `npm run build` first.
+
 ## Top-level declaration order (the `ITEMS_BY_TIER` class)
 
-Every page's scripts are classic scripts sharing one global scope. A top-level `const`/`let` used before
+Every page's scripts are classic scripts sharing one global scope. That includes the files a page is built from:
+`src/manifest.ts` lists them in the order the code runs, so moving a file in a list, or code from one file to another,
+can move a declaration after its first use. A top-level `const`/`let` used before
 its line has run throws a temporal-dead-zone `ReferenceError`. At top level, that stops the page: the
 portal hangs on its spinner (the boot-failure reporter now shows the error).
 
@@ -82,7 +93,7 @@ and site changes go in separate PRs ([supabase/README.md](../supabase/README.md#
 
 Every page that uses the database (both portals and the Hall of Fame) declares `KC_DB_MIN`, the oldest
 database version it works with (a migration's 14-digit version), and starts through
-`kcDbGuard(sb, KC_DB_MIN)` (`site/kc-db-guard.js`, P0-34). Before the first read, it asks the database for
+`kcDbGuard(sb, KC_DB_MIN)` (`src/db/kc-db-guard.js`, P0-34). Before the first read, it asks the database for
 its version (`kc_db_version()`, the newest migration applied). On an older database, or one without the
 function, or no answer after one retry, the page stops with "The game is being updated" and nothing is read
 or written.
@@ -102,7 +113,8 @@ or written.
 ## String-anchor harness hooks
 
 Until the engine is split into modules (Phase 1), several tests reach inside the GM portal by matching
-**exact source lines** and injecting code there. For example, `  // 4. Run all 5 phases` exposes the
+**exact source lines** of the built page and injecting code there. Each line lives in one file under `src/`
+(mostly `src/engine/run-turn.js`). For example, `  // 4. Run all 5 phases` exposes the
 functions nested in `runTurn`. The full list is in
 [tests/README.md](../tests/README.md#code-anchor-hooks).
 
@@ -247,7 +259,7 @@ A unit type is keyed by its name in tables spread over three files, and nothing 
 missed: a unit with no cost recruits for 2g, one with no speed never marches, one with no names is "the
 Guard", one missing from a terrain block fights at ×1 there. When adding (or renaming) a unit, touch:
 
-- `site/kingdoms-call-data.js`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
+- `src/content/kingdoms-call-data.js`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
   starting companies are the first two non-garrison types of his home's cell), `ARMY_UNIT_NAMES` (40
   names), `KC_UNIT_CLASS` (cavalry / missile / lightFoot / flying …), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`,
   `KC_UNIT_BASE_STR`.

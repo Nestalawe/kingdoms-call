@@ -1,9 +1,11 @@
 // The harness checks itself (P1-01b; plan "The harness, enforced, not remembered"). Fails if a setting that keeps the
 // tests honest is missing or weakened: the compiler flags, the lint rules' severities, no retries and no .only (in
 // Vitest and in Playwright), the test runs' own checks, the Node pin, the Claude Code hooks and their stop limit, the
-// CI jobs and the required "ci" check, the balance job and its engine paths, the nightly random-seed run and fast-check's
-// seed, the dangerous paths, and the ratchet. Every later step that adds a guarantee
+// CI jobs and the required "ci" check, the build that every test job, the deploy and staging run first (P1-05), the
+// balance job and its engine paths, the nightly random-seed run and fast-check's seed, the dangerous paths, and the
+// ratchet. Every later step that adds a guarantee
 // adds its check here. Level 1 (static): it reads settings files and the counts, and runs nothing.
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ESLint, type Linter } from 'eslint';
@@ -18,10 +20,11 @@ import config from '../../vitest.config.mts';
 import pwConfig from '../../playwright.config.ts';
 import dangerous from '../../.github/scripts/dangerous-paths.js';
 import { CHECK_LEVELS } from '../../tools/check.ts';
-import { ENGINE_PATHS } from '../../tools/balance/engine-paths.ts';
+import { ENGINE_PATHS, isEnginePath } from '../../tools/balance/engine-paths.ts';
+import { pageSources } from '../../tools/balance/run.ts';
+import { filesUnder } from '../../tools/build.ts';
 import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
 import { BASELINE_FILE, compare, measure, readBaseline } from '../../tools/ratchet.ts';
-import { pageFiles } from '../lib/boot.js';
 import { LEVELS } from '../suite.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
@@ -158,6 +161,17 @@ describe('the test run', () => {
     expect(t.setupFiles).toContain('tests/setup/fast-check.ts');
     expect(fc.readConfigureGlobal().seed).toBe(Number(process.env['KC_SEED']) >>> 0 || 1);
     for (const script of ['test', 'test:full']) expect(pkg.scripts[script], script).not.toMatch(/--(retry|repeat)/);
+  });
+
+  // P1-05: site/ is build output. Both runners build it from src/ before any test (unless KC_SITE names another copy),
+  // so no test opens stale pages.
+  test('both runners build site/ from src/ first', () => {
+    expect(pkg.scripts['build']).toMatch(/^node (--disable-warning=\S+ )?tools\/build\.ts$/);
+    const global = read('tests/setup/global.ts');
+    expect(global).toContain("execFileSync('npm', ['run', '--silent', 'build']");
+    expect(global).toContain("if (!process.env['KC_SITE'])");
+    expect(read('.gitignore')).toMatch(/^\/site\/$/m);
+    expect(execFileSync('git', ['ls-files', 'site'], { cwd: ROOT, encoding: 'utf8' }), 'site/ is in git').toBe('');
   });
 
   test('a test fails on a retry or repeat, on console.error and on an unhandled rejection', () => {
@@ -302,8 +316,24 @@ describe('CI', () => {
       'npm run lint',
       'npm run format:check',
       'npm run ratchet',
+      'npm run build',
       'npm test -- --project static',
+      '|',
     ]);
+  });
+
+  // P1-05: each job that tests builds site/ from src/ before its tests, the balance matrix and the browser specs, so
+  // CI never tests anything but this commit's pages.
+  test('every job that tests builds the site first', () => {
+    const testing = /^(npm test|npx playwright test|npm run balance)/;
+    const jobsThatTest = ids.filter((id) => runs(id).some((r) => testing.test(r)));
+    expect([...jobsThatTest].sort()).toEqual(['balance', 'browser', 'page', 'simulation', 'static', 'unit-scenario']);
+    for (const id of jobsThatTest) {
+      const r = runs(id);
+      const build = r.indexOf('npm run build');
+      expect(build, id).toBeGreaterThan(r.indexOf('npm ci'));
+      expect(build, id).toBeLessThan(r.findIndex((x) => testing.test(x)));
+    }
   });
 
   test('every test level runs in exactly one job, and the browser specs in theirs', () => {
@@ -330,12 +360,14 @@ describe('CI', () => {
     expect(runs('balance')).toEqual([
       'node tools/balance/engine-paths.ts',
       'npm ci',
+      'npm run build',
       'npm run balance -- --out balance-report/played.json',
       'npm run balance:report -- --base HEAD^1 --head balance-report/played.json',
     ]);
     // The two steps after the decision run only on its play=true. The report runs only on a pull request, and only
     // once the games were played (even if they differ from the baseline); the upload only after the report.
     expect(job.match(/^ {6}- (?:id: \w+\n {8})?if: (.+)$/gm)?.map((l) => l.replace(/^.*if: /s, ''))).toEqual([
+      "steps.engine.outputs.play == 'true'",
       "steps.engine.outputs.play == 'true'",
       "steps.engine.outputs.play == 'true'",
       "${{ !cancelled() && github.event_name == 'pull_request' && (steps.play.outcome == 'success' || steps.play.outcome == 'failure') }}",
@@ -388,10 +420,17 @@ describe('CI', () => {
     }
   });
 
-  // The plan's list (P1-02, Decisions): the GM portal and every script its page loads, the balance code and its
-  // baselines, the test helpers the balance code imports, and the tools it runs on (the locked packages, the Node pin).
+  // The plan's list (P1-02, Decisions; P1-05): the files the GM portal's page and every script it loads are built from
+  // (src/manifest.ts) and the build, the balance code and its baselines, the test helpers the balance code imports, and
+  // the tools it runs on (the locked packages, the Node pin).
   test('the engine paths are the ones the plan lists, and the runner uses the same list', () => {
-    const page = pageFiles('kingdoms-call-gm-portal.html').map((f) => 'site/' + path.basename(f));
+    const page = pageSources();
+    expect(page).toContain('src/content/kingdoms-call-data.js');
+    expect(page).toContain('src/engine/run-turn.js');
+    expect(page.filter((f) => !isEnginePath(f))).toEqual([]);
+    // Under src/, the engine paths are exactly the page's sources: no other page's file plays the matrix.
+    const src = filesUnder(path.join(ROOT, 'src')).map((f) => 'src/' + f);
+    expect(src.filter(isEnginePath).sort()).toEqual(page.filter((f) => f.startsWith('src/')).sort());
     const dir = path.join(ROOT, 'tools', 'balance');
     const helpers = fs
       .readdirSync(dir)
@@ -399,13 +438,22 @@ describe('CI', () => {
         ...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '\.\.\/\.\.\/(tests\/lib\/[^']+)'/g),
       ])
       .map((m) => m[1] ?? '');
-    expect(page).toContain('site/kingdoms-call-data.js');
-    expect([...ENGINE_PATHS].sort()).toEqual(
-      [...new Set([...page, 'tools/balance/**', 'tests/balance/**', ...helpers, 'package-lock.json', '.nvmrc'])].sort(),
+    expect(ENGINE_PATHS.filter((g) => !g.startsWith('src/')).sort()).toEqual(
+      [
+        ...new Set([
+          'tools/build.ts',
+          'tools/balance/**',
+          'tests/balance/**',
+          ...helpers,
+          'package-lock.json',
+          '.nvmrc',
+        ]),
+      ].sort(),
     );
     const runner = read('tools/balance/run.ts');
     expect(runner).toMatch(/^import \{[^}]*\bisEnginePath\b[^}]*\} from '\.\/engine-paths\.ts';$/m);
     expect(runner).toContain('pageFiles(');
+    expect(runner).toMatch(/^ {2}buildSite\(\);$/m);
   });
 
   test('no job lets a failure through, retries or repeats', () => {
@@ -422,6 +470,19 @@ describe('CI', () => {
     const deploy = read('.github/workflows/deploy.yml');
     expect(deploy).toMatch(/^ {2}ci:\n {4}uses: \.\/\.github\/workflows\/ci\.yml$/m);
     expect(deploy).toContain("needs.ci.result == 'success'");
+  });
+
+  // P1-05: what is published is built from this commit's src/, just before it is published.
+  test('deploy and staging build site/ from src/ before they publish it', () => {
+    const deploy = read('.github/workflows/deploy.yml');
+    expect(deploy).toMatch(
+      /^ {6}- run: npm run build\n\n {6}- uses: actions\/upload-pages-artifact@v\d+\n {8}with:\n {10}path: site\/$/m,
+    );
+    const staging = read('.github/workflows/staging.yml');
+    const build = staging.indexOf('run: npm run build');
+    expect(build).toBeGreaterThan(0);
+    expect(build).toBeLessThan(staging.indexOf('> site/kc-config.js'));
+    expect(staging.indexOf('> site/kc-config.js')).toBeLessThan(staging.indexOf('cp -R site/. staging-repo/'));
   });
 });
 
@@ -491,6 +552,7 @@ describe('dangerous paths', () => {
       'tools/hooks/before-stop.ts',
       'tools/check.ts',
       'tools/ratchet.ts',
+      'tools/build.ts',
       '.github/workflows/ci.yml',
       '.github/workflows/balance-report.yml',
       '.github/workflows/nightly.yml',

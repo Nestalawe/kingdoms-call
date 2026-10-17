@@ -52,20 +52,23 @@ test('paths file: one glob per line; comments and blank lines are skipped',()=>{
   assert.deepEqual(parsePaths('# heading\n\nsupabase/**\n  .github/**  \n# package.json\n'),['supabase/**','.github/**']);
 });
 
-test('the real paths file covers supabase/, .github/, site/vendor/ and the package files, and not the rest of site/',()=>{
+test('the real paths file covers supabase/, .github/, the vendored code, the database config and the package files, and not the rest of src/',()=>{
   const globs=parsePaths(fs.readFileSync(path.join(__dirname,'..','.github','dangerous-paths'),'utf8'));
-  for(const g of GLOBS) assert.ok(globs.includes(g),g);
+  // Since P1-05 the site's source is src/ (site/ is built, and not in git).
+  for(const g of ['supabase/**','.github/**','src/vendor/**','src/db/kc-config.js']) assert.ok(globs.includes(g),g);
+  assert.equal(isDangerous('src/vendor/supabase-js-2.117.3.min.js',globs),true);
   assert.equal(isDangerous('package.json',globs),true);
   assert.equal(isDangerous('package-lock.json',globs),true);
-  assert.equal(isDangerous('site/index.html',globs),false);
-  assert.equal(isDangerous('tests/suite.ts',globs),false);
+  for(const f of ['src/ui/landing/index.html','src/engine/run-turn.js','src/manifest.ts','tests/suite.ts'])
+    assert.equal(isDangerous(f,globs),false,f);
 });
 
 test('the real paths file covers the test harness (P1-01b), and not the tests themselves',()=>{
   const globs=parsePaths(fs.readFileSync(path.join(__dirname,'..','.github','dangerous-paths'),'utf8'));
   for(const f of ['.claude/settings.json','tsconfig.json','tsconfig.build.json','vitest.config.mts','eslint.config.js',
     'playwright.config.ts','.nvmrc','.npmrc','tests/setup/each.ts','tests/legacy.test.ts','tests/ratchet.json',
-    'tests/static/harness.test.ts','tests/balance/matrix.test.ts','tools/hooks/after-edit.ts','tools/check.ts','tools/ratchet.ts'])
+    'tests/static/harness.test.ts','tests/balance/matrix.test.ts','tools/hooks/after-edit.ts','tools/check.ts','tools/ratchet.ts',
+    'tools/build.ts'])
     assert.equal(isDangerous(f,globs),true,f);
   for(const f of ['tests/static/other.test.ts','tests/suite.ts','tests/boot-pages.test.js','tools/legacy/README.md'])
     assert.equal(isDangerous(f,globs),false,f);

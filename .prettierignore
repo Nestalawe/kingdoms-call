@@ -10,3 +10,4 @@
 !/tests/ratchet.json
 !/tests/**/*.ts
 !/tools/**/*.ts
+!/src/manifest.ts

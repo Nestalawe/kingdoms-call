@@ -1,6 +1,6 @@
 // npm run balance -- <scenario> [--base REF] [--runs N] [--jobs N]: a named scenario (scenario.ts) on the base
 // branch's site and on this one, compared figure by figure. The base's side plays a copy of REF's site (default main;
-// git archive, through KC_SITE), this side plays this site (or KC_SITE's). Each side plays all its runs with every
+// git archive, built if it has src/: sides.ts), this side plays this site, built from src/ (or KC_SITE's). Each side plays all its runs with every
 // core, one side after the other, so each side's time is its own. Not part of CI or npm test: 400 runs a side take
 // about a minute on 14 cores.
 import { execFileSync } from 'node:child_process';

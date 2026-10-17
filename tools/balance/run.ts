@@ -5,7 +5,8 @@
 //
 // Options (after `--`): --set B (play the noise set and compare its statistics), --jobs N (games side by side; default
 // one per core), --only id,id (some games; no baseline check of the scripted cases), --out FILE (also write this run
-// in the baseline's form, e.g. to compare two runs). KC_SITE plays another copy of the site.
+// in the baseline's form, e.g. to compare two runs). It builds site/ from src/ first (tools/build.ts); KC_SITE plays
+// another copy of the site instead, as it is.
 // npm run balance -- <scenario> plays a named scenario on the base branch's site and on this one instead (scenario-run.ts;
 // options --base REF, --runs N, --jobs N).
 // Not part of npm test or npm run check: it takes about 20 s on 14 cores, too slow for every edit. CI's balance job runs
@@ -15,6 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { pageFiles, SITE } from '../../tests/lib/boot.js';
+import { sourcesOf } from '../build.ts';
 import {
   BASELINE_FILE,
   diffGame,
@@ -30,7 +32,7 @@ import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
 import { CASE_NAMES, type GameResult } from './play.ts';
 import { show, showDiff, showRange } from './report.ts';
 import { playScenario } from './scenario-run.ts';
-import { forkPool } from './sides.ts';
+import { buildSite, forkPool } from './sides.ts';
 import type { Job, Reply } from './worker.ts';
 
 const WORKER = path.join(import.meta.dirname, 'worker.ts');
@@ -73,11 +75,18 @@ export function describeChanges(group: string, changes: Change[]): string[] {
   );
 }
 
-/** The files the matrix's page loads (the GM portal and its scripts) that aren't engine paths, as git names them. */
-export const unlistedPageFiles = (): string[] =>
-  pageFiles('kingdoms-call-gm-portal.html')
-    .map((f) => 'site/' + path.relative(SITE, f).split(path.sep).join('/'))
-    .filter((f) => !isEnginePath(f));
+/** The files under src/ that the matrix's page is built from (the GM portal and the scripts it loads, through
+ *  src/manifest.ts), and the build itself, as git names them. */
+export const pageSources = (): string[] => [
+  ...pageFiles('kingdoms-call-gm-portal.html')
+    .map((f) => path.relative(SITE, f).split(path.sep).join('/'))
+    .flatMap((name) => sourcesOf(name).map((f) => 'src/' + f)),
+  'src/manifest.ts',
+  'tools/build.ts',
+];
+
+/** The files the matrix's page is built from that aren't engine paths. */
+export const unlistedPageFiles = (): string[] => pageSources().filter((f) => !isEnginePath(f));
 
 async function main(): Promise<number> {
   const { values, positionals } = parseArgs({
@@ -96,6 +105,7 @@ async function main(): Promise<number> {
   const sets: SeedSet[] = values.update ? ['A', 'B'] : [values.set === 'B' ? 'B' : 'A'];
   const only = values.only?.split(',');
   let failed = false;
+  buildSite();
   const unlisted = unlistedPageFiles();
   if (unlisted.length) {
     console.log(

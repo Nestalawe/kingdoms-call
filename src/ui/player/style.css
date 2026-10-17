@@ -1,0 +1,384 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0a0601;--ink-light:#1c1203;--crimson:#5a0e0e;--gold:#c8922a;--gold-light:#f0c35a;--forest:#1a3010;--stone:#33270f;--stone-dim:#dccba8;--bg:#0e0a04;--item-ink:#523405;--item-desc:#2a2016;}
+/* 2026-09-26b (Toby item 9): second contrast pass — every ink darker again on parchment (--stone
+   #4a3a22 → #33270f, about 12:1), the light muted tone on dark panels lighter (#c0ab88 → #dccba8),
+   and the hard-coded muted greys/greens/browns in inline styles deepened to match. */
+/* ── CONTRAST PASS (2026-09-26, Toby item 6) ────────────────────────────────────────────────
+   Every ink on parchment is darker: --ink and --ink-light are near-black browns now, --crimson
+   and --forest are deepened so headings and buttons read at a glance, and --stone — the muted
+   tone used for labels, captions, hints and hairline borders all over both portals — drops from
+   #6b5a42 to #4a3a22 (about 8.5:1 on parchment, up from 4.6:1).
+   --stone is ALSO used for muted text on the handful of DARK panels (the masthead strapline, the
+   invite pickers, the turn-mode box). Darkening it there would make things worse, not better, so
+   those surfaces redefine the variable for their own subtree back to a light --stone-dim. Custom
+   properties inherit, so redefining --stone on an ancestor is enough — no call site changes.
+   The [style*="…"] selectors match the inline background colours those dark panels already carry. */
+.masthead .sub,.masthead,#spinner,#rp-map-col,[style*="#0e0a04"],[style*="#20160c"],[style*="#12100b"],[style*="#0d0b07"],[style*="#1a0c0c"]{--stone:var(--stone-dim);}
+.card [style*="background:#20160c"],.card [style*="background:#12100b"]{--stone:var(--stone-dim);}
+/* Ghost buttons sit on both surfaces: light-on-dark outside a card, dark-on-parchment inside one. */
+.btn-ghost{color:#e0cfae;border-color:#a8926e;}
+.card .btn-ghost,.game-card .btn-ghost,.player-slot .btn-ghost{color:#33270f;border-color:#4a3a22;}
+.card .btn-ghost:hover,.game-card .btn-ghost:hover,.player-slot .btn-ghost:hover{color:#6d1414;border-color:#6d1414;}
+/* Body copy a shade heavier: at these sizes on parchment it is the weight, not just the hue,
+   that carries the contrast. */
+body{-webkit-font-smoothing:antialiased;}
+.card,.game-card,.player-slot,.report-prov,.log-entry{color:var(--ink);--stone:#33270f;}
+/* A parchment card re-asserts the dark muted tone for its own subtree, so a card shown inside a
+   dark panel (the desktop layout moves the report into the left map column) never inherits the
+   light one. A dark panel nested inside a card still wins for itself — the nearest declaring
+   ancestor decides, not source order. */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--ink);min-height:100vh;}
+#page{max-width:820px;margin:0 auto;padding:20px;}
+#sec-report{max-width:none;margin-left:calc(-50vw + 410px);margin-right:calc(-50vw + 410px);width:100vw;padding:0;box-sizing:border-box;overflow-x:hidden;}
+/* Task 5b: the map panel (and the fullscreen map) must show clearly-visible HORIZONTAL and VERTICAL
+   scroll bars whenever the map is larger than its window (e.g. when zoomed in, or a big map). These
+   rules are OUTSIDE any media query so the bars are styled and always-visible on every platform —
+   otherwise overlay-scrollbar systems (macOS, some mobile) hide them until hover, reading as "no
+   scroll bars". `overflow:auto` on both axes; a corner box where they meet. */
+/* ANDROID MAP CORRUPTION (2026-09-23, Toby item 5). Icons drew cleanly but the hex background behind
+   them came out scrambled, intermittently, on an Android phone. The map SVG carried a CSS
+   drop-shadow() filter on every text icon (battles, characters, lairs, graves, labels, rich-province
+   glow) — often several hundred per map. Chrome for Android rasterises each filtered element as its
+   own GPU texture; inside the 700px pinch-zoomed, touch-scrolled map panel that exhausts the GPU tile
+   budget and the large background tiles are dropped or reused (garbage), while the small icon
+   textures survive — exactly "icons fine, background scrambled". Phones and touch screens now draw
+   the map without those shadows (the CSS filter property overrides the attribute); desktops keep them.
+   Promoting the map to its own composited layer (contain:paint) also keeps the tile work bounded. */
+@media (max-width:820px), (pointer:coarse){
+  #report-map-svg [filter], #map-fullscreen-modal svg [filter]{ filter:none!important; }
+  #report-map-container, #map-fullscreen-modal .kc-map-scroll{ contain:paint; }
+}
+/* Item 8 (2026-09-07): these always-visible bars were meant for DESKTOP only. Left global, Android
+   Chrome (which honours ::-webkit-scrollbar) drew classic 13px bars inside the phone map panel and the
+   forced overflow fought the touch-scrolling map — phones now keep their native overlay scrolling. */
+@media (min-width:821px){
+#report-map-container,#map-fullscreen-modal .kc-map-scroll{
+  overflow:auto!important; scrollbar-width:auto; scrollbar-color:#8a6a2a #1a1208; min-height:0; min-width:0;
+}
+#report-map-container::-webkit-scrollbar,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar{ width:13px; height:13px; }
+#report-map-container::-webkit-scrollbar-thumb,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar-thumb{ background:#8a6a2a; border-radius:6px; border:2px solid #1a1208; }
+#report-map-container::-webkit-scrollbar-thumb:hover,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar-thumb:hover{ background:#c8922a; }
+#report-map-container::-webkit-scrollbar-track,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar-track{ background:#1a1208; }
+#report-map-container::-webkit-scrollbar-corner,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar-corner{ background:#1a1208; }
+}
+.masthead{text-align:center;padding:28px 0 20px;border-bottom:1px solid var(--gold);margin-bottom:24px;}
+.masthead h1{font-family:'Cinzel',serif;font-size:2rem;font-weight:800;color:var(--gold-light);letter-spacing:.06em;}
+.masthead .sub{font-family:'Cinzel',serif;font-size:.8rem;color:var(--stone);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;}
+.card{background:var(--parchment);border:1px solid var(--stone);border-radius:3px;padding:22px;margin-bottom:16px;}
+h2{font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson);margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid var(--parchment-dark);}
+h3{font-family:'Cinzel',serif;font-size:.85rem;color:var(--ink-light);margin-bottom:10px;}
+h4{font-family:'Cinzel',serif;font-size:.78rem;color:var(--ink-light);margin-bottom:7px;text-transform:uppercase;letter-spacing:.07em;}
+label{font-size:.78rem;color:var(--stone);display:block;margin-bottom:3px;font-family:'Cinzel',serif;letter-spacing:.04em;text-transform:uppercase;}
+input,select,textarea{font-family:'Crimson Text',serif;font-size:.95rem;background:#fdf8ee;border:1px solid var(--stone);color:var(--ink);padding:8px 10px;border-radius:2px;width:100%;margin-bottom:12px;}
+input:focus,select:focus,textarea:focus{outline:1px solid var(--gold);}
+/* 2026-09-21: a checkbox/radio is a CONTROL, not a text field. The rule above stretched every one
+   of them to width:100% with 8px/10px field padding and a 12px bottom margin, so the box swelled
+   across its row and shoved its own caption off to the right (or, inside a centred parent, left
+   the pair looking centred). Most call sites patched it inline with width:auto;margin:0 — the ones
+   that did not were the misaligned ones. Fixed once, here, so no call site has to remember.
+   The label rule pins the box and its text hard to the left; inline `display:flex/inline-flex`
+   styles on individual labels still win, so existing row layouts are untouched. */
+input[type="checkbox"],input[type="radio"]{width:auto;min-width:0;flex:0 0 auto;margin:0;padding:0;vertical-align:middle;}
+label:has(>input[type="checkbox"]),label:has(>input[type="radio"]){text-align:left;justify-content:flex-start;}
+.btn{font-family:'Cinzel',serif;font-size:.75rem;font-weight:600;padding:9px 18px;border:none;cursor:pointer;border-radius:2px;letter-spacing:.05em;transition:all .15s;display:inline-block;}
+.btn-crimson{background:var(--crimson);color:#fff;border:1px solid #5a1010;}.btn-crimson:hover{background:#9a2c2c;}
+.btn-gold{background:var(--gold);color:var(--ink);border:1px solid #a07020;}.btn-gold:hover{background:var(--gold-light);}
+.btn-forest{background:var(--forest);color:#fff;border:1px solid #1a2e10;}.btn-forest:hover{background:#3d6a28;}
+.btn-ghost{background:transparent;color:var(--stone);border:1px solid var(--stone);}.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+.btn-full{width:100%;margin-top:4px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+/* 2026-09-27 (Toby item 1): TOP TOOLBARS. The header rows sit directly on the near-black page
+   background (--bg #0e0a04), where a transparent ghost button and the deep crimson/forest fills
+   were all but invisible. Inside a .topbar every button takes a LIGHT fill with dark ink on it —
+   each colour class keeps a distinct hue so the row still reads as a set of different actions, but
+   every one of them now sits at roughly 10:1 against its own text. Scoped to .topbar so buttons on
+   parchment cards elsewhere are untouched. */
+.topbar .btn,.topbar a.btn{border-width:1px;border-style:solid;font-weight:600;}
+.topbar .btn-ghost{background:var(--parchment-dark);color:#241a08;border-color:#8a7550;}
+.topbar .btn-ghost:hover{background:#f4e8cd;color:#6d1414;border-color:#6d1414;}
+.topbar .btn-gold{background:var(--gold-light);color:#241a08;border-color:#a07020;}
+.topbar .btn-gold:hover{background:#f8d989;color:#241a08;}
+.topbar .btn-forest{background:#a8c98f;color:#14240c;border-color:#5d8a44;}
+.topbar .btn-forest:hover{background:#c2dfa9;color:#14240c;}
+.topbar .btn-crimson{background:#e6b2b2;color:#3a0808;border-color:#9a4a4a;}
+.topbar .btn-crimson:hover{background:#f3cccc;color:#3a0808;}
+.tab-bar{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--stone);border-radius:3px;overflow:hidden;}
+.tab-bar button{flex:1;padding:10px;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.05em;background:var(--parchment-dark);color:var(--stone);transition:all .15s;}
+.tab-bar button.active{background:var(--crimson);color:#fff;}
+.msg-error{background:#fde8e8;border:1px solid #c00;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#900;margin-bottom:12px;}
+.msg-success{background:#e8f5e9;border:1px solid #2d7a2d;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a4a10;margin-bottom:12px;}
+.msg-info{background:#e8f4ff;border:1px solid #5a8ab0;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a3a5a;margin-bottom:12px;}
+.msg-warning{background:#fff8e1;border:1px solid #c8922a;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#5a4208;margin-bottom:12px;}
+section{display:none;}.section-active{display:block;}
+#spinner{text-align:center;padding:48px;font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem;letter-spacing:.1em;}
+
+/* Game cards */
+.game-card{background:#fdf8ee;border:1px solid var(--stone);border-radius:3px;padding:14px 16px;margin-bottom:10px;transition:all .15s;}
+.game-card.clickable{cursor:pointer;}.game-card.clickable:hover{border-color:var(--gold);background:#fdf3d8;}
+.gc-name{font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson);margin-bottom:3px;}
+.gc-meta{font-size:.78rem;color:var(--stone);line-height:1.6;}
+.pill{display:inline-block;font-size:.65rem;padding:2px 8px;border-radius:8px;font-family:'Cinzel',serif;font-weight:600;margin-left:6px;}
+.pill-green{background:#d4edda;color:#155724;}
+.pill-amber{background:#fff3cd;color:#856404;}
+.pill-blue{background:#cce5ff;color:#004085;}
+.pill-red{background:#f8d7da;color:#721c24;}
+
+/* Join game form */
+.join-form{border:1px solid var(--gold);border-radius:3px;padding:16px;background:#fdf5e0;margin-top:10px;}
+.join-form h3{color:var(--gold);margin-bottom:12px;}
+.skills-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;}
+.skill-cols{display:flex;gap:8px;margin-bottom:12px;}
+.skill-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
+.skill-col-head{font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;color:var(--stone);text-align:center;padding-bottom:3px;border-bottom:1px solid var(--parchment-dark);}
+.skill-pip{display:flex;align-items:center;gap:4px;background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:4px 6px;font-size:.75rem;}
+.skill-pip .sk-name{flex:1;color:var(--ink-light);cursor:help;border-bottom:1px dotted var(--stone);}
+#skill-info-tip{position:fixed;z-index:10001;max-width:250px;background:#1a1208;color:#f0e0c0;border:1px solid #c8922a;border-radius:3px;padding:7px 9px;font-size:.72rem;line-height:1.45;pointer-events:none;display:none;box-shadow:0 3px 12px rgba(0,0,0,.45);}
+#skill-info-tip strong{color:#e8b84b;font-family:'Cinzel',serif;}
+.skill-pip .sk-val{font-family:'Cinzel',serif;font-weight:600;color:var(--crimson);min-width:14px;text-align:center;}
+.skill-pip button{background:var(--stone);color:#fff;border:none;width:18px;height:18px;border-radius:2px;cursor:pointer;font-size:.8rem;line-height:1;padding:0;}
+.skill-pip button:disabled{opacity:.3;cursor:not-allowed;}
+.skill-pip button:hover:not(:disabled){background:var(--ink-light);}
+.pts-remaining{font-family:'Cinzel',serif;font-size:.78rem;color:var(--crimson);margin-bottom:10px;text-align:center;}
+
+/* Turn report */
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.stat-box{background:#fdf8ee;border:1px solid var(--parchment-dark);padding:10px 12px;border-radius:2px;}
+.stat-label{font-size:.68rem;color:var(--stone);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.stat-value{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--crimson);font-weight:600;}
+.prov-link{color:var(--crimson);border-bottom:1px dotted currentColor;cursor:pointer;}
+.prov-link:hover{background:rgba(200,146,42,.18);}
+.prov-link.on-dark{color:#ffe27a;}
+.prov-link.prov-auto{color:inherit;border-bottom:1px dotted rgba(122,28,28,.55);} /* names linked by the report-wide pass keep their own tint */ /* on the dark orders-column hero header */
+@keyframes provHlPulse{0%{stroke-opacity:1;fill-opacity:.35}50%{stroke-opacity:.45;fill-opacity:.12}100%{stroke-opacity:1;fill-opacity:.35}}
+.prov-hl{animation:provHlPulse 1.1s ease-in-out infinite;}
+.char-card{background:#fdf8ee;border:1px solid var(--parchment-dark);border-radius:2px;padding:10px 12px;margin-bottom:8px;}
+.char-card-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.char-card-head .cname{font-family:'Cinzel',serif;font-size:.85rem;color:var(--ink-light);flex:1;}
+.char-hp-wrap{width:50px;height:5px;background:#ddd;border-radius:2px;overflow:hidden;}
+.char-hp-bar{height:100%;background:var(--crimson);border-radius:2px;}
+.char-detail{font-size:.8rem;color:var(--stone);line-height:1.7;}
+.skills-list{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;}
+.skill-tag{background:var(--ink-light);color:var(--parchment);padding:1px 6px;border-radius:2px;font-size:.68rem;}
+.prov-entry{background:#f0f8e8;border:1px solid #8ab070;border-radius:2px;padding:7px 10px;margin-bottom:5px;}
+.prov-name{font-family:'Cinzel',serif;font-size:.8rem;color:var(--forest);font-weight:600;}
+.prov-detail{font-size:.77rem;color:var(--stone);line-height:1.6;}
+.intel-entry{font-size:.8rem;padding:5px 0;border-bottom:1px solid var(--parchment-dark);color:var(--ink-light);}
+.log-entry{padding:5px 8px;border-left:3px solid var(--stone);margin-bottom:4px;background:var(--parchment);font-size:.82rem;line-height:1.5;}
+.log-entry.combat{border-left-color:var(--crimson);}
+.log-entry.explore{border-left-color:var(--forest);}
+.log-entry.hire{border-left-color:var(--gold);}
+.log-entry.system{border-left-color:#666;font-style:italic;color:#2a2419;}
+.intel-plain .log-entry,.intel-plain .log-entry.system{font-style:normal;color:var(--ink);}
+.intel-plain .ti-line{padding-left:10px;margin-top:1px;}
+.log-entry.stat{border-left-color:#4a90d9;background:#f0f6ff;font-family:'Courier New',monospace;font-size:.75rem;color:#2c4a6e;line-height:1.4;}
+
+/* Orders */
+.orders-char-block{border:1px solid var(--stone);border-radius:3px;margin-bottom:14px;overflow:hidden;}
+.orders-char-head{background:var(--ink-light);color:var(--parchment);padding:9px 14px;font-family:'Cinzel',serif;font-size:.8rem;display:flex;align-items:center;gap:8px;}
+/* Collapsible sections (Item 5) — report-column cards & per-hero order blocks */
+.sec-toggle{background:transparent;border:1px solid currentColor;color:inherit;cursor:pointer;font-size:.7rem;line-height:1;padding:1px 6px;border-radius:3px;font-family:'Cinzel',serif;opacity:.75;flex:0 0 auto;}
+.sec-toggle:hover{opacity:1;}
+/* 2026-09-12 (item 2): hero reorder arrows in the orders column header. */
+.hero-move{background:transparent;border:1px solid currentColor;color:inherit;cursor:pointer;font-size:.62rem;line-height:1;padding:2px 6px;border-radius:3px;opacity:.7;flex:0 0 auto;}
+.hero-move:hover:not(:disabled){opacity:1;}
+.hero-move:disabled{opacity:.22;cursor:default;}
+#rp-report-col .card>h2{display:flex;align-items:center;gap:8px;}
+#rp-report-col .card>h2 .sec-toggle{margin-left:auto;color:var(--stone);}
+#rp-report-col .card.sec-collapsed{padding-top:14px;padding-bottom:14px;}
+#rp-report-col .card.sec-collapsed>h2{margin-bottom:0;border-bottom:none;}
+#rp-report-col .card.sec-collapsed>:not(h2){display:none!important;}
+.orders-char-block.sec-collapsed>:not(.orders-char-head){display:none!important;}
+/* Item 6: each Chronicle character/event block folds to just its coloured header bar. */
+.char-chronicle.sec-collapsed{margin-bottom:8px!important;}
+.char-chronicle.sec-collapsed>:not(.cc-head){display:none!important;}
+.cc-toggle{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;cursor:pointer;font-size:.7rem;line-height:1;padding:1px 5px;border-radius:2px;margin-left:auto;}
+.cc-toggle:hover{border-color:#fff;}
+.secall-btn{background:transparent;border:1px solid var(--stone);color:var(--stone);cursor:pointer;font-size:.62rem;padding:2px 6px;border-radius:2px;font-family:'Cinzel',serif;letter-spacing:.03em;}
+.secall-btn:hover{border-color:var(--gold);color:var(--gold);}
+.rj-btn{background:var(--parchment);border:1px solid var(--stone);color:var(--ink);cursor:pointer;font-size:.62rem;padding:3px 7px;border-radius:2px;font-family:'Cinzel',serif;letter-spacing:.02em;white-space:nowrap;}
+.rj-btn:hover{border-color:var(--gold);color:var(--gold);}
+.orders-char-body{padding:12px;}
+.phase-order{display:grid;grid-template-columns:100px 1fr 1fr;gap:8px;margin-bottom:7px;align-items:center;}
+.phase-label{font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em;}
+.phase-order select,.phase-order input{margin-bottom:0;font-size:.85rem;padding:5px 7px;}
+.detail-header{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.detail-header h2{margin:0;border:none;padding:0;flex:1;}
+
+/* ═══ DISPATCHES (realm-to-realm messaging), 2026-09-27 ═══════════════════════════════════════════
+   Lives in #rp-msg-col — a fourth report column, shown on the LEFT desktop panel in place of the old
+   duplicate Report tab, and on its own phone tab. Dark ground like the map column, because it sits
+   in the same panel. Three stacked parts: channel strip (fixed), thread (the only scroller),
+   composer (fixed). */
+#msg-channels{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;background:#160f06;border-bottom:1px solid #2a1c0c;flex:0 0 auto;max-height:118px;overflow-y:auto;}
+.msg-chan{display:flex;align-items:center;gap:5px;background:#231709;border:1px solid #4a3416;color:#c9b189;font-family:'Cinzel',serif;font-size:.63rem;letter-spacing:.03em;padding:4px 8px;border-radius:11px;cursor:pointer;white-space:nowrap;max-width:100%;}
+.msg-chan:hover{border-color:#c8922a;color:#f0d9a8;}
+.msg-chan.active{background:#3a2710;border-color:#c8922a;color:#f0c96a;}
+.msg-chan.gone{opacity:.55;font-style:italic;}
+.msg-chan .mc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+.msg-chan .mc-label{overflow:hidden;text-overflow:ellipsis;}
+/* Not scoped to .msg-chan: the same pill marks an unread dispatch inside the thread. */
+.mc-unread{display:inline-block;min-width:15px;height:15px;line-height:15px;text-align:center;border-radius:8px;background:#a32020;color:#fff;font-family:'Crimson Text',serif;font-size:.6rem;font-weight:700;padding:0 4px;letter-spacing:.02em;}
+#msg-thread{flex:1 1 0;min-height:0;overflow-y:auto;padding:8px 9px;background:#120c05;display:flex;flex-direction:column;gap:7px;}
+.msg-bubble{max-width:92%;border:1px solid #3a2a12;border-radius:4px;padding:6px 9px 7px;background:#1e1509;font-size:.82rem;line-height:1.45;color:#e6d9be;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;}
+.msg-bubble.mine{align-self:flex-end;background:#25301c;border-color:#48602f;}
+.msg-bubble.pub{background:#1a1320;border-color:#4a3560;}
+.msg-report{margin-left:auto;background:none;border:none;color:#8a7a5c;font-size:.66rem;cursor:pointer;padding:0 2px}
+.msg-report:hover{color:#e6b0a0;text-decoration:underline}
+.msg-reported{margin-left:auto;color:#b98a6a;font-size:.66rem}
+.mc-privacy{font-size:.66rem;color:#8a7a5c;line-height:1.35;margin-bottom:4px}
+.msg-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.03em;margin-bottom:3px;}
+.msg-from{font-weight:700;}
+.msg-when{color:#8a7a5c;}
+.msg-to{color:#8a7a5c;font-style:italic;}
+.msg-day{align-self:center;font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.09em;text-transform:uppercase;color:#7a6a4c;border-top:1px solid #2a1c0c;border-bottom:1px solid #2a1c0c;padding:2px 10px;margin:3px 0;}
+.msg-empty{align-self:center;margin:auto 0;color:#7a6a4c;font-size:.8rem;font-style:italic;text-align:center;padding:0 14px;line-height:1.5;}
+#msg-composer{flex:0 0 auto;border-top:1px solid #2a1c0c;background:#1a1208;padding:6px 8px 7px;}
+#msg-composer textarea{width:100%;margin:0 0 5px;background:#0f0a04;border:1px solid #4a3416;color:#e6d9be;font-family:'Crimson Text',serif;font-size:.85rem;padding:6px 8px;border-radius:3px;resize:vertical;min-height:52px;max-height:200px;}
+#msg-composer textarea:focus{outline:none;border-color:#c8922a;}
+#msg-send-row{display:flex;align-items:center;gap:8px;}
+#msg-send-row .mc-hint{flex:1;font-size:.63rem;color:#8a7a5c;line-height:1.3;}
+#msg-send-btn{background:#3a2710;border:1px solid #c8922a;color:#f0c96a;font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.05em;padding:6px 14px;border-radius:3px;cursor:pointer;flex:0 0 auto;}
+#msg-send-btn:hover:not(:disabled){background:#4d3415;}
+#msg-send-btn:disabled{opacity:.45;cursor:not-allowed;}
+#msg-note{font-size:.66rem;color:#c07a7a;padding:0 0 4px;display:none;}
+#msg-group-pick{background:#160f06;border-bottom:1px solid #2a1c0c;padding:6px 9px;display:none;}
+#msg-group-pick .mg-row{display:flex;flex-wrap:wrap;gap:5px 12px;margin:5px 0 7px;}
+#msg-group-pick label{display:flex;align-items:center;gap:5px;font-family:'Crimson Text',serif;font-size:.78rem;text-transform:none;letter-spacing:0;color:#d8c8a8;cursor:pointer;margin:0;}
+#msg-group-pick input[type=checkbox]{width:auto;margin:0;}
+.msg-tabbadge{display:inline-block;min-width:15px;height:15px;line-height:15px;text-align:center;border-radius:8px;background:#a32020;color:#fff;font-family:'Crimson Text',serif;font-size:.6rem;font-weight:700;padding:0 4px;margin-left:5px;vertical-align:middle;}
+
+/* ─── MOBILE (≤820px): show ONE of Map / Report / Messages / Orders at a time, switched by a fixed bottom
+   tab bar. Desktop (>820px) is completely unaffected — the tab bar is hidden and all three columns
+   render side by side exactly as before. Pure CSS + a tiny setMobileView() toggle; no engine touch. */
+#mobile-tabbar{display:none;}
+@media (max-width:820px){
+  /* The report section uses a negative-margin "breakout" to fill the screen on desktop
+     (margin:calc(-50vw + 410px); width:100vw). Below 820px that calc turns POSITIVE and shoves the
+     whole report right, leaving a gap to the left of the frames while the masthead stays put. Cancel
+     the breakout on mobile so the report sits in the same #page box as the header, and size the
+     layout/columns to 100% (of #page) rather than 100vw so everything lines up with no overflow. */
+  #sec-report{margin-left:0!important;margin-right:0!important;width:100%!important;max-width:100%!important;}
+  #rp-layout{flex-direction:column!important;width:100%!important;min-height:0!important;overflow-x:hidden!important;}
+  #rp-layout>.rp-spacer{display:none!important;}
+  #rp-map-col,#rp-report-col,#rp-msg-col,#orders-column{
+    width:100%!important;min-width:0!important;max-width:100%!important;
+    position:static!important;height:auto!important;border-right:none!important;
+    box-sizing:border-box;padding-bottom:66px!important;         /* clear the fixed tab bar */
+  }
+  /* 2026-09-18 (Toby): the report jump-bar was not sticky on phones. position:sticky sticks to the nearest
+     SCROLL CONTAINER, and on mobile the page is what scrolls — but three ancestors were still scroll
+     containers that never move: the column's inline overflow-y:auto (height is auto here, so it never
+     scrolls), and overflow-x:hidden on #rp-layout / #sec-report (hidden on one axis forces the other to
+     auto). Make the column overflow-visible and swap the ancestors to overflow-x:clip, which clips
+     horizontally WITHOUT creating a scroll container, so the bar now sticks to the page viewport. */
+  #rp-report-col{overflow:visible!important;}
+  #orders-column{overflow:visible!important;} /* 2026-09-23: so the orders header + treasury ledger stick on phones too */
+  #sec-report,#rp-layout{overflow:visible!important;overflow-x:clip!important;}
+  /* Show only the column matching the active view. Four views since 2026-09-27 (Messages), so every
+     pairing is spelled out rather than relying on cascade order — each selector carries two ids plus
+     a class, so it beats the plain `#rp-map-col{display:block!important}` rule further down on
+     SPECIFICITY and not on position. */
+  #rp-layout.mv-map    #rp-report-col,
+  #rp-layout.mv-map    #rp-msg-col,
+  #rp-layout.mv-map    #orders-column,
+  #rp-layout.mv-report #rp-map-col,
+  #rp-layout.mv-report #rp-msg-col,
+  #rp-layout.mv-report #orders-column,
+  #rp-layout.mv-messages #rp-map-col,
+  #rp-layout.mv-messages #rp-report-col,
+  #rp-layout.mv-messages #orders-column,
+  #rp-layout.mv-orders #rp-map-col,
+  #rp-layout.mv-orders #rp-report-col,
+  #rp-layout.mv-orders #rp-msg-col{display:none!important;}
+  /* On a phone the PAGE scrolls, so the messages column is laid out like the map column: it keeps its
+     natural height, the thread gets a fixed slice of the viewport and scrolls inside itself, and the
+     composer follows it in normal flow. (Giving the column `height:calc(100vh - …)` instead pinned the
+     composer to the foot of a box that started ~215px down the page, which put it below the fold.) */
+  #rp-msg-col{display:flex!important;flex-direction:column!important;height:auto!important;}
+  #rp-msg-col.mcol-off{display:none!important;}
+  #msg-thread{flex:0 0 auto!important;height:56vh!important;}
+  #msg-channels{max-height:none!important;overflow:visible!important;}
+  #msg-composer textarea{font-size:16px!important;}   /* 16px stops iOS auto-zooming on focus */
+  /* Map panel: scroll & pan inside the panel; the SVG is drawn large enough to read. The ⛶ Fullscreen
+     button remains for a bigger view, and native browser pinch-zoom is left enabled. */
+  /* Map fix 2 (2026-09-08): the column is a BLOCK on phones. Its inline desktop styles make it a column
+     flexbox and give #report-map-container `flex:1 1 0;min-height:0`; in an auto-height column flexbox that
+     flex-basis:0 item collapses to 0px (flex-basis beats height:60vh), so the map panel had no height at
+     all - only the header row with the Fullscreen button was visible. */
+  #rp-map-col{background:#0e0a04;display:block!important;}
+  #report-map-container{display:block!important;flex:none!important;height:60vh!important;min-height:60vh!important;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;}
+  #map-zoom-bar{display:none!important;} /* Item 8: phone map is sized by CSS + native pinch-zoom; the desktop zoom buttons are inert here */
+  #report-map-zoomwrap{width:700px!important;height:auto!important;max-width:none!important;}
+  /* Map fix (2026-09-08): NO height:auto here. Phone browsers resolve an inline <svg>'s auto height to the
+     150px replaced-element default instead of the viewBox aspect ratio, so the map drew as a 700x150 strip
+     (map centred by preserveAspectRatio, mostly off-screen right) — read as "no map". fitMapSvgHeight()
+     now sets an explicit pixel height from the viewBox after every render. */
+  #report-map-svg{width:100%!important;max-width:none!important;}
+  /* Orders: stack each phase row's fields full-width; 16px inputs stop iOS auto-zoom on focus. */
+  .phase-order{grid-template-columns:1fr!important;gap:4px!important;}
+  .phase-order select,.phase-order input{font-size:16px!important;padding:9px 8px!important;}
+  /* 2026-10-08 (Toby item 11): Save Draft / Submit stay on screen while the orders are scrolled —
+     stuck just above the fixed tab bar (58px) rather than taken out of the sticky flow. */
+  #orders-bottom{position:sticky!important;bottom:58px!important;z-index:5;box-shadow:0 -3px 6px rgba(40,25,5,.18);}
+  /* Fixed bottom tab bar */
+  #mobile-tabbar{
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;height:58px;
+    background:#1a1208;border-top:2px solid #c8922a;
+  }
+  #mobile-tabbar button{
+    flex:1;background:transparent;border:none;color:#c8922a;font-family:'Cinzel',serif;
+    font-size:.7rem;letter-spacing:.04em;cursor:pointer;padding:6px 2px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  }
+  #mobile-tabbar button .mt-ico{font-size:1.25rem;line-height:1;}
+  #mobile-tabbar button.active{color:#f0c96a;background:#2a1c0c;}
+}
+/* ── Item 16: DESKTOP two-column layout ──
+   Left panel switches Map ↔ Report; right panel switches Report ↔ Orders. 2% gaps at the far edges
+   and 2% between. Panels are built by setupDeskLayout() (JS moves the existing map/report/orders
+   elements into them, preserving all their event listeners). */
+@media (min-width:821px){
+  #rp-layout.desk{ padding:0 2%!important; gap:2%!important; width:100vw!important; box-sizing:border-box!important; min-height:0!important; /* the panels size themselves (fitDeskPanels) */
+    margin-left:calc(-50vw + 50%)!important; margin-right:calc(-50vw + 50%)!important; }
+  #rp-layout.desk > #rp-map-col, #rp-layout.desk > #rp-report-col, #rp-layout.desk > #rp-msg-col,
+  #rp-layout.desk > #orders-column,
+  #rp-layout.desk > .rp-spacer{ display:none!important; } /* originals live inside the panels now */
+  #desk-left,#desk-right{ flex:1 1 0; min-width:0; display:flex; flex-direction:column;
+    height:calc(100vh - 120px); border:1px solid var(--stone); border-radius:3px; overflow:hidden; background:#0e0a04; }
+  .desk-tabs{ display:flex; background:#1a1208; border-bottom:1px solid #333; flex-shrink:0; }
+  .desk-tabs button{ flex:1; background:transparent; border:none; color:#c8922a; font-family:'Cinzel',serif;
+    font-size:.72rem; letter-spacing:.04em; padding:9px 6px; cursor:pointer; border-bottom:2px solid transparent; }
+  .desk-tabs button.active{ color:#e8b84b; border-bottom-color:#c8922a; background:#241810; }
+  .desk-body{ flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+  .desk-body > #rp-map-col, .desk-body > #rp-report-col, .desk-body > #rp-msg-col, .desk-body > #orders-column{
+    position:static!important; width:100%!important; max-width:100%!important; height:100%!important;
+    min-width:0!important; border-right:none!important; flex:1 1 auto; overflow:auto; box-sizing:border-box; }
+  .desk-body > #rp-map-col{ overflow:hidden; }
+  /* 2026-10-09 (Toby item 4): on a short window the full legend (~250px) left the map a thin strip.
+     It takes at most a third of the panel and scrolls inside itself; the map keeps the rest. */
+  .desk-body > #rp-map-col > #map-legend{ flex:0 1 auto; max-height:33%; overflow-y:auto; box-sizing:border-box; }
+  /* The messages column owns its own inner scroller (the thread), so the column itself must NOT
+     scroll — otherwise the composer pinned to its foot scrolls away with the thread. */
+  /* NO `display` here: applyDeskViews() sets it inline ('flex' / 'none'), and a `display:flex!important`
+     rule would beat that inline value and leave the column permanently visible. */
+  .desk-body > #rp-msg-col{ overflow:hidden!important; flex-direction:column!important; padding-bottom:0!important; }
+  /* Map zoom controls */
+  #map-zoom-bar{ display:flex; gap:4px; align-items:center; }
+  #map-zoom-bar button{ background:#2a1c0c; color:#e8b84b; border:1px solid #5a4020; border-radius:2px;
+    width:22px; height:22px; line-height:1; cursor:pointer; font-size:.8rem; padding:0; }
+  /* Item 2: the map window scrolls (both axes) when zoomed in — make the bars clearly visible. */
+  #report-map-container{ overflow:auto!important; scrollbar-width:thin; scrollbar-color:#8a6a2a #1a1208; }
+  #report-map-container::-webkit-scrollbar{ width:11px; height:11px; }
+  #report-map-container::-webkit-scrollbar-thumb{ background:#8a6a2a; border-radius:5px; border:2px solid #1a1208; }
+  #report-map-container::-webkit-scrollbar-thumb:hover{ background:#c8922a; }
+  #report-map-container::-webkit-scrollbar-track{ background:#1a1208; }
+  #report-map-container::-webkit-scrollbar-corner{ background:#1a1208; }
+}
+@media (max-width:820px){
+  /* On mobile the panels are transparent pass-throughs — the mobile tab bar + mv-* classes drive the
+     view, so let the moved columns stack full-width just as before. */
+  #desk-left,#desk-right{ display:contents; }
+  .desk-body{ display:contents; }
+  .desk-tabs{ display:none!important; }
+}

@@ -1,9 +1,11 @@
-// Playing on two builds: the worker processes that play side by side, and a copy of the base branch's site to play.
+// Playing on two builds: the worker processes that play side by side, this side's site built from src/, and a copy of
+// the base branch's site to play.
 // The matrix (run.ts), the report's replays (report-run.ts) and the named scenarios (scenario-run.ts) all use them.
 import { execFileSync, fork, type Serializable } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { build } from '../build.ts';
 
 /** Sends each job to one of `n` worker processes running `worker` (a .ts file, forked with tsx), one job at a time
  *  each, in the order given, and returns the replies as they came. `site` plays another copy of the site: the
@@ -47,13 +49,44 @@ export async function forkPool<R>(
   return replies;
 }
 
-/** Runs `fn` with a copy of `ref`'s site/ (git archive into a temporary folder), and removes the copy after. */
+/** Builds site/ from src/ (tools/build.ts), so this side plays the pages as they are now; unless KC_SITE names another
+ *  copy of the site to play, as it is. */
+export function buildSite(): void {
+  if (!process.env['KC_SITE']) build();
+}
+
+const inTree = (ref: string, file: string) => {
+  try {
+    execFileSync('git', ['cat-file', '-e', `${ref}:${file}`], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** Runs `fn` with `ref`'s site, in a temporary folder removed after: its committed site/ (before P1-05), or its src/
+ *  built by its own tools/build.ts (git archive of both). P1-09's Vite build will need this to change. */
 export async function withSiteAt<T>(ref: string, fn: (site: string) => Promise<T>): Promise<T> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-balance-base-'));
   try {
+    const committed = inTree(ref, 'site');
     const tar = path.join(dir, 'site.tar');
-    execFileSync('git', ['archive', '--format=tar', '-o', tar, ref, 'site']);
+    execFileSync('git', [
+      'archive',
+      '--format=tar',
+      '-o',
+      tar,
+      ref,
+      ...(committed ? ['site'] : ['src', 'tools/build.ts']),
+    ]);
     execFileSync('tar', ['-xf', tar, '-C', dir]);
+    if (!committed) {
+      execFileSync(
+        process.execPath,
+        ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', path.join(dir, 'tools', 'build.ts')],
+        { stdio: ['ignore', 'ignore', 'inherit'] },
+      );
+    }
     return await fn(path.join(dir, 'site'));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
