@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Kingdoms Call — The Overlord</title>
+<script>
+{{kc-build:boot-reporter}}
+</script>
+<script src="kc-safe.js"></script>
+<script src="vendor/supabase-js-2.117.3.min.js"></script>
+<style>
+{{kc-build:style}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="masthead">
+    <h1>👑 Kingdoms Call</h1>
+    <div class="sub">The Overlord</div>
+  </div>
+
+  <div id="spinner">Loading…</div>
+
+  <!-- Signed out -->
+  <section id="sec-auth">
+    <div class="card" style="max-width:440px;margin:0 auto">
+      <div id="auth-msg"></div>
+      <label for="si-email">Email</label>
+      <input type="email" id="si-email" autocomplete="username" onkeydown="if(event.key==='Enter')doSignIn()">
+      <label for="si-password" style="margin-top:8px">Password</label>
+      <input type="password" id="si-password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignIn()">
+      <button class="btn btn-crimson" style="margin-top:12px;width:100%" onclick="doSignIn()">Sign in as the Overlord</button>
+      <p class="muted" style="margin-top:10px">Signing in here doesn't change who is signed in to the player or GM portal in this browser.</p>
+    </div>
+  </section>
+
+  <!-- Signed in as anyone but the Overlord -->
+  <section id="sec-denied">
+    <div class="card" style="max-width:440px;margin:0 auto">
+      <div id="denied-msg" class="msg-info">This page is for the Overlord.</div>
+      <button class="btn btn-ghost" onclick="doSignOut()">Sign out</button>
+    </div>
+  </section>
+
+  <!-- The Overlord -->
+  <section id="sec-main">
+    <div class="topbar">
+      <span>Signed in as <strong id="me-email"></strong></span>
+      <button class="btn btn-ghost" onclick="loadAll()">↻ Reload</button>
+      <button class="btn btn-ghost" onclick="doSignOut()">Sign out</button>
+    </div>
+    <div id="msg"></div>
+
+    <div class="card">
+      <h2>Accounts</h2>
+      <input type="search" id="acct-q" placeholder="Search by name or email" oninput="renderAccounts()" style="margin-bottom:10px">
+      <p class="muted" style="margin-bottom:8px">A suspended account can't sign in. If they're signed in when you suspend them, that session lasts until it expires, up to an hour.</p>
+      <div id="accounts"></div>
+    </div>
+
+    <div class="card">
+      <h2>Games</h2>
+      <p class="muted" style="margin-bottom:8px">Open in the GM portal uses whoever is signed in to the GM portal in this browser: sign in there as the Overlord. To keep your own GM tab signed in as you, use another browser profile or a private window for that.</p>
+      <div id="games"></div>
+    </div>
+
+    <div class="card">
+      <h2>Reported dispatches</h2>
+      <div id="reports"></div>
+    </div>
+  </section>
+</div>
+
+<script src="kc-config.js"></script>
+<script src="kc-db-guard.js"></script>
+<script>
+{{kc-build:main}}
+</script>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Overlord v2026.10.16-0735</div>
+<script src="kc-staging-footer.js"></script>
+</body>
+</html>

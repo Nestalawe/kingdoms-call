@@ -1,12 +1,13 @@
 {
   "name": "kingdoms-call",
   "private": true,
-  "description": "Kingdoms Call: the site (site/) and its tests (tests/)",
+  "description": "Kingdoms Call: the site (src/, built into site/) and its tests (tests/)",
   "engines": {
     "node": "24.22.0"
   },
   "packageManager": "npm@11.19.1",
   "scripts": {
+    "build": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/build.ts",
     "test": "vitest run",
     "test:full": "KC_FULL=1 vitest run",
     "test:quarantine": "KC_QUARANTINE=1 vitest run --project quarantine",

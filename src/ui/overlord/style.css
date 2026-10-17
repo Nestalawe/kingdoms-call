@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0a0601;--ink-light:#1c1203;--crimson:#5a0e0e;--gold:#c8922a;--gold-light:#f0c35a;--forest:#1a3010;--stone:#33270f;--stone-dim:#dccba8;--bg:#0e0a04;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+#page{max-width:1100px;margin:0 auto;padding:18px;}
+.masthead{text-align:center;padding:24px 0 16px;border-bottom:1px solid var(--gold);margin-bottom:18px;}
+.masthead h1{font-family:'Cinzel',serif;font-size:1.9rem;font-weight:800;color:var(--gold-light);letter-spacing:.06em;}
+.masthead .sub{font-family:'Cinzel',serif;font-size:.78rem;color:var(--stone-dim);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;}
+.topbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-bottom:16px;color:var(--stone-dim);font-size:.85rem;}
+.card{background:var(--parchment);border:1px solid var(--stone);border-radius:3px;padding:18px;margin-bottom:14px;color:var(--ink);}
+h2{font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--parchment-dark);}
+label{font-size:.68rem;color:var(--stone);display:block;margin-bottom:3px;font-family:'Cinzel',serif;letter-spacing:.04em;text-transform:uppercase;}
+input,select{font-family:'Crimson Text',serif;font-size:.9rem;background:#fdf8ee;border:1px solid var(--stone);color:var(--ink);padding:6px 8px;border-radius:2px;width:100%;}
+td select{width:auto;max-width:190px;padding:3px 5px;font-size:.82rem;}
+.btn{font-family:'Cinzel',serif;font-size:.7rem;font-weight:600;padding:7px 13px;border:none;cursor:pointer;border-radius:2px;letter-spacing:.05em;display:inline-block;text-decoration:none;}
+.btn-crimson{background:var(--crimson);color:#fff;border:1px solid #5a1010;}
+.btn-gold{background:var(--gold);color:var(--ink);border:1px solid #a07020;}
+.btn-forest{background:var(--forest);color:#fff;border:1px solid #1a2e10;}
+.btn-ghost{background:transparent;color:#e0cfae;border:1px solid #a8926e;}
+.card .btn-ghost{color:#33270f;border-color:#4a3a22;}
+.btn-sm{font-size:.62rem;padding:4px 9px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.msg-error{background:#fde8e8;border:1px solid #c00;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#900;margin-bottom:12px;}
+.msg-info{background:#e8f4ff;border:1px solid #5a8ab0;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a3a5a;margin-bottom:12px;}
+.msg-success{background:#e8f5e9;border:1px solid #2d7a2d;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a4a10;margin-bottom:12px;}
+#spinner{text-align:center;padding:48px;font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem;letter-spacing:.1em;}
+.pill{display:inline-block;font-size:.62rem;padding:2px 7px;border-radius:8px;font-family:'Cinzel',serif;font-weight:600;}
+.pill-green{background:#d4edda;color:#155724;}.pill-amber{background:#fff3cd;color:#856404;}
+.pill-blue{background:#cce5ff;color:#004085;}.pill-grey{background:#e2ddd2;color:#3a3224;}.pill-red{background:#f8d7da;color:#721c24;}
+table.kc{width:100%;border-collapse:collapse;font-size:.83rem;}
+table.kc th{font-family:'Cinzel',serif;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--stone);text-align:left;padding:5px 7px;border-bottom:1px solid var(--stone);white-space:nowrap;}
+table.kc td{padding:5px 7px;border-bottom:1px solid var(--parchment-dark);vertical-align:top;}
+table.kc td.num,table.kc th.num{text-align:right;font-variant-numeric:tabular-nums;}
+.actions{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.muted{color:var(--stone);font-size:.78rem;}
+.revoke{background:#fff8e1;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin:6px 0;}
+.report{border-bottom:1px solid var(--parchment-dark);padding:8px 0;}
+.report .body{margin:6px 0;white-space:pre-wrap;}
+section{display:none;}
+section.on{display:block;}
+@media(max-width:700px){#page{padding:10px}.card{padding:12px;overflow-x:auto}table.kc{font-size:.78rem}}

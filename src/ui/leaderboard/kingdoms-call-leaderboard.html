@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdoms Call — Hall of Fame</title>
+<script>
+{{kc-build:boot-reporter}}
+</script>
+<script src="kc-safe.js"></script>
+<script src="vendor/supabase-js-2.117.3.min.js"></script>
+<style>
+{{kc-build:style}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="masthead">
+    <h1>🏆 Kingdoms Call</h1>
+    <div class="sub">Hall of Fame — Leaderboard &amp; Achievements</div>
+  </div>
+
+  <div id="spinner">Loading…</div>
+
+  <div id="main" style="display:none">
+    <div class="topbar">
+      <a href="kingdoms-call-player-portal.html" class="btn btn-ghost">⚔ Player Portal</a>
+      <a href="kingdoms-call-rules.html" class="btn btn-ghost">📜 Rules</a>
+      <span id="gm-pill"></span>
+      <button class="btn btn-ghost" onclick="loadAll(true)">↻ Reload</button>
+    </div>
+
+    <div id="msg"></div>
+
+    <div class="card">
+      <h2>Filters</h2>
+      <div class="filters">
+        <div><label>Opponents</label><select id="f-kind" onchange="render()">
+          <option value="">All games</option>
+          <option value="human">All-human games</option>
+          <option value="mixed">Humans vs bots</option>
+          <option value="withbots">Any game with bots</option>
+          <option value="allbot">All-bot games</option>
+        </select></div>
+        <div><label>Bots in game</label><select id="f-bots" onchange="render()"><option value="">Any</option></select></div>
+        <div><label>Bot behaviour</label><select id="f-diplo" onchange="render()">
+          <option value="">Any</option><option value="normal">Normal</option><option value="hostile">Aggressive</option>
+        </select></div>
+        <div><label>Realms</label><select id="f-realms" onchange="render()"><option value="">Any</option></select></div>
+        <div><label>Human players</label><select id="f-humans" onchange="render()"><option value="">Any</option></select></div>
+        <div><label>Map</label><select id="f-map" onchange="render()"><option value="">Any size</option></select></div>
+        <div><label>Sea</label><select id="f-sea" onchange="render()">
+          <option value="">Any</option><option value="lo">Mostly land (&lt;30%)</option><option value="mid">Mixed (30–45%)</option><option value="hi">Ocean world (&gt;45%)</option>
+        </select></div>
+        <div><label>Won by</label><select id="f-vic" onchange="render()">
+          <option value="">Any</option><option value="reckoning">Reckoning</option><option value="elimination">Elimination</option><option value="concession">Concession</option>
+        </select></div>
+        <div><label>Length</label><select id="f-len" onchange="render()">
+          <option value="">Any</option><option value="s">Short (≤10 turns)</option><option value="m">Medium (11–20)</option><option value="l">Long (21+)</option>
+        </select></div>
+        <div><label>Played from</label><input type="date" id="f-from" onchange="render()"></div>
+        <div><label>Played to</label><input type="date" id="f-to" onchange="render()"></div>
+        <div><label>Search</label><input type="text" id="f-q" placeholder="game, realm, player" oninput="render()"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:11px">
+        <button class="btn btn-ghost" style="font-size:.66rem" onclick="resetFilters()">Clear filters</button>
+        <label id="show-hidden-wrap" style="display:none;text-transform:none;font-size:.78rem;color:var(--stone);align-items:center;gap:5px">
+          <input type="checkbox" id="f-hidden" onchange="render()" style="width:auto"> Show games hidden from the board
+        </label>
+        <span id="filter-count" class="muted" style="margin-left:auto"></span>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button id="tb-champions" class="active" onclick="setTab('champions')">🏆 Champions</button>
+      <button id="tb-achievements" onclick="setTab('achievements')">🎖 Achievements</button>
+      <button id="tb-peoples" onclick="setTab('peoples')">🧭 Races &amp; Creeds</button>
+      <button id="tb-games" onclick="setTab('games')">📜 Games</button>
+    </div>
+
+    <div id="body"></div>
+    <div style="text-align:center;padding:14px 0 30px" class="muted" id="foot"></div>
+  </div>
+</div>
+
+<script src="kc-config.js"></script>
+<script src="kc-db-guard.js"></script>
+<script>
+{{kc-build:main}}
+</script>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.10.16-0735</div>
+<script src="kc-staging-footer.js"></script>
+</body>
+</html>

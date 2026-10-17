@@ -16,3 +16,5 @@ test-results/
 playwright-report/
 # The balance report CI makes on a pull request (npm run balance:report).
 balance-report/
+# The site, built from src/ by npm run build (P1-05): what Pages publishes and the tests open. Edit src/, never site/.
+/site/

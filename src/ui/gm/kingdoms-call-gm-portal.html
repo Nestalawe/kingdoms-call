@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdoms Call — GM Portal</title>
+  <!-- Build: v1783234579 -->
+<script>
+{{kc-build:boot-reporter}}
+</script>
+<script src="kc-safe.js"></script>
+<script src="vendor/supabase-js-2.117.3.min.js"></script>
+<style>
+{{kc-build:style}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="masthead">
+    <h1>⚔ Kingdoms Call</h1>
+    <div class="sub">Game Master Portal</div>
+  </div>
+
+  <div id="spinner">Loading…</div>
+
+  <!-- AUTH -->
+  <section id="sec-auth">
+    <div class="card" style="max-width:440px;margin:0 auto">
+      <div id="auth-msg"></div>
+      <div id="auth-signin">
+        <label>Email</label>
+        <input type="email" id="si-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doSignIn()">
+        <label>Password</label>
+        <input type="password" id="si-password" placeholder="Password" onkeydown="if(event.key==='Enter')doSignIn()">
+        <button class="btn btn-crimson btn-full" onclick="doSignIn()">Sign In as GM</button>
+      </div>
+      <!-- P0-32c: no sign-up here. Game Masters are chosen by the Overlord from existing accounts. -->
+      <p style="margin-top:14px;font-size:.85rem;text-align:center">New here? <a href="kingdoms-call-player-portal.html">Register on the player portal</a></p>
+    </div>
+  </section>
+
+  <!-- NOT A GAME MASTER (P0-32c): a signed-in account that is neither a Game Master nor the Overlord sees only this -->
+  <section id="sec-not-gm">
+    <div class="card" style="max-width:440px;margin:0 auto">
+      <div id="not-gm-msg" class="msg-info">You're not a Game Master. Game Masters are chosen by the Overlord.</div>
+      <p style="font-size:.9rem"><a href="kingdoms-call-player-portal.html">Go to the player portal</a></p>
+      <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
+    </div>
+  </section>
+
+  <!-- GAME LIST -->
+  <section id="sec-games">
+    <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div id="gm-role-label" style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Game Master</div>
+        <div id="gm-email-display" style="font-size:.95rem;color:var(--parchment)"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gold" id="new-game-btn" onclick="showNewGame()">+ New Game</button>
+        <button class="btn btn-forest" onclick="openStats()">📈 Stats</button>
+        <a href="kingdoms-call-leaderboard.html?gm=1" target="_blank" class="btn btn-gold" style="text-decoration:none;font-size:.7rem">🏆 Leaderboard</a>
+        <a href="kingdoms-call-rules.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Rules</a>
+        <button class="btn btn-ghost" onclick="changePassword()">🔑 Change Password</button>
+        <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
+      </div>
+    </div>
+    <div id="msg-games"></div>
+    <div id="msg-telemetry"></div>
+    <div id="msg-leaderboard"></div>
+    <div id="msg-messaging"></div>
+    <div id="auto-turn-status" style="display:none;margin-bottom:10px;font-size:.78rem;color:var(--parchment);border:1px solid var(--gold);border-radius:4px;padding:8px 10px;background:#20160c"></div>
+    <!-- Master GM mode (P0-32g): the Overlord's filter over every game -->
+    <div id="overlord-filter-wrap" style="display:none;margin-bottom:10px">
+      <input type="search" id="overlord-filter" placeholder="Filter by game or GM" oninput="renderGameList()">
+    </div>
+    <div id="games-list"></div>
+  </section>
+
+  <!-- NEW GAME FORM -->
+  <section id="sec-new-game">
+    <div class="card">
+      <div class="detail-header">
+        <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← Back</button>
+        <h2>Start a New Game</h2>
+      </div>
+      <div id="new-game-msg"></div>
+      <label>Game Name</label>
+      <input type="text" id="new-game-name" placeholder="e.g. The War of Five Kings">
+      <label>Map Size</label>
+      <select id="new-game-mapsize" onchange="updateMaxPlayersForMap()">
+        <option value="p2">8×5 — 2 players</option>
+        <option value="p3">8×7 — up to 3 players</option>
+        <option value="p4">9×7 — up to 4 players</option>
+        <option value="p5" selected>12×7 — up to 5 players</option>
+        <option value="p6">15×7 — up to 6 players</option>
+        <option value="p7">16×7 — up to 7 players</option>
+        <option value="p8">17×8 — up to 8 players</option>
+        <option value="p9">16×11 — up to 9 players</option>
+        <option value="p10">16×11 — up to 10 players</option>
+      </select>
+      <div style="font-size:.78rem;color:var(--stone);margin-top:-4px">Each map is the smallest that keeps every king at least 3 empty provinces apart. Smaller games can pick a larger map for more room.</div>
+      <label>Maximum Players</label>
+      <select id="new-game-maxplayers" onchange="updateBotHint();updateSeaHint()"><!-- filled from map size by updateMaxPlayersForMap() --></select>
+      <label style="margin-top:10px">Sea Provinces <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(share of the world that is water)</span></label>
+      <div style="display:flex;align-items:center;gap:12px">
+        <input type="range" id="new-game-seapct" min="20" max="80" step="5" value="35" oninput="updateSeaHint()" style="flex:1;margin:0;padding:0">
+        <span id="new-game-seapct-label" style="font-family:'Cinzel',serif;min-width:48px;text-align:right">35%</span>
+      </div>
+      <div id="new-game-sea-hint" style="font-size:.78rem;color:var(--stone);margin:4px 0 10px"></div>
+      <label style="margin-top:10px">Bot Realms <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(GM-controlled — optional)</span></label>
+      <input type="number" id="new-game-botcount" min="0" value="0" onchange="updateBotHint()">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin-top:8px;cursor:pointer">
+        <input type="checkbox" id="new-game-allbot" onchange="updateBotHint()"> All-bot game (no human players — for testing &amp; balancing)
+      </label>
+      <!-- 2026-09-26 (Toby item 9): ONE bot strength. Easy and Normal are retired — every bot realm plays at the
+           former Hard setting. The hidden field keeps every reader of #new-game-botdifficulty working. -->
+      <input type="hidden" id="new-game-botdifficulty" value="hard">
+      <!-- 2026-09-26b (Toby item 10): how bot realms treat HUMAN realms. -->
+      <label style="margin-top:10px">Bot Diplomacy <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(games with bots)</span></label>
+      <select id="new-game-botdiplomacy">
+        <option value="normal" selected>Normal — bots follow their alignment; some may ally with human realms</option>
+        <option value="hostile">Aggressive — every bot is at war with every human realm and never allies with one</option>
+      </select>
+      <div id="new-game-bot-hint" class="msg-info" style="margin-top:4px;display:none"></div>
+      <!-- 2026-09-29 (Toby): SAFE START — no realm (human or bot) may Treat or declare war before Turn 6. -->
+      <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin-top:10px;cursor:pointer">
+        <input type="checkbox" id="new-game-safestart"> 🕊 Safe Start — no Treats or declarations of war until the orders for Turn 6
+      </label>
+
+      <!-- Turn running: manual / automatic when all orders are in / automatic with a fixed clock deadline -->
+      <label style="margin-top:12px">Turn Running</label>
+      <select id="new-game-turnmode" onchange="updateTurnModeFields('new-game')">
+        <option value="manual" selected>Manual — the GM runs each turn</option>
+        <option value="auto">Automatic — the turn runs as soon as every realm's orders are in</option>
+        <option value="deadline">Automatic with deadline — runs when all orders are in, OR at a fixed clock time</option>
+      </select>
+      <div id="new-game-turnmode-fields" style="display:none;margin-top:6px;padding:8px 10px;border:1px solid var(--gold);border-radius:4px;background:#20160c;font-size:.84rem">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+          <label style="margin:0;font-weight:normal">Deadline time <input type="time" id="new-game-deadline-time" value="20:00" style="width:auto;margin-left:6px"></label>
+          <label style="margin:0;font-weight:normal">every <input type="number" id="new-game-deadline-days" min="1" max="30" value="1" style="width:60px;margin-left:6px"> day(s)</label>
+        </div>
+        <div style="font-size:.76rem;color:var(--stone);margin-top:6px">Times are read from this computer's clock (local time). Players see the deadline in their own local time. Realms that have not submitted by the deadline hold (Defend) for the turn.</div>
+      </div>
+      <div class="msg-info" id="new-game-turnmode-hint" style="margin-top:6px">Automatic modes only fire while a GM Portal tab is open and signed in — it watches your games and runs turns for you. Keep a tab open (a pinned tab on any always-on device will do). You can change the mode later from the game screen.</div>
+
+      <!-- Visibility: Public (anyone can join) vs Private (only invited players see it) -->
+      <label style="margin-top:12px">Who Can Join</label>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-weight:normal;font-size:.86rem">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="new-game-visibility" value="public" checked onchange="updateGameVisibility()"> 🌍 Public — any registered player can join
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="new-game-visibility" value="private" onchange="updateGameVisibility()"> 🔒 Private — only players you invite
+        </label>
+      </div>
+      <div id="new-game-invite-wrap" style="display:none;margin-top:8px;border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c">
+        <div style="font-size:.82rem;color:var(--parchment);margin-bottom:6px">Tick the players who may see and join this private game:</div>
+        <input type="text" id="new-game-invite-search" placeholder="Filter by name…" oninput="renderInviteCheckboxes('new-game-invite-list','new-game-invite-search',_inviteSelected,'new-game-invite-count')" style="margin-bottom:8px">
+        <div id="new-game-invite-list" style="max-height:230px;overflow:auto;border:1px solid var(--stone);border-radius:3px;background:#12100b"></div>
+        <div id="new-game-invite-count" style="font-size:.78rem;color:var(--gold);margin-top:6px"></div>
+      </div>
+
+      <div class="msg-info" style="margin-top:8px">Once you create the game, invited players (Private) or everyone (Public) can see it and sign up. You run Turn 0 once all players have joined to generate their starting turn reports (bot realms are generated at Turn 0).</div>
+      <button class="btn btn-crimson btn-full" style="margin-top:8px" onclick="createGame()">Create Game</button>
+    </div>
+  </section>
+
+  <!-- STATS (2026-09-25) — what the telemetry tables say about how the game plays -->
+  <section id="sec-stats">
+    <div class="detail-header topbar">
+      <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← All Games</button>
+      <h2 style="color:var(--gold-light)">📈 Game Statistics</h2>
+      <button class="btn btn-ghost" style="font-size:.68rem" onclick="openStats(true)">↻ Reload</button>
+    </div>
+    <div id="stats-msg"></div>
+    <div class="card" style="padding:14px 18px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:2;min-width:180px"><label>Game</label><select id="stats-game" onchange="renderStats()" style="margin-bottom:0"><option value="">All games</option></select></div>
+        <div style="flex:1;min-width:120px"><label>Realms</label><select id="stats-who" onchange="renderStats()" style="margin-bottom:0"><option value="">Humans and bots</option><option value="human">Humans only</option><option value="bot">Bots only</option></select></div>
+        <div style="flex:1;min-width:120px"><label>Bot difficulty</label><select id="stats-diff" onchange="renderStats()" style="margin-bottom:0"><option value="">Any</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div>
+        <div style="flex:1;min-width:120px"><label>Games</label><select id="stats-fin" onchange="renderStats()" style="margin-bottom:0"><option value="">All</option><option value="finished">Finished only</option><option value="running">Still running</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-gold" style="font-size:.68rem" onclick="exportStats('turns')">⬇ Turns CSV</button>
+        <button class="btn btn-gold" style="font-size:.68rem" onclick="exportStats('battles')">⬇ Battles CSV</button>
+        <button class="btn btn-gold" style="font-size:.68rem" onclick="exportStats('results')">⬇ Results CSV</button>
+        <button class="btn btn-forest" style="font-size:.68rem" onclick="exportStats('json')">⬇ Full JSON (bot training)</button>
+        <button class="btn btn-ghost" style="font-size:.68rem;margin-left:auto" onclick="forgetDeletedGames()">🗑 Forget deleted games' data</button>
+      </div>
+      <div style="font-size:.76rem;color:var(--stone);margin-top:8px">Every resolved turn writes one row per realm (its orders, its situation before and after, and every battle, lair fight, capture, death and spell it was part of); every finished game writes one result row per realm. Filters apply to everything below. Exports carry the filtered rows.</div>
+    </div>
+    <div class="card" style="padding:14px 18px">
+      <h3 style="margin-bottom:6px">🏆 Hall of Fame records</h3>
+      <div style="font-size:.78rem;color:var(--stone);margin-bottom:10px">Every finished game is written to the Hall of Fame automatically when it ends. Use these to record games that finished before the board existed, or to rebuild a game's records after an engine change. Each game costs one pass over its recorded turns, so this is a button, never automatic.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <a href="kingdoms-call-leaderboard.html?gm=1" target="_blank" class="btn btn-gold" style="text-decoration:none;font-size:.68rem">🏆 Open the Leaderboard</a>
+        <button id="lb-build-btn" class="btn btn-forest" style="font-size:.68rem" onclick="backfillGameRecords(false)">⚒ Record missing games</button>
+        <button class="btn btn-ghost" style="font-size:.68rem" onclick="if(confirm('Rebuild the Hall-of-Fame record of EVERY finished game? Hand-written notes and hidden flags are kept.'))backfillGameRecords(true)">↻ Rebuild all</button>
+        <span id="lb-build-msg" style="font-size:.78rem;color:var(--stone)"></span>
+      </div>
+    </div>
+    <div id="stats-body"></div>
+  </section>
+
+  <!-- GAME DETAIL -->
+  <section id="sec-game-detail">
+    <div class="detail-header topbar">
+      <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← All Games</button>
+      <h2 id="detail-game-name">Game</h2>
+      <span id="detail-status-pill"></span>
+      <button class="btn btn-ghost" id="detail-archive-btn" style="font-size:.68rem" onclick="setGameArchived(currentGame?.id, !gameArchived(currentGame))">🗄 Archive Game</button>
+      <button class="btn btn-ghost" style="color:#c00;border-color:#c00;font-size:.68rem" onclick="deleteGame(currentGame?.id)">🗑 Delete Game</button>
+    </div>
+    <div id="detail-msg"></div>
+
+    <!-- Players / slots -->
+    <div class="card">
+      <h3>Players <span id="detail-player-count" style="font-size:.75rem;color:var(--stone)"></span></h3>
+      <div id="detail-players-list"></div>
+      <div id="detail-visibility-wrap" style="margin-top:12px"></div>
+      <div id="detail-turnmode-wrap" style="margin-top:12px"></div>
+      <div id="detail-run-turn0-wrap" style="margin-top:12px;display:none">
+        <div class="msg-info">All players have joined. You can now run Turn 0 to generate the map and starting turn reports.</div>
+        <button class="btn btn-crimson btn-full" onclick="runTurn0()">⚡ Run Turn 0 — Generate Starting Reports</button>
+      </div>
+    </div>
+
+    <!-- Orders (turn 1+) -->
+    <div class="card" id="detail-orders-card" style="display:none">
+      <h3>Orders Status</h3>
+      <div id="detail-orders-status"></div>
+      <div id="detail-run-turn-wrap" style="margin-top:12px;display:none">
+        <div id="detail-run-now-note" class="msg-info" style="display:none;margin-bottom:8px">Master GM: Run turn now resolves this turn whether or not every realm's orders are in. A realm without orders defends.</div>
+        <button class="btn btn-crimson btn-full" id="detail-run-turn-btn" onclick="runTurn()">⚡ Resolve Turn &amp; Generate New Reports</button>
+      </div>
+    </div>
+
+    <!-- Turn log -->
+    <div class="card" id="detail-log-card" style="display:none">
+      <h3>Last Turn Chronicle</h3>
+      <div id="detail-log"></div>
+    </div>
+
+    <!-- Reported dispatches (P0-24): players' reports, for this game's GM -->
+    <div class="card" id="detail-reports-card" style="display:none">
+      <h3>⚑ Reported dispatches</h3>
+      <div id="detail-reports"></div>
+    </div>
+  </section>
+</div>
+
+<script src="kc-config.js"></script>
+<script src="kc-db-guard.js"></script>
+<script src="kingdoms-call-data.js"></script>
+<script>
+{{kc-build:main}}
+</script>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.16-0819</div>
+<script src="kc-staging-footer.js"></script>
+</body>
+</html>
