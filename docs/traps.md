@@ -23,7 +23,7 @@ portal hangs on its spinner (the boot-failure reporter now shows the error).
 
 - `ITEMS_BY_TIER` and `rollMagicItem` (GM portal) must come after `ALL_MAGIC_ITEMS_P` (data file). This
   holds because the data file loads first. Keep it that way.
-- Code that runs at top level calls only top-level helpers. Many engine helpers are local to `runTurn`
+- Code that runs at top level calls only top-level helpers. Many engine helpers are local to `resolveTurn`
   (e.g. `effStat`; use `effSkillOf` outside it). Declare shared helpers as hoisted `function`s.
 - Prefer building lookup tables lazily inside the function that needs them over a top-level IIFE.
 - A flag read by layout code that can run early (e.g. a hash-restored view) must be declared above
@@ -115,7 +115,7 @@ or written.
 Until the engine is split into modules (Phase 1), several tests reach inside the GM portal by matching
 **exact source lines** of the built page and injecting code there. Each line lives in one file under `src/`
 (mostly `src/engine/run-turn.js`). For example, `  // 4. Run all 5 phases` exposes the
-functions nested in `runTurn`. The full list is in
+functions nested in `resolveTurn`. The full list is in
 [tests/README.md](../tests/README.md#code-anchor-hooks).
 
 - Editing, re-indenting or moving one of those lines breaks the tests that use it. They fail with
@@ -155,12 +155,17 @@ it passed. Every turn report then threw.
 
 ## Post-commit work in `runTurn`
 
-The one `try` in `runTurn` runs from the load to the conditional save and on to the reports. Everything
-after the save (reports, `turn_logs`, telemetry) runs after the turn is already resolved and stored. A
-throw there must not restore orders, re-flag `orders_submitted`, or let the watcher retry the turn: that
-combination once made live games resolve themselves once a minute.
+The one `try` in `runTurn`, the turn's shell (`src/ui/gm/turn-shell.js`), runs from the load through `resolveTurn`
+to the conditional save and on to the reports. Everything after the save (reports, `turn_logs`, telemetry) runs
+after the turn is already resolved and stored. A throw there must not restore orders, re-flag `orders_submitted`,
+or let the watcher retry the turn: that combination once made live games resolve themselves once a minute.
 
 - `_turnCommitted` marks that the save succeeded. Any code added after the save must respect it.
+- **The reports are built after the save, never inside `resolveTurn`** (P1-18d). `resolveTurn` returns
+  `buildReports`, and the shell calls it only once `_turnCommitted` is set. A report built before the save would
+  make every report bug a failed turn: the orders put back and the turn tried again after every cooldown, for as
+  long as the tab stayed open. `turn-shell`'s post-save guard plants a throw in `buildTurnReport` and checks that
+  the turn stays saved.
 - A save that answers with an error isn't proof that nothing was saved: a request can time out after the
   database committed it. The catch reads the game's turn again before it restores anything (P1-18a).
 - `runTurn` **returns** `{ok, committed, conflict, error}` on every path; it doesn't throw. Callers must
@@ -260,8 +265,9 @@ ones it can't, or they cost time:
 
 Every random number the GM portal's own code draws comes from `kcRng()` (`src/engine/rng.js`, P1-07): one sfc32
 generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.js`) or, on the
-live site, from `crypto.getRandomValues`. The engine and its views read the time through `kcClock()`
-(`src/engine/clock.js`), which reads `Date.now()` when called.
+live site, from `crypto.getRandomValues`. Nothing in the engine or its views reads the time (P1-18d): only the
+turn's shell does, through `kcClock()` (`src/engine/clock.js`, which reads `Date.now()` when called), to stamp when
+the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Math.random` that throw.
 
 - Don't write `Math.random` anywhere in `src/` (but `rng.js` and `vendor/`), or `Date` in `src/engine/` or
   `src/views/` (but `clock.js`): `npm test`'s `dice-and-clock` fails. Pass the generator as `kcRng` (e.g.
@@ -291,7 +297,7 @@ Guard", one missing from a terrain block fights at ×1 there. When adding (or re
   `KC_UNIT_BASE_STR`.
 - GM portal: `ARMY_COST_MASTER`, `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
   `'Orc Garrison':'Orcish'};` as its last entry: a test slices the source up to it), `DISC_CLS_SETS`,
-  `TERRAIN_MODS` (inside `runTurn`) and the magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
+  `TERRAIN_MODS` (inside `resolveTurn`) and the magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
 - Player portal: `UNIT_ABILITIES` and the race blurbs. Rulebook: the roster, home-roster, move-rate and
   kinds-of-unit tables and the light-foot list. The intro's list of kinds.
 
@@ -334,7 +340,7 @@ engine itself keeps them in several places by kind:
   in front) and `abilityMissileUnits`;
 - the pre-battle volley: `missileDamageMult`, `abilityVolleys`, `missileTargetPool`, `archeryBlockedBy`;
 - force-wide strength: `unitAbilityMult`; fates: `rollUnitFates` (Knightly Example) and `shieldFortHolds`;
-- turn hooks inside `runTurn`: Prepared Ground's second volley, Raiders' Muster at turn's end.
+- turn hooks inside `resolveTurn`: Prepared Ground's second volley, Raiders' Muster at turn's end.
 
 `tests/abilities-words.test.js` holds the table of names and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and
@@ -443,7 +449,7 @@ uncleared lairs, held Sage discoveries, unit names. The engine reads those copie
 in `kingdoms-call-data.js` changes new games only, unless a migration carries the change into running
 games.
 
-- **Migrations run at the start of every turn**, on the world `runTurn` has just loaded:
+- **Migrations run at the start of every turn**, on the world `resolveTurn` has just read:
   `migrateMaxHpV2` (which calls `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`
   and `migrateLegacyUnitNames`, then `migrateItemTiers` and `ensureAllLairHoards` before the phases
   resolve. `migrateHoardTally` runs wherever the find tally is read or written. A running game picks

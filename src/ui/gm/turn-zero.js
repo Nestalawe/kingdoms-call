@@ -170,6 +170,7 @@ async function commitTurn0(){
     let reportErrors=[];
     for(const sp of setupPlayers){
       const report=buildTurnReport(gameState,sp.id);
+      report.engineStamp=(typeof runningBuildStamp==='function'?runningBuildStamp():null); // which GM build wrote it
       const {error:rErr}=await sb.from('game_players').update({
         turn_report:sp.isBot
           ? JSON.stringify({isBot:true, report, playerSetup:{kingName:sp.kingName,kingdomName:sp.kingdomName,race:sp.race,alignment:sp.alignment,temper:sp.temper,skills:sp.skills}})
