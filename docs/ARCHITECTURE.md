@@ -227,7 +227,9 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   page's main script, seeded once per page load from `crypto.getRandomValues`, or from the seed a test gives the page.
   The engine and its views read the time only through `kcClock()` (`src/engine/clock.js`, `Date.now()` when called);
   the screens read `Date` as before. `dice-and-clock` keeps `Math.random` and `Date` out
-  ([traps.md](traps.md#dice-come-from-kcrng)). P1-18 makes the seed and the time inputs of the turn.
+  ([traps.md](traps.md#dice-come-from-kcrng)). P1-18 makes the seed and the time inputs of the turn. A mercenary
+  band made in a turn gets its id from `newMercId()` in `runTurn`: `merc_t<turn>_<n>`, counted afresh each turn, with
+  no dice or clock in it (P1-18b).
 - **Engine functions are nested inside `runTurn`** (combat, terrain modifiers, …). Tests reach them by
   injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).
   Phase 1 of the roadmap lifts them out into modules.
