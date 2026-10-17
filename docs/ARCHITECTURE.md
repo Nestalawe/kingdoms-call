@@ -6,19 +6,49 @@ Line numbers drift; search for the names given here.
 
 ## The shape in one paragraph
 
-A static site with no build step and no server of its own. Every page is one HTML file with its
-JavaScript inline. The pages talk straight to a Supabase Postgres database from the browser, using
+A static site with no server of its own. Every published page is one HTML file with its JavaScript
+inline, put together from the source in `src/` by a small build ([below](#the-build-src-becomes-site)). The pages talk straight to a Supabase Postgres database from the browser, using
 supabase-js and the project's public (anon) key. **The turn engine runs in the GM's browser tab**: the
 GM portal generates worlds, runs the bots, resolves turns and writes each realm's report. Players only
 submit orders and read what they're given.
 
+## The build: `src/` becomes `site/`
+
+Since P1-05, `src/` is the source and `site/` is build output: git-ignored, published by the deploy, and opened by
+every test. **Edit `src/`, never `site/`**: the next build overwrites it.
+
+- **`npm run build`** (`tools/build.ts`, about 0.1 s) reads `src/manifest.ts`. For each page it lists a template and,
+  for each inline block, the files that make it, in order. A template is the page with the contents of each inline
+  `<script>` and `<style>` taken out and replaced by one line, `{{kc-build:<name>}}`; the build puts that block's files
+  in its place, byte for byte. The other files (the data file, `kc-*.js`, `vendor/`) are copied as they are. When it
+  landed, the build reproduced the committed `site/` exactly, every byte of every file.
+- **Each `.js` file is a stretch of whole top-level statements**, so it parses on its own; no file ends inside a
+  function (`tests/static/build.test.ts`). The GM portal's main script is 53 files; `src/engine/run-turn.js` (all of
+  `runTurn`, ~15,300 lines) stays one file until P1-18 and P1-08 take it apart. The player portal's is 20.
+- **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report, Hall
+  of Fame records, what a realm can see), `db/` (which database, the version guard, telemetry and the light `meta`
+  rows), `content/` (the data file), `ui/<page>/` (each page's template, styles and the rest of its code),
+  `ui/shared/` (scripts every page loads), `rulebook/`, `vendor/`. Each file is still a stretch of its page, not a
+  module: the page's scripts share one global scope, so the manifest's order is the order the code runs
+  ([traps.md](traps.md#top-level-declaration-order-the-items_by_tier-class)). P1-09 makes them modules, renaming
+  `.js` to `.ts` in place, and Vite replaces the build.
+- **A new file goes into its list in the manifest**, where its code should run. The build stops on a file in `src/`
+  that no list names, and on a marker or a block without its partner.
+- **Who builds:** `npm test` and `npx playwright test` before any test (`tests/setup/global.ts`; not when `KC_SITE`
+  names another copy), `npm run balance` (and the base branch's copy, with that branch's own build:
+  `tools/balance/sides.ts`), every CI job that tests, the deploy just before it publishes, and staging just before it
+  writes its own `kc-config.js`. Run `npm run build` yourself before opening a page or running one test script on its
+  own.
+
 ## The pages (`site/`)
+
+Built from `src/` ([above](#the-build-src-becomes-site)); `src/manifest.ts` lists where each comes from.
 
 | File | Size | What it is |
 |---|---|---|
 | `index.html` | small | Landing page; links the player portal and both rulebooks |
-| `kingdoms-call-gm-portal.html` | ~27,600 lines, ~2.1 MB | GM UI, world generation, the whole turn engine (`runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, "missing from the database" messages |
-| `kingdoms-call-player-portal.html` | ~10,300 lines, ~760 KB | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
+| `kingdoms-call-gm-portal.html` | ~28,900 lines, ~2.1 MB | GM UI, world generation, the whole turn engine (`runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, "missing from the database" messages |
+| `kingdoms-call-player-portal.html` | ~10,600 lines, ~770 KB | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
 | `kingdoms-call-data.js` | ~410 KB | Content tables (items, monsters, lairs, discoveries, hero names, …) and the **shared rule tables** both portals read |
 | `kingdoms-call-leaderboard.html` | ~780 lines | Hall of Fame: leaderboard and achievement records over finished games |
 | `kingdoms-call-overlord.html` | ~450 lines | The Overlord page (P0-32f): accounts (offer, withdraw and revoke GM; suspend, lift and delete: P0-32h), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
@@ -27,30 +57,30 @@ submit orders and read what they're given.
 | `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
 
 All pages sit in one folder and link each other relatively. Only `site/` is published, so URLs are the
-same as before the cutover. No page loads a script from another site; the only outside requests are
+same as before the cutover and the build. No page loads a script from another site; the only outside requests are
 Google Fonts.
 
 ### supabase-js: a copy served with the site
 
-The pages load supabase-js from `site/vendor/`, not from a CDN (P0-18), so no outside party can change the
+The pages load supabase-js from `vendor/` beside them (source: `src/vendor/`), not from a CDN (P0-18), so no outside party can change the
 code that holds players' logins, and a CDN outage can't stop the portals loading.
 
 - **Version:** 2.117.3, the package's browser build (`dist/umd/supabase.js`) copied unchanged to
-  `site/vendor/supabase-js-2.117.3.min.js`, with its licence beside it (`supabase-js-LICENSE.txt`).
+  `src/vendor/supabase-js-2.117.3.min.js`, with its licence beside it (`supabase-js-LICENSE.txt`).
 - **SHA-256:** `d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3`. `npm test`'s
   `vendor-supabase` check fails if the file and this line disagree.
 - **Nothing watches it for updates** (Dependabot can't see a copied file). When you touch this area, check
   `npm view @supabase/supabase-js@2 version` and upgrade if it's newer. P1-17 replaces the copy with a pinned
   npm dependency.
 
-**To upgrade**, in its own PR (it changes `site/vendor/**`, so it's a dangerous path: talk it through with
+**To upgrade**, in its own PR (it changes `src/vendor/**`, so it's a dangerous path: talk it through with
 Theo):
 1. In an empty folder: `npm pack @supabase/supabase-js@<version>` (npm checks the download against the
    registry's checksum), then unpack it with `tar -xzf`.
-2. Copy `package/dist/umd/supabase.js` to `site/vendor/supabase-js-<version>.min.js` and `package/LICENSE` to
-   `site/vendor/supabase-js-LICENSE.txt`; delete the old copy.
-3. Point the three `<script src="vendor/…">` tags (both portals and the Hall of Fame) and their boot-failure
-   hints at the new file name, and update the version and SHA-256 above (`shasum -a 256 <file>`).
+2. Copy `package/dist/umd/supabase.js` to `src/vendor/supabase-js-<version>.min.js` and `package/LICENSE` to
+   `src/vendor/supabase-js-LICENSE.txt`; delete the old copy, and rename it in `src/manifest.ts`'s copies.
+3. Point the `<script src="vendor/…">` tags (in the page templates under `src/ui/`) and their boot-failure hints
+   at the new file name, and update the version and SHA-256 above (`shasum -a 256 <file>`).
 4. Read the release notes between the two versions for anything the pages use (sign-in, `rpc`, realtime).
 5. `npm test`, then try sign-in, orders and Dispatches on staging.
 
@@ -91,7 +121,7 @@ scope**. A name declared in two scripts is a `SyntaxError` that stops the page l
 ## How a page builds HTML
 
 Every name and message on screen was typed by someone, so a page treats every value as text (P0-19).
-`site/kc-safe.js` gives each page four helpers:
+`kc-safe.js` (`src/ui/shared/kc-safe.js`) gives each page four helpers:
 
 - **`kcHtml`**, a tagged template: in ``kcHtml`<td>${realm}</td>` `` every value is escaped, unless it is itself
   `kcHtml` or `kcRaw`. A list is its items, one after another. It returns a marked value that goes into
@@ -301,7 +331,7 @@ A second copy of the site at <https://kingdoms-call-staging.github.io/>, with it
 no real players. A pull request labelled `staging` is tested; then the staging database is rebuilt for it
 (emptied, `main`'s migrations, the test accounts, the made-up games of `supabase/seeds/staging.sql`, then the
 pull request's own migrations and the seed again: `.github/scripts/migrations.js reset staging`); then the
-site is published there with a `kc-config.js` pointing at the staging database
+site is built and published there with a `kc-config.js` pointing at the staging database
 (`.github/workflows/staging.yml`). One pull request is on staging at a time, and its PR comment says so;
 merging changes nothing there. That `kc-config.js` also carries `deployed: {pr, sha}`, so every page's
 footer says which pull request and commit is on staging, linking to the pull request.
@@ -318,14 +348,14 @@ The tools are the standard ones (P1-01): Vitest runs every test, one project per
 Playwright Test runs the browser specs in `tests/browser/` (`playwright.config.ts`); TypeScript checks the new files
 strictly (`npm run typecheck`, `tsconfig.json`); ESLint with typescript-eslint lints them (`npm run lint`,
 `eslint.config.js`); Prettier formats them (`npm run format`). Node is pinned exactly (`.nvmrc`, `engine-strict` in
-`.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). The site itself still has no build
-step.
+`.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). The site's own JavaScript in `src/` isn't
+linted or formatted yet: P1-09 makes it TypeScript, and Prettier formats it then.
 
 The harness runs itself (P1-01b). Claude Code hooks, committed in `.claude/settings.json`, check each edited file
 (`tools/hooks/after-edit.ts`: type check, ESLint, Prettier, about 1 s) and run `npm run check` before an agent may
 finish (`tools/hooks/before-stop.ts`). `npm run check` (`tools/check.ts`) checks what the branch changes: the
 TypeScript tests that import a changed file (`vitest related`), or every level but page when anything else changed,
-since the test scripts load `site/` by file name and `vitest related` can't follow that. `npm run ratchet`
+since the test scripts load `site/` (built from `src/`) by file name and `vitest related` can't follow that. `npm run ratchet`
 (`tools/ratchet.ts`) keeps the counts in `tests/ratchet.json` from rising: switched-off checks, allowlist entries,
 JavaScript files, quarantined tests and tests on `tests/lib/stub-db.js`. `tests/static/harness.test.ts` fails if any
 of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a
@@ -340,8 +370,8 @@ actions, `orders_submitted` cleared), as `turn-fuzz` does, and the **report-leak
 (`tests/lib/report-leaks.ts`, P1-04c: another realm's private line, an unmet realm, a hero under Invisibility); a breach
 fails the game. It isn't part of `npm test`: about 20 s on 14 cores ([tests/README.md](../tests/README.md#the-balance-matrix)).
 CI's `balance` job (P1-02b) plays it when a pull request or a merge changes an engine path
-(`tools/balance/engine-paths.ts`: the GM portal and the scripts its page loads, the data file, the balance code and
-baselines, the test helpers it boots the page with, and `package-lock.json` and `.nvmrc`, since a jsdom or Node
+(`tools/balance/engine-paths.ts`: the files in `src/` that the GM portal's page and the scripts it loads are built
+from, the build itself, the balance code and baselines, the test helpers it boots the page with, and `package-lock.json` and `.nvmrc`, since a jsdom or Node
 bump can change the games), and fails if any game differs from the committed baseline.
 A pull request labelled `refactor-only` fails if it changes the baseline at all. On a pull request the job also
 makes the **balance report** (`tools/balance/report.ts`, P1-03a): the class of change (no change, wording only, a

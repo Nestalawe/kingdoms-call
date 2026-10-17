@@ -15,8 +15,8 @@ published.
    together.
 3. [docs/traps.md](docs/traps.md): standing gotchas. Read it before changing a portal or a test.
 4. [tests/README.md](tests/README.md): every test, its level, quarantine, and the code-anchor hooks.
-5. Only then the code you need. **The portals are huge (the GM portal is ~27,600 lines): search, don't
-   read them whole.** Read line ranges and edit with unique anchors.
+5. Only then the code you need, in `src/`: **edit `src/`, never `site/`** (it's built). Most files are a few hundred
+   lines; `src/engine/run-turn.js` is ~15,300: search it, don't read it whole, and edit with unique anchors.
 
 **Toby's rulings are in [docs/rulings/](docs/rulings/README.md)**, one file each, with an index. Before
 changing a rule, read its ruling; never "fix" what a ruling says is deliberate without a fresh one.
@@ -25,12 +25,12 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 
 | Path | What |
 |---|---|
-| `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js`, `kc-config.js` (which database the site talks to), `kc-db-guard.js` (the database version guard), `kc-safe.js` (`kcHtml`/`kcEsc`, the one way a page builds HTML: [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html)), `kc-staging-footer.js` (on staging, the footer names the PR), `vendor/` (supabase-js, served with the site: [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
+| `src/` | The site's source. `npm run build` puts it together into `site/` (git-ignored): what is published and what every test opens ([ARCHITECTURE.md](docs/ARCHITECTURE.md#the-build-src-becomes-site)). `manifest.ts` (which files make each page, in order: add a new file there), `engine/` (the turn engine, bots, world generation), `views/` (turn report, Hall of Fame records, visibility), `db/` (`kc-config.js`: which database; `kc-db-guard.js`: the version guard; telemetry), `content/kingdoms-call-data.js`, `ui/<page>/` (each page's template, styles and code), `ui/shared/` (`kc-safe.js`: `kcHtml`/`kcEsc`, the one way a page builds HTML, [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html); `kc-staging-footer.js`), `rulebook/`, `vendor/` (supabase-js, [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `browser/*.spec.ts` (browser specs: Playwright Test, Chromium), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `lib/invariants.ts` and `lib/report-leaks.ts` (what must hold after every turn; what no report may show), `quarantine/` (kept, not run) |
 | `vitest.config.mts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, browser specs, strict TypeScript, lint, formatting, the exact Node version, the Claude Code hooks |
-| `tools/` | `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`; its report, `npm run balance:report`; named scenarios in `tests/balance/scenarios/`, `npm run balance -- <scenario>`), `github/` (the script that posts the balance report on a PR), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
-| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the balance matrix and its report when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `balance-report.yml` (posts the balance report on a PR once CI finishes, and warns while "What changes in play" is missing), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves), `nightly.yml` (`npm run test:full` with a random seed every night; blocks nothing) |
+| `tools/` | `build.ts` (`npm run build`), `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`; its report, `npm run balance:report`; named scenarios in `tests/balance/scenarios/`, `npm run balance -- <scenario>`), `github/` (the script that posts the balance report on a PR), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
+| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the balance matrix and its report when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then build `site/` and publish it to Pages), `balance-report.yml` (posts the balance report on a PR once CI finishes, and warns while "What changes in play" is missing), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves), `nightly.yml` (`npm run test:full` with a random seed every night; blocks nothing) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js`, `.github/pull_request_template.md` | The dangerous-paths list and the warning's logic (see below); the PR template (fill in every section) |
 | `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
 
@@ -39,7 +39,7 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 Node exactly as in `.nvmrc` (24.22.0): `npm ci` and `npm test` refuse any other.
 
 ```sh
-npm ci && npx playwright install chromium   # once
+npm ci && npx playwright install chromium   # once; npm run build puts src/ together into site/ (npm test builds first)
 npm test                                    # Vitest: every test, by level, side by side (about 30 s); CI runs each level in its own job
 npx playwright test                         # the browser specs (tests/browser/) in Chromium, about 20 s; not part of npm test
 npm run check                               # the quick check of what you changed, about 20 s (parts: typecheck, lint, format:check, ratchet)
@@ -47,7 +47,7 @@ npm run balance                             # the balance matrix: 60 seeded game
 npm run test:full                           # bigger fuzz and property runs, as the nightly run does (npm run test:quarantine: the quarantined harnesses, expected to fail)
 npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
 KC_SEED=123 KC_JOBS=1 npm test              # another seed, one test at a time; the footer says how to repeat a failure
-node tests/<name>.test.js                   # one test script on its own: unseeded, its own default sizes
+node tests/<name>.test.js                   # one test script on its own (after npm run build): unseeded, its own default sizes
 KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs); npx playwright test too
 npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
 ```
@@ -165,7 +165,7 @@ refuses it); every migration has pgTAP tests.
 Some changes get Theo's eye before Toby merges them (decision D-07). Toby and Theo talk them through;
 nothing on GitHub enforces it.
 - **Paths:** any PR that changes a path in `.github/dangerous-paths` (today `supabase/**`, `.github/**`
-  and `site/vendor/**`) gets a warning comment from `.github/workflows/dangerous-paths.yml`. It never
+  and `src/vendor/**`) gets a warning comment from `.github/workflows/dangerous-paths.yml`. It never
   blocks the merge. The list is read from the PR's base branch, so editing it affects later PRs, not the current one.
 - **Everything else that needs Theo:** a change to who can see or change data, a plan step whose
   STATUS row has ✓ in the Theo column, or any step of a unit (e.g. the cutover). Say so in the first
