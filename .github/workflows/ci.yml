@@ -1,4 +1,5 @@
-# Runs every check on every pull request, in jobs side by side, so the fastest failure shows first (P1-01c):
+# Runs every check on every pull request, in jobs side by side, so the fastest failure shows first (P1-01c). Each job
+# that tests builds site/ from src/ first (npm run build, P1-05), so every test opens the pages this commit makes:
 #   static         the type check, lint, format check, ratchet and the static tests (a minute or less)
 #   unit-scenario  the unit and scenario tests;  simulation;  page   (npm test, one Vitest project or two each)
 #   browser        the browser specs in Chromium (npx playwright test)
@@ -30,6 +31,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # The one-off byte proof below reads the base branch (HEAD^1 of GitHub's merge commit).
+          fetch-depth: 2
 
       - uses: actions/setup-node@v7
         with:
@@ -52,8 +55,23 @@ jobs:
       - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run ratchet
 
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run build
+
+      - if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: npm test -- --project static
+
+      # One-off proof for P1-05, on its own pull request only: the build reproduces the base branch's committed site/,
+      # byte for byte, every file (diff -r also fails on a file only one side has). After it merges, main has no
+      # committed site/ to compare with; P1-07 removes this step.
+      - if: ${{ !cancelled() && steps.build.outcome == 'success' && github.head_ref == 'p1-05-build-switch' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/base"
+          git archive HEAD^1 site | tar -x -C "$RUNNER_TEMP/base"
+          diff -r "$RUNNER_TEMP/base/site" site
+          { echo '### The build against the base branch'"'"'s committed site/: identical'; echo '```';
+            (cd site && find . -type f | sort | xargs sha256sum); echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   unit-scenario:
     name: unit and scenario tests
@@ -70,6 +88,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - run: npm run build
 
       - run: npm test -- --project unit --project scenario
 
@@ -89,6 +109,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run build
+
       - run: npm test -- --project simulation
 
   page:
@@ -106,6 +128,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - run: npm run build
 
       - run: npm test -- --project page
 
@@ -141,6 +165,8 @@ jobs:
 
       - if: steps.browsers.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
+
+      - run: npm run build
 
       - run: npx playwright test
 
@@ -183,6 +209,9 @@ jobs:
 
       - if: steps.engine.outputs.play == 'true'
         run: npm ci
+
+      - if: steps.engine.outputs.play == 'true'
+        run: npm run build
 
       - id: play
         if: steps.engine.outputs.play == 'true'

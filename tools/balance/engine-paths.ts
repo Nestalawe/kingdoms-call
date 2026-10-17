@@ -16,16 +16,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /** One glob per entry: "**" matches across folders, "*" within one. Paths as git names them, from the repository's
- *  root. Later, src/engine/**, src/views/** and src/content/** (P1-05). */
+ *  root. The site is built from src/ (P1-05): these are the files the GM portal's page and the scripts it loads are
+ *  built from (src/manifest.ts), and the build. tests/static/harness.test.ts checks they are exactly those. */
 export const ENGINE_PATHS: readonly string[] = [
-  // The engine and its content.
-  'site/kingdoms-call-gm-portal.html',
-  'site/kingdoms-call-data.js',
-  // The GM portal's other scripts, which the matrix loads into its page with it (tests/lib/boot.js's readPage).
-  'site/kc-safe.js',
-  'site/kc-config.js',
-  'site/kc-db-guard.js',
-  'site/kc-staging-footer.js',
+  // The engine and its content, the GM portal's other code (its page is one scope: any of it can change a game), and
+  // the scripts the page loads with it, which the matrix loads too (tests/lib/boot.js's readPage).
+  'src/engine/**',
+  'src/views/**',
+  'src/db/**',
+  'src/content/**',
+  'src/ui/gm/**',
+  'src/ui/shared/**',
+  // The build: which files make the page, and in what order.
+  'src/manifest.ts',
+  'tools/build.ts',
   // The matrix itself, its baselines, the named scenarios, and the test helpers they boot the page with.
   'tools/balance/**',
   'tests/balance/**',

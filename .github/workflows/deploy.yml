@@ -1,5 +1,5 @@
-# On main: test, then bring the live database up to date, then publish site/ to GitHub Pages (no build step,
-# no Jekyll). Runs on a push to main, or by hand; the jobs that change anything refuse any other branch, so a
+# On main: test, then bring the live database up to date, then build site/ from src/ (npm run build, P1-05) and
+# publish it to GitHub Pages (no Jekyll). Runs on a push to main, or by hand; the jobs that change anything refuse any other branch, so a
 # manual run from a branch only tests. Needs Settings → Pages → Source set to "GitHub Actions".
 #
 # The order (P0-17, P0-33): test → migrate production → deploy site. Staging isn't touched: each pull request
@@ -103,6 +103,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # The same build the tests ran on (ci.yml). It needs Node only: nothing is installed.
+      - run: npm run build
 
       - uses: actions/upload-pages-artifact@v5
         with:

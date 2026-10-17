@@ -85,10 +85,11 @@ function classify(changes,existing=[],{allowDelete=false}={}){
 // A pull request changes the database or the site, never both. They go live at different moments (the
 // database when Toby approves it, the site straight after), and players keep old pages open, so each must
 // work without the other; separate pull requests make that the shape of the work. The why, for Toby:
-// supabase/README.md, "Database and site changes go separately".
+// supabase/README.md, "Database and site changes go separately". The site's files are under src/ (built into site/,
+// which isn't in git, since P1-05).
 const WHY='https://github.com/Nestalawe/kingdoms-call/blob/main/supabase/README.md#database-and-site-changes-go-separately';
 function mixedChange(files){
-  const db=files.filter(f=>f.startsWith(`${DIR}/`)), site=files.filter(f=>f.startsWith('site/'));
+  const db=files.filter(f=>f.startsWith(`${DIR}/`)), site=files.filter(f=>f.startsWith('src/'));
   if(!db.length||!site.length) return null;
   return `This pull request changes both the database (${db.length} migration file${db.length>1?'s':''}) and the site `
     +`(${site.length} file${site.length>1?'s':''}). Split it in two: first the database change, which must work with `

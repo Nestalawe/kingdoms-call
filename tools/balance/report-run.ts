@@ -3,8 +3,8 @@
 // job uploads the report and a separate workflow posts it as the pull request's comment (balance-report.yml).
 // - The base's games are its committed baseline (git show REF:tests/balance/baseline/matrix.json): never played.
 // - Where the changed games first differ: up to 12 of them are replayed on both sides, each only up to the first turn
-//   that differs, keeping that turn's GM log. The base's side plays a copy of the base's site (git archive REF site,
-//   through KC_SITE); this side plays this site (or KC_SITE's). A replay that doesn't match its own baseline is left
+//   that differs, keeping that turn's GM log. The base's side plays a copy of the base's site (git archive, built if
+//   it has src/: sides.ts, withSiteAt; through KC_SITE); this side plays this site, built from src/ (or KC_SITE's). A replay that doesn't match its own baseline is left
 //   out, with a note (a pull request that changes the runner can do that).
 // Options: --out DIR (default balance-report/: report.md and report.json), --jobs N (default one per core).
 // With GITHUB_STEP_SUMMARY set, it adds the report to the job's summary too.
@@ -26,7 +26,7 @@ import {
   type FirstDiff,
 } from './report.ts';
 import { playAll } from './run.ts';
-import { withSiteAt } from './sides.ts';
+import { buildSite, withSiteAt } from './sides.ts';
 
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 << 20 });
 
@@ -80,6 +80,7 @@ async function main(): Promise<number> {
       const spec = specs.get(r.id);
       return spec ? [{ spec, untilTurn: r.turn }] : [];
     });
+    buildSite();
     const [onBase, onHead] = await withSiteAt(values.base, (site) =>
       Promise.all([
         playAll(jobsFor, Math.max(1, Math.floor(jobs / 2)), site),

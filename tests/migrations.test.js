@@ -170,9 +170,9 @@ test('a failed CLI call is reported by its own message, never with the database 
 test('a pull request changes the database or the site, never both',()=>{
   const mig=`${D}${NEXT}_banners.sql`;
   assert.equal(mixedChange([mig,'supabase/schemas/public/tables/games.sql','supabase/tests/database/01_games.test.sql']),null);
-  assert.equal(mixedChange(['site/kingdoms-call-gm-portal.html','tests/gm-messaging-boot.test.js']),null);
-  assert.equal(mixedChange(['supabase/README.md','site/kingdoms-call-gm-portal.html']),null,'docs about the database are fine');
-  const msg=mixedChange([mig,'site/kingdoms-call-gm-portal.html','site/kingdoms-call-player-portal.html']);
+  assert.equal(mixedChange(['src/engine/run-turn.js','tests/gm-messaging-boot.test.js']),null);
+  assert.equal(mixedChange(['supabase/README.md','src/engine/run-turn.js']),null,'docs about the database are fine');
+  const msg=mixedChange([mig,'src/engine/run-turn.js','src/ui/player/map.js']);
   assert.match(msg,/1 migration file\) and the site \(2 files\)/);
   assert.match(msg,/Split it in two: first the database change/);
   assert.match(msg,/supabase\/README\.md#database-and-site-changes-go-separately/);

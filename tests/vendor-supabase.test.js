@@ -3,7 +3,8 @@
 //   - site/vendor/ holds exactly one supabase-js-<version>.min.js;
 //   - no page loads a script from another site, or writes one in with document.write;
 //   - every page that creates the database client loads that file, before the script that uses it;
-//   - docs/ARCHITECTURE.md names the same version and the file's SHA-256, so an edited or swapped copy is caught.
+//   - docs/ARCHITECTURE.md names the same version (as src/vendor/<file>, its source) and the file's SHA-256, so an
+//     edited or swapped copy is caught.
 // The real-browser side (which requests a page makes) is tests/browser/third-party-requests.spec.ts. Reads site/
 // (or $KC_SITE).
 const fs=require('fs'), path=require('path'), crypto=require('crypto');
@@ -36,7 +37,8 @@ for(const name of fs.readdirSync(SITE).filter(f=>f.endsWith('.html')).sort()){
 if(lib){
   const doc=fs.readFileSync(path.join(__dirname,'..','docs','ARCHITECTURE.md'),'utf8');
   const sha=crypto.createHash('sha256').update(fs.readFileSync(path.join(VENDOR,lib))).digest('hex');
-  if(!doc.includes(`site/vendor/${lib}`)) fail(`docs/ARCHITECTURE.md doesn't name site/vendor/${lib}`);
+  // The doc names the copy's source, src/vendor/ (the site is built from src/ since P1-05).
+  if(!doc.includes(`src/vendor/${lib}`)) fail(`docs/ARCHITECTURE.md doesn't name src/vendor/${lib}`);
   else if(!doc.includes(sha)) fail(`docs/ARCHITECTURE.md doesn't give ${lib}'s SHA-256 (${sha}): the file changed, or the doc wasn't updated with it`);
   else ok(`docs/ARCHITECTURE.md names ${lib} and its SHA-256`);
 }

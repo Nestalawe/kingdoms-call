@@ -11,14 +11,14 @@ supabase/**
 # CI, deploy and this warning.
 .github/**
 
-# Third-party code served with the site.
-site/vendor/**
+# Third-party code served with the site (the site is built from src/ since P1-05).
+src/vendor/**
 
 # Which database the site talks to.
-site/kc-config.js
+src/db/kc-config.js
 
 # The escaping helper. Uncomment when P0-19 creates it.
-# site/kc-safe.js
+# src/ui/shared/kc-safe.js
 
 # Dependencies and the scripts that run the tests (from P1-01a).
 package.json
@@ -26,7 +26,7 @@ package-lock.json
 
 # The test harness: the Claude Code hooks and settings, the tool settings, the Node pin, the test run's own
 # checks, the ratchet, the harness's self-test (P1-01b), the balance matrix's code (P1-02) and the script that
-# posts its report (P1-03a). Loosening any of
+# posts its report (P1-03a), and the build that makes the site every test opens (P1-05). Loosening any of
 # them should be seen. Some files don't exist yet (dependency-cruiser, knip): listed so they're covered from the
 # start. The balance baselines (tests/balance/baseline/) aren't listed: CI's balance job checks them, so a pull
 # request that changes play isn't flagged for its data.
@@ -48,4 +48,5 @@ tools/balance/**
 tools/github/**
 tools/hooks/**
 tools/check.*
+tools/build.*
 tools/ratchet.*
