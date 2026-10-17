@@ -74,7 +74,7 @@ function _neutralAdjIds(gs, p){
 //   they are already best at (a random one of them if several tie), 25% it goes to a different
 //   skill of theirs chosen at random. Falls back to the other branch when one has nothing legal.
 function progressNeutralHeroes(gs, emit, rng){
-  rng=rng||Math.random;
+  rng=rng||kcRng;
   const turn=(gs&&gs.turn)||0;
   if(turn<NEUTRAL_PROG_FROM_TURN) return [];
   const chars=(gs&&gs.characters)||[];

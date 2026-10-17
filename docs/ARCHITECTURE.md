@@ -216,6 +216,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (`battleFacedClauses`, a map read from the deploy's grids right after the deploy, before the stay-or-retreat
   estimate faces the survivors afresh); the losses tally (`battleTallyLine`) reads a line's owner and unit
   type from the company named first in it, which is always the company's own reference.
+- **Dice and the clock** (P1-07). Every random number the GM portal's code draws (dice, shuffles, bot choices, the
+  world map, id suffixes) comes from `kcRng()` (`src/engine/rng.js`): one sfc32 generator, the first file of the
+  page's main script, seeded once per page load from `crypto.getRandomValues`, or from the seed a test gives the page.
+  The engine and its views read the time only through `kcClock()` (`src/engine/clock.js`, `Date.now()` when called);
+  the screens read `Date` as before. `dice-and-clock` keeps `Math.random` and `Date` out
+  ([traps.md](traps.md#dice-come-from-kcrng)). P1-18 makes the seed and the time inputs of the turn.
 - **Engine functions are nested inside `runTurn`** (combat, terrain modifiers, …). Tests reach them by
   injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).
   Phase 1 of the roadmap lifts them out into modules.
@@ -338,7 +344,7 @@ footer says which pull request and commit is on staging, linking to the pull req
 
 ## Tests
 
-`npm test` boots the real pages in jsdom against an in-memory Supabase stand-in, with a seeded `Math.random` (and,
+`npm test` boots the real pages in jsdom against an in-memory Supabase stand-in, with seeded dice (`kcRng`) (and,
 where a test asks, a pinned clock). It runs whole all-bot games through the real `runTurn`. What only a real browser
 shows (layout, which requests a page makes, an image's onerror really firing) is in the browser specs:
 `npx playwright test` opens the pages in Chromium, served from one folder as deployed.

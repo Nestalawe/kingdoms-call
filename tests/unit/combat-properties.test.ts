@@ -7,7 +7,7 @@
 // turn run first; the "  // 4. Run all 5 phases" hook hands them back (tests/lib/pc-hooks.js).
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
-import { seededRandom } from '../lib/boot.js';
+import type { KcRng } from '../lib/boot.js';
 import { bootPersonalCombat, type Combatant } from '../lib/pc-hooks.js';
 
 const { W, PC, base, MON, errs } = await bootPersonalCombat([
@@ -48,7 +48,7 @@ const KINDS = [
 
 /** Every dice roll the page makes from now on comes from this seed. */
 const reseed = (seed: number) => {
-  (W['Math'] as Math).random = seededRandom(seed);
+  (W['kcRng'] as KcRng).seed(seed);
 };
 
 const level = fc.integer({ min: 0, max: 9 });

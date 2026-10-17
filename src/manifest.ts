@@ -25,6 +25,9 @@ export const PAGES: Readonly<Record<string, Page>> = {
       'boot-reporter': ['ui/gm/boot-reporter.js'],
       style: ['ui/gm/style.css'],
       main: [
+        // The dice and the clock come first, so no code can draw or read them before they exist (P1-07).
+        'engine/rng.js',
+        'engine/clock.js',
         'ui/gm/startup.js',
         'engine/army-tables.js',
         'engine/battle/fates.js',

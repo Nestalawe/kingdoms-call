@@ -12,7 +12,7 @@
 // and the reports are put together there too.
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
-import { pinnedDate, seededRandom, type PageWindow } from '../lib/boot.js';
+import { pinnedDate, type KcRng, type PageWindow } from '../lib/boot.js';
 import { checkLeaks, describeBreaches, type SavedState } from '../lib/invariants.ts';
 import { bootScenario, type Order } from '../lib/scenario.js';
 
@@ -75,7 +75,7 @@ type Input = typeof turnArb extends fc.Arbitrary<infer T> ? T : never;
 
 /** Plays one turn of `input`, with `onPhaseEnd` called at the end of each phase. */
 async function play(input: Input, onPhaseEnd: (ph: number, G: World) => void) {
-  (W['Math'] as Math).random = seededRandom(input.seed);
+  (W['kcRng'] as KcRng).seed(input.seed);
   W['Date'] = pinnedDate(RealDate, NOW);
   W['__phaseEnd'] = onPhaseEnd;
   try {

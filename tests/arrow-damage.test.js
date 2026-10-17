@@ -24,8 +24,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   W.eval(`currentGame={id:'gd',turn:1,status:'active',name:'T'};`);
   await W.runTurn(); await new Promise(r=>setTimeout(r,10));
   const PC=W.__PC; if(!PC||typeof PC.pcArrowDamage!=='function'){ console.log('hook missing: pcArrowDamage not exposed'); process.exit(1); }
-  const realRandom=W.Math.random;
-  const pin=(r,f)=>{ W.Math.random=()=>r; try{ return f(); } finally{ W.Math.random=realRandom; } };
+  const pin=(r,f)=>{ const real=W.kcRng.use(()=>r); try{ return f(); } finally{ W.kcRng.use(real); } };
   const st=JSON.parse(WRITES.filter(w=>w.table==='games'&&w.val&&w.val.game_state).slice(-1)[0].val.game_state);
   const base=st.characters.find(c=>c.alive&&c.player!=null);
   for(const arch of [0,1,3,5,8]){

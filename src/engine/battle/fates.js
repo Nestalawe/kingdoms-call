@@ -19,7 +19,7 @@
 // Returns {died, promoted, demoted, disbanded, held, survived}.
 const TROLL_REGEN_CHANCE=0.30;   // Regenerating Hide (the Cave Trolls)
 function rollUnitFates(force, o){
-  const rng=o.rng||Math.random, tiers=o.tiers||QUALITY_TIERS, say=o.say||(()=>{}), ref=o.unitRef||unitRef, who=o.owner||'';
+  const rng=o.rng||kcRng, tiers=o.tiers||QUALITY_TIERS, say=o.say||(()=>{}), ref=o.unitRef||unitRef, who=o.owner||'';
   const dust=a=>a._isSkeletal?' Their bones crumble to dust — gone forever.':'';
   const diedVerb=o.diedVerb||(o.won?'were destroyed in the fighting.':'were destroyed in the rout!'), promoteVerb=o.promoteVerb||'earn promotion to';
   const clauseOf=a=>{ const f=o.faced; if(!f||!a) return ''; const c=typeof f==='function'?f(a):(typeof f.get==='function'?f.get(a):null); return c?String(c):''; };

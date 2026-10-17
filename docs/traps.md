@@ -253,6 +253,29 @@ ones it can't, or they cost time:
   collapse them into the shared table.
 - Never reorder a character's `items` array. Send Item addresses items by index.
 
+## Dice come from `kcRng()`
+
+Every random number the GM portal's own code draws comes from `kcRng()` (`src/engine/rng.js`, P1-07): one sfc32
+generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.js`) or, on the
+live site, from `crypto.getRandomValues`. The engine and its views read the time through `kcClock()`
+(`src/engine/clock.js`), which reads `Date.now()` when called.
+
+- Don't write `Math.random` anywhere in `src/` (but `rng.js` and `vendor/`), or `Date` in `src/engine/` or
+  `src/views/` (but `clock.js`): `npm test`'s `dice-and-clock` fails. Pass the generator as `kcRng` (e.g.
+  `shuffleP(list, kcRng)`); a date is `kcClock.date()`. The page's own screens (deadlines, "x minutes ago") still read
+  `Date`.
+- Adding, removing or moving one draw shifts every draw after it, so every balance game changes
+  ([Order is data](#order-is-data)). A pure move keeps each draw where it was.
+- A test fixes dice through the page's hook, never through the page's `Math.random`: nothing in `src/` reads it, so
+  such a test would pin nothing and still pass. `const was=W.kcRng.use(()=>0.5); try{ … } finally{ W.kcRng.use(was); }`
+  draws from your function for a while; `W.kcRng.seed(n)` starts again from seed `n`.
+- Code a test cuts out of the page and runs on its own needs a `kcRng` or `kcClock` of its own (`home-placement`,
+  `leaderboard-records`).
+- Keep the generator in an object's property (`_kcRng.next`), not in a top-level `let`. With a `let`, V8 (Node 24.22)
+  sometimes runs an optimised `kcRng` built against the old value: after `kcRng.seed` or `kcRng.use`, the dice quietly
+  go back to the old stream. It showed in about 1 run in 20 of `rng`'s reseed test, and in 13 of 60,000 reseeds under
+  stress; the property form showed none. P1-09 makes `rng` a module: keep the state in an object there too.
+
 ## A new army unit is a dozen tables
 
 A unit type is keyed by its name in tables spread over three files, and nothing throws when one is

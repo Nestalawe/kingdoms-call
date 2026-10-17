@@ -123,7 +123,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     ok(turtle.h.immune===true&&turtle.h.dmg===0&&!turtle.t._tempStrReduction,'Shell Wall: a volley at the Great Turtles does nothing (immune, as the Ironclads)');
     ok(ev("missileCapReached({type:'Great Turtles'},{type:'Yeoman Longbows'})")===true,'…and archers never waste a shot on them (the target pool skips them)');
     // Thick Hide: the same roll, half the damage (the roll is pinned so the two shots are the same shot)
-    ev('Math.random=()=>0.5');
+    ev('kcRng.use(()=>0.5)');
     const levy=shot('Shieldwall Levies'), bear=shot('Great Bears');
     ok(levy.h.dmg>=2&&bear.h.dmg===Math.ceil(levy.h.dmg/2)&&bear.h.thickHide===true,`Thick Hide: the shot that takes ${levy.h.dmg} from Levies takes ${bear.h.dmg} from Great Bears (half, rounded up)`); }
 

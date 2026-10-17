@@ -26,7 +26,7 @@ const SIGNATURE_WEIGHT_P=6;
 // offered one now offer another ground unit of the same cell instead, where the cell has one to
 // spare; where it has none, the flyer stays (since item 15 nothing is borrowed from another terrain).
 // The king's home province is untouched (fullRaceLandRoster always grants the complete racial roster).
-function provincePoolSize(rnd){ return (rnd||Math.random)()<0.75?2:3; }
+function provincePoolSize(rnd){ return (rnd||kcRng)()<0.75?2:3; }
 const GEN_FLYER_TYPES=new Set(KC_UNIT_CLASS.flying);
 const FLYER_PROVINCE_KEEP=0.5; // share of would-be flyer offers that survive
 function buildHumanoidPool(terrain, race, count, rnd){
@@ -220,7 +220,7 @@ function encounterClearGold(feat){
   if(feat._hoardV2) return featureTreasure(feat); // the one hoard figure
   if(feat._clearGold==null){
     const band=ENCOUNTER_CLEAR_GOLD_BANDS[(feat.monster&&feat.monster.power)||'Weak']||[1,5];
-    feat._clearGold=Math.floor(Math.random()*(band[1]-band[0]+1))+band[0];
+    feat._clearGold=Math.floor(kcRng()*(band[1]-band[0]+1))+band[0];
   }
   return feat._clearGold;
 }

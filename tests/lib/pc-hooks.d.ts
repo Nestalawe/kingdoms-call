@@ -31,5 +31,5 @@ export function bootPersonalCombat(
   opts?: { page?: string; inject?: [anchor: string, replacement: string][] },
 ): Promise<PersonalCombat>;
 
-/** Runs fn with the page's Math.random fixed at r (or a list used in turn, the last repeating). */
+/** Runs fn with the page's dice (kcRng) fixed at r (or a list used in turn, the last repeating). */
 export function pinned<T>(W: PageWindow, r: number | number[], fn: () => T): T;

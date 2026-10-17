@@ -154,7 +154,7 @@ function applyFlakScreen(myForce, enemyForce, myName, narr){
   const lines=[];
   gyros.forEach(()=>{
     if(!pool.length) return;
-    const idx=Math.floor(Math.random()*pool.length);
+    const idx=Math.floor(kcRng()*pool.length);
     const t=pool.splice(idx,1)[0];
     t._flakTargeted=true;
     const red=Math.max(1,Math.round(unitBaseStrength(t)*0.30));

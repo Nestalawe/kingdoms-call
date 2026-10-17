@@ -11,10 +11,11 @@
 //                               stand-in database reports through rpc('kc_db_version') (P0-34), unless a test
 //                               says otherwise (bootJsdom's opts.dbVersion)
 //
-// Fixed seed: when KC_SEED is set (npm test sets it), Math.random is replaced by a seeded sfc32
-// generator, both in this Node process (for a harness's own random orders) and in every page booted
-// with bootJsdom. Same seed, same random sequence. bootJsdom's opts.seed and opts.now pin one page
-// completely: its own random sequence and its clock (P1-01a).
+// Fixed seed: when KC_SEED is set (npm test sets it), this Node process's Math.random is replaced by a seeded sfc32
+// generator (for a harness's own random orders), and every page booted with bootJsdom is given a seed: its dice,
+// kcRng() (src/engine/rng.js, P1-07), are the same sfc32 generator seeded the same way. Same seed, same random
+// sequence. bootJsdom's opts.seed and opts.now pin one page completely: its dice and its clock (P1-01a). A page given
+// no seed seeds its dice from crypto.getRandomValues, as on the live site.
 const fs=require('fs'), path=require('path'), http=require('http');
 
 // KC_SITE points the tests at another copy of the site (e.g. a deliberately broken one).
@@ -48,7 +49,8 @@ function pageFiles(nameOrPath){
   return [file,...scripts.filter(f=>fs.existsSync(f))];
 }
 
-// sfc32, seeded through splitmix32 so nearby seeds give unrelated streams.
+// sfc32, seeded through splitmix32 so nearby seeds give unrelated streams. The page's kcRng (src/engine/rng.js) is the
+// same generator, seeded the same way (tests/unit/rng.test.ts).
 function seededRandom(seed){
   let s=(Number(seed)>>>0)||1;
   const mix=()=>{ s=(s+0x9e3779b9)>>>0; let z=s; z=Math.imul(z^(z>>>16),0x85ebca6b); z=Math.imul(z^(z>>>13),0xc2b2ae35); return (z^(z>>>16))>>>0; };
@@ -88,8 +90,8 @@ function withDbVersion(supabase,answers=DB_VERSION,calls){
 }
 
 // A Date that starts at `now` and moves on 1 ms at every reading (new Date(), Date.now(), Date()), so a page's
-// clock is the same on every run and two readings never tie. Dates built from a value are ordinary. P1-07 gives
-// the engine the same clock.
+// clock is the same on every run and two readings never tie. Dates built from a value are ordinary. The engine's
+// kcClock() (src/engine/clock.js, P1-07) reads it.
 function pinnedDate(RealDate,now){
   let t=typeof now==='number'?now:RealDate.parse(now);
   if(!Number.isFinite(t)) throw new Error('bootJsdom: opts.now is not a time: '+now);
@@ -112,7 +114,9 @@ if(SEED!=null&&SEED!=='') Math.random=seededRandom(SEED);
 // opts.url, opts.pretendToBeVisual   jsdom options; defaults match the original harnesses
 // opts.dbVersion, opts.dbCalls         what rpc('kc_db_version') answers, and a list recording the page's
 //                                      database calls (withDbVersion above); by default an up-to-date database
-// opts.seed       the page's own Math.random seed (by default each page booted gets its own stream from KC_SEED)
+// opts.seed       the seed of the page's dice, kcRng (by default each page booted gets its own stream from KC_SEED). The
+//                 page's Math.random gets the same seed, for any code outside src/. A test fixes dice in a page that
+//                 has booted through kcRng.seed(n) or kcRng.use(fn) (docs/traps.md, "Dice come from kcRng()")
 // opts.now        pins the page's clock: Date and Date.now start at this time (ms since 1970, or a date
 //                 string) and move on 1 ms each time the page reads it (pinnedDate below)
 function bootJsdom(html,opts={}){
@@ -122,8 +126,8 @@ function bootJsdom(html,opts={}){
     pretendToBeVisual:opts.pretendToBeVisual!==undefined?opts.pretendToBeVisual:true,
     url:opts.url||'https://example.org/',
     beforeParse(w){
-      if(opts.seed!=null) w.Math.random=seededRandom(opts.seed);
-      else if(SEED!=null&&SEED!=='') w.Math.random=seededRandom((Number(SEED)>>>0)+0x10000*(n+1));
+      const seed=opts.seed!=null?opts.seed:SEED!=null&&SEED!==''?(Number(SEED)>>>0)+0x10000*(n+1):null;
+      if(seed!=null){ w.KC_RNG_SEED=seed; w.Math.random=seededRandom(seed); }
       if(opts.now!=null) w.Date=pinnedDate(w.Date,opts.now);
       if(opts.supabase) w.supabase=opts.supabase;
       w.confirm=()=>true; w.alert=()=>{};

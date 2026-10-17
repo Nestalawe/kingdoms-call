@@ -14,7 +14,8 @@ ${helpers}
 ${place}
   return {homeCells,homeMin,cellDistRC};
 });`;
-const make=new Function(body)();
+// The cut-out code draws its dice from kcRng (src/engine/rng.js, not in the cut): here, this process's seeded Math.random.
+const make=new Function('kcRng',body)(()=>Math.random());
 
 const sizes={p2:[8,5,2],p3:[8,7,3],p4:[9,7,4],p5:[12,7,5],p6:[15,7,6],p7:[16,7,7],p8:[17,8,8],p9:[16,11,9],p10:[16,11,10]};
 const RUNS=parseInt(process.env.RUNS||'200');

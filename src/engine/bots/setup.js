@@ -40,10 +40,10 @@ function botKingdomName(race){
   const unit=BOT_KINGDOM_NAME_UNIT[race]||'Free Lances';
   const pool=(typeof ARMY_UNIT_NAMES!=='undefined'&&ARMY_UNIT_NAMES[unit])||['the Free Company'];
   for(let att=0;att<400;att++){
-    const nm=pool[Math.floor(Math.random()*pool.length)];
+    const nm=pool[Math.floor(kcRng()*pool.length)];
     if(!_usedBotKingdomNames.has(nm)){ _usedBotKingdomNames.add(nm); return _capRealm(nm); }
   }
-  const base=pool[Math.floor(Math.random()*pool.length)];
+  const base=pool[Math.floor(kcRng()*pool.length)];
   let n=2,nm; do{ nm=`${base} ${_toRoman(n)}`; n++; }while(_usedBotKingdomNames.has(nm));
   _usedBotKingdomNames.add(nm); return _capRealm(nm);
 }
@@ -56,7 +56,7 @@ function pickBotAlignment(takenCounts){
   const safePool=pool.length?pool:['Neutral'];
   let bestN=Infinity; safePool.forEach(a=>{ const n=takenCounts[a]||0; if(n<bestN)bestN=n; });
   const ties=safePool.filter(a=>(takenCounts[a]||0)===bestN);
-  return ties[Math.floor(Math.random()*ties.length)];
+  return ties[Math.floor(kcRng()*ties.length)];
 }
 // ── BALANCED ALIGNMENT SPREAD ────
 // With humans in the game the bots' alignments are no longer merely "spread out": they are chosen
@@ -91,7 +91,7 @@ function pickBotAlignmentBalanced(takenCounts, humanAligns, friends, foes){
     if(!best||cost<best.cost) best={cost,ties:[a]};
     else if(Math.abs(cost-best.cost)<1e-9) best.ties.push(a);
   });
-  return best.ties[Math.floor(Math.random()*best.ties.length)];
+  return best.ties[Math.floor(kcRng()*best.ties.length)];
 }
 // Generate `count` bot setup objects, indexed startIndex..startIndex+count-1 (kept CONTIGUOUS with
 // the human indices so generateNewGame's array-position player id matches
@@ -108,8 +108,8 @@ function generateBotSetups(humanSetups, count, startIndex){
     const alignment=pickBotAlignmentBalanced(takenCounts,humanAligns,friends,foes);
     humanAligns.forEach((ha,h)=>{ if(alignDistP(alignment,ha)<=BOT_ALLY_ALIGN_DIST) friends[h]++; else foes[h]++; });
     takenCounts[alignment]=(takenCounts[alignment]||0)+1;
-    const race=RACES_P[Math.floor(Math.random()*RACES_P.length)];
-    const temper=TEMPERS_P[Math.floor(Math.random()*TEMPERS_P.length)];
+    const race=RACES_P[Math.floor(kcRng()*RACES_P.length)];
+    const temper=TEMPERS_P[Math.floor(kcRng()*TEMPERS_P.length)];
     const skills={...(BOT_SKILL_BUILD[alignment]||BOT_SKILL_BUILD.Neutral)};
     bots.push({
       id:startIndex+i, isBot:true,

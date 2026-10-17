@@ -320,7 +320,7 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs, profNam
   put('most_spells_game',gameSpells,G0); put('most_captures_game',gameCaps,G0);
   put('most_deaths_game',gameDeaths,G0); put('most_lairs_game',gameLairs,G0);
 
-  const finishedAt=(results.map(r=>r.created_at).filter(Boolean).sort()[0])||new Date().toISOString();
+  const finishedAt=(results.map(r=>r.created_at).filter(Boolean).sort()[0])||kcClock.date().toISOString();
   return {
     game_id:String(gameId),
     game_name:(gameRow&&gameRow.name)||any.game_name||('Game '+gameId),

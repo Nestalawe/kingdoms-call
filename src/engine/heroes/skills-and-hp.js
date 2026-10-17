@@ -90,7 +90,7 @@ function hpGainBand(ch, players){
 function rollHpGain(ch, players, why){
   if(!ch||ch.alive===false) return {gain:0,maxHp:ch?ch.maxHp:0};
   const band=hpGainBand(ch,players);
-  const gain=Math.floor(Math.random()*(band.hi-band.lo+1))+band.lo;
+  const gain=Math.floor(kcRng()*(band.hi-band.lo+1))+band.lo;
   ch.hpEarned=Math.max(0,Math.round(ch.hpEarned||0))+gain; syncMaxHp(ch,players);
   return {gain, maxHp:ch.maxHp, why:why||''};
 }

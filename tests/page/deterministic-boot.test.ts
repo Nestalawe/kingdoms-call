@@ -1,9 +1,11 @@
 // Deterministic boot (P1-01a): the GM portal booted with the same seed and the same clock (bootJsdom's `seed` and
 // `now`) plays the same all-bot turn byte for byte: the saved world, every realm's report and the turn's log rows.
-// A different seed plays a different turn, so the seed is what decides it. Level 4 (page): the turn runs inside the
-// booted page (runTurn), and the clock it reads is the page's own Date.
+// A different seed plays a different turn, so the seed is what decides it. The seed reaches the turn through the page's
+// dice, kcRng (src/engine/rng.js, P1-07): a run whose Math.random draws from another stream still plays the same bytes,
+// so nothing in the turn draws from Math.random. Level 4 (page): the turn runs inside the booted page (runTurn), and
+// the clock it reads (kcClock, src/engine/clock.js) is the page's own Date.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { bootJsdom, readPage } from '../lib/boot.js';
+import { bootJsdom, readPage, seededRandom } from '../lib/boot.js';
 import { makeStub } from '../lib/stub-db.js';
 
 const NOW = '2026-10-01T12:00:00Z';
@@ -19,7 +21,8 @@ afterEach(() => {
 });
 
 // Boots the GM portal, makes a world where every realm is a bot, runs one turn, and returns what was saved.
-async function oneTurn(seed: number, now: string): Promise<string> {
+// `mathRandomSeed` sets the page's Math.random to another stream than its dice (by default both have `seed`).
+async function oneTurn(seed: number, now: string, mathRandomSeed?: number): Promise<string> {
   const S = makeStub();
   const errors: string[] = [];
   const dom = bootJsdom(readPage('kingdoms-call-gm-portal.html'), {
@@ -27,6 +30,7 @@ async function oneTurn(seed: number, now: string): Promise<string> {
     seed,
     now,
     setup(w) {
+      if (mathRandomSeed !== undefined) (w['Math'] as Math).random = seededRandom(mathRandomSeed);
       w.addEventListener('error', (e) => errors.push(e.error?.stack ?? e.message));
       w.onunhandledrejection = (e) => errors.push(String(e.reason));
       w.console.error = (...a) => errors.push('console.error: ' + a.map(String).join(' '));
@@ -108,7 +112,11 @@ function firstDifference(a: string, b: string): string {
 test('the same seed and clock play the same turn, byte for byte; another seed plays another', async () => {
   const first = await oneTurn(1234, NOW);
   const second = await oneTurn(1234, NOW);
+  const otherMathRandom = await oneTurn(1234, NOW, 999);
   const other = await oneTurn(5678, NOW);
   expect(second === first, firstDifference(first, second)).toBe(true);
+  expect(otherMathRandom === first, 'the turn drew from Math.random: ' + firstDifference(first, otherMathRandom)).toBe(
+    true,
+  );
   expect(other === first, 'a run with another seed saved the same bytes').toBe(false);
 }, 60_000);

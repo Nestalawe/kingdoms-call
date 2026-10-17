@@ -36,7 +36,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   };
   const cellDistRC=(a,b)=>{let dc=Math.abs(a.c-b.c);dc=Math.min(dc,cols-dc);const dr=Math.abs(a.r-b.r);return Math.max(dc,dr,(dc+dr)>>1);};
   const navalLevelOf=(sp)=>{let lvl=0;if(sp&&sp.skills)Object.entries(sp.skills).forEach(([k,v])=>{if((k||'').toLowerCase()==='naval')lvl+=v;});return lvl;};
-  const pickLand=()=>{const t=['plain','forest','mountain','desert','jungle'];return t[Math.floor(Math.random()*t.length)];};
+  const pickLand=()=>{const t=['plain','forest','mountain','desert','jungle'];return t[Math.floor(kcRng()*t.length)];};
 
   // ── THEMATIC PROVINCE NAMING ── Names are assigned in a dedicated pass AFTER the map is fully
   // populated (terrain, race and recruitable armies all final, including king home provinces), so
@@ -62,7 +62,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     shark: {pre:['Shark','Red','Fin','Hunger','Blood','Teeth','Reef','Sandbar','Wreck','Carrion'],suf:[' Shallows',' Bank',' Reef',' Shoals',' Bar',' Flats',' Sound',' Run']},   // 2026-10-13: shark waters
     open:  {pre:['Storm','Grey','Salt','Foam','Pale','Azure','Wild','Bitter','Calm','Wide','Open','Far'],suf:[' Sea',' Straits',' Channel',' Gulf',' Waters',' Expanse',' Reach',' Ocean',' Bight']},
   };
-  const pickFrom=arr=>arr[Math.floor(Math.random()*arr.length)];
+  const pickFrom=arr=>arr[Math.floor(kcRng()*arr.length)];
   const toRoman=n=>['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'][n]||(''+n);
   const themedName=(p)=>{
     if(p.terrain==='sea'){
@@ -97,7 +97,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   const eligibleCells=[];
   for(let r=1;r<=rows-2;r++) for(let c=0;c<cols;c++) eligibleCells.push({r,c,id:cellIdRC(r,c)});
   const buildLayout=()=>{
-    const hc=[eligibleCells[Math.floor(Math.random()*eligibleCells.length)]]; // first king: random
+    const hc=[eligibleCells[Math.floor(kcRng()*eligibleCells.length)]]; // first king: random
     while(hc.length<setupPlayers.length){
       // Farthest-point: pick the eligible cell whose NEAREST chosen king is as far away as
       // possible. Collect ALL cells that tie for the best distance and choose one at random.
@@ -111,7 +111,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         if(minD>bestMin){bestMin=minD;bestCells=[cell];}
         else if(minD===bestMin){bestCells.push(cell);}
       }
-      hc.push(bestCells.length?bestCells[Math.floor(Math.random()*bestCells.length)]:eligibleCells[Math.floor(Math.random()*eligibleCells.length)]);
+      hc.push(bestCells.length?bestCells[Math.floor(kcRng()*bestCells.length)]:eligibleCells[Math.floor(kcRng()*eligibleCells.length)]);
     }
     return hc;
   };
@@ -189,7 +189,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   }
   const _best=_cands.reduce((b,x)=>(b==null||scoreCmp(x[1],b)>0)?x[1]:b,null);
   const _acceptable=_cands.filter(x=>scoreCmp(x[1],_best)===0);
-  const _pick=_acceptable.length?_acceptable[Math.floor(Math.random()*_acceptable.length)]:_cands[0];
+  const _pick=_acceptable.length?_acceptable[Math.floor(kcRng()*_acceptable.length)]:_cands[0];
   let homeCells=_pick[0], homeMin=_pick[1][0];
   if(!(homeMin>=KING_MIN_SPACING)) console.warn(`World gen: no home layout on a ${cols}x${rows} map keeps ${KING_MIN_SPACING} hexes between all ${setupPlayers.length} capitals (best ${homeMin}) — the map is too small for this many realms.`);
   const homeIdSet=new Set(homeCells.map(h=>h.id));
@@ -227,7 +227,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     if(i<shuffled.length){ constraint[shuffled[i].id]={terrain:pickLand(),taxBand:'poor'}; i++; }        // one poor land
     if(i<shuffled.length){ constraint[shuffled[i].id]={terrain:pickLand(),taxBand:'prosperous'}; i++; }  // one prosperous land
     for(;i<shuffled.length;i++){
-      if(seaCount<HOME_MAX_SEA && Math.random()<HOME_RING_SEA_CHANCE){ constraint[shuffled[i].id]={terrain:'sea',taxBand:null}; seaCount++; }
+      if(seaCount<HOME_MAX_SEA && kcRng()<HOME_RING_SEA_CHANCE){ constraint[shuffled[i].id]={terrain:'sea',taxBand:null}; seaCount++; }
       else constraint[shuffled[i].id]={terrain:pickLand(),taxBand:null};
     }
   });
@@ -237,7 +237,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   // exactly half-and-half; parity is seeded randomly so it isn't always Creature-first. "Primal"
   // stays the internal umbrella — players only ever see the Creature / Monster label (see
   // formatRace / primalClass in the player portal).
-  let _primalCreatureNext = Math.random()<0.5;
+  let _primalCreatureNext = kcRng()<0.5;
   // Non-primal land provinces are split EXACTLY equally between the four humanoid races. A plain
   // per-province random draw drifted several provinces off even on a normal map, which visibly
   // favoured one race's units. Instead we deal from a repeatedly-reshuffled four-card deck: within
@@ -267,7 +267,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       if(con){ terrainGrid[id]=con.terrain; continue; }
       const leftSea = col>0 && terrainGrid[row*cols+(col-1)]==='sea';
       const upSea   = row>0 && terrainGrid[(row-1)*cols+col]==='sea';
-      terrainGrid[id]=(Math.random()<((leftSea||upSea)?SEA_CLUSTER_RATE:SEA_BASE_RATE))?'sea':pickLand();
+      terrainGrid[id]=(kcRng()<((leftSea||upSea)?SEA_CLUSTER_RATE:SEA_BASE_RATE))?'sea':pickLand();
     }
   }
   {
@@ -280,14 +280,14 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       let pool=freeIds.filter(id=>terrainGrid[id]!=='sea'&&nbrIds(id).some(n=>terrainGrid[n]==='sea'));
       if(!pool.length) pool=freeIds.filter(id=>terrainGrid[id]!=='sea'); // no shoreline at all: seed a lake
       if(!pool.length) break;                                             // every free cell is already water
-      terrainGrid[pool[Math.floor(Math.random()*pool.length)]]='sea';
+      terrainGrid[pool[Math.floor(kcRng()*pool.length)]]='sea';
     }
     guard=0;
     while(seaCount()>want && guard++<rows*cols*4){
       let pool=freeIds.filter(id=>terrainGrid[id]==='sea'&&nbrIds(id).some(n=>terrainGrid[n]!=='sea'));
       if(!pool.length) pool=freeIds.filter(id=>terrainGrid[id]==='sea');
       if(!pool.length) break;                                             // only tailored sea is left (a naval king's harbour)
-      terrainGrid[pool[Math.floor(Math.random()*pool.length)]]=pickLand();
+      terrainGrid[pool[Math.floor(kcRng()*pool.length)]]=pickLand();
     }
     const got=seaCount();
     if(got!==want) console.warn(`World gen: sea share ${seaPct}% asked for ${want} sea provinces on ${cols}x${rows}; the home neighbourhoods fix ${rows*cols-freeIds.length} cells, so ${got} was the nearest reachable.`);
@@ -308,7 +308,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       // Monster. Each such province recruits exactly ONE unit type — a single wild unit makes these
       // provinces special. Sea is never Primal at this stage (the sea post-pass below assigns sea
       // beasts separately).
-      const isPrimal=terrain!=='sea'&&Math.random()<PRIMAL_LAND_CHANCE;
+      const isPrimal=terrain!=='sea'&&kcRng()<PRIMAL_LAND_CHANCE;
       let race, primalUnit=null;
       if(terrain==='sea'){
         race=null;
@@ -335,7 +335,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         };
         const pool=(wantCreature?CREATURE_BY_TERRAIN:MONSTER_BY_TERRAIN)[terrain]
           ||(wantCreature?['Stone Giants']:['Cave Trolls']);
-        primalUnit=pool[Math.floor(Math.random()*pool.length)];
+        primalUnit=pool[Math.floor(kcRng()*pool.length)];
         // Province race carries the singular sub-race noun (e.g. 'Primal:Stone Giant'); the player
         // portal maps that to "Creature (Stone Giant)" / "Monster (Cave Troll)" and never shows
         // "Primal".
@@ -363,7 +363,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       // (The king's home province gets its full racial pool restored separately.)
       let armyPool;
       if(HUMANOID_RACES_GEN.has(race)){
-        const hp=buildHumanoidPool(terrain, race, provincePoolSize(Math.random), Math.random); // provisional: the race-allocation pass below rebuilds it the same way (item 15: 2 or 3 types; home restores its full roster separately)
+        const hp=buildHumanoidPool(terrain, race, provincePoolSize(kcRng), kcRng); // provisional: the race-allocation pass below rebuilds it the same way (item 15: 2 or 3 types; home restores its full roster separately)
         armyPool=[...hp.types,...hp.garrison];
       } else {
         // Primal (single wild unit) and sea provinces keep whatever their pool already holds.
@@ -382,7 +382,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         const used=new Set();
         for(let fi=0;fi<fcount;fi++){
           let fname,tries=0;
-          do{fname=pool[Math.floor(Math.random()*pool.length)];tries++;}while(used.has(fname)&&tries<20);
+          do{fname=pool[Math.floor(kcRng()*pool.length)];tries++;}while(used.has(fname)&&tries<20);
           used.add(fname);
           // Land features: exclude EVERY sea guardian so land lairs never get sea beasts.
           const landMonsters=MONSTERS_P.filter(m=>!SEA_GUARDIAN_NAMES.has(m.name));
@@ -394,8 +394,8 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
           const _tier=LAIR_TIER_ROLL();
           const _pool=landMonsters.filter(mm=>mm.power===_tier);
           const _from=_pool.length?_pool:(landMonsters.length?landMonsters:MONSTERS_P);
-          const m={..._from[Math.floor(Math.random()*_from.length)]};
-          features.push({name:fname,tier:m.power||_tier,monster:{...m},discovered:false,cleared:false,treasure:Math.max(1,Math.round(rP(1,10)*(0.4+Math.random()*0.6)))});
+          const m={..._from[Math.floor(kcRng()*_from.length)]};
+          features.push({name:fname,tier:m.power||_tier,monster:{...m},discovered:false,cleared:false,treasure:Math.max(1,Math.round(rP(1,10)*(0.4+kcRng()*0.6)))});
         }
         // ── PAGAN: ritual sites ── Standing stones of the old gods, where Pagan characters may
         // Perform Rites. Weighted heavily toward Primal country — the old faith lingers where the
@@ -409,8 +409,8 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         // with no wild creatures to bind only the Blood Offering is possible there (the Wild Hunt
         // option is gated on the province's primal armyTypes in both the order form and the
         // engine).
-        if(hasPaganPlayer && (isPrimal || Math.random()<RITUAL_SITE_CHANCE_HUMANOID)){
-          features.push({name:RITUAL_SITE_NAMES[Math.floor(Math.random()*RITUAL_SITE_NAMES.length)],
+        if(hasPaganPlayer && (isPrimal || kcRng()<RITUAL_SITE_CHANCE_HUMANOID)){
+          features.push({name:RITUAL_SITE_NAMES[Math.floor(kcRng()*RITUAL_SITE_NAMES.length)],
             ritualSite:true, monster:null, discovered:false, cleared:false, treasure:0});
         }
       }
@@ -421,7 +421,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         // Neutral army count by wealth tier — Rich 3-4 / Prosperous 2-3 / Poor 1-2. Applies to
         // humanoid AND primal land alike; primal quality still leans Veteran below.
         const dc=neutralDefCount(baseTax);
-        const defQuality=isPrimalProv?(Math.random()<0.5?'Veteran':'Average'):'Average';
+        const defQuality=isPrimalProv?(kcRng()<0.5?'Veteran':'Average'):'Average';
         // Starting neutral defenders draw only from NON-Garrison army types (garrisons stay in
         // armyTypes so they remain recruitable once the province is owned, but no neutral army
         // begins the game as a Garrison unit). Fall back to the full pool only if a province
@@ -429,7 +429,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         const defenderPool=armyPool.filter(t=>!t.toLowerCase().includes('garrison'));
         const drawPool=defenderPool.length>0?defenderPool:armyPool;
         for(let d=0;d<dc;d++){
-          const dt=drawPool[Math.floor(Math.random()*drawPool.length)];
+          const dt=drawPool[Math.floor(kcRng()*drawPool.length)];
           neutralDefenders.push({type:dt,quality:defQuality,race:race||'Human',unitName:armyUnitName(dt)});
         }
       }
@@ -460,17 +460,17 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       const pool=RACES_P.filter(r=>quota[r]>0);
       const cands=pool.length?pool:[...RACES_P];
       const weights=cands.map(r=>(SIGNATURE_TERRAIN_P[r]===p.terrain?SIGNATURE_WEIGHT_P:1)*Math.max(1,quota[r]));
-      let roll=Math.random()*weights.reduce((a,b)=>a+b,0), pick=cands[cands.length-1];
+      let roll=kcRng()*weights.reduce((a,b)=>a+b,0), pick=cands[cands.length-1];
       for(let i=0;i<cands.length;i++){ roll-=weights[i]; if(roll<=0){ pick=cands[i]; break; } }
       quota[pick]--;
       p.race=pick;
       // Rebuild everything downstream of race: the recruitable pool and the neutral garrison that
       // was rolled from it. Province count, wealth, terrain and features are untouched.
-      const hp=buildHumanoidPool(p.terrain, pick, provincePoolSize(Math.random), Math.random); // item 15: 2 (75%) or 3 (25%)
+      const hp=buildHumanoidPool(p.terrain, pick, provincePoolSize(kcRng), kcRng); // item 15: 2 (75%) or 3 (25%)
       p.armyTypes=[...hp.types,...hp.garrison];
       const drawPool=hp.types.length?hp.types:p.armyTypes;
       (p.neutralDefenders||[]).forEach(d=>{
-        d.type=drawPool[Math.floor(Math.random()*drawPool.length)];
+        d.type=drawPool[Math.floor(kcRng()*drawPool.length)];
         d.race=pick;
         d.unitName=armyUnitName(d.type);
       });
@@ -490,9 +490,9 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       const nb=provinces[nr*cols+nc];
       return nb&&nb.terrain==='sea';
     });
-    if(adjSea&&Math.random()<COASTAL_NAVAL_CHANCE){ // share of coastal humanoid provinces with a fleet option
+    if(adjSea&&kcRng()<COASTAL_NAVAL_CHANCE){ // share of coastal humanoid provinces with a fleet option
       const fleets=FLEET_BY_RACE[p.race||'Human']||['Galleon Fleet'];
-      const fleet=fleets[Math.floor(Math.random()*fleets.length)];
+      const fleet=fleets[Math.floor(kcRng()*fleets.length)];
       if(!p.armyTypes.includes(fleet)) p.armyTypes.push(fleet);
     }
   });
@@ -505,9 +505,9 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   const PRIMAL_SEA_TYPES=KC_UNIT_CLASS.primalSea.filter(t=>t!=='Shark Shoals');   // the prosperous seas' beasts; the Shark Shoals are the poor seas' (below)
   let _poorSeaShark=false;
   provinces.filter(p=>p.terrain==='sea').forEach(p=>{
-    const r=Math.random();
+    const r=kcRng();
     if(r<0.20){
-      const chosen=PRIMAL_SEA_TYPES[Math.floor(Math.random()*PRIMAL_SEA_TYPES.length)];
+      const chosen=PRIMAL_SEA_TYPES[Math.floor(kcRng()*PRIMAL_SEA_TYPES.length)];
       p.armyTypes=[chosen];
       p.race='Primal:'+chosen.replace(/s$/, '').replace('Eldritch Kraken','Kraken');   // 'Primal:Sea Giant' / 'Primal:Kraken'
       // Primal seas are Prosperous waters — tax 4-6, same band as prosperous land. (Capped at 6:
@@ -516,8 +516,8 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       // Defender count and quality (2026-10-13: both primal sea beasts are Druid 4; the Druid-5 Leviathans
       // are gone, so no sea is guarded by Veterans alone any more).
       const defCount=neutralDefCount(p.tax); // p.tax set to 4-6 above -> Prosperous 2-3
-      const defQuality=Math.random()<0.4?'Veteran':'Average';
-      const unitName=PRIMAL_UNIT_NAMES[chosen]?.[Math.floor(Math.random()*5)]||'the Ancient';
+      const defQuality=kcRng()<0.4?'Veteran':'Average';
+      const unitName=PRIMAL_UNIT_NAMES[chosen]?.[Math.floor(kcRng()*5)]||'the Ancient';
       p.neutralDefenders=Array.from({length:defCount},()=>({type:chosen,quality:defQuality,race:'Primal',unitName:armyUnitName(chosen)}));
       p.npcArmies=defCount;
       p.explored=0;
@@ -549,7 +549,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     const _seaMons=MONSTERS_P.filter(m=>SEA_GUARDIAN_NAMES.has(m.name)); // shared module-level set
     const _byTier={Weak:_seaMons.filter(m=>m.power==='Weak'),Moderate:_seaMons.filter(m=>m.power==='Moderate'),Powerful:_seaMons.filter(m=>m.power==='Powerful')};
     const _pickTier=(tax)=>{
-      const rr=Math.random();
+      const rr=kcRng();
       // 2026-09-10 item 6: softened alongside land lairs (was 50/50 P/M · 25/60/15 W/M/P · 70/30
       // W/M).
       if(tax>=5) return rr<0.35?'Powerful':(rr<0.85?'Moderate':'Weak');   // rich/primal seas: nastier
@@ -557,15 +557,15 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       return rr<0.75?'Weak':'Moderate';                                      // poor / open water: mostly weak
     };
     provinces.filter(p=>p.terrain==='sea').forEach(p=>{
-      const fcount=1+(Math.random()<0.5?1:0); // 1-2 features
+      const fcount=1+(kcRng()<0.5?1:0); // 1-2 features
       const used=new Set();
       p.features=[]; // unified source — replace anything set earlier
       for(let fi=0;fi<fcount;fi++){
-        let fname,tries=0; do{fname=SEA_FEATURE_NAMES[Math.floor(Math.random()*SEA_FEATURE_NAMES.length)];tries++;}while(used.has(fname)&&tries<20);
+        let fname,tries=0; do{fname=SEA_FEATURE_NAMES[Math.floor(kcRng()*SEA_FEATURE_NAMES.length)];tries++;}while(used.has(fname)&&tries<20);
         used.add(fname);
         const tier=_pickTier(p.tax||1);
         const pool=_byTier[tier].length?_byTier[tier]:_seaMons;
-        const m={...pool[Math.floor(Math.random()*pool.length)]};
+        const m={...pool[Math.floor(kcRng()*pool.length)]};
         p.features.push({name:fname,tier:m.power||'',discovered:false,cleared:false,monster:{...m},treasure:Math.max(1,rP(m.minG,m.maxG))});
       }
     });
@@ -577,7 +577,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   homeCells.forEach(home=>{
     const seas=neighbourCells(home.r,home.c).map(n=>provinces[n.id]).filter(p=>p&&p.terrain==='sea');
     if(!seas.length||seas.some(p=>!(p.neutralDefenders||[]).length)) return;
-    const p=seas[Math.floor(Math.random()*seas.length)];
+    const p=seas[Math.floor(kcRng()*seas.length)];
     p.armyTypes=[]; p.neutralDefenders=[]; p.npcArmies=0; p.tax=1; p.race=null;
   });
 
@@ -620,7 +620,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       // 80% roll). backfillHomeRosters applies the same rule to games already running.
       if(homeCoastal){
         const hf=({Human:['Galleon Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[sp.race])||[]; // Corsair Fleet retired
-        const pickH=hf[Math.floor(Math.random()*hf.length)];
+        const pickH=hf[Math.floor(kcRng()*hf.length)];
         if(pickH&&!best.armyTypes.includes(pickH)) best.armyTypes.push(pickH);
       }
     }
@@ -634,7 +634,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     // (terrain, tax and features kept; recruit pool and neutral garrison rebuilt).
     const _reRaceProvince=(conv,_race)=>{
         conv.race=_race;
-        const cHp=buildHumanoidPool(conv.terrain, _race, provincePoolSize(Math.random), Math.random);
+        const cHp=buildHumanoidPool(conv.terrain, _race, provincePoolSize(kcRng), kcRng);
         conv.armyTypes=[...cHp.types,...cHp.garrison];
         // Coastal humanoid provinces keep their chance of a racial fleet, same rule as world gen.
         {
@@ -645,9 +645,9 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
             const nb=provinces[nr*cols+nc];
             return nb&&nb.terrain==='sea';
           });
-          if(convCoastal&&Math.random()<COASTAL_NAVAL_CHANCE){
+          if(convCoastal&&kcRng()<COASTAL_NAVAL_CHANCE){
             const cf=({Human:['Galleon Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[_race])||[]; // Corsair Fleet retired
-            const pickF=cf[Math.floor(Math.random()*cf.length)];
+            const pickF=cf[Math.floor(kcRng()*cf.length)];
             if(pickF&&!conv.armyTypes.includes(pickF)) conv.armyTypes.push(pickF);
           }
         }
@@ -657,7 +657,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         const cPool=cDrawPool.length>0?cDrawPool:conv.armyTypes;
         const cCount=neutralDefCount(conv.tax);
         conv.neutralDefenders=Array.from({length:cCount},()=>{
-          const dt=cPool[Math.floor(Math.random()*cPool.length)];
+          const dt=cPool[Math.floor(kcRng()*cPool.length)];
           return{type:dt,quality:'Average',race:_race,unitName:armyUnitName(dt)};
         });
         conv.npcArmies=conv.neutralDefenders.length;
@@ -678,7 +678,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     // Both must be humanoid; at least one must be the king's race.
     const _pair=[poorNbr,prospNbr].filter(Boolean);
     _pair.forEach(n=>{ if(!_isHumanoid(n)) _reRaceProvince(n, sp.race); });
-    if(_pair.length&&!_pair.some(n=>n.race===sp.race)) _reRaceProvince(_pair[Math.floor(Math.random()*_pair.length)], sp.race);
+    if(_pair.length&&!_pair.some(n=>n.race===sp.race)) _reRaceProvince(_pair[Math.floor(kcRng()*_pair.length)], sp.race);
     // Remember them so the alignment primal-neighbour pass below leaves them alone where it can.
     best._homePairIds=_pair.map(n=>n.id);
     // Belt-and-braces: some own-race land neighbour must exist (covers a home with no free ring
@@ -711,7 +711,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
           const pool=_pick(_freeNbrs);
           // prefer an existing forest/jungle neighbour; else re-terrain one to forest/jungle
           cand=pool.find(n=>n.terrain==='forest'||n.terrain==='jungle')||pool[0];
-          if(cand){ if(cand.terrain!=='forest'&&cand.terrain!=='jungle') cand.terrain=Math.random()<0.5?'forest':'jungle'; }
+          if(cand){ if(cand.terrain!=='forest'&&cand.terrain!=='jungle') cand.terrain=kcRng()<0.5?'forest':'jungle'; }
         } else { // Druidic or Evil
           cand=_pick(_freeNbrs)[0];
         }
@@ -719,16 +719,16 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
           const creatureOnly=(_align==='Druidic'), monsterOnly=(_align==='Evil');
           const bank=creatureOnly?(CBT[cand.terrain]||['Stone Giants'])
                     :monsterOnly?(MBT[cand.terrain]||['Cave Trolls'])
-                                :((Math.random()<0.5?CBT:MBT)[cand.terrain]||['Stone Giants']);
-          const primalUnit=bank[Math.floor(Math.random()*bank.length)];
+                                :((kcRng()<0.5?CBT:MBT)[cand.terrain]||['Stone Giants']);
+          const primalUnit=bank[Math.floor(kcRng()*bank.length)];
           cand.race='Primal:'+(PRIMAL_ARMY_DEFS_P[primalUnit]?.race||primalUnit);
           cand.armyTypes=[primalUnit];
           const dc=neutralDefCount(cand.tax);
-          cand.neutralDefenders=Array.from({length:dc},()=>({type:primalUnit,quality:Math.random()<0.5?'Veteran':'Average',race:cand.race,unitName:armyUnitName(primalUnit)}));
+          cand.neutralDefenders=Array.from({length:dc},()=>({type:primalUnit,quality:kcRng()<0.5?'Veteran':'Average',race:cand.race,unitName:armyUnitName(primalUnit)}));
           cand.npcArmies=cand.neutralDefenders.length;
           if(_align==='Pagan' && !(cand.features||[]).some(f=>f&&f.ritualSite)){
             cand.features=cand.features||[];
-            cand.features.push({name:RITUAL_SITE_NAMES[Math.floor(Math.random()*RITUAL_SITE_NAMES.length)],ritualSite:true,monster:null,discovered:false,cleared:false,treasure:0});
+            cand.features.push({name:RITUAL_SITE_NAMES[Math.floor(kcRng()*RITUAL_SITE_NAMES.length)],ritualSite:true,monster:null,discovered:false,cleared:false,treasure:0});
           }
           cand.name=null; // re-named thematically by the naming pass
           best._alignPrimalId=cand.id;
@@ -746,7 +746,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       if(_ringPrimal.length>1){
         const keepId=(best._alignPrimalId!=null&&_ringPrimal.some(n=>n.id===best._alignPrimalId))?best._alignPrimalId:_ringPrimal[0].id;
         const HUM=KC_HUMANOID_RACES.slice();
-        _ringPrimal.filter(n=>n.id!==keepId).forEach(n=>{ _reRaceProvince(n, HUM[Math.floor(Math.random()*HUM.length)]); });
+        _ringPrimal.filter(n=>n.id!==keepId).forEach(n=>{ _reRaceProvince(n, HUM[Math.floor(kcRng()*HUM.length)]); });
       }
       delete best._alignPrimalId;
     }
@@ -759,12 +759,12 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         best.features=best.features||[];
         if(best.features.length===0){
           const wpool=FEATURE_POOLS_P[best.terrain]||FEATURE_POOLS_P.plain;
-          best.features.push({name:wpool[Math.floor(Math.random()*wpool.length)],tier:'Weak',monster:{...weakMons[Math.floor(Math.random()*weakMons.length)]},discovered:true,discoveredBy:[pi],cleared:false,treasure:Math.max(1,rP(1,6))});
+          best.features.push({name:wpool[Math.floor(kcRng()*wpool.length)],tier:'Weak',monster:{...weakMons[Math.floor(kcRng()*weakMons.length)]},discovered:true,discoveredBy:[pi],cleared:false,treasure:Math.max(1,rP(1,6))});
         } else if(!best.features.some(f=>f.monster&&f.monster.power==='Weak')){
           // 2026-09-09g: softening a starting lair swaps its guardian, so its own difficulty must
           // follow — otherwise this one lair in the world reads Powerful while a Weak beast sits in
           // it.
-          best.features[0].monster={...weakMons[Math.floor(Math.random()*weakMons.length)]};
+          best.features[0].monster={...weakMons[Math.floor(kcRng()*weakMons.length)]};
           best.features[0].tier='Weak';
         }
       }
@@ -846,14 +846,14 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     for(let h=0;h<2;h++){
       const hid=allChars.length;
       const hSkills={};
-      for(let s=0;s<3;s++){const sk=ABILITIES_P[Math.floor(Math.random()*ABILITIES_P.length)];hSkills[sk]=(hSkills[sk]||0)+1;}
+      for(let s=0;s<3;s++){const sk=ABILITIES_P[Math.floor(kcRng()*ABILITIES_P.length)];hSkills[sk]=(hSkills[sk]||0)+1;}
       const heroAlign=ALIGNMENTS_P[Math.max(0,Math.min(6,ALIGNMENTS_P.indexOf(sp.alignment)+rP(-1,1)))];
-      const _hRace=(h===0)?sp.race:(()=>{ const opts=RACES_P.filter(r=>r!==_RACE_RIVAL[sp.race]); return opts[Math.floor(Math.random()*opts.length)]; })();
+      const _hRace=(h===0)?sp.race:(()=>{ const opts=RACES_P.filter(r=>r!==_RACE_RIVAL[sp.race]); return opts[Math.floor(kcRng()*opts.length)]; })();
       const hero={
         id:hid,name:nextHeroName(heroAlign),isKing:false,player:pi,
         race:_hRace,  // hero 0 = king's race; hero 1 = random non-feuding race
         alignment:heroAlign,
-        temper:TEMPERS_P[Math.floor(Math.random()*4)],
+        temper:TEMPERS_P[Math.floor(kcRng()*4)],
         hp:15,maxHp:0,skills:hSkills,aptitude:{},
         armies:[],items:[],location:best.id,alive:true,merits:0,taxBonus:0,
         spellsUsedThisTurn:[],locationName:best.name,
@@ -913,10 +913,10 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       const cand=far[0]||ring[0]||null;
       if(!cand) return;
       const bank=(cr.want==='creature'?CBT:MBT)[cand.terrain]||[cr.want==='creature'?'Stone Giants':'Cave Trolls'];
-      const unit=bank[Math.floor(Math.random()*bank.length)];
+      const unit=bank[Math.floor(kcRng()*bank.length)];
       cand.race='Primal:'+(PRIMAL_ARMY_DEFS_P[unit]?.race||unit);
       cand.armyTypes=[unit];
-      cand.neutralDefenders=Array.from({length:neutralDefCount(cand.tax)},()=>({type:unit,quality:Math.random()<0.5?'Veteran':'Average',race:cand.race,unitName:armyUnitName(unit)}));
+      cand.neutralDefenders=Array.from({length:neutralDefCount(cand.tax)},()=>({type:unit,quality:kcRng()<0.5?'Veteran':'Average',race:cand.race,unitName:armyUnitName(unit)}));
       cand.npcArmies=cand.neutralDefenders.length;
       cand.name=null; // renamed by the thematic naming pass below
     });
@@ -937,19 +937,19 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     const _neutralHum=()=>provinces.filter(p=>p&&p.terrain!=='sea'&&p.owner===null&&HUMANOID_RACES_GEN.has(p.race));
     const _reRace=(conv,_race)=>{
       conv.race=_race;
-      const cHp=buildHumanoidPool(conv.terrain,_race,provincePoolSize(Math.random),Math.random);
+      const cHp=buildHumanoidPool(conv.terrain,_race,provincePoolSize(kcRng),kcRng);
       conv.armyTypes=[...cHp.types,...cHp.garrison];
       const offs=conv.row%2===0?offEven:offOdd;
       const coastal=offs.some(([dr,dc])=>{ const nr=conv.row+dr; if(nr<0||nr>=rows) return false;
         const nb=provinces[nr*cols+(((conv.col+dc)%cols+cols)%cols)]; return nb&&nb.terrain==='sea'; });
-      if(coastal&&Math.random()<COASTAL_NAVAL_CHANCE){
+      if(coastal&&kcRng()<COASTAL_NAVAL_CHANCE){
         const f=(HOME_FLEET_BY_RACE)[_race];
         if(f&&!conv.armyTypes.includes(f)) conv.armyTypes.push(f);
       }
       const pool=conv.armyTypes.filter(t=>!t.toLowerCase().includes('garrison')&&!SEA_TYPES_GEN.has(t));
       const draw=pool.length?pool:conv.armyTypes;
       conv.neutralDefenders=Array.from({length:neutralDefCount(conv.tax)},()=>{
-        const dt=draw[Math.floor(Math.random()*draw.length)];
+        const dt=draw[Math.floor(kcRng()*draw.length)];
         return {type:dt,quality:'Average',race:_race,unitName:armyUnitName(dt)};
       });
       conv.npcArmies=conv.neutralDefenders.length;
@@ -1052,7 +1052,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   // other hero's draw (item: unique names). He is otherwise an ordinary neutral guard.
   const _garrethLandProvs=provinces.filter(p=>p.owner===null && p.terrain!=='sea' && (p.neutralDefenders||[]).length>0);
   const _garrethPool=_garrethLandProvs.length?_garrethLandProvs:provinces.filter(p=>p.owner===null && (p.neutralDefenders||[]).length>0);
-  const _garrethProvId=_garrethPool.length?_garrethPool[Math.floor(Math.random()*_garrethPool.length)].id:null; // name reserved at top of generateNewGame
+  const _garrethProvId=_garrethPool.length?_garrethPool[Math.floor(kcRng()*_garrethPool.length)].id:null; // name reserved at top of generateNewGame
   provinces.filter(p=>p.owner===null && (p.terrain!=='sea' || (p.neutralDefenders||[]).length>0)).forEach(lp=>{
     const hid=allChars.length;
     // a neutral hero is a PERSON — their race is always humanoid, even when they guard a sea or

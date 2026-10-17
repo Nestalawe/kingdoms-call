@@ -11,7 +11,7 @@ let _autoWatcherTimer=null, _autoRunBusy=false;
 // the watcher says so on the banner. Any successful run clears the mark, and so does a reload.
 const AUTO_FAIL_COOLDOWN_MS=15*60000;
 const _autoFailUntil=new Map(); // gameId -> timestamp to resume trying
-const _tabId=Math.random().toString(36).slice(2);
+const _tabId=kcRng().toString(36).slice(2);
 function _autoLease(gameId,take){
   try{
     const key='kc_autorun_'+gameId;

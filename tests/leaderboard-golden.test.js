@@ -14,6 +14,7 @@ if(from<0||to<0||to<from){ console.log('FAIL: could not slice the leaderboard bl
 
 const ctx={console, KC_UNIT_CLASS:{sea:[],aerial:[],creature:[],monster:[],missile:[],cavalry:[],flying:[],carrier:[],primalSea:[],garrison:[],lightFoot:[],tamedFlyer:[]},
   UNIT_BASE_STR:{}, UNIT_Q_MULT:{}, GUARDIAN_POWER_RANK:{}, SKILL_LABELS:{}, TITLE_DEFS:[], KC_BUILD_STAMP:'test', KC_LB_V:1,
+  kcClock:Object.assign(()=>Date.now(),{date:()=>new Date()}),   // the engine's clock (src/engine/clock.js), not in the slice
   currentUser:{id:'gm-1'}, gameMetaOf:()=>null, computeStandings:()=>({titles:{}})};
 vm.createContext(ctx); vm.runInContext(html.slice(from,to),ctx);
 

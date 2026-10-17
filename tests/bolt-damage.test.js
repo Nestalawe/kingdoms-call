@@ -29,10 +29,10 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const st=JSON.parse(WRITES.filter(w=>w.table==='games'&&w.val&&w.val.game_state).slice(-1)[0].val.game_state);
   const base=st.characters.find(c=>c.alive&&c.player!=null);
   const mk=(skills)=>{ const c=PC.pcCharCombatant({...JSON.parse(JSON.stringify(base)),id:'t'+Math.random(),player:null,items:[],skills:{...skills},temper:'Brave'}); c.hp=c.maxHp=999; return c; };
-  const realRandom=W.Math.random, realD100=W.d100;
-  const bolt=(lvl,r)=>{ W.d100=()=>1; W.Math.random=()=>r;
+  const realD100=W.d100;
+  const bolt=(lvl,r)=>{ W.d100=()=>1; const realRandom=W.kcRng.use(()=>r);
     try{ const caster=mk({elemental:lvl}), target=mk({}); const before=target.hp; PC.pcCastCombatSpell(caster,target,'Lightning Bolt',[],{}); return before-target.hp; }
-    finally{ W.Math.random=realRandom; W.d100=realD100; } };
+    finally{ W.kcRng.use(realRandom); W.d100=realD100; } };
   for(const lvl of [1,2,3,4,5,7]){
     const n=Math.min(lvl,5), lo=bolt(lvl,0), hi=bolt(lvl,0.999999);
     ok(lo===n&&hi===3*n,`Elemental ${lvl}: the bolt does ${n}–${3*n} (it did ${lo}–${hi})`);

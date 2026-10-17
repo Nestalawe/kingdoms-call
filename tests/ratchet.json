@@ -1,5 +1,5 @@
 {
-  "about": "Baselines for npm run ratchet (tools/ratchet.ts). No count may rise; when one falls, lower it here in the same PR (npm run ratchet -- --update). Set 2026-10-16 (P1-01b). sourceJavascriptFiles (the site's own JavaScript in src/) set 2026-10-17 (P1-05), when the site's inline code became files.",
+  "about": "Baselines for npm run ratchet (tools/ratchet.ts). No count may rise; when one falls, lower it here in the same PR (npm run ratchet -- --update). Set 2026-10-16 (P1-01b). sourceJavascriptFiles (the site's own JavaScript in src/) set 2026-10-17 (P1-05), when the site's inline code became files; raised to 87 on 2026-10-17 (P1-07, with Theo's agreement) for src/engine/rng.js and src/engine/clock.js, which P1-09 renames to .ts in place.",
   "counts": {
     "tsNocheck": 0,
     "tsIgnore": 0,
@@ -8,6 +8,6 @@
     "allowlistEntries": 1,
     "javascriptFiles": 170,
     "quarantinedTests": 4,
-    "sourceJavascriptFiles": 85
+    "sourceJavascriptFiles": 87
   }
 }

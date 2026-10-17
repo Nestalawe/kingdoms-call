@@ -132,7 +132,7 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
   // occasional real monster while the settled country a province or two out is the tamest ground in
   // the world — which is the variety near home that the 60/30/10 rule was asking for.
   const jitter=Math.max(1, far.length*0.35);
-  far.forEach((L,i)=>{ L._rank=i+(Math.random()-0.5)*2*jitter; });
+  far.forEach((L,i)=>{ L._rank=i+(kcRng()-0.5)*2*jitter; });
   far.sort((a,b)=>a._rank-b._rank);
   far.forEach((L,i)=>{ L.grade = i<remW?'Weak' : i<remW+remM?'Moderate' : 'Powerful'; delete L._rank; });
 
@@ -176,7 +176,7 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
       for(let i=from-1;i>=0&&!cand.length;i--) cand=src.filter(m=>m.power===ORDER[i]);
     }
     if(!cand.length) cand=src.length?src:MONSTERS_P;
-    L.f.monster={...cand[Math.floor(Math.random()*cand.length)]};
+    L.f.monster={...cand[Math.floor(kcRng()*cand.length)]};
     here.add(L.f.monster.name);
     L.f.tier=L.grade;                 // the grade shown to players is the lair's own, not the beast's
     L.f.monster.power=L.grade;        // and the guardian is treated as being of that standing
@@ -184,7 +184,7 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
 }
 
 function LAIR_TIER_ROLL(){
-  const r=Math.random()*100;
+  const r=kcRng()*100;
   // 2026-09-10 item 6: shifted toward the easy end (was 40/32/20/8) — more Weak and Moderate lairs.
   return r<48?'Weak':r<84?'Moderate':r<96?'Powerful':'Legendary';
 }

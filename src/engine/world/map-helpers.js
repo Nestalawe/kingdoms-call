@@ -20,7 +20,7 @@ function applyWraithTouch(friendly, enemy, narr){
   if(dem.length===0) return;
   const maxT=Math.max.apply(null,dem.map(a=>tiers.indexOf(a.quality)));
   const top=dem.filter(a=>tiers.indexOf(a.quality)===maxT);
-  const v=top[Math.floor(Math.random()*top.length)];
+  const v=top[Math.floor(kcRng()*top.length)];
   const was=v.quality; v.quality=_WRAITH_DOWN[v.quality]||v.quality;
   if(narr) narr.push(`  \u2620 Wraith's Touch withers ${v.unitName||v.type} \u2014 permanently reduced from ${was} to ${v.quality}.`);
 }

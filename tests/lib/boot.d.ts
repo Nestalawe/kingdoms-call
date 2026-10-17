@@ -12,6 +12,14 @@ export interface PageWindow {
   [global: string]: unknown;
 }
 
+/** The page's dice (src/engine/rng.js): the next number in [0, 1). `seed(n)` starts again from seed n; `use(fn)` draws
+ *  from fn from now on and returns what it drew from before, to restore. */
+export interface KcRng {
+  (): number;
+  seed(seed: number): void;
+  use(fn: () => number): () => number;
+}
+
 export interface BootOptions {
   supabase?: unknown;
   setup?: (w: PageWindow) => void;
@@ -19,7 +27,7 @@ export interface BootOptions {
   pretendToBeVisual?: boolean;
   dbVersion?: string | null | (string | null)[];
   dbCalls?: string[];
-  /** The page's own Math.random seed. */
+  /** The seed of the page's dice (kcRng, src/engine/rng.js; its Math.random gets the same seed). */
   seed?: number;
   /** Pins the page's clock: starts here (ms since 1970, or a date string), 1 ms on at each reading. */
   now?: number | string;

@@ -431,7 +431,7 @@ function botPracticeFallback(G,pi,c,opts){
   const sk=botCrossTrainSkill(G,c,pi)||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
   if(!sk) return null;
   const sg=((c.skills||{}).sage||0);
-  if(sk==='sage'&&sg>=1&&(sg>=5||Math.random()<0.5)) return {action:'research',target:'',extra:'',desc:'Research'};
+  if(sk==='sage'&&sg>=1&&(sg>=5||kcRng()<0.5)) return {action:'research',target:'',extra:'',desc:'Research'};
   return {action:'practice',target:sk,extra:'',desc:'Practice '+(SKILL_LABELS[sk]||sk)};
 }
 // CONTACT: until another crown has been met — a non-neutral relation, or any other player's land or

@@ -1,7 +1,8 @@
 // Real-browser boot of the three portal pages, served from one folder over HTTP exactly as they are deployed
 // (claude_lb_chromium_0927.js; a test script until P1-01c). supabase-js is answered with a stand-in that has an empty
 // database, so no network call leaves the machine. Checks: the spinner goes, there are no page errors, the links are
-// present and point at the right files, and the GM portal's leaderboard functions exist and its boot order is intact.
+// present and point at the right files, the GM portal's leaderboard functions exist and its boot order is intact, and
+// its dice seed themselves from the browser's crypto, as on the live site (P1-07).
 import { expect, test, type Page } from '@playwright/test';
 import { routeExternal } from '../lib/boot.js';
 import { browserSource } from '../lib/stub-db.js';
@@ -47,6 +48,14 @@ test('the GM portal boots, links to the GM leaderboard and has its leaderboard f
     sea: true,
     banner: true,
   });
+  // Served as deployed, the page is given no seed: its dice (kcRng, P1-07) seed themselves from the browser's crypto.
+  const dice = await page.evaluate<{ seed: string; draws: number[] }>(
+    `({seed:typeof KC_RNG_SEED, draws:[kcRng(),kcRng(),kcRng()]})`,
+  );
+  expect.soft(dice.seed, 'the deployed page was given a seed').toBe('undefined');
+  expect
+    .soft(dice.draws.every((x) => x >= 0 && x < 1) && new Set(dice.draws).size === 3, String(dice.draws))
+    .toBe(true);
   expect(errs, 'page errors').toEqual([]);
 });
 
