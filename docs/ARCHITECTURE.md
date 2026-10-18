@@ -398,7 +398,8 @@ dangerous path.
 The balance matrix (`npm run balance`, `tools/balance/`, P1-02a) measures engine changes: 60 seeded games played in
 the GM portal (48 all-bot, 12 with a realm whose orders the runner writes), each game's per-turn hashes and
 statistics compared with the committed baseline in `tests/balance/baseline/`, statistics paired by seed against the
-noise of a second seed set. After every turn it checks the **invariants** (`tests/lib/invariants.ts`, P1-04b: no NaN or
+noise of a second seed set. One of the hashes is of every write the turn sends to the stand-in database
+(`tools/balance/writes.ts`, P1-02c), so a change to how a turn saves shows even when nothing in play changed. After every turn it checks the **invariants** (`tests/lib/invariants.ts`, P1-04b: no NaN or
 `undefined`, HP in range, unique ids, items matching the ledger of found items, armies on the map, the dead taking no
 actions, `orders_submitted` cleared), as `turn-fuzz` does, and the **report-leak check** on the scripted realm's report
 (`tests/lib/report-leaks.ts`, P1-04c: another realm's private line, an unmet realm, a hero under Invisibility); a breach
@@ -408,7 +409,7 @@ CI's `balance` job (P1-02b) plays it when a pull request or a merge changes an e
 from, the build itself, the balance code and baselines, the test helpers it boots the page with, and `package-lock.json` and `.nvmrc`, since a jsdom or Node
 bump can change the games), and fails if any game differs from the committed baseline.
 A pull request labelled `refactor-only` fails if it changes the baseline at all. On a pull request the job also
-makes the **balance report** (`tools/balance/report.ts`, P1-03a): the class of change (no change, wording only, a
+makes the **balance report** (`tools/balance/report.ts`, P1-03a): the class of change (no change, wording only, writes only, a
 reshape judged as a whole, or a rule change judged by where games first differ and by its slices), in game terms. The
 job can only read, so it uploads the report as data; `.github/workflows/balance-report.yml`, run when CI finishes,
 posts it as one comment with the default branch's `tools/github/balance-comment.ts`, never the pull request's code.
