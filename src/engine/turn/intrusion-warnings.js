@@ -1,7 +1,7 @@
 // ── INTRUSION WARNINGS (plan P1-08b: lifted out of resolveTurn) ────
 // After each phase, the warnings a realm gets of enemy heroes in its land or beside its own heroes. It takes the turn's
 // context first (src/engine/turn/context.js): the state, the seasons' names and the turn's warnings so far
-// (_intrusionAcc), which resolveTurn's flushIntrusionNotifications writes into the log.
+// (_intrusionAcc), which flushIntrusionNotifications (plan P1-08i1, below) writes into the log after the phases.
   // ── INTRUSION NOTIFICATIONS ────
   // After each phase resolves, scan for situations where players need to be notified about things
   // happening in their territory or in provinces where their heroes are present.
@@ -49,5 +49,36 @@
 
       // (Wandering hero sightings are reported once at end of turn in the Intelligence
       // section's "Wandering Heroes" list — no need to log each phase's movement here.)
+    });
+  }
+
+  function flushIntrusionNotifications(turnContext){
+    const {SEASONS, _intrusionAcc, log}=turnContext;
+    const fmtPhases=(phs)=>{
+      const s=[...phs].sort((a,b)=>a-b);
+      if(s.length===1) return SEASONS[s[0]];
+      const contiguous=s[s.length-1]-s[0]===s.length-1;
+      if(contiguous) return `${SEASONS[s[0]]}\u2013${SEASONS[s[s.length-1]]}`; // en-dash range
+      return s.map(p=>SEASONS[p]).join(', ');
+    };
+    _intrusionAcc.forEach(rec=>{
+      const s=[...rec.phases].sort((a,b)=>a-b);
+      const lastPh=s[s.length-1];
+      const uniqForces=[...new Set(s.map(p=>rec.forceByPhase[p]))];
+      const forceStr=uniqForces.length===1
+        ? `They appear to be leading ${uniqForces[0]}.`
+        : `Their strength shifted — most recently (${SEASONS[lastPh]}) leading ${rec.forceByPhase[lastPh]}.`;
+      const phaseStr=fmtPhases(s);
+      if(rec.branch==='own'){
+        log('combat',
+          `[Intelligence] ${rec.acName} of ${rec.actingName} was spotted in your province of ${rec.provName} during ${phaseStr}. ${forceStr}`,
+          {actor:null,targets:[rec.targetPi],provinceId:rec.provId,public:false}
+        );
+      } else {
+        log('system',
+          `[Intelligence] A hero of ${rec.actingName} (${rec.acName}) shared ${rec.provName} with your forces during ${phaseStr}. ${forceStr}`,
+          {actor:null,targets:[rec.targetPi],provinceId:rec.provId,public:false}
+        );
+      }
     });
   }

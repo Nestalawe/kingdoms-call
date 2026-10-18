@@ -612,58 +612,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
   try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter:(...a)=>resolveEncounter(turnContext,...a),resolvePersonalCombat:(...a)=>resolvePersonalCombat(turnContext,...a),resolveCharVsChar:(...a)=>resolveCharVsChar(turnContext,...a),combatVsChar:(...a)=>combatVsChar(turnContext,...a),effStat:(...a)=>effStat(turnContext,...a),rng,pcCharCombatant:(...a)=>pcCharCombatant(turnContext,...a),pcMonsterCombatant,trySkillGain:(...a)=>trySkillGain(turnContext,...a),resolveDuel:(...a)=>resolveDuel(turnContext,...a),duelFleeItemDrop:(...a)=>duelFleeItemDrop(turnContext,...a),pcCastCombatSpell:(...a)=>pcCastCombatSpell(turnContext,...a),preBattleDuel:(...a)=>preBattleDuel(turnContext,...a),awardWinHp:(...a)=>awardWinHp(turnContext,...a),awardKillXP:(...a)=>awardKillXP(turnContext,...a)}; }catch(e){}
 
-  // Canonical order-name → internal action-key map. Shared by processOrder and the phase pipeline
-  // (buildPhaseIntents / phaseDependencies) so both always agree on what a character is doing.
-  const PHASE_ACTION_MAP={
-    'move':'move','explore':'explore','explore province':'explore',
-    'search':'search','search lair':'search','search feature':'search', // 'search feature' kept as a backward-compat alias for orders written before the Lair rename
-    'hunting rumours':'hunt_rumours','hunt rumours':'hunt_rumours','hunt_rumours':'hunt_rumours', // 2026-09-17 (late)
-    'recruit':'recruit','recruit armies':'recruit',
-    'hire':'hire','hire hero':'hire',
-    'release':'release','release hero':'release','dismiss hero':'release',
-    'leave_army':'leave_army','leave/transfer army':'leave_army','leave army':'leave_army','transfer army':'leave_army',
-    'disband_army':'disband_army','disband army':'disband_army','disband':'disband_army',
-    'pickup_army':'pickup_army','pick up army':'pickup_army','pick_up_army':'pickup_army',
-    'give_item':'give_item','give item':'give_item','give magic item':'give_item',
-    'send_item':'give_item','send item':'give_item','send magic item':'give_item', // Give Item renamed Send Item (old label kept for back-compat)
-    'cast_spell':'cast_spell','cast spell':'cast_spell',
-    'spy':'spy','practice':'practice','practice skill':'practice','practice ability':'practice',
-    'research':'research','research discovery':'research',
-    'defend':'defend','rest':'rest','rest & heal':'rest','rest and heal':'rest',
-    'consecrate':'consecrate','consecrate province':'consecrate',
-    'call to arms':'call_to_arms','call_to_arms':'call_to_arms',
-    'broker':'broker',
-    'awaken the wild':'awaken_wild','awaken_wild':'awaken_wild',
-    'call from the pit':'call_pit','call_pit':'call_pit',
-    'harvest the field':'harvest_field','harvest_field':'harvest_field',
-    'encounter':'encounter','encounter character':'encounter',
-    'steal':'steal','steal item':'steal','steal from character':'steal',
-    'use_item':'use_item','use item':'use_item','use magic item':'use_item',
-    'equip_items':'equip_items','equip items':'equip_items','equip':'equip_items','equip item':'equip_items',
-    'pursue':'encounter','pursue character':'encounter', // Pursue is folded into Encounter
-    'rite':'rite','perform rite':'rite',
-    'sabotage':'sabotage',
-    'forced march':'forced_march','forced_march':'forced_march',
-    'grand heist':'grand_heist','grand_heist':'grand_heist',
-    'awaken grove':'awaken_grove','awaken_grove':'awaken_grove',
-    'chart the unknown':'chart_unknown','chart_unknown':'chart_unknown',
-    'discover lost ruin':'discover_ruin','discover_ruin':'discover_ruin',
-    'blockade':'blockade',
-    'research breakthrough':'research_breakthrough','research_breakthrough':'research_breakthrough',
-    'assassinate':'assassinate',
-    'vanish':'vanish',
-    'challenge':'challenge',
-    'rampage':'rampage',
-    'rain of arrows':'rain_of_arrows','rain_of_arrows':'rain_of_arrows',
-    "sniper's mark":'snipers_mark','snipers mark':'snipers_mark','snipers_mark':'snipers_mark',
-    'feigned retreat':'feigned_retreat','feigned_retreat':'feigned_retreat',
-    'grand stratagem':'grand_stratagem','grand_stratagem':'grand_stratagem',
-    'lightning advance':'lightning_advance','lightning_advance':'lightning_advance',
-    'raid the coast':'raid_coast','raid_coast':'raid_coast',
-    'wild calling':'wild_calling','wild_calling':'wild_calling',
-    'grand design':'grand_design','grand_design':'grand_design',
-  };
-
   // ── HIRE PRE-ORDERS LAND (shared by Hire Hero and the Neutral BROKER hire) ────
   // The hirer's pre-written orders are applied only once the hire has landed. Matched on hero + this
   // realm (an exact match on the hiring character wins if two cards were somehow submitted), so a
@@ -945,7 +893,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
           if(_adjacent){ toProv=_want; }
           else {
             seaCap[c.id]=getSeaCapability(c.armies||[], c); // stepToward reads the cache — make it current
-            const _step=stepTowardPreferSafe(c,_want.id);
+            const _step=stepTowardPreferSafe(turnContext,c,_want.id);
             if(!_step){log('move',`${c.name} intended to march to ${_want.name}, but from ${prov.name} no passable route leads there this phase — the column holds.`,{actor:c.player,targets:[c.player]});break;}
             toProv=_step;
             log('move',`${c.name} intended to march to ${_want.name}, but after being displaced it no longer lies adjacent — the column turns toward it by way of ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
@@ -1127,7 +1075,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
         // Remember that this player set foot here THIS PHASE, before any battle is fought. If the
         // move ends in a repulse the character will be gone by the end of the phase, but they still
         // scouted the province and its surrounds and the map must reflect that.
-        noteEntered(c.player, toProv.id);
+        noteEntered(turnContext, c.player, toProv.id);
         // a necromancer reads the ground the moment they set foot on it — every province of the
         // march, not just the one they stop in. Feeds the report's Graveyards Known.
         senseGravesUnderfoot(G, c, toProv, (pv)=>log('explore',`💀 ${c.name} crosses into ${pv.name} and the dead stir underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,{actor:c.player,targets:[c.player],provinceId:pv.id}));
@@ -1223,14 +1171,14 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
             // only the bots, so allied contingents of a HUMAN realm never unified — and the Good
             // realm's Banner of Fellowship had nothing to modify.
             if(!allyOrder||normaliseAction(allyOrder)!=='move') return;
-            const allyDest=intendedDestination(ally,allyOrder);
+            const allyDest=intendedDestination(turnContext,ally,allyOrder);
             if(!allyDest||allyDest.id!==toProv.id) return;
             // Roll contingent unify chance based on March skill and distance
             const marchLvl=effStat(turnContext,c,'march');
             // AK [4.1.2]: the unify chance depends on how far apart the two contingents started — 0
             // = both set out from the same province, 1 = adjacent, 2+ = converging from opposite
             // directions.
-            const unifyDist=Math.min(2,provDistance(ally.location,prov.id));
+            const unifyDist=Math.min(2,provDistance(turnContext,ally.location,prov.id));
             // GOOD — Banner of Fellowship: allies rally to an honourable cause (+15pp unify).
             const _goodUnify=(G.players[c.player]?.alignment==='Good'?15:0)+discSum(turnContext,c.player,'unify','pct'); // ag08 Common Cause
             const unifyChancePct=Math.min(100,contingentUnifyChance(marchLvl,unifyDist,false)+_goodUnify); // sd04 Signal Fires is now a `unify` effect
@@ -1403,9 +1351,9 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
               if((ally.armies||[]).length===0) return;
               const allyOrder=G.turnOrders?.[ally.id]?.[ph];
               if(!allyOrder||normaliseAction(allyOrder)!=='move') return;   // see the note on the NPC-side unify above
-              { const _aDest=intendedDestination(ally,allyOrder); if(!_aDest||_aDest.id!==toProv.id) return; }
+              { const _aDest=intendedDestination(turnContext,ally,allyOrder); if(!_aDest||_aDest.id!==toProv.id) return; }
               const marchLvl=effStat(turnContext,c,'march');
-              const unifyDist=Math.min(2,provDistance(ally.location,prov.id));
+              const unifyDist=Math.min(2,provDistance(turnContext,ally.location,prov.id));
               const unifyPct=Math.min(100,contingentUnifyChance(marchLvl,unifyDist,false)+(G.players[c.player]?.alignment==='Good'?15:0)+discSum(turnContext,c.player,'unify','pct')); // GOOD — Banner of Fellowship; + ag08 Common Cause
               const roll=d100();
               if(roll<=unifyPct){
@@ -5000,49 +4948,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     });
   }
 
-  // ── Settle rallied garrisons once a contest ends ── Units folded into a defending hero during a
-  // contested defence carry a _garrisonOf marker naming their home province. Called after every
-  // stalled-battle resolution pass: for each such unit, once the home province is no longer
-  // contested, decide its fate by the FINAL result of the whole fight —
-  // • the hero WON and still holds the province → the troops RETURN to garrison it; or
-  // • the hero lost / retreated / fell → the troops have "joined the hero" and stay with him
-  // (they retreated at his side), so we simply drop the marker.
-  // While the province is still contested (_battleUnresolved) the marker is left in place and the
-  // unit keeps fighting as part of the hero's host.
-  function settleRalliedGarrisons(){
-    const _returnedByProv={}; // provId -> count, for a clean grouped log
-    (G.characters||[]).forEach(c=>{
-      if(!c||!Array.isArray(c.armies)||c.armies.length===0) return;
-      const marked=c.armies.filter(a=>a&&a._garrisonOf!=null);
-      if(marked.length===0) return;
-      let changed=false;
-      marked.forEach(a=>{
-        const homeId=a._garrisonOf;
-        const home=G.world.provinces[homeId];
-        if(!home){ delete a._garrisonOf; changed=true; return; }
-        if(home._battleUnresolved) return; // still contested — fight on with the hero
-        if(c.alive && c.location===homeId && home.owner===c.player){
-          // WON and held: the troops fall back into garrison duty in the province they defended.
-          delete a._garrisonOf;
-          c.armies=c.armies.filter(x=>x!==a);
-          home.garrisonArmies=(home.garrisonArmies||[]).concat(a);
-          _returnedByProv[homeId]=(_returnedByProv[homeId]||0)+1;
-          changed=true;
-        } else {
-          // The hero left the province (retreated with them) or lost it — they stay in his host
-          // now.
-          delete a._garrisonOf; changed=true;
-        }
-      });
-      if(changed && typeof refreshMovePool==='function') refreshMovePool(turnContext,c);
-    });
-    Object.keys(_returnedByProv).forEach(pid=>{
-      const prov=G.world.provinces[pid]; if(!prov) return;
-      const n=_returnedByProv[pid];
-      log('combat',`🛡 With ${prov.name} held, its standing troops (${n} unit${n!==1?'s':''}) resume their post as the garrison.`,{actor:prov.owner,targets:[prov.owner].filter(x=>x!=null),provinceId:prov.id,public:true});
-    });
-  }
-
   // A fresh turn: clear last turn's death flags so 'killedThisTurn' marks only deaths this turn.
   G.characters.forEach(c=>{ delete c.killedThisTurn; });
 
@@ -5054,155 +4959,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // Provinces a player's characters ENTERED during the current phase, even if they did not stay. A
   // commander who marches in, fights, and is thrown back still saw the place; the map should
   // remember it. Reset at the top of every phase.
-  let enteredThisPhase={};
-  const noteEntered=(pi, provId)=>{
-    if(pi==null||provId==null) return;
-    (enteredThisPhase[pi]=enteredThisPhase[pi]||new Set()).add(provId);
-  };
-
-  // ── province.characters is DERIVED STATE — rebuild it, never trust it ── Every province carries
-  // a `characters` array of ids, and roughly fifteen sites across the engine maintain it by hand
-  // alongside `character.location`. Any path that updates one and not the other desyncs the two,
-  // and the map renderer reads the ARRAY while visibility reads the LOCATION — so a desync makes a
-  // character vanish from the map while the province still counts as occupied.
-  //
-  // That is exactly what happened after a contested battle: combatVsNPC and combatVsChar fight on
-  // shallow COPIES and decide the attacker's fate on the copy, and the callers propagate the copy's
-  // `location` back to the real character WITHOUT touching either province's `characters` array.
-  // The character ended up listed in the province they had left and missing from the one they were
-  // in.
-  //
-  // Rather than patch each site (and wait for the next one to drift), `location` is now the single
-  // source of truth and this pass rebuilds every array from it. Cheap, total, and it retires the
-  // whole class of bug.
-  function reconcileProvinceCharacters(){
-    // The DEAD are kept, at the location they fell. Nothing previously removed a corpse from this
-    // array and one reader (the GM's province panel) lists ids without an alive check, so dropping
-    // them here would quietly delete bodies from the map. Readers that want only the living already
-    // filter for themselves.
-    const byProv=new Map();
-    (G.characters||[]).forEach(c=>{
-      if(!c||c.location==null) return;
-      if(!byProv.has(c.location)) byProv.set(c.location,[]);
-      byProv.get(c.location).push(c.id);
-    });
-    (G.world.provinces||[]).forEach(pv=>{
-      if(!pv) return;
-      pv.characters=byProv.get(pv.id)||[];
-    });
-  }
-
-  // per-player province memory. Called at the end of each phase — snapshots the observable state of
-  // every province a player can currently see (owned, occupied, their neighbours, or spied that
-  // phase) into player._provMemory. Latest observation wins, so the map shows phase-accurate "last
-  // seen" info: a player only learns of changes made while they can actually see the province.
-  function updateProvinceMemory(ph){
-    const cols=G.world.cols, rows=G.world.rows;
-    const spiedThisPhase={}; // player index -> Set(provinceId)
-    turnLog.forEach(e=>{
-      if(e.spy && e.actor!=null && e.provinceId!=null && e.phase===ph){
-        (spiedThisPhase[e.actor]=spiedThisPhase[e.actor]||new Set()).add(e.provinceId);
-      }
-    });
-    G.players.forEach((pl,pi)=>{
-      if(!pl._provMemory) pl._provMemory={};
-      // Core: provinces this player owns or currently occupies.
-      const core=new Set();
-      (G.world.provinces||[]).forEach(pv=>{ if(pv&&pv.owner===pi) core.add(pv.id); });
-      (G.characters||[]).forEach(c=>{ if(c.player===pi && c.alive && c.location!=null) core.add(c.location); });
-      // Observed = core + their neighbours + anything spied this phase.
-      const observed=new Set(core);
-      core.forEach(pid=>{
-        const pv=G.world.provinces[pid]; if(!pv) return;
-        getNeighborsP(pv,cols,rows,G.world.provinces).forEach(n=>{ if(n) observed.add(n.id); });
-      });
-      (spiedThisPhase[pi]||[]).forEach(id=>observed.add(id));
-      // CLAIRVOYANCE — from the cast phase on, the watched character's province is observed each
-      // phase (so the map keeps the hex) and they are recorded as seen there (Clairvoyance can
-      // re-target).
-      { const _w=clairWatch[pi];
-        if(_w&&_w.charId!=null&&ph>=(_w.fromPhase||0)){
-          const _wc=(G.characters||[]).find(x=>x&&x.id===_w.charId);
-          if(_wc&&_wc.alive&&_wc.location!=null&&_wc.player!==pi){
-            observed.add(_wc.location);
-            const _wp=G.world.provinces[_wc.location];
-            if(!pl.seenCharIntel) pl.seenCharIntel={};
-            pl.seenCharIntel[_wc.id]={id:_wc.id,name:_wc.name,isKing:!!_wc.isKing,race:_wc.race,alignment:_wc.alignment,
-              player:_wc.player,isWandering:_wc.player===null,lastSeenTurn:G.turn,lastLocId:_wc.location,lastLocName:_wp?_wp.name:'?'};
-          }
-        } }
-      // ── Character sightings ── Any living character standing in a province this player owns or
-      // occupies right now is recorded into a persistent per-player intel record. Clairvoyance
-      // targets "any character seen at any point in the game" — this is that record.
-      if(!pl.seenCharIntel) pl.seenCharIntel={};
-      (G.characters||[]).forEach(sc=>{
-        if(!sc.alive||sc.player===pi||sc.location==null) return;
-        if(!core.has(sc.location)) return;
-        const sp=G.world.provinces[sc.location];
-        pl.seenCharIntel[sc.id]={id:sc.id,name:sc.name,isKing:!!sc.isKing,race:sc.race,alignment:sc.alignment,
-          player:sc.player,isWandering:sc.player===null,lastSeenTurn:G.turn,lastLocId:sc.location,lastLocName:sp?sp.name:'?'};
-      });
-      // ── SPY EXPERIENCE (2026-09-21, Toby): spotting a hidden enemy in your own land. ──
-      // A lone enemy (at war, leading no column, not Invisible, with Spy 1+ to hide by) standing in a
-      // province this realm owns is "spotted" by the realm's character standing there — or, if none
-      // is, by the realm's watchers in neighbouring owned provinces when the ordinary Spy contest
-      // (spotEnemyInOwnedProvince) finds him. The best Spy among the spotters rolls for Spy, once per
-      // lurker per turn.
-      (G.characters||[]).forEach(sc=>{
-        if(!sc||!sc.alive||sc.player==null||sc.player===pi||sc.location==null) return;
-        if((sc.armies||[]).length>0||sc._invisTurn===G.turn||((sc.skills||{}).spy||0)<1) return;
-        const sp=G.world.provinces[sc.location]; if(!sp||sp.owner!==pi||!areEnemies(turnContext,pi,sc.player)) return;
-        let watchers=(G.characters||[]).filter(w=>w&&w.alive&&w.player===pi&&w.location===sp.id);
-        if(!watchers.length){
-          if(!spotEnemyInOwnedProvince(G,pi,sp,sc)) return;
-          const _nb=new Set(getNeighborsP(sp,cols,rows,G.world.provinces).filter(n=>n&&n.owner===pi).map(n=>n.id));
-          watchers=(G.characters||[]).filter(w=>w&&w.alive&&w.player===pi&&_nb.has(w.location));
-        }
-        if(!watchers.length) return;
-        const best=watchers.reduce((a,b)=>((b.skills||{}).spy||0)>((a.skills||{}).spy||0)?b:a);
-        if(!best._spySpotted||best._spySpotted.turn!==G.turn) best._spySpotted={turn:G.turn,ids:[]};
-        if(best._spySpotted.ids.includes(sc.id)) return;
-        best._spySpotted.ids.push(sc.id);
-        const _prevCtx=turnContext._logCtx; turnContext._logCtx={charId:best.id,phase:ph};
-        try{ trySkillGain(turnContext,best,'spy',SKILLGAIN_STD); } finally { turnContext._logCtx=_prevCtx; }
-      });
-      // Provinces entered this phase — and their neighbours — even if the character was thrown back
-      // out again. Marching in and being repelled still buys you the same look at the country that
-      // walking in unopposed would have: you learn the province and what borders it.
-      (enteredThisPhase[pi]||[]).forEach(pid=>{
-        observed.add(pid);
-        const pv=G.world.provinces[pid]; if(!pv) return;
-        getNeighborsP(pv,cols,rows,G.world.provinces).forEach(n=>{ if(n) observed.add(n.id); });
-      });
-      // Snapshot each observed province's current observable state (frozen at this phase).
-      observed.forEach(pid=>{
-        const pv=G.world.provinces[pid]; if(!pv) return;
-        pl._provMemory[pid]={
-          turn:G.turn, phase:ph,
-          name:pv.name, terrain:pv.terrain, race:pv.race, tax:pv.tax,
-          armyTypes:(pv.armyTypes||[]).slice(),
-          // Retain ritualSite (and guardian power) so a REMEMBERED province keeps its moon icon and
-          // popup listing once discovered — a discovered ritual site must stay on the map from then
-          // on, regardless of who later owns the ground.
-          features:(pv.features||[]).filter(f=>featDiscovered(f,pi)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
-          owner:pv.owner,
-          ownerName:pv.owner!=null?G.players[pv.owner]?.name:null,
-          ownerColor:pv.owner!=null?G.players[pv.owner]?.color:null,
-          // A realm's seat can MOVE (conquest, a new capital). Snapshot it with everything else so
-          // a remembered hex shows the crown exactly as it stood when last observed.
-          isHomeCapitalOfOwner:(pv.owner!=null&&homeProvinceIdFor(G,pv.owner)===pv.id),
-        };
-      });
-      // ── DIPLOMACY ENCOUNTER TRACKING ── Seeing another player's PROVINCE (any observed province
-      // they own) or CHARACTER (recorded in seenCharIntel this phase) counts as encountering that
-      // realm. Only encountered realms may be treated with. The set is persistent (part of G) and
-      // grows.
-      if(!pl._encountered) pl._encountered=[];
-      const _meet=(otherPi)=>{ if(otherPi!=null&&otherPi!==pi&&!pl._encountered.includes(otherPi)) pl._encountered.push(otherPi); };
-      observed.forEach(pid=>{ const pv=G.world.provinces[pid]; if(pv&&pv.owner!=null) _meet(pv.owner); });
-      Object.values(pl.seenCharIntel||{}).forEach(ci=>{ if(ci&&ci.player!=null) _meet(ci.player); });
-    });
-  }
+  turnContext.enteredThisPhase={};
 
   // when a character GAINS units in a province they don't own (Skeletal Armies, Elemental Summon,
   // action-phase Control Undead, mercenary hire, …), the new force is resolved the same
@@ -5463,35 +5220,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // loop.
   const _intrusionAcc=new Map();
   turnContext._intrusionAcc=_intrusionAcc;
-  function flushIntrusionNotifications(){
-    const fmtPhases=(phs)=>{
-      const s=[...phs].sort((a,b)=>a-b);
-      if(s.length===1) return SEASONS[s[0]];
-      const contiguous=s[s.length-1]-s[0]===s.length-1;
-      if(contiguous) return `${SEASONS[s[0]]}\u2013${SEASONS[s[s.length-1]]}`; // en-dash range
-      return s.map(p=>SEASONS[p]).join(', ');
-    };
-    _intrusionAcc.forEach(rec=>{
-      const s=[...rec.phases].sort((a,b)=>a-b);
-      const lastPh=s[s.length-1];
-      const uniqForces=[...new Set(s.map(p=>rec.forceByPhase[p]))];
-      const forceStr=uniqForces.length===1
-        ? `They appear to be leading ${uniqForces[0]}.`
-        : `Their strength shifted — most recently (${SEASONS[lastPh]}) leading ${rec.forceByPhase[lastPh]}.`;
-      const phaseStr=fmtPhases(s);
-      if(rec.branch==='own'){
-        log('combat',
-          `[Intelligence] ${rec.acName} of ${rec.actingName} was spotted in your province of ${rec.provName} during ${phaseStr}. ${forceStr}`,
-          {actor:null,targets:[rec.targetPi],provinceId:rec.provId,public:false}
-        );
-      } else {
-        log('system',
-          `[Intelligence] A hero of ${rec.actingName} (${rec.acName}) shared ${rec.provName} with your forces during ${phaseStr}. ${forceStr}`,
-          {actor:null,targets:[rec.targetPi],provinceId:rec.provId,public:false}
-        );
-      }
-    });
-  }
 
   // Items 6 & 7 — per-turn spy tracking. Reset the "provinces spied THIS turn" set on every player
   // at the start of resolution (used to gate non-controlled army DETAIL to spied provinces only).
@@ -5517,340 +5245,8 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // stale value existing at all.
   (G.characters||[]).forEach(c=>{ delete c._attackedFrom; });
 
-  // ════
-  // PHASE PIPELINE — intent table, dependency ordering, movement interlocks
-  // ════
-  // AK [3.0] resolves a phase as more than a flat initiative queue: characters helping an ally wait
-  // for that ally, a general ordered to move away from an invaded province stays to fight instead,
-  // and a pursuer acts immediately after his quarry. All of those need to know what EVERY character
-  // intends to do this phase BEFORE anyone acts. buildPhaseIntents() produces that read-only table;
-  // nothing in it mutates game state.
-
-  // Breadth-first province distance (hex grid, wraps E/W like the rest of the map code).
   const _distCache=new Map();
-  function provDistance(fromId,toId){
-    if(fromId==null||toId==null) return Infinity;
-    if(fromId===toId) return 0;
-    const key=fromId+':'+toId;
-    if(_distCache.has(key)) return _distCache.get(key);
-    const seen=new Set([fromId]);
-    let frontier=[G.world.provinces[fromId]], d=0;
-    while(frontier.length&&d<40){
-      d++;
-      const next=[];
-      for(const p of frontier){
-        if(!p) continue;
-        for(const nb of getNeighborsP(p,G.world.cols,G.world.rows,G.world.provinces)){
-          if(!nb||seen.has(nb.id)) continue;
-          seen.add(nb.id);
-          if(nb.id===toId){ _distCache.set(key,d); return d; }
-          next.push(nb);
-        }
-      }
-      frontier=next;
-    }
-    _distCache.set(key,Infinity);
-    return Infinity;
-  }
-
-  // First step of a legal path from the character's current province toward a destination. Respects
-  // the terrain the character's armies can actually cross. Returns null if no route. A province a
-  // player's column can pass THROUGH without starting a fight or being turned back: their own land,
-  // an ally's, or unowned ground with no live armed neutral guard.
-  function provSafePassageFor(p,pi){
-    if(!p) return false;
-    if(p.owner===pi) return true;
-    if(p.owner!=null) return relationBetween(turnContext,pi,p.owner)==='allied';
-    return !(G.characters||[]).some(g=>g&&g.alive&&g.player===null&&g._isNeutralGuard&&g.location===p.id&&(g.armies||[]).length>0);
-  }
-  // prov:-move detour: prefer a route whose INTERMEDIATE provinces are all safe passage (the final
-  // target itself may be hostile — that is the player's chosen destination). Falls back to the
-  // plain shortest route when no safe one exists, so the column still makes progress. 2026-09-17:
-  // THE SHORTEST ROUTE ALWAYS WINS. Now the unrestricted BFS sets the distance, and the safe route
-  // is only preferred when it is NO LONGER than it — an equal-length detour onto friendly ground,
-  // never a longer one. If the only short road runs through a rival's province, the column takes
-  // it.
-  function stepTowardPreferSafe(c,toId){
-    const any=stepTowardPath(c,toId);
-    if(!any) return null;
-    if(c&&c.player!=null){
-      const safe=stepTowardPath(c,toId,p=>p.id===toId||provSafePassageFor(p,c.player));
-      if(safe&&safe.depth<=any.depth) return safe.first;
-    }
-    return any.first;
-  }
-  function stepToward(c,toId,extraFilter){
-    const r=stepTowardPath(c,toId,extraFilter);
-    return r?r.first:null;
-  }
-  // BFS from the character's province toward `toId`. Returns {first, depth} — the first step of a
-  // shortest passable path and how many steps that path takes — or null if no route exists.
-  function stepTowardPath(c,toId,extraFilter){
-    const from=G.world.provinces[c.location];
-    if(!from||toId==null||c.location===toId) return null;
-    const sc=seaCap[c.id]||'land';
-    const passable=(p)=>!!p&&canEnterTerrain(c,p.terrain,sc)&&(!extraFilter||extraFilter(p));
-    // 2026-09-26 (Toby item 2): a column that leads ANY naval unit (fleet or sea-beast) cannot
-    // march land→land — the move handler refuses it ("cannot march overland while leading naval
-    // units"). The BFS used to ignore that, so a displaced admiral in a coastal province picked the
-    // adjacent coastal LAND province as his first step, was refused, and held all phase. Every
-    // land→land edge is now closed to such a column: from land it must put out to an adjacent sea
-    // province first, and it may land again only from the sea.
-    const _naval=(c.armies||[]).some(a=>a&&SEA_TYPES.has(a.type));
-    const edgeOk=(a,b)=>!_naval||a.terrain==='sea'||b.terrain==='sea';
-    const seen=new Set([from.id]);
-    // BFS storing the first step taken on each path
-    let frontier=getNeighborsP(from,G.world.cols,G.world.rows,G.world.provinces)
-      .filter(p=>passable(p)&&edgeOk(from,p)).map(p=>({p,first:p}));
-    frontier.forEach(e=>seen.add(e.p.id));
-    let depth=0;
-    while(frontier.length&&depth<40){
-      for(const e of frontier){ if(e.p.id===toId) return {first:e.first, depth:depth}; }
-      const next=[];
-      for(const e of frontier){
-        for(const nb of getNeighborsP(e.p,G.world.cols,G.world.rows,G.world.provinces)){
-          if(!nb||seen.has(nb.id)||!passable(nb)||!edgeOk(e.p,nb)) continue;
-          seen.add(nb.id);
-          next.push({p:nb,first:e.first});
-        }
-      }
-      frontier=next; depth++;
-    }
-    return null;
-  }
-
-  // Resolve a move order's destination WITHOUT moving anybody.
-  function intendedDestination(c,order){
-    if(!order) return null;
-    const t=order.target||'';
-    const from=G.world.provinces[c.location];
-    if(!from) return null;
-    if(t.startsWith('dir:')) return neighborInDir(turnContext,from,t.slice(4));
-    if(t.startsWith('prov:')){
-      // Absolute target: the province itself if adjacent, else the first step toward it (mirrors
-      // the move case so phase intents / interceptions see where the column will actually go).
-      const want=G.world.provinces[parseInt(t.slice(5))];
-      if(!want||want.id===from.id) return null;
-      if(getNeighborsP(from,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===want.id)) return want;
-      return stepTowardPreferSafe(c,want.id);
-    }
-    const id=parseInt(t);
-    if(isNaN(id)) return null;
-    return G.world.provinces[id]||null;
-  }
-
-  function normaliseAction(order){
-    const raw=(order&&order.action||'defend').toLowerCase().trim();
-    return PHASE_ACTION_MAP[raw]||'defend';
-  }
-
-  // Characters who may act this phase (hired heroes only become active the phase AFTER hiring).
-  function actingThisPhase(ph){
-    return (G.characters||[]).filter(c=>{
-      if(c.player===null||!c.alive) return false;
-      if(c.hiredInPhase!=null&&c.hiredInPhase>=0&&ph<=c.hiredInPhase) return false;
-      // A charmed ENEMY hero is under your banner (c.player already swapped) but must not act on
-      // your orders until the phase AFTER the cast — mirrors the hiredInPhase gate for a sworn
-      // wanderer.
-      if(c._charmTempControl&&c._charmControlFrom!=null&&ph<=c._charmControlFrom) return false;
-      return true;
-    });
-  }
-
-  function buildPhaseIntents(ph){
-    const intents=new Map();
-    actingThisPhase(ph).forEach(c=>{
-      const order=(G.turnOrders[c.id]||[])[ph]||null;
-      const action=normaliseAction(order);
-      const leadsArmy=(c.armies||[]).length>0;
-      const dest=(action==='move')?intendedDestination(c,order):null;
-      intents.set(c.id,{
-        c, id:c.id, player:c.player, order, action,
-        leadsArmy, init:totalInit(c),
-        fromId:c.location,
-        toId:dest?dest.id:null,
-        dest,
-        cancelled:false, cancelReason:null,
-      });
-    });
-    return intents;
-  }
-
-  // Does this intent amount to an armed attack on a province held by another player?
-  function isHostileInvasion(it){
-    if(!it||it.cancelled||it.action!=='move'||!it.leadsArmy||!it.dest) return false;
-    const d=it.dest;
-    // a column with NO movement left in the pool this march would draw on is not an invasion — the
-    // move case will refuse it ("no movement points remaining"). Counting it sent a general on
-    // Defend riding out to meet an enemy who never arrived: the player read "march to meet the
-    // threat" and then no battle. Pools are per-turn and set at turn start; an undefined pool
-    // (never computed) is left to the move case to settle, so it still counts here.
-    { const from=G.world.provinces[it.fromId];
-      const bySea=(d.terrain==='sea')||(!!from&&from.terrain==='sea');
-      const pool=bySea?seaMovePoints[it.id]:movePoints[it.id];
-      if(pool!==undefined&&pool!==null&&pool<=0) return false; }
-    // DIPLOMACY: an invasion is hostile only if the mover is at WAR with the province's owner.
-    // Marching into an ally's land (free passage) or a neutral's (turned back at the border) is not
-    // an invasion — it must not pin defenders or trigger Defend reactions.
-    if(d.owner!=null&&d.owner!==it.player&&areEnemies(turnContext,it.player,d.owner)) return true;
-    // An armed ENEMY force standing in the province is an invasion even if the land is unowned.
-    return (G.characters||[]).some(o=>o.alive&&o.location===d.id&&(o.armies||[]).length>0
-      &&o.player!=null&&o.player!==it.player&&areEnemies(turnContext,it.player,o.player));
-  }
-
-  // ── Dependency ordering (AK [3.0] exceptions) ────
-  // Returns [charId_before, charId_after] pairs meaning "before" must be processed first.
-  function phaseDependencies(ph,intents){
-    const edges=[];
-    const list=[...intents.values()];
-    const byId=(id)=>intents.get(id);
-
-    list.forEach(it=>{
-      const {c,order,action}=it;
-      if(!order) return;
-      const tgtId=parseInt(order.target);
-      const tgt=isNaN(tgtId)?null:byId(tgtId);
-
-      // (a) A character doing something FOR a co-located ally goes first, so the ally can use it.
-      // Give Item / Leave-Transfer Army to a named ally, and friendly action spells.
-      // EXCEPTION: if that ally is marching INTO this province this phase, rule (c) below
-      // applies instead and the ally arrives first — emitting both edges would make a cycle,
-      // and Kahn's algorithm would then fall back to plain initiative and honour neither.
-      const tgtArrivingHere=(t)=>!!t&&t.action==='move'&&t.toId===it.fromId;
-      // 2026-09-23: the RECIPIENT of Send Item / Transfer Army is in `extra` (the target holds item
-      // indices / unit names). Reading `target` here linked the sender to whichever character's id
-      // matched the first item index, and never to the real recipient.
-      const _rcp=(action==='give_item'||action==='leave_army')?(()=>{ const r=orderCharRef(G,order.extra); return r?byId(r.id):null; })():null;
-      if(_rcp&&_rcp.player===it.player&&_rcp.id!==it.id&&!tgtArrivingHere(_rcp)){
-        edges.push([it.id,_rcp.id]);
-      }
-      if(action==='cast_spell'){
-        const spellTargetId=parseInt(order.extra);
-        const st=isNaN(spellTargetId)?null:byId(spellTargetId);
-        if(st&&st.player===it.player&&st.id!==it.id&&!tgtArrivingHere(st)) edges.push([it.id,st.id]);
-      }
-      // (b) Pick Up waits for anyone Leaving armies in the same province this phase.
-      if(action==='pickup_army'){
-        list.forEach(other=>{
-          if(other.id===it.id||other.player!==it.player) return;
-          if(other.action!=='leave_army') return;
-          if(other.fromId!==it.fromId) return;
-          edges.push([other.id,it.id]);
-        });
-      }
-      // (c) A character MOVING IN to a province where an ally intends to hand him something
-      // arrives first — the ally waits for him (AK [3.0]).
-      if(action==='move'&&it.dest){
-        list.forEach(other=>{
-          if(other.id===it.id||other.player!==it.player) return;
-          if(other.fromId!==it.dest.id) return;
-          if(other.action!=='give_item'&&other.action!=='leave_army') return;
-          const _oR=orderCharRef(G,other.order&&other.order.extra); // recipient is in extra (2026-09-23)
-          if(!_oR||_oR.id!==it.id) return;
-          edges.push([it.id,other.id]);
-        });
-      }
-      // (d) A pursuer acts immediately after the character he is chasing (AK [3.0]).
-      if((action==='pursue'||action==='encounter')&&tgt&&tgt.id!==it.id) edges.push([tgt.id,it.id]); // an Encounter chaser acts right after their quarry
-      if(it.c._pursuit&&it.c._pursuit.active){
-        const pt=byId(it.c._pursuit.targetId);
-        if(pt&&pt.id!==it.id) edges.push([pt.id,it.id]);
-      }
-    });
-    return edges;
-  }
-
-  // Initiative comparator — AK [3.0]: highest total ability first (March ×3), ties broken by lowest
-  // character number. Actions resolve in tiers: all non-relocating orders (cast, recruit, give,
-  // search, spy, …) settle FIRST while everyone is still in their start-of-phase positions, THEN
-  // Move/Pursue relocate and any battles they start are fought, and Defend orders always come last.
-  // So a fast general can no longer march out and start a fight before a co-located caster gets to
-  // act. Dependency edges (buildPhaseIntents → phaseDependencies, e.g. a hero marching in to receive
-  // an item) still override this tiering through Kahn's topological sort, so the AK [3.0]
-  // exceptions that require a specific move-before/after ordering are preserved.
-  function _phaseActionTier(d){ return d==='defend'?2:(d==='move'||d==='pursue'||d==='encounter')?1:0; } // Encounter relocates (chases), so it tiers with Move
-  function phaseInitCompare(ph){
-    return (a,b)=>{
-      const aD=normaliseAction((G.turnOrders[a.id]||[])[ph]);
-      const bD=normaliseAction((G.turnOrders[b.id]||[])[ph]);
-      const at=_phaseActionTier(aD), bt=_phaseActionTier(bD);
-      if(at!==bt) return at-bt;                 // non-move → move/pursue → defend
-      const d=totalInit(b)-totalInit(a);
-      if(d!==0) return d;
-      return a.id-b.id;
-    };
-  }
-
-  // Kahn's algorithm over the dependency edges, using initiative order as the tie-break priority.
-  // Any characters left in a dependency cycle (e.g. two heroes each Giving to the other) are
-  // appended in plain initiative order rather than dropped.
-  function orderPhaseActors(ph,intents){
-    const cmp=phaseInitCompare(ph);
-    const nodes=[...intents.values()].map(it=>it.c).sort(cmp);
-    const edges=phaseDependencies(ph,intents).filter(([u,v])=>intents.has(u)&&intents.has(v)&&u!==v);
-    const indeg=new Map(nodes.map(c=>[c.id,0]));
-    const out=new Map(nodes.map(c=>[c.id,[]]));
-    edges.forEach(([u,v])=>{ out.get(u).push(v); indeg.set(v,indeg.get(v)+1); });
-    const ready=nodes.filter(c=>indeg.get(c.id)===0);
-    const result=[];
-    const placed=new Set();
-    while(ready.length){
-      ready.sort(cmp);
-      const c=ready.shift();
-      if(placed.has(c.id)) continue;
-      placed.add(c.id); result.push(c);
-      out.get(c.id).forEach(v=>{
-        indeg.set(v,indeg.get(v)-1);
-        if(indeg.get(v)===0){ const n=nodes.find(x=>x.id===v); if(n&&!placed.has(v)) ready.push(n); }
-      });
-    }
-    nodes.forEach(c=>{ if(!placed.has(c.id)) result.push(c); });
-    return result;
-  }
-
-  // ── MOVEMENT INTERLOCKS (AK [3.1]) ────
-  // "When an army leader Moves into an enemy province, any enemy armies in that province who had
-  // been ordered to move away and haven't yet moved out of the province, stay for the battle
-  // instead, unless they are sent to an adjacent province by a general who has Defend orders."
-  //
-  // Because every order used to resolve in isolation, two armies ordered into each other's
-  // provinces simply swapped places — marching straight through one another with no battle. The
-  // head-on swap is just the most visible case of the general rule, so both are handled here: a
-  // defender is pinned whenever an armed enemy is due to arrive in his province BEFORE he leaves.
-  // "Before he leaves" is decided by initiative, so a fast general still gets clear in time.
-  function applyMoveInterlocks(ph,intents){
-    const list=[...intents.values()];
-    const invasions=list.filter(isHostileInvasion);
-    if(!invasions.length) return;
-    const cmp=phaseInitCompare(ph);
-
-    list.forEach(def=>{
-      if(def.cancelled||def.action!=='move'||!def.leadsArmy||!def.dest) return;
-      // Which hostile forces are arriving in the province this general is standing in?
-      const incoming=invasions.filter(inv=>
-        inv.id!==def.id && inv.player!==def.player && inv.toId===def.fromId && !inv.cancelled);
-      if(!incoming.length) return;
-      // Does at least one of them get there before this general marches out?
-      const beatsHim=incoming.some(inv=>cmp(inv.c,def.c)<0);
-      if(!beatsHim) return;
-      // Exception: a general under Defend orders may still be redirected to an adjacent province.
-      if(def.c._defend&&def.c._defend.active) return;
-
-      def.cancelled=true; def.cancelReason='pinned';
-      const home=G.world.provinces[def.fromId];
-      const dest=def.dest;
-      const swapPartner=incoming.find(inv=>inv.fromId===def.toId);
-      if(swapPartner){
-        // Head-on: both were marching into each other's territory. The slower column is caught
-        // still forming up and has to turn and fight on its own ground.
-        log('move',`${def.c.name} breaks camp for ${dest.name}, but ${swapPartner.c.name}'s banners are already cresting the hills toward ${home?home.name:'the province'} — there is no time to march past one another. ${def.c.name} turns their column about and stands to defend.`,
-          {actor:def.player,targets:[def.player],provinceId:def.fromId});
-      } else {
-        log('move',`${def.c.name} is under orders to march on ${dest.name}, but an enemy force enters ${home?home.name:'the province'} before the column can clear the gates. ${def.c.name} stays to defend.`,
-          {actor:def.player,targets:[def.player],provinceId:def.fromId});
-      }
-    });
-  }
+  turnContext._distCache=_distCache;
 
   // ── DEFEND (AK [3.15]) ────
   // A general ordered to Defend keeps watch for the REST OF THE TURN. He reacts to an enemy
@@ -5879,7 +5275,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     // Runs at the DEFEND STEP — after the phase's non-moving orders, before any march — so an
     // invader who was killed, stripped of his column or thrown out of his province by one of those
     // orders is no longer a threat to ride out against.
-    const invasions=[...intents.values()].filter(isHostileInvasion)
+    const invasions=[...intents.values()].filter((...a)=>isHostileInvasion(turnContext,...a))
       .filter(inv=>inv.c&&inv.c.alive&&(inv.c.armies||[]).length>0&&inv.c.location===inv.fromId);
     if(!invasions.length) return;
     // Group incoming strength by target province.
@@ -6254,9 +5650,9 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // per province, after every order in the phase) is NOT implemented — see DEV_LOG "flagged /
   // open".
   function runReinforcementArrivals(ph,intents){
-    const invasions=[...intents.values()].filter(isHostileInvasion);
+    const invasions=[...intents.values()].filter((...a)=>isHostileInvasion(turnContext,...a));
     if(!invasions.length) return;
-    const cmp=phaseInitCompare(ph);
+    const cmp=phaseInitCompare(turnContext,ph);
     const invadedProvIds=new Set(invasions.map(i=>i.toId));
 
     [...intents.values()].forEach(it=>{
@@ -6360,7 +5756,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
         log('move',`${c.name} can drive their horses no further this year — the chase after ${quarry.name} stalls.`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
         endPursuit(c); return;
       }
-      const step=stepToward(c,quarry.location);
+      const step=stepToward(turnContext,c,quarry.location);
       if(!step){
         log('move',`${c.name} can find no road that brings them closer to ${quarry.name} — the trail goes cold.`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
         endPursuit(c); return;
@@ -6747,7 +6143,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
       resolveStalledBattles(ph,pid,true);
       turnContext._logCtx={charId:null,phase:null}; turnContext._combatSkillProv=null;
     });
-    settleRalliedGarrisons();
+    settleRalliedGarrisons(turnContext);
   }
   for(let ph=0;ph<5;ph++){
     turnContext._currentPhase=ph; // reliable phase for skill-rises earned outside processOrder
@@ -6785,7 +6181,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     // Group-training comparisons (mentor / peer) read these frozen levels, so a character who
     // trains up earlier this phase can't retroactively become a mentor to a co-trainer who is
     // processed later in the same phase.
-    enteredThisPhase={}; // provinces entered during THIS phase only
+    turnContext.enteredThisPhase={}; // provinces entered during THIS phase only
     G._phaseSkillSnapshot={};
     (G.characters||[]).forEach(ch=>{ if(ch&&Array.isArray(ch.armies)&&ch.armies.some(a=>a&&a._phantom)) ch.armies=ch.armies.filter(a=>!(a&&a._phantom)); }); // PHANTOM safety net: strip any stray fighting-copies
     (G.characters||[]).forEach(c=>{ G._phaseSkillSnapshot[c.id]={...(c.skills||{})}; delete c._encounteredThisPhase; delete c._amphibiousAssault; delete c._foughtStalledBattlePhase; delete c._enteredProvThisPhase; });
@@ -6796,7 +6192,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     // (next) resolves it.
     flagEnemyStandoffs(ph===0?_warFrontProvs:null); // a fresh war front waits for the end of Spring
     resolveStalledBattles(ph);
-    settleRalliedGarrisons(); // return rallied garrisons to their province if the contest is won, else keep them with the hero
+    settleRalliedGarrisons(turnContext); // return rallied garrisons to their province if the contest is won, else keep them with the hero
     settleStrandedAtSea(turnContext,ph); // 2026-09-23c: a column left unshipped by a resumed sea battle (or an old save) puts its excess ashore
     turnContext._logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
     turnContext._combatSkillProv=null; // stalled battles done — no series context until the next fight
@@ -6810,7 +6206,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     });
 
     // ── STAGE 1: declare intent (read-only) ──
-    const intents=buildPhaseIntents(ph);
+    const intents=buildPhaseIntents(turnContext,ph);
 
     // ── STAGE 1b: battle-lock pin (AK: you are stuck in a province until its battle is decided) ──
     // resolveStalledBattles(ph) has just re-fought every contested province. Any province that is
@@ -6840,7 +6236,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
 
     // ── STAGE 2a: movement interlocks — pin generals whose province is invaded before they leave
     // ──
-    applyMoveInterlocks(ph,intents);
+    applyMoveInterlocks(turnContext,ph,intents);
     intents.forEach(it=>{
       if(!it.cancelled) return;
       if(!G.turnOrders[it.id]) G.turnOrders[it.id]=[null,null,null,null,null];
@@ -6877,7 +6273,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     });
 
     // ── STAGE 3: resolve orders, in initiative order adjusted for AK's [3.0] exceptions ──
-    const sorted=orderPhaseActors(ph,intents);
+    const sorted=orderPhaseActors(turnContext,ph,intents);
     // ── THE DEFEND STEP ── sits between the two order tiers. Every non-relocating order (casting,
     // transfers, items, recruiting…) resolves first, in initiative order, with everyone still
     // standing where the phase began — so an Oratory, a handed-over column or a hostile Curse aimed
@@ -6981,11 +6377,11 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
 
     // province.characters is derived from character.location — rebuild it before anything reads it,
     // so a battle that moved someone on a copy cannot leave the map out of step.
-    reconcileProvinceCharacters();
+    reconcileProvinceCharacters(turnContext);
     noteSilentHeroes(turnContext,ph,_phaseStartLoc);
     // snapshot each player's observable view of the world at the end of this phase.
-    updateProvinceMemory(ph);
-    enteredThisPhase={}; // consumed by the snapshot above — start the next phase clean
+    updateProvinceMemory(turnContext,ph);
+    turnContext.enteredThisPhase={}; // consumed by the snapshot above — start the next phase clean
 
     // Tax collection moved to Early Winter block below
 
@@ -7455,7 +6851,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // Intel collapse: emit one consolidated intrusion line per (target, hero, province) now that all
   // phases are resolved, instead of a separate line each phase.
-  flushIntrusionNotifications();
+  flushIntrusionNotifications(turnContext);
 
   // Wounded feature guardians recover over the year between turns.
   healFeatureMonsters(turnContext);
@@ -7514,7 +6910,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       log('system',`🏳 ${c.name}, spared on the field, makes their way back to ${G.world.provinces[dest]?.name||'safety'}.`,{actor:c.player,targets:[c.player],charId:c.id,provinceId:dest});
     }
   });
-  reconcileProvinceCharacters(); // rebuild province.characters after any mercy relocations
+  reconcileProvinceCharacters(turnContext); // rebuild province.characters after any mercy relocations
 
   // 6. Update location names for all characters
   (G.characters||[]).forEach(c=>{
@@ -8121,7 +7517,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // Hero, Divine resurrection, wandering-hero drift) all relocate characters, and the turn report
   // reads province.characters for the map. Rebuilding here means what is saved, what is rendered
   // and where characters actually are can never disagree.
-  reconcileProvinceCharacters();
+  reconcileProvinceCharacters(turnContext);
   normaliseStrandedGuards(G); // a guard whose last unit fell this turn, or whose land changed hands, reports as a wanderer
   // ── IMPERIAL TITLE INTEL (Items 1, 2, 4) ── Titles are AWARDED here, AFTER all turn resolution
   // (combat, conquest, tax, resurrection, wandering-drift) and the final reconcile — so this ONE
