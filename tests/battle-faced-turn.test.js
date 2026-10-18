@@ -1,17 +1,17 @@
 // 2026-10-12 (Toby, the battle reports: who beat whom) — the lines a real turn writes:
 //   • a province battle's casualty lines name whom each company fought (the attacker's and the defenders');
 //     the losses tally still counts each side's own losses;
-//   • a beaten guard's survivors are told what beat them (erodeGuardSurvivors: flee / lose heart / hold);
-//   • a fallen commander's host is told who slew them (handleHeroDeath stamps the killer; disperseDeadCharArmies
-//     says it when the host garrisons, retreats or scatters).
-// Level 2 (scenario + the code-anchor hook): the battle paths, erodeGuardSurvivors, disperseDeadCharArmies and
-// handleHeroDeath live inside runTurn. The battle is staged with overwhelming odds, so the attacker always wins;
+//   • a beaten guard's survivors are told what beat them (erodeGuardSurvivors: flee / lose heart / hold).
+// A fallen commander's host told who slew them is tests/unit/fallen-commander-host.test.ts (plan P1-08f: handleHeroDeath
+// and disperseDeadCharArmies are top-level now).
+// Level 2 (scenario + the code-anchor hook): the battle paths and erodeGuardSurvivors live inside runTurn. The
+// battle is staged with overwhelming odds, so the attacker always wins;
 // which fate each company draws is the dice's, so the checks hold for every line that appears rather than for
 // one line in particular. The erosion rolls are driven with fixed dice (kcRng.use).
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const ANCHOR="  // 4. Run all 5 phases\n";
-const HOOK="  window.__BR={handleHeroDeath,disperseDeadCharArmies,erodeGuardSurvivors,getG:()=>G,setG:(s)=>{G=s;turnContext.G=s;},getLog:()=>turnLog};\n";
+const HOOK="  window.__BR={erodeGuardSurvivors,getG:()=>G,setG:(s)=>{G=s;turnContext.G=s;}};\n";
 const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|wrapping the line at|met at the end of the line by|riding free round the flank|fighting from the air|in the reserve|in the second line|shooting at an empty column|with nobody opposite)\b/;
 (async()=>{
   const sc=await bootScenario({inject:[[ANCHOR,HOOK+ANCHOR]]}); const W=sc.W;
@@ -73,7 +73,7 @@ const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|w
     ok(side(guardName)===defLost,`the tally's defender losses match the lines (${side(guardName)} v ${defLost})`);
   }
 
-  // ── the hooks: erosion and dispersal, driven directly ──
+  // ── the hook: erosion, driven directly ──
   const BR=W.__BR; ok(!!BR,'the hook exposes the runTurn helpers'); if(!BR){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
   const G=BR.getG(); G.mercenaries=[];
   const landProv=G.world.provinces.find(p=>p&&p.terrain!=='sea');
@@ -90,26 +90,6 @@ const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|w
   ok(/^— Ulric's Gob S1 \(Goblin Horde\) have had enough — the survivors slip away/.test(e.lines[2]),`a Green survivor that would fall further disbands as before: "${e.lines[2]}"`);
   e=erode([0]);
   ok(e.lines.every(l=>/break ranks and flee — they now roam as mercenaries near /.test(l)),`with no victor named the old wording stands: "${e.lines[0]}"`);
-
-  const L=BR.getLog(); const fresh=n0=>L.slice(n0).map(x=>x.text);
-  const enemyProv=G.world.provinces.find(p=>p&&p.terrain!=='sea'&&p.owner!==0&&p.owner!=null&&!nb(G,p).some(q=>q.owner===0&&q.terrain!=='sea'));
-  const homeProv=G.world.provinces.find(p=>p&&p.terrain!=='sea'&&p.owner===0);
-  ok(!!enemyProv&&!!homeProv,'the world has an enemy province with no friendly land beside it, and a home province');
-  const dead=(loc,extra)=>Object.assign({id:9101,name:'Tamsin',player:0,alive:false,location:loc.id,armies:named('Shieldwall Levies','Average',['Levy T1']),items:[],skills:{}},extra||{});
-  let n0=L.length; G.mercenaries=[]; BR.disperseDeadCharArmies(dead(enemyProv,{_slainBy:'Gorbash'}));
-  ok(fresh(n0).some(l=>l===`Tamsin's armies, their commander slain by Gorbash, scatter — they wander as mercenaries near ${enemyProv.name}.`)&&G.mercenaries.length===1,`a scattered host says who slew its commander: "${fresh(n0).join(' | ')}"`);
-  n0=L.length; const d2=dead(homeProv,{_slainBy:'Gorbash'}); BR.disperseDeadCharArmies(d2);
-  ok(fresh(n0).some(l=>l===`Tamsin's armies garrison in ${homeProv.name} after their commander fell to Gorbash.`),`a host that garrisons says it too: "${fresh(n0).join(' | ')}"`);
-  ok(d2._slainBy===undefined,'the note is cleared once the host is dispersed');
-  n0=L.length; BR.disperseDeadCharArmies(dead(homeProv));
-  ok(fresh(n0).some(l=>l===`Tamsin's armies garrison in ${homeProv.name} after their fall.`),`with no killer known the old wording stands: "${fresh(n0).join(' | ')}"`);
-  // end to end: handleHeroDeath stamps the killer, and the host it disperses at once says so
-  { const ch={id:9102,name:'Rowan',player:0,alive:true,hp:0,maxHp:15,race:'Human',temper:'Brave',skills:{},items:[],armies:named('Yeoman Longbows','Average',['Bow R1']),location:homeProv.id,tm:{}};
-    const killer={id:9103,name:'Gorbash',player:1,alive:true,hp:10,maxHp:15,race:'Orcish',skills:{},items:[],armies:[],location:homeProv.id};
-    G.characters=(G.characters||[]).filter(c=>c.id!==9102&&c.id!==9103).concat([ch,killer]); homeProv.characters=[...(homeProv.characters||[]),ch.id,killer.id]; delete homeProv._battleUnresolved;
-    n0=L.length; let threw=null; try{ BR.handleHeroDeath(ch,killer,{}); }catch(x){ threw=x; }
-    ok(!threw,`handleHeroDeath runs on a staged hero${threw?' — '+String(threw).slice(0,80):''}`);
-    ok(ch.alive===false&&fresh(n0).some(l=>l===`Rowan's armies garrison in ${homeProv.name} after their commander fell to Gorbash.`),`the slain commander's host names the killer: "${fresh(n0).filter(l=>/Rowan/.test(l)).join(' | ')}"`); }
 
   console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);
   sc.errs.slice(0,3).forEach(e=>console.log('  ! '+e.split('\n').slice(0,2).join(' | ')));

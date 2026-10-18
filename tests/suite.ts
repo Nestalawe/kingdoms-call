@@ -159,13 +159,13 @@ export function suite(full: boolean): Script[] {
       'simulation',
       'fuzz-wages-combat',
       'tests/fuzz-wages-combat.test.js',
-      full ? [GM, '6', '20', '6', '20000'] : [GM, '3', '10', '5', '4000'],
+      full ? [GM, '6', '20', '6'] : [GM, '3', '10', '5'],
     ],
     [
       'simulation',
       'fuzz-advance-masking',
       'tests/fuzz-advance-masking.test.js',
-      full ? [GM, '6', '20', '6', '20000'] : [GM, '3', '10', '5', '4000'],
+      full ? [GM, '6', '20', '6'] : [GM, '3', '10', '5'],
     ],
   ];
   return rows.map(([level, name, file, args = [], env = {}]) => ({ level, name, file, args, env }));
