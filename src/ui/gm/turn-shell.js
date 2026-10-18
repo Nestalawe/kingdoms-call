@@ -4,6 +4,7 @@
 // confirm, load the game and its slots, check the turn, clear the orders, resolveTurn, save the world (only if the game
 // is still on that turn), then buildReports() and write each realm's report, the GM's log and the telemetry. It always
 // returns {ok, committed, conflict, error} (and `turn` when it worked); docs/traps.md, "Post-commit work in runTurn".
+// Once the turn has started it returns its `seed` too: the turn's dice (P1-18e, "The turn's dice" below).
 async function runTurn(opts){
   opts=opts||{};
   const auto=!!opts.auto;
@@ -45,6 +46,7 @@ async function runTurn(opts){
   // is a Set and was being called with .includes.)
   let _turnCommitted=false;
   let G;
+  let seed=null; // the turn's seed, once drawn (below): returned on success, and from the catch
 
   try{
 
@@ -88,7 +90,16 @@ async function runTurn(opts){
   const playersWithOrders=freshPlayers.filter(p=>p.user_id&&p.orders).length;
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Resolving 5 phases…</div>`;
-  const resolved=resolveTurn(freshGame.game_state, freshPlayers, expectedTurnToRun);
+  // ── THE TURN'S DICE (P1-18e, 2026-10-18) ────
+  // Each turn plays from its own seed: one number drawn from the page's dice, as a 32-bit integer (kcRngStream reads
+  // 0 as 1, so 0 becomes 1 here and the seed returned is the one that played). The turn borrows the dice made from it
+  // (src/engine/rng.js, kcRng.use) for resolveTurn, and again for buildReports(), whose Spy-stealth rolls are the
+  // turn's too, and gives the page its own dice back after each: they are never lent across an await, so nothing else
+  // the page runs meanwhile (another game's turn, the watcher) draws from them. runTurn returns the seed.
+  seed=Math.floor(kcRng()*2**32)||1;
+  const turnDice=kcRngStream(seed);
+  const onTurnDice=(fn)=>{ const was=kcRng.use(turnDice); try{ return fn(); } finally{ kcRng.use(was); } };
+  const resolved=onTurnDice(()=>resolveTurn(freshGame.game_state, freshPlayers, expectedTurnToRun));
 
   // 9. Save updated game state
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Saving game state…</div>`;
@@ -116,7 +127,7 @@ async function runTurn(opts){
 
   // 10. Generate and push new turn reports to each player
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Generating turn reports…</div>`;
-  const {reports, tel}=resolved.buildReports();
+  const {reports, tel}=onTurnDice(()=>resolved.buildReports());
   let reportErrors=[];
   for(const {gp, report} of reports){
     report.engineStamp=(typeof runningBuildStamp==='function'?runningBuildStamp():null); // which GM build wrote it: the page's to know, not the engine's
@@ -204,7 +215,7 @@ async function runTurn(opts){
       : _restoreFailed ? 'Check browser console (F12) for full details. The orders could NOT all be restored: ask the players to send theirs again.'
       : 'Check browser console (F12) for full details. Your orders have been restored.';
     msg.innerHTML=kcHtml`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_why}</small></div>`;
-    return {ok:false, committed:_turnCommitted, conflict:_saveConflict, error:e.message};
+    return {ok:false, committed:_turnCommitted, conflict:_saveConflict, error:e.message, seed};
   }
 
   // Refresh UI (only the game the GM is looking at; a watcher run of another game just refreshes
@@ -216,5 +227,5 @@ async function runTurn(opts){
   }else if(auto&&document.getElementById('sec-games')?.classList.contains('section-active')){
     loadGames();
   }
-  return {ok:true, committed:true, turn:G.turn};
+  return {ok:true, committed:true, turn:G.turn, seed};
 }

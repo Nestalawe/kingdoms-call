@@ -20,28 +20,10 @@ import vm from 'node:vm';
 import * as acorn from 'acorn';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { engineFiles } from '../../src/manifest.ts';
-import { MAP_SIZES, MAX_TURNS, matrix, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
-import { scriptedOrders, type State } from '../../tools/balance/scripted.ts';
+import { MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { ROOT } from '../../tools/build.ts';
 import { DATA_FILE, loadEngine } from '../lib/engine.ts';
-
-const GAME = matrix('A').find((g) => g.id === 'scripted-05');
-if (!GAME) throw new Error('the balance matrix has no game scripted-05');
-const SPEC = GAME;
-
-// The realms as tools/balance/play.ts sets them up: realm 0 the scripted player's, the others bots.
-const SETUPS = Array.from({ length: SPEC.realms }, (_, i) => ({
-  id: i,
-  gamePlayerId: 'gp' + String(i),
-  isBot: i !== SCRIPTED_REALM,
-  name: 'Realm' + String(i),
-  kingName: 'King' + String(i),
-  kingdomName: 'Realm' + String(i),
-  race: SPEC.races[i % SPEC.races.length],
-  alignment: SPEC.alignments[i % SPEC.alignments.length],
-  temper: 'Brave',
-  skills: { melee: 1, tactical: 1, march: 1, white: 1, naval: i % 3 === 0 ? 1 : 0, sage: 1, explorer: 1 },
-}));
+import { GAME, newWorld, slotRows } from '../lib/matrix-game.ts';
 
 /** The caches a turn seeds afresh at its start, so they carry nothing from one turn to the next. */
 const RESEEDED = ['_usedHeroNames', '_usedHeroFirsts', '_usedHeroEpithets', '_usedArmyUnitNames', '_MAXHP_PLAYERS'];
@@ -81,45 +63,12 @@ interface Engine {
 
 /** The engine, loaded the one way (from `src`, by default this checkout's src/), with the tripwires set. */
 function pureEngine(src?: string): Engine {
-  const engine = loadEngine(src === undefined ? { seed: SPEC.seed } : { seed: SPEC.seed, src });
+  const engine = loadEngine(src === undefined ? { seed: GAME.seed } : { seed: GAME.seed, src });
   const reaches: string[] = [];
   const said: string[] = [];
   (vm.runInContext(TRIPWIRES, engine) as (r: string[], s: string[]) => void)(reaches, said);
   const resolveTurn = vm.runInContext('resolveTurn', engine) as Engine['resolveTurn'];
   return { engine, reaches, said, resolveTurn };
-}
-
-/** A new world for the game, made by the engine itself, as the shell's caller saves it (JSON). */
-function newWorld({ engine }: Engine): string {
-  const make = vm.runInContext(
-    `(setups,size,opts,diplomacy)=>{ const g=generateNewGame(JSON.parse(setups),JSON.parse(size),0,JSON.parse(opts));
-      g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:null};
-      g.botDifficulty='hard'; g.botDiplomacy=diplomacy; return JSON.stringify(g); }`,
-    engine,
-  ) as (...a: string[]) => string;
-  return make(
-    JSON.stringify(SETUPS),
-    JSON.stringify(MAP_SIZES[SPEC.realms]),
-    JSON.stringify({ seaPct: SPEC.seaPct }),
-    SPEC.diplomacy,
-  );
-}
-
-/** The game's slot rows for a turn, as the shell loads them: realm 0 with the scripted orders it sent, the others
- *  bots. Made in the vm, so they are its own objects, as the shell's are the page's. */
-function slotRows({ engine }: Engine, state: string, turn: number): unknown {
-  const orders = JSON.stringify(scriptedOrders(JSON.parse(state) as State, SCRIPTED_REALM, turn).orders);
-  const rows = SETUPS.map((s) => ({
-    id: 'G1gp' + String(s.id),
-    game_id: 'G1',
-    user_id: s.isBot ? null : 'u' + String(s.id),
-    player_index: s.id,
-    display_name: s.name,
-    orders_submitted: !s.isBot,
-    orders: s.isBot ? null : orders,
-    turn_report: JSON.stringify(s.isBot ? { isBot: true, playerSetup: {} } : {}),
-  }));
-  return (vm.runInContext('(j)=>JSON.parse(j)', engine) as (j: string) => unknown)(JSON.stringify(rows));
 }
 
 /** Every top-level variable the data file and the engine declare. (Its functions are code: the only ones that carry
@@ -176,12 +125,12 @@ describe('a whole game, played in the bare vm', () => {
     const names = engineVariables();
     const snapshot = snapshotOf(e, names);
     const globals = vm.runInContext('()=>Object.getOwnPropertyNames(globalThis)', e.engine) as () => string[];
-    let state = newWorld(e);
+    let state = newWorld(e.engine);
     const before = new Set(globals());
     let was = snapshot();
     for (let turn = 1; turn <= MAX_TURNS; turn++) {
       if ((JSON.parse(state) as { gameOver?: unknown }).gameOver) break;
-      const resolved = e.resolveTurn(state, slotRows(e, state, turn), turn);
+      const resolved = e.resolveTurn(state, slotRows(e.engine, state, turn), turn);
       const { reports } = resolved.buildReports();
       if (turn === 1) {
         try {
@@ -241,7 +190,7 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     resolution: '  // 4. Run all 5 phases\n',
     reports: '  const activePlayers=freshPlayers.filter(p=>p.user_id);\n',
   };
-  const world = newWorld(pureEngine());
+  const world = newWorld(pureEngine().engine);
   // The engine from the copy, with `line` planted after `at`.
   const planted = (at: string, line: string): Engine => {
     if (original.split(at).length !== 2) throw new Error(`not once in run-turn.js: ${at}`);
@@ -259,13 +208,13 @@ describe('a fault planted in a copy of src/ turns it red', () => {
   // object), so the reaches are compared as a set.
   test.each(FAULTS)('planted %s in the resolution', (reach, line, error) => {
     const e = planted(AT.resolution, line);
-    expect(() => e.resolveTurn(world, slotRows(e, world, 1), 1)).toThrow(error);
+    expect(() => e.resolveTurn(world, slotRows(e.engine, world, 1), 1)).toThrow(error);
     expect(new Set(e.reaches)).toEqual(new Set([reach]));
   });
 
   test.each(FAULTS)('planted %s in the reports', (reach, line, error) => {
     const e = planted(AT.reports, line);
-    const resolved = e.resolveTurn(world, slotRows(e, world, 1), 1);
+    const resolved = e.resolveTurn(world, slotRows(e.engine, world, 1), 1);
     expect(() => resolved.buildReports()).toThrow(error);
     expect(new Set(e.reaches)).toEqual(new Set([reach]));
   });
@@ -275,7 +224,7 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     const snapshot = snapshotOf(e, engineVariables());
     const globals = vm.runInContext('()=>Object.getOwnPropertyNames(globalThis)', e.engine) as () => string[];
     const [was, had] = [snapshot(), new Set(globals())];
-    e.resolveTurn(world, slotRows(e, world, 1), 1).buildReports();
+    e.resolveTurn(world, slotRows(e.engine, world, 1), 1).buildReports();
     const now = snapshot();
     expect(Object.keys(now).filter((n) => now[n] !== was[n] && !RESEEDED.includes(n))).toEqual(['SKILL_LABELS']);
     expect(globals().filter((n) => !had.has(n))).toEqual(['kcPlanted']);
