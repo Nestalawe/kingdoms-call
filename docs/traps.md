@@ -265,7 +265,9 @@ ones it can't, or they cost time:
 
 Every random number the GM portal's own code draws comes from `kcRng()` (`src/engine/rng.js`, P1-07): one sfc32
 generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.js`) or, on the
-live site, from `crypto.getRandomValues`. Nothing in the engine or its views reads the time (P1-18d): only the
+live site, from `crypto.getRandomValues`. Each turn rolls its own dice (P1-18e): the turn's shell draws a seed from
+the page's dice and lends the turn `kcRngStream(seed)` with `kcRng.use`, once for `resolveTurn` and once for
+`buildReports()`, giving the page its dice back after each. Nothing in the engine or its views reads the time (P1-18d): only the
 turn's shell does, through `kcClock()` (`src/engine/clock.js`, which reads `Date.now()` when called), to stamp when
 the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Math.random` that throw.
 
@@ -278,6 +280,15 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 - A test fixes dice through the page's hook, never through the page's `Math.random`: nothing in `src/` reads it, so
   such a test would pin nothing and still pass. `const was=W.kcRng.use(()=>0.5); try{ … } finally{ W.kcRng.use(was); }`
   draws from your function for a while; `W.kcRng.seed(n)` starts again from seed `n`.
+- **Pinning the page's dice doesn't pin a turn's** (P1-18e). `runTurn` takes one number from them for the turn's seed
+  and plays the turn on dice of its own, so a test that pins the page's dice around `runTurn` fixes only that seed. A
+  test whose outcome rests on the dice is restaged instead: stage the state so that no roll decides it
+  (`mercenary-ids` hires both bands back rather than leaving one in the pool, where it may retire at the end of the
+  turn). To run a turn on chosen dice, call `resolveTurn` in Node with `kcRng.use` around it (`turn-shell`'s
+  same-result test).
+- Never lend the dice across an `await`. Another turn (the watcher's, or the GM's button on another game) can run in
+  the gap and would draw from them, and the page could be handed the wrong dice back. The shell borrows them twice,
+  around two synchronous calls.
 - Code a test cuts out of the page and runs on its own needs a `kcRng` or `kcClock` of its own (`home-placement`,
   `leaderboard-records`).
 - Keep the generator in an object's property (`_kcRng.next`), not in a top-level `let`. With a `let`, V8 (Node 24.22)

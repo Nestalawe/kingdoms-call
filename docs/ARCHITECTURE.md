@@ -244,7 +244,10 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   Since P1-18d nothing in the engine or its views reads the clock: only the turn's shell does, through `kcClock()`
   (`src/engine/clock.js`, `Date.now()` when called), to stamp when the turn ran; the screens read `Date` as before.
   `dice-and-clock` keeps `Math.random` and `Date` out of the source, and `engine-purity` checks that a whole game
-  reads neither ([traps.md](traps.md#dice-come-from-kcrng)). P1-18e gives each turn its own seed. A mercenary
+  reads neither ([traps.md](traps.md#dice-come-from-kcrng)). Each turn plays from its own seed (P1-18e): the shell
+  (`runTurn`) draws a 32-bit integer from the page's dice, lends the turn the dice made from it (`kcRngStream(seed)`,
+  through `kcRng.use`) for `resolveTurn` and again for `buildReports()`, gives the page its own dice back after each
+  (never across an `await`), and returns the seed (`{…, seed}`), for P2-01 to record. A mercenary
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
 - **Engine functions are nested inside `resolveTurn`** (combat, terrain modifiers, …). Tests reach them by

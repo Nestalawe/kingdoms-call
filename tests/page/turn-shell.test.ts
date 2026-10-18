@@ -1,5 +1,6 @@
-// The turn's shell: its one failure path (plan step P1-18a) and its database writes (P1-18d). runTurn always returns
-// {ok, committed, conflict, error}, and a failed run puts the players' orders back only when the turn was not saved.
+// The turn's shell: its one failure path (plan step P1-18a), its database writes (P1-18d) and its dice (P1-18e).
+// runTurn always returns {ok, committed, conflict, error}, and a failed run puts the players' orders back only when the
+// turn was not saved.
 // Each test stages a small game with two human realms (one has sent its orders, one has only saved a draft) and one
 // failure on the stand-in database:
 // - the orders can't be cleared: the run stops, nothing changes, the orders stay in;
@@ -11,6 +12,9 @@
 //   orders stay spent, and the GM is told the turn was saved;
 // - and none: the turn's writes, in order (the clear, the save, each realm's report and its snapshot, the GM's log,
 //   the telemetry), each payload agreeing with the others. P1-18d moved them into the shell; the test holds them.
+// And the turn's dice (P1-18e): each turn plays from a seed of its own, drawn from the page's dice and returned, and
+// the page gets its own dice back; the turn the page plays is the one the engine plays alone, in the bare vm, from that
+// seed.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.js)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
