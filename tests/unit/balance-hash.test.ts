@@ -70,7 +70,8 @@ describe('the words hash', () => {
 describe('a turn', () => {
   const telemetry = [{ id: 'row1', created_at: 'x', build: 'GM 2026.10.16-0819 tel1', turn: 1, outcomes: { id: 3 } }];
   const report = { engineStamp: '2026.10.16-0819', lastTurnLog: [{ text: 'You hold.' }], kingdom: { gold: 4 } };
-  const turn = { state, gmLog: [{ type: 'move', text: 'A moves.' }], telemetry, report };
+  const writes = [{ call: 'games.update', steps: [['eq', ['id', 'G1']]] }];
+  const turn = { state, gmLog: [{ type: 'move', text: 'A moves.' }], telemetry, report, writes };
 
   test('drops the stand-in database stamps and the build stamp at the top of a row or report only', () => {
     expect(withoutStamps(telemetry[0])).toEqual({ turn: 1, outcomes: { id: 3 } });
@@ -84,11 +85,8 @@ describe('a turn', () => {
     const cols = turnHashes(turn).split(' ');
     expect(cols).toHaveLength(TURN_COLUMNS.length);
     expect(cols.every((c) => /^[0-9a-f]{12}$/.test(c))).toBe(true);
-    expect(
-      turnHashes({ ...turn, report: null })
-        .split(' ')
-        .slice(-2),
-    ).toEqual(['', '']);
+    const bot = turnHashes({ ...turn, report: null }).split(' ');
+    expect([bot[TURN_COLUMNS.indexOf('report')], bot[TURN_COLUMNS.indexOf('reportText')]]).toEqual(['', '']);
   });
 
   test('a rewording moves only the words columns', () => {
@@ -100,6 +98,12 @@ describe('a turn', () => {
     const before = turnHashes(turn).split(' ');
     const moved = TURN_COLUMNS.filter((_, i) => reworded[i] !== before[i]);
     expect(moved).toEqual(['logText', 'reportText']);
+  });
+
+  test('a change in the writes moves only the writes column', () => {
+    const before = turnHashes(turn).split(' ');
+    const after = turnHashes({ ...turn, writes: [{ call: 'games.update', steps: [['eq', ['id', 'G2']]] }] }).split(' ');
+    expect(TURN_COLUMNS.filter((_, i) => after[i] !== before[i])).toEqual(['writes']);
   });
 
   test('a report section hashes its play and words apart', () => {

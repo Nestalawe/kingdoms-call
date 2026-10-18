@@ -19,6 +19,7 @@ import { pageFiles, SITE } from '../../tests/lib/boot.js';
 import { sourcesOf } from '../build.ts';
 import {
   BASELINE_FILE,
+  columnsNotKept,
   diffGame,
   readBaseline,
   totalCases,
@@ -155,7 +156,15 @@ async function main(): Promise<number> {
     }
 
     // Game by game against the baseline.
-    const base = new Map(readBaseline(set).map((g) => [g.id, g]));
+    const baseline = readBaseline(set);
+    const notKept = columnsNotKept(baseline);
+    if (notKept.length) {
+      console.log(
+        `\n${path.relative(process.cwd(), BASELINE_FILE[set])} has no ${notKept.join(', ')} column, so this run can't be compared with it in full: npm run balance:update, and commit the baseline.`,
+      );
+      failed = true;
+    }
+    const base = new Map(baseline.map((g) => [g.id, g]));
     const diffs = kept.flatMap((g) => {
       const b = base.get(g.id);
       if (!b) return [{ id: g.id, line: 'not in the baseline' }];

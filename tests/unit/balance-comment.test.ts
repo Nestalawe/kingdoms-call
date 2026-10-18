@@ -40,13 +40,14 @@ describe('the description\'s "What changes in play" section', () => {
     expect(whatChangesInPlay('## What changes in play\nFewer lairs fall.\n---\n## Tests')).toBe('Fewer lairs fall.');
   });
 
-  test('the warning: for any report but "no change", while the section is missing or empty', () => {
+  test('the warning: for any report but "no change" or "writes only", while the section is missing or empty', () => {
     const written = '## What changes in play\n\nFewer lairs fall.';
     expect(needsWarning('rule change', '')).toBe(true);
     expect(needsWarning('reshape', '')).toBe(true);
     expect(needsWarning('wording only', '')).toBe(true);
     expect(needsWarning('rule change', written)).toBe(false);
     expect(needsWarning('no change', '')).toBe(false);
+    expect(needsWarning('writes only', ''), 'nothing in play changed: nothing for the section to say').toBe(false);
     expect(needsWarning(null, '')).toBe(false);
     expect(WARNING_BODY.startsWith(WARNING_MARKER)).toBe(true);
   });
@@ -56,6 +57,10 @@ describe('the report comment', () => {
   test('the report file: only the right shape is read', () => {
     expect(readReport(JSON.stringify({ version: 1, class: 'rule change', verdict: 'v', markdown: 'm' }))).toEqual({
       class: 'rule change',
+      markdown: 'm',
+    });
+    expect(readReport(JSON.stringify({ version: 1, class: 'writes only', verdict: 'v', markdown: 'm' }))).toEqual({
+      class: 'writes only',
       markdown: 'm',
     });
     for (const bad of [

@@ -5,6 +5,10 @@
 // - "no change": every game's hashes, results and statistics are identical (a pure refactor);
 // - "wording only": every game played out the same (state, log structure, telemetry, results, the scripted realm's
 //   report structure), and only words differ;
+// - "writes only" (P1-02c): every game played out the same, with the same words, and only what the turns wrote to the
+//   database differs (the `writes` column: a filter, the save's `meta`, the order of the writes). Nothing in play
+//   changed, so it is judged by which games and turns wrote differently: expected only of a change to how the game
+//   saves;
 // - a reshape: at least RESHAPE_SHARE of the games played out differently, as when the order of the random draws
 //   changes (of the games still being played at the first turn any game differs: a change from turn 18 can't reach a
 //   game that ended at 15). Every game differs, so no single game can show what changed: it is judged as a whole, by the strict
@@ -14,7 +18,7 @@
 //   confined to one slice (battles between realms) still shows in the verdict.
 // The pure functions are here, tested in tests/unit/balance-report.test.ts; report-run.ts plays the replays and
 // writes the files.
-import { diffGame, type KeptGame } from './baseline.ts';
+import { columnsNotKept, diffGame, type KeptGame } from './baseline.ts';
 import { WORD_COLUMNS, type TurnColumn } from './hash.ts';
 import { label } from './labels.ts';
 import { compareRuns, meaningfulChanges, type Change, type Verdict } from './paired.ts';
@@ -29,7 +33,9 @@ export const MAX_REPLAYS = 12;
 const SHOWN = 3;
 const SHOWN_ROWS = 10;
 
-export type ChangeClass = 'no change' | 'wording only' | 'reshape' | 'rule change';
+/** The classes of change; the comment's script (tools/github/balance-comment.ts) keeps the same list. */
+export const CHANGE_CLASSES = ['no change', 'wording only', 'writes only', 'reshape', 'rule change'] as const;
+export type ChangeClass = (typeof CHANGE_CLASSES)[number];
 
 export const show = (key: string, v: number): string => (isShare(key) ? (100 * v).toFixed(1) + '%' : v.toFixed(2));
 export const showDiff = (key: string, v: number): string =>
@@ -44,13 +50,16 @@ export interface GameChange {
   play: boolean;
   /** Some words differ. */
   words: boolean;
+  /** What a turn wrote to the database differs (the `writes` column). */
+  writes: boolean;
   /** The first turn whose hashes differ (any column), or null. */
   firstTurn: number | null;
   /** Statistics whose value differs. */
   stats: string[];
 }
 
-const PLAY_COLUMN = (c: string) => !WORD_COLUMNS.has(c as TurnColumn);
+/** Hashes of play: every column but the words and the writes. A change of play or words changes the writes too. */
+const PLAY_COLUMN = (c: string) => !WORD_COLUMNS.has(c as TurnColumn) && c !== 'writes';
 
 /** The games that differ in anything, in the branch's order. A game missing on one side counts as played out
  *  differently. */
@@ -60,7 +69,7 @@ export function compareGames(base: KeptGame[], head: KeptGame[]): GameChange[] {
   for (const h of head) {
     const b = byId.get(h.id);
     if (!b) {
-      out.push({ id: h.id, play: true, words: true, firstTurn: 1, stats: Object.keys(h.stats) });
+      out.push({ id: h.id, play: true, words: true, writes: true, firstTurn: 1, stats: Object.keys(h.stats) });
       continue;
     }
     const d = diffGame(b, h);
@@ -73,12 +82,15 @@ export function compareGames(base: KeptGame[], head: KeptGame[]): GameChange[] {
       d.results ||
       sections.some((k) => part(b, k, 0) !== part(h, k, 0)) ||
       JSON.stringify(b.cases) !== JSON.stringify(h.cases);
-    const words = d.columns.some((c) => !PLAY_COLUMN(c)) || sections.some((k) => part(b, k, 1) !== part(h, k, 1));
-    out.push({ id: h.id, play, words, firstTurn: d.firstTurn, stats: d.stats });
+    const words =
+      d.columns.some((c) => WORD_COLUMNS.has(c as TurnColumn)) || sections.some((k) => part(b, k, 1) !== part(h, k, 1));
+    const writes = d.columns.includes('writes');
+    out.push({ id: h.id, play, words, writes, firstTurn: d.firstTurn, stats: d.stats });
   }
   const heads = new Set(head.map((g) => g.id));
   for (const b of base) {
-    if (!heads.has(b.id)) out.push({ id: b.id, play: true, words: true, firstTurn: 1, stats: Object.keys(b.stats) });
+    if (!heads.has(b.id))
+      out.push({ id: b.id, play: true, words: true, writes: true, firstTurn: 1, stats: Object.keys(b.stats) });
   }
   return out;
 }
@@ -99,13 +111,14 @@ export function playedShare(
 export function classify(changes: GameChange[], base: KeptGame[]): ChangeClass {
   if (!changes.length) return 'no change';
   const { played, running } = playedShare(changes, base);
-  if (!played) return 'wording only';
+  if (!played) return changes.some((c) => c.words) || !changes.some((c) => c.writes) ? 'wording only' : 'writes only';
   return played >= RESHAPE_SHARE * running ? 'reshape' : 'rule change';
 }
 
 /** The games to replay to find where they first differ: those that played out differently (or, for wording only,
- *  those whose words differ), MAX_REPLAYS at most, in matrix order. */
+ *  those whose words differ), MAX_REPLAYS at most, in matrix order. None for writes only: the GM log is the same. */
 export function gamesToReplay(changes: GameChange[], cls: ChangeClass): { id: string; turn: number }[] {
+  if (cls === 'writes only') return [];
   const picked = changes.filter((c) => (cls === 'wording only' ? c.words : c.play) && c.firstTurn != null);
   return picked.slice(0, MAX_REPLAYS).map((c) => ({ id: c.id, turn: c.firstTurn ?? 1 }));
 }
@@ -270,6 +283,10 @@ export interface Report {
   statsFromWords: string[];
   /** The branch's games differ from its committed baseline (CI fails until it's updated). */
   baselineStale: boolean;
+  /** The games whose writes to the database differ, with the first turn that does (any column). */
+  writes: { id: string; firstTurn: number | null }[];
+  /** Hash columns the base's baseline doesn't have, so not compared (it's from before they were added). */
+  notCompared: TurnColumn[];
 }
 
 const moved = (c: Change) => c.verdict === 'clear change' || c.verdict === 'possible change';
@@ -345,6 +362,9 @@ export function buildReport(input: {
     case 'wording only':
       verdict = `Wording only: the words changed in ${String(changes.length)} of ${String(total)} games, and every game played out exactly as before.`;
       break;
+    case 'writes only':
+      verdict = `Nothing in play changed, but what the game writes to the database did, in ${String(changes.length)} of ${String(total)} games. Every game played out exactly as before, in the same words.`;
+      break;
     case 'reshape':
       verdict =
         (share.running === total && share.from === 1
@@ -384,8 +404,15 @@ export function buildReport(input: {
     meaningful,
     statsFromWords,
     baselineStale: input.baselineStale ?? false,
+    writes: changes.filter((c) => c.writes).map((c) => ({ id: c.id, firstTurn: c.firstTurn })),
+    notCompared: columnsNotKept(base),
   };
 }
+
+/** A hash column in words, for a reader who doesn't know the matrix. */
+const COLUMN_WORDS: Readonly<Partial<Record<TurnColumn, string>>> = {
+  writes: 'what each turn writes to the database',
+};
 
 // Markdown. Log lines go in code blocks, so nothing in them is read as markup, a link or a mention.
 const code = (t: string) => t.replace(/```/g, 'ʼʼʼ');
@@ -430,6 +457,18 @@ function capped(rows: Line[], what: string): string[] {
   ];
 }
 
+/** The games whose writes changed, and from which turn: the first few, then a "show all". */
+function writesList(games: Report['writes']): string[] {
+  const item = (g: Report['writes'][number]) =>
+    `- **${g.id}**${g.firstTurn != null ? `, from turn ${String(g.firstTurn)}` : ''}`;
+  const out = games.slice(0, SHOWN).map(item);
+  if (games.length > SHOWN) {
+    out.push('', `<details><summary>Show all ${String(games.length)}</summary>`, '', ...games.slice(SHOWN).map(item));
+    out.push('', '</details>');
+  }
+  return out;
+}
+
 /** The comment's text (without its marker: the posting workflow adds that). */
 export function renderReport(r: Report): string {
   const out = ['## Balance report', '', `**${r.verdict}**`, ''];
@@ -440,8 +479,28 @@ export function renderReport(r: Report): string {
       '',
     );
   }
+  if (r.notCompared.length) {
+    out.push(
+      `The base branch's baseline doesn't record ${r.notCompared.map((c) => COLUMN_WORDS[c] ?? c).join(' or ')} yet, ` +
+        'so that was not compared. It is compared from the next pull request on.',
+      '',
+    );
+  }
   if (r.class === 'no change') {
     out.push('Every game of the balance matrix (60 seeded games) is identical: hashes, results and figures.');
+    return out.join('\n') + '\n';
+  }
+  if (r.class === 'writes only') {
+    out.push(
+      '### What the game writes to the database',
+      '',
+      'Every game played out the same, so players see no difference. But in these games, at least one turn saved ' +
+        'its results to the database differently: a different filter, a field added or left out, or the writes in ' +
+        'another order. That is expected only of a change to how the game saves. If this pull request is not meant ' +
+        'to change that, it is a mistake.',
+      '',
+      ...writesList(r.writes),
+    );
     return out.join('\n') + '\n';
   }
   const [bc, bt] = r.games.bots;
@@ -452,6 +511,16 @@ export function renderReport(r: Report): string {
       : `${String(r.games.changed)} of ${String(r.games.total)} games played out differently: ${String(bc)} of the ${String(bt)} computer-played games and ${String(sc)} of the ${String(st)} with a scripted realm.`,
     '',
   );
+  const writesBeyondWords = r.class === 'wording only' ? r.writes.length : 0;
+  if (writesBeyondWords) {
+    out.push(
+      `⚠️ In ${String(writesBeyondWords)} game${writesBeyondWords === 1 ? '' : 's'}, what the game writes to the ` +
+        'database changed beyond the words: expected only of a change to how the game saves.',
+      '',
+      ...writesList(r.writes),
+      '',
+    );
+  }
   if (r.statsFromWords.length) {
     out.push(
       `⚠️ Some figures changed though no game played out differently: ${r.statsFromWords.join('; ')}. They read the ` +
@@ -549,6 +618,8 @@ export function renderReport(r: Report): string {
       'the order of the dice), every figure moves a little by chance, so only the headline figures are judged, with ' +
       'the bar raised for their number.',
     "- The figures come from the computer-played games; the scripted realm's games are shown apart.",
+    '- Each turn, the matrix also checks what the game writes to the database. That can change while nothing in ' +
+      'play does (**writes only**): expected only when a change is about how the game saves.',
     '',
     '</details>',
   );

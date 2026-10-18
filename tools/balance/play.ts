@@ -7,6 +7,7 @@
 //   drawn in one game survive in the page into the next;
 // - turn mode is manual: in "auto" mode the auto-turn watcher runs a turn by itself, at a moment that depends on load;
 // - the stand-in database's own stamps and ids are left out of the hashes (hash.ts);
+// - the turn's writes are recorded on the stand-in's one client, below bootJsdom's own wrapper (writes.ts);
 // - the runner stops at gameOver: runTurn doesn't stop a finished game.
 // After every turn it checks the invariants (tests/lib/invariants.ts, P1-04b) and, in a scripted game, the scripted
 // realm's report for leaks (tests/lib/report-leaks.ts, P1-04c): a breach fails the game. They only read.
@@ -18,6 +19,7 @@ import { h, reportSectionHashes, turnHashes, withoutStamps, playHash } from './h
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM, START, type GameSpec } from './matrix.ts';
 import { scriptedOrders, type Plan, type State } from './scripted.ts';
 import { gameStats, LINES, type GameOver, type Stats, type TelemetryRow } from './stats.ts';
+import { recordCalls } from './writes.ts';
 
 /** How long the page is given to boot. A fixed wait until a "boot finished" condition is found that doesn't depend on
  *  load; any replacement is proved by identical hashes at 1 and many games side by side. */
@@ -125,6 +127,7 @@ export async function playGame(
   const t0 = performance.now();
   const S = makeStub();
   const DB = S.DB;
+  const calls = recordCalls(S.supabase.createClient());
   const errors: string[] = [];
   const W = bootJsdom(html, {
     supabase: S.supabase,
@@ -171,6 +174,7 @@ export async function playGame(
       const nLogs = (DB['turn_logs'] ??= []).length;
       const nEvents = (DB['turn_events'] ??= []).length;
       errors.length = 0;
+      calls.length = 0;
       W['__game'] = structuredClone(row);
       const res = (await W.eval('runTurn({auto:true,game:__game,reason:"matrix"})')) as { ok?: boolean } | null;
       if (errors.length || res?.ok === false) throw fail(`turn ${String(t)} failed: ${errors[0] ?? 'not ok'}`);
@@ -192,7 +196,7 @@ export async function playGame(
       });
       if (breaches.length) throw fail('an invariant broke\n' + describeBreaches(`turn ${String(t)}`, breaches));
       const report = scripted && me ? (JSON.parse(String(me['turn_report'])) as Record<string, unknown>) : null;
-      turns.push(turnHashes({ state, gmLog: log, telemetry, report }));
+      turns.push(turnHashes({ state, gmLog: log, telemetry, report, writes: calls.splice(0) }));
       gmLog.push(...log);
       lastLog = log;
       unresolved.push(state.world.provinces.filter((p) => p._battleUnresolved).length);

@@ -1,16 +1,18 @@
 // The balance report (tools/balance/report.ts, labels.ts; P1-03a): the class of change, where two runs first differ,
-// the verdict, and every statistic's plain-words label. Made-up games with a known answer. Level 1 (unit): pure
+// the verdict, and every statistic's plain-words label; the class for a change in the database writes alone (P1-02c). Made-up games with a known answer. Level 1 (unit): pure
 // functions on small data; playing real games (the matrix, in CI) can't stage a reshape or a slice-only change on
 // demand.
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import type { KeptGame } from '../../tools/balance/baseline.ts';
+import { formatBaseline, parseBaseline, type KeptGame } from '../../tools/balance/baseline.ts';
 import { TURN_COLUMNS, type TurnColumn } from '../../tools/balance/hash.ts';
 import { BASE_LABELS, labelOf } from '../../tools/balance/labels.ts';
 import type { LogEntry } from '../../tools/balance/play.ts';
+import { CLASSES } from '../../tools/github/balance-comment.ts';
 import {
   buildReport,
+  CHANGE_CLASSES,
   classify,
   compareGames,
   firstDifference,
@@ -262,6 +264,95 @@ describe('the comment', () => {
     const md = renderReport(buildReport({ base: BASE, head: BASE }));
     expect(md).toContain('**No change: all 60 games played out exactly as before.**');
     expect(md).not.toContain('###');
+  });
+});
+
+// P1-02c: the `writes` column. A change of play or words changes the writes too; only a change in the writes alone is
+// "writes only". P1-17 moves these writes: its pull requests must come out "no change".
+describe('the database writes', () => {
+  test('only the writes differ: writes only, judged by which games and turns, with nothing replayed', () => {
+    const head = BASE.map((g, i) => (i === 3 || i === 50 ? alter(g, ['writes'], 4) : g));
+    const changes = compareGames(BASE, head);
+    expect(changes).toEqual([
+      expect.objectContaining({ id: 'bots-03', play: false, words: false, writes: true, firstTurn: 4 }),
+      expect.objectContaining({ id: 'scripted-02', play: false, words: false, writes: true, firstTurn: 4 }),
+    ]);
+    expect(classify(changes, BASE)).toBe('writes only');
+    expect(gamesToReplay(changes, 'writes only')).toEqual([]);
+    const r = buildReport({ base: BASE, head });
+    expect(r.verdict).toBe(
+      'Nothing in play changed, but what the game writes to the database did, in 2 of 60 games. Every game played out exactly as before, in the same words.',
+    );
+    const md = renderReport(r);
+    expect(md).toContain('### What the game writes to the database');
+    expect(md).toContain('- **bots-03**, from turn 4\n- **scripted-02**, from turn 4');
+    expect(md).not.toContain('### The changes');
+  });
+
+  test('the writes changing every game is still writes only, not a reshape', () => {
+    expect(
+      classify(
+        compareGames(
+          BASE,
+          BASE.map((g) => alter(g, ['writes'])),
+        ),
+        BASE,
+      ),
+    ).toBe('writes only');
+  });
+
+  test('play or words changed with the writes: classed as before', () => {
+    const rule = BASE.map((g, i) => (i < 5 ? alter(g, ['state', 'writes']) : g));
+    expect(classify(compareGames(BASE, rule), BASE)).toBe('rule change');
+    const reshape = BASE.map((g) => alter(g, ['state', 'log', 'writes']));
+    expect(classify(compareGames(BASE, reshape), BASE)).toBe('reshape');
+    expect(
+      classify(
+        compareGames(
+          BASE,
+          BASE.map((g) => alter(g, ['logText'])),
+        ),
+        BASE,
+      ),
+    ).toBe('wording only');
+  });
+
+  // The writes hash leaves the words out (hash.ts's playJson), so a rewording alone leaves it as it was.
+  test('wording only with the writes changed too: the report says so', () => {
+    const head = BASE.map((g, i) => alter(g, i === 7 ? ['logText', 'writes'] : ['logText']));
+    const r = buildReport({ base: BASE, head });
+    expect(r.class).toBe('wording only');
+    expect(renderReport(r)).toContain(
+      '⚠️ In 1 game, what the game writes to the database changed beyond the words: expected only of a change to how the game saves.\n\n- **bots-07**, from turn 1',
+    );
+    expect(renderReport(buildReport({ base: BASE, head: BASE.map((g) => alter(g, ['logText'])) }))).not.toContain('⚠️');
+  });
+
+  // The pull request that adds the column (P1-02c) compares with a base whose baseline doesn't have it.
+  test("a base baseline without the writes column: the rest is compared, and the report says the writes weren't", () => {
+    const old = parseBaseline(
+      formatBaseline('A', BASE)
+        .replace(/,\s*"writes"\s*\]/, ']')
+        .replace(/ writes\d"/g, '"'),
+    ).games;
+    expect(old[0]?.turns[0]?.split(' ').at(-1)).toBe('?');
+    expect(compareGames(old, BASE)).toEqual([]);
+    const r = buildReport({ base: old, head: BASE });
+    expect(r).toMatchObject({ class: 'no change', notCompared: ['writes'] });
+    const md = renderReport(r);
+    expect(md).toContain('**No change: all 60 games played out exactly as before.**');
+    expect(md).toContain(
+      "The base branch's baseline doesn't record what each turn writes to the database yet, so that was not compared.",
+    );
+    expect(renderReport(buildReport({ base: BASE, head: BASE }))).not.toContain("doesn't record");
+    // A change of play still shows.
+    expect(buildReport({ base: old, head: BASE.map((g, i) => (i ? g : alter(g, ['state']))) }).class).toBe(
+      'rule change',
+    );
+  });
+
+  test("the comment's script knows every class (it runs from main, apart from this code)", () => {
+    expect([...CLASSES]).toEqual([...CHANGE_CLASSES]);
   });
 });
 

@@ -3,7 +3,8 @@
 //   comment, edited in place on later pushes. With no report (no engine path changed, or the job stopped before the
 //   report), it edits an earlier report comment to say so, and posts nothing on a pull request that never had one.
 // - warn: when a pull request's description is edited, and after each post, it posts a warning comment if the report
-//   isn't "no change" and the description has no "What changes in play" section, and deletes it once there is one.
+//   changes play or words (not "no change" or "writes only") and the description has no "What changes in play"
+//   section, and deletes it once there is one.
 // Neither blocks a merge: any problem is logged as a warning and the job still succeeds.
 //
 // It never checks out or runs the pull request's code: the workflow runs this file from the default branch (or, for
@@ -18,7 +19,8 @@ import path from 'node:path';
 
 export const MARKER = '<!-- balance-report -->';
 export const WARNING_MARKER = '<!-- what-changes-in-play -->';
-export const CLASSES = ['no change', 'wording only', 'reshape', 'rule change'] as const;
+/** The balance report's classes (tools/balance/report.ts's CHANGE_CLASSES: a test checks they agree). */
+export const CLASSES = ['no change', 'wording only', 'writes only', 'reshape', 'rule change'] as const;
 export type ChangeClass = (typeof CLASSES)[number];
 /** GitHub refuses a comment over 65,536 characters. */
 export const MAX_REPORT = 60000;
@@ -75,9 +77,10 @@ export function whatChangesInPlay(description: string | null | undefined): strin
   return /^(none\.?|…|\.\.\.)$/i.test(section) ? '' : section;
 }
 
-/** The warning is needed: the report isn't "no change" and the section is missing or empty. */
+/** The warning is needed: the report says play or words changed and the section is missing or empty. With "writes
+ *  only", nothing players see changed, so there is nothing for the section to say. */
 export const needsWarning = (cls: ChangeClass | null, description: string | null | undefined): boolean =>
-  cls != null && cls !== 'no change' && !whatChangesInPlay(description);
+  cls != null && cls !== 'no change' && cls !== 'writes only' && !whatChangesInPlay(description);
 
 export const WARNING_BODY =
   `${WARNING_MARKER}\n**⚠️ What changes in play.** The balance report says this pull request changes the games, ` +
