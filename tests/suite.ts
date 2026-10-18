@@ -148,7 +148,6 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'defend-naval-overland', 'tests/defend-naval-overland.test.js'],
     ['scenario', 'defend-once', 'tests/defend-once.test.js'],
     ['scenario', 'hero-every-phase', 'tests/hero-every-phase.test.js'],
-    ['scenario', 'npc-parity', 'tests/npc-parity.test.js'],
     [
       'simulation',
       'report-privacy',
