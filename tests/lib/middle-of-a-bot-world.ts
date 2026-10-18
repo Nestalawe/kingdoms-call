@@ -2,7 +2,8 @@
 // made by the engine, cleared, with heroes stood on it one by one. Each board is a fresh turn's context
 // (tests/lib/engine.ts) in one phase: the province at row 4, column 5 (X), its six neighbours (ring1) and theirs
 // (ring2) are open plain, unowned, with no garrison, guard or lair; nobody stands anywhere and nobody has orders.
-// Realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace.
+// Realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace. playTurn (plan P1-08j1) plays a whole turn from a board
+// as staged, for a scenario test (level 2) of an order.
 import vm from 'node:vm';
 import { engineFn, turnContext, type TurnContext } from './engine.ts';
 
@@ -68,6 +69,8 @@ export interface Line {
   provinceId: number | null;
   actor?: number | null;
   targets?: number[];
+  /** The phase (0–4; 99 for the end of the turn), or null. */
+  phase?: number | null;
   [key: string]: unknown;
 }
 
@@ -211,6 +214,69 @@ export function hero(b: Board, s: HeroSpec): Character {
   must(pools['seaMoveActive'], 'seaMoveActive')[id] = false;
   must(pools['seaCap'], 'seaCap')[id] = 'land';
   return c;
+}
+/** One phase's order, as a realm sends it. */
+export interface Order {
+  action: string;
+  target: string;
+  extra: string;
+  desc: string;
+}
+/** An order: `order('move', 12)`. */
+export const order = (action: string, target: string | number = '', extra: string | number = ''): Order => ({
+  action,
+  target: String(target),
+  extra: String(extra),
+  desc: '',
+});
+/** Five orders: the given ones first, then Rest. */
+export const plan = (...orders: Order[]): Order[] => [
+  ...orders.slice(0, 5),
+  ...Array.from({ length: Math.max(0, 5 - orders.length) }, () => order('rest')),
+];
+export interface PlayedTurn {
+  /** The world after the turn, as saved. */
+  after: World;
+  /** The GM's log of the turn. */
+  lines: Line[];
+}
+/** Plays one whole turn (resolveTurn) from the board as staged (plan P1-08j1): every realm human-held, each hero given
+ *  orders here doing them, every other hero Resting, safe start over. The turn works out its own move points; the
+ *  board's context isn't used. */
+export function playTurn(b: Board, orders: Record<number, Order[]>): PlayedTurn {
+  const G = b.G as World & { safeStart?: boolean };
+  G.safeStart = false;
+  const rows = G.players.map((_, i) => ({
+    id: 'G1gp' + String(i),
+    game_id: 'G1',
+    user_id: 'u' + String(i),
+    player_index: i,
+    display_name: 'Realm ' + String(i),
+    orders_submitted: true,
+    orders: JSON.stringify({
+      orders: Object.fromEntries(
+        G.characters.filter((c) => c.alive && c.player === i).map((c) => [c.id, orders[c.id] ?? plan()]),
+      ),
+      encounterPlans: {},
+      kingSkills: {},
+      diplomacy: {},
+      discoveryChoices: {},
+      callReckoning: false,
+      concede: false,
+      messages: [],
+      heroOrder: [],
+      forTurn: G.turn,
+    }),
+    turn_report: '{}',
+  }));
+  const resolveTurn = engineFn(b.engine, 'resolveTurn') as (
+    state: string,
+    rows: unknown,
+    turn: number,
+  ) => { state: string; log: Line[] };
+  const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
+  const resolved = resolveTurn(JSON.stringify(G), inVm(JSON.stringify(rows)), G.turn);
+  return { after: JSON.parse(resolved.state) as World, lines: resolved.log };
 }
 /** A hero's points of movement left. */
 export const points = (b: Board, c: Character) => {
