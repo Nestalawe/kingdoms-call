@@ -15,8 +15,9 @@
 //     turn initialises it. So this harness boots the portal exactly as claude_fuzz_0926b.js does,
 //     generates a real world and runs ONE real turn; the hook at "// 4. Run all 5 phases" then hands
 //     back live references.
-//   * `G` is runTurn-scoped, so the staged cases install their own world through setG.
-//   * `_currentPhase` / `_logCtx` are runTurn-scoped too, hence setPhase.
+//   * `G` is runTurn-scoped, so the staged cases install their own world through setG (in resolveTurn and in
+//     its turnContext, which the lifted helpers read: plan P1-08a).
+//   * `_currentPhase` / `_logCtx` are the turn's too (turnContext's since P1-08a), hence setPhase.
 //
 // Usage: node tests/npc-parity.test.js [gm-portal.html]   (default: site/kingdoms-call-gm-portal.html)
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
@@ -26,7 +27,7 @@ let html=readPage(GMF);
 
 const inj=(a,b)=>{ if(html.split(a).length!==2) throw new Error('anchor not unique: '+a.slice(0,60)); html=html.replace(a,b); };
 inj("  // 4. Run all 5 phases\n",
-  "  window.__NPC={combatVsNPC,setG:(g)=>{G=g;},getG:()=>G,setPhase:(p)=>{_currentPhase=p;_logCtx.phase=p;}};\n  // 4. Run all 5 phases\n");
+  "  window.__NPC={combatVsNPC,setG:(g)=>{G=g;turnContext.G=g;},getG:()=>G,setPhase:(p)=>{turnContext._currentPhase=p;turnContext._logCtx.phase=p;}};\n  // 4. Run all 5 phases\n");
 
 let ROWS={}; const WRITES=[];
 const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});

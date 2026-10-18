@@ -4,7 +4,7 @@ const GMF=process.argv[2]||'kingdoms-call-gm-portal.html';
 let html=readPage(GMF);
 const anchor="  // 4. Run all 5 phases\n";
 if(html.split(anchor).length!==2) throw new Error('anchor');
-html=html.replace(anchor,"  window.__NR={G,navalSplitRetreat,retreatOptions,getSeaCapability,seaLiftShortfall,pickStrandedUnits,getNeighborsP,setG:(s)=>{G=s;},setPhase:(p)=>{_currentPhase=p;_logCtx.phase=p;}};\n"+anchor);
+html=html.replace(anchor,"  window.__NR={G,navalSplitRetreat,retreatOptions,getSeaCapability,seaLiftShortfall,pickStrandedUnits,getNeighborsP,setG:(s)=>{G=s;turnContext.G=s;},setPhase:(p)=>{turnContext._currentPhase=p;turnContext._logCtx.phase=p;}};\n"+anchor);
 let ROWS={}; const WRITES=[];
 const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});
 const errors=[];
