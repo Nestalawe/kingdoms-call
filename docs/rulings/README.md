@@ -122,7 +122,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-060](R-060-event-lines-need-sight.md) | Province events are seen only by those who can see the province | 2026-09-27 | Confirmed | [`report-privacy`](../../tests/report-privacy.test.js) |
 | [R-061](R-061-conceded-realms.md) | A realm that has conceded | 2026-09-27 | Confirmed | [`concede`](../../tests/concede.test.js) |
 | [R-062](R-062-join-screen-briefing.md) | The join-screen briefings stay short and current | 2026-09-27 | Confirmed | no test yet |
-| [R-063](R-063-ambush-and-shield-fort-against-neutrals.md) | Ambush and Shield Fort work against neutral defenders | 2026-09-27 | Confirmed | [`npc-parity`](../../tests/npc-parity.test.js) |
+| [R-063](R-063-ambush-and-shield-fort-against-neutrals.md) | Ambush and Shield Fort work against neutral defenders | 2026-09-27 | Confirmed | [`npc-parity`](../../tests/unit/npc-parity.test.ts) |
 | [R-064](R-064-odds-against-unknown-rivals.md) | Odds against an unknown rival show only the outcome | 2026-09-27 | Confirmed | no test yet |
 | [R-065](R-065-orcish-war-spoils.md) | Orcish war-spoils: a true half, on every attacking win | 2026-09-27 | Confirmed | [`druid-and-war-spoils`](../../tests/druid-and-war-spoils.test.js), [`fuzz-wages-combat`](../../tests/fuzz-wages-combat.test.js) |
 | [R-066](R-066-dispatches.md) | Dispatches between players | 2026-09-27 | Confirmed | no test yet |

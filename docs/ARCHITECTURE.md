@@ -287,7 +287,11 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `resolveCharVsChar`, the flee spoils, `engine/personal-combat/duels-and-character-encounters.js`), lair guardians and
   the Hunting Rumours odds (`resolveEncounter`, `pcBuildGuardian`, `simulateLairOdds`,
   `engine/personal-combat/lair-guardians-and-the-odds.js`), and hero death and leaderless hosts (`handleHeroDeath`,
-  `reportHeroFall`, `disperseDeadCharArmies`, `engine/heroes/hero-death-and-leaderless-hosts.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  `reportHeroFall`, `disperseDeadCharArmies`, `engine/heroes/hero-death-and-leaderless-hosts.js`). P1-08g: a host's
+  battle against a province's defenders with no realm's hero among them (`combatVsNPC`,
+  `engine/battle/battles-against-province-defenders.js`, with the constants both battle paths read: the carry-on death
+  scaling, the airborne-at-sea penalties, the narrative verbs, `BATTLE_ARMY_SPELLS`), and the duel before a battle
+  (`preBattleDuel`, `engine/battle/pre-battle-duels.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
