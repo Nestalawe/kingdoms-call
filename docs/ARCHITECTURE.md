@@ -314,7 +314,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (`engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.js`), extracted the same way, each with only
   the values it reads: Explore (`resolveExploreOrder`), Perform Rite (`resolvePerformRiteOrder`), Hunting Rumours
   (`resolveHuntingRumoursOrder`), Search Lair (`resolveSearchLairOrder`), Chart the Unknown
-  (`resolveChartTheUnknownOrder`) and Discover Lost Ruin (`resolveDiscoverLostRuinOrder`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  (`resolveChartTheUnknownOrder`) and Discover Lost Ruin (`resolveDiscoverLostRuinOrder`). P1-08j3, recruiting and
+  hiring (`engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.js`: Recruit Armies,
+  `resolveRecruitArmiesOrder`; Hire Hero, `resolveHireHeroOrder`; and `landHirePreOrders`, which lands the orders a realm
+  wrote for a hero once he is sworn, moved out of `resolveTurn` beside them) and the realm's works
+  (`engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.js`: Consecrate, Call to Arms,
+  Broker, Harvest the Field, Awaken Grove, Wild Calling, Grand Design, and one function for the refusal of the removed
+  Awaken the Wild and Call from the Pit, whose two `case` labels both call it). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
