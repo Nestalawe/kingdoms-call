@@ -7,6 +7,7 @@
 //   bootJsdom(html, opts)       a jsdom with the page's scripts running and a Supabase stub installed
 //   serve(dir, port)            a static file server for Chromium (as the pages are deployed: one folder)
 //   routeExternal(target, cdn)  answers supabase-js with a stub and fonts with nothing (Playwright page/context)
+//   reportEveryRealm(window)    a booted GM portal builds a report for every realm, bots' too (see below)
 //   DB_VERSION                  the newest migration in supabase/migrations/: the database version every
 //                               stand-in database reports through rpc('kc_db_version') (P0-34), unless a test
 //                               says otherwise (bootJsdom's opts.dbVersion)
@@ -161,4 +162,12 @@ async function routeExternal(target,stubBody){
   await target.route('**fonts.gstatic.com/**',r=>r.fulfill({status:200,body:''}));
 }
 
-module.exports={SITE,sitePath,readPage,pageFiles,bootJsdom,seededRandom,pinnedDate,serve,routeExternal,withDbVersion,DB_VERSION};
+// The engine builds reports only for the realms people play (slot rows with a user_id), so an all-bot game writes none.
+// Tests of what a report shows, on bot games, have every realm reported: buildReports, lifted out of resolveTurn in
+// P1-08d (src/engine/turn/realm-reports-and-spy-stealth.js), is wrapped after boot to see every row as played, on
+// copies of the rows. The shell writes each report by the row's id and player_index, which the copies keep.
+function reportEveryRealm(w){
+  w.eval("{ const buildFor=buildReports; buildReports=function(turnContext, ...rest){ return buildFor({...turnContext, freshPlayers:turnContext.freshPlayers.map(p=>({...p, user_id:p.user_id||'every-realm'}))}, ...rest); }; }");
+}
+
+module.exports={SITE,sitePath,readPage,pageFiles,bootJsdom,seededRandom,pinnedDate,serve,routeExternal,reportEveryRealm,withDbVersion,DB_VERSION};

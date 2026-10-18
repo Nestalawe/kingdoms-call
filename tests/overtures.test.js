@@ -20,7 +20,7 @@ function boot(file,extra){
   return {d,errs};
 }
 (async()=>{
-  const {d:gd,errs:gerr}=boot(GMF,h=>h.replace("const activePlayers=freshPlayers.filter(p=>p.user_id);","const activePlayers=freshPlayers;"));
+  const {d:gd,errs:gerr}=boot(GMF);
   await new Promise(r=>setTimeout(r,500)); const W=gd.window;
   if(typeof W.runTurn!=='function'){ console.log('GM portal did not boot'); gerr.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
 

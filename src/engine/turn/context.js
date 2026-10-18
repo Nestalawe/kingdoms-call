@@ -11,7 +11,7 @@
 //   turnLog            the GM's log of the turn, which log() fills
 //   log(type, text, meta)  files one line in turnLog
 // resolveTurn adds the rest as it reaches them: _mercIds, _tel, battleCommanders, fieldBattlePhase, _logCtx,
-// _currentPhase and _afterPhases. The lifted code keeps resolveTurn's two-space indent (plan P1-08's Decisions).
+// _currentPhase, _afterPhases, and more as each lifted area needs them (docs/ARCHITECTURE.md lists them). The lifted code keeps resolveTurn's two-space indent (plan P1-08's Decisions).
 function createTurnContext(G, freshPlayers, expectedTurnToRun){
   const turnContext={G, freshPlayers, expectedTurnToRun, turnLog:[]};
   const log=(type,text,meta={})=>{
@@ -45,5 +45,5 @@ function createTurnContext(G, freshPlayers, expectedTurnToRun){
     console.log(`[${type}] ${text}`);
   };
   turnContext.log=log;
-  return turnContext;
+  return new Proxy(turnContext,{get(t,k){ if(typeof k==='string'&&!(k in t)){ console.error('KC-TRIP '+k); throw new Error('KC-TRIP '+k); } return t[k]; }});
 }

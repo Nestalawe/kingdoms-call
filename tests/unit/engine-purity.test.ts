@@ -183,18 +183,25 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     fs.rmSync(copy, { recursive: true, force: true });
   });
   fs.cpSync(path.join(ROOT, 'src'), copy, { recursive: true });
-  const file = path.join(copy, 'engine', 'run-turn.js');
-  const original = fs.readFileSync(file, 'utf8');
-  // Where each fault goes: at the start of the five phases, and at the start of the reports.
+  // Where each fault goes: at the start of the five phases, and at the start of the reports (buildReports, lifted out
+  // of resolveTurn in P1-08d).
   const AT = {
-    resolution: '  // 4. Run all 5 phases\n',
-    reports: '  const activePlayers=freshPlayers.filter(p=>p.user_id);\n',
+    resolution: { file: 'engine/run-turn.js', at: '  // 4. Run all 5 phases\n' },
+    reports: {
+      file: 'engine/turn/realm-reports-and-spy-stealth.js',
+      at: '  const activePlayers=freshPlayers.filter(p=>p.user_id);\n',
+    },
   };
+  const originals = Object.fromEntries(
+    Object.values(AT).map(({ file }) => [file, fs.readFileSync(path.join(copy, file), 'utf8')]),
+  );
   const world = newWorld(pureEngine().engine);
-  // The engine from the copy, with `line` planted after `at`.
-  const planted = (at: string, line: string): Engine => {
-    if (original.split(at).length !== 2) throw new Error(`not once in run-turn.js: ${at}`);
-    fs.writeFileSync(file, original.replace(at, `${at}  ${line}\n`));
+  // The engine from the copy, with `line` planted after `at` in `file`, and every other file as it was.
+  const planted = ({ file, at }: { file: string; at: string }, line: string): Engine => {
+    for (const [name, text] of Object.entries(originals)) fs.writeFileSync(path.join(copy, name), text);
+    const original = originals[file] ?? '';
+    if (original.split(at).length !== 2) throw new Error(`not once in ${file}: ${at}`);
+    fs.writeFileSync(path.join(copy, file), original.replace(at, `${at}  ${line}\n`));
     return pureEngine(copy);
   };
   const FAULTS = [

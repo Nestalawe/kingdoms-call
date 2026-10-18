@@ -1,6 +1,6 @@
 // 2026-09-27 (items 7 & 8) — a conceded realm in the Diplomacy card, and the Reckoning called
 // the moment every rival but one has quit.
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,reportEveryRealm}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 const GMF=process.argv[2]||'kingdoms-call-gm-portal.html', PPF=process.argv[3]||'kingdoms-call-player-portal.html';
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 let ROWS={}; const WRITES=[];
@@ -18,9 +18,10 @@ function boot(file,extra){
 }
 (async()=>{
   // ── item 8 — every rival concedes ──
-  const {d:gd,errs:gerr}=boot(GMF,h=>h.replace("const activePlayers=freshPlayers.filter(p=>p.user_id);","const activePlayers=freshPlayers;"));
+  const {d:gd,errs:gerr}=boot(GMF);
   await new Promise(r=>setTimeout(r,500)); const W=gd.window;
   if(typeof W.runTurn!=='function'){ console.log('GM portal did not boot'); gerr.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
+  reportEveryRealm(W);   // a report for every realm, bots' too
   const setup=W.generateBotSetups([],4,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
   let S=await W.generateNewGame(setup,{cols:12,rows:7},999,{seaPct:35}); S.botDifficulty='hard';
   const players=setup.map(sp=>({id:sp.gamePlayerId,user_id:null,player_index:sp.id,display_name:sp.name,orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));

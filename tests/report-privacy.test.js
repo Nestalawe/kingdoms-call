@@ -3,14 +3,10 @@
 // report-leak check (lib/report-leaks.ts, P1-04c) on each turn: no realm reads
 // another realm's private line, names a realm it hasn't met, or sees a hero under Invisibility.
 // It also counts how many DIFFERENT realms were shown the same line.
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,reportEveryRealm}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 const {checkLeaks,describeBreaches}=require('./lib/invariants.ts');
 const GMF=process.argv[2]||'kingdoms-call-gm-portal.html', GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5;
-let html=readPage(GMF);
-// Reports are only built for HUMAN slots; an all-bot game therefore writes none. Build one for
-// EVERY realm so the visibility filter can be measured on real bot activity.
-if(html.split("const activePlayers=freshPlayers.filter(p=>p.user_id);").length!==2) throw new Error('activePlayers anchor');
-html=html.replace("const activePlayers=freshPlayers.filter(p=>p.user_id);","const activePlayers=freshPlayers;");
+const html=readPage(GMF);
 let ROWS={}; const WRITES=[];
 const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});
 const errors=[];
@@ -29,6 +25,9 @@ const WATCHED=[
 (async()=>{
   await new Promise(r=>setTimeout(r,500)); const W=dom.window;
   if(typeof W.runTurn!=='function'){ console.log('engine did not boot'); errors.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
+  // Reports are only built for HUMAN slots; an all-bot game therefore writes none. Build one for
+  // EVERY realm so the visibility filter can be measured on real bot activity.
+  reportEveryRealm(W);
   const seenBy={};   // line text -> Set of player indices shown it
   let turns=0, reportsSeen=0, linesSeen=0; const leaks=[];
   for(let g=0;g<GAMES;g++){
@@ -63,7 +62,9 @@ const WATCHED=[
     console.log(`[watched] ${label.padEnd(20)} events=${String(hits.length).padStart(4)}  shown to more than one realm=${hits.filter(([,s])=>s.size>1).length}`);
   });
   fail=leaks.length; leaks.slice(0,5).forEach(l=>console.log('  ✗ '+l.split('\n').join('\n    ')));
-  console.log(fail===0?'\nOK — no report leaked':`\nFAIL — ${fail} turn(s) leaked`);
+  // every realm, bots' too, gets a report each resolved turn (reportEveryRealm), or there is nothing to check
+  if(reportsSeen!==turns*BOTS){ fail++; console.log(`  ✗ ${reportsSeen} realm reports written over ${turns} turns; expected one a realm a turn (${turns*BOTS})`); }
+  console.log(fail===0?'\nOK — no report leaked':`\nFAIL — ${leaks.length} turn(s) leaked`);
   errors.slice(0,3).forEach(e=>console.log('  !',e.split('\n').slice(0,2).join(' | ')));
   process.exit(fail||errors.length?1:0);
 })();

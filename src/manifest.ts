@@ -99,6 +99,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/battle/blood-harvest-and-iron-throne.js',
         'engine/battle/raid-the-coast-and-landing-parties.js',
         'engine/espionage/what-a-spy-learns.js',
+        'engine/turn/realm-reports-and-spy-stealth.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',
