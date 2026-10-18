@@ -142,7 +142,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-080](R-080-one-blow-cap.md) | No single blow takes more than half a fighter's HP | 2026-10-08 | Confirmed | [`hit-cap`](../../tests/unit/hit-cap.test.ts) |
 | [R-081](R-081-movement-costs.md) | Movement costs of conquest | 2026-10-08 | Confirmed | [`move-points`](../../tests/move-points.test.js) |
 | [R-082](R-082-run-them-down.md) | Run Them Down: no chase, the beaten army is cut down on the field | 2026-10-09 | Confirmed (open question) | [`warg-run-down`](../../tests/warg-run-down.test.js) |
-| [R-083](R-083-chase-battle-conquers.md) | A chase battle won conquers the province | 2026-10-09 | Confirmed | [`pursuit-one-battle`](../../tests/pursuit-one-battle.test.js) |
+| [R-083](R-083-chase-battle-conquers.md) | A chase battle won conquers the province | 2026-10-09 | Confirmed | [`pursuit-one-battle`](../../tests/scenario/pursuit-one-battle.test.ts) |
 | [R-084](R-084-retreats-onto-dry-ground.md) | Retreats never into a flood | 2026-10-09 | Confirmed | [`retreat-dry-ground`](../../tests/unit/retreat-dry-ground.test.ts) |
 | [R-085](R-085-blank-seasons-defend.md) | Blank seasons count as Defend | 2026-10-09 | Confirmed | [`defend-once`](../../tests/defend-once.test.js) |
 | [R-086](R-086-hp-rolls.md) | Hit-point rolls after a fight | 2026-10-09 | Confirmed | [`hp-wound-gain`](../../tests/unit/hp-wound-gain.test.ts) |

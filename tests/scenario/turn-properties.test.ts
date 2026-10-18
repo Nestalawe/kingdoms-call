@@ -6,8 +6,8 @@
 //
 // A hero stands where his `location` says, and each province keeps its own list of the heroes in it (`characters`):
 // every move, retreat and flight updates both by hand. "In two provinces" is a hero named in two lists, or in a list
-// other than his own province's. The hook at the end of each phase (`    syncAllMaxHp(); // a max-HP rise…`) reads
-// them. "Met" is the leak check's rule (lib/report-leaks.ts), with its parked breaches (lib/invariants.ts).
+// other than his own province's. The hook at the end of each phase (`    syncAllMaxHp(turnContext); // a max-HP
+// rise…`) reads them. "Met" is the leak check's rule (lib/report-leaks.ts), with its parked breaches (lib/invariants.ts).
 // Level 2 (scenario): one real turn on a small staged world; the lists are checked between phases, inside runTurn,
 // and the reports are put together there too.
 import fc from 'fast-check';
@@ -16,7 +16,7 @@ import { pinnedDate, type KcRng, type PageWindow } from '../lib/boot.js';
 import { checkLeaks, describeBreaches, type SavedState } from '../lib/invariants.ts';
 import { bootScenario, type Order } from '../lib/scenario.js';
 
-const PHASE_END = '    syncAllMaxHp(); // a max-HP rise earned this phase heals into its headroom now\n';
+const PHASE_END = '    syncAllMaxHp(turnContext); // a max-HP rise earned this phase heals into its headroom now\n';
 const NOW = '2026-10-01T12:00:00Z';
 const full = process.env['KC_FULL'] === '1';
 /** A turn takes about 80 ms: half the default inputs (about 4 s a property). */

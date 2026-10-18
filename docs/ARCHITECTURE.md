@@ -256,9 +256,9 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
   the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,
-  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, and since P1-08i1 `_distCache` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
+  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, and since P1-08i3 `_warFrontAtStart` and `_warFrontProvs` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
   `_currentPhase`, `_afterPhases`, since P1-08c `_combatSkillProv`, `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`,
-  `_deferredSkillLogs`, `_pcSimulating`, and since P1-08i1 `enteredThisPhase`), which are read and written as `turnContext._currentPhase` everywhere, in
+  `_deferredSkillLogs`, `_pcSimulating`, since P1-08i1 `enteredThisPhase`, and since P1-08i3 `_tier0Open` and `_unitGainQueue`), which are read and written as `turnContext._currentPhase` everywhere, in
   `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it yet (P1-08m). Lifted so
   far (P1-08a): the line helpers and the turn's records (`engine/turn/`), relations and captures
   (`engine/realms/relations-and-captures.js`), the title lookups and battle merit
@@ -300,7 +300,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `flushIntrusionNotifications` (beside the warnings it writes, `engine/turn/intrusion-warnings.js`). P1-08i2: the Defend
   watch (the ride-outs `runDefendReactions` and `runDefendMaterializedReactions`, `defendAnswerUnitGain` for a host
   raised next door, the lone hero's `runDefendAmbush`, `reconcileDefendRideOuts`, and the column hurried in,
-  `runReinforcementArrivals`, `engine/units/defend-ride-outs-ambushes-and-reinforcements.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  `runReinforcementArrivals`, `engine/units/defend-ride-outs-ambushes-and-reinforcements.js`). P1-08i3, the last phase
+  helpers: stalled battles and a beaten guard's survivors (`resolveStalledBattles`, `erodeGuardSurvivors`,
+  `engine/battle/stalled-battles-and-beaten-guards.js`), a host gained in a province (`resolveUnitGainInProvince`,
+  `engine/battle/hosts-gained-in-a-province.js`), pursuits (`advancePursuit`, `pursuitCatchChance`, `endPursuit`,
+  `engine/heroes/pursuits-and-the-catch-roll.js`), war fronts and stand-offs (`warFrontThreats`, `resolveWarFronts`,
+  `flagEnemyStandoffs`, `engine/battle/war-fronts-and-enemy-stand-offs.js`), and `syncAllMaxHp` (beside the earned-HP
+  helpers, `engine/heroes/experience-skill-rises-and-earned-hp.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

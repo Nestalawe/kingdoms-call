@@ -117,7 +117,6 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'duel-skill-rise', 'tests/duel-skill-rise.test.js'],
     ['simulation', 'skill-names-capitalised', 'tests/skill-names-capitalised.test.js'],
     ['scenario', 'item-equip-note', 'tests/item-equip-note.test.js'],
-    ['unit', 'encounter-seventy', 'tests/encounter-seventy.test.js'],
     ['simulation', 'crown-wild-near', 'tests/crown-wild-near.test.js', full ? ['12'] : ['4']],
     ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
@@ -141,7 +140,6 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'intrusion-lurker', 'tests/intrusion-lurker.test.js'], // batch 2026-10-15
     ['static', 'rulebook-order', 'tests/rulebook-order.test.js'], // 2026-10-15
     ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
-    ['scenario', 'pursuit-one-battle', 'tests/pursuit-one-battle.test.js'],
     ['scenario', 'warg-run-down', 'tests/warg-run-down.test.js'],
     ['scenario', 'battle-lines-report', 'tests/battle-lines-report.test.js'],
     ['page', 'hire-price', 'tests/hire-price.test.js'],
