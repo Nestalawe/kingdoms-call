@@ -283,7 +283,11 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   turn's context. P1-08e: personal combat, the `pc*` family up to `resolvePersonalCombat`, in six files under
   `engine/personal-combat/` (speed, encounter plans and combatants; to-hit, wounds, stuns and courage; combat spells and
   guardian abilities; melee, flight and archery; tactics, combat items and each action; the fight), beside `helpers.js`;
-  tests take them through `tests/lib/personal-combat.ts`. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  tests take them through `tests/lib/personal-combat.ts`. P1-08f: duels and character encounters (`resolveDuel`,
+  `resolveCharVsChar`, the flee spoils, `engine/personal-combat/duels-and-character-encounters.js`), lair guardians and
+  the Hunting Rumours odds (`resolveEncounter`, `pcBuildGuardian`, `simulateLairOdds`,
+  `engine/personal-combat/lair-guardians-and-the-odds.js`), and hero death and leaderless hosts (`handleHeroDeath`,
+  `reportHeroFall`, `disperseDeadCharArmies`, `engine/heroes/hero-death-and-leaderless-hosts.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

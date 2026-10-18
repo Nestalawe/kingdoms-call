@@ -128,7 +128,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-066](R-066-dispatches.md) | Dispatches between players | 2026-09-27 | Confirmed | no test yet |
 | [R-067](R-067-ships-ashore-hold-the-ground.md) | Ships left ashore contest the province | 2026-09-27 | Confirmed | no test yet |
 | [R-068](R-068-archive-a-game.md) | Archive a game instead of deleting it | 2026-09-27 | To confirm (open question) | [`fuzz-advance-masking`](../../tests/fuzz-advance-masking.test.js), [`stats-forget-deleted`](../../tests/stats-forget-deleted.test.js) |
-| [R-069](R-069-advance-and-strike.md) | A fighter who steps into range strikes in the same action | 2026-09-27 | Confirmed | [`fuzz-advance-masking`](../../tests/fuzz-advance-masking.test.js) |
+| [R-069](R-069-advance-and-strike.md) | A fighter who steps into range strikes in the same action | 2026-09-27 | Confirmed | [`fuzz-personal-combat`](../../tests/unit/fuzz-personal-combat.test.ts) |
 | [R-070](R-070-hall-of-fame-is-public.md) | The Hall of Fame is public | 2026-09-27 | To confirm | no test yet |
 | [R-071](R-071-safe-start.md) | Safe Start games | 2026-09-29 | To confirm | no test yet |
 | [R-072](R-072-guardian-strength.md) | Guardian hit points by grade | 2026-09-29 | Confirmed | no test yet |
