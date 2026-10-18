@@ -109,6 +109,17 @@ describe('the lint rules', () => {
     expect(level(rules['@typescript-eslint/switch-exhaustiveness-check'])).toBe(2);
   });
 
+  // The engine's classic scripts get no-undef (plan P1-08a): a helper lifted out of resolveTurn that still reads a name
+  // from its closure is an error, not a ReferenceError the day it first runs.
+  test.for(['src/engine/run-turn.js', 'src/engine/turn/context.js', 'src/views/turn-report.js'])(
+    '%s gets no-undef',
+    async (file) => {
+      expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
+      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+      expect(level(rules['no-undef'])).toBe(2);
+    },
+  );
+
   test('a focused or skipped test is an error', async () => {
     const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'tests/static/x.test.ts'))) as Linter.Config)
       .rules;
