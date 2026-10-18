@@ -8,7 +8,8 @@
     "logText",
     "telemetry",
     "report",
-    "reportText"
+    "reportText",
+    "writes"
   ],
   "statNames": [
     "battles: attacker won",
