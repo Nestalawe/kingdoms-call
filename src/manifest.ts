@@ -115,6 +115,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/turn/phase-intents-and-dependency-ordering.js',
         'engine/world/routes-and-distances.js',
         'engine/world/province-bookkeeping-and-rallied-garrisons.js',
+        'engine/units/defend-ride-outs-ambushes-and-reinforcements.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',

@@ -297,7 +297,10 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   routes and distances (`provDistance`, `stepToward`, `stepTowardPreferSafe`, `engine/world/routes-and-distances.js`),
   the province bookkeeping and rallied garrisons (`reconcileProvinceCharacters`, `updateProvinceMemory`, `noteEntered`,
   `settleRalliedGarrisons`, `engine/world/province-bookkeeping-and-rallied-garrisons.js`), and
-  `flushIntrusionNotifications` (beside the warnings it writes, `engine/turn/intrusion-warnings.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  `flushIntrusionNotifications` (beside the warnings it writes, `engine/turn/intrusion-warnings.js`). P1-08i2: the Defend
+  watch (the ride-outs `runDefendReactions` and `runDefendMaterializedReactions`, `defendAnswerUnitGain` for a host
+  raised next door, the lone hero's `runDefendAmbush`, `reconcileDefendRideOuts`, and the column hurried in,
+  `runReinforcementArrivals`, `engine/units/defend-ride-outs-ambushes-and-reinforcements.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

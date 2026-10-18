@@ -11,7 +11,7 @@ const BOT_SPECIALIST_ROLES=new Set(Object.keys(BOT_SPECIALIST_SKILLS));
 const BOT_DEFEND_ORDER={action:'defend',target:'',extra:'',desc:'Hold the post'};
 function botMagicScore(c){ const s=c.skills||{}; return (s.elemental||0)+(s.necromancy||0)+(s.psychic||0)+(s.illusory||0)+(s.white||0); }
 function botLandCount(G,pi){ return (G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea').length; }
-// The six-hex Defend zone about a province (the engine's inDefendZone is runTurn-local).
+// The six-hex Defend zone about a province (the engine's inDefendZone, in engine/units/defend-ride-outs-ambushes-and-reinforcements.js, takes the turn's context).
 function botZoneOf(G,X){ const z=[X]; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); if(N) z.push(N); } return z; }
 // SPECIALIST ASSIGNMENT — cached per turn. `excluded` = ids already claimed (companions).
 function botSpecialistRoles(G,pi,excluded){
