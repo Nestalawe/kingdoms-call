@@ -45,5 +45,5 @@ function createTurnContext(G, freshPlayers, expectedTurnToRun){
     console.log(`[${type}] ${text}`);
   };
   turnContext.log=log;
-  return new Proxy(turnContext,{get(t,k){ if(typeof k==='string'&&!(k in t)){ console.error('KC-TRIP '+k); throw new Error('KC-TRIP '+k); } return t[k]; }});
+  return turnContext;
 }
