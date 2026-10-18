@@ -1572,7 +1572,7 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`\u2694 — Personal duel: ${challenger.name} vs ${challenged.name} —`);
     pushBattlecry(narrative, challenger, challenged.name);
     pushBattlecry(narrative, challenged, challenger.name);
-    const duelResult=resolveDuel(challenger, challenged, narrative);
+    const duelResult=resolveDuel(turnContext, challenger, challenged, narrative);
     let atkSlain=false, defSlain=false;
     if(duelResult.loser){
       const loser=duelResult.loser, winner=duelResult.winner;
@@ -1603,7 +1603,7 @@ const BATTLE_ARMY_SPELLS={
       // slain" and the surgery line. Before, "slain" was written regardless and the surgery line
       // was logged at once, so it came before the whole battle report.
       const _dOpts={keepArmies:true, lines:[]};
-      const _duelDied=handleHeroDeath(realLoser, realWinner, _dOpts);
+      const _duelDied=handleHeroDeath(turnContext, realLoser, realWinner, _dOpts);
       const _saved=(_duelDied===false&&_dOpts.outcome==='surgery');
       narrative.push(_saved?`\u{1FA79} ${loser.name} falls in the duel — at death's door, but not slain.`:`\u{1F480} ${loser.name} is slain in the duel!`);
       _dOpts.lines.forEach(l=>narrative.push(l.priv!=null?{text:l.text,onlyPlayer:l.priv}:l.text));
@@ -1627,58 +1627,6 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`The duel ends inconclusively — both commanders live to fight on, and neither host loses heart.`);
     }
     return{atkMorale,defMorale,atkSlain,defSlain};
-  }
-
-  // which magic items a combatant brings to bear — announced at the start of a battle or duel so
-  // every item "in play" is acknowledged (passive stat items boost the fight; Mithril also calls
-  // out each blow it turns aside, see pcTakeHit). Only combat-relevant effects are listed.
-  const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','armour','maxHp','white','black','pagan','psychic','elemental','illusory','necromancy','spellcasting','pc','combatUse']); // + illusory, pc riders, combat-item riders. consumables
-  function magicItemsLine(ch){
-    const its=activeItems(ch).filter(it=>it&&it.name&&(!it.effect||_COMBAT_ITEM_STATS.has(it.effect.stat)||it.effect.combat));
-    if(!its.length) return null;
-    return `  ⚜ ${ch.name} bears ${its.map(it=>it.name+(isLegendaryItem(it)?' (Legendary)':'')).join(', ')} into the fight.`;
-  }
-  // ── FLEE SPOILS ── A character who breaks off a duel or an Encounter against another character
-  // has a DUEL_FLEE_DROP chance of dropping one magic item in the scramble; the character who held
-  // the field keeps it. Mithril never drops (granted relic). Both ends are resolved on the REAL
-  // character records since fights are often fought on pooled copies. Returns the item or null.
-  const DUEL_FLEE_DROP=0.50; // 2026-09-10 item 2: raised 30% → 50%; the same odds apply to a flight from a lair guardian (lairFleeItemDrop)
-  function duelFleeItemDrop(runnerCbt, stayerCbt, narrative){
-    if(!runnerCbt||!stayerCbt||runnerCbt.kind!=='character'||stayerCbt.kind!=='character') return null;
-    const _real=(x)=>(x&&x.id!=null&&(G.characters||[]).find(r=>r&&r.id===x.id))||x;
-    const runner=_real(runnerCbt.ref), stayer=_real(stayerCbt.ref);
-    if(!runner||!stayer||runner===stayer) return null;
-    const pool=transferableItems(runner.items||[]);
-    if(!pool.length) return null;
-    const roll=d100(), chance=Math.round(DUEL_FLEE_DROP*100);
-    narrative.push(`  ${runner.name} scrambles clear — ${chance}% chance of dropping something in the rout [roll ${roll}${roll<=chance?' ✓':' ✗'}]`);
-    if(roll>chance) return null;
-    const it=pool[Math.floor(kcRng()*pool.length)];
-    runner.items=(runner.items||[]).filter(x=>x!==it);
-    if(runnerCbt.ref!==runner&&Array.isArray(runnerCbt.ref.items)) runnerCbt.ref.items=runnerCbt.ref.items.filter(x=>x!==it&&!(x&&it&&x.name===it.name&&x.tier===it.tier)); // keep the battle copy in step
-    delete it.equipped; // re-slotted by normaliseEquipment on the new owner
-    stayer.items=(stayer.items||[]).concat([it]);
-    if(stayerCbt.ref!==stayer&&Array.isArray(stayerCbt.ref.items)) stayerCbt.ref.items=stayerCbt.ref.items.concat([it]);
-    narrative.push(`  💎 In the rout ${runner.name} drops ${it.name}${isLegendaryItem(it)?' (Legendary)':''} — ${stayer.name} claims it.`);
-    { const _gn=gainedItemNote(stayer,[it]); if(_gn) narrative.push('  '+_gn); } // item 10
-    return it;
-  }
-  function resolveDuel(atk, def, narrative){
-    const _ia=magicItemsLine(atk), _ib=magicItemsLine(def); // item 5
-    if(_ia) narrative.push(_ia);
-    if(_ib) narrative.push(_ib);
-    const A=pcCharCombatant(turnContext,atk), B=pcCharCombatant(turnContext,def);
-    turnContext._duelFoes=new Map([[atk.id,String(def.name||'').replace(/\s*\(wandering\)/i,'')],[def.id,String(atk.name||'').replace(/\s*\(wandering\)/i,'')]]); // item 6
-    let res; try{ res=resolvePersonalCombat(turnContext, A, B, {maxRounds:20, heldFieldWins:true}); } finally{ turnContext._duelFoes=null; } // a duel's field held is a win (preBattleDuel awards it)
-    narrative.push(...res.narrative);
-    if(res.fledBy){
-      const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
-      narrative.push(`${runner.name} breaks off the duel and slips away — ${stayer.name} holds the field.`);
-      duelFleeItemDrop(res.fledBy, res.fledBy===A?B:A, narrative); // flee spoils
-      // Nobody is slain, but breaking off IS losing the duel — the caller demoralises their force.
-      return {fled:runner, heldField:stayer};
-    }
-    return {winner: res.winner?res.winner.ref:null, loser: res.loser?res.loser.ref:null};
   }
 
   // Returns {won, narrative:[strings]}
@@ -2478,594 +2426,9 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Process one order
-  // ── ENCOUNTER ENGINE (AK 5.0–5.8) ────
-  // Resolves a full encounter between a character and a feature monster. Returns {won, fled,
-  // damageToHero, narrative:[...strings]} Character vs Character encounter (triggered by 'Encounter
-  // Character' order). Runs on the unified personal-combat engine — identical rounds, ranges and
-  // alternation to duels and monster encounters. The only difference is who is on the other side.
-  function resolveCharVsChar(atk, def, atkTactics, defTactics, prov, effStat, rng, G){
-    const narrative=[];
-    narrative.push(`${atk.name} (${atk.race}, ${atk.temper}) meets ${def.name} (${def.race}, ${def.player!==null?G.players[def.player]?.name:'wandering'}) in a personal encounter.`);
-    pushBattlecry(narrative, atk, def.name);
-    pushBattlecry(narrative, def, atk.name);
-
-    const A=pcCharCombatant(turnContext,atk), B=pcCharCombatant(turnContext,def);
-    if(Array.isArray(atkTactics)&&atkTactics.length) A.tactics=atkTactics.slice();
-    if(Array.isArray(defTactics)&&defTactics.length) B.tactics=defTactics.slice();
-
-    const res=resolvePersonalCombat(turnContext, A, B, {maxRounds:20});
-    narrative.push(...res.narrative);
-
-    // A successful Steal in a character encounter is a pickpocketing of the victim's treasury.
-    // THIEF L8: a master thief's own purse cannot be picked.
-    const _pickProof=(x)=>perkTier(x,'thief')>=3;
-    if(res.stoleBy===A && def.player!==null && atk.player!==null && _pickProof(def)){
-      narrative.push(`${atk.name} goes for ${def.name}'s purse and comes away with nothing — a master thief keeps their own coin far better hidden.`);
-    } else if(res.stoleBy===B && atk.player!==null && def.player!==null && _pickProof(atk)){
-      narrative.push(`${def.name} goes for ${atk.name}'s purse and comes away with nothing — a master thief keeps their own coin far better hidden.`);
-    } else if(res.stoleBy===A && def.player!==null && atk.player!==null){
-      const purse=G.players[def.player]?.gold||0;
-      const stolen=Math.min(purse, rng(1,5));
-      if(stolen>0){
-        G.players[def.player].gold-=stolen;
-        G.players[atk.player].gold=(G.players[atk.player].gold||0)+stolen;
-        narrative.push(`${atk.name} lifts ${stolen}g from ${def.name}'s purse and is gone.`);
-      } else narrative.push(`${atk.name} finds ${def.name}'s purse empty.`);
-    } else if(res.stoleBy===B && atk.player!==null && def.player!==null){
-      const purse=G.players[atk.player]?.gold||0;
-      const stolen=Math.min(purse, rng(1,5));
-      if(stolen>0){
-        G.players[atk.player].gold-=stolen;
-        G.players[def.player].gold=(G.players[def.player].gold||0)+stolen;
-        narrative.push(`${def.name} lifts ${stolen}g from ${atk.name}'s purse and is gone.`);
-      }
-    }
-    if(res.fledBy){ narrative.push(`${res.fledBy.name} breaks away and escapes the encounter.`); duelFleeItemDrop(res.fledBy, res.fledBy===A?B:A, narrative); } // flee spoils
-
-    const atkHp=res.aHp, defHp=res.bHp;
-    // A felled commander is not always slain — a third of the time the fight ends in capitulation
-    // rather than death. Kings are always spared this way.
-    let atkKilled=false, defKilled=false;
-    if(atkHp<=0){ narrative.push(`${atk.name} is overwhelmed!`); atkKilled=atk.isKing?false:kcRng()<0.3; }
-    if(defHp<=0){ narrative.push(`${def.name} is overcome!`); defKilled=!def.isKing&&def.player!==null&&kcRng()<0.3; }
-
-    return{atkHp,defHp,atkKilled,defKilled,narrative};
-  }
-
-  // Derive a monster's combat weaknesses/resistances and closing speed from its nature, so that
-  // different strategies suit different monsters (no single dominant encounter plan).
-  // mods.melee/archery/spell — <1 resists that approach, >1 is vulnerable to it
-  // pacifiable — a beast that Talk (Druid) can turn aside
-  // closeRounds — rounds to reach melee (fast 1 / medium 2 / slow 3): the archer's window
-  function monsterTraits(m){
-    const n=(m.name||'').toLowerCase();
-    const mods={melee:1, archery:1, spell:1};
-    // category-driven (name regex only refines flyers/armour and covers legacy saves).
-    const cat=monsterCat(m);
-    const undead=cat==='undead';
-    const demon=cat==='fiend';
-    const flyer=/harpy|wasp|bat|wyvern|eagle|roc\b|manticore|dragon|wyrm|drake|griffon|sprite|pixie|storm eagle|vulture|chimera|sphinx|banshee|dracolich|imp/.test(n);
-    const armoured=cat==='giant'||cat==='construct'||/knight|basilisk|rock|stone|gargoyle|ironclad|carapace|turtle|crab|colossus|mummif/.test(n);
-    const beast=cat==='beast'||cat==='vermin';
-    // Sept 2026 guardian balance pass: the melee swings were the main driver of tier outliers
-    // (armoured giants and constructs at ×0.65 melee were effectively 50% tougher than their HP;
-    // beasts at ×1.2 were paper). Narrowed to ×0.8 / ×1.1; the spell and arrow swings keep their
-    // flavour.
-    if(undead){ mods.spell+=0.5; mods.archery-=0.3; }      // magic-vulnerable, arrows pass through bone
-    if(demon){ mods.spell+=0.3; }                          // holy/magic bites deeper (Holy Symbol also ×1.5)
-    if(flyer){ mods.archery+=0.4; }                        // shot out of the sky
-    if(armoured){ mods.melee-=0.2; mods.spell+=0.3; }      // blades turn aside; magic ignores armour
-    if(beast&&!undead){ mods.melee+=0.1; }                 // soft-bodied, blades bite
-    // 2026-10-08 (Toby item 4): A GUARDIAN NEVER RESISTS AND IS WEAK TO THE SAME THING, and what is
-    // on its card wins. These hidden multipliers are never shown to a player, so where one pushes
-    // against the creature's passive (its hide turns blows, it shrugs off arrows or spells) or
-    // against its weakness (arrows, a school of magic), the hidden one is dropped.
-    { const _fxs=guardianPassives(m).map(p=>p.fx), w=m.weak||{}, has=k=>_fxs.some(fx=>fx.ward===k||fx[k]);
-      if(has('meleeDR')) mods.melee=Math.min(1,mods.melee);
-      if(has('arrowDR')) mods.archery=Math.min(1,mods.archery);
-      if(has('spellPct')) mods.spell=Math.min(1,mods.spell);
-      if(w.kind==='archery') mods.archery=Math.max(1,mods.archery);
-      if(w.kind==='school') mods.spell=Math.max(1,mods.spell); }
-    for(const k in mods) mods[k]=Math.max(0.4, Math.min(1.8, mods[k]));
-    const pacifiable=beast&&!undead&&!demon;
-    const closeRounds={fast:2, medium:3, slow:4}[m.speed||'medium']||3;
-    return {mods, pacifiable, closeRounds};
-  }
-
-  // Resolves a full encounter between a character and a feature monster.
-  // All of the fighting is delegated to the unified personal-combat engine — this function
-  // handles only the framing (scene description) and the feature-level consequences
-  // (treasure stolen, monster cleared, hero slain).
-  // Returns {won, fled, damageToHero, heroHpAfter, heroKilled, narrative:[...strings]} ── THE
-  // GUARDIAN AS A COMBATANT (2026-09-17 (late)) ── factored out of resolveEncounter so the Hunting
-  // Rumours simulation builds the guardian EXACTLY as a real lair fight does — hoard items wielded,
-  // nature-based vulnerabilities, pacifiable flag. `m` may be the live feature.monster (a real
-  // fight) or a deep copy of it (a simulation); the hoard is read from the feature either way.
-  function pcBuildGuardian(feature, m, narrative){
-    narrative=narrative||[];
-    const traits=monsterTraits(m);
-    const mon=pcMonsterCombatant(m);
-    // a guardian that can wield the hoard's magic brings it into the fight — skill items raise its
-    // Melee/Archery/HP, combat-use items are drunk/read when the moment is right.
-    ensureLairHoard(feature,G);
-    { const _wield=(feature.hoardItems||[]).filter(it=>guardianCanUseItem(m,it));
-      if(_wield.length){
-        mon.wielded=_wield; mon.combatItems=[]; mon._hpItemBonus=0;
-        _wield.forEach(it=>{ const e=it.effect||{};
-          if(e.stat==='melee') mon.melee=(mon.melee||0)+(e.bonus||0);
-          else if(e.stat==='archery') mon.archery=(mon.archery||0)+(e.bonus||0);
-          else if(e.stat==='maxHp'&&mon.hp>=mon.maxHp){ mon.maxHp+=e.bonus; mon.hp+=e.bonus; mon._hpItemBonus+=e.bonus; }
-          else if(e.stat==='combatUse') mon.combatItems.push(it);
-          else if(e.stat==='armour') mon.arm=pcArmourMerge(mon.arm,e,it.name); // a guardian in the hoard's armour
-          if(e.pc) pcApplyFx(mon,e.pc,it.name); // a guardian wearing a new rider item feels it too
-          if((_ITEM_ALT_BASE[it.name]||it.name)==='Warbringer Gauntlets') mon.gauntlets=true;
-        });
-        narrative.push(`The ${m.name} has turned the hoard's magic to its own use — it bears ${_wield.map(x=>x.name).join(', ')}.`);
-      } }
-    // The monster's nature decides what hurts it: blades, arrows or magic.
-    mon.vuln={melee:traits.mods.melee, archery:traits.mods.archery, spell:traits.mods.spell};
-    mon.pacifiable=!!traits.pacifiable;
-    return mon;
-  }
-
-  // ── HUNTING RUMOURS: THE ODDS (2026-09-17 (late), Toby item 3) ────
-  // "The likelihood the hero has of defeating the guardian" is MEASURED, not estimated: the real
-  // personal-combat engine fights the lair RUMOUR_SIM_FIGHTS times in the background, on deep
-  // copies of the hero and the guardian, and the kill rate is banded into one of five narrative
-  // lines. A kill is the only success — death, flight, a 20-round draw and a mercy plea all leave
-  // the guardian on its hoard. The hero fights as they stand TODAY (current HP, current kit, their
-  // own Encounter Plan if they have set one, else the standard plan an unordered character fights
-  // with).
-  //
-  // ISOLATION. Every combat write goes through `ref` (hp, mercy items, _mercyFledTurn, skill gains
-  // in trySkillGain, _selfHealUsed, _hpFull) — so both combatants are built from JSON copies with
-  // ids no live character carries. The two writes that reach OUTSIDE the refs are guarded here:
-  // `_pcSimulating` mutes trySkillGain, and pcLearnWeakness's realm-level record is snapshotted and
-  // restored, so a weakness that happens to bite in the sandbox teaches the realm nothing.
-  const RUMOUR_SIM_FIGHTS=300;
-  // (`_pcSimulating` itself is declared beside trySkillGain, above every call site, so it can never be read in its TDZ.)
-  const RUMOUR_ODDS_BANDS=[ // upper bound of the band (kill %), and the line read to the player
-    {max:20,  text:(g)=>`the talk is grim: you would have no real chance against the ${g} — it would leave you in the dust with the rest`},
-    {max:40,  text:(g)=>`the odds are against you: the ${g} would most likely be the end of you, though a lucky hand might yet see it done`},
-    {max:60,  text:(g)=>`it could go either way: you and the ${g} are evenly matched, and the dice will decide who walks out`},
-    {max:80,  text:(g)=>`the odds favour you: you would likely bring the ${g} down, but not without real danger`},
-    {max:90,  text:(g)=>`the talk is confident: you should bring the ${g} down, though it could still cost you dearly`},   // Sept 2026: the 80–90 band split out so a 90%+ reading exists
-    {max:101, text:(g)=>`the talk is certain: you are all but sure to defeat the ${g} — only ill fortune could turn it`},
-  ];
-  function rumourOddsBand(pct){ return RUMOUR_ODDS_BANDS.find(b=>pct<b.max)||RUMOUR_ODDS_BANDS[RUMOUR_ODDS_BANDS.length-1]; }
-  function simulateLairOdds(c, feature, fights){
-    fights=fights||RUMOUR_SIM_FIGHTS;
-    const m0=feature&&feature.monster; if(!c||!m0) return null;
-    const pl=(c.player!=null)?G.players[c.player]:null;
-    const _kwSnap=pl?JSON.stringify(pl._knownWeak||{}):null;
-    const _prevSim=turnContext._pcSimulating; turnContext._pcSimulating=true;
-    let wins=0, ran=0;
-    try{
-      const heroSrc=JSON.parse(JSON.stringify(c));
-      // a plan of their own if set; else the standard unordered-character plan
-      const ownPlan=c.encounterPlan&&Array.isArray(c.encounterPlan.tactics)&&c.encounterPlan.tactics.length?c.encounterPlan.tactics.slice():null;
-      for(let i=0;i<fights;i++){
-        const hc=JSON.parse(JSON.stringify(heroSrc)); hc.id='rumour_sim_'+i;   // no live character carries this id
-        hc.encounterPlan={tactics:ownPlan||autoEncounterPlan(turnContext,hc), duelStance:'accept', _auto:true};
-        const mc=JSON.parse(JSON.stringify(m0)); if(mc._hpFull==null) mc._hpFull=(mc.hp||10); mc.hp=mc._hpFull;
-        const hero=pcCharCombatant(turnContext,hc); hero.tactics=hc.encounterPlan.tactics.slice(); hero._vsGuardian=true;
-        const mon=pcBuildGuardian(feature, mc, []);
-        const res=resolvePersonalCombat(turnContext, hero, mon, {maxRounds:20, feature});
-        ran++;
-        if(res && res.winner===hero && !res.fledBy && !res.parley && !res.stoleBy) wins++;
-      }
-    } catch(e){ console.warn('simulateLairOdds failed',e); }
-    finally{
-      turnContext._pcSimulating=_prevSim;
-      if(pl) pl._knownWeak=JSON.parse(_kwSnap);
-    }
-    if(!ran) return null;
-    return {pct:Math.round(100*wins/ran), wins, fights:ran};
-  }
-
-  function resolveEncounter(c, feature, prov, tactics, effStat, rng, player){
-    const m=feature.monster||{name:'creature',hp:10,power:'',minG:1,maxG:3};
-    const narrative=[];
-    const startHp=c.hp||10;
-    const traits=monsterTraits(m);
-
-    // ── Opening description ──
-    const featureDescs={
-      'Ancient Battlefield':'crosses the bones of a long-forgotten battle and stumbles upon',
-      'Ruined Watchtower':'climbs the crumbling stones of',
-      'Goblin Camp':'sneaks into the firelit clearing of',
-      'Dragon Eyrie':'ascends a treacherous cliff to the mouth of',
-      'Buried Pyramid':'descends into the dust-choked chambers of',
-      'Haunted Grove':'pushes through thorned branches into',
-      'Lost City':'wanders the weed-cracked streets of',
-      'default':'approaches',
-    };
-    const entryVerb=featureDescs[feature.name]||featureDescs.default;
-    narrative.push(`${c.name} ${entryVerb} the ${feature.name} in ${prov.name}.`);
-    const monsterPower=m.power||'';
-    const powerDesc=monsterPower?` (${monsterPower})`:'';
-    // Describe the creature by its FULL stature, not its current (possibly wounded) health, so the
-    // description doesn't shrink just because someone else bloodied it earlier this turn.
-    const monFullHp=(m._hpFull!=null?m._hpFull:(m.hp||10));
-    const monHp=(m.hp!=null?m.hp:monFullHp);
-    const monHpDesc=({Weak:'a dangerous',Moderate:'a formidable',Powerful:'a fearsome',Legendary:'a legendary'})[m.power]||'a formidable'; // by tier (the old HP thresholds predate the rescale)
-    narrative.push(`Within lurks ${monHpDesc} ${m.name}${monsterCatLabel(m)?` — ${monsterCatLabel(m).toLowerCase()}`:''}${powerDesc}, blocking the path to the treasure.`);
-    if(monHp<monFullHp){
-      const frac=monHp/monFullHp;
-      const woundDesc=frac<=0.25?'grievously wounded and bleeding from a dozen cuts'
-                     :frac<=0.5?'badly wounded, favouring one side'
-                     :'nursing fresh wounds';
-      narrative.push(`It is already ${woundDesc} — someone has been here before ${c.name} this year. (${monHp}/${monFullHp} HP)`);
-    }
-    pushBattlecry(narrative, c, `the ${m.name}`);
-
-    // ── Build both sides and hand the fight to the engine ──
-    const hero=pcCharCombatant(turnContext,c);
-    if(Array.isArray(tactics)&&tactics.length) hero.tactics=tactics.slice();
-    // this fight is against a lair guardian, so every blow the creature lands on the character is
-    // held to PC_HIT_CAP_FRAC of their maximum HP (see pcTakeHit). Set on the CHARACTER's
-    // combatant, so the cap can never apply to the hero's own blows, to a PvP duel, or to any fight
-    // that has no guardian in it.
-    hero._vsGuardian=true;
-    const mon=pcBuildGuardian(feature, m, narrative);
-    narrative.push(`The ${m.name} is ${mon.speedName}-moving${mon.speedName==='fast'?' (it closes two ranges at a stride)':''}${pcHasRanged(mon)?', and fights at range as well as close':''}. Its plan: ${mon.tactics.slice(0,6).join(', ')}…`);
-
-    const res=resolvePersonalCombat(turnContext, hero, mon, {maxRounds:20, feature});
-    narrative.push(...res.narrative);
-
-    // ── Outcome ──
-    let won=false, fled=false;
-    if(res.parley){
-      won=true;
-      narrative.push(`After tense negotiations, the ${m.name} agrees to step aside and allow passage to the treasure.`);
-    } else if(res.stoleBy===hero){
-      // Escaped with the loot: the hero withdraws safely but the creature still holds the site.
-      fled=true; m._treasureStolen=true;
-      narrative.push(`${c.name} slips away with the prize — the ${m.name} never even notices.`);
-    } else if(res.fledBy===hero){
-      fled=true;
-      narrative.push(`${c.name} turns and flees from the ${m.name}, escaping into the surrounding terrain!`);
-      // a character who flees a lair guardian has the same DUEL_FLEE_DROP chance of dropping one
-      // magic item in the scramble as when fleeing a duel. Anything dropped joins the lair's
-      // hoardItems — it is treasure for whoever finally clears the lair, and the guardian wields it
-      // in every later fight (the wield block above rebuilds from hoardItems on each encounter).
-      { const _realC=(c&&c.id!=null&&(G.characters||[]).find(r=>r&&r.id===c.id))||c;
-        const _pool=transferableItems(_realC.items||[]);
-        if(_pool.length){
-          const _roll=d100(), _chance=Math.round(DUEL_FLEE_DROP*100);
-          narrative.push(`  ${c.name} scrambles clear — ${_chance}% chance of dropping something in the rout [roll ${_roll}${_roll<=_chance?' ✓':' ✗'}]`);
-          if(_roll<=_chance){
-            const _it=_pool[Math.floor(kcRng()*_pool.length)];
-            _realC.items=(_realC.items||[]).filter(x=>x!==_it);
-            if(c!==_realC&&Array.isArray(c.items)) c.items=c.items.filter(x=>x!==_it&&!(x&&x.name===_it.name&&x.tier===_it.tier));
-            delete _it.equipped;
-            ensureLairHoard(feature,G); feature.hoardItems=(feature.hoardItems||[]).concat([_it]);
-            narrative.push(`  💎 In the rout ${c.name} drops ${_it.name}${isLegendaryItem(_it)?' (Legendary)':''} — it lies among the ${m.name}'s hoard now${guardianCanUseItem(m,_it)?', and the beast will turn it against the next intruder':''}.`);
-          }
-        } }
-    } else if(res.winner===hero){
-      won=true;
-      narrative.push(`With a final ${rng(0,1)?'decisive blow':'burst of effort'}, the ${m.name} is defeated!`);
-    } else if(res.winner===mon){
-      narrative.push(`${c.name} falls to their knees, overwhelmed by the ${m.name}!`);
-    } else {
-      narrative.push(`Neither ${c.name} nor the ${m.name} can gain the upper hand. ${c.name} withdraws to recover.`);
-    }
-
-    // ── 2026-09-10: the guardian heals to FULL at the end of every combat. Wounds no longer carry
-    // between searches in a turn — each challenger faces the creature whole.
-    if(!won && m){
-      if(m._hpFull==null) m._hpFull=(m.hp||10);
-      m.hp=m._hpFull;
-      if(res.bHp!=null && res.bHp<(mon.maxHp-(mon._hpItemBonus||0))) narrative.push(`The ${m.name} draws back into its lair; by the time anyone dares it again, its wounds will have closed.`);
-    }
-
-    const heroHp=res.aHp;
-    c.hp=Math.max(0,heroHp);
-    const heroKilled=heroHp<=0;
-    const damageToHero=Math.max(0, startHp-heroHp);
-    return{won,fled,damageToHero,heroHpAfter:Math.max(0,heroHp),heroKilled,narrative};
-  }
 
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
-  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter,resolvePersonalCombat:(...a)=>resolvePersonalCombat(turnContext,...a),resolveCharVsChar,combatVsChar,effStat:(...a)=>effStat(turnContext,...a),rng,pcCharCombatant:(...a)=>pcCharCombatant(turnContext,...a),pcMonsterCombatant,trySkillGain:(...a)=>trySkillGain(turnContext,...a),resolveDuel,duelFleeItemDrop,pcCastCombatSpell:(...a)=>pcCastCombatSpell(turnContext,...a),preBattleDuel,awardWinHp:(...a)=>awardWinHp(turnContext,...a),awardKillXP:(...a)=>awardKillXP(turnContext,...a)}; }catch(e){}
-
-  // ── Dispersal of a dead character's armies ── Extracted from handleHeroDeath so battle code can
-  // defer it: a commander slain in a PRE-BATTLE DUEL keeps their army on the field (a junior
-  // officer takes over) and the survivors are dispersed only AFTER the battle resolves.
-  function disperseDeadCharArmies(deadChar){
-    if(!deadChar) return;
-    const prov=G.world.provinces[deadChar.location];
-    // a summoned elemental / phantom / awakened grove is magic BOUND TO THE SUMMONER. When the
-    // summoner dies it dissolves at once — it must NOT be handed off to a garrison, a neighbour, or
-    // the mercenary pool (where the end-of-turn expiry sweep, which only scans living characters'
-    // armies, would never find it and it would linger forever).
-    const tempArmies=(deadChar.armies||[]).filter(a=>a._temporary);
-    if(tempArmies.length>0){
-      const _tn=tempArmies.map(a=>`${a.unitName||a.type}${a.unitName?` (${a.type})`:''}`).join(', ');
-      log('explore',`✨ With ${deadChar.name} fallen, the binding fails and ${_tn} ${tempArmies.length===1?'dissolves':'dissolve'} back into the ${tempArmies.length===1?'realm that':'realms that'} spawned ${tempArmies.length===1?'it':'them'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[],provinceId:prov?.id,public:true});
-    }
-    const deadArmies=(deadChar.armies||[]).filter(a=>!a._isSkeletal&&!a._temporary);
-    const skelArmies=(deadChar.armies||[]).filter(a=>a._isSkeletal&&!a._temporary);
-    // Who slew the commander (handleHeroDeath stamps it; 2026-10-12, Toby): the host's line says so.
-    const _by=deadChar._slainBy||null, _fell=_by?`after their commander fell to ${_by}`:'after their fall';
-    // Skeletal armies crumble — record to graves
-    if(skelArmies.length>0&&prov) recordBattleGraves(turnContext,prov,skelArmies);
-    if(deadArmies.length>0&&prov){
-      const scatterAsMercs=()=>{
-        if(!G.mercenaries) G.mercenaries=[];
-        const SEA_SET=new Set(KC_UNIT_CLASS.sea);
-        deadArmies.forEach(army=>{
-          G.mercenaries.push({type:army.type,quality:army.quality,race:army.race||'Unknown',
-            unitName:army.unitName,location:deadChar.location,isSea:SEA_SET.has(army.type),
-            id:newMercId(turnContext)});
-        });
-        log('system',_by?`${deadChar.name}'s armies, their commander slain by ${_by}, scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`
-          :`${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[]});
-      };
-      if(deadChar.player===null){
-        // A NEUTRAL character's leaderless troops always turn mercenary.
-        scatterAsMercs();
-      } else if(prov.owner===deadChar.player){
-        // Friendly province — armies garrison
-        prov.garrisonArmies=(prov.garrisonArmies||[]).concat(deadArmies);
-        log('system',`${deadChar.name}'s armies garrison in ${prov.name} ${_fell}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
-      } else if(isOpenSea(prov)&&prov.owner==null&&!(prov.neutralDefenders||[]).length){
-        // 2026-09-23c (Toby): a commander who falls at SEA leaves his host garrisoning the sea province
-        // itself. Own waters are the branch above; unowned, undefended water is claimed for the realm.
-        // (Another realm's or defended waters keep the old rule below.)
-        setProvinceOwner(turnContext,prov,deadChar.player,null,turnContext._currentPhase);
-        const _pl=G.players[deadChar.player]; if(_pl){ _pl.provinces=_pl.provinces||[]; if(!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id); }
-        prov.garrisonArmies=(prov.garrisonArmies||[]).concat(deadArmies);
-        log('system',`${deadChar.name}'s armies hold ${prov.name} ${_fell} — the water is claimed for ${_pl?_pl.name:'the realm'} and they garrison it.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
-      } else {
-        // Enemy/neutral province — armies flee to adjacent friendly province or become mercenaries
-        const neighbors=(prov?getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces):[]).filter(n=>n.terrain!=='sea');
-        // Prefer the ground they actually came from — that is "the province they retreated to".
-        const _cameFrom=G.world.provinces[deadChar._attackedFrom];
-        const safeProv=(_cameFrom&&_cameFrom.owner===deadChar.player&&_cameFrom.terrain!=='sea'&&neighbors.some(n=>n.id===_cameFrom.id)?_cameFrom:null)
-          ||neighbors.find(n=>n.owner===deadChar.player)||null;
-        if(safeProv){
-          safeProv.garrisonArmies=(safeProv.garrisonArmies||[]).concat(deadArmies);
-          log('system',_by?`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}, their commander slain by ${_by}.`:`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:safeProv.id});
-        } else {
-          scatterAsMercs();
-        }
-      }
-    }
-    deadChar.armies=[];
-    delete deadChar._slainBy;
-  }
-
-  // ── A SPARED COWARD LEAVES HIS HOST BEHIND (2026-09-26, Toby item 7) ────
-  // A commander who throws down his sword and begs for his life does not then march his army home
-  // in good order. Everything he was leading STAYS on the ground he fled from, in this order of
-  // preference:
-  //   1. another commander of his own realm still standing there takes up the colours (the host
-  //      keeps fighting, under a leader who did not run);
-  //   2. failing that, if the realm holds the province, they take their place in its garrison;
-  //   3. failing that — leaderless on ground the realm does not hold — exactly the fate a fallen
-  //      commander's host meets: fall back to adjacent friendly land, else scatter as mercenaries.
-  // Summoned/bound creatures are the caster's own magic and leave with him (they expire on their
-  // own schedule; handing them to a garrison would strand them there for ever — the same trap
-  // disperseDeadCharArmies guards against).
-  // Returns how many units were left behind.
-  function abandonHostOnFlight(c){
-    if(!c) return 0;
-    const prov=G.world.provinces[c.location];
-    const all=(c.armies||[]).filter(Boolean);
-    if(!prov || all.length===0) return 0;
-    const bound=all.filter(a=>a._temporary), left=all.filter(a=>!a._temporary);
-    c.armies=bound;
-    if(left.length===0) return 0;
-    const _n=`${left.length} unit${left.length!==1?'s':''}`;
-    const _who=c.name.replace(' (wandering)','');
-    const heir=(G.characters||[])
-      .filter(o=>o&&o.alive&&o.id!==c.id&&o.player!=null&&o.player===c.player&&o.location===prov.id&&o._mercyFledTurn!==G.turn)
-      .sort((a,b)=>(effStat(turnContext,b,'tactical')||0)-(effStat(turnContext,a,'tactical')||0))[0];
-    if(heir){
-      heir.armies=(heir.armies||[]).concat(left);
-      log('system',`🏳 ${_who} begged for his life and is gone, but his host does not follow him: ${_n} hold their ground in ${prov.name} and fall in under ${heir.name}.`,{actor:c.player,targets:[c.player],charId:heir.id,provinceId:prov.id});
-      return left.length;
-    }
-    if(prov.owner===c.player){
-      prov.garrisonArmies=(prov.garrisonArmies||[]).concat(left);
-      log('system',`🏳 ${_who} abandons his command in ${prov.name} — with no officer left to lead them, ${_n} of his host take their place in the province garrison.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-      return left.length;
-    }
-    log('system',`🏳 ${_who} slips away from ${prov.name} with his life, leaving ${_n} leaderless on ground the realm does not hold.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-    disperseDeadCharArmies({id:c.id,name:_who,player:c.player,location:c.location,armies:left,_attackedFrom:c._attackedFrom});
-    return left.length;
-  }
-
-  // 2026-10-13 (Toby, item 19): the one way a personal-combat death outside a battle is reported.
-  // It resolves the death FIRST, then writes the line: "slain" only when the hero really died; "at
-  // death's door, but not slain" when Battlefield Surgery saves them, with the surgery line
-  // straight after it; nothing of its own when they vanished or escaped (those write their own
-  // line). Returns what handleHeroDeath returns (false = they live).
-  function reportHeroFall(dead, killer, slainLine, meta, hopts){
-    const o={...(hopts||{}), lines:[]};
-    const res=handleHeroDeath(dead, killer, o);
-    if(o.outcome==='surgery') log('combat',`\u{1FA79} ${dead.name} is struck down — at death's door, but not slain.`,meta);
-    else if(o.outcome==='died'||o.outcome==null) log('combat',slainLine,meta);
-    o.lines.forEach(l=>log(l.type,l.text,l.meta));
-    return res;
-  }
-  function handleHeroDeath(deadChar, killerChar, opts){
-    if(!deadChar) return;
-    // DOPPELGANGER GUARD. Battles are fought on shallow COPIES ({...char}); if any caller hands a
-    // copy in here, the grave/items/flags were written on the copy while the REAL record in
-    // G.characters stayed alive — one name dead in the graveyard and alive in the realm. Always
-    // resolve to the real record, then mirror the outcome back onto the copy that was passed.
-    { const _realRec=(deadChar.id!=null)?(G.characters||[]).find(r=>r&&r.id===deadChar.id):null;
-      if(_realRec && _realRec!==deadChar){
-        const _copy=deadChar;
-        if(_copy.hp!=null) _realRec.hp=_copy.hp;
-        const _res=handleHeroDeath(_realRec, killerChar, opts);
-        _copy.alive=_realRec.alive; _copy.killedThisTurn=_realRec.killedThisTurn; _copy.items=_realRec.items; _copy.hp=_realRec.hp;
-        if(_realRec._leaderlessHost) _copy._leaderlessHost=true;
-        return _res;
-      } }
-    // SECRET Easter egg: the unkillable wanderer never actually dies — no graveyard, no lost items,
-    // no crown succession. Safety net for any death path not intercepted at its call site. THIEF L9
-    // Vanish: no killing blow lands on a man who is not there. Catches every death path — battle,
-    // duel, assassination, execution — for the rest of the turn he vanished.
-    if(isVanished(turnContext,deadChar)){
-      if(opts) opts.outcome='vanished';
-      if(deadChar.hp!=null && deadChar.hp<=0) deadChar.hp=Math.max(1,deadChar.maxHp?Math.round(deadChar.maxHp/2):1);
-      deadChar.alive=true; deadChar.killedThisTurn=false;
-      log('combat',`🌫 The blow meant for ${deadChar.name} passes through shadow — they vanished, and cannot be touched this season.`,{actor:(killerChar&&killerChar.player!=null)?killerChar.player:null,targets:(deadChar.player!=null?[deadChar.player]:[]),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
-      return false;
-    }
-    if(_escapesTheEnd(deadChar)){
-      if(opts) opts.outcome='escaped';
-      if(deadChar.hp!=null && deadChar.hp<=0) deadChar.hp=Math.max(1,deadChar.maxHp?Math.round(deadChar.maxHp/2):1);
-      deadChar.alive=true; deadChar.killedThisTurn=false;
-      log('combat',_garrethEscapeLine(deadChar),{actor:(killerChar&&killerChar.player!=null)?killerChar.player:null,targets:[],provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
-      return false;
-    }
-    opts=opts||{};
-    // BATTLEFIELD SURGERY (sd36) — previously defined but never wired. A character of a realm
-    // holding it (kings included) has a 20% chance to survive any killing blow with 1 HP. Resolved
-    // HERE, on the one real character record, so no copy can be left "dead" while
-    // the real one lives: every caller that mirrors a death onto a battle copy checks the return
-    // value (false = survived). Never fires for a corpse already dead this turn (no double saves).
-    // 2026-10-13 (Toby, item 19): a caller that writes its own "slain" line passes `opts.lines` (an
-    // array): the surgery lines are handed back there, as {type,text,meta,priv}, instead of being
-    // logged at once, so the caller can say "at death's door, but not slain" instead of "slain" and
-    // put the surgery line straight after it (reportHeroFall; preBattleDuel's battle narrative).
-    // `opts.outcome` tells the caller what happened: 'vanished', 'escaped', 'surgery' or 'died'.
-    const _surgLog=(text,meta,priv)=>{ if(Array.isArray(opts.lines)) opts.lines.push({type:'combat',text,meta,priv}); else log('combat',text,meta); };
-    if(!opts.noSave && deadChar.player!=null && deadChar.alive!==false && hasDisc(turnContext,deadChar.player,'sd36')){
-      const _sRoll=d100(); const _bsPct=Math.round(discParam('sd36','pct',0.2)*100);
-      if(_sRoll<=_bsPct){
-        deadChar.hp=1; deadChar.alive=true; deadChar.killedThisTurn=false;
-        opts.outcome='surgery';
-        _surgLog(`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase),targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
-        return false;
-      } else {
-        _surgLog(`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase),targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)},deadChar.player);
-      }
-    }
-    opts.outcome='died';
-    if(killerChar&&killerChar.player!=null&&deadChar.player!=null&&deadChar.player!==killerChar.player){ const _tm=TM(killerChar); _tm.duelKills=(_tm.duelKills||0)+1; } // MINOR TITLE — The Widowmaker
-    // VICTORY (#3): a fallen character loses 25% of accumulated Title merit — killing a rival's
-    // champion late can knock them out of a Title race. (Applies to Kings and Heroes alike.)
-    if(deadChar.tm){ for(const k in deadChar.tm){ deadChar.tm[k]=Math.round((deadChar.tm[k]||0)*0.75); } }
-    const prov=G.world.provinces[deadChar.location];
-    // Who slew them (2026-10-12, Toby: the battle reports say who beat whom): the killer's name, or the cause a
-    // caller gives (opts.slainBy, e.g. a lair's guardian). Read by disperseDeadCharArmies, which clears it.
-    { const _by=(killerChar&&killerChar.name)?String(killerChar.name).replace(' (wandering)',''):((opts&&opts.slainBy)||null);
-      if(_by) deadChar._slainBy=_by; else delete deadChar._slainBy; }
-
-    // 1. Armies. Normally dispersed at once; a pre-battle-duel death defers this (keepArmies)
-    // so the leaderless force can fight the battle first — the caller disperses the survivors.
-    //
-    // The same must hold however the commander died. If the ground under him is contested, the host
-    // stays with the colours and fights on under its senior captain; the end-of-phase sweep only
-    // disperses it once the fighting there is actually over.
-    const _fellInBattle=!!(prov&&prov._battleUnresolved&&(deadChar.armies||[]).length>0);
-    if(_fellInBattle){
-      deadChar._leaderlessHost=true;
-      log('combat',`⚑ ${deadChar.name} has fallen, but the battle for ${prov.name} is not done — the senior captain takes up the banner and the host fights on.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[],provinceId:prov.id,public:true});
-    }
-    if(!opts.keepArmies&&!_fellInBattle) disperseDeadCharArmies(deadChar);
-
-    // 2. Items: go to killer if there is one, else to the player's king
-    // A Mithril suit is buried with its wearer — it is a granted relic, not spoils (see
-    // grantMithrilToDwarves). Passing it on was the route by which a second suit reached a king.
-    const deadItems=transferableItems(deadChar.items||[]);
-    if(deadItems.length>0){
-      let recipient=(killerChar&&killerChar.id!=null&&(G.characters||[]).find(r=>r&&r.id===killerChar.id))||killerChar; // the REAL killer, never a battle copy
-      if(!recipient&&deadChar.player!==null){
-        recipient=G.characters.find(c=>c.isKing&&c.player===deadChar.player&&c.alive&&c.id!==deadChar.id);
-      }
-      if(!recipient&&deadChar.player!==null){
-        // King died or no king — give to random alive hero of the player
-        const aliveHeroes=G.characters.filter(c=>c.alive&&c.player===deadChar.player&&c.id!==deadChar.id);
-        if(aliveHeroes.length>0) recipient=aliveHeroes[Math.floor(kcRng()*aliveHeroes.length)];
-      }
-      if(recipient){
-        // 2026-09-23c — ROOT CAUSE of "the report says he took the king's items but they are not in
-        // his pack": this was `recipient.items=(recipient.items||[]).concat(deadItems)`, a NEW array
-        // on the real killer. Pooled battles are fought on shallow copies that still hold the OLD
-        // array, and syncLeaderCopy then wrote the copy's `items` back over the real record — the loot
-        // was wiped the moment the battle ended. Now: loot goes to the REAL character, is pushed IN
-        // PLACE (a copy sharing the array sees it too), is mirrored onto a copy with its own array, and
-        // is marked so syncLeaderCopy keeps it whatever the copy holds.
-        recipient.items=Array.isArray(recipient.items)?recipient.items:[];
-        deadItems.forEach(it=>{ recipient.items.push(it); _KC_LOOT_GAINED.add(it); applyItemMaxHp(recipient,it); });
-        if(killerChar&&killerChar!==recipient&&Array.isArray(killerChar.items)&&killerChar.items!==recipient.items) deadItems.forEach(it=>{ if(!killerChar.items.includes(it)) killerChar.items.push(it); });
-        log('system',`${deadChar.name}'s possessions — ${deadItems.map(i=>i.name).join(', ')} — pass to ${recipient.name}.`,{actor:deadChar.player,targets:[deadChar.player]});
-        if(recipient.player!=null&&recipient.player!==deadChar.player) log('system',`🗡 ${recipient.name} takes ${deadChar.name}'s possessions from the fallen: ${deadItems.map(i=>i.name).join(', ')}.`,{actor:recipient.player,targets:[recipient.player],charId:recipient.id,phase:(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase),provinceId:(recipient.location!=null?recipient.location:undefined)});
-        if(recipient.player!=null){ const _gn=gainedItemNote(recipient,deadItems); if(_gn) log('system',_gn,{actor:recipient.player,targets:[recipient.player],charId:recipient.id,phase:(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase),provinceId:(recipient.location!=null?recipient.location:undefined)}); } // item 10
-      } else {
-        log('system',`${deadChar.name}'s possessions are lost — no heir to receive them.`,{actor:deadChar.player,targets:[deadChar.player]});
-      }
-    }
-    deadChar.items=[];
-
-    // 3. Record to graveyard (non-kings only — kings use heir system)
-    if(!deadChar.isKing){
-      recordHeroGrave(turnContext,deadChar);
-      // Record which players can currently see this death (have a character in same province) These
-      // players will see the dead hero in their turn report
-      G.players.forEach((p,pi)=>{
-        const canSee=G.characters.some(ch=>ch.alive&&ch.player===pi&&ch.location===deadChar.location);
-        if(canSee){
-          if(!Array.isArray(p.seenDeadHeroIds)) p.seenDeadHeroIds=[];
-          if(!p.seenDeadHeroIds.includes(deadChar.id)) p.seenDeadHeroIds.push(deadChar.id);
-          // Also add to persistent known set so they can target with Resurrect in future turns
-          if(!Array.isArray(p.knownDeadHeroIds)) p.knownDeadHeroIds=[];
-          if(!p.knownDeadHeroIds.includes(deadChar.id)) p.knownDeadHeroIds.push(deadChar.id);
-        }
-      });
-    } else {
-      // MONARCH death (item: dead kings resurrectable). Record the fallen king to the graveyard so
-      // the player who controlled them — and ONLY that player — may recall them with Resurrect. The
-      // body is borne home (home province, or wealthiest owned if home has been lost). Only the
-      // MOST RECENTLY fallen monarch of a dynasty is resurrectable: when a new monarch falls, the
-      // one they replaced is lost forever (its grave is purged), and so on down the line of
-      // succession.
-      const pKing=(deadChar.player!=null)?G.players[deadChar.player]:null;
-      //a DIVINE king is not succeeded — the divine return them, exactly as their heroes
-      // (one full turn in death, then back at half HP on consecrated/wealthiest ground, without armies or items).
-      // The return needs CONSECRATED ground: with none, the king is succeeded like any other.
-      if(pKing&&pKing.alignment==='Divine'&&((pKing.provinces||[]).length>0)&&ownedConsecratedProvs(G,deadChar.player).length>0){
-        deadChar._divineReturn=true;
-        log('system',`✨ ${deadChar.name}, monarch of a Divine realm, has fallen — but the divine do not abandon their anointed while the realm keeps holy ground. No heir will be crowned: the crown lies empty for one full turn, and ${deadChar.name} will rise again at the start of the turn after next, in the nearest consecrated province (which gives up its consecration to restore them), at half health, without armies or items. Should the realm lose all its consecrated ground first, the grace is lost and an heir is crowned. Until then the realm has no king: no diplomacy may be declared and no Reckoning called.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
-      } else if(pKing&&pKing.alignment==='Divine'){
-        log('system',`✨ ${deadChar.name}, monarch of a Divine realm, has fallen — and the realm holds no consecrated ground to which the divine could return them. An heir must take the crown.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)});
-      }
-      if(pKing){
-        // The previously-resurrectable monarch (whom this king's line replaced) passes beyond
-        // recall.
-        if(pKing._resurrectableMonarchId!=null && pKing._resurrectableMonarchId!==deadChar.id){
-          G.heroGraveyard=(G.heroGraveyard||[]).filter(g=>g.id!==pKing._resurrectableMonarchId);
-        }
-        recordHeroGrave(turnContext,deadChar);
-        const grec=(G.heroGraveyard||[]).find(g=>g.id===deadChar.id);
-        if(grec){
-          grec.isKing=true; grec._monarch=true;
-          grec.skills={...(deadChar.skills||{})}; grec.maxHp=deadChar.maxHp||15;
-          const restId=monarchRestProvId(G, deadChar.player);
-          grec.location=(restId!=null)?restId:deadChar.location;
-        }
-        pKing._resurrectableMonarchId=deadChar.id;
-        // The controlling player always knows their own monarch has fallen and where the body lies.
-        if(!Array.isArray(pKing.seenDeadHeroIds)) pKing.seenDeadHeroIds=[];
-        if(!pKing.seenDeadHeroIds.includes(deadChar.id)) pKing.seenDeadHeroIds.push(deadChar.id);
-        if(!Array.isArray(pKing.knownDeadHeroIds)) pKing.knownDeadHeroIds=[];
-        if(!pKing.knownDeadHeroIds.includes(deadChar.id)) pKing.knownDeadHeroIds.push(deadChar.id);
-      }
-    }
-    deadChar.alive=false;deadChar.killedThisTurn=true;
-    try{ _tel.deaths.push({ph:(turnContext._logCtx.phase??turnContext._currentPhase), charId:deadChar.id, name:deadChar.name, pi:deadChar.player, king:!!deadChar.isKing, prov:deadChar.location,
-      killerPi:(killerChar&&killerChar.player!=null)?killerChar.player:null, killerId:killerChar?killerChar.id:null, how:(opts&&opts.cause)||(killerChar?(killerChar.player!=null?'character':'neutral'):'other')}); }catch(_te){}
-    flushDeferredSkillLogsFor(turnContext,deadChar.id); // rises earned before death are reported now, not after the fight
-    delete deadChar._defend; delete deadChar._pursuit; // the dead keep no watch and chase nobody
-    return true;
-  }
+  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter:(...a)=>resolveEncounter(turnContext,...a),resolvePersonalCombat:(...a)=>resolvePersonalCombat(turnContext,...a),resolveCharVsChar:(...a)=>resolveCharVsChar(turnContext,...a),combatVsChar,effStat:(...a)=>effStat(turnContext,...a),rng,pcCharCombatant:(...a)=>pcCharCombatant(turnContext,...a),pcMonsterCombatant,trySkillGain:(...a)=>trySkillGain(turnContext,...a),resolveDuel:(...a)=>resolveDuel(turnContext,...a),duelFleeItemDrop:(...a)=>duelFleeItemDrop(turnContext,...a),pcCastCombatSpell:(...a)=>pcCastCombatSpell(turnContext,...a),preBattleDuel,awardWinHp:(...a)=>awardWinHp(turnContext,...a),awardKillXP:(...a)=>awardKillXP(turnContext,...a)}; }catch(e){}
 
   // Canonical order-name → internal action-key map. Shared by processOrder and the phase pipeline
   // (buildPhaseIntents / phaseDependencies) so both always agree on what a character is doing.
@@ -3297,12 +2660,12 @@ const BATTLE_ARMY_SPELLS={
       const _duelChars=[thief.id,victim.id];
       log('combat',`⚔ ${victim.name} catches ${thief.name} ${what} — blades are drawn!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars});
       markProvinceCombat(prov,[thief.player,victim.player]); // purple swords: a personal combat, not a field battle
-      const enc=resolveCharVsChar(thief,victim,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
+      const enc=resolveCharVsChar(turnContext,thief,victim,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
       enc.narrative.forEach(line=>emitNarrLine(turnContext,'combat',line,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       thief.hp=Math.max(1,enc.atkHp);
       if(victim.player!==null) victim.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(thief)){ if(thief.hp!=null&&thief.hp<=0) thief.hp=1; log('combat',_garrethEscapeLine(thief),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(thief,victim,`${thief.name} is cut down — a thief's end.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,victim,thief); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(victim)){ if(victim.hp!=null&&victim.hp<=0) victim.hp=1; log('combat',_garrethEscapeLine(victim),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(victim,thief,`${victim.name} is slain by the cornered thief!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,thief,victim); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(thief)){ if(thief.hp!=null&&thief.hp<=0) thief.hp=1; log('combat',_garrethEscapeLine(thief),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(turnContext,thief,victim,`${thief.name} is cut down — a thief's end.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,victim,thief); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(victim)){ if(victim.hp!=null&&victim.hp<=0) victim.hp=1; log('combat',_garrethEscapeLine(victim),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(turnContext,victim,thief,`${victim.name} is slain by the cornered thief!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,thief,victim); } }
     };
     // Shared: lift a random magic item from a victim (null if none, or if the victim is a master
     // thief).
@@ -3349,12 +2712,12 @@ const BATTLE_ARMY_SPELLS={
       const _duelChars=[t.id,caster.id];
       log('combat',`⚔ ${t.name} feels the enchantment clawing at their mind and rounds on ${caster.name} — blades are drawn!`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars});
       markProvinceCombat(prov,[caster.player,t.player]);
-      const enc=resolveCharVsChar(t,caster,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
+      const enc=resolveCharVsChar(turnContext,t,caster,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
       enc.narrative.forEach(line=>emitNarrLine(turnContext,'combat',line,{actor:caster.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       if(t.player!==null) t.hp=Math.max(1,enc.atkHp);
       caster.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(t)){ if(t.hp!=null&&t.hp<=0) t.hp=1; log('combat',_garrethEscapeLine(t),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(t,caster,`${t.name} is cut down by the enchanter they turned on.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,caster,t); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(caster)){ if(caster.hp!=null&&caster.hp<=0) caster.hp=1; log('combat',_garrethEscapeLine(caster),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(caster,t,`${caster.name} is slain — the failed Charm was their last spell.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,t,caster); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(t)){ if(t.hp!=null&&t.hp<=0) t.hp=1; log('combat',_garrethEscapeLine(t),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(turnContext,t,caster,`${t.name} is cut down by the enchanter they turned on.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,caster,t); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(caster)){ if(caster.hp!=null&&caster.hp<=0) caster.hp=1; log('combat',_garrethEscapeLine(caster),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(turnContext,caster,t,`${caster.name} is slain — the failed Charm was their last spell.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,t,caster); } }
     };
 
     switch(action){
@@ -4469,7 +3832,7 @@ const BATTLE_ARMY_SPELLS={
               noteLairRumour(player, prov.id, _fi, {turn:G.turn, gold, items:_hi.map(x=>x.name), stolen:_st.slice(), wields:_wield.map(x=>x.name)});
           }
           // 3) the odds
-          { const odds=simulateLairOdds(c,f);
+          { const odds=simulateLairOdds(turnContext,c,f);
             // Sept 2026: the band the hero was told is kept on the feature (per realm, per hero, with the hero's
             // fighting rating at the time) so a bot can act on exactly what a player reads — nothing more.
             if(odds){ f._rumourOdds=f._rumourOdds||{}; f._rumourOdds[c.player]={turn:G.turn,charId:c.id,band:rumourOddsBand(odds.pct).max,rating:botLairRating(c)}; }
@@ -4502,7 +3865,7 @@ const BATTLE_ARMY_SPELLS={
         if(!featDiscovered(f,c.player)){discoverFeat(f,c.player); TM(c).featuresFound+=1;} // TITLE MERIT: Loremaster
         const plan=c.encounterPlan||{tactics:['ME']};
         markProvinceCombat(prov,[c.player]); // purple swords: a personal combat, not a field battle
-        const encounter=resolveEncounter(c,f,prov,plan.tactics||['ME'],(...a)=>effStat(turnContext,...a),rng,player);
+        const encounter=resolveEncounter(turnContext,c,f,prov,plan.tactics||['ME'],(...a)=>effStat(turnContext,...a),rng,player);
         try{ _tel.encounters.push({ph, pi:c.player, charId:c.id, prov:prov.id, feature:f.name||null, guardian:(f.monster&&f.monster.name)||null, power:(f.monster&&f.monster.power)||null,
           won:!!encounter.won, fled:!!encounter.fled, dmg:encounter.damageToHero||0, hpAfter:encounter.heroHpAfter, killed:!!encounter.heroKilled, tactics:(plan.tactics||['ME']).slice(0,12)}); }catch(_te){}
         encounter.narrative.forEach(line=>{emitNarrLine(turnContext,'explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
@@ -4519,7 +3882,7 @@ const BATTLE_ARMY_SPELLS={
           const _lairLeft=(c.items||[]).filter(it=>!(it.effect&&it.effect.stat==='mithrilArmour'));
           const _lairHeld=(c.items||[]).slice();
           if(_lairLeft.length>0) c.items=(c.items||[]).filter(it=>it.effect&&it.effect.stat==='mithrilArmour');
-          const _lairDied=reportHeroFall(c,null,`💀 ${c.name} has been slain by the ${f.monster?.name||'creature'}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true},{slainBy:`the ${f.monster?.name||'guardian'} of ${prov.name}`}); // the host is told what slew its commander (2026-10-12)
+          const _lairDied=reportHeroFall(turnContext,c,null,`💀 ${c.name} has been slain by the ${f.monster?.name||'creature'}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true},{slainBy:`the ${f.monster?.name||'guardian'} of ${prov.name}`}); // the host is told what slew its commander (2026-10-12)
           if(_lairDied===false){ c.items=_lairHeld; break; } // saved, or escaped: nothing is left among the bones
           if(_lairLeft.length>0){
             f.hoardItems=(f.hoardItems||[]).concat(_lairLeft); // joins the lair's hoard
@@ -6963,7 +6326,7 @@ const BATTLE_ARMY_SPELLS={
         if(victim.player!=null&&victim.player!==c.player) log('spy',`🗡 An attempt is made on ${victim.name}'s life${victim.isKing?' — the royal guard close ranks':''}.`,{actor:victim.player,charIds:[victim.id].filter(v=>v!=null),targets:[victim.player],provinceId:prov.id});
         if(roll<=chance){
           if(_escapesTheEnd(victim)){ log('combat',_garrethEscapeLine(victim),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); }
-          else { reportHeroFall(victim, c, `🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(turnContext, c, victim); c.merits=(c.merits||0)+2;
+          else { reportHeroFall(turnContext, victim, c, `🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(turnContext, c, victim); c.merits=(c.merits||0)+2;
           TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster — only a blade that lands
           noteEspionage(G, c, prov.id, 'put a blade in one of your heroes'); }
         } else {
@@ -6995,7 +6358,7 @@ const BATTLE_ARMY_SPELLS={
         const dmg=8+Math.floor(Math.abs(aScore-bScore)/6);
         loser.hp=Math.max(0,(loser.hp||20)-dmg);
         log('combat',`⚔ ${c.name} calls ${foe.name} to single combat! ${winner.name} has the better of it — ${loser.name} takes ${dmg} wounds.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-        if(loser.hp<=0){ if(_escapesTheEnd(loser)){ if(loser.hp<=0) loser.hp=1; log('combat',_garrethEscapeLine(loser),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { reportHeroFall(loser,winner,`${loser.name} falls in the duel!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(turnContext, winner, loser); } }
+        if(loser.hp<=0){ if(_escapesTheEnd(loser)){ if(loser.hp<=0) loser.hp=1; log('combat',_garrethEscapeLine(loser),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { reportHeroFall(turnContext,loser,winner,`${loser.name} falls in the duel!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(turnContext, winner, loser); } }
         if(win) c.merits=(c.merits||0)+2;
         trySkillGain(turnContext,c,'melee',SKILLGAIN_STD);
         break;
@@ -7035,7 +6398,7 @@ const BATTLE_ARMY_SPELLS={
         const killChance=Math.min(40,10+skillLevel(c,'archery')*3)-(foe.isKing?15:0);
         const roll=d100();
         log('combat',`🎯 ${c.name} takes a Sniper's Mark on ${foe.name} — ${dmg} wounds${foe.hp<=0?'':` (${killChance}% to slay, roll ${roll})`}.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-        if(foe.hp<=0 || roll<=killChance){ if(_escapesTheEnd(foe)){ foe.hp=Math.max(1,foe.hp); log('combat',_garrethEscapeLine(foe),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { foe.hp=0; reportHeroFall(foe,c,`${foe.name} is felled by the shot!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(turnContext, c, foe); c.merits=(c.merits||0)+2; } }
+        if(foe.hp<=0 || roll<=killChance){ if(_escapesTheEnd(foe)){ foe.hp=Math.max(1,foe.hp); log('combat',_garrethEscapeLine(foe),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { foe.hp=0; reportHeroFall(turnContext,foe,c,`${foe.name} is felled by the shot!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(turnContext, c, foe); c.merits=(c.merits||0)+2; } }
         trySkillGain(turnContext,c,'archery',SKILLGAIN_STD);
         break;
       }
@@ -8686,12 +8049,12 @@ const BATTLE_ARMY_SPELLS={
       const _duelChars=[c.id,quarry.id];
       log('combat',`⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
       markProvinceCombat(prov,[c.player,quarry.player]); // purple swords: a personal combat, not a field battle
-      const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
+      const enc=resolveCharVsChar(turnContext,c,quarry,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
       enc.narrative.forEach(line=>emitNarrLine(turnContext,'combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       c.hp=Math.max(1,enc.atkHp);
       if(quarry.player!==null) quarry.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(c,quarry,`${c.name} is cut down in the ambush they laid!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,quarry,c); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(quarry,c,`${quarry.name} is struck down in the ambush!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,c,quarry); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(turnContext,c,quarry,`${c.name} is cut down in the ambush they laid!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,quarry,c); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(turnContext,quarry,c,`${quarry.name} is struck down in the ambush!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,c,quarry); } }
       trySkillGain(turnContext,c,'spy',SKILLGAIN_STD);                   // a sprung ambush hones the scout's craft
       c._encounteredThisPhase=quarry.id; quarry._encounteredThisPhase=c.id;
       c._defendReactedPhase=ph;
@@ -8982,15 +8345,15 @@ const BATTLE_ARMY_SPELLS={
       const _duelChars=[c.id,quarry.id]; // the duel belongs in BOTH duellists' report sections
       log('combat',`⚔ ${c.name} finally corners ${quarry.name} in ${prov.name}.`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
       markProvinceCombat(prov,[c.player,quarry.player]); // purple swords: a personal combat, not a field battle
-      const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
+      const enc=resolveCharVsChar(turnContext,c,quarry,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
       enc.narrative.forEach(line=>emitNarrLine(turnContext,'combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       // a hero beaten to 0 HP in the duel DIES outright — the old "capitulates and survives at 1
       // HP" reprieve is gone. atkKilled/defKilled still cover the explicit-slaying path; the hp<=0
       // checks catch every other felling.
       c.hp=Math.max(1,enc.atkHp);
       if(quarry.player!==null) quarry.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(c,quarry,`${c.name} has been slain at the end of the chase!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,quarry,c); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(quarry,c,`${quarry.name} is run down and slain!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,c,quarry); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(turnContext,c,quarry,`${c.name} has been slain at the end of the chase!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,quarry,c); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(turnContext,quarry,c,`${quarry.name} is run down and slain!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(turnContext,c,quarry); } }
     }
     // Mark the pair so a mutual Encounter (each hunting the other) can't resolve a second time this
     // phase.
@@ -9431,7 +8794,7 @@ const BATTLE_ARMY_SPELLS={
       const _here=G.world.provinces[dc.location];
       if(_here&&_here._battleUnresolved){ dc._leaderlessHost=true; return; }
       delete dc._leaderlessHost;
-      disperseDeadCharArmies(dc);
+      disperseDeadCharArmies(turnContext,dc);
     });
 
     // province.characters is derived from character.location — rebuild it before anything reads it,
@@ -9904,7 +9267,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   (G.characters||[]).forEach(dc=>{
     if(dc.alive) { delete dc._leaderlessHost; return; }
     delete dc._leaderlessHost;
-    if((dc.armies||[]).length>0) disperseDeadCharArmies(dc);
+    if((dc.armies||[]).length>0) disperseDeadCharArmies(turnContext,dc);
     delete dc._slainBy; // a commander who fell with no host keeps no note of the killer in the saved state
   });
 
@@ -9964,7 +9327,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(c._mercyFledTurn!==G.turn || !c.alive) return;
     const dest=monarchRestProvId(G, c.player);
     if(dest!=null && dest!==c.location){
-      abandonHostOnFlight(c); // the host stays on the field he ran from — see the note above
+      abandonHostOnFlight(turnContext,c); // the host stays on the field he ran from — see the note above
       c.location=dest;
       log('system',`🏳 ${c.name}, spared on the field, makes their way back to ${G.world.provinces[dest]?.name||'safety'}.`,{actor:c.player,targets:[c.player],charId:c.id,provinceId:dest});
     }
