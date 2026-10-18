@@ -23,8 +23,8 @@ every test. **Edit `src/`, never `site/`**: the next build overwrites it.
   in its place, byte for byte. The other files (the data file, `kc-*.js`, `vendor/`) are copied as they are. When it
   landed, the build reproduced the committed `site/` exactly, every byte of every file.
 - **Each `.js` file is a stretch of whole top-level statements**, so it parses on its own; no file ends inside a
-  function (`tests/static/build.test.ts`). The GM portal's main script is 56 files; `src/engine/run-turn.js` (the turn,
-  `resolveTurn`, ~15,200 lines) stays one file until P1-08 takes it apart. The player portal's is 20.
+  function (`tests/static/build.test.ts`). The GM portal's main script is 62 files; `src/engine/run-turn.js` (the turn,
+  `resolveTurn`, ~14,800 lines) is being taken apart by P1-08, one area at a time (below). The player portal's is 20.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report,
   the statistics snapshots, what a realm can see), `db/` (which database, the version guard, telemetry and the light `meta`
   rows), `content/` (the data file), `ui/<page>/` (each page's template, styles and the rest of its code),
@@ -250,9 +250,21 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (never across an `await`), and returns the seed (`{…, seed}`), for P2-01 to record. A mercenary
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
-- **Engine functions are nested inside `resolveTurn`** (combat, terrain modifiers, …). Tests reach them by
-  injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).
-  Phase 1 of the roadmap lifts them out into modules.
+- **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08). Most of the rule code is still
+  nested inside it (combat, terrain modifiers, …), and tests reach that by injecting code at exact source lines (see
+  [tests/README.md](../tests/README.md#code-anchor-hooks)). A lifted helper that reads the turn's state takes **the
+  turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
+  (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
+  the collectors (`_tel`, `battleCommanders`, …), and the values the turn changes as it goes (`_logCtx`,
+  `_currentPhase`, `_afterPhases`), which are read and written as `turnContext._currentPhase` everywhere, in
+  `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it yet (P1-08m). Lifted so
+  far (P1-08a): the line helpers and the turn's records (`engine/turn/`), relations and captures
+  (`engine/realms/relations-and-captures.js`), the title lookups and battle merit
+  (`engine/titles/title-holders-and-battle-merit.js`), skills in play and hidden heroes
+  (`engine/heroes/effective-skills-and-hidden-heroes.js`), the discovery helpers (`engine/discoveries.js`), `rng`, `pick`
+  and `describeArmy` (`engine/dice-and-army-names.js`), and `pcFoeCat` (`engine/personal-combat/helpers.js`). A lifted
+  helper keeps `resolveTurn`'s two-space indent. Tests call one directly in Node: `engineFn` and `turnContext` in
+  `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
 
@@ -383,7 +395,10 @@ Playwright Test runs the browser specs in `tests/browser/` (`playwright.config.t
 strictly (`npm run typecheck`, `tsconfig.json`); ESLint with typescript-eslint lints them (`npm run lint`,
 `eslint.config.js`); Prettier formats them (`npm run format`). Node is pinned exactly (`.nvmrc`, `engine-strict` in
 `.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). The site's own JavaScript in `src/` isn't
-linted or formatted yet: P1-09 makes it TypeScript, and Prettier formats it then.
+linted or formatted yet: P1-09 makes it TypeScript, and Prettier formats it then. The one exception is the engine's
+(`src/engine/`, `src/views/`), which gets ESLint's `no-undef` (P1-08a). Its globals are worked out when ESLint starts,
+from the engine's files and the data file: a helper lifted out of `resolveTurn` that still reads a name from its closure
+fails the lint, not the turn that first calls it.
 
 The harness runs itself (P1-01b). Claude Code hooks, committed in `.claude/settings.json`, check each edited file
 (`tools/hooks/after-edit.ts`: type check, ESLint, Prettier, about 1 s) and run `npm run check` before an agent may

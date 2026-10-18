@@ -11,7 +11,7 @@
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const ANCHOR="  // 4. Run all 5 phases\n";
-const HOOK="  window.__BR={handleHeroDeath,disperseDeadCharArmies,erodeGuardSurvivors,getG:()=>G,setG:(s)=>{G=s;},getLog:()=>turnLog};\n";
+const HOOK="  window.__BR={handleHeroDeath,disperseDeadCharArmies,erodeGuardSurvivors,getG:()=>G,setG:(s)=>{G=s;turnContext.G=s;},getLog:()=>turnLog};\n";
 const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|wrapping the line at|met at the end of the line by|riding free round the flank|fighting from the air|in the reserve|in the second line|shooting at an empty column|with nobody opposite)\b/;
 (async()=>{
   const sc=await bootScenario({inject:[[ANCHOR,HOOK+ANCHOR]]}); const W=sc.W;

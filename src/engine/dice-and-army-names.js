@@ -65,3 +65,25 @@ function seedUsedArmyNames(gameState){
   (gameState.mercenaries||[]).forEach(m=>{if(m.unitName) _usedArmyUnitNames.add(m.unitName);});
 }
 
+// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── a random whole number from a to b, a random pick, and a host described
+// for a battle line. They read no turn state.
+  function rng(a,b){return Math.floor(kcRng()*(b-a+1))+a;}
+
+  const pick=arr=>arr[Math.floor(kcRng()*arr.length)];
+
+  function describeArmy(armies){
+    if(!armies||armies.length===0) return 'no armies';
+    const named=[];const unnamed={};
+    armies.forEach(a=>{
+      const hasName=a.unitName&&a.unitName!==a.type&&!a.unitName.startsWith('undefined');
+      if(a._phantom){ named.push(`✨ ${a.unitName} (${a.type}, ${a.quality})`); }
+      else if(hasName){
+        named.push(`${a.unitName} (${a.type}, ${a.quality})`);
+      } else {
+        const key=`${a.quality} ${a.type}`;unnamed[key]=(unnamed[key]||0)+1;
+      }
+    });
+    const unnamedStrs=Object.entries(unnamed).map(([k,n])=>n>1?`${n}× ${k}`:k);
+    return[...named,...unnamedStrs].join(', ')||'no armies';
+  }
+

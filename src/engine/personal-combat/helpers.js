@@ -206,3 +206,6 @@ function grantMithrilToDwarves(gs){
   });
 }
 
+// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the kind of foe a personal fight is against. It reads no turn state.
+  function pcFoeCat(foe){ return foe.cat||(foe.kind==='character'?(foe.isUndead?'undead':'humanoid'):'beast'); }
+

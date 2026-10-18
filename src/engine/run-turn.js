@@ -32,16 +32,20 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     // the orders are already cleared: the catch at the end of runTurn puts them back
     throw new Error(`Could not read the saved game: ${e&&e.message||e}`);
   }
+  // ── THE TURN'S CONTEXT (plan P1-08a) ── what the helpers lifted out of resolveTurn read: the state, the log
+  // and its collectors, the phase being resolved. They take it first (src/engine/turn/context.js).
+  const turnContext=createTurnContext(G, freshPlayers, expectedTurnToRun);
   // ── MERCENARY BAND IDS (P1-18b, 2026-10-18) ── a band made this turn is `merc_t<turn>_<n>`, counted
   // afresh each turn: no clock and no dice, so the turn's dice don't depend on how many bands it makes.
   // The `merc_` prefix is what the hire code tests for, and an older save's `merc_<ms>_<b36>` ids can't
   // meet these. The turn is the one being run (expectedTurnToRun), not G.turn, which advances mid-turn.
   const _mercIds={n:0};
-  const newMercId=()=>`merc_t${expectedTurnToRun}_${++_mercIds.n}`;
+  turnContext._mercIds=_mercIds;
   // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn, and
   // the collectors the hooks below fill (battles, lair fights, captures, deaths, spells). Written to
   // turn_events after the save, one row per realm — see writeTurnTelemetry at the end of runTurn.
   const _tel={pre:{}, orders:{}, battles:[], encounters:[], captures:[], deaths:[], spells:[], hires:[], recruits:[]};
+  turnContext._tel=_tel;
   try{ (G.players||[]).forEach((pl,pi)=>{ if(pl) _tel.pre[pi]=telRealmSnapshot(G,pi); }); }catch(_te){ console.warn('telemetry pre-snapshot:',_te); }
 
   // ── BOT DIPLOMACY (Phase 2) — turn-start snapshot ── Snapshot each bot's identified-rivals set
@@ -331,7 +335,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
       // 2026-09-21 (Toby): a bot ALLIED with the claimant AND of the same alignment keeps faith — it
       // neither breaks with him nor joins a coalition against him; it just plays its ordinary
       // alignment diplomacy (so it stays his ally).
-      const _loyalToClaimant = claimBy>=0 && claimBy!==idx && areAllied(idx,claimBy)
+      const _loyalToClaimant = claimBy>=0 && claimBy!==idx && areAllied(turnContext,idx,claimBy)
         && ((G.players||[])[idx]||{}).alignment!=null && ((G.players||[])[idx]||{}).alignment===((G.players||[])[claimBy]||{}).alignment;
       const denyingAClaim = claimBy>=0 && claimBy!==idx && !_loyalToClaimant;
       (_botEncounteredAtStart[idx]||[]).forEach(rival=>{
@@ -343,14 +347,14 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
         // is at war with every HUMAN realm it has met and never offers one a Treat, whatever the
         // alignment wheel or a Reckoning claim says. Bot-to-bot diplomacy is unchanged.
         if(G.botDiplomacy==='hostile' && !_botPlayerIdx.has(rival)){
-          if(relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
+          if(relationBetween(turnContext,idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
           return;
         }
         if(denyingAClaim){
           if(rival===claimBy){
             // The crown is on the table: break with him, ally or not.
-            if(relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
-          } else if(!areAllied(idx,rival) && !_grudgeAgainst(idx,rival)){
+            if(relationBetween(turnContext,idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
+          } else if(!areAllied(turnContext,idx,rival) && !_grudgeAgainst(idx,rival)){
             // Everyone else is a potential partner in denying the claim, whatever their alignment —
             // except a human king who once declared war on us. That grudge outlasts the endgame.
             (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
@@ -371,25 +375,25 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
           if(_r<=1/BOT_WAR.grudgeYield) _bp._botGrudgeTruce[rival]=G.turn||0;
           else if(_r>=1/BOT_WAR.grudgeRecall) delete _bp._botGrudgeTruce[rival];
           if(_bp._botGrudgeTruce[rival]!=null){
-            if(!areAllied(idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
+            if(!areAllied(turnContext,idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
             return;
           }
-          if(areAllied(idx,rival)){ (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy'; return; }   // the grudge remembered
+          if(areAllied(turnContext,idx,rival)){ (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy'; return; }   // the grudge remembered
         }
         // 2026-09-29b (Toby): a bot never ALLIES with a realm that is allied to any of its enemies
         // (alliances are known to all). Peace (Enemy→Neutral) is still possible.
-        const _alliedToMyFoe=(G.players||[]).some((q,k)=>q&&k!==idx&&k!==rival&&relationBetween(idx,k)==='enemy'&&relationBetween(rival,k)==='allied');
+        const _alliedToMyFoe=(G.players||[]).some((q,k)=>q&&k!==idx&&k!==rival&&relationBetween(turnContext,idx,k)==='enemy'&&relationBetween(turnContext,rival,k)==='allied');
         if(botAlignFriendly(G,idx,rival)){
-          if(!_grudge&&!areAllied(idx,rival)&&!(_alliedToMyFoe&&relationBetween(idx,rival)==='neutral')) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
+          if(!_grudge&&!areAllied(turnContext,idx,rival)&&!(_alliedToMyFoe&&relationBetween(turnContext,idx,rival)==='neutral')) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
           return;
         }
         // 2026-09-29 (Toby): an ally of any alignment is kept faith with; otherwise war and peace are
         // a JUDGEMENT (botWarAssess) — strength, a prize on the border, opportunity, expansion first,
         // other wars, temper — not automatic on contact.
-        if(areAllied(idx,rival)) return;
+        if(areAllied(turnContext,idx,rival)) return;
         const _wa=botWarAssess(G,idx,rival,{offeredPeace:((diploDeclarations[rival]||{})[idx]==='treat')});
-        if(_wa.decision==='war'&&relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
-        else if(_wa.decision==='peace'&&!_grudge&&relationBetween(idx,rival)==='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
+        if(_wa.decision==='war'&&relationBetween(turnContext,idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
+        else if(_wa.decision==='peace'&&!_grudge&&relationBetween(turnContext,idx,rival)==='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
       });
     });
   }
@@ -403,7 +407,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // province — province id where the event occurred (used for territory visibility)
   // public — if true, all players who own or have characters in this province see it
   // redact — if true, enemy army strength is shown as a rough estimate only
-  const turnLog=[];
+  const {turnLog}=turnContext;
   // CLAIRVOYANCE watch snapshot. targetChar._clairvoyantBy is cleared at turn-end BEFORE the
   // per-player reports are built, so record each caster's active watch here (one per player — a new
   // casting replaces the old) to survive into report generation. { playerIndex: {charId, fromPhase}
@@ -414,63 +418,27 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // resumed stalled battle. This map lets that report re-file the fight under THIS player's own
   // commander who fought there.
   const battleCommanders={};
-  const recordBattleCmdrs=(provId,ph,ids)=>{
-    if(provId==null||ph==null||ph<0||ph>4) return;
-    const k=provId+'@'+ph;
-    const arr=battleCommanders[k]||(battleCommanders[k]=[]);
-    ids.forEach(id=>{ if(id!=null&&!arr.includes(id)) arr.push(id); });
-  };
+  turnContext.battleCommanders=battleCommanders;
   // 2026-10-08 (Toby item 7): every character who stood in a field battle, by id → the phase it was
   // fought in. That is both leaders AND every armed character of either side standing on the ground,
   // so a general pooled in as a reinforcement counts too. ONE BATTLE PER PHASE reads it: a chase
   // already under way waits when its hunter has fought this phase — as the attacker OR the defender.
   const fieldBattlePhase={};
-  function noteFieldBattle(atk,def,prov){
-    const ph=_currentPhase, ids=[]; if(ph==null||!prov) return ids;
-    const sides=new Set([atk&&atk.player,def&&def.player].filter(x=>x!=null));
-    const add=id=>{ if(id==null) return; fieldBattlePhase[id]=ph; if(!ids.includes(id)) ids.push(id); };
-    [atk,def].forEach(x=>{ if(x) add(x.id); });
-    (G.characters||[]).forEach(ch=>{ if(ch&&ch.alive&&ch.location===prov.id&&sides.has(ch.player)&&(ch.armies||[]).length>0) add(ch.id); });
-    return ids;
-  }
-  // 2026-10-08 (Toby item 15): A DEFEND ORDER IS DONE ONCE IT HAS BROUGHT ITS GENERAL TO BATTLE. Every
-  // character who stood in the battle with a watch set — the general who rode out, one whose own
-  // province was attacked, or one pooled in alongside — keeps no further watch, win or lose (a loss
-  // already broke it: noteBattleLoss). Only a Defend order given for a LATER phase sets a new one; the
-  // same phase's own Defend order, which resolves after the battle, must not re-arm it.
-  function completeDefendWatches(ids, narrative){
-    const ph=_currentPhase;
-    (ids||[]).forEach(id=>{
-      const real=(G.characters||[]).find(x=>x&&x.id===id);
-      if(!real||!real._defend) return;
-      const wasOn=!!real._defend.active;
-      real._defend.active=false;
-      real._defendSpent={turn:G.turn,ph};
-      if(wasOn&&real.alive!==false){
-        const msg=`🛡 ${real.name}'s Defend order is fulfilled — the threat has been met in battle, and they keep no further watch unless ordered to Defend again.`;
-        if(narrative) narrative.push(msg);
-        else log('move',msg,{actor:real.player,targets:[real.player],charId:real.id,provinceId:real.location??null});
-      }
-    });
-  }
-  const defendSpentThisPhase=(c,ph)=>!!(c&&c._defendSpent&&c._defendSpent.turn===G.turn&&c._defendSpent.ph===ph);
+  turnContext.fieldBattlePhase=fieldBattlePhase;
   // Current character context — set by processOrder so all log calls get charId/phase automatically
-  let _logCtx={charId:null,phase:null};
+  turnContext._logCtx={charId:null,phase:null};
   // the phase currently being resolved. _logCtx is cleared to null between characters and after
   // resolveStalledBattles, so a skill-rise earned in a phase-pipeline STAGE
   // (force-march reinforcement, defend-reaction, pursuit movement) — outside processOrder — would
   // otherwise be deferred with phase null and land under END OF TURN. This is the reliable
   // fallback.
-  let _currentPhase=null;
-  // A spell worked inside a battle or a duel (2026-10-09, Toby item 5): only the Cast order logged its
-  // casts, so pre-battle, defender and duel magic never reached the spell records. ctx says where.
-  const telSpell=(ch,spell,school,lvl,chance,roll,ctx)=>{ try{ if(ch&&ch.player!=null) _tel.spells.push({ph:(_logCtx.phase??_currentPhase), pi:ch.player, charId:ch.id, spell, school, lvl, chance, ok:roll<=chance, ctx}); }catch(_te){} };
+  turnContext._currentPhase=null;
   // once the phase loop has finished, EVERY remaining line of the turn is an end-of-turn line (Mass
   // Healing, couriers, wages, de-consecration, max-HP sync …). _logCtx and _currentPhase are both
   // null by then, and a null phase was being filed under SPRING in the character sections of both
   // reports. This flag makes log() stamp phase 99 ("End of Turn") for anything emitted after the
   // pipeline, so no end-of-turn event can be reported a year early again.
-  let _afterPhases=false;
+  turnContext._afterPhases=false;
   // while a battle (or its carry-on series) is resolving, this holds the contested province's id so
   // trySkillGain can cap a combat skill to ONE gain per province-battle-series (carry-on battles
   // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between
@@ -493,199 +461,13 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // prov._carryOnRounds counts the carry-ons (0 for the opening clash); death chances scale by 1 +
   // CARRYON_DEATH_STEP per round, capped at CARRYON_DEATH_CAP×.
   const CARRYON_DEATH_STEP=0.35, CARRYON_DEATH_CAP=2.5;
-  const log=(type,text,meta={})=>{
-    turnLog.push({type,text,
-      actor: meta.actor??null,
-      targets: meta.targets||[],
-      provinceId: meta.provinceId??null,
-      public: meta.public??false,
-      spy: meta.spy??false,
-      system: meta.system??false,
-      armyEstimate: meta.armyEstimate??null,
-      charId: meta.charId??_logCtx.charId,   // which character's action this is
-      charIds: meta.charIds||null,            // extra characters this entry pertains to — the
-                                              // report files it into WHICHEVER of the viewer's own
-                                              // characters it names (e.g. a duel shows in BOTH
-                                              // combatants' sections, each for its own owner).
-      // 2026-09-23 (Toby item 10): a line logged DURING a phase but outside any character's order
-      // (the lone-defender ambush, Defend ride-outs, end-of-phase sweeps) had no phase at all, and
-      // the player's Chronicle files an unphased line under SPRING. Perrin the Halved, ambushed and
-      // killed at the end of LATE SUMMER, therefore read as struck down in Spring and then marching
-      // on through both summers. _currentPhase is the phase being resolved, so it is the fallback.
-      phase: (meta.phase??_logCtx.phase??_currentPhase??(_afterPhases?99:null)), // which phase (0–4, or 99 = End of Turn)
-      pinNotice: meta.pinNotice??false,       // hoist to the top of the char's phase report
-      env: meta.env??false,                   // environmental province event (earthquake,
-                                              // flood, plague, blessing, part-sea …) → Province Reports
-      battleId: meta.battleId??null,          // 2026-09-23d: which battle this line belongs to (emitBattle)
-      bTier: meta.bTier??null,                // 'k' key · 'd' detail · 't' tally · 's' onlooker summary
-      gameEnd: meta.gameEnd??false,           // 2026-09-28 (Toby item 6): end-of-game announcement / standings → top of the player report
-    });
-    console.log(`[${type}] ${text}`);
-  };
-
-  // ── PRIVATE LINES INSIDE A SHARED NARRATIVE ────
-  // A battle or duel narrative is written once and then shown to EVERY participant — that is the
-  // whole point of a blow-by-blow. But a handful of lines in it belong to one realm alone: a hero's
-  // skill rising through experience, the mastery that crossing 6+ unlocks, and the wage rise that
-  // follows. An enemy commander has no way of knowing that the man across the field just got better
-  // at archery, and reading it told them his exact skill level for free.
-  //
-  // So a narrative array may now hold OBJECTS as well as strings:
-  // { text:'…', onlyPlayer:<realm index>, charId:<that realm's character> }
-  // Every consumer of a narrative array routes each entry through emitNarrLine(), which logs a
-  // private entry to that realm alone (targets:[owner], public:false, no charIds spill) and an
-  // ordinary shared entry for everything else. Because it is logged in sequence with the rest of
-  // the narrative, the owner still reads it exactly where it happened in the fight. narrText() is
-  // for the rare consumer that needs the raw string (splice-point searches, etc.).
-  function narrText(line){ return (line&&typeof line==='object'&&line.text!=null)?line.text:line; }
-  function emitNarrLine(type, line, meta){
-    meta=meta||{};
-    if(line&&typeof line==='object'&&line.text!=null){
-      if(line.onlyPlayer==null){ log(type,line.text,meta); return; }
-      log(type,line.text,{...meta, actor:null, public:false, summary:false, battleDetail:false,
-        targets:[line.onlyPlayer], charIds:null,
-        charId:(line.charId!=null?line.charId:meta.charId)});
-      return;
-    }
-    log(type,line,meta);
-  }
-
-  // ── TARGET NOTIFICATIONS ────
-  // When something happens TO a character that they'd know about — receiving items, armies mustered
-  // to them, a spell cast on them (friendly or hostile) — file a line in THAT character's own
-  // Chronicle section for the phase it happened. charId routes it into their section; targets makes
-  // sure their player sees it even when the actor was an enemy. This never leaks to anyone else.
-  function notifyTarget(targetChar, text, ph, type){
-    if(!targetChar) return;
-    const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
-    log(type||'system', text, {actor:null, targets:(targetChar.player!=null?[targetChar.player]:[]),
-      charId:targetChar.id, phase:_ph, provinceId:(targetChar.location!=null?targetChar.location:null)});
-  }
-
-  // ── NO SILENT SEASON (2026-10-09, Toby item 1) ────
-  // Every hero of a realm has at least one line in every season of his Chronicle. A hero can still
-  // be moved or swept into a fight by code that files its lines under someone else (a veiled march,
-  // a pooled host, a stalled battle resumed by the strongest force); his season then read as if he
-  // did nothing. Run at the end of each phase: a living realm hero with no line of his own for the
-  // phase — by charId, by charIds, or as a commander of one of its battles (the same tests the report
-  // uses to file a line under him) — gets a plain line saying where the season leaves him.
-  function noteSilentHeroes(ph, startLoc){
-    const heard=new Set();
-    turnLog.forEach(e=>{
-      if(e.phase!==ph) return;
-      if(e.charId!=null) heard.add(e.charId);
-      if(Array.isArray(e.charIds)) e.charIds.forEach(id=>heard.add(id));
-    });
-    Object.keys(battleCommanders).forEach(k=>{ if(k.endsWith('@'+ph)) (battleCommanders[k]||[]).forEach(id=>heard.add(id)); });
-    const pname=id=>{ const p=(id!=null)?G.world.provinces[id]:null; return (p&&p.name)||'the field'; };
-    (G.characters||[]).forEach(c=>{
-      if(!c||!c.alive||c.player==null||heard.has(c.id)) return;
-      const from=startLoc?startLoc[c.id]:undefined;
-      const text=(from!=null&&from!==c.location)
-        ? `${c.name} leaves ${pname(from)} and ends the season in ${pname(c.location)}.`
-        : `${c.name} remains in ${pname(c.location)} this season.`;
-      log('move',text,{actor:c.player,targets:[c.player],charId:c.id,phase:ph,provinceId:(c.location!=null?c.location:null)});
-    });
-  }
-
-  // ── Task 9(b): PROVINCE / KINGDOM NOTIFICATIONS ────
-  // When something is done TO one of a player's PROVINCES that they'd learn of — an enemy Flood,
-  // Earthquake, Plague, Cataclysm, Part Sea, etc. — file a line in that owner's KINGDOM EVENTS feed
-  // (charId null so it is NOT a character section, and env:false so it is NOT diverted to the quieter
-  // Province Reports stream). No-op if the caster IS the owner (they already know) or the land is
-  // unowned. targets makes the owner see it even though the caster was an enemy.
-  // ── ONE EVENT, TWO AUDIENCES ────
-  // A cast that raises troops is written for the caster ("…to fight under your command") but is
-  // also public, so an onlooker — the owner of the province, a spy, a hero standing there — read
-  // the same second-person sentence with no province in it. `logSplit` writes the caster's line
-  // privately and a third-person line for everyone else who can see the province (notFor keeps the
-  // caster from reading it twice). Both carry the province so the report can place them.
-  function logSplit(type, privText, pubText, meta={}){
-    const actor=meta.actor??null;
-    log(type, privText, {...meta, public:false, targets:(meta.targets&&meta.targets.length)?meta.targets:[actor].filter(x=>x!=null)});
-    turnLog.push({type, text:pubText, actor:null, targets:[], provinceId:meta.provinceId??null, public:true,
-      spy:false, system:false, armyEstimate:null, charId:null, charIds:null,
-      phase:(meta.phase??_logCtx.phase??_currentPhase??(_afterPhases?99:null)), pinNotice:false, env:false,
-      notFor:[actor].concat(meta.alsoNotFor||[]).filter(x=>x!=null)});
-  }
-  function realmTag(pi){ return (pi!=null&&G.players[pi])?` (${G.players[pi].name})`:''; }
-  function notifyProvinceOwner(prov, text, casterPlayer, ph){
-    if(!prov || prov.owner==null || prov.owner===casterPlayer) return;
-    const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
-    // Push directly (bypassing log()'s charId?? _logCtx fallback) so this files under the owner's
-    // KINGDOM EVENTS — a real null charId, never inherited from the casting character's log
-    // context.
-    turnLog.push({type:'system', text, actor:null, targets:[prov.owner], provinceId:prov.id, public:false,
-      spy:false, system:false, armyEstimate:null, charId:null, charIds:null, phase:_ph, pinNotice:false, env:false});
-  }
-
-  // ── PROVINCE CAPTURE ────
-  // Every path that hands a province to a new realm goes through here. When the ground was another
-  // player's, that player gets a line in their REALM EVENTS for the phase — who took it (hero and
-  // realm) and how many units the conqueror was leading. A capture from neutral/unowned ground
-  // notifies nobody. Written straight to turnLog with charId:null (as notifyProvinceOwner does) so
-  // the line never inherits the conqueror's log context and never lands in a character section.
-  function breakConsecrationOnCapture(prov, prev, newOwner, byChar, _ph){
-    const pl=G.players[prev]; if(!pl) return;
-    const list=consecratedIds(pl); const at=list.indexOf(prov.id);
-    if(at<0) return;
-    list.splice(at,1);
-    turnLog.push({type:'system', text:`✨ The consecration of ${prov.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
-      actor:null, targets:[prev], provinceId:prov.id, public:false, spy:false, system:false, armyEstimate:null, charId:null, charIds:null, phase:_ph, pinNotice:false, env:false});
-    if(!byChar||newOwner==null) return;
-    const units=(byChar.armies||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom);
-    if(!units.length) return;
-    const _pct=consecCaptureXpPct(G.players[newOwner]); // Undead 100 · Evil 50 · others 0
-    const rose=[];
-    units.forEach(a=>{
-      const qi=QUALITY_TIERS.indexOf(a.quality);
-      if(a._isSkeletal) return;                                      // skeletons never change quality by any means
-      if(qi<0||qi>=QUALITY_TIERS.length-1) return;                  // Elite (or unknown) cannot rise
-      if(_pct>0&&kcRng()*100<_pct){ a.quality=QUALITY_TIERS[qi+1]; rose.push(`${a.unitName||armyUnitName(a.type)} (now ${a.quality})`); }
-    });
-    log('combat',`✨ ${byChar.name}'s column casts down the altars of ${prov.name} — the ground is holy no longer. ${rose.length?`Flushed with the deed, ${rose.join(', ')} gain${rose.length===1?'s':''} an experience level.`:(_pct>0?'None of the troops is the better for it.':'The troops take no pride in the sacrilege.')}`,
-      {actor:newOwner,targets:[newOwner],provinceId:prov.id,charId:byChar.id,phase:_ph});
-  }
-  function setProvinceOwner(prov, newOwner, byChar, ph){
-    if(!prov) return;
-    const prev=prov.owner;
-    prov.owner=newOwner;
-    if(prev!==newOwner){ try{ _tel.captures.push({ph:(ph!=null?ph:(_logCtx.phase??_currentPhase)), prov:prov.id, terrain:prov.terrain, tax:prov.tax||0, from:prev, to:newOwner, charId:byChar?byChar.id:null}); }catch(_te){} }
-    // HOLY GROUND FALLS. A consecrated province that changes hands loses its consecration at once
-    // (not at the end-of-turn sweep, which remains as the safety net), and every real unit of the
-    // conquering column has a consecCaptureXpPct() chance (Undead 100 · Evil 50 · else 0) to gain an experience level.
-    if(prev!=null&&prev!==newOwner) breakConsecrationOnCapture(prov, prev, newOwner, byChar, (ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase)));
-    if(prev==null||prev===newOwner||newOwner==null) return;
-    const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
-    const who=byChar?byChar.name:'an unknown commander';
-    const realm=(newOwner!=null&&G.players[newOwner])?G.players[newOwner].name:'an enemy realm';
-    const n=byChar?(byChar.armies||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom).length:0;
-    const led=byChar?(n>0?`, leading ${n} unit${n!==1?'s':''}`:', leading no units'):'';
-    const text=`🏴 ${prov.name} has been captured from you by ${who} (${realm})${led}.`;
-    // type 'system', NOT 'combat': the report re-files combat lines under the viewer's commander
-    // who fought in that province that phase (battleCommanders), which would pull this out of Realm
-    // Events.
-    turnLog.push({type:'system', text, actor:null, targets:[prev], provinceId:prov.id, public:false,
-      spy:false, system:false, armyEstimate:null, charId:null, charIds:null, phase:_ph, pinNotice:false, env:false});
-  }
+  const {log}=turnContext;
 
   // ── DIPLOMACY (KC alliance system) ────
   // Relations live in G.relations, keyed "minIdx-maxIdx" → 'enemy' | 'allied'. A pair with no
   // entry is NEUTRAL (the default). These helpers are the single source of truth consulted by the
   // movement border gate, every PvP battle site, and isHostileInvasion (pinning + Defend).
   if(!G.relations) G.relations={};
-  function relKeyOf(a,b){ return a<b ? a+'-'+b : b+'-'+a; }
-  function relationBetween(a,b){
-    if(a==null||b==null) return 'neutral';
-    if(a===b) return 'self';
-    return G.relations[relKeyOf(a,b)] || 'neutral';
-  }
-  function areEnemies(a,b){ return relationBetween(a,b)==='enemy'; }
-  function areAllied(a,b){ return relationBetween(a,b)==='allied'; }
-  // a valid RETREAT destination is a FRIENDLY province — one the player owns, or one held by an
-  // ally. Never a neutral or enemy province (a beaten force cannot fall back onto ground it does
-  // not hold).
-  function isFriendlyProvFor(prov, pi){ return !!prov && pi!=null && (prov.owner===pi || (prov.owner!=null && areAllied(pi, prov.owner))); }
 
   // ── Item 3: WAR WITHOUT WARNING. Evil and Undead realms strike the turn they declare — their
   // declaration takes effect BEFORE phase 1, so their armies may cross the frontier this very turn.
@@ -735,38 +517,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     }
   }
 
-  // ── TITLE MERIT: battles ── Grand Marshal (land) / Sea Lord (sea): the winner gains +1 per enemy
-  // unit destroyed; the loser loses 1 per own unit lost. Counted from the pooled battle copies,
-  // which still carry _died flags at the call site. 2026-09-16: credited for EVERY battle — a rival
-  // realm, a neutral province's chieftain and his guard, a leaderless neutral guard, or an enemy
-  // realm's bare garrison alike. The bucket is chosen off the province's terrain, so one helper
-  // pays the Grand Marshal ashore and the Sea Lord at sea. 2026-09-12: reads
-  // combatVsChar/combatVsNPC's OWN casualty counts. A leaderless defence
-  // (an enemy realm's garrison) has no commander to debit, so only the attacker's merit moves; the
-  // attacker is still debited for their own dead when a garrison throws them back.
-  function creditBattle(atkChar, defChar, battle, prov){
-    if(!atkChar||!battle||atkChar.player==null) return;
-    // WAR ASSESSMENT news (2026-09-29): a battle between two realms is remembered a few turns.
-    { const _dp=(defChar&&defChar.player!=null)?defChar.player:((prov&&prov.owner!=null)?prov.owner:null);
-      if(_dp!=null&&_dp!==atkChar.player) noteRealmBattle(G,prov?prov.id:null,atkChar.player,_dp,!!battle.won,battle.atkLost,battle.defLost); }
-    // 2026-09-21: a commander killed in this battle's pre-battle duel earns nothing from it.
-    // handleHeroDeath docks 25% of accumulated Title merit AT the moment of death, so anything
-    // credited afterwards escapes that penalty entirely and can swing a Title race.
-    if(atkChar.alive===false) return;
-    const bucket=(prov&&prov.terrain==='sea')?'sea':'marshal';
-    const atkLost=battle.atkLost||0, defLost=battle.defLost||0;
-    const defCmdr=(defChar&&defChar.player!=null)?defChar:null;
-    if(battle.won){ TM(atkChar)[bucket]+=defLost; if(defCmdr) TM(defCmdr)[bucket]-=defLost; }
-    else          { if(defCmdr) TM(defCmdr)[bucket]+=atkLost; TM(atkChar)[bucket]-=atkLost; }
-    // THE BEASTLORD AND THE WILDWARDEN. The WINNER is credited one point for every Monster- or
-    // Creature-category unit still under their banner when the fighting stops. Counted from the
-    // survivors on purpose: a commander who threw a dragon into the line and lost it has won the
-    // field but not shown mastery of the beast. The loser is not debited \u2014 unlike the
-    // Marshal's ledger these titles only ever rise, matching the Monster-Bane's shape.
-    const victor=battle.won?atkChar:defCmdr;
-    if(victor&&victor.alive!==false) (victor.armies||[]).forEach(a=>creditBeastUnit(TM(victor),a,1)); // a dead victor showed no mastery of the beast
-  }
-
   // (Sept 2026: the Task-12 max-HP cap, raiseMaxHp and hpCapFor were removed — maximum HP is now a
   // derived stat; see computeMaxHp / syncMaxHp at module level.)
 
@@ -779,30 +529,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   if(TITLE_PERKS_ENABLED && (G.turn||1)>=TITLES_PUBLIC_FROM_TURN){
     try{ G._titleHolders=computeStandings(G).titles||{}; }catch(e){ G._titleHolders={}; }
     try{ G._minorHolders=computeMinorTitles(G); }catch(e){ G._minorHolders={}; }
-  }
-  function charHoldsTitle(c,key){ return !!(c&&G._titleHolders&&G._titleHolders[key]&&G._titleHolders[key].charId!=null&&G._titleHolders[key].charId===c.id); }
-  function playerHoldsTitle(pi,key){ return !!(G._titleHolders&&G._titleHolders[key]&&G._titleHolders[key].playerIndex===pi); }
-  function charMinor(c,key){ return !!(c&&G._minorHolders&&G._minorHolders[key]&&G._minorHolders[key].charId===c.id); }
-
-  // ── EVIL conquest doctrine (loot OR enslave) ── applied whenever an Evil character CONQUERS a
-  // province by force. Now every conquest site calls this. Runs once per province per turn.
-  function applyEvilConquest(cc, prov, pl){
-    if(!cc||!prov||!pl) return;
-    if(G.players[cc.player]?.alignment!=='Evil') return;
-    if(prov._evilConqTurn===G.turn) return; prov._evilConqTurn=G.turn;
-    const mode=(cc.encounterPlan?.evilMode)||'terror';
-    const humanoid=prov.terrain!=='sea' && !String(prov.race||'').startsWith('Primal');
-    if(mode==='enslave' && humanoid){
-      const enType=(prov.armyTypes&&prov.armyTypes[0])||'Shieldwall Levies';
-      prov.garrisonArmies=prov.garrisonArmies||[];
-      prov.garrisonArmies.push({type:enType,quality:'Green',race:prov.race||'Human',unitName:armyUnitName(enType)});
-      prov._enslavedUntil=G.turn+3;
-      log('combat',`⛓ Enslavement: ${cc.name} presses the beaten folk of ${prov.name} into service — a Green ${enType} joins the garrison in chains, but the province seethes (−1 tax for 3 turns).`,{actor:cc.player,targets:[cc.player],provinceId:prov.id,public:true});
-    } else {
-      if(mode==='enslave' && !humanoid) log('combat',`⛓ ${cc.name} would enslave ${prov.name}, but there are no humanoid folk here to press — the forces plunder instead.`,{actor:cc.player,targets:[cc.player],provinceId:prov.id});
-      const loot=Math.floor((prov.tax||0)*(0.5+discSum(cc.player,'plunder','pct',e=>!e.terrains||e.terrains.includes(prov.terrain)))); // + plunder discoveries
-      if(loot>0){ pl.gold=(pl.gold||0)+loot; log('combat',`⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${loot}g seized immediately!`,{actor:cc.player,targets:[cc.player],provinceId:prov.id}); }
-    }
   }
 
   // Flush any stale-order warnings collected during the merge phase
@@ -851,90 +577,15 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
         // incoming-dispatch line as well as their own sent-confirmation — reading their own words
         // as though addressed to them. charId is nulled for the same reason (log() falls back to
         // _logCtx.charId when it is null).
-        const _savedDispatchChar=_logCtx.charId; _logCtx.charId=null;
+        const _savedDispatchChar=turnContext._logCtx.charId; turnContext._logCtx.charId=null;
         rcpts.forEach(rpi=>{
           log('message',`📨 Dispatch from ${senderName}: “${text}”`,{actor:null,targets:[rpi],phase:99,public:false});
         });
-        _logCtx.charId=_savedDispatchChar;
+        turnContext._logCtx.charId=_savedDispatchChar;
         // Sender's own copy (confirmation of what they sent, and to whom).
         log('message',`📨 You sent to ${rcptNames.join(', ')}: “${text}”`,{actor:senderPi,targets:[senderPi],phase:99,public:false});
       });
     });
-  }
-
-  function totalInit(c){
-    const s=c.skills||{};
-    return (s.melee||0)+(s.archery||0)+(s.tactical||0)+((s.march||0)*3)+(s.naval||0)+(s.sage||0)+(s.spy||0)+(s.thief||0)+(s.druid||0)+(s.explorer||0)+(s.white||0)+(s.psychic||0)+(s.illusory||0)+(s.elemental||0)+(s.necromancy||0);
-  }
-  // Delegates to the module-level implementation (see skillBonusBreakdown) so the engine and the
-  // player report cannot disagree about what a character's skills actually are. Equipped items only
-  //, minus any Curse, plus the Crown of Command aura; capped 0..5.
-  function effStat(c,stat){ return effSkillOf(c,stat,G.characters||[]); }
-  // ── WHAT A VIEWER MAY BE TOLD ABOUT SOMEONE ELSE'S HERO (2026-09-26, Toby) ────────────────
-  // Roll lines used to print BOTH sides' skill levels — "Pursuit — Merek (Spy 0) closing on
-  // Astrigg (Spy 0)" handed the pursuer's owner a rival hero's Spy level for free, which is
-  // exactly what Spy missions and Clairvoyance are supposed to buy. `botKnownSkills` is already
-  // the game's single test of whether a realm has earned that knowledge (own hero, a wanderer —
-  // hired on sight of their skills — or a hero spied within the last eight turns), so these two
-  // helpers route every roll line through it. A viewer who has not earned it simply sees a name.
-  function skillsKnownTo(pi, ch){ return pi!=null && botKnownSkills(G, pi, ch)!==null; }
-  // " (Spy 3)" when this viewer may know it, "" when they may not.
-  function statNote(pi, ch, stat, label){
-    if(!ch||!skillsKnownTo(pi,ch)) return '';
-    return ` (${label||SKILL_LABELS[stat]||stat} ${effStat(ch,stat)})`;
-  }
-  // An OPPOSED roll's percentage is itself a disclosure: pursuit is 50 +5×(my Spy) −5×(their Spy),
-  // so a player who knows their own level can read the rival's straight off the number. Hiding the
-  // "(Spy N)" label alone would change nothing. When the viewer has not earned the knowledge the
-  // exact odds are replaced by a band — they still learn how the attempt felt and whether it landed,
-  // but cannot solve for the hidden level. Known rival (own hero, wanderer, spied within 8 turns) →
-  // the full working, unchanged.
-  // 2026-09-27 (Toby item 5): the descriptive BAND is gone too. "even odds" narrowed the rival's
-  // hidden Spy level to a five-point window — a player who knows their own level could read the
-  // other off the phrasing almost as well as off the number, which is exactly the guessing this
-  // block exists to prevent. A viewer who has not earned the knowledge now learns only whether the
-  // attempt landed; a known rival (own hero, wanderer, spied within 8 turns) still gets the full
-  // working, unchanged.
-  function oddsNote(pi, ch, chance, roll){
-    if(!ch||skillsKnownTo(pi,ch)) return fmtRoll(chance,roll);
-    return `[${dispFloor(roll)<=Math.max(0,Math.min(100,dispFloor(chance)))?'✓':'✗'}]`;
-  }
-  // 2026-09-21 (Toby: "Illusory 3 … rises to level 1"): every skill-rise line quoted the character's
-  // own TRAINED level, while the cast line one row above quoted the level IN PLAY (training + items
-  // + aura). A hero with Illusory 0 and a +3 diadem cast "(Illusory 3)" and then "rose to level 1",
-  // which reads as a bug. Rise lines now add what the skill stands at in play whenever items / aura
-  // lift it above the trained level. `skillInPlayNote` returns '' when the two agree.
-  function skillInPlayNote(ch,skill){
-    if(!ch) return '';
-    const b=skillBonusBreakdown(ch,skill,G.characters||[]);
-    const raw=skillLevel(ch,skill);
-    if(!(b.total>raw)) return '';
-    const src=(b.sources||[]).filter(s=>s&&s.delta>0).map(s=>`${s.label} +${s.delta}`).join(', ');
-    return ` (${SKILL_LABELS[skill]||skill} ${b.total} in play${src?`, with ${src}`:''})`;
-  }
-  function rng(a,b){return Math.floor(kcRng()*(b-a+1))+a;}
-  // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter
-  // Character. ILLUSORY L9 Veil — active only during the cast phase and the phase after it (two
-  // phases).
-  function isVeiled(ch){ return !!(ch && ch._veilTurn===G.turn && _currentPhase!=null && ch._veilCastPhase!=null && _currentPhase>=ch._veilCastPhase && _currentPhase<=ch._veilCastPhase+1); }
-  function isHiddenChar(ch){ return !!(ch&&(isVeiled(ch)||activeItems(ch).some(it=>it.effect&&it.effect.stat==='hidden'))); }
-  // THIEF L9 Vanish: a vanished character is untouchable for the REST OF THE TURN — nothing may
-  // bring them to bay and nothing may harm them. Distinct from Veil, which is phase-scoped and
-  // shields the whole host: Vanish protects the man alone, and lasts the season.
-  function isVanished(ch){ return !!(ch && ch._vanishTurn===G.turn); }
-
-  // A hero's wage is a function of their skills, so it must be recomputed EVERYWHERE skills
-  // change — not just in the Practice order. Experience-driven gains (trySkillGain) previously left
-  // `pay` frozen at its hiring value, so a hero who learned in the field never got dearer.
-  // The two founding heroes were the most visible case (3 starting points → ceil(3/4) = 1g, and
-  // it stayed 1g forever), but it applied to every hero in the game. Kings draw no wage.
-  function recalcHeroPay(c){
-    if(!c||c.isKing) return;
-    // base = what the crown agreed to pay for this hero's ALLEGIANCE (the alignment part of the
-    // hire bargain, 1g for a founding hero who was never hired), plus the skill premium as it
-    // stands now. Same formula the hire desk quotes, so a wage never jumps when a hero changes
-    // hands and the alignment premium survives every later rise.
-    c.pay=Math.max(1,(c._hireAlignWage!=null?c._hireAlignWage:1)+heroSkillWage(c));
   }
 
   // ── SKILL GAIN THROUGH EXPERIENCE ────
@@ -1002,7 +653,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     // We test BEFORE rolling and only stamp on a real gain, so failed rolls don't burn the
     // allowance and a single success closes it. The log is keyed to the current turn and reset each
     // turn.
-    const _sgPh=(_logCtx.phase!=null?_logCtx.phase:_currentPhase);
+    const _sgPh=(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase);
     if(!real._sgLog || real._sgLog.turn!==G.turn) real._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}, turnSkills:{}};
     if(!real._sgLog.turnSkills) real._sgLog.turnSkills={};
     // 2026-09-27 (Toby item 5): ONE EXPERIENCE RISE PER SKILL PER HERO PER TURN. Once a skill has
@@ -1040,7 +691,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
     // a Human character of a Human realm learns 50% faster — every skill, and every chance-based
     // experience path (experience, moves…) flows through here; Practice applies the same ×1.5 itself.
     const _humanLearn=((real.race==='Human'&&G.players[real.player]&&G.players[real.player].race==='Human')?1.5:1)
-      *(1+discSum(real.player,'skillGain','pct',e=>!e.skills||e.skills.includes(skill))); // skillGain discoveries (all skills, or a listed few)
+      *(1+discSum(turnContext,real.player,'skillGain','pct',e=>!e.skills||e.skills.includes(skill))); // skillGain discoveries (all skills, or a listed few)
     // diminishing returns — every time this skill has ALREADY risen this turn, the next chance to
     // raise it through experience is ×0.8 (cumulative). Reset each turn with _sgLog.
     const _gainsThisTurn=(real._sgLog.turnGains&&real._sgLog.turnGains[skill])||0;
@@ -1105,7 +756,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
       const _riseProv=(e.prov!=null&&G.world&&G.world.provinces)?G.world.provinces[e.prov]:null;
       const _why=e.duelWith?` in single combat with ${e.duelWith}${_riseProv?` before the Battle for ${_riseProv.name}`:''}`
         :(_riseProv?` in the fighting at ${_riseProv.name}`:'');
-      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience${_why}${skillInPlayNote(real,skill)}.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
+      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience${_why}${skillInPlayNote(turnContext,real,skill)}.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
       // Battle-driven gains pass the battle narrative: the line then appears at the point it is
       // pushed (end of the battle report), not before the battle even starts in the chronicle. the
       // deferred (non-battle) skill-rise carries the character's id and the phase it happened in,
@@ -1284,7 +935,7 @@ function bestCurseSkill(hero){
   // 2026-09-09e: Druid was read RAW here while Tactical and Naval were item-boosted, so a commander
   // whose Druid came from an item had the wrong skill chosen for the Curse. All three now use the
   // same stack.
-  const tac=effStat(hero,'tactical'), dru=effStat(hero,'druid'), nav=effStat(hero,'naval');
+  const tac=effStat(turnContext,hero,'tactical'), dru=effStat(turnContext,hero,'druid'), nav=effStat(turnContext,hero,'naval');
   if(nav>=tac && nav>=dru && nav>0) return 'naval';
   return (tac>=dru)?'tactical':'druid';
 }
@@ -1389,12 +1040,12 @@ function seaPenalty(armyType, terrain){
     const none={gain:0,lvl:0,min:0};
     if(!heroChar||!army||army._isSkeletal) return none;
     if(!(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))) return none;
-    let lvl=heroChar._druidNegated?0:(effStat(heroChar,'druid')||0);
+    let lvl=heroChar._druidNegated?0:(effStat(turnContext,heroChar,'druid')||0);
     if(heroChar._curseHalveStat==='druid') lvl=Math.floor(lvl/2);
     lvl=Math.max(0,Math.min(DRUID_MASTERY_MAX_LVL,lvl));
     const waived=(CREATURE_ARMIES.has(army.type)&&(playerAlignment==='Druidic'||heroChar.alignment==='Druidic'))
                ||(MONSTER_ARMIES.has(army.type)&&(playerAlignment==='Evil'||heroChar.alignment==='Evil'))   // 2026-10-13: Evil's mirror
-               ||!!dragonTamed(heroChar,army);
+               ||!!dragonTamed(turnContext,heroChar,army);
     const min=waived?0:getDruidLevel(army.type);
     const gain=Math.min(DRUID_MASTERY_CAP, DRUID_MASTERY_PER_LVL*Math.max(0,lvl-min));
     return {gain:Math.round(gain*100)/100, lvl, min};
@@ -1423,7 +1074,7 @@ function seaPenalty(armyType, terrain){
     // Apply Druid penalty
     let str=baseStr;
     if(heroChar){
-      const penalty=druIdPenaltyMult(heroChar,army,playerAlignment,dragonTamed(heroChar,army));
+      const penalty=druIdPenaltyMult(heroChar,army,playerAlignment,dragonTamed(turnContext,heroChar,army));
       if(penalty<1){ str=Math.floor(str*penalty); if(_tr) _tr.push({label:`Druid shortfall ${ladderFm(penalty)}`}); }
     }
     // ── RACE CONTEXT (computed once for all race modifiers) ── _unitRace: the army's kin.
@@ -1486,11 +1137,11 @@ function seaPenalty(armyType, terrain){
     // hero being present, so an unled garrison holding forest, jungle or mountain gets the same
     // +25% the description promises — exactly as Dwarven Bulwark already does on the line above.
     { const _pagPi=(heroChar&&heroChar.player!=null)?heroChar.player:((ctx&&ctx.ownerPi!=null)?ctx.ownerPi:null);
-      if(_pagPi!=null&&gdActive(_pagPi,'Pagan')&&ctx&&ctx.isAttacker===false&&(terrain==='forest'||terrain==='jungle'||terrain==='mountain')){ str=Math.round(str*1.25); if(_tr) _tr.push({label:'Standing Stones ×1.25'}); } }
+      if(_pagPi!=null&&gdActive(turnContext,_pagPi,'Pagan')&&ctx&&ctx.isAttacker===false&&(terrain==='forest'||terrain==='jungle'||terrain==='mountain')){ str=Math.round(str*1.25); if(_tr) _tr.push({label:'Standing Stones ×1.25'}); } }
     // race / alignment `unitStr` discoveries (per unit; owner = leader's realm, or the garrison's
     // owner).
     { const _dpi=(heroChar&&heroChar.player!=null)?heroChar.player:((ctx&&ctx.ownerPi!=null)?ctx.ownerPi:null);
-      if(_dpi!=null){ const _dm=discUnitMult(_dpi, army, terrain, ctx, heroChar); if(_dm!==1){ str=Math.round(str*_dm); if(_tr) _tr.push({label:`realm unit discoveries ${ladderFm(_dm)}`}); } } }
+      if(_dpi!=null){ const _dm=discUnitMult(turnContext, _dpi, army, terrain, ctx, heroChar); if(_dm!==1){ str=Math.round(str*_dm); if(_tr) _tr.push({label:`realm unit discoveries ${ladderFm(_dm)}`}); } } }
     // EVIL TERROR (2026-09-24): a true strength MODIFIER (×(1−x)), set by consumeTerror at battle
     // start. It used to be faked as pre-battle damage; now that damage lands after every modifier it
     // would have shrunk below the advertised −10%/stack, so it is applied here as the multiplier it is.
@@ -1558,9 +1209,9 @@ function seaPenalty(armyType, terrain){
     // Ironclad: heavy & fleet +5%.
     if(heroChar){
       const _prim=CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type);
-      if(_prim && (charMinor(heroChar,'naturalist')||charMinor(heroChar,'beastmaster'))){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Naturalist/Beastmaster title ×1.05'}); }
-      if(charMinor(heroChar,'cavalier') && MINOR_CAV.has(army.type)){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Cavalier title ×1.05'}); }
-      if(charMinor(heroChar,'ironclad') && MINOR_HEAVY.has(army.type)){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Ironclad title ×1.05'}); }
+      if(_prim && (charMinor(turnContext,heroChar,'naturalist')||charMinor(turnContext,heroChar,'beastmaster'))){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Naturalist/Beastmaster title ×1.05'}); }
+      if(charMinor(turnContext,heroChar,'cavalier') && MINOR_CAV.has(army.type)){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Cavalier title ×1.05'}); }
+      if(charMinor(turnContext,heroChar,'ironclad') && MINOR_HEAVY.has(army.type)){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Ironclad title ×1.05'}); }
     }
     // Evil Terror: province was terrorised last turn — defending armies -10%
     // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)
@@ -1621,23 +1272,6 @@ function seaPenalty(armyType, terrain){
   const DEF_VERBS=['holds the line in','stands firm in','defends','fortifies','guards'];
   const WIN_VERBS=['rout','break','scatter','overwhelm','destroy']; // plural — every use reads "<name>'s forces <verb>" (2026-09-23b)
   const LOSE_VERBS=['is repulsed by','retreats before','cannot break','is driven back by'];
-  const pick=arr=>arr[Math.floor(kcRng()*arr.length)];
-
-  function describeArmy(armies){
-    if(!armies||armies.length===0) return 'no armies';
-    const named=[];const unnamed={};
-    armies.forEach(a=>{
-      const hasName=a.unitName&&a.unitName!==a.type&&!a.unitName.startsWith('undefined');
-      if(a._phantom){ named.push(`✨ ${a.unitName} (${a.type}, ${a.quality})`); }
-      else if(hasName){
-        named.push(`${a.unitName} (${a.type}, ${a.quality})`);
-      } else {
-        const key=`${a.quality} ${a.type}`;unnamed[key]=(unnamed[key]||0)+1;
-      }
-    });
-    const unnamedStrs=Object.entries(unnamed).map(([k,n])=>n>1?`${n}× ${k}`:k);
-    return[...named,...unnamedStrs].join(', ')||'no armies';
-  }
 
   // ── Structured battle-force marker (items 2 & 3) ── Emits a single parseable log line the player
   // Chronicle expands into: a header coloured in the owner's map colour (neutral = dark grey) + one
@@ -1721,7 +1355,7 @@ const BATTLE_ARMY_SPELLS={
       if(a._isSkeletal) return;
       if(a._phantom) return; // spectral doubles leave no graves and never flee home
       if(ownerIsElven && a && a.race==='Elven' && !a._temporary && a._wildHuntUntilTurn==null && !a._elvenEscaped){
-        if(kcRng()*100 < elvenEscapeChance(prov&&prov.terrain)+discSum(ownerPlayer,'elvenEscape','pct')){ // Homeward Song
+        if(kcRng()*100 < elvenEscapeChance(prov&&prov.terrain)+discSum(turnContext,ownerPlayer,'elvenEscape','pct')){ // Homeward Song
           a._elvenEscaped=true;
           _elvenEscapeQueue.push({player:ownerPlayer, unit:{type:a.type, quality:a.quality, race:'Elven', unitName:a.unitName||armyUnitName(a.type), strength:a.strength}});
           return; // fled toward home — no grave left here
@@ -1750,11 +1384,11 @@ const BATTLE_ARMY_SPELLS={
       if(!tp||seen.has(tp.id)) return; seen.add(tp.id);
       tp._terrorStacks=Math.min(TERROR_MAX_STACKS,(tp._terrorStacks||0)+1);
       tp._terrorTurn=G.turn; tp._terrorisedBy=byPlayer;
-      tp._terrorPct=TERROR_PCT_PER_STACK+discSum(byPlayer,'terror','pct'); // ae03 Reign of Terror
+      tp._terrorPct=TERROR_PCT_PER_STACK+discSum(turnContext,byPlayer,'terror','pct'); // ae03 Reign of Terror
     });
     if(narrative){
       const adjNames=getNeighborsP(battleProv,G.world.cols,G.world.rows,G.world.provinces).map(n=>n&&n.name).filter(Boolean);
-      narrative.push(`💀 Terror radiates from ${battleProv.name}${adjNames.length?` into the surrounding lands (${adjNames.join(', ')})`:''} — any army that next defends there fights demoralised (−${dispFloor((TERROR_PCT_PER_STACK+discSum(byPlayer,'terror','pct'))*100)}% per terror, stacking).`);
+      narrative.push(`💀 Terror radiates from ${battleProv.name}${adjNames.length?` into the surrounding lands (${adjNames.join(', ')})`:''} — any army that next defends there fights demoralised (−${dispFloor((TERROR_PCT_PER_STACK+discSum(turnContext,byPlayer,'terror','pct'))*100)}% per terror, stacking).`);
     }
   }
   // Consume any lingering terror in a province at the start of a battle: returns true if applied.
@@ -1795,9 +1429,9 @@ const BATTLE_ARMY_SPELLS={
     const armies=enemyArmies||[];
     const hasUndead=armies.some(a=>a._isSkeletal||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(a.type||''));
     switch(spellName){
-      case 'Telekinetic Storm': return !!enemyCmdr&&!enemyCmdr._tacticalHalved&&effStat(enemyCmdr,'tactical')>0;
-      case 'Psychic Blast':     return !!enemyCmdr&&!enemyCmdr._druidNegated&&effStat(enemyCmdr,'druid')>0;
-      case 'Curse':             return !!enemyCmdr&&(effStat(enemyCmdr,'tactical')>0||effStat(enemyCmdr,'druid')>0||effStat(enemyCmdr,'naval')>0);
+      case 'Telekinetic Storm': return !!enemyCmdr&&!enemyCmdr._tacticalHalved&&effStat(turnContext,enemyCmdr,'tactical')>0;
+      case 'Psychic Blast':     return !!enemyCmdr&&!enemyCmdr._druidNegated&&effStat(turnContext,enemyCmdr,'druid')>0;
+      case 'Curse':             return !!enemyCmdr&&(effStat(turnContext,enemyCmdr,'tactical')>0||effStat(turnContext,enemyCmdr,'druid')>0||effStat(turnContext,enemyCmdr,'naval')>0);
       case 'Control Undead':    return hasUndead;
       case 'Holy Symbol':       return hasUndead;
       case 'Spiritwrack':       return armies.some(a=>MISSILE_ARMIES_MASTER.has(a.type)); // MASTER set — the similarly named MISSILE_ARMIES is combatVsNPC-local (scope trap)
@@ -1813,7 +1447,7 @@ const BATTLE_ARMY_SPELLS={
       if((t||'').toUpperCase().startsWith('CS:')){
         const school=t.slice(3).toLowerCase().trim();
         const pool=(BATTLE_SPELLS_BY_SCHOOL[school]||[]).filter(sp=>battleSpellUseful(sp,enemyCmdr,enemyArmies));
-        if(pool.length&&effStat(heroChar,school)>=1){
+        if(pool.length&&effStat(turnContext,heroChar,school)>=1){
           return {spellName:pool[Math.floor(kcRng()*pool.length)], school};
         }
       }
@@ -1825,7 +1459,7 @@ const BATTLE_ARMY_SPELLS={
         const spellName=t.slice(3);
         if(BATTLE_MAGIC_SPELL_SET.has(spellName)){
           const school=(SPELL_DEFS_P[spellName]?.school)||'elemental';
-          if(effStat(heroChar,school)>=1) return {spellName, school};
+          if(effStat(turnContext,heroChar,school)>=1) return {spellName, school};
         }
       }
     }
@@ -1863,7 +1497,7 @@ const BATTLE_ARMY_SPELLS={
         const _kIncome=botTaxIncome(G,_homeKing);
         const _kHeroes=(G.characters||[]).filter(x=>x&&x.alive&&x.player===_homeKing&&!x.isKing).length;
         log('spy',`[Intelligence] Home-capital intelligence on ${_kp.name}: the crown draws ~${_kIncome}g in tax income each turn and commands ${_kHeroes} hero${_kHeroes===1?'':'es'} beyond the king.`,{actor:c.player,targets:[c.player],provinceId:sprov.id});
-        const _spyLvl=effStat(c,'spy');
+        const _spyLvl=effStat(turnContext,c,'spy');
         const _stealPct=Math.max(5,Math.min(95,10+_spyLvl*10));
         const _mine=new Set((G.players[c.player]?.discoveries||[]).map(d=>d.id));
         const _blkSpy=discBlockedIds(G.players[c.player]); const _stealable=(_kp.discoveries||[]).filter(d=>!_mine.has(d.id)&&!_blkSpy.has(String(d.id))&&discEligible(DISC_BY_ID[d.id],G.players[c.player])); // a spy cannot carry off a race/alignment secret the realm cannot use
@@ -1891,9 +1525,9 @@ const BATTLE_ARMY_SPELLS={
       // log()'s `meta.charId ?? _logCtx.charId` would fall back to the PRYING character, and the
       // report filter (ownCharIds.has(e.charId)) would then surface it in the spy's OWN report.
       // Detach the character context for this one line so its charId truly resolves to null.
-      const _savedCtxChar=_logCtx.charId; _logCtx.charId=null;
+      const _savedCtxChar=turnContext._logCtx.charId; turnContext._logCtx.charId=null;
       log('spy',`[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,{actor:null,targets:[sprov.owner],provinceId:sprov.id});
-      _logCtx.charId=_savedCtxChar;
+      turnContext._logCtx.charId=_savedCtxChar;
     }
     c.merits=(c.merits||0)+1;
     (sprov.features||[]).filter(f=>!featDiscovered(f,c.player)).forEach(f=>{if(kcRng()<0.5)discoverFeat(f,c.player);});
@@ -1904,7 +1538,7 @@ const BATTLE_ARMY_SPELLS={
     if(!winner||winner.player==null||!(destroyed>0)) return;
     if(G.players[winner.player]?.alignment!=='Pagan') return;
     const _pl=G.players[winner.player];
-    const _take=destroyed*(BLOOD_HARVEST_PER_UNIT+discSum(winner.player,'bloodHarvest','gold')); // + ap09 Skull Tithe
+    const _take=destroyed*(BLOOD_HARVEST_PER_UNIT+discSum(turnContext,winner.player,'bloodHarvest','gold')); // + ap09 Skull Tithe
     _pl.gold=(_pl.gold||0)+_take;
     narrative.push(`\u{1FA78} Blood Harvest — the old gods claim their due from ${destroyed} fallen enemy unit${destroyed!==1?'s':''}: +${_take}g in offerings.`);
   }
@@ -1915,7 +1549,7 @@ const BATTLE_ARMY_SPELLS={
   function ironThroneRaise(winnerChar, deadUnits, narrative){
     if(!winnerChar||winnerChar.player==null||winnerChar.id==null||!Array.isArray(deadUnits)) return;
     const _pl=G.players[winnerChar.player];
-    if(!gdActive(winnerChar.player,'Evil')) return;
+    if(!gdActive(turnContext,winnerChar.player,'Evil')) return;
     // Combat runs on shallow COPIES whose sync-back keeps only armies already on the real
     // character, so a freshly-raised skeleton pushed to the copy is dropped. Queue by the winner's
     // real id; flush at turn end.
@@ -1937,10 +1571,10 @@ const BATTLE_ARMY_SPELLS={
   // dragonTamed is.
   function druidShortfallLine(sideName, ch, force, align){
     if(!ch) return null;
-    const lvl=effStat(ch,'druid'); const m=new Map();
+    const lvl=effStat(turnContext,ch,'druid'); const m=new Map();
     (force||[]).forEach(a=>{ if(!a||a._phantom) return;
       const req=getDruidLevel(a.type); if(Math.max(0,req-lvl)<=0) return;
-      const pen=druIdPenaltyMult(ch,a,align,dragonTamed(ch,a)); if(!(pen<1)) return;
+      const pen=druIdPenaltyMult(ch,a,align,dragonTamed(turnContext,ch,a)); if(!(pen<1)) return;
       const k=`${a.type} −${dispFloor((1-pen)*100)}%`; m.set(k,(m.get(k)||0)+1); });
     if(!m.size) return null;
     const n=[...m.values()].reduce((s,x)=>s+x,0);
@@ -1994,7 +1628,7 @@ const BATTLE_ARMY_SPELLS={
     let _tallyDone=false;
     _lines.forEach((line,i)=>{
       if(_tally&&!_tallyDone&&i===_tiers.casIdx){ log('combat',_tally,{...base, battleDetail:true, battleId:_bid, bTier:'t'}); _tallyDone=true; }
-      emitNarrLine('combat',line,{...base, battleDetail:true, battleId:_bid, bTier:_tiers.t[i]||'k'});
+      emitNarrLine(turnContext, 'combat',line,{...base, battleDetail:true, battleId:_bid, bTier:_tiers.t[i]||'k'});
     });
     if(_tally&&!_tallyDone) log('combat',_tally,{...base, battleDetail:true, battleId:_bid, bTier:'t'});
     const sTxt=opts.summaryText||battle&&battle.summaryText;
@@ -2070,7 +1704,7 @@ const BATTLE_ARMY_SPELLS={
     // A slain commander's skills die with them: the stand-in provides no Tactical, Archery, Naval,
     // Druid or spellcraft for the rest of this battle.
     const defHero=defCmdrSlain?null:(neutralGuardHero||null);
-    let tactSkill=(atkCmdrSlain||c._tacticalNegated)?0:(effStat(c,'tactical')+(charMinor(c,'strategist')?1:0)); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2); // LEVEL 6+ PERK — Grand Tactician
+    let tactSkill=(atkCmdrSlain||c._tacticalNegated)?0:(effStat(turnContext,c,'tactical')+(charMinor(turnContext,c,'strategist')?1:0)); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2); // LEVEL 6+ PERK — Grand Tactician
     const tactBonus=Math.min(2.0,1+tactSkill*0.2); // Tactical battle bonus hard-capped at ×2.0 (incl. titles)
     // Tactical only applies to land armies (not flying or naval) per AK 4.1.1 Tactical only applies
     // in land provinces AND to land units
@@ -2086,7 +1720,7 @@ const BATTLE_ARMY_SPELLS={
     // Terrain and defender bonus sd03 Siege Engines: attacker with this discovery reduces defender
     // bonus
     let defBonus=1.25; // sd03 Siege Engines is now an ordinary `siege` effect (below)
-    { const _sg=discSum(c.player,'siege','delta',e=>!e.withTypes||(c.armies||[]).some(a=>a&&e.withTypes.includes(a.type))); if(_sg>0){ defBonus=Math.max(1,defBonus-_sg); narrative.push(`  🏰 ${cName}'s siegecraft wears down the defenders' fortifications (province bonus −${_sg.toFixed(2)}).`); } } // rd09 / ro10
+    { const _sg=discSum(turnContext,c.player,'siege','delta',e=>!e.withTypes||(c.armies||[]).some(a=>a&&e.withTypes.includes(a.type))); if(_sg>0){ defBonus=Math.max(1,defBonus-_sg); narrative.push(`  🏰 ${cName}'s siegecraft wears down the defenders' fortifications (province bonus −${_sg.toFixed(2)}).`); } } // rd09 / ro10
     // GOOD — Righteous Defence: a Good realm's own soil is defended with quiet, unshakable
     // conviction (+10% to the defence of any province the Good player OWNS).
     if(prov.owner!=null&&prov.owner!==c.player&&G.players[prov.owner]?.alignment==='Good'){
@@ -2104,15 +1738,15 @@ const BATTLE_ARMY_SPELLS={
     const atkHome=_founderN!=null&&c.player===_founderN&&prov.owner!==_founderN;
     if(isHome) narrative.push(`The defenders fight on home soil, gaining an additional ×1.2 bonus.`);
     if(atkHome) narrative.push(`🏠 ${cName} fights to win back ${prov.name}, the realm's own capital — home ground lends the assault ×1.5 strength.`);
-    { const _dOwn=(prov.owner!=null&&prov.owner!==c.player)?Math.min(DISC_DEFOWN_CAP,discSum(prov.owner,'defOwn','pct',e=>!e.home||homeFounderOf(G,prov.id)===prov.owner)):0; if(_dOwn>0){ defBonus*=1+_dOwn; narrative.push(`  🛡 ${G.players[prov.owner]?.name}'s realm holds its own ground the harder (+${dispFloor(_dOwn*100)}% defence).`); } } // defOwn discoveries
+    { const _dOwn=(prov.owner!=null&&prov.owner!==c.player)?Math.min(DISC_DEFOWN_CAP,discSum(turnContext,prov.owner,'defOwn','pct',e=>!e.home||homeFounderOf(G,prov.id)===prov.owner)):0; if(_dOwn>0){ defBonus*=1+_dOwn; narrative.push(`  🛡 ${G.players[prov.owner]?.name}'s realm holds its own ground the harder (+${dispFloor(_dOwn*100)}% defence).`); } } // defOwn discoveries
     const homeBonus=isHome?1.2:1;
     const atkHomeBonus=atkHome?1.5:1;
 
     // Calculate strengths with some narrative
     const MISSILE_ARMIES=new Set(KC_UNIT_CLASS.missile);
-    const archSkillAtk=atkCmdrSlain?0:effStat(c,'archery');
+    const archSkillAtk=atkCmdrSlain?0:effStat(turnContext,c,'archery');
     const archMissileBonus=1+(archSkillAtk*ARCHERY_MISSILE_PCT); // 2026-09-23b (Toby): Archery lifts missile units +5%/level · sd07 Fire Arrows is a `unitStr` missile effect (armStr)
-    let navalSkillAtk=atkCmdrSlain?0:effStat(c,'naval');
+    let navalSkillAtk=atkCmdrSlain?0:effStat(turnContext,c,'naval');
     if(c._curseHalveStat==='naval') navalSkillAtk=Math.floor(navalSkillAtk/2); // Curse (battle magic) can wither Naval command
     const navalFleetBonus=1+(navalSkillAtk*0.2);
     const _provCoastal=provIsCoastal(G,prov); // Sea Giants' Tidal Might
@@ -2129,11 +1763,11 @@ const BATTLE_ARMY_SPELLS={
     if(heroPick&&!atkCmdrSlain){
       const spellName=heroPick.spellName;
       const school=heroPick.school;
-      const spellLvl=effStat(c,school);
+      const spellLvl=effStat(turnContext,c,school);
       if(spellLvl>=1){
-        const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(c)+discSum(c.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
+        const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(c)+discSum(turnContext,c.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
         const castRoll=d100();
-        telSpell(c,spellName,school,spellLvl,castChance,castRoll,'battle');
+        telSpell(turnContext,c,spellName,school,spellLvl,castChance,castRoll,'battle');
         narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${SKILL_LABELS[school]||school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
         if(castRoll<=castChance){
           // pre-battle magic no longer trains the school. Casting into a battle is not the same
@@ -2187,7 +1821,7 @@ const BATTLE_ARMY_SPELLS={
     }
 
     // Pre-battle magic: special army spells (Wyvern Riders, etc. + all primal armies)
-    const druIdLvlMag=atkCmdrSlain?0:effStat(c,'druid');
+    const druIdLvlMag=atkCmdrSlain?0:effStat(turnContext,c,'druid');
     armies.forEach(atk=>{
       // Check standard army spell table first
       let armySpells=BATTLE_ARMY_SPELLS[atk.type]||[];
@@ -2221,7 +1855,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr
     // below)
-    let defTactLvl=defHero?(defHero._tacticalNegated?0:(effStat(defHero,'tactical')+(charMinor(defHero,'strategist')?1:0))):0; if(defHero&&defHero._curseHalveStat==='tactical') defTactLvl=Math.floor(defTactLvl/2); // LEVEL 6+ PERK — Grand Tactician
+    let defTactLvl=defHero?(defHero._tacticalNegated?0:(effStat(turnContext,defHero,'tactical')+(charMinor(turnContext,defHero,'strategist')?1:0))):0; if(defHero&&defHero._curseHalveStat==='tactical') defTactLvl=Math.floor(defTactLvl/2); // LEVEL 6+ PERK — Grand Tactician
     const defTactBonus=defTactLvl>0?Math.min(2.0,1+defTactLvl*0.2):1; // cap ×2.0
     // Army / defender counts (needed by archery and battle lines)
     const atkCount=armies.length; const defCount=(prov.neutralDefenders||[]).length;
@@ -2302,23 +1936,23 @@ const BATTLE_ARMY_SPELLS={
       if(!defSpellName){
         for(const sname of BATTLE_MAGIC_SPELLS){
           const sdef=SPELL_DEFS_P[sname];
-          if(sdef&&effStat(defHero,sdef.school)>0&&battleSpellUseful(sname, atkCmdrSlain?null:c, armies)){defSpellName=sname;break;}
+          if(sdef&&effStat(turnContext,defHero,sdef.school)>0&&battleSpellUseful(sname, atkCmdrSlain?null:c, armies)){defSpellName=sname;break;}
         }
       }
       if(!defSpellName){
         for(const sname of BATTLE_MAGIC_SPELLS){
           const sdef=SPELL_DEFS_P[sname];
-          if(sdef&&effStat(defHero,sdef.school)>0){defSpellName=sname;break;}
+          if(sdef&&effStat(turnContext,defHero,sdef.school)>0){defSpellName=sname;break;}
         }
       }
       if(defSpellName&&armies.length>0){
         const sdef=SPELL_DEFS_P[defSpellName];
         const school=sdef?.school||'elemental';
-        const defSpellLvl=effStat(defHero,school);
+        const defSpellLvl=effStat(turnContext,defHero,school);
         if(defSpellLvl>0){
           const castChance=guardCastChance(defHero,school,G.characters); // D7: the same odds as a player's hero
           const castRoll=d100();
-          telSpell(defHero,defSpellName,school,defSpellLvl,castChance,castRoll,'battle');
+          telSpell(turnContext,defHero,defSpellName,school,defSpellLvl,castChance,castRoll,'battle');
           narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${SKILL_LABELS[school]||school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll<=castChance?'✓':'✗'}]`);
           if(castRoll<=castChance){
             // no school gain from pre-battle magic — see the attacker's cast above.
@@ -2376,7 +2010,7 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`🌲 The defenders' archers can find no target — ${cName}'s Forest Wardens hold the thickets and the answering volley never comes.`);
     const missileDef=(_cLA||_defArchBlocked)?[]:abilityMissileUnits(defenders, prov.terrain);
     if(missileDef.length>0&&armies.length>0){
-      const defArchSkill=defHero?effStat(defHero,'archery'):0; // a leaderless garrison shoots at Archery 0
+      const defArchSkill=defHero?effStat(turnContext,defHero,'archery'):0; // a leaderless garrison shoots at Archery 0
       const _prepared=missileDef.some(d=>abilityVolleys(d,false)>1);   // HUMAN — Prepared Ground: defending Longbows loose twice
       narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} ranged unit${missileDef.length!==1?'s':''}${_prepared?' (Prepared Ground: the Longbows loose twice)':''}`);
       let totalDefArrow=0;
@@ -2401,7 +2035,7 @@ const BATTLE_ARMY_SPELLS={
     // OUT of the if(defHero) guard: commanderless defenders (garrisons, guardian-less primal
     // provinces, leaderless survivors) previously never rolled their strikes AT ALL — a Basilisk
     // Brood defending without a hero was silently inert. No commander = druid 0 (20% base chance).
-    const defDruIdLvl=(defHero&&!defHero._druidNegated)?effStat(defHero,'druid'):0;
+    const defDruIdLvl=(defHero&&!defHero._druidNegated)?effStat(turnContext,defHero,'druid'):0;
     (_cLA?[]:defenders).forEach(def=>{
       let armySpells=BATTLE_ARMY_SPELLS[def.type]||[];
       const _isPrimalStrike=armySpells.length===0&&PRIMAL_ARMY_DEFS_P[def.type]?.spells;
@@ -2438,7 +2072,7 @@ const BATTLE_ARMY_SPELLS={
 
     // ── BATTLE LINES ──
     // (The old count-based "N flanking units" line is gone — it described a mechanic that no longer existed.)
-    const atkFlankDisc=hasDisc(c.player,'sd09');
+    const atkFlankDisc=hasDisc(turnContext,c.player,'sd09');
     const terrainFront=rollBattleWidth(prov.terrain);   // 2026-10-11: rolled once per battle, shared by both sides; the scout may take one wider or narrower (battleDeploy)
     let lineWidth=terrainFront;
     void atkCount; void defCount;
@@ -2462,23 +2096,23 @@ const BATTLE_ARMY_SPELLS={
     // (2026-09-23b: the old comment here said the Archery strength bonus had never been applied — it
     // was, via archMissileBonus above. Archery is now +5%/level on missile units by design, and the
     // Battle-stats ladder names it on the units it reached.) Show Druid shortfall warnings
-    const druIdLvl=effStat(c,'druid');
+    const druIdLvl=effStat(turnContext,c,'druid');
     { const _dl=druidShortfallLine(cName,c,armies,playerAlign); if(_dl) narrative.push(_dl); } // 2026-09-23d: one line, not one per unit
     void druIdLvl;
     // (2026-09-23d: the standalone "Naval N grants +x%" line is retired — the ladder names it.)
     // Defender missile bonus — mirrors the attacker's. If the defending force has a commander
     // (defHero — a leaderless garrison passes null), their Archery lifts the garrison's bow and
     // crossbow units by +10% per level, exactly as it does for an attacker.
-    const archSkillDef=defHero?effStat(defHero,'archery'):0;
+    const archSkillDef=defHero?effStat(turnContext,defHero,'archery'):0;
     const defArchMissileBonus=1+(archSkillDef*ARCHERY_MISSILE_PCT); // +5%/level (2026-09-23b) · sd07 Fire Arrows now via armStr
     // the defending commander's Naval lifts the fleets / sea-beasts they lead — land or sea —
     // exactly as the attacker's does.
-    let navalSkillDef=defHero?effStat(defHero,'naval'):0; if(defHero&&defHero._curseHalveStat==='naval') navalSkillDef=Math.floor(navalSkillDef/2);
+    let navalSkillDef=defHero?effStat(turnContext,defHero,'naval'):0; if(defHero&&defHero._curseHalveStat==='naval') navalSkillDef=Math.floor(navalSkillDef/2);
     const defNavalFleetBonus=1+(navalSkillDef*0.2);
     let defLineWidth=terrainFront;
     // the defenders' Flanking Tactics come from the province OWNER (a player garrison) or the
     // defending commander's realm — previously hard-coded ×0.5 whatever discoveries they held.
-    const defFlankDisc=(prov.owner!=null&&hasDisc(prov.owner,'sd09'))||(!!defHero&&defHero.player!=null&&hasDisc(defHero.player,'sd09'));
+    const defFlankDisc=(prov.owner!=null&&hasDisc(turnContext,prov.owner,'sd09'))||(!!defHero&&defHero.player!=null&&hasDisc(turnContext,defHero.player,'sd09'));
     const defsWithStr=(prov.neutralDefenders||[]).map(a=>{
       const cmd=[];
       if(MISSILE_ARMIES.has(a.type)) cmd.push({key:'arch',label:`Archery ${archSkillDef} ${ladderFm(defArchMissileBonus)}`,m:defArchMissileBonus});
@@ -2506,7 +2140,7 @@ const BATTLE_ARMY_SPELLS={
     // Fanaticism check
     const align=G.players[c.player]?.alignment||'Neutral';
     const FANATIC_CHANCE={...FANATIC_CHANCE_BY_ALIGN};
-    const fanatic=kcRng()<((FANATIC_CHANCE[align]??0.1)+discSum(c.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,armies))); // fanatic discoveries
+    const fanatic=kcRng()<((FANATIC_CHANCE[align]??0.1)+discSum(turnContext,c.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,armies))); // fanatic discoveries
     // Skeletal armies are always fanatical ONLY when led by the Undead king in person — other
     // heroes serving the Undead realm do not inspire the same undying zeal.
     const skeletalFanatic=align==='Undead'&&c.isKing&&armies.some(a=>a._isSkeletal);
@@ -2630,10 +2264,10 @@ const BATTLE_ARMY_SPELLS={
     const loseDemoteChance=_band.loseDemote;
 
     // Steel Armour discovery: -15% death chance
-    const steelMultOf=(a)=>discDeathMult(c.player,a,'atk'); // per-unit deathRed discoveries (sd05 Steel Armour now one of them)
+    const steelMultOf=(a)=>discDeathMult(turnContext,c.player,a,'atk'); // per-unit deathRed discoveries (sd05 Steel Armour now one of them)
     const tacMultNPC=perkTier(c,'tactical')>=3?0.5:1; // TACTICAL L8: on a LOSS, c's units half as likely to die/disband
     // Military Discipline discovery: +20% XP gain chance
-    const milMultOf=(a)=>1+discPromo(c.player,a); // per-unit promo discoveries (sd06 Military Discipline now one of them)
+    const milMultOf=(a)=>1+discPromo(turnContext,c.player,a); // per-unit promo discoveries (sd06 Military Discipline now one of them)
 
     const tiers=QUALITY_TIERS.slice();
 
@@ -2885,7 +2519,7 @@ const BATTLE_ARMY_SPELLS={
     // Lord merit too. `armies` / `defenders` still hold the fallen (the branches above rebuild
     // c.armies with a filter rather than mutating these).
     const _telAtkLost=(armies||[]).filter(a=>a&&a._died&&!a._phantom).length, _telDefLost=(defenders||[]).filter(a=>a&&a._died&&!a._phantom).length+_npcSunkLost+_npcDefWinLost;
-    try{ _tel.battles.push({ph:(_logCtx.phase??_currentPhase), prov:prov.id, terrain:prov.terrain, kind:defHero?(defHero.player!=null?'pvp':'guard'):(prov.owner!=null&&prov.owner!==c.player?'garrison':'neutral'),
+    try{ _tel.battles.push({ph:(turnContext._logCtx.phase??turnContext._currentPhase), prov:prov.id, terrain:prov.terrain, kind:defHero?(defHero.player!=null?'pvp':'guard'):(prov.owner!=null&&prov.owner!==c.player?'garrison':'neutral'),
       atkPi:c.player, atkChar:c.id, defPi:defHero?(defHero.player!=null?defHero.player:null):(prov.owner!=null&&prov.owner!==c.player?prov.owner:null), defChar:defHero?defHero.id:null,
       atkStr:Math.round(atkBaseStr), defStr:Math.round(defBaseStr), S:Math.round((_fort.S||0)*1000)/1000,
       atkUnits:(armies||[]).filter(a=>a&&!a._phantom).length, defUnits:(defenders||[]).filter(a=>a&&!a._phantom).length,
@@ -2960,11 +2594,11 @@ const BATTLE_ARMY_SPELLS={
   // — trading 20% of their force's strength for their commander's life.
   const NPC_SPELL_BY_SCHOOL={...NPC_SCHOOL_SPELL};
   function autoEncounterPlan(ch){
-    const melee=effStat(ch,'melee'), arch=effStat(ch,'archery');
+    const melee=effStat(turnContext,ch,'melee'), arch=effStat(turnContext,ch,'archery');
 // NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
     const schools=['elemental','necromancy','psychic','white','illusory'];
-    const bestSchool=schools.reduce((b,sk)=>effStat(ch,sk)>effStat(ch,b)?sk:b,'elemental');
-    const magic=effStat(ch,bestSchool);
+    const bestSchool=schools.reduce((b,sk)=>effStat(turnContext,ch,sk)>effStat(turnContext,ch,b)?sk:b,'elemental');
+    const magic=effStat(turnContext,ch,bestSchool);
     const temper=effTemper(ch); // equipped temper item overrides
     const avoids=(temper==='Cautious'||temper==='Cowardly');
     // ── BATTLE-MAGIC tactics (pre-battle phase only; the personal-combat plan-filter strips CS:).
@@ -2973,8 +2607,8 @@ const BATTLE_ARMY_SPELLS={
     // pickBattleSpell casts the best USEFUL spell against whatever the enemy actually fields
     // (illusory has no battle spells, so it is skipped here — but still used in personal combat).
     const battlePlan=['elemental','necromancy','psychic','white']
-      .filter(s=>effStat(ch,s)>0)
-      .sort((a,b)=>effStat(ch,b)-effStat(ch,a))
+      .filter(s=>effStat(turnContext,ch,s)>0)
+      .sort((a,b)=>effStat(turnContext,ch,b)-effStat(turnContext,ch,a))
       .map(s=>'CS:'+s);
     // ── PERSONAL-COMBAT tactics (the 6-action budget). ──
     const plan=[];
@@ -2987,7 +2621,7 @@ const BATTLE_ARMY_SPELLS={
     // is what Toby was seeing in bot plans. A second CA: entry is now added only when it is a
     // DIFFERENT spell — the next school the hero actually knows — whatever the best school's level.
     if(ch.player!=null && magic>0){
-      const second=schools.filter(s=>s!==bestSchool&&effStat(ch,s)>0).sort((x,y)=>effStat(ch,y)-effStat(ch,x))[0];
+      const second=schools.filter(s=>s!==bestSchool&&effStat(turnContext,ch,s)>0).sort((x,y)=>effStat(turnContext,ch,y)-effStat(turnContext,ch,x))[0];
       if(second&&NPC_SPELL_BY_SCHOOL[second]&&NPC_SPELL_BY_SCHOOL[second]!==NPC_SPELL_BY_SCHOOL[bestSchool]) plan.push('CA:'+NPC_SPELL_BY_SCHOOL[second]);
     }
     // Final guard on the spell slots (2026-09-27, Toby item 2): whatever built the list above, no
@@ -3078,24 +2712,24 @@ const BATTLE_ARMY_SPELLS={
       // Melee 4 hero with +5 of items and two of those bonuses fought at "Melee 11 (4 +7 bonus)".
       // Every one of those figures now goes through pcSkillCap, so nothing a character carries or
       // holds can put Melee or Archery above 9 in a duel — for the hit chance OR for the damage.
-      melee:pcSkillCap(effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0)), // sd37 Veteran Training
-      archery:pcSkillCap(effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0)), // sd37 Veteran Training
+      melee:pcSkillCap(effStat(turnContext,ch,'melee')+(charMinor(turnContext,ch,'duelist')?1:0)+(charMinor(turnContext,ch,'widowmaker')?1:0)+(charMinor(turnContext,ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(turnContext,ch.player,'sd37'))?1:0)), // sd37 Veteran Training
+      archery:pcSkillCap(effStat(turnContext,ch,'archery')+(charMinor(turnContext,ch,'marksman')?1:0)+(charMinor(turnContext,ch,'widowmaker')?1:0)+(charMinor(turnContext,ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(turnContext,ch.player,'sd37'))?1:0)), // sd37 Veteran Training
       // Damage scales on the raw 1–9 level (levels 6–9 exist above the effStat cap of 5) — but an
       // item, aura or title that raises the skill now counts too, so a "+2 Melee" blade is felt in
       // the DAMAGE as well as the hit chance. Whichever is higher wins; nothing is lost either way.
-      meleeRaw:pcSkillCap(Math.max(skillLevel(ch,'melee'), effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0))),
-      archeryRaw:pcSkillCap(Math.max(skillLevel(ch,'archery'), effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0))),
+      meleeRaw:pcSkillCap(Math.max(skillLevel(ch,'melee'), effStat(turnContext,ch,'melee')+(charMinor(turnContext,ch,'duelist')?1:0)+(charMinor(turnContext,ch,'widowmaker')?1:0)+(charMinor(turnContext,ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(turnContext,ch.player,'sd37'))?1:0))),
+      archeryRaw:pcSkillCap(Math.max(skillLevel(ch,'archery'), effStat(turnContext,ch,'archery')+(charMinor(turnContext,ch,'marksman')?1:0)+(charMinor(turnContext,ch,'widowmaker')?1:0)+(charMinor(turnContext,ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(turnContext,ch.player,'sd37'))?1:0))),
       // the character's OWN trained level, so the narrative can say why "Archery 6" exceeds what
       // the sheet shows (items, titles, discoveries, aura, mastery perks).
       meleeBase:skillLevel(ch,'melee'), archeryBase:skillLevel(ch,'archery'),
       temper:effTemper(ch), alignment:ch.alignment, // an equipped temper item overrides the wearer's own
-      school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
-              elemental:effStat(ch,'elemental'),necromancy:effStat(ch,'necromancy')},
+      school:{white:effStat(turnContext,ch,'white'),psychic:effStat(turnContext,ch,'psychic'),illusory:effStat(turnContext,ch,'illusory'),
+              elemental:effStat(turnContext,ch,'elemental'),necromancy:effStat(turnContext,ch,'necromancy')},
       tactics:((ch.encounterPlan&&ch.encounterPlan.tactics)||['ME']).slice(),
       tacIdx:0, planExhausted:false, neverFlees:false,
       speedBonus:ch._speedBonus||0, specials:[],
       mithril:activeItems(ch).some(it=>it.effect&&it.effect.stat==='mithrilArmour'), // −2 melee damage taken
-      mithrilDR:2+((ch.player!=null)?discSum(ch.player,'mithril','extra'):0), // rd08 Mithril Craft — 3 instead of 2
+      mithrilDR:2+((ch.player!=null)?discSum(turnContext,ch.player,'mithril','extra'):0), // rd08 Mithril Craft — 3 instead of 2
       combatItems:dedupeItemsByName(activeItems(ch)).filter(it=>it.effect&&it.effect.stat==='combatUse'), // once-per-fight potions/scrolls
       arm:pcArmourOf(activeItems(ch)), // worn armour wards (see pcArmourOf / pcTakeHit)
       status:pcNewStatus(),
@@ -3249,7 +2883,7 @@ const BATTLE_ARMY_SPELLS={
     chance += (attacker.status.hitBonus||0);                // Elixir of Focus and kin
     chance -= (defender.status.toHitReduce||0);            // Invisibility: flat \u221225 to hit (floored at 40 below)
     chance -= ((defender.arm&&defender.arm.dodge)||0);     // Quicksilver Mail: −10% to be hit
-    if(attacker.player!=null) chance+=discSum(attacker.player,'duelHit','pct',e=>discDuelVs(e,defender)); // duelHit discoveries (sd33 Duelling Code …)
+    if(attacker.player!=null) chance+=discSum(turnContext,attacker.player,'duelHit','pct',e=>discDuelVs(e,defender)); // duelHit discoveries (sd33 Duelling Code …)
     chance = chance*(defender.status.dodge||1);           // (no effect currently sets status.dodge — kept as a hook)
     // ── The defender's STANCE lowers the ceiling itself ────
     // Testing found the +14 Cautious guard was doing nothing above about Melee 4: a Melee 6 Berserk
@@ -3610,7 +3244,7 @@ const BATTLE_ARMY_SPELLS={
     // once, in pcTakeHit — never here, or it would double twice.
     const _wkSch=!!(target&&target.kind==='monster'&&target.weak&&target.weak.kind==='school'&&target.weak.key===school);
     const wx=_wkSch?PC_WEAK_MULT:1;
-    const _castBase=_wkSch?95:Math.min(95,PC_CAST_BASE+lvl*10+magicL8CastBonus(caster.ref)+(caster.player!=null?discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='duel')):0)); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
+    const _castBase=_wkSch?95:Math.min(95,PC_CAST_BASE+lvl*10+magicL8CastBonus(caster.ref)+(caster.player!=null?discSum(turnContext,caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='duel')):0)); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
     // ── SCHOOL WARD (2026-10-14, batch item 7) ── a guardian's ward against this school takes its
     // points off the (already capped) cast chance; never below 5. A guardian is never warded against
     // the school it is weak to.
@@ -3623,7 +3257,7 @@ const BATTLE_ARMY_SPELLS={
     // 2026-09-10 item 1: use the canonical d100 (1–100, success on roll<=chance) so a roll equal to
     // the chance succeeds, matching every other percentage check in the engine.
     const _castRoll=d100();
-    telSpell(caster.ref,spellName,school,lvl,castChance,_castRoll,'duel');
+    telSpell(turnContext,caster.ref,spellName,school,lvl,castChance,_castRoll,'duel');
     narrative.push(`  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to cast successfully${_sw>0?`, −${_sw} for ${pcWardWord(target,'ward','schoolWard')}`:''}) [roll ${_castRoll} ${_castRoll<=castChance?'✓':'✗'}].`);
     if(_castRoll>castChance){ narrative.push(`  …but the spell guts and fizzles, coming to nothing.`); return false; }
     caster.castSpells.push(spellName); caster.castSchool[school]=(caster.castSchool[school]||0)+1;
@@ -3768,7 +3402,7 @@ const BATTLE_ARMY_SPELLS={
       // level in play is re-read exactly as pcCharCombatant built it, and only when it actually rose.
       const _lvB=skillLevel(caster.ref,school);
       pcCombatXP(caster, school, narrative); // 2026-09-29: per successful cast, until the first success
-      if(skillLevel(caster.ref,school)>_lvB) caster.school[school]=Math.max(caster.school[school]||0, effStat(caster.ref,school));
+      if(skillLevel(caster.ref,school)>_lvB) caster.school[school]=Math.max(caster.school[school]||0, effStat(turnContext,caster.ref,school));
     }
     return true;
   }
@@ -4106,7 +3740,7 @@ const BATTLE_ARMY_SPELLS={
     chance += (actor.status.hitBonus||0);
     chance -= (foe.status.toHitReduce||0);
     chance -= ((foe.arm&&foe.arm.dodge)||0);
-    if(actor.player!=null) chance+=discSum(actor.player,'duelHit','pct',e=>discDuelVs(e,foe)); // duelHit discoveries
+    if(actor.player!=null) chance+=discSum(turnContext,actor.player,'duelHit','pct',e=>discDuelVs(e,foe)); // duelHit discoveries
     chance = chance*(foe.status.dodge||1);
     return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX, dispFloor(chance)));
   }
@@ -4169,7 +3803,6 @@ const BATTLE_ARMY_SPELLS={
   // only when it makes sense — the trigger table below. Characters bring their equipped/active
   // combatUse items; a guardian brings the lair's items its category lets it wield.
   const _CI_PRIORITY=['heal','secondwind','hot','absorb','invis','mirror','flee','dispel','bane','banestun','buff','focus','silence','stun','pen','weak','terror','dmg','drain'];
-  function pcFoeCat(foe){ return foe.cat||(foe.kind==='character'?(foe.isUndead?'undead':'humanoid'):'beast'); }
   function pcCombatItemWanted(actor, foe, it, state){
     const e=it.effect||{}; const ratio=actor.hp/(actor.maxHp||20); const st=actor.status||{};
     switch(e.use){
@@ -4349,7 +3982,7 @@ const BATTLE_ARMY_SPELLS={
         // the rulebook.
         if(!PARLEY_ENABLED){ pcAdvanceOrStrike(actor, foe, narrative, state); break; }
         if(foe.kind==='monster'){
-          const dr=actor.kind==='character'?effStat(actor.ref,'druid'):0;
+          const dr=actor.kind==='character'?effStat(turnContext,actor.ref,'druid'):0;
           const chance=(foe.pacifiable===false)?0:(20+dr*15);
           const roll=d100();
           narrative.push(`  ${actor.name} calls for parley (Druid ${dr}, ${chance}%${chance?` [roll ${roll}]${roll<=chance?' ✓':' ✗'}`:' — it cannot be reasoned with'})`);
@@ -4360,7 +3993,7 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'ST': case 'STEAL':{
-        const th=actor.kind==='character'?effStat(actor.ref,'thief'):0;
+        const th=actor.kind==='character'?effStat(turnContext,actor.ref,'thief'):0;
         if(th<1){ narrative.push(`  ${actor.name} has no Thief skill and cannot attempt a steal — they press forward instead.`); pcAdvanceOrStrike(actor, foe, narrative, state); break; }
         let bonus=temperOf(actor.temper).stealMod; if(actor.castSpells.includes('Invisibility')) bonus+=15;
         if(actor.ref&&hasItemBase(actor.ref,'Lock-Pick of Legends')) bonus+=20; // Lock-Pick of Legends: +20% steal chance
@@ -4381,7 +4014,7 @@ const BATTLE_ARMY_SPELLS={
         // To restore: set SCOUT_ENABLED true, drop `retired` from the SC entry in ENCOUNTER_TACTICS
         // in BOTH portals, and put the Explorer bullet back in the rulebook.
         if(!SCOUT_ENABLED){ pcAdvanceOrStrike(actor, foe, narrative, state); break; }
-        const ex=actor.kind==='character'?effStat(actor.ref,'explorer'):0;
+        const ex=actor.kind==='character'?effStat(turnContext,actor.ref,'explorer'):0;
         const b=ex*5;
         // Scout is no longer a no-op — it reveals what the guardian is worth. It reports the
         // guardian's identity/power and remaining HP, the gold hoard behind it, and the magic-item
@@ -4474,7 +4107,7 @@ const BATTLE_ARMY_SPELLS={
     const _wardOf=(me,foe)=>{
       if(!me||me.kind!=='character'||!me.ref||me.ref._druidNegated) return 0;
       if(!foe||foe.kind!=='monster'||!_PC_BEAST_CATS.has(String(foe.cat||''))) return 0;
-      let lvl=Math.min(5,effStat(me.ref,'druid'));
+      let lvl=Math.min(5,effStat(turnContext,me.ref,'druid'));
       if(me.ref._curseHalveStat==='druid') lvl=Math.floor(lvl/2);
       return lvl>=3?lvl:0;
     };
@@ -4780,7 +4413,7 @@ const BATTLE_ARMY_SPELLS={
     if(atk.alive===false||def.alive===false) return{atkMorale,defMorale};
     // THIEF L9 Vanish: no one rides out against a commander who is not there, and none may call him
     // out.
-    if(isVanished(atk)||isVanished(def)) return{atkMorale,defMorale};
+    if(isVanished(turnContext,atk)||isVanished(turnContext,def)) return{atkMorale,defMorale};
     const demoralise=(who,why)=>{
       if(who===atk) atkMorale=DUEL_MORALE_PENALTY; else defMorale=DUEL_MORALE_PENALTY;
       narrative.push(`\u{1F4C9} ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
@@ -4925,8 +4558,8 @@ const BATTLE_ARMY_SPELLS={
     // Record both sides' commanders for this province/phase BEFORE any fighting (a duel death or a
     // nested processOrder can clobber _logCtx mid-battle). atk/def are pooled copies but keep the
     // real commander's id, so the per-player report can file the battle under either player's hero.
-    recordBattleCmdrs(prov&&prov.id, _logCtx&&_logCtx.phase, [atk&&atk.id, def&&def.id]);
-    const _fieldIds=noteFieldBattle(atk, def, prov); // one battle per phase, for both sides (item 7)
+    recordBattleCmdrs(turnContext, prov&&prov.id, turnContext._logCtx&&turnContext._logCtx.phase, [atk&&atk.id, def&&def.id]);
+    const _fieldIds=noteFieldBattle(turnContext, atk, def, prov); // one battle per phase, for both sides (item 7)
     // TACTICAL L6 (10%/unit) & War Drum (20%/unit) — decide ONCE per side which units fight a tier
     // higher this battle.
     [atk,def].forEach(_ld=>{ if(_ld&&Array.isArray(_ld.armies)){ const _tac=perkTier(_ld,'tactical')>0, _drum=activeItems(_ld).some(it=>it&&it.drumTierUp); _ld.armies.forEach(a=>{ if(a){ a._tacUp=_tac&&kcRng()<0.10; a._drumUp=_drum&&kcRng()<0.20; } }); } });
@@ -4952,8 +4585,8 @@ const BATTLE_ARMY_SPELLS={
       (atkArmies||[]).forEach(a=>{ if(a&&a._died&&!a._phantom&&!a._meritTallied){ a._meritTallied=true; _mAtkLost++; } });
       (defArmies||[]).forEach(a=>{ if(a&&a._died&&!a._phantom&&!a._meritTallied){ a._meritTallied=true; _mDefLost++; } });
     };
-    let atkTact=atk._tacticalNegated?0:(effStat(atk,'tactical')+(charMinor(atk,'strategist')?1:0)); if(atk._curseHalveStat==='tactical') atkTact=Math.floor(atkTact/2); // LEVEL 6+ PERK — Grand Tactician
-    let defTact=def._tacticalNegated?0:(effStat(def,'tactical')+(charMinor(def,'strategist')?1:0)); if(def._curseHalveStat==='tactical') defTact=Math.floor(defTact/2); // LEVEL 6+ PERK — Grand Tactician
+    let atkTact=atk._tacticalNegated?0:(effStat(turnContext,atk,'tactical')+(charMinor(turnContext,atk,'strategist')?1:0)); if(atk._curseHalveStat==='tactical') atkTact=Math.floor(atkTact/2); // LEVEL 6+ PERK — Grand Tactician
+    let defTact=def._tacticalNegated?0:(effStat(turnContext,def,'tactical')+(charMinor(turnContext,def,'strategist')?1:0)); if(def._curseHalveStat==='tactical') defTact=Math.floor(defTact/2); // LEVEL 6+ PERK — Grand Tactician
     // Tactical bonus only applies in land provinces
     const isPvPSea=prov.terrain==='sea';
     let atkTactBonus=isPvPSea?1:Math.min(2.0,1+atkTact*0.2); // cap ×2.0
@@ -5034,14 +4667,14 @@ const BATTLE_ARMY_SPELLS={
     let defBonus=1.25*(isHome?1.2:1);
     // sd03 Siege Engines (and the race `siege` discoveries rd09 / ro10) — previously sd03 was
     // honoured only in battles against neutral guards, never in realm-vs-realm battles.
-    { let _sg=discSum(atk.player,'siege','delta',e=>!e.withTypes||atkArmies.some(a=>a&&e.withTypes.includes(a.type)));
+    { let _sg=discSum(turnContext,atk.player,'siege','delta',e=>!e.withTypes||atkArmies.some(a=>a&&e.withTypes.includes(a.type)));
       if(_sg>0){ defBonus=Math.max(1,defBonus-_sg); narrative.push(`  🏰 ${atkName}'s siegecraft wears down the defenders' fortifications (province bonus −${_sg.toFixed(2)}).`); } }
     // GOOD — Righteous Defence: +10% when a Good player defends a province they own.
     if(prov.owner===def.player&&G.players[def.player]?.alignment==='Good'){
       defBonus*=1.10;
       narrative.push(`✝ Righteous Defence — ${defName}'s host defends ground held justly (+10% defence).`);
     }
-    { const _dOwnP=(prov.owner!=null&&prov.owner===def.player)?Math.min(DISC_DEFOWN_CAP,discSum(def.player,'defOwn','pct',e=>!e.home||homeFounderOf(G,prov.id)===def.player)):0; if(_dOwnP>0){ defBonus*=1+_dOwnP; narrative.push(`  🛡 ${defName}'s realm holds its own ground the harder (+${dispFloor(_dOwnP*100)}% defence).`); } } // defOwn discoveries
+    { const _dOwnP=(prov.owner!=null&&prov.owner===def.player)?Math.min(DISC_DEFOWN_CAP,discSum(turnContext,def.player,'defOwn','pct',e=>!e.home||homeFounderOf(G,prov.id)===def.player)):0; if(_dOwnP>0){ defBonus*=1+_dOwnP; narrative.push(`  🛡 ${defName}'s realm holds its own ground the harder (+${dispFloor(_dOwnP*100)}% defence).`); } } // defOwn discoveries
     if(isHome && prov.owner===def.player && activeItems(def).some(it=>it.effect&&it.effect.stat==='homeDefBonus')){ defBonus*=1.25; narrative.push(`  🛡 ${defName}'s Banner of the Realm rallies the home defense (+25%).`); }
     if(activeItems(atk).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${atkName}'s siege mastery halves the defenders' fortifications.`); }
     if(isHome) narrative.push(`The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
@@ -5054,8 +4687,8 @@ const BATTLE_ARMY_SPELLS={
     const defAlign=G.players[def.player]?.alignment||'Neutral';
     // (The Wyverns' Dread, −15% to the other side's fanaticism, was retired with the unit abilities,
     // 2026-10-11: Terror From Above now bears on the enemy's strongest front unit, in battleFaceSide.)
-    const _atkFanPct=Math.max(0,(atkFanChance[atkAlign]??0.1)+discSum(atk.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,atkArmies))); // fanatic discoveries
-    let _defFanPct=Math.max(0,(defFanChance[defAlign]??0.1)+discSum(def.player,'fanatic','pct',e=>discFanaticApplies(e,'def',prov.terrain,defArmies)));
+    const _atkFanPct=Math.max(0,(atkFanChance[atkAlign]??0.1)+discSum(turnContext,atk.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,atkArmies))); // fanatic discoveries
+    let _defFanPct=Math.max(0,(defFanChance[defAlign]??0.1)+discSum(turnContext,def.player,'fanatic','pct',e=>discFanaticApplies(e,'def',prov.terrain,defArmies)));
     // DIVINE — Consecrate: defenders on consecrated ground are TWICE as likely to be seized by
     // fanatical zeal (they fight before the altars of their gods).
     const _consecratedHere=def.player!=null&&isConsecrated(G.players[def.player],prov.id)&&prov.owner===def.player;
@@ -5093,10 +4726,10 @@ const BATTLE_ARMY_SPELLS={
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
     const MISSILE_A=new Set(KC_UNIT_CLASS.missile);
-    const atkArch=atkCmdrSlain?0:effStat(atk,'archery'); const atkArchBonus=1+(atkArch*ARCHERY_MISSILE_PCT); // +5%/level (2026-09-23b) · sd07 Fire Arrows now via armStr (unitStr missile)
-    const defArch=defCmdrSlain?0:effStat(def,'archery'); const defArchBonus=1+(defArch*ARCHERY_MISSILE_PCT);
-    let atkNav=atkCmdrSlain?0:effStat(atk,'naval'); if(atk._curseHalveStat==='naval') atkNav=Math.floor(atkNav/2); const atkNavBonus=1+(atkNav*0.2);
-    let defNav=defCmdrSlain?0:effStat(def,'naval'); if(def._curseHalveStat==='naval') defNav=Math.floor(defNav/2); const defNavBonus=1+(defNav*0.2);
+    const atkArch=atkCmdrSlain?0:effStat(turnContext,atk,'archery'); const atkArchBonus=1+(atkArch*ARCHERY_MISSILE_PCT); // +5%/level (2026-09-23b) · sd07 Fire Arrows now via armStr (unitStr missile)
+    const defArch=defCmdrSlain?0:effStat(turnContext,def,'archery'); const defArchBonus=1+(defArch*ARCHERY_MISSILE_PCT);
+    let atkNav=atkCmdrSlain?0:effStat(turnContext,atk,'naval'); if(atk._curseHalveStat==='naval') atkNav=Math.floor(atkNav/2); const atkNavBonus=1+(atkNav*0.2);
+    let defNav=defCmdrSlain?0:effStat(turnContext,def,'naval'); if(def._curseHalveStat==='naval') defNav=Math.floor(defNav/2); const defNavBonus=1+(defNav*0.2);
     const atkAlign2=G.players[atk.player]?.alignment||'Neutral';
     const defAlign2=G.players[def.player]?.alignment||'Neutral';
 
@@ -5135,18 +4768,18 @@ const BATTLE_ARMY_SPELLS={
       if(!pick||targets.length===0) return;
       const spellName=pick.spellName;
       const school=pick.school;
-      const spellLvl=effStat(caster,school);
+      const spellLvl=effStat(turnContext,caster,school);
       if(spellLvl<1) return;
-      const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(caster)+discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
+      const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(caster)+discSum(turnContext,caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
       const castRoll=d100();
-      telSpell(caster,spellName,school,spellLvl,castChance,castRoll,'battle');
+      telSpell(turnContext,caster,spellName,school,spellLvl,castChance,castRoll,'battle');
       narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${SKILL_LABELS[school]||school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
       if(castRoll>castChance){narr.push(`  Spell fizzles.`);return;}
       // no school gain from pre-battle magic — see resolveBattle's cast.
       if(spellName==='Fireball'){
         if(targets.length>0){const _ember=(caster&&activeItems(caster).some(it=>it&&it.emberTwo));const _fbHits=targets.slice().sort((a,b)=>unitBaseStrength(b)-unitBaseStrength(a)).slice(0,_ember?2:1);_fbHits.forEach(d=>{const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5));d._tempStrReduction=(d._tempStrReduction||0)+cut;});narr.push(`  🔥 Fireball halves the enemy's ${_fbHits.length>1?'two strongest units':'strongest unit'}, ${_fbHits.map(d=>d.unitName||d.type).join(' and ')}.`);}
       } else if(spellName==='Telekinetic Storm'){
-        if(enemyCmdr){ if(effStat(enemyCmdr,'tactical')>0&&!isPvPSea){ enemyCmdr._tacticalHalved=true; enemyCmdr._tacticalMult=0.5; narr.push(`  🌀 Telekinetic Storm scatters ${enemyCmdr.name}'s formations — their Tactical command is cut to half effectiveness this battle.`); } else { enemyCmdr._tacticalHalved=true; narr.push(`  🌀 Telekinetic Storm rages, but ${enemyCmdr.name} has no tactical command to disrupt here.`); } }
+        if(enemyCmdr){ if(effStat(turnContext,enemyCmdr,'tactical')>0&&!isPvPSea){ enemyCmdr._tacticalHalved=true; enemyCmdr._tacticalMult=0.5; narr.push(`  🌀 Telekinetic Storm scatters ${enemyCmdr.name}'s formations — their Tactical command is cut to half effectiveness this battle.`); } else { enemyCmdr._tacticalHalved=true; narr.push(`  🌀 Telekinetic Storm rages, but ${enemyCmdr.name} has no tactical command to disrupt here.`); } }
       } else if(spellName==='Psychic Blast'){
         if(enemyCmdr){ enemyCmdr._druidNegated=true; narr.push(`  🧠 Psychic Blast severs ${enemyCmdr.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
       } else if(spellName==='Lightning Bolt'){
@@ -5174,7 +4807,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Army battle spells (primal/special units)
     function applyArmyBattleSpells(heroChar, myArmies, enemyArmies, narr){
-      const druLvl=heroChar._druidNegated?0:effStat(heroChar,'druid');
+      const druLvl=heroChar._druidNegated?0:effStat(turnContext,heroChar,'druid');
       myArmies.forEach(a=>{
         let armySpells=BATTLE_ARMY_SPELLS[a.type]||[];
         const _isPrimalP=!armySpells.length&&PRIMAL_ARMY_DEFS_P[a.type]?.spells;
@@ -5217,7 +4850,7 @@ const BATTLE_ARMY_SPELLS={
       }
       const myMissile=abilityMissileUnits(myForce, pvpTerrain);
       if(!myMissile.length||!enemyArmies.length) return;
-      const archLvl=effStat(heroChar,'archery');
+      const archLvl=effStat(turnContext,heroChar,'archery');
       const hasQ=hasItemBase(heroChar,'Quiver of the Hawk');
       const _manyQ=hasItemBase(heroChar,'Quiver of Many Arrows');
       const volleys=(hasQ?2:1)+(_manyQ?1:0);
@@ -5288,7 +4921,7 @@ const BATTLE_ARMY_SPELLS={
     const _defIllActiveP = (_illCasterP!=null && def.player!==_illCasterP);
     // PvP battle lines: sort by strength desc (flying first), strongest in front row. 2026-09-11:
     // each side's OWN Flanking Tactics.
-    const atkFlankPvp=hasDisc(atk.player,'sd09'), defFlankPvp=hasDisc(def.player,'sd09');
+    const atkFlankPvp=hasDisc(turnContext,atk.player,'sd09'), defFlankPvp=hasDisc(turnContext,def.player,'sd09');
     const atkSorted=[...atkArmies].map(a=>_pvpRow(a,true,atkArmies,defArmies)).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
     const defSorted=[...defArmies].map(a=>_pvpRow(a,false,defArmies,atkArmies)).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
     // Ground units fill four terrain-width lines (×1 / ×0.5 / ×0.25 / ×0.125); flyers always front.
@@ -5415,8 +5048,8 @@ const BATTLE_ARMY_SPELLS={
     const winXPPvP=_bandPvP.winXP;
     const loseXPPvP=_bandPvP.loseXP;
     const loseDemotePvP=_bandPvP.loseDemote;
-    const atkSteelMultOf=(a)=>discDeathMult(atk.player,a,'atk'); // per-unit deathRed discoveries (sd05 now one of them)
-    const defSteelMultOf=(a)=>discDeathMult(def.player,a,'def');
+    const atkSteelMultOf=(a)=>discDeathMult(turnContext,atk.player,a,'atk'); // per-unit deathRed discoveries (sd05 now one of them)
+    const defSteelMultOf=(a)=>discDeathMult(turnContext,def.player,a,'def');
     const atkTacMult=perkTier(atk,'tactical')>=3?0.5:1; // TACTICAL L8: on a LOSS, atk's units half as likely to die/disband
     const defTacMult=perkTier(def,'tactical')>=3?0.5:1;
     // ── UNIT ABILITIES: casualty & retreat ── HUMAN — Ride Them Down: light horse are murder on a
@@ -5464,8 +5097,8 @@ const BATTLE_ARMY_SPELLS={
         if(kcRng()<0.15){a._died=true;narr.push(`— ${ownedUnitName(name,a)} are cut down with no escape!`);}
       });
     };
-    const atkMilMultOf=(a)=>1+discPromo(atk.player,a); // per-unit promo discoveries
-    const defMilMultOf=(a)=>1+discPromo(def.player,a);
+    const atkMilMultOf=(a)=>1+discPromo(turnContext,atk.player,a); // per-unit promo discoveries
+    const defMilMultOf=(a)=>1+discPromo(turnContext,def.player,a);
 
     prov._hadBattleThisTurn=true;
     // a beaten force that still has a road home normally retreats — but if it ends the fight
@@ -5695,7 +5328,7 @@ const BATTLE_ARMY_SPELLS={
     // AK [3.15]: "A character's Defend order is canceled if he loses a battle, to prevent further
     // needless defeats." atk/def are pooled copies, so resolve back to the real character by id.
     noteBattleLoss(won?def.id:atk.id, narrative);
-    completeDefendWatches(_fieldIds, narrative); // item 15: a watch that has fought is done, win or lose
+    completeDefendWatches(turnContext, _fieldIds, narrative); // item 15: a watch that has fought is done, win or lose
     if(_rollTacticalGainPvP) trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGainPvP) trySkillGain(won?atk:def,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
     trySkillGain(won?def:atk,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative); // batch item 11: the beaten general who lives learns a little
@@ -5704,7 +5337,7 @@ const BATTLE_ARMY_SPELLS={
     // host.
     const summaryText=`⚔ Battle at ${prov.name}: ${won?`${atkName}'s forces defeat ${defName}`:`${defName}'s forces hold against ${atkName}`}.`;
     _tallyLost();
-    try{ _tel.battles.push({ph:(_logCtx.phase??_currentPhase), prov:prov.id, terrain:prov.terrain, kind:'pvp',
+    try{ _tel.battles.push({ph:(turnContext._logCtx.phase??turnContext._currentPhase), prov:prov.id, terrain:prov.terrain, kind:'pvp',
       atkPi:atk.player, atkChar:atk.id, defPi:def.player, defChar:def.id,
       atkStr:Math.round(atkBaseStr), defStr:Math.round(defBaseStr), S:Math.round((_fortP.S||0)*1000)/1000,
       atkUnits:(atk.armies||[]).filter(a=>a&&!a._phantom).length+_mAtkLost, defUnits:(def.armies||[]).filter(a=>a&&!a._phantom).length+_mDefLost,
@@ -6003,7 +5636,7 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
-  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng,pcCharCombatant,pcMonsterCombatant,trySkillGain,resolveDuel,duelFleeItemDrop,pcCastCombatSpell,preBattleDuel,awardWinHp,awardKillXP}; }catch(e){}
+  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat:(...a)=>effStat(turnContext,...a),rng,pcCharCombatant,pcMonsterCombatant,trySkillGain,resolveDuel,duelFleeItemDrop,pcCastCombatSpell,preBattleDuel,awardWinHp,awardKillXP}; }catch(e){}
 
   // When a player's character visits/spies a province, record any dead heroes there as seen
   function recordDeadHeroSighting(playerIdx, provId){
@@ -6048,7 +5681,7 @@ const BATTLE_ARMY_SPELLS={
     const r=rollHpGain(real, G.players, why);
     if(isWin){ real.hpEarned=Math.max(0,Math.round(real.hpEarned||0))+1; syncMaxHp(real,G.players); r.gain+=1; r.maxHp=real.maxHp; r.winBonus=1; }
     r.wound=!isWin;
-    if(r.gain>0&&real.isKing&&hasDisc(real.player,'sd35')){ // sd35 Order of the Golden Shield: the king's hardening is doubled
+    if(r.gain>0&&real.isKing&&hasDisc(turnContext,real.player,'sd35')){ // sd35 Order of the Golden Shield: the king's hardening is doubled
       real.hpEarned+=r.gain; syncMaxHp(real,G.players); r.gain*=2; r.maxHp=real.maxHp; r.sd35=true; }
     // ── 2026-09-17 — THE HARDENING THAT UNDID ITSELF ────
     // A battle (and its opening duel) is fought on a SHALLOW COPY of the commander, and
@@ -6100,7 +5733,7 @@ const BATTLE_ARMY_SPELLS={
         deadArmies.forEach(army=>{
           G.mercenaries.push({type:army.type,quality:army.quality,race:army.race||'Unknown',
             unitName:army.unitName,location:deadChar.location,isSea:SEA_SET.has(army.type),
-            id:newMercId()});
+            id:newMercId(turnContext)});
         });
         log('system',_by?`${deadChar.name}'s armies, their commander slain by ${_by}, scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`
           :`${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[]});
@@ -6116,7 +5749,7 @@ const BATTLE_ARMY_SPELLS={
         // 2026-09-23c (Toby): a commander who falls at SEA leaves his host garrisoning the sea province
         // itself. Own waters are the branch above; unowned, undefended water is claimed for the realm.
         // (Another realm's or defended waters keep the old rule below.)
-        setProvinceOwner(prov,deadChar.player,null,_currentPhase);
+        setProvinceOwner(turnContext,prov,deadChar.player,null,turnContext._currentPhase);
         const _pl=G.players[deadChar.player]; if(_pl){ _pl.provinces=_pl.provinces||[]; if(!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id); }
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(deadArmies);
         log('system',`${deadChar.name}'s armies hold ${prov.name} ${_fell} — the water is claimed for ${_pl?_pl.name:'the realm'} and they garrison it.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
@@ -6164,7 +5797,7 @@ const BATTLE_ARMY_SPELLS={
     const _who=c.name.replace(' (wandering)','');
     const heir=(G.characters||[])
       .filter(o=>o&&o.alive&&o.id!==c.id&&o.player!=null&&o.player===c.player&&o.location===prov.id&&o._mercyFledTurn!==G.turn)
-      .sort((a,b)=>(effStat(b,'tactical')||0)-(effStat(a,'tactical')||0))[0];
+      .sort((a,b)=>(effStat(turnContext,b,'tactical')||0)-(effStat(turnContext,a,'tactical')||0))[0];
     if(heir){
       heir.armies=(heir.armies||[]).concat(left);
       log('system',`🏳 ${_who} begged for his life and is gone, but his host does not follow him: ${_n} hold their ground in ${prov.name} and fall in under ${heir.name}.`,{actor:c.player,targets:[c.player],charId:heir.id,provinceId:prov.id});
@@ -6212,7 +5845,7 @@ const BATTLE_ARMY_SPELLS={
     // no crown succession. Safety net for any death path not intercepted at its call site. THIEF L9
     // Vanish: no killing blow lands on a man who is not there. Catches every death path — battle,
     // duel, assassination, execution — for the rest of the turn he vanished.
-    if(isVanished(deadChar)){
+    if(isVanished(turnContext,deadChar)){
       if(opts) opts.outcome='vanished';
       if(deadChar.hp!=null && deadChar.hp<=0) deadChar.hp=Math.max(1,deadChar.maxHp?Math.round(deadChar.maxHp/2):1);
       deadChar.alive=true; deadChar.killedThisTurn=false;
@@ -6238,15 +5871,15 @@ const BATTLE_ARMY_SPELLS={
     // put the surgery line straight after it (reportHeroFall; preBattleDuel's battle narrative).
     // `opts.outcome` tells the caller what happened: 'vanished', 'escaped', 'surgery' or 'died'.
     const _surgLog=(text,meta,priv)=>{ if(Array.isArray(opts.lines)) opts.lines.push({type:'combat',text,meta,priv}); else log('combat',text,meta); };
-    if(!opts.noSave && deadChar.player!=null && deadChar.alive!==false && hasDisc(deadChar.player,'sd36')){
+    if(!opts.noSave && deadChar.player!=null && deadChar.alive!==false && hasDisc(turnContext,deadChar.player,'sd36')){
       const _sRoll=d100(); const _bsPct=Math.round(discParam('sd36','pct',0.2)*100);
       if(_sRoll<=_bsPct){
         deadChar.hp=1; deadChar.alive=true; deadChar.killedThisTurn=false;
         opts.outcome='surgery';
-        _surgLog(`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
+        _surgLog(`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase),targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
         return false;
       } else {
-        _surgLog(`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)},deadChar.player);
+        _surgLog(`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase),targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)},deadChar.player);
       }
     }
     opts.outcome='died';
@@ -6299,8 +5932,8 @@ const BATTLE_ARMY_SPELLS={
         deadItems.forEach(it=>{ recipient.items.push(it); _KC_LOOT_GAINED.add(it); applyItemMaxHp(recipient,it); });
         if(killerChar&&killerChar!==recipient&&Array.isArray(killerChar.items)&&killerChar.items!==recipient.items) deadItems.forEach(it=>{ if(!killerChar.items.includes(it)) killerChar.items.push(it); });
         log('system',`${deadChar.name}'s possessions — ${deadItems.map(i=>i.name).join(', ')} — pass to ${recipient.name}.`,{actor:deadChar.player,targets:[deadChar.player]});
-        if(recipient.player!=null&&recipient.player!==deadChar.player) log('system',`🗡 ${recipient.name} takes ${deadChar.name}'s possessions from the fallen: ${deadItems.map(i=>i.name).join(', ')}.`,{actor:recipient.player,targets:[recipient.player],charId:recipient.id,phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),provinceId:(recipient.location!=null?recipient.location:undefined)});
-        if(recipient.player!=null){ const _gn=gainedItemNote(recipient,deadItems); if(_gn) log('system',_gn,{actor:recipient.player,targets:[recipient.player],charId:recipient.id,phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),provinceId:(recipient.location!=null?recipient.location:undefined)}); } // item 10
+        if(recipient.player!=null&&recipient.player!==deadChar.player) log('system',`🗡 ${recipient.name} takes ${deadChar.name}'s possessions from the fallen: ${deadItems.map(i=>i.name).join(', ')}.`,{actor:recipient.player,targets:[recipient.player],charId:recipient.id,phase:(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase),provinceId:(recipient.location!=null?recipient.location:undefined)});
+        if(recipient.player!=null){ const _gn=gainedItemNote(recipient,deadItems); if(_gn) log('system',_gn,{actor:recipient.player,targets:[recipient.player],charId:recipient.id,phase:(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase),provinceId:(recipient.location!=null?recipient.location:undefined)}); } // item 10
       } else {
         log('system',`${deadChar.name}'s possessions are lost — no heir to receive them.`,{actor:deadChar.player,targets:[deadChar.player]});
       }
@@ -6362,7 +5995,7 @@ const BATTLE_ARMY_SPELLS={
       }
     }
     deadChar.alive=false;deadChar.killedThisTurn=true;
-    try{ _tel.deaths.push({ph:(_logCtx.phase??_currentPhase), charId:deadChar.id, name:deadChar.name, pi:deadChar.player, king:!!deadChar.isKing, prov:deadChar.location,
+    try{ _tel.deaths.push({ph:(turnContext._logCtx.phase??turnContext._currentPhase), charId:deadChar.id, name:deadChar.name, pi:deadChar.player, king:!!deadChar.isKing, prov:deadChar.location,
       killerPi:(killerChar&&killerChar.player!=null)?killerChar.player:null, killerId:killerChar?killerChar.id:null, how:(opts&&opts.cause)||(killerChar?(killerChar.player!=null?'character':'neutral'):'other')}); }catch(_te){}
     flushDeferredSkillLogsFor(deadChar.id); // rises earned before death are reported now, not after the fight
     delete deadChar._defend; delete deadChar._pursuit; // the dead keep no watch and chase nobody
@@ -6463,9 +6096,9 @@ const BATTLE_ARMY_SPELLS={
     if(o._unifiedWith!=null){
       // filed under the hero himself (2026-10-09, Toby item 1): with no charId it fell into Realm Events
       log('move',`${c.name}'s order superseded — they unified with ${G.characters.find(x=>x.id===o._unifiedWith)?.name||'another hero'}'s forces this phase.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
-      _logCtx={charId:null,phase:null};return;
+      turnContext._logCtx={charId:null,phase:null};return;
     }
-    _logCtx={charId:c.id,phase:ph}; // all log() calls inside here will inherit this
+    turnContext._logCtx={charId:c.id,phase:ph}; // all log() calls inside here will inherit this
     const rawAction=(o.action||'defend').toLowerCase().trim();
     let action=PHASE_ACTION_MAP[rawAction]||'defend';
     let _fmSlip=false; // MARCH L7 Forced March: set below when a forced-march move should try to slip past battle
@@ -6525,12 +6158,12 @@ const BATTLE_ARMY_SPELLS={
     // by an enemy who died or withdrew never traps anyone.
     if((action==='move'||action==='encounter'||action==='pursue') && prov && prov._battleUnresolved && (c.armies||[]).length>0){
       const _foeHere=(G.characters||[]).some(x=>x&&(x.alive||x._leaderlessHost)&&x.id!==c.id&&x.location===prov.id
-                        &&(x.armies||[]).length>0&&(x.player==null||(x.player!==c.player&&areEnemies(c.player,x.player))))
+                        &&(x.armies||[]).length>0&&(x.player==null||(x.player!==c.player&&areEnemies(turnContext,c.player,x.player))))
                      || (prov.owner!==c.player && ((prov.neutralDefenders||[]).length>0));
       if(_foeHere){
         log('combat',`${c.name} is still locked in the unresolved battle for ${prov.name} and cannot march away — the enemy is on the field and the fight must be seen through before the column can move on.`,
           {actor:c.player,targets:[c.player],provinceId:prov.id,charId:c.id,phase:ph,pinNotice:true});
-        _logCtx={charId:null,phase:null};return;
+        turnContext._logCtx={charId:null,phase:null};return;
       }
     }
 
@@ -6547,7 +6180,7 @@ const BATTLE_ARMY_SPELLS={
                 :null;
       if(_why){
         log('system',`${c.name} is held by an enchantment, not an oath — they will not ${_why}. The order comes to nothing.`,{actor:c.player,targets:[c.player]});
-        _logCtx={charId:null,phase:null};return;
+        turnContext._logCtx={charId:null,phase:null};return;
       }
     }
 
@@ -6556,7 +6189,7 @@ const BATTLE_ARMY_SPELLS={
       c._masteryOrderUsed=c._masteryOrderUsed||{};
       if(c._masteryOrderUsed[action]===G.turn){
         log('system',`${c.name} has already used their ${MASTERY_ORDER_LABEL[action]||action} mastery this turn \u2014 it may be commanded but once per turn.`,{actor:c.player,targets:[c.player]});
-        _logCtx={charId:null,phase:null};return;
+        turnContext._logCtx={charId:null,phase:null};return;
       }
       c._masteryOrderUsed[action]=G.turn;
     }
@@ -6565,7 +6198,7 @@ const BATTLE_ARMY_SPELLS={
     // phase. Remap it to the move handler (keeping the once-per-turn charge above) and flag the
     // slip locally.
     if(action==='forced_march'){
-      if(skillLevel(c,'march')<7){ log('system',`${c.name} lacks the March mastery (7) for a Forced March.`,{actor:c.player,targets:[c.player]}); _logCtx={charId:null,phase:null}; return; }
+      if(skillLevel(c,'march')<7){ log('system',`${c.name} lacks the March mastery (7) for a Forced March.`,{actor:c.player,targets:[c.player]}); turnContext._logCtx={charId:null,phase:null}; return; }
       _fmSlip=true; action='move';
     }
 
@@ -6599,8 +6232,8 @@ const BATTLE_ARMY_SPELLS={
       const _duelChars=[thief.id,victim.id];
       log('combat',`⚔ ${victim.name} catches ${thief.name} ${what} — blades are drawn!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars});
       markProvinceCombat(prov,[thief.player,victim.player]); // purple swords: a personal combat, not a field battle
-      const enc=resolveCharVsChar(thief,victim,atkPlan,defPlan,prov,effStat,rng,G);
-      enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      const enc=resolveCharVsChar(thief,victim,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
+      enc.narrative.forEach(line=>emitNarrLine(turnContext,'combat',line,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       thief.hp=Math.max(1,enc.atkHp);
       if(victim.player!==null) victim.hp=Math.max(1,enc.defHp);
       if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(thief)){ if(thief.hp!=null&&thief.hp<=0) thief.hp=1; log('combat',_garrethEscapeLine(thief),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(thief,victim,`${thief.name} is cut down — a thief's end.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(victim,thief); } }
@@ -6651,8 +6284,8 @@ const BATTLE_ARMY_SPELLS={
       const _duelChars=[t.id,caster.id];
       log('combat',`⚔ ${t.name} feels the enchantment clawing at their mind and rounds on ${caster.name} — blades are drawn!`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars});
       markProvinceCombat(prov,[caster.player,t.player]);
-      const enc=resolveCharVsChar(t,caster,atkPlan,defPlan,prov,effStat,rng,G);
-      enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:caster.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      const enc=resolveCharVsChar(t,caster,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
+      enc.narrative.forEach(line=>emitNarrLine(turnContext,'combat',line,{actor:caster.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       if(t.player!==null) t.hp=Math.max(1,enc.atkHp);
       caster.hp=Math.max(1,enc.defHp);
       if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(t)){ if(t.hp!=null&&t.hp<=0) t.hp=1; log('combat',_garrethEscapeLine(t),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(t,caster,`${t.name} is cut down by the enchanter they turned on.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(caster,t); } }
@@ -6724,7 +6357,7 @@ const BATTLE_ARMY_SPELLS={
         // armies. Unarmed characters pass freely either way (AK code of honour: no capture without
         // an army).
         if(toProv.owner!=null && toProv.owner!==c.player && (c.armies||[]).length>0
-           && relationBetween(c.player,toProv.owner)==='neutral'){
+           && relationBetween(turnContext,c.player,toProv.owner)==='neutral'){
           log('move',`${c.name}'s column is turned back at the border of ${toProv.name} — ${player.name} and ${G.players[toProv.owner]?.name||'that realm'} are at peace. Neither may march an army across the other's frontier without a treaty of alliance or a declaration of war.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
           break;
         }
@@ -6755,7 +6388,7 @@ const BATTLE_ARMY_SPELLS={
         // through the sea. (Mixed land+naval stacks still march overland on their land armies.)
         const moveArmies=c.armies||[];
         // NAVAL L7 Blockade: an enemy-sealed sea province cannot be crossed this turn.
-        if(toProv&&toProv._blockadeTurn===G.turn&&toProv._blockadeBy!=null&&toProv._blockadeBy!==c.player&&areEnemies(c.player,toProv._blockadeBy)){
+        if(toProv&&toProv._blockadeTurn===G.turn&&toProv._blockadeBy!=null&&toProv._blockadeBy!==c.player&&areEnemies(turnContext,c.player,toProv._blockadeBy)){
           log('move',`${c.name} finds the waters of ${toProv.name} sealed by an enemy blockade — the crossing is barred this turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
 
@@ -6807,7 +6440,7 @@ const BATTLE_ARMY_SPELLS={
           }
           if((c.armies||[]).length===0) lightSeaMoves[c.id]=(lightSeaMoves[c.id]||0)+1; // free-passage sea leg — don't charge a later fleet for it
           seaMovePoints[c.id]=smp-1;
-          const navalLvl=effStat(c,'naval');
+          const navalLvl=effStat(turnContext,c,'naval');
           log('move',`${c.name} moves across sea to ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
         } else if(coastalLanding){
           // Moving from sea province to land: coastal landing, costs 1 sea MP
@@ -6895,7 +6528,7 @@ const BATTLE_ARMY_SPELLS={
           // Moving into a province raises this player's exploration by 10% + 5% per Explorer skill
           // level of the moving character — applied on EVERY move in, not just the first.
           if(!toProv.exploredBy) toProv.exploredBy={};
-          const explLvlMove=effStat(c,'explorer');
+          const explLvlMove=effStat(turnContext,c,'explorer');
           const explGainMove=(10+5*explLvlMove)+activeItems(c).reduce((sm,it)=>sm+((it&&it.exploreMove)||0),0)+(perkTier(c,'march')>0?2*((c.armies||[]).length):0); // Traveller's Cloak +20% · MARCH L6 +2%/army led (Loremaster explore bonus removed \u2014 now an intel line)
           // (The old Elven "Pathfinder" forest/jungle exploration doubling is REPLACED this session by
           // the Elven escape ability — no exploration bonus now.)
@@ -6983,13 +6616,13 @@ const BATTLE_ARMY_SPELLS={
             const allyDest=intendedDestination(ally,allyOrder);
             if(!allyDest||allyDest.id!==toProv.id) return;
             // Roll contingent unify chance based on March skill and distance
-            const marchLvl=effStat(c,'march');
+            const marchLvl=effStat(turnContext,c,'march');
             // AK [4.1.2]: the unify chance depends on how far apart the two contingents started — 0
             // = both set out from the same province, 1 = adjacent, 2+ = converging from opposite
             // directions.
             const unifyDist=Math.min(2,provDistance(ally.location,prov.id));
             // GOOD — Banner of Fellowship: allies rally to an honourable cause (+15pp unify).
-            const _goodUnify=(G.players[c.player]?.alignment==='Good'?15:0)+discSum(c.player,'unify','pct'); // ag08 Common Cause
+            const _goodUnify=(G.players[c.player]?.alignment==='Good'?15:0)+discSum(turnContext,c.player,'unify','pct'); // ag08 Common Cause
             const unifyChancePct=Math.min(100,contingentUnifyChance(marchLvl,unifyDist,false)+_goodUnify); // sd04 Signal Fires is now a `unify` effect
             const unifyRoll=d100();
             if(unifyRoll<=unifyChancePct){
@@ -7054,7 +6687,7 @@ const BATTLE_ARMY_SPELLS={
           // commander (player==null) is never debited — only the attacker's own losses count
           // against them. Credited AFTER the copy is synced back, so the sync can never write a
           // pre-battle snapshot of `tm` over the merit just earned.
-          creditBattle(_aLead,null,battle,toProv);
+          creditBattle(turnContext,_aLead,null,battle,toProv);
           if(battleAttacker.location!==_aLead.location||battleAttacker.location!==c.location){
             _aParty.forEach(m=>{ if(m.location!==battleAttacker.location) relocateChar(m, battleAttacker.location); });
           }
@@ -7063,7 +6696,7 @@ const BATTLE_ARMY_SPELLS={
           // 2026-10-09 (Toby item 1): a hero pulled into this assault marched and fought, but every
           // line above is filed under the mover, so his own season was blank. Point him at it, as the
           // realm-vs-realm assault below does.
-          friendlyReinforcements.forEach(r=>notifyTarget(r,r.alive===false?`⚔ ${r.name} marched in ${c.name}'s host against ${toProv.name}, and fell there — the full account is under ${c.name}.`:`⚔ ${r.name} marches in ${c.name}'s host against ${toProv.name} — the full account is under ${c.name}.`,ph,'combat'));
+          friendlyReinforcements.forEach(r=>notifyTarget(turnContext, r,r.alive===false?`⚔ ${r.name} marched in ${c.name}'s host against ${toProv.name}, and fell there — the full account is under ${c.name}.`:`⚔ ${r.name} marches in ${c.name}'s host against ${toProv.name} — the full account is under ${c.name}.`,ph,'combat'));
           if(battle.won){
             _payWinPoint();
             // ── Fate of the guard's SURVIVORS ── combatVsNPC has already applied the casualty
@@ -7117,9 +6750,9 @@ const BATTLE_ARMY_SPELLS={
             }
             // Province is claimed when all defenders are eliminated (no survivors to rally)
             if(defSurvivors.length===0){
-            setProvinceOwner(toProv,c.player,c,ph);toProv.neutralDefenders=[];
+            setProvinceOwner(turnContext,toProv,c.player,c,ph);toProv.neutralDefenders=[];
             player.merits+=toProv.tax;if(c.alive!==false)c.merits=(c.merits||0)+toProv.tax; // 2026-09-21: a commander slain in the pre-battle duel earns no personal merit
-            applyEvilConquest(c, toProv, player); // Evil doctrine: loot or enslave
+            applyEvilConquest(turnContext, c, toProv, player); // Evil doctrine: loot or enslave
             toProv._hadBattleThisTurn=true;
           log('combat',`${c.alive===false?`${c.name}'s leaderless host`:c.name} claims ${toProv.name} for ${player.name}!${c.alive===false?'':` (+${toProv.tax} merit)`}`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
             if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
@@ -7137,7 +6770,7 @@ const BATTLE_ARMY_SPELLS={
             toProv.characters=toProv.characters.filter(id=>id!==c.id);
             prov.characters.push(c.id);c.location=prov.id; // rule: never zero remaining move points — the attack move already cost its point; the rest of the turn's budget stays.
           }
-        } else if(toProv.owner!==null&&toProv.owner!==c.player&&(c.armies||[]).length>0&&areEnemies(c.player,toProv.owner)){
+        } else if(toProv.owner!==null&&toProv.owner!==c.player&&(c.armies||[]).length>0&&areEnemies(turnContext,c.player,toProv.owner)){
           // ENEMY-owned province → invasion/battle (below). ALLIED-owned falls through to the final
           // else and is treated as a peaceful entry (allies grant free passage and never fight
           // here); NEUTRAL-owned was already turned back at the border above.
@@ -7161,9 +6794,9 @@ const BATTLE_ARMY_SPELLS={
               const allyOrder=G.turnOrders?.[ally.id]?.[ph];
               if(!allyOrder||normaliseAction(allyOrder)!=='move') return;   // see the note on the NPC-side unify above
               { const _aDest=intendedDestination(ally,allyOrder); if(!_aDest||_aDest.id!==toProv.id) return; }
-              const marchLvl=effStat(c,'march');
+              const marchLvl=effStat(turnContext,c,'march');
               const unifyDist=Math.min(2,provDistance(ally.location,prov.id));
-              const unifyPct=Math.min(100,contingentUnifyChance(marchLvl,unifyDist,false)+(G.players[c.player]?.alignment==='Good'?15:0)+discSum(c.player,'unify','pct')); // GOOD — Banner of Fellowship; + ag08 Common Cause
+              const unifyPct=Math.min(100,contingentUnifyChance(marchLvl,unifyDist,false)+(G.players[c.player]?.alignment==='Good'?15:0)+discSum(turnContext,c.player,'unify','pct')); // GOOD — Banner of Fellowship; + ag08 Common Cause
               const roll=d100();
               if(roll<=unifyPct){
                 pvpReinforcements.push(ally);
@@ -7180,7 +6813,7 @@ const BATTLE_ARMY_SPELLS={
             });
             // Defender unify (defenders in same province always combine)
             const defReinforcements=G.characters.filter(d=>d.alive&&d.id!==defChar.id&&d.player===toProv.owner&&d.location===toProv.id&&(d.armies||[]).length>0);
-            const defNavLvl=effStat(defChar,'naval');
+            const defNavLvl=effStat(turnContext,defChar,'naval');
             // Item (reorder): the "…moves into… a battle is initiated" line must be the FIRST line
             // of the battle block — before the defender's reinforce/rally form-up. Those lines are
             // therefore COLLECTED here (not logged inline) and spliced into battle.narrative right
@@ -7223,11 +6856,11 @@ const BATTLE_ARMY_SPELLS={
             const combinedAtk={..._atkLead,armies:_atkPooled,...landingPartyFlags(_atkParty,toProv)}; // Reaver Crews (2026-09-23e) and Raid the Coast (2026-09-23f) stay with the landed troops whoever commands
             const combinedDef={..._defLead,armies:_defPooled};
             const _vDefs=[defChar,...defReinforcements].filter(Boolean);
-            if(isVeiled(c) || (_vDefs.length>0 && _vDefs.every(d=>isVeiled(d)))){ break; } // ILLUSORY L9 VEIL: a veiled attacker slips in unseen; a wholly-veiled defence cannot be found — no battle, no contest flagged (it triggers when the veil parts, via the re-trigger scan).
+            if(isVeiled(turnContext,c) || (_vDefs.length>0 && _vDefs.every(d=>isVeiled(turnContext,d)))){ break; } // ILLUSORY L9 VEIL: a veiled attacker slips in unseen; a wholly-veiled defence cannot be found — no battle, no contest flagged (it triggers when the veil parts, via the re-trigger scan).
             if(_fmSlip && kcRng()<0.5){ toProv._battleUnresolved=true; log('move',`⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true}); break; } // MARCH L7 slip
             const battle=combatVsChar(combinedAtk,combinedDef,toProv);
             syncLeaderCopy(_atkLead,combinedAtk); syncLeaderCopy(_defLead,combinedDef); // wounds, deaths, spent items and skill gains land on the real commanders
-            creditBattle(_atkLead,_defLead,battle,toProv);
+            creditBattle(turnContext,_atkLead,_defLead,battle,toProv);
             const targets=[c.player,defChar.player];
             // Reorder: place the collected reinforce/rally lines immediately AFTER the "…moves
             // into… a battle is initiated." line so the move that triggers the fight reads first,
@@ -7248,8 +6881,8 @@ const BATTLE_ARMY_SPELLS={
             emitBattle(battle, toProv, ph, targets, {actor:c.player, charIds:_battleChars}); // item 5
             // 2026-09-21: these pointers are written AFTER the battle, so a same-side hero who fell in
             // its pre-battle duel must be told in the past tense, not as if he still marches.
-            defReinforcements.forEach(d=>notifyTarget(d,d.alive===false?`⚔ ${d.name} stood in the battle line beside ${defChar.name} in the defence of ${toProv.name}, and fell there — the full account is under ${defChar.name}.`:`⚔ ${d.name} stands in the battle line beside ${defChar.name} in the defence of ${toProv.name} — the full account is under ${defChar.name}.`,ph,'combat'));
-            pvpReinforcements.forEach(r=>notifyTarget(r,r.alive===false?`⚔ ${r.name} marched in ${c.name}'s host against ${toProv.name}, and fell there — the full account is under ${c.name}.`:`⚔ ${r.name} marches in ${c.name}'s host against ${toProv.name} — the full account is under ${c.name}.`,ph,'combat'));
+            defReinforcements.forEach(d=>notifyTarget(turnContext, d,d.alive===false?`⚔ ${d.name} stood in the battle line beside ${defChar.name} in the defence of ${toProv.name}, and fell there — the full account is under ${defChar.name}.`:`⚔ ${d.name} stands in the battle line beside ${defChar.name} in the defence of ${toProv.name} — the full account is under ${defChar.name}.`,ph,'combat'));
+            pvpReinforcements.forEach(r=>notifyTarget(turnContext, r,r.alive===false?`⚔ ${r.name} marched in ${c.name}'s host against ${toProv.name}, and fell there — the full account is under ${c.name}.`:`⚔ ${r.name} marches in ${c.name}'s host against ${toProv.name} — the full account is under ${c.name}.`,ph,'combat'));
             // combatVsChar fights on pooled COPIES (combinedAtk/combinedDef) and marks fallen units
             // with _died on the shared army objects. Write those casualties back to the real
             // characters and their reinforcements so destroyed armies are actually removed
@@ -7358,9 +6991,9 @@ const BATTLE_ARMY_SPELLS={
                 if(!_hostileLeft&&_navalBlock.length>0) log('combat',navalHoldLine(toProv,_navalBlock,player.name),{actor:c.player,targets,provinceId:toProv.id,public:true});
               } else {
                 G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-                setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+                setProvinceOwner(turnContext,toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                 log('combat',`${c.alive?c.name:`${c.name}'s leaderless host`} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets,provinceId:toProv.id,public:true});
-                applyEvilConquest(c, toProv, player);
+                applyEvilConquest(turnContext, c, toProv, player);
               }
             } else {
               // Attacker repelled. combatVsChar fights on COPIES and decides the attacker's fate on
@@ -7439,7 +7072,7 @@ const BATTLE_ARMY_SPELLS={
               // breaking an enemy realm's garrison destroys THEIR units, so it earns Grand Marshal
               // / Sea Lord merit like any other land battle. No commander stands opposite, so
               // nobody is debited for the garrison's dead.
-              if(toProv.owner!=null&&toProv.owner!==c.player) creditBattle(c,null,garBattle,toProv);
+              if(toProv.owner!=null&&toProv.owner!==c.player) creditBattle(turnContext,c,null,garBattle,toProv);
               toProv._hadBattleThisTurn=true;
               if(garBattle.won) markOrcAttackWin(c, G, garBattle); // orc war-spoils — this attacking force won (line appended to the report)
               emitBattle(garBattle, toProv, ph, [c.player,toProv.owner].filter(x=>x!==null), {actor:c.player}); // item 5
@@ -7459,9 +7092,9 @@ const BATTLE_ARMY_SPELLS={
                     toProv.garrisonArmies=[];
                     log('combat',`The garrison of ${toProv.name} is broken and falls back to ${_dest.name} rather than be overrun.`,{actor:c.player,targets:[c.player,toProv.owner].filter(x=>x!==null),provinceId:_dest.id,public:true});
                     G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-                    setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+                    setProvinceOwner(turnContext,toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                     log('combat',`${c.name} takes ${toProv.name} as its garrison withdraws!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
-                    applyEvilConquest(c, toProv, player);
+                    applyEvilConquest(turnContext, c, toProv, player);
                   } else {
                     // Beaten but not broken — the province is still held and still contested.
                     toProv._battleUnresolved=true;
@@ -7469,9 +7102,9 @@ const BATTLE_ARMY_SPELLS={
                   }
                 } else {
                   G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-                  setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+                  setProvinceOwner(turnContext,toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                   log('combat',`${c.name} breaks through the last of the garrison and seizes ${toProv.name}!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
-                  applyEvilConquest(c, toProv, player);
+                  applyEvilConquest(turnContext, c, toProv, player);
                 }
               } else {
                 // Repelled. combatVsNPC has already decided the attacker's fate on the real
@@ -7491,10 +7124,10 @@ const BATTLE_ARMY_SPELLS={
               const _prevOwnerIdx=(toProv.owner!=null&&toProv.owner!==c.player)?toProv.owner:null; // capture before ownership transfers
               const _prevOwnerName=_prevOwnerIdx!=null?(G.players[_prevOwnerIdx]?.name||null):null;
               G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-              setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+              setProvinceOwner(turnContext,toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               // 2026-10-08 (Toby item 6): no battle, so no second point — the step in was the cost.
               log('move',`${c.name} seizes the undefended province of ${toProv.name}${_prevOwnerName?` from ${_prevOwnerName}`:''} for ${player.name}!`,{actor:c.player,targets:_prevOwnerIdx!=null?[_prevOwnerIdx]:[],provinceId:toProv.id,public:true});
-              applyEvilConquest(c, toProv, player);
+              applyEvilConquest(turnContext, c, toProv, player);
             }
           }
         } else {
@@ -7506,7 +7139,7 @@ const BATTLE_ARMY_SPELLS={
             c._attackedFrom=prov.id;
             if(_fmSlip && kcRng()<0.5){ toProv._battleUnresolved=true; log('move',`⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true}); break; } // MARCH L7 slip
             const llBattle=combatVsNPC(c,toProv,null);
-            creditBattle(c,null,llBattle,toProv);   // a leaderless neutral guard still pays merit
+            creditBattle(turnContext,c,null,llBattle,toProv);   // a leaderless neutral guard still pays merit
             if(llBattle.won) markOrcAttackWin(c, G, llBattle); // 2026-09-27 (Toby item 8): war-spoils were credited on only three of the six attacking-win paths — a leaderless neutral garrison is still a battle won on the attack
             emitBattle(llBattle, toProv, ph, [c.player,toProv.owner].filter(x=>x!=null), {actor:c.player}); // item 5
             c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
@@ -7521,11 +7154,11 @@ const BATTLE_ARMY_SPELLS={
                 toProv._battleUnresolved=true;
                 log('combat',`💢 The leaderless garrison of ${toProv.name} refuses to yield — ${llSurv.length} unit${llSurv.length!==1?'s':''} still contest the province!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
               } else {
-                setProvinceOwner(toProv,c.player,c,ph); delete toProv._leaderlessDefenders;
+                setProvinceOwner(turnContext,toProv,c.player,c,ph); delete toProv._leaderlessDefenders;
                 player.merits+=toProv.tax; c.merits=(c.merits||0)+toProv.tax;
                 if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                 log('combat',`${c.name} overcomes the last of the leaderless defenders and claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit)`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
-                applyEvilConquest(c, toProv, player);
+                applyEvilConquest(turnContext, c, toProv, player);
               }
             } else {
               // Repelled by a garrison with no commander — back the way they came.
@@ -7542,7 +7175,7 @@ const BATTLE_ARMY_SPELLS={
             // stale intel, but the real defenders live on the guard hero — and there is none here).
             // Only armies can claim a province — a hero without troops cannot conquer
             if((c.armies||[]).length>0){
-              setProvinceOwner(toProv,c.player,c,ph);
+              setProvinceOwner(turnContext,toProv,c.player,c,ph);
               toProv.neutralDefenders=[];toProv.npcArmies=0;delete toProv._leaderlessDefenders; // clear any stale intel now it's ours
               if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               if(!toProv.visitedBy.includes(c.player))toProv.visitedBy.push(c.player);
@@ -7585,14 +7218,14 @@ const BATTLE_ARMY_SPELLS={
   const BASIC_EXPLORE={...KC_BASIC_EXPLORE};
         const basicRate=BASIC_EXPLORE[prov.terrain]||15;
         // sd24 The Compass: Explorer treated as 1 level higher
-        const explorerSkill=Math.min(5,effStat(c,'explorer'));
+        const explorerSkill=Math.min(5,effStat(turnContext,c,'explorer'));
         // sd10 Scouts & Rangers: +20% explore bonus
         const scoutBonus=1; // sd10 Scouts & Rangers / sd24 The Compass are now `explore` effects
-        const loreMult=(charMinor(c,'trailblazer')?1.05:1); // Trailblazer minor: +5% (Loremaster explore bonus removed \u2014 now an intel line)
+        const loreMult=(charMinor(turnContext,c,'trailblazer')?1.05:1); // Trailblazer minor: +5% (Loremaster explore bonus removed \u2014 now an intel line)
         // (The old Elven "Pathfinder" double forest/jungle exploration has been REPLACED this session by
         // the Elven escape ability — see recordBattleGraves / flushElvenEscapes. No exploration
         // bonus now.)
-        let _discExpl=1; discEff(c.player,'explore').forEach(e=>{ if(!e.terrains||e.terrains.includes(prov.terrain)) _discExpl*=(e.mult||1); }); // explore discoveries
+        let _discExpl=1; discEff(turnContext,c.player,'explore').forEach(e=>{ if(!e.terrains||e.terrains.includes(prov.terrain)) _discExpl*=(e.mult||1); }); // explore discoveries
         const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult*_discExpl));
         if(!prov.exploredBy) prov.exploredBy={};
         const before=prov.exploredBy[c.player]||0;
@@ -7605,7 +7238,7 @@ const BATTLE_ARMY_SPELLS={
         // upward.
         if(perkTier(c,'explorer')>=3 && !prov._richSurveyed && kcRng()<0.5){ prov._richSurveyed=true; const _b8=prov.tax||0; prov.tax=Math.min(10,_b8+2); if(prov.tax>_b8) log('explore',`\u26f0 ${c.name}'s keen survey of ${prov.name} reveals richer land \u2014 its tax base rises to ${prov.tax}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
         // ANCIENT LORE (sd32) — the same Explore action also maps 10% of each adjacent province.
-        if(hasDisc(c.player,'sd32')){ const _alPct=discParam('sd32','pct',10);
+        if(hasDisc(turnContext,c.player,'sd32')){ const _alPct=discParam('sd32','pct',10);
           getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{ if(!nb)return; if(!nb.exploredBy)nb.exploredBy={}; const _ab=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_ab+_alPct); nb.explored=nb.exploredBy[c.player]; creditMapped(c, _ab, nb.exploredBy[c.player]); });
         }
         // Feature discovery: proportional thresholds based on how many features exist At 100%
@@ -7686,7 +7319,7 @@ const BATTLE_ARMY_SPELLS={
             // the bound beasts are VETERAN. _wildHuntUntilTurn is the LAST turn they serve
             // (released by the end-of-turn sweep once G.turn has advanced PAST it).
             const _u={type:_wildType,quality:'Veteran',race:prov.race||'Primal',
-              unitName:armyUnitName(_wildType),_wildHuntUntilTurn:G.turn+WILD_HUNT_TURNS+discSum(c.player,'wildHunt','turns')}; // + ap08 The Long Hunt
+              unitName:armyUnitName(_wildType),_wildHuntUntilTurn:G.turn+WILD_HUNT_TURNS+discSum(turnContext,c.player,'wildHunt','turns')}; // + ap08 The Long Hunt
             c.armies.push(_u);_boundNames.push(`${_u.unitName} (${_wildType})`);
           }
           log('combat',`\u{1F525} ${c.name} performs the Rite of the Wild Hunt at the ${_riteSite.name} (${_huntCost}g — the price of a single beast, whatever number answer). The old gods answer: ${_boundNames.join(' and ')} come down from the wilds to serve as veterans — they draw no wages, and hold until the end of next turn, when the binding fails.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -7804,10 +7437,10 @@ const BATTLE_ARMY_SPELLS={
         if(!featDiscovered(f,c.player)){discoverFeat(f,c.player); TM(c).featuresFound+=1;} // TITLE MERIT: Loremaster
         const plan=c.encounterPlan||{tactics:['ME']};
         markProvinceCombat(prov,[c.player]); // purple swords: a personal combat, not a field battle
-        const encounter=resolveEncounter(c,f,prov,plan.tactics||['ME'],effStat,rng,player);
+        const encounter=resolveEncounter(c,f,prov,plan.tactics||['ME'],(...a)=>effStat(turnContext,...a),rng,player);
         try{ _tel.encounters.push({ph, pi:c.player, charId:c.id, prov:prov.id, feature:f.name||null, guardian:(f.monster&&f.monster.name)||null, power:(f.monster&&f.monster.power)||null,
           won:!!encounter.won, fled:!!encounter.fled, dmg:encounter.damageToHero||0, hpAfter:encounter.heroHpAfter, killed:!!encounter.heroKilled, tactics:(plan.tactics||['ME']).slice(0,12)}); }catch(_te){}
-        encounter.narrative.forEach(line=>{emitNarrLine('explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
+        encounter.narrative.forEach(line=>{emitNarrLine(turnContext,'explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
 
         // Hero killed by monster?
         if(encounter.heroKilled){
@@ -7847,7 +7480,7 @@ const BATTLE_ARMY_SPELLS={
             // Thief revision: the cut is 10% PER THIEF LEVEL (capped at 5 → 50%) of the
             // hoard's ORIGINAL size, so skill decides the haul and a full-strength thief empties a
             // lair in two visits. Never more than what is actually left.
-            const _thLvl=Math.min(5,effStat(c,'thief'));
+            const _thLvl=Math.min(5,effStat(turnContext,c,'thief'));
             const gold=Math.max(1, Math.min(hoard, Math.round((f._hoardGoldOrig||hoard)*0.10*_thLvl)));
             setFeatureTreasure(f, hoard-gold);
             player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;
@@ -7862,7 +7495,7 @@ const BATTLE_ARMY_SPELLS={
           // beating the guardian. (They can still be stolen from another character.)
           { ensureLairHoard(f,G); const _hiAll=(f.hoardItems||[]); const _hi=_hiAll.filter(it=>!isLegendaryItem(it));
             if(!_hi.length&&_hiAll.length) log('explore',`${c.name} eyes the ${f.monster?.name||'guardian'}'s relic, but a Legendary treasure is not something that can be spirited away — it must be won by defeating its keeper.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-            if(_hi.length){ const _th=effStat(c,'thief'); const _ch=Math.min(80,30+10*_th); const _r=d100();
+            if(_hi.length){ const _th=effStat(turnContext,c,'thief'); const _ch=Math.min(80,30+10*_th); const _r=d100();
               if(_r<=_ch){ const _it=_hi[Math.floor(kcRng()*_hi.length)]; _hiAll.splice(_hiAll.indexOf(_it),1); c.items=(c.items||[]); c.items.push(_it); applyItemMaxHp(c,_it);
                 f._stolenItems=(f._stolenItems||[]).concat(_it.name);
                 log('explore',`🗝 ${c.name} also slips ${(isLegendaryItem(_it)?'the LEGENDARY ':'the ')}${_it.name} (${_it.desc}) out from under the guardian's nose! ${fmtRoll(_ch,_r)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -7882,7 +7515,7 @@ const BATTLE_ARMY_SPELLS={
           // pay out the cached clear-gold roll so a scouted figure is exactly honoured; if the site
           // was never scouted, encounterClearGold rolls it now from the same tier band (T.gold).
           const gold=encounterClearGold(f);
-          const goldFinal=Math.round(gold*(1+discSum(c.player,'lairGold','pct',e=>(!e.terrains||e.terrains.includes(prov.terrain))&&(!e.charRace||c.race===e.charRace)))); // lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
+          const goldFinal=Math.round(gold*(1+discSum(turnContext,c.player,'lairGold','pct',e=>(!e.terrains||e.terrains.includes(prov.terrain))&&(!e.charRace||c.race===e.charRace)))); // lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
           player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           setFeatureTreasure(f,0); // the hoard is lifted
           // 2026-10-14 (batch item 8, Toby): carrying off a cleared lair's hoard no longer trains Thief
@@ -7911,7 +7544,7 @@ const BATTLE_ARMY_SPELLS={
           (f.hoardItems||[]).forEach(it=>drops.push(it)); f.hoardItems=[];
           const baseDrops=drops.slice(); // the hoard's own magic, narrated below; bonus finds announce themselves.
           // sd25 Alchemical Theory: 10% chance of an extra find.
-          { const _dIC=discSum(c.player,'itemChance','pct',e=>!e.terrains||e.terrains.includes(prov.terrain)); if(_dIC>0&&kcRng()<_dIC){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Your realm's lore yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); log('explore',itemLoreLines([bonus]),{actor:c.player,targets:[c.player],provinceId:prov.id}); } } } // itemChance discoveries
+          { const _dIC=discSum(turnContext,c.player,'itemChance','pct',e=>!e.terrains||e.terrains.includes(prov.terrain)); if(_dIC>0&&kcRng()<_dIC){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Your realm's lore yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); log('explore',itemLoreLines([bonus]),{actor:c.player,targets:[c.player],provinceId:prov.id}); } } } // itemChance discoveries
           c.items=(c.items||[]);
           drops.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ noteItemFound(G,c.player,it); }); // tally what this realm has found, by category
           // Narrate the magic actually won here.
@@ -7999,7 +7632,7 @@ const BATTLE_ARMY_SPELLS={
               log('hire',`🐾 ${beastCommandWords(_destChar,G.characters)} — the ${merc.unitName||merc.type} mercenaries are not hired.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); return; }
             const baseMercCost=ARMY_COST_P[merc.type]||2;
             // Neutral alignment: mercenaries cost 2g less (min 1g)
-            const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?2:0)+discSum(c.player,'merc','delta',e=>!e.cls||discUnitIs(e.cls,merc.type,true))); // + merc discoveries
+            const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?2:0)+discSum(turnContext,c.player,'merc','delta',e=>!e.cls||discUnitIs(e.cls,merc.type,true))); // + merc discoveries
             if((player.gold||0)<mCost){log('hire',`${c.name}: cannot afford ${merc.unitName||merc.type} mercenaries (${mCost}g).`,{actor:c.player,targets:[c.player]});return;}
             player.gold-=mCost;
             _pushRecruit({type:merc.type,quality:merc.quality,race:merc.race,unitName:merc.unitName});
@@ -8064,7 +7697,7 @@ const BATTLE_ARMY_SPELLS={
           totalCost+=cost;
           for(let q=0;q<actualQty;q++){
             // sd01 Superior Forging: recruited armies start at Veteran
-          const startQuality=((gdActive(c.player,'Druidic')&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)))||kcRng()<discRecruitQChance(G.players[c.player],armyType))?'Veteran':'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
+          const startQuality=((gdActive(turnContext,c.player,'Druidic')&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)))||kcRng()<discRecruitQChance(G.players[c.player],armyType))?'Veteran':'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
           // Whale Cohorts and Shark Shoals are wild sea beasts — always the Primal race, whoever raises them.
           const recruitRace=(armyType==='Whale Cohort'||armyType==='Shark Shoals')?'Primal':(prov.race||'Human');
           _pushRecruit({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
@@ -8081,7 +7714,7 @@ const BATTLE_ARMY_SPELLS={
             (blocked.length>0?` (Blocked: ${blocked.join('; ')}.)`:''),
             {actor:c.player,targets:[c.player],provinceId:prov.id});
           // if the muster went to ANOTHER of the player's characters, notify them in their section.
-          if(!_destGarrison && _destChar && _destChar.id!==c.id) notifyTarget(_destChar,`⚔ ${recruited.join(', ')} muster to ${_destChar.name}'s banner in ${prov.name}, raised by ${c.name}.`,ph,'hire');
+          if(!_destGarrison && _destChar && _destChar.id!==c.id) notifyTarget(turnContext, _destChar,`⚔ ${recruited.join(', ')} muster to ${_destChar.name}'s banner in ${prov.name}, raised by ${c.name}.`,ph,'hire');
           // Newly-mustered units join the destination character's column — recompute their pace (a
           // slow recruit can only reduce it), preserving points already spent. Garrison musters
           // don't march.
@@ -8104,7 +7737,7 @@ const BATTLE_ARMY_SPELLS={
         // Divine…Undead spectrum. Divine realms cannot hire Undead heroes and vice versa (distance
         // 6) — unless sd31 Diplomatic Protocols waives the ban (at 5g).
         const kingdomAlign=G.players[c.player]?.alignment||'Neutral';
-        const _waiveBan=hasDisc(c.player,'sd31');
+        const _waiveBan=hasDisc(turnContext,c.player,'sd31');
         const hireWage=h.player===null?heroHireWage(kingdomAlign,h.alignment,_waiveBan,h):(h.pay||1);
         if(hireWage==null){
           log('hire',`${h.name} (${h.alignment}) recoils from ${c.name}'s offer — ${kingdomAlign==='Divine'?'no creature of the grave will serve a Divine crown':'the faithful will never serve an Undead throne'}. (Alignment gulf too wide: Divine and Undead cannot hire one another.)`,{actor:c.player,targets:[c.player]});
@@ -8148,8 +7781,8 @@ const BATTLE_ARMY_SPELLS={
         // ground or (counterSpy) to the defender's capital. sd21 / sd19 are now ordinary effects.
         const _spyProv=String(target||'').startsWith('char:')?prov:(targetProvForSpy||prov);
         const _spyScope=(e,ownerPi)=>(!e.terrains||(_spyProv&&e.terrains.includes(_spyProv.terrain)))&&(!e.coastal||(_spyProv&&provIsCoastal(G,_spyProv)))&&(!e.home||(_spyProv&&ownerPi!=null&&homeFounderOf(G,_spyProv.id)===ownerPi));
-        const spyBonus=discSum(c.player,'spy','pct',e=>_spyScope(e,null)); // spy discoveries
-        const cipherPenalty=((targetProvForSpy&&targetProvForSpy.owner!==null&&targetProvForSpy.owner!==c.player)?discSum(targetProvForSpy.owner,'counterSpy','pct',e=>_spyScope(e,targetProvForSpy.owner)):0); // counterSpy discoveries
+        const spyBonus=discSum(turnContext,c.player,'spy','pct',e=>_spyScope(e,null)); // spy discoveries
+        const cipherPenalty=((targetProvForSpy&&targetProvForSpy.owner!==null&&targetProvForSpy.owner!==c.player)?discSum(turnContext,targetProvForSpy.owner,'counterSpy','pct',e=>_spyScope(e,targetProvForSpy.owner)):0); // counterSpy discoveries
         // ── Item 10: SPY ON A CHARACTER ── target 'char:<id>' names a non-own character standing
         // in the same province. Success 25% +10%/Spy level (Master Spy / Crystal Orb: automatic)
         // reveals every skill level, every magic item and every army unit they lead. Success or
@@ -8165,10 +7798,10 @@ const BATTLE_ARMY_SPELLS={
             log('system',`${c.name} looks for ${_tgt?_tgt.name:'their quarry'} in ${prov.name}, but they are not to be found here — the spying comes to nothing.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
           if(activeItems(_tgt).some(it=>it&&it.effect&&it.effect.stat==='hidden')){
             log('system',`${c.name} shadows ${_tgt.name} through ${prov.name}, but can never quite fix on a face — nothing is learned. (Cloak of Many Faces)`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-          const _mySpy=effStat(c,'spy'), _tgSpy=effStat(_tgt,'spy');
+          const _mySpy=effStat(turnContext,c,'spy'), _tgSpy=effStat(turnContext,_tgt,'spy');
           const _masterSpy=perkTier(c,'spy')>0;
           const _auto=hasCrystalOrb||_masterSpy;
-          const _chance=Math.max(5,Math.min(95,dispFloor((0.25+0.10*_mySpy+spyBonus+discSum(c.player,'spyChar','pct',e=>_spyScope(e,null)))*100))); // + spyChar discoveries (optionally scoped to where it happens)
+          const _chance=Math.max(5,Math.min(95,dispFloor((0.25+0.10*_mySpy+spyBonus+discSum(turnContext,c.player,'spyChar','pct',e=>_spyScope(e,null)))*100))); // + spyChar discoveries (optionally scoped to where it happens)
           const _roll=d100();
           const _ok=_auto||_roll<=_chance;
           log('system',`📊 Spy on ${_tgt.name} — ${c.name} (Spy ${_mySpy}) in ${prov.name}: ${_auto?`automatic success (${hasCrystalOrb?'Crystal Orb':'Master Spy'})`:fmtRoll(_chance,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -8190,14 +7823,14 @@ const BATTLE_ARMY_SPELLS={
             trySkillGain(c,'spy',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
           }
           // Caught?
-          if(!charMinor(c,'shadow')){
+          if(!charMinor(turnContext,c,'shadow')){
             let _catch=20+10*_tgSpy-10*_mySpy;
             const _tgRealmLand=(_tgt.player!=null&&prov.owner===_tgt.player), _myLand=(prov.owner===c.player);
             if(_tgRealmLand) _catch+=15; if(_myLand) _catch-=15;
-            if(_tgt.player!=null) _catch+=discSum(_tgt.player,'catchSpy','pct',e=>_spyScope(e,_tgt.player)); // catchSpy discoveries (sd63 Informer Rewards)
+            if(_tgt.player!=null) _catch+=discSum(turnContext,_tgt.player,'catchSpy','pct',e=>_spyScope(e,_tgt.player)); // catchSpy discoveries (sd63 Informer Rewards)
             _catch=Math.max(5,Math.min(95,_catch));
             const _cr=d100();
-            log('system',`📊 Detection — ${_tgt.name}${statNote(c.player,_tgt,'spy')} noticing ${c.name}${_tgRealmLand?' in their own land':_myLand?' in your land':''}: ${oddsNote(c.player,_tgt,_catch,_cr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('system',`📊 Detection — ${_tgt.name}${statNote(turnContext,c.player,_tgt,'spy')} noticing ${c.name}${_tgRealmLand?' in their own land':_myLand?' in your land':''}: ${oddsNote(turnContext,c.player,_tgt,_catch,_cr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             if(_cr<=_catch){
               if(_tgt.player!=null) log('system',`[Intelligence] ${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''} was caught spying on ${_tgt.name} in ${prov.name}.`,{actor:c.player,targets:[_tgt.player],provinceId:prov.id,charId:_tgt.id});
               thiefCaughtScuffle(c,_tgt,'spying on them');
@@ -8211,16 +7844,16 @@ const BATTLE_ARMY_SPELLS={
         // and persists in the save, so leaving it set once made a spy invisible for the rest of the
         // game.
         c._spyDisguised=false;
-        if(charMinor(c,'shadow')) c._spyDisguised=true; // MINOR TITLE — The Shadow: spies never detected
+        if(charMinor(turnContext,c,'shadow')) c._spyDisguised=true; // MINOR TITLE — The Shadow: spies never detected
         // show the spy's success chance and the actual roll (previously neither was reported).
-        const _spyChance=dispFloor((0.2+effStat(c,'spy')*0.2+spyBonus-cipherPenalty)*100);
+        const _spyChance=dispFloor((0.2+effStat(turnContext,c,'spy')*0.2+spyBonus-cipherPenalty)*100);
         const _autoSpy=hasCrystalOrb||masterSpy;
         const _spyRoll=d100();
         const success=_autoSpy||(_spyRoll<=_spyChance);
-        log('system',`📊 Spy — ${c.name} (Spy ${effStat(c,'spy')}) in ${prov.name}: ${_autoSpy?`automatic success (${hasCrystalOrb?'Crystal Orb':'Master Spy'})`:fmtRoll(_spyChance,_spyRoll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('system',`📊 Spy — ${c.name} (Spy ${effStat(turnContext,c,'spy')}) in ${prov.name}: ${_autoSpy?`automatic success (${hasCrystalOrb?'Crystal Orb':'Master Spy'})`:fmtRoll(_spyChance,_spyRoll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         // sd23 Disguise Techniques: 50% HARDER to be discovered — the counter-intelligence alert
         // that would otherwise always fire is turned aside half the time.
-        if(success&&!c._spyDisguised&&hasDisc(c.player,'sd23')){
+        if(success&&!c._spyDisguised&&hasDisc(turnContext,c.player,'sd23')){
           const _dgRoll=d100();
           const _dgPct=Math.round(discParam('sd23','pct',0.5)*100);
           if(_dgRoll<=_dgPct) c._spyDisguised=true;
@@ -8255,7 +7888,7 @@ const BATTLE_ARMY_SPELLS={
         if(_adjConsecId!=null){
           log('system',`${c.name}: ${prov.name} borders ${G.world.provinces[_adjConsecId]?.name||'already-hallowed ground'} — two consecrated provinces may not lie side by side. Carry the light to ground set apart from your other holy lands.`,{actor:c.player,targets:[c.player]});break;}
         // the crown may hold up to its WHITE skill level in consecrated provinces at once.
-        const _cLimit=skillLevel(c,'white')+discSum(c.player,'consecrate','cap',e=>skillLevel(c,'white')>=(e.minWhite||1)); // ad03 Holy Sites (+1; still needs White 1+)
+        const _cLimit=skillLevel(c,'white')+discSum(turnContext,c.player,'consecrate','cap',e=>skillLevel(c,'white')>=(e.minWhite||1)); // ad03 Holy Sites (+1; still needs White 1+)
         if(_cLimit<=0){
           log('system',`${c.name}: consecration flows from the White arts — learn White magic before you can sanctify ground.`,{actor:c.player,targets:[c.player]});break;}
         if(_cList.length>=_cLimit){
@@ -8286,7 +7919,7 @@ const BATTLE_ARMY_SPELLS={
           || GARRISON_BY_RACE_CTA[ctaProv.race]
           || 'Human Garrison';
         ctaProv.garrisonArmies=ctaProv.garrisonArmies||[];
-        const _ctaQ=(discEff(c.player,'ctaQuality').filter(e=>e.pct==null||kcRng()<e.pct).map(e=>e.quality).find(q=>q&&QUALITY_TIERS.includes(q)))||'Green'; // ag05 Muster Rolls (a chance per muster)
+        const _ctaQ=(discEff(turnContext,c.player,'ctaQuality').filter(e=>e.pct==null||kcRng()<e.pct).map(e=>e.quality).find(q=>q&&QUALITY_TIERS.includes(q)))||'Green'; // ag05 Muster Rolls (a chance per muster)
         ctaProv.garrisonArmies.push({type:ctaType,quality:_ctaQ,race:ctaProv.race||'Human',unitName:armyUnitName(ctaType)});
         player._calledToArmsTurn=G.turn;
         log('hire',`📯 Call to Arms! The folk of ${ctaProv.name} answer their king — ${_ctaQ==='Green'?'a Green':'an '+_ctaQ} ${ctaType} joins the province garrison, free of wages this muster. (Once per turn.)`,{actor:c.player,targets:[c.player],provinceId:ctaProv.id}/* 2026-09-27 (Toby item 6): realm-private — never public */);
@@ -8306,7 +7939,7 @@ const BATTLE_ARMY_SPELLS={
           if(!bh||bh.player!==null||!bh.alive||bh._isNeutralGuard||bh._justDefeated||!_visible){
             log('hire',`${c.name}'s brokers find no such hero within reach of the realm's agents.`,{actor:c.player,targets:[c.player]});break;}
           if(bh._releasedTurn===G.turn){log('hire',`${bh.name} was only just released from service and will hear no offers this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;} // same rule as Hire Hero
-          const bWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',bh.alignment,hasDisc(c.player,'sd31'),bh);
+          const bWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',bh.alignment,hasDisc(turnContext,c.player,'sd31'),bh);
           if(bWage==null){log('hire',`${bh.name} will not treat with your brokers — the alignment gulf is too wide.`,{actor:c.player,targets:[c.player]});break;}
           if((player.gold||0)<bWage){log('hire',`${c.name} cannot afford ${bh.name} — needs ${bWage}g/turn.`,{actor:c.player,targets:[c.player]});break;}
           bh.pay=bWage; player.gold-=bWage;
@@ -8352,12 +7985,12 @@ const BATTLE_ARMY_SPELLS={
         const hGraves=prov.battleGraves||[];
         if(hGraves.length===0){
           log('system',`${c.name} walks the field of ${prov.name}, but there are no battlefield dead here to raise.`,{actor:c.player,targets:[c.player]});break;}
-        const _hCost=Math.max(0,2+discSum(c.player,'harvestCost','delta')); // az06 Corpse-Carters
+        const _hCost=Math.max(0,2+discSum(turnContext,c.player,'harvestCost','delta')); // az06 Corpse-Carters
         if((player.gold||0)<_hCost){
           log('system',`${c.name}: the corpse-carters and grave-wights want their ${_hCost}g — the treasury cannot pay.`,{actor:c.player,targets:[c.player]});break;}
         player.gold-=_hCost;
         const hGrave=takeBestGrave(prov); // the most experienced dead are worked first
-        const _uTierH=gdActive(c.player,'Undead'); // GRAND DESIGN — Undead
+        const _uTierH=gdActive(turnContext,c.player,'Undead'); // GRAND DESIGN — Undead
         const hSkel={type:hGrave.type,quality:(_uTierH?(KC_QUALITY_UP[hGrave.quality]||hGrave.quality):hGrave.quality),race:'Undead',_isSkeletal:true,
           unitName:`${hGrave.unitName||armyUnitName(hGrave.type)} (Skeletal)`};
         c.armies=(c.armies||[]); c.armies.push(hSkel);
@@ -8367,7 +8000,7 @@ const BATTLE_ARMY_SPELLS={
         // together, so a raiser with no Necromancy is warned at once, while there is still time in
         // the turn to hand the unit to one. Without this the player would simply find it gone at
         // end of turn, having paid for it.
-        if(effStat(c,'necromancy')<1)
+        if(effStat(turnContext,c,'necromancy')<1)
           log('hire',`⚠ ${c.name} has no Necromancy of their own — ${hSkel.unitName} will crumble to dust at the end of this turn unless it is handed to a character with at least Necromancy 1. The dead do not stand without a master, and a garrison is no master at all.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         resolveUnitGainInProvince(c, prov, ph);
         break;
@@ -8378,7 +8011,7 @@ const BATTLE_ARMY_SPELLS={
       case 'research':{
         const sageRaw=skillLevel(c,'sage');
         if(sageRaw<1){log('system',`${c.name} pores over the archives, but without any Sage learning (Sage 1+) the pages mean nothing to them.`,{actor:c.player,targets:[c.player]});break;}
-        const sageLevel=effStat(c,'sage');
+        const sageLevel=effStat(turnContext,c,'sage');
         // the order names a CATEGORY (target); blank/'any' = the whole eligible table. Item 11: the
         // Heroic and Special fields can no longer be named or seen — they are found only as an
         // unlooked-for side result of researching any other field (roll below).
@@ -8390,7 +8023,7 @@ const BATTLE_ARMY_SPELLS={
         // every field is spent is the order refused. Decided BEFORE the chance is worked out, so a
         // field-scoped research bonus (az10's own-creed field) follows the field actually studied.
         { const _knownPre=new Set((player.discoveries||[]).map(d=>d.id));
-          const _avPre=discAvailableFor(c.player,_knownPre).filter(d=>!RESEARCH_HIDDEN_CATS.has(d.category));
+          const _avPre=discAvailableFor(turnContext,c.player,_knownPre).filter(d=>!RESEARCH_HIDDEN_CATS.has(d.category));
           if(_rcat&&_rcat.toLowerCase()!=='any'&&!_avPre.some(d=>(d.category||'').toLowerCase()===_rcat.toLowerCase())){
             const _fields=[...new Set(_avPre.map(d=>d.category).filter(Boolean))];
             if(!_fields.length){ log('system',`${c.name}: every ${_rcat} discovery has already been made, set aside, or is awaiting your choice — and so has every other field your realm can study. There is nothing left to research.`,{actor:c.player,targets:[c.player]}); break; }
@@ -8403,7 +8036,7 @@ const BATTLE_ARMY_SPELLS={
         const perLevel=5;
         // The discovery-chance benefit CAPS at level 5 (via effStat); levels 6+ grant the Sage's
         // distinct mastery orders instead of a further per-level climb.
-        const _discBase=sageLevel*perLevel+neutralSageBonus+(charMinor(c,'loreseeker')?perLevel:0)+discSum(c.player,'research','pct',e=>!e.field||(e.field==='own'&&String(_rcat||'').trim().toLowerCase()===String((player.alignment||'')+' Creed').toLowerCase())); // + Loreseeker; research discoveries (az10: own creed field only — the field actually studied)
+        const _discBase=sageLevel*perLevel+neutralSageBonus+(charMinor(turnContext,c,'loreseeker')?perLevel:0)+discSum(turnContext,c.player,'research','pct',e=>!e.field||(e.field==='own'&&String(_rcat||'').trim().toLowerCase()===String((player.alignment||'')+' Creed').toLowerCase())); // + Loreseeker; research discoveries (az10: own creed field only — the field actually studied)
         // 2026-10-13 (Toby, item 18): PERSEVERANCE, as Practice has it — every Research order of this
         // hero that has failed earlier this turn makes this one ×1.2 likelier, cumulatively. A
         // discovery (the hidden-field find included) resets it; each turn starts afresh.
@@ -8424,7 +8057,7 @@ const BATTLE_ARMY_SPELLS={
           if(_sRoll<=_sChance){
             if(!player.discoveries) player.discoveries=[];
             const _known2=new Set(player.discoveries.map(d=>d.id));
-            const _side=discAvailableFor(c.player,_known2).filter(d=>RESEARCH_HIDDEN_CATS.has(d.category));
+            const _side=discAvailableFor(turnContext,c.player,_known2).filter(d=>RESEARCH_HIDDEN_CATS.has(d.category));
             if(_side.length>0){
               const disc=_side[Math.floor(kcRng()*_side.length)];
               player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1;
@@ -8442,7 +8075,7 @@ const BATTLE_ARMY_SPELLS={
         if(dRoll<=discoveryChance){
           if(!player.discoveries) player.discoveries=[];
           const known=new Set(player.discoveries.map(d=>d.id));
-          const available=discAvailableFor(c.player, known).filter(_catFilter); // race/alignment eligibility; category
+          const available=discAvailableFor(turnContext, c.player, known).filter(_catFilter); // race/alignment eligibility; category
           if(available.length>=2){
             // RESEARCH CHOICE: two finds, one to keep next turn (see discBlockedIds)
             const _i1=Math.floor(kcRng()*available.length);
@@ -8517,7 +8150,7 @@ const BATTLE_ARMY_SPELLS={
         // (half the solo chance) and the guaranteed-success mentor rule below apply on top.
         const PRACTICE_BASE_BY_LEVEL=[0.25,0.20,0.15,0.10,0.05]; // level 0→25% … level 4→5%
         const baseByLevel=PRACTICE_BASE_BY_LEVEL[Math.min(current,4)];
-        const astroBonus=discSum(c.player,'practice','pct',e=>!e.skills||e.skills.includes(skill)); // practice discoveries (sd26 Astronomical Tables is one)
+        const astroBonus=discSum(turnContext,c.player,'practice','pct',e=>!e.skills||e.skills.includes(skill)); // practice discoveries (sd26 Astronomical Tables is one)
         // perseverance. Each FAILED practice this turn multiplies the character's next practice
         // chance by 1.2 (cumulative); a success resets it. The streak is per character, any skill,
         // and starts fresh each turn.
@@ -8567,13 +8200,13 @@ const BATTLE_ARMY_SPELLS={
           c._sgLog.turnGains=c._sgLog.turnGains||{}; c._sgLog.turnGains[skill]=(c._sgLog.turnGains[skill]||0)+1;
           // 2026-09-26b (Toby item 7): a Practice rise IS this phase's one skill rise — it closes the phase
           // to experience gains and voids any field candidates already drawn up this phase.
-          { const _gp=(_logCtx.phase!=null?_logCtx.phase:_currentPhase); (c._sgLog.gainedPhases||(c._sgLog.gainedPhases={}))[_gp]=true; if(c._sgPending&&c._sgPending.phase===_gp) c._sgPending=null; }
+          { const _gp=(turnContext._logCtx.phase!=null?turnContext._logCtx.phase:turnContext._currentPhase); (c._sgLog.gainedPhases||(c._sgLog.gainedPhases={}))[_gp]=true; if(c._sgPending&&c._sgPending.phase===_gp) c._sgPending=null; }
           const _prPayBefore=c.pay||0;
           recalcHeroPay(c);
           const _prPayAfter=c.pay||0;
           const _prHp=syncMaxHp(c,G.players);
           // a mentored improvement is guaranteed — no roll to show.
-          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}${skillInPlayNote(c,skill)}!${mentors.length>0?'':' '+fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}${_prHp>0?` (Max HP +${_prHp} → ${c.maxHp}.)`:''}`,{actor:c.player,targets:[c.player]});
+          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}${skillInPlayNote(turnContext,c,skill)}!${mentors.length>0?'':' '+fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}${_prHp>0?` (Max HP +${_prHp} → ${c.maxHp}.)`:''}`,{actor:c.player,targets:[c.player]});
           if(_prPayAfter>_prPayBefore) log('hire',`💰 ${c.name}'s growing renown raises their wage to ${_prPayAfter}g/turn (was ${_prPayBefore}g/turn).`,{actor:c.player,targets:[c.player]}); // 2026-09-21: practice raised the wage silently
         } else {
           c._practiceFailStreak={turn:G.turn,n:_streak+1}; // the next practice this turn is ×1.2 likelier
@@ -8718,11 +8351,11 @@ const BATTLE_ARMY_SPELLS={
         // +50%, so the blessing stays a multiplier rather than becoming a flat addition). Rounded
         // UP, so the blessing is never worth nothing on a small pool.
         const isDivineKingdom=G.players[c.player]?.alignment==='Divine';
-        const _medArts=hasDisc(c.player,'sd28'); // Medical Arts: a single Rest fully restores HP
+        const _medArts=hasDisc(turnContext,c.player,'sd28'); // Medical Arts: a single Rest fully restores HP
         const baseHeal=Math.max(1,Math.ceil((c.maxHp||20)*REST_HEAL_PCT)); // 30% of maximum HP (was 2–5)
         let heal=_medArts?Math.max(0,(c.maxHp||20)-c.hp):(isDivineKingdom?Math.ceil(baseHeal*1.5):baseHeal);
-        if(charMinor(c,'colossus')) heal+=2; // MINOR TITLE — The Colossus
-        heal+=discSum(c.player,'rest','hp',e=>(!e.owned||prov.owner===c.player)&&(!e.home||(prov.owner===c.player&&homeFounderOf(G,prov.id)===c.player))&&(!e.terrains||e.terrains.includes(prov.terrain))); // rest discoveries
+        if(charMinor(turnContext,c,'colossus')) heal+=2; // MINOR TITLE — The Colossus
+        heal+=discSum(turnContext,c.player,'rest','hp',e=>(!e.owned||prov.owner===c.player)&&(!e.home||(prov.owner===c.player&&homeFounderOf(G,prov.id)===c.player))&&(!e.terrains||e.terrains.includes(prov.terrain))); // rest discoveries
         if(hasItemBase(c,'Iron Heart Talisman')) heal+=Math.round((c.maxHp||20)*0.10); // Iron Heart Talisman: +10% of max HP recovered
         c.hp=Math.min(c.maxHp||20,c.hp+heal);
         log('system',`${c.name} rests and recovers. +${heal} HP (${c.hp}/${c.maxHp}${isDivineKingdom?' — Divine blessing lifts healing by half':''}).`,{actor:c.player,targets:[c.player]});
@@ -8789,8 +8422,8 @@ const BATTLE_ARMY_SPELLS={
           given.forEach(item=>{ recip.items.push(item); applyItemMaxHp(recip,item); /* item 6 */ });
           log('hire',`${c.name} hands ${_names} to ${recip.name}.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
           // tell the recipient, in their own section.
-          notifyTarget(recip,`📦 ${recip.name} receives ${_names} from ${c.name}.`,ph);
-          { const _gn=gainedItemNote(recip,given); if(_gn) notifyTarget(recip,_gn,ph); } // item 10
+          notifyTarget(turnContext,recip,`📦 ${recip.name} receives ${_names} from ${c.name}.`,ph);
+          { const _gn=gainedItemNote(recip,given); if(_gn) notifyTarget(turnContext,recip,_gn,ph); } // item 10
         } else {
           // Dispatch by courier — arrives at end of turn (see the end-of-turn delivery flush).
           G._itemDeliveries=G._itemDeliveries||[];
@@ -8880,7 +8513,7 @@ const BATTLE_ARMY_SPELLS={
           recip2.armies=(recip2.armies||[]).concat(removed);
           log('hire',`${c.name} transfers ${removed.map(a=>a.unitName||a.type).join(', ')} to ${recip2.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           // notify the receiving commander in their own section.
-          notifyTarget(recip2,`⚔ ${recip2.name} takes command of ${removed.map(a=>a.unitName||a.type).join(', ')}, handed over by ${c.name} in ${prov.name}.`,ph,'hire');
+          notifyTarget(turnContext, recip2,`⚔ ${recip2.name} takes command of ${removed.map(a=>a.unitName||a.type).join(', ')}, handed over by ${c.name} in ${prov.name}.`,ph,'hire');
           // Recompute BOTH move pools for giver and recipient: the giver may now be faster (a slow
           // unit left) and the recipient may now be slower (a slow unit joined). refreshMovePool
           // preserves points already spent this turn, so neither refunds nor double-charges moves.
@@ -8948,7 +8581,7 @@ const BATTLE_ARMY_SPELLS={
         const SEA_TYPES_D=new Set(KC_UNIT_CLASS.sea);
         disbanding.forEach(army=>{
           const merc={
-            id:newMercId(),
+            id:newMercId(turnContext),
             type:army.type,quality:army.quality,race:army.race||'Human',
             unitName:army.unitName||army.type,
             location:prov.id,isSea:SEA_TYPES_D.has(army.type),
@@ -9072,7 +8705,7 @@ const BATTLE_ARMY_SPELLS={
         if(quarry.isKing && !c.isKing && quarry.player!==c.player){
           log('system',`${c.name} sets out after ${quarry.name}, but a rival king does not answer to a common hero — only a king may run down another king. The chase is abandoned.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
-        if(quarry.player!==c.player&&isHiddenChar(quarry)){
+        if(quarry.player!==c.player&&isHiddenChar(turnContext,quarry)){
           log('system',`${c.name} sets out after ${quarry.name}, but they are cloaked and leave no trail to follow.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
         // A mutual pair of Encounter orders (each hunting the other) resolves as ONE meeting.
@@ -9095,7 +8728,7 @@ const BATTLE_ARMY_SPELLS={
         // (cap L5), halved against a commander leading troops (or the guarded paymaster). A failed attempt is
         // noticed unless the thief slips away (Thief × 20%, cap 95%); a noticed thief is brought to
         // a duel unless the victim's duel stance is REFUSE (thiefCaughtScuffle above).
-        const thiefLevel=effStat(c,'thief');
+        const thiefLevel=effStat(turnContext,c,'thief');
         if(thiefLevel<1){log('system',`${c.name} has no Thief skill — light fingers take training.`,{actor:c.player,targets:[c.player]});break;}
         const _tgtRaw=String(target||'').trim().toLowerCase();
         // cap at 95%. 50 + 10×5 reached a flat 100 at Thief 5, and nothing in this engine is ever
@@ -9128,7 +8761,7 @@ const BATTLE_ARMY_SPELLS={
         const victim=G.characters.find(ch=>ch.alive&&ch.id===targetId&&ch.location===c.location);
         if(!victim){log('system',`${c.name} finds no suitable target to steal from in ${prov.name}.`,{actor:c.player,targets:[c.player]});break;}
         if(victim.player===c.player){log('system',`${c.name} will not rob a comrade.`,{actor:c.player,targets:[c.player]});break;}
-        if(isVanished(victim)){log('system',`${c.name} reaches for ${victim.name}'s purse and closes on nothing — the man has vanished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        if(isVanished(turnContext,victim)){log('system',`${c.name} reaches for ${victim.name}'s purse and closes on nothing — the man has vanished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         // the player never chooses the prize and is never told whether the target carries anything.
         // A magic item is lifted if one can be (random, weighted toward the weaker tiers — see
         // liftRandomItem); a target with nothing liftable is robbed of gold instead. The saved
@@ -9172,7 +8805,7 @@ const BATTLE_ARMY_SPELLS={
         if(o._pinned) break;
         // item 15: this phase's Defend order has already been answered in battle (the watch was on
         // from the top of the phase) — it does not set the watch again.
-        if(defendSpentThisPhase(c,ph)){
+        if(defendSpentThisPhase(turnContext,c,ph)){
           log('move',`🛡 ${c.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           break;
         }
@@ -9230,9 +8863,9 @@ const BATTLE_ARMY_SPELLS={
         // Enforce action spell limits (AK rules): level 1-2 → 1/turn, level 3 → 2/turn, level 4-5 → 3/turn
         if(!_itemCast){
           const _school=spellDef.school;
-          const _lvl=effStat(c,_school);
-          const _limit=(_lvl>=4?3:_lvl>=3?2:1)+((charMinor(c,'warlock')&&_BEST_SCHOOL(c)===skillLevel(c,_school))?1:0); // Warlock minor (Archmage +1-cast perk removed \u2014 now an intel line)
-          const _divCath=gdActive(c.player,'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot
+          const _lvl=effStat(turnContext,c,_school);
+          const _limit=(_lvl>=4?3:_lvl>=3?2:1)+((charMinor(turnContext,c,'warlock')&&_BEST_SCHOOL(c)===skillLevel(c,_school))?1:0); // Warlock minor (Archmage +1-cast perk removed \u2014 now an intel line)
+          const _divCath=gdActive(turnContext,c.player,'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot
           // NORMALISE the saved action: the player portal writes "Cast Spell", the bots write
           // "cast_spell". Comparing the raw string counted only the bots' casts, so a human caster
           // had NO per-turn limit at all (a Psychic 1 hero could work five action spells a season).
@@ -9252,7 +8885,7 @@ const BATTLE_ARMY_SPELLS={
         }
 
         const school=spellDef.school;
-        const spellLevel=_itemCast?Math.max(3,effStat(c,school)):effStat(c,school); // a spell item works as at least level 3
+        const spellLevel=_itemCast?Math.max(3,effStat(turnContext,c,school)):effStat(turnContext,c,school); // a spell item works as at least level 3
         const spellLevelEff=Math.min(spellLevel,5); // spell EFFECTS cap at caster level 5; cast chance keeps the full level
         if(spellLevel===0){
           // Check if they were trying to cast after a practice order this turn
@@ -9332,16 +8965,16 @@ const BATTLE_ARMY_SPELLS={
         const targetChar=G.characters.find(ch=>ch.alive&&ch.id===extraId);
         // THIEF L9 Vanish: a vanished character cannot be reached by ANY hostile spell for the rest
         // of the turn.
-        if(targetChar&&targetChar.player!==c.player&&isVanished(targetChar)){
+        if(targetChar&&targetChar.player!==c.player&&isVanished(turnContext,targetChar)){
           log('system',`${c.name}'s ${spellName} gropes after ${targetChar.name} and finds only shadow — they have vanished, and nothing may touch them this season.`,{actor:c.player,targets:[c.player]});break;
         }
         // ILLUSORY L9 Veil: a veiled character (and the host they lead) cannot be reached by ANY
         // hostile spell while the veil holds.
-        if(targetChar&&targetChar.player!==c.player&&isVeiled(targetChar)){
+        if(targetChar&&targetChar.player!==c.player&&isVeiled(turnContext,targetChar)){
           log('system',`${c.name}'s ${spellName} cannot reach ${targetChar.name} — they and their host are veiled from all hostile magic.`,{actor:c.player,targets:[c.player]});break;
         }
         // Cloak of Many Faces: shields the wearer from hostile Psychic Blast / Curse.
-        if(targetChar&&targetChar.player!==c.player&&isHiddenChar(targetChar)&&(spellName==='Psychic Blast'||spellName==='Curse')){
+        if(targetChar&&targetChar.player!==c.player&&isHiddenChar(turnContext,targetChar)&&(spellName==='Psychic Blast'||spellName==='Curse')){
           log('system',`${c.name}'s ${spellName} cannot find ${targetChar.name} — they are cloaked from hostile magic.`,{actor:c.player,targets:[c.player]});break;
         }
 
@@ -9470,7 +9103,7 @@ const BATTLE_ARMY_SPELLS={
             targetProv._partSea={orig:targetProv.terrain, turn:G.turn, blockFleetsFromPhase:ph+1};
             targetProv.terrain='plains';
             log('explore',`✨ ${c.name} raises their hands and the waters of ${targetProv.name} draw back — the seabed lies bare as dry plains for the rest of the turn. Land armies may cross freely, but no fleet can enter or leave from the next phase onward.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true,env:true});
-            notifyProvinceOwner(targetProv, `🌊 ${c.name} (${G.players[c.player]?.name||'a foreign realm'}) has parted the sea at ${targetProv.name} — it lies as dry plains for the rest of the turn; land armies may cross it and no fleet may enter or leave from the next phase.`, c.player, ph); // the owner is told
+            notifyProvinceOwner(turnContext, targetProv, `🌊 ${c.name} (${G.players[c.player]?.name||'a foreign realm'}) has parted the sea at ${targetProv.name} — it lies as dry plains for the rest of the turn; land armies may cross it and no fleet may enter or leave from the next phase.`, c.player, ph); // the owner is told
           } else {
             // Cast on dry land — the anticipated Flood never came (or was already parted). There is
             // no sea to part; clear any lingering flood marker and note it. The cast is spent but
@@ -9492,9 +9125,9 @@ const BATTLE_ARMY_SPELLS={
             log('explore',`✝ ${c.name} raises the Holy Symbol over ${_hsProv.name}, but no battlefield dead lie unquiet here — there is nothing to cleanse.`,{actor:c.player,targets:[c.player],provinceId:_hsProv.id});
           } else {
             _hsProv.battleGraves=[];
-            logSplit('explore',
+            logSplit(turnContext, 'explore',
               `✝ ${c.name} raises the Holy Symbol over ${_hsProv.name} and the graves of its battlefield dead are cleansed — every fallen unit buried there is laid to rest, beyond the reach of any necromancer.`,
-              `✝ ${c.name}${realmTag(c.player)} raises a Holy Symbol over the battlefields of ${_hsProv.name}, and the dead buried there are laid to rest — the graves are cleansed and can no longer be raised.`,
+              `✝ ${c.name}${realmTag(turnContext,c.player)} raises a Holy Symbol over the battlefields of ${_hsProv.name}, and the dead buried there are laid to rest — the graves are cleansed and can no longer be raised.`,
               {actor:c.player,provinceId:_hsProv.id,charId:c.id,phase:ph});
           }
           noteGraveIntel(G.players[c.player], _hsProv.id, G.turn, []); // the caster's realm now knows the ground is clean
@@ -9515,14 +9148,14 @@ const BATTLE_ARMY_SPELLS={
           // master. (Was 10% + 15%/level, i.e. 25% at White 1 rising to 85% at White 5: the ward is
           // now dependable at every level and much flatter across the ladder.)
           targetProv._blessWardTurn=G.turn; targetProv._blessWardBy=c.player;
-          targetProv._blessWardPct=Math.min(100, 50+5*Math.min(5,effStat(c,'white'))); // 50% + 5% per White skill level (cap level 5)
+          targetProv._blessWardPct=Math.min(100, 50+5*Math.min(5,effStat(turnContext,c,'white'))); // 50% + 5% per White skill level (cap level 5)
           TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
           // DIVINE: a Divine realm's casters bless at +80% (the long-advertised alignment bonus,
           // previously described but never implemented — engine now honours it), and the Divine
           // KING himself blesses at +100% — the gods answer their anointed in full.
           const _divineKingdom=G.players[c.player]?.alignment==='Divine';
           const _divineKingBless=c.isKing&&_divineKingdom;
-          targetProv._blessedMult=(_divineKingBless?2.0:(_divineKingdom?1.8:1.6))+discSum(c.player,'bless','pct'); // ad09 Rites of Plenty (+0.2)
+          targetProv._blessedMult=(_divineKingBless?2.0:(_divineKingdom?1.8:1.6))+discSum(turnContext,c.player,'bless','pct'); // ad09 Rites of Plenty (+0.2)
           const _blessPct=`+${dispFloor((targetProv._blessedMult-1)*100)}% tax`+(_divineKingBless?' (a Divine king\'s blessing — the gods answer their anointed in full)':(_divineKingdom?' (Divine blessing)':''));
           log('explore',`✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding ${_blessPct} at collection this turn. The sacred ground is warded — a ${targetProv._blessWardPct}% chance to turn aside any enemy Flood, Earthquake, Plague or Part Sea cast here this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false,env:true});
         }
@@ -9587,7 +9220,7 @@ const BATTLE_ARMY_SPELLS={
             // realm.
             if(t._releasedTurn===G.turn&&t._releasedBy===c.player){ log('system',`${c.name}'s Charm finds ${t.name} unmoved — a hero only just dismissed will not be drawn back the same season.`,{actor:c.player,targets:[c.player]}); break; }
             // The Divine/Undead gulf binds even magic: no charm sways a soul across distance 6.
-            const _chWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',t.alignment,hasDisc(c.player,'sd31'),t);
+            const _chWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',t.alignment,hasDisc(turnContext,c.player,'sd31'),t);
             if(_chWage==null){
               log('system',`${c.name}'s Charm washes over ${t.name} and finds nothing to grip — ${t.alignment} souls cannot be swayed to a ${G.players[c.player]?.alignment} crown.`,{actor:c.player,targets:[c.player]});
               break;
@@ -9707,7 +9340,7 @@ const BATTLE_ARMY_SPELLS={
           }
           if(_pbDrops.length===0){log('combat',`✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,{actor:c.player,charIds:[c.id,targetChar.id].filter(v=>v!=null),targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           log('combat',`✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s mind buckles, losing ${_pbDrops.join(' and ')}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`🧠 ${targetChar.name} reels — ${c.name}'s Psychic Blast sears away ${_pbDrops.join(' and ')}.`,ph,'combat');
+          notifyTarget(turnContext,targetChar,`🧠 ${targetChar.name} reels — ${c.name}'s Psychic Blast sears away ${_pbDrops.join(' and ')}.`,ph,'combat');
           // 2026-09-21 (Toby): a hero stripped of skill levels commands a lower wage — re-evaluate it,
           // exactly as a skill rise does, and tell the hero's own realm.
           { const _pbPay0=targetChar.pay||0; recalcHeroPay(targetChar); const _pbPay1=targetChar.pay||0;
@@ -9734,7 +9367,7 @@ const BATTLE_ARMY_SPELLS={
           });
           targetChar.armies=armies.filter(a=>!a._disbanded);
           log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} caught: ${destroyed} shattered outright, ${demoted} permanently reduced one experience level. (${_lines.join('; ')})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`🌀 ${c.name}'s Telekinetic Storm scatters ${targetChar.name}'s formations — ${destroyed} destroyed, ${demoted} permanently reduced one experience level. (${_lines.join('; ')})`,ph,'combat');
+          notifyTarget(turnContext, targetChar,`🌀 ${c.name}'s Telekinetic Storm scatters ${targetChar.name}'s formations — ${destroyed} destroyed, ${demoted} permanently reduced one experience level. (${_lines.join('; ')})`,ph,'combat');
         }
 
         // ── ILLUSORY ──
@@ -9784,7 +9417,7 @@ const BATTLE_ARMY_SPELLS={
           if(blessWardNegates(targetProv, c, 'Earthquake')) break;
           targetProv._earthquakeNoTax=G.turn;
           log('combat',`✨ ${c.name} rends the earth beneath ${targetProv.name} — its fields and roads are ruined, and it will yield no tax at the end of this turn.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
-          notifyProvinceOwner(targetProv, `🜃 An enemy Earthquake has torn through ${targetProv.name} — it will yield no tax this turn.`, c.player, ph);
+          notifyProvinceOwner(turnContext, targetProv, `🜃 An enemy Earthquake has torn through ${targetProv.name} — it will yield no tax this turn.`, c.player, ph);
         }
         else if(fn==='elemental_flood'){
           const casterProv=G.world.provinces[c.location];
@@ -9797,7 +9430,7 @@ const BATTLE_ARMY_SPELLS={
           targetProv._flood={orig:targetProv.terrain, turn:G.turn};
           targetProv.terrain='sea';
           log('combat',`✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets and flyers may pass.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
-          notifyProvinceOwner(targetProv, `🌊 An enemy Flood has swallowed ${targetProv.name} — it acts as sea for the rest of the turn, and any land army there is stranded.`, c.player, ph);
+          notifyProvinceOwner(turnContext, targetProv, `🌊 An enemy Flood has swallowed ${targetProv.name} — it acts as sea for the rest of the turn, and any land army there is stranded.`, c.player, ph);
         }
         else if(fn==='elemental_summon'){
           if(c._elementalSummonedThisTurn){log('system',`${c.name} has already summoned an elemental this turn.`,{actor:c.player,targets:[c.player]});break;}
@@ -9811,8 +9444,8 @@ const BATTLE_ARMY_SPELLS={
           const elemental={type:pick.type,quality:'Veteran',race:'Elemental',unitName:pick.unitName,_temporary:true,_expiresAfterPhase:-1};
           c.armies=(c.armies||[]);c.armies.push(elemental);
           c._elementalSummonedThisTurn=true;
-          logSplit('explore',`✨ ${c.name} tears open a rift in ${prov.name} and ${pick.unitName} — a ${pick.type} — surges forth to fight under your command! It will dissolve at the end of the turn.`,
-            `✨ ${c.name}${realmTag(c.player)} tears open a rift in ${prov.name} — ${pick.unitName}, a ${pick.type}, surges forth to fight under their banner.`,{actor:c.player,provinceId:prov.id});
+          logSplit(turnContext, 'explore',`✨ ${c.name} tears open a rift in ${prov.name} and ${pick.unitName} — a ${pick.type} — surges forth to fight under your command! It will dissolve at the end of the turn.`,
+            `✨ ${c.name}${realmTag(turnContext,c.player)} tears open a rift in ${prov.name} — ${pick.unitName}, a ${pick.type}, surges forth to fight under their banner.`,{actor:c.player,provinceId:prov.id});
           resolveUnitGainInProvince(c, prov, ph);
         }
 
@@ -9871,9 +9504,9 @@ const BATTLE_ARMY_SPELLS={
           const pick=undeadIdxs[Math.floor(kcRng()*undeadIdxs.length)];
           const seized=targetChar.armies.splice(pick.i,1)[0];
           c.armies=(c.armies||[]); c.armies.push(seized);
-          logSplit('hire',`✨ ${c.name}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name} in ${prov.name} — it now marches under your banner!`,
-            `✨ ${c.name}${realmTag(c.player)}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name}${realmTag(targetChar.player)} in ${prov.name} — it now marches under ${c.name}'s banner.`,{actor:c.player,provinceId:prov.id,alsoNotFor:[targetChar.player]});
-          notifyTarget(targetChar,`✨ ${c.name}${realmTag(c.player)}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name} in ${prov.name} — it now marches under the enemy's banner.`,ph,'hire');
+          logSplit(turnContext,'hire',`✨ ${c.name}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name} in ${prov.name} — it now marches under your banner!`,
+            `✨ ${c.name}${realmTag(turnContext,c.player)}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name}${realmTag(turnContext,targetChar.player)} in ${prov.name} — it now marches under ${c.name}'s banner.`,{actor:c.player,provinceId:prov.id,alsoNotFor:[targetChar.player]});
+          notifyTarget(turnContext,targetChar,`✨ ${c.name}${realmTag(turnContext,c.player)}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name} in ${prov.name} — it now marches under the enemy's banner.`,ph,'hire');
           resolveUnitGainInProvince(c, prov, ph);
         }
         else if(fn==='necromancy_skeletal'){
@@ -9885,8 +9518,8 @@ const BATTLE_ARMY_SPELLS={
           // Units raised per cast scale with the caster's Necromancy (benefit scale, items count):
           // 1 at level 1-2, 2 at level 3-4, 3 at level 5+ — never more than the graves hold. An
           // item-cast by a non-necromancer (Reaper's Bell, Ossuary Key) raises one.
-          const _skN=skeletalRaiseCount(effStat(c,'necromancy'));
-          const _uTier=gdActive(c.player,'Undead'); // GRAND DESIGN — Undead: +1 tier when raised
+          const _skN=skeletalRaiseCount(effStat(turnContext,c,'necromancy'));
+          const _uTier=gdActive(turnContext,c.player,'Undead'); // GRAND DESIGN — Undead: +1 tier when raised
           for(let _sk=0;_sk<_skN&&(prov.battleGraves||[]).length>0;_sk++){
             const grave=takeBestGrave(prov); // the most experienced dead answer first
             if(!grave) break;
@@ -9914,7 +9547,7 @@ const BATTLE_ARMY_SPELLS={
             return `${SKILL_LABELS[sk]||sk} ${cur}→${Math.floor(cur/2)}`;
           });
           log('combat',`✨ ${c.name}'s Curse settles over ${targetChar.name} — every skill is halved for the rest of the turn (${_parts.join(', ')})!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`☠ A Curse from ${c.name} settles over ${targetChar.name} — every skill is halved for the rest of the turn (${_parts.join(', ')}).`,ph,'combat');
+          notifyTarget(turnContext, targetChar,`☠ A Curse from ${c.name} settles over ${targetChar.name} — every skill is halved for the rest of the turn (${_parts.join(', ')}).`,ph,'combat');
         }
         // (Hand of Death is a combat-only spell — no action-phase form.)
         else if(fn==='necromancy_plague'){
@@ -9927,7 +9560,7 @@ const BATTLE_ARMY_SPELLS={
           targetProv._plaguedTurn=G.turn; targetProv._plagueLevel=spellLevelEff; targetProv._plagueCaster=c.player;
           const res=applyPlague(targetProv, spellLevelEff, ph);
           log('combat',`☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested!==1?'s':''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
-          notifyProvinceOwner(targetProv, `☠ An enemy Plague has struck ${targetProv.name} — ${res.affected} of your unit${res.affected!==1?'s there sicken':' there sickens'} and may spread to neighbouring lands.`, c.player, ph);
+          notifyProvinceOwner(turnContext, targetProv, `☠ An enemy Plague has struck ${targetProv.name} — ${res.affected} of your unit${res.affected!==1?'s there sicken':' there sickens'} and may spread to neighbouring lands.`, c.player, ph);
         }
 
         // ══ LEVEL 7 & 9 MASTERY SPELLS ════
@@ -9938,7 +9571,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Sanctuary must ward your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
           targetProv._sanctuaryTurn=G.turn; targetProv._sanctuaryBy=c.player;
           log('explore',`✨ ${c.name} raises a Sanctuary over ${targetProv.name} — hostile armies that give battle here fight at −25% strength this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true});
-          notifyProvinceOwner(targetProv, `✨ ${c.name} (${G.players[c.player]?.name||'a foreign realm'}) has raised a Sanctuary over ${targetProv.name} — armies hostile to that realm that give battle there fight at −25% strength this turn.`, c.player, ph); // the owner is told
+          notifyProvinceOwner(turnContext, targetProv, `✨ ${c.name} (${G.players[c.player]?.name||'a foreign realm'}) has raised a Sanctuary over ${targetProv.name} — armies hostile to that realm that give battle there fight at −25% strength this turn.`, c.player, ph); // the owner is told
         }
         else if(fn==='white_judgment'){
           if(!targetChar||targetChar.location!==c.location){log('system',`Divine Judgment: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
@@ -9949,7 +9582,7 @@ const BATTLE_ARMY_SPELLS={
           const idxs=shuffleP(src.map((_,i)=>i)).slice(0,kills).sort((a,b)=>b-a);
           idxs.forEach(i=>src.splice(i,1));
           log('combat',`⚡ ${c.name} calls down Divine Judgment on ${targetChar.name} — ${dmg} holy damage${kills>0?`, and ${kills} of their unit${kills!==1?'s':''} are smitten to ash`:''}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`⚡ Divine Judgment falls on ${targetChar.name} from ${c.name} — ${dmg} holy damage${kills>0?`, ${kills} unit${kills!==1?'s':''} smitten`:''}.`,ph,'combat');
+          notifyTarget(turnContext, targetChar,`⚡ Divine Judgment falls on ${targetChar.name} from ${c.name} — ${dmg} holy damage${kills>0?`, ${kills} unit${kills!==1?'s':''} smitten`:''}.`,ph,'combat');
         }
         // PSYCHIC
         else if(fn==='psychic_massconfusion'){
@@ -9957,7 +9590,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetChar.player===c.player){log('system',`Mass Confusion cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           targetChar._massConfusedTurn=G.turn;
           log('combat',`✨ ${c.name} sows Mass Confusion through ${targetChar.name}'s ranks — their commander's Tactical genius deserts them in their next battle this turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`✨ Mass Confusion from ${c.name} grips ${targetChar.name} — their Tactical command deserts them in their next battle.`,ph,'combat');
+          notifyTarget(turnContext,targetChar,`✨ Mass Confusion from ${c.name} grips ${targetChar.name} — their Tactical command deserts them in their next battle.`,ph,'combat');
         }
         else if(fn==='psychic_dominate'){
           if(!targetChar||targetChar.location!==c.location){log('system',`Dominate: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
@@ -9968,9 +9601,9 @@ const BATTLE_ARMY_SPELLS={
           const idxs=shuffleP(src.map((_,i)=>i)).slice(0,take).sort((a,b)=>b-a);
           const seized=idxs.map(i=>src.splice(i,1)[0]);
           c.armies=(c.armies||[]).concat(seized);
-          logSplit('hire',`✨ ${c.name} Dominates ${targetChar.name} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under your banner!`,
-            `✨ ${c.name}${realmTag(c.player)} Dominates ${targetChar.name}${realmTag(targetChar.player)} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under ${c.name}'s banner.`,{actor:c.player,provinceId:prov.id,alsoNotFor:[targetChar.player]});
-          notifyTarget(targetChar,`✨ ${c.name}${realmTag(c.player)} Dominates ${targetChar.name} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and desert to the enemy.`,ph,'hire');
+          logSplit(turnContext,'hire',`✨ ${c.name} Dominates ${targetChar.name} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under your banner!`,
+            `✨ ${c.name}${realmTag(turnContext,c.player)} Dominates ${targetChar.name}${realmTag(turnContext,targetChar.player)} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under ${c.name}'s banner.`,{actor:c.player,provinceId:prov.id,alsoNotFor:[targetChar.player]});
+          notifyTarget(turnContext,targetChar,`✨ ${c.name}${realmTag(turnContext,c.player)} Dominates ${targetChar.name} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and desert to the enemy.`,ph,'hire');
           resolveUnitGainInProvince(c, prov, ph);
         }
         // ILLUSORY
@@ -10007,7 +9640,7 @@ const BATTLE_ARMY_SPELLS={
           let killed=0;
           idxs.forEach(i=>{ if(kcRng()<0.5){ src.splice(i,1); killed++; } });
           log('combat',`⚡ ${c.name}'s Chain Lightning arcs through ${targetChar.name}'s ranks — of ${pool} unit${pool!==1?'s':''} caught in the arc, ${killed} ${killed===1?'is':'are'} blasted apart!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`⚡ ${c.name}'s Chain Lightning tears through ${targetChar.name}'s ranks — ${killed} unit${killed!==1?'s':''} blasted apart.`,ph,'combat');
+          notifyTarget(turnContext,targetChar,`⚡ ${c.name}'s Chain Lightning tears through ${targetChar.name}'s ranks — ${killed} unit${killed!==1?'s':''} blasted apart.`,ph,'combat');
         }
         else if(fn==='elemental_cataclysm'){
           const casterProv=G.world.provinces[c.location];
@@ -10025,7 +9658,7 @@ const BATTLE_ARMY_SPELLS={
           });
           if(targetProv.owner!=null&&targetProv.owner!==c.player) _ccVictims.add(targetProv.owner);
           log('combat',`☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed!==1?'s':''} destroyed, and the land is left permanently barren (tax base reduced to 0 for good).`,{actor:c.player,targets:[..._ccVictims],provinceId:targetProv.id,public:true});
-          notifyProvinceOwner(targetProv, `☄ An enemy Cataclysm has devastated ${targetProv.name} — its tax base is permanently ruined${totalDestroyed>0?` and ${totalDestroyed} of your unit${totalDestroyed!==1?'s were':' was'} destroyed`:''}.`, c.player, ph);
+          notifyProvinceOwner(turnContext, targetProv, `☄ An enemy Cataclysm has devastated ${targetProv.name} — its tax base is permanently ruined${totalDestroyed>0?` and ${totalDestroyed} of your unit${totalDestroyed!==1?'s were':' was'} destroyed`:''}.`, c.player, ph);
         }
         // NECROMANCY
         else if(fn==='necromancy_wraiths'){
@@ -10035,8 +9668,8 @@ const BATTLE_ARMY_SPELLS={
           const g=prov.battleGraves.splice(_wbi,1)[0];
           const wraith={type:g.type,quality:'Elite',race:'Undead',_isSkeletal:true,_isWraith:true,unitName:`Wraiths (${armyUnitName(g.type)})`};
           c.armies=(c.armies||[]);c.armies.push(wraith);
-          logSplit('explore',`💀 ${c.name} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead at your side! (Upkeep 1g/turn.)`,
-            `💀 ${c.name}${realmTag(c.player)} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead now march at their side.`,{actor:c.player,provinceId:prov.id});
+          logSplit(turnContext,'explore',`💀 ${c.name} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead at your side! (Upkeep 1g/turn.)`,
+            `💀 ${c.name}${realmTag(turnContext,c.player)} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead now march at their side.`,{actor:c.player,provinceId:prov.id});
           resolveUnitGainInProvince(c, prov, ph);
         }
         else if(fn==='necromancy_dominion'){
@@ -10046,7 +9679,7 @@ const BATTLE_ARMY_SPELLS={
           // Death's Dominion already raises the dead one tier stronger than they fell. The
           // Deathless Legion adds ITS tier on top, so an Undead realm holding its Wonder pulls them
           // up TWO tiers — Average dead rise Crack. Elite is still the ceiling.
-          const _ddUp=gdActive(c.player,'Undead')?(q=>QUALITY_UP[QUALITY_UP[q]||q]||QUALITY_UP[q]||q):(q=>QUALITY_UP[q]||q);
+          const _ddUp=gdActive(turnContext,c.player,'Undead')?(q=>QUALITY_UP[QUALITY_UP[q]||q]||QUALITY_UP[q]||q):(q=>QUALITY_UP[q]||q);
           const n=Math.min(graves.length,spellLevelEff); let raised=0;
           for(let k=0;k<n;k++){ const g=takeBestGrave(prov); if(!g)break; /*best first, down the line */ c.armies=(c.armies||[]); c.armies.push({type:g.type,quality:_ddUp(g.quality),race:'Undead',_isSkeletal:true,unitName:`${g.unitName||armyUnitName(g.type)} (Skeletal)`}); raised++; }
           log('explore',`💀 ${c.name} unleashes Death's Dominion over ${prov.name} — ${raised} skeletal unit${raised!==1?'s':''} claw up from the graves to serve!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -10064,7 +9697,7 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'spy')<7){log('system',`${c.name} lacks the Spy mastery (7) to attempt Sabotage.`,{actor:c.player,targets:[c.player]});break;}
         const tp=G.world.provinces[parseInt(target)];
         if(!tp||tp.owner==null||tp.owner===c.player){log('system',`${c.name}: Sabotage needs a valid enemy province you have seen.`,{actor:c.player,targets:[c.player]});break;}
-        if(!areEnemies(c.player,tp.owner)){log('system',`${c.name}: you are not at war with the owner of ${tp.name} — Sabotage would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        if(!areEnemies(turnContext,c.player,tp.owner)){log('system',`${c.name}: you are not at war with the owner of ${tp.name} — Sabotage would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         tp._sabotagedForTurn=G.turn;
         let disbanded='';
         if((tp.garrisonArmies||[]).length>0){ const u=tp.garrisonArmies.splice(Math.floor(kcRng()*tp.garrisonArmies.length),1)[0]; disbanded=u?` A ${u.quality||''} ${u.type} of its garrison is put to the torch.`:''; }
@@ -10094,7 +9727,7 @@ const BATTLE_ARMY_SPELLS={
         if(c._grandHeistTurn===G.turn){log('system',`${c.name} has already attempted a Grand Heist this turn — one great job a season is all the nerves will bear.`,{actor:c.player,targets:[c.player]});break;}
         const vp=prov.owner;
         if(vp==null||vp===c.player){log('system',`${c.name} looks for vaults to crack in ${prov.name}, but no rival crown holds this ground — a Grand Heist is staged in an enemy's own country.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        if(!areEnemies(c.player,vp)){log('system',`${c.name}: you are not at war with ${G.players[vp]?.name||'this realm'} — a Grand Heist would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        if(!areEnemies(turnContext,c.player,vp)){log('system',`${c.name}: you are not at war with ${G.players[vp]?.name||'this realm'} — a Grand Heist would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         const _ghHome=(homeProvinceIdFor(G,vp)===prov.id);
         const _ghRich=(prov.tax||0)>=GRAND_HEIST_RICH_TAX;
         if(!_ghHome&&!_ghRich){log('system',`${c.name} casts an eye over ${prov.name} and finds nothing worth the risk — a Grand Heist is staged in an enemy's home capital or in rich country (tax ${GRAND_HEIST_RICH_TAX}+; this province: ${prov.tax||0}).`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
@@ -10155,8 +9788,8 @@ const BATTLE_ARMY_SPELLS={
         if(prov.owner!==c.player||!okTerrain){log('system',`${c.name}: Awaken Grove works only while standing in an OWNED forest, jungle or wild (Creature or Monster) province.`,{actor:c.player,targets:[c.player]});break;}
         const grove={type:'Forest Ents',quality:'Veteran',race:'Forest Ent',unitName:'an awakened Grove',_temporary:true,_expiresAfterPhase:-1};
         c.armies=(c.armies||[]);c.armies.push(grove);
-        logSplit('explore',`🌳 ${c.name} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under your banner until the turn's end.`,
-          `🌳 ${c.name}${realmTag(c.player)} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under their banner until the turn's end.`,{actor:c.player,provinceId:prov.id});
+        logSplit(turnContext,'explore',`🌳 ${c.name} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under your banner until the turn's end.`,
+          `🌳 ${c.name}${realmTag(turnContext,c.player)} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under their banner until the turn's end.`,{actor:c.player,provinceId:prov.id});
         resolveUnitGainInProvince(c, prov, ph);
         trySkillGain(c,'druid',SKILLGAIN_STD);
         break;
@@ -10239,7 +9872,7 @@ const BATTLE_ARMY_SPELLS={
         const player=G.players[c.player];
         if(!player.discoveries) player.discoveries=[];
         const known=new Set(player.discoveries.map(d=>d.id));
-        const available=discAvailableFor(c.player, known); // race/alignment eligibility
+        const available=discAvailableFor(turnContext, c.player, known); // race/alignment eligibility
         if(available.length===0){log('explore',`${c.name}'s Research Breakthrough succeeds, but your scholars have already unlocked every known discovery.`,{actor:c.player,targets:[c.player]});trySkillGain(c,'sage',SKILLGAIN_STD);break;}
         const disc=available[Math.floor(kcRng()*available.length)];
         player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1;
@@ -10251,8 +9884,8 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'spy')<9){log('system',`${c.name} lacks the Spy mastery (9) to Assassinate.`,{actor:c.player,targets:[c.player]});break;}
         const victim=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
         if(!victim){log('system',`${c.name} finds no enemy hero to assassinate in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(isVanished(victim)){log('spy',`${c.name} stalks ${victim.name} through ${prov.name} and never once catches sight of them — the mark has vanished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        if(isVanished(turnContext,victim)){log('spy',`${c.name} stalks ${victim.name} through ${prov.name} and never once catches sight of them — the mark has vanished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        if(victim.player!=null&&!areEnemies(turnContext,c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const chance=Math.min(80, 25+skillLevel(c,'spy')*6)-(victim.isKing?25:0);
         const roll=d100();
         markProvinceCombat(prov,[c.player,victim.player]); // purple swords: knife-work counts as a personal combat
@@ -10287,7 +9920,7 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'melee')<7){log('system',`${c.name} lacks the Melee mastery (7) to issue a Challenge.`,{actor:c.player,targets:[c.player]});break;}
         const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
         if(!foe){log('system',`${c.name} finds no enemy hero to challenge in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(foe.player!=null&&!areEnemies(c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Challenge would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        if(foe.player!=null&&!areEnemies(turnContext,c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Challenge would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         if((foe.armies||[]).length>0){log('combat',`${foe.name} is at the head of an army and will not break off to answer ${c.name}'s Challenge.`,{actor:c.player,charIds:[c.id,foe.id].filter(v=>v!=null),targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id});break;}
         markProvinceCombat(prov,[c.player,foe.player]); // purple swords: a personal duel, not a field battle
         const A=pcCharCombatant(c), B=pcCharCombatant(foe);
@@ -10306,7 +9939,7 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'melee')<9){log('system',`${c.name} lacks the Melee mastery (9) to Rampage.`,{actor:c.player,targets:[c.player]});break;}
         const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
         if(!foe||(foe.armies||[]).length===0){log('combat',`${c.name} finds no enemy force to fall upon in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(foe.player!=null&&!areEnemies(c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Rampage would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        if(foe.player!=null&&!areEnemies(turnContext,c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Rampage would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const src=foe.armies; const kills=Math.min(src.length,2+Math.floor(skillLevel(c,'melee')/2));
         const idxs=shuffleP(src.map((_,i)=>i)).slice(0,kills).sort((a,b)=>b-a);
         idxs.forEach(i=>src.splice(i,1));
@@ -10320,7 +9953,7 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'archery')<7){log('system',`${c.name} lacks the Archery mastery (7) for a Rain of Arrows.`,{actor:c.player,targets:[c.player]});break;}
         const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
         if(!foe||(foe.armies||[]).length===0){log('combat',`${c.name} finds no enemy force to volley in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(foe.player!=null&&!areEnemies(c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Rain of Arrows would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        if(foe.player!=null&&!areEnemies(turnContext,c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Rain of Arrows would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const src=foe.armies; const kills=Math.min(src.length,1+Math.floor(skillLevel(c,'archery')/2));
         const idxs=shuffleP(src.map((_,i)=>i)).slice(0,kills).sort((a,b)=>b-a);
         idxs.forEach(i=>src.splice(i,1));
@@ -10332,7 +9965,7 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'archery')<9){log('system',`${c.name} lacks the Archery mastery (9) for a Sniper's Mark.`,{actor:c.player,targets:[c.player]});break;}
         const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
         if(!foe){log('system',`${c.name} finds no enemy commander to mark in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(foe.player!=null&&!areEnemies(c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Sniper's Mark would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        if(foe.player!=null&&!areEnemies(turnContext,c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Sniper's Mark would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const dmg=8+skillLevel(c,'archery'); foe.hp=Math.max(0,(foe.hp||20)-dmg);
         const killChance=Math.min(40,10+skillLevel(c,'archery')*3)-(foe.isKing?15:0);
         const roll=d100();
@@ -10397,7 +10030,7 @@ const BATTLE_ARMY_SPELLS={
         (G.characters||[]).forEach(o=>{
           if(!o||!o.alive||o.id===c.id||o.location!==c.location) return;
           if(o.player===c.player) return;                               // never poached from your own commanders
-          if(o.player!=null&&!areEnemies(c.player,o.player)) return;     // and never from a realm you are not at war with
+          if(o.player!=null&&!areEnemies(turnContext,c.player,o.player)) return;     // and never from a realm you are not at war with
           const before=_wcWon.length; _wcSift(o.armies,o.name);
           if(_wcWon.length>before&&o.player!=null){
             log('system',`🐾 The beasts of ${o.name}'s host break their bonds and answer a Wild Calling in ${prov.name} — ${_wcWon.length-before} unit${_wcWon.length-before!==1?'s':''} lost.`,{actor:o.player,targets:[o.player],provinceId:prov.id,charId:o.id});
@@ -10408,8 +10041,8 @@ const BATTLE_ARMY_SPELLS={
         if(_wcWon.length===0){log('explore',`🐾 ${c.name} sounds a Wild Calling over ${_wcCalled} wild creature${_wcCalled!==1?'s':''} in ${prov.name} — not one of them breaks for the call.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});trySkillGain(c,'druid',SKILLGAIN_STD);break;}
         c.armies=(c.armies||[]).concat(_wcWon);
         const _wcFrom=_wcHeard.length?` (torn from ${_wcHeard.join(' and ')})`:'';
-        logSplit('explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} of ${_wcCalled} wild creature${_wcCalled!==1?'s':''} answer and fall in behind your banner${_wcFrom}!`,
-          `🐾 ${c.name}${realmTag(c.player)} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} wild creature${_wcWon.length!==1?'s':''} answer and fall in behind their banner.`,{actor:c.player,provinceId:prov.id});
+        logSplit(turnContext,'explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} of ${_wcCalled} wild creature${_wcCalled!==1?'s':''} answer and fall in behind your banner${_wcFrom}!`,
+          `🐾 ${c.name}${realmTag(turnContext,c.player)} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} wild creature${_wcWon.length!==1?'s':''} answer and fall in behind their banner.`,{actor:c.player,provinceId:prov.id});
         if(typeof refreshMovePool==='function') refreshMovePool(c);
         resolveUnitGainInProvince(c, prov, ph);
         trySkillGain(c,'druid',SKILLGAIN_STD);
@@ -10546,7 +10179,7 @@ const BATTLE_ARMY_SPELLS={
       c.armies=(c.armies||[]).filter(a=>!out.includes(a));
       const owner=(c._charmTempControl&&c._charmOriginalPlayer!=null)?c._charmOriginalPlayer:c.player; // a seized hero's troops stay his own lord's
       const why=cause||'too few hulls left afloat to carry the whole column';
-      const meta={actor:owner,targets:[owner],charId:c.id,phase:(ph!=null?ph:_currentPhase),provinceId:prov.id};
+      const meta={actor:owner,targets:[owner],charId:c.id,phase:(ph!=null?ph:turnContext._currentPhase),provinceId:prov.id};
       const temps=out.filter(a=>a._temporary), units=out.filter(a=>!a._temporary);
       if(temps.length) log('move',`✨ ${c.name}'s ${temps.map(strandLabel).join(', ')} cannot be carried over open water — the binding fails and ${temps.length===1?'it dissolves':'they dissolve'}.`,meta);
       if(units.length){
@@ -10561,7 +10194,7 @@ const BATTLE_ARMY_SPELLS={
           prov.garrisonArmies=(prov.garrisonArmies||[]).concat(units);
           log('move',`⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name} as its garrison (the weakest go first).`,meta);
         } else if(prov.owner==null&&!(prov.neutralDefenders||[]).length){
-          setProvinceOwner(prov,owner,c,meta.phase);
+          setProvinceOwner(turnContext,prov,owner,c,meta.phase);
           const _pl=G.players[owner]; if(_pl){ _pl.provinces=_pl.provinces||[]; if(!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id); }
           prov.garrisonArmies=(prov.garrisonArmies||[]).concat(units);
           log('move',`⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name}, which they claim for ${_pl?_pl.name:'the realm'} as its garrison (the weakest go first).`,meta);
@@ -10609,7 +10242,7 @@ const BATTLE_ARMY_SPELLS={
     const from=G.world.provinces[ch._attackedFrom];
     return preferDryGround(getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>{
       if(!p2||p2.id===prov.id||!canEnterTerrain(probe,p2.terrain,sc)) return false;
-      if(isFriendlyProvFor(p2,ch.player)) return true;
+      if(isFriendlyProvFor(turnContext,p2,ch.player)) return true;
       return !!from&&p2.id===from.id&&p2.terrain==='sea'&&p2.owner==null&&!(p2.neutralDefenders||[]).length;
     }));
   }
@@ -10665,7 +10298,7 @@ const BATTLE_ARMY_SPELLS={
     }
     if(!G.mercenaries) G.mercenaries=[];
     real.forEach(a=>G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
-      location:prov.id,isSea:SEA_TYPES.has(a.type),id:newMercId()}));
+      location:prov.id,isSea:SEA_TYPES.has(a.type),id:newMercId(turnContext)}));
     narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length===1?'is':'are'} left behind ${why} on ground the realm does not hold — leaderless, ${real.length===1?'it scatters':'they scatter'} into the mercenary bands.`);
     return false;
   }
@@ -10699,9 +10332,9 @@ const BATTLE_ARMY_SPELLS={
     const from=G.world.provinces[ch._attackedFrom];
     // Friendly water: ours or an ally's, plus the unowned, undefended sea a landing came from (the
     // 2026-09-23c ruling — a beaten landing falls back to its ships).
-    const seaOk=noSea?[]:adj.filter(p2=>p2.terrain==='sea'&&!p2._flood&&(isFriendlyProvFor(p2,ch.player)
+    const seaOk=noSea?[]:adj.filter(p2=>p2.terrain==='sea'&&!p2._flood&&(isFriendlyProvFor(turnContext,p2,ch.player)
       ||(!!from&&p2.id===from.id&&p2.owner==null&&!(p2.neutralDefenders||[]).length)));
-    const landFriendly=preferDryGround(adj.filter(p2=>p2.terrain!=='sea'&&isFriendlyProvFor(p2,ch.player))); // item 10: parted sea only when no ordinary land
+    const landFriendly=preferDryGround(adj.filter(p2=>p2.terrain!=='sea'&&isFriendlyProvFor(turnContext,p2,ch.player))); // item 10: parted sea only when no ordinary land
     const landOwn=landFriendly.filter(p2=>p2.owner===ch.player);
     const move=(dest)=>{ prov.characters=(prov.characters||[]).filter(id=>id!==ch.id);
       dest.characters=dest.characters||[]; if(!dest.characters.includes(ch.id)) dest.characters.push(ch.id);
@@ -10813,8 +10446,8 @@ const BATTLE_ARMY_SPELLS={
   // (mid-turn, after composition or March/Naval changes), so both stay perfectly in step.
   function computeMovePoolMax(c){
     const armies=(c.armies||[]).filter(a=>a&&!a._phantom); // illusions set no pace and take no berth
-    const marchLevel=effStat(c,'march');
-    const navalLevel=effStat(c,'naval');
+    const marchLevel=effStat(turnContext,c,'march');
+    const navalLevel=effStat(turnContext,c,'naval');
     let land, sea, seaActive;
     if(armies.length===0){
       land=5; sea=5; seaActive=true; // a hero with no fleet takes passage — Naval skill buys nothing
@@ -10826,7 +10459,7 @@ const BATTLE_ARMY_SPELLS={
           if(AERIAL_TYPES.has(a.type)) return base; // no flyer (rider or winged beast) is sped by March (item 14)
           // sd13 Road Network (+1 for speed 1-2 land armies) and Item 5 `move` discoveries (race /
           // cls filtered), same speed band.
-          let _road=0; if(c.player!=null&&base<=2){ discEff(c.player,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); }
+          let _road=0; if(c.player!=null&&base<=2){ discEff(turnContext,c.player,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); }
           return base+marchSpeedBonus(marchLevel)+_road;
         });
         land=Math.min(...landSpeeds);
@@ -10853,8 +10486,8 @@ const BATTLE_ARMY_SPELLS={
       }
     }
     // Swift / Seawolf minor titles keep their +1 (only when a pool actually exists).
-    if(charMinor(c,'swift') && land>0) land+=1;
-    if(charMinor(c,'seawolf') && sea>0) sea+=1;
+    if(charMinor(turnContext,c,'swift') && land>0) land+=1;
+    if(charMinor(turnContext,c,'seawolf') && sea>0) sea+=1;
     return {land, sea, seaActive, cap:getSeaCapability(armies, c)};
   }
   function setMovePool(c){
@@ -10900,57 +10533,6 @@ const BATTLE_ARMY_SPELLS={
     const table=isNaval?NAVAL_UNIFY:MARCH_UNIFY;
     const row=table[Math.min(marchOrNaval,5)]||table[0];
     return row[Math.min(distanceProvinces,2)]||row[row.length-1];
-  }
-
-  // ── DISCOVERY EFFECT HELPERS ────
-  // Returns true if player has a specific discovery
-  function hasDisc(playerIdx, discId){
-    return (G.players[playerIdx]?.discoveries||[]).some(d=>d.id===discId);
-  }
-  function gdActive(playerIdx, align){ return gdActiveFor(G, playerIdx, align); }
-  // sd40 Dragon Taming: true when this commander's realm leads this winged beast without Druid
-  // penalty.
-  function dragonTamed(heroChar, army){
-    return !!(heroChar&&heroChar.player!=null&&army&&TAMED_FLYER_TYPES_D.has(army.type)&&hasDisc(heroChar.player,'sd40'));
-  }
-  // data-driven discovery effects (race / alignment discoveries).
-  function discEff(pi, kind){ return (pi==null)?[]:discEffectsOf(G.players[pi], kind); }
-  function discSum(pi, kind, field, pred){ return (pi==null)?0:discSumOf(G.players[pi], kind, field, pred); }
-  // Multiplier on ONE army's strength from `unitStr` discoveries (race / types / cls / terrain /
-  // side).
-  function discUnitMult(pi, army, terrain, ctx, heroChar){
-    if(pi==null||!army) return 1;
-    let m=1;
-    discEff(pi,'unitStr').forEach(e=>{
-      if(!discUnitMatch(e, army)) return;
-      if(e.king && !(heroChar&&heroChar.isKing)) return; // "led by your KING in person" effects
-      if(e.terrain && !e.terrain.includes(terrain)) return;
-      if(e.side==='atk' && !(ctx&&ctx.isAttacker===true)) return;
-      if(e.side==='def' && !(ctx&&ctx.isAttacker===false)) return;
-      if(e.led==='garrison' && heroChar) return; // only a garrison standing without a commander
-      m*=1+(e.pct||0);
-    });
-    return Math.min(DISC_STR_CAP,m); // ceiling on stacked discovery strength (Toby 2026-09-21)
-  }
-  // Per-unit promotion bonus from `promo` discoveries (unit filters).
-  function discPromo(pi, army){ if(pi==null||!army) return 0; let r=0; discEff(pi,'promo').forEach(e=>{ if(discUnitMatch(e,army)) r+=(e.pct||0); }); return r; }
-  // Does a `duelHit` effect apply against this foe? vs: 'monster' | 'character' | 'undead'.
-  function discDuelVs(e, foe){ if(!e.vs) return true; if(!foe) return false;
-    if(e.vs==='monster') return foe.kind==='monster'; if(e.vs==='character') return foe.kind==='character';
-    if(e.vs==='undead') return pcFoeCat(foe)==='undead'; return false; }
-  // Does a `fanatic` effect apply? side ('atk'/'def'), terrain, withCls (force includes that class).
-  function discFanaticApplies(e, side, terrain, force){ if(e.side&&e.side!==side) return false; if(e.terrain&&!e.terrain.includes(terrain)) return false;
-    if(e.withCls&&!(force||[]).some(a=>a&&discUnitIs(e.withCls,a))) return false; return true; }
-  // 1 - (summed death-chance reduction) for one army.
-  function discDeathMult(pi, army, side){ if(pi==null||!army) return 1; let r=0; discEff(pi,'deathRed').forEach(e=>{ if(e.side&&side&&e.side!==side) return; if(e.side&&!side) return; if(discUnitMatch(e,army)) r+=(e.pct||0); }); return Math.max(0.25,1-r); }
-  // Only discoveries the realm is eligible for (race / alignment) can be researched, found or
-  // stolen.
-  function discAvailableFor(pi, known){ const pl=G.players[pi]; const _blk=discBlockedIds(pl); return SAGE_DISCOVERIES_P.filter(d=>!known.has(d.id)&&!_blk.has(String(d.id))&&discEligible(d,pl)); } // forgotten + awaiting-choice ids excluded (research choice)
-  // Get global army bonus from discoveries
-  function discoveryArmyBonus(playerIdx){
-    let pct=0;
-    // sd02 War Drums is now an ordinary `unitStr` effect (armStr, under the ×1.30 ceiling).
-    return pct;
   }
 
   // ── INTRUSION NOTIFICATIONS ────
@@ -11043,10 +10625,10 @@ const BATTLE_ARMY_SPELLS={
     if(!cand||!pooled||!pooled.length) return 0;
     const align=(cand.player!=null?(G.players[cand.player]||{}).alignment:null)||'Neutral';
     const terrain=(prov&&prov.terrain)||'plain';
-    let tact=cand._tacticalNegated?0:(effStat(cand,'tactical')+(charMinor(cand,'strategist')?1:0));
+    let tact=cand._tacticalNegated?0:(effStat(turnContext,cand,'tactical')+(charMinor(turnContext,cand,'strategist')?1:0));
     if(cand._curseHalveStat==='tactical') tact=Math.floor(tact/2);
     const tacB=(terrain==='sea')?1:tacMulted(Math.min(2.0,1+tact*0.2),cand);
-    let nav=effStat(cand,'naval'); if(cand._curseHalveStat==='naval') nav=Math.floor(nav/2);
+    let nav=effStat(turnContext,cand,'naval'); if(cand._curseHalveStat==='naval') nav=Math.floor(nav/2);
     const navB=1+nav*0.2;
     const _coast=provIsCoastal(G,prov);
     const rows=pooled.filter(a=>a).map(a=>{
@@ -11055,7 +10637,7 @@ const BATTLE_ARMY_SPELLS={
       const fly=FLYING_TYPES.has(a.type), sea=SEA_TYPES.has(a.type);
       return {a, base:base*(sea?navB:tacB), fly, sea}; // flyers take Tactical (2026-09-23c); `a` so the grid can place by type
     });
-    return battleLineTotal(rows, battleFrontWidth(terrain), (cand.player!=null&&hasDisc(cand.player,'sd09')), {terrain,tac:tact});
+    return battleLineTotal(rows, battleFrontWidth(terrain), (cand.player!=null&&hasDisc(turnContext,cand.player,'sd09')), {terrain,tac:tact});
   }
   // Choose the leader of a pooled force. `deflt` is whoever would have led before (the mover, or
   // the standing defender); `joiners` are the characters whose troops are folding in. Returns the
@@ -11109,7 +10691,6 @@ const BATTLE_ARMY_SPELLS={
   // Each humanoid army unit in the province has a (10% + 5%/level) chance to lose an experience
   // level. Survivors are immunised (half chance thereafter). Only the four humanoid races suffer.
   const _PLAGUE_QDOWN={...KC_QUALITY_DOWN};
-  function _isHumanoidRace(r){ return r==='Human'||r==='Elven'||r==='Dwarven'||r==='Orcish'; }
   // ── Bless ward (item) ── A province blessed this turn can shrug off a later ENEMY negative spell
   // (Flood / Earthquake / Plague / Part Sea). Chance = 50% + 5% × the blesser's White skill, counted to
   // level 5. Returns true (and logs) when the ward turns the spell aside, so the caller skips the
@@ -11128,7 +10709,7 @@ const BATTLE_ARMY_SPELLS={
     // LED by a present character (→ that character's Chronicle), the owner's unled GARRISON
     // (→ Realm Events), and neutral/leaderless defenders (no player to notify).
     const entries=[];
-    (G.characters||[]).filter(ch=>ch.alive&&ch.location===prov.id&&!isVeiled(ch)).forEach(ch=>{ // ILLUSORY L9 Veil: a veiled commander's host is spared the plague
+    (G.characters||[]).filter(ch=>ch.alive&&ch.location===prov.id&&!isVeiled(turnContext,ch)).forEach(ch=>{ // ILLUSORY L9 Veil: a veiled commander's host is spared the plague
       (ch.armies||[]).forEach(a=>entries.push({a, owner:ch.player, charId:(ch.player!=null?ch.id:null), garrison:false}));
     });
     (prov.garrisonArmies||[]).forEach(a=>entries.push({a, owner:prov.owner, charId:null, garrison:true}));
@@ -11210,7 +10791,7 @@ const BATTLE_ARMY_SPELLS={
         if(!G.mercenaries) G.mercenaries=[];
         G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
           location:prov.id,isSea:SEA_TYPES.has(a.type),
-          id:newMercId()});
+          id:newMercId(turnContext)});
         emit(`— ${unitRef(gname,a)} break ranks and flee${_vh?` before ${_vh}`:''} — they now roam as mercenaries near ${prov.name}.`); // unified unit naming
         return;
       }
@@ -11235,7 +10816,7 @@ const BATTLE_ARMY_SPELLS={
       if(!prov||!prov._battleUnresolved) return;
       // ILLUSORY L9 VEIL: while any armed force here is veiled, the contest is SUSPENDED — keep the
       // flag and do not resolve until the veil parts (battles trigger when the veil ends).
-      if((G.characters||[]).some(ch=>(ch.alive||ch._leaderlessHost)&&ch.location===prov.id&&(ch.armies||[]).length>0&&isVeiled(ch))) return;
+      if((G.characters||[]).some(ch=>(ch.alive||ch._leaderlessHost)&&ch.location===prov.id&&(ch.armies||[]).length>0&&isVeiled(turnContext,ch))) return;
       prov._battleUnresolved=false; // clear — a fresh stall this phase will set it again
       // `ch.alive||ch._leaderlessHost` — a commander killed while pinned here keeps his host for
       // the duration of the battle. Filtering on `alive` alone made that host invisible, so the
@@ -11259,7 +10840,7 @@ const BATTLE_ARMY_SPELLS={
       const _rankForce=(a,b)=>((a._leaderlessHost?1:0)-(b._leaderlessHost?1:0))
         ||(armyTotalStr(b,prov)-armyTotalStr(a,prov));
       const _ctxCharId=[...playerForces].sort(_rankForce)[0].id;
-      _logCtx={charId:_ctxCharId, phase:ph};
+      turnContext._logCtx={charId:_ctxCharId, phase:ph};
       // a commander (king or hero) who fell in an earlier-phase battle duel keeps his host on the
       // field for the rest of the battle (_leaderlessHost) — but he is DEAD. The resume/secure
       // narration must never speak of him as if he still rides; name the host that carries his
@@ -11289,7 +10870,7 @@ const BATTLE_ARMY_SPELLS={
         // the resumed fight for a neutral province pays merit like the first one. Credited to the
         // REAL attacker, never `atkCopy` — TM(c) creates the accumulator on whatever object it is
         // handed, so crediting a shallow copy writes the merit somewhere nobody reads.
-        creditBattle(attacker,null,battle,prov);
+        creditBattle(turnContext,attacker,null,battle,prov);
         // this character has now had their one battle for the phase. Pin them (STAGE 1b) so a
         // Move/Pursue order later this phase can't march them on to START A SECOND BATTLE — even if
         // this follow-up battle RESOLVED and the province is no longer flagged _battleUnresolved.
@@ -11323,9 +10904,9 @@ const BATTLE_ARMY_SPELLS={
               guard._isNeutralGuard=false; guard._justDefeated=true;
               if(!guard.name.includes('(wandering)')) guard.name=guard.name+' (wandering)';
             }
-            setProvinceOwner(prov,attacker.player,attacker,ph); prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
+            setProvinceOwner(turnContext,prov,attacker.player,attacker,ph); prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
             const pl=G.players[attacker.player];
-            if(pl){ pl.merits=(pl.merits||0)+(prov.tax||0); if(!pl.provinces.includes(prov.id)) pl.provinces.push(prov.id); applyEvilConquest(attacker, prov, pl); } // Evil doctrine now fires on this capture path too
+            if(pl){ pl.merits=(pl.merits||0)+(prov.tax||0); if(!pl.provinces.includes(prov.id)) pl.provinces.push(prov.id); applyEvilConquest(turnContext, attacker, prov, pl); } // Evil doctrine now fires on this capture path too
             if(attacker.alive!==false) attacker.merits=(attacker.merits||0)+(prov.tax||0); // 2026-09-21: no personal merit for a fallen commander
             log('combat',`${forceLabel(attacker)} finally overcomes the defenders and claims ${prov.name}!`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true});
           }
@@ -11365,12 +10946,12 @@ const BATTLE_ARMY_SPELLS={
         // next battle — so the attacker is whoever doesn't own the ground, not simply whoever is
         // strongest.
         let defender=ranked.find(f=>f.player===prov.owner), attacker;
-        if(defender){ attacker=ranked.find(f=>f.player!==prov.owner&&f.player!==defender.player&&f.player!=null&&defender.player!=null&&areEnemies(f.player,defender.player)); }
+        if(defender){ attacker=ranked.find(f=>f.player!==prov.owner&&f.player!==defender.player&&f.player!=null&&defender.player!=null&&areEnemies(turnContext,f.player,defender.player)); }
         if(!attacker){
           // the owner's own forces (if any) are not party to the war — the contest is between two
           // guests on the ground: the strongest force with an enemy present attacks that enemy
           defender=null;
-          for(const a of ranked){ const d=ranked.find(f=>f.player!==a.player&&a.player!=null&&f.player!=null&&areEnemies(a.player,f.player)); if(d){ attacker=a; defender=d; break; } }
+          for(const a of ranked){ const d=ranked.find(f=>f.player!==a.player&&a.player!=null&&f.player!=null&&areEnemies(turnContext,a.player,f.player)); if(d){ attacker=a; defender=d; break; } }
         }
         if(!attacker){ // no warring pair at all — the old pairing, which lapses just below
           defender=ranked.find(f=>f.player===prov.owner);
@@ -11382,7 +10963,7 @@ const BATTLE_ARMY_SPELLS={
         // made peace at the turn boundary (mutual Treat, Enemy→Neutral), the contest lapses and they
         // disengage rather than fighting on. (NPC contests — player==null on a side — are
         // unaffected.)
-        if(attacker.player!=null&&defender.player!=null&&!areEnemies(attacker.player,defender.player)){
+        if(attacker.player!=null&&defender.player!=null&&!areEnemies(turnContext,attacker.player,defender.player)){
           delete prov._battleUnresolved;
           log('combat',`The contest for ${prov.name} lapses — ${G.players[attacker.player]?.name||'one side'} and ${G.players[defender.player]?.name||'the other'} are no longer at war, and the two hosts stand down.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true});
           return;
@@ -11401,7 +10982,7 @@ const BATTLE_ARMY_SPELLS={
         const atkPool=atkSea?seaMovePoints:movePoints;
         if((atkPool[attacker.id]??0)>0) atkPool[attacker.id]=Math.max(0,(atkPool[attacker.id]??0)-1);
         log('combat',freshWar
-          ?`⚔ War has come to ${prov.name}: ${forceLabel(attacker)}${realmTag(attacker.player)} and ${forceLabel(defender)}${realmTag(defender.player)} have stood on the same ground since the season opened, and with ${SEASONS[ph]}'s orders done they fall upon each other.`
+          ?`⚔ War has come to ${prov.name}: ${forceLabel(attacker)}${realmTag(turnContext,attacker.player)} and ${forceLabel(defender)}${realmTag(turnContext,defender.player)} have stood on the same ground since the season opened, and with ${SEASONS[ph]}'s orders done they fall upon each other.`
           :`⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} and ${forceLabel(defender)} clash again.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true});
         const atkCopy={...attacker,armies:[...(attacker.armies||[])]};
         const defCopy={...defender,armies:[...(defender.armies||[])]};
@@ -11409,7 +10990,7 @@ const BATTLE_ARMY_SPELLS={
         atkCopy._resumeBattle=true; // already in the province — suppress the "moves into" line
         if(freshWar) atkCopy._openingClash=true; // a war front's first clash is not a carry-on round
         const battle=combatVsChar(atkCopy,defCopy,prov);
-        creditBattle(attacker,defender,battle,prov);
+        creditBattle(turnContext,attacker,defender,battle,prov);
         // both sides have now had their battle for the phase — pin them (STAGE 1b) so neither can
         // march on to start a second battle later this phase, even if this one resolved.
         attacker._foughtStalledBattlePhase=ph; defender._foughtStalledBattlePhase=ph;
@@ -11430,9 +11011,9 @@ const BATTLE_ARMY_SPELLS={
           log('combat',navalHoldLine(prov,_navalBlockSB,(G.players[winner.player]||{}).name||forceLabel(winner)),{charId:_ctxCharId,phase:ph,actor:winner.player,targets:[],provinceId:prov.id,public:true});
         } else if(!enemyStillHere && prov.owner!==winner.player){
           G.players.forEach((p,pi)=>{if(pi!==winner.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
-          setProvinceOwner(prov,winner.player,winner,ph); const wp=G.players[winner.player];
+          setProvinceOwner(turnContext,prov,winner.player,winner,ph); const wp=G.players[winner.player];
           if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
-          if(wp) applyEvilConquest(winner, prov, wp); // Evil doctrine on stand-off capture (was skipped)
+          if(wp) applyEvilConquest(turnContext, winner, prov, wp); // Evil doctrine on stand-off capture (was skipped)
           log('combat',`${forceLabel(winner)} secures ${prov.name}!`,{charId:_ctxCharId,phase:ph,actor:winner.player,targets:[],provinceId:prov.id,public:true});
         }
         // Safety net: the flag was cleared at the top of this function and combatVsChar only re-sets
@@ -11451,15 +11032,15 @@ const BATTLE_ARMY_SPELLS={
       const lone=playerForces[0];
       // a lone survivor may only take ground from an ENEMY (or no one): an ally's or a neutral
       // realm's province is not his to seize, and an enemy's standing garrison must still be beaten
-      if(prov.owner!=null&&prov.owner!==lone.player&&!areEnemies(lone.player,prov.owner)) return;
+      if(prov.owner!=null&&prov.owner!==lone.player&&!areEnemies(turnContext,lone.player,prov.owner)) return;
       if(prov.owner!=null&&prov.owner!==lone.player&&!guard&&(prov.garrisonArmies||[]).length>0&&lone.alive){
         resolveUnitGainInProvince(lone, prov, ph);
-        _logCtx={charId:_ctxCharId, phase:ph};
+        turnContext._logCtx={charId:_ctxCharId, phase:ph};
         return;
       }
       if(prov.owner!==lone.player && !guard){
         G.players.forEach((p,pi)=>{if(pi!==lone.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
-        setProvinceOwner(prov,lone.player,lone,ph); prov.neutralDefenders=[]; prov.npcArmies=0;
+        setProvinceOwner(turnContext,prov,lone.player,lone,ph); prov.neutralDefenders=[]; prov.npcArmies=0;
         const lp=G.players[lone.player]; if(lp&&!lp.provinces.includes(prov.id)) lp.provinces.push(prov.id);
         log('combat',`${forceLabel(lone)} holds ${prov.name} unopposed and secures it.`,{charId:_ctxCharId,phase:ph,actor:lone.player,targets:[],provinceId:prov.id,public:true});
       }
@@ -11616,7 +11197,7 @@ const BATTLE_ARMY_SPELLS={
       (G.characters||[]).forEach(sc=>{
         if(!sc||!sc.alive||sc.player==null||sc.player===pi||sc.location==null) return;
         if((sc.armies||[]).length>0||sc._invisTurn===G.turn||((sc.skills||{}).spy||0)<1) return;
-        const sp=G.world.provinces[sc.location]; if(!sp||sp.owner!==pi||!areEnemies(pi,sc.player)) return;
+        const sp=G.world.provinces[sc.location]; if(!sp||sp.owner!==pi||!areEnemies(turnContext,pi,sc.player)) return;
         let watchers=(G.characters||[]).filter(w=>w&&w.alive&&w.player===pi&&w.location===sp.id);
         if(!watchers.length){
           if(!spotEnemyInOwnedProvince(G,pi,sp,sc)) return;
@@ -11628,8 +11209,8 @@ const BATTLE_ARMY_SPELLS={
         if(!best._spySpotted||best._spySpotted.turn!==G.turn) best._spySpotted={turn:G.turn,ids:[]};
         if(best._spySpotted.ids.includes(sc.id)) return;
         best._spySpotted.ids.push(sc.id);
-        const _prevCtx=_logCtx; _logCtx={charId:best.id,phase:ph};
-        try{ trySkillGain(best,'spy',SKILLGAIN_STD); } finally { _logCtx=_prevCtx; }
+        const _prevCtx=turnContext._logCtx; turnContext._logCtx={charId:best.id,phase:ph};
+        try{ trySkillGain(best,'spy',SKILLGAIN_STD); } finally { turnContext._logCtx=_prevCtx; }
       });
       // Provinces entered this phase — and their neighbours — even if the character was thrown back
       // out again. Marching in and being repelled still buys you the same look at the country that
@@ -11679,10 +11260,10 @@ const BATTLE_ARMY_SPELLS={
     if((c.armies||[]).length===0) return false;  // no force present to fight or hold
     // DIPLOMACY: a force raised inside an ally's or a neutral's province cannot seize it or start a
     // war — it simply stands there. Only enemy-owned (or unowned) ground can be contested this way.
-    if(prov.owner!=null&&prov.owner!==c.player&&!areEnemies(c.player,prov.owner)){
+    if(prov.owner!=null&&prov.owner!==c.player&&!areEnemies(turnContext,c.player,prov.owner)){
       // The owner saw the troops appear (public cast line) — tell them what it means: nothing, yet.
-      const _rel=areAllied(c.player,prov.owner)?'your realms are allied':'your realms are not at war';
-      notifyProvinceOwner(prov, `👁 ${c.name}${realmTag(c.player)} now leads ${(c.armies||[]).length} unit${(c.armies||[]).length!==1?'s':''} inside your province of ${prov.name}, but makes no move against it — ${_rel}. ${prov.name} remains yours.`, c.player, ph);
+      const _rel=areAllied(turnContext,c.player,prov.owner)?'your realms are allied':'your realms are not at war';
+      notifyProvinceOwner(turnContext, prov, `👁 ${c.name}${realmTag(turnContext,c.player)} now leads ${(c.armies||[]).length} unit${(c.armies||[]).length!==1?'s':''} inside your province of ${prov.name}, but makes no move against it — ${_rel}. ${prov.name} remains yours.`, c.player, ph);
       return false;
     }
     // ── DEFEND, DEFERRED ── While the phase's NON-MOVING orders are still resolving (_tier0Open),
@@ -11702,7 +11283,7 @@ const BATTLE_ARMY_SPELLS={
     // new host can form up and seize it — he is then found below as an ordinary defender, so he
     // fights on his own ground (defender's edge, garrison at his side) instead of retaking it.
     const _defRiders=defendAnswerUnitGain(c, prov, ph);
-    const _armedFoesHere=G.characters.filter(d=>d.alive&&d.id!==c.id&&d.location===prov.id&&d.player!=null&&d.player!==c.player&&areEnemies(c.player,d.player)&&(d.armies||[]).length>0);
+    const _armedFoesHere=G.characters.filter(d=>d.alive&&d.id!==c.id&&d.location===prov.id&&d.player!=null&&d.player!==c.player&&areEnemies(turnContext,c.player,d.player)&&(d.armies||[]).length>0);
     // the owner's own commanders lead the defence of their ground ahead of any third party
     const enemyChar=_armedFoesHere.find(d=>d.player===prov.owner)||_armedFoesHere[0];
     const neutralGuard=G.characters.find(d=>d.alive&&d.player===null&&d.location===prov.id&&(d.armies||[]).length>0&&!d._justDefeated);
@@ -11718,9 +11299,9 @@ const BATTLE_ARMY_SPELLS={
       // runDefendMaterializedReactions).
       if(prov.owner!=null&&prov.owner!==c.player) prov._takenByUnitGain={turn:G.turn,ph:ph,from:prov.owner};
       G.players.forEach((p,pi)=>{if(pi!==c.player){const i=(p.provinces||[]).indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
-      setProvinceOwner(prov,c.player,c,ph); prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
+      setProvinceOwner(turnContext,prov,c.player,c,ph); prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
       if(!player.provinces.includes(prov.id)) player.provinces.push(prov.id);
-      applyEvilConquest(c, prov, player); // Evil doctrine on this capture path (was skipped)
+      applyEvilConquest(turnContext, c, prov, player); // Evil doctrine on this capture path (was skipped)
       if(!prov.visitedBy) prov.visitedBy=[]; if(!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
     };
 
@@ -11755,10 +11336,10 @@ const BATTLE_ARMY_SPELLS={
       const combinedDef={..._rbP.leader,armies:_rbPooled};
       battle=combatVsChar(c, combinedDef, prov);
       syncLeaderCopy(_rbP.leader, combinedDef);
-      creditBattle(c,_rbP.leader,battle,prov);
+      creditBattle(turnContext,c,_rbP.leader,battle,prov);
       if(battle&&Array.isArray(battle.narrative)){
         const _form=[];
-        if(c._openingClash&&!c._warFront) _form.push(`➡️ ${c.name}${realmTag(c.player)} turns a newly-gathered host on ${prov.name}, held by ${(prov.owner!=null&&G.players[prov.owner])?G.players[prov.owner].name:(G.players[enemyChar.player]?.name||enemyChar.name)} — a battle is initiated.`);
+        if(c._openingClash&&!c._warFront) _form.push(`➡️ ${c.name}${realmTag(turnContext,c.player)} turns a newly-gathered host on ${prov.name}, held by ${(prov.owner!=null&&G.players[prov.owner])?G.players[prov.owner].name:(G.players[enemyChar.player]?.name||enemyChar.name)} — a battle is initiated.`);
         if(_defRiders.length>0) _form.push(`🛡 ${_defRiders.map(d=>d.name).join(' and ')} ${_defRiders.length>1?'were':'was'} keeping watch over ${prov.name} and ${_defRiders.length>1?'are':'is'} already in the line when ${c.name}'s ${c._warFront?'host turns on the province':'new host forms up'} — ${prov.name} is defended, not retaken.`);
         if(defReinf.length>0) _form.push(`${enemyChar.name} is reinforced by ${defReinf.map(d=>d.name).join(', ')} in the defence of ${prov.name}!`);
         if(_garHere.length>0) _form.push(`🛡 The standing troops of ${prov.name} rally to ${_rbP.leader.name}: the garrison (${_garHere.length} unit${_garHere.length!==1?'s':''} — ${describeArmy(_garHere)}) joins the defence.`);
@@ -11766,7 +11347,7 @@ const BATTLE_ARMY_SPELLS={
         if(_form.length){ const _bi=battle.narrative.findIndex(l=>typeof narrText(l)==='string'&&String(narrText(l)).includes('Battle for ')); battle.narrative.splice(_bi>=0?_bi:0,0,..._form); }
       }
       emitBattle(battle, prov, ph, targets, {actor:c.player, charIds:[c.id,enemyChar.id,...defReinf.map(d=>d.id)]}); // item 5; 2026-09-09 item 1
-      [enemyChar,...defReinf].filter(d=>d.id!==_rbP.leader.id).forEach(d=>notifyTarget(d,d.alive===false?`⚔ ${d.name} stood in the battle line beside ${_rbP.leader.name} in the defence of ${prov.name}, and fell there — the full account is under ${_rbP.leader.name}.`:`⚔ ${d.name} stands in the battle line beside ${_rbP.leader.name} in the defence of ${prov.name} — the full account is under ${_rbP.leader.name}.`,ph,'combat'));
+      [enemyChar,...defReinf].filter(d=>d.id!==_rbP.leader.id).forEach(d=>notifyTarget(turnContext, d,d.alive===false?`⚔ ${d.name} stood in the battle line beside ${_rbP.leader.name} in the defence of ${prov.name}, and fell there — the full account is under ${_rbP.leader.name}.`:`⚔ ${d.name} stands in the battle line beside ${_rbP.leader.name} in the defence of ${prov.name} — the full account is under ${_rbP.leader.name}.`,ph,'combat'));
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [enemyChar,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
       if(battle&&battle.won) [enemyChar,...defReinf].forEach(d=>noteBattleLoss(d.id)); // every beaten defender's watch is broken
@@ -11823,7 +11404,7 @@ const BATTLE_ARMY_SPELLS={
       const _savedDefs=prov.neutralDefenders;
       prov.neutralDefenders=[...(neutralGuard.armies||[])];
       battle=combatVsNPC(c, prov, neutralGuard);
-      creditBattle(c,null,battle,prov);   // a neutral chieftain's guard pays merit here too
+      creditBattle(turnContext,c,null,battle,prov);   // a neutral chieftain's guard pays merit here too
       if(neutralGuard.alive){
         neutralGuard.armies=[...(prov.neutralDefenders||[])];
         prov.neutralDefenders=_savedDefs;
@@ -11838,14 +11419,14 @@ const BATTLE_ARMY_SPELLS={
     } else if(llDefs.length>0){
       // Leaderless neutral garrison — fights without commander skills, straight off the province.
       battle=combatVsNPC(c, prov, null);
-      creditBattle(c,null,battle,prov);   // a leaderless neutral guard still pays merit
+      creditBattle(turnContext,c,null,battle,prov);   // a leaderless neutral guard still pays merit
       prov._leaderlessDefenders=(prov.neutralDefenders||[]).length>0;
       if(battle.won) markOrcAttackWin(c, G, battle); // 2026-09-27 (Toby item 8): war-spoils on the resumed leaderless fight
       emitBattle(battle, prov, ph, [c.player], {actor:c.player}); // item 5
     } else {
       const _savedDefs=prov.neutralDefenders; prov.neutralDefenders=[...garrison];
       battle=combatVsNPC(c, prov, null);
-      creditBattle(c,null,battle,prov);   // breaking an enemy realm's garrison pays merit
+      creditBattle(turnContext,c,null,battle,prov);   // breaking an enemy realm's garrison pays merit
       prov.neutralDefenders=_savedDefs;
       if(battle.won) markOrcAttackWin(c, G, battle); // 2026-09-27 (Toby item 8): storming a rival's garrison is an attacking win and pays war-spoils
       emitBattle(battle, prov, ph, [c.player,prov.owner].filter(x=>x!=null), {actor:c.player}); // item 5
@@ -11917,8 +11498,8 @@ const BATTLE_ARMY_SPELLS={
     // it had fallen. One line in their Realm Events settles it.
     if(prov.owner!=null&&prov.owner!==c.player&&battle){
       const _n=(c.armies||[]).filter(a=>a&&!a._died&&!a._disbanded).length;
-      if(battle.won) notifyProvinceOwner(prov, `⚔ ${c.name}${realmTag(c.player)} fought for ${prov.name} this phase and had the better of it, but your defenders still hold the ground — ${prov.name} is not yet taken. ${c.alive===false?`${c.name} fell in the fighting; his leaderless host`:c.name} stands there with ${_n} unit${_n!==1?'s':''}.`, c.player, ph);
-      else notifyProvinceOwner(prov, `🛡 ${c.name}${realmTag(c.player)} fought for ${prov.name} this phase and was beaten back — ${prov.name} remains yours.`, c.player, ph);
+      if(battle.won) notifyProvinceOwner(turnContext, prov, `⚔ ${c.name}${realmTag(turnContext,c.player)} fought for ${prov.name} this phase and had the better of it, but your defenders still hold the ground — ${prov.name} is not yet taken. ${c.alive===false?`${c.name} fell in the fighting; his leaderless host`:c.name} stands there with ${_n} unit${_n!==1?'s':''}.`, c.player, ph);
+      else notifyProvinceOwner(turnContext, prov, `🛡 ${c.name}${realmTag(turnContext,c.player)} fought for ${prov.name} this phase and was beaten back — ${prov.name} remains yours.`, c.player, ph);
     }
     return true;
   }
@@ -12024,7 +11605,7 @@ const BATTLE_ARMY_SPELLS={
   function provSafePassageFor(p,pi){
     if(!p) return false;
     if(p.owner===pi) return true;
-    if(p.owner!=null) return relationBetween(pi,p.owner)==='allied';
+    if(p.owner!=null) return relationBetween(turnContext,pi,p.owner)==='allied';
     return !(G.characters||[]).some(g=>g&&g.alive&&g.player===null&&g._isNeutralGuard&&g.location===p.id&&(g.armies||[]).length>0);
   }
   // prov:-move detour: prefer a route whose INTERMEDIATE provinces are all safe passage (the final
@@ -12156,10 +11737,10 @@ const BATTLE_ARMY_SPELLS={
     // DIPLOMACY: an invasion is hostile only if the mover is at WAR with the province's owner.
     // Marching into an ally's land (free passage) or a neutral's (turned back at the border) is not
     // an invasion — it must not pin defenders or trigger Defend reactions.
-    if(d.owner!=null&&d.owner!==it.player&&areEnemies(it.player,d.owner)) return true;
+    if(d.owner!=null&&d.owner!==it.player&&areEnemies(turnContext,it.player,d.owner)) return true;
     // An armed ENEMY force standing in the province is an invasion even if the land is unowned.
     return (G.characters||[]).some(o=>o.alive&&o.location===d.id&&(o.armies||[]).length>0
-      &&o.player!=null&&o.player!==it.player&&areEnemies(it.player,o.player));
+      &&o.player!=null&&o.player!==it.player&&areEnemies(turnContext,it.player,o.player));
   }
 
   // ── Dependency ordering (AK [3.0] exceptions) ────
@@ -12454,7 +12035,7 @@ const BATTLE_ARMY_SPELLS={
       const fought=((battleCommanders[r.provId+'@'+ph]||[]).length>0);
       if(fought) return;
       const P=G.world.provinces[r.provId]; if(!P) return;
-      const enemyHere=(G.characters||[]).some(e=>e&&e.alive&&e.player!=null&&e.player!==c.player&&areEnemies(c.player,e.player)&&e.location===P.id&&(e.armies||[]).length>0&&!isVeiled(e));
+      const enemyHere=(G.characters||[]).some(e=>e&&e.alive&&e.player!=null&&e.player!==c.player&&areEnemies(turnContext,c.player,e.player)&&e.location===P.id&&(e.armies||[]).length>0&&!isVeiled(turnContext,e));
       if(c.location===P.id&&!enemyHere){
         log('move',`🛡 ${c.name} reaches ${P.name} in battle order, but ${r.names.join(' and ')} never crossed the border — no battle is fought, and they hold ${P.name} for the rest of the season.`,{actor:c.player,targets:[c.player],provinceId:P.id,public:false,charId:c.id,phase:ph});
       } else if(c.location===P.id&&enemyHere){
@@ -12468,7 +12049,7 @@ const BATTLE_ARMY_SPELLS={
   function defendBattleLocked(c,here){
     if(!here||!here._battleUnresolved) return false;
     return (G.characters||[]).some(e=>e&&e.id!==c.id&&(e.alive||e._leaderlessHost)&&e.location===here.id&&(e.armies||[]).length>0
-      &&(e.player===null||(e.player!==c.player&&areEnemies(c.player,e.player))));
+      &&(e.player===null||(e.player!==c.player&&areEnemies(turnContext,c.player,e.player))));
   }
 
   // ── DEFEND answers a host RAISED or SUMMONED in the watch — before it can take the ground ────
@@ -12485,8 +12066,8 @@ const BATTLE_ARMY_SPELLS={
   function defendAnswerUnitGain(raiser, prov, ph, dryRun){
     const riders=[];
     if(!raiser||!prov||prov.owner==null||prov.owner===raiser.player) return riders;
-    if(!areEnemies(raiser.player,prov.owner)) return riders;
-    if(isVeiled(raiser)) return riders;                       // a veiled host cannot be found to be fought
+    if(!areEnemies(turnContext,raiser.player,prov.owner)) return riders;
+    if(isVeiled(turnContext,raiser)) return riders;                       // a veiled host cannot be found to be fought
     (G.characters||[]).forEach(d=>{
       if(!d||!d.alive||d.player!==prov.owner||!d._defend||!d._defend.active) return;
       if((d.armies||[]).length===0) return;                   // only generals ride out
@@ -12509,7 +12090,7 @@ const BATTLE_ARMY_SPELLS={
       d._defendReactedPhase=ph;
       if(!prov.visitedBy) prov.visitedBy=[];
       if(!prov.visitedBy.includes(d.player)) prov.visitedBy.push(d.player);
-      log('move',`🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(raiser.player)} ${raiser._warFront?'is turning the host camped inside '+prov.name+' on the province':'is gathering a host inside '+prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
+      log('move',`🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(turnContext,raiser.player)} ${raiser._warFront?'is turning the host camped inside '+prov.name+' on the province':'is gathering a host inside '+prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
         {actor:d.player,targets:[d.player],provinceId:prov.id,public:true,charId:d.id,phase:ph});
       if(bySea) rollNavalVoyage(d,SKILLGAIN_STD); else trySkillGain(d,'march',SKILLGAIN_COMMON);
       riders.push(d);
@@ -12553,7 +12134,7 @@ const BATTLE_ARMY_SPELLS={
         // Elemental, …) and took it unopposed — he rides out to win it back.
         const _justTaken=!!(P._takenByUnitGain&&P._takenByUnitGain.turn===G.turn&&P._takenByUnitGain.ph===ph&&P._takenByUnitGain.from===c.player);
         if(P.id!==c.location && P.owner!==c.player && !_justTaken) continue;
-        const foes=(G.characters||[]).filter(e=>e&&e.alive&&e.player!=null&&areEnemies(c.player,e.player)
+        const foes=(G.characters||[]).filter(e=>e&&e.alive&&e.player!=null&&areEnemies(turnContext,c.player,e.player)
           &&e.location===P.id&&(e.armies||[]).length>0);
         if(!foes.length) continue;
         if(P.id!==c.location && !canStepBetween(c,here,P,sc)) continue; // a fleet can't march inland; ships never cross land (item 14)
@@ -12594,7 +12175,7 @@ const BATTLE_ARMY_SPELLS={
       if(_hP.changed) log('combat',commandHandoverLine(_hP.leader,quarry,prov.name),{actor:quarry.player,targets:targetsPi,provinceId:prov.id,public:true});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
       syncLeaderCopy(_hP.leader, combinedDef);
-      creditBattle(c,_hP.leader,battle,prov);
+      creditBattle(turnContext,c,_hP.leader,battle,prov);
       emitBattle(battle, prov, ph, targetsPi, {actor:c.player, charIds:[c.id,quarry.id,...defReinf.map(d=>d.id)]}); // item 5; 2026-09-09 item 1
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [quarry,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
@@ -12617,11 +12198,11 @@ const BATTLE_ARMY_SPELLS={
       // if the defender won and no armed enemy remains, the province is his again (a spell-conquest
       // is undone the same phase it was made).
       if(battle&&battle.won&&c.alive&&c.location===prov.id&&prov.owner!==c.player&&!prov._battleUnresolved){
-        const _enemyLeft=(G.characters||[]).some(e=>e&&(e.alive||e._leaderlessHost)&&e.location===prov.id&&(e.armies||[]).length>0&&e.player!=null&&e.player!==c.player&&areEnemies(c.player,e.player));
+        const _enemyLeft=(G.characters||[]).some(e=>e&&(e.alive||e._leaderlessHost)&&e.location===prov.id&&(e.armies||[]).length>0&&e.player!=null&&e.player!==c.player&&areEnemies(turnContext,c.player,e.player));
         if(!_enemyLeft){
           G.players.forEach((p,pi)=>{if(pi!==c.player){const i=(p.provinces||[]).indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
-          setProvinceOwner(prov,c.player,c,ph); const wp=G.players[c.player]; if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
-          if(wp) applyEvilConquest(c, prov, wp); // Evil doctrine on this capture path (was skipped)
+          setProvinceOwner(turnContext,prov,c.player,c,ph); const wp=G.players[c.player]; if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
+          if(wp) applyEvilConquest(turnContext, c, prov, wp); // Evil doctrine on this capture path (was skipped)
           delete prov._takenByUnitGain;
           log('combat',`${c.name} drives the interlopers out and secures ${prov.name} for ${wp?wp.name:'their realm'}!`,{actor:c.player,targets:[],provinceId:prov.id,public:true});
         }
@@ -12653,25 +12234,25 @@ const BATTLE_ARMY_SPELLS={
       // (player==null) is never an "enemy character" and is left alone.
       const foes=(G.characters||[]).filter(e=>{
         if(!e||!e.alive||e.player==null||e.id===c.id) return false;
-        if(!areEnemies(c.player,e.player)) return false;
+        if(!areEnemies(turnContext,c.player,e.player)) return false;
         if(e.location==null||!zoneIds.has(e.location)) return false;
         if(e._enteredProvThisPhase!==e.location) return false; // must have MARCHED IN this phase (a real incursion)
         if(e._encounteredThisPhase!=null) return false;
         if(e._vanishTurn===G.turn) return false;             // THIEF L9 Vanish: no ambush lands on a vanished quarry
         if(e.isKing && !c.isKing) return false;              // a crowned head is not waylaid by a lone hero — only a king may ambush a king
-        if(isHiddenChar(e)) return false;                    // Cloak of Many Faces & the like leave no trail
+        if(isHiddenChar(turnContext,e)) return false;                    // Cloak of Many Faces & the like leave no trail
         return true;
       });
       if(!foes.length) return;
       // Prefer the highest-value quarry: a king first, then the heaviest column, then the strongest
       // man.
-      foes.sort((a,b)=> (b.isKing?1:0)-(a.isKing?1:0) || armyTotalStr(b,G.world.provinces[b.location])-armyTotalStr(a,G.world.provinces[a.location]) || effStat(b,'melee')-effStat(a,'melee'));
+      foes.sort((a,b)=> (b.isKing?1:0)-(a.isKing?1:0) || armyTotalStr(b,G.world.provinces[b.location])-armyTotalStr(a,G.world.provinces[a.location]) || effStat(turnContext,b,'melee')-effStat(turnContext,a,'melee'));
       const quarry=foes[0];
       const quarryProv=G.world.provinces[quarry.location];
       if(!quarryProv) return;
       // Spy-scaled ambush chance. Base 10% + 9%/Spy level (a master scout ~90%). Halved against a
       // commander leading an army — his guards make a lone strike far harder to land.
-      const spy=effStat(c,'spy');
+      const spy=effStat(turnContext,c,'spy');
       let chance=Math.min(90, 10+spy*9);
       const guarded=(quarry.armies||[]).length>0;
       if(guarded) chance=Math.floor(chance/2);
@@ -12703,8 +12284,8 @@ const BATTLE_ARMY_SPELLS={
       const _duelChars=[c.id,quarry.id];
       log('combat',`⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
       markProvinceCombat(prov,[c.player,quarry.player]); // purple swords: a personal combat, not a field battle
-      const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,effStat,rng,G);
-      enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
+      enc.narrative.forEach(line=>emitNarrLine(turnContext,'combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       c.hp=Math.max(1,enc.atkHp);
       if(quarry.player!==null) quarry.hp=Math.max(1,enc.defHp);
       if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(c,quarry,`${c.name} is cut down in the ambush they laid!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(quarry,c); } }
@@ -12712,7 +12293,7 @@ const BATTLE_ARMY_SPELLS={
       trySkillGain(c,'spy',SKILLGAIN_STD);                   // a sprung ambush hones the scout's craft
       c._encounteredThisPhase=quarry.id; quarry._encounteredThisPhase=c.id;
       c._defendReactedPhase=ph;
-      if(c.alive) completeDefendWatches([c.id]);               // item 15: the ambush was this watch's fight
+      if(c.alive) completeDefendWatches(turnContext,[c.id]);               // item 15: the ambush was this watch's fight
       // NOTE: an ambush is a PERSONAL duel (no armies), not a field battle — it must NOT set
       // _hadBattleThisTurn. That flag drives the map's crossed-swords marker, which is for ARMY
       // battles only; a duel here was painting swords on provinces where no battle was fought.
@@ -12778,7 +12359,7 @@ const BATTLE_ARMY_SPELLS={
   // Clamped 5–100. A friendly quarry is always caught (a rendezvous, not a hunt).
   function pursuitCatchChance(c,quarry){
     if(quarry.player!=null&&quarry.player===c.player) return 100;
-    const spy=effStat(c,'spy'), qSpy=effStat(quarry,'spy');
+    const spy=effStat(turnContext,c,'spy'), qSpy=effStat(turnContext,quarry,'spy');
     const pct=70+5*spy-5*qSpy; // 2026-09-24: no ×2 for a quarry leading an army · 2026-10-13 (item 11): base 70%
     return Math.max(5,Math.min(100,dispFloor(pct)));
   }
@@ -12800,7 +12381,7 @@ const BATTLE_ARMY_SPELLS={
     // fight a battle; otherwise it is a personal duel, and a quarry still at the head of a column
     // refuses to break ranks for it.
     const meArmed=(c.armies||[]).length>0, themArmed=(quarry.armies||[]).length>0;
-    if(isHiddenChar(quarry)&&quarry.player!==c.player){
+    if(isHiddenChar(turnContext,quarry)&&quarry.player!==c.player){
       log('move',`${c.name} follows the trail of ${quarry.name} into ${here?here.name:'the wilds'} and loses it utterly — the man seems to leave no track at all.`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
       endPursuit(c); return;
     }
@@ -12862,7 +12443,7 @@ const BATTLE_ARMY_SPELLS={
     if(c._encounteredThisPhase===quarry.id||quarry._encounteredThisPhase===c.id){ endPursuit(c); return; }
     const chance=pursuitCatchChance(c,quarry);
     const roll=d100();
-    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(c,'spy')}) closing on ${quarry.name}${statNote(c.player,quarry,'spy')}: ${oddsNote(c.player,quarry,chance,roll)}`,
+    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(turnContext,c,'spy')}) closing on ${quarry.name}${statNote(turnContext,c.player,quarry,'spy')}: ${oddsNote(turnContext,c.player,quarry,chance,roll)}`,
       {actor:c.player,targets:[c.player]});
     if(roll>chance){
       log('move',`${quarry.name} slips away through the country around ${prov.name} — ${c.name} keeps the trail but cannot close.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -12877,7 +12458,7 @@ const BATTLE_ARMY_SPELLS={
     // DIPLOMACY: a quarry belonging to a player we are NOT at war with (allied or neutral) is not
     // run down — the pursuit ends in a meeting, not a battle. Only enemy (or NPC) quarry are
     // fought.
-    if(quarry.player!=null&&!areEnemies(c.player,quarry.player)){
+    if(quarry.player!=null&&!areEnemies(turnContext,c.player,quarry.player)){
       log('move',`${c.name} overtakes ${quarry.name} in ${prov.name}, but ${G.players[quarry.player]?.name||'their realm'} is not at war with ${G.players[c.player]?.name||'us'} — the two columns pass without bloodshed.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
       endPursuit(c); return;
     }
@@ -12897,7 +12478,7 @@ const BATTLE_ARMY_SPELLS={
       const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
       log('combat',`⚔ ${c.name} runs ${quarry.name} to ground in ${prov.name} and forces battle!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:[c.id,quarry.id]});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
-      creditBattle(c,quarry,battle,prov);
+      creditBattle(turnContext,c,quarry,battle,prov);
       c._foughtStalledBattlePhase=ph; quarry._foughtStalledBattlePhase=ph; defReinf.forEach(d=>{ d._foughtStalledBattlePhase=ph; }); // their one battle for the phase
       emitBattle(battle, prov, ph, targetsPi, {actor:c.player, charIds:[c.id,quarry.id]}); // into both combatants' sections
       // Write casualties back from the pooled copies to the real characters.
@@ -12927,9 +12508,9 @@ const BATTLE_ARMY_SPELLS={
       // province's own garrison (which did not fight in the chase) keep it contested, and the fight
       // for it resumes next phase.
       if(battle&&battle.won&&c.alive&&c.location===prov.id&&!prov._battleUnresolved&&prov.owner!==c.player
-         &&(prov.owner==null||areEnemies(c.player,prov.owner))&&!(prov.owner==null&&(prov.neutralDefenders||[]).length)){
+         &&(prov.owner==null||areEnemies(turnContext,c.player,prov.owner))&&!(prov.owner==null&&(prov.neutralDefenders||[]).length)){
         const _hostileLeft=(G.characters||[]).some(ch=>ch&&(ch.alive||ch._leaderlessHost)&&ch.location===prov.id&&(ch.armies||[]).length>0
-          &&ch.player!=null&&ch.player!==c.player&&areEnemies(c.player,ch.player));
+          &&ch.player!=null&&ch.player!==c.player&&areEnemies(turnContext,c.player,ch.player));
         const _hulls=navalHeldIn(prov,c.player);
         const _garrison=prov.owner!=null&&(prov.garrisonArmies||[]).some(a=>a&&!a._died&&!a._disbanded&&a._navalHold==null);
         if(_hostileLeft||_hulls.length||_garrison){
@@ -12942,9 +12523,9 @@ const BATTLE_ARMY_SPELLS={
         } else {
           const _wp=G.players[c.player];
           G.players.forEach((p,pi)=>{ if(pi!==c.player){ const i=(p.provinces||[]).indexOf(prov.id); if(i>-1) p.provinces.splice(i,1); } });
-          setProvinceOwner(prov,c.player,c,ph); if(_wp&&!_wp.provinces.includes(prov.id)) _wp.provinces.push(prov.id);
+          setProvinceOwner(turnContext,prov,c.player,c,ph); if(_wp&&!_wp.provinces.includes(prov.id)) _wp.provinces.push(prov.id);
           log('combat',`${c.name} claims ${prov.name} for ${_wp?_wp.name:'their realm'}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
-          if(_wp) applyEvilConquest(c, prov, _wp);
+          if(_wp) applyEvilConquest(turnContext, c, prov, _wp);
         }
       }
       clearNavalHold(prov);
@@ -12963,14 +12544,14 @@ const BATTLE_ARMY_SPELLS={
       // is told who came for him. Kings are unchanged — the crown-only rules still apply after this.
       if(themArmed){
         const _units=(quarry.armies||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom).length;
-        const _spy=effStat(c,'spy'), _tac=effStat(quarry,'tactical');
+        const _spy=effStat(turnContext,c,'spy'), _tac=effStat(turnContext,quarry,'tactical');
         const _pct=Math.max(ENC_BREAK_RANKS_MIN,Math.min(ENC_BREAK_RANKS_MAX,
           ENC_BREAK_RANKS_BASE-ENC_BREAK_RANKS_PER_UNIT*_units+ENC_BREAK_RANKS_SPY*_spy-ENC_BREAK_RANKS_TAC*_tac));
         const _roll=d100();
-        log('system',`📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units!==1?'s':''}${statNote(c.player,quarry,'tactical')}: ${oddsNote(c.player,quarry,_pct,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('system',`📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units!==1?'s':''}${statNote(turnContext,c.player,quarry,'tactical')}: ${oddsNote(turnContext,c.player,quarry,_pct,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         if(_roll>_pct){
           log('system',`${c.name} runs ${quarry.name} to ground in ${prov.name}, but the sentries of their column are awake — the challenger is turned away from the lines before reaching the commander, and the chase is abandoned.`,{actor:c.player,targets:[c.player],charId:c.id,provinceId:prov.id});
-          notifyTarget(quarry,`👁 ${c.name}${realmTag(c.player)} came for ${quarry.name} in ${prov.name} — a lone challenger, turned away by the sentries before reaching the tent.`,ph,'system');
+          notifyTarget(turnContext, quarry,`👁 ${c.name}${realmTag(turnContext,c.player)} came for ${quarry.name} in ${prov.name} — a lone challenger, turned away by the sentries before reaching the tent.`,ph,'system');
           endPursuit(c); return;
         }
         log('system',`${c.name} slips through the picket lines of ${quarry.name}'s column in ${prov.name} and forces the matter before the commander can rally the guard.`,{actor:c.player,targets:[c.player,quarry.player].filter(x=>x!=null),charId:c.id,charIds:[c.id,quarry.id],provinceId:prov.id});
@@ -12999,8 +12580,8 @@ const BATTLE_ARMY_SPELLS={
       const _duelChars=[c.id,quarry.id]; // the duel belongs in BOTH duellists' report sections
       log('combat',`⚔ ${c.name} finally corners ${quarry.name} in ${prov.name}.`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
       markProvinceCombat(prov,[c.player,quarry.player]); // purple swords: a personal combat, not a field battle
-      const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,effStat,rng,G);
-      enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,(...a)=>effStat(turnContext,...a),rng,G);
+      enc.narrative.forEach(line=>emitNarrLine(turnContext,'combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       // a hero beaten to 0 HP in the duel DIES outright — the old "capitulates and survives at 1
       // HP" reprieve is gone. atkKilled/defKilled still cover the explicit-slaying path; the hp<=0
       // checks catch every other felling.
@@ -13054,7 +12635,7 @@ const BATTLE_ARMY_SPELLS={
   // the CATHEDRAL STANDS IN, not over a capital id frozen at game start. gdActive already requires
   // the realm to still hold that ground, which also fixes the old bug where a Divine realm that
   // lost its capital kept warding it for its conqueror.
-  (G.players||[]).forEach((pl,pi)=>{ if(gdActive(pi,'Divine')){ const _cap=G.world.provinces[pl.gdProvinceId!=null?pl.gdProvinceId:homeProvinceIdFor(G,pi)]; if(_cap){ _cap._blessWardTurn=G.turn; _cap._blessWardBy=pi; _cap._blessWardPct=100; } } });
+  (G.players||[]).forEach((pl,pi)=>{ if(gdActive(turnContext,pi,'Divine')){ const _cap=G.world.provinces[pl.gdProvinceId!=null?pl.gdProvinceId:homeProvinceIdFor(G,pi)]; if(_cap){ _cap._blessWardTurn=G.turn; _cap._blessWardBy=pi; _cap._blessWardPct=100; } } });
   // ── BOT DECISIONS + default-to-Defend ── run here, after every helper const in this block is initialised
   // (the hunters' duel forecast needs autoEncounterPlan / NPC_SPELL_BY_SCHOOL / resolvePersonalCombat).
   // 2c. BOT DECISIONS (Phase 3a) — bots write their own movement orders into G.turnOrders, using
@@ -13127,9 +12708,9 @@ const BATTLE_ARMY_SPELLS={
     (G.world.provinces||[]).forEach(pv=>{
       if(!pv||pv._battleUnresolved) return;
       if(exceptProvIds&&exceptProvIds.has(pv.id)) return; // a fresh war front — settled at the end of Spring (resolveWarFronts)
-      const _vf=(G.characters||[]).filter(ch=>ch.alive&&ch.location===pv.id&&(ch.armies||[]).length>0&&ch.player!=null&&!isVeiled(ch));
+      const _vf=(G.characters||[]).filter(ch=>ch.alive&&ch.location===pv.id&&(ch.armies||[]).length>0&&ch.player!=null&&!isVeiled(turnContext,ch));
       const _vpl=[...new Set(_vf.map(ch=>ch.player))];
-      let _vep=false; for(let i=0;i<_vpl.length&&!_vep;i++) for(let j=i+1;j<_vpl.length;j++) if(areEnemies(_vpl[i],_vpl[j])){ _vep=true; break; }
+      let _vep=false; for(let i=0;i<_vpl.length&&!_vep;i++) for(let j=i+1;j<_vpl.length;j++) if(areEnemies(turnContext,_vpl[i],_vpl[j])){ _vep=true; break; }
       if(_vep) pv._battleUnresolved=true;
     });
   }
@@ -13166,11 +12747,11 @@ const BATTLE_ARMY_SPELLS={
     const out=[];
     (G.characters||[]).forEach(c=>{
       if(!c||!c.alive||c.player==null||c.location==null||!(c.armies||[]).some(a=>a&&!a._phantom)) return;
-      if(isVeiled(c)) return;
+      if(isVeiled(turnContext,c)) return;
       const p=G.world.provinces[c.location]; if(!p) return;
-      const onEnemyLand=p.owner!=null&&p.owner!==c.player&&areEnemies(c.player,p.owner);
+      const onEnemyLand=p.owner!=null&&p.owner!==c.player&&areEnemies(turnContext,c.player,p.owner);
       const facesEnemyHost=(G.characters||[]).some(o=>o&&o.alive&&o.id!==c.id&&o.location===p.id&&o.player!=null&&o.player!==c.player
-        &&(o.armies||[]).some(a=>a&&!a._phantom)&&areEnemies(c.player,o.player)&&!isVeiled(o));
+        &&(o.armies||[]).some(a=>a&&!a._phantom)&&areEnemies(turnContext,c.player,o.player)&&!isVeiled(turnContext,o));
       if(onEnemyLand||facesEnemyHost) out.push({c,prov:p,onEnemyLand,facesEnemyHost});
     });
     return out;
@@ -13189,12 +12770,12 @@ const BATTLE_ARMY_SPELLS={
       const byStr=(a,b)=>armyTotalStr(b.c,prov)-armyTotalStr(a.c,prov);
       const assault=(c)=>{
         const ownerNm=(prov.owner!=null&&G.players[prov.owner])?G.players[prov.owner].name:null;
-        _combatSkillProv=null; _logCtx={charId:c.id,phase:ph};
-        log('combat',`⚔ War stands between ${G.players[c.player]?.name||'their realm'} and ${ownerNm||'the realm whose host shares the ground'}, and ${c.name}${realmTag(c.player)} has held ${c.armies.length} unit${c.armies.length!==1?'s':''} in ${prov.name} since the season opened. With ${SEASONS[ph]}'s orders done, the host turns on the province${ownerNm?` of ${ownerNm}`:''}.`,
+        _combatSkillProv=null; turnContext._logCtx={charId:c.id,phase:ph};
+        log('combat',`⚔ War stands between ${G.players[c.player]?.name||'their realm'} and ${ownerNm||'the realm whose host shares the ground'}, and ${c.name}${realmTag(turnContext,c.player)} has held ${c.armies.length} unit${c.armies.length!==1?'s':''} in ${prov.name} since the season opened. With ${SEASONS[ph]}'s orders done, the host turns on the province${ownerNm?` of ${ownerNm}`:''}.`,
           {actor:c.player,targets:[c.player,prov.owner].filter(x=>x!=null),provinceId:prov.id,public:true,charId:c.id,phase:ph});
         c._warFront=true;
         try{ resolveUnitGainInProvince(c,prov,ph); } finally { delete c._warFront; }
-        _logCtx={charId:null,phase:null}; _combatSkillProv=null;
+        turnContext._logCtx={charId:null,phase:null}; _combatSkillProv=null;
       };
       // 1. hosts standing on ENEMY-OWNED ground — each column assaults in turn, strongest first,
       // until the province falls or the fight is left hanging
@@ -13204,7 +12785,7 @@ const BATTLE_ARMY_SPELLS={
           const c=t.c;
           if(prov._battleUnresolved) break;
           if(!c.alive||c.location!==pid||!(c.armies||[]).length) continue;
-          if(prov.owner==null||prov.owner===c.player||!areEnemies(c.player,prov.owner)) continue;
+          if(prov.owner==null||prov.owner===c.player||!areEnemies(turnContext,c.player,prov.owner)) continue;
           assault(c);
         }
         return;
@@ -13217,12 +12798,12 @@ const BATTLE_ARMY_SPELLS={
       // the province stays with its owner
       prov._battleUnresolved=true;
       resolveStalledBattles(ph,pid,true);
-      _logCtx={charId:null,phase:null}; _combatSkillProv=null;
+      turnContext._logCtx={charId:null,phase:null}; _combatSkillProv=null;
     });
     settleRalliedGarrisons();
   }
   for(let ph=0;ph<5;ph++){
-    _currentPhase=ph; // reliable phase for skill-rises earned outside processOrder
+    turnContext._currentPhase=ph; // reliable phase for skill-rises earned outside processOrder
     const _phaseStartLoc={}; (G.characters||[]).forEach(c=>{ if(c&&c.alive) _phaseStartLoc[c.id]=c.location; }); // for noteSilentHeroes
     log('system',`— ${SEASONS[ph]} —`);
     // sd29 Herbal Lore: a character who took wounds in the PREVIOUS phase has them dressed at the
@@ -13232,7 +12813,7 @@ const BATTLE_ARMY_SPELLS={
     // of the next. Only the wounds of that one fight are treated — it is not a standing
     // regeneration.
     (G.characters||[]).forEach(c=>{
-      if(c.alive&&c.player!=null&&c.hp!=null&&c._hpAtPhaseStart!=null&&c.hp<c._hpAtPhaseStart&&c.hp<(c.maxHp||20)&&hasDisc(c.player,'sd29')){
+      if(c.alive&&c.player!=null&&c.hp!=null&&c._hpAtPhaseStart!=null&&c.hp<c._hpAtPhaseStart&&c.hp<(c.maxHp||20)&&hasDisc(turnContext,c.player,'sd29')){
         const _dmg=c._hpAtPhaseStart-c.hp;
         const _heal=Math.min(Math.max(1,Math.round(_dmg*discParam('sd29','pct',0.40))),(c.maxHp||20)-c.hp);
         if(_heal>0){
@@ -13270,7 +12851,7 @@ const BATTLE_ARMY_SPELLS={
     resolveStalledBattles(ph);
     settleRalliedGarrisons(); // return rallied garrisons to their province if the contest is won, else keep them with the hero
     settleStrandedAtSea(ph); // 2026-09-23c: a column left unshipped by a resumed sea battle (or an old save) puts its excess ashore
-    _logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
+    turnContext._logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
     _combatSkillProv=null; // stalled battles done — no series context until the next fight
     spreadPlagues(ph);
 
@@ -13332,7 +12913,7 @@ const BATTLE_ARMY_SPELLS={
       if(it.cancelled||it.action!=='defend'||!it.order||it.order._pinned) return;
       const c=it.c; if(!c||!c.alive||c.player==null) return;
       if(c._pursuit&&c._pursuit.active) return;
-      if(defendSpentThisPhase(c,ph)) return; // item 15: already fought this phase (a resumed battle) — no new watch until a later Defend
+      if(defendSpentThisPhase(turnContext,c,ph)) return; // item 15: already fought this phase (a resumed battle) — no new watch until a later Defend
       if(c._defend&&c._defend.active&&c._defend.setPhase===ph) return;
       const _carried=!!(c._defend&&c._defend.active); // a watch already kept from an earlier phase simply continues
       c._defend={centre:c.location,active:true,setPhase:ph,preActivated:true,carried:_carried};
@@ -13361,14 +12942,14 @@ const BATTLE_ARMY_SPELLS={
     _tier0Open=true; _unitGainQueue=[];
     const flushDefendStep=()=>{
       if(!_tier0Open) return;
-      _tier0Open=false; _combatSkillProv=null; _logCtx={charId:null,phase:null};
+      _tier0Open=false; _combatSkillProv=null; turnContext._logCtx={charId:null,phase:null};
       runDefendReactions(ph,intents);
       const q=_unitGainQueue; _unitGainQueue=[];
       q.forEach(({c:rc,prov:rp})=>{
         if(!rc||!rc.alive||rc.location!==rp.id||(rc.armies||[]).length===0) return; // the host is gone
-        _combatSkillProv=null; _logCtx={charId:rc.id,phase:ph};
+        _combatSkillProv=null; turnContext._logCtx={charId:rc.id,phase:ph};
         resolveUnitGainInProvince(rc, rp, ph);
-        _logCtx={charId:null,phase:null};
+        turnContext._logCtx={charId:null,phase:null};
       });
       _combatSkillProv=null;
     };
@@ -13380,15 +12961,15 @@ const BATTLE_ARMY_SPELLS={
       _combatSkillProv=null; // between independent actors, no battle-series context is active
       // A live pursuit suspends this character's other orders until the chase resolves.
       if(c.alive&&c._pursuit&&c._pursuit.active&&c._pursuit.setPhase!==ph){
-        _logCtx={charId:c.id,phase:ph};
+        turnContext._logCtx={charId:c.id,phase:ph};
         advancePursuit(c,ph);
-        _logCtx={charId:null,phase:null};
+        turnContext._logCtx={charId:null,phase:null};
         settleStrandedAtSea(ph); // a chase that ended in a sea battle
         return;
       }
       // A coward who begged for mercy this turn is broken and out of action — skip all remaining
       // orders.
-      if(c._mercyFledTurn===G.turn){ _logCtx={charId:null,phase:null}; return; }
+      if(c._mercyFledTurn===G.turn){ turnContext._logCtx={charId:null,phase:null}; return; }
       const o=(G.turnOrders[c.id]||[])[ph];
       // 2026-09-21: processOrder returns silently for a dead character, so a hero killed in an
       // earlier phase simply stopped mid-Chronicle with no explanation for the orders his player
@@ -13398,11 +12979,11 @@ const BATTLE_ARMY_SPELLS={
           c._fallenOrderNoted=true;
           log('system',`${c.name} has fallen — their remaining orders for this turn go unanswered.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
         }
-        _logCtx={charId:null,phase:null};
+        turnContext._logCtx={charId:null,phase:null};
         return;
       }
       if(o)processOrder(c,o,ph);
-      _logCtx={charId:null,phase:null}; // reset after each character
+      turnContext._logCtx={charId:null,phase:null}; // reset after each character
       settleStrandedAtSea(ph); // 2026-09-23c: hulls lost in this order's battle — put the uncarried ashore before anyone moves again
     });
 
@@ -13454,7 +13035,7 @@ const BATTLE_ARMY_SPELLS={
     // province.characters is derived from character.location — rebuild it before anything reads it,
     // so a battle that moved someone on a copy cannot leave the map out of step.
     reconcileProvinceCharacters();
-    noteSilentHeroes(ph,_phaseStartLoc);
+    noteSilentHeroes(turnContext,ph,_phaseStartLoc);
     // snapshot each player's observable view of the world at the end of this phase.
     updateProvinceMemory(ph);
     enteredThisPhase={}; // consumed by the snapshot above — start the next phase clean
@@ -13513,7 +13094,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           t+=discTaxAdd(p,pv,G,pi,_taxAcc,_taxCap);
           // GRAND DESIGN — Good (Free City Charter): +2 tax on every province you hold with a
           // garrison.
-          if(gdActive(pi,'Good')&&(pv.garrisonArmies||[]).length>0) t+=2;
+          if(gdActive(turnContext,pi,'Good')&&(pv.garrisonArmies||[]).length>0) t+=2;
           return s+t;
         },0);
         const pChars=(G.characters||[]).filter(c=>c.player===p.id&&c.alive);
@@ -13525,19 +13106,19 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const _perProvRaw=ledgers?(G.world.provinces||[]).filter(pv=>pv.owner===p.id).length:0;
         const _itemTax=capItemTaxGold(_taxBonusRaw,_perProvRaw,_taxCap);
         const taxBonus=_itemTax.taxBonus, perProvBonus=_itemTax.perProvBonus;
-        const interestBonus=discEff(pi,'interest').reduce((s2,e)=>s2+Math.min(_taxCap,Math.floor((p.gold||0)*(e.pct||0))),0); // interest discoveries
+        const interestBonus=discEff(turnContext,pi,'interest').reduce((s2,e)=>s2+Math.min(_taxCap,Math.floor((p.gold||0)*(e.pct||0))),0); // interest discoveries
         // Neutral trade: +20% of province income, rounded down.
         // (10 -> floor(1.9999...) = 1 instead of 2). Keep in step with neutralTradeGold / the report builder.
         // sd14 Taxation Records: +10% of province income, rounded down. Integer maths for the same
         // reason neutralTradeGold uses it — floor(income*0.10) drifts a gold on float-unfriendly
         // totals.
-        const taxRecordsBonus=hasDisc(pi,'sd14')?taxRecordsGold(income,_taxCap):0;
+        const taxRecordsBonus=hasDisc(turnContext,pi,'sd14')?taxRecordsGold(income,_taxCap):0;
         const neutralTradeBonus=neutralTradeGold(p,income);
         // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g
         // per 5 provinces.
         // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
         let titlePerkGold=0, titlePerkNote='';
-        pChars.forEach(pc=>{ if(charMinor(pc,'cutpurse')){ titlePerkGold+=2; titlePerkNote+=` (+2g the Cutpurse)`; } if(charMinor(pc,'champion')){ titlePerkGold+=2; titlePerkNote+=` (+2g Champion of the People)`; } if(charMinor(pc,'castellan')){ const cg=Math.floor((G.world.provinces||[]).filter(pv=>pv.owner===pi).length/5); if(cg>0){ titlePerkGold+=cg; titlePerkNote+=` (+${cg}g the Castellan)`; } } });
+        pChars.forEach(pc=>{ if(charMinor(turnContext,pc,'cutpurse')){ titlePerkGold+=2; titlePerkNote+=` (+2g the Cutpurse)`; } if(charMinor(turnContext,pc,'champion')){ titlePerkGold+=2; titlePerkNote+=` (+2g Champion of the People)`; } if(charMinor(turnContext,pc,'castellan')){ const cg=Math.floor((G.world.provinces||[]).filter(pv=>pv.owner===pi).length/5); if(cg>0){ titlePerkGold+=cg; titlePerkNote+=` (+${cg}g the Castellan)`; } } });
         // THIEF L6: +5g income per Thief-6 character. Pay it here.
         const thiefStipend=pChars.reduce((sm,ch)=>sm+(perkTier(ch,'thief')>0?5:0),0);
         const thiefNote=thiefStipend>0?` (+${thiefStipend}g Thief network)`:'';
@@ -13566,7 +13147,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // of the actual army objects (identity), since the wage sum flattens away the leader
         // association.
         const _druidHalfWage=new Set();
-        playerChars.forEach(ch=>{ if(perkTier(ch,'druid')>0||gdActive(p.id,'Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a); }); }); // + GRAND DESIGN Druidic
+        playerChars.forEach(ch=>{ if(perkTier(ch,'druid')>0||gdActive(turnContext,p.id,'Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a); }); }); // + GRAND DESIGN Druidic
         const _upkAcc=new Map(); let _discUpkeepG=0;
         let _orcSpoilsG=0; // 2026-09-10 item 3: itemised so the report can explain the one-off discount
         // 2026-09-27 (Toby items 8 & 9): ORC WAR-SPOILS WAS NOT PAYING 50%.
@@ -13608,7 +13189,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // MINOR TITLE — The Host-Leader: this realm's greatest general pays 1g less per unit he
         // leads (min 1/unit).
         let _hostLeaderG=0;
-        { const hl=playerChars.find(c=>charMinor(c,'hostleader')); if(hl){ const led=(hl.armies||[]).filter(a=>!a._temporary&&a._wildHuntUntilTurn==null).length; _hostLeaderG=Math.min(armyWages,led); armyWages=Math.max(0,armyWages-led); } }
+        { const hl=playerChars.find(c=>charMinor(turnContext,c,'hostleader')); if(hl){ const led=(hl.armies||[]).filter(a=>!a._temporary&&a._wildHuntUntilTurn==null).length; _hostLeaderG=Math.min(armyWages,led); armyWages=Math.max(0,armyWages-led); } }
 
         // Hero wages
         const heroes=playerChars.filter(c=>!c.isKing);
@@ -13674,7 +13255,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
             // dissolve on their own at turn's end (and no longer draw a wage above).
             if(army._temporary)return;
             if(army._wildHuntUntilTurn!=null)return; // Wild Hunt beasts draw no wage, so they cannot be disbanded for one
-            if(army._isSkeletal&&gdActive(p.id,'Undead'))return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
+            if(army._isSkeletal&&gdActive(turnContext,p.id,'Undead'))return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
             // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons)
             // still free
             const cost=army._isSkeletal?1:(ARMY_COST[army.type]||2);
@@ -13762,8 +13343,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     syncAllMaxHp(); // a max-HP rise earned this phase heals into its headroom now
   }
 
-  _currentPhase=null; // the phase loop is over — any later gain belongs to END OF TURN
-  _afterPhases=true;  // …and so does every later LOG LINE (see log() above)
+  turnContext._currentPhase=null; // the phase loop is over — any later gain belongs to END OF TURN
+  turnContext._afterPhases=true;  // …and so does every later LOG LINE (see log() above)
 
 
   // A stand-off struck in the final phase is still a stand-off: flag it now so the state that is
@@ -13791,7 +13372,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // (a) led by a character with no Necromancy
     (G.characters||[]).forEach(c=>{
       if(!c||c.player==null||!Array.isArray(c.armies)||!c.armies.length) return;
-      if(effStat(c,'necromancy')>=1) return;
+      if(effStat(turnContext,c,'necromancy')>=1) return;
       const dead=c.armies.filter(a=>a&&a._isSkeletal);
       if(!dead.length) return;
       c.armies=c.armies.filter(a=>!(a&&a._isSkeletal));
@@ -14200,7 +13781,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const live=G.players.map((p,pi)=>({pi, alive:!p.conceded&&(((p.provinces)||[]).length>0||(G.characters||[]).some(c=>c.alive&&c.player===pi))})).filter(x=>x.alive).map(x=>x.pi);
     // BUG (found 2026-09-27): this tested relationBetween(a,b)==='ally'. The engine's relation
     // value is 'allied' — areAllied is the one reader — so the allied-bloc ending could never fire.
-    const allAllied=live.length>=2 && live.every(a=>live.every(b=>a===b||areAllied(a,b)));
+    const allAllied=live.length>=2 && live.every(a=>live.every(b=>a===b||areAllied(turnContext,a,b)));
     if(live.length<=1 || allAllied){
       // 2026-09-27 (Toby item 8): when everyone but one realm has conceded, the RECKONING IS CALLED
       // AT ONCE — no grace period, no waiting for a claim. The survivor takes the crown, but the
@@ -14389,7 +13970,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // GRAND DESIGN — Neutral (Grand Library): one guaranteed Sage discovery each turn, reported.
   (G.players||[]).forEach((pl,pi)=>{
-    if(!gdActive(pi,'Neutral')) return;
+    if(!gdActive(turnContext,pi,'Neutral')) return;
     pl.discoveries=pl.discoveries||[];
     const _known=new Set(pl.discoveries.map(d=>d.id));
     const _blkGL=discBlockedIds(pl);
@@ -14402,7 +13983,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // 7d. sd08 War Academy: promote one random army in each player's home province
   G.players.forEach((p,pi)=>{
-    if(!hasDisc(pi,'sd08')) return;
+    if(!hasDisc(turnContext,pi,'sd08')) return;
     const homeProv=G.world.provinces.find(pv=>pv.owner===pi&&pv.tax>=10);
     if(!homeProv) return;
     const charsAtHome=(G.characters||[]).filter(c=>c.alive&&c.player===pi&&c.location===homeProv.id);
@@ -14421,14 +14002,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // 7d-bis. `regen` discoveries (sd65 Physick Gardens): every wounded living character of the realm
   // recovers a few HP at the end of the turn.
   G.players.forEach((p,pi)=>{
-    if(!discEff(pi,'regen').length) return;
+    if(!discEff(turnContext,pi,'regen').length) return;
     (G.characters||[]).forEach(c=>{ if(!c||!c.alive||c.player!==pi||c.hp==null) return; const mx=c.maxHp||20; if(c.hp>=mx) return;
-      const _rg=discSum(pi,'regen','hp',e=>!e.king||!!c.isKing); if(_rg<=0) return; const h=Math.min(_rg,mx-c.hp); c.hp+=h; log('system',`🌿 ${c.name}'s wounds knit in the physick gardens: +${h} HP (${c.hp}/${mx}).`,{actor:pi,targets:[pi],charId:c.id,phase:99}); });
+      const _rg=discSum(turnContext,pi,'regen','hp',e=>!e.king||!!c.isKing); if(_rg<=0) return; const h=Math.min(_rg,mx-c.hp); c.hp+=h; log('system',`🌿 ${c.name}'s wounds knit in the physick gardens: +${h} HP (${c.hp}/${mx}).`,{actor:pi,targets:[pi],charId:c.id,phase:99}); });
   });
 
   // 7e. sd22 Informant Network: reveal one random enemy character location
   G.players.forEach((p,pi)=>{
-    if(!hasDisc(pi,'sd22')) return;
+    if(!hasDisc(turnContext,pi,'sd22')) return;
     // Provinces the player can already see this turn: those they own, or that hold one of their
     // characters.
     const _seen=new Set();
@@ -14443,7 +14024,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // `return`s — so it only ever fired for a player who ALSO held sd22 and had an unseen enemy. It is
   // now its own pass. The line is filed (no charId) so it lands in the player's Realm Events.
   G.players.forEach((p,pi)=>{
-    if(!hasDisc(pi,'sd39')) return;
+    if(!hasDisc(turnContext,pi,'sd39')) return;
     const _unseen=(G.world.provinces||[]).filter(pv=>(((pv.exploredBy&&pv.exploredBy[pi])||0)<100));
     if(_unseen.length===0){ log('explore',`\ud83d\udd2d Arcane Observatory: your astronomers find no uncharted province left to study \u2014 the whole known world is already mapped in full.`,{actor:pi,targets:[pi],phase:99}); return; }
     const _pk=_unseen[Math.floor(kcRng()*_unseen.length)];
@@ -14492,7 +14073,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   G.world.provinces.forEach(p=>{
     if(!p.battleGraves||p.battleGraves.length===0) return;
     let decay=(p.owner!=null&&G.players[p.owner]?.alignment==='Undead')?0.05:0.10;
-    if(p.owner!=null){ const _gd=discEff(p.owner,'graveDecay'); if(_gd.length) decay=Math.min(decay,Math.min(..._gd.map(e=>e.rate!=null?e.rate:decay))); } // az08 Embalmers
+    if(p.owner!=null){ const _gd=discEff(turnContext,p.owner,'graveDecay'); if(_gd.length) decay=Math.min(decay,Math.min(..._gd.map(e=>e.rate!=null?e.rate:decay))); } // az08 Embalmers
     p.battleGraves=p.battleGraves.filter(()=>kcRng()>decay);
   });
 
@@ -14875,7 +14456,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // gameState.turn, like _unspottedTurn) still treats the caster as unseen. Spies do not pierce
     // it.
     if(c._invisTurn===G.turn-1){ c._invisTurn=G.turn; c._unspottedTurn=G.turn; }
-    const _lvl=Math.min(5,effStat(c,'spy'));
+    const _lvl=Math.min(5,effStat(turnContext,c,'spy'));
     const _shimmer=perkTier(c,'illusory')>=1; // ILLUSORY L6 (Shimmer)
     if(_lvl<=0 && !_shimmer) return;
     // Spy grants a small chance to slip away unseen (5%/level). Shimmer makes this character HALF
@@ -14903,7 +14484,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     });
     (G.characters||[]).filter(c=>c.player===pi&&c.alive).forEach(c=>playerVisitedProvs.add(c.location));
     // sd20 Messenger Birds: receive intel from provinces 2 steps from owned provinces
-    if(hasDisc(pi,'sd20')){
+    if(hasDisc(turnContext,pi,'sd20')){
       const offEven=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
       const offOdd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
       const extendReach=id=>{

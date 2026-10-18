@@ -224,3 +224,60 @@ function applyPendingSynthPlan(G, hero, pi){
   return true;
 }
 
+// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the discovery helpers, and _isHumanoidRace (the Plague's victims). Each
+// takes the turn's context first (src/engine/turn/context.js), but discDuelVs, discFanaticApplies, discoveryArmyBonus
+// and _isHumanoidRace, which read none.
+  // ── DISCOVERY EFFECT HELPERS ────
+  // Returns true if player has a specific discovery
+  function hasDisc(turnContext, playerIdx, discId){
+    const {G}=turnContext;
+    return (G.players[playerIdx]?.discoveries||[]).some(d=>d.id===discId);
+  }
+  function gdActive(turnContext, playerIdx, align){ const {G}=turnContext; return gdActiveFor(G, playerIdx, align); }
+  // sd40 Dragon Taming: true when this commander's realm leads this winged beast without Druid
+  // penalty.
+  function dragonTamed(turnContext, heroChar, army){
+    return !!(heroChar&&heroChar.player!=null&&army&&TAMED_FLYER_TYPES_D.has(army.type)&&hasDisc(turnContext,heroChar.player,'sd40'));
+  }
+  // data-driven discovery effects (race / alignment discoveries).
+  function discEff(turnContext, pi, kind){ const {G}=turnContext; return (pi==null)?[]:discEffectsOf(G.players[pi], kind); }
+  function discSum(turnContext, pi, kind, field, pred){ const {G}=turnContext; return (pi==null)?0:discSumOf(G.players[pi], kind, field, pred); }
+  // Multiplier on ONE army's strength from `unitStr` discoveries (race / types / cls / terrain /
+  // side).
+  function discUnitMult(turnContext, pi, army, terrain, ctx, heroChar){
+    if(pi==null||!army) return 1;
+    let m=1;
+    discEff(turnContext,pi,'unitStr').forEach(e=>{
+      if(!discUnitMatch(e, army)) return;
+      if(e.king && !(heroChar&&heroChar.isKing)) return; // "led by your KING in person" effects
+      if(e.terrain && !e.terrain.includes(terrain)) return;
+      if(e.side==='atk' && !(ctx&&ctx.isAttacker===true)) return;
+      if(e.side==='def' && !(ctx&&ctx.isAttacker===false)) return;
+      if(e.led==='garrison' && heroChar) return; // only a garrison standing without a commander
+      m*=1+(e.pct||0);
+    });
+    return Math.min(DISC_STR_CAP,m); // ceiling on stacked discovery strength (Toby 2026-09-21)
+  }
+  // Per-unit promotion bonus from `promo` discoveries (unit filters).
+  function discPromo(turnContext, pi, army){ if(pi==null||!army) return 0; let r=0; discEff(turnContext,pi,'promo').forEach(e=>{ if(discUnitMatch(e,army)) r+=(e.pct||0); }); return r; }
+  // Does a `duelHit` effect apply against this foe? vs: 'monster' | 'character' | 'undead'.
+  function discDuelVs(e, foe){ if(!e.vs) return true; if(!foe) return false;
+    if(e.vs==='monster') return foe.kind==='monster'; if(e.vs==='character') return foe.kind==='character';
+    if(e.vs==='undead') return pcFoeCat(foe)==='undead'; return false; }
+  // Does a `fanatic` effect apply? side ('atk'/'def'), terrain, withCls (force includes that class).
+  function discFanaticApplies(e, side, terrain, force){ if(e.side&&e.side!==side) return false; if(e.terrain&&!e.terrain.includes(terrain)) return false;
+    if(e.withCls&&!(force||[]).some(a=>a&&discUnitIs(e.withCls,a))) return false; return true; }
+  // 1 - (summed death-chance reduction) for one army.
+  function discDeathMult(turnContext, pi, army, side){ if(pi==null||!army) return 1; let r=0; discEff(turnContext,pi,'deathRed').forEach(e=>{ if(e.side&&side&&e.side!==side) return; if(e.side&&!side) return; if(discUnitMatch(e,army)) r+=(e.pct||0); }); return Math.max(0.25,1-r); }
+  // Only discoveries the realm is eligible for (race / alignment) can be researched, found or
+  // stolen.
+  function discAvailableFor(turnContext, pi, known){ const {G}=turnContext; const pl=G.players[pi]; const _blk=discBlockedIds(pl); return SAGE_DISCOVERIES_P.filter(d=>!known.has(d.id)&&!_blk.has(String(d.id))&&discEligible(d,pl)); } // forgotten + awaiting-choice ids excluded (research choice)
+  // Get global army bonus from discoveries
+  function discoveryArmyBonus(playerIdx){
+    let pct=0;
+    // sd02 War Drums is now an ordinary `unitStr` effect (armStr, under the ×1.30 ceiling).
+    return pct;
+  }
+
+  function _isHumanoidRace(r){ return r==='Human'||r==='Elven'||r==='Dwarven'||r==='Orcish'; }
+
