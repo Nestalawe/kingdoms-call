@@ -136,7 +136,9 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
 - A helper passed as a value is wrapped where it's passed: `(...a)=>effStat(turnContext,...a)`. A test hook that hands
   one back wraps it the same way, or the test moves down and calls it directly (P1-08b moved `naval-retreat`,
   `retreat-dry-ground`, `march-one-rate` and most of `battle-tweaks` to `tests/unit/`; P1-08c `terror-three-stacks` and
-  `xp-naval-passenger`). A test that only watches the calls to a lifted helper wraps the top-level function instead of
+  `xp-naval-passenger`; P1-08e the personal-combat tests, through `tests/lib/personal-combat.ts`, whose `call()` gives a
+  helper that takes the context one on a new world). A hook that also needs a function still nested hands back the
+  lifted ones wrapped (`fuzz-wages-combat`, `fuzz-advance-masking`, for `pcBuildGuardian` until P1-08f). A test that only watches the calls to a lifted helper wraps the top-level function instead of
   hooking its first line: the `xp-` tests' `XP_RECORD` wraps `trySkillGain` (P1-08c); one that changes what a helper is
   given wraps it the same way: `lib/boot.js`' `reportEveryRealm` wraps `buildReports` (P1-08d). A `typeof f==='function'` guard
   stays true: a lifted helper is a top-level function.
@@ -149,7 +151,8 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
   `recruitedThisTurn`, `_intrusionAcc`): before its join line, the old name threw; the context's reads `undefined`.
   P1-08c checked again for the six values above and `_elvenEscapeQueue`, P1-08d for `presenceByPhase`, `clairWatch` and
-  `_reports`.
+  `_reports`, P1-08e for `_botPlayerIdx`. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
+  does: a test of a lifted helper that reads one it doesn't set gets `undefined`, not the turn's value.
 
 ## Top-level names aren't on `window` in tests
 
