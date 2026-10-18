@@ -3,29 +3,21 @@
 // booted world with generated skills, temper, hit points and items from the game's own item tables (the engine equips
 // them); a guardian is any of the guardian table's. Every dice roll comes from a seeded generator whose seed is part of
 // the input, so a failure shrinks to a small hero and one seed, and repeats.
-// Level 1 (unit): each function is called directly. They are nested inside runTurn, so the page is booted and one
-// turn run first; the "  // 4. Run all 5 phases" hook hands them back (tests/lib/pc-hooks.js).
+// Level 1 (unit): each function is called directly in the bare vm (tests/lib/personal-combat.ts), on a world the
+// engine makes there (plan P1-08e: they were nested inside runTurn, and the "  // 4. Run all 5 phases" hook handed them
+// back after a turn on the GM portal).
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import type { KcRng } from '../lib/boot.js';
-import { bootPersonalCombat, type Combatant } from '../lib/pc-hooks.js';
+import { clone, personalCombatEngine, type Combatant, type Guardian } from '../lib/personal-combat.ts';
 
-const { W, PC, base, MON, errs } = await bootPersonalCombat([
-  'pcCharCombatant',
-  'pcMonsterCombatant',
-  'pcMeleeDamage',
-  'pcArrowDamage',
-  'pcTakeHit',
-  'resolvePersonalCombat',
-]);
-const call = (name: string, ...args: unknown[]) => (PC[name] as (...a: unknown[]) => unknown)(...args);
-const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+const { call, value, base, MON } = personalCombatEngine();
 /** An input takes well under a millisecond: many more than the default, so a fault in a narrow path (one ward, one
  *  size of hit) is still met. */
 const RUNS = process.env['KC_FULL'] === '1' ? 20_000 : 2_000;
 
-const TEMPERS = W.eval('TEMPERS_P') as string[];
-const ITEMS = W.eval('[...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P]') as Record<string, unknown>[];
+const TEMPERS = value('TEMPERS_P') as string[];
+const ITEMS = value('[...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P]') as Record<string, unknown>[];
 /** The items that ward their wearer (armour, shields): what stands between a hit and HP. */
 const ARMOUR = ITEMS.flatMap((it, i) =>
   (it['effect'] as { stat?: string } | undefined)?.stat === 'armour' ? [i] : [],
@@ -46,9 +38,9 @@ const KINDS = [
   'Hand of Death',
 ];
 
-/** Every dice roll the page makes from now on comes from this seed. */
+/** Every dice roll the engine makes from now on comes from this seed. */
 const reseed = (seed: number) => {
-  (W['kcRng'] as KcRng).seed(seed);
+  (value('kcRng') as KcRng).seed(seed);
 };
 
 const level = fc.integer({ min: 0, max: 9 });
@@ -91,13 +83,12 @@ function hero(h: Hero): Combatant {
   return call('pcCharCombatant', ch) as Combatant;
 }
 function guardian(i: number): Combatant {
-  const m = clone(MON[i] ?? {});
+  const m: Partial<Guardian> = clone(MON[i] ?? {});
   return call('pcMonsterCombatant', { ...m, _hpFull: m['hp'] }) as Combatant;
 }
 const fighter = (f: { hero: Hero } | { guardian: number }) => ('hero' in f ? hero(f.hero) : guardian(f.guardian));
 
-test('the page booted and handed back the combat functions', () => {
-  expect(errs).toEqual([]);
+test("the engine's tables were read", () => {
   expect(TEMPERS.length).toBeGreaterThan(2);
   expect(ITEMS.length).toBeGreaterThan(50);
   expect(ARMOUR.length).toBeGreaterThan(10);

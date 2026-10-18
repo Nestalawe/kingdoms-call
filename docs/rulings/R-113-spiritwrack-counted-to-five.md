@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-15, Toby
 - **Status:** Confirmed
 - **Source:** PR #89 item 7 (decision D5 on a player's rulebook review)
-- **Enforced by:** [`spiritwrack-five`](../../tests/spiritwrack-five.test.js)
+- **Enforced by:** [`spiritwrack-five`](../../tests/unit/spiritwrack-five.test.ts)
 
 Replaces R-053's limits. In personal combat Spiritwrack silences its target (no casting, no archery or powers,
 melee halved) for 1 round plus 1 for every two levels of White Magic, with the level counted to 5 like every

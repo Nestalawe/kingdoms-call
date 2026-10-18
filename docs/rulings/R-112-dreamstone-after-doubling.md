@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-15, Toby
 - **Status:** Confirmed
 - **Source:** PR #89 item 6 (decision D4 on a player's rulebook review)
-- **Enforced by:** [`blast-dreamstone`](../../tests/blast-dreamstone.test.js)
+- **Enforced by:** [`blast-dreamstone`](../../tests/unit/blast-dreamstone.test.ts)
 
 In personal combat Psychic Blast holds its target helpless for 1 round plus 1 for every two Psychic levels,
 doubled against a guardian weak to Psychic magic. The Dreamstone then adds one round; that round is not

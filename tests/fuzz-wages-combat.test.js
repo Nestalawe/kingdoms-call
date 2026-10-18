@@ -9,7 +9,9 @@ const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./
 const GMF=process.argv[2]||'kingdoms-call-gm-portal.html'; const GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5, FIGHTS=+process.argv[6]||4000;
 let html=readPage(GMF);
 const inj=(a,b)=>{ if(html.split(a).length!==2) throw new Error('anchor not unique: '+a.slice(0,50)); html=html.replace(a,b); };
-inj("  // 4. Run all 5 phases\n","  window.__PC={resolvePersonalCombat,pcCharCombatant,pcBuildGuardian,pcMeleeDamage,autoEncounterPlan,getG:()=>G};\n  // 4. Run all 5 phases\n");
+// pcBuildGuardian is still nested in resolveTurn (until plan P1-08f); the lifted personal-combat functions take the
+// turn's context first (P1-08e), so the hook hands them back wrapped with it.
+inj("  // 4. Run all 5 phases\n","  window.__PC={resolvePersonalCombat:(...a)=>resolvePersonalCombat(turnContext,...a),pcCharCombatant:(...a)=>pcCharCombatant(turnContext,...a),pcBuildGuardian,pcMeleeDamage,autoEncounterPlan:(...a)=>autoEncounterPlan(turnContext,...a),getG:()=>G};\n  // 4. Run all 5 phases\n");
 
 let ROWS={}; const WRITES=[];
 const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});

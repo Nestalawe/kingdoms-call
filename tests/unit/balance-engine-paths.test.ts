@@ -45,7 +45,7 @@ describe('the engine paths', () => {
     'src/engine.bak/run-turn.js',
     'site/kingdoms-call-gm-portal.html',
     'docs/ARCHITECTURE.md',
-    'tests/lib/pc-hooks.js',
+    'tests/lib/personal-combat.ts',
     'tests/unit/balance-hash.test.ts',
     'tools/check.ts',
     '.github/workflows/ci.yml',

@@ -58,9 +58,10 @@ export interface TurnContext {
 
 /** A turn's context on a world made inside the vm (plan P1-08a): the state is parsed there, so its objects and arrays are
  *  the engine's own, as a turn's are (P1-18d). It starts as resolveTurn's does before the first phase: no hero's line,
- *  no phase, the phases not over, and what resolveTurn adds to the context (P1-08a…P1-08d) made empty, as
+ *  no phase, the phases not over, and what resolveTurn adds to the context (P1-08a…P1-08e) made empty, as
  *  resolveTurn declares it: no hero has move points yet, no battle has been numbered, no skill rise is held back, no
- *  realm is watching by Clairvoyance, nobody has been seen in a phase yet, and the reports aren't built. Give it a state as an object or as JSON. */
+ *  realm is watching by Clairvoyance, nobody has been seen in a phase yet, and the reports aren't built; the bot realms
+ *  are the slot rows that are bots' (P1-08e). Give it a state as an object or as JSON. */
 export function turnContext(
   engine: vm.Context,
   state: object | string,
@@ -77,6 +78,7 @@ export function turnContext(
       tc._combatSkillProv=null; tc._duelFoes=null; tc._battleSeq=0; tc._chieftainDuelGain=null;
       tc._deferredSkillLogs=[]; tc._pcSimulating=false; tc._elvenEscapeQueue=[];
       tc.clairWatch={}; tc.presenceByPhase=[]; tc._reports={built:false};
+      tc._botPlayerIdx=new Set(tc.freshPlayers.filter(isBotRow).map(p=>p.player_index));
       return tc; }`,
     engine,
   ) as (state: string, players: string, turn: number) => TurnContext;
