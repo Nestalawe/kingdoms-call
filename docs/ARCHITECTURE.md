@@ -324,7 +324,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (`engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.js`: Research, `resolveResearchOrder`;
   Practice Skill, `resolvePracticeSkillOrder`; Rest, `resolveRestOrder`; Research Breakthrough,
   `resolveResearchBreakthroughOrder`); a bot's Practice on a skill already at 5 is still switched in `processOrder`,
-  before the call. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  before the call. P1-08j5, items and armies (`engine/orders/item-orders-equip-use-and-send-magic-items.js`: Equip
+  Items, `resolveEquipItemsOrder`; Use Item, `resolveUseItemOrder`; Send Item, `resolveSendItemOrder`; and
+  `engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.js`: Leave/Transfer
+  Army, `resolveLeaveOrTransferArmyOrder`; Release Hero, `resolveReleaseHeroOrder`; Disband Army,
+  `resolveDisbandArmyOrder`; Pick Up Army, `resolvePickUpArmyOrder`); a spell item's Use Item still becomes a Cast Spell
+  in `processOrder`, before the `switch`. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

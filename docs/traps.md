@@ -153,13 +153,14 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   changes one, or swaps `G`, changes the context's too (`battle-faced-turn`'s `setG` did, until P1-08i3; `npc-parity`'s
   `setPhase` did, until P1-08g moved it down).
 - An order taken out of `processOrder` (since P1-08j1: the Move, `resolveMoveOrder`; since P1-08j2 the explore and
-  search orders; since P1-08j3 recruiting, hiring and the realm's works; since P1-08j4 research and practice) takes, after the context, the values `processOrder` works out before its `switch` that the order
+  search orders; since P1-08j3 recruiting, hiring and the realm's works; since P1-08j4 research and practice; since P1-08j5 items and armies) takes, after the context, the values `processOrder` works out before its `switch` that the order
   reads, in the order they're declared there (the Move's `c, ph, _fmSlip, target, prov, player`; Explore's only
   `c, prov`). So the calls differ from order to order. The case is the call and `break`, and a `return` in the order
   ends it, as the case's own `break` did: nothing follows the `switch`. Keep the call in step with the function: two
   arguments swapped (`prov` and `player`, or `target` and `extra`) pass `no-undef` and every check but a test that
   plays the order (`scenario/move-orders-in-a-whole-turn`, `scenario/explore-and-search-orders-in-a-whole-turn`,
-  `scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn`, `scenario/research-and-practice-orders-in-a-whole-turn`).
+  `scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn`, `scenario/research-and-practice-orders-in-a-whole-turn`,
+  `scenario/item-and-army-orders-in-a-whole-turn`).
 - Reading a context value before `resolveTurn` has set it gives `undefined`; reading the old `let` before its line
   threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix), and
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
