@@ -80,3 +80,24 @@ function hexDistP(a,b,cols){
   return Math.max(dc,dr,(dc+dr)>>1);
 }
 
+
+// ── LIFTED OUT OF resolveTurn (plan P1-08b) ── a province's name by id, the province a hero stands in, and the
+// neighbour in a compass direction. Each takes the turn's context first (src/engine/turn/context.js).
+  function provName(turnContext,id){ const {G}=turnContext;return G.world.provinces[id]?.name||'unknown';}
+  function provOf(turnContext,c){ const {G}=turnContext;return G.world.provinces[c.location];}
+
+  // Direction → neighbor lookup
+  const HEX_DIRS=KC_HEX_DIRS.slice();
+  function neighborInDir(turnContext,prov,dir){
+    const {G}=turnContext;
+    const{row,col}=prov;
+    const cols=G.world.cols,rows=G.world.rows;
+    const even=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+    const odd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+    const idx=HEX_DIRS.indexOf(dir);
+    if(idx<0)return null;
+    const[dr,dc]=(row%2===0?even:odd)[idx];
+    const nr=row+dr;if(nr<0||nr>=rows)return null;
+    const nc=((col+dc)%cols+cols)%cols;
+    return G.world.provinces[nr*cols+nc];
+  }

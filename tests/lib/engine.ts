@@ -58,7 +58,8 @@ export interface TurnContext {
 
 /** A turn's context on a world made inside the vm (plan P1-08a): the state is parsed there, so its objects and arrays are
  *  the engine's own, as a turn's are (P1-18d). It starts as resolveTurn's does before the first phase: no hero's line,
- *  no phase, the phases not over. Give it a state as an object or as JSON. */
+ *  no phase, the phases not over, and what resolveTurn adds to the context (P1-08a, P1-08b) made empty, as resolveTurn
+ *  declares it: no hero has move points yet. Give it a state as an object or as JSON. */
 export function turnContext(
   engine: vm.Context,
   state: object | string,
@@ -66,8 +67,41 @@ export function turnContext(
 ): TurnContext {
   const make = vm.runInContext(
     `(state,players,turn)=>{ const tc=createTurnContext(JSON.parse(state),JSON.parse(players),turn);
-      tc._logCtx={charId:null,phase:null}; tc._currentPhase=null; tc._afterPhases=false; return tc; }`,
+      tc._logCtx={charId:null,phase:null}; tc._currentPhase=null; tc._afterPhases=false;
+      tc._mercIds={n:0};
+      tc._tel={pre:{}, orders:{}, battles:[], encounters:[], captures:[], deaths:[], spells:[], hires:[], recruits:[]};
+      tc.battleCommanders={}; tc.fieldBattlePhase={};
+      tc.movePoints={}; tc.seaMovePoints={}; tc.seaMoveActive={}; tc.seaCap={}; tc.moveMax={}; tc.seaMoveMax={};
+      tc.SEASONS=KC_SEASONS.slice(); tc.recruitedThisTurn={}; tc._intrusionAcc=new Map();
+      return tc; }`,
     engine,
   ) as (state: string, players: string, turn: number) => TurnContext;
   return make(typeof state === 'string' ? state : JSON.stringify(state), JSON.stringify(freshPlayers), turn);
+}
+
+/** A new world of bot realms, made by the engine itself (plan P1-08b), as JSON: `realms` bot setups
+ *  (generateBotSetups), on a map of `size`, with the world options `opts` (e.g. `{ seaPct: 45 }`). */
+export function botWorld(
+  engine: vm.Context,
+  realms: number,
+  size: { cols: number; rows: number },
+  opts: Record<string, unknown> = {},
+): string {
+  const make = vm.runInContext(
+    `(realms,size,opts)=>{ const setup=generateBotSetups([],realms,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
+      return JSON.stringify(generateNewGame(setup,JSON.parse(size),999,JSON.parse(opts))); }`,
+    engine,
+  ) as (realms: number, size: string, opts: string) => string;
+  return make(realms, JSON.stringify(size), JSON.stringify(opts));
+}
+
+/** Quiets the engine's console.log (log() echoes each line of the GM's log there) until the returned function is
+ *  called. */
+export function quietEngineLog(engine: vm.Context): () => void {
+  const engineConsole = vm.runInContext('console', engine) as Console;
+  const was = engineConsole.log;
+  engineConsole.log = () => undefined;
+  return () => {
+    engineConsole.log = was;
+  };
 }

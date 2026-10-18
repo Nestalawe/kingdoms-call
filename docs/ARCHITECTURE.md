@@ -23,8 +23,8 @@ every test. **Edit `src/`, never `site/`**: the next build overwrites it.
   in its place, byte for byte. The other files (the data file, `kc-*.js`, `vendor/`) are copied as they are. When it
   landed, the build reproduced the committed `site/` exactly, every byte of every file.
 - **Each `.js` file is a stretch of whole top-level statements**, so it parses on its own; no file ends inside a
-  function (`tests/static/build.test.ts`). The GM portal's main script is 62 files; `src/engine/run-turn.js` (the turn,
-  `resolveTurn`, ~14,800 lines) is being taken apart by P1-08, one area at a time (below). The player portal's is 20.
+  function (`tests/static/build.test.ts`). The GM portal's main script is 69 files; `src/engine/run-turn.js` (the turn,
+  `resolveTurn`, ~13,700 lines) is being taken apart by P1-08, one area at a time (below). The player portal's is 20.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report,
   the statistics snapshots, what a realm can see), `db/` (which database, the version guard, telemetry and the light `meta`
   rows), `content/` (the data file), `ui/<page>/` (each page's template, styles and the rest of its code),
@@ -251,19 +251,26 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
 - **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08). Most of the rule code is still
-  nested inside it (combat, terrain modifiers, …), and tests reach that by injecting code at exact source lines (see
+  nested inside it (combat, personal combat, the orders, …), and tests reach that by injecting code at exact source lines (see
   [tests/README.md](../tests/README.md#code-anchor-hooks)). A lifted helper that reads the turn's state takes **the
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
-  the collectors (`_tel`, `battleCommanders`, …), and the values the turn changes as it goes (`_logCtx`,
+  the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,
+  `recruitedThisTurn` and `_intrusionAcc` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
   `_currentPhase`, `_afterPhases`), which are read and written as `turnContext._currentPhase` everywhere, in
   `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it yet (P1-08m). Lifted so
   far (P1-08a): the line helpers and the turn's records (`engine/turn/`), relations and captures
   (`engine/realms/relations-and-captures.js`), the title lookups and battle merit
   (`engine/titles/title-holders-and-battle-merit.js`), skills in play and hidden heroes
   (`engine/heroes/effective-skills-and-hidden-heroes.js`), the discovery helpers (`engine/discoveries.js`), `rng`, `pick`
-  and `describeArmy` (`engine/dice-and-army-names.js`), and `pcFoeCat` (`engine/personal-combat/helpers.js`). A lifted
-  helper keeps `resolveTurn`'s two-space indent. Tests call one directly in Node: `engineFn` and `turnContext` in
+  and `describeArmy` (`engine/dice-and-army-names.js`), and `pcFoeCat` (`engine/personal-combat/helpers.js`). P1-08b: terrain, sea and a unit's strength (`armStr`,
+  `engine/battle/terrain-and-unit-strength.js`), sea lift, stranding and retreats
+  (`engine/units/sea-lift-stranding-and-retreats.js`), the movement pools (`engine/units/movement-pools.js`), recruit
+  limits (`engine/units/recruit-limits.js`), the best commander (`engine/battle/best-commander.js`), the intrusion
+  warnings (`engine/turn/intrusion-warnings.js`), the Plague and the Bless ward (`engine/magic/plague-and-bless-ward.js`),
+  `provName`, `provOf` and `neighborInDir` (`engine/world/map-helpers.js`), and `healFeatureMonsters`
+  (`engine/chances-and-lair-grades.js`); the constants they read (`TERRAIN_MODS`, `HEX_DIRS`, `REIGN_OF_FEAR_MULT`, …)
+  are top-level constants now, beside them. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
