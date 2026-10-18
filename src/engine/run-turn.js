@@ -749,7 +749,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
       const _hpRise=syncMaxHp(real,G.players);
       // A March/Naval rise increases pace immediately: recompute this character's move pool so the
       // extra reach is available for the rest of THIS turn (preserving points already spent).
-      if((skill==='march'||skill==='naval') && typeof refreshMovePool==='function') refreshMovePool(real);
+      if((skill==='march'||skill==='naval') && typeof refreshMovePool==='function') refreshMovePool(turnContext,real);
       // 2026-10-13 (item 6, Toby): a rise earned in a battle says where, and one earned in a pre-battle
       // duel says against whom — the duel itself is folded inside the battle's full report, so a
       // player reading the short account would otherwise never learn why the skill went up.
@@ -793,477 +793,12 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   function resolveAllPendingSkillGains(){ (G.characters||[]).forEach(c=>{ if(c&&c._sgPending) resolvePendingSkillGain(c); }); }
   const HUMANOID_RACES_SG=new Set(KC_HUMANOID_RACES);
 
-// ── TERRAIN STRENGTH MODIFIERS ────
-// Applied to individual army unit strength during battle resolution. Flyers (every KC_UNIT_CLASS.aerial
-// unit: the winged riders and the flying beasts) fight at 1.0 everywhere except under the trees: ×0.75 in
-// forest and jungle (2026-10-12, Toby item 19; they had been terrain-immune). Naval units: no terrain
-// effect anywhere — and the Naval skill lifts them on land too.
-const TERRAIN_MODS={
-  // NAVAL UNITS FIGHT AT FULL STRENGTH IN EVERY PROVINCE, land or sea — the old ×0.60 "beached
-  // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
-  // terrainMod() short-circuits them like flyers. Sea Giants' Tidal Might is now a coastal-land
-  // bonus (see unitAbilityMult).
-  // 2026-10-11 (Toby, the army roster): human line foot and longbows ×1.1 on the plain; Forest Wardens
-  // no longer suffer in the open (×1.0 plain, ×0.9 desert) and are ×1.1 rather than ×1.2 in the woods;
-  // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
-  // ×1.1 (Guard, Crossbows, Guns). tests/roster holds every cell to the decided roster.
-  plain:{
-    'Men-at-Arms':1.10,'Stag Riders':1.10,'Ironhoof Rams':1.0,'Black Arrows':1.0,
-    'Shieldwall Levies':1.10,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':1.10,
-    'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':1.0,
-    'Shadow Archers':0.90,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
-    'Mountain Guns':0.85,'Dwarf Garrison':0.90,'Warg Riders':1.10,
-    'Orc Berserkers':1.0,'Goblin Horde':1.0,'Orc Garrison':1.0,
-    'Elven Garrison':1.0,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
-    'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
-    'Stone Giants':0.90,'Forest Ents':0.90,'Cave Trolls':1.0,
-    'Manticore Pride':1.0,'Basilisk Brood':0.90,'Titan Warbeasts':1.10,
-    'Crimson Rocs':1.0,'Elder Dragons':1.0,
-    'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.0,
-    'Great Bears':1.0,'Unicorn Herd':1.10,'Mammoth Host':1.10,'Great Turtles':1.0,
-  },
-  desert:{
-    'Men-at-Arms':1.0,'Stag Riders':1.0,'Ironhoof Rams':0.90,'Black Arrows':1.0,
-    'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':0.90,
-    'Human Garrison':0.90,'Elven Bowmen':0.80,'Forest Wardens':0.90,
-    'Shadow Archers':0.85,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
-    'Mountain Guns':0.85,'Dwarf Garrison':0.85,'Warg Riders':1.10,
-    'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':0.90,
-    'Elven Garrison':0.85,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
-    'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
-    'Stone Giants':0.90,'Forest Ents':0.75,'Cave Trolls':0.85,
-    'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':1.10,
-    'Crimson Rocs':1.0,'Elder Dragons':1.0,
-    'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':0.85,
-    'Great Bears':0.80,'Unicorn Herd':1.0,'Mammoth Host':0.85,'Great Turtles':1.0,
-  },
-  forest:{
-    'Men-at-Arms':0.90,'Stag Riders':1.10,'Ironhoof Rams':0.90,'Black Arrows':0.90,
-    'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':0.85,
-    'Human Garrison':1.0,'Elven Bowmen':1.15,'Forest Wardens':1.10,
-    'Shadow Archers':1.10,'Dwarven Guard':0.90,'Ironwood Crossbows':0.90,
-    'Mountain Guns':0.80,'Dwarf Garrison':0.90,'Warg Riders':0.90,
-    'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
-    'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
-    'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':0.75,
-    'Stone Giants':0.90,'Forest Ents':1.15,'Cave Trolls':1.10,
-    'Manticore Pride':0.75,'Basilisk Brood':1.0,'Titan Warbeasts':0.80,
-    'Crimson Rocs':0.75,'Elder Dragons':0.75,
-    'Eagle Riders':0.75,'Wyvern Riders':0.75,'Gnomish Gyrocopters':0.75,'Thunderbirds':0.75,   // item 19: flyers in the woods
-    'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.05,
-    'Great Bears':1.10,'Unicorn Herd':1.10,'Mammoth Host':0.80,'Great Turtles':1.0,
-  },
-  jungle:{
-    'Men-at-Arms':0.85,'Stag Riders':1.0,'Ironhoof Rams':0.85,'Black Arrows':0.90,
-    'Shieldwall Levies':0.85,'Free Lances':0.70,'Gilded Lances':0.70,'Yeoman Longbows':0.80,
-    'Human Garrison':1.0,'Elven Bowmen':1.10,'Forest Wardens':1.10,
-    'Shadow Archers':1.10,'Dwarven Guard':0.85,'Ironwood Crossbows':0.85,
-    'Mountain Guns':0.75,'Dwarf Garrison':0.85,'Warg Riders':0.80,
-    'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':1.0,
-    'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
-    'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':0.75,
-    'Stone Giants':0.80,'Forest Ents':1.15,'Cave Trolls':1.05,
-    'Manticore Pride':0.75,'Basilisk Brood':1.10,'Titan Warbeasts':0.75,
-    'Crimson Rocs':0.75,'Elder Dragons':0.75,
-    'Eagle Riders':0.75,'Wyvern Riders':0.75,'Gnomish Gyrocopters':0.75,'Thunderbirds':0.75,   // item 19: flyers in the woods
-    'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.10,
-    'Great Bears':1.0,'Unicorn Herd':0.90,'Mammoth Host':0.75,'Great Turtles':1.0,
-  },
-  mountain:{
-    'Men-at-Arms':0.90,'Stag Riders':0.85,'Ironhoof Rams':1.0,'Black Arrows':0.90,
-    'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':1.0,
-    'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':0.85,
-    'Shadow Archers':1.0,'Dwarven Guard':1.10,'Ironwood Crossbows':1.10,
-    'Mountain Guns':1.10,'Dwarf Garrison':1.15,'Warg Riders':0.80,
-    'Orc Berserkers':0.90,'Goblin Horde':0.90,'Orc Garrison':0.90,
-    'Elven Garrison':0.90,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
-    'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
-    'Stone Giants':1.15,'Forest Ents':0.90,'Cave Trolls':1.15,
-    'Manticore Pride':1.0,'Basilisk Brood':0.90,'Titan Warbeasts':0.80,
-    'Crimson Rocs':1.0,'Elder Dragons':1.0,
-    'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':0.90,
-    'Great Bears':1.10,'Unicorn Herd':0.85,'Mammoth Host':1.0,'Great Turtles':1.0,
-  },
-  sea:{
-    // All land armies penalised in sea — ×0.75 (applied separately as seaLandPenalty) Naval units
-    // are full strength. Flying at full strength. Individual modifiers here are mostly 1.0 since
-    // the sea penalty is applied globally.
-    'Galleon Fleet':1.0,'Corsair Fleet':1.0,'Elven Galleys':1.0,
-    'Dwarf Ironclads':1.0,'Orcish Longships':1.0,'Whale Cohort':1.0,'Shark Shoals':1.0,
-    'Sea Giants':1.0,'Eldritch Kraken':1.0,'Great Turtles':1.0,
-    // Flying fight fine at sea
-    'Eagle Riders':1.0,'Wyvern Riders':1.0,'Gnomish Gyrocopters':1.0,
-    'Elder Dragons':1.0,'Crimson Rocs':1.0,'Thunderbirds':1.0,
-  },
-};
-
-// Returns terrain modifier for a given army type in given terrain
-function terrainMod(armyType, terrain){
-  // flyers read their row like anyone (×1 unless listed: ×0.75 in forest and jungle since item 19, 2026-10-12)
-  if(SEA_TYPES.has(armyType)) return 1.0;    // fleets and sea-beasts fight at 100% on land and sea alike
-  const t=TERRAIN_MODS[terrain];
-  if(!t) return 1.0;
-  return t[armyType]??1.0;
-}
-
-// ── ILLUSORY TERRAIN (per-unit) ────
-// A non-caster force fighting in a province cloaked by Illusory Terrain is disoriented: every unit
-// fights as though caught in the WORST possible ground for its kind, but always at LEAST a 15%
-// reduction. Returns the per-unit multiplier (≤0.85). Worst is taken over the land terrains only —
-// 'sea' is excluded (its land-army penalty is applied separately via seaPenalty, and it would
-// otherwise wrongly floor naval/flying units). Flyers' worst ground is now the woods (×0.75, item 19,
-// 2026-10-12), so the illusion takes them to ×0.75 (it was the 0.85 floor while they ignored terrain). Stacks on top of the real terrain penalty,
-// exactly as the old flat 20% did.
-const ILLUSORY_TERRAIN_KEYS=['plain','desert','forest','jungle','mountain'];
-function illusoryTerrainMult(armyType){
-  let worst=1.0;
-  for(const t of ILLUSORY_TERRAIN_KEYS){ const m=terrainMod(armyType,t); if(m<worst) worst=m; }
-  return Math.min(0.85, worst);
-}
-
-// Module-level base unit strength (type × quality), independent of terrain/druid/temporary
-// reductions. Used by the pre-battle missile phases to make arrow damage proportionate to the
-// target and cappable. Battle-magic Curse: pick the commander's best combat-affecting skill to
-// halve. Candidates are Tactical (land battles), Druid (army penalties/creature buffs) and Naval
-// (sea battles).
-function bestCurseSkill(hero){
-  // 2026-09-09e: Druid was read RAW here while Tactical and Naval were item-boosted, so a commander
-  // whose Druid came from an item had the wrong skill chosen for the Curse. All three now use the
-  // same stack.
-  const tac=effStat(turnContext,hero,'tactical'), dru=effStat(turnContext,hero,'druid'), nav=effStat(turnContext,hero,'naval');
-  if(nav>=tac && nav>=dru && nav>0) return 'naval';
-  return (tac>=dru)?'tactical':'druid';
-}
-function curseSkillLabel(stat){ return stat==='naval'?'Naval command':stat==='druid'?'Druid mastery':'Tactical command'; }
-// Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
-// SHOOTER, not the target: 30% of the firing unit's base strength (unit strength × quality — so a
-// veteran company hits harder than a green one), +10% per level of the commander's Archery,
-// × the firing unit's own ability (Woodland Volley, Bombardment, Raiders' Volley), rounded, minimum 1.
-// Winged riders take double and are shot first. What a TARGET can lose is capped: 40% of its own
-// base strength (80% for a winged rider; Ironwood Crossbows' Punch Through lifts both to 55% / 90% — see
-// missileCap). The 25% pre-battle floor below still applies on top.
-const MISSILE_SHOT_PCT=0.30, MISSILE_ARCH_PER_LVL=0.10, MISSILE_CAP_FRACTION=0.40;   // 2026-10-11 (Toby): volleys 20% → 30%
-function missileShotDamage(firer, archSkill, dmgMult){
-  const fs=firer?unitBaseStrength(firer):10;
-  return Math.max(1, Math.round(fs*MISSILE_SHOT_PCT*(1+MISSILE_ARCH_PER_LVL*Math.max(0,archSkill||0))*(dmgMult||1)));
-}
-// PRE-BATTLE SOFTENING FLOOR. Archery is capped per-unit at MISSILE_CAP_FRACTION, but pre-battle
-// MAGIC and primal army strikes pour into _tempStrReduction with no cap of their own, so a unit hit
-// by several effects (e.g. Spiritwrack + Fireball + Choking Spores + arrows) could be softened to
-// zero before the real fighting began. This floor guarantees every unit still enters the melee with
-// at least this fraction of its (druid/terrain-adjusted) strength — no unit is ever softened away.
-const PREBATTLE_STR_FLOOR=0.25;
-// Subtract a unit's pre-battle damage from a strength figure, never below PREBATTLE_STR_FLOOR of it.
-// Two steps, as before: this battle's damage, then any all-turn reduction.
-function applyPrebattleDamage(army, str){
-  if(army._tempStrReduction){ const f=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(f,str-army._tempStrReduction); } // battle-only; cleared at battle end
-  if(army._turnStrReduction){ const f2=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(f2,str-army._turnStrReduction); } // persists all turn
-  return str;
-}
-function applyMissileHit(target, archSkill, firer, opts){
-  opts=opts||{};
-  // DWARF — Armoured Hulls: arrows and bolts simply do not tell against plated warships.
-  if(target&&target.type==='Dwarf Ironclads') return {dmg:0,isFly:false,capped:false,immune:true,why:'armoured hull'};
-  // PRIMAL — Shell Wall (2026-10-13, the beast abilities): nor against the Great Turtles' shells.
-  if(target&&target.type==='Great Turtles') return {dmg:0,isFly:false,capped:false,immune:true,why:'shell'};
-  const isFly=FLYING_TYPES.has(target.type);
-  let dmg=missileShotDamage(firer, archSkill, opts.dmgMult); // the SHOOTER's strength decides the hit
-  if(isFly) dmg=dmg*2; // archers are especially good against winged riders — double damage
-  // PRIMAL — Thick Hide: a volley at the Great Bears does half (rounded up).
-  const thickHide=target.type==='Great Bears'; if(thickHide) dmg=Math.ceil(dmg/2);
-  // DWARF — Punch Through: heavy bolts grind a target past the point bows can manage.
-  const cap=missileCap(target, firer);
-  const already=target._archeryRed||0;
-  dmg=Math.max(0, Math.min(dmg, cap-already));
-  if(dmg>0){ target._archeryRed=already+dmg; target._tempStrReduction=(target._tempStrReduction||0)+dmg; }
-  return {dmg, isFly, capped:already+dmg>=cap, thickHide};
-}
-
-
-// Sea penalty for non-flying land units fighting in sea provinces ×0.75 = roughly one quality tier
-// lower
-const SEA_LAND_PENALTY=0.75;
 // a force at sea is AIRBORNE when it contains at least one land unit
 // (neither flying nor naval) and NO naval unit at all — the land units can only be there because the
 // flyers carried them. Carried land units then fight at ×0.25 and the carrying humanoid flyers at
 // ×0.5
 // (applied in armStr). Module-level so both battle paths and the narrative lines can share it.
 const SEA_AIRBORNE_LAND_PENALTY=0.25, SEA_AIRBORNE_FLYER_PENALTY=0.5;
-function isAirborneAtSea(force){
-  const f=(force||[]).filter(Boolean);
-  if(!f.length) return false;
-  if(f.some(a=>SEA_TYPES.has(a.type))) return false;
-  return f.some(a=>!FLYING_TYPES.has(a.type)&&!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
-}
-// the race-affinity ("kin") bonus has always been applied inside armStr, but no battle line ever
-// said so, so players could not tell it was in effect. One line per side, before the force rows.
-// ownerRace = race of the OWNING king (the province owner's for a leaderless garrison).
-function kinNarrative(force, leader, ownerRace, sideName){
-  const f=(force||[]).filter(a=>a&&a.race);
-  if(!f.length) return null;
-  const lr=(leader&&leader.race)||null;
-  const both=f.filter(a=>ownerRace&&a.race===ownerRace&&lr&&a.race===lr).length;
-  const kingOnly=f.filter(a=>ownerRace&&a.race===ownerRace&&!(lr&&a.race===lr)).length;
-  const leadOnly=f.filter(a=>lr&&a.race===lr&&!(ownerRace&&a.race===ownerRace)).length;
-  if(!both&&!kingOnly&&!leadOnly) return null;
-  const parts=[];
-  if(both) parts.push(`${both} unit${both!==1?'s':''} of the king's own race under a commander of that blood (+44% strength)`);
-  if(kingOnly) parts.push(`${kingOnly} unit${kingOnly!==1?'s':''} of the king's race (+20%)`);
-  if(leadOnly) parts.push(`${leadOnly} unit${leadOnly!==1?'s':''} of their commander's race (+20%)`);
-  return `🤝 Kinship — ${sideName}: ${parts.join('; ')}.`;
-}
-// ownedUnitName / unitRef moved to module level beside disbandLine (2026-10-11), so rollUnitFates and the
-// tests can reach them.
-// a COASTAL province is a land province with at least one sea neighbour (used by Sea Giants' Tidal
-// Might). Module-level so every battle path and the bot model can share it.
-function provIsCoastal(G, prov){
-  if(!G||!G.world||!prov||prov.terrain==='sea') return false;
-  return getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.terrain==='sea');
-}
-function seaPenalty(armyType, terrain){
-  if(terrain!=='sea') return 1.0;
-  // 2026-09-23e (Toby): EVERY flyer fights normally at sea — the flying beasts (Thunderbirds,
-  // Manticore Pride, Crimson Rocs, Elder Dragons: AERIAL_TYPES) included. They were caught by the
-  // ×0.75 land-unit penalty because only the winged riders (FLYING_TYPES) were exempted.
-  if(AERIAL_TYPES.has(armyType)||SEA_TYPES.has(armyType)) return 1.0;
-  return SEA_LAND_PENALTY;
-}
-
-  // DRUID MASTERY gain for one unit under one commander → {gain (0‥1), lvl, min}. runTurn scope
-  // (needs effStat / dragonTamed). Mirrors the player portal's "Armies leading" panel.
-  function druidMasteryGain(heroChar, army, playerAlignment){
-    const none={gain:0,lvl:0,min:0};
-    if(!heroChar||!army||army._isSkeletal) return none;
-    if(!(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))) return none;
-    let lvl=heroChar._druidNegated?0:(effStat(turnContext,heroChar,'druid')||0);
-    if(heroChar._curseHalveStat==='druid') lvl=Math.floor(lvl/2);
-    lvl=Math.max(0,Math.min(DRUID_MASTERY_MAX_LVL,lvl));
-    const waived=(CREATURE_ARMIES.has(army.type)&&(playerAlignment==='Druidic'||heroChar.alignment==='Druidic'))
-               ||(MONSTER_ARMIES.has(army.type)&&(playerAlignment==='Evil'||heroChar.alignment==='Evil'))   // 2026-10-13: Evil's mirror
-               ||!!dragonTamed(turnContext,heroChar,army);
-    const min=waived?0:getDruidLevel(army.type);
-    const gain=Math.min(DRUID_MASTERY_CAP, DRUID_MASTERY_PER_LVL*Math.max(0,lvl-min));
-    return {gain:Math.round(gain*100)/100, lvl, min};
-  }
-  function armStr(army, heroChar, playerAlignment, terrain, ctx, opts){
-    const ARMY_STR=UNIT_BASE_STR; // alias → master (was a stale 6th copy of the strength table)
-    const Q_MULT=UNIT_Q_MULT; // alias → master
-    // Strength-ladder trace (2026-09-23b): when the caller passes ctx.trace, every per-unit modifier
-    // that fires is named there. Recording only — never changes the figure.
-    const _tr=(ctx&&Array.isArray(ctx.trace))?ctx.trace:null;
-    // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier
-    // higher.
-    const Q_UP={...KC_QUALITY_UP};
-    let effQuality=(army.quality||'Average');
-    if(heroChar&&heroChar._oratoryBoost){ const _oN=(heroChar._oratoryBoost===true?1:(heroChar._oratoryBoost|0))||1; for(let _oi=0;_oi<_oN;_oi++) effQuality=Q_UP[effQuality]||effQuality; } // PSYCHIC Oratory: +1 quality tier (+2 with Words of Awe, L6)
-    if(heroChar&&perkTier(heroChar,'druid')>=3&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))){ effQuality=Q_UP[effQuality]||effQuality; } // DRUID L8: creatures & monsters fight one tier higher
-    if(heroChar&&army._isSkeletal&&perkTier(heroChar,'necromancy')>=1){ effQuality=Q_UP[effQuality]||effQuality; } // NECROMANCY L6 (The Necromantic Arts): skeletal armies you lead fight one experience tier higher
-    if(army._tacUp||army._drumUp){ effQuality=Q_UP[effQuality]||effQuality; } // TACTICAL L6 / War Drum: fight one tier higher (rolled ONCE per battle at battle start)
-    if(_tr&&effQuality!==(army.quality||'Average')){ const _w=[];
-      if(heroChar&&heroChar._oratoryBoost) _w.push('Oratory');
-      if(heroChar&&perkTier(heroChar,'druid')>=3&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))) _w.push('Druid mastery');
-      if(heroChar&&army._isSkeletal&&perkTier(heroChar,'necromancy')>=1) _w.push('Necromantic mastery');
-      if(army._tacUp) _w.push('Tactical mastery'); if(army._drumUp) _w.push('War Drum');
-      _tr.push({label:`fights as ${effQuality}${_w.length?` (${_w.join(' + ')})`:''}`}); }
-    const baseStr=(ARMY_STR[army.type]||4)*(Q_MULT[effQuality]||2);
-    // Apply Druid penalty
-    let str=baseStr;
-    if(heroChar){
-      const penalty=druIdPenaltyMult(heroChar,army,playerAlignment,dragonTamed(turnContext,heroChar,army));
-      if(penalty<1){ str=Math.floor(str*penalty); if(_tr) _tr.push({label:`Druid shortfall ${ladderFm(penalty)}`}); }
-    }
-    // ── RACE CONTEXT (computed once for all race modifiers) ── _unitRace: the army's kin.
-    // _ownerRace: the race of the OWNING PLAYER'S KING (their chosen race), from ctx.ownerRace when
-    // supplied (leaderless owned garrison) else the leader's player. _leaderRace: the leading
-    // character's kin. All humanoid; the equality tests never fire for Primal/skeleton/monster.
-    const _unitRace=army.race||null;
-    const _ownerRace=(ctx&&ctx.ownerRace!=null)?ctx.ownerRace
-                    :(heroChar&&heroChar.player!=null?(G.players[heroChar.player]?.race):null);
-    const _leaderRace=(heroChar&&heroChar.race)||null;
-    // ── HUMANOID RACE AFFINITY ── Two INDEPENDENT, STACKING ×1.2 base-strength boosts:
-    // • King's race: units of the same race as the owning player's king. • Leader's race: units led by
-    // a character (king or hero) of the same race. A king personally leading his own-race troops → ×1.44.
-    if(_unitRace){
-      if(_ownerRace&&_unitRace===_ownerRace) str=Math.round(str*1.2);       // king's-race affinity
-      if(_leaderRace&&_unitRace===_leaderRace) str=Math.round(str*1.2);     // leader's-race affinity
-      if(_tr){ const _k=((_ownerRace&&_unitRace===_ownerRace)?1:0)+((_leaderRace&&_unitRace===_leaderRace)?1:0); if(_k) _tr.push({label:`kinship ${_k===2?'×1.44':'×1.2'}`}); }
-    }
-    // ── RACIAL ANIMOSITY ── Elves & Dwarves, and Humans & Orcs, bear an ancient grudge: an army
-    // led by a commander of the RIVAL kin fights at −20%. Keyed on unit-vs-leader race.
-    if(_unitRace&&_leaderRace){
-      const _RIVAL_RACE={...KC_RIVAL_RACE};
-      if(_RIVAL_RACE[_unitRace]===_leaderRace){ str=Math.round(str*0.8); if(_tr) _tr.push({label:'racial animosity ×0.8'}); }
-    }
-    // Apply terrain modifier
-    if(terrain){
-      // ELF — Sea Archers: elven missile troops aboard galleys shoot from steady decks and do not
-      // suffer the usual land-unit penalty at sea.
-      let sp=seaPenalty(army.type,terrain);
-      // AIRBORNE AT SEA. A force fighting in a sea province with NO naval hull or sea-beast among
-      // it is there only because its flyers carried the foot soldiers. Those dangling land units
-      // fight at QUARTER strength (×0.25, not the usual ×0.75 for troops aboard ships), and the
-      // humanoid flyers doing the carrying fight at HALF strength (×0.5). Primal winged beasts
-      // (AERIAL_TYPES) carry nothing and keep full strength. A pure-flyer force (nothing carried)
-      // is unaffected.
-      if(terrain==='sea' && ctx && isAirborneAtSea(ctx.force)){
-        if(FLYING_TYPES.has(army.type)) sp=0.5;
-        else if(!AERIAL_TYPES.has(army.type)&&!SEA_TYPES.has(army.type)) sp=0.25;
-      }
-      if(sp<1 && terrain==='sea' && ctx && (ctx.force||[]).some(a=>a&&a.type==='Elven Galleys')
-         && MISSILE_ARMIES_MASTER.has(army.type)) sp=1.0;
-      if(sp<1 && terrain==='sea' && heroChar && (perkTier(heroChar,'naval')>=3 || activeItems(heroChar).some(it=>it.landFullAtSea))) sp=1.0; // NAVAL L8 / Tide-Caller's Horn: land units led at sea take no penalty
-      let _tmod=terrainMod(army.type,terrain);
-      if(heroChar && perkTier(heroChar,'march')>=3){ _tmod = _tmod>1 ? 1+(_tmod-1)*2 : Math.max(1,_tmod); } // MARCH L8: terrain bonuses doubled, no terrain penalties
-      if(army._laNoTerrain && _tmod>1) _tmod=1; // MARCH L9 Lightning Advance: the ambushed side gets no terrain bonus
-      let terrainMultFinal=_tmod*sp;
-      // (Home-of-the-Wild forest/jungle ×1.5 for Creatures is applied ONCE, below, keyed on the
-      // realm — a duplicate copy that lived here caused a ×2.25 double-dip for Druidic-aligned
-      // commanders and has been removed.)
-      str=Math.floor(str*terrainMultFinal);
-      if(_tr&&Math.abs(terrainMultFinal-1)>1e-9) _tr.push({label:`${terrain} terrain ${ladderFm(terrainMultFinal)}`});
-    }
-    // ── ELVEN WOODLAND MASTERY ── Elven armies of an Elven realm fight +50% in forest and jungle —
-    // their home ground. (Raised from +20% this session.)
-    if(_unitRace==='Elven'&&_ownerRace==='Elven'&&(terrain==='forest'||terrain==='jungle')){ str=Math.round(str*1.5); if(_tr) _tr.push({label:'Elven Woodland Mastery ×1.5'}); }
-    // ── DWARVEN BULWARK ── Dwarven armies of a Dwarven realm defend at ×1.5 in any battle
-    // (per-unit; applies only on the defending side).
-    if(_unitRace==='Dwarven'&&_ownerRace==='Dwarven'&&ctx&&ctx.isAttacker===false){ str=Math.round(str*1.5); if(_tr) _tr.push({label:'Dwarven Bulwark ×1.5'}); }
-    // GRAND DESIGN — Pagan (Standing Stones). 2026-09-14: keyed on the DEFENDING REALM, not on a
-    // hero being present, so an unled garrison holding forest, jungle or mountain gets the same
-    // +25% the description promises — exactly as Dwarven Bulwark already does on the line above.
-    { const _pagPi=(heroChar&&heroChar.player!=null)?heroChar.player:((ctx&&ctx.ownerPi!=null)?ctx.ownerPi:null);
-      if(_pagPi!=null&&gdActive(turnContext,_pagPi,'Pagan')&&ctx&&ctx.isAttacker===false&&(terrain==='forest'||terrain==='jungle'||terrain==='mountain')){ str=Math.round(str*1.25); if(_tr) _tr.push({label:'Standing Stones ×1.25'}); } }
-    // race / alignment `unitStr` discoveries (per unit; owner = leader's realm, or the garrison's
-    // owner).
-    { const _dpi=(heroChar&&heroChar.player!=null)?heroChar.player:((ctx&&ctx.ownerPi!=null)?ctx.ownerPi:null);
-      if(_dpi!=null){ const _dm=discUnitMult(turnContext, _dpi, army, terrain, ctx, heroChar); if(_dm!==1){ str=Math.round(str*_dm); if(_tr) _tr.push({label:`realm unit discoveries ${ladderFm(_dm)}`}); } } }
-    // EVIL TERROR (2026-09-24): a true strength MODIFIER (×(1−x)), set by consumeTerror at battle
-    // start. It used to be faked as pre-battle damage; now that damage lands after every modifier it
-    // would have shrunk below the advertised −10%/stack, so it is applied here as the multiplier it is.
-    if(army._terrorMult!=null&&army._terrorMult<1){ str=Math.round(str*army._terrorMult); if(_tr) _tr.push({label:`Terror ${ladderFm(army._terrorMult)}`}); }
-    // REIGN OF FEAR (2026-10-13): an Evil realm's Monsters on ground its own Terror still grips (ctx.reignOfFear,
-    // read at the call site before the Terror is consumed). 2026-10-12 (Toby): only when they ATTACK there.
-    if(ctx&&ctx.reignOfFear&&ctx.isAttacker&&playerAlignment==='Evil'&&MONSTER_ARMIES.has(army.type)){ str=Math.round(str*REIGN_OF_FEAR_MULT); if(_tr) _tr.push({label:`Reign of Fear ${ladderFm(REIGN_OF_FEAR_MULT)}`}); }
-    // PRE-BATTLE DAMAGE (arrows, battle magic, primal strikes, flak). 2026-09-24 (Toby): in a battle
-    // the ladder calls armStr with opts.deferDamage and subtracts the damage in ladderRow AFTER every
-    // unit and command modifier — modifiers are fixed when the lines form (after the duel, before
-    // magic and archery), and damage no longer gets multiplied by the target's Tactical, kinship,
-    // terrain, items… Other callers (intel estimates, bot model) keep the old in-line subtraction.
-    if(!(opts&&opts.deferDamage)){
-      const _preTemp=str;
-      str=applyPrebattleDamage(army,str);
-      if(_tr&&str!==_preTemp) _tr.push({label:'pre-battle volleys & spells',delta:str-_preTemp});
-    }
-    // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
-    if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); if(_tr) _tr.push({label:`Phantasmal Armies ${ladderFm(1+heroChar._phantasmalBonus)}`}); }
-    // Magic-item army bonuses carried by the leading commander.
-    const _preItems=str;
-    if(heroChar&&heroChar.items&&heroChar.items.length){
-      const has=(st)=>activeItems(heroChar).some(it=>it.effect&&it.effect.stat===st);
-      const CAV_I=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons','Stag Riders','Ironhoof Rams']);
-      const INF_I=new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers','Men-at-Arms']);
-      const ARCH_I=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Black Arrows']);
-      const HEAVY_I=new Set(['Mountain Guns','Dwarf Ironclads']);
-      const FLEET_I=new Set(KC_UNIT_CLASS.carrier);
-      if(has('armyBonus')) str+=2;                                   // Battle Standard
-      if(has('cavBonus')&&CAV_I.has(army.type)) str=Math.round(str*1.25); // Golden Spur
-      if(has('infBonus')&&INF_I.has(army.type)) str=Math.round(str*1.2);  // Legionnaire's Mark
-      if(has('archerStr')&&ARCH_I.has(army.type)) str=Math.round(str*1.3);// Eagle-Eye Pendant
-      if(has('heavyBonus')&&HEAVY_I.has(army.type)) str+=4;          // Engineer's Blueprint
-      if(has('navalBonus')&&FLEET_I.has(army.type)){ const _ku=Q_UP[army.quality]; if(_ku&&_ku!==army.quality) str=Math.round(str*UNIT_Q_MULT[_ku]/UNIT_Q_MULT[army.quality]); } // Kraken Figurehead: fleets fight one exp level higher
-      if(activeItems(heroChar).some(it=>it.fleetStr)&&FLEET_I.has(army.type)) str+=1; // Sea Chart of the Deep: fleets +1 strength
-      if(hasItemBase(heroChar,"Admiral's Spyglass")&&FLEET_I.has(army.type)) str+=2; // Admiral's Spyglass: fleets +2 strength
-      if(hasItemBase(heroChar,'Chalice of Dawn')&&playerAlignment==='Divine') str=Math.round(str*1.15); // Chalice of Dawn: a Divine realm's armies +15%
-      if(has('undeadBonus')&&army._isSkeletal) str+=4;              // Black Sceptre
-    }
-    if(_tr&&str!==_preItems) _tr.push({label:"commander's magic items",delta:str-_preItems});
-    // ── UNIT ABILITIES (force composition) ──
-    const abilityM=unitAbilityMult(army, ctx, terrain);
-    if(abilityM!==1){ str=Math.round(str*abilityM); if(_tr) _tr.push({label:`${army.type} ability ${ladderFm(abilityM)}`}); }
-    // DRUIDIC — Home of the Wild: Creature armies of a Druidic realm fight ×1.5 in forest and
-    // jungle (the long-advertised bonus, previously described but never implemented).
-    if((playerAlignment==='Druidic'||(heroChar&&heroChar.alignment==='Druidic'))&&(terrain==='forest'||terrain==='jungle')&&CREATURE_ARMIES.has(army.type)){ str=Math.round(str*1.5); if(_tr) _tr.push({label:'Home of the Wild ×1.5'}); }
-    // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies
-    // +5%.
-    if(heroChar){
-      // Grand Marshal / Sea Lord combat bonuses removed — those titles are now end-of-turn intel
-      // lines.
-    }
-    // (2026-09-23d, Toby: the Druid "creature bond" — +5% per Druid level, to 5, on every Creature /
-    // Monster unit led — is RETIRED.)
-    // ── DRUID MASTERY (2026-09-24, Toby) ── A Creature or Monster unit fights +20% for every level of
-    // Druid its commander holds OVER the minimum needed to lead it (the DRUID_ARMY_LEVELS_P table),
-    // counting Druid all the way to 9, capped at +100%. Where the requirement is WAIVED — a Druidic
-    // realm's (or personally Druidic commander's) Creatures, or sd40 Dragon Taming's winged beasts —
-    // the minimum is 0, so every level counts (still capped at +100%). A neutral guard's native
-    // command is NOT a waiver: his minimum stays the table level. Psychic Blast (Druid negated) and
-    // Curse (Druid halved) cut it exactly as they cut the shortfall check.
-    { const _dm=druidMasteryGain(heroChar, army, playerAlignment);
-      if(_dm.gain>0){ str=Math.round(str*(1+_dm.gain)); if(_tr) _tr.push({label:`Druid mastery ×${(1+_dm.gain).toFixed(1)}`}); } }
-    // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%;
-    // Ironclad: heavy & fleet +5%.
-    if(heroChar){
-      const _prim=CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type);
-      if(_prim && (charMinor(turnContext,heroChar,'naturalist')||charMinor(turnContext,heroChar,'beastmaster'))){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Naturalist/Beastmaster title ×1.05'}); }
-      if(charMinor(turnContext,heroChar,'cavalier') && MINOR_CAV.has(army.type)){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Cavalier title ×1.05'}); }
-      if(charMinor(turnContext,heroChar,'ironclad') && MINOR_HEAVY.has(army.type)){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Ironclad title ×1.05'}); }
-    }
-    // Evil Terror: province was terrorised last turn — defending armies -10%
-    // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)
-    return str;
-  }
-  // One battle row for the strength ladder: `_u` = the unit's armStr (every per-unit modifier, named
-  // in `_tr`), `_cmd` = the command-stage multipliers that actually applied to it, `base` = the
-  // unit's FINAL per-unit strength fed to battleLineTotal. The battle sites build their rows with
-  // this, so the ladder and the real total are the same numbers. ctx must be a real object (a bare
-  // {} would switch on ctx-gated unit abilities).
-  // 2026-09-24 (Toby): BATTLE TIMING — every unit modifier (armStr) and command multiplier is applied
-  // to the UNDAMAGED unit first; only then is this battle's pre-battle damage (arrows, battle magic,
-  // primal strikes, flak) subtracted. `_cmdS` = the figure before damage, `_dmg` = what came off.
-  function ladderRow(a, hero, align, terrain, ctx, cmd){
-    const tr=[]; const u=ctx?armStr(a,hero,align,terrain,Object.assign({},ctx,{trace:tr}),{deferDamage:true}):armStr(a,hero,align,terrain,undefined,{deferDamage:true});
-    const applied=(cmd||[]).filter(c=>c&&Math.abs(c.m-1)>1e-9);
-    let s=u; applied.forEach(c=>{ s*=c.m; });
-    return {a, base:s, s, fly:FLYING_TYPES.has(a.type), _u:u, _tr:tr, _cmd:applied, _cmdS:s, _dmg:0};
-  }
-  // 2026-09-24 (Toby): the WHOLE-FORCE multipliers (fanaticism, discoveries, morale, the defender's
-  // position, home ground, orders, sanctuary, consecration) also land before any damage. Each unit's
-  // undamaged figure (_cmdS) is multiplied by the side's force product F, THEN this battle's pre-battle
-  // damage comes off (floored at 25% of that figure), THEN the battle lines weight the units. Returns
-  // the side's final strength; the rows keep every stage for the ladder.
-  // opts (2026-10-11): {terrain, tac, enemy, enemyTac, out} — the grid is built here, on the finished
-  // figures, and handed back through opts.out.grid for the report and the ladder.
-  function finishSide(rows, width, flank, forceMods, opts){
-    const F=(forceMods||[]).reduce((p,x)=>p*((x&&isFinite(x.m))?x.m:1),1);
-    rows.forEach(r=>{ const pre=r._cmdS*F, post=applyPrebattleDamage(r.a,pre);
-      r._F=F; r._fPre=pre; r._fPost=post; r._dmg=pre-post; r.base=post; r.s=post; });
-    opts=opts||{};
-    const g=battleGrid(rows,width,opts.terrain||null,{flank,tac:opts.tac,enemy:opts.enemy,enemyTac:opts.enemyTac});
-    if(opts.out) opts.out.grid=g;
-    return g.total;
-  }
-  function provName(id){return G.world.provinces[id]?.name||'unknown';}
-  function provOf(c){return G.world.provinces[c.location];}
-
-  // Direction → neighbor lookup
-  const HEX_DIRS=KC_HEX_DIRS.slice();
-  function neighborInDir(prov,dir){
-    const{row,col}=prov;
-    const cols=G.world.cols,rows=G.world.rows;
-    const even=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
-    const odd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
-    const idx=HEX_DIRS.indexOf(dir);
-    if(idx<0)return null;
-    const[dr,dc]=(row%2===0?even:odd)[idx];
-    const nr=row+dr;if(nr<0||nr>=rows)return null;
-    const nc=((col+dc)%cols+cols)%cols;
-    return G.world.provinces[nr*cols+nc];
-  }
 
   // Simple combat resolve
   // ── ARMY BATTLE NARRATIVE ENGINE ────
@@ -1371,11 +906,6 @@ const BATTLE_ARMY_SPELLS={
   // (−10% strength per stack, at most 3 stacks: −30%; 2026-10-12, Toby item 21 — it was 5, −50%). Repeated terror
   // events stack up to that cap; a save already holding more is read as 3. (TERROR_PCT_PER_STACK and
   // TERROR_MAX_STACKS live at module level, beside buildTurnReport, which shows Evil realms the reading.)
-  // REIGN OF FEAR (2026-10-13, Toby, Creatures and Monsters I): an Evil realm's Monsters fight ×1.5 in a
-  // province still gripped by that realm's own Terror — the mirror of the Druids' Home of the Wild, on ground
-  // Evil makes its own by winning. 2026-10-12 (Toby): only when they ATTACK there, never when defending it. Read at battle start, BEFORE consumeTerror
-  // clears the stacks (reignOfFearHere), and applied in armStr through ctx.reignOfFear.
-  const REIGN_OF_FEAR_MULT=1.5;
   function reignOfFearHere(prov, playerIdx){ return !!(prov&&playerIdx!=null&&(prov._terrorStacks||0)>0&&prov._terrorisedBy===playerIdx); }
   function spreadTerror(battleProv, byPlayer, narrative){
     const targets=[battleProv, ...getNeighborsP(battleProv,G.world.cols,G.world.rows,G.world.provinces)];
@@ -1648,7 +1178,7 @@ const BATTLE_ARMY_SPELLS={
     const _cLA=!!(c&&c._lightningAdvanceTurn===G.turn); // MARCH L9 Lightning Advance: defenders fight with no terrain / magic / archery this battle
     const armies=c.armies||[];
     const defenders=prov.neutralDefenders||[];
-    injectPhantoms(c, realCharOf(c)); // PHANTASMAL/PHANTOM HOST: spectral doubles join the fight (removed at battle end)
+    injectPhantoms(c, realCharOf(turnContext,c)); // PHANTASMAL/PHANTOM HOST: spectral doubles join the fight (removed at battle end)
 
     // Setup — the deployment is described BEFORE the challenge is issued, so a commander slain in
     // the pre-battle duel is not narrated "standing firm" after they have already fallen. frame HOW
@@ -1670,12 +1200,12 @@ const BATTLE_ARMY_SPELLS={
     { const _ic=magicItemsLine(c); if(_ic)narrative.push(_ic); } // commander's magic items in play
     { const _kA=kinNarrative(armies,c,(c.player!=null?G.players[c.player]?.race:null),`${c.name}'s host`); if(_kA) narrative.push(_kA); // item 7
       const _kD=kinNarrative(defenders,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.race:null),`the defenders of ${prov.name}`); if(_kD) narrative.push(_kD); }
-    { const _aS=Math.round((armies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,c,(c.player!=null?G.players[c.player]?.alignment:null),prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:provIsCoastal(G,prov),reignOfFear:_fearAtk}):0),0)); // 2026-09-18 · 2026-09-23b: same ctx as the battle rows
+    { const _aS=Math.round((armies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(turnContext,a,c,(c.player!=null?G.players[c.player]?.alignment:null),prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:provIsCoastal(G,prov),reignOfFear:_fearAtk}):0),0)); // 2026-09-18 · 2026-09-23b: same ctx as the battle rows
       narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name} — army strength ${_aS}, with`)); // realm named, as in PvP
       // 2026-09-24 (Toby item 2): the defending side's header carries its own post-modifier strength
       // in the SAME format as the attacker's (and as PvP) — terrain, kinship, abilities and the
       // chieftain's own bonuses all counted, before Tactical / battle lines / dice.
-      const _dS=Math.round((defenders||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.alignment:null),prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,coastal:provIsCoastal(G,prov)}):0),0));
+      const _dS=Math.round((defenders||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(turnContext,a,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.alignment:null),prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,coastal:provIsCoastal(G,prov)}):0),0));
       if(neutralGuardHero){
         narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} — army strength ${_dS}, with`, {guard:true}));
       } else {
@@ -1794,7 +1324,7 @@ const BATTLE_ARMY_SPELLS={
           } else if(spellName==='Curse'){
             // Halve the enemy commander's best combat-affecting skill (Tactical or Druid) for the
             // battle.
-            if(defHero){ defHero._curseHalveStat=bestCurseSkill(defHero); narrative.push(`  ☠ Curse withers ${defHero.name}'s ${curseSkillLabel(defHero._curseHalveStat)} — halved for this battle.`); }
+            if(defHero){ defHero._curseHalveStat=bestCurseSkill(turnContext,defHero); narrative.push(`  ☠ Curse withers ${defHero.name}'s ${curseSkillLabel(defHero._curseHalveStat)} — halved for this battle.`); }
             else narrative.push(`  ☠ Curse seeks a commander to wither, but these defenders are leaderless.`);
           } else if(spellName==='Control Undead'){
             // One random enemy undead unit defects to the caster's side.
@@ -1970,7 +1500,7 @@ const BATTLE_ARMY_SPELLS={
             } else if(defSpellName==='Telekinetic Storm'){
               if(c){ c._tacticalHalved=true; c._tacticalMult=0.5; narrative.push(`  🌀 Telekinetic Storm scatters ${cName}'s formations — their Tactical command is cut to half effectiveness this battle.`); }
             } else if(defSpellName==='Curse'){
-              if(c){ c._curseHalveStat=bestCurseSkill(c); narrative.push(`  ☠ Curse withers ${cName}'s ${curseSkillLabel(c._curseHalveStat)} — halved for this battle.`); }
+              if(c){ c._curseHalveStat=bestCurseSkill(turnContext,c); narrative.push(`  ☠ Curse withers ${cName}'s ${curseSkillLabel(c._curseHalveStat)} — halved for this battle.`); }
             } else if(defSpellName==='Control Undead'){
               const ui=armies.map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
               if(ui.length>0){ const pick=ui[Math.floor(kcRng()*ui.length)]; const unit=armies.splice(pick.i,1)[0]; defHero.armies=defHero.armies||[]; defHero.armies.push(unit); const rc=G.characters[defHero.id]; if(rc&&rc!==defHero){rc.armies=rc.armies||[]; rc.armies.push(unit);} narrative.push(`  ☠ Control Undead turns the ${unit.unitName||unit.type} to ${defHero.name}'s side!`); }
@@ -2089,7 +1619,7 @@ const BATTLE_ARMY_SPELLS={
       if(SEA_TYPES.has(a.type)) cmd.push({key:'nav',label:`Naval ${navalSkillAtk} ${ladderFm(navalFleetBonus)}`,m:navalFleetBonus}); // Naval lifts fleets on land AND sea
       else cmd.push({key:'tac',label:`Tactical ${ladderFm(tacMulted(effectiveTactBonus,c))}`,m:tacMulted(effectiveTactBonus,c)}); // land AND air units (flyers since 2026-09-23c)
       if(_atkIllActive) cmd.push({key:'ill',label:`illusory terrain ${ladderFm(illusoryTerrainMult(a.type))}`,m:illusoryTerrainMult(a.type)});
-      return ladderRow(a,c,playerAlign,prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:_provCoastal,reignOfFear:_fearAtk},cmd);
+      return ladderRow(turnContext,a,c,playerAlign,prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:_provCoastal,reignOfFear:_fearAtk},cmd);
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base); // flying first, then strongest
 
     const rawAtkStr=battleLineTotal(armiesWithStr,lineWidth,atkFlankDisc); // undamaged, before whole-force (2026-09-24)
@@ -2119,7 +1649,7 @@ const BATTLE_ARMY_SPELLS={
       if(SEA_TYPES.has(a.type)) cmd.push({key:'nav',label:`Naval ${navalSkillDef} ${ladderFm(defNavalFleetBonus)}`,m:defNavalFleetBonus}); // defender's Naval, land or sea
       const landUnit=!SEA_TYPES.has(a.type); // land AND air units — flyers take Tactical since 2026-09-23c
       if(landUnit&&prov.terrain!=='sea') cmd.push({key:'tac',label:`Tactical ${ladderFm(tacMulted(defTactBonus,defHero))}`,m:tacMulted(defTactBonus,defHero)});
-      return ladderRow(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null),ownerPi:(prov.owner!=null?prov.owner:null),coastal:_provCoastal},cmd);
+      return ladderRow(turnContext,a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null),ownerPi:(prov.owner!=null?prov.owner:null),coastal:_provCoastal},cmd);
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base);
     // the defender's half of the same phantom bonus, removed for the same reason.
     // (2026-09-23d: the defender's standalone Naval line is retired likewise.)
@@ -2430,7 +1960,7 @@ const BATTLE_ARMY_SPELLS={
       // A land force (no fleet capacity) must NOT retreat into an owned/allied sea province.
       // 2026-09-23c: judged on the SURVIVORS (this read the pre-casualty list) via retreatOptions.
       const _retLive=(c.armies||[]).filter(a=>a&&!a._died&&!a._disbanded);
-      const friendlyAdj=retreatOptions(c, prov, _retLive); // own/allied ground it could legally enter, or the unowned sea it sailed from
+      const friendlyAdj=retreatOptions(turnContext, c, prov, _retLive); // own/allied ground it could legally enter, or the unowned sea it sailed from
       prov._hadBattleThisTurn=true;
       const infStay=activeItems(c).some(it=>it.effect&&it.effect.stat==='infStay');
       const _npcSeaTrap=(friendlyAdj.length===0&&!infStay)?seaTrapLine(cName,c,prov,_retLive):null;
@@ -2447,7 +1977,7 @@ const BATTLE_ARMY_SPELLS={
       // holds the ground. Tried before the trapped branch, because a mixed column that cannot carry
       // itself reads as "nowhere to retreat" to retreatOptions while its hulls could still sail.
       // The Shield-Wall Rune (infStay) refuses every retreat, so it is honoured first.
-      const _navalSplitNPC=infStay?'':navalSplitRetreat(c, prov, _retLive, narrative, cName);
+      const _navalSplitNPC=infStay?'':navalSplitRetreat(turnContext, c, prov, _retLive, narrative, cName);
       if(_navalSplitNPC){ /* handled above — no further retreat or rout */ }
       else if(friendlyAdj.length===0 || infStay){
         if(_npcSeaTrap) narrative.push(_npcSeaTrap);
@@ -2476,7 +2006,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfNPC) narrative.push(`🛡 Shield Fort — ${cName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[c._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const retreatTo=(fromProv&&fromProv.id!==prov.id&&friendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(bestRetreat(c,friendlyAdj.filter(p2=>p2.id!==prov.id))||friendlyAdj[0]); // must be ADJACENT (and friendly, enterable) — never a stale far-off origin; with a choice, the most valuable ground wins
+        const retreatTo=(fromProv&&fromProv.id!==prov.id&&friendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(bestRetreat(turnContext,c,friendlyAdj.filter(p2=>p2.id!==prov.id))||friendlyAdj[0]); // must be ADJACENT (and friendly, enterable) — never a stale far-off origin; with a choice, the most valuable ground wins
         narrative.push(`${cName}'s forces retreat to ${retreatTo.name}.`);
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         retreatTo.characters=(retreatTo.characters||[]);
@@ -2492,7 +2022,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
     [...(c.armies||[]),...(prov.neutralDefenders||[]),...((neutralGuardHero&&neutralGuardHero.armies)||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;delete a._flakTargeted;});
-    clearPhantomCopies(c, !won, realCharOf(c)); // remove phantom fighting-copies; if c lost, all its phantasmal armies are dismissed
+    clearPhantomCopies(c, !won, realCharOf(turnContext,c)); // remove phantom fighting-copies; if c lost, all its phantasmal armies are dismissed
     if(!won&&c) noteBattleLoss(c.id, narrative); // AK [3.15] — a beaten general stops Defending
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     // 2026-10-14 (batch item 11, Toby): a general who LOSES a battle but lives to tell of it learns
@@ -4567,7 +4097,7 @@ const BATTLE_ARMY_SPELLS={
     const _atkLA=!!(atk&&atk._lightningAdvanceTurn===G.turn); // MARCH L9 Lightning Advance
     if(_atkLA){ (def.armies||[]).forEach(a=>{ if(a) a._laNoTerrain=true; }); narrative.push(`⚡ ${atk.name}'s Lightning Advance catches ${def.name} completely unready — no terrain advantage, no pre-battle magic and no answering volley.`); }
     applyWraithTouch(atk.armies||[], def.armies||[], narrative); applyWraithTouch(def.armies||[], atk.armies||[], narrative); // Wraith's Touch
-    injectPhantoms(atk, realCharOf(atk)); injectPhantoms(def, realCharOf(def)); // PHANTASMAL/PHANTOM HOST: spectral doubles join the fight (removed at battle end)
+    injectPhantoms(atk, realCharOf(turnContext,atk)); injectPhantoms(def, realCharOf(turnContext,def)); // PHANTASMAL/PHANTOM HOST: spectral doubles join the fight (removed at battle end)
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
     if(atk){atk._druidNegated=false;atk._tacticalNegated=false;atk._tacticalHalved=false;atk._tacticalMult=1;atk._curseHalveStat=null; if(atk._massConfusedTurn===G.turn)atk._tacticalNegated=true;} if(def){def._druidNegated=false;def._tacticalNegated=false;def._tacticalHalved=false;def._tacticalMult=1;def._curseHalveStat=null; if(def._massConfusedTurn===G.turn)def._tacticalNegated=true;}
     const atkArmies=atk.armies||[];
@@ -4609,8 +4139,8 @@ const BATTLE_ARMY_SPELLS={
     // 2026-10-12 (Toby) it fires only when attacking: a defender never has it.
     const _fearAtk=reignOfFearHere(prov,atk.player), _fearDef=false;
     { const _dcC=provIsCoastal(G,prov);
-      const _aS=Math.round((atkArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,atk,(G.players[atk.player]?.alignment),prov.terrain,{force:atkArmies,enemyForce:defArmies,isAttacker:true,amphibious:!!atk._amphibiousAssault,coastal:_dcC,reignOfFear:_fearAtk}):0),0));
-      const _dS=Math.round((defArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,def,(G.players[def.player]?.alignment),prov.terrain,{force:defArmies,enemyForce:atkArmies,isAttacker:false,coastal:_dcC,reignOfFear:_fearDef}):0),0));
+      const _aS=Math.round((atkArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(turnContext,a,atk,(G.players[atk.player]?.alignment),prov.terrain,{force:atkArmies,enemyForce:defArmies,isAttacker:true,amphibious:!!atk._amphibiousAssault,coastal:_dcC,reignOfFear:_fearAtk}):0),0));
+      const _dS=Math.round((defArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(turnContext,a,def,(G.players[def.player]?.alignment),prov.terrain,{force:defArmies,enemyForce:atkArmies,isAttacker:false,coastal:_dcC,reignOfFear:_fearDef}):0),0));
       narrative.push(forceMarker(`${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, `attacks ${prov.name}${atkTact>0?` under Tactical ${atkTact} command`:''} — army strength ${_aS}, with`));
       narrative.push(forceMarker(`${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, `${DEF_VERBS[0]} ${prov.name}${defTact>0?` under Tactical ${defTact} command`:''} — army strength ${_dS}, with`)); }
     // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now
@@ -4754,7 +4284,7 @@ const BATTLE_ARMY_SPELLS={
       return cmd;
     }
     function _pvpRow(a, isAtk, force, enemy){
-      return ladderRow(a, isAtk?atk:def, isAtk?atkAlign2:defAlign2, pvpTerrain, _pvpCtx(isAtk,force,enemy), _pvpCmd(a,isAtk));
+      return ladderRow(turnContext, a, isAtk?atk:def, isAtk?atkAlign2:defAlign2, pvpTerrain, _pvpCtx(isAtk,force,enemy), _pvpCmd(a,isAtk));
     }
 
     // ════
@@ -4787,7 +4317,7 @@ const BATTLE_ARMY_SPELLS={
         shuffleP(targets).slice(0,n).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.20));});
         narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n!==1?'s':''} lose 20% strength.`);
       } else if(spellName==='Curse'){
-        if(enemyCmdr){ enemyCmdr._curseHalveStat=bestCurseSkill(enemyCmdr); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${curseSkillLabel(enemyCmdr._curseHalveStat)} — halved for this battle.`); }
+        if(enemyCmdr){ enemyCmdr._curseHalveStat=bestCurseSkill(turnContext,enemyCmdr); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${curseSkillLabel(enemyCmdr._curseHalveStat)} — halved for this battle.`); }
       } else if(spellName==='Control Undead'){
         const ui=targets.map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
         if(ui.length>0){ const pick=ui[Math.floor(kcRng()*ui.length)]; const unit=targets.splice(pick.i,1)[0]; caster.armies=caster.armies||[]; caster.armies.push(unit); const rc=G.characters[caster.id]; if(rc&&rc!==caster){rc.armies=rc.armies||[]; rc.armies.push(unit);} narr.push(`  ☠ Control Undead turns the ${unit.unitName||unit.type} to ${caster.name}'s side!`); }
@@ -5176,7 +4706,7 @@ const BATTLE_ARMY_SPELLS={
       // Losing defender retreat
       const defAdjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
       const _defRetSc=getSeaCapability(def.armies||[],def); // only ground the beaten force could legally enter
-      let defFriendlyAdj=retreatOptions(def, prov, def.armies||[]); // own/allied ground it could legally enter, or the unowned sea it sailed from (2026-09-23c)
+      let defFriendlyAdj=retreatOptions(turnContext, def, prov, def.armies||[]); // own/allied ground it could legally enter, or the unowned sea it sailed from (2026-09-23c)
       // HUMAN — Cut the Line: corsairs close the sea lanes behind a beaten enemy.
       if(_cutAtk&&defFriendlyAdj.length>0){
         const overland=defFriendlyAdj.filter(p2=>p2.terrain!=='sea');
@@ -5193,7 +4723,7 @@ const BATTLE_ARMY_SPELLS={
       // is still the stronger and means to fight on (_wantsToStay) keeps that choice, and a dead
       // commander never retreats — both are checked first. Cut the Line closes the water to it too.
       const _defStays=(defFriendlyAdj.length>0)&&_wantsToStay(def.armies, def, atk.armies, atk);
-      const _navalDef=(_defStays||def.alive===false||def.killedThisTurn)?'':navalSplitRetreat(def, prov, def.armies, narrative, defName, _cutAtk);
+      const _navalDef=(_defStays||def.alive===false||def.killedThisTurn)?'':navalSplitRetreat(turnContext, def, prov, def.armies, narrative, defName, _cutAtk);
       if(_navalDef){ if(_navalDef==='stay'){ prov._battleUnresolved=true; _heldField=true; } }
       else if(defFriendlyAdj.length===0){
         { const _st=seaTrapLine(defName,def,prov,def.armies); if(_st) narrative.push(_st); }
@@ -5225,7 +4755,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfDef&&def.armies.length>0) narrative.push(`🛡 Shield Fort — ${defName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const defFromProv=G.world.provinces[def._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const defRetreatTo=(defFromProv&&defFromProv.id!==prov.id&&defFriendlyAdj.some(p2=>p2.id===defFromProv.id))?defFromProv:(bestRetreat(def,defFriendlyAdj.filter(p2=>p2.id!==prov.id))||defFriendlyAdj[0]); // adjacent only; with a choice, the most valuable ground wins
+        const defRetreatTo=(defFromProv&&defFromProv.id!==prov.id&&defFriendlyAdj.some(p2=>p2.id===defFromProv.id))?defFromProv:(bestRetreat(turnContext,def,defFriendlyAdj.filter(p2=>p2.id!==prov.id))||defFriendlyAdj[0]); // adjacent only; with a choice, the most valuable ground wins
         narrative.push(`${defName} retreats to ${defRetreatTo.name}.`);
         const defSurvivors2=def.armies||[];
         if(defSurvivors2.length>0) narrative.push(`📊 ${defName}'s surviving forces: ${describeArmy(defSurvivors2)}.`);
@@ -5265,7 +4795,7 @@ const BATTLE_ARMY_SPELLS={
       // Losing attacker retreat
       const atkAdjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
       const _atkRetSc=getSeaCapability(atk.armies||[],atk); // only ground the beaten force could legally enter
-      let atkFriendlyAdj=retreatOptions(atk, prov, atk.armies||[]); // own/allied ground it could legally enter, or the unowned sea it sailed from (2026-09-23c)
+      let atkFriendlyAdj=retreatOptions(turnContext, atk, prov, atk.armies||[]); // own/allied ground it could legally enter, or the unowned sea it sailed from (2026-09-23c)
       // HUMAN — Cut the Line: corsairs close the sea lanes behind a beaten enemy.
       if(_cutDef&&atkFriendlyAdj.length>0){
         const overland=atkFriendlyAdj.filter(p2=>p2.terrain!=='sea');
@@ -5279,7 +4809,7 @@ const BATTLE_ARMY_SPELLS={
       const _dmAtk=atk.armies.length>0&&atk.armies.every(a=>a._isSkeletal)&&G.players[atk.player]?.alignment==='Undead';
       // 2026-09-27 (Toby item 3): the naval split — see the defender's block above for the reasoning.
       const _atkStays=(atkFriendlyAdj.length>0)&&_wantsToStay(atk.armies, atk, def.armies, def);
-      const _navalAtk=(_atkStays||atk.alive===false||atk.killedThisTurn)?'':navalSplitRetreat(atk, prov, atk.armies, narrative, atkName, _cutDef);
+      const _navalAtk=(_atkStays||atk.alive===false||atk.killedThisTurn)?'':navalSplitRetreat(turnContext, atk, prov, atk.armies, narrative, atkName, _cutDef);
       if(_navalAtk){ if(_navalAtk==='stay'){ prov._battleUnresolved=true; _heldField=true; } }
       else if(atkFriendlyAdj.length===0){
         { const _st=seaTrapLine(atkName,atk,prov,atk.armies); if(_st) narrative.push(_st); }
@@ -5307,7 +4837,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfAtk&&atk.armies.length>0) narrative.push(`🛡 Shield Fort — ${atkName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[atk._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const retreatTo=(fromProv&&fromProv.id!==prov.id&&atkFriendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(bestRetreat(atk,atkFriendlyAdj.filter(p2=>p2.id!==prov.id))||atkFriendlyAdj[0]); // adjacent only; with a choice, the most valuable ground wins
+        const retreatTo=(fromProv&&fromProv.id!==prov.id&&atkFriendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(bestRetreat(turnContext,atk,atkFriendlyAdj.filter(p2=>p2.id!==prov.id))||atkFriendlyAdj[0]); // adjacent only; with a choice, the most valuable ground wins
         narrative.push(`${atkName} retreats to ${retreatTo.name}.`);
         // Summarise surviving attacker armies
         const atkSurvivors=atk.armies||[];
@@ -5323,7 +4853,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
     [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;delete a._flakTargeted;});
-    clearPhantomCopies(atk, !won, realCharOf(atk)); clearPhantomCopies(def, won, realCharOf(def)); // remove phantom fighting-copies; the beaten side loses all its phantasmal armies
+    clearPhantomCopies(atk, !won, realCharOf(turnContext,atk)); clearPhantomCopies(def, won, realCharOf(turnContext,def)); // remove phantom fighting-copies; the beaten side loses all its phantasmal armies
 
     // AK [3.15]: "A character's Defend order is canceled if he loses a battle, to prevent further
     // needless defeats." atk/def are pooled copies, so resolve back to the real character by id.
@@ -6137,7 +5667,7 @@ const BATTLE_ARMY_SPELLS={
       action='rest'; }
     const target=o.target||'';
     const extra=o.extra||'';
-    const prov=provOf(c);
+    const prov=provOf(turnContext,c);
     const player=G.players[c.player];
 
     // ── BATTLE LOCK, RE-CHECKED AT THE MOMENT OF MARCHING ────
@@ -6298,14 +5828,14 @@ const BATTLE_ARMY_SPELLS={
         // e.g. a hero hired in a previous turn whose start-of-turn init was somehow missed —
         // compute it now so they aren't wrongly told they have no movement left. We only do this
         // when BOTH pools are undefined (never set), never when a pool is 0 from being spent.
-        if(movePoints[c.id]===undefined&&seaMovePoints[c.id]===undefined){ setMovePool(c); }
+        if(movePoints[c.id]===undefined&&seaMovePoints[c.id]===undefined){ setMovePool(turnContext,c); }
         // Reconcile the pool with the character's CURRENT army composition before checking it, so
         // any mid-turn change (a recruit or mercenary hire to this hero, a transfer/gift, a
         // disband, a spell-raised unit) is reflected here even if the handler that made the change
         // did not itself refresh. refreshMovePool preserves moves already spent and discounts
         // light-travel moves, so this is idempotent — it never refunds or double-charges — and
         // closes the whole class of "movement points wrongly zeroed after gaining armies" bugs.
-        if(typeof refreshMovePool==='function') refreshMovePool(c);
+        if(typeof refreshMovePool==='function') refreshMovePool(turnContext,c);
         const mp=movePoints[c.id]??0;
         const smpAvail=seaMovePoints[c.id]??0;
         if(mp<=0&&smpAvail<=0){log('move',`${c.name} has no movement points remaining this turn.`,{actor:c.player,targets:[c.player]});break;}
@@ -6316,7 +5846,7 @@ const BATTLE_ARMY_SPELLS={
         let toProv=null;
         if(target.startsWith('dir:')){
           const dir=target.slice(4);
-          toProv=neighborInDir(prov,dir);
+          toProv=neighborInDir(turnContext,prov,dir);
           if(!toProv){log('move',`${c.name} marches ${dir} to the edge of the world, but the impassable icy wastelands bar the way — no army can cross them to the far north or south.`,{actor:c.player,targets:[c.player]});break;}
         } else if(target.startsWith('prov:')){
           // ABSOLUTE move target (player portal, v2026.09.10+): the order names the specific
@@ -6645,7 +6175,7 @@ const BATTLE_ARMY_SPELLS={
           // Build combined army list for battle
           const combinedArmies=[...(c.armies||[]),...friendlyReinforcements.flatMap(a=>a.armies||[])];
           // the BEST commander present leads the pooled host, not simply the mover.
-          const _aPick=pickBattleCommander(c, friendlyReinforcements, combinedArmies, toProv, true);
+          const _aPick=pickBattleCommander(turnContext, c, friendlyReinforcements, combinedArmies, toProv, true);
           const _aLead=_aPick.leader, _aParty=[c,...friendlyReinforcements];
           const battleAttacker={..._aLead,armies:combinedArmies,_reinforcedBy:_aPick.others.map(a=>a.name),
             ...landingPartyFlags(_aParty,toProv)}; // Reaver Crews (2026-09-23e) and Raid the Coast (2026-09-23f) stay with the landed troops whoever commands
@@ -6680,7 +6210,7 @@ const BATTLE_ARMY_SPELLS={
           // characters. Item 2: the whole pooled party falls back together, not just the leader's
           // copy, and the surviving state written onto the copy (HP, items spent, skill gains) is
           // synced back onto the real commander who actually led.
-          syncLeaderCopy(_aLead, battleAttacker);
+          syncLeaderCopy(turnContext, _aLead, battleAttacker);
           // a chieftain's guard is a real land (or sea) battle and pays Grand Marshal / Sea Lord
           // merit exactly as a war with a rival realm does. `creditBattle` picks the bucket off the
           // province's terrain, so a neutral SEA province pays the Sea Lord, and the neutral
@@ -6689,7 +6219,7 @@ const BATTLE_ARMY_SPELLS={
           // pre-battle snapshot of `tm` over the merit just earned.
           creditBattle(turnContext,_aLead,null,battle,toProv);
           if(battleAttacker.location!==_aLead.location||battleAttacker.location!==c.location){
-            _aParty.forEach(m=>{ if(m.location!==battleAttacker.location) relocateChar(m, battleAttacker.location); });
+            _aParty.forEach(m=>{ if(m.location!==battleAttacker.location) relocateChar(turnContext, m, battleAttacker.location); });
           }
           if(battle.won) markOrcAttackWin(c, G, battle); // orc war-spoils — this attacking force won (line appended to the report)
           emitBattle(battle, toProv, ph, [c.player], {actor:c.player}); // item 5
@@ -6847,8 +6377,8 @@ const BATTLE_ARMY_SPELLS={
             const _defPooled=[...(defChar.armies||[]),...defReinforcements.flatMap(d=>d.armies||[]),..._rallied];
             // the BEST commander on each side takes the combined host. Strict best score wins; the
             // loser of the contest stands in the line as a contingent commander.
-            const _aP=pickBattleCommander(c, pvpReinforcements, _atkPooled, toProv, true);
-            const _dP=pickBattleCommander(defChar, defReinforcements, _defPooled, toProv, false);
+            const _aP=pickBattleCommander(turnContext, c, pvpReinforcements, _atkPooled, toProv, true);
+            const _dP=pickBattleCommander(turnContext, defChar, defReinforcements, _defPooled, toProv, false);
             const _atkLead=_aP.leader, _defLead=_dP.leader;
             const _atkParty=[c,...pvpReinforcements], _defParty=[defChar,...defReinforcements];
             if(_aP.changed) log('combat',commandHandoverLine(_atkLead,c,toProv.name),{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
@@ -6859,7 +6389,7 @@ const BATTLE_ARMY_SPELLS={
             if(isVeiled(turnContext,c) || (_vDefs.length>0 && _vDefs.every(d=>isVeiled(turnContext,d)))){ break; } // ILLUSORY L9 VEIL: a veiled attacker slips in unseen; a wholly-veiled defence cannot be found — no battle, no contest flagged (it triggers when the veil parts, via the re-trigger scan).
             if(_fmSlip && kcRng()<0.5){ toProv._battleUnresolved=true; log('move',`⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true}); break; } // MARCH L7 slip
             const battle=combatVsChar(combinedAtk,combinedDef,toProv);
-            syncLeaderCopy(_atkLead,combinedAtk); syncLeaderCopy(_defLead,combinedDef); // wounds, deaths, spent items and skill gains land on the real commanders
+            syncLeaderCopy(turnContext,_atkLead,combinedAtk); syncLeaderCopy(turnContext,_defLead,combinedDef); // wounds, deaths, spent items and skill gains land on the real commanders
             creditBattle(turnContext,_atkLead,_defLead,battle,toProv);
             const targets=[c.player,defChar.player];
             // Reorder: place the collected reinforce/rally lines immediately AFTER the "…moves
@@ -6911,7 +6441,7 @@ const BATTLE_ARMY_SPELLS={
                 if(!ch||!Array.isArray(ch.armies)) return;
                 const _n=ch.armies.length;
                 ch.armies=ch.armies.filter(a=>_navalHeld.indexOf(a)<0);
-                if(ch.armies.length!==_n&&typeof refreshMovePool==='function') refreshMovePool(ch);
+                if(ch.armies.length!==_n&&typeof refreshMovePool==='function') refreshMovePool(turnContext,ch);
               });
             }
             const _garrisonSurv=_garrisonHere.filter(a=>!a._died&&!a._disbanded&&_navalHeld.indexOf(a)<0);
@@ -6988,7 +6518,7 @@ const BATTLE_ARMY_SPELLS={
               if(_hostileLeft||_navalBlock.length>0){
                 toProv._battleUnresolved=true;
                 log('combat',`${c.alive===false?`${c.name}'s leaderless host`:c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,{actor:c.player,targets,provinceId:toProv.id,public:true});
-                if(!_hostileLeft&&_navalBlock.length>0) log('combat',navalHoldLine(toProv,_navalBlock,player.name),{actor:c.player,targets,provinceId:toProv.id,public:true});
+                if(!_hostileLeft&&_navalBlock.length>0) log('combat',navalHoldLine(turnContext,toProv,_navalBlock,player.name),{actor:c.player,targets,provinceId:toProv.id,public:true});
               } else {
                 G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
                 setProvinceOwner(turnContext,toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
@@ -7036,7 +6566,7 @@ const BATTLE_ARMY_SPELLS={
               _join.forEach(a=>{ delete a._fromGarrison; delete a._fromLeaderless; a._garrisonOf=toProv.id; });
               defChar.armies=(defChar.armies||[]).concat(_join);
               toProv.garrisonArmies=[];
-              if(typeof refreshMovePool==='function') refreshMovePool(defChar); // added units may change his pace
+              if(typeof refreshMovePool==='function') refreshMovePool(turnContext,defChar); // added units may change his pace
               log('combat',`🛡 The standing troops of ${toProv.name} fall in with ${defChar.name} and fight on at their side as the battle continues.`,{actor:defChar.player,targets,provinceId:toProv.id,public:true});
             }
             // The stranded-hull tag has done its work for this phase: the claim decision is made and
@@ -7355,7 +6885,7 @@ const BATTLE_ARMY_SPELLS={
         c.armies=_army.filter(a=>!_sac.includes(a));
         recordBattleGraves(prov,_sac);
         _ben.forEach(b=>{ const cur=_tiers.indexOf(b.quality); if(cur>-1) b.quality=_tiers[Math.min(4,cur+2)]; });
-        if(typeof refreshMovePool==='function') refreshMovePool(c); // the host is smaller now — pace may change
+        if(typeof refreshMovePool==='function') refreshMovePool(turnContext,c); // the host is smaller now — pace may change
         log('combat',`\u{1FA78} ${c.name} makes a Blood Offering at the ${_riteSite.name} — ${_sac.map(a=>a.unitName||a.type).join(', ')} (${_bn} unit${_bn!==1?'s':''}) are given to the old gods, and their strength passes to ${_ben.map(a=>`${a.unitName||a.type} (rise to ${a.quality})`).join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         break;
       }
@@ -7640,7 +7170,7 @@ const BATTLE_ARMY_SPELLS={
             log('hire',`${c.name} hires mercenary band ${merc.unitName||merc.type} (${merc.quality}) for ${mCost}g${mCost<baseMercCost?' (Neutral discount)':''}.`,{actor:c.player,targets:[c.player],provinceId:c.location});
           });
           if(mHired){ resolveUnitGainInProvince(_destGarrison?c:_destChar, prov, ph);
-            if(!_destGarrison && _destChar) refreshMovePool(_destChar); } // mercenaries joined a column — recompute its pace
+            if(!_destGarrison && _destChar) refreshMovePool(turnContext,_destChar); } // mercenaries joined a column — recompute its pace
         }
         // Whatever is left of the order after the mercenary tokens are removed is native
         // recruitment. a 'to:' destination token that arrived in `extra` must never be parsed as a
@@ -7681,10 +7211,10 @@ const BATTLE_ARMY_SPELLS={
             blocked.push(`${armyType} (not raised in ${prov.name} — that unit isn't available here)`);continue;
           }
           // Check turn-wide recruit limit
-          if(!canRecruit(armyType,prov.id,prov,c.player)){
+          if(!canRecruit(turnContext,armyType,prov.id,prov,c.player)){
             blocked.push(`${armyType} (already recruited this turn)`);continue;
           }
-          const limit=getRecruitLimit(armyType,prov,c.player);
+          const limit=getRecruitLimit(turnContext,armyType,prov,c.player);
           const alreadyDone=recruitedThisTurn[`${prov.id}:${armyType}`]||0;
           const actualQty=Math.min(qty, limit-alreadyDone);
           let _unitCost=realmRecruitCost(G.players[c.player], armyType, ARMY_COST_P[armyType]||2); // sd16 + recruitCost discoveries
@@ -7704,7 +7234,7 @@ const BATTLE_ARMY_SPELLS={
           if(!HUMANOID_RACES_SG.has(recruitRace)&&!_destGarrison) trySkillGain(_destChar,'druid',SKILLGAIN_STD); // Druid: led a non-humanoid recruit
           else if(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)) trySkillGain(_destGarrison?c:_destChar,'druid',SKILLGAIN_COMMON); // 2026-09-21: any primal recruit (incl. into a garrison) — small chance for the recruiter
           }
-          recordRecruit(armyType,prov.id,actualQty);
+          recordRecruit(turnContext,armyType,prov.id,actualQty);
           recruited.push(`${actualQty}× ${armyType}`);
         }
         if(recruited.length>0){
@@ -7718,7 +7248,7 @@ const BATTLE_ARMY_SPELLS={
           // Newly-mustered units join the destination character's column — recompute their pace (a
           // slow recruit can only reduce it), preserving points already spent. Garrison musters
           // don't march.
-          if(!_destGarrison && _destChar) refreshMovePool(_destChar);
+          if(!_destGarrison && _destChar) refreshMovePool(turnContext,_destChar);
         } else {
           log('system',`${c.name}'s recruitment in ${prov.name} was entirely blocked: ${blocked.join('; ')}.`,{actor:c.player,targets:[c.player]});
         }
@@ -7762,7 +7292,7 @@ const BATTLE_ARMY_SPELLS={
         // ── 2026-09-21: the hirer's pre-written orders are applied HERE, now the hire has landed.
         // (2026-09-23: moved into landHirePreOrders so the Neutral BROKER hire applies them too.)
         landHirePreOrders(h, c, ph, player);
-        setMovePool(h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
+        setMovePool(turnContext,h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
         const _aDist=alignDistP(kingdomAlign,h.alignment);
         // Both hire paths now say which it is.
         const _hActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards.`;
@@ -7951,7 +7481,7 @@ const BATTLE_ARMY_SPELLS={
           if(!G.turnOrders[bh.id])G.turnOrders[bh.id]=[null,null,null,null,null];
           for(let p2=0;p2<=ph;p2++) G.turnOrders[bh.id][p2]=G.turnOrders[bh.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
           landHirePreOrders(bh, c, ph, player); // 2026-09-23: the brokered hero's pre-written orders + plan
-          setMovePool(bh);
+          setMovePool(turnContext,bh);
           const _bActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards, from where they stand.`;
           const _brokerLine=`🤝 Brokered: ${bh.name} (${bh.race}, ${bh.alignment}) in ${bhProv.name} accepts ${player.name}'s terms by courier — ${bWage}g/turn. ${_bActs}`;
           log('hire',_brokerLine,{actor:c.player,targets:[c.player],provinceId:bhProv.id});
@@ -8062,7 +7592,7 @@ const BATTLE_ARMY_SPELLS={
               const disc=_side[Math.floor(kcRng()*_side.length)];
               player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1;
               if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; }
-              if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } }
+              if(perkTier(c,'sage')>=3){ const _sp=provOf(turnContext,c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } }
               log('explore',`💡 An unlooked-for find! Among the pages ${c.name} was not even studying, **${disc.name}** (${disc.category}) comes to light — and the ordinary course of study is set aside for it. ${disc.desc}`,{actor:c.player,targets:[c.player]});
               trySkillGain(c,'sage',SKILLGAIN_STD);
               _sideFound=true; c._researchFailStreak={turn:G.turn,n:0}; // a find resets Perseverance (item 18)
@@ -8085,14 +7615,14 @@ const BATTLE_ARMY_SPELLS={
             player.pendingDiscoveryChoices.push({key:`rc${G.turn}_${c.id}_${ph}`,turn:G.turn,charId:c.id,charName:c.name,category:(_rcat&&_rcat.toLowerCase()!=='any')?_rcat:'',options:[d1.id,d2.id]});
             TM(c).discoveries+=1; // TITLE MERIT: Loremaster — the deed is the research, whichever is kept
             if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; } // SAGE L6: +5g per new discovery
-            if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } } // SAGE L8
+            if(perkTier(c,'sage')>=3){ const _sp=provOf(turnContext,c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } } // SAGE L8
             log('explore',`💡 ${c.name}'s research bears fruit — two discoveries come to light: **${d1.name}** (${d1.category}) and **${d2.name}** (${d2.category}). Only one can be pursued: choose which to keep in next turn's orders (the 💡 Research box just under the Realm section). The other will be lost for good.`,{actor:c.player,targets:[c.player]});
             trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
           } else if(available.length>0){
             const disc=available[Math.floor(kcRng()*available.length)];
             player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1; // TITLE MERIT: Loremaster
             if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; } // SAGE L6: +5g per new discovery
-            if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } } // SAGE L8 (2026-09-27, Toby item 4): +1 tax (max 10) to the province you are in — was +2
+            if(perkTier(c,'sage')>=3){ const _sp=provOf(turnContext,c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } } // SAGE L8 (2026-09-27, Toby item 4): +1 tax (max 10) to the province you are in — was +2
             log('explore',`💡 ${c.name}'s research bears fruit! **${disc.name}** (${disc.category}) discovered — the last discovery this field still holds for your realm, so there is nothing to choose between. ${disc.desc}`,{actor:c.player,targets:[c.player]});
             trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
           } else {
@@ -8508,7 +8038,7 @@ const BATTLE_ARMY_SPELLS={
           removed=removed.filter(a=>{ if(!beastCommandCount(a)) return true; if(_room>0){ _room--; return true; } _stay.push(a); return false; });
           if(_stay.length){ c.armies=(c.armies||[]).concat(_stay);
             log('hire',`🐾 ${beastCommandWords(recip2,G.characters)}: ${_stay.map(a=>a.unitName||a.type).join(', ')} ${_stay.length===1?'stays':'stay'} with ${c.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-            if(!removed.length){ refreshMovePool(c); break; } } }
+            if(!removed.length){ refreshMovePool(turnContext,c); break; } } }
         if(recip2){
           recip2.armies=(recip2.armies||[]).concat(removed);
           log('hire',`${c.name} transfers ${removed.map(a=>a.unitName||a.type).join(', ')} to ${recip2.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -8517,7 +8047,7 @@ const BATTLE_ARMY_SPELLS={
           // Recompute BOTH move pools for giver and recipient: the giver may now be faster (a slow
           // unit left) and the recipient may now be slower (a slow unit joined). refreshMovePool
           // preserves points already spent this turn, so neither refunds nor double-charges moves.
-          refreshMovePool(c); refreshMovePool(recip2);
+          refreshMovePool(turnContext,c); refreshMovePool(turnContext,recip2);
           break;
         }
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(removed);
@@ -8526,7 +8056,7 @@ const BATTLE_ARMY_SPELLS={
         // the faster pace for the rest of the turn; dropping ALL armies gives foot-passage (land 5
         // / sea 5), which is why a hero who hands off his whole army can still march — including
         // onto the sea. Points already spent this turn are preserved.
-        refreshMovePool(c);
+        refreshMovePool(turnContext,c);
         if((c.armies||[]).length===0){
           log('move',`${c.name} left all armies behind in ${prov.name} — now travelling light (land ${movePoints[c.id]}, sea ${seaMovePoints[c.id]} move points).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
@@ -8593,7 +8123,7 @@ const BATTLE_ARMY_SPELLS={
         // Recompute the move pool from the remaining force — disbanding a slow unit frees up pace
         // for the rest of the turn, and disbanding everything restores foot-passage (land 5 / sea
         // 5). Points already spent this turn are preserved.
-        refreshMovePool(c);
+        refreshMovePool(turnContext,c);
         if((c.armies||[]).length===0){
           log('move',`${c.name} has disbanded all armies — now travelling light (land ${movePoints[c.id]}, sea ${seaMovePoints[c.id]} move points).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
@@ -8674,7 +8204,7 @@ const BATTLE_ARMY_SPELLS={
         // Recompute the move pool from the new force — picking up a slow army reduces pace. Uses
         // the shared computation (so March/Naval/Swift bonuses apply consistently) and preserves
         // points already spent this turn.
-        refreshMovePool(c);
+        refreshMovePool(turnContext,c);
         log('move',`${c.name} now leads ${(c.armies||[]).length} arm${(c.armies||[]).length!==1?'ies':'y'}. Land MPs: ${movePoints[c.id]}, Sea MPs: ${seaMovePoints[c.id]}.`,{actor:c.player,targets:[c.player]});
         break;
       }
@@ -9095,7 +8625,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){
             log('system',`${c.name}: Part Sea can only target a province you are in or next to.`,{actor:c.player,targets:[c.player]});break;
           }
-          if(blessWardNegates(targetProv, c, 'Part Sea')) break; // Q2: a warded province can turn aside an enemy Part Sea too
+          if(blessWardNegates(turnContext, targetProv, c, 'Part Sea')) break; // Q2: a warded province can turn aside an enemy Part Sea too
           if(targetProv.terrain==='sea'){
             // Part the waters: open sea OR a flooded land province becomes dry plains for the rest
             // of the turn.
@@ -9230,7 +8760,7 @@ const BATTLE_ARMY_SPELLS={
             claimWandererName(t);                    // they serve a crown now — drop the ' (wandering)' tag
             t._charmedTurn=G.turn;                   // a charmed mind will not send its possessions away this turn
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase;
-            if(typeof setMovePool==='function') setMovePool(t);
+            if(typeof setMovePool==='function') setMovePool(turnContext,t);
             t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
             t._charmResist=Math.min(95,(t._charmResist||0)+30); // +30% resistance to every later Charm, cumulative (capped 95%)
             log('hire',`✨ ${c.name}'s Charm sways ${t.name} — the wandering hero joins ${player.name} at no cost (you must still pay their upkeep).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -9255,7 +8785,7 @@ const BATTLE_ARMY_SPELLS={
             t._charmResist=Math.min(95,(t._charmResist||0)+30); // +30% resistance to every later Charm, cumulative (capped 95%)
             t.player=c.player;
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase; // drop any watch/chase set under their old lord
-            if(typeof setMovePool==='function') setMovePool(t);
+            if(typeof setMovePool==='function') setMovePool(turnContext,t);
             const applied=_applyCharmOrders(t);
             log('hire',`✨ ${c.name}'s Charm grips ${t.name} — they fall under ${player.name}'s command until the season turns, when they return to their own lord (who still pays their wages).${applied>0?` ${applied} phase${applied!==1?'s':''} of orders await them.`:''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             _charmIntel(t); // 2026-09-18
@@ -9414,7 +8944,7 @@ const BATTLE_ARMY_SPELLS={
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Earthquake must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
-          if(blessWardNegates(targetProv, c, 'Earthquake')) break;
+          if(blessWardNegates(turnContext, targetProv, c, 'Earthquake')) break;
           targetProv._earthquakeNoTax=G.turn;
           log('combat',`✨ ${c.name} rends the earth beneath ${targetProv.name} — its fields and roads are ruined, and it will yield no tax at the end of this turn.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
           notifyProvinceOwner(turnContext, targetProv, `🜃 An enemy Earthquake has torn through ${targetProv.name} — it will yield no tax this turn.`, c.player, ph);
@@ -9425,7 +8955,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Flood must target a land province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
           if(targetProv.terrain==='sea'){log('system',`${c.name}: Flood can only be cast on a land province.`,{actor:c.player,targets:[c.player]});break;}
           // Cancel Part Sea if present, then submerge the province for the rest of the turn.
-          if(blessWardNegates(targetProv, c, 'Flood')) break;
+          if(blessWardNegates(turnContext, targetProv, c, 'Flood')) break;
           if(targetProv._partSea){ delete targetProv._partSea; }
           targetProv._flood={orig:targetProv.terrain, turn:G.turn};
           targetProv.terrain='sea';
@@ -9556,9 +9086,9 @@ const BATTLE_ARMY_SPELLS={
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Plague must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
           if(targetProv._plaguedTurn===G.turn){log('system',`${targetProv.name} is already stricken with plague this turn — a second casting adds nothing (not cumulative).`,{actor:c.player,targets:[c.player]});break;}
-          if(blessWardNegates(targetProv, c, 'Plague')) break;
+          if(blessWardNegates(turnContext, targetProv, c, 'Plague')) break;
           targetProv._plaguedTurn=G.turn; targetProv._plagueLevel=spellLevelEff; targetProv._plagueCaster=c.player;
-          const res=applyPlague(targetProv, spellLevelEff, ph);
+          const res=applyPlague(turnContext, targetProv, spellLevelEff, ph);
           log('combat',`☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested!==1?'s':''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
           notifyProvinceOwner(turnContext, targetProv, `☠ An enemy Plague has struck ${targetProv.name} — ${res.affected} of your unit${res.affected!==1?'s there sicken':' there sickens'} and may spread to neighbouring lands.`, c.player, ph);
         }
@@ -10034,7 +9564,7 @@ const BATTLE_ARMY_SPELLS={
           const before=_wcWon.length; _wcSift(o.armies,o.name);
           if(_wcWon.length>before&&o.player!=null){
             log('system',`🐾 The beasts of ${o.name}'s host break their bonds and answer a Wild Calling in ${prov.name} — ${_wcWon.length-before} unit${_wcWon.length-before!==1?'s':''} lost.`,{actor:o.player,targets:[o.player],provinceId:prov.id,charId:o.id});
-            if(typeof refreshMovePool==='function') refreshMovePool(o);
+            if(typeof refreshMovePool==='function') refreshMovePool(turnContext,o);
           }
         });
         if(_wcCalled===0){log('explore',`${c.name} sounds a Wild Calling, but nothing wild stands in ${prov.name} to answer it.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
@@ -10043,7 +9573,7 @@ const BATTLE_ARMY_SPELLS={
         const _wcFrom=_wcHeard.length?` (torn from ${_wcHeard.join(' and ')})`:'';
         logSplit(turnContext,'explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} of ${_wcCalled} wild creature${_wcCalled!==1?'s':''} answer and fall in behind your banner${_wcFrom}!`,
           `🐾 ${c.name}${realmTag(turnContext,c.player)} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} wild creature${_wcWon.length!==1?'s':''} answer and fall in behind their banner.`,{actor:c.player,provinceId:prov.id});
-        if(typeof refreshMovePool==='function') refreshMovePool(c);
+        if(typeof refreshMovePool==='function') refreshMovePool(turnContext,c);
         resolveUnitGainInProvince(c, prov, ph);
         trySkillGain(c,'druid',SKILLGAIN_STD);
         break;
@@ -10076,352 +9606,6 @@ const BATTLE_ARMY_SPELLS={
   // CREATURE_ARMIES, MONSTER_ARMIES, CARRIER_TYPES, PRIMAL_SEA_TYPES, SEA_TYPES) moved to module
   // top level — see the banner near MISSILE_ARMIES_MASTER.
 
-  // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
-  // stored per character for the whole turn
-  function getSeaCapability(armies, leadChar){
-    // spectral doubles are illusions — they weigh nothing, need no berth and no griffon, and are
-    // never counted against a force's lift. (They normally live outside ch.armies entirely; this
-    // guards the case where a fighting copy is still attached mid-phase.)
-    armies=(armies||[]).filter(a=>a&&!a._phantom);
-    if(armies.length===0) return 'all';
-    const landArmies=armies.filter(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
-    // Only CARRIERS provide capacity. Primal sea beasts swim themselves across but carry nothing,
-    // so they contribute 0 — a force of one Kraken plus one Goblin Horde still cannot put to sea.
-    const seaCount=armies.reduce((s,a)=>s+carrierBerths(a),0);   // berths, not hulls: a turtle offers two (Island Back)
-    const flyCount=armies.filter(a=>AERIAL_TYPES.has(a.type)).length;
-    if(landArmies.length===0) return 'all'; // only flying/sea
-    // if the humanoid flyers can lift every foot soldier, the whole column takes to the air and
-    // crosses sea without a fleet — just like an all-flying host.
-    if(getFlyCapability(armies)) return 'sea';
-    // Fleet capacity: light foot = 0.5 capacity (2 per hull), heavy/cavalry/siege/beast = 1 per
-    // hull
-    const LIGHT_ARMIES=new Set(KC_UNIT_CLASS.lightFoot); // gun-crews ride as light foot — an Ironclad ferries a Gun + a Guard
-    // HULLS AND FLYERS POOL THEIR LIFT. Now:
-    // • units a flyer cannot lift (cavalry, siege, walking creatures/monsters) MUST go aboard ship;
-    // • everything a flyer CAN lift rides a hull if there is room, else is carried by one humanoid
-    // flyer apiece (primal winged beasts still carry nothing);
-    // • the shortfall is what the flyers must cover, so hulls + flyers together decide the question.
-    const _capOf=a=>LIGHT_ARMIES.has(a.type)?0.5:1; // light foot take half a hull, everything else a full one
-    let hullCap=seaCount;
-    if(leadChar && perkTier(leadChar,'naval')>=3) hullCap*=2; // NAVAL L8: one naval hull carries what once needed two
-    const _mustSail=landArmies.filter(a=>!isAirCarriable(a));      // horses, siege, beasts — ship or nothing
-    const _liftable=landArmies.filter(a=>isAirCarriable(a));       // humanoid foot — ship OR air
-    let _room=hullCap-_mustSail.reduce((s,a)=>s+_capOf(a),0);
-    if(_room<0) return 'land';                                     // no berth for the unliftable — stay ashore
-    // Fill the remaining berths with the LIGHTEST liftable units first: that puts the most bodies
-    // aboard and so leaves the fewest for the flyers (a flyer lifts one unit whatever its weight).
-    let _byAir=0;
-    _liftable.slice().sort((a,b)=>_capOf(a)-_capOf(b)).forEach(a=>{ const _c=_capOf(a); if(_room>=_c) _room-=_c; else _byAir++; });
-    const flyerLift=armies.filter(a=>FLYING_TYPES.has(a.type)).length; // humanoid flyers: one unit each
-    if(_byAir<=flyerLift) return 'sea';
-    return 'land';
-  }
-
-  // ── STRANDED AT SEA (2026-09-23c, Toby) ──────────────────────────────────────────────────────
-  // A column standing on open water must stay CARRIED: its hulls (and humanoid flyers) must lift
-  // every land unit it leads — the rule getSeaCapability applies to putting to sea. When hulls are
-  // lost (sunk in battle, Breach and Swamp, demoted away, given away) the land units that can no
-  // longer be carried are put ashore — WEAKEST FIRST, and only units the lost lift was actually
-  // needed for (a light levy is not landed when the shortfall is a berth for cavalry). They join the
-  // garrison of an adjacent LAND province of the realm's own: the one the column sailed from if it
-  // qualifies, else the one with the smallest garrison. With none they hold the sea province itself as
-  // its garrison (claiming it if unowned and undefended); in another realm's waters they are lost.
-  // Skipped: flooded land (a Flood strands a land host by design) and any province whose battle is
-  // still unresolved — a beaten column pinned at sea stays aboard and fights on (see retreatOptions).
-  // Hulls are never shared between characters: each commander's ships carry his own troops only.
-  function isOpenSea(prov){ return !!prov && prov.terrain==='sea' && !prov._flood; }
-  // 0 exactly when getSeaCapability(armies) !== 'land'; otherwise a positive measure of the lift
-  // missing — berths short for units only a hull can take (in half-hulls, ×1000), then foot left
-  // over beyond what the flyers can lift. Mirrors getSeaCapability's pooled hull + flyer rule.
-  function seaLiftShortfall(armies, leadChar){
-    armies=(armies||[]).filter(a=>a&&!a._phantom);
-    if(getSeaCapability(armies, leadChar)!=='land') return 0;
-    const capOf=a=>BOT_LIGHT_ARMIES.has(a.type)?1:2; // half-hulls: light foot 1, everything else 2
-    const land=armies.filter(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
-    let hull2=armies.reduce((s,a)=>s+carrierBerths(a),0)*2;   // half-berths: a turtle offers two berths (Island Back)
-    if(leadChar && perkTier(leadChar,'naval')>=3) hull2*=2;
-    const must=land.filter(a=>!isAirCarriable(a)), lift=land.filter(a=>isAirCarriable(a));
-    const mustNeed=must.reduce((s,a)=>s+capOf(a),0);
-    let room=Math.max(0,hull2-mustNeed), byAir=0;
-    lift.slice().sort((a,b)=>capOf(a)-capOf(b)).forEach(a=>{ const c2=capOf(a); if(room>=c2) room-=c2; else byAir++; });
-    const flyLift=armies.filter(a=>FLYING_TYPES.has(a.type)).length;
-    return Math.max(1, Math.max(0,mustNeed-hull2)*1000 + Math.max(0,byAir-flyLift));
-  }
-  // The land units to put ashore so the rest can be carried: repeatedly the WEAKEST land unit whose
-  // removal actually reduces the shortfall (fallback: the weakest outright). Never flyers or hulls.
-  function pickStrandedUnits(armies, leadChar){
-    const kept=(armies||[]).filter(a=>a&&!a._phantom), out=[];
-    let sf=seaLiftShortfall(kept,leadChar), guard=0;
-    while(sf>0 && guard++<500){
-      const cands=kept.filter(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))
-        .sort((x,y)=>(unitBaseStrength(x)-unitBaseStrength(y))||((x._temporary?1:0)-(y._temporary?1:0)));
-      if(!cands.length) break;
-      let pick=null, nsf=sf;
-      for(const a of cands){ const s2=seaLiftShortfall(kept.filter(x=>x!==a),leadChar); if(s2<sf){ pick=a; nsf=s2; break; } }
-      if(!pick){ pick=cands[0]; nsf=seaLiftShortfall(kept.filter(x=>x!==pick),leadChar); }
-      kept.splice(kept.indexOf(pick),1); out.push(pick); sf=nsf;
-    }
-    // Take back aboard, strongest first, anything that still fits once the rest are ashore — a unit
-    // landed early to ease the shortfall may have room again after a heavier unit went.
-    out.slice().sort((x,y)=>unitBaseStrength(y)-unitBaseStrength(x)).forEach(a=>{
-      if(seaLiftShortfall(kept.concat([a]),leadChar)===0){ kept.push(a); out.splice(out.indexOf(a),1); } });
-    return out;
-  }
-  function strandLabel(a){ return a.unitName?`${a.unitName} (${a.quality} ${a.type})`:`a ${a.quality} ${a.type}`; }
-  // Called after every order, at the top and end of every phase, and after wages (see the phase loop).
-  function settleStrandedAtSea(ph, cause){
-    (G.characters||[]).forEach(c=>{
-      if(!c||c.alive===false||c.player==null||!(c.armies||[]).length) return;
-      const prov=G.world.provinces[c.location];
-      if(!isOpenSea(prov)||prov._battleUnresolved) return;
-      if(seaLiftShortfall(c.armies,c)===0) return;
-      const out=pickStrandedUnits(c.armies,c); if(!out.length) return;
-      c.armies=(c.armies||[]).filter(a=>!out.includes(a));
-      const owner=(c._charmTempControl&&c._charmOriginalPlayer!=null)?c._charmOriginalPlayer:c.player; // a seized hero's troops stay his own lord's
-      const why=cause||'too few hulls left afloat to carry the whole column';
-      const meta={actor:owner,targets:[owner],charId:c.id,phase:(ph!=null?ph:turnContext._currentPhase),provinceId:prov.id};
-      const temps=out.filter(a=>a._temporary), units=out.filter(a=>!a._temporary);
-      if(temps.length) log('move',`✨ ${c.name}'s ${temps.map(strandLabel).join(', ')} cannot be carried over open water — the binding fails and ${temps.length===1?'it dissolves':'they dissolve'}.`,meta);
-      if(units.length){
-        const lbl=units.map(strandLabel).join(', '), are=units.length===1?'is':'are', join=units.length===1?'joins':'join';
-        const shore=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>p2&&p2.owner===owner&&p2.terrain!=='sea');
-        const from=G.world.provinces[c._attackedFrom];
-        const dest=(from&&shore.some(p2=>p2.id===from.id))?from:shore.slice().sort((x,y)=>((x.garrisonArmies||[]).length-(y.garrisonArmies||[]).length)||((y.tax||0)-(x.tax||0))||(x.id-y.id))[0];
-        if(dest){
-          dest.garrisonArmies=(dest.garrisonArmies||[]).concat(units);
-          log('move',`⚓ ${c.name} has ${why}: ${lbl} ${are} put ashore at ${dest.name} and ${join} its garrison (the weakest go first).`,meta);
-        } else if(prov.owner===owner){
-          prov.garrisonArmies=(prov.garrisonArmies||[]).concat(units);
-          log('move',`⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name} as its garrison (the weakest go first).`,meta);
-        } else if(prov.owner==null&&!(prov.neutralDefenders||[]).length){
-          setProvinceOwner(turnContext,prov,owner,c,meta.phase);
-          const _pl=G.players[owner]; if(_pl){ _pl.provinces=_pl.provinces||[]; if(!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id); }
-          prov.garrisonArmies=(prov.garrisonArmies||[]).concat(units);
-          log('move',`⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name}, which they claim for ${_pl?_pl.name:'the realm'} as its garrison (the weakest go first).`,meta);
-        } else {
-          const _whose=prov.owner!=null?`${(G.players[prov.owner]||{}).name||'another realm'}'s waters`:'waters its neutral defenders still hold';
-          log('move',`⚓ ${c.name} has ${why}, no shore of the realm lies alongside and ${prov.name} is ${_whose}: ${lbl} ${are} lost at sea.`,meta);
-        }
-      }
-      refreshMovePool(c); // shedding units can change the column's pace; points already spent are kept
-    });
-  }
-  // Where a beaten force may LEGALLY fall back (2026-09-23c). Adjacent only: own or allied ground it
-  // could enter as a move — so a column at sea whose surviving hulls can no longer carry it may still
-  // come ashore on friendly land beside it, but cannot sail on into another sea province (Toby's
-  // ruling: with no friendly shore alongside it has nowhere to retreat and fights on). Also the SEA
-  // PROVINCE IT CAME FROM when that water is unowned and undefended — a beaten landing falls back to
-  // its ships (Toby's ruling) — provided the force can still be carried there. Sea provinces a realm
-  // owns were already friendly ground.
-  // ── RETREAT DESTINATION VALUE (2026-09-26, Toby item 1) ───────────────────────────────────
-  // A beaten force used to fall back on whatever came first out of retreatOptions — effectively map
-  // order, so a general could abandon a rich province for a worthless one standing right beside it.
-  // Where there is a CHOICE, the most valuable ground now wins. Value is the province's tax base
-  // first (the one number the game already uses for a province's worth), then own ground ahead of
-  // an ally's, then the hero's own capital, then a friendly garrison already standing there, and
-  // finally province id so the result is deterministic rather than map-order chance.
-  function retreatValue(ch, p){
-    if(!p) return -Infinity;
-    const own=(ch&&ch.player!=null&&p.owner===ch.player)?1:0;
-    const pl=(ch&&ch.player!=null)?(G.players||[])[ch.player]:null;
-    const home=(pl&&pl.homeProvinceId===p.id)?1:0;
-    const garrison=((p.garrisonArmies||[]).length>0)?1:0;
-    return ((p.tax||0)*1000)+(own*400)+(home*200)+(garrison*100)+(1-(p.id||0)/1e6);
-  }
-  // Best of a list of candidate retreat provinces (null when the list is empty).
-  function bestRetreat(ch, list){
-    let best=null, bv=-Infinity;
-    (list||[]).forEach(p=>{ const v=retreatValue(ch,p); if(v>bv){ bv=v; best=p; } });
-    return best;
-  }
-  function retreatOptions(ch, prov, force){
-    if(!ch||!prov) return [];
-    force=(force||[]).filter(a=>a&&!a._died&&!a._disbanded);
-    const sc=getSeaCapability(force, ch);
-    const probe={_partSeaThisPhase:ch._partSeaThisPhase, armies:force};
-    const from=G.world.provinces[ch._attackedFrom];
-    return preferDryGround(getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>{
-      if(!p2||p2.id===prov.id||!canEnterTerrain(probe,p2.terrain,sc)) return false;
-      if(isFriendlyProvFor(turnContext,p2,ch.player)) return true;
-      return !!from&&p2.id===from.id&&p2.terrain==='sea'&&p2.owner==null&&!(p2.neutralDefenders||[]).length;
-    }));
-  }
-  // 2026-10-09 (Toby item 10): a beaten force NEVER falls back into a FLOODED province. It may fall
-  // back onto a sea province PARTED into dry ground, but only when no province of ordinary land is open
-  // to it. (Open sea stays open to a fleet: that is not magic ground.)
-  function preferDryGround(list){
-    const open=(list||[]).filter(p=>p&&!p._flood);
-    const ordinary=open.filter(p=>p.terrain!=='sea'&&!p._partSea);
-    return ordinary.length?open.filter(p=>!p._partSea):open;
-  }
-  // ── NAVAL RETREAT: THE FLEET MAKES FOR WATER (2026-09-27, Toby item 3) ─────────────────────
-  // A beaten force that has SHIPS on a coastal shore no longer falls back as one body.
-  //   • Friendly water alongside → the hulls sail there carrying the hero and as many land and
-  //     flying units as their lift allows. `pickStrandedUnits` decides exactly who fits (weakest
-  //     left ashore first) — the same rule the stranding sweep already uses, so the two can never
-  //     disagree about what a column can carry.
-  //   • Whatever will not fit falls back overland to an adjacent province of the realm's OWN if
-  //     there is one, joining its garrison (they have no commander any more). Otherwise they hold
-  //     the ground and fight again.
-  //   • NO friendly water, but friendly land → the hero and every land / flying unit march inland;
-  //     the SHIPS stay and fight on. Hulls cannot be dragged overland.
-  //   • Ships that must retreat with no water to retreat to stay and fight again.
-  // Returns '' when it did nothing (the caller then runs the ordinary retreat), 'left' when the
-  // whole force got away, or 'stay' when part of it is still contesting the province.
-  // JUDGEMENT CALL: a leaderless contingent can only join a garrison of its OWN realm. Units left
-  // on ground the realm does not hold — a landing thrown back off an enemy coast — have no
-  // garrison to join and no commander left, so they scatter as mercenaries: the same fate the
-  // engine already gives a fallen commander's host on hostile ground.
-  function _navalLeaveBehind(ch, prov, units, why, narrative, cName){
-    if(!units||!units.length) return false;
-    const owner=(ch._charmTempControl&&ch._charmOriginalPlayer!=null)?ch._charmOriginalPlayer:ch.player;
-    const temps=units.filter(a=>a._temporary), real=units.filter(a=>!a._temporary);
-    if(temps.length) narrative.push(`— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} ${temps.length===1?'is':'are'} left behind ${why}; the binding fails and ${temps.length===1?'it dissolves':'they dissolve'}.`);
-    if(!real.length) return false;
-    if(prov.owner===owner){
-      // 2026-09-27 (Toby): TAG THE HULLS LEFT ASHORE. These units are now sitting in the province's
-      // garrison array, but they are NOT the standing garrison — they are a beaten force's ships,
-      // left contesting the ground. The post-battle garrison book-keeping (which replaces the array
-      // wholesale, and marches the garrison inland with a routed defender) would otherwise delete
-      // them or drag hulls overland, and the winner's capture check — which looks only for hostile
-      // CHARACTERS — would claim the province out from under them. navalHeldIn() reads this tag;
-      // the battle caller clears it once the outcome is settled, so it never reaches saved state.
-      real.forEach(a=>{ a._navalHold=owner; delete a._fromGarrison; delete a._fromLeaderless; delete a._garrisonOf; });
-      // A ship that rallied out of this province's own garrison is ALREADY in the array (the rally
-      // copies the list, it does not empty it), so concat would duplicate the object. Push only
-      // what is not there.
-      prov.garrisonArmies=prov.garrisonArmies||[];
-      real.forEach(a=>{ if(prov.garrisonArmies.indexOf(a)<0) prov.garrisonArmies.push(a); });
-      prov._battleUnresolved=true;
-      narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length===1?'is':'are'} left in ${prov.name} ${why} — ${real.length===1?'it holds':'they hold'} the ground and will fight again.`);
-      return true;
-    }
-    if(!G.mercenaries) G.mercenaries=[];
-    real.forEach(a=>G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
-      location:prov.id,isSea:SEA_TYPES.has(a.type),id:newMercId(turnContext)}));
-    narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length===1?'is':'are'} left behind ${why} on ground the realm does not hold — leaderless, ${real.length===1?'it scatters':'they scatter'} into the mercenary bands.`);
-    return false;
-  }
-  // ── HULLS LEFT ASHORE, AFTER THE BATTLE (2026-09-27, Toby) ───────────────────────────────────
-  // Units _navalLeaveBehind stranded in a province, still flying their own realm's colours. They
-  // live in prov.garrisonArmies but must be kept out of every "the garrison retreats with the
-  // hero" sweep, and they count as forces still holding the ground when the winner tries to claim
-  // it. `against` is the would-be claimant: hulls of that same realm are not an obstacle to it.
-  function navalHeldIn(prov, against){
-    const out=[];
-    (((prov&&prov.garrisonArmies)||[])).forEach(a=>{
-      if(!a||a._navalHold==null||a._died||a._disbanded) return;
-      if(against!=null&&a._navalHold===against) return;
-      if(out.indexOf(a)<0) out.push(a);
-    });
-    return out;
-  }
-  // The tag is a within-phase marker only: once the battle's outcome is logged the hulls are
-  // ordinary garrison again (a stalled battle resumes against them through resolveUnitGainInProvince).
-  function clearNavalHold(prov){ (((prov&&prov.garrisonArmies)||[])).forEach(a=>{ if(a&&a._navalHold!=null) delete a._navalHold; }); }
-  function navalHoldLine(prov, units, claimant){
-    const who=(units[0]&&units[0]._navalHold!=null&&G.players[units[0]._navalHold])?G.players[units[0]._navalHold].name:'the enemy';
-    return `⚓ ${who}'s ${describeArmy(units)} still ${units.length===1?'lies':'lie'} off ${prov.name} — the ground is not ${claimant}'s while ${units.length===1?'it is':'they are'} there, and the fight resumes next phase.`;
-  }
-  function navalSplitRetreat(ch, prov, live, narrative, cName, noSea){
-    if(!ch||!prov||prov.terrain==='sea'||ch.alive===false||ch.killedThisTurn) return '';
-    live=(live||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom);
-    const ships=live.filter(a=>SEA_TYPES.has(a.type));
-    if(!ships.length) return '';                                  // no fleet — the ordinary retreat applies
-    const adj=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>p2&&p2.id!==prov.id);
-    const from=G.world.provinces[ch._attackedFrom];
-    // Friendly water: ours or an ally's, plus the unowned, undefended sea a landing came from (the
-    // 2026-09-23c ruling — a beaten landing falls back to its ships).
-    const seaOk=noSea?[]:adj.filter(p2=>p2.terrain==='sea'&&!p2._flood&&(isFriendlyProvFor(turnContext,p2,ch.player)
-      ||(!!from&&p2.id===from.id&&p2.owner==null&&!(p2.neutralDefenders||[]).length)));
-    const landFriendly=preferDryGround(adj.filter(p2=>p2.terrain!=='sea'&&isFriendlyProvFor(turnContext,p2,ch.player))); // item 10: parted sea only when no ordinary land
-    const landOwn=landFriendly.filter(p2=>p2.owner===ch.player);
-    const move=(dest)=>{ prov.characters=(prov.characters||[]).filter(id=>id!==ch.id);
-      dest.characters=dest.characters||[]; if(!dest.characters.includes(ch.id)) dest.characters.push(ch.id);
-      ch.location=dest.id; ch.locationName=dest.name; };
-    let stayed=false;
-    if(seaOk.length){
-      const dest=bestRetreat(ch,seaOk)||seaOk[0];
-      const ashore=pickStrandedUnits(live, ch);                   // exactly who the hulls cannot lift
-      const taken=live.filter(a=>!ashore.includes(a));
-      ch.armies=(ch.armies||[]).filter(a=>!ashore.includes(a));   // dead/disbanded stay for the caller's own sweep
-      move(dest);
-      narrative.push(`⛵ ${cName} puts to sea — the fleet stands off ${prov.name} and makes for ${dest.name}${taken.length?` with ${describeArmy(taken)}`:' with the hulls alone'}.`);
-      if(ashore.length){
-        const shore=bestRetreat(ch,landOwn);
-        if(shore){
-          const temps=ashore.filter(a=>a._temporary), real=ashore.filter(a=>!a._temporary);
-          if(temps.length) narrative.push(`— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} cannot be carried; the binding fails and ${temps.length===1?'it dissolves':'they dissolve'}.`);
-          if(real.length){
-            shore.garrisonArmies=(shore.garrisonArmies||[]).concat(real);
-            narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} cannot be carried and fall back overland to ${shore.name}, joining its garrison.`);
-          }
-        } else stayed=_navalLeaveBehind(ch,prov,ashore,'with no room aboard and no friendly ground to fall back to',narrative,cName)||stayed;
-      }
-      refreshMovePool(ch);
-      return stayed?'stay':'left';
-    }
-    const goInland=live.filter(a=>!SEA_TYPES.has(a.type));
-    if(landFriendly.length&&goInland.length){
-      const dest=bestRetreat(ch,landFriendly)||landFriendly[0];
-      ch.armies=(ch.armies||[]).filter(a=>!ships.includes(a));
-      move(dest);
-      narrative.push(`${cName} retreats overland to ${dest.name} with ${describeArmy(goInland)} — there is no friendly water to sail to, so the ships are left behind.`);
-      stayed=_navalLeaveBehind(ch,prov,ships,'because no friendly water lies alongside for them to sail to',narrative,cName);
-      refreshMovePool(ch);
-      return stayed?'stay':'left';
-    }
-    if(!goInland.length){
-      // A fleet alone, with nowhere to sail: hulls cannot take to the road, so they stand and fight
-      // on rather than being run down in a rout they could not have fled.
-      prov._battleUnresolved=true;
-      narrative.push(`⚓ ${cName}'s ships have no friendly water to fall back to and cannot take to the road — they hold ${prov.name} and will fight again.`);
-      return 'stay';
-    }
-    return '';                                                    // nothing to fall back on at all — the ordinary rules decide
-  }
-  // The line that explains WHY a beaten force at sea cannot fall back (null when that is not why).
-  function seaTrapLine(name, ch, prov, force){
-    if(!isOpenSea(prov)) return null;
-    force=(force||[]).filter(a=>a&&!a._died&&!a._disbanded);
-    if(getSeaCapability(force,ch)!=='land') return null;
-    return `⚓ ${name} has too few hulls left afloat to sail the column off ${prov.name}, and no friendly shore lies alongside to land on — there is no falling back.`;
-  }
-
-  function canEnterTerrain(c, terrain, seaCap){
-    if(terrain==='sea'){
-      if(seaCap==='all'||seaCap==='sea') return true;
-      if(c._partSeaThisPhase) return true; // Part Sea spell active this phase
-      return false;
-    }
-    // Land province: sea-only armies can't move land→land unless adjacent to same sea
-    // For simplicity we allow land movement unless they have ONLY sea armies (no land/flying)
-    const armies=c.armies||[];
-    if(armies.length>0&&armies.every(a=>SEA_TYPES.has(a.type))) return false;
-    return true;
-  }
-
-  // 2026-10-08 (Toby item 14): can this column step from `from` into `to`? canEnterTerrain judges only the
-  // ground it would stand on; the Move order also forbids a column leading ANY naval unit (fleet or
-  // sea-beast) to step from one land province to another — ships cannot cross land (see the move
-  // case: "cannot march overland while leading naval units"). The Defend ride-outs and the force-march
-  // reinforcement checked terrain alone, so a general with ships and troops in a coastal province rode
-  // out overland to a neighbour on Defend. Every path that marches a column without a Move order now
-  // asks this instead.
-  function canStepBetween(c, from, to, cap){
-    if(!to||!canEnterTerrain(c,to.terrain,cap)) return false;
-    const naval=(c.armies||[]).some(a=>a&&SEA_TYPES.has(a.type));
-    if(naval&&from&&from.terrain!=='sea'&&to.terrain!=='sea') return false;
-    return true;
-  }
-
-  // The March speed table is MARCH_NAVAL_BONUS at module level (item 14: one rate for every unit).
-  // Unify chance table [0 distance, 1 distance, 2 distance] by March level
-  const MARCH_UNIFY=[[80,50,20],[90,60,30],[100,70,40],[100,80,50],[100,90,60],[100,100,70]];
-
-  // Naval table: similar to March but for sea movement, +20% fleet str per level
-  const NAVAL_UNIFY=[[80,50,20],[90,60,30],[100,70,40],[100,80,50],[100,90,60],[100,100,70]];
-
   // Turn-wide move points:
   // - Land move points = slowest land army speed (or 5 if no armies), boosted by March
   // - Sea move points = separate pool used only when entering sea provinces
@@ -10436,343 +9620,32 @@ const BATTLE_ARMY_SPELLS={
   const seaCap={};
   const moveMax={};          // land pool MAX for the turn — lets refreshMovePool preserve points already spent
   const seaMoveMax={};       // sea pool MAX for the turn
+  turnContext.movePoints=movePoints;
+  turnContext.seaMovePoints=seaMovePoints;
+  turnContext.seaMoveActive=seaMoveActive;
+  turnContext.seaCap=seaCap;
+  turnContext.moveMax=moveMax;
+  turnContext.seaMoveMax=seaMoveMax;
   // Light-travel moves made while the character led NO armies (its generous 5-pool "takes passage"
   // mode). Counted here so refreshMovePool can DISCOUNT them when the hero later picks up troops —
   // free-passage moves must not be charged against a real army's small marching allowance.
   const lightLandMoves={};   // land moves made while travelling light (no armies)
   const lightSeaMoves={};    // sea moves made while travelling light (no armies)
-  // Pure computation of a character's move-pool MAXIMUMS from CURRENT army composition + skills.
-  // Returns {land, sea, seaActive, cap}. Shared by setMovePool (turn start) and refreshMovePool
-  // (mid-turn, after composition or March/Naval changes), so both stay perfectly in step.
-  function computeMovePoolMax(c){
-    const armies=(c.armies||[]).filter(a=>a&&!a._phantom); // illusions set no pace and take no berth
-    const marchLevel=effStat(turnContext,c,'march');
-    const navalLevel=effStat(turnContext,c,'naval');
-    let land, sea, seaActive;
-    if(armies.length===0){
-      land=5; sea=5; seaActive=true; // a hero with no fleet takes passage — Naval skill buys nothing
-    } else {
-      const landArmies=armies.filter(a=>!SEA_TYPES.has(a.type));
-      if(landArmies.length>0){
-        const landSpeeds=landArmies.map(a=>{
-          const base=ARMY_SPEED_R[a.type]||3;
-          if(AERIAL_TYPES.has(a.type)) return base; // no flyer (rider or winged beast) is sped by March (item 14)
-          // sd13 Road Network (+1 for speed 1-2 land armies) and Item 5 `move` discoveries (race /
-          // cls filtered), same speed band.
-          let _road=0; if(c.player!=null&&base<=2){ discEff(turnContext,c.player,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); }
-          return base+marchSpeedBonus(marchLevel)+_road;
-        });
-        land=Math.min(...landSpeeds);
-      } else {
-        land=0; // only sea armies: can't traverse land directly
-      }
-      const seaArmies=armies.filter(a=>SEA_TYPES.has(a.type));
-      if(seaArmies.length>0){
-        const seaSpeeds=seaArmies.map(a=>{ const base=ARMY_SPEED_R[a.type]||3; return base+navalSpeedBonus(base,navalLevel); });
-        sea=Math.min(...seaSpeeds); seaActive=true;
-      } else if(armies.every(a=>AERIAL_TYPES.has(a.type))){
-        sea=land; seaActive=true; // all flying: free sea entry
-      } else {
-        sea=0; seaActive=false;
-      }
-      // FLYING CARRY. If the humanoid flyers can lift every foot soldier (1 each, nothing grounded
-      // left behind), the column takes to the air: it no longer marches at the infantry's pace but
-      // at the flyers' own speed, and — like an all-flying host — it crosses sea freely. Only the
-      // self-flying units (humanoid flyers + primal winged beasts) set the pace; carried infantry
-      // ride along at that speed. March does not speed flight (flyers already ignore March above).
-      if(getFlyCapability(armies) && !armies.every(a=>AERIAL_TYPES.has(a.type))){
-        const flyerSpeeds=armies.filter(a=>AERIAL_TYPES.has(a.type)).map(a=>ARMY_SPEED_R[a.type]||3);
-        if(flyerSpeeds.length){ land=Math.min(...flyerSpeeds); sea=land; seaActive=true; }
-      }
-    }
-    // Swift / Seawolf minor titles keep their +1 (only when a pool actually exists).
-    if(charMinor(turnContext,c,'swift') && land>0) land+=1;
-    if(charMinor(turnContext,c,'seawolf') && sea>0) sea+=1;
-    return {land, sea, seaActive, cap:getSeaCapability(armies, c)};
-  }
-  function setMovePool(c){
-    const m=computeMovePoolMax(c);
-    movePoints[c.id]=m.land; seaMovePoints[c.id]=m.sea;
-    seaMoveActive[c.id]=m.seaActive; seaCap[c.id]=m.cap;
-    moveMax[c.id]=m.land; seaMoveMax[c.id]=m.sea;
-  }
-  // Recompute the pool mid-turn after a composition change (transfer/give/garrison/disband) or a
-  // March/Naval skill gain, WITHOUT refunding or double-spending: points already spent this turn
-  // are preserved, so dropping a slow unit correctly frees up the extra reach for the rest of the
-  // turn, and picking up a slow unit correctly reduces it. (Fixes: army stuck at an old slow speed
-  // after a slow unit was transferred out; move rate not rising when March increased mid-turn.)
-  function refreshMovePool(c){
-    if(!c||c.id==null) return;
-    const oldLandMax=(moveMax[c.id]!=null?moveMax[c.id]:(movePoints[c.id]??0));
-    const oldSeaMax =(seaMoveMax[c.id]!=null?seaMoveMax[c.id]:(seaMovePoints[c.id]??0));
-    const oldLandRem=(movePoints[c.id]!=null?movePoints[c.id]:oldLandMax);
-    const oldSeaRem =(seaMovePoints[c.id]!=null?seaMovePoints[c.id]:oldSeaMax);
-    const m=computeMovePoolMax(c);
-    // Composition-change accounting WITHOUT retroactive penalties. Remaining points are carried
-    // forward and adjusted only by the CHANGE in the pool's maximum:
-    // • ADDING a slower unit (newMax < oldMax): the fresh unit just mustered/joined and has not
-    // marched, so the moves already made are NOT charged against its allowance —
-    // remaining = min(newMax, oldRemaining). (Fixes: recruiting or picking up a speed-1 garrison
-    // after an earlier march wrongly reported "no movement points left".)
-    // • DROPPING a slow unit (newMax > oldMax): the freed reach is handed back — remaining rises by
-    // the max increase (still capped at newMax), so shedding a slow unit speeds the column up.
-    // • No change (newMax == oldMax): remaining is untouched.
-    // This also subsumes the old light-travel discount (a no-army hero's generous 5-move pool
-    // dropping to an army pace is just the "added a slower unit" case). Total moves stay capped by
-    // the 5-phase turn (one move per phase), so a character can still never exceed 5 provinces in a
-    // turn.
-    movePoints[c.id]   =Math.max(0, Math.min(m.land, oldLandRem+Math.max(0, m.land-oldLandMax)));
-    seaMovePoints[c.id]=Math.max(0, Math.min(m.sea,  oldSeaRem +Math.max(0, m.sea -oldSeaMax)));
-    seaMoveActive[c.id]=m.seaActive; seaCap[c.id]=m.cap;
-    moveMax[c.id]=m.land; seaMoveMax[c.id]=m.sea;
-  }
-  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(setMovePool);
+  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach((...a)=>setMovePool(turnContext,...a));
 
-  // Contingent unify helper — used when two friendly forces attack same province same phase
-  function contingentUnifyChance(marchOrNaval, distanceProvinces, isNaval){
-    const table=isNaval?NAVAL_UNIFY:MARCH_UNIFY;
-    const row=table[Math.min(marchOrNaval,5)]||table[0];
-    return row[Math.min(distanceProvinces,2)]||row[row.length-1];
-  }
-
-  // ── INTRUSION NOTIFICATIONS ────
-  // After each phase resolves, scan for situations where players need to be notified about things
-  // happening in their territory or in provinces where their heroes are present.
-  function generateIntrusionNotifications(ph){
-    const phaseLabel=SEASONS[ph];
-    G.players.forEach((targetPlayer,targetPi)=>{
-      const targetOwnedProvs=new Set(targetPlayer.provinces||[]);
-      const targetCharProvs=new Set(
-        (G.characters||[]).filter(c=>c.player===targetPi&&c.alive).map(c=>c.location)
-      );
-      const targetKnownProvs=new Set([...targetOwnedProvs,...targetCharProvs]);
-
-      // Check every other player's characters
-      G.players.forEach((actingPlayer,actingPi)=>{
-        if(actingPi===targetPi) return;
-        const actingChars=(G.characters||[]).filter(c=>c.player===actingPi&&c.alive);
-        actingChars.forEach(ac=>{
-          const acProv=G.world.provinces[ac.location];
-          if(!acProv) return;
-          if(ac._invisTurn===G.turn) return; // 2026-10-15 (Toby): a hero under Invisibility is not noticed
-          const inOwnedProv=targetOwnedProvs.has(ac.location);
-          // 2026-10-15 (Toby): a lone enemy lurking in your land with none of your heroes there is
-          // reported only if your people spot them — the same roll the report makes for this hero,
-          // province and turn (the report is built after the turn counter advances, hence G.turn+1).
-          if(inOwnedProv&&!targetCharProvs.has(ac.location)&&!(ac.armies||[]).length&&relOfReport(G,targetPi,actingPi)==='enemy'
-             &&!spotEnemyInOwnedProvince(G,targetPi,acProv,ac,G.turn+1)) return;
-          const inKnownProv=targetKnownProvs.has(ac.location);
-          if(!inKnownProv) return; // target doesn't know about this province
-
-          // 2026-10-15 (Toby, D1): the same rough size the map gives, whatever the watcher's Spy
-          const forceDesc=armySizeBand((ac.armies||[]).length);
-
-          // Accumulate the sighting; a single consolidated line per (target, hero, province) is
-          // emitted after the turn resolves (see flushIntrusionNotifications). actor is left null
-          // on the eventual log so the spotted (intruding) player never receives the owner's line.
-          const branch=inOwnedProv?'own':'known';
-          const key=`${targetPi}|${ac.id}|${ac.location}|${branch}`;
-          let rec=_intrusionAcc.get(key);
-          if(!rec){ rec={targetPi, branch, actingName:actingPlayer.name, acName:ac.name, provName:acProv.name, provId:ac.location, phases:[], forceByPhase:{}}; _intrusionAcc.set(key,rec); }
-          if(!rec.phases.includes(ph)) rec.phases.push(ph);
-          rec.forceByPhase[ph]=forceDesc;
-        });
-      });
-
-      // (Wandering hero sightings are reported once at end of turn in the Intelligence
-      // section's "Wandering Heroes" list — no need to log each phase's movement here.)
-    });
-  }
   const SEASONS=KC_SEASONS.slice();
+  turnContext.SEASONS=SEASONS;
   // Turn-wide recruit tracking: provId → armyType → count recruited this turn
   // Limits: garrisons, humanoid fleets and Goblin Hordes = 2 per turn (twoATurn, module level); the
   // founder's own home province = 2 of anything; elsewhere = 1 per type
   const recruitedThisTurn={};
-  function getRecruitLimit(armyType, prov, playerIndex){
-    if(twoATurn(armyType)) return 2; // garrisons; a shipyard's two hulls a season; Goblin Hordes (2026-10-11)
-    // 2026-09-24 (Toby item 10): two a season only in the realm's ORIGINAL home province, and only
-    // while its founder still holds it — a captured rival capital (or any other tax-10 seat) is 1.
-    return (prov.owner===playerIndex&&homeFounderOf(G,prov.id)===playerIndex)?2:1;
-  }
-  function canRecruit(armyType, provId, prov, playerIndex){
-    return (recruitedThisTurn[`${provId}:${armyType}`]||0) < getRecruitLimit(armyType,prov,playerIndex);
-  }
-  function recordRecruit(armyType, provId, qty){
-    const key=`${provId}:${armyType}`;
-    recruitedThisTurn[key]=(recruitedThisTurn[key]||0)+(qty!=null?qty:1);
-  }
+  turnContext.recruitedThisTurn=recruitedThisTurn;
 
   // ── STALLED-BATTLE RESOLVER ────
   // If a battle's loser could not retreat to an adjacent province, the opposing forces stay
   // co-located. At the start of the next phase they fight again — repeatedly, each phase, until one
   // side is destroyed or manages to break away. Covers neutral-guard and player-vs-player battles
   // alike. Provinces are flagged with _battleUnresolved by the combat code above.
-  // ── BEST COMMANDER TAKES THE FIELD ────
-  // When two or more of a realm's characters pool their armies into ONE battle — an attacker joined
-  // by unified contingents, or a defender reinforced by everyone standing in the province — the
-  // combined host is led by whichever of them gets the MOST out of it, not by whoever happened to
-  // give the order or happened to sit earliest in G.characters. Strict best score wins: the
-  // veterans recognise the better general and fall in behind him.
-  //
-  // commandScore is the engine's own arithmetic, not a proxy: every pooled unit is run through
-  // armStr under that candidate (so Druid shortfall, same-race leading, alignment and item army
-  // bonuses, terrain and the sea penalty all count), then multiplied by that candidate's Tactical
-  // on land units and Naval on hulls exactly as the battle will, then folded through the terrain
-  // battle lines
-  // (sd09 Flanking Doctrine included). Curses, Psychic Blast negation and the Strategist minor title
-  // are honoured because they are read the same way the battle reads them.
-  function commandScore(cand, pooled, prov, isAttacker){
-    if(!cand||!pooled||!pooled.length) return 0;
-    const align=(cand.player!=null?(G.players[cand.player]||{}).alignment:null)||'Neutral';
-    const terrain=(prov&&prov.terrain)||'plain';
-    let tact=cand._tacticalNegated?0:(effStat(turnContext,cand,'tactical')+(charMinor(turnContext,cand,'strategist')?1:0));
-    if(cand._curseHalveStat==='tactical') tact=Math.floor(tact/2);
-    const tacB=(terrain==='sea')?1:tacMulted(Math.min(2.0,1+tact*0.2),cand);
-    let nav=effStat(turnContext,cand,'naval'); if(cand._curseHalveStat==='naval') nav=Math.floor(nav/2);
-    const navB=1+nav*0.2;
-    const _coast=provIsCoastal(G,prov);
-    const rows=pooled.filter(a=>a).map(a=>{
-      let base=0;
-      try{ base=armStr(a,cand,align,terrain,{force:pooled,enemyForce:[],isAttacker:!!isAttacker,coastal:_coast}); }catch(e){ base=unitBaseStrength(a); }
-      const fly=FLYING_TYPES.has(a.type), sea=SEA_TYPES.has(a.type);
-      return {a, base:base*(sea?navB:tacB), fly, sea}; // flyers take Tactical (2026-09-23c); `a` so the grid can place by type
-    });
-    return battleLineTotal(rows, battleFrontWidth(terrain), (cand.player!=null&&hasDisc(turnContext,cand.player,'sd09')), {terrain,tac:tact});
-  }
-  // Choose the leader of a pooled force. `deflt` is whoever would have led before (the mover, or
-  // the standing defender); `joiners` are the characters whose troops are folding in. Returns the
-  // winner plus the rest, and whether command actually changed hands (for the narrative line).
-  function pickBattleCommander(deflt, joiners, pooled, prov, isAttacker){
-    const cands=[deflt,...(joiners||[])].filter(x=>x&&x.alive!==false);
-    if(cands.length<=1) return {leader:deflt, others:(joiners||[]).slice(), changed:false};
-    let best=deflt, bestS=commandScore(deflt,pooled,prov,isAttacker);
-    cands.forEach(x=>{ if(x===deflt) return; const sc=commandScore(x,pooled,prov,isAttacker); if(sc>bestS){ bestS=sc; best=x; } });
-    return {leader:best, others:cands.filter(x=>x!==best), changed:best!==deflt};
-  }
-  // Battles run on shallow copies; this returns the LIVE character behind one (or the object itself
-  // if it is already the real thing, as in the resumed-battle and hunt paths).
-  function realCharOf(x){ if(!x||x.id==null) return x; return (G.characters||[]).find(y=>y&&y.id===x.id)||x; }
-  // Move a real character to a province, keeping both provinces' character lists straight. Used
-  // when a pooled host falls back together after a lost battle.
-  function relocateChar(ch, provId){
-    if(!ch||provId==null||ch.location===provId) return;
-    const from=G.world.provinces[ch.location], to=G.world.provinces[provId];
-    if(from&&Array.isArray(from.characters)) from.characters=from.characters.filter(id=>id!==ch.id);
-    if(to){ to.characters=to.characters||[]; if(!to.characters.includes(ch.id)) to.characters.push(ch.id); ch.location=to.id; ch.locationName=to.name; }
-  }
-  // Battles are fought on shallow COPIES of the commander ({...leader, armies:[pooled]}). Write it
-  // all back onto the real character. `armies` and `location` are excluded: the pooled army list is
-  // split back to its owners by the caller, and the fall-back is applied to the whole party by
-  // relocateChar.
-  function syncLeaderCopy(real, copy){
-    if(!real||!copy||real===copy) return;
-    Object.keys(copy).forEach(k=>{ if(k==='armies'||k==='location'||k==='locationName'||k==='_reinforcedBy') return;
-      // 2026-09-17 belt-and-braces: hpEarned only ever RISES. A copy made before the fight carries
-      // a stale snapshot, so a blind write-back could roll a hardening won during the fight back
-      // off the real character. Take the larger of the two and the rollback becomes impossible,
-      // whatever future code path forgets to mirror it.
-      if(k==='hpEarned'){ real.hpEarned=Math.max(real.hpEarned||0, copy.hpEarned||0); return; }
-      // 2026-09-23c: the copy's item list is authoritative (items spent in the fight) EXCEPT for loot
-      // handed to the real character during the fight (handleHeroDeath), which the copy may not hold.
-      if(k==='items'){ const _cp=Array.isArray(copy.items)?copy.items:[]; const _loot=(Array.isArray(real.items)?real.items:[]).filter(it=>it&&_KC_LOOT_GAINED.has(it)&&!_cp.includes(it)); real.items=_loot.length?_cp.concat(_loot):_cp; return; }
-      real[k]=copy[k]; });
-    syncMaxHp(real, G.players); // keep maxHp in step with whatever the write-back landed on
-  }
-  // The line the Chronicle prints when command changes hands.
-  function commandHandoverLine(leader, deflt, provName){
-    return `\u{1F396} ${leader.name} takes command of the combined host at ${provName} \u2014 the most seasoned captain on the field, and ${deflt.name}'s troops fall in behind him.`;
-  }
-
-  function armyTotalStr(ch, prov){
-    return (ch.armies||[]).reduce((s,a)=>s+armStr(a, ch, (G.players[ch.player]?.alignment), prov.terrain), 0);
-  }
-
-  // ── PLAGUE (Necromancy) ────
-  // Each humanoid army unit in the province has a (10% + 5%/level) chance to lose an experience
-  // level. Survivors are immunised (half chance thereafter). Only the four humanoid races suffer.
-  const _PLAGUE_QDOWN={...KC_QUALITY_DOWN};
-  // ── Bless ward (item) ── A province blessed this turn can shrug off a later ENEMY negative spell
-  // (Flood / Earthquake / Plague / Part Sea). Chance = 50% + 5% × the blesser's White skill, counted to
-  // level 5. Returns true (and logs) when the ward turns the spell aside, so the caller skips the
-  // effect. Rolls per incoming spell.
-  function blessWardNegates(prov, caster, spellName){
-    if(!prov || prov._blessWardTurn!==G.turn) return false;
-    if(prov._blessWardBy==null || (caster && prov._blessWardBy===caster.player)) return false; // your own ward never blocks your own spell
-    if(kcRng()*100 >= (prov._blessWardPct||0)) return false;
-    const _who=caster?caster.name:'a hostile mage';
-    log('combat',`✨ A blessing lies over ${prov.name} — ${_who}'s ${spellName} washes over the sacred ground and does no harm.`,{actor:caster?caster.player:null,targets:(prov._blessWardBy!=null?[prov._blessWardBy]:[]),provinceId:prov.id,public:true,env:true});
-    return true;
-  }
-  function applyPlague(prov, level, ph){
-    const chance=0.10+0.05*(level||0);
-    // Build the pool WITH provenance so affected units can be reported to the right player: units
-    // LED by a present character (→ that character's Chronicle), the owner's unled GARRISON
-    // (→ Realm Events), and neutral/leaderless defenders (no player to notify).
-    const entries=[];
-    (G.characters||[]).filter(ch=>ch.alive&&ch.location===prov.id&&!isVeiled(turnContext,ch)).forEach(ch=>{ // ILLUSORY L9 Veil: a veiled commander's host is spared the plague
-      (ch.armies||[]).forEach(a=>entries.push({a, owner:ch.player, charId:(ch.player!=null?ch.id:null), garrison:false}));
-    });
-    (prov.garrisonArmies||[]).forEach(a=>entries.push({a, owner:prov.owner, charId:null, garrison:true}));
-    (prov.neutralDefenders||[]).forEach(a=>entries.push({a, owner:null, charId:null, garrison:false}));
-    let tested=0, affected=0;
-    const hitByCtx=new Map(); // key → {owner, charId, garrison, units:[]}
-    entries.forEach(({a, owner, charId, garrison})=>{
-      if(a._isSkeletal) return;                 // the walking dead feel no plague
-      if(!_isHumanoidRace(a.race)) return;
-      tested++;
-      const eff=a._plagueImmune?chance*0.5:chance;
-      if(kcRng()<eff && _PLAGUE_QDOWN[a.quality]){
-        a.quality=_PLAGUE_QDOWN[a.quality]; affected++;
-        if(owner!=null){
-          const key=(charId!=null?('c'+charId):('g'+owner));
-          let rec=hitByCtx.get(key);
-          if(!rec){ rec={owner, charId, garrison, units:[]}; hitByCtx.set(key, rec); }
-          rec.units.push(a);
-        }
-      }
-      a._plagueImmune=true; // survived a plague → immunised for the future
-    });
-    // notify each affected player. Led units land in the leading character's Chronicle
-    // (charId set); garrisoned units land in Realm Events (no charId, targeted at the owner).
-    // These per-unit notices are NOT env-tagged — they belong to the affected player's own report,
-    // not the shared Province Reports environmental log.
-    hitByCtx.forEach(rec=>{
-      const names=rec.units.map(u=>`${u.unitName||u.type} (now ${u.quality})`).join(', ');
-      const where=rec.garrison?`the garrison of ${prov.name}`:`your troops in ${prov.name}`;
-      const meta={actor:null, targets:[rec.owner], provinceId:prov.id};
-      if(rec.charId!=null) meta.charId=rec.charId;
-      if(ph!=null) meta.phase=ph;
-      log('combat', `☠ Plague sickens ${where}: ${names} lose an experience level.`, meta);
-    });
-    return {tested, affected};
-  }
-  // Each phase, an active plague spreads to adjacent provinces (15% each) and can spread further.
-  function spreadPlagues(ph){
-    const sources=(G.world.provinces||[]).filter(p=>p&&p._plaguedTurn===G.turn);
-    sources.forEach(p=>{
-      getNeighborsP(p,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{
-        if(!nb||nb._plaguedTurn===G.turn) return;
-        if(nb._blessWardTurn===G.turn && nb._blessWardBy!=null && nb._blessWardBy!==p._plagueCaster && kcRng()*100<(nb._blessWardPct||0)) return; // blessed ground resists the spreading plague
-        if(kcRng()<0.15){
-          nb._plaguedTurn=G.turn; nb._plagueLevel=p._plagueLevel||0; nb._plagueCaster=p._plagueCaster;
-          const res=applyPlague(nb, nb._plagueLevel, ph);
-          log('combat',`☠ The plague spreads into ${nb.name} — ${res.affected} of ${res.tested} humanoid unit${res.tested!==1?'s':''} sicken.`,{actor:null,targets:(nb.owner!=null?[nb.owner]:[]).concat(p._plagueCaster!=null?[p._plagueCaster]:[]),provinceId:nb.id,public:true,env:true});
-        }
-      });
-    });
-  }
-
-  // Feature guardians keep their wounds across phases within a turn (so a second searcher meets the
-  // creature the first one bloodied) but recover fully between turns — a whole year passes.
-  function healFeatureMonsters(){
-    (G.world.provinces||[]).forEach(prov=>{
-      (prov&&prov.features||[]).forEach(f=>{
-        const m=f&&f.monster;
-        if(!m||m._hpFull==null) return;
-        m.hp=m._hpFull;
-      });
-    });
-  }
 
   // ── Erosion of a beaten neutral guard's SURVIVORS ────
   // Applied every time a guard loses a battle, not just the first. Each survivor either breaks away
@@ -10838,7 +9711,7 @@ const BATTLE_ARMY_SPELLS={
       // nested. A leaderless host is sorted LAST for every "who leads this" decision: it holds
       // ground, it does not choose to press an attack.
       const _rankForce=(a,b)=>((a._leaderlessHost?1:0)-(b._leaderlessHost?1:0))
-        ||(armyTotalStr(b,prov)-armyTotalStr(a,prov));
+        ||(armyTotalStr(turnContext,b,prov)-armyTotalStr(turnContext,a,prov));
       const _ctxCharId=[...playerForces].sort(_rankForce)[0].id;
       turnContext._logCtx={charId:_ctxCharId, phase:ph};
       // a commander (king or hero) who fell in an earlier-phase battle duel keeps his host on the
@@ -10914,15 +9787,15 @@ const BATTLE_ARMY_SPELLS={
           if(!liveGuard) prov._leaderlessDefenders=(prov.neutralDefenders||[]).length>0;
           if((attacker.armies||[]).length>0 && attacker.location===prov.id){
             // Attacker repelled and still here: try to retreat, else stay pinned and fight again
-            const adj=retreatOptions(attacker, prov, attacker.armies||[]); // 2026-09-23c: the one retreat rule (was own LAND only)
+            const adj=retreatOptions(turnContext, attacker, prov, attacker.armies||[]); // 2026-09-23c: the one retreat rule (was own LAND only)
             // 2026-09-27 (Toby item 3): a pinned column with ships tries the naval split first — the
             // fleet sails for friendly water with what it can lift and the rest falls back or holds.
-            const _nrLines=[]; const _nrRes=navalSplitRetreat(attacker, prov, attacker.armies||[], _nrLines, forceLabel(attacker));
+            const _nrLines=[]; const _nrRes=navalSplitRetreat(turnContext, attacker, prov, attacker.armies||[], _nrLines, forceLabel(attacker));
             _nrLines.forEach(l=>log('combat',l,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:prov.id}));
             if(_nrRes){ /* handled by the naval split */ }
             else if(adj.length>0){
               const _fromS=G.world.provinces[attacker._attackedFrom];
-              const dest=(_fromS&&adj.some(p2=>p2.id===_fromS.id))?_fromS:(bestRetreat(attacker,adj)||adj[0]); // with a choice, the most valuable ground wins
+              const dest=(_fromS&&adj.some(p2=>p2.id===_fromS.id))?_fromS:(bestRetreat(turnContext,attacker,adj)||adj[0]); // with a choice, the most valuable ground wins
               prov.characters=(prov.characters||[]).filter(id=>id!==attacker.id);
               dest.characters=dest.characters||[]; if(!dest.characters.includes(attacker.id)) dest.characters.push(attacker.id);
               attacker.location=dest.id; attacker.locationName=dest.name;
@@ -11008,7 +9881,7 @@ const BATTLE_ARMY_SPELLS={
         const _navalBlockSB=navalHeldIn(prov, winner.player);
         if(!enemyStillHere && _navalBlockSB.length>0){
           prov._battleUnresolved=true;
-          log('combat',navalHoldLine(prov,_navalBlockSB,(G.players[winner.player]||{}).name||forceLabel(winner)),{charId:_ctxCharId,phase:ph,actor:winner.player,targets:[],provinceId:prov.id,public:true});
+          log('combat',navalHoldLine(turnContext,prov,_navalBlockSB,(G.players[winner.player]||{}).name||forceLabel(winner)),{charId:_ctxCharId,phase:ph,actor:winner.player,targets:[],provinceId:prov.id,public:true});
         } else if(!enemyStillHere && prov.owner!==winner.player){
           G.players.forEach((p,pi)=>{if(pi!==winner.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
           setProvinceOwner(turnContext,prov,winner.player,winner,ph); const wp=G.players[winner.player];
@@ -11081,7 +9954,7 @@ const BATTLE_ARMY_SPELLS={
           delete a._garrisonOf; changed=true;
         }
       });
-      if(changed && typeof refreshMovePool==='function') refreshMovePool(c);
+      if(changed && typeof refreshMovePool==='function') refreshMovePool(turnContext,c);
     });
     Object.keys(_returnedByProv).forEach(pid=>{
       const prov=G.world.provinces[pid]; if(!prov) return;
@@ -11332,10 +10205,10 @@ const BATTLE_ARMY_SPELLS={
       _garHere.forEach(a=>{a._fromGarrison=true;});
       _garrisonUnfought=(_garHere.length===0&&garrison.length>0); // a third party fought; the owner's garrison did not
       const _rbPooled=[...(enemyChar.armies||[]),...defReinf.flatMap(d=>d.armies||[]),..._garHere];
-      const _rbP=pickBattleCommander(enemyChar, defReinf, _rbPooled, prov, false); // best defender commands
+      const _rbP=pickBattleCommander(turnContext, enemyChar, defReinf, _rbPooled, prov, false); // best defender commands
       const combinedDef={..._rbP.leader,armies:_rbPooled};
       battle=combatVsChar(c, combinedDef, prov);
-      syncLeaderCopy(_rbP.leader, combinedDef);
+      syncLeaderCopy(turnContext, _rbP.leader, combinedDef);
       creditBattle(turnContext,c,_rbP.leader,battle,prov);
       if(battle&&Array.isArray(battle.narrative)){
         const _form=[];
@@ -11361,7 +10234,7 @@ const BATTLE_ARMY_SPELLS={
           if(!d||!Array.isArray(d.armies)) return;
           const _n=d.armies.length;
           d.armies=d.armies.filter(a=>_navalHeldUG.indexOf(a)<0);
-          if(d.armies.length!==_n&&typeof refreshMovePool==='function') refreshMovePool(d);
+          if(d.armies.length!==_n&&typeof refreshMovePool==='function') refreshMovePool(turnContext,d);
         });
       }
       const _garSurv=_garHere.filter(a=>!a._died&&!a._disbanded&&_navalHeldUG.indexOf(a)<0);
@@ -11395,7 +10268,7 @@ const BATTLE_ARMY_SPELLS={
         _join.forEach(a=>{ delete a._fromGarrison; a._garrisonOf=prov.id; });
         enemyChar.armies=(enemyChar.armies||[]).concat(_join);
         prov.garrisonArmies=[];
-        if(typeof refreshMovePool==='function') refreshMovePool(enemyChar);
+        if(typeof refreshMovePool==='function') refreshMovePool(turnContext,enemyChar);
         log('combat',`🛡 The standing troops of ${prov.name} fall in with ${enemyChar.name} and fight on at their side as the battle continues.`,{actor:enemyChar.player,targets,provinceId:prov.id,public:true});
       }
     } else if(neutralGuard){
@@ -11479,7 +10352,7 @@ const BATTLE_ARMY_SPELLS={
         log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but enemy forces still hold their ground — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
       } else if(_navalBlockUG.length>0){
         prov._battleUnresolved=true;
-        log('combat',navalHoldLine(prov,_navalBlockUG,player.name),{actor:c.player,targets,provinceId:prov.id,public:true});
+        log('combat',navalHoldLine(turnContext,prov,_navalBlockUG,player.name),{actor:c.player,targets,provinceId:prov.id,public:true});
       } else if(_garrisonUnfought&&(prov.garrisonArmies||[]).length>0){
         // a third party's column was beaten, but the owner's garrison never fought — the walls still stand
         log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but its garrison still ${prov.terrain==='sea'?'holds these waters':'mans the walls'} — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
@@ -11508,6 +10381,7 @@ const BATTLE_ARMY_SPELLS={
   // consolidated "seen during <phases>" line per (target, hero, province) is emitted after the
   // loop.
   const _intrusionAcc=new Map();
+  turnContext._intrusionAcc=_intrusionAcc;
   function flushIntrusionNotifications(){
     const fmtPhases=(phs)=>{
       const s=[...phs].sort((a,b)=>a-b);
@@ -11670,7 +10544,7 @@ const BATTLE_ARMY_SPELLS={
     const t=order.target||'';
     const from=G.world.provinces[c.location];
     if(!from) return null;
-    if(t.startsWith('dir:')) return neighborInDir(from,t.slice(4));
+    if(t.startsWith('dir:')) return neighborInDir(turnContext,from,t.slice(4));
     if(t.startsWith('prov:')){
       // Absolute target: the province itself if adjacent, else the first step toward it (mirrors
       // the move case so phase intents / interceptions see where the column will actually go).
@@ -11939,7 +10813,7 @@ const BATTLE_ARMY_SPELLS={
     const threat=new Map();
     invasions.forEach(inv=>{
       const cur=threat.get(inv.toId)||{prov:inv.dest,str:0,names:[],players:new Set()};
-      cur.str+=armyTotalStr(inv.c,inv.dest);
+      cur.str+=armyTotalStr(turnContext,inv.c,inv.dest);
       cur.names.push(inv.c.name);
       cur.players.add(inv.player);
       threat.set(inv.toId,cur);
@@ -11971,7 +10845,7 @@ const BATTLE_ARMY_SPELLS={
 
       // Candidate provinces: invaded, his realm's, inside his reaction zone, terrain he can cross.
       const sc=seaCap[c.id]||'land';
-      const myStr=armyTotalStr(c,here);
+      const myStr=armyTotalStr(turnContext,c,here);
       const cands=[...threat.values()].filter(t=>{
         const P=t.prov;
         if(!P||P.owner!==c.player) return false;
@@ -12138,7 +11012,7 @@ const BATTLE_ARMY_SPELLS={
           &&e.location===P.id&&(e.armies||[]).length>0);
         if(!foes.length) continue;
         if(P.id!==c.location && !canStepBetween(c,here,P,sc)) continue; // a fleet can't march inland; ships never cross land (item 14)
-        const str=foes.reduce((s,e)=>s+armyTotalStr(e,P),0);
+        const str=foes.reduce((s,e)=>s+armyTotalStr(turnContext,e,P),0);
         if(!best||str>best.str) best={P,foes,str};
       }
       if(!best) return;
@@ -12163,18 +11037,18 @@ const BATTLE_ARMY_SPELLS={
       // Force the battle: c attacks the heaviest enemy force here; the rest unify behind it (as in
       // any battle / the both-armed pursuit). Fight on pooled copies, then write casualties + routs
       // back.
-      const quarry=best.foes.slice().sort((a,b)=>armyTotalStr(b,prov)-armyTotalStr(a,prov))[0];
+      const quarry=best.foes.slice().sort((a,b)=>armyTotalStr(turnContext,b,prov)-armyTotalStr(turnContext,a,prov))[0];
       const defReinf=best.foes.filter(d=>d.id!==quarry.id);
       const combinedAtk={...c,armies:[...(c.armies||[])]};
       if(_metWhereHeStood){ combinedAtk._resumeBattle=true; combinedAtk._openingClash=true; } // already there: no move-in line, and not a carry-on round
       const _hPooled=[...(quarry.armies||[]),...defReinf.flatMap(d=>d.armies||[])];
-      const _hP=pickBattleCommander(quarry, defReinf, _hPooled, prov, false); // best defender commands
+      const _hP=pickBattleCommander(turnContext, quarry, defReinf, _hPooled, prov, false); // best defender commands
       const combinedDef={..._hP.leader,armies:_hPooled};
       const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
       log('combat',`⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:[c.id,quarry.id,...defReinf.map(d=>d.id)],phase:ph});
       if(_hP.changed) log('combat',commandHandoverLine(_hP.leader,quarry,prov.name),{actor:quarry.player,targets:targetsPi,provinceId:prov.id,public:true});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
-      syncLeaderCopy(_hP.leader, combinedDef);
+      syncLeaderCopy(turnContext, _hP.leader, combinedDef);
       creditBattle(turnContext,c,_hP.leader,battle,prov);
       emitBattle(battle, prov, ph, targetsPi, {actor:c.player, charIds:[c.id,quarry.id,...defReinf.map(d=>d.id)]}); // item 5; 2026-09-09 item 1
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
@@ -12246,7 +11120,7 @@ const BATTLE_ARMY_SPELLS={
       if(!foes.length) return;
       // Prefer the highest-value quarry: a king first, then the heaviest column, then the strongest
       // man.
-      foes.sort((a,b)=> (b.isKing?1:0)-(a.isKing?1:0) || armyTotalStr(b,G.world.provinces[b.location])-armyTotalStr(a,G.world.provinces[a.location]) || effStat(turnContext,b,'melee')-effStat(turnContext,a,'melee'));
+      foes.sort((a,b)=> (b.isKing?1:0)-(a.isKing?1:0) || armyTotalStr(turnContext,b,G.world.provinces[b.location])-armyTotalStr(turnContext,a,G.world.provinces[a.location]) || effStat(turnContext,b,'melee')-effStat(turnContext,a,'melee'));
       const quarry=foes[0];
       const quarryProv=G.world.provinces[quarry.location];
       if(!quarryProv) return;
@@ -12519,7 +11393,7 @@ const BATTLE_ARMY_SPELLS={
             ?`${c.name} carries the field at ${prov.name}, but its garrison still holds the province — the fight for it resumes next season.`
             :`${c.name} carries the field at ${prov.name}, but enemy forces still hold their ground — the province remains contested.`,
             {actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
-          if(!_hostileLeft&&_hulls.length) log('combat',navalHoldLine(prov,_hulls,G.players[c.player]?.name||'the hunter'),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+          if(!_hostileLeft&&_hulls.length) log('combat',navalHoldLine(turnContext,prov,_hulls,G.players[c.player]?.name||'the hunter'),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
         } else {
           const _wp=G.players[c.player];
           G.players.forEach((p,pi)=>{ if(pi!==c.player){ const i=(p.provinces||[]).indexOf(prov.id); if(i>-1) p.provinces.splice(i,1); } });
@@ -12767,7 +11641,7 @@ const BATTLE_ARMY_SPELLS={
       // resumed contest) has had its battle — the ordinary sweep takes it from here
       if(prov._battleUnresolved||prov._hadBattleThisTurn) return;
       const here=()=>warFrontThreats().filter(t=>t.prov.id===pid&&_warFrontAtStart.get(t.c.id)===pid);
-      const byStr=(a,b)=>armyTotalStr(b.c,prov)-armyTotalStr(a.c,prov);
+      const byStr=(a,b)=>armyTotalStr(turnContext,b.c,prov)-armyTotalStr(turnContext,a.c,prov);
       const assault=(c)=>{
         const ownerNm=(prov.owner!=null&&G.players[prov.owner])?G.players[prov.owner].name:null;
         _combatSkillProv=null; turnContext._logCtx={charId:c.id,phase:ph};
@@ -12850,10 +11724,10 @@ const BATTLE_ARMY_SPELLS={
     flagEnemyStandoffs(ph===0?_warFrontProvs:null); // a fresh war front waits for the end of Spring
     resolveStalledBattles(ph);
     settleRalliedGarrisons(); // return rallied garrisons to their province if the contest is won, else keep them with the hero
-    settleStrandedAtSea(ph); // 2026-09-23c: a column left unshipped by a resumed sea battle (or an old save) puts its excess ashore
+    settleStrandedAtSea(turnContext,ph); // 2026-09-23c: a column left unshipped by a resumed sea battle (or an old save) puts its excess ashore
     turnContext._logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
     _combatSkillProv=null; // stalled battles done — no series context until the next fight
-    spreadPlagues(ph);
+    spreadPlagues(turnContext,ph);
 
     // Heroes hired this phase can't act yet, but should still be told so.
     (G.characters||[]).forEach(c=>{
@@ -12964,7 +11838,7 @@ const BATTLE_ARMY_SPELLS={
         turnContext._logCtx={charId:c.id,phase:ph};
         advancePursuit(c,ph);
         turnContext._logCtx={charId:null,phase:null};
-        settleStrandedAtSea(ph); // a chase that ended in a sea battle
+        settleStrandedAtSea(turnContext,ph); // a chase that ended in a sea battle
         return;
       }
       // A coward who begged for mercy this turn is broken and out of action — skip all remaining
@@ -12984,7 +11858,7 @@ const BATTLE_ARMY_SPELLS={
       }
       if(o)processOrder(c,o,ph);
       turnContext._logCtx={charId:null,phase:null}; // reset after each character
-      settleStrandedAtSea(ph); // 2026-09-23c: hulls lost in this order's battle — put the uncarried ashore before anyone moves again
+      settleStrandedAtSea(turnContext,ph); // 2026-09-23c: hulls lost in this order's battle — put the uncarried ashore before anyone moves again
     });
 
     flushDefendStep(); // a phase with no relocating or Defend-tier actor still gets its Defend step
@@ -13015,9 +11889,9 @@ const BATTLE_ARMY_SPELLS={
     });
 
     // Generate intrusion notifications for this phase
-    generateIntrusionNotifications(ph);
+    generateIntrusionNotifications(turnContext,ph);
 
-    settleStrandedAtSea(ph); // every battle, ride-out and ambush of the phase is over
+    settleStrandedAtSea(turnContext,ph); // every battle, ride-out and ambush of the phase is over
     // ── Fallen-commander sweep ── A commander slain in a pre-battle duel keeps their army through
     // the battle (a junior officer leads); whatever survived is dispersed NOW that the fighting is
     // over — garrison in a friendly province, retreat to adjacent friendly land, or scatter as
@@ -13053,7 +11927,7 @@ const BATTLE_ARMY_SPELLS={
           const back=hc._charmOriginalPlayer;
           if(hc.player!==back){
             hc.player=back;
-            if(typeof setMovePool==='function') setMovePool(hc);
+            if(typeof setMovePool==='function') setMovePool(turnContext,hc);
           }
           delete hc._charmTempControl; delete hc._charmControlFrom;
           delete hc._charmedByPlayer; delete hc._charmedForPhase; delete hc._charmOriginalPlayer;
@@ -13338,7 +12212,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         });
         if(_up.length) log('hire',`🎖 Garrison drills in ${pv.name}: ${_up.join('; ')}.`,{actor:pv.owner,targets:[pv.owner],provinceId:pv.id});
       });
-      settleStrandedAtSea(4, 'too few hulls left to carry the whole column'); // safety net after wages
+      settleStrandedAtSea(turnContext, 4, 'too few hulls left to carry the whole column'); // safety net after wages
     }
     syncAllMaxHp(); // a max-HP rise earned this phase heals into its headroom now
   }
@@ -13511,7 +12385,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   flushIntrusionNotifications();
 
   // Wounded feature guardians recover over the year between turns.
-  healFeatureMonsters();
+  healFeatureMonsters(turnContext);
 
   // ── WHITE L6 (Mass Healing) ── A master of the White arts standing among friendly characters at
   // year's end mends their wounds: each own/allied living character sharing their province (the

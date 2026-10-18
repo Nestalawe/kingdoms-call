@@ -220,3 +220,18 @@ function guardCastChance(c, school, chars){
   return Math.min(95,SPELL_CAST_BASE+lvl*10+magicL8CastBonus(c));
 }
 function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
+
+// ── LIFTED OUT OF resolveTurn (plan P1-08b) ── lair guardians heal between turns. It takes the turn's context first
+// (src/engine/turn/context.js).
+  // Feature guardians keep their wounds across phases within a turn (so a second searcher meets the
+  // creature the first one bloodied) but recover fully between turns — a whole year passes.
+  function healFeatureMonsters(turnContext){
+    const {G}=turnContext;
+    (G.world.provinces||[]).forEach(prov=>{
+      (prov&&prov.features||[]).forEach(f=>{
+        const m=f&&f.monster;
+        if(!m||m._hpFull==null) return;
+        m.hp=m._hpFull;
+      });
+    });
+  }

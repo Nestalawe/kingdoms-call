@@ -3,8 +3,9 @@
 //   - files are R-NNN-short-name.md, numbered 1…N with no gaps or repeats, each titled "# R-NNN: …";
 //   - each gives Decided (a date), Status (Confirmed, To confirm or Superseded), Source and Enforced by;
 //     a Superseded ruling names the ruling that replaced it;
-//   - Enforced by is "no test yet" or links, and every linked test exists and runs in npm test (tests/suite.ts), or is
-//     an access-rule test file in supabase/tests/database/;
+//   - Enforced by is "no test yet" or links, and every linked test exists and runs in npm test: a test script in
+//     tests/suite.ts, a Vitest test in tests/<level>/ (vitest.config.mts runs each level's), or an access-rule test file
+//     in supabase/tests/database/;
 //   - the index in docs/rulings/README.md lists every ruling once, with the file's status, flagged "(open question)"
 //     exactly when the file has an Open point;
 //   - CLAUDE.md points at docs/rulings/.
@@ -21,6 +22,10 @@ if(!fs.existsSync(readme)){ fail('docs/rulings/README.md is missing'); console.l
 const index=fs.readFileSync(readme,'utf8');
 const suite=fs.readFileSync(path.join(ROOT,'tests','suite.ts'),'utf8');
 const STATUSES=['Confirmed','To confirm','Superseded'];
+// The levels, from tests/suite.ts: a Vitest test is tests/<level>/<name>.test.ts.
+const LEVELS=[...(/export const LEVELS = \[([^\]]*)\]/.exec(suite)||['',''])[1].matchAll(/'([a-z]+)'/g)].map(m=>m[1]);
+if(!LEVELS.length) fail('tests/suite.ts: no LEVELS');
+const vitestFile=name=>LEVELS.map(l=>`tests/${l}/${name}.test.ts`).find(f=>fs.existsSync(path.join(ROOT,f)));
 
 const files=fs.readdirSync(DIR).filter(f=>f!=='README.md'&&f.endsWith('.md')).sort();
 const nums=[];
@@ -43,8 +48,9 @@ for(const f of files){
     for(const [,name,href] of links){
       if(/\.sql$/.test(name)){
         if(!fs.existsSync(path.join(ROOT,'supabase','tests','database',name))) fail(`${f}: no access-rule test ${name}`);
-      }else if(!suite.includes(`'tests/${name}.test.js'`)) fail(`${f}: ${name} is not a test npm test runs (tests/suite.ts)`);
-      if(!href.endsWith(/\.sql$/.test(name)?name:`tests/${name}.test.js`)) fail(`${f}: the link for ${name} points at ${href}`);
+      }else if(!suite.includes(`'tests/${name}.test.js'`)&&!vitestFile(name)) fail(`${f}: ${name} is not a test npm test runs (tests/suite.ts, or tests/<level>/${name}.test.ts)`);
+      const target=/\.sql$/.test(name)?name:suite.includes(`'tests/${name}.test.js'`)?`tests/${name}.test.js`:vitestFile(name)||`tests/${name}.test.js`;
+      if(!href.endsWith(target)) fail(`${f}: the link for ${name} points at ${href}`);
     }
   }
   const rows=index.split('\n').filter(l=>l.startsWith(`| [${id}](${f}) |`));
