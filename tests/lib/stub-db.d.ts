@@ -4,12 +4,18 @@
 export type Row = Record<string, unknown>;
 
 export interface Stub {
-  /** Installed as the page's window.supabase. */
-  supabase: unknown;
+  /** Installed as the page's window.supabase. Every createClient() gives the same client. */
+  supabase: { createClient(): StubClient };
   /** The stand-in database's tables. */
   DB: Record<string, Row[]>;
   /** "table.op" (select, insert, upsert, update, delete) or "rpc.name": the error every such call answers with. */
   ERRORS: Record<string, { message: string }>;
+}
+
+/** The stand-in's client: `from` gives a query builder, `rpc` runs a database function. */
+export interface StubClient {
+  from(table: string): unknown;
+  rpc(fn: string, ...args: unknown[]): unknown;
 }
 
 export function makeStub(): Stub;

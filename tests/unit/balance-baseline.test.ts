@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
+  columnsNotKept,
   diffGame,
   formatBaseline,
   parseBaseline,
@@ -15,6 +16,7 @@ import {
   writeRun,
   type KeptGame,
 } from '../../tools/balance/baseline.ts';
+import { TURN_COLUMNS } from '../../tools/balance/hash.ts';
 import { matrix } from '../../tools/balance/matrix.ts';
 import { compareRuns, meaningfulChanges } from '../../tools/balance/paired.ts';
 
@@ -84,6 +86,31 @@ describe('the comparison, game by game', () => {
   });
 });
 
+// P1-02c added the `writes` column: the base branch's baseline, read by the balance report, can be from before it.
+describe('a baseline from before a column was added', () => {
+  const full: KeptGame = {
+    ...game,
+    turns: [TURN_COLUMNS.map((c) => c + '1').join(' '), TURN_COLUMNS.map((c) => c + '2').join(' ')],
+  };
+  const old = parseBaseline(
+    formatBaseline('A', [full])
+      .replace(/,\s*"writes"\s*\]/, ']')
+      .replace(/ writes\d"/g, '"'),
+  ).games;
+
+  test('reads with that column not kept, and says which; a full one has none missing', () => {
+    expect(old[0]?.turns).toEqual(full.turns.map((l) => l.replace(/writes\d$/, '?')));
+    expect(columnsNotKept(old)).toEqual(['writes']);
+    expect(columnsNotKept([full])).toEqual([]);
+  });
+
+  test('the column it lacks is never a difference; the others still are', () => {
+    expect(diffGame(old[0] ?? full, full)).toBeNull();
+    const later = { ...full, turns: [full.turns[0] ?? '', full.turns[1]?.replace('state2', 'XX') ?? ''] };
+    expect(diffGame(old[0] ?? full, later)).toMatchObject({ firstTurn: 2, columns: ['state'] });
+  });
+});
+
 describe('the committed baselines', () => {
   const A = readBaseline('A');
   const B = readBaseline('B');
@@ -92,6 +119,10 @@ describe('the committed baselines', () => {
     expect(A.map((g) => g.id)).toEqual(matrix('A').map((g) => g.id));
     expect(B.map((g) => g.id)).toEqual(matrix('B').map((g) => g.id));
     for (const g of A) expect(g.turns.length, g.id).toBeGreaterThan(0);
+  });
+
+  test('have every hash column (P1-02c: writes)', () => {
+    expect(columnsNotKept(A)).toEqual([]);
   });
 
   test('every scripted case happens at least once', () => {

@@ -4,10 +4,11 @@
 // - noise.json: set B (other seeds), its statistics only. Set A against set B is what chance alone does: the noise rule
 //   must call it "no meaningful change" (tests/unit/balance-noise.test.ts).
 // Statistics are kept as one list of names and, per game, one [sum, count] per name (null where the game lacks it),
-// to keep the files small.
+// to keep the files small. A file names its hash columns: one from before a column was added (P1-02c's `writes`) is
+// read with that column NOT_KEPT, which no comparison counts as a difference.
 import fs from 'node:fs';
 import path from 'node:path';
-import { TURN_COLUMNS } from './hash.ts';
+import { TURN_COLUMNS, type TurnColumn } from './hash.ts';
 import type { SeedSet } from './matrix.ts';
 import type { Cases, GameResult } from './play.ts';
 import type { Stat, Stats } from './stats.ts';
@@ -47,8 +48,18 @@ export function formatBaseline(set: SeedSet, games: KeptGame[]): string {
   return `${top},\n  "games": [\n${kept.map((g) => '    ' + JSON.stringify(g)).join(',\n')}\n  ]\n}\n`;
 }
 
+/** A turn's hash in a column its baseline file doesn't have. */
+export const NOT_KEPT = '?';
+
+/** A turn's hashes from a file with `columns`, in TURN_COLUMNS order. */
+function inTurnColumns(line: string, columns: readonly string[]): string {
+  const cols = line.split(' ');
+  return TURN_COLUMNS.map((c) => (columns.includes(c) ? (cols[columns.indexOf(c)] ?? '') : NOT_KEPT)).join(' ');
+}
+
 export function parseBaseline(text: string): { set: SeedSet; games: KeptGame[] } {
   const f = JSON.parse(text) as File;
+  const same = f.columns.join() === TURN_COLUMNS.join();
   return {
     set: f.set,
     games: f.games.map((g) => {
@@ -57,9 +68,16 @@ export function parseBaseline(text: string): { set: SeedSet; games: KeptGame[] }
         const v = g.stats[i];
         if (v) stats[k] = v;
       });
-      return { ...g, turns: g.turns ?? [], results: g.results ?? '', stats };
+      const turns = (g.turns ?? []).map((l) => (same ? l : inTurnColumns(l, f.columns)));
+      return { ...g, turns, results: g.results ?? '', stats };
     }),
   };
+}
+
+/** The hash columns `games` don't have (their baseline is from before the column was added). */
+export function columnsNotKept(games: KeptGame[]): TurnColumn[] {
+  const first = games.find((g) => g.turns.length)?.turns[0]?.split(' ') ?? [];
+  return TURN_COLUMNS.filter((_, i) => first[i] === NOT_KEPT);
 }
 
 export const readBaseline = (set: SeedSet): KeptGame[] =>
@@ -99,7 +117,7 @@ export function diffGame(a: KeptGame, b: KeptGame): GameDiff | null {
     const x = a.turns[t]?.split(' ') ?? [];
     const y = b.turns[t]?.split(' ') ?? [];
     TURN_COLUMNS.forEach((c, i) => {
-      if (x[i] !== y[i]) {
+      if (x[i] !== y[i] && x[i] !== NOT_KEPT && y[i] !== NOT_KEPT) {
         columns.add(c);
         firstTurn ??= t + 1;
       }

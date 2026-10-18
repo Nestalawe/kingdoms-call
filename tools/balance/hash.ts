@@ -1,7 +1,7 @@
 // The exact half of the balance matrix (plan P1-02): short hashes of what a turn saved, split so a change of wording
 // shows apart from a change of play. Hashed per turn: the saved state without its prose, the prose on its own, the GM
-// log's structure (every field but `text`) and its text, the telemetry rows (turn_events), and the scripted realm's
-// report, structure and text apart.
+// log's structure (every field but `text`) and its text, the telemetry rows (turn_events), the scripted realm's
+// report, structure and text apart, and every write the turn sent to the database (writes.ts, P1-02c).
 //
 // Left out, because they carry no play and would make two equal games differ:
 // - the stand-in database's own ids and stamps on each row (`id`, `created_at`, `updated_at`): rowPlay below;
@@ -62,8 +62,18 @@ export const playHash = (value: unknown): string => h(playJson(value));
 /** Hash of the words in `value`. */
 export const proseHash = (value: unknown): string => h(proseJson(value));
 
-/** One turn's hashes, in this order. A bot game has no report: its two report columns are ''. */
-export const TURN_COLUMNS = ['state', 'prose', 'log', 'logText', 'telemetry', 'report', 'reportText'] as const;
+/** One turn's hashes, in this order. A bot game has no report: its two report columns are ''. `writes` came last
+ *  (P1-02c): a baseline from before it has seven. */
+export const TURN_COLUMNS = [
+  'state',
+  'prose',
+  'log',
+  'logText',
+  'telemetry',
+  'report',
+  'reportText',
+  'writes',
+] as const;
 export type TurnColumn = (typeof TURN_COLUMNS)[number];
 /** The columns that are words; the rest are play. */
 export const WORD_COLUMNS: ReadonlySet<TurnColumn> = new Set(['prose', 'logText', 'reportText']);
@@ -77,6 +87,8 @@ export interface TurnInput {
   telemetry: unknown[];
   /** The scripted realm's report (its game_players.turn_report, parsed), or null in a bot game. */
   report: Record<string, unknown> | null;
+  /** Every write and rpc the turn sent to the database, in order, as recorded (writes.ts: payloads masked). */
+  writes: unknown[];
 }
 
 /** One turn's hashes, joined with spaces in TURN_COLUMNS order (the form kept in the baseline). */
@@ -89,6 +101,7 @@ export function turnHashes(t: TurnInput): string {
     telemetry: playHash(t.telemetry.map(withoutStamps)),
     report: t.report ? playHash(withoutStamps(t.report)) : '',
     reportText: t.report ? proseHash(withoutStamps(t.report)) : '',
+    writes: playHash(t.writes),
   };
   return TURN_COLUMNS.map((c) => cols[c]).join(' ');
 }
