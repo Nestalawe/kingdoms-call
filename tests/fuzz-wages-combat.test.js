@@ -1,17 +1,13 @@
 // Kingdoms Call — headless engine fuzz for the 2026-09-27 (v…-1753) changes.
 // Boots the real GM portal under jsdom with a Supabase stub and runs whole turns of all-bot games,
-// then hammers personal combat. Watches for: any throw out of runTurn, any uncaught window error,
-// and NaN / undefined leaking into battle narrative. Also samples the Orcish war-spoils discount
-// the wage pass actually charged (p._lastWages.orcSpoilsG) so items 8 & 9 are exercised live.
+// and watches for any throw out of runTurn and any uncaught window error. Also samples the Orcish war-spoils discount
+// the wage pass actually charged (p._lastWages.orcSpoilsG) so items 8 & 9 are exercised live. Its personal-combat
+// fuzz is tests/unit/fuzz-personal-combat.test.ts (plan P1-08f).
 //
-//   node tests/fuzz-wages-combat.test.js [gm-portal.html] [games] [turns] [bots] [fights]
+//   node tests/fuzz-wages-combat.test.js [gm-portal.html] [games] [turns] [bots]
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
-const GMF=process.argv[2]||'kingdoms-call-gm-portal.html'; const GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5, FIGHTS=+process.argv[6]||4000;
-let html=readPage(GMF);
-const inj=(a,b)=>{ if(html.split(a).length!==2) throw new Error('anchor not unique: '+a.slice(0,50)); html=html.replace(a,b); };
-// pcBuildGuardian is still nested in resolveTurn (until plan P1-08f); the lifted personal-combat functions take the
-// turn's context first (P1-08e), so the hook hands them back wrapped with it.
-inj("  // 4. Run all 5 phases\n","  window.__PC={resolvePersonalCombat:(...a)=>resolvePersonalCombat(turnContext,...a),pcCharCombatant:(...a)=>pcCharCombatant(turnContext,...a),pcBuildGuardian,pcMeleeDamage,autoEncounterPlan:(...a)=>autoEncounterPlan(turnContext,...a),getG:()=>G};\n  // 4. Run all 5 phases\n");
+const GMF=process.argv[2]||'kingdoms-call-gm-portal.html'; const GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5;
+const html=readPage(GMF);
 
 let ROWS={}; const WRITES=[];
 const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});
@@ -51,24 +47,6 @@ const dom=bootJsdom(html,{supabase:{createClient:()=>sbStub()},
   }
   console.log(`engine: turns=${turns} crashes=${crashes} uncaught errors=${errors.length}`);
   console.log(`orc war-spoils: ${orcRealms} Orcish realm-turns, ${orcTurns} of them earned the discount, ${orcSaved}g saved in total (all integers, all >=0)`);
-  // ── personal combat ──
-  const P=W.__PC; const MON=W.eval('MONSTERS_P'); let fc=0, fbad=0;
-  for(let i=0;i<FIGHTS;i++){
-    const m0=JSON.parse(JSON.stringify(MON[i%MON.length])); m0._hpFull=m0.hp;
-    const lv=1+(i%9);
-    const hc={id:'fz'+i,name:'Fz',player:null,alive:true,hp:20+lv*6,maxHp:20+lv*6,race:['Human','Elven','Dwarven','Orcish'][i%4],temper:['Berserk','Brave','Cautious','Cowardly'][i%4],skills:{white:Math.min(9,lv),melee:(i*7)%10,archery:(i*3)%10},items:[],armies:[]};
-    hc.encounterPlan={tactics:['MA','AR','MA','MA','MA'],duelStance:'accept'};
-    const feature={name:'Ruin',monster:m0,hoardItems:[]};
-    try{
-      const hero=P.pcCharCombatant(hc); hero.tactics=hc.encounterPlan.tactics.slice(); hero._vsGuardian=true;
-      const mon=P.pcBuildGuardian(feature,JSON.parse(JSON.stringify(m0)),[]);
-      const res=P.resolvePersonalCombat(hero,mon,{maxRounds:20,feature});
-      const txt=(res&&res.narrative||[]).map(x=>typeof x==='string'?x:(x&&x.text)||'').join('\n');
-      if(/NaN|undefined/.test(txt)){ fbad++; if(fbad<4) console.log('BAD TEXT', txt.split('\n').filter(l=>/NaN|undefined/.test(l)).slice(0,2)); }
-      fc++;
-    }catch(e){ fbad++; if(fbad<4) console.log('fight threw', e.stack.split('\n').slice(0,3).join(' | ')); }
-  }
-  console.log(`combat: fights=${fc} crashes/bad=${fbad}`);
   errors.slice(0,6).forEach(e=>console.log('  !',e.split('\n').slice(0,3).join(' | ')));
-  process.exit(crashes||errors.length||fbad?1:0);
+  process.exit(crashes||errors.length?1:0);
 })();

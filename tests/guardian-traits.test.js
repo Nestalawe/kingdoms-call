@@ -4,8 +4,8 @@
 //     thing (arrows; a school of magic; Elemental magic, whose fire lingers, for lingering harm).
 //   * Behind the card: the hidden category multipliers (monsterTraits: undead, fiend, flyer, armoured,
 //     beast) must never push the other way from a trait on the card — the card wins.
-// monsterTraits is nested inside runTurn, so a real turn is run first and the hook at
-// "  // 4. Run all 5 phases" hands it back.
+// monsterTraits is top-level since plan P1-08f (it reads no turn state), but this test still runs a real turn first
+// and takes it from the hook at "  // 4. Run all 5 phases"; it moves down with P1-14.
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 const GMF=process.argv[2]||'kingdoms-call-gm-portal.html';
 let html=readPage(GMF);
