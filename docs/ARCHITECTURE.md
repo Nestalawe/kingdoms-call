@@ -23,8 +23,8 @@ every test. **Edit `src/`, never `site/`**: the next build overwrites it.
   in its place, byte for byte. The other files (the data file, `kc-*.js`, `vendor/`) are copied as they are. When it
   landed, the build reproduced the committed `site/` exactly, every byte of every file.
 - **Each `.js` file is a stretch of whole top-level statements**, so it parses on its own; no file ends inside a
-  function (`tests/static/build.test.ts`). The GM portal's main script is 69 files; `src/engine/run-turn.js` (the turn,
-  `resolveTurn`, ~13,700 lines) is being taken apart by P1-08, one area at a time (below). The player portal's is 20.
+  function (`tests/static/build.test.ts`). The GM portal's main script is 76 files; `src/engine/run-turn.js` (the turn,
+  `resolveTurn`, ~13,000 lines) is being taken apart by P1-08, one area at a time (below). The player portal's is 20.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report,
   the statistics snapshots, what a realm can see), `db/` (which database, the version guard, telemetry and the light `meta`
   rows), `content/` (the data file), `ui/<page>/` (each page's template, styles and the rest of its code),
@@ -256,8 +256,9 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
   the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,
-  `recruitedThisTurn` and `_intrusionAcc` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
-  `_currentPhase`, `_afterPhases`), which are read and written as `turnContext._currentPhase` everywhere, in
+  `recruitedThisTurn`, `_intrusionAcc` and `_elvenEscapeQueue` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
+  `_currentPhase`, `_afterPhases`, and since P1-08c `_combatSkillProv`, `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`,
+  `_deferredSkillLogs`, `_pcSimulating`), which are read and written as `turnContext._currentPhase` everywhere, in
   `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it yet (P1-08m). Lifted so
   far (P1-08a): the line helpers and the turn's records (`engine/turn/`), relations and captures
   (`engine/realms/relations-and-captures.js`), the title lookups and battle merit
@@ -270,7 +271,14 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   warnings (`engine/turn/intrusion-warnings.js`), the Plague and the Bless ward (`engine/magic/plague-and-bless-ward.js`),
   `provName`, `provOf` and `neighborInDir` (`engine/world/map-helpers.js`), and `healFeatureMonsters`
   (`engine/chances-and-lair-grades.js`); the constants they read (`TERRAIN_MODS`, `HEX_DIRS`, `REIGN_OF_FEAR_MULT`, …)
-  are top-level constants now, beside them. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  are top-level constants now, beside them. P1-08c: experience, skill rises and earned HP (`trySkillGain`,
+  `engine/heroes/experience-skill-rises-and-earned-hp.js`, with `SKILLGAIN_STD` and `SKILLGAIN_COMMON`), battle report
+  lines and force markers (`emitBattle`, `engine/battle/battle-report-lines-and-force-markers.js`), Evil Terror
+  (`engine/battle/evil-terror.js`), the pre-battle spell choice (`engine/magic/pre-battle-spell-choice.js`), Blood Harvest
+  and the Iron Throne (`engine/battle/blood-harvest-and-iron-throne.js`), Raid the Coast and landing parties
+  (`engine/battle/raid-the-coast-and-landing-parties.js`), what a spy learns (`engine/espionage/what-a-spy-learns.js`),
+  graves and fallen heroes (`engine/graves.js`), and `noteBattleLoss`
+  (`engine/turn/mercenary-ids-and-battle-records.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
