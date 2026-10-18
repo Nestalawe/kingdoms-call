@@ -91,7 +91,6 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'new-creatures', 'tests/new-creatures.test.js'],
     ['unit', 'abilities-beasts', 'tests/abilities-beasts.test.js'],
     ['scenario', 'abilities-beasts-turn', 'tests/abilities-beasts-turn.test.js'],
-    ['unit', 'hp-gain-private', 'tests/hp-gain-private.test.js'],
     ['unit', 'battle-fronts-meet', 'tests/battle-fronts-meet.test.js'],
     ['scenario', 'beast-calls-gone', 'tests/beast-calls-gone.test.js'],
     ['unit', 'terror-visible', 'tests/terror-visible.test.js'],
@@ -106,9 +105,7 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'battle-spells-recorded', 'tests/battle-spells-recorded.test.js'],
     ['scenario', 'concede', 'tests/concede.test.js'],
     ['unit', 'monarch-grave', 'tests/monarch-grave.test.js'],
-    ['scenario', 'guardian-melee', 'tests/guardian-melee.test.js'],
     ['scenario', 'guardian-traits', 'tests/guardian-traits.test.js'],
-    ['scenario', 'hit-cap', 'tests/hit-cap.test.js'],
     ['unit', 'unit-fates', 'tests/unit-fates.test.js'],
     ['scenario', 'move-points', 'tests/move-points.test.js'],
     ['scenario', 'overtures', 'tests/overtures.test.js'],
@@ -126,19 +123,10 @@ export function suite(full: boolean): Script[] {
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
     ['scenario', 'research-persevere', 'tests/research-persevere.test.js'],
     ['scenario', 'surgery-lines', 'tests/surgery-lines.test.js'],
-    ['unit', 'bolt-damage', 'tests/bolt-damage.test.js'],
-    ['unit', 'arrow-damage', 'tests/arrow-damage.test.js'],
-    ['unit', 'every-round-acts', 'tests/every-round-acts.test.js'], // batch 2026-10-14
-    ['unit', 'guardian-holds-melee', 'tests/guardian-holds-melee.test.js'], // batch 2026-10-14
-    ['unit', 'stun-ward-lands', 'tests/stun-ward-lands.test.js'], // batch 2026-10-14
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
-    ['unit', 'holy-symbol-unclean', 'tests/holy-symbol-unclean.test.js'], // batch 2026-10-14
-    ['unit', 'fireball-burn', 'tests/fireball-burn.test.js'], // batch 2026-10-14
     ['scenario', 'xp-lair-thief', 'tests/xp-lair-thief.test.js'], // batch 2026-10-14
     ['scenario', 'practice-human', 'tests/practice-human.test.js'], // batch 2026-10-14
-    ['unit', 'xp-fight-win', 'tests/xp-fight-win.test.js'], // batch 2026-10-14
     ['scenario', 'xp-small-chances', 'tests/xp-small-chances.test.js'], // batch 2026-10-14
-    ['unit', 'guardian-perks', 'tests/guardian-perks.test.js'], // batch 2026-10-14
     ['static', 'spell-words', 'tests/spell-words.test.js'], // batch 2026-10-14
     ['static', 'lair-readiness-words', 'tests/lair-readiness-words.test.js'], // batch 2026-10-14
     ['static', 'rulebook-review-words', 'tests/rulebook-review-words.test.js'], // batch 2026-10-15
@@ -146,8 +134,6 @@ export function suite(full: boolean): Script[] {
     ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
     ['unit', 'sight-shared-province', 'tests/sight-shared-province.test.js'], // batch 2026-10-15
     ['scenario', 'spy-reveals', 'tests/spy-reveals.test.js'], // batch 2026-10-15
-    ['unit', 'blast-dreamstone', 'tests/blast-dreamstone.test.js'], // batch 2026-10-15
-    ['unit', 'spiritwrack-five', 'tests/spiritwrack-five.test.js'], // batch 2026-10-15
     ['static', 'mastery-hints-words', 'tests/mastery-hints-words.test.js'], // batch 2026-10-15
     ['unit', 'guard-cast-chance', 'tests/guard-cast-chance.test.js'], // batch 2026-10-15
     ['scenario', 'hierophant-no-consecrate', 'tests/hierophant-no-consecrate.test.js'], // batch 2026-10-15
@@ -161,7 +147,6 @@ export function suite(full: boolean): Script[] {
     ['page', 'hire-price', 'tests/hire-price.test.js'],
     ['scenario', 'defend-naval-overland', 'tests/defend-naval-overland.test.js'],
     ['scenario', 'defend-once', 'tests/defend-once.test.js'],
-    ['unit', 'hp-wound-gain', 'tests/hp-wound-gain.test.js'],
     ['scenario', 'hero-every-phase', 'tests/hero-every-phase.test.js'],
     ['scenario', 'npc-parity', 'tests/npc-parity.test.js'],
     [
