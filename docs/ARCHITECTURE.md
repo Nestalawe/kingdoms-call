@@ -251,7 +251,7 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
 - **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08). Most of the rule code is still
-  nested inside it (combat, personal combat, the orders, …), and tests reach that by injecting code at exact source lines (see
+  nested inside it (the orders, the phase helpers, the bots, …), and tests reach that by injecting code at exact source lines (see
   [tests/README.md](../tests/README.md#code-anchor-hooks)). A lifted helper that reads the turn's state takes **the
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
@@ -291,7 +291,8 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   battle against a province's defenders with no realm's hero among them (`combatVsNPC`,
   `engine/battle/battles-against-province-defenders.js`, with the constants both battle paths read: the carry-on death
   scaling, the airborne-at-sea penalties, the narrative verbs, `BATTLE_ARMY_SPELLS`), and the duel before a battle
-  (`preBattleDuel`, `engine/battle/pre-battle-duels.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  (`preBattleDuel`, `engine/battle/pre-battle-duels.js`). P1-08h: the battle between two heroes' hosts (`combatVsChar`,
+  `engine/battle/battles-between-heroes.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

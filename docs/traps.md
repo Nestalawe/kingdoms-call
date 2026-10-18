@@ -24,7 +24,7 @@ portal hangs on its spinner (the boot-failure reporter now shows the error).
 - `ITEMS_BY_TIER` and `rollMagicItem` (GM portal) must come after `ALL_MAGIC_ITEMS_P` (data file). This
   holds because the data file loads first. Keep it that way.
 - Code that runs at top level calls only top-level helpers. Many engine helpers are local to `resolveTurn`
-  (e.g. `combatVsChar`), and a lifted one may need the turn's context (`effStat(turnContext, c, stat)`; use
+  (e.g. `processOrder`), and a lifted one may need the turn's context (`effStat(turnContext, c, stat)`; use
   `effSkillOf` outside a turn). Declare shared helpers as hoisted `function`s.
 - Prefer building lookup tables lazily inside the function that needs them over a top-level IIFE.
 - A flag read by layout code that can run early (e.g. a hash-restored view) must be declared above
