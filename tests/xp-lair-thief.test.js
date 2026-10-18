@@ -1,13 +1,15 @@
 // 2026-10-14 (batch item 8) — clearing a lair and carrying off its hoard no longer trains Thief. The
 // hero still earns what a won fight earns (Melee from the blows); only the Thief roll for the hoard
 // is gone. Level 2 (scenario): the Search Lair order and its rewards live inside runTurn. Every
-// experience roll is recorded by a hook at the top of trySkillGain, and the guardian is staged at 1 HP
+// experience roll is recorded by a wrapper around the top-level trySkillGain, and the guardian is staged at 1 HP
 // against a strong hero, so the fight's outcome does not depend on the dice.
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const TSG="  function trySkillGain(char, skill, base, narr, mult){\n";
+// every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
+const XP_RECORD="{ const tryOne=trySkillGain; trySkillGain=function(turnContext, char, skill, base, narr, mult){ if(window.__xp) window.__xp.push({id:char&&char.id,skill,base,mult}); return tryOne.apply(this, arguments); }; }";
 (async()=>{
-  const sc=await bootScenario({inject:[[TSG,TSG+"    if(window.__xp) window.__xp.push({id:char&&char.id,skill,base,mult});\n"]]}); const W=sc.W;
+  const sc=await bootScenario(); const W=sc.W;
+  W.eval(XP_RECORD);
   W.__xp=[];
   const r=await sc.turn({cols:10,rows:6,seaPct:10,prepare(S){
     const H=S.characters.find(c=>c.alive&&c.player===0&&!c.isKing);

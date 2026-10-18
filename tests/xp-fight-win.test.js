@@ -3,12 +3,14 @@
 // already at 0 HP, so the hero wins without landing anything: the only Melee roll is the win's. The
 // loser rolls no win roll.
 // resolvePersonalCombat is nested inside runTurn (tests/lib/pc-hooks.js); every experience roll is
-// recorded by a hook at the top of trySkillGain.
+// recorded by a wrapper around the top-level trySkillGain.
 const {bootPersonalCombat}=require('./lib/pc-hooks');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const TSG="  function trySkillGain(char, skill, base, narr, mult){\n";
+// every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
+const XP_RECORD="{ const tryOne=trySkillGain; trySkillGain=function(turnContext, char, skill, base, narr, mult){ if(window.__xp) window.__xp.push({id:char&&char.id,skill,base,mult}); return tryOne.apply(this, arguments); }; }";
 (async()=>{
-  const {W, PC, base, MON, errs, state}=await bootPersonalCombat(['resolvePersonalCombat','pcCharCombatant','pcMonsterCombatant'],{inject:[[TSG,TSG+"    if(window.__xp) window.__xp.push({id:char&&char.id,skill,base,mult});\n"]]});
+  const {W, PC, base, MON, errs, state}=await bootPersonalCombat(['resolvePersonalCombat','pcCharCombatant','pcMonsterCombatant']);
+  W.eval(XP_RECORD);
   const real=state.characters.filter(c=>c.alive&&c.player!=null);
   const hero=c=>{ const h=PC.pcCharCombatant(c); h.hp=h.maxHp=40; return h; };
   const g=()=>{ const m=MON.find(x=>x.name==='Owlbear'); return PC.pcMonsterCombatant({...JSON.parse(JSON.stringify(m)),_hpFull:m.hp}); };
