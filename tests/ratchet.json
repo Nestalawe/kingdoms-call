@@ -4,9 +4,9 @@
     "tsNocheck": 0,
     "tsIgnore": 0,
     "eslintDisable": 0,
-    "stubDbTests": 73,
+    "stubDbTests": 71,
     "allowlistEntries": 1,
-    "javascriptFiles": 149,
+    "javascriptFiles": 146,
     "quarantinedTests": 4,
     "sourceJavascriptFiles": 129
   }

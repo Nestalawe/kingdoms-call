@@ -1,20 +1,18 @@
 // 2026-10-12 (Toby, the battle reports: who beat whom) — the lines a real turn writes:
 //   • a province battle's casualty lines name whom each company fought (the attacker's and the defenders');
 //     the losses tally still counts each side's own losses;
-//   • a beaten guard's survivors are told what beat them (erodeGuardSurvivors: flee / lose heart / hold).
+//   • a beaten guard's survivors' lines name the host that beat them.
 // A fallen commander's host told who slew them is tests/unit/fallen-commander-host.test.ts (plan P1-08f: handleHeroDeath
-// and disperseDeadCharArmies are top-level now).
-// Level 2 (scenario + the code-anchor hook): the battle paths and erodeGuardSurvivors live inside runTurn. The
-// battle is staged with overwhelming odds, so the attacker always wins;
-// which fate each company draws is the dice's, so the checks hold for every line that appears rather than for
-// one line in particular. The erosion rolls are driven with fixed dice (kcRng.use).
+// and disperseDeadCharArmies are top-level now); each fate of a beaten guard's survivors, with fixed dice, is
+// tests/unit/stalled-battles-unit-gain-and-war-fronts.test.ts (plan P1-08i3: erodeGuardSurvivors is top-level now).
+// Level 2 (scenario): what a real turn's battle writes. The battle is staged with overwhelming odds, so the attacker
+// always wins; which fate each company draws is the dice's, so the checks hold for every line that appears rather than
+// for one line in particular.
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const ANCHOR="  // 4. Run all 5 phases\n";
-const HOOK="  window.__BR={erodeGuardSurvivors,getG:()=>G,setG:(s)=>{G=s;turnContext.G=s;}};\n";
 const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|wrapping the line at|met at the end of the line by|riding free round the flank|fighting from the air|in the reserve|in the second line|shooting at an empty column|with nobody opposite)\b/;
 (async()=>{
-  const sc=await bootScenario({inject:[[ANCHOR,HOOK+ANCHOR]]}); const W=sc.W;
+  const sc=await bootScenario(); const W=sc.W;
   const nb=(S,p)=>W.getNeighborsP(p,S.world.cols,S.world.rows,S.world.provinces).filter(Boolean);
   const place=(S,c,p)=>{ S.world.provinces.forEach(q=>{ q.characters=(q.characters||[]).filter(id=>id!==c.id); }); p.characters=[...(p.characters||[]),c.id]; c.location=p.id; c.locationName=p.name; };
   const own=(S,p,pi)=>{ S.players.forEach(pl=>{ pl.provinces=(pl.provinces||[]).filter(id=>id!==p.id); }); p.owner=pi; if(pi!=null) S.players[pi].provinces.push(p.id); p.neutralDefenders=[]; p.npcArmies=0; p.features=[]; p.garrisonArmies=[]; };
@@ -72,24 +70,6 @@ const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|w
     ok(side(H.name)===atkLost,`the tally's attacker losses match the lines (${side(H.name)} v ${atkLost}): "${tl}"`);
     ok(side(guardName)===defLost,`the tally's defender losses match the lines (${side(guardName)} v ${defLost})`);
   }
-
-  // ── the hook: erosion, driven directly ──
-  const BR=W.__BR; ok(!!BR,'the hook exposes the runTurn helpers'); if(!BR){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
-  const G=BR.getG(); G.mercenaries=[];
-  const landProv=G.world.provinces.find(p=>p&&p.terrain!=='sea');
-  const withDice=(seq,fn)=>{ let i=0; const real=W.kcRng.use(()=>seq[Math.min(i++,seq.length-1)]); try{ return fn(); } finally{ W.kcRng.use(real); } };
-  const erode=(seq,victor)=>{ const lines=[]; const surv=named('Shieldwall Levies','Average',['Levy S1','Levy S2']).concat(named('Goblin Horde','Green',['Gob S1']));
-    const kept=withDice(seq,()=>BR.erodeGuardSurvivors({name:'Ulric (wandering)'},landProv,surv,l=>lines.push(l),victor)); return {lines,kept}; };
-  let e=erode([0],'Aldric');
-  ok(e.lines.length===3&&e.lines.every(l=>/^— Ulric's .+ break ranks and flee before Aldric's host — they now roam as mercenaries near /.test(l)),`fleeing survivors name the victor: "${e.lines[0]}"`);
-  ok(e.kept.length===0&&G.mercenaries.length>=3,'…and they are mercenaries now');
-  e=erode([0.999],'Aldric');
-  ok(e.lines.length===3&&e.lines.every(l=>/^— Ulric's .+ hold their ground unbroken against Aldric's host and rally around Ulric\.$/.test(l)),`survivors who hold name the victor: "${e.lines[0]}"`);
-  e=erode([0.999,0,0.999,0,0.999,0],'Aldric');
-  ok(/^— Ulric's Levy S1 \(Shieldwall Levies, Average\) lost heart in defeat, reduced to Green — beaten by Aldric's host, they rally around Ulric\.$/.test(e.lines[0]),`a demoted survivor names the victor: "${e.lines[0]}"`);
-  ok(/^— Ulric's Gob S1 \(Goblin Horde\) have had enough — the survivors slip away/.test(e.lines[2]),`a Green survivor that would fall further disbands as before: "${e.lines[2]}"`);
-  e=erode([0]);
-  ok(e.lines.every(l=>/break ranks and flee — they now roam as mercenaries near /.test(l)),`with no victor named the old wording stands: "${e.lines[0]}"`);
 
   console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);
   sc.errs.slice(0,3).forEach(e=>console.log('  ! '+e.split('\n').slice(0,2).join(' | ')));
