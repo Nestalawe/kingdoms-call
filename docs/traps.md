@@ -133,12 +133,17 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
 
 - A call that leaves it out doesn't fail: every argument moves along by one, and the helper quietly reads the wrong
   thing. `no-undef` can't see it. The balance matrix catches it in the code it runs; anywhere else, a direct test.
-- A helper passed as a value is wrapped where it's passed: `(...a)=>effStat(turnContext,...a)`.
+- A helper passed as a value is wrapped where it's passed: `(...a)=>effStat(turnContext,...a)`. A test hook that hands
+  one back wraps it the same way, or the test moves down and calls it directly (P1-08b moved `naval-retreat`,
+  `retreat-dry-ground`, `march-one-rate` and most of `battle-tweaks` to `tests/unit/`). A `typeof f==='function'` guard
+  stays true: a lifted helper is a top-level function.
 - A value the turn changes as it goes (`_logCtx`, `_currentPhase`, `_afterPhases`) lives only in the context. Read and
   write `turnContext._currentPhase`, never a copy in a local, or a later reader sees an old value. A test hook that
   changes one, or swaps `G`, changes the context's too (`npc-parity`'s `setG` and `setPhase`).
 - Reading a context value before `resolveTurn` has set it gives `undefined`; reading the old `let` before its line
-  threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix).
+  threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix), and
+  P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
+  `recruitedThisTurn`, `_intrusionAcc`): before its join line, the old name threw; the context's reads `undefined`.
 
 ## Top-level names aren't on `window` in tests
 
@@ -323,7 +328,7 @@ Guard", one missing from a terrain block fights at ×1 there. When adding (or re
   `KC_UNIT_BASE_STR`.
 - GM portal: `ARMY_COST_MASTER`, `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
   `'Orc Garrison':'Orcish'};` as its last entry: a test slices the source up to it), `DISC_CLS_SETS`,
-  `TERRAIN_MODS` (inside `resolveTurn`) and the magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
+  `TERRAIN_MODS` (`engine/battle/terrain-and-unit-strength.js`) and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
 - Player portal: `UNIT_ABILITIES` and the race blurbs. Rulebook: the roster, home-roster, move-rate and
   kinds-of-unit tables and the light-foot list. The intro's list of kinds.
 
