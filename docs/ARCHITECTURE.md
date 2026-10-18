@@ -256,7 +256,7 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
   the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,
-  `recruitedThisTurn`, `_intrusionAcc` and `_elvenEscapeQueue` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
+  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, and since P1-08d `presenceByPhase`, `clairWatch` and `_reports` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
   `_currentPhase`, `_afterPhases`, and since P1-08c `_combatSkillProv`, `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`,
   `_deferredSkillLogs`, `_pcSimulating`), which are read and written as `turnContext._currentPhase` everywhere, in
   `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it yet (P1-08m). Lifted so
@@ -278,7 +278,9 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   and the Iron Throne (`engine/battle/blood-harvest-and-iron-throne.js`), Raid the Coast and landing parties
   (`engine/battle/raid-the-coast-and-landing-parties.js`), what a spy learns (`engine/espionage/what-a-spy-learns.js`),
   graves and fallen heroes (`engine/graves.js`), and `noteBattleLoss`
-  (`engine/turn/mercenary-ids-and-battle-records.js`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  (`engine/turn/mercenary-ids-and-battle-records.js`). P1-08d: every realm's report and the Spy-stealth rolls
+  (`buildReports`, `engine/turn/realm-reports-and-spy-stealth.js`), which `resolveTurn` hands the shell wrapped with the
+  turn's context. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
