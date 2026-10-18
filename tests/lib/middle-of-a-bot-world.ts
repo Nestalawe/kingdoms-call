@@ -242,8 +242,13 @@ export interface PlayedTurn {
 }
 /** Plays one whole turn (resolveTurn) from the board as staged (plan P1-08j1): every realm human-held, each hero given
  *  orders here doing them, every other hero Resting, safe start over. The turn works out its own move points; the
- *  board's context isn't used. */
-export function playTurn(b: Board, orders: Record<number, Order[]>): PlayedTurn {
+ *  board's context isn't used. `written` adds orders a realm sends under a key of its own (plan P1-08j3: the orders
+ *  written for a hero it means to hire, `hired_<hero>_via_<hirer>_ph<phase>`), by realm. */
+export function playTurn(
+  b: Board,
+  orders: Record<number, Order[]>,
+  written: Record<number, Record<string, Order[]>> = {},
+): PlayedTurn {
   const G = b.G as World & { safeStart?: boolean };
   G.safeStart = false;
   const rows = G.players.map((_, i) => ({
@@ -254,9 +259,12 @@ export function playTurn(b: Board, orders: Record<number, Order[]>): PlayedTurn 
     display_name: 'Realm ' + String(i),
     orders_submitted: true,
     orders: JSON.stringify({
-      orders: Object.fromEntries(
-        G.characters.filter((c) => c.alive && c.player === i).map((c) => [c.id, orders[c.id] ?? plan()]),
-      ),
+      orders: {
+        ...Object.fromEntries(
+          G.characters.filter((c) => c.alive && c.player === i).map((c) => [c.id, orders[c.id] ?? plan()]),
+        ),
+        ...written[i],
+      },
       encounterPlans: {},
       kingSkills: {},
       diplomacy: {},

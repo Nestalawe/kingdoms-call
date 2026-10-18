@@ -122,6 +122,8 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/battle/war-fronts-and-enemy-stand-offs.js',
         'engine/orders/move-order-marches-voyages-and-battles-on-arrival.js',
         'engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.js',
+        'engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.js',
+        'engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',

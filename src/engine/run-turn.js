@@ -593,7 +593,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // set while the Hunting Rumours odds simulation runs fights in the background — no sandbox fight
   // may ever train a real skill (see simulateLairOdds).
   turnContext._pcSimulating=false;
-  const HUMANOID_RACES_SG=new Set(KC_HUMANOID_RACES);
 
   // Record killed armies into province grave pool for Skeletal Armies spell Elven army units of an
   // Elven KINGDOM that would fall in battle have a terrain-based chance to slip the field and make
@@ -609,42 +608,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
   try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter:(...a)=>resolveEncounter(turnContext,...a),resolvePersonalCombat:(...a)=>resolvePersonalCombat(turnContext,...a),resolveCharVsChar:(...a)=>resolveCharVsChar(turnContext,...a),combatVsChar:(...a)=>combatVsChar(turnContext,...a),effStat:(...a)=>effStat(turnContext,...a),rng,pcCharCombatant:(...a)=>pcCharCombatant(turnContext,...a),pcMonsterCombatant,trySkillGain:(...a)=>trySkillGain(turnContext,...a),resolveDuel:(...a)=>resolveDuel(turnContext,...a),duelFleeItemDrop:(...a)=>duelFleeItemDrop(turnContext,...a),pcCastCombatSpell:(...a)=>pcCastCombatSpell(turnContext,...a),preBattleDuel:(...a)=>preBattleDuel(turnContext,...a),awardWinHp:(...a)=>awardWinHp(turnContext,...a),awardKillXP:(...a)=>awardKillXP(turnContext,...a)}; }catch(e){}
 
-  // ── HIRE PRE-ORDERS LAND (shared by Hire Hero and the Neutral BROKER hire) ────
-  // The hirer's pre-written orders are applied only once the hire has landed. Matched on hero + this
-  // realm (an exact match on the hiring character wins if two cards were somehow submitted), so a
-  // rival's pre-orders for the same hero are ignored. Phases are bounded by the ACTUAL hire phase,
-  // not the phase the player planned to hire in. 2026-09-23 (Toby item 4): the Broker hire never
-  // called this — since hire pre-orders became PENDING (09-21) a brokered hero's pre-written orders
-  // were silently dropped, his remaining phases were left empty, and his encounter plan was never
-  // set. Both paths now share this one function.
-  function landHirePreOrders(h, c, ph, player){
-        // Matched on hero + this realm (an exact match on the hiring character wins if two cards
-        // were somehow submitted), so a rival's pre-orders for the same hero are ignored. Phases are
-        // bounded by the ACTUAL hire phase, not the phase the player planned to hire in — if the
-        // hire slipped a phase, the orders for the phases he was not yet sworn are dropped.
-        {
-          const _ph=(G._pendingHireOrders||[]);
-          const _pend=_ph.find(x=>x.heroId===h.id&&x.player===c.player&&x.viaId===String(c.id))
-                    ||_ph.find(x=>x.heroId===h.id&&x.player===c.player);
-          let _applied=0;
-          if(_pend&&Array.isArray(_pend.orders)){
-            const slots=G.turnOrders[h.id]||[null,null,null,null,null];
-            _pend.orders.forEach((o,pi2)=>{
-              if(pi2>ph&&o&&o.action&&o.action!=='Defend'&&o.action!=='defend'){ slots[pi2]=o; _applied++; }
-            });
-            G.turnOrders[h.id]=slots;
-          }
-          // Step 3 of order ingestion only defaults LIVING OWNED characters to Defend, and this
-          // hero belonged to nobody when it ran, so his post-hire phases were left empty and he
-          // simply did nothing (no watch) for the rest of the turn. Fill them in like everyone else
-          // — the same closing step Resurrect and Charm already do.
-          const fin=G.turnOrders[h.id]||[null,null,null,null,null];
-          for(let pz=0;pz<5;pz++){ if(pz>ph&&!fin[pz]) fin[pz]={action:'defend',target:'',extra:'',desc:'Defend'}; }
-          G.turnOrders[h.id]=fin;
-          applyPendingSynthPlan(G,h,c.player);
-          if(_applied>0) log('system',`${h.name} takes up the orders ${player.name} laid down for them — ${_applied} phase${_applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player],charId:h.id,phase:ph});
-        }
-  }
   function processOrder(c,o,ph){
     if(!c||!c.alive||!o) return;
     // If this hero was unified into another's battle this phase, their own order is superseded
@@ -854,204 +817,8 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
       case 'hunt_rumours': resolveHuntingRumoursOrder(turnContext, c, target, prov, player); break;
 
       case 'search': resolveSearchLairOrder(turnContext, c, ph, target, prov, player); break;
-      case 'recruit':{
-        const ARMY_COST_P=ARMY_COST_MASTER; // alias → master table at top of script
-        // ── First: mercenary bands roaming this province ── The order form now lists mercenaries
-        // alongside native units, tagged 'merc:<id>'. A single Recruit Armies order may therefore
-        // mix the two, so mercenary tokens are consumed here and stripped from the list before
-        // native recruitment runs on the remainder. (The older bare id / type / unitName tokens are
-        // still accepted so orders saved by an earlier build resolve.)
-        const mercsHere=(G.mercenaries||[]).filter(m=>m.location===c.location);
-        let _rawSel=(target||'').split(',').map(t=>t.trim()).filter(Boolean);
-        // ── Recruit destination ── 'to:self' (default), 'to:garrison', or 'to:<charId>' (a
-        // FRIENDLY character standing in this province this phase). The token may arrive in either
-        // the target or the extra list; it is stripped before unit tokens are processed.
-        let _destTok=_rawSel.find(t=>t.startsWith('to:'))||((extra||'').split(',').map(t=>t.trim()).find(t=>t.startsWith('to:')));
-        _rawSel=_rawSel.filter(t=>!t.startsWith('to:'));
-        let _destChar=c, _destGarrison=false, _destNote='';
-        if(_destTok&&_destTok!=='to:self'){
-          if(_destTok==='to:garrison'){
-            if(prov.owner===c.player){ _destGarrison=true; _destNote=` (mustered directly into the garrison of ${prov.name})`; }
-            else _destNote=' (garrison unavailable — province not controlled; troops join the recruiter)';
-          } else {
-            const _r=orderCharRef(G,_destTok.slice(3)); // plain id or pre-order hero
-            if(_r&&_r.alive&&_r.player===c.player&&_r.location===c.location){ _destChar=_r; _destNote=` (mustered under ${_r.name}'s banner)`; }
-            else _destNote=' (chosen recipient is not here — troops join the recruiter)';
-          }
-        }
-        const _autoGarr=[]; // garrison-type recruits diverted from a character's column
-        const _pushRecruit=(unit)=>{
-          // GARRISON UNITS GO STRAIGHT TO THE GARRISON (2026-09-23c, Toby): a Human / Elven / Dwarf /
-          // Orc Garrison unit never joins a column when recruited — it musters into the garrison of the
-          // province it was raised in, whatever "Muster to" names (native recruiting already needs the
-          // province to be ours). A character can still march it out with Pick Up Army.
-          const _toGarr=_destGarrison||(isGarrisonUnitType(unit.type)&&prov.owner===c.player);
-          // Item 24 (2026-10-12): a beast recruited into a column already holding as many beasts as its leader's
-          // Druid musters into the garrison instead (native beasts are raised only in a province the realm holds).
-          const _overCmd=!_toGarr&&prov.owner===c.player&&beastCommandCount(unit)&&beastCommandRoom(_destChar,G.characters)<=0;
-          if(_toGarr){ prov.garrisonArmies=prov.garrisonArmies||[]; prov.garrisonArmies.push(unit); if(!_destGarrison) _autoGarr.push(unit.type); }
-          else if(_overCmd){ prov.garrisonArmies=prov.garrisonArmies||[]; prov.garrisonArmies.push(unit);
-            log('hire',`🐾 ${beastCommandWords(_destChar,G.characters)}: ${unit.unitName||unit.type} (${unit.type}) musters into the garrison of ${prov.name} instead.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
-          else { _destChar.armies=_destChar.armies||[]; _destChar.armies.push(unit); }
-          // TITLE MERIT: Beastlord / Wildwarden. Credited to the RECRUITER `c`, not the recipient:
-          // the merit is for finding and mustering the beast, and a hero who musters a griffon wing
-          // and hands it straight to a colleague has still done the mustering. Garrison musters
-          // count.
-          creditBeastUnit(TM(c), unit, 1);
-        };
-        const _mercTokens=new Set();
-        let mHired=false;
-        if(mercsHere.length>0&&_rawSel.length>0){
-          mercsHere.forEach(merc=>{
-            const tok=_rawSel.find(t=>t===`merc:${merc.id}`||t===String(merc.id)||t===merc.type||t===merc.unitName);
-            if(!tok) return;
-            _mercTokens.add(tok);
-            // Item 24: a mercenary beast is not hired into a full column where there is no garrison to take it.
-            if(!_destGarrison&&prov.owner!==c.player&&beastCommandCount({type:merc.type})&&beastCommandRoom(_destChar,G.characters)<=0){
-              log('hire',`🐾 ${beastCommandWords(_destChar,G.characters)} — the ${merc.unitName||merc.type} mercenaries are not hired.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); return; }
-            const baseMercCost=ARMY_COST_P[merc.type]||2;
-            // Neutral alignment: mercenaries cost 2g less (min 1g)
-            const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?2:0)+discSum(turnContext,c.player,'merc','delta',e=>!e.cls||discUnitIs(e.cls,merc.type,true))); // + merc discoveries
-            if((player.gold||0)<mCost){log('hire',`${c.name}: cannot afford ${merc.unitName||merc.type} mercenaries (${mCost}g).`,{actor:c.player,targets:[c.player]});return;}
-            player.gold-=mCost;
-            _pushRecruit({type:merc.type,quality:merc.quality,race:merc.race,unitName:merc.unitName});
-            G.mercenaries=G.mercenaries.filter(m=>m.id!==merc.id);mHired=true;
-            log('hire',`${c.name} hires mercenary band ${merc.unitName||merc.type} (${merc.quality}) for ${mCost}g${mCost<baseMercCost?' (Neutral discount)':''}.`,{actor:c.player,targets:[c.player],provinceId:c.location});
-          });
-          if(mHired){ resolveUnitGainInProvince(turnContext, _destGarrison?c:_destChar, prov, ph);
-            if(!_destGarrison && _destChar) refreshMovePool(turnContext,_destChar); } // mercenaries joined a column — recompute its pace
-        }
-        // Whatever is left of the order after the mercenary tokens are removed is native
-        // recruitment. a 'to:' destination token that arrived in `extra` must never be parsed as a
-        // unit type (it produced a spurious "to:garrison (not raised in …)" block note).
-        const _extraClean=(extra||'').split(',').map(s=>s.trim()).filter(t=>t&&!t.startsWith('to:')).join(',');
-        const _nativeSel=(_extraClean||_rawSel.filter(t=>!_mercTokens.has(t)&&!t.startsWith('merc:')).join(',')||(mHired?'':'Shieldwall Levies|1'))
-          .split(',').map(s=>s.trim()).filter(Boolean);
-        if(_nativeSel.length===0) break; // mercenaries only — nothing further to raise
-        // Native army recruitment requires CONTROL of the province — you cannot raise local troops
-        // in land you merely scouted or passed through. (Mercenaries, handled above, can be hired
-        // wherever they roam.) Conquering a province this turn sets prov.owner, so that counts.
-        const isOwned=prov.owner===c.player;
-        if(!isOwned){
-          log('system',`${c.name} cannot recruit in ${prov.name} — you must control the province to raise troops there.`,{actor:c.player,targets:[c.player]});break;
-        }
-        const selections=_nativeSel;
-        let totalCost=0;let recruited=[];let blocked=[];
-
-        for(const sel of selections){
-          const[armyType,qtyStr]=sel.split('|');
-          // A mercenary token that reached this far is stale (the band was already hired or has
-          // moved on) — it must never be treated as a native army type, or it spawns a phantom "the
-          // Guard (merc:merc_…, Average)" unit.
-          if(armyType.startsWith('merc:')||/^merc_/.test(armyType)) continue;
-          const qty=parseInt(qtyStr)||1;
-          // Primal sea beasts are called out of deep water — they can only be raised in a sea
-          // province, never on a coast. (Fleets remain recruitable wherever the province offers
-          // them.)
-          if(PRIMAL_SEA_TYPES.has(armyType)&&prov.terrain!=='sea'){
-            blocked.push(`${armyType} (can only be summoned in a sea province)`);continue;
-          }
-          // the ordered type must actually be OFFERED by the province the character is standing in
-          // AT RESOLUTION. Orders are set against a predicted location, but a battle can end the
-          // phase somewhere else — without this guard a character shoved into a different province
-          // would still raise units that province never offered. armyTypes is the province's own
-          // recruitable list (racial field units + its garrison).
-          if(!(prov.armyTypes||[]).includes(armyType)){
-            blocked.push(`${armyType} (not raised in ${prov.name} — that unit isn't available here)`);continue;
-          }
-          // Check turn-wide recruit limit
-          if(!canRecruit(turnContext,armyType,prov.id,prov,c.player)){
-            blocked.push(`${armyType} (already recruited this turn)`);continue;
-          }
-          const limit=getRecruitLimit(turnContext,armyType,prov,c.player);
-          const alreadyDone=recruitedThisTurn[`${prov.id}:${armyType}`]||0;
-          const actualQty=Math.min(qty, limit-alreadyDone);
-          let _unitCost=realmRecruitCost(G.players[c.player], armyType, ARMY_COST_P[armyType]||2); // sd16 + recruitCost discoveries
-          if(perkTier(c,'druid')>0&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType))) _unitCost=Math.floor(_unitCost*0.5); // DRUID L6: creatures/monsters cost half (rounded down)
-          const unitCost=_unitCost;
-          const cost=actualQty*unitCost;
-          if((player.gold||0)<totalCost+cost){
-            blocked.push(`${armyType} (insufficient gold: need ${cost}g more)`);continue;
-          }
-          totalCost+=cost;
-          for(let q=0;q<actualQty;q++){
-            // sd01 Superior Forging: recruited armies start at Veteran
-          const startQuality=((gdActive(turnContext,c.player,'Druidic')&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)))||kcRng()<discRecruitQChance(G.players[c.player],armyType))?'Veteran':'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
-          // Whale Cohorts and Shark Shoals are wild sea beasts — always the Primal race, whoever raises them.
-          const recruitRace=(armyType==='Whale Cohort'||armyType==='Shark Shoals')?'Primal':(prov.race||'Human');
-          _pushRecruit({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
-          if(!HUMANOID_RACES_SG.has(recruitRace)&&!_destGarrison) trySkillGain(turnContext,_destChar,'druid',SKILLGAIN_STD); // Druid: led a non-humanoid recruit
-          else if(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)) trySkillGain(turnContext,_destGarrison?c:_destChar,'druid',SKILLGAIN_COMMON); // 2026-09-21: any primal recruit (incl. into a garrison) — small chance for the recruiter
-          }
-          recordRecruit(turnContext,armyType,prov.id,actualQty);
-          recruited.push(`${actualQty}× ${armyType}`);
-        }
-        if(recruited.length>0){
-          player.gold-=totalCost;
-          const _agN=_autoGarr.length, _autoGarrNote=_agN?`; ${_agN} garrison unit${_agN!==1?'s':''} muster${_agN===1?'s':''} straight into the garrison of ${prov.name}`:'';
-          log('hire',`${c.name} recruits ${recruited.join(', ')} in ${prov.name}${_destNote}${_autoGarrNote}. Cost: ${totalCost}g. Treasury: ${player.gold}g remaining.`+
-            (blocked.length>0?` (Blocked: ${blocked.join('; ')}.)`:''),
-            {actor:c.player,targets:[c.player],provinceId:prov.id});
-          // if the muster went to ANOTHER of the player's characters, notify them in their section.
-          if(!_destGarrison && _destChar && _destChar.id!==c.id) notifyTarget(turnContext, _destChar,`⚔ ${recruited.join(', ')} muster to ${_destChar.name}'s banner in ${prov.name}, raised by ${c.name}.`,ph,'hire');
-          // Newly-mustered units join the destination character's column — recompute their pace (a
-          // slow recruit can only reduce it), preserving points already spent. Garrison musters
-          // don't march.
-          if(!_destGarrison && _destChar) refreshMovePool(turnContext,_destChar);
-        } else {
-          log('system',`${c.name}'s recruitment in ${prov.name} was entirely blocked: ${blocked.join('; ')}.`,{actor:c.player,targets:[c.player]});
-        }
-        break;
-      }
-      case 'hire':{
-        // resolve the hero by id, not by array position (defensive — the id==index invariant holds
-        // today, but a positional lookup would silently hire the WRONG hero if it ever broke).
-        const heroId=parseInt(target);const h=Number.isInteger(heroId)?((G.characters||[]).find(x=>x&&x.id===heroId)||null):null;
-        if(!h||h.player!==null||h.location!==c.location){log('hire',`${c.name} tries to hire a hero but none matching that description are available in ${prov.name}.`,{actor:c.player,targets:[c.player]});break;}
-        if(h._isNeutralGuard){log('hire',`${h.name} is sworn to defend ${prov.name} and will not abandon their post — the guardian of a neutral province cannot be hired away. You must defeat them in battle to take the province.`,{actor:c.player,targets:[c.player]});break;}
-        if(h._justDefeated){log('hire',`${h.name} is furious at being driven from their home — they refuse to work with you this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;}
-        if(h._releasedTurn===G.turn){log('hire',`${h.name} was only just released from service and will hear no offers this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;}
-        // ── Alignment-distance wages ── replaces the old race-based 2g/3g system. Wage = 2g + 1g
-        // per 2 steps between the hero's alignment and the hiring KINGDOM's alignment on the
-        // Divine…Undead spectrum. Divine realms cannot hire Undead heroes and vice versa (distance
-        // 6) — unless sd31 Diplomatic Protocols waives the ban (at 5g).
-        const kingdomAlign=G.players[c.player]?.alignment||'Neutral';
-        const _waiveBan=hasDisc(turnContext,c.player,'sd31');
-        const hireWage=h.player===null?heroHireWage(kingdomAlign,h.alignment,_waiveBan,h):(h.pay||1);
-        if(hireWage==null){
-          log('hire',`${h.name} (${h.alignment}) recoils from ${c.name}'s offer — ${kingdomAlign==='Divine'?'no creature of the grave will serve a Divine crown':'the faithful will never serve an Undead throne'}. (Alignment gulf too wide: Divine and Undead cannot hire one another.)`,{actor:c.player,targets:[c.player]});
-          break;
-        }
-        if((player.gold||0)<hireWage){log('hire',`${c.name} cannot afford to hire ${h.name} — needs ${hireWage}g/turn, treasury has only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
-        h.pay=hireWage;
-        // remember the ALIGNMENT part of the bargain (wage minus the skill premium). recalcHeroPay
-        // rebuilds the wage from skills whenever the hero improves in service, and without this the
-        // alignment premium a Divine crown paid for an Undead sword would vanish on their first
-        // skill rise.
-        h._hireAlignWage=Math.max(1, hireWage-heroSkillWage(h));
-        player.gold-=hireWage;h.player=c.player;h.name=h.name.replace(' (wandering)','');
-        if(h.race==='Dwarven'&&G.players[c.player]?.race==='Dwarven') grantMithrilTo(h, G); // mithril on hire into a dwarf realm
-        player.heroes=(player.heroes||[]);player.heroes.push(h.id);
-        // Hero can receive orders starting the phase AFTER they were hired (AK 3.5) We mark the
-        // hire phase so the turn report knows which phases they can act in
-        h.hiredInPhase=ph;
-        if(!G.turnOrders[h.id])G.turnOrders[h.id]=[null,null,null,null,null];
-        // Default unfilled phases (before hire) to a "not yet hired" placeholder
-        for(let p2=0;p2<=ph;p2++) G.turnOrders[h.id][p2]=G.turnOrders[h.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
-        // ── 2026-09-21: the hirer's pre-written orders are applied HERE, now the hire has landed.
-        // (2026-09-23: moved into landHirePreOrders so the Neutral BROKER hire applies them too.)
-        landHirePreOrders(h, c, ph, player);
-        setMovePool(turnContext,h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
-        const _aDist=alignDistP(kingdomAlign,h.alignment);
-        // Both hire paths now say which it is.
-        const _hActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards.`;
-        const _hireLine=`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'none yet'}. ${_hActs}`;
-        log('hire',_hireLine,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        // also file the same line under the HIRED hero's own Chronicle section, at the hire phase,
-        // so their section opens by explaining when and how they entered service.
-        log('hire',_hireLine,{actor:c.player,targets:[c.player],provinceId:prov.id,charId:h.id,phase:ph});
-        break;
-      }
+      case 'recruit': resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, prov, player); break;
+      case 'hire': resolveHireHeroOrder(turnContext, c, ph, target, prov, player); break;
       case 'spy':{
         const hasCrystalOrb=activeItems(c).some(it=>it.effect?.stat==='oracle');
         // sd21 Forgery Arts: +15% spy success chance
@@ -1145,145 +912,12 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
         } else { log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]}); trySkillGain(turnContext,c,'spy',SKILLGAIN_COMMON); } // batch item 11: a failed attempt is a small chance to learn
         break;
       }
-      // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
-      case 'consecrate':{
-        if(!c.isKing){
-          log('system',`${c.name} may pray, but only the anointed King can consecrate ground — the rite belongs to the crown alone.`,{actor:c.player,targets:[c.player]});break;}
-        if(G.players[c.player]?.alignment!=='Divine'){
-          log('system',`${c.name} kneels and prays, but the gods answer only Divine crowns — Consecration is not for this realm.`,{actor:c.player,targets:[c.player]});break;}
-        if(prov.owner!==c.player){
-          log('system',`${c.name}: only a province of your own realm can be consecrated — take and hold this land first.`,{actor:c.player,targets:[c.player]});break;}
-        const _homeId=homeProvinceIdFor(G, c.player);
-        const _homeAdj=new Set(_homeId!=null?getNeighborsP(G.world.provinces[_homeId],G.world.cols,G.world.rows,G.world.provinces).map(x=>x&&x.id).filter(x=>x!=null):[]);
-        if(prov.id===_homeId||_homeAdj.has(prov.id)){
-          log('system',`${c.name}: the crown's own hearth was anointed at the coronation — its grace already shelters the throne and the lands in its shadow. The gods charge their servants to carry the light OUTWARD: consecrate a province beyond the home marches.`,{actor:c.player,targets:[c.player]});break;}
-        const _cList=consecratedIds(player);
-        if(_cList.includes(prov.id)){
-          log('system',`${prov.name} is already consecrated — the ground is holy and needs no second blessing.`,{actor:c.player,targets:[c.player]});break;}
-        // holy ground must be spread across the realm — two consecrated provinces may not lie side
-        // by side. Reject if any neighbour of this province is already consecrated.
-        const _provAdjC=new Set(getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).map(x=>x&&x.id).filter(x=>x!=null));
-        const _adjConsecId=_cList.find(id=>_provAdjC.has(id));
-        if(_adjConsecId!=null){
-          log('system',`${c.name}: ${prov.name} borders ${G.world.provinces[_adjConsecId]?.name||'already-hallowed ground'} — two consecrated provinces may not lie side by side. Carry the light to ground set apart from your other holy lands.`,{actor:c.player,targets:[c.player]});break;}
-        // the crown may hold up to its WHITE skill level in consecrated provinces at once.
-        const _cLimit=skillLevel(c,'white')+discSum(turnContext,c.player,'consecrate','cap',e=>skillLevel(c,'white')>=(e.minWhite||1)); // ad03 Holy Sites (+1; still needs White 1+)
-        if(_cLimit<=0){
-          log('system',`${c.name}: consecration flows from the White arts — learn White magic before you can sanctify ground.`,{actor:c.player,targets:[c.player]});break;}
-        if(_cList.length>=_cLimit){
-          log('system',`${c.name}: your White faith can sustain only ${_cLimit} consecrated province${_cLimit!==1?'s':''} at once (${_cList.map(id=>G.world.provinces[id]?.name).filter(Boolean).join(', ')||'—'}). One must be lost or captured before you can hallow ${prov.name}. (Raise your White skill to consecrate more.)`,{actor:c.player,targets:[c.player]});break;}
-        _cList.push(prov.id);
-        // 2026-10-15 (Toby, D8): no Hierophant merit — only a Divine king can consecrate, so it was a
-        // creed-only route to a title. Bless Province, Holy Symbol and Resurrect still count.
-        log('explore',`✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and your fallen can be restored only here — they rise in the nearest consecrated province, which then gives up its consecration. If it is captured the consecration breaks at once and the conquerors are emboldened. (${_cList.length}/${_cLimit} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,env:true});
-        break;
-      }
-      // GOOD — Call to Arms: the folk answer the king; a free Green garrison unit musters.
-      case 'call_to_arms':{
-        if(G.players[c.player]?.alignment!=='Good'){
-          log('system',`${c.name}'s call goes unanswered — only the folk of a Good realm rise for their king unpaid.`,{actor:c.player,targets:[c.player]});break;}
-        if(!c.isKing){
-          log('system',`${c.name}: only the KING's voice carries the Call to Arms.`,{actor:c.player,targets:[c.player]});break;}
-        if(player._calledToArmsTurn===G.turn){
-          log('system',`${c.name}: the realm has already answered one Call to Arms this turn — the folk cannot muster twice in a season.`,{actor:c.player,targets:[c.player]});break;}
-        const ctaProv=G.world.provinces[parseInt(target)];
-        if(!ctaProv||ctaProv.owner!==c.player){
-          log('system',`${c.name}: Call to Arms must name a province you control this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(ctaProv.terrain==='sea'||(ctaProv.race||'').startsWith('Primal')){
-          log('system',`${c.name}: only the humanoid folk of settled land answer a Call to Arms — ${ctaProv.name} has no villages to raise.`,{actor:c.player,targets:[c.player]});break;}
-        // Elven Bowmen). Take the province's garrison type from its own pool; fall back to the
-        // racial garrison, then a plain levy.
-        const GARRISON_BY_RACE_CTA={Human:'Human Garrison',Elven:'Elven Garrison',Dwarven:'Dwarf Garrison',Orcish:'Orc Garrison'};
-        const ctaType=(ctaProv.armyTypes||[]).find(t=>String(t).toLowerCase().includes('garrison'))
-          || GARRISON_BY_RACE_CTA[ctaProv.race]
-          || 'Human Garrison';
-        ctaProv.garrisonArmies=ctaProv.garrisonArmies||[];
-        const _ctaQ=(discEff(turnContext,c.player,'ctaQuality').filter(e=>e.pct==null||kcRng()<e.pct).map(e=>e.quality).find(q=>q&&QUALITY_TIERS.includes(q)))||'Green'; // ag05 Muster Rolls (a chance per muster)
-        ctaProv.garrisonArmies.push({type:ctaType,quality:_ctaQ,race:ctaProv.race||'Human',unitName:armyUnitName(ctaType)});
-        player._calledToArmsTurn=G.turn;
-        log('hire',`📯 Call to Arms! The folk of ${ctaProv.name} answer their king — ${_ctaQ==='Green'?'a Green':'an '+_ctaQ} ${ctaType} joins the province garrison, free of wages this muster. (Once per turn.)`,{actor:c.player,targets:[c.player],provinceId:ctaProv.id}/* 2026-09-27 (Toby item 6): realm-private — never public */);
-        break;
-      }
-      // NEUTRAL — Broker: money moves what armies cannot. Remote hire, or a paid remote spy.
-      case 'broker':{
-        if(G.players[c.player]?.alignment!=='Neutral'){
-          log('system',`${c.name}: only a Neutral crown keeps the web of factors and go-betweens that Brokering requires.`,{actor:c.player,targets:[c.player]});break;}
-        if(!c.isKing){
-          log('system',`${c.name}: only the KING commands the realm's brokers.`,{actor:c.player,targets:[c.player]});break;}
-        const _bk=(target||'').split(':');
-        if(_bk[0]==='hire'){
-          const bh=G.characters[parseInt(_bk[1])];
-          const bhProv=bh?G.world.provinces[bh.location]:null;
-          const _visible=bhProv&&(bhProv.owner===c.player||(bhProv.visitedBy||[]).includes(c.player));
-          if(!bh||bh.player!==null||!bh.alive||bh._isNeutralGuard||bh._justDefeated||!_visible){
-            log('hire',`${c.name}'s brokers find no such hero within reach of the realm's agents.`,{actor:c.player,targets:[c.player]});break;}
-          if(bh._releasedTurn===G.turn){log('hire',`${bh.name} was only just released from service and will hear no offers this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;} // same rule as Hire Hero
-          const bWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',bh.alignment,hasDisc(turnContext,c.player,'sd31'),bh);
-          if(bWage==null){log('hire',`${bh.name} will not treat with your brokers — the alignment gulf is too wide.`,{actor:c.player,targets:[c.player]});break;}
-          if((player.gold||0)<bWage){log('hire',`${c.name} cannot afford ${bh.name} — needs ${bWage}g/turn.`,{actor:c.player,targets:[c.player]});break;}
-          bh.pay=bWage; player.gold-=bWage;
-          bh.player=c.player; bh.name=bh.name.replace(' (wandering)','');
-          // a brokered hire is a HIRE.
-          if(bh.race==='Dwarven'&&G.players[c.player]?.race==='Dwarven') grantMithrilTo(bh, G); // mithril on hire into a dwarf realm
-          player.heroes=(player.heroes||[]); player.heroes.push(bh.id);
-          bh.hiredInPhase=ph;
-          if(!G.turnOrders[bh.id])G.turnOrders[bh.id]=[null,null,null,null,null];
-          for(let p2=0;p2<=ph;p2++) G.turnOrders[bh.id][p2]=G.turnOrders[bh.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
-          landHirePreOrders(bh, c, ph, player); // 2026-09-23: the brokered hero's pre-written orders + plan
-          setMovePool(turnContext,bh);
-          const _bActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards, from where they stand.`;
-          const _brokerLine=`🤝 Brokered: ${bh.name} (${bh.race}, ${bh.alignment}) in ${bhProv.name} accepts ${player.name}'s terms by courier — ${bWage}g/turn. ${_bActs}`;
-          log('hire',_brokerLine,{actor:c.player,targets:[c.player],provinceId:bhProv.id});
-          // mirror into the brokered hero's own Chronicle section at the hire phase.
-          log('hire',_brokerLine,{actor:c.player,targets:[c.player],provinceId:bhProv.id,charId:bh.id,phase:ph});
-        } else if(_bk[0]==='spy'){
-          const sp2=G.world.provinces[parseInt(_bk[1])];
-          const _seen=sp2&&(sp2.owner===c.player||(sp2.visitedBy||[]).includes(c.player)||(((sp2.exploredBy||{})[c.player])||0)>0);
-          if(!sp2||!_seen){log('system',`${c.name}: your brokers can only reach provinces the realm has seen.`,{actor:c.player,targets:[c.player]});break;}
-          if((player.gold||0)<2){log('system',`${c.name}: brokered intelligence costs 2g — the treasury cannot cover it.`,{actor:c.player,targets:[c.player]});break;}
-          player.gold-=2;
-          log('system',`🤝 ${c.name}'s brokers buy word from ${sp2.name} (2g).`,{actor:c.player,targets:[c.player]});
-          applySpySuccess(turnContext, c, sp2);
-        } else {
-          log('system',`${c.name}: Broker requires a target — a hero to hire or a province to buy word from.`,{actor:c.player,targets:[c.player]});
-        }
-        break;
-      }
-      // DRUIDIC Awaken the Wild and EVIL Call from the Pit: REMOVED 2026-10-12 (Toby item 22 — they made Creatures
-      // and Monsters too easy to come by). An order a save still holds from before is refused in plain words.
+      case 'consecrate': resolveConsecrateOrder(turnContext, c, prov, player); break;
+      case 'call_to_arms': resolveCallToArmsOrder(turnContext, c, target, player); break;
+      case 'broker': resolveBrokerOrder(turnContext, c, ph, target, player); break;
       case 'awaken_wild':
-      case 'call_pit':{
-        const _gone=action==='call_pit'?'Call from the Pit':'Awaken the Wild';
-        log('system',`${c.name}: ${_gone} is no more — Creatures and Monsters now come only by recruiting them where they live.`,{actor:c.player,targets:[c.player]});
-        break;
-      }
-      // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.
-      case 'harvest_field':{
-        if(G.players[c.player]?.alignment!=='Undead'){
-          log('system',`${c.name} has neither the craft nor the stomach for grave-harvesting — only Undead realms keep corpse-carters.`,{actor:c.player,targets:[c.player]});break;}
-        const hGraves=prov.battleGraves||[];
-        if(hGraves.length===0){
-          log('system',`${c.name} walks the field of ${prov.name}, but there are no battlefield dead here to raise.`,{actor:c.player,targets:[c.player]});break;}
-        const _hCost=Math.max(0,2+discSum(turnContext,c.player,'harvestCost','delta')); // az06 Corpse-Carters
-        if((player.gold||0)<_hCost){
-          log('system',`${c.name}: the corpse-carters and grave-wights want their ${_hCost}g — the treasury cannot pay.`,{actor:c.player,targets:[c.player]});break;}
-        player.gold-=_hCost;
-        const hGrave=takeBestGrave(prov); // the most experienced dead are worked first
-        const _uTierH=gdActive(turnContext,c.player,'Undead'); // GRAND DESIGN — Undead
-        const hSkel={type:hGrave.type,quality:(_uTierH?(KC_QUALITY_UP[hGrave.quality]||hGrave.quality):hGrave.quality),race:'Undead',_isSkeletal:true,
-          unitName:`${hGrave.unitName||armyUnitName(hGrave.type)} (Skeletal)`};
-        c.armies=(c.armies||[]); c.armies.push(hSkel);
-        log('hire',`💀 Harvest the Field — ${c.name}'s carters work the graves of ${prov.name}: ${hSkel.unitName} (${hSkel.quality}) rises to serve, no magic required. (${_hCost}g; upkeep 1g/turn.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
-        // Harvest the Field is the ONE way to raise the dead without any Necromancy — an Undead
-        // realm's carters do it by hand. But a skeletal unit still needs a necromancer to hold it
-        // together, so a raiser with no Necromancy is warned at once, while there is still time in
-        // the turn to hand the unit to one. Without this the player would simply find it gone at
-        // end of turn, having paid for it.
-        if(effStat(turnContext,c,'necromancy')<1)
-          log('hire',`⚠ ${c.name} has no Necromancy of their own — ${hSkel.unitName} will crumble to dust at the end of this turn unless it is handed to a character with at least Necromancy 1. The dead do not stand without a master, and a garrison is no master at all.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        resolveUnitGainInProvince(turnContext, c, prov, ph);
-        break;
-      }
+      case 'call_pit': resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, c, action); break;
+      case 'harvest_field': resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player); break;
       // ── RESEARCH ── the scholar's own order: a roll for a Sage discovery. Available to any
       // character with Sage 1+ (the player portal hides it below that; the engine re-checks). Does
       // NOT train the Sage skill unless a discovery is actually made.
@@ -3061,18 +2695,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
         }
         break;
       }
-      case 'awaken_grove':{
-        if(skillLevel(c,'druid')<7){log('system',`${c.name} lacks the Druid mastery (7) to Awaken a Grove.`,{actor:c.player,targets:[c.player]});break;}
-        const okTerrain=(prov.terrain==='forest'||prov.terrain==='jungle')||String(prov.race||'').startsWith('Primal');
-        if(prov.owner!==c.player||!okTerrain){log('system',`${c.name}: Awaken Grove works only while standing in an OWNED forest, jungle or wild (Creature or Monster) province.`,{actor:c.player,targets:[c.player]});break;}
-        const grove={type:'Forest Ents',quality:'Veteran',race:'Forest Ent',unitName:'an awakened Grove',_temporary:true,_expiresAfterPhase:-1};
-        c.armies=(c.armies||[]);c.armies.push(grove);
-        logSplit(turnContext,'explore',`🌳 ${c.name} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under your banner until the turn's end.`,
-          `🌳 ${c.name}${realmTag(turnContext,c.player)} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under their banner until the turn's end.`,{actor:c.player,provinceId:prov.id});
-        resolveUnitGainInProvince(turnContext, c, prov, ph);
-        trySkillGain(turnContext,c,'druid',SKILLGAIN_STD);
-        break;
-      }
+      case 'awaken_grove': resolveAwakenGroveOrder(turnContext, c, ph, prov); break;
       case 'chart_unknown': resolveChartTheUnknownOrder(turnContext, c, target, prov); break;
       case 'discover_ruin': resolveDiscoverLostRuinOrder(turnContext, c, target, prov); break;
 
@@ -3232,67 +2855,8 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
         break;
       }
       // ══ L7/L9 MASTERY ORDERS (batch 2c-iii — specials) ════
-      case 'wild_calling':{
-        // ── WILD CALLING ── every primal creature or monster in this province that does not
-        // already serve you — a neutral primal host, an enemy commander's beasts, or unled garrison
-        // beasts — has a 50% chance to defect and fall in behind the caller. Humanoid troops,
-        // fleets, machines and the walking dead are deaf to it.
-        if(skillLevel(c,'druid')<9){log('system',`${c.name} lacks the Druid mastery (9) to sound a Wild Calling.`,{actor:c.player,targets:[c.player]});break;}
-        const _wcIsBeast=(u)=>!!u&&!u._isSkeletal&&(CREATURE_ARMIES.has(u.type)||MONSTER_ARMIES.has(u.type)||!!PRIMAL_ARMY_DEFS_P[u.type]);
-        const _wcWon=[]; const _wcHeard=[]; let _wcCalled=0;
-        const _wcRoom=beastCommandRoom(c,G.characters);   // item 24: no more answer than the caller's Druid has room for
-        const _wcSift=(arr,label)=>{
-          if(!Array.isArray(arr)) return;
-          for(let i=arr.length-1;i>=0;i--){
-            const u=arr[i]; if(!_wcIsBeast(u)) continue;
-            _wcCalled++;
-            if(_wcWon.filter(beastCommandCount).length>=_wcRoom) continue;
-            if(d100()<=50){ _wcWon.push(Object.assign({},arr.splice(i,1)[0],{_pacified:true})); if(label&&!_wcHeard.includes(label)) _wcHeard.push(label); }
-          }
-        };
-        _wcSift(prov.neutralDefenders,null);                            // the wild host of a primal province
-        if(prov.owner!=null&&prov.owner!==c.player) _wcSift(prov.garrisonArmies,`the garrison of ${prov.name}`);
-        else if(prov.owner==null) _wcSift(prov.garrisonArmies,null);
-        (G.characters||[]).forEach(o=>{
-          if(!o||!o.alive||o.id===c.id||o.location!==c.location) return;
-          if(o.player===c.player) return;                               // never poached from your own commanders
-          if(o.player!=null&&!areEnemies(turnContext,c.player,o.player)) return;     // and never from a realm you are not at war with
-          const before=_wcWon.length; _wcSift(o.armies,o.name);
-          if(_wcWon.length>before&&o.player!=null){
-            log('system',`🐾 The beasts of ${o.name}'s host break their bonds and answer a Wild Calling in ${prov.name} — ${_wcWon.length-before} unit${_wcWon.length-before!==1?'s':''} lost.`,{actor:o.player,targets:[o.player],provinceId:prov.id,charId:o.id});
-            if(typeof refreshMovePool==='function') refreshMovePool(turnContext,o);
-          }
-        });
-        if(_wcCalled===0){log('explore',`${c.name} sounds a Wild Calling, but nothing wild stands in ${prov.name} to answer it.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        if(_wcWon.length===0){log('explore',`🐾 ${c.name} sounds a Wild Calling over ${_wcCalled} wild creature${_wcCalled!==1?'s':''} in ${prov.name} — not one of them breaks for the call.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});trySkillGain(turnContext,c,'druid',SKILLGAIN_STD);break;}
-        c.armies=(c.armies||[]).concat(_wcWon);
-        const _wcFrom=_wcHeard.length?` (torn from ${_wcHeard.join(' and ')})`:'';
-        logSplit(turnContext,'explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} of ${_wcCalled} wild creature${_wcCalled!==1?'s':''} answer and fall in behind your banner${_wcFrom}!`,
-          `🐾 ${c.name}${realmTag(turnContext,c.player)} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} wild creature${_wcWon.length!==1?'s':''} answer and fall in behind their banner.`,{actor:c.player,provinceId:prov.id});
-        if(typeof refreshMovePool==='function') refreshMovePool(turnContext,c);
-        resolveUnitGainInProvince(turnContext, c, prov, ph);
-        trySkillGain(turnContext,c,'druid',SKILLGAIN_STD);
-        break;
-      }
-      case 'grand_design':{
-        if(skillLevel(c,'sage')<9){log('system',`${c.name} lacks the Sage mastery (9) to realise a Grand Design.`,{actor:c.player,targets:[c.player]});break;}
-        const player=G.players[c.player]; if(!player.discoveries) player.discoveries=[];
-        if(player.discoveries.some(d=>d.id==='gd')){log('system',`${G.players[c.player]?.name} has already completed its Grand Design — there can be only one.`,{actor:c.player,targets:[c.player]});break;}
-        const _GD_DEFS={...KC_GRAND_DESIGNS};
-        const _gdA=(G.players[c.player]&&G.players[c.player].alignment)||'Neutral';
-        const _gdD=_GD_DEFS[_gdA]||{name:'The Great Work',desc:'A unique realm-wide Wonder.'};
-        // the Wonder now STANDS SOMEWHERE. Its province is recorded on the realm and on the
-        // province itself; every benefit is gated on the builder still holding that ground
-        // (gdActive), and is regained in full the moment the province is retaken. The Wonder itself is
-        // never destroyed and never changes hands — a conqueror gains nothing but the view.
-        player.gdProvinceId=prov.id; player.gdName=_gdD.name;
-        prov.grandDesign={owner:c.player, name:_gdD.name, alignment:_gdA, builtTurn:G.turn};
-        player.discoveries.push({id:'gd',name:'Grand Design \u2014 '+_gdD.name,category:'Wonder',desc:_gdD.desc,turnDiscovered:G.turn,provinceId:prov.id,provinceName:prov.name});
-        TM(c).discoveries+=1;
-        log('explore',`🏗 ${c.name} completes ${G.players[c.player]?.name}'s Grand Design \u2014 the ${_gdD.name}, a Wonder of the age, raised in ${prov.name}! ${_gdD.desc} Its blessings last only while ${G.players[c.player]?.name} holds ${prov.name} — lose the province and they lapse; retake it and they return.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
-        trySkillGain(turnContext,c,'sage',SKILLGAIN_STD);
-        break;
-      }
+      case 'wild_calling': resolveWildCallingOrder(turnContext, c, ph, prov); break;
+      case 'grand_design': resolveGrandDesignOrder(turnContext, c, prov); break;
 
       default:
     }
