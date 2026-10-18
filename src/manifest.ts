@@ -109,6 +109,8 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/personal-combat/duels-and-character-encounters.js',
         'engine/personal-combat/lair-guardians-and-the-odds.js',
         'engine/heroes/hero-death-and-leaderless-hosts.js',
+        'engine/battle/battles-against-province-defenders.js',
+        'engine/battle/pre-battle-duels.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',
