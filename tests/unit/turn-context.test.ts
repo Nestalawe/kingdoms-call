@@ -1,12 +1,14 @@
 // The turn's context and the helpers lifted out of resolveTurn with it (plan P1-08a), called directly in the bare vm
 // (tests/lib/engine.ts).
 // - createTurnContext holds the turn's state, slot rows and turn, and an empty log; log() files a line under the hero
-//   and the phase the context names as it is when the line is written, not as it was when the context was made.
+//   and the phase the context names as it is when the line is written, not as it was when the context was made. It
+//   is a plain object: a value nothing has set reads as undefined, as resolveTurn's code expects, and never throws.
 // - The title lookups the balance matrix never runs (charHoldsTitle, playerHoldsTitle: nothing calls them today), and
 //   charMinor beside them: true for the holder only.
 // - Relations (property, fast-check): whatever G.relations holds, two realms stand to each other as they stand the
 //   other way round, are never both at war and allied, a realm is itself, and a missing realm is neutral.
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs.
+import { types } from 'node:util';
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -30,6 +32,14 @@ describe('createTurnContext', () => {
     expect(tc.freshPlayers).toEqual([{ player_index: 0 }]);
     expect(tc.expectedTurnToRun).toBe(4);
     expect(tc.turnLog).toEqual([]);
+  });
+
+  test('is a plain object: a value nothing has set yet reads as undefined', () => {
+    const tc = vm.runInContext('createTurnContext({turn:1},[],1)', engine) as Record<string, unknown>;
+    expect(types.isProxy(tc)).toBe(false);
+    expect(Object.getPrototypeOf(Object.getPrototypeOf(tc))).toBeNull(); // the vm's Object.prototype
+    expect(() => tc['notSetYet']).not.toThrow();
+    expect(tc['notSetYet']).toBeUndefined();
   });
 
   test('log() files a line under the hero and the phase the context names when it is written', () => {
