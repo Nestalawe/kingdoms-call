@@ -2,7 +2,8 @@
 // A hero's chance to raise a skill by using it (trySkillGain, and rollNavalVoyage for a voyage), the one rise a phase
 // drawn from the candidates (resolvePendingSkillGain), the rise lines held back until the end of the phase
 // (writeDeferredSkillLines, flushDeferredSkillLogsFor), and the maximum-HP roll after a fight (awardKillXP, awardWinHp,
-// awardHpRoll). Each takes the turn's context first (src/engine/turn/context.js). The reassigned values they read,
+// awardHpRoll), and every hero's current HP kept in step with his maximum after each phase (syncAllMaxHp, plan
+// P1-08i3, below). Each takes the turn's context first (src/engine/turn/context.js). The reassigned values they read,
 // _deferredSkillLogs, _pcSimulating, _combatSkillProv, _chieftainDuelGain and _duelFoes, are read and written as
 // turnContext.<name>, as resolveTurn reads them.
   // ── SKILL GAIN THROUGH EXPERIENCE ────
@@ -262,4 +263,19 @@
     else { const prov=(real.location!=null)?G.world.provinces[real.location]:null;
       log('combat', line, {actor:real.player!=null?real.player:-1, targets:real.player!=null?[real.player]:[], charId:real.id, provinceId:prov?prov.id:undefined}); }
     return r;
+  }
+
+  // whenever a character's maximum HP rises for ANY reason (item picked up, bought or received, a
+  // discovery, a title…) the current HP rises by the same amount at once — syncMaxHp already heals
+  // into new headroom, so the rule is: resync everyone after EVERY phase, not just at turn end.
+  function syncAllMaxHp(turnContext){
+    const {G, log}=turnContext;
+    (G.characters||[]).forEach(ch=>{
+      if(!ch||!ch.alive) return;
+      const d=syncMaxHp(ch,G.players);
+      if(d===0) return;
+      const prov=(ch.location!=null)?G.world.provinces[ch.location]:null;
+      const tgt=(ch.player!=null)?{actor:ch.player,targets:[ch.player],charId:ch.id,provinceId:prov?prov.id:undefined,public:true}:{actor:-1,targets:[]};
+      log('system', d>0?`💪 ${ch.name}'s maximum HP rises by ${d} to ${ch.maxHp} (current HP ${dispFloor(ch.hp)}).`:`${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`, tgt);
+    });
   }
