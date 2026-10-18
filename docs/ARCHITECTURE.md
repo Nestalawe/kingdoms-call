@@ -310,7 +310,11 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (an extract, not a move: the case's body became a function, its own `break`s `return`s): the Move
   (`resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, player)`,
   `engine/orders/move-order-marches-voyages-and-battles-on-arrival.js`), which takes, after the context, the values
-  `processOrder` works out before its `switch` that it reads; `case 'move'` is the call and `break`. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  `processOrder` works out before its `switch` that it reads; `case 'move'` is the call and `break`. P1-08j2, the explore and search orders
+  (`engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.js`), extracted the same way, each with only
+  the values it reads: Explore (`resolveExploreOrder`), Perform Rite (`resolvePerformRiteOrder`), Hunting Rumours
+  (`resolveHuntingRumoursOrder`), Search Lair (`resolveSearchLairOrder`), Chart the Unknown
+  (`resolveChartTheUnknownOrder`) and Discover Lost Ruin (`resolveDiscoverLostRuinOrder`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
