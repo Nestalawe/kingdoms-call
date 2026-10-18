@@ -144,8 +144,9 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   hooking its first line: the `xp-` tests' `XP_RECORD` wraps `trySkillGain` (P1-08c); one that changes what a helper is
   given wraps it the same way: `lib/boot.js`' `reportEveryRealm` wraps `buildReports` (P1-08d). A `typeof f==='function'` guard
   stays true: a lifted helper is a top-level function.
-- A value the turn changes as it goes (`_logCtx`, `_currentPhase`, `_afterPhases`, and since P1-08c `_combatSkillProv`,
-  `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`, `_deferredSkillLogs`, `_pcSimulating`) lives only in the context. Read and
+- A value the turn changes as it goes (`_logCtx`, `_currentPhase`, `_afterPhases`, since P1-08c `_combatSkillProv`,
+  `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`, `_deferredSkillLogs`, `_pcSimulating`, and since P1-08i1
+  `enteredThisPhase`) lives only in the context. Read and
   write `turnContext._currentPhase`, never a copy in a local, or a later reader sees an old value. A test hook that
   changes one, or swaps `G`, changes the context's too (`battle-faced-turn`'s `setG`; `npc-parity`'s `setPhase` did, until
   P1-08g moved it down).
@@ -154,7 +155,7 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
   `recruitedThisTurn`, `_intrusionAcc`): before its join line, the old name threw; the context's reads `undefined`.
   P1-08c checked again for the six values above and `_elvenEscapeQueue`, P1-08d for `presenceByPhase`, `clairWatch` and
-  `_reports`, P1-08e for `_botPlayerIdx`. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
+  `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
   does: a test of a lifted helper that reads one it doesn't set gets `undefined`, not the turn's value.
 
 ## Top-level names aren't on `window` in tests
