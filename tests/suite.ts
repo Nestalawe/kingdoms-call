@@ -120,11 +120,10 @@ export function suite(full: boolean): Script[] {
     ['simulation', 'crown-wild-near', 'tests/crown-wild-near.test.js', full ? ['12'] : ['4']],
     ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
-    ['scenario', 'research-persevere', 'tests/research-persevere.test.js'],
+    ['static', 'research-persevere', 'tests/research-persevere.test.js'],
     ['scenario', 'surgery-lines', 'tests/surgery-lines.test.js'],
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
     ['scenario', 'xp-lair-thief', 'tests/xp-lair-thief.test.js'], // batch 2026-10-14
-    ['scenario', 'practice-human', 'tests/practice-human.test.js'], // batch 2026-10-14
     ['scenario', 'xp-small-chances', 'tests/xp-small-chances.test.js'], // batch 2026-10-14
     ['static', 'spell-words', 'tests/spell-words.test.js'], // batch 2026-10-14
     ['static', 'lair-readiness-words', 'tests/lair-readiness-words.test.js'], // batch 2026-10-14

@@ -320,7 +320,11 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   wrote for a hero once he is sworn, moved out of `resolveTurn` beside them) and the realm's works
   (`engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.js`: Consecrate, Call to Arms,
   Broker, Harvest the Field, Awaken Grove, Wild Calling, Grand Design, and one function for the refusal of the removed
-  Awaken the Wild and Call from the Pit, whose two `case` labels both call it). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  Awaken the Wild and Call from the Pit, whose two `case` labels both call it). P1-08j4, research and practice
+  (`engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.js`: Research, `resolveResearchOrder`;
+  Practice Skill, `resolvePracticeSkillOrder`; Rest, `resolveRestOrder`; Research Breakthrough,
+  `resolveResearchBreakthroughOrder`); a bot's Practice on a skill already at 5 is still switched in `processOrder`,
+  before the call. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
