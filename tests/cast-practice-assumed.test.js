@@ -1,39 +1,21 @@
 // 2026-10-13 (item 16) — cast orders assume that every Practice order earlier in the turn succeeds,
 // in how many spells the hero may cast. The order form's Cast Spell list already does (item 2,
 // tests/cast-practice-projection); this test covers the rest:
-//   Scenario (level 2): the engine. A cast refused because a practice had not yet raised the school
-//     (or by the casting limit) is never worked, so it spends no casting slot: a White 0 hero who
-//     practises (fails), casts (refused), practises (succeeds) and casts again works that last
-//     spell. The practice rolls are fixed through a hook on the practice roll.
 //   Unit (level 1): the bots' order check (runBotOrderHygiene, botCastLimit) counts a bot's earlier
 //     practice orders the same way, so it no longer strikes out a cast that relies on one.
 //   Page (level 4): the encounter plan's combat-spell picker. A Psychic 1 hero practising Psychic is
 //     offered two combat spells of the school (Psychic 2's allowance), and adding the second is
 //     accepted rather than refused at the current level's one.
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db'); const {bootScenario,order,plan}=require('./lib/scenario');
+// The engine's part (a cast refused because a practice had not yet raised the school spends no casting
+// slot) moved down in plan P1-08j4: tests/scenario/research-and-practice-orders-in-a-whole-turn.test.ts.
+const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db'); const {bootScenario}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const ROLL="            const _prRoll=d100();\n";
 (async()=>{
-  // ── The engine ──
-  const sc=await bootScenario({inject:[[ROLL,"            const _prRoll=(window.__PR&&window.__PR.length)?window.__PR.shift():d100();\n"]]});
+  const sc=await bootScenario({});
   const W=sc.W;
-  let hero;
-  W.__PR=[100,1];   // first practice fails, second succeeds
-  const r=await sc.turn({realms:2,
-    prepare(S){ hero=S.characters.find(c=>c.alive&&c.player===0&&c.isKing); hero.skills.white=0; hero.items=[]; return hero; },
-    orders:(S,h)=>({[h.id]:plan(order('practice','white'),order('cast_spell','Bless Province',h.location),order('practice','white'),order('cast_spell','Bless Province',h.location),order('rest'))})});
-  const t=r.text(hero.id);
-  ok(/lacks the required White Magic skill/.test(t),'the Summer cast is refused: the Spring practice failed');
-  // Read from the practice line itself: since 2026-10-14 (batch item 11) the Winter cast, if it fizzles,
-  // is a small chance at White too, so the level at the end of the turn depends on that roll.
-  ok(/practises White Magic and improves to level 1!/.test(t),'the Autumn practice raises White to 1');
-  ok(!/casting limit/.test(t),`the Winter cast is not blocked by a casting limit (${(t.match(/[^\n]*casting limit[^\n]*/)||[''])[0]})`);
-  ok(/casts Bless Province \(White Magic 1\)/.test(t),'the Winter cast is worked (it is rolled at White Magic 1)');
-  if(process.env.KC_DEBUG) console.log(t);
-  if(W.__PR.length) ok(false,`both practice rolls were used (${W.__PR.length} left)`);
 
   // ── The bots' order check ──
-  const S=r.S2; const bot=S.characters.find(c=>c.alive&&c.player===1&&c.isKing);
+  const {S}=await sc.world({realms:2}); const bot=S.characters.find(c=>c.alive&&c.player===1&&c.isKing);
   bot.skills.psychic=2; bot.items=[];
   ok(W.botCastLimit(S,bot,'psychic')===1&&W.botCastLimit(S,bot,'psychic',1)===2&&W.botCastLimit(S,bot,'psychic',2)===3,'botCastLimit counts each earlier practice as a level (Psychic 2: one spell, two after a practice, three after two)');
   S.turnOrders=S.turnOrders||{};
