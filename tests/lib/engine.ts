@@ -62,7 +62,7 @@ export interface TurnContext {
  *  resolveTurn declares it: no hero has move points yet, no battle has been numbered, no skill rise is held back, no
  *  realm is watching by Clairvoyance, nobody has been seen in a phase yet, and the reports aren't built; the bot realms
  *  are the slot rows that are bots' (P1-08e); no province has been entered this phase and no distance measured
- *  (P1-08i1); the Defend step isn't open, no raised host waits for it, and no host stood on a war front (P1-08i3). Give it a state as an object or as JSON. */
+ *  (P1-08i1); the Defend step isn't open, no raised host waits for it, and no host stood on a war front (P1-08i3); no hero has travelled light (P1-08j1). Give it a state as an object or as JSON. */
 export function turnContext(
   engine: vm.Context,
   state: object | string,
@@ -80,6 +80,7 @@ export function turnContext(
       tc._deferredSkillLogs=[]; tc._pcSimulating=false; tc._elvenEscapeQueue=[];
       tc.clairWatch={}; tc.presenceByPhase=[]; tc._reports={built:false}; tc.enteredThisPhase={}; tc._distCache=new Map();
       tc._tier0Open=false; tc._unitGainQueue=[]; tc._warFrontAtStart=new Map(); tc._warFrontProvs=new Set();
+      tc.lightLandMoves={}; tc.lightSeaMoves={};
       tc._botPlayerIdx=new Set(tc.freshPlayers.filter(isBotRow).map(p=>p.player_index));
       return tc; }`,
     engine,

@@ -120,6 +120,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/battle/hosts-gained-in-a-province.js',
         'engine/heroes/pursuits-and-the-catch-roll.js',
         'engine/battle/war-fronts-and-enemy-stand-offs.js',
+        'engine/orders/move-order-marches-voyages-and-battles-on-arrival.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',
