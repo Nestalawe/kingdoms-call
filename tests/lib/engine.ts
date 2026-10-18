@@ -34,3 +34,40 @@ export function loadEngine({ seed, src = path.join(ROOT, 'src') }: EngineOptions
   }
   return engine;
 }
+
+/** A top-level function of the engine, by name (plan P1-08a): `engineFn(engine, 'areEnemies')`. A helper lifted out of
+ *  resolveTurn is one; if it reads the turn's state, it takes a context (`turnContext` below) first. */
+export function engineFn(engine: vm.Context, name: string): (...args: never[]) => unknown {
+  const fn: unknown = vm.runInContext(`typeof ${name}==='function'?${name}:undefined`, engine);
+  if (typeof fn !== 'function') throw new Error(`the engine has no function ${name}`);
+  return fn as (...args: never[]) => unknown;
+}
+
+/** A turn's context (src/engine/turn/context.js), as resolveTurn holds it while a turn runs. */
+export interface TurnContext {
+  G: Record<string, unknown>;
+  freshPlayers: unknown[];
+  expectedTurnToRun: number;
+  turnLog: Record<string, unknown>[];
+  log(type: string, text: string, meta?: Record<string, unknown>): void;
+  _logCtx: { charId: unknown; phase: unknown };
+  _currentPhase: number | null;
+  _afterPhases: boolean;
+  [name: string]: unknown;
+}
+
+/** A turn's context on a world made inside the vm (plan P1-08a): the state is parsed there, so its objects and arrays are
+ *  the engine's own, as a turn's are (P1-18d). It starts as resolveTurn's does before the first phase: no hero's line,
+ *  no phase, the phases not over. Give it a state as an object or as JSON. */
+export function turnContext(
+  engine: vm.Context,
+  state: object | string,
+  { freshPlayers = [], turn = 1 }: { freshPlayers?: unknown[]; turn?: number } = {},
+): TurnContext {
+  const make = vm.runInContext(
+    `(state,players,turn)=>{ const tc=createTurnContext(JSON.parse(state),JSON.parse(players),turn);
+      tc._logCtx={charId:null,phase:null}; tc._currentPhase=null; tc._afterPhases=false; return tc; }`,
+    engine,
+  ) as (state: string, players: string, turn: number) => TurnContext;
+  return make(typeof state === 'string' ? state : JSON.stringify(state), JSON.stringify(freshPlayers), turn);
+}
