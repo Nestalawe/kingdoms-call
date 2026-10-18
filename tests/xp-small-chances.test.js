@@ -5,17 +5,18 @@
 //   * a hero who loses a personal fight and lives (beaten and spared, or fled) rolls for Melee.
 // Level 2 (scenario) for the orders and the battle, which live inside runTurn: the spy, steal and
 // casting rolls are fixed to fail by hooks on them, the battle is staged hopeless, and every
-// experience roll is recorded by a hook at the top of trySkillGain. Level 1 for the fight
+// experience roll is recorded by a wrapper around the top-level trySkillGain. Level 1 for the fight
 // (resolvePersonalCombat, tests/lib/pc-hooks.js), with the flight made certain.
 const {bootScenario,order,plan}=require('./lib/scenario');
 const {bootPersonalCombat,pinned}=require('./lib/pc-hooks');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const TSG="  function trySkillGain(char, skill, base, narr, mult){\n";
-const XP=[TSG,TSG+"    if(window.__xp) window.__xp.push({id:char&&char.id,skill,base,mult});\n"];
+// every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
+const XP_RECORD="{ const tryOne=trySkillGain; trySkillGain=function(turnContext, char, skill, base, narr, mult){ if(window.__xp) window.__xp.push({id:char&&char.id,skill,base,mult}); return tryOne.apply(this, arguments); }; }";
 const FIX=a=>[a,a.replace('d100()','(window.__fix?100:d100())')];
 (async()=>{
-  const sc=await bootScenario({inject:[XP,FIX("        const _spyRoll=d100();"),FIX("        const stealRoll=d100();"),
+  const sc=await bootScenario({inject:[FIX("        const _spyRoll=d100();"),FIX("        const stealRoll=d100();"),
     FIX("        const castRoll=d100();\n        try{ _tel.spells.push(")]}); const W=sc.W;
+  W.eval(XP_RECORD);
   const nb=(S,p)=>W.getNeighborsP(p,S.world.cols,S.world.rows,S.world.provinces).filter(Boolean);
   const place=(S,c,p)=>{ S.world.provinces.forEach(q=>{ q.characters=(q.characters||[]).filter(id=>id!==c.id); }); p.characters=[...(p.characters||[]),c.id]; c.location=p.id; c.locationName=p.name; };
   // ── failed orders ──
@@ -60,7 +61,8 @@ const FIX=a=>[a,a.replace('d100()','(window.__fix?100:d100())')];
   ok(W.__xp.some(x=>x.id===G2.id&&x.skill==='tactical'&&x.base===0.04),`…and has a small chance at Tactical (${W.__xp.filter(x=>x.id===G2.id).map(x=>x.skill+'@'+x.base).join(', ')})`);
   if(process.env.KC_DEBUG) console.log(t2);
   // ── a lost personal fight ──
-  const B=await bootPersonalCombat(['resolvePersonalCombat','pcCharCombatant'],{inject:[XP]});
+  const B=await bootPersonalCombat(['resolvePersonalCombat','pcCharCombatant']);
+  B.W.eval(XP_RECORD);
   const two=B.state.characters.filter(c=>c.alive&&c.player!=null).slice(0,2);
   const mk=(c,t)=>{ const h=B.PC.pcCharCombatant({...c,encounterPlan:{tactics:t,duelStance:'accept'},temper:'Cowardly'}); h.hp=h.maxHp=40; return h; };
   B.W.__xp=[];

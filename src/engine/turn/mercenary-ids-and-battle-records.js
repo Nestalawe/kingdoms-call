@@ -43,3 +43,15 @@
     });
   }
   const defendSpentThisPhase=(turnContext,c,ph)=>!!(c&&c._defendSpent&&c._defendSpent.turn===turnContext.G.turn&&c._defendSpent.ph===ph);
+
+// ── LIFTED OUT OF resolveTurn (plan P1-08c) ── a defeat breaks a general's Defend watch for the rest of the turn. It
+// takes the turn's context first (src/engine/turn/context.js).
+  function noteBattleLoss(turnContext, charId, narrative){
+    const {G, log}=turnContext;
+    const real=(G.characters||[]).find(x=>x&&x.id===charId);
+    if(!real||!real._defend||!real._defend.active) return;
+    real._defend.active=false;
+    const msg=`${real.name}'s defensive watch is broken by this defeat — they will hold no further ground this turn.`;
+    if(narrative) narrative.push(msg);
+    else log('move',msg,{actor:real.player,targets:[real.player],charId:real.id,provinceId:real.location??null}); // file under the beaten general, not whoever's order was resolving
+  }

@@ -11,7 +11,7 @@ const {bootScenario}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const sc=await bootScenario({inject:[["  // 4. Run all 5 phases\n",
-    "  window.__HP={get G(){ return G; },resolvePersonalCombat,pcCharCombatant,awardWinHp};\n  // 4. Run all 5 phases\n"]]});
+    "  window.__HP={get G(){ return G; },resolvePersonalCombat,pcCharCombatant,awardWinHp:(...a)=>awardWinHp(turnContext,...a)};\n  // 4. Run all 5 phases\n"]]});
   await sc.turn({});
   const H=sc.W.__HP; if(!H||typeof H.resolvePersonalCombat!=='function'){ console.log('hook missing: resolvePersonalCombat not exposed'); process.exit(1); }
   const G=H.G; let nextId=9300;

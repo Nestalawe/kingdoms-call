@@ -24,7 +24,7 @@ portal hangs on its spinner (the boot-failure reporter now shows the error).
 - `ITEMS_BY_TIER` and `rollMagicItem` (GM portal) must come after `ALL_MAGIC_ITEMS_P` (data file). This
   holds because the data file loads first. Keep it that way.
 - Code that runs at top level calls only top-level helpers. Many engine helpers are local to `resolveTurn`
-  (e.g. `trySkillGain`), and a lifted one may need the turn's context (`effStat(turnContext, c, stat)`; use
+  (e.g. `combatVsNPC`), and a lifted one may need the turn's context (`effStat(turnContext, c, stat)`; use
   `effSkillOf` outside a turn). Declare shared helpers as hoisted `function`s.
 - Prefer building lookup tables lazily inside the function that needs them over a top-level IIFE.
 - A flag read by layout code that can run early (e.g. a hash-restored view) must be declared above
@@ -135,15 +135,19 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   thing. `no-undef` can't see it. The balance matrix catches it in the code it runs; anywhere else, a direct test.
 - A helper passed as a value is wrapped where it's passed: `(...a)=>effStat(turnContext,...a)`. A test hook that hands
   one back wraps it the same way, or the test moves down and calls it directly (P1-08b moved `naval-retreat`,
-  `retreat-dry-ground`, `march-one-rate` and most of `battle-tweaks` to `tests/unit/`). A `typeof f==='function'` guard
+  `retreat-dry-ground`, `march-one-rate` and most of `battle-tweaks` to `tests/unit/`; P1-08c `terror-three-stacks` and
+  `xp-naval-passenger`). A test that only watches the calls to a lifted helper wraps the top-level function instead of
+  hooking its first line: the `xp-` tests' `XP_RECORD` wraps `trySkillGain` (P1-08c). A `typeof f==='function'` guard
   stays true: a lifted helper is a top-level function.
-- A value the turn changes as it goes (`_logCtx`, `_currentPhase`, `_afterPhases`) lives only in the context. Read and
+- A value the turn changes as it goes (`_logCtx`, `_currentPhase`, `_afterPhases`, and since P1-08c `_combatSkillProv`,
+  `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`, `_deferredSkillLogs`, `_pcSimulating`) lives only in the context. Read and
   write `turnContext._currentPhase`, never a copy in a local, or a later reader sees an old value. A test hook that
   changes one, or swaps `G`, changes the context's too (`npc-parity`'s `setG` and `setPhase`).
 - Reading a context value before `resolveTurn` has set it gives `undefined`; reading the old `let` before its line
   threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix), and
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
   `recruitedThisTurn`, `_intrusionAcc`): before its join line, the old name threw; the context's reads `undefined`.
+  P1-08c checked again for the six values above and `_elvenEscapeQueue`.
 
 ## Top-level names aren't on `window` in tests
 

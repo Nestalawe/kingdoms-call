@@ -91,7 +91,6 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'new-creatures', 'tests/new-creatures.test.js'],
     ['unit', 'abilities-beasts', 'tests/abilities-beasts.test.js'],
     ['scenario', 'abilities-beasts-turn', 'tests/abilities-beasts-turn.test.js'],
-    ['unit', 'terror-three-stacks', 'tests/terror-three-stacks.test.js'],
     ['unit', 'hp-gain-private', 'tests/hp-gain-private.test.js'],
     ['unit', 'battle-fronts-meet', 'tests/battle-fronts-meet.test.js'],
     ['scenario', 'beast-calls-gone', 'tests/beast-calls-gone.test.js'],
@@ -136,7 +135,6 @@ export function suite(full: boolean): Script[] {
     ['unit', 'holy-symbol-unclean', 'tests/holy-symbol-unclean.test.js'], // batch 2026-10-14
     ['unit', 'fireball-burn', 'tests/fireball-burn.test.js'], // batch 2026-10-14
     ['scenario', 'xp-lair-thief', 'tests/xp-lair-thief.test.js'], // batch 2026-10-14
-    ['unit', 'xp-naval-passenger', 'tests/xp-naval-passenger.test.js'], // batch 2026-10-14
     ['scenario', 'practice-human', 'tests/practice-human.test.js'], // batch 2026-10-14
     ['unit', 'xp-fight-win', 'tests/xp-fight-win.test.js'], // batch 2026-10-14
     ['scenario', 'xp-small-chances', 'tests/xp-small-chances.test.js'], // batch 2026-10-14

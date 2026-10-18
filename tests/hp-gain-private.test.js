@@ -13,7 +13,7 @@ const {bootScenario}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const sc=await bootScenario({inject:[["  // 4. Run all 5 phases\n",
-    "  window.__HPP={get G(){ return G; },get L(){ return turnLog; },resolvePersonalCombat,pcCharCombatant,awardWinHp,emitNarrLine:(...a)=>emitNarrLine(turnContext,...a),emitBattle};\n  // 4. Run all 5 phases\n"]]});
+    "  window.__HPP={get G(){ return G; },get L(){ return turnLog; },resolvePersonalCombat,pcCharCombatant,awardWinHp:(...a)=>awardWinHp(turnContext,...a),emitNarrLine:(...a)=>emitNarrLine(turnContext,...a),emitBattle:(...a)=>emitBattle(turnContext,...a)};\n  // 4. Run all 5 phases\n"]]});
   await sc.turn({});
   const H=sc.W.__HPP; if(!H||typeof H.resolvePersonalCombat!=='function'||typeof H.emitNarrLine!=='function'){ console.log('hook missing'); process.exit(1); }
   const G=H.G, L=H.L; let nextId=9400;

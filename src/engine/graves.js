@@ -84,3 +84,62 @@ function graveIntelFor(gs, pl){
             detailPartial:!!rec.detailPartial};
   }).sort((a,b)=>(b.turn||0)-(a.turn||0)||String(a.name).localeCompare(String(b.name)));
 }
+
+// ── LIFTED OUT OF resolveTurn (plan P1-08c) ── a fallen hero's grave (for Resurrect), the dead units a battle leaves
+// in a province (for Skeletal Armies) or that slip away home (an Elven kingdom's units; resolveTurn's _elvenEscapeQueue,
+// which joins the turn's context by reference), and the dead heroes a realm has seen. recordHeroGrave,
+// recordBattleGraves and recordDeadHeroSighting take the turn's context first (src/engine/turn/context.js).
+  // Record a dead hero into the persistent graveyard for Resurrect spell
+  function recordHeroGrave(turnContext,hero){
+    const {G}=turnContext;
+    if(!G.heroGraveyard) G.heroGraveyard=[];
+    // Don't double-record
+    if(G.heroGraveyard.find(h=>h.id===hero.id)) return;
+    G.heroGraveyard.push({
+      id:hero.id, name:hero.name.replace(' (wandering)',''),
+      player:hero.player, race:hero.race, alignment:hero.alignment,
+      temper:hero.temper, skills:{...hero.skills}, maxHp:hero.maxHp||20,
+      isKing:!!hero.isKing, // was never stored, so every `g.isKing` reader (the report's
+                            // visibleDeadHeroes among them) silently read undefined and no fallen
+                            // king was ever marked as one. The Hierophant's new reading needs it.
+      killedOnTurn:G.turn, location:hero.location,
+      // every realm this hero ever served (see noteServedRealm) — Resurrect refuses a body that
+      // served another realm.
+      served:(()=>{ if(hero.player!=null) noteServedRealm(hero,hero.player); return Array.isArray(hero._servedRealms)?hero._servedRealms.slice():[]; })(),
+      _releasedBy:(hero._releasedBy!=null?hero._releasedBy:null),
+    });
+  }
+
+  function elvenEscapeChance(terrain){ return (terrain==='desert'||terrain==='mountain')?30:(terrain==='forest'||terrain==='jungle')?60:45; }
+  function recordBattleGraves(turnContext, prov, killedArmies, ownerPlayer){
+    const {G, _elvenEscapeQueue}=turnContext;
+    if(!killedArmies||!killedArmies.length) return;
+    if(!prov.battleGraves) prov.battleGraves=[];
+    const ownerIsElven=(ownerPlayer!=null && G.players[ownerPlayer] && G.players[ownerPlayer].race==='Elven');
+    killedArmies.forEach(a=>{
+      // Don't record skeletal armies — they don't leave useful remains
+      if(a._isSkeletal) return;
+      if(a._phantom) return; // spectral doubles leave no graves and never flee home
+      if(ownerIsElven && a && a.race==='Elven' && !a._temporary && a._wildHuntUntilTurn==null && !a._elvenEscaped){
+        if(kcRng()*100 < elvenEscapeChance(prov&&prov.terrain)+discSum(turnContext,ownerPlayer,'elvenEscape','pct')){ // Homeward Song
+          a._elvenEscaped=true;
+          _elvenEscapeQueue.push({player:ownerPlayer, unit:{type:a.type, quality:a.quality, race:'Elven', unitName:a.unitName||armyUnitName(a.type), strength:a.strength}});
+          return; // fled toward home — no grave left here
+        }
+      }
+      prov.battleGraves.push({type:a.type,quality:a.quality,race:a.race||'Human',unitName:a.unitName});
+    });
+  }
+
+  // When a player's character visits/spies a province, record any dead heroes there as seen
+  function recordDeadHeroSighting(turnContext, playerIdx, provId){
+    const {G}=turnContext;
+    if(!G.heroGraveyard) return;
+    G.heroGraveyard.filter(g=>g.location===provId).forEach(g=>{
+      const p=G.players[playerIdx];if(!p) return;
+      if(!Array.isArray(p.seenDeadHeroIds)) p.seenDeadHeroIds=[];
+      if(!p.seenDeadHeroIds.includes(g.id)) p.seenDeadHeroIds.push(g.id);
+      if(!Array.isArray(p.knownDeadHeroIds)) p.knownDeadHeroIds=[];
+      if(!p.knownDeadHeroIds.includes(g.id)) p.knownDeadHeroIds.push(g.id);
+    });
+  }
