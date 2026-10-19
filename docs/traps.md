@@ -199,7 +199,13 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   (`turnContext.freshPlayers`) and the turn run (`turnContext.expectedTurnToRun`, which may differ from `G.turn`) first,
   and reads what it collected from the context (`turnContext()` in `tests/lib/engine.ts` makes them empty). What the
   set-up leaves in `G.turnOrders` and the per-turn lists is gone by the turn's end: a whole turn reads it as the first
-  phase begins. The loop is the stages' calls, the intents between
+  phase begins. P1-08k8's four stages before the first phase make the movement pools, `SEASONS`, the turn's trackers
+  and the war fronts at the start afresh and join them to the context, so a test that calls them reads those from the
+  context after the call (a value made before the call is the old one; `STALE_CONTEXT` in
+  `tests/lib/before-the-first-phase-cases.ts` leaves stale ones in to show it), and a whole turn's are read from the
+  context as the first phase begins: `move-points` reads the pools that way. A direct call of the four runs without the
+  bots' passes between the third and the fourth (they stay nested in `resolveTurn` until P1-08l), so a case about a
+  bot's own pick or plan is a whole turn's. The loop is the stages' calls, the intents between
   the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
   log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
   the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.
@@ -214,7 +220,7 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
   `recruitedThisTurn`, `_intrusionAcc`): before its join line, the old name threw; the context's reads `undefined`.
   P1-08c checked again for the six values above and `_elvenEscapeQueue`, P1-08d for `presenceByPhase`, `clairWatch` and
-  `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`, P1-08i3 for `_tier0Open`, `_unitGainQueue`, `_warFrontAtStart` and `_warFrontProvs`. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
+  `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`, P1-08i3 for `_tier0Open`, `_unitGainQueue`, `_warFrontAtStart` and `_warFrontProvs`. P1-08k4 and P1-08k7 for the merge's six collectors. P1-08k8 added no join and no `let` (the values it makes were joined before; their join lines moved with them), so it didn't rerun it. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
   does: a test of a lifted helper that reads one it doesn't set gets `undefined`, not the turn's value.
 
 ## Top-level names aren't on `window` in tests

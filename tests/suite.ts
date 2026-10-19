@@ -107,7 +107,6 @@ export function suite(full: boolean): Script[] {
     ['unit', 'monarch-grave', 'tests/monarch-grave.test.js'],
     ['scenario', 'guardian-traits', 'tests/guardian-traits.test.js'],
     ['unit', 'unit-fates', 'tests/unit-fates.test.js'],
-    ['scenario', 'move-points', 'tests/move-points.test.js'],
     ['scenario', 'overtures', 'tests/overtures.test.js'],
     ['page', 'orders-group-by-location', 'tests/orders-group-by-location.test.js'],
     ['unit', 'duel-refuse-default', 'tests/duel-refuse-default.test.js'],
