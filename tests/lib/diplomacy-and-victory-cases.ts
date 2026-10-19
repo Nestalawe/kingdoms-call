@@ -62,8 +62,8 @@ export interface DiplomacyAndVictoryCase {
   name: string;
   /** How many realms the world has (default 3): an alliance can be made only among four or more. */
   realms?: 3 | 4;
-  /** Plays only in a whole turn: what the turn does before the phases makes what the case is about (an Evil realm's
-   *  war without warning). */
+  /** Plays only in a whole turn: what the turn does before these stages makes what the case is about (an Evil realm's
+   *  war without warning, before the phases; Mass Healing, after them). */
   wholeTurnOnly?: boolean;
   /** The dice for the whole turn (default LANDS). */
   dice?: Dice;
@@ -86,7 +86,9 @@ const raw = (b: Board) => b.G as unknown as Raw;
 /** Realm `pi`'s seat: the province it holds (two provinces out from the middle, three apart round the ring). */
 export const seatOf = (b: Board, pi: number) => must(b.ring2[pi * 3], 'a seat for realm ' + String(pi));
 /** Each realm holds only its seat, with the tax given (in realm order; a realm not given one: none); every other
- *  province in the world has none, so a realm's share of the world's tax base is its tax over their sum. */
+ *  province in the world has none, so a realm's share of the world's tax base is its tax over their sum. Its treasury is
+ *  20 and its tax, so the realm with the most tax is the richest before the turn's taxes as after them (the
+ *  Vaultkeeper's, whether the stages run in a whole turn or alone). */
 export const taxes = (b: Board, ...tax: number[]) => {
   b.G.world.provinces.forEach((p) => {
     p['tax'] = 0;
@@ -94,6 +96,7 @@ export const taxes = (b: Board, ...tax: number[]) => {
   b.G.players.forEach((pl, pi) => {
     holdsOnly(b, pi, [seatOf(b, pi), tax[pi] ?? 0]);
     pl['homeProvinceId'] = seatOf(b, pi).id;
+    pl['gold'] = 20 + (tax[pi] ?? 0);
   });
 };
 /** Realm `pi` holds no land at all. */
@@ -187,6 +190,21 @@ export const meta = (o: Outcome, text: string) => {
       }
     : null;
 };
+/** Every line saying exactly `text`, as `meta` reads them, in order. */
+export const metas = (o: Outcome, text: string) =>
+  o.all
+    .filter((x) => x.text === text)
+    .map((l) => ({
+      type: l.type,
+      actor: l.actor ?? null,
+      targets: l.targets ?? null,
+      provinceId: l.provinceId,
+      charId: l.charId,
+      public: !!l['public'],
+      system: !!l['system'],
+      gameEnd: !!l['gameEnd'],
+      phase: l.phase,
+    }));
 /** What a line of these stages looks like (`meta`): a system line told to `targets`, after the phases, with what isn't
  *  given as the line writes it. */
 export const systemLine = (targets: number[], x: Partial<NonNullable<ReturnType<typeof meta>>> = {}) => ({
@@ -295,8 +313,8 @@ export const PEACE_AND_WAR_CASES: DiplomacyAndVictoryCase[] = [
     check(o) {
       const t = peace(nm(o, 0), nm(o, 1));
       return {
-        got: { relation: relation(o, 0, 1), said: said(o), line: meta(o, t), overtures: overturesIn(o, 1) },
-        want: { relation: 'neutral', said: toEach(0, 1, t), line: systemLine([0]), overtures: [] },
+        got: { relation: relation(o, 0, 1), said: said(o), lines: metas(o, t), overtures: overturesIn(o, 1) },
+        want: { relation: 'neutral', said: toEach(0, 1, t), lines: [systemLine([0]), systemLine([1])], overtures: [] },
       };
     },
   },
@@ -625,6 +643,19 @@ export const ALLIANCE_CASES: DiplomacyAndVictoryCase[] = [
     },
   },
   {
+    name: 'a realm breaking its alliance with an Evil realm leaves them at peace: only the breaker decides',
+    stage(b) {
+      realm(b, 2)['alignment'] = 'Evil';
+      return sending({ 0: { diplomacy: { 2: 'enemy' } } });
+    },
+    check(o) {
+      return {
+        got: { relation: relation(o, 0, 2), said: said(o) },
+        want: { relation: 'neutral', said: toEach(0, 2, broken(nm(o, 0), false, nm(o, 0), nm(o, 2))) },
+      };
+    },
+  },
+  {
     name: 'an Evil realm that breaks an alliance is at war from the first season, and nothing more is said after the phases',
     wholeTurnOnly: true,
     stage(b) {
@@ -814,7 +845,7 @@ export const RECKONING_CALL_CASES: DiplomacyAndVictoryCase[] = [
     },
   },
   {
-    name: 'a realm whose king has fallen is told only a king may call the Reckoning',
+    name: 'a realm with no king is told only a king may call the Reckoning',
     stage(b) {
       turnIs(b, 12);
       relate(b, { '0-1': 'enemy' });
@@ -826,6 +857,32 @@ export const RECKONING_CALL_CASES: DiplomacyAndVictoryCase[] = [
         got: { said: said(o), line: meta(o, ONLY_A_KING), claim: claimAfter(o) },
         want: { said: [[[0], ONLY_A_KING]], line: systemLine([0]), claim: null },
       };
+    },
+  },
+  {
+    name: "a realm whose king has fallen is told only a king may call, though its other heroes and another realm's king live",
+    stage(b) {
+      turnIs(b, 12);
+      relate(b, { '0-1': 'enemy' });
+      taxes(b, 60, 20, 20);
+      const fallen = king(b, 0);
+      Object.assign(fallen, { alive: false, hp: 0 });
+      const h = host(b, 0, seatOf(b, 0), 0);
+      king(b, 1);
+      return { ...sending({ 0: { callReckoning: true } }), orders: [stays(h)] };
+    },
+    check(o) {
+      return {
+        got: { said: said(o).slice(0, 1), claim: claimAfter(o) },
+        want: { said: [[[0], ONLY_A_KING]], claim: null },
+      };
+    },
+  },
+  {
+    name: 'the share of the world is shown rounded down',
+    stage: (b) => callsAlone(b, 12, 20, 10, 0),
+    check(o) {
+      return { got: { said: said(o) }, want: { said: [[[], called(nm(o, 0), [], 66, 50, 14)]] } };
     },
   },
   {
@@ -975,6 +1032,17 @@ export const CLAIM_CASES: DiplomacyAndVictoryCase[] = [
           over: { winner: 2, byReckoning: true, turn: 14, _announced: true },
         },
       };
+    },
+  },
+  {
+    name: 'a claim exactly at its bar stands',
+    stage(b) {
+      callsAlone(b, 13, 50, 30, 20);
+      claim(b, 0, [0], 14, 50);
+      return sending();
+    },
+    check(o) {
+      return { got: { said: said(o), claim: claimAfter(o) !== null }, want: { said: [], claim: true } };
     },
   },
   {
@@ -1184,14 +1252,32 @@ export const ELIMINATION_CASES: DiplomacyAndVictoryCase[] = [
     },
     check(o) {
       const t = decided(nm(o, 0), RUINS);
+      const first = standing(1, nm(o, 0), 30, ['Throne', 'Vaultkeeper']);
       return {
-        got: { said: said(o), line: meta(o, t), over: result(o), standings: standings(o) },
+        got: { said: said(o), line: meta(o, t), standing: meta(o, first), over: result(o), standings: standings(o) },
         want: {
           said: announced(o, nm(o, 0), RUINS, 0),
           line: systemLine([], { public: true, gameEnd: true }),
+          standing: systemLine([], { public: true, gameEnd: true }),
           over: { winner: 0, byElimination: true, turn: 3, _announced: true },
           standings: topOf(o, 0),
         },
+      };
+    },
+  },
+  {
+    name: 'a realm with no land whose heroes have all fallen is out',
+    stage(b) {
+      landless(b, 1);
+      landless(b, 2);
+      const fallen = host(b, 1, b.X, 1);
+      Object.assign(fallen, { alive: false, hp: 0 });
+      return sending();
+    },
+    check(o) {
+      return {
+        got: { over: result(o)?.['byElimination'] },
+        want: { over: true },
       };
     },
   },
@@ -1460,6 +1546,28 @@ export const ANNOUNCEMENT_CASES: DiplomacyAndVictoryCase[] = [
 
 // ── The order of the two ─────────────────────────────────────────────────────────────────────────────────────────
 export const ORDER_CASES: DiplomacyAndVictoryCase[] = [
+  {
+    name: 'Mass Healing after the phases still mends an ally whose realm breaks the alliance this turn: the pact ends after',
+    wholeTurnOnly: true,
+    stage(b) {
+      const healer = at(b, { white: 6 }, { at: b.X });
+      const ally = at(b, {}, { player: 2, at: b.X });
+      ally.hp = 4;
+      return { ...sending({ 0: { diplomacy: { 2: 'enemy' } } }), orders: [stays(healer), stays(ally)], hero: ally };
+    },
+    check(o, s) {
+      return {
+        got: {
+          relation: relation(o, 0, 2),
+          hp: must(
+            o.world.characters.find((c) => c.id === hero(s).id),
+            'the ally',
+          ).hp,
+        },
+        want: { relation: 'neutral', hp: 14 },
+      };
+    },
+  },
   {
     name: 'an alliance made this turn already widens the bloc of a claim lodged this turn',
     realms: 4,
