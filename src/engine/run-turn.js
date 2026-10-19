@@ -1,18 +1,27 @@
 // ── THE TURN ITSELF (plan P1-18d, 2026-10-18) ────
 // resolveTurn works out one turn: it brings the save up to date, merges the players' orders, has the bots plan,
-// resolves the five phases and the end of the turn. It is synchronous and reads no database, no screen and no clock;
-// the dice are the page's (kcRng, src/engine/rng.js). The shell around it is runTurn (src/ui/gm/turn-shell.js): it
-// loads the game, clears the orders, calls this, saves, and only then has the reports built and writes them.
+// resolves the five phases and the end of the turn. It is synchronous and reads no database, no screen and no clock.
+// Its dice come from its seed (P1-08m, below). The shell around it is runTurn (src/ui/gm/turn-shell.js): it loads the
+// game, clears the orders, draws the seed, calls this, saves, and only then has the reports built and writes them.
 //   G                 the game's saved state as loaded (games.game_state, a JSON string): parsing it is the turn's copy
 //   freshPlayers      the game's slot rows as loaded (game_players), each with the orders it sent
 //   expectedTurnToRun the turn being run (the games row's turn, which the save checks)
+//   seed              the turn's seed, a 32-bit integer (kcRngStream reads 0 as 1); none (the tests' turns): the dice
+//                     in use (kcRng, src/engine/rng.js), as a test fixes them
 // Returns {state, log, buildReports}:
 //   state             the world after the turn, as JSON: what the shell saves (with its two turn-mode stamps added)
 //   log               the GM's log of the turn (turnLog); buildReports adds the Spy-stealth lines to it
 //   buildReports()    builds every realm's report on the working copy, once, after the save: {reports, tel}, where
 //                     reports is [{gp, report}] (gp: the slot row it is for) and tel what telemetry reads
 // The body keeps runTurn's two-space indent and names, so the code anchors in tests/README.md still match.
-function resolveTurn(G, freshPlayers, expectedTurnToRun){
+function resolveTurn(G, freshPlayers, expectedTurnToRun, seed){
+  // ── THE TURN'S DICE (P1-08m, 2026-10-20) ── given a seed, the turn plays on dice of its own: kcRngStream(seed), made
+  // once, lent (kcRng.use) for the turn and again for buildReports(), whose Spy-stealth rolls carry on from the turn's.
+  // The dice in use before are given back after each, also when it throws, so nothing else the page runs between the
+  // two (the save, another game's turn, the watcher) draws from the turn's. With no seed, nothing is lent.
+  const turnDice=seed==null?null:kcRngStream(seed);
+  const onTheTurnsDice=(fn)=>{ if(!turnDice) return fn(); const was=kcRng.use(turnDice); try{ return fn(); } finally{ kcRng.use(was); } };
+  return onTheTurnsDice(()=>{
   try{
     G=typeof G==='string'?JSON.parse(G):G;
     seedUsedArmyNames(G); seedUsedHeroNames(G);
@@ -224,6 +233,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   const _reports={built:false};
   turnContext._reports=_reports;
 
-  return {state:JSON.stringify(G), log:turnLog, buildReports:(...a)=>buildReports(turnContext,...a)};
+  return {state:JSON.stringify(G), log:turnLog, buildReports:(...a)=>onTheTurnsDice(()=>buildReports(turnContext,...a))};
+  });
 }
 

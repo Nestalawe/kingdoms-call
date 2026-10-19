@@ -90,16 +90,15 @@ async function runTurn(opts){
   const playersWithOrders=freshPlayers.filter(p=>p.user_id&&p.orders).length;
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Resolving 5 phases…</div>`;
-  // ── THE TURN'S DICE (P1-18e, 2026-10-18) ────
+  // ── THE TURN'S DICE (P1-18e, 2026-10-18; P1-08m, 2026-10-20) ────
   // Each turn plays from its own seed: one number drawn from the page's dice, as a 32-bit integer (kcRngStream reads
-  // 0 as 1, so 0 becomes 1 here and the seed returned is the one that played). The turn borrows the dice made from it
-  // (src/engine/rng.js, kcRng.use) for resolveTurn, and again for buildReports(), whose Spy-stealth rolls are the
-  // turn's too, and gives the page its own dice back after each: they are never lent across an await, so nothing else
-  // the page runs meanwhile (another game's turn, the watcher) draws from them. runTurn returns the seed.
+  // 0 as 1, so 0 becomes 1 here and the seed returned is the one that played). resolveTurn takes the seed and lends
+  // itself the dice made from it (src/engine/run-turn.js), and lends them again to buildReports(), whose Spy-stealth
+  // rolls are the turn's too; it gives the page its own dice back after each, so the turn's are never lent across an
+  // await, and nothing else the page runs meanwhile (another game's turn, the watcher) draws from them. runTurn returns
+  // the seed.
   seed=Math.floor(kcRng()*2**32)||1;
-  const turnDice=kcRngStream(seed);
-  const onTurnDice=(fn)=>{ const was=kcRng.use(turnDice); try{ return fn(); } finally{ kcRng.use(was); } };
-  const resolved=onTurnDice(()=>resolveTurn(freshGame.game_state, freshPlayers, expectedTurnToRun));
+  const resolved=resolveTurn(freshGame.game_state, freshPlayers, expectedTurnToRun, seed);
 
   // 9. Save updated game state
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Saving game state…</div>`;
@@ -127,7 +126,7 @@ async function runTurn(opts){
 
   // 10. Generate and push new turn reports to each player
   msg.innerHTML=kcHtml`<div class="msg-info">⏳ Generating turn reports…</div>`;
-  const {reports, tel}=onTurnDice(()=>resolved.buildReports());
+  const {reports, tel}=resolved.buildReports();
   let reportErrors=[];
   for(const {gp, report} of reports){
     report.engineStamp=(typeof runningBuildStamp==='function'?runningBuildStamp():null); // which GM build wrote it: the page's to know, not the engine's
