@@ -140,7 +140,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-078](R-078-overtures-count-as-meeting.md) | An overture introduces the sender | 2026-10-08 | Confirmed | [`overtures`](../../tests/overtures.test.js) |
 | [R-079](R-079-guardian-traits.md) | A guardian never resists and is weak to the same thing | 2026-10-08 | Confirmed | [`guardian-traits`](../../tests/guardian-traits.test.js) |
 | [R-080](R-080-one-blow-cap.md) | No single blow takes more than half a fighter's HP | 2026-10-08 | Confirmed | [`hit-cap`](../../tests/unit/hit-cap.test.ts) |
-| [R-081](R-081-movement-costs.md) | Movement costs of conquest | 2026-10-08 | Confirmed | [`move-points`](../../tests/move-points.test.js) |
+| [R-081](R-081-movement-costs.md) | Movement costs of conquest | 2026-10-08 | Confirmed | [`move-points`](../../tests/scenario/move-points.test.ts) |
 | [R-082](R-082-run-them-down.md) | Run Them Down: no chase, the beaten army is cut down on the field | 2026-10-09 | Confirmed (open question) | [`warg-run-down`](../../tests/warg-run-down.test.js) |
 | [R-083](R-083-chase-battle-conquers.md) | A chase battle won conquers the province | 2026-10-09 | Confirmed | [`pursuit-one-battle`](../../tests/scenario/pursuit-one-battle.test.ts) |
 | [R-084](R-084-retreats-onto-dry-ground.md) | Retreats never into a flood | 2026-10-09 | Confirmed | [`retreat-dry-ground`](../../tests/unit/retreat-dry-ground.test.ts) |
