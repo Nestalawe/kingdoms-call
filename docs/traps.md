@@ -205,7 +205,12 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   `tests/lib/before-the-first-phase-cases.ts` leaves stale ones in to show it), and a whole turn's are read from the
   context as the first phase begins: `move-points` reads the pools that way. A direct call of the four runs without the
   bots' passes between the third and the fourth (they stay nested in `resolveTurn` until P1-08l), so a case about a
-  bot's own pick or plan is a whole turn's. The loop is the stages' calls, the intents between
+  bot's own pick or plan is a whole turn's. P1-08l1's bots' diplomacy
+  (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, in `engine/bots/`) takes the context alone and
+  reads each bot realm's rivals from `turnContext._botEncounteredAtStart`: a copy of each bot's record of whom it had met,
+  made when the turn began, before the merge, and read by both of its calls (before the first phase and after the
+  phases). A test that calls it makes that copy as `resolveTurn` does (`ready` in `tests/lib/bot-diplomacy-cases.ts`);
+  changing a realm's `_encountered` afterwards changes nothing. The loop is the stages' calls, the intents between
   the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
   log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
   the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.
