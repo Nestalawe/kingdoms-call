@@ -379,7 +379,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (`newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile`, taking only the
   context): the War Academy's drills, the gardens' mending, the Informant Network and the Arcane Observatory, the
   Divine return, graves rotting, the mercenary bands, the clean-up and the save's repair lines, wandering heroes'
-  drift, the turn's orders cleared, the final reconcile and the stranded guards. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  drift, the turn's orders cleared, the final reconcile and the stranded guards. P1-08k6 took the last two stages
+  out, the titles at the turn's end, once immediately-invoked functions and named functions now, in
+  `engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.js`
+  (`imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy` and
+  `titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn`, each taking only the context): each title holder's intel of
+  the realms it has met, from turn 5, and the titles each realm won and lost since last turn. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
