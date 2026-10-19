@@ -179,7 +179,10 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   line it writes with no phase of its own is filed after the phases (99). P1-08k4's diplomacy and victory stages read the
   realms' declarations and Reckoning calls from the context (`turnContext.diploDeclarations`, `turnContext.reckoningCalls`,
   which `turnContext()` in `tests/lib/engine.ts` makes empty): a test that calls them puts the realms' declarations
-  there, as the order merge does. The loop is the stages' calls, the intents between
+  there, as the order merge does. P1-08k5a's first part of the new turn moves the turn counter on itself: a test that
+  calls it reads the turn it was played on before the call. The board has no kings (`board()` clears every hero), so a
+  whole turn crowns an heir for every realm at its end unless the test stands a king in each, as `stageCase` in
+  `tests/lib/new-turn-succession-and-summons-cases.ts` does. The loop is the stages' calls, the intents between
   the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
   log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
   the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.

@@ -370,7 +370,11 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   alliances and wars made or broken, war-front warnings) and victory
   (`victoryTheReckoningEliminationConcessionAndTheAnnouncement`: the Reckoning, elimination, concession, the result
   announced), each taking only the context; the realms' declarations and Reckoning calls, collected where their orders
-  are merged, join the context for them. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  are merged, join the context for them. P1-08k5a took the first part of the new turn out, in
+  `engine/turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.js`
+  (`newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns`, taking only the context): the turn counter, a
+  Divine king's lost return, an heir crowned, summons and one-turn spells ending, and the Grand Designs' skeleton rises
+  and Grand Library. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
