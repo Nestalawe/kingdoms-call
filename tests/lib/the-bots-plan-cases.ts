@@ -745,6 +745,17 @@ export const OUTCOME_CASES: BotsPlanCase[] = [
     },
   },
   {
+    name: 'a human realm’s hero sent no orders is left for the default to Defend, not planned as a bot’s',
+    stage: (b) => {
+      const c = fighter(b, 0, { melee: 3 });
+      return { bots: [1, 2], orders: [[c, []]], hero: c };
+    },
+    check: (o, s) => ({
+      got: { actions: actionsOf(o, must(s.hero, 'the hero')) },
+      want: { actions: [] },
+    }),
+  },
+  {
     name: 'a bot realm that concedes writes no orders: its heroes are left for the default to Defend',
     stage: (b) => {
       realm(b, 1)['provinces'] = [];
