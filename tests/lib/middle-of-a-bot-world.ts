@@ -248,6 +248,13 @@ export const plan = (...orders: Order[]): Order[] => [
   ...orders.slice(0, 5),
   ...Array.from({ length: Math.max(0, 5 - orders.length) }, () => order('rest')),
 ];
+/** What a realm sends with its orders beside them: its declarations (realm index → 'treat' or 'enemy'), a call for
+ *  the Reckoning, a concession. */
+export interface RealmSends {
+  diplomacy?: Record<number, 'treat' | 'enemy'>;
+  callReckoning?: boolean;
+  concede?: boolean;
+}
 export interface PlayedTurn {
   /** The world after the turn, as saved. */
   after: World;
@@ -259,12 +266,14 @@ export interface PlayedTurn {
  *  board's context isn't used. `written` adds orders a realm sends under a key of its own (plan P1-08j3: the orders
  *  written for a hero it means to hire, `hired_<hero>_via_<hirer>_ph<phase>`), by realm. The realms in `bots` are
  *  bot realms (plan P1-08j9: a slot row with no player and `isBot` in its report), which plan their own orders in the
- *  turn. */
+ *  turn. `sends` gives what a realm sends with its orders beside them (plan P1-08k4: its declarations toward other
+ *  realms, a call for the Reckoning, a concession), by realm; by default nothing. */
 export function playTurn(
   b: Board,
   orders: Record<number, Order[]>,
   written: Record<number, Record<string, Order[]>> = {},
   bots: number[] = [],
+  sends: Record<number, RealmSends> = {},
 ): PlayedTurn {
   const G = b.G as World & { safeStart?: boolean };
   G.safeStart = false;
@@ -284,10 +293,10 @@ export function playTurn(
       },
       encounterPlans: {},
       kingSkills: {},
-      diplomacy: {},
+      diplomacy: sends[i]?.diplomacy ?? {},
       discoveryChoices: {},
-      callReckoning: false,
-      concede: false,
+      callReckoning: sends[i]?.callReckoning ?? false,
+      concede: sends[i]?.concede ?? false,
       messages: [],
       heroOrder: [],
       forTurn: G.turn,
