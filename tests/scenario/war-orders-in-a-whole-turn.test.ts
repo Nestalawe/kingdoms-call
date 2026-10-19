@@ -20,7 +20,7 @@ quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);
 
-describe.each(WAR_ORDER_CASES)('the %s order, in a whole turn', (_, cases) => {
+describe.each(WAR_ORDER_CASES)('%s, in a whole turn', (_, cases) => {
   test.each(cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
     const b = board(engine, world, 0);
     const s = stageCase(b, c);

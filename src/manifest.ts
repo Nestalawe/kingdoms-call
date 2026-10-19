@@ -129,6 +129,8 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.js',
         'engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.js',
         'engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.js',
+        'engine/orders/encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.js',
+        'engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',

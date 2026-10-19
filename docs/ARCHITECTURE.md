@@ -338,7 +338,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (`engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.js`: `resolveCastSpellOrder`,
   the casting and every spell a hero can work as a phase order; and the helper a failed Charm calls, nested in
   `processOrder` until then: `charmBacklash`, with its constant `CHARM_BACKLASH_PCT` now top-level); the spell item's
-  Use Item that `processOrder` turns into a cast arrives as its last argument (`_itemCast`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  Use Item that `processOrder` turns into a cast arrives as its last argument (`_itemCast`). P1-08j8, the war orders
+  (`engine/orders/encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.js`: Encounter Character,
+  `resolveEncounterCharacterOrder`, which sets the chase and takes its first step, the rest being `advancePursuit`'s in
+  each later phase; Defend, `resolveDefendOrder`, which sets or keeps the watch the Defend family carries out; and
+  `engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.js`: Blockade,
+  Challenge, Rampage, Rain of Arrows, Sniper's Mark, Feigned Retreat, Grand Stratagem, Lightning Advance and Raid the
+  Coast, one function each); the once-a-turn check before a mastery stays in `processOrder`. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

@@ -153,7 +153,7 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   changes one, or swaps `G`, changes the context's too (`battle-faced-turn`'s `setG` did, until P1-08i3; `npc-parity`'s
   `setPhase` did, until P1-08g moved it down).
 - An order taken out of `processOrder` (since P1-08j1: the Move, `resolveMoveOrder`; since P1-08j2 the explore and
-  search orders; since P1-08j3 recruiting, hiring and the realm's works; since P1-08j4 research and practice; since P1-08j5 items and armies; since P1-08j6 espionage; since P1-08j7 Cast Spell) takes, after the context, the values `processOrder` works out before its `switch` that the order
+  search orders; since P1-08j3 recruiting, hiring and the realm's works; since P1-08j4 research and practice; since P1-08j5 items and armies; since P1-08j6 espionage; since P1-08j7 Cast Spell; since P1-08j8 the war orders) takes, after the context, the values `processOrder` works out before its `switch` that the order
   reads, in the order they're declared there (the Move's `c, ph, _fmSlip, target, prov, player`; Explore's only
   `c, prov`). So the calls differ from order to order. The case is the call and `break`, and a `return` in the order
   ends it, as the case's own `break` did: nothing follows the `switch`. Keep the call in step with the function: two
@@ -161,7 +161,7 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   plays the order (`scenario/move-orders-in-a-whole-turn`, `scenario/explore-and-search-orders-in-a-whole-turn`,
   `scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn`, `scenario/research-and-practice-orders-in-a-whole-turn`,
   `scenario/item-and-army-orders-in-a-whole-turn`, `scenario/espionage-orders-in-a-whole-turn`,
-  `scenario/cast-spell-order-in-a-whole-turn`). A helper nested in `processOrder` that leaves with them takes the
+  `scenario/cast-spell-order-in-a-whole-turn`, `scenario/war-orders-in-a-whole-turn`). A helper nested in `processOrder` that leaves with them takes the
   context, then the values of `processOrder`'s it closed over, then its own arguments (since P1-08j6:
   `thiefCaughtScuffle(turnContext, prov, thief, victim, what)`; since P1-08j7: `charmBacklash(turnContext, prov, caster,
   t, why)`), and a `processOrder` constant only it reads becomes a top-level constant (`CHARM_BACKLASH_PCT`).

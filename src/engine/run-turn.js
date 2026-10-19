@@ -754,92 +754,11 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
       case 'disband_army': resolveDisbandArmyOrder(turnContext, c, target, prov); break;
 
       case 'pickup_army': resolvePickUpArmyOrder(turnContext, c, target, prov); break;
-      case 'encounter':{
-        // Encounter Character no longer requires the quarry to be standing in the same province.
-        // The hero sets out and CHASES the target wherever they go — one province per phase, a
-        // movement point each — and forces the meeting once he catches them. Targeting/visibility
-        // is enforced on the order form
-        // (you may name any enemy you can see: in a province you own, one you have a character in, or
-        // one you spied). The chase + catch + duel is resolved in advancePursuit below.
-        const targetId=parseInt(target);
-        const quarry=(G.characters||[]).find(x=>x.alive&&x.id===targetId);
-        if(!quarry){
-          log('system',`${c.name} casts about for a quarry to hunt down but finds no trail to follow.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
-        }
-        if(quarry.id===c.id){
-          log('system',`${c.name} cannot set out to encounter themself.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
-        }
-        // a seized ENEMY hero will not raise a hand against their own lord's people — no Encounter
-        // against a character of the original owner. Any other realm's heroes are fair game as
-        // usual.
-        if(c._charmTempControl&&c._charmOriginalPlayer!=null&&quarry.player===c._charmOriginalPlayer){
-          log('system',`${c.name} will not hunt ${quarry.name} — the Charm bends their will, but not so far as to turn them on their own lord's people.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
-        }
-        // only a king may run down an enemy king. A common hero can never force a meeting with a
-        // rival monarch — a king answers only to another crown. (Once caught, a king is no harder
-        // to run down than any hero: pursuitCatchChance treats them the same.)
-        if(quarry.isKing && !c.isKing && quarry.player!==c.player){
-          log('system',`${c.name} sets out after ${quarry.name}, but a rival king does not answer to a common hero — only a king may run down another king. The chase is abandoned.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
-        }
-        if(quarry.player!==c.player&&isHiddenChar(turnContext,quarry)){
-          log('system',`${c.name} sets out after ${quarry.name}, but they are cloaked and leave no trail to follow.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
-        }
-        // A mutual pair of Encounter orders (each hunting the other) resolves as ONE meeting.
-        if(c._encounteredThisPhase===quarry.id||quarry._encounteredThisPhase===c.id){ break; }
-        // THIEF L9 Vanish: no Encounter can be forced on someone who has melted into the shadows.
-        if(quarry._vanishTurn===G.turn&&quarry.player!==c.player){
-          log('move',`${c.name} sets out after ${quarry.name}, but there is no trail to follow — the quarry has vanished into the shadows.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        c._pursuit={targetId:quarry.id, active:true, setPhase:ph};
-        delete c._defend; // a chase cancels a standing Defend (AK [3.15])
-        log('move',`${c.name} sets out to run down ${quarry.name} and will not turn aside until the matter is settled.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        advancePursuit(turnContext,c,ph);
-        break;
-      }
+      case 'encounter': resolveEncounterCharacterOrder(turnContext, c, ph, target, prov); break;
 
       case 'steal': resolveStealOrder(turnContext, c, target, prov, player); break;
 
-      case 'defend':{
-        // A move that was cancelled by the invasion interlock is rewritten to a Defend order; the
-        // interlock already logged a much better line, so don't tack a bland one on top of it.
-        if(o._pinned) break;
-        // item 15: this phase's Defend order has already been answered in battle (the watch was on
-        // from the top of the phase) — it does not set the watch again.
-        if(defendSpentThisPhase(turnContext,c,ph)){
-          log('move',`🛡 ${c.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-          break;
-        }
-        // Defend needs no target — it always guards the province the character stands in. The watch
-        // covers that province plus its immediate neighbours (see inDefendZone), and he rides out
-        // to meet any incursion into an adjacent province. Any target still supplied by an older
-        // saved order is ignored. Persists for the rest of the turn.
-        const centreProv=prov;
-        // if the watch was pre-activated at the top of this phase (and may already have ridden out
-        // once), keep its one-reaction-per-phase marker.
-        const _preSet=!!(c._defend&&c._defend.active&&c._defend.setPhase===ph&&c._defend.preActivated);
-        // a watch carried over unbroken from an earlier phase is not announced again every phase
-        const _carried=!!(c._defend&&c._defend.active&&(c._defend.carried||c._defend.setPhase<ph));
-        c._defend={centre:centreProv.id,active:true,setPhase:ph,carried:_carried};
-        if(!_preSet) delete c._defendReactedPhase;
-        if(_preSet&&c._defendReactedPhase===ph){
-          // the watch already acted this phase (rode out / held the gate) and said so; a "makes
-          // camp" line after the ride-out would read backwards
-        } else if(_carried){
-          // still on watch. 2026-09-23 (Toby item 10): this used to print NOTHING, so a character
-          // who set a watch in Early Summer and held it through Fall and Early Winter showed only
-          // the phases before it — Sorrek the Kinless's Chronicle stopped at Late Summer. One short
-          // line per phase keeps every season accounted for.
-          log('move',(c.armies||[]).length===0
-            ? `🛡 ${c.name} still lies in wait about ${prov.name}.`
-            : `🛡 ${c.name} keeps the watch in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        } else if((c.armies||[]).length===0){
-          log('move',`${c.name} melts into the country around ${prov.name} and lies in wait — with no column at their back they cannot bar a road, but they will try to ambush any enemy who ventures into these lands (their Spy craft decides whether they can spring the trap).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        } else if(centreProv.id===prov.id){
-          log('move',`${c.name} makes camp in ${prov.name} and sets a watch — their column will answer any incursion into the lands about them for the rest of the year.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        } else {
-          log('move',`${c.name} sets a watch from ${prov.name} over the country around ${centreProv.name} — their column will ride to meet any incursion there for the rest of the year.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        }
-        break;
-      }
+      case 'defend': resolveDefendOrder(turnContext, c, o, ph, prov); break;
 
       // the standalone 'pursue' case is removed — Pursue is folded into Encounter Character (see
       // the 'encounter' case above), and PHASE_ACTION_MAP aliases any saved 'pursue' order to
@@ -856,116 +775,22 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
       case 'discover_ruin': resolveDiscoverLostRuinOrder(turnContext, c, target, prov); break;
 
       // ══ L7/L9 MASTERY ORDERS (batch 2b) ════
-      case 'blockade':{
-        if(skillLevel(c,'naval')<7){log('system',`${c.name} lacks the Naval mastery (7) to raise a Blockade.`,{actor:c.player,targets:[c.player]});break;}
-        const sp=G.world.provinces[parseInt(target)];
-        if(!sp||sp.terrain!=='sea'){log('system',`${c.name}: Blockade must target a sea province.`,{actor:c.player,targets:[c.player]});break;}
-        const adj=new Set(getNeighborsP(G.world.provinces[c.location],G.world.cols,G.world.rows,G.world.provinces).map(p=>p&&p.id).filter(x=>x!=null));
-        if(sp.id!==c.location&&!adj.has(sp.id)){log('system',`${c.name}: Blockade must seal a sea province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
-        if(!(c.armies||[]).some(a=>SEA_TYPES.has(a.type))){log('system',`${c.name}: a Blockade must be thrown by a fleet — you lead no naval units or sea creatures.`,{actor:c.player,targets:[c.player]});break;} // NAVAL L7: must lead a naval unit / sea creature
-        if(kcRng()<0.5){ // NAVAL L7: the blockade forms only half the time
-          sp._blockadeTurn=G.turn; sp._blockadeBy=c.player;
-          log('move',`⚓ ${c.name} throws a Blockade across ${sp.name} — enemy fleets may not cross these waters this turn.`,{actor:c.player,targets:[c.player],provinceId:sp.id,public:true});
-        } else {
-          log('move',`⚓ ${c.name} tries to blockade ${sp.name}, but the fleet cannot close the waters in time — no blockade forms this turn.`,{actor:c.player,targets:[c.player],provinceId:sp.id});
-        }
-        trySkillGain(turnContext,c,'naval',SKILLGAIN_STD);
-        break;
-      }
+      case 'blockade': resolveBlockadeOrder(turnContext, c, target); break;
       case 'research_breakthrough': resolveResearchBreakthroughOrder(turnContext, c); break;
       case 'assassinate': resolveAssassinateOrder(turnContext, c, target, prov); break;
       case 'vanish': resolveVanishOrder(turnContext, c, prov); break;
 
       // ══ L7/L9 MASTERY ORDERS (batch 2c-i — immediate strikes) ════
-      case 'challenge':{
-        if(skillLevel(c,'melee')<7){log('system',`${c.name} lacks the Melee mastery (7) to issue a Challenge.`,{actor:c.player,targets:[c.player]});break;}
-        const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
-        if(!foe){log('system',`${c.name} finds no enemy hero to challenge in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(foe.player!=null&&!areEnemies(turnContext,c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Challenge would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
-        if((foe.armies||[]).length>0){log('combat',`${foe.name} is at the head of an army and will not break off to answer ${c.name}'s Challenge.`,{actor:c.player,charIds:[c.id,foe.id].filter(v=>v!=null),targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id});break;}
-        markProvinceCombat(prov,[c.player,foe.player]); // purple swords: a personal duel, not a field battle
-        const A=pcCharCombatant(turnContext,c), B=pcCharCombatant(turnContext,foe);
-        const aScore=(A.melee+A.archery)*3 + (c.hp||20) + d100()/4;
-        const bScore=(B.melee+B.archery)*3 + (foe.hp||20) + d100()/4;
-        const win=aScore>=bScore; const winner=win?c:foe, loser=win?foe:c;
-        const dmg=8+Math.floor(Math.abs(aScore-bScore)/6);
-        loser.hp=Math.max(0,(loser.hp||20)-dmg);
-        log('combat',`⚔ ${c.name} calls ${foe.name} to single combat! ${winner.name} has the better of it — ${loser.name} takes ${dmg} wounds.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-        if(loser.hp<=0){ if(_escapesTheEnd(loser)){ if(loser.hp<=0) loser.hp=1; log('combat',_garrethEscapeLine(loser),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { reportHeroFall(turnContext,loser,winner,`${loser.name} falls in the duel!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(turnContext, winner, loser); } }
-        if(win) c.merits=(c.merits||0)+2;
-        trySkillGain(turnContext,c,'melee',SKILLGAIN_STD);
-        break;
-      }
-      case 'rampage':{
-        if(skillLevel(c,'melee')<9){log('system',`${c.name} lacks the Melee mastery (9) to Rampage.`,{actor:c.player,targets:[c.player]});break;}
-        const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
-        if(!foe||(foe.armies||[]).length===0){log('combat',`${c.name} finds no enemy force to fall upon in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(foe.player!=null&&!areEnemies(turnContext,c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Rampage would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
-        const src=foe.armies; const kills=Math.min(src.length,2+Math.floor(skillLevel(c,'melee')/2));
-        const idxs=shuffleP(src.map((_,i)=>i)).slice(0,kills).sort((a,b)=>b-a);
-        idxs.forEach(i=>src.splice(i,1));
-        const hd=6+skillLevel(c,'melee'); foe.hp=Math.max(1,(foe.hp||20)-hd);
-        log('combat',`🗡 ${c.name} goes on a Rampage through ${foe.name}'s ranks — ${kills} unit${kills!==1?'s':''} cut down and their commander bloodied!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-        c.merits=(c.merits||0)+1;
-        trySkillGain(turnContext,c,'melee',SKILLGAIN_STD);
-        break;
-      }
-      case 'rain_of_arrows':{
-        if(skillLevel(c,'archery')<7){log('system',`${c.name} lacks the Archery mastery (7) for a Rain of Arrows.`,{actor:c.player,targets:[c.player]});break;}
-        const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
-        if(!foe||(foe.armies||[]).length===0){log('combat',`${c.name} finds no enemy force to volley in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(foe.player!=null&&!areEnemies(turnContext,c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Rain of Arrows would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
-        const src=foe.armies; const kills=Math.min(src.length,1+Math.floor(skillLevel(c,'archery')/2));
-        const idxs=shuffleP(src.map((_,i)=>i)).slice(0,kills).sort((a,b)=>b-a);
-        idxs.forEach(i=>src.splice(i,1));
-        log('combat',`🏹 ${c.name} looses a Rain of Arrows on ${foe.name}'s host — ${kills} unit${kills!==1?'s':''} fall to the volley.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-        trySkillGain(turnContext,c,'archery',SKILLGAIN_STD);
-        break;
-      }
-      case 'snipers_mark':{
-        if(skillLevel(c,'archery')<9){log('system',`${c.name} lacks the Archery mastery (9) for a Sniper's Mark.`,{actor:c.player,targets:[c.player]});break;}
-        const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
-        if(!foe){log('system',`${c.name} finds no enemy commander to mark in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(foe.player!=null&&!areEnemies(turnContext,c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Sniper's Mark would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
-        const dmg=8+skillLevel(c,'archery'); foe.hp=Math.max(0,(foe.hp||20)-dmg);
-        const killChance=Math.min(40,10+skillLevel(c,'archery')*3)-(foe.isKing?15:0);
-        const roll=d100();
-        log('combat',`🎯 ${c.name} takes a Sniper's Mark on ${foe.name} — ${dmg} wounds${foe.hp<=0?'':` (${killChance}% to slay, roll ${roll})`}.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-        if(foe.hp<=0 || roll<=killChance){ if(_escapesTheEnd(foe)){ foe.hp=Math.max(1,foe.hp); log('combat',_garrethEscapeLine(foe),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { foe.hp=0; reportHeroFall(turnContext,foe,c,`${foe.name} is felled by the shot!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(turnContext, c, foe); c.merits=(c.merits||0)+2; } }
-        trySkillGain(turnContext,c,'archery',SKILLGAIN_STD);
-        break;
-      }
+      case 'challenge': resolveChallengeOrder(turnContext, c, target, prov); break;
+      case 'rampage': resolveRampageOrder(turnContext, c, target, prov); break;
+      case 'rain_of_arrows': resolveRainOfArrowsOrder(turnContext, c, target, prov); break;
+      case 'snipers_mark': resolveSnipersMarkOrder(turnContext, c, target, prov); break;
 
       // ══ L7/L9 MASTERY ORDERS (batch 2c-ii — battle-strength flags) ════
-      case 'feigned_retreat':{
-        if(skillLevel(c,'tactical')<7){log('system',`${c.name} lacks the Tactical mastery (7) for a Feigned Retreat.`,{actor:c.player,targets:[c.player]});break;}
-        c._feignedRetreatTurn=G.turn;
-        log('combat',`🏳 ${c.name} lays a Feigned Retreat — should the enemy take the bait and attack, the counter will strike at +25% strength this turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        trySkillGain(turnContext,c,'tactical',SKILLGAIN_STD);
-        break;
-      }
-      case 'grand_stratagem':{
-        if(skillLevel(c,'tactical')<9){log('system',`${c.name} lacks the Tactical mastery (9) for a Grand Stratagem.`,{actor:c.player,targets:[c.player]});break;}
-        c._grandStratagemTurn=G.turn;
-        log('combat',`📜 ${c.name} sets a Grand Stratagem in motion — their next battle this turn is fought at +20% strength.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        trySkillGain(turnContext,c,'tactical',SKILLGAIN_STD);
-        break;
-      }
-      case 'lightning_advance':{
-        if(skillLevel(c,'march')<9){log('system',`${c.name} lacks the March mastery (9) for a Lightning Advance.`,{actor:c.player,targets:[c.player]});break;}
-        c._lightningAdvanceTurn=G.turn;
-        log('move',`⚡ ${c.name} orders a Lightning Advance — any enemy they attack this turn is caught unready (−20% on the defence).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        trySkillGain(turnContext,c,'march',SKILLGAIN_STD);
-        break;
-      }
-      case 'raid_coast':{
-        if(skillLevel(c,'naval')<9){log('system',`${c.name} lacks the Naval mastery (9) to Raid the Coast.`,{actor:c.player,targets:[c.player]});break;}
-        if(!(c.armies||[]).some(a=>SEA_TYPES.has(a.type))){log('system',`${c.name}: a Raid the Coast must be led by a fleet — you lead no naval units or sea creatures.`,{actor:c.player,targets:[c.player]});break;} // NAVAL L9: must lead a naval unit / sea creature
-        c._raidCoastTurn=G.turn;
-        log('move',`⚓ ${c.name} readies a Raid the Coast — an amphibious assault launched from the sea against a coastal province this turn strikes at +25% strength, and plunders the province treasury if it falls.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        trySkillGain(turnContext,c,'naval',SKILLGAIN_STD);
-        break;
-      }
+      case 'feigned_retreat': resolveFeignedRetreatOrder(turnContext, c, prov); break;
+      case 'grand_stratagem': resolveGrandStratagemOrder(turnContext, c, prov); break;
+      case 'lightning_advance': resolveLightningAdvanceOrder(turnContext, c, prov); break;
+      case 'raid_coast': resolveRaidTheCoastOrder(turnContext, c, prov); break;
       // ══ L7/L9 MASTERY ORDERS (batch 2c-iii — specials) ════
       case 'wild_calling': resolveWildCallingOrder(turnContext, c, ph, prov); break;
       case 'grand_design': resolveGrandDesignOrder(turnContext, c, prov); break;

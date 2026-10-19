@@ -87,6 +87,9 @@ export const told = (o: Outcome, what: string) => {
 /** The phases of the lines of the turn saying `what`, in order. */
 export const phasesSaying = (o: Outcome, what: string) =>
   o.all.filter((l: Line) => l.text.includes(what)).map((l) => l.phase);
+/** The duels a hero has won against another realm's hero (the Widowmaker's count): his kills credited. */
+export const duelKills = (o: Outcome, c: Character) =>
+  (char(o, c)['tm'] as { duelKills?: number } | undefined)?.duelKills ?? 0;
 /** The hero's watch as the turn left it (undefined if he keeps none). */
 export const watch = (o: Outcome, c: Character) => char(o, c)['_defend'];
 /** The hero's chase as the turn left it (undefined if he set out on none). */
@@ -323,14 +326,11 @@ export const ENCOUNTER_ORDER_CASES: WarOrderCase[] = [
     },
   },
   {
-    name: 'a hero of his own realm who vanished an earlier turn can be sought out: they meet',
+    name: 'a hero of his own realm who vanished this turn can still be sought out: they meet',
     stage(b) {
       const q = at(b);
-      q['_vanishTurn'] = b.G.turn - 1;
-      const s = hunter(b, q);
-      const r = rival(b);
-      r['_vanishTurn'] = b.G.turn;
-      return { ...s, other: r };
+      q['_vanishTurn'] = b.G.turn;
+      return hunter(b, q);
     },
     check(o, s) {
       return {
@@ -487,6 +487,27 @@ export const ENCOUNTER_ORDER_CASES: WarOrderCase[] = [
           forced: { type: 'combat', targets: [0, 1], provinceId: there(s).id, public: true, phase: 0 },
           duel: false,
         },
+      };
+    },
+  },
+  {
+    name: 'an Encounter given in the third phase: the battle it forces is fought and told in that phase',
+    stage(b) {
+      const q = leads(rival(b, { at: ring1(b, 0) }), companies(1));
+      const s = { ...hunter(b, q), there: ring1(b, 0) };
+      leads(s.hero, companies(6));
+      return { ...s, orders: [one(s.hero, order('rest'), order('rest'), hunt(q))] };
+    },
+    check(o, s) {
+      return {
+        got: {
+          forced: phasesSaying(
+            o,
+            `⚔ ${s.hero.name} runs ${mark(s).name} to ground in ${there(s).name} and forces battle!`,
+          ),
+          firstBattle: phasesSaying(o, `⚔ **Battle for ${there(s).name}**`)[0],
+        },
+        want: { forced: [2], firstBattle: 2 },
       };
     },
   },
@@ -1037,11 +1058,13 @@ export const CHALLENGE_ORDER_CASES: WarOrderCase[] = [
           fell: told(o, `${mark(s).name} falls in the duel!`),
           alive: afterDuel(o, s).alive,
           merits: afterDuel(o, s).merits,
+          kills: duelKills(o, s.hero),
         },
         want: {
           fell: { type: 'combat', targets: [0, 1], provinceId: there(s).id, public: true, phase: 0 },
           alive: [true, false],
           merits: 2,
+          kills: 1,
         },
       };
     },
@@ -1057,8 +1080,12 @@ export const CHALLENGE_ORDER_CASES: WarOrderCase[] = [
     },
     check(o, s) {
       return {
-        got: { fell: says(o, `${s.hero.name} falls in the duel!`), alive: afterDuel(o, s).alive },
-        want: { fell: true, alive: [false, true] },
+        got: {
+          fell: says(o, `${s.hero.name} falls in the duel!`),
+          alive: afterDuel(o, s).alive,
+          kills: duelKills(o, mark(s)),
+        },
+        want: { fell: true, alive: [false, true], kills: 1 },
       };
     },
   },
@@ -1073,11 +1100,17 @@ export const CHALLENGE_ORDER_CASES: WarOrderCase[] = [
     check(o, s) {
       return {
         got: {
-          escaped: told(o, `🍀 ${mark(s).name}`)?.public,
+          escaped: told(o, `🍀 ${mark(s).name}`),
           fell: anySays(o, 'falls in the duel'),
           alive: afterDuel(o, s).alive,
+          hp: afterDuel(o, s).hp,
         },
-        want: { escaped: true, fell: false, alive: [true, true] },
+        want: {
+          escaped: { type: 'combat', targets: [0], provinceId: there(s).id, public: true, phase: 0 },
+          fell: false,
+          alive: [true, true],
+          hp: [20, 1],
+        },
       };
     },
   },
@@ -1116,7 +1149,6 @@ export const CHALLENGE_ORDER_CASES: WarOrderCase[] = [
 ];
 
 // ── Rampage (Melee 9) and Rain of Arrows (Archery 7) ──
-const volley = (f: Character) => order('rain_of_arrows', f.id);
 /** The companies a strike left the foe, by name. */
 const leftTo = (o: Outcome, s: Staged) => names(char(o, mark(s)).armies);
 export const RAMPAGE_ORDER_CASES: WarOrderCase[] = [
@@ -1172,6 +1204,18 @@ export const RAMPAGE_ORDER_CASES: WarOrderCase[] = [
           merits: 1,
           lesson: [STD],
         },
+      };
+    },
+  },
+  {
+    name: 'a wandering host may be fallen upon: no war needed',
+    stage(b) {
+      return withFoe(b, 'rampage', leads(wanderer(b), companies(3)), { melee: 9 });
+    },
+    check(o, s) {
+      return {
+        got: { told: told(o, ' goes on a Rampage through ')?.targets, left: leftTo(o, s) },
+        want: { told: [0], left: [] },
       };
     },
   },
@@ -1263,20 +1307,38 @@ export const RAIN_OF_ARROWS_ORDER_CASES: WarOrderCase[] = [
     },
   },
   {
-    name: 'five fall at Archery 9; one company: "1 unit"',
+    name: 'a wandering host may be volleyed: no war needed',
     stage(b) {
-      const s = withFoe(b, 'rain_of_arrows', foeLeading(b, 6), { archery: 9 });
-      const g = foeLeading(b, 1);
-      return { ...s, other: g, orders: [holds(s.hero, volley(mark(s)), volley(g)), holds(mark(s)), holds(g)] };
+      return withFoe(b, 'rain_of_arrows', leads(wanderer(b), companies(3)), { archery: 7 });
     },
     check(o, s) {
       return {
-        got: {
-          five: says(o, `on ${mark(s).name}'s host — 5 units fall to the volley.`),
-          one: says(o, `on ${must(s.other, 'the second host').name}'s host — 1 unit fall to the volley.`),
-          left: leftTo(o, s).length,
-        },
-        want: { five: true, one: false, left: 1 },
+        got: { told: told(o, ' looses a Rain of Arrows on ')?.targets, left: leftTo(o, s) },
+        want: { told: [0], left: [] },
+      };
+    },
+  },
+  {
+    name: 'five fall at Archery 9',
+    stage(b) {
+      return withFoe(b, 'rain_of_arrows', foeLeading(b, 6), { archery: 9 });
+    },
+    check(o, s) {
+      return {
+        got: { said: says(o, `on ${mark(s).name}'s host — 5 units fall to the volley.`), left: leftTo(o, s).length },
+        want: { said: true, left: 1 },
+      };
+    },
+  },
+  {
+    name: 'one company: "1 unit"',
+    stage(b) {
+      return withFoe(b, 'rain_of_arrows', foeLeading(b, 1), { archery: 9 });
+    },
+    check(o, s) {
+      return {
+        got: { said: says(o, `on ${mark(s).name}'s host — 1 unit fall to the volley.`), left: leftTo(o, s).length },
+        want: { said: true, left: 0 },
       };
     },
   },
@@ -1327,6 +1389,7 @@ export const SNIPERS_MARK_ORDER_CASES: WarOrderCase[] = [
           hp: char(o, mark(s)).hp,
           merits: Number(char(o, s.hero)['merits'] ?? 0),
           lesson: xpIn(o, s.hero, 'archery'),
+          kills: duelKills(o, s.hero),
         },
         want: {
           told: { type: 'combat', targets: [0, 1], provinceId: there(s).id, public: true, phase: 0 },
@@ -1335,6 +1398,7 @@ export const SNIPERS_MARK_ORDER_CASES: WarOrderCase[] = [
           hp: slain ? 0 : 3,
           merits: slain ? 2 : 0,
           lesson: [STD],
+          kills: slain ? 1 : 0,
         },
       };
     },
@@ -1371,6 +1435,33 @@ export const SNIPERS_MARK_ORDER_CASES: WarOrderCase[] = [
           alive: char(o, mark(s)).alive,
         },
         want: { said: true, felled: true, alive: false },
+      };
+    },
+  },
+  {
+    name: 'a wandering hero may be marked: no war needed',
+    stage(b) {
+      return withFoe(b, 'snipers_mark', wanderer(b), { archery: 9 });
+    },
+    check(o, s) {
+      return {
+        got: { told: told(o, " takes a Sniper's Mark on ")?.targets, alive: char(o, mark(s)).alive },
+        want: { told: [0], alive: false },
+      };
+    },
+  },
+  {
+    name: 'a foe who cannot be killed, wounded to nothing, escapes at 1 HP',
+    stage(b) {
+      const f = rival(b);
+      f.hp = 10;
+      f['_unkillable'] = true;
+      return withFoe(b, 'snipers_mark', f, { archery: 9 });
+    },
+    check(o, s) {
+      return {
+        got: { said: says(o, markLine(s, '17 wounds.')), hp: char(o, mark(s)).hp, alive: char(o, mark(s)).alive },
+        want: { said: true, hp: 1, alive: true },
       };
     },
   },
@@ -1674,18 +1765,18 @@ export const stageCase = (b: Board, c: WarOrderCase): Staged => {
   return c.stage(b);
 };
 
-/** Every case, by order. */
+/** Every case, by order (named as the order form names it). */
 export const WAR_ORDER_CASES: [string, WarOrderCase[]][] = [
-  ['encounter', ENCOUNTER_ORDER_CASES],
-  ['defend', DEFEND_ORDER_CASES],
-  ['blockade', BLOCKADE_ORDER_CASES],
-  ['challenge', CHALLENGE_ORDER_CASES],
-  ['rampage', RAMPAGE_ORDER_CASES],
-  ['rain_of_arrows', RAIN_OF_ARROWS_ORDER_CASES],
-  ['snipers_mark', SNIPERS_MARK_ORDER_CASES],
-  ['feigned_retreat', FEIGNED_RETREAT_ORDER_CASES],
-  ['grand_stratagem', GRAND_STRATAGEM_ORDER_CASES],
-  ['lightning_advance', LIGHTNING_ADVANCE_ORDER_CASES],
-  ['raid_coast', RAID_THE_COAST_ORDER_CASES],
-  ['the checks before a mastery', MASTERY_CHECK_CASES],
+  ['Encounter Character', ENCOUNTER_ORDER_CASES],
+  ['Defend', DEFEND_ORDER_CASES],
+  ['Blockade', BLOCKADE_ORDER_CASES],
+  ['Challenge', CHALLENGE_ORDER_CASES],
+  ['Rampage', RAMPAGE_ORDER_CASES],
+  ['Rain of Arrows', RAIN_OF_ARROWS_ORDER_CASES],
+  ["Sniper's Mark", SNIPERS_MARK_ORDER_CASES],
+  ['Feigned Retreat', FEIGNED_RETREAT_ORDER_CASES],
+  ['Grand Stratagem', GRAND_STRATAGEM_ORDER_CASES],
+  ['Lightning Advance', LIGHTNING_ADVANCE_ORDER_CASES],
+  ['Raid the Coast', RAID_THE_COAST_ORDER_CASES],
+  ['Any war mastery (the checks before it)', MASTERY_CHECK_CASES],
 ];
