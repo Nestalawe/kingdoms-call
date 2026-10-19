@@ -138,6 +138,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.js',
         'engine/turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.js',
         'engine/turn/new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-final-reconcile.js',
+        'engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',

@@ -185,14 +185,22 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   `tests/lib/new-turn-succession-and-summons-cases.ts` does. P1-08k5b's second part runs on the turn the first part
   moved on to: a test that calls it alone moves `G.turn` on by one first, or a Divine hero fallen the turn before is not
   yet due to rise. A direct call changes the staged heroes in place, so a check must compare with values kept at staging
-  (a province, an id), not the staged hero's own fields. The loop is the stages' calls, the intents between
+  (a province, an id), not the staged hero's own fields. P1-08k6's two title stages (once immediately-invoked functions
+  at the end of the body, named functions now: their bodies keep their 4-space indent under a function line at 2) also
+  run on the turn moved on: titles are public from turn 5 as the stages see it, so a test that calls them stages turn 4
+  and moves it on, and the Loremaster's "fresh" discovery is one made on the turn just played (`G.turn - 1`). On the
+  shared board every realm holds a seat of equal tax and gold, so realm 0 holds the Throne and the Vaultkeeper (the
+  first of equals) and its king the Colossus and the Castellan: a test of the title changes counts them, and a hero's
+  wage (never under 1g) can hand the Vaultkeeper to another realm unless the realm is given gold. The loop is the stages' calls, the intents between
   the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
   log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
   the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.
 - A test can stand in a top-level **function** by replacing it in the `vm` (`engine.f = …`), as
   `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly` do, but not a top-level `const`
   arrow (`defendSpentThisPhase`, `noteEntered`): a `const` isn't a property of the `vm`'s global object, so the
-  engine keeps calling the original. Stage the state it reads instead.
+  engine keeps calling the original. Stage the state it reads instead. The same goes for reading one: a table declared
+  with `const` (`TITLE_DEFS`, `MINOR_TITLES`, `SEA_TYPES`, `SKILL_LABELS`) is read in the `vm` with
+  `vm.runInContext('JSON.stringify(TITLE_DEFS)', engine)`, not `engine['TITLE_DEFS']` (undefined).
 - Reading a context value before `resolveTurn` has set it gives `undefined`; reading the old `let` before its line
   threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix), and
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
