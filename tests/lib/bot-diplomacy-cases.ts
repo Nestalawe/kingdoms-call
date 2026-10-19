@@ -1036,6 +1036,19 @@ export const WHO_CASES: BotDiplomacyCase[] = [
     check: (o) => ({ got: { early: declared(o.early, 1) }, want: { early: { 0: 'treat', 2: 'treat' } } }),
   },
   {
+    name: 'a realm whose king has fallen and that holds no land is not declared on; a bot in that state declares nothing',
+    stage: (b) => {
+      relate(b, {});
+      kingOf(b, 2).alive = false;
+      landless(b, 2);
+      return { bots: [0, 2] };
+    },
+    check: (o) => ({
+      got: { zero: declared(o.early, 0), two: declared(o.early, 2) },
+      want: { zero: { 1: 'treat' }, two: {} },
+    }),
+  },
+  {
     name: 'no declaration is made toward a realm with neither king nor land; one with either is declared on',
     stage: (b) => {
       relate(b, {});

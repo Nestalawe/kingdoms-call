@@ -267,9 +267,10 @@ describe('What it hands the helpers it calls', () => {
 
 // ── What a whole turn can't stage ────────────────────────────────────────────────────────────────────────────────
 describe('What a whole turn can’t stage', () => {
-  test('a declaration from a seat that is not a realm’s number is passed over: no grudge, no harm', () => {
+  test('a declaration from a seat that is not a realm’s whole number is passed over: no grudge, no harm', () => {
     const { b, tc } = fresh(() => ({ bots: [1] }));
     (tc['diploDeclarations'] as Raw)['x'] = { 1: 'enemy' };
+    (tc['diploDeclarations'] as Raw)['0.5'] = { 1: 'enemy' };
     botDiplomacy(tc);
     expect(realm(b, 1)['botGrudges']).toBeUndefined();
   });
