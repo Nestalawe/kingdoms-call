@@ -256,7 +256,7 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
   the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,
-  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, since P1-08i3 `_warFrontAtStart` and `_warFrontProvs`, since P1-08j1 `lightLandMoves` and `lightSeaMoves`, and since P1-08k4 `diploDeclarations` and `reckoningCalls` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
+  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, since P1-08i3 `_warFrontAtStart` and `_warFrontProvs`, since P1-08j1 `lightLandMoves` and `lightSeaMoves`, since P1-08k4 `diploDeclarations` and `reckoningCalls`, and since P1-08k7 `staleOrderWarnings`, `safeStartRefused`, `discoveryChoicePicks` and `playerMessages` (each joins by reference on the line after `resolveTurn` declares it), and the values the turn changes as it goes (`_logCtx`,
   `_currentPhase`, `_afterPhases`, since P1-08c `_combatSkillProv`, `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`,
   `_deferredSkillLogs`, `_pcSimulating`, since P1-08i1 `enteredThisPhase`, and since P1-08i3 `_tier0Open` and `_unitGainQueue`), which are read and written as `turnContext._currentPhase` everywhere, in
   `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it yet (P1-08m). Lifted so
@@ -384,7 +384,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.js`
   (`imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy` and
   `titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn`, each taking only the context): each title holder's intel of
-  the realms it has met, from turn 5, and the titles each realm won and lost since last turn. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  the realms it has met, from turn 5, and the titles each realm won and lost since last turn. P1-08k7 took the
+  set-up's first two stages out, in `engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.js`
+  (`turnStartRepairsAndAFreshSlateOfOrdersForEveryHero` and
+  `mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans`, each taking only the context): the save's
+  repairs at the turn's start and every hero's orders cleared, then the realms' submitted orders, declarations,
+  research choices, Reckoning calls, messages, concessions, encounter plans and heirs' skills merged in; the merge's
+  collectors join the context for it. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

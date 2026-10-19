@@ -191,7 +191,15 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   and moves it on, and the Loremaster's "fresh" discovery is one made on the turn just played (`G.turn - 1`). On the
   shared board every realm holds a seat of equal tax and gold, so realm 0 holds the Throne and the Vaultkeeper (the
   first of equals) and its king the Colossus and the Castellan: a test of the title changes counts them, and a hero's
-  wage (never under 1g) can hand the Vaultkeeper to another realm unless the realm is given gold. The loop is the stages' calls, the intents between
+  wage (never under 1g) can hand the Vaultkeeper to another realm unless the realm is given gold. P1-08k7's two set-up
+  stages (the turn's start repairs, the merge of the realms' orders) run before `log` is ready, so they log nothing:
+  what the merge has to tell goes into the context's collectors (`staleOrderWarnings`, `safeStartRefused`,
+  `discoveryChoicePicks`, `playerMessages`, with k4's two), which `resolveTurn` still declares and reads by name, each
+  joined to the context on the line after it. A test that calls the merge gives the context the slot rows
+  (`turnContext.freshPlayers`) and the turn run (`turnContext.expectedTurnToRun`, which may differ from `G.turn`) first,
+  and reads what it collected from the context (`turnContext()` in `tests/lib/engine.ts` makes them empty). What the
+  set-up leaves in `G.turnOrders` and the per-turn lists is gone by the turn's end: a whole turn reads it as the first
+  phase begins. The loop is the stages' calls, the intents between
   the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
   log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
   the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.
