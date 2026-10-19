@@ -173,7 +173,10 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   `engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.js`) is a function of its statements,
   taking the context, then the loop's values it reads, in the order the loop declares them (`ph`, `_phaseStartLoc`,
   `intents`): those stay declared in the loop and are passed in. A stage that reads none of them takes the context alone
-  (P1-08k2's Early Winter, the body of `if(ph===4){…}`, which keeps its `if` and its call). The loop is the stages' calls, the intents between
+  (P1-08k2's Early Winter, the body of `if(ph===4){…}`, which keeps its `if` and its call). A stage of `resolveTurn`'s own body (P1-08k3's after the phases, from the loop's end to the bots' late
+  `collectBotDiplomacy()`) keeps its 2-space indent under a function line at 0; a test that calls it does what the turn
+  does first: `turnContext._currentPhase` null, `turnContext._afterPhases` true and the log's context clear, so every
+  line it writes with no phase of its own is filed after the phases (99). The loop is the stages' calls, the intents between
   the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
   log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
   the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.

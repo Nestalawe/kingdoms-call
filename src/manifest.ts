@@ -134,6 +134,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js',
         'engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.js',
         'engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.js',
+        'engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',

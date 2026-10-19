@@ -358,7 +358,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   the intents, Early Winter and the province lists' check. P1-08k2 took Early Winter out the same way, the body of the
   loop's `if(ph===4){…}`, in `engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.js`
   (`earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill`, taking only the context): a charmed hero goes home,
-  then the taxes, the wages (and what a realm that can't pay loses), Raiders' Muster and the garrison drill. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  then the taxes, the wages (and what a realm that can't pay loses), Raiders' Muster and the garrison drill. P1-08k3 took the
+  first stage out of `resolveTurn`'s own body, what the turn settles once the loop is over, in
+  `engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.js`
+  (`afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames`, taking only the context): a last
+  stand-off flagged, the dead without a master crumbling, graves sensed, neutral heroes learning, lost consecrations,
+  couriers, Elven escapes, fallen commanders' hosts, intrusions told once, lair guardians healed, Mass Healing, maximum
+  HP, spared cowards going home and location names. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
