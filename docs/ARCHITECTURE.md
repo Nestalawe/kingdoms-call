@@ -329,7 +329,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.js`: Leave/Transfer
   Army, `resolveLeaveOrTransferArmyOrder`; Release Hero, `resolveReleaseHeroOrder`; Disband Army,
   `resolveDisbandArmyOrder`; Pick Up Army, `resolvePickUpArmyOrder`); a spell item's Use Item still becomes a Cast Spell
-  in `processOrder`, before the `switch`. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  in `processOrder`, before the `switch`. P1-08j6, espionage
+  (`engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.js`: Spy, `resolveSpyOrder`;
+  Steal, `resolveStealOrder`; Sabotage, `resolveSabotageOrder`; Grand Heist, `resolveGrandHeistOrder`; Assassinate,
+  `resolveAssassinateOrder`; Vanish, `resolveVanishOrder`; and the two helpers they share, nested in `processOrder`
+  until then: `thiefCaughtScuffle` and `liftRandomItem`, each now a top-level function taking the context, then what it
+  closed over of `processOrder`'s, then its own arguments). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

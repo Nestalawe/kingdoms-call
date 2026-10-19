@@ -1,41 +1,37 @@
 // 2026-10-14 (batch item 11) — failing still teaches a little. At the small (frequent-action) rate:
-//   * a failed Spy (on a province or a hero), a failed Steal and a fizzled Cast Spell roll for that
-//     skill (Spy, Thief, the spell's school);
+//   * a fizzled Cast Spell rolls for the spell's school;
 //   * a general who loses a battle and lives rolls for Tactical (Naval at sea);
 //   * a hero who loses a personal fight and lives (beaten and spared, or fled) rolls for Melee.
-// Level 2 (scenario) for the orders and the battle, which live inside runTurn: the spy, steal and
-// casting rolls are fixed to fail by hooks on them, the battle is staged hopeless, and every
-// experience roll is recorded by a wrapper around the top-level trySkillGain. The fight is
+// Level 2 (scenario) for the order and the battle, which live inside runTurn: the casting roll is
+// fixed to fail by a hook on it, the battle is staged hopeless, and every experience roll is
+// recorded by a wrapper around the top-level trySkillGain. The fight is
 // tests/unit/xp-fled-fight.test.ts (level 1: resolvePersonalCombat is top-level since plan P1-08e).
+// A failed Spy (on a province or a hero) and a failed Steal are cases of
+// tests/lib/espionage-order-cases.ts (plan P1-08j6: their rolls fixed for a whole turn, no hook).
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 // every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
 const XP_RECORD="{ const tryOne=trySkillGain; trySkillGain=function(turnContext, char, skill, base, narr, mult){ if(window.__xp) window.__xp.push({id:char&&char.id,skill,base,mult}); return tryOne.apply(this, arguments); }; }";
 const FIX=a=>[a,a.replace('d100()','(window.__fix?100:d100())')];
 (async()=>{
-  const sc=await bootScenario({inject:[FIX("        const _spyRoll=d100();"),FIX("        const stealRoll=d100();"),
-    FIX("        const castRoll=d100();\n        try{ _tel.spells.push(")]}); const W=sc.W;
+  const sc=await bootScenario({inject:[FIX("        const castRoll=d100();\n        try{ _tel.spells.push(")]}); const W=sc.W;
   W.eval(XP_RECORD);
   const nb=(S,p)=>W.getNeighborsP(p,S.world.cols,S.world.rows,S.world.provinces).filter(Boolean);
   const place=(S,c,p)=>{ S.world.provinces.forEach(q=>{ q.characters=(q.characters||[]).filter(id=>id!==c.id); }); p.characters=[...(p.characters||[]),c.id]; c.location=p.id; c.locationName=p.name; };
-  // ── failed orders ──
+  // ── a failed order ──
   W.__xp=[]; W.__fix=true;
   const r=await sc.turn({realms:2,prepare(S){
-    const H=S.characters.find(c=>c.alive&&c.player===0&&!c.isKing), V=S.characters.find(c=>c.alive&&c.player===1&&c.isKing);
-    const P=S.world.provinces[H.location]; place(S,V,P);
-    H.skills={...H.skills,spy:2,thief:2,white:2}; H.items=[]; V.items=[]; S.players[1].gold=50;
-    return {H,V,P}; },
-    orders:(S,x)=>({[x.H.id]:plan(order('spy',x.P.id),order('cast_spell','Bless Province',x.P.id),order('steal',x.V.id))})});
+    const H=S.characters.find(c=>c.alive&&c.player===0&&!c.isKing);
+    const P=S.world.provinces[H.location];
+    H.skills={...H.skills,white:2}; H.items=[];
+    return {H,P}; },
+    orders:(S,x)=>({[x.H.id]:plan(order('rest'),order('cast_spell','Bless Province',x.P.id))})});
   W.__fix=false;
   const H=r.extra.H, mine=W.__xp.filter(x=>x.id===H.id);
   const small=sk=>mine.some(x=>x.skill===sk&&x.base===0.04);
   const t=r.text(H.id);
-  ok(/yields little/.test(t),'the Spy fails (its roll fixed at 100)');
-  ok(small('spy'),'…and is a small chance at Spy');
   ok(/fizzles/.test(t),'the Cast Spell fizzles (its roll fixed at 100)');
   ok(small('white'),'…and is a small chance at White Magic');
-  ok(/Steal — [^\n]*\[roll 100 ✗\]/.test(t),'the Steal fails (its roll fixed at 100)');
-  ok(small('thief'),'…and is a small chance at Thief');
   if(process.env.KC_DEBUG) console.log(t);
   // ── a lost battle ──
   W.__xp=[];

@@ -109,6 +109,20 @@ export function firstDie<T>(engine: vm.Context, first: number, body: () => T): T
   }
 }
 
+/** Runs `body` with every percentile roll the engine makes (the top-level d100) fixed at `roll`, 1 to 100 (plan
+ *  P1-08j6). Over a whole turn, with `withDice` fixing every other die, an order's rolls are certain however many dice
+ *  the turn draws before them. */
+export function withRolls<T>(engine: vm.Context, roll: number, body: () => T): T {
+  const was = vm.runInContext('d100', engine) as () => number;
+  const set = vm.runInContext('(f)=>{ d100=f; }', engine) as (f: () => number) => void;
+  set(() => roll);
+  try {
+    return body();
+  } finally {
+    set(was);
+  }
+}
+
 /** A fresh board on `world` (JSON from botWorld) in phase `ph`. */
 export function board(engine: vm.Context, world: string, ph: number) {
   const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
