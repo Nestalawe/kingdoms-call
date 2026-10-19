@@ -270,6 +270,15 @@ describe('Herbal Lore, as the phase opens', () => {
     });
   });
 
+  test("the line is his and the phase's, whatever the log's context was left on", () => {
+    const b = fresh();
+    herbalist(b);
+    const h = woundedNow(b, 10, 20, 20);
+    b.tc._logCtx = { charId: 77, phase: 1 };
+    startOnly(b, 3);
+    expect(b.lines().find((l) => l.text.startsWith('🌿'))).toMatchObject({ charId: h.id, phase: 3 });
+  });
+
   test('the line comes before any other of the phase but its opening', () => {
     const b = fresh();
     herbalist(b);
@@ -546,6 +555,16 @@ describe('the battle lock, as the phase opens', () => {
       desc: 'Locked in ongoing battle',
       _pinned: true,
     });
+  });
+
+  test("the line is his and the phase's, whatever the log's context was left on", () => {
+    const b = fresh();
+    contested(b);
+    const h = column(b, order('move', 1));
+    const intents = intentsFor(b, 2);
+    b.tc._logCtx = { charId: 77, phase: 1 };
+    reactOnly(b, 2, intents);
+    expect(b.lines()[0]).toMatchObject({ charId: h.id, phase: 2 });
   });
 
   test('a column that fought again this phase, its province no longer contested: held, with its own line', () => {
@@ -983,6 +1002,54 @@ describe('the orders in two tiers: what it calls', () => {
     expect(after).toEqual([null]);
   });
 
+  test("each host raised is settled with no battle series running, and the next order is handed over with the log's context cleared", () => {
+    const b = fresh();
+    const [a] = actorsWith(b, 'move');
+    const one = at(b, {}, { player: 1 });
+    one.armies = companies(1);
+    const two = at(b, {}, { player: 1 });
+    two.armies = companies(1);
+    const calls = ordersWith(b, 2, [must(a, 'a')], new Map(), {
+      runDefendReactions: () => {
+        tc(b)['_unitGainQueue'] = [
+          { c: one, prov: b.X },
+          { c: two, prov: b.X },
+        ];
+        tc(b)['_combatSkillProv'] = 8;
+      },
+      resolveUnitGainInProvince: () => {
+        tc(b)['_combatSkillProv'] = 9;
+      },
+    });
+    expect(calls.filter((c) => c.fn === 'resolveUnitGainInProvince').map((c) => c.series)).toEqual([null, null]);
+    const handed = must(
+      calls.find((c) => c.fn === 'processOrder'),
+      'his order',
+    );
+    expect([handed.logCtx, handed.series]).toEqual([NO_CTX, null]);
+  });
+
+  test("in Spring, the war fronts come with no battle series running after the Defend step's last host", () => {
+    const b = fresh();
+    const [r] = actorsWith(b, 'rest');
+    const raiser = at(b, {}, { player: 1 });
+    raiser.armies = companies(1);
+    const calls = ordersWith(b, 0, [must(r, 'r')], new Map(), {
+      processOrder: () => {
+        tc(b)['_unitGainQueue'] = [{ c: raiser, prov: b.X }];
+      },
+      resolveUnitGainInProvince: () => {
+        tc(b)['_combatSkillProv'] = 9;
+        b.tc._logCtx = { charId: raiser.id, phase: 0 };
+      },
+    });
+    const fronts = must(
+      calls.find((c) => c.fn === 'resolveWarFronts'),
+      'the war fronts',
+    );
+    expect([fronts.series, fronts.logCtx]).toEqual([null, NO_CTX]);
+  });
+
   test('the hosts raised in a watch are settled at the Defend step, after the ride-outs, each under its own hero, in the order raised; a host gone is skipped', () => {
     const b = fresh();
     const [a] = actorsWith(b, 'move');
@@ -1075,6 +1142,17 @@ describe('the orders in two tiers: each actor', () => {
     expect(named(ordersWith(b, 2, [must(h, 'h')]))).toContain('processOrder');
   });
 
+  test("a chase over doesn't open the Defend step: his order that doesn't march resolves before it", () => {
+    const b = fresh();
+    const [h] = actorsWith(b, 'explore');
+    must(h, 'h')._pursuit = { active: false, targetId: 1, setPhase: 1 };
+    expect(named(ordersWith(b, 2, [must(h, 'h')])).slice(1, 4)).toEqual([
+      'processOrder',
+      'settleStrandedAtSea',
+      'runDefendReactions',
+    ]);
+  });
+
   test('a fallen hero on a chase is not advanced: his orders go unanswered', () => {
     const b = fresh();
     const [h] = actorsWith(b, 'explore');
@@ -1088,6 +1166,19 @@ describe('the orders in two tiers: each actor', () => {
     expect(textOf(b)).toEqual([
       `${must(h, 'h').name} has fallen — their remaining orders for this turn go unanswered.`,
     ]);
+  });
+
+  test.each([
+    ['a coward who begged for mercy', (b: Board, h: Character) => (h['_mercyFledTurn'] = b.G.turn)],
+    ['a hero who has fallen', (b: Board, h: Character) => Object.assign(h, { alive: false, killedThisTurn: true })],
+  ])("after %s, the next hero's order is handed over with the log's context cleared", (_, change) => {
+    const b = fresh();
+    const [h, next] = actorsWith(b, 'explore', 'explore');
+    change(b, must(h, 'h'));
+    b.tc._logCtx = { charId: 3, phase: 2 };
+    const calls = ordersWith(b, 2, [must(h, 'h'), must(next, 'next')]);
+    const handed = calls.filter((c) => c.fn === 'processOrder');
+    expect(handed.map((c) => [c.args[1], c.logCtx])).toEqual([[next, NO_CTX]]);
   });
 
   test("a coward who begged for mercy this turn does nothing, and the log's context is cleared; one from an earlier turn acts", () => {

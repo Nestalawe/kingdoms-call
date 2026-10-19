@@ -542,6 +542,46 @@ export const INTENTS_AND_REACTIONS_CASES: PhaseStageCase[] = [
       };
     },
   },
+  {
+    name: 'a column that force-marched home ahead of an invader who never came (slain before he marched) is told where the season leaves him',
+    stage(b) {
+      const home = ring1(b, 0);
+      const from = must(
+        b.ring2.find((p) => b.nbrs(p).includes(home)),
+        'a province two away beside it',
+      );
+      b.own(home, 0);
+      const h = leads(at(b, { tactical: 0, march: 0 }), companies(3));
+      const foe = leads(rival(b, { at: from }, { tactical: 5, march: 3 }), companies(1));
+      const blade = at(b, { spy: 9 }, { at: from });
+      return {
+        hero: h,
+        mark: foe,
+        other: blade,
+        there: home,
+        places: [b.X],
+        orders: [
+          one(h, order('move', home.id)),
+          one(foe, order('move', home.id)),
+          one(blade, order('assassinate', foe.id)),
+        ],
+      };
+    },
+    check(o, s) {
+      return {
+        got: {
+          slain: char(o, mark(s)).alive,
+          arrived: phasesSaying(o, `${s.hero.name} force-marches into ${there(s).name} ahead of the enemy`),
+          spring: linesIn(o, s.hero, 0),
+        },
+        want: {
+          slain: false,
+          arrived: [0],
+          spring: [`${s.hero.name} leaves ${place(s, 0).name} and ends the season in ${there(s).name}.`],
+        },
+      };
+    },
+  },
 ];
 
 // ── The orders in two tiers ──────────────────────────────────────────────────────────────────────────────────────
@@ -643,16 +683,27 @@ export const ORDERS_IN_TWO_TIERS_CASES: PhaseStageCase[] = [
     },
   },
   {
-    name: 'a coward who begged for mercy this turn does nothing more: the season leaves him where he stands',
+    name: 'a coward who begged for mercy this turn does nothing more: each season ends telling him where it leaves him',
     stage(b) {
       const h = at(b);
       h['_mercyFledTurn'] = b.G.turn;
       return { hero: h, there: b.X, orders: [[h, five(order('explore'), order('explore'))]] };
     },
     check(o, s) {
+      const remains = `${s.hero.name} remains in ${there(s).name} this season.`;
       return {
-        got: { spring: linesIn(o, s.hero, 0), explored: phasesHeSays(o, s.hero, 'xplor') },
-        want: { spring: [`${s.hero.name} remains in ${there(s).name} this season.`], explored: [] },
+        got: {
+          spring: linesIn(o, s.hero, 0),
+          told: told(o, remains),
+          seasons: phasesHeSays(o, s.hero, remains),
+          explored: phasesHeSays(o, s.hero, 'xplor'),
+        },
+        want: {
+          spring: [remains],
+          told: { type: 'move', targets: [0], provinceId: there(s).id, public: false, phase: 0 },
+          seasons: [0, 1, 2, 3, 4],
+          explored: [],
+        },
       };
     },
   },
