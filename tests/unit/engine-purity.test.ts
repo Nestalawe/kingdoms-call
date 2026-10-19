@@ -5,7 +5,7 @@
 // faults in a copy of src/.
 // - Date and Math.random are stand-ins, and document and sb tripwires: each notes the reach, then throws, so a reach is
 //   seen even when a try in the engine swallows the throw. The engine reaches none of them. (window stays undefined,
-//   so the three test hooks behind `typeof window`, _kcTest, __botDiag and __botHyg, stay off.)
+//   so the bots' two test hooks behind `typeof window`, __botDiag and __botHyg, stay off.)
 // - The engine says nothing on console.warn or console.error, where a failure a try caught would show.
 // - A turn changes no global but the dice (kcRng's slot) and the five caches the turn seeds afresh at its start
 //   (seedUsedHeroNames, seedUsedArmyNames, _MAXHP_PLAYERS): every table is read-only, and no new global appears.

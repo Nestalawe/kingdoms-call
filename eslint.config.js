@@ -44,10 +44,10 @@ module.exports = defineConfig(
     rules: { 'no-undef': 'error' },
   },
   {
-    // The names the engine reads from a page, each only when it's there: window for the test hooks (resolveTurn's
-    // _kcTest, the bots' __botDiag and __botHyg), behind typeof; and the dice's seed, KC_RNG_SEED (behind typeof), or
-    // without one the browser's crypto.
-    files: ['src/engine/run-turn.js', 'src/engine/bots/economy.js'],
+    // The names the engine reads from a page, each only when it's there: window for the bots' test hooks (__botDiag
+    // and __botHyg), behind typeof; and the dice's seed, KC_RNG_SEED (behind typeof), or without one the browser's
+    // crypto.
+    files: ['src/engine/bots/economy.js'],
     languageOptions: { globals: { window: 'readonly' } },
   },
   {
