@@ -31,12 +31,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun, seed){
     retireDiscoveries(G);   // strip retired Sage discovery ids (sd34) from live saves
     migrateLegacyUnitNames(G); // pre-2026.09.06 unit-type strings → current names (idempotent)
     snapshotHeldItems(G);      // remember every pack as it stands NOW, so the report can mark what was gained this turn
-    // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
-    // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
-    // saved, so the saved state still carried them and the next turn loaded last turn's fights,
-    // reporting them a second time (the "duel icon that won't go away"). Clear them here, at the
-    // top of the turn, whatever the save held.
-    (G.world&&G.world.provinces||[]).forEach(p=>{ if(p){ delete p._hadBattleThisTurn; delete p._combatPlayersThisTurn; } });
+    lastTurnsBattleAndDuelSwordsClearedFromTheMap(G); // the save still holds last turn's crossed swords on the map
   }catch(e){
     // the orders are already cleared: the catch at the end of runTurn puts them back
     throw new Error(`Could not read the saved game: ${e&&e.message||e}`);
@@ -64,10 +59,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun, seed){
   // next turn — reusing the existing human war tempo.
   const _botPlayerIdx=new Set((freshPlayers||[]).filter(isBotRow).map(p=>p.player_index));
   turnContext._botPlayerIdx=_botPlayerIdx;
-  // Sept 2026 (bot strategy batch): stamp the bot flag onto the persisted player objects so the
-  // module-level bot passes can tell bot realms from human ones (botIsBotPlayer) — bots never war
-  // one another while a human king still reigns, and coordinate against the humans instead.
-  (G.players||[]).forEach((p,i)=>{ if(p) p._isBot=_botPlayerIdx.has(i); });
+  everyRealmStampedBotOrHumanFromTheBotSlotRows(turnContext);
   const _botEncounteredAtStart={};
   turnContext._botEncounteredAtStart=_botEncounteredAtStart;
   _botPlayerIdx.forEach(idx=>{ _botEncounteredAtStart[idx]=[...(((G.players||[])[idx]||{})._encountered||[])]; });
