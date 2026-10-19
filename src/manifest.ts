@@ -136,6 +136,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.js',
         'engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.js',
         'engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.js',
+        'engine/turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',
