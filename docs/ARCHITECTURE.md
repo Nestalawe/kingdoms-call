@@ -344,7 +344,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   each later phase; Defend, `resolveDefendOrder`, which sets or keeps the watch the Defend family carries out; and
   `engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.js`: Blockade,
   Challenge, Rampage, Rain of Arrows, Sniper's Mark, Feigned Retreat, Grand Stratagem, Lightning Advance and Raid the
-  Coast, one function each); the once-a-turn check before a mastery stays in `processOrder`. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  Coast, one function each); the once-a-turn check before a mastery stays in `processOrder`. P1-08j9 moved `processOrder`
+  itself out of `resolveTurn` (a move, as rows a to i3 moved functions: `processOrder(turnContext,c,o,ph)`,
+  `engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js`): the checks before any order (a hero
+  carried into another's assault, the bots' Practice and Search switches, the battle lock, a charmed hero's refusals,
+  a mastery once a turn, the Forced March, a spell item's cast), then the `switch` that calls each order's function;
+  the phase loop calls it for each hero in each phase. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

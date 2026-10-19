@@ -809,7 +809,8 @@ describe('Grand Design, called directly', () => {
 });
 
 test('every order of the family is a function of its own, processOrder only calls it, and landHirePreOrders is top-level', () => {
-  const src = vm.runInContext('resolveTurn.toString()', engine) as string;
+  const src = vm.runInContext('processOrder.toString()', engine) as string; // top-level since P1-08j9
+  const turn = vm.runInContext('resolveTurn.toString()', engine) as string;
   for (const [key, name] of [
     ['recruit', 'resolveRecruitArmiesOrder'],
     ['hire', 'resolveHireHeroOrder'],
@@ -829,6 +830,8 @@ test('every order of the family is a function of its own, processOrder only call
     "case 'awaken_wild':\n      case 'call_pit': resolveRemovedAwakenTheWildAndCallFromThePitOrders(",
   );
   expect(typeof fn('landHirePreOrders')).toBe('function');
-  expect(src).not.toContain('function landHirePreOrders');
-  expect(src).not.toContain('HUMANOID_RACES_SG=');
+  for (const s of [src, turn]) {
+    expect(s).not.toContain('function landHirePreOrders');
+    expect(s).not.toContain('HUMANOID_RACES_SG=');
+  }
 });
