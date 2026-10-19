@@ -158,8 +158,9 @@ describe('Where resolveTurn calls it', () => {
         [MERGE]: (tc: unknown) => {
           const t = tc as Raw;
           seen.push(json(t['_botEncounteredAtStart']));
-          // the merge may change a realm's record of whom it met: the rivals were taken before it
-          must((t['G'] as Board['G']).players[1], 'realm 1')['_encountered'] = [0];
+          // the realm's record of whom it met changes in place after the turn's start: the rivals were taken before
+          const met = must((t['G'] as Board['G']).players[1], 'realm 1')['_encountered'] as number[];
+          met.splice(0, met.length, 0);
           realMerge(tc);
         },
         [BOT_DIPLOMACY]: (tc: unknown) => {
