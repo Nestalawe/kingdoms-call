@@ -133,6 +133,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.js',
         'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js',
         'engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.js',
+        'engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',
