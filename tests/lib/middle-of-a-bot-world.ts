@@ -257,18 +257,21 @@ export interface PlayedTurn {
 /** Plays one whole turn (resolveTurn) from the board as staged (plan P1-08j1): every realm human-held, each hero given
  *  orders here doing them, every other hero Resting, safe start over. The turn works out its own move points; the
  *  board's context isn't used. `written` adds orders a realm sends under a key of its own (plan P1-08j3: the orders
- *  written for a hero it means to hire, `hired_<hero>_via_<hirer>_ph<phase>`), by realm. */
+ *  written for a hero it means to hire, `hired_<hero>_via_<hirer>_ph<phase>`), by realm. The realms in `bots` are
+ *  bot realms (plan P1-08j9: a slot row with no player and `isBot` in its report), which plan their own orders in the
+ *  turn. */
 export function playTurn(
   b: Board,
   orders: Record<number, Order[]>,
   written: Record<number, Record<string, Order[]>> = {},
+  bots: number[] = [],
 ): PlayedTurn {
   const G = b.G as World & { safeStart?: boolean };
   G.safeStart = false;
   const rows = G.players.map((_, i) => ({
     id: 'G1gp' + String(i),
     game_id: 'G1',
-    user_id: 'u' + String(i),
+    user_id: bots.includes(i) ? null : 'u' + String(i),
     player_index: i,
     display_name: 'Realm ' + String(i),
     orders_submitted: true,
@@ -289,7 +292,7 @@ export function playTurn(
       heroOrder: [],
       forTurn: G.turn,
     }),
-    turn_report: '{}',
+    turn_report: bots.includes(i) ? '{"isBot":true}' : '{}',
   }));
   const resolveTurn = engineFn(b.engine, 'resolveTurn') as (
     state: string,
