@@ -171,6 +171,12 @@ export const muster = (p: Province, name: string) =>
 /** The companies `p`'s garrison holds after the turn, as "<name> (<quality>)". */
 export const garrison = (o: Outcome, p: Province) =>
   province(o, p).garrisonArmies.map((u) => `${u.unitName} (${u.quality})`);
+/** The living companies of `p`'s garrison after the turn (an unled skeleton crumbles once the season's accounts are
+ *  done, a later stage of the turn), as "<name> (<quality>)". */
+export const livingGarrison = (o: Outcome, p: Province) =>
+  province(o, p)
+    .garrisonArmies.filter((u) => !u['_isSkeletal'])
+    .map((u) => `${u.unitName} (${u.quality})`);
 /** A hero's companies after the turn, as "<name> (<quality>)". */
 export const column = (o: Outcome, c: Character) => char(o, c).armies.map((u) => `${u.unitName} (${u.quality})`);
 const CHARM_MARKS = [
@@ -400,7 +406,7 @@ export const TAX_CASES: EarlyWinterCase[] = [
     name: "Bless Province: a blessed province yields 60% more this turn (rounded), or the blessing's own measure; last turn's counts for nothing",
     stage(b) {
       const [a, c] = [ring1(b, 0), ring1(b, 1)];
-      holdsOnly(b, 0, [b.X, 7], [a, 5], [c, 4]);
+      holdsOnly(b, 0, [b.X, 6], [a, 5], [c, 4]);
       b.X['_blessedTurn'] = b.G.turn;
       Object.assign(a, { _blessedTurn: b.G.turn, _blessedMult: 2 });
       c['_blessedTurn'] = b.G.turn - 1;
@@ -408,7 +414,7 @@ export const TAX_CASES: EarlyWinterCase[] = [
     },
     check(o) {
       const n = realmOf(o).name;
-      return { got: { accounts: accounts(o) }, want: { accounts: [has(n, 20), collects(n, 25)] } };
+      return { got: { accounts: accounts(o) }, want: { accounts: [has(n, 20), collects(n, 24)] } };
     },
   },
   {
@@ -521,10 +527,18 @@ export const TAX_CASES: EarlyWinterCase[] = [
     },
   },
   {
-    name: "the Merchant's Ledger pays 1 for each province held, while the heroes' tax gold is under its ceiling",
+    name: "the Merchant's Ledger pays 1 for each province held, while the heroes' tax gold is under its ceiling; a ring not worn pays nothing",
     stage(b) {
       holdsOnly(b, 0, [b.X, 60], [ring1(b, 0), 30], [ring1(b, 1), 10]);
-      const h = holding(king(b), item(b, "Merchant's Ledger"));
+      const worn = (name: string) => ({ ...item(b, name), equipped: true });
+      // both ring fingers taken, so the Seal can't be worn
+      const h = holding(
+        king(b),
+        item(b, "Merchant's Ledger"),
+        worn('Ring of the Duellist'),
+        worn('Ring of the Duellist'),
+        item(b, "Guildmaster's Seal"),
+      );
       return { hero: h, orders: [] };
     },
     check(o) {
@@ -552,6 +566,22 @@ export const TAX_CASES: EarlyWinterCase[] = [
     },
   },
   {
+    name: 'Merchant Guilds: the interest rounded down, under its ceiling',
+    stage(b) {
+      holdsOnly(b, 0, [b.X, 60], [ring1(b, 0), 40]);
+      gold(b, 0, 90);
+      knows(b, 0, 'sd12');
+      return { orders: [] };
+    },
+    check(o) {
+      const n = realmOf(o).name;
+      return {
+        got: { accounts: accounts(o), gold: goldOf(o) },
+        want: { accounts: [has(n, 90), collects(n, 104, ' (+4g Merchant Guilds interest)')], gold: 194 },
+      };
+    },
+  },
+  {
     name: 'Merchant Guilds with no province to tax: the interest is paid, but no collection is told',
     stage(b) {
       holdsOnly(b, 0);
@@ -575,8 +605,8 @@ export const TAX_CASES: EarlyWinterCase[] = [
     check(o) {
       const n = realmOf(o).name;
       return {
-        got: { accounts: accounts(o) },
-        want: { accounts: [has(n, 20), collects(n, 31, ' (+1g Taxation Records)')] },
+        got: { accounts: accounts(o), gold: goldOf(o) },
+        want: { accounts: [has(n, 20), collects(n, 31, ' (+1g Taxation Records)')], gold: 51 },
       };
     },
   },
@@ -609,8 +639,8 @@ export const TAX_CASES: EarlyWinterCase[] = [
     check(o) {
       const n = realmOf(o).name;
       return {
-        got: { accounts: accounts(o) },
-        want: { accounts: [has(n, 20), collects(n, 16, ' (+2g Neutral trade bonus)')] },
+        got: { accounts: accounts(o), gold: goldOf(o) },
+        want: { accounts: [has(n, 20), collects(n, 16, ' (+2g Neutral trade bonus)')], gold: 36 },
       };
     },
   },
@@ -634,10 +664,10 @@ export const TAX_CASES: EarlyWinterCase[] = [
     },
   },
   {
-    name: 'the minor titles: the Castellan 1 for every 5 provinces his realm holds, the Cutpurse and the Champion of the People 2 each',
+    name: 'the minor titles: the Castellan 1 for every 5 provinces his realm holds (rounded down), the Cutpurse and the Champion of the People 2 each',
     stage(b) {
       titlesHeld(b);
-      holdsOnly(b, 0, ...[b.X, ...b.ring1, ...b.ring2.slice(0, 3)].map((p): [Province, number] => [p, 1]));
+      holdsOnly(b, 0, ...[b.X, ...b.ring1, ...b.ring2.slice(0, 5)].map((p): [Province, number] => [p, 1]));
       const k = king(b);
       const cut = paid(b, 1, [], { skills: { thief: 2 } });
       const champ = paid(b, 1);
@@ -651,12 +681,67 @@ export const TAX_CASES: EarlyWinterCase[] = [
         want: {
           accounts: [
             has(n, 20),
-            collects(n, 16, ' (+2g the Castellan) (+2g the Cutpurse) (+2g Champion of the People)'),
+            collects(n, 18, ' (+2g the Castellan) (+2g the Cutpurse) (+2g Champion of the People)'),
             owes(n, 2, 0, 2),
-            pays(n, 2, 34),
+            pays(n, 2, 36),
           ],
         },
       };
+    },
+  },
+  {
+    name: 'a Castellan of fewer than five provinces is paid nothing, and nothing is told of it',
+    stage(b) {
+      titlesHeld(b);
+      holdsOnly(b, 0, [b.X, 3]);
+      king(b);
+      return { orders: [] };
+    },
+    check(o) {
+      const n = realmOf(o).name;
+      return { got: { accounts: accounts(o) }, want: { accounts: [has(n, 20), collects(n, 3)] } };
+    },
+  },
+  {
+    name: "the Merchant's Ledger is told in a collection of its own, though the realm's provinces yield nothing",
+    stage(b) {
+      holdsOnly(b, 0, [b.X, 0], [ring1(b, 0), 0]);
+      holding(king(b), item(b, "Merchant's Ledger"));
+      return { orders: [] };
+    },
+    check(o) {
+      const n = realmOf(o).name;
+      return {
+        got: { accounts: accounts(o), gold: goldOf(o) },
+        want: { accounts: [has(n, 20), collects(n, 1, " (+1g Merchant's Ledger)")], gold: 21 },
+      };
+    },
+  },
+  {
+    name: "the Cutpurse's stipend is told in a collection of its own, though the realm holds no land",
+    stage(b) {
+      titlesHeld(b);
+      holdsOnly(b, 0);
+      paid(b, 5, [], { king: true, skills: { thief: 1 } });
+      return { orders: [] };
+    },
+    check(o) {
+      const n = realmOf(o).name;
+      return {
+        got: { accounts: accounts(o), gold: goldOf(o) },
+        want: { accounts: [has(n, 20), collects(n, 2, ' (+2g the Cutpurse)')], gold: 22 },
+      };
+    },
+  },
+  {
+    name: 'a realm with land but no hero and an empty treasury is told its treasury',
+    stage(b) {
+      holdsOnly(b, 0, [b.X, 0]);
+      gold(b, 0, 0);
+      return { orders: [] };
+    },
+    check(o) {
+      return { got: { accounts: accounts(o) }, want: { accounts: [has(realmOf(o).name, 0)] } };
     },
   },
 ];
@@ -679,7 +764,14 @@ export const WAGE_CASES: EarlyWinterCase[] = [
     check(o) {
       const n = realmOf(o).name;
       return {
-        got: { accounts: accounts(o), gold: goldOf(o), stamped: realmOf(o)['_lastWages'] },
+        got: {
+          accounts: accounts(o),
+          gold: goldOf(o),
+          stamped: realmOf(o)['_lastWages'],
+          owed: told(o, owes(n, 12, 10, 2)),
+          paid: told(o, pays(n, 12, 18)),
+          header: told(o, WAGES_HEADER),
+        },
         want: {
           accounts: [has(n, 20), collects(n, 10), owes(n, 12, 10, 2), pays(n, 12, 18)],
           gold: 18,
@@ -692,6 +784,9 @@ export const WAGE_CASES: EarlyWinterCase[] = [
             orcSpoilsG: 0,
             discUpkeepG: 0,
           },
+          owed: { type: 'system', targets: [0], provinceId: null, public: false, phase: 4 },
+          paid: { type: 'system', targets: [0], provinceId: null, public: false, phase: 4 },
+          header: { type: 'system', targets: [], provinceId: null, public: false, phase: 4 },
         },
       };
     },
@@ -892,7 +987,12 @@ export const UNPAID_CASES: EarlyWinterCase[] = [
     check(o, s) {
       const n = realmOf(o).name;
       return {
-        got: { accounts: accounts(o), gold: goldOf(o), field: column(o, hero(s)), garrison: garrison(o, there(s)) },
+        got: {
+          accounts: accounts(o),
+          gold: goldOf(o),
+          field: column(o, hero(s)),
+          garrison: livingGarrison(o, there(s)),
+        },
         want: {
           accounts: [
             has(n, 5),
@@ -976,26 +1076,28 @@ export const UNPAID_CASES: EarlyWinterCase[] = [
       const sea = ring1(b, 0);
       sea.terrain = 'sea';
       holdsOnly(b, 0, [b.X, 0]);
-      gold(b, 0, 0);
+      gold(b, 0, 3);
       const h = hero0AtSea(b, sea, [
         unit('Galleon', 'Galleon Fleet', 'Green'),
         unit('Marines', 'Men-at-Arms', 'Average'),
       ]);
-      return { hero: h, there: sea, orders: [] };
+      b.X.garrisonArmies = [unit('Old Guard', 'Men-at-Arms', 'Elite')];
+      return { hero: h, there: b.X, orders: [] };
     },
     check(o, s) {
       const n = realmOf(o).name;
       return {
-        got: { accounts: accounts(o), field: column(o, hero(s)) },
+        got: { accounts: accounts(o), field: column(o, hero(s)), garrison: garrison(o, there(s)) },
         want: {
           accounts: [
-            has(n, 0),
-            owes(n, 6, 6, 0),
-            cannotPay(n, 6, 0),
+            has(n, 3),
+            owes(n, 9, 9, 0),
+            cannotPay(n, 9, 3),
             disbands(unit('Marines', 'Men-at-Arms'), n),
             shipFreed(unit('Galleon', 'Galleon Fleet'), n),
           ],
           field: [],
+          garrison: ['Old Guard (Elite)'],
         },
       };
     },
@@ -1040,10 +1142,10 @@ export const UNPAID_CASES: EarlyWinterCase[] = [
     },
   },
   {
-    name: 'still short with no company left that may go: heroes desert, the best paid first, until the debt is met',
+    name: 'still short with no company left that may go: heroes desert, the best paid first, until the debt is met, and no more',
     stage(b) {
       holdsOnly(b, 0, [b.X, 0]);
-      gold(b, 0, 2);
+      gold(b, 0, 1);
       const a = paid(b, 1);
       const big = paid(b, 5);
       const mid = paid(b, 4);
@@ -1062,9 +1164,9 @@ export const UNPAID_CASES: EarlyWinterCase[] = [
           told: told(o, deserts(big, n)),
         },
         want: {
-          accounts: [has(n, 2), owes(n, 10, 0, 10), cannotPay(n, 10, 2), deserts(big, n), deserts(mid, n)],
+          accounts: [has(n, 1), owes(n, 10, 0, 10), cannotPay(n, 10, 1), deserts(big, n), deserts(mid, n)],
           lords: [null, null, 0],
-          names: [`${big.name} (wandering)`, `${mid.name} (wandering)`],
+          names: [big, mid].map((h) => `${h.name.replace(' (wandering)', '')} (wandering)`),
           served: [[0], [0]],
           roll: [a.id],
           told: { type: 'hire', targets: [0], provinceId: null, public: false, phase: 4 },
@@ -1090,6 +1192,94 @@ export const UNPAID_CASES: EarlyWinterCase[] = [
     },
   },
 ];
+UNPAID_CASES.push(
+  {
+    name: 'an unpaid hero deserts on a die just over 0.4',
+    dice: { roll: 1, die: 0.41 },
+    stage(b) {
+      holdsOnly(b, 0, [b.X, 0]);
+      gold(b, 0, 0);
+      const h = paid(b, 5);
+      return { hero: h, orders: [] };
+    },
+    check(o, s) {
+      return { got: { lord: char(o, hero(s)).player }, want: { lord: null } };
+    },
+  },
+  {
+    name: 'a realm with exactly what it owes pays it all, and is not warned',
+    stage(b) {
+      holdsOnly(b, 0, [b.X, 0]);
+      gold(b, 0, 6);
+      king(b, companies(2, 'Men-at-Arms', 'Green'));
+      return { orders: [] };
+    },
+    check(o) {
+      const n = realmOf(o).name;
+      return {
+        got: { accounts: accounts(o), gold: goldOf(o) },
+        want: { accounts: [has(n, 6), owes(n, 6, 6, 0), pays(n, 6, 0)], gold: 0 },
+      };
+    },
+  },
+  {
+    name: 'a company of no known grade is taken as Average: a Green one goes before it',
+    stage(b) {
+      holdsOnly(b, 0, [b.X, 0]);
+      gold(b, 0, 3);
+      const k = king(b, [unit('Odd', 'Men-at-Arms', 'Regular'), unit('Raw', 'Men-at-Arms', 'Green')]);
+      return { hero: k, orders: [] };
+    },
+    check(o, s) {
+      const n = realmOf(o).name;
+      return {
+        got: { gone: accounts(o).slice(3), field: column(o, hero(s)) },
+        want: { gone: [disbands(unit('Raw', 'Men-at-Arms'), n)], field: ['Odd (Regular)'] },
+      };
+    },
+  },
+  {
+    name: 'a ship on land carries no one: it goes in its turn',
+    stage(b) {
+      holdsOnly(b, 0, [b.X, 0]);
+      gold(b, 0, 3);
+      const k = king(b, [unit('Galleon', 'Galleon Fleet', 'Green'), unit('Marines', 'Men-at-Arms', 'Average')]);
+      return { hero: k, orders: [] };
+    },
+    check(o, s) {
+      const n = realmOf(o).name;
+      return {
+        got: { gone: accounts(o).slice(3), field: column(o, hero(s)) },
+        want: { gone: [disbands(unit('Galleon', 'Galleon Fleet'), n)], field: ['Marines (Average)'] },
+      };
+    },
+  },
+  {
+    name: 'a spare ship at sea, its troops carried by another, goes in its turn',
+    stage(b) {
+      const sea = ring1(b, 0);
+      sea.terrain = 'sea';
+      holdsOnly(b, 0, [b.X, 0]);
+      gold(b, 0, 6);
+      const h = hero0AtSea(b, sea, [
+        unit('Galleon A', 'Galleon Fleet', 'Green'),
+        unit('Galleon B', 'Galleon Fleet', 'Green'),
+        unit('Marines', 'Men-at-Arms', 'Elite'),
+      ]);
+      return { hero: h, orders: [] };
+    },
+    check(o, s) {
+      const n = realmOf(o).name;
+      return {
+        got: { gone: accounts(o).slice(3), field: column(o, hero(s)) },
+        want: {
+          gone: [disbands(unit('Galleon A', 'Galleon Fleet'), n)],
+          field: ['Galleon B (Green)', 'Marines (Elite)'],
+        },
+      };
+    },
+  },
+);
 /** Realm 0's king at sea in `sea`, leading `armies`, as a column that sailed there. */
 function hero0AtSea(b: Board, sea: Province, armies: Unit[]) {
   return paid(b, 0, armies, { at: sea, king: true });
@@ -1245,7 +1435,7 @@ export const DRILL_CASES: EarlyWinterCase[] = [
       return {
         got: {
           told: o.all.some((l) => l.text.includes('Garrison drills in')),
-          garrison: garrison(o, there(s)),
+          garrison: livingGarrison(o, there(s)),
           other: garrison(o, place(s, 0)),
         },
         want: { told: false, garrison: ['Hunt (Green)', 'Odd (Regular)'], other: ['Nobody (Green)'] },
