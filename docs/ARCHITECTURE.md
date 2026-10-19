@@ -349,7 +349,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js`): the checks before any order (a hero
   carried into another's assault, the bots' Practice and Search switches, the battle lock, a charmed hero's refusals,
   a mastery once a turn, the Forced March, a spell item's cast), then the `switch` that calls each order's function;
-  the phase loop calls it for each hero in each phase. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  the phase loop calls it for each hero in each phase. P1-08k1 took the phase loop's four stages out of
+  `resolveTurn` as functions of their statements, in
+  `engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.js`: the start of the phase
+  (`startPhaseHealingSnapshotsAndStalledBattles`), intents and reactions (`pinAndReactToPhaseIntents`), the orders in
+  two tiers around the Defend step (`resolvePhaseOrdersInTwoTiersAroundTheDefendStep`) and the end of the phase
+  (`endPhaseSkillRisesFallenCommandersAndProvinceMemory`); the loop keeps the phase, where each hero stood as it began,
+  the intents, Early Winter and the province lists' check. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

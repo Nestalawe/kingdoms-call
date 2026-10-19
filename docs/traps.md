@@ -168,6 +168,18 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   P1-08j9 `processOrder` is top-level itself (`processOrder(turnContext,c,o,ph)`), so a test can call it, or stand in an
   order's function in the `vm` to see what it is handed: `unit/order-dispatch-called-directly` checks every call's
   arguments that way.
+- A stage of the phase loop taken out of `resolveTurn` (since P1-08k1: the start of the phase, intents and reactions,
+  the orders in two tiers, the end of the phase, in
+  `engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.js`) is a function of its statements,
+  taking the context, then the loop's values it reads, in the order the loop declares them (`ph`, `_phaseStartLoc`,
+  `intents`): those stay declared in the loop and are passed in. The loop is the stages' calls, the intents between
+  the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
+  log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
+  the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.
+- A test can stand in a top-level **function** by replacing it in the `vm` (`engine.f = …`), as
+  `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly` do, but not a top-level `const`
+  arrow (`defendSpentThisPhase`, `noteEntered`): a `const` isn't a property of the `vm`'s global object, so the
+  engine keeps calling the original. Stage the state it reads instead.
 - Reading a context value before `resolveTurn` has set it gives `undefined`; reading the old `let` before its line
   threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix), and
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
