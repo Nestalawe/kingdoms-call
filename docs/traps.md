@@ -23,9 +23,10 @@ portal hangs on its spinner (the boot-failure reporter now shows the error).
 
 - `ITEMS_BY_TIER` and `rollMagicItem` (GM portal) must come after `ALL_MAGIC_ITEMS_P` (data file). This
   holds because the data file loads first. Keep it that way.
-- Code that runs at top level calls only top-level helpers. Many engine helpers are local to `resolveTurn`
-  (e.g. `_botDuelSim`), and a lifted one may need the turn's context (`effStat(turnContext, c, stat)`; use
-  `effSkillOf` outside a turn). Declare shared helpers as hoisted `function`s.
+- Code that runs at top level calls only top-level helpers. A lifted engine helper may need the turn's context
+  (`effStat(turnContext, c, stat)`; use `effSkillOf` outside a turn), and one handed to another as a value is wrapped
+  with it (`(...a)=>f(turnContext,...a)`, as the bots' duel forecast is). Declare shared helpers as hoisted
+  `function`s.
 - Prefer building lookup tables lazily inside the function that needs them over a top-level IIFE.
 - A flag read by layout code that can run early (e.g. a hash-restored view) must be declared above
   that code, not in its feature's block further down.
@@ -193,19 +194,26 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   first of equals) and its king the Colossus and the Castellan: a test of the title changes counts them, and a hero's
   wage (never under 1g) can hand the Vaultkeeper to another realm unless the realm is given gold. P1-08k7's two set-up
   stages (the turn's start repairs, the merge of the realms' orders) run before `log` is ready, so they log nothing:
-  what the merge has to tell goes into the context's collectors (`staleOrderWarnings`, `safeStartRefused`,
-  `discoveryChoicePicks`, `playerMessages`, with k4's two), which `resolveTurn` still declares and reads by name, each
-  joined to the context on the line after it. A test that calls the merge gives the context the slot rows
-  (`turnContext.freshPlayers`) and the turn run (`turnContext.expectedTurnToRun`, which may differ from `G.turn`) first,
-  and reads what it collected from the context (`turnContext()` in `tests/lib/engine.ts` makes them empty). What the
+  what the merge has to tell goes into the context's collectors (`staleOrderWarnings`, `diploDeclarations`,
+  `safeStartRefused`, `discoveryChoicePicks`, `reckoningCalls`, `playerMessages`), which the merge itself makes afresh
+  each turn and joins to the context (since P1-08l2; `resolveTurn` declared them before). A test that calls the merge
+  gives the context the slot rows (`turnContext.freshPlayers`) and the turn run (`turnContext.expectedTurnToRun`, which
+  may differ from `G.turn`) first, and reads what it collected from the context after the call: a collector held from
+  before the call is not the one the merge filled (`turnContext()` in `tests/lib/engine.ts` makes them empty). What the
   set-up leaves in `G.turnOrders` and the per-turn lists is gone by the turn's end: a whole turn reads it as the first
   phase begins. P1-08k8's four stages before the first phase make the movement pools, `SEASONS`, the turn's trackers
   and the war fronts at the start afresh and join them to the context, so a test that calls them reads those from the
   context after the call (a value made before the call is the old one; `STALE_CONTEXT` in
   `tests/lib/before-the-first-phase-cases.ts` leaves stale ones in to show it), and a whole turn's are read from the
   context as the first phase begins: `move-points` reads the pools that way. A direct call of the four runs without the
-  bots' passes between the third and the fourth (they stay nested in `resolveTurn` until P1-08l), so a case about a
-  bot's own pick or plan is a whole turn's. P1-08l1's bots' diplomacy
+  bots' plan between the third and the fourth (P1-08l2's, called by `resolveTurn` there), so a case about a bot's own
+  pick or plan is a whole turn's, or calls the plan between them. P1-08l2's bots' plan
+  (`botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning`, in `engine/bots/`)
+  takes the context alone and calls the eight passes in order, each handed the context's own world and bot realms; the
+  movement pass is handed the duel forecast (`botHuntersDuelForecastFoughtOnCopiesOfBothHeroes`, a top-level function
+  now, so a test can stand it in) wrapped with the context. A test that calls the plan readies the context as
+  `resolveTurn` has it there (`ready` in `tests/lib/the-bots-plan-cases.ts`: the merge run with a bot's seat holding no
+  player, so the merge writes nothing for it, then the stages before the plan). P1-08l1's bots' diplomacy
   (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, in `engine/bots/`) takes the context alone and
   reads each bot realm's rivals from `turnContext._botEncounteredAtStart`: a copy of each bot's record of whom it had met,
   made when the turn began, before the merge, and read by both of its calls (before the first phase and after the
@@ -225,7 +233,7 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
   `recruitedThisTurn`, `_intrusionAcc`): before its join line, the old name threw; the context's reads `undefined`.
   P1-08c checked again for the six values above and `_elvenEscapeQueue`, P1-08d for `presenceByPhase`, `clairWatch` and
-  `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`, P1-08i3 for `_tier0Open`, `_unitGainQueue`, `_warFrontAtStart` and `_warFrontProvs`. P1-08k4 and P1-08k7 for the merge's six collectors. P1-08k8 added no join and no `let` (the values it makes were joined before; their join lines moved with them), so it didn't rerun it. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
+  `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`, P1-08i3 for `_tier0Open`, `_unitGainQueue`, `_warFrontAtStart` and `_warFrontProvs`. P1-08k4 and P1-08k7 for the merge's six collectors. P1-08k8 added no join and no `let` (the values it makes were joined before; their join lines moved with them), so it didn't rerun it. P1-08l1 reran it for `_botEncounteredAtStart`; P1-08l2 added none (the merge's six collectors moved into the merge with their join lines, still joined before anything reads them), so it didn't. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
   does: a test of a lifted helper that reads one it doesn't set gets `undefined`, not the turn's value.
 
 ## Top-level names aren't on `window` in tests

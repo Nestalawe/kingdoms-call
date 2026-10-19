@@ -404,7 +404,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, taking only the context): each bot realm's Treat or war on each
   rival it had met when the turn began (`_botEncounteredAtStart`, which joins the context for it), by alignment, the
   grudge and a Reckoning claim; `resolveTurn` calls it before the first phase and again just before diplomacy is
-  resolved. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  resolved. P1-08l2 took the bots' plan out, in
+  `engine/bots/bot-realms-plan-the-turn-concessions-movement-muster-economy-actions-hygiene-the-reckoning-and-the-duel-forecast.js`
+  (`botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning`, taking only the
+  context, and `botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hunter, quarry, n)`): the eight passes
+  in which the bot realms decide their turn, between the move pools and the default to Defend, and the duel forecast
+  the movement pass is handed; and it moved the merge's six collectors into the merge, which makes them each turn.
+  A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

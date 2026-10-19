@@ -12,10 +12,10 @@
 //      orders stamped for another turn refused, the orders of heroes it means to hire, raise or charm held until the
 //      order lands, every other hero's phases written, a conceded realm's heroes made to hold, its encounter plans
 //      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied.
-// Each takes the turn's context (src/engine/turn/context.js) and nothing else: the merge fills the collectors
-// resolveTurn declares and joins to the context (staleOrderWarnings, diploDeclarations, safeStartRefused,
-// discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read. The bodies keep
-// resolveTurn's indent (plan P1-08's Decisions).
+// Each takes the turn's context (src/engine/turn/context.js) and nothing else: the merge makes the collectors afresh
+// each turn, joins them to the context and fills them (staleOrderWarnings, diploDeclarations, safeStartRefused,
+// discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read there (they were
+// declared in resolveTurn until plan P1-08l2). The bodies keep resolveTurn's indent (plan P1-08's Decisions).
 
 function turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext){
   const {G}=turnContext;
@@ -72,7 +72,28 @@ function turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext){
 }
 
 function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans(turnContext){
-  const {freshPlayers, G, expectedTurnToRun, safeStartRefused, diploDeclarations, discoveryChoicePicks, reckoningCalls, playerMessages, staleOrderWarnings}=turnContext;
+  const {freshPlayers, G, expectedTurnToRun}=turnContext;
+  // Encounter plans persist across turns until the player changes them, so we do NOT wipe them here
+  // — the new submissions below overwrite only the characters whose orders include a plan. Collect
+  // warnings about rejected stale orders (logged once log() is ready)
+  const staleOrderWarnings=[];
+  turnContext.staleOrderWarnings=staleOrderWarnings;
+  // Diplomacy declarations submitted this turn, keyed by player index → { targetPlayerIndex: 'treat'|'enemy' }.
+  // Recorded here, applied at end of turn (relations change "at the start of the next turn").
+  const diploDeclarations={};
+  turnContext.diploDeclarations=diploDeclarations;
+  const safeStartRefused=[]; // SAFE START: realms whose declarations were discarded this turn (told privately)
+  turnContext.safeStartRefused=safeStartRefused;
+  const discoveryChoicePicks={}; // research choice: player index → {pendingKey: keptDiscoveryId}
+  turnContext.discoveryChoicePicks=discoveryChoicePicks;
+  // Victory: players who Called the Reckoning this turn (king-only, one per realm).
+  const reckoningCalls=new Set();
+  turnContext.reckoningCalls=reckoningCalls;
+  // player-to-player messages submitted with orders, keyed by sender index → [{to, text}].
+  // `to` is an array of recipient player indices, or the string 'all'. Delivered into each
+  // recipient's report below (this turn's report, which they read before ordering next turn).
+  const playerMessages={};
+  turnContext.playerMessages=playerMessages;
   freshPlayers.filter(p=>p.user_id&&p.orders).forEach(gp=>{
     let raw=typeof gp.orders==='string'?JSON.parse(gp.orders):gp.orders||{};
     // Detect new format: {orders:{charId:[phases]}, encounterPlans:{}, forTurn:N} vs old format:

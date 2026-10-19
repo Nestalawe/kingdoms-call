@@ -169,7 +169,7 @@ describe('The set-up: what it calls', () => {
     expect(collected(merged(b), 'diploDeclarations')).toEqual({ 0: { 1: 'treat' }, 1: {} });
   });
 
-  test('resolveTurn calls the repairs, then the merge, once each, with its context, before any line is logged and before the first phase', () => {
+  test('resolveTurn calls the repairs, then the merge, once each, with its context, before any line is logged and before the first phase; the merge leaves the six collectors on that context', () => {
     const b = fresh();
     const names = [SET_UP, MERGE, FIRST_PHASE];
     const g = engine;
@@ -180,24 +180,27 @@ describe('The set-up: what it calls', () => {
     const collectors: unknown[] = [];
     for (const [f, w] of was)
       g[f] = (...a: unknown[]) => {
-        if (order_.length < 3) {
+        const recorded = order_.length < 3;
+        const t = a[0] as Raw;
+        if (recorded) {
           order_.push(f);
           handed.push(a);
-          const t = a[0] as Raw;
           logged.push((t['turnLog'] as unknown[]).length);
-          if (f === MERGE)
-            collectors.push(
-              ...[
-                'staleOrderWarnings',
-                'diploDeclarations',
-                'safeStartRefused',
-                'discoveryChoicePicks',
-                'reckoningCalls',
-                'playerMessages',
-              ].map((k) => Object.prototype.toString.call(t[k])),
-            );
         }
-        return w(...a);
+        const r = w(...a);
+        // the six collectors, as the merge leaves them on the context (it makes them since P1-08l2)
+        if (recorded && f === MERGE)
+          collectors.push(
+            ...[
+              'staleOrderWarnings',
+              'diploDeclarations',
+              'safeStartRefused',
+              'discoveryChoicePicks',
+              'reckoningCalls',
+              'playerMessages',
+            ].map((k) => Object.prototype.toString.call(t[k])),
+          );
+        return r;
       };
     const resolveTurn = engineFn(engine, 'resolveTurn') as (s: string, r: unknown, t: number) => unknown;
     try {
