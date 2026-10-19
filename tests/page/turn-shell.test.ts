@@ -13,8 +13,8 @@
 // - and none: the turn's writes, in order (the clear, the save, each realm's report and its snapshot, the GM's log,
 //   the telemetry), each payload agreeing with the others. P1-18d moved them into the shell; the test holds them.
 // And the turn's dice (P1-18e): each turn plays from a seed of its own, drawn from the page's dice and returned, and
-// the page gets its own dice back; the turn the page plays is the one the engine plays alone, in the bare vm, from that
-// seed.
+// the page gets its own dice back; the shell hands resolveTurn that seed (P1-08m); the turn the page plays is the one
+// the engine plays alone, in the bare vm, from that seed.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.js)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -480,6 +480,27 @@ test('each turn plays from its own seed, and the page gets its dice back', async
   expect(run.seeds[0], 'two turns, two seeds').not.toBe(run.seeds[1]);
   expect(run.after, 'after the turns, the page carries on with its own dice').toBe(after);
   expect((await followed()).seeds, 'the same page dice give the same seeds').toEqual(run.seeds);
+}, 60_000);
+
+// Fails on the base of P1-08m, where the shell lent the turn its dice itself and handed resolveTurn three arguments.
+// Since P1-08m resolveTurn takes the seed and lends itself the dice (tests/unit/the-turns-own-dice-from-its-seed).
+test('the shell hands resolveTurn the seed it returns, each turn its own', async () => {
+  const t = await stage();
+  try {
+    t.W.eval(`(function(){ const real=resolveTurn; window.__handed=[];
+      window.resolveTurn=function(...a){ __handed.push(a.slice(3)); return real(...a); }; })()`);
+    const first = await t.run();
+    const second = await t.run();
+    expect(first, 'turn 1 was saved').toMatchObject({ ok: true, committed: true, turn: 2 });
+    expect(second, 'turn 2 was saved').toMatchObject({ ok: true, committed: true, turn: 3 });
+    expect(first.seed, 'two turns, two seeds').not.toBe(second.seed);
+    expect(
+      JSON.parse(String(t.W.eval('JSON.stringify(__handed)'))),
+      'what resolveTurn was handed after the state, the slot rows and the turn',
+    ).toEqual([[first.seed], [second.seed]]);
+  } finally {
+    t.W.close();
+  }
 }, 60_000);
 
 // The turn's output with the shell's stamps taken out, as JSON: the time of the run and the next deadline in the

@@ -24,7 +24,7 @@ every test. **Edit `src/`, never `site/`**: the next build overwrites it.
   landed, the build reproduced the committed `site/` exactly, every byte of every file.
 - **Each `.js` file is a stretch of whole top-level statements**, so it parses on its own; no file ends inside a
   function (`tests/static/build.test.ts`). The GM portal's main script is 76 files; `src/engine/run-turn.js` (the turn,
-  `resolveTurn`, ~13,000 lines) is being taken apart by P1-08, one area at a time (below). The player portal's is 20.
+  `resolveTurn`, once ~13,000 lines, now ~240) was taken apart by P1-08, one area at a time (below). The player portal's is 20.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report,
   the statistics snapshots, what a realm can see), `db/` (which database, the version guard, telemetry and the light `meta`
   rows), `content/` (the data file), `ui/<page>/` (each page's template, styles and the rest of its code),
@@ -180,18 +180,20 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   pushes each realm's first report.
 - **A turn is two functions** (P1-18d): the engine works it out, and a shell around it does the database and
   screen work.
-- **`resolveTurn(G, freshPlayers, expectedTurnToRun)`** (`src/engine/run-turn.js`) is the turn itself. It takes
-  the saved state as loaded (JSON: parsing it is the turn's copy), the slot rows and the turn being run. It
+- **`resolveTurn(G, freshPlayers, expectedTurnToRun, seed)`** (`src/engine/run-turn.js`) is the turn itself. It takes
+  the saved state as loaded (JSON: parsing it is the turn's copy), the slot rows, the turn being run and the turn's
+  seed (P1-08m). It
   brings an older save up to the current tables ([traps.md](traps.md#live-saves-keep-copies)), merges the
   orders, runs the bot passes, defaults missing orders to Defend, and resolves the five phases (look for
   `// 4. Run all 5 phases`) and the end of the turn. It is synchronous and reads no database, no screen and
-  no clock; the dice are `kcRng`'s (below). It returns `{state, log, buildReports}`: the world to save, as
-  JSON; the GM's log; and `buildReports()`, which builds every realm's report on the working copy, once, and
-  is called only after the save. `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
+  no clock; its dice are the seed's (below), or, given no seed, the dice in use (as a test fixes them). It returns
+  `{state, log, buildReports}`: the world to save, as JSON; the GM's log; and `buildReports()`, which builds every
+  realm's report on the working copy, once, on the turn's dice, and is called only after the save. `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
   with no page.
 - **`runTurn`**, the turn's shell (`src/ui/gm/turn-shell.js`), loads the full world and every slot, checks the
   game is still on the turn the GM meant to run, then **clears the submitted orders in the database**
-  (keeping a copy in memory) and stops if that fails. Only then does it call `resolveTurn`. Then it:
+  (keeping a copy in memory) and stops if that fails. Only then does it draw the turn's seed and call `resolveTurn`.
+  Then it:
   1. **saves the world with a conditional update** (`.eq('turn', n)`), stamped with when the turn ran
      (`turnRanAt`, and in deadline mode `nextDeadlineAt`): if another tab already resolved this turn, nothing
      is written and `_saveConflict` is set;
@@ -245,13 +247,16 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (`src/engine/clock.js`, `Date.now()` when called), to stamp when the turn ran; the screens read `Date` as before.
   `dice-and-clock` keeps `Math.random` and `Date` out of the source, and `engine-purity` checks that a whole game
   reads neither ([traps.md](traps.md#dice-come-from-kcrng)). Each turn plays from its own seed (P1-18e): the shell
-  (`runTurn`) draws a 32-bit integer from the page's dice, lends the turn the dice made from it (`kcRngStream(seed)`,
-  through `kcRng.use`) for `resolveTurn` and again for `buildReports()`, gives the page its own dice back after each
-  (never across an `await`), and returns the seed (`{…, seed}`), for P2-01 to record. A mercenary
+  (`runTurn`) draws a 32-bit integer from the page's dice, hands it to `resolveTurn`, and returns it (`{…, seed}`), for
+  P2-01 to record. Since P1-08m the turn takes its seed: `resolveTurn` makes the dice of it (`kcRngStream(seed)`)
+  once, lends them to itself (`kcRng.use`) and again to `buildReports()`, whose Spy-stealth rolls carry on from the
+  turn's, and gives back the dice in use before after each, also when it throws, so they are never lent across the
+  shell's `await`s (P1-18e had the shell lend them; `tests/unit/the-turns-own-dice-from-its-seed.test.ts`). A mercenary
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
-- **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08). Some of the rule code is still
-  in it (the bots' plan, until P1-08l2), and tests reach `resolveTurn`'s own lines by injecting code at exact source lines (see
+- **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08). Since P1-08m it is the set-up,
+  the stages' calls, the phase loop calling its stages and the reports; two lines of set-up rules are still in it (the
+  map's swords of last turn cleared, the bots' flag stamped on each realm), and tests reach `resolveTurn`'s own lines by injecting code at exact source lines (see
   [tests/README.md](../tests/README.md#code-anchor-hooks)). A lifted helper that reads the turn's state takes **the
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
@@ -259,7 +264,9 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, since P1-08i3 `_warFrontAtStart` and `_warFrontProvs`, since P1-08j1 `lightLandMoves` and `lightSeaMoves`, since P1-08k4 `diploDeclarations` and `reckoningCalls`, since P1-08k7 `staleOrderWarnings`, `safeStartRefused`, `discoveryChoicePicks` and `playerMessages`, and since P1-08l1 `_botEncounteredAtStart` (each joins by reference on the line after `resolveTurn` declares it; since P1-08k8 the movement pools, `lightLandMoves`, `lightSeaMoves`, `SEASONS`, `recruitedThisTurn`, `presenceByPhase`, `_intrusionAcc`, `_distCache`, `_warFrontAtStart` and `_warFrontProvs` are made, and joined, by the stage before the first phase that first needs them), and the values the turn changes as it goes (`_logCtx`,
   `_currentPhase`, `_afterPhases`, since P1-08c `_combatSkillProv`, `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`,
   `_deferredSkillLogs`, `_pcSimulating`, since P1-08i1 `enteredThisPhase`, and since P1-08i3 `_tier0Open` and `_unitGainQueue`), which are read and written as `turnContext._currentPhase` everywhere, in
-  `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it yet (P1-08m). Lifted so
+  `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it: the turn's dice are
+  lent for its length (P1-08m: passing them through the helpers would touch nearly every engine file for no change in
+  play; revisit at P1-09). Lifted so
   far (P1-08a): the line helpers and the turn's records (`engine/turn/`), relations and captures
   (`engine/realms/relations-and-captures.js`), the title lookups and battle merit
   (`engine/titles/title-holders-and-battle-merit.js`), skills in play and hidden heroes

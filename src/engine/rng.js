@@ -5,8 +5,8 @@
 // seededRandom in tests/lib/boot.js, so a seed plays the sequence the tests have always played.
 // It is seeded once, as the page loads: from KC_RNG_SEED when the page was given one before its scripts ran (the
 // tests' bootJsdom sets it), or else from crypto.getRandomValues (the live site). Each turn plays from its own seed
-// (P1-18e): the turn's shell (src/ui/gm/turn-shell.js) draws it from these dice, lends the turn kcRngStream(seed) with
-// kcRng.use, and gives the page its own dice back.
+// (P1-18e): the turn's shell (src/ui/gm/turn-shell.js) draws it from these dice and hands it to resolveTurn, which lends
+// itself kcRngStream(seed) with kcRng.use and gives the page its own dice back (P1-08m, src/engine/run-turn.js).
 //   kcRng()         the next number in [0, 1)
 //   kcRng.seed(n)   starts again from seed n (any number; read as an unsigned 32-bit integer, 0 as 1)
 //   kcRng.use(fn)   draws from fn from now on (a turn's dice, a test's fixed dice) and returns what it drew from before:
