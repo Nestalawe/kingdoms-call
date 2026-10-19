@@ -492,6 +492,7 @@ export const THRONE_CASES: TitleCase[] = [
 export const VAULT_CASES: TitleCase[] = [
   {
     name: 'the Vaultkeeper gives its holder its own treasury after the turn’s taxes, then each realm it has met, in realm order',
+    wholeTurnOnly: true,
     stage(b) {
       firstPublic(b);
       taxes(b, 10, 5, 2);
@@ -511,6 +512,7 @@ export const VAULT_CASES: TitleCase[] = [
   },
   {
     name: 'the Vaultkeeper is the richest realm, whatever its tax: realm 2, which met realm 1 only',
+    wholeTurnOnly: true,
     stage(b) {
       firstPublic(b);
       treasury(b, 2, 100);
@@ -627,6 +629,25 @@ export const MARSHAL_CASES: TitleCase[] = [
     },
   },
   {
+    name: 'a fallen commander’s army is not named, however strong',
+    stage(b) {
+      firstPublic(b);
+      rich(b, 0, 1, 2);
+      meets(b, 0, 1);
+      titled(b, 0, seatOf(b, 0), { tactical: 1 });
+      const d = titled(b, 1, ring2(b, 4), {}, MAA(5, 'Fallen'));
+      d.alive = false;
+      const r = titled(b, 1, seatOf(b, 1), {}, MAA(1, 'Living'));
+      return { others: [r], orders: [] };
+    },
+    check(o, s) {
+      return {
+        got: intel(o, 'The Grand Marshal')[1]?.[1].includes(`led by ${other(s, 0).name} in`),
+        want: true,
+      };
+    },
+  },
+  {
     name: 'the Grand Marshal is the hero of the highest Tactical: realm 1’s, told to realm 1',
     stage(b) {
       firstPublic(b);
@@ -676,6 +697,8 @@ export const SEA_LORD_CASES: TitleCase[] = [
       const m = titled(b, 0, seatOf(b, 0), { naval: 1 }, [...FLEET(1, 'Navy'), ...MAA(1, 'Marines')]);
       leads(kingOf(b, 0), [...FLEET(2, 'Royal Navy'), ...MAA(1, 'Royal')]);
       const r = titled(b, 1, seatOf(b, 1), {}, [...FLEET(1, 'Foe Navy'), ...MAA(4, 'Foe')]);
+      rich(b, 2);
+      titled(b, 2, seatOf(b, 2), {}, FLEET(4, 'Unmet Navy'));
       return { hero: m, others: [r], orders: [] };
     },
     check(o, s) {
@@ -729,6 +752,7 @@ export const MONSTER_BANE_CASES: TitleCase[] = [
       deeds(titled(b, 0, seatOf(b, 0), {}), { monster: 3 });
       deeds(titled(b, 1, seatOf(b, 1), {}), { monster: 1 });
       const r = deeds(titled(b, 1, seatOf(b, 1), {}), { monster: 2 });
+      deeds(titled(b, 2, seatOf(b, 2), {}), { monster: 3 });
       return { hero: c, others: [r], orders: [] };
     },
     check(o, s) {
@@ -1082,6 +1106,27 @@ export const DEATHPRIEST_CASES: TitleCase[] = [
     },
   },
   {
+    name: 'Grave-sight files its finds with the realm holding the Deathpriest, not another',
+    stage(b) {
+      firstPublic(b);
+      titled(b, 1, seatOf(b, 1), { necromancy: 1 });
+      const p = ring1(b, 2);
+      bury(p, 1, 'Men-at-Arms', 'Elite');
+      return { places: [p], orders: [] };
+    },
+    check(o, s) {
+      const p = place(s, 0);
+      return {
+        got: { told: intel(o, 'The Deathpriest').map(([to]) => to), mine: loreOf(o, 0, p), theirs: loreOf(o, 1, p) },
+        want: {
+          told: [[1]],
+          mine: null,
+          theirs: { turn: 5, detail: [{ k: 'Elite Men-at-Arms', n: 1 }], partial: true },
+        },
+      };
+    },
+  },
+  {
     name: 'with no crack or elite dead anywhere, Grave-sight finds none',
     stage(b) {
       firstPublic(b);
@@ -1102,6 +1147,7 @@ export const DEATHPRIEST_CASES: TitleCase[] = [
 export const SPYMASTER_CASES: TitleCase[] = [
   {
     name: 'the Spymaster names each act of espionage worked against its land this turn, by the agent and where, then the roll of agents with a count',
+    wholeTurnOnly: true,
     stage(b) {
       firstPublic(b);
       holdsOnly(b, 0, [seatOf(b, 0), 10], [b.X, 0]);
@@ -1124,6 +1170,7 @@ export const SPYMASTER_CASES: TitleCase[] = [
   },
   {
     name: 'espionage against ground the realm doesn’t hold is not its business: a quiet turn',
+    wholeTurnOnly: true,
     stage(b) {
       firstPublic(b);
       deeds(titled(b, 0, seatOf(b, 0), { spy: 9 }), { spyActions: 5 });
@@ -1153,7 +1200,7 @@ export const CARTOGRAPHER_CASES: TitleCase[] = [
       meets(b, 0, 1);
       titled(b, 0, seatOf(b, 0), { explorer: 1 });
       atlasOf(b, 0, 100);
-      atlasOf(b, 1, 0, [seatOf(b, 1), 100], [ring1(b, 0), 50]);
+      atlasOf(b, 1, 0, [seatOf(b, 1), 100], [ring1(b, 0), 50], [ring1(b, 1), 70]);
       atlasOf(b, 2, 0);
       return nothing();
     },
@@ -1165,7 +1212,7 @@ export const CARTOGRAPHER_CASES: TitleCase[] = [
           [[0], `[The Cartographer] Your atlas: ${String(n)} provinces fully charted, 100% of the world mapped.`],
           [
             [0],
-            `[The Cartographer] ${nm(o, 1)}: 1 province fully charted, ${String(Math.round(150 / n))}% of the world mapped.`,
+            `[The Cartographer] ${nm(o, 1)}: 1 province fully charted, ${String(Math.round(220 / n))}% of the world mapped.`,
           ],
           [[0], unmetLine('The Cartographer', 1)],
         ],
@@ -1207,7 +1254,9 @@ export const BEASTLORD_CASES: TitleCase[] = [
       const c = deeds(titled(b, 0, seatOf(b, 0), {}, [...companies(2, 'Cave Trolls'), ...MAA(1, 'Guard')]), {
         monsterHost: 3,
       });
-      garrison(seatOf(b, 0), companies(1, 'Cave Trolls', 'Average', 'Held'));
+      deeds(titled(b, 0, seatOf(b, 0), {}, companies(2, 'Cave Trolls', 'Average', 'Equal')), {});
+      titled(b, 0, seatOf(b, 0), {}, companies(1, 'Cave Trolls', 'Average', 'Small'));
+      garrison(seatOf(b, 0), [...companies(1, 'Cave Trolls', 'Average', 'Held'), ...MAA(1, 'Gate')]);
       garrison(seatOf(b, 1), companies(1, 'Manticore Pride'));
       return { hero: c, orders: [] };
     },
@@ -1217,7 +1266,7 @@ export const BEASTLORD_CASES: TitleCase[] = [
         want: [
           [
             [0],
-            `[The Beastlord] Your realm: 3 monster units under arms, the largest host — 2 — with ${hero(s).name} in ${seatOf(board(s), 0).name}.`,
+            `[The Beastlord] Your realm: 6 monster units under arms, the largest host — 2 — with ${hero(s).name} in ${seatOf(board(s), 0).name}.`,
           ],
           [[0], `[The Beastlord] ${nm(o, 1)}: 1 monster unit under arms (all of them garrisoned).`],
           [[0], `[The Beastlord] ${nm(o, 2)}: no monsters under arms.`],
@@ -1260,7 +1309,8 @@ export const WILDWARDEN_CASES: TitleCase[] = [
       );
       const r = titled(b, 1, seatOf(b, 1), {}, companies(2, 'Forest Ents'));
       titled(b, 1, seatOf(b, 1), {}, companies(1, 'Forest Ents', 'Average', 'Other'));
-      garrison(seatOf(b, 1), companies(2, 'Great Bears'));
+      titled(b, 1, seatOf(b, 1), {}, companies(2, 'Forest Ents', 'Average', 'Equal'));
+      garrison(seatOf(b, 1), [...companies(2, 'Great Bears'), ...MAA(1, 'Gate')]);
       return { hero: c, others: [r], orders: [] };
     },
     check(o, s) {
@@ -1273,7 +1323,7 @@ export const WILDWARDEN_CASES: TitleCase[] = [
           ],
           [
             [0],
-            `[The Wildwarden] ${nm(o, 1)}: 5 creature units in the field, the greatest host — 2 — with ${other(s, 0).name} in ${seatOf(board(s), 1).name}.`,
+            `[The Wildwarden] ${nm(o, 1)}: 7 creature units in the field, the greatest host — 2 — with ${other(s, 0).name} in ${seatOf(board(s), 1).name}.`,
           ],
           [[0], unmetLine('The Wildwarden', 1)],
         ],
@@ -1321,9 +1371,23 @@ export const CHANGES_CASES: TitleCase[] = [
       return { board: b, orders: [] };
     },
     check(o, s) {
+      const major = snapshot(o)?.['major'] as Record<string, Raw> | undefined;
+      const k = kingOf(board(s), 0).id;
       return {
-        got: { gains: gains(o), losses: losses(o), holders: holders(o) },
-        want: { gains: {}, losses: {}, holders: { ...KINGS_HOLD(s), wasPublic: false } },
+        got: {
+          gains: gains(o),
+          losses: losses(o),
+          holders: holders(o),
+          throne: major?.['throne'],
+          marshal: major?.['marshal'],
+        },
+        want: {
+          gains: {},
+          losses: {},
+          holders: { ...KINGS_HOLD(s), wasPublic: false },
+          throne: { charId: k, playerIndex: 0, kingdomLevel: true },
+          marshal: { charId: null, playerIndex: null, kingdomLevel: false },
+        },
       };
     },
   },
@@ -1586,6 +1650,7 @@ export const CHANGES_CASES: TitleCase[] = [
 export const ORDER_CASES: TitleCase[] = [
   {
     name: 'the intel comes after the new turn is done: the Vaultkeeper reads the treasuries after the taxes and the wages, the Throne the land as the turn leaves it',
+    wholeTurnOnly: true,
     stage(b) {
       firstPublic(b);
       taxes(b, 10, 20, 0);
