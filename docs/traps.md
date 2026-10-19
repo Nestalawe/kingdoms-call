@@ -24,7 +24,7 @@ portal hangs on its spinner (the boot-failure reporter now shows the error).
 - `ITEMS_BY_TIER` and `rollMagicItem` (GM portal) must come after `ALL_MAGIC_ITEMS_P` (data file). This
   holds because the data file loads first. Keep it that way.
 - Code that runs at top level calls only top-level helpers. Many engine helpers are local to `resolveTurn`
-  (e.g. `processOrder`), and a lifted one may need the turn's context (`effStat(turnContext, c, stat)`; use
+  (e.g. `_botDuelSim`), and a lifted one may need the turn's context (`effStat(turnContext, c, stat)`; use
   `effSkillOf` outside a turn). Declare shared helpers as hoisted `function`s.
 - Prefer building lookup tables lazily inside the function that needs them over a top-level IIFE.
 - A flag read by layout code that can run early (e.g. a hash-restored view) must be declared above
@@ -164,7 +164,10 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   `scenario/cast-spell-order-in-a-whole-turn`, `scenario/war-orders-in-a-whole-turn`). A helper nested in `processOrder` that leaves with them takes the
   context, then the values of `processOrder`'s it closed over, then its own arguments (since P1-08j6:
   `thiefCaughtScuffle(turnContext, prov, thief, victim, what)`; since P1-08j7: `charmBacklash(turnContext, prov, caster,
-  t, why)`), and a `processOrder` constant only it reads becomes a top-level constant (`CHARM_BACKLASH_PCT`).
+  t, why)`), and a `processOrder` constant only it reads becomes a top-level constant (`CHARM_BACKLASH_PCT`). Since
+  P1-08j9 `processOrder` is top-level itself (`processOrder(turnContext,c,o,ph)`), so a test can call it, or stand in an
+  order's function in the `vm` to see what it is handed: `unit/order-dispatch-called-directly` checks every call's
+  arguments that way.
 - Reading a context value before `resolveTurn` has set it gives `undefined`; reading the old `let` before its line
   threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix), and
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,

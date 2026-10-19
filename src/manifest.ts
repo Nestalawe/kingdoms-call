@@ -131,6 +131,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.js',
         'engine/orders/encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.js',
         'engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.js',
+        'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',

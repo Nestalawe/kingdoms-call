@@ -450,7 +450,7 @@ describe('Chart the Unknown, called directly', () => {
 });
 
 test('every order of the family is a function of its own, and processOrder only calls it', () => {
-  const src = vm.runInContext('resolveTurn.toString()', engine) as string;
+  const src = vm.runInContext('processOrder.toString()', engine) as string; // top-level since P1-08j9
   for (const [key, name] of [
     ['explore', 'resolveExploreOrder'],
     ['rite', 'resolvePerformRiteOrder'],
