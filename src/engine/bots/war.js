@@ -22,7 +22,7 @@
 //     peaceCooldown turns before war is weighed again.
 // The Aggressive bot-diplomacy setting, a Reckoning claim, the grudge (with its survival exception)
 // and alignment alliances (one step or less; never with a realm allied to one of our enemies) are
-// decided before this is consulted (collectBotDiplomacy).
+// decided before this is consulted (botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim).
 // Tuning 2026-09-29b (Toby: "I still want bloody games") — chosen over 32 fuzz games of 6 bots × 20 turns
 // against the old war-on-contact rule: realm battles ≈ the same (38 vs 38 a game), realms eliminated
 // 17 vs 12, ~7 standing wars a game at mid-game.

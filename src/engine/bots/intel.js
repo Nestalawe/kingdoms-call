@@ -350,7 +350,7 @@ function markProvinceCombat(prov, players){
 // who a bot courts and who it fights. Same alignment or ONE step away (alignDistP <= 1) => offer a Treat
 // every turn until the pact is sealed. TWO steps or more => war. That is the whole rule: the old
 // war-on-contact default and the anti-runaway coalition no longer override it (see
-// collectBotDiplomacy).
+// botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim, src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.js).
 const BOT_ALLY_ALIGN_DIST=1;
 function botAlignOf(G,pi){ return (((G.players||[])[pi]||{}).alignment)||'Neutral'; }
 function botAlignFriendly(G,a,b){ return alignDistP(botAlignOf(G,a),botAlignOf(G,b))<=BOT_ALLY_ALIGN_DIST; }

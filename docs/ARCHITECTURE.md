@@ -251,12 +251,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
 - **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08). Some of the rule code is still
-  nested inside it (the orders but the Move, the bots, the phase loop's own stages), and tests reach that by injecting code at exact source lines (see
+  in it (the bots' plan, until P1-08l2), and tests reach `resolveTurn`'s own lines by injecting code at exact source lines (see
   [tests/README.md](../tests/README.md#code-anchor-hooks)). A lifted helper that reads the turn's state takes **the
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
   the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,
-  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, since P1-08i3 `_warFrontAtStart` and `_warFrontProvs`, since P1-08j1 `lightLandMoves` and `lightSeaMoves`, since P1-08k4 `diploDeclarations` and `reckoningCalls`, and since P1-08k7 `staleOrderWarnings`, `safeStartRefused`, `discoveryChoicePicks` and `playerMessages` (each joins by reference on the line after `resolveTurn` declares it; since P1-08k8 the movement pools, `lightLandMoves`, `lightSeaMoves`, `SEASONS`, `recruitedThisTurn`, `presenceByPhase`, `_intrusionAcc`, `_distCache`, `_warFrontAtStart` and `_warFrontProvs` are made, and joined, by the stage before the first phase that first needs them), and the values the turn changes as it goes (`_logCtx`,
+  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, since P1-08i3 `_warFrontAtStart` and `_warFrontProvs`, since P1-08j1 `lightLandMoves` and `lightSeaMoves`, since P1-08k4 `diploDeclarations` and `reckoningCalls`, since P1-08k7 `staleOrderWarnings`, `safeStartRefused`, `discoveryChoicePicks` and `playerMessages`, and since P1-08l1 `_botEncounteredAtStart` (each joins by reference on the line after `resolveTurn` declares it; since P1-08k8 the movement pools, `lightLandMoves`, `lightSeaMoves`, `SEASONS`, `recruitedThisTurn`, `presenceByPhase`, `_intrusionAcc`, `_distCache`, `_warFrontAtStart` and `_warFrontProvs` are made, and joined, by the stage before the first phase that first needs them), and the values the turn changes as it goes (`_logCtx`,
   `_currentPhase`, `_afterPhases`, since P1-08c `_combatSkillProv`, `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`,
   `_deferredSkillLogs`, `_pcSimulating`, since P1-08i1 `enteredThisPhase`, and since P1-08i3 `_tier0Open` and `_unitGainQueue`), which are read and written as `turnContext._currentPhase` everywhere, in
   `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it yet (P1-08m). Lifted so
@@ -399,7 +399,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   research choices settled; war without warning, the titles held, the merge's lines, the GM's removals and the
   messages; the move pools, the turn's trackers and the save's sweeps; and, after the bots' passes, every empty phase
   Defend, the record of orders and the war fronts at the start. `resolveTurn` keeps between them the bots' code
-  (P1-08l), the turn's start values and the `_kcTest` hook. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  (P1-08l), the turn's start values and the `_kcTest` hook. P1-08l1 took the bots' diplomacy out, the first of the bots'
+  code, in `engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.js`
+  (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, taking only the context): each bot realm's Treat or war on each
+  rival it had met when the turn began (`_botEncounteredAtStart`, which joins the context for it), by alignment, the
+  grudge and a Reckoning claim; `resolveTurn` calls it before the first phase and again just before diplomacy is
+  resolved. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

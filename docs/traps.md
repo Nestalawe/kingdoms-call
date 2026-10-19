@@ -174,7 +174,7 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   taking the context, then the loop's values it reads, in the order the loop declares them (`ph`, `_phaseStartLoc`,
   `intents`): those stay declared in the loop and are passed in. A stage that reads none of them takes the context alone
   (P1-08k2's Early Winter, the body of `if(ph===4){…}`, which keeps its `if` and its call). A stage of `resolveTurn`'s own body (P1-08k3's after the phases, from the loop's end to the bots' late
-  `collectBotDiplomacy()`) keeps its 2-space indent under a function line at 0; a test that calls it does what the turn
+  declarations, `botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(turnContext)` since P1-08l1) keeps its 2-space indent under a function line at 0; a test that calls it does what the turn
   does first: `turnContext._currentPhase` null, `turnContext._afterPhases` true and the log's context clear, so every
   line it writes with no phase of its own is filed after the phases (99). P1-08k4's diplomacy and victory stages read the
   realms' declarations and Reckoning calls from the context (`turnContext.diploDeclarations`, `turnContext.reckoningCalls`,
