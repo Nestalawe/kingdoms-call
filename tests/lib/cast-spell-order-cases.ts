@@ -271,8 +271,9 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
           roll: says(o, castLine(s.hero, 'Holy Symbol', 'white', 2, 50, 1)),
           worked: says(o, NOTHING_TO_CLEANSE(s)),
           lessons: xpIn(o, s.hero, 'white'),
+          dark: merit(o, s.hero, 'darkCasts'),
         },
-        want: { roll: true, worked: true, lessons: [STD] },
+        want: { roll: true, worked: true, lessons: [STD], dark: 0 },
       };
     },
   },
@@ -754,6 +755,121 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'the casting limit counts the order as the realm\'s order form writes it ("Cast Spell") as well as a bot\'s',
+    stage(b) {
+      const asSent = { ...cast('Holy Symbol'), action: 'Cast Spell' };
+      return mage(b, { white: 1 }, asSent, asSent);
+    },
+    check(o, s) {
+      return {
+        got: {
+          blocked: says(o, `${s.hero.name}: White Magic level 1 casting limit (1/1 per turn). Holy Symbol blocked.`),
+        },
+        want: { blocked: true },
+      };
+    },
+  },
+  {
+    name: "a Neutral realm's Wonder is no Grand Cathedral: its Bless spends the slot",
+    stage(b) {
+      realm(b)['alignment'] = 'Neutral';
+      knows(b, 0, 'gd');
+      realm(b)['gdProvinceId'] = null;
+      return mage(b, { white: 1 }, cast('Bless Province', b.X.id), cast('Holy Symbol'));
+    },
+    check(o, s) {
+      return {
+        got: {
+          blocked: says(o, `${s.hero.name}: White Magic level 1 casting limit (1/1 per turn). Holy Symbol blocked.`),
+        },
+        want: { blocked: true },
+      };
+    },
+  },
+  {
+    name: "a spell item's cast is outside the casting limit: a White 1 caster works his spell and his item's",
+    stage(b) {
+      const h = at(b, { white: 1 });
+      const censer = item(b, 'Censer of Plenty');
+      holding(h, censer);
+      return {
+        hero: h,
+        orders: [one(h, cast('Holy Symbol'), order('use_item', String(censer['id']), b.X.id))],
+        there: b.X,
+      };
+    },
+    check(o, s) {
+      return {
+        got: {
+          symbol: landed(o, s, 'Holy Symbol'),
+          bless: landed(o, s, 'Bless Province'),
+          blocked: says(o, 'casting limit'),
+        },
+        want: { symbol: true, bless: true, blocked: false },
+      };
+    },
+  },
+  {
+    name: 'a mastery spell refused below its level spends no slot: three White spells still land after it (White 6)',
+    stage: (b) =>
+      mage(b, { white: 6 }, cast('Sanctuary', b.X.id), cast('Holy Symbol'), cast('Holy Symbol'), cast('Holy Symbol')),
+    check(o, s) {
+      return {
+        got: {
+          refused: says(o, 'cannot yet wield Sanctuary'),
+          rolls: o.lines.filter((l) => l.text.startsWith(`📊 ${s.hero.name} casts Holy Symbol`)).length,
+          blocked: says(o, 'casting limit'),
+        },
+        want: { refused: true, rolls: 3, blocked: false },
+      };
+    },
+  },
+  {
+    name: 'the Wailing Phylactery makes only Necromancy certain: a White spell still rolls',
+    dice: UNLUCKY,
+    stage(b) {
+      const s = mage(b, { white: 2 }, cast('Holy Symbol'));
+      holding(s.hero, item(b, 'Wailing Phylactery'));
+      return s;
+    },
+    check(o, s) {
+      return { got: { roll: says(o, castLine(s.hero, 'Holy Symbol', 'white', 2, 50, 100)) }, want: { roll: true } };
+    },
+  },
+  {
+    name: 'a hero fallen elsewhere is no mark that has moved on: the spell simply finds nobody here',
+    stage(b) {
+      const d = fallen(b, ring1(b, 0), { player: 1 });
+      return { ...mage(b, { psychic: 1 }, cast('Psychic Blast', d.id)), mark: d };
+    },
+    check(o, s) {
+      return {
+        got: {
+          nobody: says(o, `Psychic Blast: no valid target hero in ${must(s.there, 'the province').name} this phase.`),
+          gone: says(o, 'finds them gone'),
+        },
+        want: { nobody: true, gone: false },
+      };
+    },
+  },
+  {
+    name: 'a friendly spell still reaches a friend who has Vanished',
+    stage(b) {
+      const f = at(b, { thief: 9 }, { troops: 2 });
+      const s = mage(b, { psychic: 1 }, order('rest'), cast('Oratory', f.id));
+      return { ...s, mark: f, orders: [...s.orders, one(f, order('vanish'))] };
+    },
+    check(o, s) {
+      return {
+        got: {
+          stirred: says(o, `lifts ${must(s.mark, 'the friend').name}'s troops`),
+          shadow: says(o, 'finds only shadow'),
+        },
+        want: { stirred: true, shadow: false },
+      };
+    },
+  },
+  {
     name: "a charmed enemy hero will not turn hostile magic on his own lord's people: refused, unrolled",
     wholeTurnOnly: true,
     stage(b) {
@@ -816,6 +932,7 @@ export const RESURRECT_CASES: CastSpellOrderCase[] = [
       return {
         got: {
           raised: raised(o, s, d),
+          private: publicLine(o, `${d.name} rises from death at full health`),
           alive: after.alive,
           hp: after.hp,
           where: after.location,
@@ -830,6 +947,7 @@ export const RESURRECT_CASES: CastSpellOrderCase[] = [
         },
         want: {
           raised: true,
+          private: false,
           alive: true,
           hp: 24,
           where: b0(s).id,
@@ -955,6 +1073,23 @@ export const RESURRECT_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'Resurrect: with none named, a body lying elsewhere is out of reach, even one his realm knows of',
+    stage(b) {
+      const d = fallen(b, ring1(b, 0));
+      realm(b)['knownDeadHeroIds'] = [d.id];
+      return { ...priest(b, 3, 'Resurrect'), mark: d };
+    },
+    check(o, s) {
+      return {
+        got: {
+          refused: says(o, 'no fallen hero you know of lies in'),
+          alive: char(o, must(s.mark, 'the fallen')).alive,
+        },
+        want: { refused: true, alive: false },
+      };
+    },
+  },
+  {
     name: 'Resurrect: a fallen king (not a monarch borne home) cannot be raised',
     stage(b) {
       const d = fallen(b, b.X, { king: true });
@@ -1038,7 +1173,11 @@ export const RESURRECT_CASES: CastSpellOrderCase[] = [
   {
     name: 'Resurrect: a monarch borne home rises for his own realm and takes back the throne; the heir steps down',
     stage(b) {
+      // as the turn leaves a fallen king: his crown passed to the heir, his body borne home (his grave here), he
+      // himself where he fell
       const d = fallen(b, b.X, { king: true });
+      d.isKing = false;
+      d.location = ring2(b, 0).id;
       const g = (b.G as unknown as { heroGraveyard: Record<string, unknown>[] }).heroGraveyard.find(
         (x) => x['id'] === d.id,
       );
@@ -1051,21 +1190,29 @@ export const RESURRECT_CASES: CastSpellOrderCase[] = [
     check(o, s) {
       const d = must(s.mark, 'the monarch');
       const heir = must(s.other, 'the heir');
+      const stepsDown = `👑 ${heir.name} steps down from the throne as ${d.name} is restored to life — the former regent now serves the realm as a hero.`;
       return {
         got: {
           throne: says(
             o,
             `✨👑 ${s.hero.name} calls upon divine power — ${d.name} rises from death at full health and reclaims the throne of ${realmName(o, 0)}! The rightful king walks again, stripped of all possessions but restored in spirit and skill.`,
           ),
-          stepsDown: anySays(
-            o,
-            `👑 ${heir.name} steps down from the throne as ${d.name} is restored to life — the former regent now serves the realm as a hero.`,
-          ),
+          stepsDown: anySays(o, stepsDown),
+          private: [publicLine(o, stepsDown), publicLine(o, `${d.name} rises from death at full health and reclaims`)],
           king: char(o, d).isKing,
+          where: char(o, d).location,
           heirKing: char(o, heir).isKing,
           slot: must(o.world.players[0], 'realm 0')['_resurrectableMonarchId'],
         },
-        want: { throne: true, stepsDown: true, king: true, heirKing: false, slot: null },
+        want: {
+          throne: true,
+          stepsDown: true,
+          private: [false, false],
+          king: true,
+          where: b0(s).id,
+          heirKing: false,
+          slot: null,
+        },
       };
     },
   },
@@ -1123,6 +1270,7 @@ export const RESURRECT_CASES: CastSpellOrderCase[] = [
 export const PART_SEA_CASES: CastSpellOrderCase[] = [
   {
     name: 'Part Sea: a sea beside him lies bare as dry ground for the rest of the turn, told to all; the sea returns at its end',
+    wholeTurnOnly: true,
     stage(b) {
       const sea = ring1(b, 0);
       sea.terrain = 'sea';
@@ -1326,12 +1474,13 @@ export const BLESS_PROVINCE_CASES: CastSpellOrderCase[] = [
       return {
         got: {
           told: blessed(o, s, '+60% tax', 55),
+          private: publicLine(o, `✨ ${s.hero.name} blesses`),
           turn: p['_blessedTurn'],
           mult: p['_blessedMult'],
           ward: [p['_blessWardTurn'], p['_blessWardBy'], p['_blessWardPct']],
           holy: merit(o, s.hero, 'holyCasts'),
         },
-        want: { told: true, turn: o.turn, mult: 1.6, ward: [o.turn, 0, 55], holy: 1 },
+        want: { told: true, private: false, turn: o.turn, mult: 1.6, ward: [o.turn, 0, 55], holy: 1 },
       };
     },
   },
@@ -1658,6 +1807,26 @@ export const CHARM_CASES: CastSpellOrderCase[] = [
           resist: after['_charmResist'],
         },
         want: { grips: true, warned: [1], mind: true, home: 1, immune: o.turn + 1, resist: 30 },
+      };
+    },
+  },
+  {
+    name: 'Charm: the caster reads the magic items the swayed hero carries',
+    stage(b) {
+      const w = wanderer(b, {});
+      w['alignment'] = 'Neutral';
+      holding(w, item(b, 'Censer of Plenty'));
+      return { ...psychic(b, 2, 'Charm', w.id), mark: w };
+    },
+    check(o, s) {
+      return {
+        got: {
+          items: says(
+            o,
+            `${served(s)}'s mind as the Charm takes hold — Skills: Melee 2, Tactical 2, March 1. Magic items: the Censer of Plenty (Use Item: casts Bless Province (White Magic) as a phase order at 95%, whatever your skill.).`,
+          ),
+        },
+        want: { items: true },
       };
     },
   },
@@ -2028,6 +2197,16 @@ export const ORATORY_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'Oratory: Psychic 5 still lifts one level (Words of Awe needs 6)',
+    stage: (b) => psychic(b, 5, 'Oratory'),
+    check(o, s) {
+      return {
+        got: { one: says(o, `every army travelling with ${s.hero.name} fights one quality level higher this turn.`) },
+        want: { one: true },
+      };
+    },
+  },
+  {
     name: "Oratory cannot stir another realm's hero",
     stage(b) {
       const a = at(b, {}, { player: 2 });
@@ -2242,10 +2421,11 @@ export const TELEKINETIC_STORM_CASES: CastSpellOrderCase[] = [
             o,
             `🌀 ${s.hero.name}'s Telekinetic Storm scatters ${m.name}'s formations — 0 destroyed, 3 permanently reduced one experience level.`,
           ),
+          public: publicLine(o, `✨ ${s.hero.name}'s Telekinetic Storm hurls`),
           crack: q.filter((x) => x === 'Crack').length,
           elite: q.filter((x) => x === 'Elite').length,
         },
-        want: { told: true, victim: [1], crack: 3, elite: 3 },
+        want: { told: true, victim: [1], public: true, crack: 3, elite: 3 },
       };
     },
   },
@@ -2548,6 +2728,17 @@ export const PHANTASMAL_ARMIES_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'Phantasmal Armies: never more phantoms than humanoid companies (one among nine beasts, Illusory 5: one)',
+    stage(b) {
+      const s = illusionist(b, 5, 'Phantasmal Armies');
+      leads(s.hero, [...companies(1), ...beasts(9, 'Great Bears')]);
+      return s;
+    },
+    check(o, s) {
+      return { got: { told: doubles(o, s, 1, 'their', false) }, want: { told: true } };
+    },
+  },
+  {
     name: 'Phantasmal Armies: beasts are never doubled, so a host of beasts alone is refused',
     stage(b) {
       const s = illusionist(b, 2, 'Phantasmal Armies');
@@ -2739,6 +2930,17 @@ export const PHANTOM_HOST_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'Phantom Host: a lone beast is still doubled once',
+    stage(b) {
+      const s = illusionist(b, 7, 'Phantom Host');
+      leads(s.hero, beasts(1, 'Great Bears'));
+      return s;
+    },
+    check(o) {
+      return { got: { told: says(o, `spectral doubles of 1 of their beast that fight`) }, want: { told: true } };
+    },
+  },
+  {
     name: 'Phantom Host: no beasts, nothing to double',
     stage(b) {
       const s = illusionist(b, 7, 'Phantom Host');
@@ -2891,6 +3093,7 @@ export const EARTHQUAKE_CASES: CastSpellOrderCase[] = [
 export const FLOOD_CASES: CastSpellOrderCase[] = [
   {
     name: 'Flood: a land province beside him lies under the sea for the rest of the turn; told to all, its owner warned; it recedes at the end',
+    wholeTurnOnly: true,
     stage(b) {
       const p = theirs(b);
       return { ...elementalist(b, 1, 'Flood', p.id), there: p };
@@ -2985,6 +3188,7 @@ export const FLOOD_CASES: CastSpellOrderCase[] = [
   },
   {
     name: 'Flood on a sea parted earlier this turn drowns it again, and the turn leaves it dry ground ("plains") for good (Parked)',
+    wholeTurnOnly: true,
     stage(b) {
       const sea = ring1(b, 0);
       sea.terrain = 'sea';
@@ -3011,6 +3215,7 @@ const summoned = (o: Outcome, s: Staged, name: string, type: string) =>
 export const ELEMENTAL_SUMMON_CASES: CastSpellOrderCase[] = [
   {
     name: 'Elemental Summon: an elemental (the die picks: at its highest, the Devouring Shade) fights under him until the turn ends; others see it',
+    wholeTurnOnly: true,
     stage(b) {
       b.own(b.X, 0);
       return elementalist(b, 1, 'Elemental Summon');
@@ -3242,6 +3447,11 @@ export const CONTROL_UNDEAD_CASES: CastSpellOrderCase[] = [
     name: 'Control Undead with no hero named senses the dead where he stands, and which neighbours hold graves; his realm keeps both',
     stage(b) {
       battlefield(b);
+      (b.X['battleGraves'] as Unit[]).push({
+        type: 'Men-at-Arms',
+        race: 'Human',
+        unitName: 'Nameless',
+      } as unknown as Unit);
       bury(ring1(b, 0), 1);
       bury(ring1(b, 2), 1);
       return { ...necromancer(b, 1, 'Control Undead'), places: [ring1(b, 0), ring1(b, 2)] };
@@ -3255,7 +3465,7 @@ export const CONTROL_UNDEAD_CASES: CastSpellOrderCase[] = [
         got: {
           here: says(
             o,
-            `💀 ${s.hero.name}'s Control Undead senses the dead of ${p.name}: 2× Average Men-at-Arms, 1× Veteran Free Lances. (3 graves that could be raised as skeletal servants.)`,
+            `💀 ${s.hero.name}'s Control Undead senses the dead of ${p.name}: 3× Average Men-at-Arms, 1× Veteran Free Lances. (4 graves that could be raised as skeletal servants.)`,
           ),
           around: says(
             o,
@@ -3264,13 +3474,15 @@ export const CONTROL_UNDEAD_CASES: CastSpellOrderCase[] = [
           loreHere: lore[String(p.id)],
           loreNear: near.map((q) => lore[String(q.id)]),
           lessons: xpIn(o, s.hero, 'necromancy'),
+          refused: says(o, 'no valid target hero'),
         },
         want: {
           here: true,
           around: true,
-          loreHere: ['2× Average Men-at-Arms', '1× Veteran Free Lances'],
+          loreHere: ['3× Average Men-at-Arms', '1× Veteran Free Lances'],
           loreNear: [null, null],
           lessons: [STD],
+          refused: false,
         },
       };
     },
@@ -3278,7 +3490,10 @@ export const CONTROL_UNDEAD_CASES: CastSpellOrderCase[] = [
   {
     name: 'Control Undead: no dead here and none around: told so, and his realm forgets graves it thought lay here',
     stage(b) {
-      realm(b)['_graveIntel'] = { [String(b.X.id)]: { turn: 0, detail: [{ k: 'Average Men-at-Arms', n: 3 }] } };
+      realm(b)['_graveIntel'] = {
+        [String(b.X.id)]: { turn: 0, detail: [{ k: 'Average Men-at-Arms', n: 3 }] },
+        [String(ring1(b, 0).id)]: { turn: 0, detail: null },
+      };
       return necromancer(b, 1, 'Control Undead', '__scan__');
     },
     check(o, s) {
@@ -3405,13 +3620,13 @@ export const SKELETAL_ARMIES_CASES: CastSpellOrderCase[] = [
         got: {
           rises: rises(o, s, 'Fallen Lances c0 (Skeletal)', 'Veteran', 'Free Lances'),
           raised: o.lines.filter((l) => l.text.includes('calls forth')).length,
-          after: names(char(o, s.hero).armies),
+          after: char(o, s.hero).armies.map((u) => [u.unitName, u.race, u['_isSkeletal']]),
           graves: graves(o, b0(s)),
         },
         want: {
           rises: true,
           raised: 1,
-          after: ['Fallen Lances c0 (Skeletal)'],
+          after: [['Fallen Lances c0 (Skeletal)', 'Undead', true]],
           graves: ['Fallen Foot c0', 'Fallen Foot c1'],
         },
       };
@@ -3457,6 +3672,33 @@ export const SKELETAL_ARMIES_CASES: CastSpellOrderCase[] = [
         got: { rises: rises(o, s, 'Fallen Foot c0 (Skeletal)', 'Veteran', 'Men-at-Arms') },
         want: { rises: true },
       };
+    },
+  },
+  {
+    name: "Skeletal Armies: a Neutral realm's Wonder raises them no stronger",
+    stage(b) {
+      b.own(b.X, 0);
+      realm(b)['alignment'] = 'Neutral';
+      knows(b, 0, 'gd');
+      realm(b)['gdProvinceId'] = null;
+      bury(b.X, 1, 'Men-at-Arms', 'Average', 'Fallen Foot');
+      return necromancer(b, 1, 'Skeletal Armies');
+    },
+    check(o, s) {
+      return {
+        got: { rises: rises(o, s, 'Fallen Foot c0 (Skeletal)', 'Average', 'Men-at-Arms') },
+        want: { rises: true },
+      };
+    },
+  },
+  {
+    name: 'Skeletal Armies in ground nobody holds: the risen take it if nobody defends it',
+    stage(b) {
+      bury(b.X, 1);
+      return necromancer(b, 1, 'Skeletal Armies');
+    },
+    check(o, s) {
+      return { got: { owner: province(o, b0(s)).owner }, want: { owner: 0 } };
     },
   },
   {
@@ -3545,6 +3787,25 @@ export const CURSE_CASES: CastSpellOrderCase[] = [
           ),
         },
         want: { second: true },
+      };
+    },
+  },
+  {
+    name: 'Curse: a skill at 0 is not named',
+    stage(b) {
+      const m = rival(b);
+      m.skills = { melee: 4, march: 0 };
+      return { ...necromancer(b, 1, 'Curse', m.id), mark: m };
+    },
+    check(o, s) {
+      return {
+        got: {
+          told: says(
+            o,
+            `${must(s.mark, 'the mark').name} — every skill is halved for the rest of the turn (Melee 4→2)!`,
+          ),
+        },
+        want: { told: true },
       };
     },
   },
