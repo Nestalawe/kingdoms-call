@@ -334,7 +334,11 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   Steal, `resolveStealOrder`; Sabotage, `resolveSabotageOrder`; Grand Heist, `resolveGrandHeistOrder`; Assassinate,
   `resolveAssassinateOrder`; Vanish, `resolveVanishOrder`; and the two helpers they share, nested in `processOrder`
   until then: `thiefCaughtScuffle` and `liftRandomItem`, each now a top-level function taking the context, then what it
-  closed over of `processOrder`'s, then its own arguments). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  closed over of `processOrder`'s, then its own arguments). P1-08j7, Cast Spell
+  (`engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.js`: `resolveCastSpellOrder`,
+  the casting and every spell a hero can work as a phase order; and the helper a failed Charm calls, nested in
+  `processOrder` until then: `charmBacklash`, with its constant `CHARM_BACKLASH_PCT` now top-level); the spell item's
+  Use Item that `processOrder` turns into a cast arrives as its last argument (`_itemCast`). A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)

@@ -128,6 +128,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/orders/item-orders-equip-use-and-send-magic-items.js',
         'engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.js',
         'engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.js',
+        'engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.js',
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',
