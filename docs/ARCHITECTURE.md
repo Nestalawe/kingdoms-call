@@ -355,7 +355,10 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   (`startPhaseHealingSnapshotsAndStalledBattles`), intents and reactions (`pinAndReactToPhaseIntents`), the orders in
   two tiers around the Defend step (`resolvePhaseOrdersInTwoTiersAroundTheDefendStep`) and the end of the phase
   (`endPhaseSkillRisesFallenCommandersAndProvinceMemory`); the loop keeps the phase, where each hero stood as it began,
-  the intents, Early Winter and the province lists' check. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  the intents, Early Winter and the province lists' check. P1-08k2 took Early Winter out the same way, the body of the
+  loop's `if(ph===4){…}`, in `engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.js`
+  (`earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill`, taking only the context): a charmed hero goes home,
+  then the taxes, the wages (and what a realm that can't pay loses), Raiders' Muster and the garrison drill. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
