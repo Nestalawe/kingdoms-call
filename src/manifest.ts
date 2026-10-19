@@ -72,6 +72,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/bots/spellcraft.js',
         'engine/bots/phase-one.js',
         'engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.js',
+        'engine/bots/bot-realms-plan-the-turn-concessions-movement-muster-economy-actions-hygiene-the-reckoning-and-the-duel-forecast.js',
         'engine/world/generate.js',
         'engine/world/map-helpers.js',
         'engine/titles/perks.js',

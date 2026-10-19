@@ -64,27 +64,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   _botPlayerIdx.forEach(idx=>{ _botEncounteredAtStart[idx]=[...(((G.players||[])[idx]||{})._encountered||[])]; });
 
   turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext);
-  // Encounter plans persist across turns until the player changes them, so we do NOT wipe them here
-  // — the new submissions below overwrite only the characters whose orders include a plan. Collect
-  // warnings about rejected stale orders (logged once log() is ready)
-  const staleOrderWarnings=[];
-  turnContext.staleOrderWarnings=staleOrderWarnings;
-  // Diplomacy declarations submitted this turn, keyed by player index → { targetPlayerIndex: 'treat'|'enemy' }.
-  // Recorded here, applied at end of turn (relations change "at the start of the next turn").
-  const diploDeclarations={};
-  turnContext.diploDeclarations=diploDeclarations;
-  const safeStartRefused=[]; // SAFE START: realms whose declarations were discarded this turn (told privately)
-  turnContext.safeStartRefused=safeStartRefused;
-  const discoveryChoicePicks={}; // research choice: player index → {pendingKey: keptDiscoveryId}
-  turnContext.discoveryChoicePicks=discoveryChoicePicks;
-  // Victory: players who Called the Reckoning this turn (king-only, one per realm).
-  const reckoningCalls=new Set();
-  turnContext.reckoningCalls=reckoningCalls;
-  // player-to-player messages submitted with orders, keyed by sender index → [{to, text}].
-  // `to` is an array of recipient player indices, or the string 'all'. Delivered into each
-  // recipient's report below (this turn's report, which they read before ordering next turn).
-  const playerMessages={};
-  turnContext.playerMessages=playerMessages;
   mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans(turnContext);
 
   // (the orders were cleared in step 2a, before the save was upgraded)
@@ -194,47 +173,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun){
   // personal-combat resolver. Both fighters are deep-cloned with off-roster ids (so skill gains, HP
   // loss, item transfers and mercy flags land on the clones, never the real records) and fight `n`
   // times.
-  const _botDuelSim=(hunter,quarry,n)=>{
-    // 2026-09-28: a forecast, not a fight — experience is muted exactly as in simulateLairOdds (the copies carry
-    // ids −1/−2, so no real hero ever gained from it, but every simulated win still rolled a wasted check).
-    const _prevSim=turnContext._pcSimulating; turnContext._pcSimulating=true;
-    try{
-      let win=0, felled=0; n=n||20;
-      for(let i=0;i<n;i++){
-        const a=JSON.parse(JSON.stringify(hunter)), b=JSON.parse(JSON.stringify(quarry));
-        a.id=-1; b.id=-2; delete a._sgLog; delete b._sgLog;
-        a.encounterPlan={tactics:autoEncounterPlan(turnContext,a),notes:'',_auto:true};
-        if(!(b.encounterPlan&&Array.isArray(b.encounterPlan.tactics)&&b.encounterPlan.tactics.length)) b.encounterPlan={tactics:autoEncounterPlan(turnContext,b),notes:'',_auto:true};
-        const COMBAT_ONLY=COMBAT_ONLY_TACTICS;
-        const filt=pl=>(pl||['ME']).filter(t=>COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase()));
-        const A=pcCharCombatant(turnContext,a), B=pcCharCombatant(turnContext,b); A.tactics=filt(a.encounterPlan.tactics); B.tactics=filt(b.encounterPlan.tactics); if(!A.tactics.length)A.tactics=['ME']; if(!B.tactics.length)B.tactics=['ME'];
-        const res=resolvePersonalCombat(turnContext,A,B,{maxRounds:20});
-        if(res.winner===A) win++; if(res.aHp<=0 && res.winner!==A) felled++;
-      }
-      return {win:win/n, felled:felled/n};
-    }catch(e){ return null; }
-    finally{ turnContext._pcSimulating=_prevSim; }
-  };
-  // Phase 3 (pre) — item 2: any bot realm that has lost its last province concedes before it plans
-  // a turn.
-  runBotConcessions(G, _botPlayerIdx, log);
-  runBotMovement(G, _botPlayerIdx, {duelSim:_botDuelSim, terrainMult:(t,tr)=>terrainMod(t,tr)*seaPenalty(t,tr)});
-  // Phase 3b — economy: holders (characters not moving) in owned provinces spend the treasury on
-  // sustainable reinforcements (and opportunistic hires). Must run AFTER movement so movers are
-  // skipped.
-  runBotPhaseOne(G, _botPlayerIdx, 'muster');   // 2026-09-29: hosts in contact claim the chest first (and outmatched war-front hosts withdraw)
-  runBotEconomy(G, _botPlayerIdx);
-  // Phase 3c — character actions: any bot character still idle (didn't move or recruit) trains,
-  // heals, or explores instead of sitting on Defend. Must run AFTER movement + economy.
-  runBotActions(G, _botPlayerIdx);
-  // Phase 3d — PHASE-ONE PASS (2026-09-29): what must happen in Spring, before any enemy can move, goes first.
-  runBotPhaseOne(G, _botPlayerIdx, 'order');
-  // Phase 3e — ORDER HYGIENE (2026-09-29): drop bot orders that cannot work (capped practice, casts past the limit,
-  // dead hires, skeletons handed to the living) and refill those phases, training together where possible.
-  runBotOrderHygiene(G, _botPlayerIdx);
-
-  // Phase 5 — a dominant bot king Calls the Reckoning (adds itself to the calls processed below).
-  runBotReckoning(G, _botPlayerIdx, reckoningCalls);
+  botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning(turnContext);
 
   missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart(turnContext);
   for(let ph=0;ph<5;ph++){
