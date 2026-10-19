@@ -83,6 +83,7 @@ export function turnContext(
       tc.lightLandMoves={}; tc.lightSeaMoves={}; tc.diploDeclarations={}; tc.reckoningCalls=new Set();
       tc.staleOrderWarnings=[]; tc.safeStartRefused=[]; tc.discoveryChoicePicks={}; tc.playerMessages={};
       tc._botPlayerIdx=new Set(tc.freshPlayers.filter(isBotRow).map(p=>p.player_index));
+      tc._botEncounteredAtStart={};
       return tc; }`,
     engine,
   ) as (state: string, players: string, turn: number) => TurnContext;

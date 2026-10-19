@@ -31,7 +31,7 @@ function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(tur
   // ── Item 3: WAR WITHOUT WARNING. Evil and Undead realms strike the turn they declare — their
   // declaration takes effect BEFORE phase 1, so their armies may cross the frontier this very turn.
   // Every other alignment's declaration still resolves at end of turn (step 6d), in force from next
-  // turn. Bots declare here too (collectBotDiplomacy), so an Evil/Undead bot gets the same jump.
+  // turn. Bots declare here too (botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim), so an Evil/Undead bot gets the same jump.
   // Sept 2026 (review R1): bots send a research pick instead of leaving the choice to chance.
   (G.players||[]).forEach((pl,pi)=>{ if(!_botPlayerIdx.has(pi)||!pl||!Array.isArray(pl.pendingDiscoveryChoices)) return;
     pl.pendingDiscoveryChoices.forEach(pc=>{ if(!pc||pc.turn>=G.turn||!Array.isArray(pc.options)) return; discoveryChoicePicks[pi]=discoveryChoicePicks[pi]||{};
