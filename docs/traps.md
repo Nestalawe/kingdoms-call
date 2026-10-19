@@ -182,7 +182,10 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   there, as the order merge does. P1-08k5a's first part of the new turn moves the turn counter on itself: a test that
   calls it reads the turn it was played on before the call. The board has no kings (`board()` clears every hero), so a
   whole turn crowns an heir for every realm at its end unless the test stands a king in each, as `stageCase` in
-  `tests/lib/new-turn-succession-and-summons-cases.ts` does. The loop is the stages' calls, the intents between
+  `tests/lib/new-turn-succession-and-summons-cases.ts` does. P1-08k5b's second part runs on the turn the first part
+  moved on to: a test that calls it alone moves `G.turn` on by one first, or a Divine hero fallen the turn before is not
+  yet due to rise. A direct call changes the staged heroes in place, so a check must compare with values kept at staging
+  (a province, an id), not the staged hero's own fields. The loop is the stages' calls, the intents between
   the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
   log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
   the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.

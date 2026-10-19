@@ -374,7 +374,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `engine/turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.js`
   (`newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns`, taking only the context): the turn counter, a
   Divine king's lost return, an heir crowned, summons and one-turn spells ending, and the Grand Designs' skeleton rises
-  and Grand Library. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
+  and Grand Library. P1-08k5b took the rest of the new turn out, in
+  `engine/turn/new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-final-reconcile.js`
+  (`newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile`, taking only the
+  context): the War Academy's drills, the gardens' mending, the Informant Network and the Arcane Observatory, the
+  Divine return, graves rotting, the mercenary bands, the clean-up and the save's repair lines, wandering heroes'
+  drift, the turn's orders cleared, the final reconcile and the stranded guards. A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
 ## The database (Supabase)
