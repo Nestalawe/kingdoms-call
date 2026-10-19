@@ -64,7 +64,7 @@ export interface Dice {
 export interface EspionageOrderCase {
   name: string;
   /** Plays only in a whole turn: processOrder refuses the order before the order's own function runs (a mastery order
-   *  given twice in a turn). */
+   *  given twice in a turn), or the turn's end shows it (a courier's parcel arriving). */
   wholeTurnOnly?: boolean;
   /** The dice, when the case reaches a roll. */
   dice?: Dice;
@@ -139,6 +139,15 @@ const xpIn = (o: Outcome, c: Character, skill: string) =>
 /** Whether `p` is marked as the scene of a personal combat this turn between the realms in `pis` (purple swords). */
 const fightMarked = (o: Outcome, p: Province) =>
   (province(o, p)['_combatPlayersThisTurn'] as number[] | undefined) ?? [];
+/** The gold realm `i` held once the phases were over: as the turn's end tells it ("<realm> has <n>g in the treasury.",
+ *  before its taxes and wages), or, where no turn's end ran (an order's own function called directly), its treasury. */
+const treasury = (o: Outcome, i: number) => {
+  const said = `${realmName(o, i)} has `;
+  const line = o.all.find((l) => l.text.startsWith(said) && l.text.endsWith('g in the treasury.'));
+  return line
+    ? Number(line.text.slice(said.length, -'g in the treasury.'.length))
+    : Number(must(o.world.players[i], 'realm ' + String(i))['gold']);
+};
 const realm = (b: Board, i = 0) => must(b.G.players[i], 'realm ' + String(i));
 const realmName = (o: Outcome, i: number) => must(o.world.players[i], 'realm ' + String(i)).name;
 /** A hero of `player` (default realm 0) standing in the middle (or `at`), at full health, of Spy and Thief `skills`.
@@ -353,6 +362,23 @@ export const SPY_ON_A_PROVINCE_ORDER_CASES: EspionageOrderCase[] = [
       return {
         got: { roll: spyRoll(o, s, 1, '0% [roll 1 ✗]'), missed: missed(o, s) },
         want: { roll: true, missed: true },
+      };
+    },
+  },
+  {
+    // the order form and the bots send no province for a Spy on the province he stands in (STATUS, Parked)
+    name: 'Spy: as the order form sends it (no province named), Cipher Scripts in the realm holding the province take nothing off',
+    dice: LUCKY,
+    stage(b) {
+      b.own(b.X, 1);
+      knows(b, 1, 'sd19');
+      const h = at(b, { spy: 1 });
+      return { hero: h, orders: [one(h, order('spy'))], there: b.X };
+    },
+    check(o, s) {
+      return {
+        got: { roll: spyRoll(o, s, 1, '40% [roll 1 ✓]'), learned: learned(o, s, realmName(o, 1)), warned: alarm(o, s) },
+        want: { roll: true, learned: true, warned: [1] },
       };
     },
   },
@@ -617,6 +643,9 @@ export const SPY_ON_A_HERO_ORDER_CASES: EspionageOrderCase[] = [
             items: kept['items'],
             armies: kept['armies'],
           },
+          companies: o.lines.some(
+            (l) => l.text.startsWith('[Intelligence] 🔍') && l.text.includes('Guard c0') && l.text.includes('Guard c1'),
+          ),
           spymaster: spyActions(o, s.hero),
           ledger: ledger(o, s.hero),
           caught: caughtSpying(o, s),
@@ -633,6 +662,7 @@ export const SPY_ON_A_HERO_ORDER_CASES: EspionageOrderCase[] = [
               { type: 'Men-at-Arms', quality: 'Average', unitName: 'Guard c1' },
             ],
           },
+          companies: true,
           spymaster: 1,
           ledger: [`read one of your heroes @${String(there(s).id)}`],
           caught: null,
@@ -691,8 +721,9 @@ export const SPY_ON_A_HERO_ORDER_CASES: EspionageOrderCase[] = [
           detection: detection(o, s, ` (Spy 0) noticing ${s.hero.name}: 10% [roll 1 ✓]`),
           caught: caughtSpying(o, s),
           drivenOff: drivenOff(o, s, markOf(s), 'spying on them'),
+          lessons: xpIn(o, s.hero, 'spy'),
         },
-        want: { roll: true, report: true, detection: true, caught: [1], drivenOff: true },
+        want: { roll: true, report: true, detection: true, caught: [1], drivenOff: true, lessons: [STD] },
       };
     },
   },
@@ -787,8 +818,9 @@ export const SPY_ON_A_HERO_ORDER_CASES: EspionageOrderCase[] = [
           report: report(o, s, '', 'skills — Melee 2, Tactical 2, March 1.'),
           kingdom: spiedHero(o, s)?.['kingdom'],
           caught: anySays(o, 'was caught spying'),
+          detection: detection(o, s, ` (Spy 0) noticing ${s.hero.name}: 10% [roll 1 ✓]`),
         },
-        want: { report: true, kingdom: null, caught: false },
+        want: { report: true, kingdom: null, caught: false, detection: true },
       };
     },
   },
@@ -918,6 +950,8 @@ export const STEAL_ORDER_CASES: EspionageOrderCase[] = [
           ),
           ledger: ledger(o, s.hero),
           lessons: xpIn(o, s.hero, 'thief'),
+          treasuries: [treasury(o, 0), treasury(o, 1)],
+          noTarget: says(o, 'finds no suitable target'),
         },
         want: {
           roll: true,
@@ -925,6 +959,8 @@ export const STEAL_ORDER_CASES: EspionageOrderCase[] = [
           told: [1],
           ledger: [`robbed the garrison paymaster @${String(p.id)}`],
           lessons: [STD],
+          treasuries: [23, 17],
+          noTarget: false,
         },
       };
     },
@@ -1021,6 +1057,23 @@ export const STEAL_ORDER_CASES: EspionageOrderCase[] = [
     },
   },
   {
+    name: 'Steal: a fallen hero is not robbed',
+    stage(b) {
+      const m = holding(rival(b), item(b, 'Tome of Tactics'));
+      m.alive = false;
+      return stealFrom(b, m, 2);
+    },
+    check(o, s) {
+      return {
+        got: {
+          told: says(o, `${s.hero.name} finds no suitable target to steal from in ${there(s).name}.`),
+          thief: pack(o, s.hero),
+        },
+        want: { told: true, thief: [] },
+      };
+    },
+  },
+  {
     name: 'Steal: a hero who vanished earlier in the turn is not there to rob',
     stage(b) {
       const m = holding(rival(b, {}, { thief: 9 }), item(b, 'Tome of Tactics'));
@@ -1072,6 +1125,7 @@ export const STEAL_ORDER_CASES: EspionageOrderCase[] = [
         got: {
           roll: stealRoll(o, s, 1, 'a magic item', '60% [roll 1 ✓]'),
           lifted: lifted(o, s, 'Tome of Tactics'),
+          kept: says(o, `🎒 The Tome of Tactics needs no slot: it works for ${s.hero.name} at once.`),
           thief: pack(o, s.hero),
           robbed: pack(o, markOf(s)),
           stolenThisTurn: loot?.['_stolenTurn'],
@@ -1082,6 +1136,7 @@ export const STEAL_ORDER_CASES: EspionageOrderCase[] = [
         want: {
           roll: true,
           lifted: true,
+          kept: true,
           thief: ['Tome of Tactics'],
           robbed: [],
           stolenThisTurn: o.turn,
@@ -1141,6 +1196,7 @@ export const STEAL_ORDER_CASES: EspionageOrderCase[] = [
           told: toldTo(o, `[Intelligence] ${s.hero.name} (${realmName(o, 0)}) has stolen 5g from ${markOf(s).name}!`),
           thief: pack(o, s.hero),
           ledger: ledger(o, s.hero),
+          treasuries: [treasury(o, 0), treasury(o, 1)],
         },
         want: {
           roll: true,
@@ -1148,6 +1204,7 @@ export const STEAL_ORDER_CASES: EspionageOrderCase[] = [
           told: [1],
           thief: [],
           ledger: [`picked a hero’s purse @${String(there(s).id)}`],
+          treasuries: [25, 95],
         },
       };
     },
@@ -1666,15 +1723,18 @@ export const GRAND_HEIST_ORDER_CASES: EspionageOrderCase[] = [
             o,
             `📦 A courier of ${realmName(o, 1)} is waylaid on the road — Tome of Tactics, sent by ${markOf(s).name} and bound for ${addressee.name}, never arrives.`,
           ),
+          phase: o.all.find((l) => l.text.startsWith(`📦 A courier of`))?.phase,
+          kept: says(o, `🎒 The Tome of Tactics needs no slot: it works for ${s.hero.name} at once.`),
           thief: pack(o, s.hero),
           addressee: pack(o, addressee),
         },
-        want: { pulledOff: true, waylaid: [1], thief: ['Tome of Tactics'], addressee: [] },
+        want: { pulledOff: true, waylaid: [1], phase: 1, kept: true, thief: ['Tome of Tactics'], addressee: [] },
       };
     },
   },
   {
     name: 'Grand Heist: a parcel bound for another realm’s hero is not touched',
+    wholeTurnOnly: true,
     dice: LUCKY,
     stage(b) {
       const s = heist(b, 7, { gold: 0 });
@@ -1839,6 +1899,17 @@ export const ASSASSINATE_ORDER_CASES: EspionageOrderCase[] = [
     },
   },
   {
+    name: 'Assassinate: a fallen hero is no mark',
+    stage(b) {
+      const m = rival(b);
+      m.alive = false;
+      return assassinate(b, m);
+    },
+    check(o, s) {
+      return { got: { told: noMark(o, s), rolled: says(o, '📊') }, want: { told: true, rolled: false } };
+    },
+  },
+  {
     name: 'Assassinate: a mark who vanished earlier in the turn is never seen',
     dice: LUCKY,
     stage(b) {
@@ -1898,6 +1969,7 @@ export const ASSASSINATE_ORDER_CASES: EspionageOrderCase[] = [
           ledger: ledger(o, s.hero),
           swords: fightMarked(o, there(s)),
           lessons: xpIn(o, s.hero, 'spy'),
+          hardened: says(o, `💪 ${s.hero.name} is hardened by the victory`),
         },
         want: {
           roll: true,
@@ -1908,6 +1980,7 @@ export const ASSASSINATE_ORDER_CASES: EspionageOrderCase[] = [
           ledger: [`put a blade in one of your heroes @${String(there(s).id)}`],
           swords: [0, 1],
           lessons: [STD],
+          hardened: true,
         },
       };
     },
