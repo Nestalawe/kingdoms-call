@@ -92,8 +92,8 @@ export const typecheck = () =>
     return { ok: r.code === 0, out: r.out };
   });
 
-// ESLint lints the TypeScript and the engine's JavaScript (no-undef only: eslint.config.js).
-const linted = (f: string) => isTs(f) || /^src\/(engine|views)\/.*\.js$/.test(f);
+// ESLint lints the TypeScript: src/ (the site's tier: eslint.config.js) and the tests' and tools'.
+const linted = (f: string) => isTs(f);
 
 export const lint = (files: string[]) =>
   step('lint', async () => {
