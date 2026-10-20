@@ -52,15 +52,27 @@ await Promise.all(
 );
 const pretty = { src: copy };
 
+// Each of the two checks below reads every file twice: about 2 s here and 4 to 8 s on a CI runner, so they have time
+// enough of their own (Vitest's default, 5 s, failed on a slow runner).
+const EVERY_FILE_TWICE_MS = 60_000;
+
 describe('every file of the site reads the same laid out otherwise', () => {
-  test(`${String(own.length)} files: the same canonical layout`, () => {
-    const differ = own.filter((f) => compactOf(f) !== compactOf(f, pretty));
-    expect(differ).toEqual([]);
-  });
-  test(`${String(own.length)} files: the same strings, in the same order`, () => {
-    const differ = own.filter((f) => JSON.stringify(stringsOf(f)) !== JSON.stringify(stringsOf(f, pretty)));
-    expect(differ).toEqual([]);
-  });
+  test(
+    `${String(own.length)} files: the same canonical layout`,
+    () => {
+      const differ = own.filter((f) => compactOf(f) !== compactOf(f, pretty));
+      expect(differ).toEqual([]);
+    },
+    EVERY_FILE_TWICE_MS,
+  );
+  test(
+    `${String(own.length)} files: the same strings, in the same order`,
+    () => {
+      const differ = own.filter((f) => JSON.stringify(stringsOf(f)) !== JSON.stringify(stringsOf(f, pretty)));
+      expect(differ).toEqual([]);
+    },
+    EVERY_FILE_TWICE_MS,
+  );
   test('Prettier did change the files (the copy is not the source)', () => {
     const changed = own.filter(
       (f) => fs.readFileSync(path.join(SRC, f), 'utf8') !== fs.readFileSync(path.join(copy, f), 'utf8'),
