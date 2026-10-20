@@ -11,3 +11,6 @@
 !/tests/**/*.ts
 !/tools/**/*.ts
 !/src/manifest.ts
+!/src/**/*.js
+!/src/**/*.css
+/src/vendor/

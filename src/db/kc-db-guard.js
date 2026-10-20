@@ -8,20 +8,31 @@
 // more, then stops the same way: a page never carries on unchecked.
 // On success the version is kept in <html data-kc-db="…"> and announced as the "kc-db-version" event (the
 // staging footer shows it). Loaded after kc-config.js. Its one global name is kcDbGuard.
-async function kcDbGuard(sb,min){
-  const ask=async()=>{
-    try{ return await sb.rpc('kc_db_version'); }
-    catch(e){ return {data:null,error:{message:String(e&&e.message||e)},status:0}; }
+async function kcDbGuard(sb, min) {
+  const ask = async () => {
+    try {
+      return await sb.rpc('kc_db_version');
+    } catch (e) {
+      return { data: null, error: { message: String((e && e.message) || e) }, status: 0 };
+    }
   };
-  let r=await ask();
-  if(r.error&&!r.status) r=await ask();   // no answer at all (network): once more
-  const v=(!r.error&&typeof r.data==='string'&&/^\d{14}$/.test(r.data))?r.data:null;
-  if(!v||v<min){
-    const why=r.error?(r.status?'no version check in the database':'the database didn\'t answer'):`database ${v||'unknown'}`;
-    window.dispatchEvent(new ErrorEvent('error',{message:`The game is being updated. Try again in a few minutes. (${why}; this page needs ${min})`}));
-    return new Promise(()=>{});
+  let r = await ask();
+  if (r.error && !r.status) r = await ask(); // no answer at all (network): once more
+  const v = !r.error && typeof r.data === 'string' && /^\d{14}$/.test(r.data) ? r.data : null;
+  if (!v || v < min) {
+    const why = r.error
+      ? r.status
+        ? 'no version check in the database'
+        : "the database didn't answer"
+      : `database ${v || 'unknown'}`;
+    window.dispatchEvent(
+      new ErrorEvent('error', {
+        message: `The game is being updated. Try again in a few minutes. (${why}; this page needs ${min})`,
+      }),
+    );
+    return new Promise(() => {});
   }
-  document.documentElement.setAttribute('data-kc-db',v);
-  document.dispatchEvent(new CustomEvent('kc-db-version',{detail:v}));
+  document.documentElement.setAttribute('data-kc-db', v);
+  document.dispatchEvent(new CustomEvent('kc-db-version', { detail: v }));
   return v;
 }

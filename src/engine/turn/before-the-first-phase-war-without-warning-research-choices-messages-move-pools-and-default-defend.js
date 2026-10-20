@@ -20,61 +20,83 @@
 // which resolveTurn makes between the first two; the notes on the army tables and the title perks are older: both
 // moved as they were.
 
-function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(turnContext){
-  const {G, _botPlayerIdx, discoveryChoicePicks, log}=turnContext;
+function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(turnContext) {
+  const { G, _botPlayerIdx, discoveryChoicePicks, log } = turnContext;
   // ── DIPLOMACY (KC alliance system) ────
   // Relations live in G.relations, keyed "minIdx-maxIdx" → 'enemy' | 'allied'. A pair with no
   // entry is NEUTRAL (the default). These helpers are the single source of truth consulted by the
   // movement border gate, every PvP battle site, and isHostileInvasion (pinning + Defend).
-  if(!G.relations) G.relations={};
+  if (!G.relations) G.relations = {};
 
   // ── Item 3: WAR WITHOUT WARNING. Evil and Undead realms strike the turn they declare — their
   // declaration takes effect BEFORE phase 1, so their armies may cross the frontier this very turn.
   // Every other alignment's declaration still resolves at end of turn (step 6d), in force from next
   // turn. Bots declare here too (botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim), so an Evil/Undead bot gets the same jump.
   // Sept 2026 (review R1): bots send a research pick instead of leaving the choice to chance.
-  (G.players||[]).forEach((pl,pi)=>{ if(!_botPlayerIdx.has(pi)||!pl||!Array.isArray(pl.pendingDiscoveryChoices)) return;
-    pl.pendingDiscoveryChoices.forEach(pc=>{ if(!pc||pc.turn>=G.turn||!Array.isArray(pc.options)) return; discoveryChoicePicks[pi]=discoveryChoicePicks[pi]||{};
-      if(discoveryChoicePicks[pi][pc.key]==null) discoveryChoicePicks[pi][pc.key]=botResearchPick(G,pi,pc.options); }); });
-  // ── RESEARCH CHOICE: settle last turn's pairs before anything else happens this turn ──
-  (G.players||[]).forEach((pl,pi)=>{
-    if(!pl||!Array.isArray(pl.pendingDiscoveryChoices)||!pl.pendingDiscoveryChoices.length) return;
-    const picks=discoveryChoicePicks[pi]||{};
-    const still=[];
-    pl.pendingDiscoveryChoices.forEach(p=>{
-      if(!p||!Array.isArray(p.options)||p.turn>=G.turn){ if(p) still.push(p); return; }
-      pl.discoveries=pl.discoveries||[];
-      const known=new Set(pl.discoveries.map(d=>d&&d.id));
-      const opts=p.options.filter(id=>DISC_BY_ID[id]&&!known.has(id)&&!RETIRED_DISCOVERY_IDS.has(id));
-      if(!opts.length) return;
-      const want=picks[p.key];
-      const chosen=opts.includes(want)?want:opts[Math.floor(kcRng()*opts.length)];
-      const d=DISC_BY_ID[chosen];
-      pl.discoveries.push({id:d.id,name:d.name,category:d.category,desc:d.desc,turnDiscovered:p.turn});
-      pl.forgottenDiscoveries=pl.forgottenDiscoveries||[];
-      const lost=p.options.filter(id=>id!==chosen);
-      lost.forEach(id=>{ if(!pl.forgottenDiscoveries.includes(id)) pl.forgottenDiscoveries.push(id); });
-      const lostNames=lost.map(id=>(DISC_BY_ID[id]&&DISC_BY_ID[id].name)||id).join(', ');
-      log('explore',`💡 ${opts.includes(want)?`${pl.name} pursues`:`No choice was sent, so ${pl.name}'s scholars choose for themselves and pursue`} **${d.name}** (${d.category}), found by ${p.charName||'a scholar'} last turn. ${d.desc}${lostNames?` The other lead — ${lostNames} — is set aside and forgotten for good.`:''}`,{actor:pi,targets:[pi],charId:null,phase:0});
+  (G.players || []).forEach((pl, pi) => {
+    if (!_botPlayerIdx.has(pi) || !pl || !Array.isArray(pl.pendingDiscoveryChoices)) return;
+    pl.pendingDiscoveryChoices.forEach((pc) => {
+      if (!pc || pc.turn >= G.turn || !Array.isArray(pc.options)) return;
+      discoveryChoicePicks[pi] = discoveryChoicePicks[pi] || {};
+      if (discoveryChoicePicks[pi][pc.key] == null)
+        discoveryChoicePicks[pi][pc.key] = botResearchPick(G, pi, pc.options);
     });
-    pl.pendingDiscoveryChoices=still;
+  });
+  // ── RESEARCH CHOICE: settle last turn's pairs before anything else happens this turn ──
+  (G.players || []).forEach((pl, pi) => {
+    if (!pl || !Array.isArray(pl.pendingDiscoveryChoices) || !pl.pendingDiscoveryChoices.length) return;
+    const picks = discoveryChoicePicks[pi] || {};
+    const still = [];
+    pl.pendingDiscoveryChoices.forEach((p) => {
+      if (!p || !Array.isArray(p.options) || p.turn >= G.turn) {
+        if (p) still.push(p);
+        return;
+      }
+      pl.discoveries = pl.discoveries || [];
+      const known = new Set(pl.discoveries.map((d) => d && d.id));
+      const opts = p.options.filter((id) => DISC_BY_ID[id] && !known.has(id) && !RETIRED_DISCOVERY_IDS.has(id));
+      if (!opts.length) return;
+      const want = picks[p.key];
+      const chosen = opts.includes(want) ? want : opts[Math.floor(kcRng() * opts.length)];
+      const d = DISC_BY_ID[chosen];
+      pl.discoveries.push({ id: d.id, name: d.name, category: d.category, desc: d.desc, turnDiscovered: p.turn });
+      pl.forgottenDiscoveries = pl.forgottenDiscoveries || [];
+      const lost = p.options.filter((id) => id !== chosen);
+      lost.forEach((id) => {
+        if (!pl.forgottenDiscoveries.includes(id)) pl.forgottenDiscoveries.push(id);
+      });
+      const lostNames = lost.map((id) => (DISC_BY_ID[id] && DISC_BY_ID[id].name) || id).join(', ');
+      log(
+        'explore',
+        `💡 ${opts.includes(want) ? `${pl.name} pursues` : `No choice was sent, so ${pl.name}'s scholars choose for themselves and pursue`} **${d.name}** (${d.category}), found by ${p.charName || 'a scholar'} last turn. ${d.desc}${lostNames ? ` The other lead — ${lostNames} — is set aside and forgotten for good.` : ''}`,
+        { actor: pi, targets: [pi], charId: null, phase: 0 },
+      );
+    });
+    pl.pendingDiscoveryChoices = still;
   });
 }
 
-function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(turnContext){
-  const {G, diploDeclarations, log, safeStartRefused, staleOrderWarnings, freshPlayers, playerMessages}=turnContext;
-  { const _npW=(G.players||[]).length;
-    for(let a=0;a<_npW;a++){
-      const pa=G.players[a]; if(!pa||!['Evil','Undead'].includes(pa.alignment)) continue;
-      const decl=diploDeclarations[a]||{};
-      for(let b=0;b<_npW;b++){
-        if(b===a||decl[b]!=='enemy') continue;
-        if(!((pa._encountered)||[]).includes(b)) continue;
-        const key=relKeyOf(a,b);
-        if((G.relations[key]||'neutral')==='enemy') continue;
-        G.relations[key]='enemy';
-        const na=pa.name||('Realm '+(a+1)), nb=G.players[b]?.name||('Realm '+(b+1));
-        log('system',`⚔ ${na} declares war on ${nb} and marches without warning — ${pa.alignment==='Undead'?'the dead keep no truce':'the wicked keep no faith'}. War stands between the two realms from this very season.`,{actor:null,targets:[a,b],system:true});
+function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(turnContext) {
+  const { G, diploDeclarations, log, safeStartRefused, staleOrderWarnings, freshPlayers, playerMessages } = turnContext;
+  {
+    const _npW = (G.players || []).length;
+    for (let a = 0; a < _npW; a++) {
+      const pa = G.players[a];
+      if (!pa || !['Evil', 'Undead'].includes(pa.alignment)) continue;
+      const decl = diploDeclarations[a] || {};
+      for (let b = 0; b < _npW; b++) {
+        if (b === a || decl[b] !== 'enemy') continue;
+        if (!(pa._encountered || []).includes(b)) continue;
+        const key = relKeyOf(a, b);
+        if ((G.relations[key] || 'neutral') === 'enemy') continue;
+        G.relations[key] = 'enemy';
+        const na = pa.name || 'Realm ' + (a + 1),
+          nb = G.players[b]?.name || 'Realm ' + (b + 1);
+        log(
+          'system',
+          `⚔ ${na} declares war on ${nb} and marches without warning — ${pa.alignment === 'Undead' ? 'the dead keep no truce' : 'the wicked keep no faith'}. War stands between the two realms from this very season.`,
+          { actor: null, targets: [a, b], system: true },
+        );
       }
     }
   }
@@ -87,26 +109,48 @@ function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMess
   // even the turn-start pursuit resolution reads valid holders without a temporal-dead-zone. Active
   // only from the turn Titles go public (#10); before that the maps are empty and every check
   // returns false.
-  G._titleHolders={}; G._minorHolders={};
-  if(TITLE_PERKS_ENABLED && (G.turn||1)>=TITLES_PUBLIC_FROM_TURN){
-    try{ G._titleHolders=computeStandings(G).titles||{}; }catch(e){ G._titleHolders={}; }
-    try{ G._minorHolders=computeMinorTitles(G); }catch(e){ G._minorHolders={}; }
+  G._titleHolders = {};
+  G._minorHolders = {};
+  if (TITLE_PERKS_ENABLED && (G.turn || 1) >= TITLES_PUBLIC_FROM_TURN) {
+    try {
+      G._titleHolders = computeStandings(G).titles || {};
+    } catch (e) {
+      G._titleHolders = {};
+    }
+    try {
+      G._minorHolders = computeMinorTitles(G);
+    } catch (e) {
+      G._minorHolders = {};
+    }
   }
 
   // Flush any stale-order warnings collected during the merge phase
-  safeStartRefused.forEach(pi=>log('system',`🕊 Safe Start: no Treat or declaration of war may be made before the orders for Turn ${SAFE_START_TURN}. Your diplomacy this turn was set aside — relations are unchanged.`,{actor:null,targets:[pi],system:true}));
-  if(staleOrderWarnings.length>0){
-    staleOrderWarnings.forEach(w=>log('system',w,{actor:-1,targets:[],system:true,public:w.startsWith('\u{1F3F3}')}));
+  safeStartRefused.forEach((pi) =>
+    log(
+      'system',
+      `🕊 Safe Start: no Treat or declaration of war may be made before the orders for Turn ${SAFE_START_TURN}. Your diplomacy this turn was set aside — relations are unchanged.`,
+      { actor: null, targets: [pi], system: true },
+    ),
+  );
+  if (staleOrderWarnings.length > 0) {
+    staleOrderWarnings.forEach((w) =>
+      log('system', w, { actor: -1, targets: [], system: true, public: w.startsWith('\u{1F3F3}') }),
+    );
   }
 
   // ── GM-REMOVED REALMS (2026-09-26, Toby item 4) ── The GM can take a player out of a game at any
   // stage; the realm concedes there and then (in game_state) and its seat at the table is deleted.
   // The world is told here, on the first turn resolved after the removal, in the same words a
   // voluntary concession uses — removeGmRemovalQueue holds the indices waiting to be announced.
-  if(Array.isArray(G._gmRemovedRealms)&&G._gmRemovedRealms.length){
-    G._gmRemovedRealms.forEach(idx=>{
-      const _pl=(G.players||[])[idx]; if(!_pl) return;
-      log('system',`\u{1F3F3} ${_pl.name} has withdrawn from the game and CONCEDES. Its heroes lay down their ambitions and will only defend what they hold from now on.`,{actor:-1,targets:[],system:true,public:true});
+  if (Array.isArray(G._gmRemovedRealms) && G._gmRemovedRealms.length) {
+    G._gmRemovedRealms.forEach((idx) => {
+      const _pl = (G.players || [])[idx];
+      if (!_pl) return;
+      log(
+        'system',
+        `\u{1F3F3} ${_pl.name} has withdrawn from the game and CONCEDES. Its heroes lay down their ambitions and will only defend what they hold from now on.`,
+        { actor: -1, targets: [], system: true, public: true },
+      );
     });
     delete G._gmRemovedRealms;
   }
@@ -117,42 +161,62 @@ function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMess
   // sender is named by realm; empty/oversized text is skipped. A copy is filed back to the SENDER
   // too (as a sent-confirmation) so they have a record of what they sent, in their own report.
   {
-    const humanIdx=(G.players||[]).map((p,i)=>i).filter(i=>{ const gp=freshPlayers.find(x=>x.player_index===i); return gp && gp.user_id; });
-    Object.keys(playerMessages).forEach(sk=>{
-      const senderPi=parseInt(sk);
-      const senderName=G.players[senderPi]?.name||('Player '+(senderPi+1));
-      (playerMessages[senderPi]||[]).forEach(msg=>{
-        if(!msg||typeof msg.text!=='string') return;
-        const text=msg.text.trim().slice(0,1000);
-        if(!text) return;
+    const humanIdx = (G.players || [])
+      .map((p, i) => i)
+      .filter((i) => {
+        const gp = freshPlayers.find((x) => x.player_index === i);
+        return gp && gp.user_id;
+      });
+    Object.keys(playerMessages).forEach((sk) => {
+      const senderPi = parseInt(sk);
+      const senderName = G.players[senderPi]?.name || 'Player ' + (senderPi + 1);
+      (playerMessages[senderPi] || []).forEach((msg) => {
+        if (!msg || typeof msg.text !== 'string') return;
+        const text = msg.text.trim().slice(0, 1000);
+        if (!text) return;
         let rcpts;
-        if(msg.to==='all'||(Array.isArray(msg.to)&&msg.to.includes('all'))){
-          rcpts=humanIdx.filter(i=>i!==senderPi);
-        } else if(Array.isArray(msg.to)){
-          rcpts=msg.to.map(x=>parseInt(x)).filter(i=>Number.isInteger(i)&&i!==senderPi&&i>=0&&i<(G.players||[]).length);
-        } else { rcpts=[]; }
-        rcpts=[...new Set(rcpts)];
-        if(rcpts.length===0) return;
-        const rcptNames=rcpts.map(i=>G.players[i]?.name||('Player '+(i+1)));
+        if (msg.to === 'all' || (Array.isArray(msg.to) && msg.to.includes('all'))) {
+          rcpts = humanIdx.filter((i) => i !== senderPi);
+        } else if (Array.isArray(msg.to)) {
+          rcpts = msg.to
+            .map((x) => parseInt(x))
+            .filter((i) => Number.isInteger(i) && i !== senderPi && i >= 0 && i < (G.players || []).length);
+        } else {
+          rcpts = [];
+        }
+        rcpts = [...new Set(rcpts)];
+        if (rcpts.length === 0) return;
+        const rcptNames = rcpts.map((i) => G.players[i]?.name || 'Player ' + (i + 1));
         // The addressee's copy must NOT name the sender as `actor`: the report filter shows a
         // player every entry where actor===them, so the sender was being handed the
         // incoming-dispatch line as well as their own sent-confirmation — reading their own words
         // as though addressed to them. charId is nulled for the same reason (log() falls back to
         // _logCtx.charId when it is null).
-        const _savedDispatchChar=turnContext._logCtx.charId; turnContext._logCtx.charId=null;
-        rcpts.forEach(rpi=>{
-          log('message',`📨 Dispatch from ${senderName}: “${text}”`,{actor:null,targets:[rpi],phase:99,public:false});
+        const _savedDispatchChar = turnContext._logCtx.charId;
+        turnContext._logCtx.charId = null;
+        rcpts.forEach((rpi) => {
+          log('message', `📨 Dispatch from ${senderName}: “${text}”`, {
+            actor: null,
+            targets: [rpi],
+            phase: 99,
+            public: false,
+          });
         });
-        turnContext._logCtx.charId=_savedDispatchChar;
+        turnContext._logCtx.charId = _savedDispatchChar;
         // Sender's own copy (confirmation of what they sent, and to whom).
-        log('message',`📨 You sent to ${rcptNames.join(', ')}: “${text}”`,{actor:senderPi,targets:[senderPi],phase:99,public:false});
+        log('message', `📨 You sent to ${rcptNames.join(', ')}: “${text}”`, {
+          actor: senderPi,
+          targets: [senderPi],
+          phase: 99,
+          public: false,
+        });
       });
     });
   }
 }
 
-function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan(turnContext){
-  const {G, log}=turnContext;
+function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan(turnContext) {
+  const { G, log } = turnContext;
   // Army-type classification tables (PRIMAL_ARMY_DEFS_P, ARMY_SPEED_R, FLYING_TYPES, AERIAL_TYPES,
   // CREATURE_ARMIES, MONSTER_ARMIES, CARRIER_TYPES, PRIMAL_SEA_TYPES, SEA_TYPES) moved to module
   // top level — see the banner near MISSILE_ARMIES_MASTER.
@@ -165,53 +229,55 @@ function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPla
   // Leading fleets/sea beasts: the SLOWEST sea unit's speed (the squadron sails at the pace of
   // its worst ship, exactly as a land column marches at the pace of its slowest army), each
   // unit first improved by the Naval bonus — the sea-going mirror of the March bonus.
-  const movePoints={};       // land move point pool (REMAINING this turn)
-  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)
-  const seaMoveActive={};    // whether this character has sea move capability this turn
-  const seaCap={};
-  const moveMax={};          // land pool MAX for the turn — lets refreshMovePool preserve points already spent
-  const seaMoveMax={};       // sea pool MAX for the turn
-  turnContext.movePoints=movePoints;
-  turnContext.seaMovePoints=seaMovePoints;
-  turnContext.seaMoveActive=seaMoveActive;
-  turnContext.seaCap=seaCap;
-  turnContext.moveMax=moveMax;
-  turnContext.seaMoveMax=seaMoveMax;
+  const movePoints = {}; // land move point pool (REMAINING this turn)
+  const seaMovePoints = {}; // separate sea move point pool (REMAINING this turn)
+  const seaMoveActive = {}; // whether this character has sea move capability this turn
+  const seaCap = {};
+  const moveMax = {}; // land pool MAX for the turn — lets refreshMovePool preserve points already spent
+  const seaMoveMax = {}; // sea pool MAX for the turn
+  turnContext.movePoints = movePoints;
+  turnContext.seaMovePoints = seaMovePoints;
+  turnContext.seaMoveActive = seaMoveActive;
+  turnContext.seaCap = seaCap;
+  turnContext.moveMax = moveMax;
+  turnContext.seaMoveMax = seaMoveMax;
   // Light-travel moves made while the character led NO armies (its generous 5-pool "takes passage"
   // mode). Counted here so refreshMovePool can DISCOUNT them when the hero later picks up troops —
   // free-passage moves must not be charged against a real army's small marching allowance.
-  const lightLandMoves={};   // land moves made while travelling light (no armies)
-  const lightSeaMoves={};    // sea moves made while travelling light (no armies)
-  turnContext.lightLandMoves=lightLandMoves;
-  turnContext.lightSeaMoves=lightSeaMoves;
-  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach((...a)=>setMovePool(turnContext,...a));
+  const lightLandMoves = {}; // land moves made while travelling light (no armies)
+  const lightSeaMoves = {}; // sea moves made while travelling light (no armies)
+  turnContext.lightLandMoves = lightLandMoves;
+  turnContext.lightSeaMoves = lightSeaMoves;
+  (G.characters || []).filter((c) => c.player !== null && c.alive).forEach((...a) => setMovePool(turnContext, ...a));
 
-  const SEASONS=KC_SEASONS.slice();
-  turnContext.SEASONS=SEASONS;
+  const SEASONS = KC_SEASONS.slice();
+  turnContext.SEASONS = SEASONS;
   // Turn-wide recruit tracking: provId → armyType → count recruited this turn
   // Limits: garrisons, humanoid fleets and Goblin Hordes = 2 per turn (twoATurn, module level); the
   // founder's own home province = 2 of anything; elsewhere = 1 per type
-  const recruitedThisTurn={};
-  turnContext.recruitedThisTurn=recruitedThisTurn;
+  const recruitedThisTurn = {};
+  turnContext.recruitedThisTurn = recruitedThisTurn;
 
   // A fresh turn: clear last turn's death flags so 'killedThisTurn' marks only deaths this turn.
-  G.characters.forEach(c=>{ delete c.killedThisTurn; });
+  G.characters.forEach((c) => {
+    delete c.killedThisTurn;
+  });
 
   // record which players had a character present in each province at the START of each phase. Used
   // to decide who may see battle reports they didn't participate in (line-of-sight).
-  const presenceByPhase=[];
-  turnContext.presenceByPhase=presenceByPhase;
+  const presenceByPhase = [];
+  turnContext.presenceByPhase = presenceByPhase;
 
   // Provinces a player's characters ENTERED during the current phase, even if they did not stay. A
   // commander who marches in, fights, and is thrown back still saw the place; the map should
   // remember it. Reset at the top of every phase.
-  turnContext.enteredThisPhase={};
+  turnContext.enteredThisPhase = {};
 
   // Intel collapse: intrusion sightings accumulate here across all phases, then a single
   // consolidated "seen during <phases>" line per (target, hero, province) is emitted after the
   // loop.
-  const _intrusionAcc=new Map();
-  turnContext._intrusionAcc=_intrusionAcc;
+  const _intrusionAcc = new Map();
+  turnContext._intrusionAcc = _intrusionAcc;
 
   // Items 6 & 7 — per-turn spy tracking. Reset the "provinces spied THIS turn" set on every player
   // at the start of resolution (used to gate non-controlled army DETAIL to spied provinces only).
@@ -225,20 +291,31 @@ function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPla
   // counter-intelligence rolls do not touch it, because the Spymaster's whole perk is seeing what
   // the province watch missed. Never persisted to a report except through the title line, so it
   // cannot leak to a realm that does not hold the title.
-  G._espionageLedger=[];
-  (G.players||[]).forEach(p=>{ p._spiedProvincesLastTurn=(p._spiedProvincesThisTurn||[]).slice(); p._spiedProvincesThisTurn=[]; p._clairCharThisTurn=null; if(!p._spiedHeroSkills) p._spiedHeroSkills={}; }); // _clairCharThisTurn: 2026-09-12 Clairvoyance reveal (one per realm)
+  G._espionageLedger = [];
+  (G.players || []).forEach((p) => {
+    p._spiedProvincesLastTurn = (p._spiedProvincesThisTurn || []).slice();
+    p._spiedProvincesThisTurn = [];
+    p._clairCharThisTurn = null;
+    if (!p._spiedHeroSkills) p._spiedHeroSkills = {};
+  }); // _clairCharThisTurn: 2026-09-12 Clairvoyance reveal (one per realm)
 
   // Defend watches and Pursuits last for the rest of the TURN only — never across turns.
-  (G.characters||[]).forEach(c=>{ delete c._defend; delete c._pursuit; delete c._defendReactedPhase; });
+  (G.characters || []).forEach((c) => {
+    delete c._defend;
+    delete c._pursuit;
+    delete c._defendReactedPhase;
+  });
   // "The province they attacked from" is a fact about THIS turn's marching. It was never cleared,
   // so a character who attacked out of some far-off province turns ago and later lost a battle
   // elsewhere "retreated" straight back to that stale, distant province (five hexes in one case).
   // Every retreat site now also refuses a non-adjacent _attackedFrom; this sweep stops the
   // stale value existing at all.
-  (G.characters||[]).forEach(c=>{ delete c._attackedFrom; });
+  (G.characters || []).forEach((c) => {
+    delete c._attackedFrom;
+  });
 
-  const _distCache=new Map();
-  turnContext._distCache=_distCache;
+  const _distCache = new Map();
+  turnContext._distCache = _distCache;
 
   // ── LIVE TITLE PERKS ── (holder computation + helpers moved earlier in runTurn to avoid a
   // temporal-dead-zone when the turn-start pursuit resolution reads them — see near the relation
@@ -253,51 +330,100 @@ function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPla
   // lair rarely matched and 68 of 81 names were reused at different difficulties (which is what
   // made lair and guardian show different colours in the Chronicle). Re-name every lair once, from
   // its own guardian's pools and uniquely. Idempotent: the flag stops it ever running twice.
-  if(!G._lairNamesV3){ const _rn=renameLairsThematicP(G); if(_rn>0) log('system',`\u{1F5FA} The chronicles are corrected: ${_rn} lair${_rn!==1?'s are':' is'} now recorded under a name befitting what dwells there.`,{actor:null,targets:[]}); }
+  if (!G._lairNamesV3) {
+    const _rn = renameLairsThematicP(G);
+    if (_rn > 0)
+      log(
+        'system',
+        `\u{1F5FA} The chronicles are corrected: ${_rn} lair${_rn !== 1 ? 's are' : ' is'} now recorded under a name befitting what dwells there.`,
+        { actor: null, targets: [] },
+      );
+  }
   // EVERY GUARDIAN IS 5 HP FRAILER. The table was re-statted, but a live world keeps its own copy
   // of each guardian on the feature (and `_hpFull`, the undamaged total a guardian is restored to
   // between fights), so the table change alone would never reach a game in progress. One flagged,
   // idempotent pass brings existing worlds into line. Floored at 5 so nothing is ever reduced to a
   // guardian that cannot fight.
-  if(!G._guardianHpV2){
-    let _gh=0;
-    (G.world&&G.world.provinces||[]).forEach(p=>(p&&p.features||[]).forEach(f=>{
-      if(!f||f.ritualSite||!f.monster) return;
-      if(f.monster.hp!=null){ f.monster.hp=Math.max(5,f.monster.hp-5); _gh++; }
-      if(f.monster._hpFull!=null) f.monster._hpFull=Math.max(5,f.monster._hpFull-5);
-    }));
-    G._guardianHpV2=true;
-    if(_gh>0) log('system',`\u{1F489} The world's guardians are re-measured: ${_gh} lair-keeper${_gh!==1?'s'.concat(' are'):' is'} 5 hit points frailer than before.`,{actor:null,targets:[]});
+  if (!G._guardianHpV2) {
+    let _gh = 0;
+    ((G.world && G.world.provinces) || []).forEach((p) =>
+      ((p && p.features) || []).forEach((f) => {
+        if (!f || f.ritualSite || !f.monster) return;
+        if (f.monster.hp != null) {
+          f.monster.hp = Math.max(5, f.monster.hp - 5);
+          _gh++;
+        }
+        if (f.monster._hpFull != null) f.monster._hpFull = Math.max(5, f.monster._hpFull - 5);
+      }),
+    );
+    G._guardianHpV2 = true;
+    if (_gh > 0)
+      log(
+        'system',
+        `\u{1F489} The world's guardians are re-measured: ${_gh} lair-keeper${_gh !== 1 ? 's'.concat(' are') : ' is'} 5 hit points frailer than before.`,
+        { actor: null, targets: [] },
+      );
   }
 
   // ── RETIRED DISCOVERIES ── the Library (sd30) was removed from the game on 2026-09-09. Strike it
   // from any realm that had already found it, so no live save keeps a dead entry on its sheet.
-  (G.players||[]).forEach(pl=>{ if(pl&&Array.isArray(pl.discoveries)) pl.discoveries=pl.discoveries.filter(d=>d&&d.id!=='sd30'); });
+  (G.players || []).forEach((pl) => {
+    if (pl && Array.isArray(pl.discoveries)) pl.discoveries = pl.discoveries.filter((d) => d && d.id !== 'sd30');
+  });
 
   // GRAND DESIGN — Divine (Grand Cathedral): the capital is permanently warded
   // (Plague/Earthquake/Flood/Part Sea turned aside). 2026-09-14: the ward lies over the province
   // the CATHEDRAL STANDS IN, not over a capital id frozen at game start. gdActive already requires
   // the realm to still hold that ground, which also fixes the old bug where a Divine realm that
   // lost its capital kept warding it for its conqueror.
-  (G.players||[]).forEach((pl,pi)=>{ if(gdActive(turnContext,pi,'Divine')){ const _cap=G.world.provinces[pl.gdProvinceId!=null?pl.gdProvinceId:homeProvinceIdFor(G,pi)]; if(_cap){ _cap._blessWardTurn=G.turn; _cap._blessWardBy=pi; _cap._blessWardPct=100; } } });
+  (G.players || []).forEach((pl, pi) => {
+    if (gdActive(turnContext, pi, 'Divine')) {
+      const _cap = G.world.provinces[pl.gdProvinceId != null ? pl.gdProvinceId : homeProvinceIdFor(G, pi)];
+      if (_cap) {
+        _cap._blessWardTurn = G.turn;
+        _cap._blessWardBy = pi;
+        _cap._blessWardPct = 100;
+      }
+    }
+  });
 }
 
-function missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart(turnContext){
-  const {G, _tel, diploDeclarations, reckoningCalls, expectedTurnToRun}=turnContext;
+function missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart(turnContext) {
+  const { G, _tel, diploDeclarations, reckoningCalls, expectedTurnToRun } = turnContext;
   // 3. Default any missing orders to Defend
-  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
-    if(!G.turnOrders[c.id]) G.turnOrders[c.id]=[null,null,null,null,null];
-    G.turnOrders[c.id]=G.turnOrders[c.id].map(o=>o||{action:'defend',target:'',extra:'',desc:'Defend'});
-  });
+  (G.characters || [])
+    .filter((c) => c.player !== null && c.alive)
+    .forEach((c) => {
+      if (!G.turnOrders[c.id]) G.turnOrders[c.id] = [null, null, null, null, null];
+      G.turnOrders[c.id] = G.turnOrders[c.id].map(
+        (o) => o || { action: 'defend', target: '', extra: '', desc: 'Defend' },
+      );
+    });
   // TELEMETRY: the orders as they stand now — every realm's, humans' as submitted and bots' as
   // planned — before a single one resolves (the resolution rewrites slots: pins, unifications).
-  try{ (G.players||[]).forEach((pl,pi)=>{ if(!pl) return;
-    _tel.orders[pi]=telOrdersFor(G,pi,{diplomacy:diploDeclarations[pi]||null, callReckoning:reckoningCalls.has(pi)||undefined,
-      concede:(pl.conceded&&pl.concededTurn===expectedTurnToRun)||undefined, plans:Object.fromEntries((G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&c.encounterPlan&&Array.isArray(c.encounterPlan.tactics)).map(c=>[c.id,c.encounterPlan.tactics.slice(0,12)]))}); }); }catch(_te){ console.warn('telemetry orders:',_te); }
+  try {
+    (G.players || []).forEach((pl, pi) => {
+      if (!pl) return;
+      _tel.orders[pi] = telOrdersFor(G, pi, {
+        diplomacy: diploDeclarations[pi] || null,
+        callReckoning: reckoningCalls.has(pi) || undefined,
+        concede: (pl.conceded && pl.concededTurn === expectedTurnToRun) || undefined,
+        plans: Object.fromEntries(
+          (G.characters || [])
+            .filter((c) => c && c.alive && c.player === pi && c.encounterPlan && Array.isArray(c.encounterPlan.tactics))
+            .map((c) => [c.id, c.encounterPlan.tactics.slice(0, 12)]),
+        ),
+      });
+    });
+  } catch (_te) {
+    console.warn('telemetry orders:', _te);
+  }
 
-  const _warFrontAtStart=new Map(); // charId → the province his host stood in when the turn began
-  turnContext._warFrontAtStart=_warFrontAtStart;
-  warFrontThreats(turnContext).forEach(({c,prov})=>{ if(!prov._battleUnresolved) _warFrontAtStart.set(c.id,prov.id); });
-  const _warFrontProvs=new Set(_warFrontAtStart.values());
-  turnContext._warFrontProvs=_warFrontProvs;
+  const _warFrontAtStart = new Map(); // charId → the province his host stood in when the turn began
+  turnContext._warFrontAtStart = _warFrontAtStart;
+  warFrontThreats(turnContext).forEach(({ c, prov }) => {
+    if (!prov._battleUnresolved) _warFrontAtStart.set(c.id, prov.id);
+  });
+  const _warFrontProvs = new Set(_warFrontAtStart.values());
+  turnContext._warFrontProvs = _warFrontProvs;
 }

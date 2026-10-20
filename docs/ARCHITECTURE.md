@@ -559,8 +559,9 @@ The tools are the standard ones (P1-01): Vitest runs every test, one project per
 Playwright Test runs the browser specs in `tests/browser/` (`playwright.config.ts`); TypeScript checks the new files
 strictly (`npm run typecheck`, `tsconfig.json`); ESLint with typescript-eslint lints them (`npm run lint`,
 `eslint.config.js`); Prettier formats them (`npm run format`). Node is pinned exactly (`.nvmrc`, `engine-strict` in
-`.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). The site's own JavaScript in `src/` isn't
-linted or formatted yet: P1-09 makes it TypeScript, and Prettier formats it then. The one exception is the engine's
+`.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). Prettier formats the site's own
+JavaScript and CSS in `src/` too (since P1-09c), but not the HTML templates, where whitespace is content, nor
+`src/vendor/`. That JavaScript isn't linted yet: P1-09 makes it TypeScript. The one exception is the engine's
 (`src/engine/`, `src/views/`), which gets ESLint's `no-undef` (P1-08a). Its globals are worked out when ESLint starts,
 from the engine's files and the data file: a helper lifted out of `resolveTurn` that still reads a name from its closure
 fails the lint, not the turn that first calls it.

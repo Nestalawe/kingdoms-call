@@ -1,5 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
-:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0a0601;--ink-light:#1c1203;--crimson:#5a0e0e;--gold:#c8922a;--gold-light:#f0c35a;--forest:#1a3010;--stone:#33270f;--stone-dim:#dccba8;--bg:#0e0a04;}
+:root {
+  --parchment: #f2e8d0;
+  --parchment-dark: #e4d4b0;
+  --ink: #0a0601;
+  --ink-light: #1c1203;
+  --crimson: #5a0e0e;
+  --gold: #c8922a;
+  --gold-light: #f0c35a;
+  --forest: #1a3010;
+  --stone: #33270f;
+  --stone-dim: #dccba8;
+  --bg: #0e0a04;
+}
 /* 2026-09-26b (Toby item 9): second contrast pass — every ink darker again on parchment (--stone
    #4a3a22 → #33270f, about 12:1), the light muted tone on dark panels lighter (#c0ab88 → #dccba8),
    and the hard-coded muted greys/greens/browns in inline styles deepened to match. */
@@ -13,32 +25,137 @@
    those surfaces redefine the variable for their own subtree back to a light --stone-dim. Custom
    properties inherit, so redefining --stone on an ancestor is enough — no call site changes.
    The [style*="…"] selectors match the inline background colours those dark panels already carry. */
-.masthead .sub,.masthead,#spinner,[style*="#20160c"],[style*="#12100b"],[style*="#0d0b07"],[style*="#1a0c0c"]{--stone:var(--stone-dim);}
-.card [style*="background:#20160c"],.card [style*="background:#12100b"]{--stone:var(--stone-dim);}
+.masthead .sub,
+.masthead,
+#spinner,
+[style*='#20160c'],
+[style*='#12100b'],
+[style*='#0d0b07'],
+[style*='#1a0c0c'] {
+  --stone: var(--stone-dim);
+}
+.card [style*='background:#20160c'],
+.card [style*='background:#12100b'] {
+  --stone: var(--stone-dim);
+}
 /* Ghost buttons sit on both surfaces: light-on-dark outside a card, dark-on-parchment inside one. */
-.btn-ghost{color:#e0cfae;border-color:#a8926e;}
-.card .btn-ghost,.game-card .btn-ghost,.player-slot .btn-ghost{color:#33270f;border-color:#4a3a22;}
-.card .btn-ghost:hover,.game-card .btn-ghost:hover,.player-slot .btn-ghost:hover{color:#6d1414;border-color:#6d1414;}
+.btn-ghost {
+  color: #e0cfae;
+  border-color: #a8926e;
+}
+.card .btn-ghost,
+.game-card .btn-ghost,
+.player-slot .btn-ghost {
+  color: #33270f;
+  border-color: #4a3a22;
+}
+.card .btn-ghost:hover,
+.game-card .btn-ghost:hover,
+.player-slot .btn-ghost:hover {
+  color: #6d1414;
+  border-color: #6d1414;
+}
 /* Body copy a shade heavier: at these sizes on parchment it is the weight, not just the hue,
    that carries the contrast. */
-body{-webkit-font-smoothing:antialiased;}
-.card,.game-card,.player-slot,.report-prov,.log-entry{color:var(--ink);--stone:#33270f;}
+body {
+  -webkit-font-smoothing: antialiased;
+}
+.card,
+.game-card,
+.player-slot,
+.report-prov,
+.log-entry {
+  color: var(--ink);
+  --stone: #33270f;
+}
 /* A parchment card re-asserts the dark muted tone for its own subtree, so a card shown inside a
    dark panel (the desktop layout moves the report into the left map column) never inherits the
    light one. A dark panel nested inside a card still wins for itself — the nearest declaring
    ancestor decides, not source order. */
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--ink);min-height:100vh;}
-#page{max-width:860px;margin:0 auto;padding:20px;}
-.masthead{text-align:center;padding:28px 0 20px;border-bottom:1px solid var(--gold);margin-bottom:24px;}
-.masthead h1{font-family:'Cinzel',serif;font-size:2rem;font-weight:800;color:var(--gold-light);letter-spacing:.06em;}
-.masthead .sub{font-family:'Cinzel',serif;font-size:.8rem;color:var(--stone);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;}
-.card{background:var(--parchment);border:1px solid var(--stone);border-radius:3px;padding:22px;margin-bottom:16px;}
-h2{font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson);margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid var(--parchment-dark);}
-h3{font-family:'Cinzel',serif;font-size:.85rem;color:var(--ink-light);margin-bottom:10px;}
-label{font-size:.78rem;color:var(--stone);display:block;margin-bottom:3px;font-family:'Cinzel',serif;letter-spacing:.04em;text-transform:uppercase;}
-input,select,textarea{font-family:'Crimson Text',serif;font-size:.95rem;background:#fdf8ee;border:1px solid var(--stone);color:var(--ink);padding:8px 10px;border-radius:2px;width:100%;margin-bottom:12px;}
-input:focus,select:focus{outline:1px solid var(--gold);}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--bg);
+  font-family: 'Crimson Text', Georgia, serif;
+  color: var(--ink);
+  min-height: 100vh;
+}
+#page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.masthead {
+  text-align: center;
+  padding: 28px 0 20px;
+  border-bottom: 1px solid var(--gold);
+  margin-bottom: 24px;
+}
+.masthead h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--gold-light);
+  letter-spacing: 0.06em;
+}
+.masthead .sub {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  color: var(--stone);
+  margin-top: 4px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.card {
+  background: var(--parchment);
+  border: 1px solid var(--stone);
+  border-radius: 3px;
+  padding: 22px;
+  margin-bottom: 16px;
+}
+h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  color: var(--crimson);
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--parchment-dark);
+}
+h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  color: var(--ink-light);
+  margin-bottom: 10px;
+}
+label {
+  font-size: 0.78rem;
+  color: var(--stone);
+  display: block;
+  margin-bottom: 3px;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+input,
+select,
+textarea {
+  font-family: 'Crimson Text', serif;
+  font-size: 0.95rem;
+  background: #fdf8ee;
+  border: 1px solid var(--stone);
+  color: var(--ink);
+  padding: 8px 10px;
+  border-radius: 2px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+input:focus,
+select:focus {
+  outline: 1px solid var(--gold);
+}
 /* 2026-09-21: a checkbox/radio is a CONTROL, not a text field. The rule above stretched every one
    of them to width:100% with 8px/10px field padding and a 12px bottom margin, so the box swelled
    across its row and shoved its own caption off to the right (or, inside a centred parent, left
@@ -46,71 +163,351 @@ input:focus,select:focus{outline:1px solid var(--gold);}
    that did not were the misaligned ones. Fixed once, here, so no call site has to remember.
    The label rule pins the box and its text hard to the left; inline `display:flex/inline-flex`
    styles on individual labels still win, so existing row layouts are untouched. */
-input[type="checkbox"],input[type="radio"]{width:auto;min-width:0;flex:0 0 auto;margin:0;padding:0;vertical-align:middle;}
-label:has(>input[type="checkbox"]),label:has(>input[type="radio"]){text-align:left;justify-content:flex-start;}
-.btn{font-family:'Cinzel',serif;font-size:.75rem;font-weight:600;padding:9px 18px;border:none;cursor:pointer;border-radius:2px;letter-spacing:.05em;transition:all .15s;display:inline-block;text-align:center;}
-.btn-crimson{background:var(--crimson);color:#fff;border:1px solid #5a1010;}.btn-crimson:hover{background:#9a2c2c;}
-.btn-gold{background:var(--gold);color:var(--ink);border:1px solid #a07020;}.btn-gold:hover{background:var(--gold-light);}
-.btn-forest{background:var(--forest);color:#fff;border:1px solid #1a2e10;}.btn-forest:hover{background:#3d6a28;}
-.btn-ghost{background:transparent;color:var(--stone);border:1px solid var(--stone);}.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
-.btn-full{width:100%;margin-top:4px;}
-.btn:disabled{opacity:.4;cursor:not-allowed;}
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+  min-width: 0;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  vertical-align: middle;
+}
+label:has(> input[type='checkbox']),
+label:has(> input[type='radio']) {
+  text-align: left;
+  justify-content: flex-start;
+}
+.btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 9px 18px;
+  border: none;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+  transition: all 0.15s;
+  display: inline-block;
+  text-align: center;
+}
+.btn-crimson {
+  background: var(--crimson);
+  color: #fff;
+  border: 1px solid #5a1010;
+}
+.btn-crimson:hover {
+  background: #9a2c2c;
+}
+.btn-gold {
+  background: var(--gold);
+  color: var(--ink);
+  border: 1px solid #a07020;
+}
+.btn-gold:hover {
+  background: var(--gold-light);
+}
+.btn-forest {
+  background: var(--forest);
+  color: #fff;
+  border: 1px solid #1a2e10;
+}
+.btn-forest:hover {
+  background: #3d6a28;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--stone);
+  border: 1px solid var(--stone);
+}
+.btn-ghost:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.btn-full {
+  width: 100%;
+  margin-top: 4px;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 /* 2026-09-27 (Toby item 1): TOP TOOLBARS. The header rows sit directly on the near-black page
    background (--bg #0e0a04), where a transparent ghost button and the deep crimson/forest fills
    were all but invisible. Inside a .topbar every button takes a LIGHT fill with dark ink on it —
    each colour class keeps a distinct hue so the row still reads as a set of different actions, but
    every one of them now sits at roughly 10:1 against its own text. Scoped to .topbar so buttons on
    parchment cards elsewhere are untouched. */
-.topbar .btn,.topbar a.btn{border-width:1px;border-style:solid;font-weight:600;}
-.topbar .btn-ghost{background:var(--parchment-dark);color:#241a08;border-color:#8a7550;}
-.topbar .btn-ghost:hover{background:#f4e8cd;color:#6d1414;border-color:#6d1414;}
-.topbar .btn-gold{background:var(--gold-light);color:#241a08;border-color:#a07020;}
-.topbar .btn-gold:hover{background:#f8d989;color:#241a08;}
-.topbar .btn-forest{background:#a8c98f;color:#14240c;border-color:#5d8a44;}
-.topbar .btn-forest:hover{background:#c2dfa9;color:#14240c;}
-.topbar .btn-crimson{background:#e6b2b2;color:#3a0808;border-color:#9a4a4a;}
-.topbar .btn-crimson:hover{background:#f3cccc;color:#3a0808;}
-.tab-bar{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--stone);border-radius:3px;overflow:hidden;}
-.tab-bar button{flex:1;padding:10px;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.05em;background:var(--parchment-dark);color:var(--stone);transition:all .15s;}
-.tab-bar button.active{background:var(--crimson);color:#fff;}
-.msg-error{background:#fde8e8;border:1px solid #c00;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#900;margin-bottom:12px;}
-.msg-success{background:#e8f5e9;border:1px solid #2d7a2d;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a4a10;margin-bottom:12px;}
-.msg-info{background:#e8f4ff;border:1px solid #5a8ab0;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a3a5a;margin-bottom:12px;}
-section{display:none;}.section-active{display:block;}
-#spinner{text-align:center;padding:48px;font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem;letter-spacing:.1em;}
+.topbar .btn,
+.topbar a.btn {
+  border-width: 1px;
+  border-style: solid;
+  font-weight: 600;
+}
+.topbar .btn-ghost {
+  background: var(--parchment-dark);
+  color: #241a08;
+  border-color: #8a7550;
+}
+.topbar .btn-ghost:hover {
+  background: #f4e8cd;
+  color: #6d1414;
+  border-color: #6d1414;
+}
+.topbar .btn-gold {
+  background: var(--gold-light);
+  color: #241a08;
+  border-color: #a07020;
+}
+.topbar .btn-gold:hover {
+  background: #f8d989;
+  color: #241a08;
+}
+.topbar .btn-forest {
+  background: #a8c98f;
+  color: #14240c;
+  border-color: #5d8a44;
+}
+.topbar .btn-forest:hover {
+  background: #c2dfa9;
+  color: #14240c;
+}
+.topbar .btn-crimson {
+  background: #e6b2b2;
+  color: #3a0808;
+  border-color: #9a4a4a;
+}
+.topbar .btn-crimson:hover {
+  background: #f3cccc;
+  color: #3a0808;
+}
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border: 1px solid var(--stone);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.tab-bar button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  background: var(--parchment-dark);
+  color: var(--stone);
+  transition: all 0.15s;
+}
+.tab-bar button.active {
+  background: var(--crimson);
+  color: #fff;
+}
+.msg-error {
+  background: #fde8e8;
+  border: 1px solid #c00;
+  padding: 9px 12px;
+  border-radius: 2px;
+  font-size: 0.85rem;
+  color: #900;
+  margin-bottom: 12px;
+}
+.msg-success {
+  background: #e8f5e9;
+  border: 1px solid #2d7a2d;
+  padding: 9px 12px;
+  border-radius: 2px;
+  font-size: 0.85rem;
+  color: #1a4a10;
+  margin-bottom: 12px;
+}
+.msg-info {
+  background: #e8f4ff;
+  border: 1px solid #5a8ab0;
+  padding: 9px 12px;
+  border-radius: 2px;
+  font-size: 0.85rem;
+  color: #1a3a5a;
+  margin-bottom: 12px;
+}
+section {
+  display: none;
+}
+.section-active {
+  display: block;
+}
+#spinner {
+  text-align: center;
+  padding: 48px;
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+}
 
 /* Game cards */
-.game-card{background:#fdf8ee;border:1px solid var(--stone);border-radius:3px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s;}
-.game-card:hover{border-color:var(--gold);background:#fdf3d8;}
-.game-card .gc-name{font-family:'Cinzel',serif;font-size:.9rem;color:var(--crimson);flex:1;}
-.game-card .gc-meta{font-size:.78rem;color:var(--stone);}
-.game-card .gc-action{flex-shrink:0;}
-.pill{display:inline-block;font-size:.65rem;padding:2px 8px;border-radius:8px;font-family:'Cinzel',serif;font-weight:600;margin-left:6px;}
-.pill-green{background:#d4edda;color:#155724;}
-.pill-amber{background:#fff3cd;color:#856404;}
-.pill-blue{background:#cce5ff;color:#004085;}
-.pill-red{background:#f8d7da;color:#721c24;}
+.game-card {
+  background: #fdf8ee;
+  border: 1px solid var(--stone);
+  border-radius: 3px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.game-card:hover {
+  border-color: var(--gold);
+  background: #fdf3d8;
+}
+.game-card .gc-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  color: var(--crimson);
+  flex: 1;
+}
+.game-card .gc-meta {
+  font-size: 0.78rem;
+  color: var(--stone);
+}
+.game-card .gc-action {
+  flex-shrink: 0;
+}
+.pill {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  margin-left: 6px;
+}
+.pill-green {
+  background: #d4edda;
+  color: #155724;
+}
+.pill-amber {
+  background: #fff3cd;
+  color: #856404;
+}
+.pill-blue {
+  background: #cce5ff;
+  color: #004085;
+}
+.pill-red {
+  background: #f8d7da;
+  color: #721c24;
+}
 
 /* Game detail */
-.detail-header{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
-.detail-header h2{margin:0;border:none;padding:0;flex:1;}
-.player-slot{background:#fdf8ee;border:1px solid var(--parchment-dark);border-radius:2px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
-.player-slot .slot-name{font-family:'Cinzel',serif;font-size:.82rem;color:var(--ink-light);flex:1;}
-.player-slot .slot-status{font-size:.75rem;color:var(--stone);}
-.player-slot .slot-code{font-family:monospace;font-size:.8rem;background:var(--parchment-dark);padding:2px 8px;border-radius:2px;color:var(--stone);}
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.detail-header h2 {
+  margin: 0;
+  border: none;
+  padding: 0;
+  flex: 1;
+}
+.player-slot {
+  background: #fdf8ee;
+  border: 1px solid var(--parchment-dark);
+  border-radius: 2px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.player-slot .slot-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.82rem;
+  color: var(--ink-light);
+  flex: 1;
+}
+.player-slot .slot-status {
+  font-size: 0.75rem;
+  color: var(--stone);
+}
+.player-slot .slot-code {
+  font-family: monospace;
+  font-size: 0.8rem;
+  background: var(--parchment-dark);
+  padding: 2px 8px;
+  border-radius: 2px;
+  color: var(--stone);
+}
 
 /* Orders input for GM */
-.phase-row{display:grid;grid-template-columns:90px 1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:center;}
-.phase-row .phase-name{font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.06em;}
-.phase-row select,.phase-row input{margin-bottom:0;font-size:.82rem;padding:5px 7px;}
+.phase-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.phase-row .phase-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  color: var(--stone);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.phase-row select,
+.phase-row input {
+  margin-bottom: 0;
+  font-size: 0.82rem;
+  padding: 5px 7px;
+}
 
 /* Turn report preview */
-.report-section{margin-bottom:16px;}
-.report-section h4{font-family:'Cinzel',serif;font-size:.78rem;color:var(--ink-light);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;}
-.report-prov{background:#f0f8e8;border:1px solid #8ab070;border-radius:2px;padding:7px 10px;margin-bottom:5px;font-size:.82rem;}
-.report-prov strong{font-family:'Cinzel',serif;color:var(--forest);}
-.log-entry{padding:5px 8px;border-left:3px solid var(--stone);margin-bottom:4px;background:var(--parchment);font-size:.82rem;}
-.log-entry.combat{border-left-color:var(--crimson);}
-.log-entry.explore{border-left-color:var(--forest);}
-.log-entry.hire{border-left-color:var(--gold);}
-.log-entry.system{border-left-color:#666;font-style:italic;color:#2a2419;}
+.report-section {
+  margin-bottom: 16px;
+}
+.report-section h4 {
+  font-family: 'Cinzel', serif;
+  font-size: 0.78rem;
+  color: var(--ink-light);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.report-prov {
+  background: #f0f8e8;
+  border: 1px solid #8ab070;
+  border-radius: 2px;
+  padding: 7px 10px;
+  margin-bottom: 5px;
+  font-size: 0.82rem;
+}
+.report-prov strong {
+  font-family: 'Cinzel', serif;
+  color: var(--forest);
+}
+.log-entry {
+  padding: 5px 8px;
+  border-left: 3px solid var(--stone);
+  margin-bottom: 4px;
+  background: var(--parchment);
+  font-size: 0.82rem;
+}
+.log-entry.combat {
+  border-left-color: var(--crimson);
+}
+.log-entry.explore {
+  border-left-color: var(--forest);
+}
+.log-entry.hire {
+  border-left-color: var(--gold);
+}
+.log-entry.system {
+  border-left-color: #666;
+  font-style: italic;
+  color: #2a2419;
+}

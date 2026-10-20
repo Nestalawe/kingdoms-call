@@ -4,4 +4,4 @@
 // other: once the page is made of modules (P1-09d), the file that runs second could meet it before its line has run. A
 // file that reads nothing runs before every file that reads it (docs/traps.md, "Top-level declaration order").
 // NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
-const BOT_SCHOOLS=['elemental','white','psychic','illusory','necromancy'];
+const BOT_SCHOOLS = ['elemental', 'white', 'psychic', 'illusory', 'necromancy'];
