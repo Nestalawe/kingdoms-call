@@ -1,5 +1,5 @@
 // The last two lines of set-up rules in resolveTurn, named (plan P1-08n), in the set-up's file
-// (src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.js):
+// (src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts):
 // - lastTurnsBattleAndDuelSwordsClearedFromTheMap(G): as the save is read, every province loses the red crossed swords
 //   (a battle) and the purple ones (a duel) the save still holds from last turn, so the map and the reports show only
 //   this turn's fights;

@@ -32,7 +32,7 @@ import {
 } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { compactDeclaration } from '../lib/source.ts';
 
-const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js';
+const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -814,7 +814,7 @@ describe('Grand Design, called directly', () => {
 test('every order of the family is a function of its own, processOrder only calls it, and landHirePreOrders is top-level', () => {
   // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
   const src = compactDeclaration(DISPATCH, 'processOrder');
-  const turn = compactDeclaration('engine/run-turn.js', 'resolveTurn');
+  const turn = compactDeclaration('engine/run-turn.ts', 'resolveTurn');
   for (const [key, name] of [
     ['recruit', 'resolveRecruitArmiesOrder'],
     ['hire', 'resolveHireHeroOrder'],

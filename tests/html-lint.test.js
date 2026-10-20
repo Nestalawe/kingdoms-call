@@ -9,7 +9,7 @@
 //                 the next kcHtml escapes again. Interpolate the kcHtml, or the list, instead;
 //   twice         kcEsc (or an older escaper) inside kcHtml: kcHtml escapes values itself, so the text is escaped twice;
 //   handler       a value inside an on…="…" attribute that isn't kcArg(…) or a constant;
-//   load          a page that builds HTML doesn't import kc-safe.js first: its entry (ui/<page>/page.js) must, so the
+//   load          a page that builds HTML doesn't import kc-safe.ts first: its entry (ui/<page>/page.ts) must, so the
 //                 helpers exist before any of its code runs (each file that uses one imports it too: ESLint's no-undef).
 // Every file must have none (P0-19 converted the pages one pull request at a time; since its last, the check is strict).
 // ALLOWED: reviewed exceptions, each with a reason; an entry that matches nothing fails, so the list can't go stale.
@@ -24,7 +24,7 @@ const SRC=path.join(ROOT,'src'), PUBLIC=path.join(ROOT,'public');
 
 // {file, rule, line: a piece of the statement it is in, in compactCode's layout, reason}
 const ALLOWED=[
-  {file:'src/ui/player/map.js',rule:'concat',line:"_provNameRe=names.length?new RegExp('(?<!",
+  {file:'src/ui/player/map.ts',rule:'concat',line:"_provNameRe=names.length?new RegExp('(?<!",
     reason:"a RegExp's source, not HTML: '(?<!' is a lookbehind (the report's province names become map links as DOM nodes)"},
 ];
 
@@ -137,9 +137,17 @@ function check(code,sourceType){
 // Every file's scripts, with the line each starts on and how each parses. A page is read by jsdom's HTML parser
 // (nothing runs), so its inline scripts are found exactly as a browser finds them; a module script (src=) is a file of
 // its own, read below.
+// A module of src/ is TypeScript (P1-09e): read as it is while it has no types (every file the day it was renamed), or
+// with its types stripped once it has some (the lines then are TypeScript's reprint's).
+const ts=require('typescript');
+function asJavaScript(code){
+  try{ acorn.parse(code,{ecmaVersion:'latest',sourceType:'module'}); return code; }
+  catch(e){ return ts.transpileModule(code,{compilerOptions:{target:ts.ScriptTarget.ESNext,module:ts.ModuleKind.ESNext,alwaysStrict:false}}).outputText; }
+}
 function scriptsOf(file){
   const src=fs.readFileSync(file,'utf8');
-  if(file.endsWith('.js')) return {src,parts:[{code:src,line:1,sourceType:file.startsWith(SRC)?'module':'script'}]};
+  if(file.endsWith('.ts')) return {src,parts:[{code:asJavaScript(src),line:1,sourceType:'module'}]};
+  if(file.endsWith('.js')) return {src,parts:[{code:src,line:1,sourceType:'script'}]};
   const dom=new JSDOM(src,{includeNodeLocations:true});
   const scripts=[...dom.window.document.querySelectorAll('script')];
   const parts=scripts.filter(e=>!e.hasAttribute('src')).map(e=>({code:e.textContent,line:dom.nodeLocation(e).startTag.endLine,sourceType:'script'}));
@@ -151,9 +159,11 @@ const fail=m=>{ fails++; console.log('FAIL '+m); };
 const ok=m=>console.log('ok   '+m);
 const usedAllowed=new Set();
 const files=[
-  ...filesUnder(SRC).filter(f=>/\.js$/.test(f)||/^[^/]+\.html$/.test(f)).map(f=>'src/'+f),
+  ...filesUnder(SRC).filter(f=>(/\.ts$/.test(f)&&!/\.d\.ts$/.test(f))||/^[^/]+\.html$/.test(f)).map(f=>'src/'+f),
   ...filesUnder(PUBLIC).filter(f=>/^[^/]+\.js$/.test(f)).map(f=>'public/'+f),
 ];
+// Every module of every page is read: so a rename (P1-09e's .js to .ts) can't leave the modules out unnoticed.
+for(const page of pageNames()) for(const m of pageModules(page)) if(!files.includes('src/'+m)) fail(`${page}: its module ${m} isn't read`);
 for(const f of files){
   const {src,parts}=scriptsOf(path.join(ROOT,f));
   const lines=src.split('\n');
@@ -173,7 +183,7 @@ for(const f of files){
   } else ok(`${f}: every piece of HTML goes through kcHtml / kcEsc`);
 
 }
-// load: kc-safe.js first, on every page whose code uses the helpers or builds HTML
+// load: kc-safe.ts first, on every page whose code uses the helpers or builds HTML
 for(const page of pageNames()){
   const modules=pageEntries(page).modules;
   const code=pageModules(page).map(f=>fs.readFileSync(path.join(SRC,f),'utf8')).join('\n');
@@ -181,9 +191,9 @@ for(const page of pageNames()){
   const buildsHtml=/\.(innerHTML|outerHTML)\s*\+?=|insertAdjacentHTML|document\.write/.test(code);
   if(!usesHelpers&&!buildsHtml) continue;
   const first=modules.length===1?importsOf(modules[0])[0]:undefined;
-  if(first!=='ui/shared/kc-safe.js')
-    fail(`${page}: builds HTML but its entry's first import is ${first?'"'+first+'"':'missing'}, not "ui/shared/kc-safe.js"`);
-  else ok(`${page}: imports kc-safe.js first`);
+  if(first!=='ui/shared/kc-safe.ts')
+    fail(`${page}: builds HTML but its entry's first import is ${first?'"'+first+'"':'missing'}, not "ui/shared/kc-safe.ts"`);
+  else ok(`${page}: imports kc-safe.ts first`);
 }
 ALLOWED.forEach((a,i)=>{ if(!usedAllowed.has(i)) fail(`ALLOWED entry ${i} (${a.file}, ${a.rule}, "${a.line}") matches nothing: take it out`); });
 console.log(fails?`\nFAILURES: ${fails}`:'\n0 failures');

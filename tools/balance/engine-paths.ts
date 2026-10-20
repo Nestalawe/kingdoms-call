@@ -33,6 +33,9 @@ export const ENGINE_PATHS: readonly string[] = [
   'src/*.html',
   'public/**',
   'tools/build.ts',
+  // TypeScript's settings: Vite reads them as it strips the types from src/'s .ts files (P1-09e), and some change the
+  // code it writes (useDefineForClassFields, for one).
+  'tsconfig.json',
   // Which files make the GM page: the runner checks each is an engine path (run.ts's pageSources).
   'tools/pages.ts',
   // The matrix itself, its baselines, the named scenarios, and the test helpers they boot the page with.

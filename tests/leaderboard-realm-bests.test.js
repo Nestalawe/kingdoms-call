@@ -7,9 +7,9 @@
 // of the real leaderboard from the rows it built. Made-up realms and heroes.
 const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {sourceFrom}=require('./lib/source.ts'); const {leaderboardStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-// The block is cut out of src/ui/gm/hall-of-fame.js by its syntax tree (tests/lib/source.ts): its declarations from
+// The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
-const src=sourceFrom('ui/gm/hall-of-fame.js','_LB_SEA','buildGameRecords');
+const src=sourceFrom('ui/gm/hall-of-fame.ts','_LB_SEA','buildGameRecords');
 const ctx={console, KC_LB_V:3, KC_BUILD_STAMP:'test', currentUser:{id:'gm-1'}, gameMetaOf:()=>null,
   KC_UNIT_CLASS:{sea:[],aerial:[],creature:[],monster:[],missile:[],cavalry:[],flying:[],carrier:[],primalSea:[],garrison:[],lightFoot:[],tamedFlyer:[]},
   UNIT_BASE_STR:{Levies:4}, UNIT_Q_MULT:{Average:2}, GUARDIAN_POWER_RANK:{'':0},

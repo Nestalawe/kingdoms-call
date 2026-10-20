@@ -16,7 +16,7 @@
 // scenario/bot-diplomacy-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn) and reads the realms'
 // declarations at two moments: once the bots have declared before the first phase (`early`) and just before diplomacy
 // is resolved (`late`); unit/bot-diplomacy-called-directly.test.ts calls the function once, as resolveTurn calls it
-// first. Where the bots' strength reckoning or war assessment decides (src/engine/bots/war.js, not part of this
+// first. Where the bots' strength reckoning or war assessment decides (src/engine/bots/war.ts, not part of this
 // function), a case stands it in for the turn's length by a fixed answer (`instead`), recording what it is handed.
 // Every outcome is certain: every case fixes the dice for the whole turn (LANDS).
 import vm from 'node:vm';
@@ -42,7 +42,7 @@ type Raw = Record<string, unknown>;
 type Fn = (...a: unknown[]) => unknown;
 /** The realms' declarations: realm index → (realm index → 'treat' or 'enemy'). */
 export type Declarations = Record<string, Record<string, string>>;
-/** The helpers of src/engine/bots/war.js a case may stand in for the turn's length. */
+/** The helpers of src/engine/bots/war.ts a case may stand in for the turn's length. */
 export const HELPERS = ['botWarAssess', 'botOwnPower', 'botRivalPower', 'botAlignFriendly'] as const;
 export type Helper = (typeof HELPERS)[number];
 /** A helper stood in: handed which declarations it is called for, then the call's arguments but the state. */

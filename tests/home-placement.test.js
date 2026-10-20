@@ -1,10 +1,10 @@
-// Home placement: the stretch of generateNewGame (src/engine/world/generate.js) that picks each king's home cell, cut
+// Home placement: the stretch of generateNewGame (src/engine/world/generate.ts) that picks each king's home cell, cut
 // out by its syntax tree (tests/lib/source.ts: the statements from the one declaring cellIdRC through the one declaring
 // cellDistRC, and from eligibleCells through homeCells) and run on its own, many times a map size. Until plan P1-09a
 // the two stretches were cut out of the built GM portal between exact lines.
 const {statementsBetween}=require('./lib/source.ts');
-const helpers=statementsBetween('engine/world/generate.js','generateNewGame','cellIdRC','cellDistRC');
-const place=statementsBetween('engine/world/generate.js','generateNewGame','eligibleCells','homeCells');
+const helpers=statementsBetween('engine/world/generate.ts','generateNewGame','cellIdRC','cellDistRC');
+const place=statementsBetween('engine/world/generate.ts','generateNewGame','eligibleCells','homeCells');
 const body=`
 return (function(cols,rows,nPlayers){
   const setupPlayers=new Array(nPlayers).fill(0).map((_,i)=>({id:i}));
@@ -12,7 +12,7 @@ ${helpers}
 ${place}
   return {homeCells,homeMin,cellDistRC};
 });`;
-// The cut-out code draws its dice from kcRng (src/engine/rng.js, not in the cut): here, this process's seeded Math.random.
+// The cut-out code draws its dice from kcRng (src/engine/rng.ts, not in the cut): here, this process's seeded Math.random.
 const make=new Function('kcRng',body)(()=>Math.random());
 
 const sizes={p2:[8,5,2],p3:[8,7,3],p4:[9,7,4],p5:[12,7,5],p6:[15,7,6],p7:[16,7,7],p8:[17,8,8],p9:[16,11,9],p10:[16,11,10]};

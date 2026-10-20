@@ -1,6 +1,6 @@
 // A beaten force never falls back into a Flooded province, and onto sea laid dry by Part Sea only when no ordinary land
 // is open to it (2026-10-08, item 10; ruling R-084): foot, flyers, and the naval split's march inland.
-// Level 1 (unit): retreatOptions, bestRetreat and navalSplitRetreat (src/engine/units/sea-lift-stranding-and-retreats.js,
+// Level 1 (unit): retreatOptions, bestRetreat and navalSplitRetreat (src/engine/units/sea-lift-stranding-and-retreats.ts,
 // plan P1-08b) are called directly on a world the engine makes in the bare vm (tests/lib/engine.ts), each case staged
 // on it. It was tests/retreat-dry-ground.test.js, which ran one turn on the GM portal for the anchor hook to hand the
 // functions back; the checks are the same.

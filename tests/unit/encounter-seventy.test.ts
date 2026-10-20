@@ -1,7 +1,7 @@
 // 2026-10-13 (item 11): Encounter Character corners its quarry at 70% base (was 50%), +5% per level of the hunter's
 // Spy, −5% per level of the quarry's, clamped 5–100%; a quarry of one's own realm is always met. The rulebook (twice)
 // and the order form's hint say the same.
-// Level 1 (unit): pursuitCatchChance (src/engine/heroes/pursuits-and-the-catch-roll.js, plan P1-08i3) is called
+// Level 1 (unit): pursuitCatchChance (src/engine/heroes/pursuits-and-the-catch-roll.ts, plan P1-08i3) is called
 // directly in the bare vm (tests/lib/engine.ts); the words are read from the built pages. It was
 // tests/encounter-seventy.test.js, which ran one turn on the GM portal for the "  // 4. Run all 5 phases" hook to hand
 // pursuitCatchChance back; the checks are the same.

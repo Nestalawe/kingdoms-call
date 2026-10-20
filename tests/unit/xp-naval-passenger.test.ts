@@ -1,7 +1,7 @@
 // 2026-10-14 (batch item 9): a hero learns Naval at sea only when leading ships or sea beasts. A passenger (a hero
 // carried in another's hulls, or riding out by sea with no fleet of his own) learns nothing from the voyage.
 // Level 1: every voyage roll (a sea move, a Defend ride-out by sea, a reinforcement or a pursuit step at sea) goes
-// through rollNavalVoyage (src/engine/heroes/experience-skill-rises-and-earned-hp.js, plan P1-08c), called directly in
+// through rollNavalVoyage (src/engine/heroes/experience-skill-rises-and-earned-hp.ts, plan P1-08c), called directly in
 // the bare vm (tests/lib/engine.ts); every experience roll is recorded by a wrapper around the top-level trySkillGain.
 // Level 0: no voyage path calls trySkillGain for Naval directly any more (only battles, won or lost, and the Naval 7/9
 // orders, which need a fleet, do): every such call, as the function it is in and its arguments, is one of a known list.
@@ -26,14 +26,22 @@ const NAVAL_ROLLS = [
   "resolveRaidTheCoastOrder(turnContext,c,'naval',SKILLGAIN_STD)",
   "rollNavalVoyage(turnContext,c,'naval',base)",
 ];
-test('no voyage rolls Naval outside rollNavalVoyage', () => {
-  const rolls = pageScripts('kingdoms-call-gm-portal.html')
-    .flatMap((f) => callsTo(f, 'trySkillGain'))
-    .filter((c) => c.args.slice(2, 3).some((a) => a.includes("'naval'")))
-    .map((c) => `${String(c.within)}(${c.args.join(',')})`)
-    .sort();
-  expect(rolls).toEqual(NAVAL_ROLLS);
-});
+// It reads every file of the GM page by its syntax tree: under a second here, 3 to 5 s on a CI runner (2.2 s on #169's,
+// 4.9 s on #171's), so it has time enough of its own, as the source test's every-file checks do (Vitest's default, 5 s,
+// failed on a slow runner).
+const EVERY_FILE_MS = 60_000;
+test(
+  'no voyage rolls Naval outside rollNavalVoyage',
+  () => {
+    const rolls = pageScripts('kingdoms-call-gm-portal.html')
+      .flatMap((f) => callsTo(f, 'trySkillGain'))
+      .filter((c) => c.args.slice(2, 3).some((a) => a.includes("'naval'")))
+      .map((c) => `${String(c.within)}(${c.args.join(',')})`)
+      .sort();
+    expect(rolls).toEqual(NAVAL_ROLLS);
+  },
+  EVERY_FILE_MS,
+);
 
 const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);

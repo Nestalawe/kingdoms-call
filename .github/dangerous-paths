@@ -18,7 +18,7 @@ public/vendor/**
 public/kc-config.js
 
 # The escaping helper. Uncomment when P0-19 creates it.
-src/ui/shared/kc-safe.js
+src/ui/shared/kc-safe.ts
 
 # Dependencies and the scripts that run the tests (from P1-01a).
 package.json

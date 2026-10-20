@@ -4,9 +4,9 @@
 // path (writeTurnTelemetry → writeGameRecord), so it must never throw and must always produce a
 // JSON-serialisable row.
 const fs=require('fs'), vm=require('vm'); const {sourceFrom}=require('./lib/source.ts');
-// The block is cut out of src/ui/gm/hall-of-fame.js by its syntax tree (tests/lib/source.ts): its declarations from
+// The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
-const src=sourceFrom('ui/gm/hall-of-fame.js','_LB_SEA','buildGameRecords');
+const src=sourceFrom('ui/gm/hall-of-fame.ts','_LB_SEA','buildGameRecords');
 
 const ctx={
   console,
@@ -19,7 +19,7 @@ const ctx={
   SKILL_LABELS:{melee:'Melee',archery:'Archery',tactical:'Tactical',white:'White Magic',thief:'Thief'},
   TITLE_DEFS:[{key:'throne',name:'The Throne'},{key:'sword',name:'Sword of the Realm'},{key:'vault',name:'Vaultkeeper'}],
   KC_BUILD_STAMP:'test', KC_LB_V:1,
-  kcClock:Object.assign(()=>Date.now(),{date:()=>new Date()}),   // the engine's clock (src/engine/clock.js), not in the slice
+  kcClock:Object.assign(()=>Date.now(),{date:()=>new Date()}),   // the engine's clock (src/engine/clock.ts), not in the slice
   currentUser:{id:'gm-1'},
   gameMetaOf:()=>null,
   computeStandings:(gs)=>({titles:{throne:{playerIndex:0,merit:42,charId:1},sword:{playerIndex:1,merit:17,charId:2}}}),

@@ -55,7 +55,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const read=f=>fs.readFileSync(sitePath(f),'utf8');
   const ppCode=compactPage('kingdoms-call-player-portal.html'), pp=pageSource('kingdoms-call-player-portal.html'), gm=compactPage('kingdoms-call-gm-portal.html');
   const rules=read('kingdoms-call-rules.html'), intro=read('kingdoms-call-rules-intro.html');
-  const data=fs.readFileSync(require('path').join(SRC,'content','kingdoms-call-data.js'),'utf8'), dataCode=compactOf('content/kingdoms-call-data.js');
+  const data=fs.readFileSync(require('path').join(SRC,'content','kingdoms-call-data.ts'),'utf8'), dataCode=compactOf('content/kingdoms-call-data.ts');
   const listOf=(src,re)=>(re.exec(src)||['',''])[1];
   ok(!/Awaken the Wild|Call from the Pit/.test(listOf(ppCode,/const ACTIONS *= *\[([\s\S]*?)\];/)),"the player portal's order list offers neither order");
   ok(!/Awaken the Wild|Call from the Pit/.test(listOf(ppCode,/const ALIGN_ACTIONS=\{([^}]*)\}/)),"the player portal's alignment orders no longer name them");

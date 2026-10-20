@@ -1,6 +1,6 @@
 // Stalled battles, a host gained in a province, war fronts, enemy stand-offs and the max-HP resync (lifted out of
-// resolveTurn in plan P1-08i3: src/engine/battle/stalled-battles-and-beaten-guards.js, hosts-gained-in-a-province.js,
-// war-fronts-and-enemy-stand-offs.js and syncAllMaxHp in heroes/experience-skill-rises-and-earned-hp.js), called
+// resolveTurn in plan P1-08i3: src/engine/battle/stalled-battles-and-beaten-guards.ts, hosts-gained-in-a-province.ts,
+// war-fronts-and-enemy-stand-offs.ts and syncAllMaxHp in heroes/experience-skill-rises-and-earned-hp.ts), called
 // directly in the bare vm (tests/lib/engine.ts) on the middle of a bot world cleared for each case
 // (tests/lib/middle-of-a-bot-world.ts): realms 0 and 1 at war, 0 and 2 allied, 1 and 2 at peace.
 // - erodeGuardSurvivors: each survivor of a beaten guard flees as mercenaries, loses heart and drops a grade (a Green

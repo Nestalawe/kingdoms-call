@@ -4,7 +4,7 @@
 // Only the Cast order logged a cast, so pre-battle and duel magic never counted.
 // Scenario (level 2): the casts are made inside the turn's battle code, played in the engine's bare vm
 // (tests/lib/scenario-in-the-vm.ts); the turn's statistics collector is what buildReports hands the shell for its
-// telemetry. The telemetry writer (src/db/telemetry.js, the GM page's) is cut out by its syntax tree
+// telemetry. The telemetry writer (src/db/telemetry.ts, the GM page's) is cut out by its syntax tree
 // (tests/lib/source.ts) and run there, on a stand-in database. Until plan P1-09a the turn was played on the GM portal,
 // a code-anchor hook handed the collector back, and the writer ran on the page. Made-up names.
 const vm=require('vm');
@@ -46,8 +46,8 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(Array.isArray(snap.fallen)&&snap.fallen.some(c=>c.id===victim.id&&c.skills.melee===7),'a hero who fell this turn is in his realm\'s snapshot, with his skills');
   ok(!snap.characters.some(c=>c.id===victim.id),'…and not among the living');
   const WR=[];
-  vm.runInContext([sourceOf('db/game-meta.js',['KC_TEL_V','_kcHasTel','_kcTelLastErr']),sourceOf('ui/gm/startup.js',['KC_BUILD_STAMP']),
-    sourceOf('db/telemetry.js',['telRankOrder','telBotDifficultyOf','telOutcomesFor','writeTurnTelemetry']),'_kcHasTel=true;'].join('\n'),sc.engine);
+  vm.runInContext([sourceOf('db/game-meta.ts',['KC_TEL_V','_kcHasTel','_kcTelLastErr']),sourceOf('ui/gm/startup.ts',['KC_BUILD_STAMP']),
+    sourceOf('db/telemetry.ts',['telRankOrder','telBotDifficultyOf','telOutcomesFor','writeTurnTelemetry']),'_kcHasTel=true;'].join('\n'),sc.engine);
   sc.engine.sb={from:(t)=>{ const o={upsert(v){ WR.push({t,v}); return Promise.resolve({error:null}); }}; return o; }};
   await W.writeTurnTelemetry(gs,{id:'gs'},[{player_index:0,user_id:'u0'},{player_index:1,user_id:'u1'}],{pre:{},orders:{}},1);
   const rows=(WR.find(x=>x.t==='turn_events')||{}).v||[];

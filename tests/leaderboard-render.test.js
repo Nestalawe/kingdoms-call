@@ -7,9 +7,9 @@ const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom}=re
 const LB_FILE=process.argv[2]||sitePath('kingdoms-call-leaderboard.html');
 
 // ── 1. real builder, stub engine tables ────────────────────────────────────────────────────────
-// The block is cut out of src/ui/gm/hall-of-fame.js by its syntax tree (tests/lib/source.ts): its declarations from
+// The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
-const src=sourceFrom('ui/gm/hall-of-fame.js','_LB_SEA','buildGameRecords');
+const src=sourceFrom('ui/gm/hall-of-fame.ts','_LB_SEA','buildGameRecords');
 const ctx={console, KC_LB_V:1, KC_BUILD_STAMP:'test', currentUser:{id:'gm-1'}, gameMetaOf:()=>null,
   KC_UNIT_CLASS:{sea:['Galleons','Whale Cohort'],aerial:['Rocs','Dragons'],creature:['Rocs'],monster:['Dragons'],
     missile:['Archers'],cavalry:['Heavy Horse'],flying:['Rocs'],carrier:['Galleons'],primalSea:['Whale Cohort'],

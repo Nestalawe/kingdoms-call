@@ -1,6 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
-// tests on the hand-written database stand-in, tests on the engine's vm loader) and fails if
+// tests on the hand-written database stand-in, tests on the engine's vm loader, ESLint's warnings on the site's code)
+// and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -81,6 +82,26 @@ export function allowlistLength(file: string, name: string): number {
   throw new Error(`${file}: no "const ${name} = [...]" found. The ratchet counts its entries: update ALLOWLISTS.`);
 }
 
+// The site's lint warnings (plan P1-09, Decision 15): what ESLint's recommended rules and typescript-eslint's strict
+// set found in src/ as it became TypeScript are warnings (eslint.config.js), counted here so they only fall. ESLint runs
+// in a child process (its API is asynchronous; this count isn't), with its own cache.
+export function eslintWarnings(): number {
+  const bin = path.join(ROOT, 'node_modules', '.bin', 'eslint');
+  const cache = path.join(ROOT, 'node_modules', '.cache', 'kc', 'eslint-ratchet');
+  const args = ['--format', 'json', '--cache', '--cache-location', cache, 'src'];
+  let out: string;
+  try {
+    out = execFileSync(bin, args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  } catch (e) {
+    // ESLint exits 1 when it finds an error: its report is still on stdout (the lint step fails on the error itself).
+    const stdout = (e as { stdout?: unknown }).stdout;
+    if (typeof stdout !== 'string' || !stdout.startsWith('[')) throw e;
+    out = stdout;
+  }
+  const results = JSON.parse(out) as { warningCount: number }[];
+  return results.reduce((n, r) => n + r.warningCount, 0);
+}
+
 export function measure(): Counts {
   const all = files();
   const code = all.filter((f) => CODE.test(f));
@@ -96,15 +117,16 @@ export function measure(): Counts {
     ...counts,
     allowlistEntries: ALLOWLISTS.reduce((n, a) => n + allowlistLength(a.file, a.name), 0),
     javascriptFiles: all.filter((f) => /\.(js|mjs|cjs)$/.test(f) && !/^(src|public)\//.test(f)).length,
-    // The site's own code, inline in its pages until P1-05 split it into src/ (so it wasn't counted before then). The
-    // module switch (P1-09) makes src/'s TypeScript; public/ holds the two classic scripts copied as they are
-    // (kc-config.js, which staging overwrites, and the staging footer: P1-09d moved them from src/). The supabase-js
-    // copy in public/vendor/ (src/vendor/ until P1-09d) isn't the site's code.
+    // The site's own code, inline in its pages until P1-05 split it into src/ (so it wasn't counted before then). Since
+    // P1-09e src/ is all TypeScript, so what is left is public/'s two classic scripts, copied as they are (kc-config.js,
+    // which staging overwrites, and the staging footer: P1-09d moved them from src/), counted so that no other joins
+    // them. The supabase-js copy in public/vendor/ (src/vendor/ until P1-09d) isn't the site's code.
     sourceJavascriptFiles: all.filter(
       (f) => /\.js$/.test(f) && /^(src|public)\//.test(f) && !/^(src|public)\/vendor\//.test(f),
     ).length,
     quarantinedTests: all.filter((f) => f.startsWith('tests/quarantine/') && /\.test\.[jt]s$/.test(f)).length,
     vmLoaderTests: vmLoaderTests(all),
+    eslintWarnings: eslintWarnings(),
   };
 }
 

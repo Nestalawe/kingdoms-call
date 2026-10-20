@@ -1,4 +1,4 @@
-// kc-safe.js, the one way a page builds HTML from data (P0-19). Unit level: the file runs on its own in a fresh context,
+// kc-safe.ts, the one way a page builds HTML from data (P0-19). Unit level: the file runs on its own in a fresh context,
 // as a page loads it, and each helper is checked on its own:
 //   - kcEsc: the five characters that matter in HTML text and quoted attributes, and nothing else; null and undefined are '';
 //   - kcHtml: every value is escaped, unless it is kcHtml or kcRaw; lists are their items in order; nesting never escapes
@@ -6,7 +6,7 @@
 //   - kcRaw: passes markup through, and only that;
 //   - kcArg: a value inside an on…="…" handler reaches the handler exactly as given, quotes and all (checked by running it);
 //   - only the four helpers (and the class behind them) are added to the page's scope.
-// The file is read from src/ (src/ui/shared/kc-safe.js) as a classic script, as a page runs it: tests/lib/source.ts's
+// The file is read from src/ (src/ui/shared/kc-safe.ts) as a classic script, as a page runs it: tests/lib/source.ts's
 // scriptOf takes any `export` and types out once it is a module. (Until plan P1-09a it was read from site/.)
 const fs=require('fs'); const vm=require('vm');
 const {scriptOf}=require('./lib/source.ts');
@@ -17,8 +17,8 @@ const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log
 const eq=(a,b,m)=>check(a===b,m+(a===b?'':`: got ${JSON.stringify(a)}, expected ${JSON.stringify(b)}`));
 
 let src;
-try{ src=scriptOf('ui/shared/kc-safe.js'); }
-catch(e){ console.log('FAIL src/ui/shared/kc-safe.js is missing or does not parse: '+e.message); process.exit(1); }
+try{ src=scriptOf('ui/shared/kc-safe.ts'); }
+catch(e){ console.log('FAIL src/ui/shared/kc-safe.ts is missing or does not parse: '+e.message); process.exit(1); }
 
 const ctx={}; vm.createContext(ctx);
 const before=new Set(Object.getOwnPropertyNames(ctx));

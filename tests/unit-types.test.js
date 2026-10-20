@@ -1,5 +1,5 @@
 // 2026-10-11 (Toby, the army roster work) — Unit types. Every army unit has ONE of five types —
-// infantry, ranged, cavalry, flyer, naval — in the shared table KC_UNIT_TYPE (kingdoms-call-data.js).
+// infantry, ranged, cavalry, flyer, naval — in the shared table KC_UNIT_TYPE (kingdoms-call-data.ts).
 // The engine's rules still run on the KC_UNIT_CLASS lists (their order is data); this table is the
 // vocabulary the portals, rulebooks and reports use, and the battle-line work builds on it.
 // Level 1 (unit). A lower level can't do it: the agreement between the type table and the class lists
@@ -20,10 +20,10 @@ const TYPES=['infantry','ranged','cavalry','flyer','naval'];
 (async()=>{
   // 1–3: the data file on its own.
   // the data file from src/, run as a script (tests/lib/source.ts; until plan P1-09a it was read from site/)
-  const src=scriptOf('content/kingdoms-call-data.js');
+  const src=scriptOf('content/kingdoms-call-data.ts');
   const D=vm.runInNewContext(src+'\n;({T:(typeof KC_UNIT_TYPE==="undefined")?undefined:KC_UNIT_TYPE, S:KC_UNIT_BASE_STR, C:KC_UNIT_CLASS})',{});
   const T=D.T||{}, S=D.S||{}, C=D.C||{};
-  ok(D.T&&typeof D.T==='object'&&Object.keys(T).length>0,'KC_UNIT_TYPE is declared in kingdoms-call-data.js and is not empty');
+  ok(D.T&&typeof D.T==='object'&&Object.keys(T).length>0,'KC_UNIT_TYPE is declared in kingdoms-call-data.ts and is not empty');
   ok(Object.keys(S).length>20&&Array.isArray(C.cavalry)&&C.cavalry.length>0,'KC_UNIT_BASE_STR and KC_UNIT_CLASS were read (non-empty)');
   const bad=Object.entries(T).filter(([,v])=>!TYPES.includes(v)).map(([k,v])=>`${k}: ${v}`);
   ok(bad.length===0,'every type is one of '+TYPES.join(', ')+(bad.length?' — not: '+bad.join('; '):''));

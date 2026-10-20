@@ -8,13 +8,13 @@
 //   provinces  Thornmere   3,   5,   6    Veyholt   4,   4,  2
 //   turn 2     Thornmere fights 2, wins 2, kills 5, loses 1; Veyholt fights 2, wins 0, kills 1, loses 5
 const fs=require('fs'), vm=require('vm'); const {sourceFrom}=require('./lib/source.ts');
-// The block is cut out of src/ui/gm/hall-of-fame.js by its syntax tree (tests/lib/source.ts): its declarations from
+// The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
-const src=sourceFrom('ui/gm/hall-of-fame.js','_LB_SEA','buildGameRecords');
+const src=sourceFrom('ui/gm/hall-of-fame.ts','_LB_SEA','buildGameRecords');
 
 const ctx={console, KC_UNIT_CLASS:{sea:[],aerial:[],creature:[],monster:[],missile:[],cavalry:[],flying:[],carrier:[],primalSea:[],garrison:[],lightFoot:[],tamedFlyer:[]},
   UNIT_BASE_STR:{}, UNIT_Q_MULT:{}, GUARDIAN_POWER_RANK:{}, SKILL_LABELS:{}, TITLE_DEFS:[], KC_BUILD_STAMP:'test', KC_LB_V:1,
-  kcClock:Object.assign(()=>Date.now(),{date:()=>new Date()}),   // the engine's clock (src/engine/clock.js), not in the slice
+  kcClock:Object.assign(()=>Date.now(),{date:()=>new Date()}),   // the engine's clock (src/engine/clock.ts), not in the slice
   currentUser:{id:'gm-1'}, gameMetaOf:()=>null, computeStandings:()=>({titles:{}})};
 vm.createContext(ctx); vm.runInContext(src,ctx);
 

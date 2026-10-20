@@ -4,7 +4,7 @@
 // worked out: the engine's move pools (computeMovePoolMax), the Naval helper (navalSpeedBonus), the turn report's
 // per-unit move rates (buildTurnReport, which the orders form shows) and the bots' reach (botLandReach, botSeaReach);
 // and no page still quotes the fast-column ladder.
-// Level 1 (unit): computeMovePoolMax (src/engine/units/movement-pools.js, plan P1-08b) and the others are called
+// Level 1 (unit): computeMovePoolMax (src/engine/units/movement-pools.ts, plan P1-08b) and the others are called
 // directly on a world the engine makes in the bare vm (tests/lib/engine.ts); the words are read from the built pages.
 // It was tests/march-one-rate.test.js, which ran one turn on the GM portal for the anchor hook to hand
 // computeMovePoolMax back; the checks are the same.

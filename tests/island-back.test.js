@@ -32,8 +32,8 @@ const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
   ok(W.eval("typeof KC_CARRIER_BERTHS==='undefined'||Object.keys(KC_CARRIER_BERTHS).every(t=>KC_UNIT_CLASS.carrier.includes(t))"),'every unit with a berth count is a carrier');
   const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8');
   const listed=(file,name)=>initializersOf(file,name).some(v=>{ const list=new Function('return '+v)(); return Array.isArray(list)&&list.includes('KC_CARRIER_BERTHS'); });
-  ok(listed('ui/gm/startup.js','KC_SHARED_TABLE_NAMES'),"KC_CARRIER_BERTHS is in the GM portal's KC_SHARED_TABLE_NAMES (the data-file guard)");
-  ok(listed('ui/player/startup.js','need'),"KC_CARRIER_BERTHS is in the player portal's list of needed tables");
+  ok(listed('ui/gm/startup.ts','KC_SHARED_TABLE_NAMES'),"KC_CARRIER_BERTHS is in the GM portal's KC_SHARED_TABLE_NAMES (the data-file guard)");
+  ok(listed('ui/player/startup.ts','need'),"KC_CARRIER_BERTHS is in the player portal's list of needed tables");
 
   // ── The engine's lift ──
   const u=(type,n)=>Array.from({length:n||1},(_,i)=>({type,quality:'Average',unitName:`${type} ${i+1}`}));
@@ -84,7 +84,7 @@ const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
   ok(/Great Turtles/.test(row('Naval','Warships'))&&/two/.test(row('Naval','Warships')),`the rulebook's Naval kinds-of-unit row names the Great Turtles among the ferries, two units a hull — "${row('Naval','Warships').slice(0,160)}…"`);
   ok(/Island Back/.test(row('Great Turtles'))&&/two/.test(row('Great Turtles'))&&!/carries? nothing|carry nothing/.test(row('Great Turtles')),`the turtle row names Island Back and no longer says they carry nothing — "${row('Great Turtles').slice(-200)}"`);
   ok(/turtles/i.test(row('Sea-beasts'))&&/(carr(y|ies)|ferr(y|ies)) /.test(row('Sea-beasts')),"the Sea-beasts row makes the turtles the exception to 'they carry nothing'");
-  const blurb=(entriesOf('ui/player/briefing-and-submit.js','UNIT_ABILITIES').find(e=>e.key==='Great Turtles')||{value:''}).value;
+  const blurb=(entriesOf('ui/player/briefing-and-submit.ts','UNIT_ABILITIES').find(e=>e.key==='Great Turtles')||{value:''}).value;
   ok(/Island Back/.test(blurb)&&/two/.test(blurb)&&!/carry nothing/.test(blurb),`the player portal's turtle blurb names Island Back — "${blurb.slice(0,140)}…"`);
   const turtle=JSON.stringify(W.eval("PRIMAL_ARMY_DEFS_P['Great Turtles']")||{});
   ok(/Island Back/.test(turtle)&&!/carry nothing/.test(turtle),"the data file's turtle description names Island Back and no longer says they carry nothing");

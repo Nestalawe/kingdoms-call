@@ -2,7 +2,7 @@
 // Node vm, loaded the one way (tests/lib/engine.ts). The test plays a whole game of the balance matrix there
 // (scripted-05: realm 0 is a player's, on the matrix's scripted orders, and the other three are bots), from world
 // generation to the end, each turn's state the next turn's input and every turn building its reports, as the shell
-// plays it on the page (src/ui/gm/turn-shell.js: each turn's seed drawn from the dice, the time of the run stamped).
+// plays it on the page (src/ui/gm/turn-shell.ts: each turn's seed drawn from the dice, the time of the run stamped).
 // Then it plants faults in a copy of src/.
 // - It is the matrix's own game (plan P1-09b): each turn's state, GM log and report hash as the committed baseline holds
 //   them (tests/balance/baseline/matrix.json), words included. So the engine alone and the GM page play the same game
@@ -70,7 +70,7 @@ interface Engine {
 }
 
 /** How many numbers the GM page draws from its dice as it loads, before the matrix makes its world: one, its tab's id
- *  (`_tabId`, src/ui/gm/auto-turn.js). The page and the engine start from the same seed, so the world is the matrix's
+ *  (`_tabId`, src/ui/gm/auto-turn.ts). The page and the engine start from the same seed, so the world is the matrix's
  *  only once the engine's dice have moved on as far. */
 const PAGE_DRAWS_AS_IT_LOADS = 1;
 
@@ -82,7 +82,7 @@ const engineColumnsOf = (hashes: string) => {
   return ENGINE_COLUMNS.map((c) => `${c} ${all[TURN_COLUMNS.indexOf(c)] ?? ''}`).join(', ');
 };
 
-/** The shell's work around each turn that the matrix's hashes see (src/ui/gm/turn-shell.js): the turn's seed, the
+/** The shell's work around each turn that the matrix's hashes see (src/ui/gm/turn-shell.ts): the turn's seed, the
  *  page's next number as a 32-bit integer (0 read as 1); and the run's time stamped in the world's turn mode. Any time
  *  will do: the hashes read every time as the same. */
 const shellSeed = (engine: vm.Context) => vm.runInContext('Math.floor(kcRng()*2**32)||1', engine) as number;
@@ -239,8 +239,8 @@ describe('a fault planted in a copy of src/ turns it red', () => {
   // resolveTurn, just before the five phases (the statement that takes the turn's log from its context), and at the
   // start of the reports (buildReports, lifted out of resolveTurn in P1-08d: the statement that lists the played realms).
   const AT = {
-    resolution: { file: 'engine/run-turn.js', fn: 'resolveTurn', before: 'turnLog' },
-    reports: { file: 'engine/turn/realm-reports-and-spy-stealth.js', fn: 'buildReports', before: 'activePlayers' },
+    resolution: { file: 'engine/run-turn.ts', fn: 'resolveTurn', before: 'turnLog' },
+    reports: { file: 'engine/turn/realm-reports-and-spy-stealth.ts', fn: 'buildReports', before: 'activePlayers' },
   };
   const originals = Object.fromEntries(
     Object.values(AT).map(({ file }) => [file, fs.readFileSync(path.join(copy, file), 'utf8')]),
@@ -285,7 +285,7 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     const e = planted(
       AT.resolution,
       'SKILL_LABELS.planted=1; globalThis.kcPlanted=1;',
-      "import { SKILL_LABELS } from './army-tables.js';\n",
+      "import { SKILL_LABELS } from './army-tables.ts';\n",
     );
     const snapshot = snapshotOf(e, engineVariables());
     const globals = vm.runInContext('()=>Object.getOwnPropertyNames(globalThis)', e.engine) as () => string[];

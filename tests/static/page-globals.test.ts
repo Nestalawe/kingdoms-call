@@ -1,5 +1,5 @@
 // What each page keeps on `window` once its scripts are ES modules (plan P1-09b; P1-09's Decision 7). Each script page
-// ends with src/ui/<page>/globals.js: two Object.assign(window, { … }) lists, the names its inline handlers call and
+// ends with src/ui/<page>/globals.ts: two Object.assign(window, { … }) lists, the names its inline handlers call and
 // the names its tests reach. A variable a handler or a test reaches can't go on a list (the list copies its value once,
 // and the copy goes stale once it changes): it is a declared global, `globalThis.<name> = <value>;` where it was
 // declared. This test reads the templates, the scripts and the tests (tests/lib/page-globals.ts says how) and checks:
@@ -102,7 +102,7 @@ function problemsOf(
 const reach = namesTestsReachOnPages();
 
 describe.each(SCRIPT_PAGE_NAMES)('%s', (page) => {
-  test('its globals.js lists exactly what its handlers and its tests reach, and every variable they reach is a declared global', () => {
+  test('its globals.ts lists exactly what its handlers and its tests reach, and every variable they reach is a declared global', () => {
     expect(problemsOf(page, reach.pages[page])).toEqual([]);
   });
 
@@ -150,35 +150,35 @@ describe('a fault planted in a copy of src/ is seen', () => {
   const drop = (name: string) => (text: string) => text.replace(new RegExp(`^  ${name}, //.*\\n`, 'm'), '');
 
   test('a handler name taken off the first list', () => {
-    expect(plantedProblems(GM, 'ui/gm/globals.js', drop('runTurn0'))).toEqual([
+    expect(plantedProblems(GM, 'ui/gm/globals.ts', drop('runTurn0'))).toEqual([
       "missing from the handlers' list: runTurn0",
     ]);
   });
 
   test('a name a test reaches taken off the second list', () => {
-    expect(plantedProblems(PLAYER, 'ui/player/globals.js', drop('buildOrdersForm'))).toEqual([
+    expect(plantedProblems(PLAYER, 'ui/player/globals.ts', drop('buildOrdersForm'))).toEqual([
       "missing from the tests' list: buildOrdersForm",
     ]);
   });
 
   test('a name nothing needs put on a list', () => {
     expect(
-      plantedProblems(GM, 'ui/gm/globals.js', (t) =>
-        t.replace('  runTurn0, //', '  resolveTurn, // engine/run-turn.js\n  runTurn0, //'),
+      plantedProblems(GM, 'ui/gm/globals.ts', (t) =>
+        t.replace('  runTurn0, //', '  resolveTurn, // engine/run-turn.ts\n  runTurn0, //'),
       ),
     ).toEqual(["on the handlers' list, but nothing there needs it: resolveTurn"]);
   });
 
   test('a name listed with the wrong file', () => {
     expect(
-      plantedProblems(GM, 'ui/gm/globals.js', (t) =>
-        t.replace('  runTurn0, // ui/gm/turn-zero.js', '  runTurn0, // ui/gm/start.js'),
+      plantedProblems(GM, 'ui/gm/globals.ts', (t) =>
+        t.replace('  runTurn0, // ui/gm/turn-zero.ts', '  runTurn0, // ui/gm/start.ts'),
       ),
-    ).toEqual(['listed as from ui/gm/start.js, but declared in ui/gm/turn-zero.js: runTurn0']);
+    ).toEqual(['listed as from ui/gm/start.ts, but declared in ui/gm/turn-zero.ts: runTurn0']);
   });
 
   test('a declared global put back as a let', () => {
-    const problems = plantedProblems(GM, 'ui/gm/config.js', (t) =>
+    const problems = plantedProblems(GM, 'ui/gm/config.ts', (t) =>
       t.replace('globalThis.currentGame = null;', 'let currentGame = null;'),
     );
     expect(problems).toContain("an inline handler reaches a let that isn't a declared global: currentGame");
@@ -188,17 +188,17 @@ describe('a fault planted in a copy of src/ is seen', () => {
   });
 
   test('a variable put on a list', () => {
-    const problems = plantedProblems(PLAYER, 'ui/player/globals.js', (t) =>
-      t.replace('  buildOrdersForm, //', '  _deskRightView, // ui/player/layout.js\n  buildOrdersForm, //'),
+    const problems = plantedProblems(PLAYER, 'ui/player/globals.ts', (t) =>
+      t.replace('  buildOrdersForm, //', '  _deskRightView, // ui/player/layout.ts\n  buildOrdersForm, //'),
     );
     expect(problems).toContain('listed, but a let (its copy would go stale): _deskRightView');
   });
 
-  test('globals.js not the last file the entry imports', () => {
+  test('globals.ts not the last file the entry imports', () => {
     const main = importsOf(entryOf(GM));
     const moved = [...main.slice(0, -2), globalsFileOf(GM), ...main.slice(-2, -1)];
     expect(problemsOf(GM, reach.pages[GM], undefined, moved)).toEqual([
-      "ui/gm/globals.js isn't the last file ui/gm/page.js imports",
+      "ui/gm/globals.ts isn't the last file ui/gm/page.ts imports",
     ]);
   });
 });

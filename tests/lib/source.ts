@@ -31,7 +31,7 @@
 //   plantedSrc(edits), plantedSite(edits)   a temporary copy of src/ with those edits made (for loadEngine({src})),
 //                                and a site built from it (for a page that must fail where nothing outside can make it)
 //
-// A file is named relative to src/ ('engine/world/generate.js'), or by a full path; `src` names another copy.
+// A file is named relative to src/ ('engine/world/generate.ts'), or by a full path; `src` names another copy.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -43,10 +43,10 @@ export const SRC = path.join(ROOT, 'src');
 
 /** The files every script page shares, which it loaded beside it until the module switch (P1-09d): a page's own code is
  *  the rest. */
-const SHARED_FILES = new Set([DATA_FILE, 'ui/shared/kc-safe.js', 'db/kc-db-guard.js']);
+const SHARED_FILES = new Set([DATA_FILE, 'ui/shared/kc-safe.ts', 'db/kc-db-guard.ts']);
 /** The files under src/ that make the page `page` (e.g. 'kingdoms-call-gm-portal.html') as the tests read them: its
  *  template (with its boot-failure reporter inline), its stylesheets, and its own modules in the order its entry lists
- *  them (an entry that only imports, page.js, stands for its list: the order the files ran as classic scripts), not
+ *  them (an entry that only imports, page.ts, stands for its list: the order the files ran as classic scripts), not
  *  the shared files. */
 function sourcesOf(page: string): string[] {
   const { modules, styles } = pageEntries(page);
@@ -104,12 +104,50 @@ function read(file: string, opts: SourceOptions = {}): { file: string; text: str
   return { file, text, tree: treeOf(fullPath(file, opts.src), text) };
 }
 
-/** `code` (a piece of `file`) as JavaScript: its types stripped if `file` is TypeScript, else as it is. */
-function asJavaScript(file: string, code: string): string {
+// What asJavaScript gave for each piece of TypeScript already read in this process: a test that reads the same files
+// many times reads each once (the trees of whole files are kept the same way).
+const javascriptOf = new Map<string, string>();
+
+/** `code` (a piece of `file`) as JavaScript: its types stripped if `file` is TypeScript and the piece has any, else as
+ *  it is. A piece with no TypeScript syntax (every file of src/ the day it became .ts, P1-09e) stays byte for byte as
+ *  written, as a .js file's does: transpileModule would reprint it (its own indentation, a `;` and a new line after an
+ *  expression). Stripped, it gets no "use strict" line either. */
+function asJavaScript(file: string, code: string, tree?: ts.SourceFile): string {
   if (!isTypeScript(file)) return code;
+  const kept = javascriptOf.get(code);
+  if (kept !== undefined) return kept;
+  const out = hasTypeScriptSyntax(code, tree) ? stripped(code) : code;
+  javascriptOf.set(code, out);
+  return out;
+}
+
+function stripped(code: string): string {
   return ts.transpileModule(code, {
-    compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext, verbatimModuleSyntax: false },
+    compilerOptions: {
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      verbatimModuleSyntax: false,
+      alwaysStrict: false,
+    },
   }).outputText;
+}
+
+// TypeScript's parser marks every node that holds TypeScript's own syntax (ContainsTypeScript, in each node's
+// transformFlags, gathered up to the file's): what its transpiler reads to know whether there are types to strip. Not
+// in its published types, so read with a check, as parseDiagnostics is (treeOf).
+const CONTAINS_TYPESCRIPT = (ts as unknown as { TransformFlags?: { ContainsTypeScript?: unknown } }).TransformFlags
+  ?.ContainsTypeScript;
+
+/** Whether `code`, read as TypeScript, has anything JavaScript doesn't: a type (an annotation, a type argument or
+ *  parameter), a type-only declaration or import, `as`, `satisfies`, `!`, a TypeScript modifier, an optional
+ *  parameter, an `implements`. `whole`: the tree of `code` as TypeScript, when there is one already. */
+function hasTypeScriptSyntax(code: string, whole?: ts.SourceFile): boolean {
+  // a whole file's tree is already made (read); a piece is parsed here
+  const tree = whole ?? ts.createSourceFile('piece.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const flags = (tree as ts.SourceFile & { transformFlags?: unknown }).transformFlags;
+  if (typeof CONTAINS_TYPESCRIPT !== 'number' || typeof flags !== 'number')
+    throw new Error("tests/lib/source.ts: this TypeScript no longer marks a node's TypeScript syntax (transformFlags)");
+  return (flags & CONTAINS_TYPESCRIPT) !== 0;
 }
 
 const hasModifier = (node: ts.Node, kind: ts.SyntaxKind) =>
@@ -203,7 +241,8 @@ export function sourceFrom(file: string, first: string, last: string, opts: Sour
 /** The whole of `file` as a classic script, to run on its own in a vm or a page: its import declarations dropped,
  *  `export` dropped from its declarations (an `export { … }` list goes too), types stripped. */
 export function scriptOf(file: string, opts: SourceOptions = {}): string {
-  const js = asJavaScript(file, read(file, opts).text);
+  const whole = read(file, opts);
+  const js = asJavaScript(file, whole.text, whole.tree);
   const tree = treeOf(file.replace(/\.[cm]?ts$/, '.js'), js);
   const cuts: [number, number][] = [];
   for (const statement of tree.statements) {
@@ -355,7 +394,7 @@ function canonicalTree(js: string): ts.SourceFile {
 
 /** The canonical tree (canonicalTree) of `file`, its types stripped first. */
 const canonicalTreeOf = (file: string, opts: SourceOptions = {}) =>
-  canonicalTree(asJavaScript(file, read(file, opts).text));
+  canonicalTree(asJavaScript(file, read(file, opts).text, read(file, opts).tree));
 
 /** `code` (JavaScript) in compact's canonical layout. */
 export function compactCode(code: string): string {
@@ -439,7 +478,7 @@ export function entriesOf(file: string, name: string, opts: SourceOptions = {}):
 }
 
 /** The script files under src/ that make the published page `page` (e.g. 'kingdoms-call-gm-portal.html'), in its
- *  order: its own code, not the files every page shares (the data file, kc-safe.js, kc-db-guard.js). */
+ *  order: its own code, not the files every page shares (the data file, kc-safe.ts, kc-db-guard.ts). */
 export function pageScripts(page: string): string[] {
   return sourcesOf(page).filter((f) => /\.[cm]?[jt]s$/.test(f));
 }
@@ -459,7 +498,7 @@ export function fileDeclaring(page: string, name: string, opts: SourceOptions = 
 }
 
 /** Every file under src/ that makes the page `page`, as written, one after another, a line between files: its
- *  template, its styles and its scripts (not the files every page shares: the data file, kc-safe.js, kc-db-guard.js), as
+ *  template, its styles and its scripts (not the files every page shares: the data file, kc-safe.ts, kc-db-guard.ts), as
  *  the built page held them until the module switch (P1-09d). For a test that counts a word wherever the page's own
  *  files hold it, comments included (Prettier keeps comments' words; what a comment says is only in the source). */
 export function pageSource(page: string, opts: SourceOptions = {}): string {
@@ -583,7 +622,7 @@ export function compactOf(file: string, opts: SourceOptions = {}): string {
 }
 
 /** The top-level declaration `name` of `file` (a function, a class, a variable) in compact's canonical layout, its
- *  types stripped first: `compactDeclaration('engine/run-turn.js', 'resolveTurn')`. */
+ *  types stripped first: `compactDeclaration('engine/run-turn.ts', 'resolveTurn')`. */
 export function compactDeclaration(file: string, name: string, opts: SourceOptions = {}): string {
   const tree = canonicalTreeOf(file, opts);
   const found = tree.statements.filter((s) => declares(s, name));

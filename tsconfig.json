@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "preserve",
     "moduleResolution": "bundler",
     "types": ["node"],
@@ -19,6 +19,6 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["*.ts", "*.mts", "eslint.config.js", "tests", "tools"],
+  "include": ["*.ts", "*.mts", "eslint.config.js", "tests", "tools", "src"],
   "exclude": ["node_modules", "site"]
 }

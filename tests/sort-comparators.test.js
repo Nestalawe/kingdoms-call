@@ -3,14 +3,17 @@
 // Such a comparator gives inconsistent answers, so the order it produces, and how many random numbers
 // it uses, depend on the JavaScript engine's sort algorithm. A newer engine (a newer Node or Chrome)
 // then generates a different world from the same seed. To shuffle, use shuffleP(arr, rnd).
-// Nothing is run. Reads every page's template (src/*.html: its inline scripts) and every .js file under src/ and public/
-// but supabase-js (since P1-09d; until then the built site, whose pages held their scripts inline).
+// Nothing is run. Reads every page's template (src/*.html: its inline scripts), every module under src/ (.ts since
+// P1-09e) and every .js file under public/ but supabase-js (since P1-09d; until then the built site, whose pages held
+// their scripts inline). It fails if a module of a page isn't read, so a rename can't leave the code out unnoticed.
 const fs=require('fs'), path=require('path');
 const {filesUnder,ROOT}=require('../tools/build.ts');
+const {pageModules,pageNames}=require('../tools/pages.ts');
 const FILES=[
-  ...filesUnder(path.join(ROOT,'src')).filter(f=>/\.js$/.test(f)||/^[^/]+\.html$/.test(f)).map(f=>'src/'+f),
+  ...filesUnder(path.join(ROOT,'src')).filter(f=>(/\.ts$/.test(f)&&!/\.d\.ts$/.test(f))||/^[^/]+\.html$/.test(f)).map(f=>'src/'+f),
   ...filesUnder(path.join(ROOT,'public')).filter(f=>/\.js$/.test(f)&&!f.startsWith('vendor/')).map(f=>'public/'+f),
 ];
+const unread=pageNames().flatMap(p=>pageModules(p)).filter(m=>!FILES.includes('src/'+m));
 
 const RANDOM_CALL=/\b(Math\.random|rnd|rng|random)\s*\(/;   // a random draw inside the comparator
 const NO_ARGS=/^\s*(\(\s*\)\s*=>|function\s*\(\s*\))/;       // a comparator that ignores what it compares
@@ -45,6 +48,7 @@ for(const name of FILES){
       bad.push(`${name}:${line}  .sort(${args.replace(/\s+/g,' ').slice(0,80)})`);
   }
 }
+for(const m of new Set(unread)) bad.push(`src/${m}  a module of a page that this check doesn't read`);
 bad.forEach(b=>console.log('FAIL '+b+'\n     a random or argument-less comparator is engine-dependent; shuffle with shuffleP(arr, rnd), then sort by a real key'));
 console.log(`${checked} sort comparators checked · ${bad.length} random or argument-less`);
 process.exit(bad.length?1:0);

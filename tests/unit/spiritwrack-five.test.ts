@@ -82,5 +82,5 @@ test("the player portal's text says max 3 and max 4", () => {
 
 test("the data file's description says at most 3", () => {
   // its words, read from src/ by their syntax tree (plan P1-09a: until then site/'s copy of the file)
-  expect(stringsOf('content/kingdoms-call-data.js').join('\n')).toMatch(/plus 1 per two White levels \(at most 3\)/);
+  expect(stringsOf('content/kingdoms-call-data.ts').join('\n')).toMatch(/plus 1 per two White levels \(at most 3\)/);
 });

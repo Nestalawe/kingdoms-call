@@ -1,5 +1,5 @@
 // The realms the max-HP helpers fall back on when they are given none (plan P1-09b): `maxHpPlayers`, one state object
-// in src/engine/heroes/skills-and-hp.js. It was a top-level `let`, _MAXHP_PLAYERS, that two other files assigned (world
+// in src/engine/heroes/skills-and-hp.ts. It was a top-level `let`, _MAXHP_PLAYERS, that two other files assigned (world
 // generation, and the turn's stage after the phases); once the engine is modules (P1-09d) no file may assign another's
 // binding, so they set the object's one field instead. Here:
 // - it is one object from the moment the engine loads, with no realms yet, and stays that object: only its field

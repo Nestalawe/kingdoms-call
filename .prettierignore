@@ -10,6 +10,6 @@
 !/tests/ratchet.json
 !/tests/**/*.ts
 !/tools/**/*.ts
-!/src/**/*.js
+!/src/**/*.ts
 !/src/**/*.css
 !/public/*.js

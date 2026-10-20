@@ -37,7 +37,7 @@ import {
 } from '../lib/research-and-practice-order-cases.ts';
 import { compactDeclaration } from '../lib/source.ts';
 
-const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js';
+const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

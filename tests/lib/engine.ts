@@ -16,7 +16,7 @@
 // The bundle of this checkout's src/ is built once per run, by tests/setup/global.ts, into node_modules/.cache/kc/
 // (its path in KC_ENGINE_BUNDLE); one of another src (a copy with a fault planted) is built the first time a process
 // asks for it, in a child process (`node tests/lib/engine.ts --bundle <src>`, about a second), and kept for the process.
-// The turn is resolveTurn (src/engine/run-turn.js, P1-18d), which reaches no screen and no database:
+// The turn is resolveTurn (src/engine/run-turn.ts, P1-18d), which reaches no screen and no database:
 // tests/unit/engine-purity.test.ts plays a whole game through it here. runTurn, its shell, is the page's.
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -152,7 +152,7 @@ export function engineFn(engine: vm.Context, name: string): (...args: never[]) =
   return fn as (...args: never[]) => unknown;
 }
 
-/** A turn's context (src/engine/turn/context.js), as resolveTurn holds it while a turn runs. */
+/** A turn's context (src/engine/turn/context.ts), as resolveTurn holds it while a turn runs. */
 export interface TurnContext {
   G: Record<string, unknown>;
   freshPlayers: unknown[];
