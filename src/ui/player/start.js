@@ -1,3 +1,7 @@
+import { kcDbGuard } from '../../db/kc-db-guard.js';
+import { KC_DB_MIN, sb } from './startup.js';
+import { init } from './init.js';
+
 // ── BOOT ────
 kcDbGuard(sb, KC_DB_MIN).then(() =>
   init().catch((err) => {

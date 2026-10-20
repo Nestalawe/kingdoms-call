@@ -5,7 +5,7 @@ import { execFileSync, fork, type Serializable } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { build } from '../build.ts';
+import { build, ROOT } from '../build.ts';
 
 /** Sends each job to one of `n` worker processes running `worker` (a .ts file, forked with tsx), one job at a time
  *  each, in the order given, and returns the replies as they came. `site` plays another copy of the site: the
@@ -64,22 +64,28 @@ const inTree = (ref: string, file: string) => {
   }
 };
 
-/** Runs `fn` with `ref`'s site, in a temporary folder removed after: its committed site/ (before P1-05), or its src/
- *  built by its own tools/build.ts (git archive of both). P1-09's Vite build will need this to change. */
+/** Runs `fn` with `ref`'s site, in a temporary folder removed after (git archive of what it is built from):
+ *  - its committed site/ (before P1-05);
+ *  - or its src/, built by its own tools/build.ts: in plain Node until P1-09d (src/manifest.ts's stitch); since then by
+ *    Vite (the ref has public/), with this checkout's node_modules linked in when the ref's package-lock.json is this
+ *    one's, or else installed there by npm ci. */
 export async function withSiteAt<T>(ref: string, fn: (site: string) => Promise<T>): Promise<T> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-balance-base-'));
   try {
     const committed = inTree(ref, 'site');
+    const vite = !committed && inTree(ref, 'public');
+    const wanted = committed
+      ? ['site']
+      : ['src', 'tools/build.ts', ...(vite ? ['public', 'package.json', 'package-lock.json'] : [])];
     const tar = path.join(dir, 'site.tar');
-    execFileSync('git', [
-      'archive',
-      '--format=tar',
-      '-o',
-      tar,
-      ref,
-      ...(committed ? ['site'] : ['src', 'tools/build.ts']),
-    ]);
+    execFileSync('git', ['archive', '--format=tar', '-o', tar, ref, ...wanted.filter((f) => inTree(ref, f))]);
     execFileSync('tar', ['-xf', tar, '-C', dir]);
+    if (vite) {
+      const lock = (root: string) => fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8');
+      const same = fs.existsSync(path.join(dir, 'package-lock.json')) && lock(dir) === lock(ROOT);
+      if (same) fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(dir, 'node_modules'), 'dir');
+      else execFileSync('npm', ['ci', '--no-audit', '--no-fund'], { cwd: dir, stdio: ['ignore', 'ignore', 'inherit'] });
+    }
     if (!committed) {
       execFileSync(
         process.execPath,

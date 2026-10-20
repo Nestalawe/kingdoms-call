@@ -24,12 +24,12 @@ import path from 'node:path';
 import vm from 'node:vm';
 import * as acorn from 'acorn';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { engineFiles } from '../../src/manifest.ts';
 import { readBaseline } from '../../tools/balance/baseline.ts';
 import { TURN_COLUMNS, turnHashes } from '../../tools/balance/hash.ts';
 import { MAX_TURNS, SCRIPTED_REALM, START } from '../../tools/balance/matrix.ts';
 import { ROOT } from '../../tools/build.ts';
-import { DATA_FILE, loadEngine } from '../lib/engine.ts';
+import { engineEntryFiles } from '../../tools/pages.ts';
+import { loadEngine } from '../lib/engine.ts';
 import { GAME, newWorld, slotRows } from '../lib/matrix-game.ts';
 import { plantBefore } from '../lib/source.ts';
 
@@ -106,14 +106,16 @@ function pureEngine(src?: string): Engine {
  *  anything are kcRng's and kcClock's, and that is the dice and the clock.) */
 function engineVariables(): string[] {
   const names: string[] = [];
-  for (const file of [DATA_FILE, ...engineFiles()]) {
+  for (const file of engineEntryFiles()) {
     const program = acorn.parse(fs.readFileSync(path.join(ROOT, 'src', file), 'utf8'), {
       ecmaVersion: 'latest',
-      sourceType: 'script',
+      sourceType: 'module',
     });
-    for (const s of program.body)
-      if (s.type === 'VariableDeclaration')
+    for (const statement of program.body) {
+      const s = statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
+      if (s?.type === 'VariableDeclaration')
         for (const d of s.declarations) if (d.id.type === 'Identifier') names.push(d.id.name);
+    }
   }
   return names;
 }
@@ -244,15 +246,22 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     Object.values(AT).map(({ file }) => [file, fs.readFileSync(path.join(copy, file), 'utf8')]),
   );
   const world = newWorld(pureEngine().engine);
-  // The engine from the copy, with `line` planted before that statement in `file`, and every other file as it was.
-  const planted = ({ file, fn, before }: { file: string; fn: string; before: string }, line: string): Engine => {
+  // The engine from the copy, with `line` planted before that statement in `file` (and `imports` at its top: a module
+  // reaches another's table only by importing it), and every other file as it was.
+  const planted = (
+    { file, fn, before }: { file: string; fn: string; before: string },
+    line: string,
+    imports = '',
+  ): Engine => {
     for (const [name, text] of Object.entries(originals)) fs.writeFileSync(path.join(copy, name), text);
-    fs.writeFileSync(path.join(copy, file), plantBefore(originals[file] ?? '', file, fn, before, line));
+    fs.writeFileSync(path.join(copy, file), imports + plantBefore(originals[file] ?? '', file, fn, before, line));
     return pureEngine(copy);
   };
+  // Each fault uses what it reads: the bundler leaves out a call it knows has no effect when nothing reads its result
+  // (`Date.now();` on its own), as it would any such call in the engine.
   const FAULTS = [
-    ['Date.now()', 'Date.now();', 'the engine read the clock: Date.now()'],
-    ['Math.random()', 'Math.random();', 'the engine drew from Math.random()'],
+    ['Date.now()', "if (!Date.now()) throw new Error('no time');", 'the engine read the clock: Date.now()'],
+    ['Math.random()', "if (Math.random() > 1) throw new Error('no dice');", 'the engine drew from Math.random()'],
     ['document', 'document.title;', 'document is not defined'],
     ['sb', "sb.from('games');", 'sb is not defined'],
   ] as const;
@@ -273,7 +282,11 @@ describe('a fault planted in a copy of src/ turns it red', () => {
   });
 
   test('planted a write to a table, and a new global: the turn changes the one and adds the other', () => {
-    const e = planted(AT.resolution, 'SKILL_LABELS.planted=1; globalThis.kcPlanted=1;');
+    const e = planted(
+      AT.resolution,
+      'SKILL_LABELS.planted=1; globalThis.kcPlanted=1;',
+      "import { SKILL_LABELS } from './army-tables.js';\n",
+    );
     const snapshot = snapshotOf(e, engineVariables());
     const globals = vm.runInContext('()=>Object.getOwnPropertyNames(globalThis)', e.engine) as () => string[];
     const [was, had] = [snapshot(), new Set(globals())];

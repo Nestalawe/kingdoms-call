@@ -1,16 +1,102 @@
+import {
+  KC_UNIT_CLASS,
+  MONSTERS_P,
+  PRIMAL_ARMY_DEFS_P,
+  SAGE_DISCOVERIES_P,
+  TITLE_DEFS,
+} from '../content/kingdoms-call-data.js';
+import {
+  ALL_SKILLS,
+  ARMY_COST_MASTER,
+  ARMY_SPEED_MASTER,
+  PRIMAL_SEA_NAMES,
+  SAFE_START_TURN,
+  SKILL_LABELS,
+} from '../engine/army-tables.js';
+import {
+  CREATURE_ARMIES,
+  MONSTER_ARMIES,
+  garrisonMoveRate,
+  marchSpeedBonus,
+  navalSpeedBonus,
+} from '../engine/units/movement.js';
+import { unitBaseStrength } from '../engine/battle/strength.js';
+import {
+  gdActiveFor,
+  homeFounderOf,
+  homeProvinceIdFor,
+  mapCentreColFor,
+  neutralTradeGold,
+} from '../engine/grand-design.js';
+import { heroHireWage, twoATurn } from '../engine/world/tables.js';
+import { ABILITIES_P } from '../engine/battle/fortune.js';
+import { itemLore, monsterCatLabel, wildHuntPrice } from '../engine/items/tiers-and-hoards.js';
+import { graveIntelFor } from '../engine/graves.js';
+import {
+  consecratedIds,
+  isConsecrated,
+  provinceConsecrated,
+  relOfReport,
+  skillFameLabelM,
+  topSkillOf,
+} from '../engine/heroes/fame-and-consecration.js';
+import {
+  armySizeBand,
+  encounterUntargetableReason,
+  enemyCharVisibleTo,
+  featDiscovered,
+  nearSpiedProvIds,
+} from './visibility.js';
+import { LEGENDARY_NAMES_P, activeItems, effTemper, itemSlot, normaliseEquipment } from '../engine/items/equipment.js';
+import { effSkillOf, skillBonusBreakdown } from '../engine/heroes/skills-and-hp.js';
+import { lairRumourKey } from '../engine/personal-combat/helpers.js';
+import { dispFloor } from '../engine/dice-and-army-names.js';
+import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN, itemAcquiredThisTurn, perkTier } from '../engine/titles/perks.js';
+import { graveServedOther } from '../engine/heroes/charms-and-neutrals.js';
+import { MAGIC_L8_SCHOOLS, castChanceFor } from '../engine/chances-and-lair-grades.js';
+import {
+  MINOR_TITLES,
+  _TITLE_LABEL,
+  computeMinorTitles,
+  computeStandings,
+  extraSkillBonuses,
+  reckoningBlocShare,
+  reckoningCallEligibility,
+  titleRaceFor,
+} from '../engine/titles/reckoning.js';
+import {
+  DISC_BY_ID,
+  RESEARCH_HIDDEN_CATS,
+  capItemTaxGold,
+  discBlockedIds,
+  discEffectsOf,
+  discEligible,
+  discExploreMult,
+  discHeroWage,
+  discSumOf,
+  discTaxAdd,
+  discUnitIs,
+  discUnitMatch,
+  discUpkeepWage,
+  realmBaseTax,
+  realmRecruitCost,
+  taxBonusCap,
+  taxRecordsGold,
+} from '../engine/discoveries.js';
+
 // ── EVIL TERROR: the constants and the reading (2026-10-12, Toby items 21 and 23) ── −10% a stack (more where
 // Reign of Terror set the province's own share), at most three stacks. Module level so the engine (spreadTerror,
 // consumeTerror) and the report (an Evil realm sees each province's Terror on the map and in its report) read the
 // same figures. terrorReadingOf(p, viewer) → {pct, stacks, byYou} or null when no Terror grips the province.
-const TERROR_PCT_PER_STACK = 0.1,
+export const TERROR_PCT_PER_STACK = 0.1,
   TERROR_MAX_STACKS = 3;
-function terrorReadingOf(p, viewer) {
+export function terrorReadingOf(p, viewer) {
   const n = Math.min(TERROR_MAX_STACKS, (p && p._terrorStacks) | 0);
   if (!(n > 0) || p._terrorTurn === undefined) return null;
   const per = typeof p._terrorPct === 'number' && p._terrorPct > 0 ? p._terrorPct : TERROR_PCT_PER_STACK;
   return { pct: Math.round(per * n * 100), stacks: n, byYou: p._terrorisedBy === viewer };
 }
-function buildTurnReport(gameState, playerIndex) {
+export function buildTurnReport(gameState, playerIndex) {
   const player = gameState.players[playerIndex];
   const chars = gameState.characters.filter((c) => c.player === playerIndex && (c.alive || c.killedThisTurn));
   // honour the player's own arrangement of their heroes (set from the orders column and kept on the
@@ -1959,7 +2045,7 @@ function buildTurnReport(gameState, playerIndex) {
 // ── SNAPSHOT of one realm's situation, from a parsed game state. Module level: uses only module-level
 // helpers (unitBaseStrength, relOfReport, consecratedIds), so buildGameResultRows can call it on any
 // loaded state, not just inside runTurn.
-function telRealmSnapshot(gs, pi) {
+export function telRealmSnapshot(gs, pi) {
   const pl = ((gs && gs.players) || [])[pi];
   if (!pl) return null;
   const provs = (gs.world && gs.world.provinces) || [];
@@ -2076,7 +2162,7 @@ function telRealmSnapshot(gs, pi) {
 }
 // The orders a realm gave this turn, as resolved by runTurn's ingestion (humans' submitted orders,
 // bots' planned ones, Defend for anything missing). One entry per living character, five phases each.
-function telOrdersFor(gs, pi, extras) {
+export function telOrdersFor(gs, pi, extras) {
   const chars = (gs.characters || []).filter((c) => c && c.player === pi && c.alive);
   const byChar = {};
   chars.forEach((c) => {

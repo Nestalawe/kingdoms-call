@@ -1,3 +1,13 @@
+import { battleFrontWidth, battleLineTotal } from './lines.js';
+import { FLYING_TYPES, SEA_TYPES, tacMulted } from '../units/movement.js';
+import { unitBaseStrength } from './strength.js';
+import { syncMaxHp } from '../heroes/skills-and-hp.js';
+import { _KC_LOOT_GAINED } from '../personal-combat/helpers.js';
+import { hasDisc } from '../discoveries.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { armStr, provIsCoastal } from './terrain-and-unit-strength.js';
+
 // ── THE BEST COMMANDER (plan P1-08b: lifted out of resolveTurn) ────
 // Which of a realm's heroes leads a pooled host (commandScore, pickBattleCommander), the hand-over of command and its
 // line, and a host's total strength (armyTotalStr). Each takes the turn's context first (src/engine/turn/context.js),
@@ -16,7 +26,7 @@
 // battle lines
 // (sd09 Flanking Doctrine included). Curses, Psychic Blast negation and the Strategist minor title
 // are honoured because they are read the same way the battle reads them.
-function commandScore(turnContext, cand, pooled, prov, isAttacker) {
+export function commandScore(turnContext, cand, pooled, prov, isAttacker) {
   const { G } = turnContext;
   if (!cand || !pooled || !pooled.length) return 0;
   const align = (cand.player != null ? (G.players[cand.player] || {}).alignment : null) || 'Neutral';
@@ -58,7 +68,7 @@ function commandScore(turnContext, cand, pooled, prov, isAttacker) {
 // Choose the leader of a pooled force. `deflt` is whoever would have led before (the mover, or
 // the standing defender); `joiners` are the characters whose troops are folding in. Returns the
 // winner plus the rest, and whether command actually changed hands (for the narrative line).
-function pickBattleCommander(turnContext, deflt, joiners, pooled, prov, isAttacker) {
+export function pickBattleCommander(turnContext, deflt, joiners, pooled, prov, isAttacker) {
   const cands = [deflt, ...(joiners || [])].filter((x) => x && x.alive !== false);
   if (cands.length <= 1) return { leader: deflt, others: (joiners || []).slice(), changed: false };
   let best = deflt,
@@ -75,14 +85,14 @@ function pickBattleCommander(turnContext, deflt, joiners, pooled, prov, isAttack
 }
 // Battles run on shallow copies; this returns the LIVE character behind one (or the object itself
 // if it is already the real thing, as in the resumed-battle and hunt paths).
-function realCharOf(turnContext, x) {
+export function realCharOf(turnContext, x) {
   const { G } = turnContext;
   if (!x || x.id == null) return x;
   return (G.characters || []).find((y) => y && y.id === x.id) || x;
 }
 // Move a real character to a province, keeping both provinces' character lists straight. Used
 // when a pooled host falls back together after a lost battle.
-function relocateChar(turnContext, ch, provId) {
+export function relocateChar(turnContext, ch, provId) {
   const { G } = turnContext;
   if (!ch || provId == null || ch.location === provId) return;
   const from = G.world.provinces[ch.location],
@@ -99,7 +109,7 @@ function relocateChar(turnContext, ch, provId) {
 // all back onto the real character. `armies` and `location` are excluded: the pooled army list is
 // split back to its owners by the caller, and the fall-back is applied to the whole party by
 // relocateChar.
-function syncLeaderCopy(turnContext, real, copy) {
+export function syncLeaderCopy(turnContext, real, copy) {
   const { G } = turnContext;
   if (!real || !copy || real === copy) return;
   Object.keys(copy).forEach((k) => {
@@ -127,11 +137,11 @@ function syncLeaderCopy(turnContext, real, copy) {
   syncMaxHp(real, G.players); // keep maxHp in step with whatever the write-back landed on
 }
 // The line the Chronicle prints when command changes hands.
-function commandHandoverLine(leader, deflt, provName) {
+export function commandHandoverLine(leader, deflt, provName) {
   return `\u{1F396} ${leader.name} takes command of the combined host at ${provName} \u2014 the most seasoned captain on the field, and ${deflt.name}'s troops fall in behind him.`;
 }
 
-function armyTotalStr(turnContext, ch, prov) {
+export function armyTotalStr(turnContext, ch, prov) {
   const { G } = turnContext;
   return (ch.armies || []).reduce(
     (s, a) => s + armStr(turnContext, a, ch, G.players[ch.player]?.alignment, prov.terrain),

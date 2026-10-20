@@ -1,3 +1,6 @@
+import { kcRng } from '../rng.js';
+import { ALL_SKILLS, SKILL_LABELS, SKILL_MAX } from '../army-tables.js';
+
 // ── NEUTRAL HERO PROGRESSION (2026-09-17 (late), Toby item 1) ── see the end-of-turn call in
 // runTurn.
 // Pure function of the game state plus an optional rng/emit, so the harness can fuzz it directly.
@@ -13,7 +16,7 @@
 // spell). isPreOrderRef tells the synthetic form apart; orderCharRef resolves either form to the
 // real character record (by id, never by array index) — or null. Every caller still checks the
 // hero is the orderer's own, so a hire that failed (or a rival's) is refused, never honoured.
-function isPreOrderRef(raw) {
+export function isPreOrderRef(raw) {
   return /^(?:hired|resurrect|charm)_\d+_via_/.test(String(raw == null ? '' : raw).trim());
 }
 // ── A HERO UNDER A CHARM THIS TURN ───────────────────────────────────────────────────────────────
@@ -25,35 +28,35 @@ function isPreOrderRef(raw) {
 // untouched: they keep it, fight with it, and its passive magic still works. This predicate is the
 // single gate; the player portal hides the three orders, and these engine checks catch a stale or
 // hand-crafted submission that walks past the form.
-function isCharmedNow(G, c) {
+export function isCharmedNow(G, c) {
   return !!(c && (c._charmTempControl || c._charmedTurn === (G && G.turn)));
 }
-function orderCharRef(G, raw) {
+export function orderCharRef(G, raw) {
   const t = String(raw == null ? '' : raw).trim();
   const m = t.match(/^(?:hired|resurrect|charm)_(\d+)_via_/);
   const id = m ? parseInt(m[1]) : parseInt(t);
   if (!Number.isInteger(id)) return null;
   return ((G && G.characters) || []).find((ch) => ch && ch.id === id) || null;
 }
-function noteServedRealm(c, pi) {
+export function noteServedRealm(c, pi) {
   if (!c || pi == null) return;
   if (!Array.isArray(c._servedRealms)) c._servedRealms = [];
   if (!c._servedRealms.includes(pi)) c._servedRealms.push(pi);
 }
-function graveServedOther(g, pi) {
+export function graveServedOther(g, pi) {
   if (!g) return false;
   if (g.player != null && g.player !== pi) return true;
   if (g._releasedBy != null && g._releasedBy !== pi) return true;
   return Array.isArray(g.served) && g.served.some((x) => x != null && x !== pi);
 }
-const NEUTRAL_PROG_FROM_TURN = 5; // first END OF TURN at which neutral heroes roll
-const NEUTRAL_PROG_PCT = 25; // chance per neutral hero per turn of gaining one point (2026-09-23: was 50)
-const NEUTRAL_PROG_CAP = 5; // a neutral hero's own growth never lifts a skill past this (higher skills they already hold are kept)
-const NEUTRAL_PROG_TOP_PCT = 75; // 2026-09-26 (Toby): when the idle roll lands, 75% it deepens their BEST skill, 25% a random other
+export const NEUTRAL_PROG_FROM_TURN = 5; // first END OF TURN at which neutral heroes roll
+export const NEUTRAL_PROG_PCT = 25; // chance per neutral hero per turn of gaining one point (2026-09-23: was 50)
+export const NEUTRAL_PROG_CAP = 5; // a neutral hero's own growth never lifts a skill past this (higher skills they already hold are kept)
+export const NEUTRAL_PROG_TOP_PCT = 75; // 2026-09-26 (Toby): when the idle roll lands, 75% it deepens their BEST skill, 25% a random other
 // Hex neighbours of a province, as ids. progressNeutralHeroes is module scope and cannot reach
 // runTurn's neighborInDir, so the offsets live here too — same even/odd row convention as the rest
 // of the map code.
-function _neutralAdjIds(gs, p) {
+export function _neutralAdjIds(gs, p) {
   const w = gs && gs.world;
   if (!w || !p) return [];
   const even = [
@@ -93,7 +96,7 @@ function _neutralAdjIds(gs, p) {
 // • Self-study is no longer a flat random pick among their skills: 75% it deepens whichever skill
 //   they are already best at (a random one of them if several tie), 25% it goes to a different
 //   skill of theirs chosen at random. Falls back to the other branch when one has nothing legal.
-function progressNeutralHeroes(gs, emit, rng) {
+export function progressNeutralHeroes(gs, emit, rng) {
   rng = rng || kcRng;
   const turn = (gs && gs.turn) || 0;
   if (turn < NEUTRAL_PROG_FROM_TURN) return [];

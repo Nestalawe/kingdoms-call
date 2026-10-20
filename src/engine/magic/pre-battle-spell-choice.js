@@ -1,3 +1,9 @@
+import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { BATTLE_MAGIC_SPELL_NAMES } from '../army-tables.js';
+import { MISSILE_ARMIES_MASTER } from '../battle/ladder.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+
 // ── PRE-BATTLE SPELL CHOICE (plan P1-08c: lifted out of resolveTurn) ────
 // Which battle spell a commander casts before the armies meet: one from the school in the Encounter Plan that has
 // something to hit on this field, or the spell named. Both functions take the turn's context first
@@ -6,18 +12,18 @@
 // Players choose a magic SCHOOL in their Encounter Plan (tactic 'CS:<school>'); during the
 // pre-battle magic phase a RANDOM battle spell the commander can cast from that school is chosen.
 // Legacy 'CA:<spell>' tactics still cast that exact spell.
-const BATTLE_SPELLS_BY_SCHOOL = {
+export const BATTLE_SPELLS_BY_SCHOOL = {
   white: ['Holy Symbol', 'Spiritwrack'],
   elemental: ['Fireball', 'Lightning Bolt'],
   psychic: ['Psychic Blast', 'Telekinetic Storm'],
   necromancy: ['Curse', 'Control Undead'],
 };
-const BATTLE_MAGIC_SPELL_SET = new Set(BATTLE_MAGIC_SPELL_NAMES);
+export const BATTLE_MAGIC_SPELL_SET = new Set(BATTLE_MAGIC_SPELL_NAMES);
 // A battle spell is only worth choosing if the field offers it a valid target/effect: Storm and
 // Blast need an enemy commander with the skill they negate; Curse needs a commander with any
 // curseable skill; Control Undead and Holy Symbol need enemy undead; Spiritwrack needs enemy
 // missile troops. Fireball and Lightning Bolt need only enemies on the field.
-function battleSpellUseful(turnContext, spellName, enemyCmdr, enemyArmies) {
+export function battleSpellUseful(turnContext, spellName, enemyCmdr, enemyArmies) {
   const armies = enemyArmies || [];
   const hasUndead = armies.some(
     (a) => a._isSkeletal || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(a.type || ''),
@@ -44,7 +50,7 @@ function battleSpellUseful(turnContext, spellName, enemyCmdr, enemyArmies) {
       return armies.length > 0;
   }
 }
-function pickBattleSpell(turnContext, tactics, heroChar, enemyCmdr, enemyArmies) {
+export function pickBattleSpell(turnContext, tactics, heroChar, enemyCmdr, enemyArmies) {
   tactics = tactics || [];
   // Preferred: an explicit school choice — cast a random USEFUL spell the commander knows from
   // that school. Spells with no valid target on this field (e.g. Control Undead against a living

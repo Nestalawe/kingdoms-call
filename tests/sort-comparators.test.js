@@ -3,9 +3,14 @@
 // Such a comparator gives inconsistent answers, so the order it produces, and how many random numbers
 // it uses, depend on the JavaScript engine's sort algorithm. A newer engine (a newer Node or Chrome)
 // then generates a different world from the same seed. To shuffle, use shuffleP(arr, rnd).
-// Nothing is run. Reads every inline script in site/*.html and every site/*.js (or $KC_SITE).
+// Nothing is run. Reads every page's template (src/*.html: its inline scripts) and every .js file under src/ and public/
+// but supabase-js (since P1-09d; until then the built site, whose pages held their scripts inline).
 const fs=require('fs'), path=require('path');
-const {SITE}=require('./lib/boot');
+const {filesUnder,ROOT}=require('../tools/build.ts');
+const FILES=[
+  ...filesUnder(path.join(ROOT,'src')).filter(f=>/\.js$/.test(f)||/^[^/]+\.html$/.test(f)).map(f=>'src/'+f),
+  ...filesUnder(path.join(ROOT,'public')).filter(f=>/\.js$/.test(f)&&!f.startsWith('vendor/')).map(f=>'public/'+f),
+];
 
 const RANDOM_CALL=/\b(Math\.random|rnd|rng|random)\s*\(/;   // a random draw inside the comparator
 const NO_ARGS=/^\s*(\(\s*\)\s*=>|function\s*\(\s*\))/;       // a comparator that ignores what it compares
@@ -24,9 +29,8 @@ function argsAt(s,i){
 }
 
 let checked=0; const bad=[];
-for(const name of fs.readdirSync(SITE).sort()){
-  if(!/\.(html|js)$/.test(name)) continue;
-  const src=fs.readFileSync(path.join(SITE,name),'utf8');
+for(const name of FILES){
+  const src=fs.readFileSync(path.join(ROOT,name),'utf8');
   const lines=src.split('\n');
   const re=/\.sort\s*\(/g; let m;
   while((m=re.exec(src))){

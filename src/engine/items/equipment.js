@@ -1,11 +1,24 @@
+import {
+  ALL_MAGIC_ITEMS_P,
+  KC_ITEM_SLOT_CAP,
+  LEGENDARY_ITEMS_P,
+  SPELL_DEFS_P,
+  _ITEM_NAME_ALTS,
+  _VARIANT_BANK,
+} from '../../content/kingdoms-call-data.js';
+import { SKILL_LABELS } from '../army-tables.js';
+import { HOARD_CATEGORIES } from './hoard-categories.js';
+import { ITEMS_BY_TIER, ITEM_LORE_BY_NAME, isLegendaryItem, itemHoardCategory } from './tiers-and-hoards.js';
+import { itemUsableBy } from '../heroes/fame-and-consecration.js';
+
 // ── EQUIPMENT SLOTS ────
 // Worn/wielded items occupy a slot; only ONE per slot (two rings) can be EQUIPPED, and only
 // equipped slot items give their effect. Everything without a slot is always active.
 // `activeItems(c)` is the single gate every effect read goes through; it normalises first
 // (auto-equips an empty slot with the first item held, trims any over-cap), so pre-existing saves
 // and new pick-ups need no migration.
-const ITEM_SLOT_CAP = { ...KC_ITEM_SLOT_CAP }; // shield slot added 2026-09-10 · combat ×2 added 2026-09-11
-const ITEM_SLOT_OF = {
+export const ITEM_SLOT_CAP = { ...KC_ITEM_SLOT_CAP }; // shield slot added 2026-09-10 · combat ×2 added 2026-09-11
+export const ITEM_SLOT_OF = {
   'Blade of Fury': 'weapon',
   'Elven Longbow': 'weapon',
   'Staff of the Wildwood': 'weapon',
@@ -37,13 +50,13 @@ const ITEM_SLOT_OF = {
 };
 // the two alternate-named clones of every tier-1/2 item share the base item's slot (previously
 // 'Sword of Wrath' etc. had no slot and so were ALWAYS active, bypassing Equip Items).
-const _ITEM_ALT_BASE = {};
+export const _ITEM_ALT_BASE = {};
 Object.entries(_ITEM_NAME_ALTS).forEach(([base, alts]) =>
   alts.forEach((a) => {
     _ITEM_ALT_BASE[a] = base;
   }),
 );
-const _SHIELD_BASES = new Set([
+export const _SHIELD_BASES = new Set([
   'Tower Shield of the Wall',
   'Anvil-Brand Shield',
   'Shield of the Innocent',
@@ -54,7 +67,7 @@ const _SHIELD_BASES = new Set([
   'Shield of the Ward-Saints',
   'Dragonbone Shield',
 ]);
-function itemSlot(it) {
+export function itemSlot(it) {
   if (!it) return null;
   // a SHIELD is a shield even when its power is a once-per-fight ward - the Anvil-Brand Shield is
   // strapped to the arm, not drunk. The shield test therefore comes first.
@@ -65,7 +78,7 @@ function itemSlot(it) {
   return ITEM_SLOT_OF[it.name] || ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name]] || null;
 }
 
-const LEGENDARY_NAMES_P = new Set(LEGENDARY_ITEMS_P.map((it) => it.name));
+export const LEGENDARY_NAMES_P = new Set(LEGENDARY_ITEMS_P.map((it) => it.name));
 
 // == ITEM TIERS AND STOCK ====
 // FOUR tiers, named for the guardians that hold them: 1 Weak, 2 Moderate, 3 Powerful, 4 LEGENDARY.
@@ -99,7 +112,7 @@ const LEGENDARY_NAMES_P = new Set(LEGENDARY_ITEMS_P.map((it) => it.name));
 // A combat item's floor is Moderate; a utility item may sit anywhere. Toby's ruling: a utility item in a
 // weapon/armour/shield slot (Boots of the Wind, Tyrant's Sceptre) stays eligible for Weak — giving up
 // the slot to carry it is the trade.
-const ITEM_COMBAT_STATS = new Set([
+export const ITEM_COMBAT_STATS = new Set([
   'melee',
   'archery',
   'maxHp',
@@ -110,9 +123,9 @@ const ITEM_COMBAT_STATS = new Set([
   'temper',
   'aura',
 ]);
-const ITEM_DUEL_SCHOOLS = new Set(['elemental', 'white', 'illusory']);
-const ITEM_FIELD_SCHOOLS = new Set(['psychic', 'necromancy']);
-function itemRole(it) {
+export const ITEM_DUEL_SCHOOLS = new Set(['elemental', 'white', 'illusory']);
+export const ITEM_FIELD_SCHOOLS = new Set(['psychic', 'necromancy']);
+export function itemRole(it) {
   const e = (it && it.effect) || {};
   const s = e.stat;
   if (ITEM_COMBAT_STATS.has(s) || ITEM_DUEL_SCHOOLS.has(s)) return 'combat';
@@ -126,17 +139,17 @@ function itemRole(it) {
   return 'utility';
 }
 // the lowest ordinary tier an item may hold: combat never below Moderate
-function itemTierFloor(it) {
+export function itemTierFloor(it) {
   return itemRole(it) === 'combat' ? 2 : 1;
 }
-function itemAllowedInTier(it, t) {
+export function itemAllowedInTier(it, t) {
   return isLegendaryItem(it) ? t === 4 : t >= itemTierFloor(it) && t <= 3;
 }
 // Stock per kind, per tier, per ROLE: [utility, combat]. Weak is sized like the old 306-item tier
 // (a ten-realm map seats ~240 Weak lairs and every name is unique game-wide), all of it utility;
 // Moderate and Powerful carry a utility minority (the +2 field skills, the big ledgers and horns) beside
 // the combat kit. Weapon at Powerful stays 25: every one is a hand-written design.
-const ITEM_TIER_TARGET = {
+export const ITEM_TIER_TARGET = {
   1: {
     trinket: [90, 0],
     ring: [50, 0],
@@ -171,20 +184,20 @@ const ITEM_TIER_TARGET = {
     combat: [0, 12],
   },
 };
-function itemTierTarget(tier, cat, role) {
+export function itemTierTarget(tier, cat, role) {
   const o = (ITEM_TIER_TARGET[tier] || {})[cat] || [0, 0];
   return role == null ? o[0] + o[1] : role === 'utility' ? o[0] : o[1];
 }
 // A COMBAT item must also be worth its band: Powerful takes nothing under 4.5 (more than a bare +1
 // skill, which scores 3), Moderate nothing under 2 (a DR-1 ring, 1.2, is filler). A band the designs
 // cannot fill is topped up by minting from what did qualify, never by promoting a trinket.
-const ITEM_COMBAT_SCORE_FLOOR = { 3: 4.5, 2: 2.0 };
+export const ITEM_COMBAT_SCORE_FLOOR = { 3: 4.5, 2: 2.0 };
 
 // --- How strong is this item, really? ------------------------------------------------------ One
 // number per item, on a rough 0-10 scale, so that "simplest" and "strongest" mean something a
 // machine can sort. Every branch reads the SAME effect fields the combat engine reads, so an item
 // cannot score for a power it does not actually have.
-function _wardScore(fx) {
+export function _wardScore(fx) {
   if (!fx || !fx.ward) return 0;
   const w = fx.ward,
     a = fx.amt || 0,
@@ -196,7 +209,7 @@ function _wardScore(fx) {
     return p / 7;
   return 2;
 }
-function _pcScore(pc) {
+export function _pcScore(pc) {
   if (!pc) return 0;
   return (
     (pc.hitBonus || 0) / 4 +
@@ -207,7 +220,7 @@ function _pcScore(pc) {
     _wardScore(pc)
   );
 }
-function _useScore(e) {
+export function _useScore(e) {
   const avg = (a) => (a ? (a[0] + a[1]) / 2 : 0);
   switch (e.use) {
     case 'heal':
@@ -256,7 +269,7 @@ function _useScore(e) {
       return 3;
   }
 }
-function itemPowerScore(it) {
+export function itemPowerScore(it) {
   if (!it) return 0;
   const e = it.effect || {};
   let s = 0;
@@ -291,7 +304,7 @@ function itemPowerScore(it) {
   return Math.min(12, Math.round(s * 10) / 10);
 }
 
-const _VARIANT_EPITHETS = [
+export const _VARIANT_EPITHETS = [
   'of the Long March',
   'of Grey Water',
   'of the Ninth Hour',
@@ -493,7 +506,7 @@ const _VARIANT_EPITHETS = [
 // Re-stamp them from the master table by name on load, so a relic won three turns ago still scores
 // as legendary and a Weak find still reads as Weak. Runs beside ensureAllLairHoards at the head of
 // every turn.
-function migrateItemTiers(gs) {
+export function migrateItemTiers(gs) {
   if (!gs) return;
   const byName = new Map();
   ALL_MAGIC_ITEMS_P.forEach((it) => byName.set(it.name, it));
@@ -524,7 +537,7 @@ function migrateItemTiers(gs) {
   });
 }
 
-function normaliseEquipment(c) {
+export function normaliseEquipment(c) {
   if (!c || !Array.isArray(c.items)) return;
   const count = {};
   c.items.forEach((it) => {
@@ -557,7 +570,7 @@ function normaliseEquipment(c) {
 // old `equipped` flag (from its last owner) is dropped, normaliseEquipment re-slots it exactly as
 // every effect read will, and the line says what came of it. Returns '' when there is nothing to
 // say.
-const KC_SLOT_WORDS = {
+export const KC_SLOT_WORDS = {
   weapon: 'weapon slot',
   armour: 'armour slot',
   shield: 'shield slot',
@@ -567,7 +580,7 @@ const KC_SLOT_WORDS = {
   amulet: 'amulet slot',
   combat: 'both combat-item slots',
 };
-function gainedItemNote(ch, items) {
+export function gainedItemNote(ch, items) {
   if (!ch || !Array.isArray(ch.items)) return '';
   const got = (items || []).filter((it) => it && ch.items.includes(it));
   if (!got.length) return '';
@@ -592,18 +605,18 @@ function gainedItemNote(ch, items) {
       .join(' ')
   );
 }
-function activeItems(c) {
+export function activeItems(c) {
   if (!c || !Array.isArray(c.items)) return [];
   normaliseEquipment(c);
   return c.items.filter((it) => it && itemUsableBy(it, c) && (!itemSlot(it) || it.equipped === true));
 }
 // Does the character carry (active/equipped) an item whose BASE name is `base`? Resolves the two
 // alternate names of every tier-1/2 item, so 'Falcon\'s Quiver' counts as the Quiver of the Hawk.
-function hasItemBase(c, base) {
+export function hasItemBase(c, base) {
   return activeItems(c).some((it) => it && it.name && (_ITEM_ALT_BASE[it.name] || it.name) === base);
 }
 // the temper a character FIGHTS with — an equipped temper item overrides their own.
-function effTemper(c) {
+export function effTemper(c) {
   if (!c) return 'Brave';
   const it = activeItems(c).find((x) => x && x.effect && x.effect.stat === 'temper' && x.effect.temper);
   return (it && it.effect.temper) || c.temper || 'Brave';

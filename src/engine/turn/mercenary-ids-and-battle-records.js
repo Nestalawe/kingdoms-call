@@ -2,9 +2,9 @@
 // A new band's id, and the turn's records of who fought where: the commanders of each battle, the phase each hero last
 // stood in a field battle, and the Defend watches a battle fulfils. Each takes the turn's context first
 // (src/engine/turn/context.js).
-const newMercId = (turnContext) => `merc_t${turnContext.expectedTurnToRun}_${++turnContext._mercIds.n}`;
+export const newMercId = (turnContext) => `merc_t${turnContext.expectedTurnToRun}_${++turnContext._mercIds.n}`;
 
-const recordBattleCmdrs = (turnContext, provId, ph, ids) => {
+export const recordBattleCmdrs = (turnContext, provId, ph, ids) => {
   const { battleCommanders } = turnContext;
   if (provId == null || ph == null || ph < 0 || ph > 4) return;
   const k = provId + '@' + ph;
@@ -14,7 +14,7 @@ const recordBattleCmdrs = (turnContext, provId, ph, ids) => {
   });
 };
 
-function noteFieldBattle(turnContext, atk, def, prov) {
+export function noteFieldBattle(turnContext, atk, def, prov) {
   const { fieldBattlePhase, G } = turnContext;
   const ph = turnContext._currentPhase,
     ids = [];
@@ -38,7 +38,7 @@ function noteFieldBattle(turnContext, atk, def, prov) {
 // province was attacked, or one pooled in alongside — keeps no further watch, win or lose (a loss
 // already broke it: noteBattleLoss). Only a Defend order given for a LATER phase sets a new one; the
 // same phase's own Defend order, which resolves after the battle, must not re-arm it.
-function completeDefendWatches(turnContext, ids, narrative) {
+export function completeDefendWatches(turnContext, ids, narrative) {
   const { G, log } = turnContext;
   const ph = turnContext._currentPhase;
   (ids || []).forEach((id) => {
@@ -60,12 +60,12 @@ function completeDefendWatches(turnContext, ids, narrative) {
     }
   });
 }
-const defendSpentThisPhase = (turnContext, c, ph) =>
+export const defendSpentThisPhase = (turnContext, c, ph) =>
   !!(c && c._defendSpent && c._defendSpent.turn === turnContext.G.turn && c._defendSpent.ph === ph);
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08c) ── a defeat breaks a general's Defend watch for the rest of the turn. It
 // takes the turn's context first (src/engine/turn/context.js).
-function noteBattleLoss(turnContext, charId, narrative) {
+export function noteBattleLoss(turnContext, charId, narrative) {
   const { G, log } = turnContext;
   const real = (G.characters || []).find((x) => x && x.id === charId);
   if (!real || !real._defend || !real._defend.active) return;

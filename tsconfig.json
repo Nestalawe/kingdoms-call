@@ -19,6 +19,6 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["*.ts", "*.mts", "eslint.config.js", "tests", "tools", "src/manifest.ts"],
+  "include": ["*.ts", "*.mts", "eslint.config.js", "tests", "tools"],
   "exclude": ["node_modules", "site"]
 }

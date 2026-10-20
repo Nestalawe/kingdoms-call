@@ -1,3 +1,14 @@
+import { kcRng } from '../rng.js';
+import { homeProvinceIdFor } from '../grand-design.js';
+import { recordDeadHeroSighting } from '../graves.js';
+import { discoverFeat, featDiscovered } from '../../views/visibility.js';
+import { d100, fmtRoll } from '../dice-and-army-names.js';
+import { botTaxIncome } from '../bots/economy.js';
+import { TM } from '../titles/perks.js';
+import { DISC_BY_ID, discBlockedIds, discEligible } from '../discoveries.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+
 // ── WHAT A SPY LEARNS (plan P1-08c: lifted out of resolveTurn) ────
 // Everything a successful spy learns about a province, for the Spy order and the Neutral Broker's paid intelligence
 // alike. It takes the turn's context first (src/engine/turn/context.js).
@@ -8,7 +19,7 @@
 // which are fought as a garrison copy through the same function).
 // Everything a SUCCESSFUL spy learns about a province — shared by the Spy action and the Neutral
 // Broker's paid remote intelligence (identical effect by design).
-function applySpySuccess(turnContext, c, sprov) {
+export function applySpySuccess(turnContext, c, sprov) {
   const { G, log } = turnContext;
   trySkillGain(turnContext, c, 'spy', SKILLGAIN_STD); // Spy: successful espionage
   const actingP = G.players[c.player];

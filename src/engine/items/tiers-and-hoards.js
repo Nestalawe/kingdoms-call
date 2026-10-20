@@ -1,10 +1,18 @@
+import { ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { ARMY_COST_MASTER } from '../army-tables.js';
+import { ENCOUNTER_CLEAR_GOLD_BANDS, setFeatureTreasure } from '../world/tables.js';
+import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS, monsterCat } from '../names.js';
+import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.js';
+import { itemRole, itemSlot } from './equipment.js';
+
 // ── GUARDIAN CATEGORY, SHOWN TO THE PLAYER ────
 // The category already decided which hoard items a guardian could wield, and White Magic's double
 // damage against the undead and fiends turns on it — but it was never printed, so a player reading
 // "Guardian: Barrow Wight" had to know the bestiary to tell what kind of thing they were sending a
 // hero against. Every player-facing list now prints it beside the name. Display only; no mechanic
 // moves. Shipped on the feature payloads as `monsterCat` and rendered by the player portal.
-const MONSTER_CAT_LABELS = {
+export const MONSTER_CAT_LABELS = {
   humanoid: 'Humanoid',
   undead: 'Undead',
   beast: 'Beast',
@@ -17,7 +25,7 @@ const MONSTER_CAT_LABELS = {
   elemental: 'Elemental',
   construct: 'Construct',
 };
-function monsterCatLabel(m) {
+export function monsterCatLabel(m) {
   if (!m) return '';
   const c = monsterCat(m);
   return MONSTER_CAT_LABELS[c] || '';
@@ -26,7 +34,7 @@ function monsterCatLabel(m) {
 // A guardian's use of its hoard is decided by its TYPE alone (MONSTER_CAT_ITEM_USE). Race- and
 // alignment-bound items are deliberately NOT gated here: itemUsableBy() binds them to characters of
 // that race/alignment, but a guardian wields whatever its kind can hold (confirmed 2026-09-21, Toby).
-function guardianCanUseItem(m, it) {
+export function guardianCanUseItem(m, it) {
   const pol = MONSTER_CAT_ITEM_USE[monsterCat(m)] || 'none';
   if (pol === 'none' || !it) return false;
   if (pol === 'all') return true;
@@ -34,21 +42,21 @@ function guardianCanUseItem(m, it) {
   return !sl || _TRINKET_SLOTS.has(sl);
 }
 // ── PAGAN TUNING ──
-const RITUAL_SITE_NAMES = ['Standing Stones', 'Blood Altar', 'Circle of the Old Gods'];
-const RITUAL_SITE_CHANCE_HUMANOID = 0.25; // share of humanoid land provinces with one (Blood Offering only there)
-const WILD_HUNT_COST = 6; // fallback price if a bound type is missing from ARMY_COST_MASTER
-const WILD_HUNT_UNITS = 2; // units bound per rite
+export const RITUAL_SITE_NAMES = ['Standing Stones', 'Blood Altar', 'Circle of the Old Gods'];
+export const RITUAL_SITE_CHANCE_HUMANOID = 0.25; // share of humanoid land provinces with one (Blood Offering only there)
+export const WILD_HUNT_COST = 6; // fallback price if a bound type is missing from ARMY_COST_MASTER
+export const WILD_HUNT_UNITS = 2; // units bound per rite
 // the rite is priced at the cost of ONE of the beasts bound, however many answer the horn — bind
 // two Stone Giants (5g each) and the offering is 5g, not 6g and not 10g. Declared as a
 // function so the ARMY_COST_MASTER lookup happens at call time, not at load (see the ITEMS_BY_TIER
 // temporal-dead-zone gotcha).
-function wildHuntPrice(type) {
+export function wildHuntPrice(type) {
   return ARMY_COST_MASTER[type] || WILD_HUNT_COST;
 }
-const GRAND_HEIST_RICH_TAX = 7; // tax base at/above which a province is rich enough to stage a Grand Heist in (a realm's home capital always qualifies)
-const WILD_HUNT_TURNS = 1; // extra full turns the bound creatures serve beyond this one
-const BLOOD_HARVEST_PER_UNIT = 1; // gold per enemy unit destroyed in a Pagan victory
-const FEATURE_POOLS_P = {
+export const GRAND_HEIST_RICH_TAX = 7; // tax base at/above which a province is rich enough to stage a Grand Heist in (a realm's home capital always qualifies)
+export const WILD_HUNT_TURNS = 1; // extra full turns the bound creatures serve beyond this one
+export const BLOOD_HARVEST_PER_UNIT = 1; // gold per enemy unit destroyed in a Pagan victory
+export const FEATURE_POOLS_P = {
   plain: [
     'Ancient Battlefield',
     'Ruined Watchtower',
@@ -143,11 +151,11 @@ const FEATURE_POOLS_P = {
   extra.forEach((it) => ALL_MAGIC_ITEMS_P.push(it));
 })();
 
-const ITEM_TIER_OF_POWER = { Weak: 1, Moderate: 2, Powerful: 3, Legendary: 4 };
-function isLegendaryItem(it) {
+export const ITEM_TIER_OF_POWER = { Weak: 1, Moderate: 2, Powerful: 3, Legendary: 4 };
+export function isLegendaryItem(it) {
   return !!it && it.tier === 4;
 }
-const ITEMS_BY_TIER = { 1: [], 2: [], 3: [], 4: [] };
+export const ITEMS_BY_TIER = { 1: [], 2: [], 3: [], 4: [] };
 ALL_MAGIC_ITEMS_P.forEach((it) => {
   (ITEMS_BY_TIER[it.tier || 1] || ITEMS_BY_TIER[1]).push(it);
 });
@@ -155,11 +163,11 @@ ALL_MAGIC_ITEMS_P.forEach((it) => {
 // plain words. Clones inherit it by the spread above. Items already sitting in saves or lair hoards
 // predate the field, so lookups go BY NAME (falling back to the terse desc) — see itemLore /
 // itemLoreLines.
-const ITEM_LORE_BY_NAME = {};
+export const ITEM_LORE_BY_NAME = {};
 ALL_MAGIC_ITEMS_P.forEach((it) => {
   if (it && it.lore) ITEM_LORE_BY_NAME[it.name] = it.lore;
 });
-function itemLore(it) {
+export function itemLore(it) {
   if (!it) return '';
   return (
     it.lore ||
@@ -171,7 +179,7 @@ function itemLore(it) {
 }
 // One chronicle line per item — "📜 The Blade of Fury — <lore>" — used when items are won from a
 // lair.
-function itemLoreLines(items) {
+export function itemLoreLines(items) {
   return (items || [])
     .filter(Boolean)
     .map((d) => `📜 The ${d.name}${isLegendaryItem(d) ? ' (LEGENDARY)' : ''} — ${itemLore(d)}`)
@@ -192,7 +200,7 @@ function itemLoreLines(items) {
 // unused effect left. `itemEffectKey` is the signature: the effect alone. (It used to add the slot
 // and tier, so an amulet and a trinket both giving Mountain Guns +4 counted as two different finds;
 // 2026-10-13, item 5, Toby: to a player they are the same thing found twice.)
-function itemEffectKey(it) {
+export function itemEffectKey(it) {
   if (!it) return '?';
   if (!it.effect) return 'name:' + it.name;
   return JSON.stringify(it.effect);
@@ -201,10 +209,10 @@ function itemEffectKey(it) {
 // both. Lairs within this many provinces of each other never hold the same effect while the treasury
 // has any other choice; the distance shrinks a step at a time (down to "not in the same province")
 // only when nothing else is left.
-const LAIR_EFFECT_SPREAD = 3;
+export const LAIR_EFFECT_SPREAD = 3;
 // Rebuilds the set of effects already handed out from gs._awardedItems (names are what saves keep),
 // so an existing game adopts the rule without a migration field of its own.
-function awardedEffectSet(gs) {
+export function awardedEffectSet(gs) {
   const s = new Set();
   if (!gs || !Array.isArray(gs._awardedItems)) return s;
   const byName = new Map();
@@ -217,12 +225,12 @@ function awardedEffectSet(gs) {
 }
 // Narrows a candidate list to items whose effect is still unspent; returns the list untouched when
 // that would leave nothing, so a bare tier still yields an item rather than an empty lair.
-function preferFreshEffects(pool, takenEff) {
+export function preferFreshEffects(pool, takenEff) {
   if (!takenEff || !takenEff.size || !pool || !pool.length) return pool;
   const fresh = pool.filter((it) => !takenEff.has(itemEffectKey(it)));
   return fresh.length ? fresh : pool;
 }
-function rollMagicItem(monsterPower, taken, takenEff) {
+export function rollMagicItem(monsterPower, taken, takenEff) {
   taken = taken || new Set();
   const t = lairItemTier(monsterPower); // the guardian's power IS the tier
   const inTier = preferFreshEffects(
@@ -239,7 +247,7 @@ function rollMagicItem(monsterPower, taken, takenEff) {
 }
 // When a tier is spent, a WEAK lair may still take any utility item of any tier (rule 1 survives
 // exhaustion); a combat item reaches a Weak lair only when the treasury is otherwise bare.
-function itemFallbackOk(it, t) {
+export function itemFallbackOk(it, t) {
   return t == null || t !== 1 || itemRole(it) === 'utility';
 }
 // ── LAIR HOARDS ── every lair's gold AND magic items are decided at world generation
@@ -252,13 +260,13 @@ function itemFallbackOk(it, t) {
 // holds gold. 2026-09-11: EXACTLY ONE item per lair, always - no second or third find, and no empty
 // hoard. The item's tier is the guardian's own power: a Weak lair holds a Weak item, a Legendary
 // lair a LEGENDARY relic. (Kept as a table so a future change of heart needs one edit, not twenty.)
-const LAIR_ITEM_ODDS = {
+export const LAIR_ITEM_ODDS = {
   Weak: { itemChance: 1.0, bonusItem: 0, thirdItem: 0 },
   Moderate: { itemChance: 1.0, bonusItem: 0, thirdItem: 0 },
   Powerful: { itemChance: 1.0, bonusItem: 0, thirdItem: 0 },
   Legendary: { itemChance: 1.0, bonusItem: 0, thirdItem: 0 },
 }; // was 40/0, 80/15, 100/40, 100/100/50
-function ensureLairHoard(f, gs, opts) {
+export function ensureLairHoard(f, gs, opts) {
   if (!f || f.ritualSite) return;
   const _noItems = !!(opts && opts.noItems); // balanced stocking (ensureAllLairHoards) fills items itself
   f.hoardItems = Array.isArray(f.hoardItems) ? f.hoardItems : [];
@@ -296,7 +304,7 @@ function ensureLairHoard(f, gs, opts) {
   if (kcRng() < (T.thirdItem || 0)) roll();
 }
 // The tier a lair of this power holds. Since 2026-09-11 this is simply the guardian's own power.
-function lairItemTier(power) {
+export function lairItemTier(power) {
   return ITEM_TIER_OF_POWER[power] || 1;
 }
 // BALANCED STOCKING. At world generation (and for any lair still unstocked in an older save):
@@ -307,14 +315,14 @@ function lairItemTier(power) {
 // fewest items placed so far, preferring the tier the lair's power would have rolled.
 // Names stay unique game-wide (gs._awardedItems). Lairs created later in play (Discover Lost Ruin
 // etc.) still draw through rollMagicItem.
-function itemHoardCategory(it) {
+export function itemHoardCategory(it) {
   return itemSlot(it) || 'trinket';
 }
 // the Consumable slot became the Combat Item slot. A live save still holds its old tally under the
 // retired key; fold it into the new one so the even-distribution draw does not decide the realm has
 // never found a combat item and flood it with them. Called by BOTH the writer (noteItemFound) and
 // the reader (rollMagicItemFor) — patching only one leaves the other stale.
-function migrateHoardTally(pl) {
+export function migrateHoardTally(pl) {
   if (!pl || !pl._itemsFoundByCat) return;
   const t = pl._itemsFoundByCat;
   if (t.consumable != null) {

@@ -1,3 +1,6 @@
+import { kcRng } from '../rng.js';
+import { QUALITY_TIERS, demoteOrDisband, disbandLine, unitRef } from '../army-tables.js';
+
 // ── UNIT FATES AFTER A BATTLE (2026-10-11, refactor only) ── the per-unit rolls that four casualty loops
 // used to repeat (the NPC attacker winning or losing; a realm battle's winner and loser). The numbers stay
 // at the call sites, which pass the thresholds their battle computed; this owns the order of the rolls,
@@ -17,8 +20,8 @@
 //                (Shieldwall Levies, Average), facing the Iron Halberds (Gorbash's Men-at-Arms), were
 //                annihilated in the rout!". Without it the lines read as they always did.
 // Returns {died, promoted, demoted, disbanded, held, survived}.
-const TROLL_REGEN_CHANCE = 0.3; // Regenerating Hide (the Cave Trolls)
-function rollUnitFates(force, o) {
+export const TROLL_REGEN_CHANCE = 0.3; // Regenerating Hide (the Cave Trolls)
+export function rollUnitFates(force, o) {
   const rng = o.rng || kcRng,
     tiers = o.tiers || QUALITY_TIERS,
     say = o.say || (() => {}),
@@ -112,8 +115,8 @@ function rollUnitFates(force, o) {
 // · 's' the onlookers' one-line summary (shown only when the viewer has nothing else of the battle).
 // The rule is a BLACKLIST of known technical lines — anything unrecognised stays in the short view,
 // so a new narrative line can never silently vanish from what the player reads.
-const BATTLE_CAS_HEAD_RE = /^(⚔|🛡) \*\*(.+?)(?:'s|') forces\*\* \((attacker|defender)\):\s*$/;
-function battleLineTiers(texts) {
+export const BATTLE_CAS_HEAD_RE = /^(⚔|🛡) \*\*(.+?)(?:'s|') forces\*\* \((attacker|defender)\):\s*$/;
+export function battleLineTiers(texts) {
   const t = [];
   let inCas = false,
     casIdx = -1;
@@ -144,7 +147,7 @@ function battleLineTiers(texts) {
 // One line per side: "Vervain: 1 of 6 units lost (Shadow Archers)". Built from the casualty
 // sections of the narrative, the unit type read off the side's own ⚑FORCE⚑ roster (by unit name,
 // else by the longest type name in the line), so it survives any rewording of a casualty line.
-function battleTallyLine(texts) {
+export function battleTallyLine(texts) {
   const T = (texts || []).map((x) => String(x == null ? '' : x));
   const roster = { attacker: [], defender: [] };
   T.forEach((s) => {
@@ -260,7 +263,7 @@ function battleTallyLine(texts) {
 // the bottom of Narrow, Crushing and Annihilating split off the top of Decisive. Every band keeps
 // at least 1% winner death and 1% loser XP (a rout still costs the victor something, and even a
 // shattered army learns). Used by BOTH the NPC (combatVsNPC) and hero-vs-hero (combatVsChar) paths.
-const BATTLE_MARGIN_BANDS = [
+export const BATTLE_MARGIN_BANDS = [
   { label: 'pyrrhic', max: 0.04, winDeath: 0.15, loseDeath: 0.12, winXP: 0.6, loseXP: 0.2, loseDemote: 0.05 },
   { label: 'narrow', max: 0.1, winDeath: 0.12, loseDeath: 0.12, winXP: 0.5, loseXP: 0.12, loseDemote: 0.1 },
   { label: 'clear', max: 0.3, winDeath: 0.05, loseDeath: 0.18, winXP: 0.3, loseXP: 0.06, loseDemote: 0.2 },
@@ -268,7 +271,7 @@ const BATTLE_MARGIN_BANDS = [
   { label: 'crushing', max: 0.75, winDeath: 0.01, loseDeath: 0.5, winXP: 0.08, loseXP: 0.01, loseDemote: 0.45 },
   { label: 'annihilating', max: 9, winDeath: 0.01, loseDeath: 0.6, winXP: 0.05, loseXP: 0.01, loseDemote: 0.55 },
 ];
-function battleMarginBand(margRatio) {
+export function battleMarginBand(margRatio) {
   const r = Math.max(0, margRatio || 0);
   return BATTLE_MARGIN_BANDS.find((b) => r < b.max) || BATTLE_MARGIN_BANDS[BATTLE_MARGIN_BANDS.length - 1];
 }

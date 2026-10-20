@@ -1,3 +1,8 @@
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { ARMY_SPEED_MASTER } from '../army-tables.js';
+import { BATTLE_LINE_MULTS, battleFacingStage, battleGridStage, battleLineTotal, flankLineMults } from './lines.js';
+import { UNIT_BASE_STR, UNIT_Q_MULT } from './strength.js';
+
 // ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
 // "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid
 // creature bond, arrows…) were folded in silently, and Tactical was listed as if it lifted the whole
@@ -7,7 +12,7 @@
 // unit, then the terrain-width lines) → Whole force (fanaticism, discoveries, morale, defender…).
 // Rows come from ladderRow() (inside runTurn, beside armStr) so the ladder and the real total are
 // computed from the SAME figures. Module-level so every battle site can share it.
-function ladderFm(v) {
+export function ladderFm(v) {
   let t = (+v).toFixed(3);
   while (t.endsWith('0') && !/\.\d$/.test(t)) t = t.slice(0, -1);
   return '×' + t;
@@ -19,7 +24,7 @@ function ladderFm(v) {
 // (each matchup, 2026-10-11) = strength.
 // Rows must have been through finishSide (runTurn). A stage that changes nothing is left out, except
 // Whole force, which always prints so the reader sees it was checked.
-function ladderLines(role, name, rows, width, flank, forceMods, final, opt) {
+export function ladderLines(role, name, rows, width, flank, forceMods, final, opt) {
   opt = opt || {};
   const nUnits = rows.length,
     pl = (n, w) => `${n} ${w}${n !== 1 ? 's' : ''}`,
@@ -103,22 +108,22 @@ function ladderLines(role, name, rows, width, flank, forceMods, final, opt) {
 // leads by +5% per level (Archery 5 = +25%; items count, as with every effStat). Until today the
 // rulebook and DEV_LOG said "no strength bonus" while both battle paths quietly applied +10%/level —
 // the NPC path even carried a comment claiming the bonus had been removed. One constant now.
-const ARCHERY_MISSILE_PCT = 0.05;
+export const ARCHERY_MISSILE_PCT = 0.05;
 // DRUID MASTERY (2026-09-24, Toby): +20% per Druid level over the minimum to lead a Creature/Monster,
 // Druid counted to 9, gain capped at +100%. Applied in armStr via druidMasteryGain.
-const DRUID_MASTERY_PER_LVL = 0.2,
+export const DRUID_MASTERY_PER_LVL = 0.2,
   DRUID_MASTERY_CAP = 1.0,
   DRUID_MASTERY_MAX_LVL = 9;
 // UNDEAD — undying fanaticism (2026-09-23b, Toby): a host with skeletal units in it, led by the Undead
 // KING in person ×1.5, by any other Undead commander ×1.3 (was ×1.3 / ×1.2). Whole force, no roll.
 // Undead's own zeal roll is 0%. Where several fervours apply the strongest one counts (max, never stacked).
-const UNDEAD_SKEL_KING_FAN = 1.5,
+export const UNDEAD_SKEL_KING_FAN = 1.5,
   UNDEAD_SKEL_HERO_FAN = 1.3;
-function aAn(w) {
+export function aAn(w) {
   return /^[aeiou]/i.test(String(w || '')) ? 'an' : 'a';
 } // "an annihilating battle"
-const MISSILE_ARMIES_MASTER = new Set(KC_UNIT_CLASS.missile);
+export const MISSILE_ARMIES_MASTER = new Set(KC_UNIT_CLASS.missile);
 
 // Add primal armies to ARMY_UNIT_NAMES
 
-const ARMY_SPEED_R = ARMY_SPEED_MASTER; // alias → master table at top of script
+export const ARMY_SPEED_R = ARMY_SPEED_MASTER; // alias → master table at top of script

@@ -1,3 +1,13 @@
+import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS, MONSTERS_P } from '../content/kingdoms-call-data.js';
+import { kcRng } from './rng.js';
+import { shuffleP } from './battle/fortune.js';
+import { SEA_GUARDIAN_NAMES } from './names.js';
+import { activeItems } from './items/equipment.js';
+import { effSkillOf } from './heroes/skills-and-hp.js';
+import { hexDistP } from './world/map-helpers.js';
+import { skillLevel } from './titles/perks.js';
+import { discSumOf } from './discoveries.js';
+
 // MAGIC L8 PERK — "+10% to cast ANY spell" for each magic school mastered to level 8, stacking
 // across
 // schools (five schools → up to +50%). Applied at EVERY point a character rolls to cast a spell:
@@ -10,8 +20,8 @@
 // Primal (and special-unit) pre-battle strikes fire at 30% + 10% per Druid level of the commander,
 // plus any `primalStrike` item bonus the commander carries, hard cap 90%. Read by the NPC-attacker,
 // NPC-defender and PvP strike rolls so all three quote and roll the same odds.
-const MASS_HEALING_PCT = 0.5; // WHITE L6 Mass Healing heals this share of max HP per character
-function primalStrikeItemBonus(c) {
+export const MASS_HEALING_PCT = 0.5; // WHITE L6 Mass Healing heals this share of max HP per character
+export function primalStrikeItemBonus(c) {
   if (!c || typeof activeItems !== 'function') return 0;
   return activeItems(c).reduce(
     (s, it) =>
@@ -23,8 +33,8 @@ function primalStrikeItemBonus(c) {
 }
 // 2026-10-11 (Toby): the winged riders' own strikes (a Griffon's Screech Dive, a Wyvern's Acid Spit) are
 // soldiers' work, not beast-craft: a flat chance in two, whatever the commander's Druid.
-const RIDER_STRIKE_PCT = 50;
-function primalStrikeChance(druidLvl, commander, unitType) {
+export const RIDER_STRIKE_PCT = 50;
+export function primalStrikeChance(druidLvl, commander, unitType) {
   if (unitType && KC_UNIT_CLASS.flying.includes(unitType)) return RIDER_STRIKE_PCT;
   return Math.min(90, 30 + (druidLvl || 0) * 10 + primalStrikeItemBonus(commander));
 }
@@ -45,7 +55,7 @@ function primalStrikeChance(druidLvl, commander, unitType) {
 //
 // The guardian is then re-drawn from the beasts of the lair's new standing, respecting land and sea
 // pools, so a Legendary lair is kept by a legendary beast and a sea lair never gets a land one.
-function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
+export function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
   const lairs = [];
   provinces.forEach((p) =>
     (p.features || []).forEach((f) => {
@@ -224,12 +234,12 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
   });
 }
 
-function LAIR_TIER_ROLL() {
+export function LAIR_TIER_ROLL() {
   const r = kcRng() * 100;
   // 2026-09-10 item 6: shifted toward the easy end (was 40/32/20/8) — more Weak and Moderate lairs.
   return r < 48 ? 'Weak' : r < 84 ? 'Moderate' : r < 96 ? 'Powerful' : 'Legendary';
 }
-const MAGIC_L8_SCHOOLS = KC_MAGIC_SCHOOLS.slice();
+export const MAGIC_L8_SCHOOLS = KC_MAGIC_SCHOOLS.slice();
 // ── CAST CHANCE ────
 // 20% + 10% per school level, + the Arcane Codex discovery, + 10% per school mastered to level 8, +
 // any alignment/Sage cast discoveries; hard cap 95%. A spell worked from an ITEM is a flat 95%
@@ -240,8 +250,8 @@ const MAGIC_L8_SCHOOLS = KC_MAGIC_SCHOOLS.slice();
 // skillBonusBreakdown). 2026-09-11: EVERY spell roll — action phase, pre-battle magic (NPC and PvP)
 // and personal combat — is now 30 + school level × 10 (+ discoveries / L8 mastery), capped 95. Was
 // 20 outside personal combat.
-const SPELL_CAST_BASE = 30;
-function castChanceFor(c, school, player, opts) {
+export const SPELL_CAST_BASE = 30;
+export function castChanceFor(c, school, player, opts) {
   opts = opts || {};
   const lvl = opts.itemCast ? Math.max(3, effSkillOf(c, school, opts.chars)) : effSkillOf(c, school, opts.chars);
   if (lvl <= 0 && !opts.itemCast) return { level: 0, chance: 0, reason: 'no skill' };
@@ -260,12 +270,12 @@ function castChanceFor(c, school, player, opts) {
 // 2026-10-15 (Toby, D7): a hero guarding a neutral province casts at the same odds as a player's hero —
 // 30% + 10% a level (the school as effSkillOf counts it: training to 5, items on top), the mastery bonus,
 // at most 95%. A guard holds no Sage discoveries. (Was 30% + 15% a level, at most 90%.)
-function guardCastChance(c, school, chars) {
+export function guardCastChance(c, school, chars) {
   const lvl = effSkillOf(c, school, chars || []);
   if (lvl <= 0) return 0;
   return Math.min(95, SPELL_CAST_BASE + lvl * 10 + magicL8CastBonus(c));
 }
-function magicL8CastBonus(c) {
+export function magicL8CastBonus(c) {
   return 10 * MAGIC_L8_SCHOOLS.filter((sc) => skillLevel(c, sc) >= 8).length;
 }
 
@@ -273,7 +283,7 @@ function magicL8CastBonus(c) {
 // (src/engine/turn/context.js).
 // Feature guardians keep their wounds across phases within a turn (so a second searcher meets the
 // creature the first one bloodied) but recover fully between turns — a whole year passes.
-function healFeatureMonsters(turnContext) {
+export function healFeatureMonsters(turnContext) {
   const { G } = turnContext;
   (G.world.provinces || []).forEach((prov) => {
     ((prov && prov.features) || []).forEach((f) => {

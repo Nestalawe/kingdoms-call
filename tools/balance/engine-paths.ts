@@ -16,20 +16,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /** One glob per entry: "**" matches across folders, "*" within one. Paths as git names them, from the repository's
- *  root. The site is built from src/ (P1-05): these are the files the GM portal's page and the scripts it loads are
- *  built from (src/manifest.ts), and the build. tests/static/harness.test.ts checks they are exactly those. */
+ *  root. The site is built from src/ by Vite (P1-09d): these are the files the GM portal's page is built from (its
+ *  template, its stylesheet, every module its entry imports: tools/pages.ts), the scripts the tests load beside it
+ *  (public/), and the build. tests/static/harness.test.ts checks they are exactly those. */
 export const ENGINE_PATHS: readonly string[] = [
-  // The engine and its content, the GM portal's other code (its page is one scope: any of it can change a game), and
-  // the scripts the page loads with it, which the matrix loads too (tests/lib/boot.js's readPage).
+  // The engine and its content, the GM portal's other code (one bundle: any of it can change a game), and the files
+  // the page loads beside its bundle, which the matrix loads too (tests/lib/boot.js's readPage).
   'src/engine/**',
   'src/views/**',
   'src/db/**',
   'src/content/**',
   'src/ui/gm/**',
   'src/ui/shared/**',
-  // The build: which files make the page, and in what order.
-  'src/manifest.ts',
+  // The pages' templates (the GM portal's names its entry and its stylesheet), the files copied as they are, and the
+  // build.
+  'src/*.html',
+  'public/**',
   'tools/build.ts',
+  // Which files make the GM page: the runner checks each is an engine path (run.ts's pageSources).
+  'tools/pages.ts',
   // The matrix itself, its baselines, the named scenarios, and the test helpers they boot the page with.
   'tools/balance/**',
   'tests/balance/**',

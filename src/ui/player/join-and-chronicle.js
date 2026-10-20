@@ -1,5 +1,18 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { KC_MAGIC_SCHOOLS, KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.js';
+import { sb } from './startup.js';
+import { GUARD_POWER_COLORS_P } from './items-and-heroes.js';
+import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.js';
+import { refreshOrdersVisibility } from './layout.js';
+import { fetchGameSlots, loadAllGames } from './sign-in.js';
+import { renderReportView } from './report.js';
+import { armyLabel, roundReportNumbers, unitEmoji } from './order-chances.js';
+import { SKILL_LABELS } from './move-analysis.js';
+import { restoreSubmitWrap, updateAlignmentDesc, updateRaceDesc, updateTemperDesc } from './briefing-and-submit.js';
+import { CHIEFTAIN_MARKER_COLOR, reportColour } from './map-symbols.js';
+
 // ── JOIN GAME ────
-async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize) {
+export async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize) {
   joiningGame = { id: gameId, name: gameName, maxP, joined, gmName, worldSize };
   joinSkills = {};
   document.getElementById('join-game-title').textContent = `Join: ${gameName}`;
@@ -45,7 +58,7 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize) {
 }
 
 // Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
-const SKILL_INFO = {
+export const SKILL_INFO = {
   melee:
     'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
   archery: kcHtml`Ranged combat. In an army battle it sharpens the <strong>pre-battle volley</strong> your ranged units loose before the lines close (each shot does 30% of the shooting unit's own strength, +10% per Archery level, doubled against winged riders; no unit can lose more than 40% of its strength to arrows, 80% for a winged rider) — and every level lifts the missile units you lead by <strong>+5% strength</strong> in the battle itself (Archery 5 = +25%). In personal combat a Fire action hits at 30% + 10% per level (then +5% a level past 5, capped 80%) for 1–3 damage plus half your Archery; at <strong>Archery 3 and above you loose two arrows per Fire action</strong>. A Fire action must first reach bow range — from spell range that is a speed check, from melee you must break away — and <strong>every level of Archery adds +5% to both of those checks</strong> (fieldcraft). An archer standing at bow range also gets a free <strong>parting shot</strong> at any foe who closes into melee. The King starts with Archery 1.`,
@@ -75,13 +88,13 @@ const SKILL_INFO = {
     'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Plague (Undead realms start with Necromancy 1).',
 };
 // Column grouping for the join screen: martial | special | magic
-const SKILL_COLUMNS = [
+export const SKILL_COLUMNS = [
   { head: '⚔ Martial', skills: ['melee', 'archery', 'tactical', 'march', 'naval'] },
   { head: '✦ Special', skills: ['sage', 'spy', 'thief', 'druid', 'explorer'] },
   { head: '✨ Magic', skills: KC_MAGIC_SCHOOLS.slice() },
 ];
 
-function renderSkillGrid() {
+export function renderSkillGrid() {
   const spent = Object.values(joinSkills).reduce((s, v) => s + v, 0);
   const remaining = 4 - spent;
   document.getElementById('join-pts-remaining').textContent =
@@ -101,7 +114,7 @@ function renderSkillGrid() {
   )}</div>`;
 }
 
-function showSkillTip(ev, skill) {
+export function showSkillTip(ev, skill) {
   let tip = document.getElementById('skill-info-tip');
   if (!tip) {
     tip = document.createElement('div');
@@ -121,12 +134,12 @@ function showSkillTip(ev, skill) {
   tip.style.left = Math.max(8, x) + 'px';
   tip.style.top = Math.max(8, y) + 'px';
 }
-function hideSkillTip() {
+export function hideSkillTip() {
   const tip = document.getElementById('skill-info-tip');
   if (tip) tip.style.display = 'none';
 }
 
-function adjustSkill(skill, delta) {
+export function adjustSkill(skill, delta) {
   const spent = Object.values(joinSkills).reduce((s, v) => s + v, 0);
   const current = joinSkills[skill] || 0;
   if (delta > 0) {
@@ -139,7 +152,7 @@ function adjustSkill(skill, delta) {
   renderSkillGrid();
 }
 
-async function joinGame() {
+export async function joinGame() {
   const kingName = document.getElementById('join-king-name').value.trim();
   const kingdomName = document.getElementById('join-kingdom-name').value.trim();
   const race = document.getElementById('join-race').value;
@@ -180,11 +193,11 @@ async function joinGame() {
 // three guards never disagree in front of the player. The two portal guards are kept: they are
 // faster (no failed round-trip) and _joinInFlight still closes the double-click race that the
 // database can only resolve AFTER both inserts have been sent.
-let _joinInFlight = false;
+export let _joinInFlight = false;
 // One sentence for "you are already in this game", wherever it is detected — portal check or
 // database constraint. Kept in one place so the three guards can never word it differently.
-const JOIN_DUP_MSG = kcHtml`You have already joined this game — a player may hold only one realm in any game. Open it from <strong>My Games</strong> instead.`;
-async function doJoinGame(gameId) {
+export const JOIN_DUP_MSG = kcHtml`You have already joined this game — a player may hold only one realm in any game. Open it from <strong>My Games</strong> instead.`;
+export async function doJoinGame(gameId) {
   if (_joinInFlight) return;
   const kingName = document.getElementById('join-king-name').value.trim();
   const kingdomName = document.getElementById('join-kingdom-name').value.trim() || kingName;
@@ -317,7 +330,7 @@ async function doJoinGame(gameId) {
 // The Chronicle's "Intelligence Reports" section. `inner` = the turn's logged intel (title
 // dispatches, standings, [Intelligence] lines). On the current-turn view it ends with #report-intel,
 // which renderReportView fills with the province reports, spied provinces and spy activity.
-function intelSectionShell(inner) {
+export function intelSectionShell(inner) {
   const host = viewedTurn == null ? kcHtml`<div id="report-intel"></div>` : '';
   return kcHtml`<div class="char-chronicle intel-plain" id="intel-reports-section" style="margin-bottom:22px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
         <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
@@ -328,7 +341,7 @@ function intelSectionShell(inner) {
         </div>
         <div style="padding:6px 8px">${inner || ''}${host}</div></div>`;
 }
-function buildChronicle(log, chars_for_log) {
+export function buildChronicle(log, chars_for_log) {
   const PHASE_NAMES = KC_PHASE_NAMES.slice();
   const PHASE_COLORS = KC_PHASE_COLORS.slice();
 
@@ -882,7 +895,7 @@ function buildChronicle(log, chars_for_log) {
   } // end else (log.length > 0)
 } // end buildChronicle
 
-async function loadPastReport(gameId, playerIndex, turn) {
+export async function loadPastReport(gameId, playerIndex, turn) {
   viewedTurn = turn;
   refreshTurnNavHighlight();
   const banner = document.getElementById('prev-report-banner');
@@ -971,7 +984,7 @@ async function loadPastReport(gameId, playerIndex, turn) {
   banner.innerHTML = kcHtml`Viewing Turn ${snapshotTurnLabel(turn)} — read only. <span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
 }
 
-function returnToCurrentReport() {
+export function returnToCurrentReport() {
   viewedTurn = null;
   refreshTurnNavHighlight();
   document.getElementById('prev-report-banner').style.display = 'none';

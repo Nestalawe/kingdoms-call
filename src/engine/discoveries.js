@@ -1,3 +1,10 @@
+import { KC_UNIT_CLASS, SAGE_DISCOVERIES_P } from '../content/kingdoms-call-data.js';
+import { CREATURE_ARMIES, FLYING_TYPES, MONSTER_ARMIES } from './units/movement.js';
+import { gdActiveFor, homeFounderOf } from './grand-design.js';
+import { TAMED_FLYER_TYPES_D } from './world/tables.js';
+import { pcFoeCat } from './personal-combat/helpers.js';
+import { getNeighborsP } from './world/map-helpers.js';
+
 // ── RESOLVE TURN — FULL INLINE ENGINE ────
 // This is a self-contained turn resolver embedded directly in the portal. It processes all 5 phases
 // for all characters, resolves actions, updates the game state, generates new turn reports, and
@@ -5,11 +12,11 @@
 
 // fields of study a player can never choose or see listed — found only as a side result of
 // researching any other field (see case 'research').
-const RESEARCH_HIDDEN_CATS = new Set(['Heroic', 'Special']);
+export const RESEARCH_HIDDEN_CATS = new Set(['Heroic', 'Special']);
 // the odds of an unlooked-for find in a HIDDEN field (Heroic / Special), expressed against the
 // character's ordinary Sage discovery chance. Divisor 5 with a 10% ceiling.
-const HIDDEN_DISCOVERY_DIVISOR = 5;
-const HIDDEN_DISCOVERY_CAP_PCT = 10;
+export const HIDDEN_DISCOVERY_DIVISOR = 5;
+export const HIDDEN_DISCOVERY_CAP_PCT = 10;
 // ── RESEARCH CHOICE (2026-09-21, Toby) ── a successful Research order no longer hands over one random
 // discovery: it turns up TWO in the chosen field, held on the realm as a pending choice
 // (`pl.pendingDiscoveryChoices`: {key, turn, charId, charName, category, options:[id,id]}). In the
@@ -17,7 +24,7 @@ const HIDDEN_DISCOVERY_CAP_PCT = 10;
 // ids) and never comes up again from Research, a Breakthrough or the Grand Library. No choice sent
 // (bots, or a player who left it blank) → one is kept at random. Options awaiting a choice are also
 // withheld from every other roll, so the same discovery is never offered twice at once.
-function discBlockedIds(pl) {
+export function discBlockedIds(pl) {
   const s = new Set(((pl && pl.forgottenDiscoveries) || []).map(String));
   ((pl && pl.pendingDiscoveryChoices) || []).forEach((p) =>
     ((p && p.options) || []).forEach((id) => s.add(String(id))),
@@ -28,11 +35,11 @@ function discBlockedIds(pl) {
 // Race/alignment discoveries carry `race` / `alignment`; a realm can only research, breakthrough,
 // Grand-Library or steal (spy) a discovery it is eligible for. Their effects are data-driven
 // (`effect.kind`) and read through discEffectsOf / discSumOf at the relevant engine hooks.
-const DISC_BY_ID = {};
+export const DISC_BY_ID = {};
 SAGE_DISCOVERIES_P.forEach((d) => {
   DISC_BY_ID[d.id] = d;
 });
-function discEligible(d, pl) {
+export function discEligible(d, pl) {
   if (!d) return false;
   if (d.race && (!pl || pl.race !== d.race)) return false;
   if (d.alignment && (!pl || pl.alignment !== d.alignment)) return false;
@@ -41,7 +48,7 @@ function discEligible(d, pl) {
 // 2026-09-21 rebalance: a discovery may carry a SECOND, smaller effect (`effect2`) — used by the
 // Espionage and exploration discoveries whose single lever was too weak on its own. Both are read
 // through the same generic hooks, so every effect below applies to either slot.
-function discEffectsOf(pl, kind) {
+export function discEffectsOf(pl, kind) {
   if (!pl) return [];
   const out = [];
   (pl.discoveries || []).forEach((d) => {
@@ -54,13 +61,13 @@ function discEffectsOf(pl, kind) {
   return out;
 }
 // Tunable magnitude of a discovery still wired by id (its row in SAGE_DISCOVERIES_P holds the number).
-function discParam(id, field, dflt) {
+export function discParam(id, field, dflt) {
   const d = DISC_BY_ID[id];
   const v = d && d.effect ? d.effect[field] : undefined;
   return v == null ? dflt : v;
 }
 // sd14 Taxation Records: +pct% of province income (integer maths, rounded down), capped.
-function taxRecordsGold(income, capG) {
+export function taxRecordsGold(income, capG) {
   const pc = Math.round(discParam('sd14', 'pct', 0.05) * 100);
   const raw = Math.floor(((income || 0) * pc) / 100);
   return Math.min(capG != null ? capG : discParam('sd14', 'max', 99), raw);
@@ -70,17 +77,17 @@ function taxRecordsGold(income, capG) {
 // bare sum of its provinces' tax, before consecration, Bless, enslavement, earthquakes, discoveries
 // or anything else. It binds each province-tax discovery, Taxation Records, and the magic items
 // that pay tax gold (their combined total). Always at least 1g, so a small realm still gains.
-const TAX_BONUS_CAP_PCT = 0.05;
-function realmBaseTax(gs, pi) {
+export const TAX_BONUS_CAP_PCT = 0.05;
+export function realmBaseTax(gs, pi) {
   const provs = (gs && gs.world && gs.world.provinces) || [];
   return provs.reduce((s, pv) => s + (pv && pv.owner === pi ? pv.tax || 0 : 0), 0);
 }
-function taxBonusCap(baseTax) {
+export function taxBonusCap(baseTax) {
   return Math.max(1, Math.floor((baseTax || 0) * TAX_BONUS_CAP_PCT));
 }
 // Magic items that pay tax gold (`taxBonus` flat, `taxPerProv` per province) share ONE ceiling:
 // the flat bonuses are paid first, the per-province gold fills whatever is left.
-function capItemTaxGold(taxBonus, perProvBonus, capG) {
+export function capItemTaxGold(taxBonus, perProvBonus, capG) {
   const flat = Math.min(taxBonus || 0, capG);
   const perProv = Math.min(perProvBonus || 0, Math.max(0, capG - flat));
   return { taxBonus: flat, perProvBonus: perProv, cut: (taxBonus || 0) + (perProvBonus || 0) - (flat + perProv) };
@@ -88,12 +95,12 @@ function capItemTaxGold(taxBonus, perProvBonus, capG) {
 // CEILINGS (Toby 2026-09-21): however many discoveries a realm stacks, the unit-strength multiplier
 // they give any one unit never exceeds ×1.30, and the own-ground fortification bonus (defOwn) never
 // exceeds +30%.
-const DISC_STR_CAP = 1.3;
-const DISC_DEFOWN_CAP = 0.3;
+export const DISC_STR_CAP = 1.3;
+export const DISC_DEFOWN_CAP = 0.3;
 // Does a `tax` effect pay on this province? Filters: minTax / maxTax (the province's own tax),
 // terrains, race (the province's folk), ownRace / foreign (folk of / not of the king's race),
 // coastal, garrisoned, home (the realm's founding capital).
-function discTaxMatch(e, pv, gs, pi, pl) {
+export function discTaxMatch(e, pv, gs, pi, pl) {
   const t = pv.tax || 0;
   if (e.minTax != null && t < e.minTax) return false;
   if (e.maxTax != null && t > e.maxTax) return false;
@@ -108,14 +115,14 @@ function discTaxMatch(e, pv, gs, pi, pl) {
 }
 // Module-level coastal test for the discovery helpers (provIsCoastal itself lives inside runTurn's
 // scope, so the report builder cannot call it). Same rule: a land province with a sea neighbour.
-function discProvCoastal(gs, pv) {
+export function discProvCoastal(gs, pv) {
   if (!gs || !gs.world || !pv || pv.terrain === 'sea') return false;
   return getNeighborsP(pv, gs.world.cols, gs.world.rows, gs.world.provinces).some((n) => n && n.terrain === 'sea');
 }
 // Per-province `tax` discovery gold. `acc` (a Map, one per realm per collection) tracks what each
 // capped effect (`max`) has already paid this turn, so a capped discovery never pays more than its
 // ceiling however large the realm grows. Shared by the collector and the report forecast.
-function discTaxAdd(pl, pv, gs, pi, acc, capG) {
+export function discTaxAdd(pl, pv, gs, pi, acc, capG) {
   let add = 0;
   discEffectsOf(pl, 'tax').forEach((e) => {
     if (!discTaxMatch(e, pv, gs, pi, pl)) return;
@@ -137,7 +144,7 @@ function discTaxAdd(pl, pv, gs, pi, acc, capG) {
 // the tax discoveries use (2026-09-26, Toby): `capG` replaces whatever fixed `max` the row carried,
 // so Goblin Warrens' old flat 1g becomes 5% of the realm's base tax income and grows with the realm.
 // `acc` tracks what each capped effect has already saved this turn.
-function discUpkeepWage(pl, a, w, acc, capG) {
+export function discUpkeepWage(pl, a, w, acc, capG) {
   if (!pl || !a || a._isSkeletal) return w;
   let out = w;
   discEffectsOf(pl, 'upkeep').forEach((e) => {
@@ -157,7 +164,7 @@ function discUpkeepWage(pl, a, w, acc, capG) {
 }
 // Hero wage after discoveries: `heroWage` cuts (optionally only for heroes of given alignments) then
 // the `heroWageCap` ceiling. Minimum 1g. Both are capped per turn at `capG` (5% of base income).
-function discHeroWage(pl, h, raw, acc, capG) {
+export function discHeroWage(pl, h, raw, acc, capG) {
   let w = raw;
   discEffectsOf(pl, 'heroWage').forEach((e) => {
     if (e.heroAlign && !e.heroAlign.includes(h.alignment)) return;
@@ -187,7 +194,7 @@ function discHeroWage(pl, h, raw, acc, capG) {
   return Math.max(1, w);
 }
 // `maxHp` discoveries for one character (filters: king, heroOnly, skill — at least one trained level).
-function discMaxHpFor(pl, ch) {
+export function discMaxHpFor(pl, ch) {
   if (!pl || !ch) return 0;
   return discSumOf(
     pl,
@@ -198,7 +205,7 @@ function discMaxHpFor(pl, ch) {
   );
 }
 // Chance (0..1) that a newly raised unit of this type starts one tier higher (`recruitQ`).
-function discRecruitQChance(pl, armyType) {
+export function discRecruitQChance(pl, armyType) {
   return Math.min(
     1,
     discSumOf(pl, 'recruitQ', 'pct', (e) => discUnitMatch(e, armyType, true)),
@@ -206,21 +213,21 @@ function discRecruitQChance(pl, armyType) {
 }
 // Per-terrain explore multiplier from `explore` discoveries (shipped in the report so the player
 // portal's preview no longer parses description text).
-function discExploreMult(pl, terrain) {
+export function discExploreMult(pl, terrain) {
   let m = 1;
   discEffectsOf(pl, 'explore').forEach((e) => {
     if (!e.terrains || e.terrains.includes(terrain)) m *= e.mult || 1;
   });
   return m;
 }
-function discSumOf(pl, kind, field, pred) {
+export function discSumOf(pl, kind, field, pred) {
   let s = 0;
   discEffectsOf(pl, kind).forEach((e) => {
     if (!pred || pred(e)) s += e[field] || 0;
   });
   return s;
 }
-const DISC_CLS_SETS = {
+export const DISC_CLS_SETS = {
   cavalry: new Set([
     'Free Lances',
     'Gilded Lances',
@@ -237,10 +244,10 @@ const DISC_CLS_SETS = {
   garrison: new Set(KC_UNIT_CLASS.garrison),
 };
 // Garrison units always muster into the province garrison when recruited (2026-09-23c, Toby).
-function isGarrisonUnitType(t) {
+export function isGarrisonUnitType(t) {
   return DISC_CLS_SETS.garrison.has(t);
 }
-function discUnitIs(cls, army, typeOnly) {
+export function discUnitIs(cls, army, typeOnly) {
   const t = typeOnly ? army : army && army.type;
   if (cls === 'primal') return CREATURE_ARMIES.has(t) || MONSTER_ARMIES.has(t);
   if (cls === 'creature') return CREATURE_ARMIES.has(t);
@@ -267,7 +274,7 @@ function discUnitIs(cls, army, typeOnly) {
 }
 // Does a unit-filtered effect (race / types / cls) apply to this army? (typeOnly: `army` is a type
 // name.)
-function discUnitMatch(e, army, typeOnly) {
+export function discUnitMatch(e, army, typeOnly) {
   if (!e) return false;
   const t = typeOnly ? army : army && army.type;
   if (e.types && !e.types.includes(t)) return false;
@@ -286,8 +293,8 @@ function discUnitMatch(e, army, typeOnly) {
 // alignment `recruitCost` discoveries (delta, then factor; minimum 1g). Per-character reductions
 // (Druid L6 half-price beasts) are applied by the engine on top. Used by the engine AND the report
 // builders so the player portal's recruit preview shows the realm's real price.
-const _FLEET_TYPES_DISC = new Set(KC_UNIT_CLASS.carrier);
-function realmRecruitCost(pl, armyType, baseCost) {
+export const _FLEET_TYPES_DISC = new Set(KC_UNIT_CLASS.carrier);
+export function realmRecruitCost(pl, armyType, baseCost) {
   let c = baseCost || 2; // sd16 Shipbuilding is now an ordinary `recruitCost` factor effect (cls fleet)
   discEffectsOf(pl, 'recruitCost').forEach((e) => {
     if (!discUnitMatch(e, armyType, true)) return;
@@ -296,7 +303,7 @@ function realmRecruitCost(pl, armyType, baseCost) {
   });
   return Math.max(1, c);
 }
-const ARMY_RACE_OF_TYPE = {
+export const ARMY_RACE_OF_TYPE = {
   'Shieldwall Levies': 'Human',
   'Free Lances': 'Human',
   'Yeoman Longbows': 'Human',
@@ -337,7 +344,7 @@ const ARMY_RACE_OF_TYPE = {
 // at ingestion, so a player who lost the race — or never landed the cast at all — still set that
 // hero's combat stance, and an encounter plan PERSISTS from turn to turn. Plans on synthetic cards
 // are now held here and applied only inside the branch where the hero actually enters service.
-function applyPendingSynthPlan(G, hero, pi) {
+export function applyPendingSynthPlan(G, hero, pi) {
   if (!G || !hero || !Array.isArray(G._pendingSynthPlans)) return false;
   const p = G._pendingSynthPlans.find((x) => x && x.heroId === hero.id && x.player === pi && x.plan);
   if (!p) return false;
@@ -350,17 +357,17 @@ function applyPendingSynthPlan(G, hero, pi) {
 // and _isHumanoidRace, which read none.
 // ── DISCOVERY EFFECT HELPERS ────
 // Returns true if player has a specific discovery
-function hasDisc(turnContext, playerIdx, discId) {
+export function hasDisc(turnContext, playerIdx, discId) {
   const { G } = turnContext;
   return (G.players[playerIdx]?.discoveries || []).some((d) => d.id === discId);
 }
-function gdActive(turnContext, playerIdx, align) {
+export function gdActive(turnContext, playerIdx, align) {
   const { G } = turnContext;
   return gdActiveFor(G, playerIdx, align);
 }
 // sd40 Dragon Taming: true when this commander's realm leads this winged beast without Druid
 // penalty.
-function dragonTamed(turnContext, heroChar, army) {
+export function dragonTamed(turnContext, heroChar, army) {
   return !!(
     heroChar &&
     heroChar.player != null &&
@@ -370,17 +377,17 @@ function dragonTamed(turnContext, heroChar, army) {
   );
 }
 // data-driven discovery effects (race / alignment discoveries).
-function discEff(turnContext, pi, kind) {
+export function discEff(turnContext, pi, kind) {
   const { G } = turnContext;
   return pi == null ? [] : discEffectsOf(G.players[pi], kind);
 }
-function discSum(turnContext, pi, kind, field, pred) {
+export function discSum(turnContext, pi, kind, field, pred) {
   const { G } = turnContext;
   return pi == null ? 0 : discSumOf(G.players[pi], kind, field, pred);
 }
 // Multiplier on ONE army's strength from `unitStr` discoveries (race / types / cls / terrain /
 // side).
-function discUnitMult(turnContext, pi, army, terrain, ctx, heroChar) {
+export function discUnitMult(turnContext, pi, army, terrain, ctx, heroChar) {
   if (pi == null || !army) return 1;
   let m = 1;
   discEff(turnContext, pi, 'unitStr').forEach((e) => {
@@ -395,7 +402,7 @@ function discUnitMult(turnContext, pi, army, terrain, ctx, heroChar) {
   return Math.min(DISC_STR_CAP, m); // ceiling on stacked discovery strength (Toby 2026-09-21)
 }
 // Per-unit promotion bonus from `promo` discoveries (unit filters).
-function discPromo(turnContext, pi, army) {
+export function discPromo(turnContext, pi, army) {
   if (pi == null || !army) return 0;
   let r = 0;
   discEff(turnContext, pi, 'promo').forEach((e) => {
@@ -404,7 +411,7 @@ function discPromo(turnContext, pi, army) {
   return r;
 }
 // Does a `duelHit` effect apply against this foe? vs: 'monster' | 'character' | 'undead'.
-function discDuelVs(e, foe) {
+export function discDuelVs(e, foe) {
   if (!e.vs) return true;
   if (!foe) return false;
   if (e.vs === 'monster') return foe.kind === 'monster';
@@ -413,14 +420,14 @@ function discDuelVs(e, foe) {
   return false;
 }
 // Does a `fanatic` effect apply? side ('atk'/'def'), terrain, withCls (force includes that class).
-function discFanaticApplies(e, side, terrain, force) {
+export function discFanaticApplies(e, side, terrain, force) {
   if (e.side && e.side !== side) return false;
   if (e.terrain && !e.terrain.includes(terrain)) return false;
   if (e.withCls && !(force || []).some((a) => a && discUnitIs(e.withCls, a))) return false;
   return true;
 }
 // 1 - (summed death-chance reduction) for one army.
-function discDeathMult(turnContext, pi, army, side) {
+export function discDeathMult(turnContext, pi, army, side) {
   if (pi == null || !army) return 1;
   let r = 0;
   discEff(turnContext, pi, 'deathRed').forEach((e) => {
@@ -432,19 +439,19 @@ function discDeathMult(turnContext, pi, army, side) {
 }
 // Only discoveries the realm is eligible for (race / alignment) can be researched, found or
 // stolen.
-function discAvailableFor(turnContext, pi, known) {
+export function discAvailableFor(turnContext, pi, known) {
   const { G } = turnContext;
   const pl = G.players[pi];
   const _blk = discBlockedIds(pl);
   return SAGE_DISCOVERIES_P.filter((d) => !known.has(d.id) && !_blk.has(String(d.id)) && discEligible(d, pl));
 } // forgotten + awaiting-choice ids excluded (research choice)
 // Get global army bonus from discoveries
-function discoveryArmyBonus(playerIdx) {
+export function discoveryArmyBonus(playerIdx) {
   let pct = 0;
   // sd02 War Drums is now an ordinary `unitStr` effect (armStr, under the ×1.30 ceiling).
   return pct;
 }
 
-function _isHumanoidRace(r) {
+export function _isHumanoidRace(r) {
   return r === 'Human' || r === 'Elven' || r === 'Dwarven' || r === 'Orcish';
 }

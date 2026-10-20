@@ -1,3 +1,5 @@
+import { kcDbGuard } from '../../db/kc-db-guard.js';
+
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // KINGDOMS CALL — THE OVERLORD PAGE (plan step P0-32f, ruling R-097)
 // ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -11,26 +13,26 @@
 // Its sign-in is kept apart from the portals' (storageKey), so signing in here never switches the account a GM tab in
 // the same browser is running turns with.
 if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load: reload the page.');
-const sb = supabase.createClient(KC_CONFIG.supabaseUrl, KC_CONFIG.supabaseKey, {
+export const sb = supabase.createClient(KC_CONFIG.supabaseUrl, KC_CONFIG.supabaseKey, {
   auth: { storageKey: 'kc-overlord-auth' },
 });
 // The oldest database this page works with (P0-34): P0-32h's, which added suspending and deleting accounts (and
 // suspended_until) on top of P0-32e's reassign_game and the Overlord's rights on every game. The page can't work without it.
-const KC_DB_MIN = '20261015051826';
+export const KC_DB_MIN = '20261015051826';
 
-let ME = null; // the signed-in account
-let ACCOUNTS = []; // overlord_accounts(); null if it failed (ACCOUNTS_ERROR says why)
-let ACCOUNTS_ERROR = '';
-let GAMES = []; // every game, light columns; null if the read failed (GAMES_ERROR)
-let GAMES_ERROR = '';
-let REPORTS = []; // gm_reported_messages(null)
-let REALMS = {}; // game id -> {player_index: realm name}, for the reported games
-let REVOKING = null; // the account whose Revoke panel is open
-let DELETING = null; // the account whose Delete panel is open (one panel at a time)
+export let ME = null; // the signed-in account
+export let ACCOUNTS = []; // overlord_accounts(); null if it failed (ACCOUNTS_ERROR says why)
+export let ACCOUNTS_ERROR = '';
+export let GAMES = []; // every game, light columns; null if the read failed (GAMES_ERROR)
+export let GAMES_ERROR = '';
+export let REPORTS = []; // gm_reported_messages(null)
+export let REALMS = {}; // game id -> {player_index: realm name}, for the reported games
+export let REVOKING = null; // the account whose Revoke panel is open
+export let DELETING = null; // the account whose Delete panel is open (one panel at a time)
 
-const $ = (id) => document.getElementById(id);
+export const $ = (id) => document.getElementById(id);
 // One element, its attributes and its children. Children are nodes or text: text is never read as markup.
-function el(tag, props, ...kids) {
+export function el(tag, props, ...kids) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {
     if (v == null || v === false) continue;
@@ -43,20 +45,20 @@ function el(tag, props, ...kids) {
   });
   return e;
 }
-const fill = (id, ...kids) => {
+export const fill = (id, ...kids) => {
   const box = $(id);
   box.replaceChildren(...kids.flat(Infinity).filter((c) => c != null && c !== false));
 };
-const day = (v) => (v ? String(v).slice(0, 10) : '—');
-function say(kind, text) {
+export const day = (v) => (v ? String(v).slice(0, 10) : '—');
+export function say(kind, text) {
   fill('msg', text ? el('div', { class: 'msg-' + kind }, text) : null);
 }
-function section(id) {
+export function section(id) {
   ['sec-auth', 'sec-denied', 'sec-main'].forEach((s) => $(s).classList.toggle('on', s === id));
 }
 
 // ── SIGN-IN ───────────────────────────────────────────────────────────────────────────────────
-async function init() {
+export async function init() {
   $('spinner').style.display = 'none';
   const {
     data: { session },
@@ -66,7 +68,7 @@ async function init() {
     onSignedIn();
   } else section('sec-auth');
 }
-async function doSignIn() {
+export async function doSignIn() {
   const email = $('si-email').value.trim(),
     password = $('si-password').value;
   if (!email || !password) {
@@ -90,7 +92,7 @@ async function doSignIn() {
   ME = (data && data.user) || ((await sb.auth.getSession()).data.session || {}).user || null;
   if (ME) onSignedIn();
 }
-async function doSignOut() {
+export async function doSignOut() {
   await sb.auth.signOut();
   ME = null;
   ACCOUNTS = [];
@@ -101,7 +103,7 @@ async function doSignOut() {
   DELETING = null;
   section('sec-auth');
 }
-async function onSignedIn() {
+export async function onSignedIn() {
   const { data, error } = await sb.rpc('is_site_admin');
   if (error || data !== true) {
     const m = $('denied-msg');
@@ -118,7 +120,7 @@ async function onSignedIn() {
 }
 
 // ── LOADING ───────────────────────────────────────────────────────────────────────────────────
-async function loadAll() {
+export async function loadAll() {
   fill('accounts', el('div', { class: 'msg-info' }, 'Loading…'));
   fill('games', el('div', { class: 'msg-info' }, 'Loading…'));
   fill('reports', el('div', { class: 'msg-info' }, 'Loading…'));
@@ -127,13 +129,13 @@ async function loadAll() {
   renderGames();
   await loadReports();
 }
-async function loadAccounts() {
+export async function loadAccounts() {
   const { data, error } = await sb.rpc('overlord_accounts');
   ACCOUNTS = error ? null : data || [];
   ACCOUNTS_ERROR = error ? error.message : '';
 }
 // Every game, newest first, in pages: the light columns only, never the world (traps.md, "select('*') on big tables").
-async function loadGames() {
+export async function loadGames() {
   const rows = [];
   for (let from = 0; ; from += 200) {
     const { data, error } = await sb
@@ -151,7 +153,7 @@ async function loadGames() {
   }
   GAMES = rows;
 }
-async function loadReports() {
+export async function loadReports() {
   const { data, error } = await sb.rpc('gm_reported_messages', { p_game: null });
   if (error) {
     fill('reports', el('div', { class: 'msg-error' }, error.message));
@@ -173,17 +175,17 @@ async function loadReports() {
 }
 
 // ── WHO'S WHO ─────────────────────────────────────────────────────────────────────────────────
-const account = (id) => (ACCOUNTS || []).find((a) => a.user_id === id) || null;
-const nameOf = (id) => {
+export const account = (id) => (ACCOUNTS || []).find((a) => a.user_id === id) || null;
+export const nameOf = (id) => {
   const a = account(id);
   return a ? a.name || a.email || '(no name)' : id ? '(unknown account)' : '(no GM)';
 };
-const gameMasters = (except) =>
+export const gameMasters = (except) =>
   (ACCOUNTS || [])
     .filter((a) => a.gm_status === 'game_master' && a.user_id !== except)
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-const unfinished = (gm) => (GAMES || []).filter((g) => g.gm_user_id === gm && g.status !== 'complete');
-function metaOf(g) {
+export const unfinished = (gm) => (GAMES || []).filter((g) => g.gm_user_id === gm && g.status !== 'complete');
+export function metaOf(g) {
   try {
     const m = typeof g.meta === 'string' ? JSON.parse(g.meta) : g.meta;
     return m && typeof m === 'object' ? m : {};
@@ -191,10 +193,10 @@ function metaOf(g) {
     return {};
   }
 }
-const TURN_MODES = { manual: 'By hand', auto: 'When all orders are in', deadline: 'Orders in, or the deadline' };
+export const TURN_MODES = { manual: 'By hand', auto: 'When all orders are in', deadline: 'Orders in, or the deadline' };
 
 // ── ACCOUNTS ──────────────────────────────────────────────────────────────────────────────────
-function renderAccounts() {
+export function renderAccounts() {
   if (ACCOUNTS == null) {
     fill('accounts', el('div', { class: 'msg-error' }, ACCOUNTS_ERROR));
     return;
@@ -297,7 +299,7 @@ function renderAccounts() {
 }
 // Revoking: first every unfinished game the account runs goes to another Game Master; then Revoke is enabled
 // (gm_revoke refuses until then anyway).
-function revokePanel(a) {
+export function revokePanel(a) {
   const left = unfinished(a.user_id);
   return el(
     'div',
@@ -356,15 +358,19 @@ function revokePanel(a) {
 }
 // ── SUSPEND AND DELETE (P0-32h, R-097) ───────────────────────────────────────────────────────
 // A suspension "until lifted" is stored a hundred years ahead (account_suspend), so anything past fifty reads as that.
-const label = (a) => a.name || a.email || '(no name)';
-function suspendedText(a) {
+export const label = (a) => a.name || a.email || '(no name)';
+export function suspendedText(a) {
   const t = new Date(a.suspended_until);
   return t.getTime() - Date.now() > 50 * 365 * 864e5
     ? 'Suspended until lifted'
     : 'Suspended until ' + t.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
 }
-const SUSPEND_FOR = { day: ['for a day', 864e5], week: ['for a week', 7 * 864e5], lifted: ['until you lift it', null] };
-function accountActions(a) {
+export const SUSPEND_FOR = {
+  day: ['for a day', 864e5],
+  week: ['for a week', 7 * 864e5],
+  lifted: ['until you lift it', null],
+};
+export function accountActions(a) {
   const suspension = a.suspended_until
     ? el(
         'button',
@@ -405,7 +411,7 @@ function accountActions(a) {
     ),
   ];
 }
-async function suspend(a, how) {
+export async function suspend(a, how) {
   const [words, ms] = SUSPEND_FOR[how] || SUSPEND_FOR.day;
   if (
     !confirm(
@@ -421,12 +427,12 @@ async function suspend(a, how) {
     `${label(a)} is suspended ${words}.`,
   );
 }
-async function unsuspend(a) {
+export async function unsuspend(a) {
   await act(sb.rpc('account_unsuspend', { p_user: a.user_id }), `${label(a)} can sign in again.`);
 }
 // Deleting: says what goes and what stays, and needs the account's email (or name) typed in. The database refuses while
 // the account runs or plays in an unfinished game, and says which.
-function deletePanel(a) {
+export function deletePanel(a) {
   const word = a.email || a.name || '';
   const runs = unfinished(a.user_id);
   const typed = el('input', {
@@ -490,20 +496,20 @@ function deletePanel(a) {
     ),
   );
 }
-async function deleteAccount(a) {
+export async function deleteAccount(a) {
   DELETING = null;
   await act(sb.rpc('account_delete', { p_user: a.user_id }), `${label(a)}'s account is deleted.`);
 }
-async function offerGm(a) {
+export async function offerGm(a) {
   await act(
     sb.rpc('gm_offer', { p_user: a.user_id }),
     `Offered Game Master to ${a.name || a.email}. They'll see it at the top of their player portal.`,
   );
 }
-async function withdrawOffer(a) {
+export async function withdrawOffer(a) {
   await act(sb.rpc('gm_withdraw_offer', { p_user: a.user_id }), `Withdrew the offer to ${a.name || a.email}.`);
 }
-async function revokeGm(a) {
+export async function revokeGm(a) {
   if (!confirm(`Revoke Game Master from ${a.name || a.email}? They can still play.`)) return;
   REVOKING = null;
   await act(sb.rpc('gm_revoke', { p_user: a.user_id }), `${a.name || a.email} is no longer a Game Master.`);
@@ -511,7 +517,7 @@ async function revokeGm(a) {
 
 // ── GAMES ─────────────────────────────────────────────────────────────────────────────────────
 // A picker of Game Masters (not the game's own) and a Hand over button.
-function handOver(g) {
+export function handOver(g) {
   const pick = el(
     'select',
     { 'data-act': 'pick' },
@@ -529,7 +535,7 @@ function handOver(g) {
     ),
   );
 }
-async function reassign(g, to) {
+export async function reassign(g, to) {
   if (!to) {
     say('error', 'Choose the Game Master to hand the game to.');
     return;
@@ -542,7 +548,7 @@ async function reassign(g, to) {
     return;
   await act(sb.rpc('reassign_game', { p_game: g.id, p_new_gm: to }), `${g.name} is now run by ${nameOf(to)}.`);
 }
-function renderGames() {
+export function renderGames() {
   if (GAMES == null) {
     fill('games', el('div', { class: 'msg-error' }, GAMES_ERROR));
     return;
@@ -611,7 +617,7 @@ function renderGames() {
 }
 
 // ── REPORTED DISPATCHES ───────────────────────────────────────────────────────────────────────
-function renderReports() {
+export function renderReports() {
   if (!REPORTS.length) {
     fill('reports', el('div', { class: 'muted' }, 'No dispatches reported.'));
     return;
@@ -648,7 +654,7 @@ function renderReports() {
     ),
   );
 }
-async function deleteDispatch(r) {
+export async function deleteDispatch(r) {
   if (!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
   const { error } = await sb.from('game_messages').delete().eq('id', r.message_id);
   if (error) {
@@ -661,7 +667,7 @@ async function deleteDispatch(r) {
 
 // ── ACTIONS ───────────────────────────────────────────────────────────────────────────────────
 // Runs one database call; on success says so and reloads everything, on a refusal shows the database's reason.
-async function act(call, done) {
+export async function act(call, done) {
   const { error } = await call;
   if (error) {
     say('error', error.message);

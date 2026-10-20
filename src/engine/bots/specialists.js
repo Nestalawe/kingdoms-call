@@ -1,8 +1,78 @@
+import { kcRng } from '../rng.js';
+import { GUARDIAN_POWER_RANK, SKILL_LABELS, STEAL_TIER_PEN } from '../army-tables.js';
+import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.js';
+import { featDiscovered } from '../../views/visibility.js';
+import {
+  BOT_DEF_BONUS,
+  BOT_HEX_DIRS,
+  botAlignFriendly,
+  botBattleForce,
+  botBelief,
+  botBelievedOwner,
+  botDruidShortfall,
+  botEffForce,
+  botForceStrength,
+  botKnows,
+  botKnowsGraves,
+  botMarginFor,
+  botMutualFoe,
+  botNeighbourProv,
+  botRelationRaw,
+  botSees,
+  botSeesChar,
+  botTargetDefence,
+  botVisibleCharsIn,
+} from './intel.js';
+import { BOT_SEA_ALL, botDefenceNeed, botEnemyChars, botIsLoadedFleet, botIsValuable, botSeaCap } from './war.js';
+import { BOT_SPECIALIST_SKILLS } from './specialist-skills.js';
+import {
+  BOT_SLAYER_FIGHTERS_ONLY,
+  botFieldRecruitTokens,
+  botFleetOnly,
+  botHeroCap,
+  botHexDist,
+  botHomeId,
+  botIsFighter,
+  botLandReach,
+  botPassable,
+  botRecruitOrder,
+  botRoles,
+  botTurnCache,
+} from './strategy.js';
+import { BOT_SCHOOLS } from './schools.js';
+import {
+  botAllyNear,
+  botDuelSkill,
+  botEnemyIntel,
+  botHostMargin,
+  botLairCandidates,
+  botLairPlan,
+  botMasteryPre,
+  botPickupOrder,
+  botRememberedHostAt,
+  botSkillsUnknown,
+  botSlayerHasLairsToGrowInto,
+  botSlayerTrainSkill,
+} from './missions.js';
+import { BOT_NAVAL_TYPES, botAtWar, botPracticeSkill } from './economy.js';
+import {
+  botBeatableLairIn,
+  botCastPlan,
+  botCrossTrainSkill,
+  botPathAny,
+  botPathLenAny,
+  botPlannedAttackTarget,
+  botSchoolLimit,
+  botTargetTitles,
+  botTitleFocusSkill,
+} from './spellcraft.js';
+import { botPins } from './phase-one.js';
+
 // ── MAGE (2026-09-26, Toby): a specialist who focuses on TWO schools of magic — his strongest, and the next
 // strongest (a complementary pick when he holds only one: Elemental with White, otherwise White with Elemental).
 // He casts wherever a cast is worth making (botCastPlan already ranks every school's spells by the situation),
 // stands with the general when nothing is, and trains the weaker of his two schools between times.
-function botMageSchools(c) {
+export function botMageSchools(c) {
   const s = (c && c.skills) || {};
   const ranked = [...BOT_SCHOOLS].sort(
     (a, b) => (s[b] || 0) - (s[a] || 0) || BOT_SCHOOLS.indexOf(a) - BOT_SCHOOLS.indexOf(b),
@@ -12,22 +82,22 @@ function botMageSchools(c) {
   if (!s2) s2 = s1 === 'elemental' ? 'white' : 'elemental';
   return [s1, s2];
 }
-function botMageAptitude(c) {
+export function botMageAptitude(c) {
   const s = (c && c.skills) || {};
   const [a, b] = botMageSchools(c);
   return (s[a] || 0) * 4 + (s[b] || 0) * 3;
 }
-const BOT_SPECIALIST_ROLES = new Set(Object.keys(BOT_SPECIALIST_SKILLS));
-const BOT_DEFEND_ORDER = { action: 'defend', target: '', extra: '', desc: 'Hold the post' };
-function botMagicScore(c) {
+export const BOT_SPECIALIST_ROLES = new Set(Object.keys(BOT_SPECIALIST_SKILLS));
+export const BOT_DEFEND_ORDER = { action: 'defend', target: '', extra: '', desc: 'Hold the post' };
+export function botMagicScore(c) {
   const s = c.skills || {};
   return (s.elemental || 0) + (s.necromancy || 0) + (s.psychic || 0) + (s.illusory || 0) + (s.white || 0);
 }
-function botLandCount(G, pi) {
+export function botLandCount(G, pi) {
   return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea').length;
 }
 // The six-hex Defend zone about a province (the engine's inDefendZone, in engine/units/defend-ride-outs-ambushes-and-reinforcements.js, takes the turn's context).
-function botZoneOf(G, X) {
+export function botZoneOf(G, X) {
   const z = [X];
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, X, i);
@@ -36,7 +106,7 @@ function botZoneOf(G, X) {
   return z;
 }
 // SPECIALIST ASSIGNMENT — cached per turn. `excluded` = ids already claimed (companions).
-function botSpecialistRoles(G, pi, excluded) {
+export function botSpecialistRoles(G, pi, excluded) {
   const cache = botTurnCache(G);
   cache.spec = cache.spec || {};
   if (cache.spec[pi]) return cache.spec[pi];
@@ -197,12 +267,12 @@ function botSpecialistRoles(G, pi, excluded) {
   cache.spec[pi] = r;
   return r;
 }
-function botSpecialistOf(G, pi, c) {
+export function botSpecialistOf(G, pi, c) {
   const s = botSpecialistRoles(G, pi);
   return s.byId[c.id] || null;
 }
 // TRAINING RENDEZVOUS — walk to the capital (through any land; unarmed) and practise `skill`.
-function botTrainOrders(G, pi, c, pre, skill, why) {
+export function botTrainOrders(G, pi, c, pre, skill, why) {
   const P = G.world.provinces[c.location];
   const home = botHomeId(G, pi);
   const H = home != null ? G.world.provinces[home] : null;
@@ -249,7 +319,7 @@ function botTrainOrders(G, pi, c, pre, skill, why) {
   return out.slice(0, 5);
 }
 // SCHOLAR — Research at Sage 2+ (Neutral: 1+; every Sage level is 5%, 10% for Neutral), else train Sage.
-function botScholarOrders(G, pi, c, pre) {
+export function botScholarOrders(G, pi, c, pre) {
   const sg = (c.skills || {}).sage || 0;
   const neutral = ((G.players || [])[pi] || {}).alignment === 'Neutral';
   const working = neutral ? sg >= 1 : sg >= 2;
@@ -284,7 +354,7 @@ function botScholarOrders(G, pi, c, pre) {
 }
 // SCOUT — the nearest known land province (ours, or unowned) still short of fully mapped; walk there
 // and Explore for the rest of the year. Wild (Creature/Monster) ground is where lairs lie: +bonus.
-function botScoutTarget(G, pi, c, maxD) {
+export function botScoutTarget(G, pi, c, maxD) {
   const from = G.world.provinces[c.location];
   if (!from) return null;
   let best = null;
@@ -305,7 +375,7 @@ function botScoutTarget(G, pi, c, maxD) {
   });
   return best;
 }
-function botScoutOrders(G, pi, c, pre) {
+export function botScoutOrders(G, pi, c, pre) {
   const P = G.world.provinces[c.location];
   const t = botScoutTarget(G, pi, c, 4);
   if (!t) return null;
@@ -319,7 +389,7 @@ function botScoutOrders(G, pi, c, pre) {
 // ROAM (2026-09-26, Toby item 5) — a hero sent out to FIND wandering heroes: the nearest known land
 // province (not an enemy's) that none of the realm's characters has ever stood in, up to five hops
 // through any land; explore on arrival so the walk maps ground too. Falls back to the scout target.
-function botRoamOrders(G, pi, c, pre) {
+export function botRoamOrders(G, pi, c, pre) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   let best = null;
@@ -342,7 +412,7 @@ function botRoamOrders(G, pi, c, pre) {
 }
 // SPY — a rival's province the realm has seen, within reach; prefer capitals, wealth, war enemies and
 // ground not spied lately. Memo of spied provinces lives on the player record (p._botSpyMemo).
-function botSpyTarget(G, pi, c, maxD) {
+export function botSpyTarget(G, pi, c, maxD) {
   const from = G.world.provinces[c.location];
   if (!from) return null;
   const memo = ((G.players || [])[pi] || {})._botSpyMemo || {};
@@ -391,13 +461,13 @@ function botSpyTarget(G, pi, c, maxD) {
 }
 // INVISIBILITY FIRST (2026-09-26, idea 3): an Illusory 1+ character who will end a walk on ground that is not
 // ours casts Invisibility before setting out — twice as hard to hit, +30% to flee, +15% to steal.
-function botCloakPre(G, pi, c, pre, destProv) {
+export function botCloakPre(G, pi, c, pre, destProv) {
   if (((c.skills || {}).illusory || 0) < 1 || pre.length >= 4) return pre;
   if (pre.some((o) => o && o.action === 'cast_spell' && o.target === 'Invisibility')) return pre;
   if (destProv && destProv.owner === pi) return pre;
   return [...pre, { action: 'cast_spell', target: 'Invisibility', extra: '', desc: 'Cast Invisibility' }];
 }
-function botSpyOrders(G, pi, c, pre) {
+export function botSpyOrders(G, pi, c, pre) {
   const P = G.world.provinces[c.location];
   // Sept 2026 (Toby): learn a rival's skills before anyone decides to fight him — a character standing here whose
   // skills our spies have not reported (generals and kings first) is spied on this phase.
@@ -484,7 +554,7 @@ function botSpyOrders(G, pi, c, pre) {
 }
 // THIEF — a visible rival hero (at-war, or a crown the spectrum makes a future foe) or a rival garrison
 // paymaster, within reach. Heroes leading troops halve the chance, so they score lower.
-function botStealTarget(G, pi, c, maxD) {
+export function botStealTarget(G, pi, c, maxD) {
   const from = G.world.provinces[c.location];
   if (!from) return null;
   let best = null;
@@ -516,7 +586,7 @@ function botStealTarget(G, pi, c, maxD) {
   });
   return best;
 }
-function botThiefOrders(G, pi, c, pre) {
+export function botThiefOrders(G, pi, c, pre) {
   const P = G.world.provinces[c.location];
   // 2026-09-26 (idea 7): GRAND HEIST — a Thief 7+ at war walks (cloaked) into the richest seen enemy capital or
   // Rich province within four hops and breaks into its vaults; the attempt is once a turn.
@@ -612,7 +682,7 @@ function botThiefOrders(G, pi, c, pre) {
 }
 // LAIR TRAVEL — a beatable, discovered, uncleared lair in ground that is ours, unowned or an ally's,
 // within reach of an unarmed fighter (Melee/Archery 3+ — botCanBeatGuardian's own floor).
-function botLairTarget(G, pi, c, maxD) {
+export function botLairTarget(G, pi, c, maxD) {
   const from = G.world.provinces[c.location];
   if (!from) return null;
   let best = null;
@@ -631,7 +701,7 @@ function botLairTarget(G, pi, c, maxD) {
   });
   return best;
 }
-function botLairOrders(G, pi, c, pre) {
+export function botLairOrders(G, pi, c, pre) {
   const P = G.world.provinces[c.location];
   const t = botLairTarget(G, pi, c, 4);
   if (!t) return null;
@@ -646,7 +716,7 @@ function botLairOrders(G, pi, c, pre) {
 }
 // ROLE WORK — the orders a role does when it has real work this year, or null (2026-09-26, Toby: primary role,
 // then the SECONDARY role, then the primary's training — nobody trains while another craft has work to do).
-function botRoleWork(G, pi, c, pre, role, L) {
+export function botRoleWork(G, pi, c, pre, role, L) {
   switch (role) {
     case 'slayer': {
       const lp = botLairPlan(G, pi, c, pre, L);
@@ -740,7 +810,7 @@ function botRoleWork(G, pi, c, pre, role, L) {
 // MAGE WORK: every cast worth making from where he stands (up to three, both schools, offence first — the plan
 // already refuses spells the situation cannot use), then practice the weaker school; with nothing to cast, walk
 // to the nearest general leading a host (≤4 hops through any land) to be his caster next year; else null (train).
-function botMageOrders(G, pi, c, pre, L) {
+export function botMageOrders(G, pi, c, pre, L) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   const [s1, s2] = botMageSchools(c);
@@ -920,7 +990,7 @@ function botMageOrders(G, pi, c, pre, L) {
   }
   return null;
 }
-function botRoleTrain(G, pi, c, pre, role) {
+export function botRoleTrain(G, pi, c, pre, role) {
   switch (role) {
     case 'slayer': {
       const k = botSlayerTrainSkill(c);
@@ -945,7 +1015,7 @@ function botRoleTrain(G, pi, c, pre, role) {
 }
 // Is a hero AT his primary role's working level? Below it, training the primary is the immediate good action and
 // the secondary role waits (the first cut let secondaries starve slayers of Melee: 1.8 average at game end).
-function botRoleReady(G, pi, c, role) {
+export function botRoleReady(G, pi, c, role) {
   const s = (c && c.skills) || {};
   const neutral = ((G.players || [])[pi] || {}).alignment === 'Neutral';
   switch (role) {
@@ -966,7 +1036,7 @@ function botRoleReady(G, pi, c, role) {
   }
   return true;
 }
-function botSpecialistOrders(G, pi, c, pre, role, L) {
+export function botSpecialistOrders(G, pi, c, pre, role, L) {
   const w = botRoleWork(G, pi, c, pre, role, L);
   if (w) return w;
   const r2 = c._botRole2;
@@ -984,7 +1054,7 @@ function botSpecialistOrders(G, pi, c, pre, role, L) {
 // DEFENDER POST — the owned land province whose Defend zone covers the most owned tax not already
 // covered (`covered`: provinces a field host stands on plus earlier defenders' zones). Sticky: the
 // current post is kept while it scores at least 80% of the best. Returns {X,d,sc} or null.
-function botDefenderPost(G, pi, c, covered) {
+export function botDefenderPost(G, pi, c, covered) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   const home = botHomeId(G, pi);
@@ -1023,7 +1093,7 @@ function botDefenderPost(G, pi, c, covered) {
 // DEFENDER ORDERS — hire, walk to the post (if not there), ONE Defend, recruit to self at an owned post,
 // then the useful tail: Bless / Illusory Terrain / Resurrect (and Oratory while a hostile host is within
 // two hexes), cross-training with anyone standing here, else Tactical drill / the best skill to raise.
-function botDefenderOrders(G, pi, c, pre, post, L) {
+export function botDefenderOrders(G, pi, c, pre, post, L) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   const armed = (c.armies || []).length > 0;
@@ -1098,7 +1168,7 @@ function botDefenderOrders(G, pi, c, pre, post, L) {
 }
 // DRILL: a commander leading 3+ land/air units practises Tactical in every spare phase (levels the
 // skill AND promotes unit quality); a fleet commander drills Naval. Else the phase is a Hold.
-function botDrillOrder(G, pi, c) {
+export function botDrillOrder(G, pi, c) {
   const land = (c.armies || []).filter((a) => a && !BOT_SEA_ALL.has(a.type) && !a._isSkeletal).length;
   const sea = (c.armies || []).filter((a) => a && BOT_SEA_ALL.has(a.type)).length;
   // a commander whose host carries units he cannot lead cleanly trains DRUID before anything else —
@@ -1135,7 +1205,7 @@ function botDrillOrder(G, pi, c) {
 // 2026-09-26 (study): an officer below his role's working level trains THAT skill in every filler phase — an
 // admiral to Naval 3. (The flying general trained Druid 3 while the winged riders were beasts; since 2026-10-11
 // they are soldiers of their race and need none.) Without this the explore-first filler left admirals at Naval 1.
-function botRoleTrainSkill(c) {
+export function botRoleTrainSkill(c) {
   const s = (c && c.skills) || {};
   if (c._botRole === 'admiral' && (s.naval || 0) < 3) return 'naval';
   // 2026-09-26 (idea 8): the holder of a craft keeps at it to MASTERY 7 in his filler phases — Sabotage,
@@ -1144,7 +1214,7 @@ function botRoleTrainSkill(c) {
   if (k && (s[k] || 0) >= 5 && (s[k] || 0) < 7) return k;
   return null;
 }
-function botPracticeFallback(G, pi, c, opts) {
+export function botPracticeFallback(G, pi, c, opts) {
   const drill = botDrillOrder(G, pi, c);
   if (drill) return drill;
   {
@@ -1183,7 +1253,7 @@ function botPracticeFallback(G, pi, c, opts) {
 }
 // CONTACT: until another crown has been met — a non-neutral relation, or any other player's land or
 // armed character within 2 hexes of our own land — Defend watches are pointless.
-function botHasMetPlayers(G, pi) {
+export function botHasMetPlayers(G, pi) {
   const cache = botTurnCache(G);
   cache.met = cache.met || {};
   if (cache.met[pi] != null) return cache.met[pi];
@@ -1207,7 +1277,7 @@ function botHasMetPlayers(G, pi) {
   return met;
 }
 // A non-allied player's armed host within 2 hexes of this character — reason for an early watch.
-function botNearbyThreat(G, pi, c) {
+export function botNearbyThreat(G, pi, c) {
   const P = G.world.provinces[c.location];
   if (!P) return false;
   // a host two hexes away sets a watch only if the realm can see it standing there.
@@ -1232,7 +1302,7 @@ function botNearbyThreat(G, pi, c) {
 // watch the moment a later phase holds a Move). A general with no moves keeps the watch all turn.
 // Before this a Defend was tacked on AFTER the moves, and reacting to a neighbour's skirmish
 // routinely dragged the main host off its advance.
-function botFillOrders(G, pi, c, pre, moves) {
+export function botFillOrders(G, pi, c, pre, moves) {
   const armed = (c.armies || []).length > 0,
     met = botHasMetPlayers(G, pi);
   const watch =
@@ -1248,7 +1318,7 @@ function botFillOrders(G, pi, c, pre, moves) {
   while (out.length < 5) out.push(tail ? { ...tail } : { action: 'defend', target: '', extra: '', desc: 'Hold' });
   return out;
 }
-const botMoveOrder = (dirIdx, desc) => ({
+export const botMoveOrder = (dirIdx, desc) => ({
   action: 'move',
   target: 'dir:' + BOT_HEX_DIRS[dirIdx],
   extra: '',
@@ -1257,7 +1327,7 @@ const botMoveOrder = (dirIdx, desc) => ({
 // PATHING — shortest march from `from` to province `toId` through passable land (own/allied); the
 // destination itself may be anything. Returns up to maxHops direction indices, or null if
 // unreachable.
-function botPathDirs(G, pi, from, toId, maxHops, unarmed) {
+export function botPathDirs(G, pi, from, toId, maxHops, unarmed) {
   if (!from || toId == null || from.id === toId) return [];
   const prev = {};
   prev[from.id] = null;
@@ -1291,13 +1361,13 @@ function botPathDirs(G, pi, from, toId, maxHops, unarmed) {
   return dirs.slice(0, Math.max(0, maxHops));
 }
 // BFS distance through passable land (null = unreachable).
-function botPathLen(G, pi, from, toId, unarmed) {
+export function botPathLen(G, pi, from, toId, unarmed) {
   const d = botPathDirs(G, pi, from, toId, 99, unarmed);
   return d ? d.length : null;
 }
 // FRONTIER — nearest own/allied land province that borders unowned or at-war-enemy land (ties → the one
 // with the most such neighbours). null if `P` is itself on the edge or nothing is reachable.
-function botIsEdge(G, pi, prov) {
+export function botIsEdge(G, pi, prov) {
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, prov, i);
     if (!N || N.terrain === 'sea') continue;
@@ -1305,7 +1375,7 @@ function botIsEdge(G, pi, prov) {
   }
   return false;
 }
-function botFrontierTarget(G, pi, P) {
+export function botFrontierTarget(G, pi, P) {
   if (botIsEdge(G, pi, P)) return null;
   // counted on BELIEVED ownership — staging through an ally's land can look two hops past our own
   // border, and unmapped ground is not counted as open country.
@@ -1347,7 +1417,7 @@ function botFrontierTarget(G, pi, P) {
 }
 // HOME THREAT — the strongest at-war enemy host standing within 2 hops of the capital (a human
 // massing on the border). {force, provId} or null.
-function botHomeThreat(G, pi) {
+export function botHomeThreat(G, pi) {
   const hid = botHomeId(G, pi);
   const H = hid != null ? G.world.provinces[hid] : null;
   if (!H) return null;
@@ -1373,7 +1443,7 @@ function botHomeThreat(G, pi) {
 // TARGET SCAN — from province P with a column of strength myStr: the best winnable adjacent target
 // (attack an at-war enemy province, take unowned land, hunt enemy leaders, put to sea), the strongest
 // at-war enemy host on the doorstep, and the neighbouring valuable province most in need of help.
-function botScanTargets(G, pi, c, P, myStr, T, visited) {
+export function botScanTargets(G, pi, c, P, myStr, T, visited) {
   const margin = botMarginFor(G, pi, c, T);
   // `myStr` is the column's plain-ground battle force (possibly discounted for fights already
   // chained this turn); re-project it onto each target's terrain so a mountain front line is read
@@ -1480,8 +1550,8 @@ function botScanTargets(G, pi, c, P, myStr, T, visited) {
 // CHAINED HOPS — continue a march from a predicted position: attack the next winnable neighbour,
 // else walk toward the frontier. Strength is discounted 15% per fight fought (losses) and each
 // extra hop that fights demands a stiffer margin; at most two fights per turn are chained.
-const BOT_MAX_FIGHTS = 3;
-function botChainHops(G, pi, c, startProv, myStr, T, hopsLeft, visited, fights) {
+export const BOT_MAX_FIGHTS = 3;
+export function botChainHops(G, pi, c, startProv, myStr, T, hopsLeft, visited, fights) {
   const moves = [];
   let cur = startProv,
     str = myStr,
@@ -1521,7 +1591,7 @@ function botChainHops(G, pi, c, startProv, myStr, T, hopsLeft, visited, fights) 
 // marching). Returns the move list: the path as far as this turn's hops allow, then — if a hop
 // remains on arrival — the attack itself and any chained follow-ups. null when nothing winnable
 // exists in reach.
-function botDistantStrike(G, pi, c, P, myStr, T, maxHops) {
+export function botDistantStrike(G, pi, c, P, myStr, T, maxHops) {
   if (maxHops <= 0) return null;
   const margin = botMarginFor(G, pi, c, T);
   const plainStr = botBattleForce(G, c, null, 'plain');

@@ -1,4 +1,8 @@
-function getNeighborsP(prov, cols, rows, provinces) {
+import { KC_HEX_DIRS, KC_QUALITY_DOWN } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { QUALITY_TIERS } from '../army-tables.js';
+
+export function getNeighborsP(prov, cols, rows, provinces) {
   const { row, col } = prov;
   const offsets =
     row % 2 === 0
@@ -31,8 +35,8 @@ function getNeighborsP(prov, cols, rows, provinces) {
 // Raise Wraiths — "Wraith's Touch": if a force contains a wraith, ONE random highest-experience
 // enemy unit is PERMANENTLY reduced by one experience tier (written back to the real unit). Fires
 // once at the start of a battle, per side that fields a wraith.
-const _WRAITH_DOWN = { ...KC_QUALITY_DOWN };
-function applyWraithTouch(friendly, enemy, narr) {
+export const _WRAITH_DOWN = { ...KC_QUALITY_DOWN };
+export function applyWraithTouch(friendly, enemy, narr) {
   if (!Array.isArray(friendly) || !Array.isArray(enemy)) return;
   if (!friendly.some((a) => a && a._isWraith)) return;
   const tiers = QUALITY_TIERS.slice();
@@ -56,11 +60,11 @@ function applyWraithTouch(friendly, enemy, narr) {
 // they never appear in rosters, order dropdowns, wages, give/disband/garrison — all of which read
 // ch.armies). They are injected as marked copies into the fighting force only for the duration of a
 // battle, then removed.
-const _PH_TIERS = QUALITY_TIERS.slice();
-function _phBetterQuality(a, b) {
+export const _PH_TIERS = QUALITY_TIERS.slice();
+export function _phBetterQuality(a, b) {
   return _PH_TIERS.indexOf(a) >= _PH_TIERS.indexOf(b) ? a : b;
 }
-function injectPhantoms(ch, real) {
+export function injectPhantoms(ch, real) {
   if (!ch || !Array.isArray(ch._phantoms) || ch._phantoms.length === 0 || !Array.isArray(ch.armies)) return;
   const byTag = {};
   ch.armies.forEach((a) => {
@@ -101,7 +105,7 @@ function injectPhantoms(ch, real) {
     ch.armies.push(copy);
   });
 }
-function clearPhantomCopies(ch, lost, real) {
+export function clearPhantomCopies(ch, lost, real) {
   if (!ch) return;
   // harvest each fighting copy's quality back onto its stored double BEFORE the copy is discarded,
   // so promotions earned in this battle persist into the next one this turn.
@@ -130,7 +134,7 @@ function clearPhantomCopies(ch, lost, real) {
   }
 }
 
-function hexDistP(a, b, cols) {
+export function hexDistP(a, b, cols) {
   let dc = Math.abs(a.col - b.col);
   if (cols > 0) dc = Math.min(dc, cols - dc);
   const dr = Math.abs(a.row - b.row);
@@ -139,18 +143,18 @@ function hexDistP(a, b, cols) {
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08b) ── a province's name by id, the province a hero stands in, and the
 // neighbour in a compass direction. Each takes the turn's context first (src/engine/turn/context.js).
-function provName(turnContext, id) {
+export function provName(turnContext, id) {
   const { G } = turnContext;
   return G.world.provinces[id]?.name || 'unknown';
 }
-function provOf(turnContext, c) {
+export function provOf(turnContext, c) {
   const { G } = turnContext;
   return G.world.provinces[c.location];
 }
 
 // Direction → neighbor lookup
-const HEX_DIRS = KC_HEX_DIRS.slice();
-function neighborInDir(turnContext, prov, dir) {
+export const HEX_DIRS = KC_HEX_DIRS.slice();
+export function neighborInDir(turnContext, prov, dir) {
   const { G } = turnContext;
   const { row, col } = prov;
   const cols = G.world.cols,

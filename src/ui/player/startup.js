@@ -1,14 +1,17 @@
+import { KC_DATA_STAMP } from '../../content/kingdoms-call-data.js';
+import * as KC_DATA_NS from '../../content/kingdoms-call-data.js';
+
 // ── DATA FILE GUARD (2026-09-27, Toby: collapse to one source) ────
 // The player portal now reads the game's SHARED RULE TABLES (unit classes, the Druid ladder, unit
 // strengths, skills, seasons, the Wonders, the mastery text…) from kingdoms-call-data.js — the same
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P = '2026.10.15-1202';
+export const KC_DATA_MIN_P = '2026.10.15-1202';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
-const KC_DB_MIN = '20261015062128';
+export const KC_DB_MIN = '20261015062128';
 (function () {
   const need = [
     'KC_UNIT_CLASS',
@@ -42,7 +45,7 @@ const KC_DB_MIN = '20261015062128';
   ];
   const missing = need.filter((n) => {
     try {
-      return typeof eval(n) === 'undefined';
+      return typeof KC_DATA_NS[n] === 'undefined';
     } catch (e) {
       return true;
     }
@@ -58,11 +61,11 @@ const KC_DB_MIN = '20261015062128';
 })();
 // ── CONFIG ────
 if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load: reload the page.');
-const SUPABASE_URL = KC_CONFIG.supabaseUrl;
-const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const SUPABASE_URL = KC_CONFIG.supabaseUrl;
+export const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
+export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // A list of kcHtml pieces with `sep` between them, to put into kcHtml (P0-19): .join(sep) would make them a plain
 // string, which kcHtml shows as text. `sep` is text, or kcHtml for markup (kcHtml`<br>`).
-function kcJoinP(list, sep) {
+export function kcJoinP(list, sep) {
   return list.flatMap((x, i) => (i ? [sep, x] : [x]));
 }

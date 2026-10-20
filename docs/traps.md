@@ -9,33 +9,36 @@ add it here in the same PR.
 Since P1-05, `site/` is build output ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)): git-ignored, and
 rewritten from `src/` by every test run. An edit there is never committed, and the next build quietly undoes it.
 
-- Change the file in `src/`; `src/manifest.ts` says which file makes which part of a page.
-- A new file must go into its list in the manifest, at the place its code should run. The build stops otherwise.
+- Change the file in `src/` (or `public/`, for what is copied as it is). A page's files are what its entry
+  (`src/ui/<page>/page.js`) imports, directly or not.
+- A new file is imported where it is read (and by the page's `page.js` if it does something as it loads). A file no
+  page reaches fails `pages-build`.
 - `node tests/<name>.test.js` and a page opened in a browser read `site/` as last built: run `npm run build` first.
+  `npm run dev` serves `src/` as it is, against the local Supabase ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)).
 
-## Top-level declaration order (the `ITEMS_BY_TIER` class)
+## A constant read at load time must live in a leaf module
 
-Every page's scripts are classic scripts sharing one global scope. That includes the files a page is built from:
-`src/manifest.ts` lists them in the order the code runs, so moving a file in a list, or code from one file to another,
-can move a declaration after its first use. A top-level `const`/`let` used before
-its line has run throws a temporal-dead-zone `ReferenceError`. At top level, that stops the page: the
-portal hangs on its spinner (the boot-failure reporter now shows the error).
+The site's code is ES modules (P1-09d): each file runs after the files it imports. That orders almost everything by
+itself, but not a cycle: when two files import each other (the engine has five cycles, each portal's UI one), one of
+them runs first and finds the other's top-level `const`/`let` not yet set. Read as a file loads, that is a
+temporal-dead-zone `ReferenceError`, and at the top level it stops the page: the portal hangs on its spinner (the
+boot-failure reporter shows the error). Rolldown, the bundler, writes each top-level `const` as a `var`, so in the built
+bundle the read may instead find `undefined`, silently. Inside a function, read later, a cycle is harmless.
 
-- `ITEMS_BY_TIER` and `rollMagicItem` (GM portal) must come after `ALL_MAGIC_ITEMS_P` (data file). This
-  holds because the data file loads first. Keep it that way.
+- **A constant another file reads as it loads lives in a file of its own that imports nothing** (P1-09b:
+  `engine/items/hoard-categories.js`, `engine/bots/specialist-skills.js`, `engine/bots/schools.js`,
+  `ui/player/l79-orders.js`), re-exported from its old file. A file that imports nothing always runs first.
+- **What files do as they load keeps its order through the page's entry** (`ui/<page>/page.js` imports every file in
+  the order the classic scripts ran): the item tables are built in `engine/items/tiers-and-hoards.js` and then
+  re-tiered in `engine/items/equipment.js`, because `page.js` imports them in that order. The engine's bundle
+  (`tests/lib/engine.ts`) takes the same order. Don't reorder `page.js`.
 - Code that runs at top level calls only top-level helpers. A lifted engine helper may need the turn's context
   (`effStat(turnContext, c, stat)`; use `effSkillOf` outside a turn), and one handed to another as a value is wrapped
   with it (`(...a)=>f(turnContext,...a)`, as the bots' duel forecast is). Declare shared helpers as hoisted
   `function`s.
 - Prefer building lookup tables lazily inside the function that needs them over a top-level IIFE.
-- A constant that another file reads as the page loads, where the two files read each other, lives in a file of its
-  own that reads nothing (P1-09b: `engine/items/hoard-categories.js`, `engine/bots/specialist-skills.js`,
-  `engine/bots/schools.js`, `ui/player/l79-orders.js`), listed just before its old file. Once the page is modules
-  (P1-09d), a cycle of files can run the reader first; a file that reads nothing always runs first.
-- A flag read by layout code that can run early (e.g. a hash-restored view) must be declared above
-  that code, not in its feature's block further down.
-- Never declare the same top-level name in the data file and a portal: that's a `SyntaxError` and the
-  page doesn't load at all. New shared names start `KC_`.
+- Never declare a top-level name in two files of one page: Rolldown would rename one in the bundle, and the engine's
+  bundle refuses to load (`tests/lib/engine.ts`). New shared names in the data file start `KC_`.
 - Never move a table that references portal code into the data file.
 
 `npm test`'s `boot-pages` (jsdom) and the browser spec `chromium-boot` (`npx playwright test`) catch a page that no
@@ -51,8 +54,9 @@ Both portals refuse to start on a data file older than the one they were cut aga
   player portal's inline list, or a stale file passes the guard and fails later with a bare
   `ReferenceError`.
 - **The two stamp lines do different jobs.** The guard reads `KC_DATA_STAMP`. The GM tab's auto-reload
-  before a due turn (`refreshIfNewerBuild`) reads the `// Data file v…` comment. If only one is bumped,
-  one of the two silently misses the change. `npm test`'s `stamps` check fails if they differ.
+  before a due turn (`refreshIfNewerBuild`) read the `// Data file v…` comment of the published data file; since
+  P1-09d the data is bundled into the page and that file isn't published, so the reload sees only the GM portal's
+  footer stamp (Parked for P1-06). `npm test`'s `stamps` check still fails if the two lines differ.
 - A portal-only change leaves `KC_DATA_MIN` alone.
 
 ## The GM portal's two build stamps
@@ -235,11 +239,12 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
   the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.
 - A test can stand in a top-level **function** by replacing it in the `vm` (`engine.f = …`), as
-  `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly` do, but not a top-level `const`
-  arrow (`defendSpentThisPhase`, `noteEntered`): a `const` isn't a property of the `vm`'s global object, so the
-  engine keeps calling the original. Stage the state it reads instead. The same goes for reading one: a table declared
-  with `const` (`TITLE_DEFS`, `MINOR_TITLES`, `SEA_TYPES`, `SKILL_LABELS`) is read in the `vm` with
-  `vm.runInContext('JSON.stringify(TITLE_DEFS)', engine)`, not `engine['TITLE_DEFS']` (undefined).
+  `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly` do. Don't stand in a top-level `const`
+  arrow (`defendSpentThisPhase`, `noteEntered`): until P1-09d a `const` wasn't a property of the `vm`'s global object,
+  so the engine kept calling the original; since then the engine's bundle writes it as a `var`, so the stand-in would
+  reach it in the `vm` but not in a test that imports the module (P1-14), where a `const` can't be replaced. Stage the
+  state it reads instead. A table declared with `const` (`TITLE_DEFS`, `MINOR_TITLES`, `SEA_TYPES`, `SKILL_LABELS`) is
+  read in the `vm` with `vm.runInContext('JSON.stringify(TITLE_DEFS)', engine)`, which works either way.
 - Reading a context value before `resolveTurn` has set it gives `undefined`; reading the old `let` before its line
   threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix), and
   P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
@@ -248,25 +253,31 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`, P1-08i3 for `_tier0Open`, `_unitGainQueue`, `_warFrontAtStart` and `_warFrontProvs`. P1-08k4 and P1-08k7 for the merge's six collectors. P1-08k8 added no join and no `let` (the values it makes were joined before; their join lines moved with them), so it didn't rerun it. P1-08l1 reran it for `_botEncounteredAtStart`; P1-08l2 added none (the merge's six collectors moved into the merge with their join lines, still joined before anything reads them), so it didn't. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
   does: a test of a lifted helper that reads one it doesn't set gets `undefined`, not the turn's value.
 
-## Top-level names aren't on `window` in tests
+## Nothing is on `window` but `globals.js`
 
-A top-level `const`/`let` (and most of the engine) is in the page's global lexical scope, not a property
-of `window`. In jsdom, `window.SAGE_DISCOVERIES_P` is `undefined`, and `undefined || []` then passes
-every "X is absent" check **by accident**.
+The site's code is ES modules (P1-09d): a module's top-level names are its own, so an inline `on…="…"` handler, a
+browser spec's `page.evaluate` or a test's `W.eval` reaches only what the page puts on `window`. Each script page does
+that in one file, `src/ui/<page>/globals.js`, the last its entry imports (P1-09b).
 
-- Read them with `window.eval('NAME')` (or `vm.runInContext`).
-- Assert that the table was actually read, i.e. is non-empty, before asserting anything about its
-  contents.
+- **A function or a constant a handler calls or a test reaches goes on a list** in `globals.js`, the handlers' or the
+  tests', with the file that declares it, and is imported there.
+- **A variable a test (or a handler) reads or writes is a declared global**, `globalThis.<name> = <value>;` where it is
+  declared: a list copies a value once, and a variable's copy goes stale.
+- **Name it as code.** `page-globals` reads the code a test hands a page: `typeof buildGameRecords` is read, a name in a
+  string (`['buildGameRecords'].map(n=>eval(n))`) isn't, and the spec then fails only in Chromium.
+- **Don't stand a page function in from a test** (`W.f = …`): the page's own calls never see the stand-in, and the test
+  passes without testing anything. Stage what the function reads instead (the dice, `kcRng.use(…)`; the browser's
+  `fetch` or timers; a declared global's fields), stand it in in the engine's `vm` (`tests/lib/scenario-in-the-vm.ts`),
+  or build a page from a planted copy (`plantedSite`, `tests/lib/source.ts`). `npm test`'s `page-globals` fails on a
+  name missing from a list, a variable that isn't a declared global, or a page stand-in.
+- **jsdom is looser than a browser.** `tests/lib/boot.js` runs the bundle as a classic script, so in jsdom every
+  top-level function and `var` of the bundle is on `window`, listed or not: a check that passes in jsdom can fail in
+  Chromium. `page-globals` is what keeps the two the same.
+- **In the engine's `vm`** (`tests/lib/engine.ts`) the bundle's top-level names are the context's globals, so
+  `vm.runInContext('NAME', engine)` reads any of them, and `engine.f = …` stands a top-level function in (not a
+  `const`: [A lifted helper takes the turn's context first](#a-lifted-helper-takes-the-turns-context-first)). Assert that a table was actually read, i.e. is
+  non-empty, before asserting anything about its contents.
 - jsdom has no `innerText`; use `textContent`.
-- **From P1-09d a page's scripts are modules**, and a test reaches only what the page puts on `window` (P1-09b). A
-  function or a constant a test reaches goes on the second list of `src/ui/<page>/globals.js`, with the file that
-  declares it. A variable a test (or an inline handler) reads or writes is a declared global instead,
-  `globalThis.<name> = <value>;` where it is declared: a list copies a value once, and a variable's copy goes stale.
-  Don't stand a page function in from a test (`W.f = …`): once the page is modules its own calls never see the
-  stand-in, and the test passes without testing anything. Stand it in in the engine's `vm`
-  (`tests/lib/scenario-in-the-vm.ts`), or build a page from a planted copy (`plantedSite`, `tests/lib/source.ts`).
-  `npm test`'s `page-globals` fails on a name missing from a list, a variable that isn't a declared global, or a new
-  page stand-in.
 
 ## `game_state` is a string
 
@@ -372,10 +383,11 @@ ones it can't, or they cost time:
 - **No `kcEsc` (or an older escaper) inside `kcHtml`.** The value is escaped twice and `&` shows as `&amp;`.
 - **`kcArg` keeps a value's type.** `onclick="f('${id}')"` passed a string; `onclick="f(${kcArg(id)})"` passes `id` as
   it is, so a numeric id now arrives as a number. Write `kcArg(String(id))` where the handler compares strings.
-- **`kc-safe.js` doesn't change.** Its four helpers are fixed: for a few minutes after a deploy, a browser can pair a
-  new page with its cached copy of the old file. If it must change, put `?v=<stamp>` on every page's `<script src>`.
-- **A test that runs a slice of a page in `vm`** (the Hall of Fame record tests do) must load `site/kc-safe.js` into
-  its context first if the slice calls the helpers.
+- **`kc-safe.js`'s four helpers are bundled into each page** (since P1-09d), so a page and its helpers are always the
+  same build. Until P1-06 hashes the file names, a browser can still pair a new page with its cached copy of the old
+  bundle for a few minutes after a deploy, as before.
+- **A test that runs a slice of a page in `vm`** (the Hall of Fame record tests do) must load `kc-safe.js` into its
+  context first if the slice calls the helpers (`scriptOf('ui/shared/kc-safe.js')`, `tests/lib/source.ts`).
 - **Show it looks the same.** Converting a page must not change it for ordinary names: run
   `node tests/tools/same-dom.js <main's site>` and put its output in the pull request.
 - **An exception goes in `html-lint`'s `ALLOWED`** with a one-line reason, for Theo to review. The check is strict: no

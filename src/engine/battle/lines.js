@@ -1,3 +1,11 @@
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { ownedUnitName } from '../army-tables.js';
+import { ladderFm } from './ladder.js';
+import { UNIT_BASE_STR } from './strength.js';
+import { unitTypeOf } from '../world/tables.js';
+import { DISC_BY_ID } from '../discoveries.js';
+
 // ── SKELETONS AND THE CASUALTY LOOPS ────
 // change quality" — skeletons cannot promote or demote — but the guard sat above the DEATH roll as
 // well, so a skeletal unit was immortal: in combatVsChar (all four branches, winner and loser
@@ -28,7 +36,7 @@
 // At sea the hulls and sea-beasts take the front before any carried land unit, and there are no
 // flanks. Columns fill strongest-in-the-centre, so the grid a report prints is the grid that was
 // scored. Who faces whom is then read off the two grids (battleFacing, below the print helpers).
-const BATTLE_FRONT_RANGE = {
+export const BATTLE_FRONT_RANGE = {
   plain: [6, 8],
   desert: [6, 8],
   sea: [8, 10],
@@ -36,28 +44,28 @@ const BATTLE_FRONT_RANGE = {
   jungle: [4, 6],
   mountain: [2, 4],
 };
-const BATTLE_FLANK_TERRAINS = new Set(['plain', 'desert']);
-const BATTLE_LINE_MULTS = [1, 0.5, 0.25, 0.125]; // front · second line (not shooting over) · reserve · deep reserve
-const BATTLE_LINE_MULTS_FLANK = [1, 0.75, 0.5, 0.25]; // sd09's fallback if its data row carries no `lines`
-const BATTLE_RANGED_IN_FRONT = 0.75,
+export const BATTLE_FLANK_TERRAINS = new Set(['plain', 'desert']);
+export const BATTLE_LINE_MULTS = [1, 0.5, 0.25, 0.125]; // front · second line (not shooting over) · reserve · deep reserve
+export const BATTLE_LINE_MULTS_FLANK = [1, 0.75, 0.5, 0.25]; // sd09's fallback if its data row carries no `lines`
+export const BATTLE_RANGED_IN_FRONT = 0.75,
   BATTLE_FLYER_BEYOND_CAP = 0.5,
   BATTLE_FLYER_CAP_MIN = 2,
   BATTLE_FLANK_TAC_CAP = 5;
 // Own copies of the three class lists the grid reads (each consumer builds its own, see the data file).
-const GRID_FLY_TYPES = new Set(KC_UNIT_CLASS.aerial),
+export const GRID_FLY_TYPES = new Set(KC_UNIT_CLASS.aerial),
   GRID_CAV_TYPES = new Set(KC_UNIT_CLASS.cavalry),
   GRID_SEA_TYPES = new Set(KC_UNIT_CLASS.sea);
 // The width this battle's ground allows: ONE roll per battle, shared by both sides.
-function rollBattleWidth(terrain) {
+export function rollBattleWidth(terrain) {
   const r = BATTLE_FRONT_RANGE[terrain] || BATTLE_FRONT_RANGE.plain;
   return r[0] + Math.floor(kcRng() * (r[1] - r[0] + 1));
 }
 // The middle of the range: what the bots' estimates and the Strategist's command score assume.
-function battleFrontWidth(terrain) {
+export function battleFrontWidth(terrain) {
   const r = BATTLE_FRONT_RANGE[terrain] || BATTLE_FRONT_RANGE.plain;
   return Math.round((r[0] + r[1]) / 2);
 }
-function flankLineMults() {
+export function flankLineMults() {
   const l =
     typeof DISC_BY_ID !== 'undefined' && DISC_BY_ID.sd09 && DISC_BY_ID.sd09.effect && DISC_BY_ID.sd09.effect.lines;
   return Array.isArray(l) && l.length === 4 ? l : BATTLE_LINE_MULTS_FLANK;
@@ -66,7 +74,7 @@ function flankLineMults() {
 // in the line), 'cav', 'arc' (ranged), and 'foot' for everything else — infantry, the walking and
 // swimming beasts, fleets, elementals, and any type the tables have never heard of. A row with no unit on it (the
 // bots' estimates) falls back on its own `fly` flag.
-function battleRole(row, terrain) {
+export function battleRole(row, terrain) {
   const t = row && row.a && row.a.type;
   if (t == null) return row && row.fly ? 'fly' : 'foot';
   if (GRID_FLY_TYPES.has(t)) return 'fly';
@@ -75,7 +83,7 @@ function battleRole(row, terrain) {
   return 'foot';
 }
 // Short unit codes for the grid print (5 characters; a type not listed uses its first 5 letters).
-const UNIT_SHORT = {
+export const UNIT_SHORT = {
   'Shieldwall Levies': 'Levy',
   'Free Lances': 'FreeL',
   'Yeoman Longbows': 'Bow',
@@ -130,7 +138,7 @@ const UNIT_SHORT = {
   'Water Elemental': 'WatEl',
   'Darkness Elemental': 'DrkEl',
 };
-function shortUnit(row) {
+export function shortUnit(row) {
   const t = (row && row.a && row.a.type) || (row && row.name) || 'unit';
   return (
     UNIT_SHORT[t] ||
@@ -145,7 +153,7 @@ function shortUnit(row) {
 // flyer cap; without it flyers are uncapped (the bots' estimates). Returns the grid: the front and
 // second lines as cells per column, the reserve, the flanks, the flyers, every row's place and
 // multiplier (also stamped on the row as `_g`, never on the army), and `total`.
-function battleGrid(rows, width, terrain, opts) {
+export function battleGrid(rows, width, terrain, opts) {
   opts = opts || {};
   const W = Math.max(1, width | 0);
   const mults = opts.flank ? flankLineMults() : BATTLE_LINE_MULTS;
@@ -241,7 +249,7 @@ function battleGrid(rows, width, terrain, opts) {
 }
 // Score a grid from its cells: every unit's place and multiplier (stamped on the row as `_g`) and the
 // total. battleGrid ends here, and the line-up (battleBestSwap) calls it again after every swap.
-function battleRegrid(g) {
+export function battleRegrid(g) {
   const W = g.W,
     mults = g.mults || BATTLE_LINE_MULTS,
     cap = g.cap == null ? Infinity : g.cap;
@@ -285,13 +293,13 @@ function battleRegrid(g) {
 }
 // The old entry point, kept for the estimates that only need a total (the bots, the Strategist's
 // command score, the stay-or-retreat test). opts as battleGrid's, plus `terrain`.
-function battleLineTotal(rows, width, flank, opts) {
+export function battleLineTotal(rows, width, flank, opts) {
   return battleGrid(rows, width, (opts && opts.terrain) || null, Object.assign({}, opts || {}, { flank })).total;
 }
 // ── The grid in the report ── one line names the ground, then two 📊 lines a side: cells five wide,
 // "·" for an empty place, the defender's second line above its front and the attacker's below, so the
 // two fronts meet in the middle. The portals draw a 📊 line that contains "│" in monospace.
-const GROUND_WORDS = {
+export const GROUND_WORDS = {
   plain: ['open ground', 'allows'],
   desert: ['desert', 'allows'],
   forest: ['forest', 'allows'],
@@ -299,11 +307,11 @@ const GROUND_WORDS = {
   mountain: ['mountains', 'allow'],
   sea: ['open water', 'allows'],
 };
-function battleWidthLine(terrain, W) {
+export function battleWidthLine(terrain, W) {
   const g = GROUND_WORDS[terrain] || [String(terrain || 'ground'), 'allows'];
   return `📊 Battle lines — the ${g[0]} ${g[1]} a front of ${W}.`;
 }
-function battleGridLines(label, g, defender) {
+export function battleGridLines(label, g, defender) {
   if (!g) return [];
   const cell = (x) => (x ? shortUnit(x.r) : '·').padEnd(5).slice(0, 5);
   const lab = String(label || '')
@@ -319,7 +327,7 @@ function battleGridLines(label, g, defender) {
   return defender ? [l2, l1].filter(Boolean) : [l1, l2].filter(Boolean);
 }
 // The ladder's Battle-lines stage: every unit's place and multiplier, grouped.
-function battleGridStage(g) {
+export function battleGridStage(g) {
   const groups = new Map();
   g.units.forEach((u) => {
     const k = `${u.place} ×${u.mult}`;
@@ -340,7 +348,7 @@ function battleGridStage(g) {
 // strength; the ladder's "Who faces whom" stage names them, and every row is stamped _faced for the
 // report. Both fronts are centred blocks, so a column inside the enemy's span always has an enemy in
 // it. The matchup abilities of single unit types come with the Unit abilities PR.
-const BATTLE_FACING = {
+export const BATTLE_FACING = {
   front: { cav: { arc: 1.25, foot: 0.85 }, foot: { cav: 1.15, arc: 1.25 } }, // anything unlisted is ×1 (foot v foot, cav v cav, a ranged unit caught in the front…)
   back: { foot: 1.25, cav: 0.75 }, // shooting the enemy front unit opposite; ranged v ranged ×1
   wrap: 1.2,
@@ -348,12 +356,12 @@ const BATTLE_FACING = {
   freeFlank: 1.3,
   turned: 0.75,
 };
-const faceMult = (t, a, b) => {
+export const faceMult = (t, a, b) => {
   const r = t && t[a];
   const m = r && r[b];
   return typeof m === 'number' ? m : 1;
 };
-const backMult = (r) => {
+export const backMult = (r) => {
   const m = BATTLE_FACING.back[r];
   return typeof m === 'number' ? m : 1;
 };
@@ -363,16 +371,16 @@ const backMult = (r) => {
 // Dive on the Bowmen, Flak Gunners, the flank slots above) and the rest in the volley, fate and
 // end-of-turn code. Each returns the multiplier and the names that moved it, for the ladder and the
 // report. tests/abilities-* hold every one of them.
-const ABILITY_WOODS = new Set(['forest', 'jungle']);
-const GRID_GARRISON_TYPES = new Set(KC_UNIT_CLASS.garrison);
-const typeOfX = (x) => x && x.r && x.r.a && x.r.a.type;
-const abilityHas = (g, type) =>
+export const ABILITY_WOODS = new Set(['forest', 'jungle']);
+export const GRID_GARRISON_TYPES = new Set(KC_UNIT_CLASS.garrison);
+export const typeOfX = (x) => x && x.r && x.r.a && x.r.a.type;
+export const abilityHas = (g, type) =>
   !!g &&
   ['front', 'second', 'reserve', 'flanks', 'fly'].some((k) => (g[k] || []).some((x) => x && typeOfX(x) === type));
 // The cavalry that may take the one flank slot rough ground allows (2026-10-13, the beast abilities: the Unicorn Herd's
 // Through the Glades joins the Stag Riders in the woods).
-const GRID_MONSTER_TYPES = new Set(KC_UNIT_CLASS.monster);
-function abilityFlanksRough(x, terrain) {
+export const GRID_MONSTER_TYPES = new Set(KC_UNIT_CLASS.monster);
+export function abilityFlanksRough(x, terrain) {
   const t = typeOfX(x);
   return (
     (ABILITY_WOODS.has(terrain) && (t === 'Stag Riders' || t === 'Unicorn Herd')) ||
@@ -381,7 +389,7 @@ function abilityFlanksRough(x, terrain) {
 }
 // x meets e (both placed cells {r, role, s}): the role matchup, then x's ability, then e's. where:
 // 'front' (facing or met), 'duel' (flank riders), 'guard' (a rider guarding a line end); meIsAtk: x's side attacks.
-function abilityFront(x, e, terrain, where, meIsAtk) {
+export function abilityFront(x, e, terrain, where, meIsAtk) {
   const t = typeOfX(x),
     et = typeOfX(e);
   let m = faceMult(BATTLE_FACING.front, x.role, e.role);
@@ -465,7 +473,7 @@ function abilityFront(x, e, terrain, where, meIsAtk) {
   return { m, why: names.map((n) => ', ' + n).join('') };
 }
 // x, a second-line ranged unit, shoots e, an enemy front unit.
-function abilityBack(x, e) {
+export function abilityBack(x, e) {
   const t = typeOfX(x),
     et = typeOfX(e);
   let m = backMult(e.role);
@@ -499,7 +507,7 @@ function abilityBack(x, e) {
 // The engagement: each side's span of the front, the columns where it overlaps the enemy's span
 // (nearest the centre first), how many flank duels there are, and which overlapping enemy columns each
 // side's spare riders cover (alternating sides, nearest first). Riders left after that ride free.
-function battleEngage(gA, gD) {
+export function battleEngage(gA, gD) {
   const span = (g) => {
     const i = g.front.map((x, k) => (x ? k : -1)).filter((k) => k >= 0);
     return i.length ? [i[0], i[i.length - 1]] : null;
@@ -539,7 +547,7 @@ function battleEngage(gA, gD) {
 }
 // Face one side against the other. me / them: the two grids (same W); mine / theirs: their engagement;
 // meIsAtk: `me` is the attacker (Hold the Gate and Bloodthirsty belong to a defending garrison).
-function battleFaceSide(me, them, mine, theirs, terrain, meIsAtk) {
+export function battleFaceSide(me, them, mine, theirs, terrain, meIsAtk) {
   const byRow = new Map(me.units.map((u) => [u.row, u]));
   const units = [];
   let total = 0;
@@ -713,7 +721,7 @@ function battleFaceSide(me, them, mine, theirs, terrain, meIsAtk) {
 }
 // Both sides at once (the engagement is shared). Stamps g.face on each grid; g.face.total is the
 // strength the dice see. gA is the attacker's grid.
-function battleFacing(gA, gD, terrain) {
+export function battleFacing(gA, gD, terrain) {
   if (!gA || !gD) return null;
   const E = battleEngage(gA, gD);
   gA.face = battleFaceSide(gA, gD, E.A, E.D, terrain, true);
@@ -721,7 +729,7 @@ function battleFacing(gA, gD, terrain) {
   return { atk: gA.face, def: gD.face };
 }
 // The ladder's stage: every matchup that moved a figure, grouped, then how many stood even.
-function battleFacingStage(g) {
+export function battleFacingStage(g) {
   const f = g && g.face;
   if (!f) return '';
   const groups = new Map();
@@ -745,7 +753,7 @@ function battleFacingStage(g) {
 // column", "with nobody opposite" — X the enemy company as ownedUnitName writes it (enemyOwner is that side's
 // name). Read it right after the deploy, while the rows still carry the deploy's facing: the stay-or-retreat
 // estimate faces the survivors afresh later.
-function battleFacedClauses(g, enemyOwner) {
+export function battleFacedClauses(g, enemyOwner) {
   const m = new Map();
   if (!g || !Array.isArray(g.units)) return m;
   g.units.forEach((u) => {
@@ -806,15 +814,15 @@ function battleFacedClauses(g, enemyOwner) {
 // front unit stands with nobody opposite only once every enemy front unit already has someone opposite it.
 // Every swap is judged with both sides faced (battleFacing), as the mover would see it, and only an improving
 // swap is made. Nothing here is random.
-const BATTLE_LINEUP_MAX = 30;
-function battleScout(explAtk, explDef) {
+export const BATTLE_LINEUP_MAX = 30;
+export function battleScout(explAtk, explDef) {
   return (+explAtk || 0) > (+explDef || 0) ? 'atk' : 'def';
 }
-function battleWidthChoices(terrain, roll) {
+export function battleWidthChoices(terrain, roll) {
   const r = BATTLE_FRONT_RANGE[terrain] || BATTLE_FRONT_RANGE.plain;
   return [roll - 1, roll, roll + 1].filter((w) => w >= r[0] && w <= r[1]);
 }
-function battleLegal(g) {
+export function battleLegal(g) {
   const occ = g.front.map(Boolean),
     f = occ.indexOf(true),
     l = occ.lastIndexOf(true);
@@ -829,7 +837,7 @@ function battleLegal(g) {
 }
 // The two fronts meet (item 18): the narrower stands within the wider's span; two fronts of one size hold the
 // same columns. The deploy's centred blocks always meet; a swap that would part them is not legal.
-function battleFrontsMeet(g1, g2) {
+export function battleFrontsMeet(g1, g2) {
   const sp = (g) => {
     const o = g.front.map(Boolean);
     return [o.indexOf(true), o.lastIndexOf(true), o.filter(Boolean).length];
@@ -840,13 +848,13 @@ function battleFrontsMeet(g1, g2) {
   return an <= bn ? a0 >= b0 && a1 <= b1 : b0 >= a0 && b1 <= a1;
 }
 // log(my faced strength / theirs), both grids faced afresh.
-function battleLineRatio(gA, gD, terrain, meIsAtk) {
+export function battleLineRatio(gA, gD, terrain, meIsAtk) {
   battleFacing(gA, gD, terrain);
   const r = Math.log(Math.max(gA.face.total, 1e-9) / Math.max(gD.face.total, 1e-9));
   return meIsAtk ? r : -r;
 }
 // The best single legal swap for `me`; makes it and returns it, or returns null when none improves.
-function battleBestSwap(me, them, terrain, meIsAtk) {
+export function battleBestSwap(me, them, terrain, meIsAtk) {
   const gA = meIsAtk ? me : them,
     gD = meIsAtk ? them : me;
   const base = battleLineRatio(gA, gD, terrain, meIsAtk);
@@ -895,7 +903,7 @@ function battleBestSwap(me, them, terrain, meIsAtk) {
 // Deploy both sides. rowsA / rowsD: finished rows (finishSide). o: {terrain, roll, tacA, tacD, flankA,
 // flankD, scout:'atk'|'def'}. Returns {W, gA, gD, scout, lineup, moves:{scout, other}, roll}, both grids
 // faced on their final layout.
-function battleDeploy(rowsA, rowsD, o) {
+export function battleDeploy(rowsA, rowsD, o) {
   const build = (w) => ({
     gA: battleGrid(rowsA, w, o.terrain, { flank: o.flankA, tac: o.tacA, enemy: rowsD, enemyTac: o.tacD }),
     gD: battleGrid(rowsD, w, o.terrain, { flank: o.flankD, tac: o.tacD, enemy: rowsA, enemyTac: o.tacA }),
@@ -944,7 +952,7 @@ function battleDeploy(rowsA, rowsD, o) {
   return { W, gA, gD, scout: o.scout, lineup, moves, roll: o.roll };
 }
 // The report's two lines: who scouted and what front it chose; how many times each line shifted.
-function battleScoutLine(d, atkName, defName, explAtk, explDef) {
+export function battleScoutLine(d, atkName, defName, explAtk, explDef) {
   const atk = d.scout === 'atk',
     s = atk ? atkName : defName,
     o = atk ? defName : atkName,
@@ -964,7 +972,7 @@ function battleScoutLine(d, atkName, defName, explAtk, explDef) {
         : `narrows the front from ${d.roll} to ${d.W}`;
   return `📊 Scouting — ${s} ${why}: ${s} ${w} and lines up second${d.lineup ? ` (${d.lineup} ${d.lineup === 1 ? 'adjustment' : 'adjustments'})` : ''}.`;
 }
-function battleMovesLine(d, atkName, defName) {
+export function battleMovesLine(d, atkName, defName) {
   if (!d.moves.other && !d.moves.scout) return null;
   const atk = d.scout === 'atk',
     s = atk ? atkName : defName,

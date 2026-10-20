@@ -1,3 +1,25 @@
+import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { QUALITY_TIERS } from '../army-tables.js';
+import { CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.js';
+import { homeProvinceIdFor } from '../grand-design.js';
+import { beastCommandCount, beastCommandRoom, heroHireWage } from '../world/tables.js';
+import { takeBestGrave } from '../graves.js';
+import { consecratedIds } from '../heroes/fame-and-consecration.js';
+import { grantMithrilTo } from '../personal-combat/helpers.js';
+import { armyUnitName, d100 } from '../dice-and-army-names.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { TM, skillLevel } from '../titles/perks.js';
+import { discEff, discSum, gdActive, hasDisc } from '../discoveries.js';
+import { logSplit, realmTag } from '../turn/log-line-helpers.js';
+import { areEnemies } from '../realms/relations-and-captures.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { refreshMovePool, setMovePool } from '../units/movement-pools.js';
+import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { applySpySuccess } from '../espionage/what-a-spy-learns.js';
+import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.js';
+import { landHirePreOrders } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.js';
+
 // ── THE REALM'S WORKS (plan P1-08j3: the third family taken out of processOrder in resolveTurn) ──
 // The orders of a realm's creed (Consecrate, Call to Arms, Broker, Harvest the Field, and the refusal of the removed
 // Awaken the Wild and Call from the Pit) and three masteries (Awaken Grove, Wild Calling, Grand Design), each once
@@ -6,7 +28,7 @@
 // out before it that it reads, in the order processOrder declares them. Each body keeps processOrder's indent (plan
 // P1-08's Decisions); a case-level break became a return.
 // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
-function resolveConsecrateOrder(turnContext, c, prov, player) {
+export function resolveConsecrateOrder(turnContext, c, prov, player) {
   const { log, G } = turnContext;
   if (!c.isKing) {
     log(
@@ -107,7 +129,7 @@ function resolveConsecrateOrder(turnContext, c, prov, player) {
   return;
 }
 // GOOD — Call to Arms: the folk answer the king; a free Green garrison unit musters.
-function resolveCallToArmsOrder(turnContext, c, target, player) {
+export function resolveCallToArmsOrder(turnContext, c, target, player) {
   const { G, log } = turnContext;
   if (G.players[c.player]?.alignment !== 'Good') {
     log('system', `${c.name}'s call goes unanswered — only the folk of a Good realm rise for their king unpaid.`, {
@@ -184,7 +206,7 @@ function resolveCallToArmsOrder(turnContext, c, target, player) {
   return;
 }
 // NEUTRAL — Broker: money moves what armies cannot. Remote hire, or a paid remote spy.
-function resolveBrokerOrder(turnContext, c, ph, target, player) {
+export function resolveBrokerOrder(turnContext, c, ph, target, player) {
   const { G, log, SEASONS } = turnContext;
   if (G.players[c.player]?.alignment !== 'Neutral') {
     log('system', `${c.name}: only a Neutral crown keeps the web of factors and go-betweens that Brokering requires.`, {
@@ -295,7 +317,7 @@ function resolveBrokerOrder(turnContext, c, ph, target, player) {
 }
 // DRUIDIC Awaken the Wild and EVIL Call from the Pit: REMOVED 2026-10-12 (Toby item 22 — they made Creatures
 // and Monsters too easy to come by). An order a save still holds from before is refused in plain words.
-function resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, c, action) {
+export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, c, action) {
   const { log } = turnContext;
   const _gone = action === 'call_pit' ? 'Call from the Pit' : 'Awaken the Wild';
   log(
@@ -306,7 +328,7 @@ function resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, c, acti
   return;
 }
 // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.
-function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
+export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   const { G, log } = turnContext;
   if (G.players[c.player]?.alignment !== 'Undead') {
     log(
@@ -364,7 +386,7 @@ function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   return;
 }
 // Awaken Grove (Druid 7, once a turn): Forest Ents march with the druid until the turn's end.
-function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
+export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
   const { log } = turnContext;
   if (skillLevel(c, 'druid') < 7) {
     log('system', `${c.name} lacks the Druid mastery (7) to Awaken a Grove.`, { actor: c.player, targets: [c.player] });
@@ -402,7 +424,7 @@ function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
   return;
 }
 // Wild Calling (Druid 9, once a turn): wild beasts in the province that serve another may break and follow the caller.
-function resolveWildCallingOrder(turnContext, c, ph, prov) {
+export function resolveWildCallingOrder(turnContext, c, ph, prov) {
   const { log, G } = turnContext;
   // ── WILD CALLING ── every primal creature or monster in this province that does not
   // already serve you — a neutral primal host, an enemy commander's beasts, or unled garrison
@@ -486,7 +508,7 @@ function resolveWildCallingOrder(turnContext, c, ph, prov) {
   return;
 }
 // Grand Design (Sage 9, once a realm): the Wonder of the realm's alignment, raised in the province he stands in.
-function resolveGrandDesignOrder(turnContext, c, prov) {
+export function resolveGrandDesignOrder(turnContext, c, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'sage') < 9) {
     log('system', `${c.name} lacks the Sage mastery (9) to realise a Grand Design.`, {

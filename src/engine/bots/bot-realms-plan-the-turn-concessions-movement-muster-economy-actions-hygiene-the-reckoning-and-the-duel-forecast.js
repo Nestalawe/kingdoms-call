@@ -1,3 +1,14 @@
+import { COMBAT_ONLY_TACTICS } from '../army-tables.js';
+import { runBotConcessions } from './missions.js';
+import { runBotMovement } from './movement.js';
+import { runBotEconomy, runBotOrderHygiene } from './economy.js';
+import { runBotActions } from './spellcraft.js';
+import { runBotPhaseOne } from './phase-one.js';
+import { runBotReckoning } from '../titles/reckoning.js';
+import { seaPenalty, terrainMod } from '../battle/terrain-and-unit-strength.js';
+import { autoEncounterPlan, pcCharCombatant } from '../personal-combat/speed-encounter-plans-and-combatants.js';
+import { resolvePersonalCombat } from '../personal-combat/resolve-personal-combat.js';
+
 // ── THE BOTS' PLAN: CONCESSIONS, MOVEMENT, MUSTER, ECONOMY, ACTIONS, SPRING ORDERS, HYGIENE, THE RECKONING, AND THE
 // DUEL FORECAST (plan P1-08l2: lifted out of resolveTurn) ─────────────────────────────────────────────────────────────
 // Bot realms send no orders, so this is where their turn is decided. resolveTurn calls the plan once a turn, before
@@ -12,7 +23,7 @@
 // can rise (turnContext._pcSimulating). The plan hands it to the movement pass with the turn's context.
 // Each takes the turn's context (src/engine/turn/context.js) first; their lines keep resolveTurn's indent (plan
 // P1-08's Decisions).
-function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hunter, quarry, n) {
+export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hunter, quarry, n) {
   // 2026-09-28: a forecast, not a fight — experience is muted exactly as in simulateLairOdds (the copies carry
   // ids −1/−2, so no real hero ever gained from it, but every simulated win still rolled a wasted check).
   const _prevSim = turnContext._pcSimulating;
@@ -51,7 +62,9 @@ function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hunter, q
   }
 }
 
-function botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning(turnContext) {
+export function botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning(
+  turnContext,
+) {
   const { G, _botPlayerIdx, log, reckoningCalls } = turnContext;
   // Phase 3 (pre) — item 2: any bot realm that has lost its last province concedes before it plans
   // a turn.

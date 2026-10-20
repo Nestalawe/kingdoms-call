@@ -1,3 +1,56 @@
+import {
+  KC_HUMANOID_RACES,
+  KC_RIVAL_RACE,
+  KC_UNIT_CLASS,
+  MONSTERS_P,
+  PRIMAL_ARMY_DEFS_P,
+  PRIMAL_UNIT_NAMES,
+  PROVINCE_ARMIES_P,
+} from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { UNIT_Q_MULT } from '../battle/strength.js';
+import { HOME_FLEET_BY_RACE } from '../grand-design.js';
+import {
+  ALIGNMENTS_P,
+  COASTAL_NAVAL_CHANCE,
+  HUMANOID_FLEET_TYPES,
+  HUMANOID_RACES_GEN,
+  PRIMAL_LAND_CHANCE,
+  RACES_P,
+  SEA_TYPES_GEN,
+  SIGNATURE_TERRAIN_P,
+  SIGNATURE_WEIGHT_P,
+  TEMPERS_P,
+  buildHumanoidPool,
+  fullRaceLandRoster,
+  getDruidLevel,
+  provincePoolSize,
+} from './tables.js';
+import { ABILITIES_P, shuffleP } from '../battle/fortune.js';
+import {
+  SEA_GUARDIAN_NAMES,
+  _usedHeroEpithets,
+  _usedHeroFirsts,
+  _usedHeroNames,
+  nextHeroName,
+  renameLairsThematicP,
+} from '../names.js';
+import {
+  FEATURE_POOLS_P,
+  ITEMS_BY_TIER,
+  RITUAL_SITE_CHANCE_HUMANOID,
+  RITUAL_SITE_NAMES,
+} from '../items/tiers-and-hoards.js';
+import { ensureAllLairHoards } from '../items/lair-items.js';
+import { discoverFeat } from '../../views/visibility.js';
+import { GUARDIAN_TABLE_VER, computeMaxHp, maxHpPlayers } from '../heroes/skills-and-hp.js';
+import { grantMithrilToDwarves } from '../personal-combat/helpers.js';
+import { bestNeutralMix, neutralDefCount, rP, resyncNeutralDefenders } from '../units/drill-and-spoils.js';
+import { armyUnitName } from '../dice-and-army-names.js';
+import { REALM_COLOURS, REALM_COLOUR_FALLBACK } from '../bots/intel.js';
+import { getNeighborsP } from './map-helpers.js';
+import { LAIR_TIER_ROLL, assignLairGrades } from '../chances-and-lair-grades.js';
+
 // ── SEA SHARE (2026-09-25, Toby) ── the GM picks what share of the world is water, 20–80%.
 // Before this the fill rolled sea at 28% (55% beside water) and the result was whatever came out:
 // measured over 20 worlds per rung it averaged ~33% and ranged 18–50% on the same settings. The
@@ -5,15 +58,15 @@
 // coasts are grown or shrunk until the count matches. Home cells and their tailored rings are never
 // touched, so every home guarantee (≤2 sea neighbours, a poor and a prosperous land, a sea for a
 // naval king) holds at any share.
-const SEA_PCT_MIN = 20,
+export const SEA_PCT_MIN = 20,
   SEA_PCT_MAX = 80,
   SEA_PCT_DEFAULT = 35;
-function normSeaPct(v) {
+export function normSeaPct(v) {
   v = parseInt(v);
   if (!Number.isFinite(v)) v = SEA_PCT_DEFAULT;
   return Math.max(SEA_PCT_MIN, Math.min(SEA_PCT_MAX, v));
 }
-function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
+export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
   const { cols, rows } = sz;
   const provinces = [];
   const seaPct = normSeaPct(genOpts && genOpts.seaPct);

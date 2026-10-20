@@ -1,3 +1,10 @@
+import { kcHtml } from '../ui/shared/kc-safe.js';
+import { sb } from '../ui/gm/config.js';
+import { show } from '../ui/gm/sign-in.js';
+import { loadGames } from '../ui/gm/game-list.js';
+import { realmExemptFromOrders } from '../ui/gm/turn-mode.js';
+import { gameMetaOf } from '../engine/bots/setup.js';
+
 // ════
 // TURN RUNNING MODES (Sept 2026) — manual / auto / deadline. The mode lives inside game_state
 // (setup cfg before Turn 0, then G.turnMode once the game is active) so no schema change is needed
@@ -10,12 +17,12 @@
 // Exempt realms (never waited on): bots, conceded realms, extinguished dynasties (_eliminated), and
 // realms with neither a living character nor a province.
 // ════
-const TURN_MODES = {
+export const TURN_MODES = {
   manual: 'Manual — GM runs each turn',
   auto: 'Automatic — runs when all orders are in',
   deadline: 'Automatic with deadline',
 };
-function parseGameState(game) {
+export function parseGameState(game) {
   if (!game) return {};
   try {
     const gs = typeof game.game_state === 'string' ? JSON.parse(game.game_state) : game.game_state;
@@ -24,7 +31,7 @@ function parseGameState(game) {
     return {};
   }
 }
-function normalizeTurnMode(tm) {
+export function normalizeTurnMode(tm) {
   tm = tm && typeof tm === 'object' ? tm : {};
   const mode = ['manual', 'auto', 'deadline'].includes(tm.mode) ? tm.mode : 'manual';
   const time = /^\d{2}:\d{2}$/.test(tm.time || '') ? tm.time : '20:00';
@@ -47,14 +54,14 @@ function normalizeTurnMode(tm) {
 // those once. The column is in the database's migrations (supabase/); if it's ever missing,
 // probeGameMeta() leaves _kcHasMeta=false, no write mentions the column (an unknown column would
 // fail the whole turn save) and the heavy selects are used as before, with a message on the game list.
-let _kcHasMeta = false;
+export let _kcHasMeta = false;
 // The plain "missing from the database" message every probe below shows. Since P0-17 the database changes
 // only through migrations, applied by the deploy before the site goes live, so there is no SQL to paste:
 // seeing this means the database is behind this copy of the site.
-function kcMissingMsg(title, what, effect) {
+export function kcMissingMsg(title, what, effect) {
   return kcHtml`<div class="msg-error"><strong>${title}</strong> — the database has no ${what}, so ${effect}. The deploy adds it to the database before the site goes live, so this copy of the site is ahead of its database: tell Theo.</div>`;
 }
-async function probeGameMeta() {
+export async function probeGameMeta() {
   try {
     const { error } = await sb.from('games').select('id,meta').limit(1);
     _kcHasMeta = !error;
@@ -74,7 +81,7 @@ async function probeGameMeta() {
   return _kcHasMeta;
 }
 // gs = the parsed game_state (setup cfg before Turn 0, the world G after it).
-function buildGameMeta(gs) {
+export function buildGameMeta(gs) {
   gs = gs && typeof gs === 'object' ? gs : {};
   const m = { v: 1, turnMode: normalizeTurnMode(gs.turnMode) };
   [
@@ -107,14 +114,14 @@ function buildGameMeta(gs) {
   return m;
 }
 // Spread into any games insert/update that writes game_state: `{game_state:…, ...metaPatch(gs)}`.
-function metaPatch(gs) {
+export function metaPatch(gs) {
   return _kcHasMeta ? { meta: buildGameMeta(gs) } : {};
 }
 // Column lists for the two list-style reads. With the column in place they carry no world and no
 // report; without it the old heavy shape is used so nothing is lost.
-const GAME_LITE_COLS = 'id,name,gm_user_id,status,turn,max_players,max_turns,created_at,meta';
-const PLAYER_LITE_COLS = 'id,game_id,user_id,player_index,display_name,orders_submitted';
-function gamesListCols() {
+export const GAME_LITE_COLS = 'id,name,gm_user_id,status,turn,max_players,max_turns,created_at,meta';
+export const PLAYER_LITE_COLS = 'id,game_id,user_id,player_index,display_name,orders_submitted';
+export function gamesListCols() {
   return _kcHasMeta ? `${GAME_LITE_COLS}, game_players(${PLAYER_LITE_COLS})` : '*, game_players(*)';
 }
 // ════════════════════════════════════════════════════════════════════════════════════════════════
@@ -132,21 +139,21 @@ function gamesListCols() {
 // An archived game is NOT hidden from the leaderboard — nothing is deleted, so the Hall of Fame
 // keeps its record. To take a finished game off the board, use the Hall-of-Fame `hidden` flag
 // instead; that is what it is for.
-function gameArchived(game) {
+export function gameArchived(game) {
   const m = gameMetaOf(game);
   if (m && m.archived !== undefined) return !!m.archived;
   return !!parseGameState(game).archived;
 }
-function gameArchivedAt(game) {
+export function gameArchivedAt(game) {
   const m = gameMetaOf(game);
   if (m && m.archivedAt) return m.archivedAt;
   return parseGameState(game).archivedAt || null;
 }
-let _showArchived = false; // which list the GM is looking at
+export let _showArchived = false; // which list the GM is looking at
 // Set or clear the flag. Reads the full row (game_state is the source of truth), writes it back
 // with a conditional guard on `turn` so an archive click can never clobber a turn another tab
 // resolved in the meantime.
-async function setGameArchived(gameId, archived) {
+export async function setGameArchived(gameId, archived) {
   if (!gameId) return;
   const msg = document.getElementById('detail-msg') || document.getElementById('msg-games');
   if (msg) msg.innerHTML = kcHtml`<div class="msg-info">${archived ? 'Archiving' : 'Restoring'}…</div>`;
@@ -183,13 +190,13 @@ async function setGameArchived(gameId, archived) {
   show('sec-games');
   loadGames();
 }
-function toggleArchivedView() {
+export function toggleArchivedView() {
   _showArchived = !_showArchived;
   loadGames();
 }
 // One-off: any of this GM's games saved before the column existed gets its meta computed from
 // game_state now, so the light reads never have to fall back for it again.
-async function backfillGameMeta() {
+export async function backfillGameMeta() {
   if (!_kcHasMeta || !currentUser) return 0;
   try {
     const { data, error } = await sb
@@ -234,11 +241,11 @@ async function backfillGameMeta() {
 // game_id is TEXT (not a foreign key) so the rows survive a game being deleted — finished test games
 // are usually deleted to tidy the list, and their data is the whole point. The Stats tab has a
 // "forget deleted games" button for when that is NOT wanted.
-const KC_TEL_V = 1; // bump when the row shape changes (rows carry it in build)
+export const KC_TEL_V = 1; // bump when the row shape changes (rows carry it in build)
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
 globalThis._kcHasTel = false;
 globalThis._kcTelLastErr = null;
-async function probeTelemetry() {
+export async function probeTelemetry() {
   try {
     const a = await sb.from('turn_events').select('id').limit(1);
     const b = await sb.from('game_results').select('id').limit(1);
@@ -251,7 +258,7 @@ async function probeTelemetry() {
   renderTelemetryBanner();
   return _kcHasTel;
 }
-function renderTelemetryBanner() {
+export function renderTelemetryBanner() {
   const el = document.getElementById('msg-telemetry');
   if (!el) return;
   if (!_kcHasTel) {
@@ -289,7 +296,7 @@ function renderTelemetryBanner() {
 // are in supabase/schemas/, with their tests in supabase/tests/.
 // A declared global (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
 globalThis._kcHasMsg = false;
-async function probeMessaging() {
+export async function probeMessaging() {
   try {
     const a = await sb.from('game_messages').select('id').limit(1);
     const b = await sb.from('game_message_reads').select('game_id').limit(1);
@@ -302,7 +309,7 @@ async function probeMessaging() {
   renderMessagingBanner();
   return _kcHasMsg;
 }
-function renderMessagingBanner() {
+export function renderMessagingBanner() {
   const el = document.getElementById('msg-messaging');
   if (!el) return;
   el.innerHTML = _kcHasMsg

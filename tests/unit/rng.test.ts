@@ -1,5 +1,6 @@
 // The game's dice and the engine's clock (P1-07): src/engine/rng.js and src/engine/clock.js, each run on its own in a
-// fresh sandbox, as the GM portal runs them first of all its scripts.
+// fresh sandbox, as the GM portal runs them first of all its scripts (each a module that imports nothing, run as a
+// classic script: tests/lib/source.ts's scriptOf takes its `export` keywords off).
 // - kcRng() given a seed plays exactly the sequence of the tests' seededRandom (tests/lib/boot.js) for that seed, so
 //   every seeded test and balance game plays as it did when the page's dice were Math.random.
 // - Given no seed (the live site), it seeds itself once from crypto.getRandomValues.
@@ -8,15 +9,14 @@
 // - kcClock() reads Date.now() when it is called, so a pinned Date (bootJsdom's opts.now) pins it; kcClock.date() is
 //   one reading, as new Date() is.
 // Level 1 (unit): each file's code runs alone, with no page around it.
-import fs from 'node:fs';
-import path from 'node:path';
 import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import { pinnedDate, seededRandom, type KcRng } from '../lib/boot.js';
+import { importsOf } from '../../tools/pages.ts';
+import { scriptOf } from '../lib/source.ts';
 
-const SRC = path.resolve(import.meta.dirname, '..', '..', 'src', 'engine');
-const RNG = fs.readFileSync(path.join(SRC, 'rng.js'), 'utf8');
-const CLOCK = fs.readFileSync(path.join(SRC, 'clock.js'), 'utf8');
+const RNG = scriptOf('engine/rng.js');
+const CLOCK = scriptOf('engine/clock.js');
 
 /** Runs rng.js in a new sandbox with `globals` (e.g. KC_RNG_SEED, crypto) and returns its kcRng. */
 function loadRng(globals: Record<string, unknown>): KcRng {
@@ -118,4 +118,9 @@ describe('kcClock', () => {
     const t = page.kcClock();
     expect(t >= before && t <= Date.now()).toBe(true);
   });
+});
+
+test('the dice and the clock import nothing, so each runs on its own, first on the page', () => {
+  expect(importsOf('engine/rng.js')).toEqual([]);
+  expect(importsOf('engine/clock.js')).toEqual([]);
 });

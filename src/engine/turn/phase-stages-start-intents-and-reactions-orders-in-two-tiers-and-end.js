@@ -1,3 +1,33 @@
+import { discParam, hasDisc } from '../discoveries.js';
+import { noteSilentHeroes } from './log-line-helpers.js';
+import { defendSpentThisPhase } from './mercenary-ids-and-battle-records.js';
+import { settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.js';
+import { generateIntrusionNotifications } from './intrusion-warnings.js';
+import { spreadPlagues } from '../magic/plague-and-bless-ward.js';
+import {
+  resolveAllPendingSkillGains,
+  writeDeferredSkillLines,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.js';
+import { applyMoveInterlocks, normaliseAction, orderPhaseActors } from './phase-intents-and-dependency-ordering.js';
+import {
+  reconcileProvinceCharacters,
+  settleRalliedGarrisons,
+  updateProvinceMemory,
+} from '../world/province-bookkeeping-and-rallied-garrisons.js';
+import {
+  reconcileDefendRideOuts,
+  runDefendAmbush,
+  runDefendMaterializedReactions,
+  runDefendReactions,
+  runReinforcementArrivals,
+} from '../units/defend-ride-outs-ambushes-and-reinforcements.js';
+import { resolveStalledBattles } from '../battle/stalled-battles-and-beaten-guards.js';
+import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.js';
+import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.js';
+import { flagEnemyStandoffs, resolveWarFronts } from '../battle/war-fronts-and-enemy-stand-offs.js';
+import { processOrder } from '../orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js';
+
 // ── THE FOUR STAGES OF A PHASE (plan P1-08k1: the first stages taken out of resolveTurn's phase loop) ────────────
 // resolveTurn plays the turn's five phases (seasons) in a loop. Each phase runs these four stages in order, with the
 // phase's intents (buildPhaseIntents) declared between the first and the second:
@@ -15,7 +45,7 @@
 // Each takes the turn's context first (src/engine/turn/context.js), then the loop's values it reads: the phase, the
 // intents, where every hero stood as the phase began. The bodies keep the loop's indent (plan P1-08's Decisions).
 
-function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
+export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   const { log, SEASONS, G, presenceByPhase, _warFrontProvs } = turnContext;
   log('system', `— ${SEASONS[ph]} —`);
   // sd29 Herbal Lore: a character who took wounds in the PREVIOUS phase has them dressed at the
@@ -108,7 +138,7 @@ function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   });
 }
 
-function pinAndReactToPhaseIntents(turnContext, ph, intents) {
+export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
   const { G, log } = turnContext;
   // ── STAGE 1b: battle-lock pin (AK: you are stuck in a province until its battle is decided) ──
   // resolveStalledBattles(ph) has just re-fought every contested province. Any province that is
@@ -198,7 +228,7 @@ function pinAndReactToPhaseIntents(turnContext, ph, intents) {
   });
 }
 
-function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph, intents) {
+export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph, intents) {
   const { G, log } = turnContext;
   // ── STAGE 3: resolve orders, in initiative order adjusted for AK's [3.0] exceptions ──
   const sorted = orderPhaseActors(turnContext, ph, intents);
@@ -291,7 +321,7 @@ function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph, intent
   reconcileDefendRideOuts(turnContext, ph); // a ride-out that met no battle is explained
 }
 
-function endPhaseSkillRisesFallenCommandersAndProvinceMemory(turnContext, ph, _phaseStartLoc) {
+export function endPhaseSkillRisesFallenCommandersAndProvinceMemory(turnContext, ph, _phaseStartLoc) {
   const { G } = turnContext;
   // all this phase's actions have resolved — now report any incidental skill-rises they earned
   // (Explorer on a move, March on a march, etc.) as the last lines of the phase, so each reads as

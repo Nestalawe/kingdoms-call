@@ -1,3 +1,30 @@
+import { kcRng } from '../rng.js';
+import { COMBAT_ONLY_TACTICS, SKILL_LABELS } from '../army-tables.js';
+import { homeFounderOf, homeProvinceIdFor } from '../grand-design.js';
+import { _escapesTheEnd, _garrethEscapeLine } from '../names.js';
+import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.js';
+import { activeItems, gainedItemNote } from '../items/equipment.js';
+import { applyItemMaxHp, transferableItems } from '../personal-combat/helpers.js';
+import { d100, describeArmy, dispFloor, fmtRoll, rng } from '../dice-and-army-names.js';
+import { markProvinceCombat } from '../bots/intel.js';
+import { TM, noteEspionage, perkTier, skillLevel } from '../titles/perks.js';
+import { discParam, discSum, hasDisc } from '../discoveries.js';
+import { emitNarrLine } from '../turn/log-line-helpers.js';
+import { areEnemies } from '../realms/relations-and-captures.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { effStat, isVanished, oddsNote, statNote } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { provIsCoastal } from '../battle/terrain-and-unit-strength.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardKillXP,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { applySpySuccess } from '../espionage/what-a-spy-learns.js';
+import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
+import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.js';
+import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.js';
+
 // ── THE ESPIONAGE ORDERS (plan P1-08j6: the sixth family taken out of processOrder in resolveTurn) ──
 // Spy (on the province he stands in, or on a hero beside him), Steal (a magic item or gold from a hero beside him, or
 // the garrison's pay), Sabotage (an enemy province's coffers and one company of its garrison), Grand Heist (the vaults
@@ -13,7 +40,7 @@
 // (the thief is well advised to lead with FLEE), unless the victim's duel stance is REFUSE — then
 // the victim lets the thief go and merely raises the alarm. A Vanished thief (Thief 9) is never
 // brought to bay at all.
-function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
+export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
   const { G, log } = turnContext;
   const targetsPi = [thief.player, victim.player].filter((x) => x != null);
   if (thief._vanishTurn === G.turn) {
@@ -119,7 +146,7 @@ function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
 }
 // Shared: lift a random magic item from a victim (null if none, or if the victim is a master
 // thief).
-function liftRandomItem(turnContext, thief, victim) {
+export function liftRandomItem(turnContext, thief, victim) {
   const { G } = turnContext;
   const items = victim.items || [];
   const pool = transferableItems(items); // a granted Mithril suit cannot be lifted off its wearer
@@ -148,7 +175,7 @@ function liftRandomItem(turnContext, thief, victim) {
   return it;
 }
 // Spy: the province he stands in (what it holds, and the realm's secrets if it is a capital), or a hero beside him (every skill, item and company); a hero spied on may catch the spy.
-function resolveSpyOrder(turnContext, c, target, prov) {
+export function resolveSpyOrder(turnContext, c, target, prov) {
   const { G, log } = turnContext;
   const hasCrystalOrb = activeItems(c).some((it) => it.effect?.stat === 'oracle');
   // sd21 Forgery Arts: +15% spy success chance
@@ -335,7 +362,7 @@ function resolveSpyOrder(turnContext, c, target, prov) {
   return;
 }
 // Steal: a magic item (or, failing one, gold) from a hero beside him, or the pay of a rival's garrison; a thief who fails may be caught.
-function resolveStealOrder(turnContext, c, target, prov, player) {
+export function resolveStealOrder(turnContext, c, target, prov, player) {
   const { log, G } = turnContext;
   // ── STEAL ── Needs Thief 1+. Targets: a character in the province (magic item, or 5% of
   // their realm's treasury — the player chooses via `extra`, defaulting to an item when one
@@ -536,7 +563,7 @@ function resolveStealOrder(turnContext, c, target, prov, player) {
   return;
 }
 // Sabotage (Spy 7): an enemy province yields no tax this turn, and one company of its garrison is put to the torch.
-function resolveSabotageOrder(turnContext, c, target) {
+export function resolveSabotageOrder(turnContext, c, target) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'spy') < 7) {
     log('system', `${c.name} lacks the Spy mastery (7) to attempt Sabotage.`, { actor: c.player, targets: [c.player] });
@@ -575,7 +602,7 @@ function resolveSabotageOrder(turnContext, c, target) {
   return;
 }
 // Grand Heist (Thief 7): a quarter of an enemy's treasury from the vaults of its capital or rich country he stands in, and a parcel cut from its couriers.
-function resolveGrandHeistOrder(turnContext, c, ph, prov) {
+export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
   const { log, G } = turnContext;
   // ── GRAND HEIST ────
   // The TARGET is the PROVINCE the thief is standing in, not any one hero — the job is
@@ -727,7 +754,7 @@ function resolveGrandHeistOrder(turnContext, c, ph, prov) {
   return;
 }
 // Assassinate (Spy 9): a knife in the dark for an enemy hero beside him.
-function resolveAssassinateOrder(turnContext, c, target, prov) {
+export function resolveAssassinateOrder(turnContext, c, target, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'spy') < 9) {
     log('system', `${c.name} lacks the Spy mastery (9) to Assassinate.`, { actor: c.player, targets: [c.player] });
@@ -821,7 +848,7 @@ function resolveAssassinateOrder(turnContext, c, target, prov) {
   return;
 }
 // Vanish (Thief 9): for the rest of the turn nothing can bring him to bay or harm him.
-function resolveVanishOrder(turnContext, c, prov) {
+export function resolveVanishOrder(turnContext, c, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'thief') < 9) {
     log('system', `${c.name} lacks the Thief mastery (9) to Vanish.`, { actor: c.player, targets: [c.player] });

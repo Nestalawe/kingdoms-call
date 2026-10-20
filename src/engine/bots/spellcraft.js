@@ -1,3 +1,30 @@
+import { TITLE_DEFS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../army-tables.js';
+import { featDiscovered } from '../../views/visibility.js';
+import {
+  BOT_HEX_DIRS,
+  botBelief,
+  botConceded,
+  botKnows,
+  botKnowsGraves,
+  botNeighbourProv,
+  botRelationRaw,
+  botScouted,
+  botSees,
+  botSeesChar,
+  botVisibleCharsIn,
+} from './intel.js';
+import { BOT_SEA_ALL, botDefenceNeed, botEnemyDefence } from './war.js';
+import { botTurnCache } from './strategy.js';
+import { BOT_SCHOOLS } from './schools.js';
+import { botRoleTrainSkill } from './specialists.js';
+import { botAssumedChar, botEnemyIntel, botIsTeach, botRumourFor } from './missions.js';
+import { botRaiseTargets } from './movement.js';
+import { botPracticeSkill } from './economy.js';
+import { botPins } from './phase-one.js';
+import { _charTitleMerit, computeStandings } from '../titles/reckoning.js';
+
 // ══ BOT SPELLCRAFT (Sept 2026 self-play batch) ════
 // Replaces the single-cast botActionCast. botCastPlan builds an ORDERED list of action-phase casts
 // (up to `max`) from a given standing province, honouring the engine's per-school per-turn cap (1
@@ -8,10 +35,10 @@
 // aimed Curse / Psychic Blast at ADJACENT enemies, which the engine rejects — a wasted phase every
 // time.) Offence first when an enemy is in reach, then buffs for a host about to fight, then
 // economy.
-function botSchoolLimit(lvl) {
+export function botSchoolLimit(lvl) {
   return lvl >= 4 ? 3 : lvl >= 3 ? 2 : 1;
 }
-function botCastPlan(G, pi, c, prov, opts) {
+export function botCastPlan(G, pi, c, prov, opts) {
   opts = opts || {};
   const max = opts.max || 5;
   const sk = c.skills || {};
@@ -161,7 +188,7 @@ function botCastPlan(G, pi, c, prov, opts) {
 }
 // The enemy province a character's written plan attacks this turn (first Move tagged Attack / Assault /
 // Lightning strike), or null. Used to aim siege magic (idea 4).
-function botPlannedAttackTarget(G, l) {
+export function botPlannedAttackTarget(G, l) {
   const lo = G.turnOrders[l.id] || [];
   let cur = G.world.provinces[l.location];
   if (!cur) return null;
@@ -179,18 +206,18 @@ function botPlannedAttackTarget(G, l) {
   return null;
 }
 // Legacy entry point kept for callers that want a single best cast.
-function botActionCast(G, c) {
+export function botActionCast(G, c) {
   const plan = botCastPlan(G, c.player, c, G.world.provinces[c.location], { max: 1 });
   return plan[0] || null;
 }
 // Which schools make a character a RAIDER (offensive action magic worth carrying into enemy land).
-function botOffensiveMagic(c) {
+export function botOffensiveMagic(c) {
   const s = c.skills || {};
   return (s.elemental || 0) + (s.necromancy || 0) + (s.psychic || 0);
 }
 // Personal-combat rating for hunter/quarry comparisons (mirror of botCanBeatGuardian's character
 // side).
-function botDuelRating(c) {
+export function botDuelRating(c) {
   const s = c.skills || {};
   const bm = (s.elemental || 0) + (s.necromancy || 0) + (s.psychic || 0);
   const t = c.temper || '';
@@ -200,7 +227,7 @@ function botDuelRating(c) {
 }
 // Nearest at-war enemy province worth raiding (rich, or holding enemy characters/armies) within
 // `maxD` hops for an UNARMED character (who may cross anyone's land). Returns {P, d} or null.
-function botRaidTarget(G, pi, from, maxD) {
+export function botRaidTarget(G, pi, from, maxD) {
   // only ground this realm has seen, valued on the owner and wealth it BELIEVES are there plus
   // whatever characters it can actually see standing in it.
   let best = null;
@@ -220,7 +247,7 @@ function botRaidTarget(G, pi, from, maxD) {
   return best;
 }
 // BFS over ALL land provinces (an unarmed character's world), capped at maxD.
-function botPathAny(G, from, toId, maxD) {
+export function botPathAny(G, from, toId, maxD) {
   if (!from || toId == null) return null;
   if (from.id === toId) return [];
   const prev = {};
@@ -258,12 +285,12 @@ function botPathAny(G, from, toId, maxD) {
   }
   return dirs;
 }
-function botPathLenAny(G, from, toId, maxD) {
+export function botPathLenAny(G, from, toId, maxD) {
   const p = botPathAny(G, from, toId, maxD);
   return p ? p.length : null;
 }
 // A beatable enemy hero (not a king unless the hunter is one) within `maxD` hops, or null.
-function botHuntTarget(G, pi, c, maxD, duelSim) {
+export function botHuntTarget(G, pi, c, maxD, duelSim) {
   if (!((c.skills || {}).melee >= 3 || (c.skills || {}).archery >= 3)) return null;
   const mine = botDuelRating(c);
   const from = G.world.provinces[c.location];
@@ -322,7 +349,7 @@ function botHuntTarget(G, pi, c, maxD, duelSim) {
 // laggards (including freshly-hired heroes standing with the king) level up quickly. Deterministic
 // from skills, so every member of the cluster independently picks the same focus and they all
 // co-train.
-function botCrossTrainSkill(G, c, pi) {
+export function botCrossTrainSkill(G, c, pi) {
   const partners = (G.characters || []).filter(
     (x) =>
       x &&
@@ -398,7 +425,7 @@ function botCrossTrainSkill(G, c, pi) {
 // Marshal, lair-raiding → Monster-Bane, exploring → Loremaster, casting → Archmage); this just points a
 // bot's *training* at its chosen prizes so it leans into them. Decided once and cached for
 // stability.
-function botTargetTitles(G, pi) {
+export function botTargetTitles(G, pi) {
   const p = G.players[pi];
   if (!p) return [];
   // Sept 2026 (review II A6): recomputed every turn from the standings the reports publish — a title we hold is
@@ -481,7 +508,7 @@ function botTargetTitles(G, pi) {
   p._botTitles = picks.length ? picks : ['marshal', 'monster'];
   return p._botTitles;
 }
-function botTitleFocusSkill(c, titles) {
+export function botTitleFocusSkill(c, titles) {
   const sk = c.skills || {};
   // Re-bias among skills the character ALREADY has (≥1, still trainable) toward a target title —
   // never starts a new skill from scratch (that stays with botPracticeSkill's own fallback), so a
@@ -534,7 +561,7 @@ function botTitleFocusSkill(c, titles) {
 // demands a clear 1.5× edge. This encodes "know the difficulty of lairs" and ties to item 1: as a
 // hero cross- trains up, ever-tougher guardians come within reach. botBeatableLair returns the
 // richest beatable, uncleared, non-ritual lair standing in the hero's own province.
-function botCanBeatGuardian(c, m, G, pi, f) {
+export function botCanBeatGuardian(c, m, G, pi, f) {
   if (!m) return true;
   // Sept 2026 (Toby): a lair is entered on a bought rumour rating the hero "almost certain" (80%+), never on
   // the old skill heuristic alone. Callers passing the feature get the rumour test; the heuristic below stays
@@ -554,14 +581,14 @@ function botCanBeatGuardian(c, m, G, pi, f) {
     (c.maxHp || 20) + (sk.melee || 0) * 6 + (sk.tactical || 0) * 3 + (sk.archery || 0) * 2 + battleMagic * 4;
   return charRating >= monRating * 1.5; // conservative — demand a clear edge (deaths are permanent)
 }
-function botBeatableLair(G, c) {
+export function botBeatableLair(G, c) {
   return botBeatableLairIn(G, c, G.world.provinces[c.location]);
 }
 // only lairs this realm has DISCOVERED are candidates, and they are ranked by the guardian's danger
 // rather than by the hoard inside — the size of a hoard is not something a player knows before
 // opening the chest, and bots were sorting the world's treasure by value. The index returned is
 // still the index into prov.features, which is what the Search order expects.
-function botBeatableLairIn(G, c, prov) {
+export function botBeatableLairIn(G, c, prov) {
   if (!prov || !prov.features) return -1;
   const pi = c && c.player != null ? c.player : null;
   let bestIdx = -1,
@@ -579,7 +606,7 @@ function botBeatableLairIn(G, c, prov) {
   });
   return bestIdx;
 }
-function runBotActions(G, botIdxSet) {
+export function runBotActions(G, botIdxSet) {
   if (!botIdxSet || !botIdxSet.size || !G.world) return;
   G.turnOrders = G.turnOrders || {};
   // Sept 2026 (bot strategy): a character is "fillable" if it is not marching this turn — its

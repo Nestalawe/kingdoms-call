@@ -1,3 +1,11 @@
+import { homeProvinceIdFor } from '../grand-design.js';
+import { spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.js';
+import { featDiscovered } from '../../views/visibility.js';
+import { getNeighborsP } from './map-helpers.js';
+import { areEnemies } from '../realms/relations-and-captures.js';
+import { refreshMovePool } from '../units/movement-pools.js';
+import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+
 // ── PROVINCE BOOKKEEPING AND RALLIED GARRISONS (plan P1-08i1: lifted out of resolveTurn) ────
 // Once a contest ends, the garrison troops a defending hero rallied go home or stay with him (settleRalliedGarrisons).
 // The provinces a realm's characters entered this phase (noteEntered, into the context's enteredThisPhase, which
@@ -13,7 +21,7 @@
 // (they retreated at his side), so we simply drop the marker.
 // While the province is still contested (_battleUnresolved) the marker is left in place and the
 // unit keeps fighting as part of the hero's host.
-function settleRalliedGarrisons(turnContext) {
+export function settleRalliedGarrisons(turnContext) {
   const { G, log } = turnContext;
   const _returnedByProv = {}; // provId -> count, for a clean grouped log
   (G.characters || []).forEach((c) => {
@@ -58,7 +66,7 @@ function settleRalliedGarrisons(turnContext) {
   });
 }
 
-const noteEntered = (turnContext, pi, provId) => {
+export const noteEntered = (turnContext, pi, provId) => {
   if (pi == null || provId == null) return;
   (turnContext.enteredThisPhase[pi] = turnContext.enteredThisPhase[pi] || new Set()).add(provId);
 };
@@ -78,7 +86,7 @@ const noteEntered = (turnContext, pi, provId) => {
 // Rather than patch each site (and wait for the next one to drift), `location` is now the single
 // source of truth and this pass rebuilds every array from it. Cheap, total, and it retires the
 // whole class of bug.
-function reconcileProvinceCharacters(turnContext) {
+export function reconcileProvinceCharacters(turnContext) {
   const { G } = turnContext;
   // The DEAD are kept, at the location they fell. Nothing previously removed a corpse from this
   // array and one reader (the GM's province panel) lists ids without an alive check, so dropping
@@ -100,7 +108,7 @@ function reconcileProvinceCharacters(turnContext) {
 // every province a player can currently see (owned, occupied, their neighbours, or spied that
 // phase) into player._provMemory. Latest observation wins, so the map shows phase-accurate "last
 // seen" info: a player only learns of changes made while they can actually see the province.
-function updateProvinceMemory(turnContext, ph) {
+export function updateProvinceMemory(turnContext, ph) {
   const { G, turnLog, clairWatch } = turnContext;
   const cols = G.world.cols,
     rows = G.world.rows;

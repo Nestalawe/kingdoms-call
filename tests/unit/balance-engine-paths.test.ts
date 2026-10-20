@@ -16,14 +16,18 @@ const SCRIPT = path.join(ROOT, 'tools', 'balance', 'engine-paths.ts');
 
 describe('the engine paths', () => {
   test.for([
-    'src/ui/gm/kingdoms-call-gm-portal.html',
+    'src/kingdoms-call-gm-portal.html',
+    'src/kingdoms-call-player-portal.html',
     'src/engine/run-turn.js',
     'src/views/turn-report.js',
     'src/content/kingdoms-call-data.js',
     'src/ui/shared/kc-safe.js',
-    'src/db/kc-config.js',
-    'src/manifest.ts',
+    'src/db/kc-db-guard.js',
+    'public/kc-config.js',
+    'public/kc-staging-footer.js',
+    'public/vendor/supabase-js-2.117.3.min.js',
     'tools/build.ts',
+    'tools/pages.ts',
     'tools/balance/run.ts',
     'tools/balance/engine-paths.ts',
     'tests/balance/baseline/matrix.json',
@@ -37,11 +41,11 @@ describe('the engine paths', () => {
   });
 
   test.for([
-    'src/ui/player/kingdoms-call-player-portal.html',
     'src/ui/player/map.js',
-    'src/ui/landing/index.html',
+    'src/ui/player/style.css',
+    'src/ui/landing/style.css',
     'src/rulebook/rulebook.css',
-    'src/vendor/supabase-js-2.117.3.min.js',
+    'src/rulebook/toc.js',
     'src/engine.bak/run-turn.js',
     'site/kingdoms-call-gm-portal.html',
     'docs/ARCHITECTURE.md',
@@ -76,7 +80,7 @@ describe('the engine paths', () => {
 
   test('enginePathsIn keeps the engine paths, in order', () => {
     expect(
-      enginePathsIn(['docs/a.md', 'tests/lib/boot.js', 'src/ui/landing/index.html', 'tools/balance/play.ts']),
+      enginePathsIn(['docs/a.md', 'tests/lib/boot.js', 'src/ui/landing/style.css', 'tools/balance/play.ts']),
     ).toEqual(['tests/lib/boot.js', 'tools/balance/play.ts']);
   });
 });
@@ -86,7 +90,7 @@ describe('the decision', () => {
   const baseline = ['tests/balance/baseline/matrix.json'];
 
   test('no engine path changed: nothing is played, in seconds', () => {
-    const d = decide({ base: 'HEAD^1', changed: ['docs/traps.md', 'src/ui/landing/index.html'], refactorOnly: false });
+    const d = decide({ base: 'HEAD^1', changed: ['docs/traps.md', 'src/ui/landing/style.css'], refactorOnly: false });
     expect(d).toMatchObject({ play: false, fail: false });
     expect(d.lines.join('\n')).toContain('No engine path changed');
   });

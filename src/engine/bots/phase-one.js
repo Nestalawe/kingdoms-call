@@ -1,3 +1,35 @@
+import { unitBaseStrength } from '../battle/strength.js';
+import {
+  BOT_DEF_BONUS,
+  BOT_HEX_DIRS,
+  botBattleForce,
+  botConceded,
+  botEffForce,
+  botForceStrength,
+  botMarginFor,
+  botNeighbourProv,
+  botRelationRaw,
+  botSees,
+  botTargetDefence,
+  botTuning,
+  botVisibleCharsIn,
+} from './intel.js';
+import { BOT_SEA_ALL, botEnemyChars, botIsValuable } from './war.js';
+import {
+  botFieldRecruitTokens,
+  botHexDist,
+  botHomeId,
+  botLedger,
+  botRecruitOrder,
+  botRoles,
+  botTurnCache,
+} from './strategy.js';
+import { botMoveOrder, botNearbyThreat } from './specialists.js';
+import { botIsTeach } from './missions.js';
+import { botAtWar } from './economy.js';
+import { botSchoolLimit } from './spellcraft.js';
+import { skillLevel } from '../titles/perks.js';
+
 // ══ PHASE-ONE PASS (2026-09-29, Toby: "use phase 1 orders wisely") ═════════════════════════════════
 // Engine facts it relies on: within a phase every NON-MOVING order (recruit, hand-over, cast,
 // challenge…) resolves before anyone's Move, the Defend step sits between the two, a host caught on a
@@ -24,7 +56,7 @@
 //   B–D. REORDER — a stable sort of each plan's pre-move block: strikes (5), musters in contact (4),
 //      guard magic and the watch under threat (3), hire (1), the rest (0).
 // Reordering is confined to the orders before the first move (all resolve in the starting province).
-const BOT_P1 = {
+export const BOT_P1 = {
   retreatRatio: 0.75,
   fleeRatio: 0.5,
   levyCap: 1.2,
@@ -36,21 +68,21 @@ const BOT_P1 = {
   gainSpell: new Set(['Elemental Summon', 'Skeletal Armies']),
   reloc: new Set(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']),
 };
-function botOrderDest(G, cur, o) {
+export function botOrderDest(G, cur, o) {
   if (!cur || !o) return null;
   if (String(o.target).startsWith('dir:'))
     return botNeighbourProv(G, cur, BOT_HEX_DIRS.indexOf(String(o.target).slice(4)));
   const n = Number(o.target);
   return Number.isFinite(n) ? G.world.provinces[n] : null;
 }
-function botIsFiller(o) {
+export function botIsFiller(o) {
   return (
     !o ||
     (o.action === 'defend' && o.desc !== 'Watch') ||
     ((o.action === 'practice' || o.action === 'explore' || o.action === 'research') && !botIsTeach(o))
   );
 }
-function botEnemyHostsIn(G, pi, X) {
+export function botEnemyHostsIn(G, pi, X) {
   return X
     ? botVisibleCharsIn(G, pi, X).filter(
         (e) =>
@@ -59,7 +91,7 @@ function botEnemyHostsIn(G, pi, X) {
     : [];
 }
 // A host in CONTACT: battle running here, a visible at-war host here or next door, or standing on enemy ground.
-function botInContact(G, pi, c) {
+export function botInContact(G, pi, c) {
   if (!c || !(c.armies || []).length) return false;
   const P = G.world.provinces[c.location];
   if (!P) return false;
@@ -78,8 +110,8 @@ function botInContact(G, pi, c) {
 // given to one of our Elemental casters standing NEXT to it (never in it) with a casting to spare.
 // The planner treats a pinned province as sea this year — no attack into it, and no longer a "trap"
 // beside a target — so the generals strike the unflooded provinces around it instead.
-const BOT_PIN_EDGE = 1.2;
-function botPins(G, pi) {
+export const BOT_PIN_EDGE = 1.2;
+export function botPins(G, pi) {
   const cache = botTurnCache(G);
   cache.pins = cache.pins || {};
   if (cache.pins[pi]) return cache.pins[pi];
@@ -140,7 +172,7 @@ function botPins(G, pi) {
 }
 // Write "Flood X" into a character's Spring: drop a filler from the pre-move block (or the last
 // phase if it is a filler, shifting the plan a phase); make room in the school's casting limit.
-function botAdj(G, A, B) {
+export function botAdj(G, A, B) {
   if (!A || !B) return false;
   if (A.id === B.id) return true;
   for (let i = 0; i < 6; i++) {
@@ -149,7 +181,7 @@ function botAdj(G, A, B) {
   }
   return false;
 }
-function botPutSpring(o, order) {
+export function botPutSpring(o, order) {
   let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
   if (end < 0) end = 5;
   const fi = o.findIndex((x, i) => i < end && botIsFiller(x));
@@ -165,7 +197,7 @@ function botPutSpring(o, order) {
   }
   return false;
 }
-function botSafeStep(G, pi, P, awayFrom) {
+export function botSafeStep(G, pi, P, awayFrom) {
   let best = null;
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, P, i);
@@ -189,7 +221,7 @@ function botSafeStep(G, pi, P, awayFrom) {
   }
   return best;
 }
-function runBotPhaseOne(G, botIdxSet, stage) {
+export function runBotPhaseOne(G, botIdxSet, stage) {
   const MUSTER = stage === 'muster';
   if (!botIdxSet || !botIdxSet.size || !G.world) return;
   botIdxSet.forEach((pi) => {

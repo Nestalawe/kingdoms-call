@@ -1,5 +1,14 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { sb } from './config.js';
+import { loadGames } from './game-list.js';
+import { openGame } from './game-detail.js';
+import { backfillGameMeta, probeGameMeta, probeMessaging, probeTelemetry } from '../../db/game-meta.js';
+import { backfillGameResults } from '../../db/telemetry.js';
+import { probeLeaderboard } from './hall-of-fame.js';
+import { startAutoTurnWatcher } from './auto-turn.js';
+
 // ── INIT ────
-async function init() {
+export async function init() {
   document.getElementById('spinner').style.display = 'none';
   const {
     data: { session },
@@ -10,13 +19,13 @@ async function init() {
   } else show('sec-auth');
 }
 
-function show(id) {
+export function show(id) {
   document.querySelectorAll('section').forEach((s) => s.classList.remove('section-active'));
   document.getElementById(id)?.classList.add('section-active');
 }
 
 // ── AUTH ────
-async function doSignIn() {
+export async function doSignIn() {
   const email = document.getElementById('si-email').value.trim();
   const pwd = document.getElementById('si-password').value;
   const msg = document.getElementById('auth-msg');
@@ -39,7 +48,7 @@ async function doSignIn() {
   onSignedIn();
 }
 
-async function doSignOut() {
+export async function doSignOut() {
   await sb.auth.signOut();
   currentUser = null;
   _kcOverlord = false;
@@ -47,7 +56,7 @@ async function doSignOut() {
 }
 
 // ── Change Password (Supabase updateUser — requires the active signed-in session) ──
-function changePassword() {
+export function changePassword() {
   if (document.getElementById('cp-overlay')) return;
   const ov = document.createElement('div');
   ov.id = 'cp-overlay';
@@ -69,11 +78,11 @@ function changePassword() {
   document.body.appendChild(ov);
   document.getElementById('cp-new').focus();
 }
-function closeChangePassword() {
+export function closeChangePassword() {
   const o = document.getElementById('cp-overlay');
   if (o) o.remove();
 }
-async function submitChangePassword() {
+export async function submitChangePassword() {
   const p1 = document.getElementById('cp-new').value;
   const p2 = document.getElementById('cp-new2').value;
   const msg = document.getElementById('cp-msg');
@@ -99,7 +108,7 @@ async function submitChangePassword() {
   }
 }
 
-async function onSignedIn() {
+export async function onSignedIn() {
   document.getElementById('gm-email-display').textContent = currentUser.email;
   if (!(await gmPortalAllowed())) return; // P0-32c: Game Masters and the Overlord only; nothing else loads
   // Master GM mode (P0-32g, R-097): the Overlord sees every game and runs any of them by hand, but creates none.
@@ -128,8 +137,8 @@ async function onSignedIn() {
 // check that fails, gets the "not a Game Master" page and nothing else: no game list, no watcher, no probes.
 // Master GM mode (P0-32g): true while the Overlord is signed in. The database lets the Overlord do every GM action on
 // any game (P0-32e); this switches the list to every game, hides New Game and keeps the watcher off.
-let _kcOverlord = false;
-async function gmPortalAllowed() {
+export let _kcOverlord = false;
+export async function gmPortalAllowed() {
   const [gm, ov] = await Promise.all([sb.rpc('is_game_master'), sb.rpc('is_site_admin')]);
   const err = gm.error || ov.error;
   _kcOverlord = !err && ov.data === true;
@@ -152,7 +161,7 @@ async function gmPortalAllowed() {
 // A player reports a dispatch they received; the game's GM sees it here (gm_reported_messages), with the reporter
 // and their reason, and may delete it. A GM who plays a realm in the game sees none: its reports go to the Overlord.
 // Every player-written string is shown as text (kcHtml).
-async function loadReportedDispatches(game) {
+export async function loadReportedDispatches(game) {
   const card = document.getElementById('detail-reports-card'),
     el = document.getElementById('detail-reports');
   if (!card || !el) return;
@@ -193,7 +202,7 @@ async function loadReportedDispatches(game) {
     </div>`;
   })}`;
 }
-async function deleteReportedDispatch(id) {
+export async function deleteReportedDispatch(id) {
   if (!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
   const { error } = await sb.from('game_messages').delete().eq('id', id);
   if (error) {

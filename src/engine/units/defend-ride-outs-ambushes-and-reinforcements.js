@@ -1,3 +1,29 @@
+import { COMBAT_ONLY_TACTICS } from '../army-tables.js';
+import { _escapesTheEnd, _garrethEscapeLine } from '../names.js';
+import { d100, fmtRoll, rng } from '../dice-and-army-names.js';
+import { markProvinceCombat } from '../bots/intel.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { emitNarrLine, realmTag } from '../turn/log-line-helpers.js';
+import { completeDefendWatches } from '../turn/mercenary-ids-and-battle-records.js';
+import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.js';
+import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
+import { effStat, isHiddenChar, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { canStepBetween } from './movement-pools.js';
+import { armyTotalStr, commandHandoverLine, pickBattleCommander, syncLeaderCopy } from '../battle/best-commander.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardKillXP,
+  rollNavalVoyage,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { emitBattle } from '../battle/battle-report-lines-and-force-markers.js';
+import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
+import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.js';
+import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.js';
+import { combatVsChar } from '../battle/battles-between-heroes.js';
+import { isHostileInvasion, phaseInitCompare } from '../turn/phase-intents-and-dependency-ordering.js';
+
 // ── THE DEFEND WATCH: RIDE-OUTS, AMBUSHES AND REINFORCEMENTS (plan P1-08i2: lifted out of resolveTurn) ────
 // What a hero on a Defend order does while he keeps watch, each phase: a general rides out to meet an enemy column
 // marching into a neighbouring province of his realm (runDefendReactions, before the marches), or a host raised or
@@ -17,7 +43,7 @@
 
 // Is province P inside this general's assigned reaction zone? AK: he only reacts to an invasion
 // of a province adjacent to BOTH his current province and the province he was told to Defend.
-function inDefendZone(turnContext, c, P) {
+export function inDefendZone(turnContext, c, P) {
   const { G } = turnContext;
   // the watch guards the province the character stands in plus its immediate neighbours — he
   // rides out to any incursion adjacent to where he is now. (The old 7-province
@@ -30,7 +56,7 @@ function inDefendZone(turnContext, c, P) {
   return getNeighborsP(here, G.world.cols, G.world.rows, G.world.provinces).some((n) => n && n.id === P.id);
 }
 
-function runDefendReactions(turnContext, ph, intents) {
+export function runDefendReactions(turnContext, ph, intents) {
   const { G, movePoints, seaMovePoints, seaMoveActive, log, seaCap } = turnContext;
   // Runs at the DEFEND STEP — after the phase's non-moving orders, before any march — so an
   // invader who was killed, stripped of his column or thrown out of his province by one of those
@@ -151,7 +177,7 @@ function runDefendReactions(turnContext, ph, intents) {
 // veiled), the player is told so in the general's own section, instead of a "march to meet the
 // threat" line followed by silence. battleCommanders is keyed prov@phase and records both sides
 // of every PvP battle, so it is the authoritative "did a battle happen here with him in it" test.
-function reconcileDefendRideOuts(turnContext, ph) {
+export function reconcileDefendRideOuts(turnContext, ph) {
   const { G, battleCommanders, log } = turnContext;
   (G.characters || []).forEach((c) => {
     const r = c._defendRideOut;
@@ -198,7 +224,7 @@ function reconcileDefendRideOuts(turnContext, ph) {
 
 // A general whose own province holds an unresolved battle (an armed hostile still stands there) is
 // pinned exactly as a Move would be — the Defend watch is not a way out of a fight.
-function defendBattleLocked(turnContext, c, here) {
+export function defendBattleLocked(turnContext, c, here) {
   const { G } = turnContext;
   if (!here || !here._battleUnresolved) return false;
   return (G.characters || []).some(
@@ -223,7 +249,7 @@ function defendBattleLocked(turnContext, c, here) {
 // the old sequence — province falls unopposed, general rides out after every order to retake it
 // as the ATTACKER. runDefendMaterializedReactions remains as the end-of-phase safety net.
 // Returns the generals who rode in.
-function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
+export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
   const { G, seaCap, seaMoveActive, seaMovePoints, movePoints, log } = turnContext;
   const riders = [];
   if (!raiser || !prov || prov.owner == null || prov.owner === raiser.player) return riders;
@@ -283,7 +309,7 @@ function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
 // lets a general on Defend ride out to give battle, exactly as if the enemy had invaded. A
 // defender who already reacted this phase, or who has no move left, holds. Mirrors the both-armed
 // pursuit battle so casualties, routs and conquest all resolve through the one combat path.
-function runDefendMaterializedReactions(turnContext, ph) {
+export function runDefendMaterializedReactions(turnContext, ph) {
   const { G, movePoints, seaMovePoints, seaMoveActive, log, seaCap } = turnContext;
   (G.characters || []).forEach((c) => {
     if (!c.alive || c.player == null || !c._defend || !c._defend.active) return;
@@ -490,7 +516,7 @@ function runDefendMaterializedReactions(turnContext, ph) {
 // halved against a target at the head of an army (harder to catch a well-guarded commander
 // alone). Runs after every order and after the armed Defend reactions, so all of this phase's
 // movers are already in place.
-function runDefendAmbush(turnContext, ph) {
+export function runDefendAmbush(turnContext, ph) {
   const { G, log } = turnContext;
   (G.characters || []).forEach((c) => {
     if (!c.alive || c.player == null || !c._defend || !c._defend.active) return;
@@ -669,7 +695,7 @@ function runDefendAmbush(turnContext, ph) {
 // NOTE: this covers defenders arriving in time. Full end-of-phase battle resolution (one battle
 // per province, after every order in the phase) is NOT implemented — see DEV_LOG "flagged /
 // open".
-function runReinforcementArrivals(turnContext, ph, intents) {
+export function runReinforcementArrivals(turnContext, ph, intents) {
   const { seaCap, G, seaMovePoints, movePoints, log } = turnContext;
   const invasions = [...intents.values()].filter((...a) => isHostileInvasion(turnContext, ...a));
   if (!invasions.length) return;

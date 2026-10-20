@@ -1,3 +1,29 @@
+import { kcRng } from '../rng.js';
+import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.js';
+import { CARRIER_TYPES, CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.js';
+import { neutralTradeGold } from '../grand-design.js';
+import { isConsecrated } from '../heroes/fame-and-consecration.js';
+import { activeItems } from '../items/equipment.js';
+import { GARRISON_DRILL_LEVEL, UNIT_DRILL_BASE, humanXPMult } from '../units/drill-and-spoils.js';
+import { armyUnitName } from '../dice-and-army-names.js';
+import { perkTier } from '../titles/perks.js';
+import { noteServedRealm } from '../heroes/charms-and-neutrals.js';
+import {
+  capItemTaxGold,
+  discEff,
+  discHeroWage,
+  discTaxAdd,
+  discUpkeepWage,
+  gdActive,
+  hasDisc,
+  realmBaseTax,
+  taxBonusCap,
+  taxRecordsGold,
+} from '../discoveries.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { isOpenSea, seaLiftShortfall, settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.js';
+import { setMovePool } from '../units/movement-pools.js';
+
 // ── EARLY WINTER (plan P1-08k2: a stage taken out of resolveTurn's phase loop) ─────────────────────────────────────
 // After the four stages of the turn's last phase (Early Winter), the realms settle their accounts, in this order:
 //   1. a hero whose command an enemy Charm seized returns to his own lord, before anyone pays him;
@@ -12,7 +38,7 @@
 // It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads none of the loop's values (the
 // phase, the intents, where each hero stood). The body keeps the loop's indent (plan P1-08's Decisions).
 
-function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(turnContext) {
+export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(turnContext) {
   const { G, log } = turnContext;
   // ── Charm revert ── A hero whose command was seized by an enemy Charm returns to their own
   // lord as the season turns. This happens BEFORE tax and wages so the original owner (not the

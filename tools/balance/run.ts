@@ -16,7 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { pageFiles, SITE } from '../../tests/lib/boot.js';
-import { sourcesOf } from '../build.ts';
+import { GM_PAGE, pageFiles as pageSourceFiles } from '../pages.ts';
 import {
   BASELINE_FILE,
   columnsNotKept,
@@ -76,13 +76,15 @@ export function describeChanges(group: string, changes: Change[]): string[] {
   );
 }
 
-/** The files under src/ that the matrix's page is built from (the GM portal and the scripts it loads, through
- *  src/manifest.ts), and the build itself, as git names them. */
+/** The files the matrix's page is built from, as git names them: the GM portal's template, stylesheet and every module
+ *  its entry imports (tools/pages.ts), the files beside it that tests/lib/boot.js's readPage inlines but its bundle
+ *  (public/kc-config.js, the staging footer), and the build itself. */
 export const pageSources = (): string[] => [
-  ...pageFiles('kingdoms-call-gm-portal.html')
+  ...pageSourceFiles(GM_PAGE).map((f) => 'src/' + f),
+  ...pageFiles(GM_PAGE)
     .map((f) => path.relative(SITE, f).split(path.sep).join('/'))
-    .flatMap((name) => sourcesOf(name).map((f) => 'src/' + f)),
-  'src/manifest.ts',
+    .filter((name) => !name.startsWith('assets/') && name !== GM_PAGE)
+    .map((name) => 'public/' + name),
   'tools/build.ts',
 ];
 

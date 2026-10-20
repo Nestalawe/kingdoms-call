@@ -1,6 +1,6 @@
 // HTML is built only through kcHtml / kcEsc (P0-19; docs/traps.md, "HTML is built only through kcHtml"). Static level:
-// nothing runs. Every inline <script> of every page in site/, and every site/*.js (not vendor/), is parsed (acorn) and
-// these are refused:
+// nothing runs. Every module under src/ (since P1-09d the pages' code is ES modules, bundled by Vite), every inline
+// <script> of every page (src/*.html), and every public/*.js (not vendor/) is parsed (acorn) and these are refused:
 //   template      an untagged `…` with markup and a ${value} in it: tag it kcHtml;
 //   concat        markup in quotes joined with + to a value that isn't escaped: '<td>'+name+'</td>' (use kcHtml);
 //   sink          innerHTML / outerHTML / insertAdjacentHTML / document.write given a property read (e.message, g.name)
@@ -9,19 +9,22 @@
 //                 the next kcHtml escapes again. Interpolate the kcHtml, or the list, instead;
 //   twice         kcEsc (or an older escaper) inside kcHtml: kcHtml escapes values itself, so the text is escaped twice;
 //   handler       a value inside an on…="…" attribute that isn't kcArg(…) or a constant;
-//   load          a page that builds HTML doesn't load kc-safe.js as its first <script src>.
+//   load          a page that builds HTML doesn't import kc-safe.js first: its entry (ui/<page>/page.js) must, so the
+//                 helpers exist before any of its code runs (each file that uses one imports it too: ESLint's no-undef).
 // Every file must have none (P0-19 converted the pages one pull request at a time; since its last, the check is strict).
 // ALLOWED: reviewed exceptions, each with a reason; an entry that matches nothing fails, so the list can't go stale.
 // An entry is found by a piece of the statement it is in, in one layout whatever the file's (tests/lib/source.ts's
 // compactCode, plan P1-09a: until then by a piece of the source line, which a reformat moves).
 const fs=require('fs'); const path=require('path');
 const acorn=require('acorn');
-const {SITE}=require('./lib/boot'); const {compactCode}=require('./lib/source.ts');
+const {compactCode}=require('./lib/source.ts');
+const {filesUnder,ROOT}=require('../tools/build.ts'); const {importsOf,pageEntries,pageModules,pageNames}=require('../tools/pages.ts');
 const {JSDOM}=require('jsdom');
+const SRC=path.join(ROOT,'src'), PUBLIC=path.join(ROOT,'public');
 
 // {file, rule, line: a piece of the statement it is in, in compactCode's layout, reason}
 const ALLOWED=[
-  {file:'kingdoms-call-player-portal.html',rule:'concat',line:"_provNameRe=names.length?new RegExp('(?<!",
+  {file:'src/ui/player/map.js',rule:'concat',line:"_provNameRe=names.length?new RegExp('(?<!",
     reason:"a RegExp's source, not HTML: '(?<!' is a lookbehind (the report's province names become map links as DOM nodes)"},
 ];
 
@@ -92,9 +95,9 @@ function escaperCalls(n,out=[]){
 }
 const containsKc=n=>{ for(const [x] of walk(n)) if(isKcValue(x)) return true; return false; };
 
-function check(code){
+function check(code,sourceType){
   const found=[];
-  const ast=acorn.parse(code,{ecmaVersion:'latest',sourceType:'script',locations:true,allowHashBang:true});
+  const ast=acorn.parse(code,{ecmaVersion:'latest',sourceType,locations:true,allowHashBang:true});
   // the innermost statement (or declaration) holding a node, as code in one layout
   const statements=[]; for(const [x] of walk(ast,null)) if(/(Statement|Declaration)$/.test(x.type)&&x.type!=='BlockStatement') statements.push(x);
   const statementOf=n=>{ let best=null; for(const st of statements) if(st.start<=n.start&&n.end<=st.end&&(!best||st.end-st.start<best.end-best.start)) best=st; return best?compactCode(code.slice(best.start,best.end)):''; };
@@ -131,29 +134,32 @@ function check(code){
   return found;
 }
 
-// Every file's scripts, with the line each starts on, and a page's first <script src>. A page is read by jsdom's HTML
-// parser (nothing runs), so its scripts are found exactly as a browser finds them.
+// Every file's scripts, with the line each starts on and how each parses. A page is read by jsdom's HTML parser
+// (nothing runs), so its inline scripts are found exactly as a browser finds them; a module script (src=) is a file of
+// its own, read below.
 function scriptsOf(file){
   const src=fs.readFileSync(file,'utf8');
-  if(file.endsWith('.js')) return {src,parts:[{code:src,line:1}]};
+  if(file.endsWith('.js')) return {src,parts:[{code:src,line:1,sourceType:file.startsWith(SRC)?'module':'script'}]};
   const dom=new JSDOM(src,{includeNodeLocations:true});
   const scripts=[...dom.window.document.querySelectorAll('script')];
-  const parts=scripts.filter(e=>!e.hasAttribute('src')).map(e=>({code:e.textContent,line:dom.nodeLocation(e).startTag.endLine}));
-  const first=scripts.find(e=>e.hasAttribute('src'));
-  return {src,parts,firstSrc:first?first.getAttribute('src'):undefined};
+  const parts=scripts.filter(e=>!e.hasAttribute('src')).map(e=>({code:e.textContent,line:dom.nodeLocation(e).startTag.endLine,sourceType:'script'}));
+  return {src,parts};
 }
 
 let fails=0;
 const fail=m=>{ fails++; console.log('FAIL '+m); };
 const ok=m=>console.log('ok   '+m);
 const usedAllowed=new Set();
-const files=fs.readdirSync(SITE).filter(f=>/\.(html|js)$/.test(f)).sort();
+const files=[
+  ...filesUnder(SRC).filter(f=>/\.js$/.test(f)||/^[^/]+\.html$/.test(f)).map(f=>'src/'+f),
+  ...filesUnder(PUBLIC).filter(f=>/^[^/]+\.js$/.test(f)).map(f=>'public/'+f),
+];
 for(const f of files){
-  const {src,parts,firstSrc}=scriptsOf(path.join(SITE,f));
+  const {src,parts}=scriptsOf(path.join(ROOT,f));
   const lines=src.split('\n');
   let findings=[];
   for(const p of parts){
-    try{ findings.push(...check(p.code).map(x=>({...x,line:x.line+p.line-1}))); }
+    try{ findings.push(...check(p.code,p.sourceType).map(x=>({...x,line:x.line+p.line-1}))); }
     catch(e){ fail(`${f}: a script that starts on line ${p.line} doesn't parse: ${e.message}`); }
   }
   findings=findings.filter(x=>{
@@ -166,15 +172,18 @@ for(const f of files){
     findings.slice(0,200).forEach(x=>console.log(`       ${f}:${x.line} ${x.rule}: ${(lines[x.line-1]||'').trim().slice(0,150)}`));
   } else ok(`${f}: every piece of HTML goes through kcHtml / kcEsc`);
 
-  // load: kc-safe.js first, on every page that uses the helpers or builds HTML
-  if(f.endsWith('.html')){
-    const scripts=parts.map(p=>p.code).join('\n');
-    const usesHelpers=/\bkc(Html|Esc|Raw|Arg)\b/.test(scripts);
-    const buildsHtml=/\.(innerHTML|outerHTML)\s*\+?=|insertAdjacentHTML|document\.write/.test(scripts);
-    if((usesHelpers||buildsHtml)&&firstSrc!=='kc-safe.js')
-      fail(`${f}: builds HTML but its first <script src> is ${firstSrc?'"'+firstSrc+'"':'missing'}, not "kc-safe.js" (load it straight after the boot-failure reporter)`);
-    else if(usesHelpers||buildsHtml) ok(`${f}: loads kc-safe.js first`);
-  }
+}
+// load: kc-safe.js first, on every page whose code uses the helpers or builds HTML
+for(const page of pageNames()){
+  const modules=pageEntries(page).modules;
+  const code=pageModules(page).map(f=>fs.readFileSync(path.join(SRC,f),'utf8')).join('\n');
+  const usesHelpers=/\bkc(Html|Esc|Raw|Arg)\b/.test(code);
+  const buildsHtml=/\.(innerHTML|outerHTML)\s*\+?=|insertAdjacentHTML|document\.write/.test(code);
+  if(!usesHelpers&&!buildsHtml) continue;
+  const first=modules.length===1?importsOf(modules[0])[0]:undefined;
+  if(first!=='ui/shared/kc-safe.js')
+    fail(`${page}: builds HTML but its entry's first import is ${first?'"'+first+'"':'missing'}, not "ui/shared/kc-safe.js"`);
+  else ok(`${page}: imports kc-safe.js first`);
 }
 ALLOWED.forEach((a,i)=>{ if(!usedAllowed.has(i)) fail(`ALLOWED entry ${i} (${a.file}, ${a.rule}, "${a.line}") matches nothing: take it out`); });
 console.log(fails?`\nFAILURES: ${fails}`:'\n0 failures');

@@ -1,3 +1,10 @@
+import { armySizeBand, enemyCharVisibleTo } from '../../views/visibility.js';
+import { d100 } from '../dice-and-army-names.js';
+import { perkTier } from '../titles/perks.js';
+import { buildTurnReport } from '../../views/turn-report.js';
+import { hasDisc } from '../discoveries.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+
 // ── EVERY REALM'S REPORT, BUILT AFTER THE SAVE (plan P1-08d: lifted out of resolveTurn) ────
 // buildReports rolls each hero's Spy stealth once, then builds each realm's report from the turn's log: what that
 // realm saw (its own deeds, lines sent to it, and public events where it had eyes at the time), its battle markers,
@@ -5,7 +12,7 @@
 // resolveTurn hands it to the shell wrapped with the turn's context ({state, log, buildReports}); the shell calls it
 // once the turn is saved. It takes the turn's context first (src/engine/turn/context.js) and reads the values
 // resolveTurn joins to it: _reports (built once a turn), presenceByPhase, clairWatch, battleCommanders and _tel.
-function buildReports(turnContext) {
+export function buildReports(turnContext) {
   const { _reports, freshPlayers, G, log, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;
   if (_reports.built) throw new Error('buildReports() runs once a turn');
   _reports.built = true;

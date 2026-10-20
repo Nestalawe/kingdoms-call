@@ -1,3 +1,21 @@
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { monarchRestProvId } from '../grand-design.js';
+import { _escapesTheEnd, _garrethEscapeLine } from '../names.js';
+import { recordBattleGraves, recordHeroGrave } from '../graves.js';
+import { ownedConsecratedProvs } from './fame-and-consecration.js';
+import { gainedItemNote } from '../items/equipment.js';
+import { _KC_LOOT_GAINED, applyItemMaxHp, transferableItems } from '../personal-combat/helpers.js';
+import { d100, fmtRoll } from '../dice-and-army-names.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { TM } from '../titles/perks.js';
+import { discParam, hasDisc } from '../discoveries.js';
+import { newMercId } from '../turn/mercenary-ids-and-battle-records.js';
+import { setProvinceOwner } from '../realms/relations-and-captures.js';
+import { effStat, isVanished } from './effective-skills-and-hidden-heroes.js';
+import { isOpenSea } from '../units/sea-lift-stranding-and-retreats.js';
+import { flushDeferredSkillLogsFor } from './experience-skill-rises-and-earned-hp.js';
+
 // ── HERO DEATH AND LEADERLESS HOSTS (plan P1-08f: lifted out of resolveTurn) ────
 // What becomes of a dead commander's armies (disperseDeadCharArmies) and of the host a spared coward leaves behind
 // (abandonHostOnFlight), the one way a personal-combat death outside a battle is reported (reportHeroFall), and a
@@ -5,7 +23,7 @@
 // ── Dispersal of a dead character's armies ── Extracted from handleHeroDeath so battle code can
 // defer it: a commander slain in a PRE-BATTLE DUEL keeps their army on the field (a junior
 // officer takes over) and the survivors are dispersed only AFTER the battle resolves.
-function disperseDeadCharArmies(turnContext, deadChar) {
+export function disperseDeadCharArmies(turnContext, deadChar) {
   const { G, log } = turnContext;
   if (!deadChar) return;
   const prov = G.world.provinces[deadChar.location];
@@ -131,7 +149,7 @@ function disperseDeadCharArmies(turnContext, deadChar) {
 // own schedule; handing them to a garrison would strand them there for ever — the same trap
 // disperseDeadCharArmies guards against).
 // Returns how many units were left behind.
-function abandonHostOnFlight(turnContext, c) {
+export function abandonHostOnFlight(turnContext, c) {
   const { G, log } = turnContext;
   if (!c) return 0;
   const prov = G.world.provinces[c.location];
@@ -194,7 +212,7 @@ function abandonHostOnFlight(turnContext, c) {
 // death's door, but not slain" when Battlefield Surgery saves them, with the surgery line
 // straight after it; nothing of its own when they vanished or escaped (those write their own
 // line). Returns what handleHeroDeath returns (false = they live).
-function reportHeroFall(turnContext, dead, killer, slainLine, meta, hopts) {
+export function reportHeroFall(turnContext, dead, killer, slainLine, meta, hopts) {
   const { log } = turnContext;
   const o = { ...(hopts || {}), lines: [] };
   const res = handleHeroDeath(turnContext, dead, killer, o);
@@ -204,7 +222,7 @@ function reportHeroFall(turnContext, dead, killer, slainLine, meta, hopts) {
   o.lines.forEach((l) => log(l.type, l.text, l.meta));
   return res;
 }
-function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
+export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   const { G, log, _tel } = turnContext;
   if (!deadChar) return;
   // DOPPELGANGER GUARD. Battles are fought on shallow COPIES ({...char}); if any caller hands a

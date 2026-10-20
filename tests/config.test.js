@@ -2,10 +2,13 @@
 // staging copy of the site can swap that one file. Static (nothing runs):
 //   - kc-config.js defines KC_CONFIG with supabaseUrl and supabaseKey;
 //   - no page types in a Supabase project address or key;
-//   - every page that creates the database client loads kc-config.js before the script that uses it.
-// Reads site/ (or $KC_SITE).
+//   - every page that creates the database client loads kc-config.js before the script that uses it: a classic
+//     <script src> in its template, which runs before the page's module script (P1-09d) wherever the two tags are.
+// Reads site/kc-config.js (or $KC_SITE's), and each page's template and modules in src/ (tools/pages.ts; until P1-09d,
+// the built pages in site/).
 const fs=require('fs'), path=require('path'), vm=require('vm');
 const {SITE}=require('./lib/boot');
+const {SRC}=require('./lib/source.ts'); const {pageModules,pageNames}=require('../tools/pages.ts');
 
 let fails=0;
 const fail=m=>{ fails++; console.log('FAIL '+m); };
@@ -26,16 +29,16 @@ else {
 
 const ADDRESS=/https:\/\/[a-z0-9]{20}\.supabase\.co/;
 const KEY=/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|\bsb_(publishable|secret)_[A-Za-z0-9_-]{10,}/;
-for(const name of fs.readdirSync(SITE).filter(f=>f.endsWith('.html')).sort()){
-  const src=fs.readFileSync(path.join(SITE,name),'utf8');
+for(const name of pageNames()){
+  const html=fs.readFileSync(path.join(SRC,name),'utf8');
+  const code=pageModules(name).map(f=>fs.readFileSync(path.join(SRC,f),'utf8')).join('\n');
+  const src=html+'\n'+code;
   if(ADDRESS.test(src)) fail(`${name}: types in a Supabase project address; read KC_CONFIG.supabaseUrl instead`);
   if(KEY.test(src)) fail(`${name}: types in a Supabase key; read KC_CONFIG.supabaseKey instead`);
-  const use=src.search(/\bcreateClient\s*\(/);
-  if(use<0) continue;
-  const load=src.indexOf('<script src="kc-config.js"></script>');
-  if(load<0) fail(`${name}: creates the database client but never loads kc-config.js`);
-  else if(load>use) fail(`${name}: loads kc-config.js after the script that creates the database client`);
-  else ok(`${name}: loads kc-config.js before creating the database client`);
+  if(!/\bcreateClient\s*\(/.test(code)) continue;
+  if(!html.includes('<script src="kc-config.js"></script>')) fail(`${name}: creates the database client but never loads kc-config.js`);
+  else if(/\bcreateClient\s*\(/.test(html)) fail(`${name}: creates the database client in an inline script, which may run before kc-config.js`);
+  else ok(`${name}: loads kc-config.js before creating the database client (in its modules)`);
 }
 console.log(`${fails} config problem(s)`);
 process.exit(fails?1:0);

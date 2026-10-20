@@ -36,9 +36,26 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
-import { build, ROOT, sourcesOf } from '../../tools/build.ts';
+import { build, ROOT } from '../../tools/build.ts';
+import { DATA_FILE, importsOf, pageEntries } from '../../tools/pages.ts';
 
 export const SRC = path.join(ROOT, 'src');
+
+/** The files every script page shares, which it loaded beside it until the module switch (P1-09d): a page's own code is
+ *  the rest. */
+const SHARED_FILES = new Set([DATA_FILE, 'ui/shared/kc-safe.js', 'db/kc-db-guard.js']);
+/** The files under src/ that make the page `page` (e.g. 'kingdoms-call-gm-portal.html') as the tests read them: its
+ *  template (with its boot-failure reporter inline), its stylesheets, and its own modules in the order its entry lists
+ *  them (an entry that only imports, page.js, stands for its list: the order the files ran as classic scripts), not
+ *  the shared files. */
+function sourcesOf(page: string): string[] {
+  const { modules, styles } = pageEntries(page);
+  const own = modules.flatMap((entry) => {
+    const tree = treeOf(entry, fs.readFileSync(fullPath(entry), 'utf8'));
+    return tree.statements.every(ts.isImportDeclaration) ? importsOf(entry) : [entry];
+  });
+  return [page, ...styles, ...own.filter((f) => !SHARED_FILES.has(f))];
+}
 
 export interface SourceOptions {
   /** The source folder (default: this checkout's src/), e.g. a copy with a planted fault. */
@@ -422,7 +439,7 @@ export function entriesOf(file: string, name: string, opts: SourceOptions = {}):
 }
 
 /** The script files under src/ that make the published page `page` (e.g. 'kingdoms-call-gm-portal.html'), in its
- *  order: its own code, not the data file or kc-safe.js, which it loads beside it. */
+ *  order: its own code, not the files every page shares (the data file, kc-safe.js, kc-db-guard.js). */
 export function pageScripts(page: string): string[] {
   return sourcesOf(page).filter((f) => /\.[cm]?[jt]s$/.test(f));
 }
@@ -442,9 +459,9 @@ export function fileDeclaring(page: string, name: string, opts: SourceOptions = 
 }
 
 /** Every file under src/ that makes the page `page`, as written, one after another, a line between files: its
- *  template, its styles and its scripts (not the data file or kc-safe.js, which it loads beside it), as the built page
- *  held them until the module switch (P1-09d). For a test that counts a word wherever the page's own files hold it,
- *  comments included (Prettier keeps comments' words; what a comment says is only in the source). */
+ *  template, its styles and its scripts (not the files every page shares: the data file, kc-safe.js, kc-db-guard.js), as
+ *  the built page held them until the module switch (P1-09d). For a test that counts a word wherever the page's own
+ *  files hold it, comments included (Prettier keeps comments' words; what a comment says is only in the source). */
 export function pageSource(page: string, opts: SourceOptions = {}): string {
   return sourcesOf(page)
     .map((f) => fs.readFileSync(fullPath(f, opts.src), 'utf8'))

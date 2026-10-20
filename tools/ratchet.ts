@@ -1,5 +1,6 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
-// entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests, tests on the hand-written database stand-in) and fails if
+// entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
+// tests on the hand-written database stand-in, tests on the engine's vm loader) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -34,6 +35,36 @@ function files(): string[] {
 
 const lines = (text: string, re: RegExp) => text.split('\n').filter((l) => re.test(l)).length;
 
+// The engine's loader (plan P1-09, Decision 11): the engine's bundle run in a vm. P1-14 moves its tests to importing
+// the engine's modules directly, so the number of test files that reach it, themselves or through a helper of
+// tests/, only falls.
+const ENGINE_LOADER = 'tests/lib/engine.ts';
+/** The test files (tests/**\/*.test.{js,ts}, not the quarantine) whose relative imports and requires reach the
+ *  engine's loader. */
+export function vmLoaderTests(all: string[]): number {
+  const known = new Set(all);
+  const importsOf = (f: string): string[] =>
+    [...fs.readFileSync(path.join(ROOT, f), 'utf8').matchAll(/(?:\bfrom\s+|\brequire\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g)]
+      .map((m) => path.posix.normalize(path.posix.join(path.posix.dirname(f), m[1] ?? '')))
+      .flatMap((t) =>
+        ['', '.ts', '.js']
+          .map((x) => t + x)
+          .filter((x) => known.has(x))
+          .slice(0, 1),
+      );
+  const memo = new Map<string, boolean>();
+  const reaches = (f: string, seen: Set<string>): boolean => {
+    const kept = memo.get(f);
+    if (kept !== undefined) return kept;
+    if (seen.has(f)) return false;
+    seen.add(f);
+    const r = importsOf(f).some((g) => g === ENGINE_LOADER || reaches(g, seen));
+    memo.set(f, r);
+    return r;
+  };
+  return all.filter((f) => /^tests\/(?!quarantine\/).*\.test\.[jt]s$/.test(f) && reaches(f, new Set())).length;
+}
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -64,12 +95,16 @@ export function measure(): Counts {
   return {
     ...counts,
     allowlistEntries: ALLOWLISTS.reduce((n, a) => n + allowlistLength(a.file, a.name), 0),
-    javascriptFiles: all.filter((f) => /\.(js|mjs|cjs)$/.test(f) && !f.startsWith('src/')).length,
+    javascriptFiles: all.filter((f) => /\.(js|mjs|cjs)$/.test(f) && !/^(src|public)\//.test(f)).length,
     // The site's own code, inline in its pages until P1-05 split it into src/ (so it wasn't counted before then). The
-    // module switch (P1-09) makes it TypeScript. The supabase-js copy in src/vendor/ isn't the site's code.
-    sourceJavascriptFiles: all.filter((f) => /\.js$/.test(f) && f.startsWith('src/') && !f.startsWith('src/vendor/'))
-      .length,
+    // module switch (P1-09) makes src/'s TypeScript; public/ holds the two classic scripts copied as they are
+    // (kc-config.js, which staging overwrites, and the staging footer: P1-09d moved them from src/). The supabase-js
+    // copy in public/vendor/ (src/vendor/ until P1-09d) isn't the site's code.
+    sourceJavascriptFiles: all.filter(
+      (f) => /\.js$/.test(f) && /^(src|public)\//.test(f) && !/^(src|public)\/vendor\//.test(f),
+    ).length,
     quarantinedTests: all.filter((f) => f.startsWith('tests/quarantine/') && /\.test\.[jt]s$/.test(f)).length,
+    vmLoaderTests: vmLoaderTests(all),
   };
 }
 

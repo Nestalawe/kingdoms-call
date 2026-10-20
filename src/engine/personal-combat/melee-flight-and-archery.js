@@ -1,3 +1,24 @@
+import { kcRng } from '../rng.js';
+import { temperOf } from '../world/tables.js';
+import { PC_MAX_LINGER_ROUNDS, pcPushDot } from './helpers.js';
+import { d100, dispFloor, rng } from '../dice-and-army-names.js';
+import { discDuelVs, discSum } from '../discoveries.js';
+import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { pcHasRanged, pcRangeStep, pcSkillLabel, pcSpeedOf } from './speed-encounter-plans-and-combatants.js';
+import {
+  PC_HIT_MAX,
+  PC_HIT_MIN,
+  pcHitChance,
+  pcHitSkill,
+  pcMeleeDamage,
+  pcPerkWord,
+  pcSkillHitPct,
+  pcSustainMult,
+  pcTakeHit,
+  pcWardIcon,
+  pcWardWord,
+} from './to-hit-wounds-stuns-and-courage.js';
+
 // ── PERSONAL COMBAT: MELEE, FLIGHT AND ARCHERY (plan P1-08e: lifted out of resolveTurn) ────
 // Experience from a hit, the riposte, a melee blow, flight and the free strike a failed flight gives, closing in, and
 // archery (volleys, arrow damage and to-hit, the parting shot). pcCombatXP, pcTryCounter, pcMeleeStrike, pcFreeStrike,
@@ -15,14 +36,14 @@
 // first roll that succeeds ends it: no further experience rolls for that combatant in this fight.
 // (The success becomes a phase candidate in trySkillGain; the one-rise-per-phase draw and every
 // other guard there still apply.)
-function pcCombatXP(turnContext, cbt, skill, narrative) {
+export function pcCombatXP(turnContext, cbt, skill, narrative) {
   if (!cbt || cbt.kind !== 'character' || !cbt.ref || cbt._xpGained) return;
   const _had = !!(cbt.ref._sgPending && (cbt.ref._sgPending.list || []).some((e) => e && e.skill === skill));
   trySkillGain(turnContext, cbt.ref, skill, SKILLGAIN_STD, narrative);
   const _p = cbt.ref._sgPending;
   if (!_had && _p && (_p.list || []).some((e) => e && e.skill === skill)) cbt._xpGained = true;
 }
-function pcTryCounter(turnContext, hero, foe, narrative, chan) {
+export function pcTryCounter(turnContext, hero, foe, narrative, chan) {
   if (!hero || !foe || hero.hp <= 0 || foe.hp <= 0) return;
   const _perk = hero.perkCounter ? 0.5 : 0;
   const _temper = chan === 'melee' ? temperOf(hero.temper).riposte || 0 : 0;
@@ -53,7 +74,7 @@ function pcTryCounter(turnContext, hero, foe, narrative, chan) {
     narrative.push(`  ↩ ${hero.name} lunges to counterattack, but ${foe.name} recovers in time. (${_src})`);
   }
 }
-function pcMeleeStrike(turnContext, actor, foe, narrative) {
+export function pcMeleeStrike(turnContext, actor, foe, narrative) {
   // ARCHERY L8 (Trueshot) aftermath: a foe struck in a vital point sees their very next attack
   // fail.
   if (actor.status && actor.status.nextAttackFails > 0) {
@@ -119,7 +140,7 @@ function pcMeleeStrike(turnContext, actor, foe, narrative) {
 // A FAILED escape turns the runner's back: the foe takes a bonus free melee attack. Only one flee
 // attempt per combatant per round — an action-phase attempt suppresses the end-of-round
 // break-off, so nobody eats two free strikes in one round.
-function pcFleeChance(actor, foe) {
+export function pcFleeChance(actor, foe) {
   const spd = foe.kind === 'monster' ? pcSpeedOf(foe) : 2;
   let chance =
     30 +
@@ -130,7 +151,7 @@ function pcFleeChance(actor, foe) {
   if (actor.status.fleeDoubled) chance *= 2; // Charm combat effect
   return Math.max(5, Math.min(95, dispFloor(chance)));
 }
-function pcFreeStrike(turnContext, actor, foe, narrative) {
+export function pcFreeStrike(turnContext, actor, foe, narrative) {
   // A bonus melee attack outside the normal exchange. No riposte on a miss (the target is
   // running).
   if (!actor || !foe || actor.hp <= 0 || foe.hp <= 0) return;
@@ -163,7 +184,7 @@ function pcFreeStrike(turnContext, actor, foe, narrative) {
     }
   } else narrative.push(`  The free strike misses.`);
 }
-function pcAttemptFlee(turnContext, actor, foe, narrative, state, how) {
+export function pcAttemptFlee(turnContext, actor, foe, narrative, state, how) {
   if (actor.neverFlees) return false;
   actor._fleeAttempted = true;
   const chance = pcFleeChance(actor, foe),
@@ -182,7 +203,7 @@ function pcAttemptFlee(turnContext, actor, foe, narrative, state, how) {
   pcFreeStrike(turnContext, foe, actor, narrative);
   return false;
 }
-function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
+export function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
   if (state.range !== 'melee') {
     //a FAST guardian closes two range slots in one advance (spell → melee at once);
     // everyone else, slow guardians included, closes one — slowness is no penalty to advancing.
@@ -242,7 +263,7 @@ function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
 // same points on Melee (measured: equal-level archer duel win rate fell 8.5% → 0.3% across
 // levels 1–5). Archers also pay a positioning tax melee never does: a failed advance or a failed
 // withdrawal consumes the whole Fire action.
-const ARCHERY_VOLLEY_AT = 3; // arrows per Fire action becomes 2 at this skill level
+export const ARCHERY_VOLLEY_AT = 3; // arrows per Fire action becomes 2 at this skill level
 // ARCHERY FIELDCRAFT and the PARTING SHOT. Measured, the bow's whole problem was positioning, not
 // damage — every fight opens at spell range, closing to bow range is a 60% roll and breaking out
 // of a melee a 40% one, and a failed roll eats the entire action. A fully-trained Bow got 4 shots
@@ -254,16 +275,16 @@ const ARCHERY_VOLLEY_AT = 3; // arrows per Fire action becomes 2 at this skill l
 // bow looses one arrow first (the mirror of the free strike a fleeing enemy eats). Characters only:
 // it is a perk of the skill, not a property of every creature that can spit.
 // Bow vs Stone Golem 85% → 99%, vs Sea Wyrm 81% → 100%; Blade / Sword & bow / Archmage figures unchanged.
-const ARCHERY_FIELDCRAFT_PCT = 5;
-const ARCHERY_PARTING_SHOT = true;
-function pcVolleySize(cbt) {
+export const ARCHERY_FIELDCRAFT_PCT = 5;
+export const ARCHERY_PARTING_SHOT = true;
+export function pcVolleySize(cbt) {
   return (cbt.archery || 0) >= ARCHERY_VOLLEY_AT ? 2 : 1;
 }
-function pcArrowDamage(cbt) {
+export function pcArrowDamage(cbt) {
   const _ask = cbt.archeryRaw != null ? cbt.archeryRaw : cbt.archery || 0;
   return rng(1, 3) + Math.ceil(_ask / 2);
 } // Sept 2026 redesign: was floor(Archery/3); raw skill (1–9) for characters · 2026-10-14 (Toby item 20): base 1–3, was 2–5
-function pcFireShot(turnContext, actor, foe, narrative) {
+export function pcFireShot(turnContext, actor, foe, narrative) {
   // ARCHERY L8 (Trueshot) aftermath: a crippled foe's whole volley goes to nothing.
   if (actor.status && actor.status.nextAttackFails > 0) {
     actor.status.nextAttackFails--;
@@ -284,7 +305,7 @@ function pcFireShot(turnContext, actor, foe, narrative) {
 // on a miss. The defender's temper GUARD does not turn arrows — guard is a melee trait.
 // 2026-09-12: archery follows melee exactly — +5%/level past 5, modifiers off the real figure,
 // hard 80% ceiling.
-function pcArrowHitChance(turnContext, actor, foe) {
+export function pcArrowHitChance(turnContext, actor, foe) {
   let chance = pcSkillHitPct(pcHitSkill(actor, 'archery'));
   chance += temperOf(actor.temper).archeryHit;
   chance -= (actor.status.hitPenalty || 0) + (actor.status.hitPenaltyFixed || 0) + (actor.status.auraPenalty || 0);
@@ -295,7 +316,7 @@ function pcArrowHitChance(turnContext, actor, foe) {
   chance = chance * (foe.status.dodge || 1);
   return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX, dispFloor(chance)));
 }
-function pcFireOne(turnContext, actor, foe, narrative) {
+export function pcFireOne(turnContext, actor, foe, narrative) {
   const hit = pcArrowHitChance(turnContext, actor, foe),
     roll = d100();
   narrative.push(

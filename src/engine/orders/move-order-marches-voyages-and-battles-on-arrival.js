@@ -1,3 +1,49 @@
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import {
+  AERIAL_TYPES,
+  FLYING_TYPES,
+  PRIMAL_SEA_TYPES,
+  SEA_TYPES,
+  carrierBerths,
+  isAirCarriable,
+} from '../units/movement.js';
+import { senseGravesUnderfoot } from '../graves.js';
+import { discoverFeat, featDiscovered } from '../../views/visibility.js';
+import { activeItems } from '../items/equipment.js';
+import { markOrcAttackWin } from '../units/drill-and-spoils.js';
+import { d100, describeArmy } from '../dice-and-army-names.js';
+import { getNeighborsP, neighborInDir } from '../world/map-helpers.js';
+import { TM, creditMapped, perkTier } from '../titles/perks.js';
+import { discSum } from '../discoveries.js';
+import { narrText, notifyTarget } from '../turn/log-line-helpers.js';
+import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.js';
+import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from '../realms/relations-and-captures.js';
+import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
+import { effStat, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.js';
+import {
+  clearNavalHold,
+  getSeaCapability,
+  navalHeldIn,
+  navalHoldLine,
+} from '../units/sea-lift-stranding-and-retreats.js';
+import { canEnterTerrain, contingentUnifyChance, refreshMovePool, setMovePool } from '../units/movement-pools.js';
+import { commandHandoverLine, pickBattleCommander, relocateChar, syncLeaderCopy } from '../battle/best-commander.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  rollNavalVoyage,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { emitBattle } from '../battle/battle-report-lines-and-force-markers.js';
+import { landingPartyFlags } from '../battle/raid-the-coast-and-landing-parties.js';
+import { combatVsNPC } from '../battle/battles-against-province-defenders.js';
+import { combatVsChar } from '../battle/battles-between-heroes.js';
+import { intendedDestination, normaliseAction } from '../turn/phase-intents-and-dependency-ordering.js';
+import { provDistance, stepTowardPreferSafe } from '../world/routes-and-distances.js';
+import { noteEntered } from '../world/province-bookkeeping-and-rallied-garrisons.js';
+import { erodeGuardSurvivors } from '../battle/stalled-battles-and-beaten-guards.js';
+
 // ── THE MOVE ORDER (plan P1-08j1: the first order taken out of processOrder in resolveTurn) ────
 // One hero's Move this phase, once processOrder has read the order (a Forced March is a Move here, with _fmSlip set)
 // and checked he may act: where the order leads (a province's id, the portal's prov:<id>, a compass direction), the
@@ -5,7 +51,7 @@
 // holds the province: a neutral guard, an enemy hero, a garrison, nobody, or a friend. It takes the turn's context
 // first (src/engine/turn/context.js) and the values processOrder worked out before it. The body keeps
 // processOrder's indent (plan P1-08's Decisions); a case-level break became a return.
-function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, player) {
+export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, player) {
   const { movePoints, seaMovePoints, log, G, seaCap, lightSeaMoves, lightLandMoves } = turnContext;
   // Safety net: if this owned hero never had a move pool computed (both pools undefined) —
   // e.g. a hero hired in a previous turn whose start-of-turn init was somehow missed —

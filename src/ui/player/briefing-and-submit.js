@@ -1,9 +1,20 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { sb } from './startup.js';
+import { SEASONS } from './items-and-heroes.js';
+import { collectMessages } from './init.js';
+import { setMobileView } from './layout.js';
+import { currentHeroOrderP } from './move-analysis.js';
+import { buildOrdersForm } from './orders-form.js';
+import { getOrderExtra, getOrderTarget } from './pre-orders.js';
+import { predictedLocation } from './order-targets.js';
+import { bulletizeDesc } from './map-symbols.js';
+
 // ══ THE NEW PLAYER'S BRIEFING — RACE, ALIGNMENT, TEMPER ═══════════════════════════════════
 // STANDING RULE (Toby, 2026-09-27): these three boxes are the ONLY thing most players read before
 // committing to a realm for a whole game, and they are the first thing that goes stale. Keep them
 // SHORT — the main things a newcomer needs to choose — and update them in the SAME change as any
 // rule they describe. The deep detail lives in the rulebook; this is the shop window.
-function updateAlignmentDesc() {
+export function updateAlignmentDesc() {
   const sel = document.getElementById('join-alignment');
   const desc = document.getElementById('join-alignment-desc');
   if (!sel || !desc) return;
@@ -31,7 +42,7 @@ function updateAlignmentDesc() {
 // or shoots over its fighter at) and ONE more; the fleets keep theirs. 2026-10-11 (Toby, the unit
 // abilities). Kept in step with battleFaceSide / abilityFront / abilityBack, the volley helpers and
 // rollUnitFates in the GM portal; tests/abilities-words holds the names to the rulebook's roster.
-const UNIT_ABILITIES = {
+export const UNIT_ABILITIES = {
   'Shieldwall Levies':
     "Spear Hedge — cavalry facing them in the line fights at no better than ×0.75 (the Unicorn Herd's Purity breaks it). Shieldwall — ×1.25 when an archer stands in the second line behind them.",
   'Men-at-Arms': 'Halberds — ×1.25 facing cavalry. Sergeants — Levies beside them in the front line fight ×1.1.',
@@ -126,7 +137,7 @@ const UNIT_ABILITIES = {
   'Great Turtles':
     'Island Back — carries two land units a hull, where a fleet carries one. Shell Wall — immune to pre-battle volleys, as the Ironclads. Island-backed turtles of the prosperous seas that swim under their own power; slow.',
 };
-function unitAbilityText(type) {
+export function unitAbilityText(type) {
   return UNIT_ABILITIES[type] || '';
 }
 // the unit ability descriptions were removed from the map pop-ups; instead they surface as a hover
@@ -134,7 +145,7 @@ function unitAbilityText(type) {
 // wraps when the unit actually has an always-on ability. Item 1: magic-item lore — the engine
 // attaches `lore` (a short narrative that states the effect in plain words) to every item in the
 // report; hovering the item's name shows it, like a unit's ability tip.
-function itemLoreTip(it, inner) {
+export function itemLoreTip(it, inner) {
   // the description is printed after every item, so the hover pop-up is retired.
   return inner;
 }
@@ -144,17 +155,17 @@ function itemLoreTip(it, inner) {
 // character's pack when the turn began (buildTurnReport → acquiredThisTurn); this prints that flag
 // as a small badge at the START of the item's line (2026-09-26b: was a separate line under it, with ✨,
 // which the game already uses elsewhere — now 🆕), in the Chronicle and in the orders form alike.
-function itemAcquiredTagP(it) {
+export function itemAcquiredTagP(it) {
   if (!it || !it.acquiredThisTurn) return '';
   return kcHtml`<span title="Acquired this turn" style="display:inline-block;font-size:.7rem;color:#123008;background:#eaf5e2;border:1px solid #5d8a3c;border-radius:2px;padding:0 5px;margin-right:5px;vertical-align:1px;white-space:nowrap">🆕 Acquired this turn</span>`;
 }
-function unitAbilityTip(type, inner) {
+export function unitAbilityTip(type, inner) {
   const ab = unitAbilityText(type);
   if (!ab) return inner;
   return kcHtml`<span title="${ab}" style="cursor:help;border-bottom:1px dotted var(--stone)">${inner}</span>`;
 }
 
-function updateRaceDesc() {
+export function updateRaceDesc() {
   const sel = document.getElementById('join-race');
   const desc = document.getElementById('join-race-desc');
   if (!sel || !desc) return;
@@ -175,7 +186,7 @@ function updateRaceDesc() {
   desc.innerHTML = bulletizeDesc(DESCS[sel.value] || '');
 }
 
-function updateTemperDesc() {
+export function updateTemperDesc() {
   const sel = document.getElementById('join-temper');
   const desc = document.getElementById('join-temper-desc');
   if (!sel || !desc) return;
@@ -199,7 +210,7 @@ function updateTemperDesc() {
 // by hand at each site, which is how the "Submit Anyway / Go Back" pair ended up somewhere else on
 // the page from the button they replace. Everything now routes through these two helpers so the
 // whole submit control stays in the sticky bottom block, together, at all times.
-function normalSubmitWrapHtml(verb) {
+export function normalSubmitWrapHtml(verb) {
   const turn = currentReport?._liveTurn || currentReport?.turn || 1;
   return kcHtml`
     <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
@@ -213,7 +224,7 @@ function normalSubmitWrapHtml(verb) {
 // actually misleads — saving a draft after hitting Resubmit, which writes orders_submitted=false
 // while the pill still claims the orders are in. This is the single place the flag and its
 // indicator are changed together; call it instead of touching either by hand.
-function setOrdersSubmittedUI(submitted) {
+export function setOrdersSubmittedUI(submitted) {
   if (currentGamePlayer) currentGamePlayer.orders_submitted = !!submitted;
   const pill = document.getElementById('report-status-pill');
   if (pill)
@@ -222,7 +233,7 @@ function setOrdersSubmittedUI(submitted) {
       : '<span class="pill pill-amber">⏳ Orders needed</span>';
 }
 
-function restoreSubmitWrap(verb) {
+export function restoreSubmitWrap(verb) {
   const w = document.getElementById('orders-submit-wrap');
   if (!w) return;
   w.innerHTML = normalSubmitWrapHtml(verb);
@@ -230,12 +241,12 @@ function restoreSubmitWrap(verb) {
   w.style.gap = '8px';
 }
 
-function cancelSubmit() {
+export function cancelSubmit() {
   document.getElementById('orders-msg').innerHTML = '';
   restoreSubmitWrap('Submit');
 }
 
-async function doSaveOrders() {
+export async function doSaveOrders() {
   const chars = currentReport?.characters || [];
   const orders = {};
   const encounterPlans = {};
@@ -321,7 +332,7 @@ async function doSaveOrders() {
   }
 }
 
-async function reviseOrders() {
+export async function reviseOrders() {
   // Mark orders as not submitted so the player can edit and resubmit
   const gp = currentGamePlayer;
   if (!gp) return;
@@ -341,7 +352,7 @@ async function reviseOrders() {
     `Resubmit Orders for Turn ${currentReport?._liveTurn || currentReport?.turn || 1}`;
 }
 
-async function doSubmitOrders() {
+export async function doSubmitOrders() {
   const chars = currentReport?.characters || [];
   const btn = document.getElementById('submit-btn');
   if (btn) {
@@ -542,7 +553,7 @@ async function doSubmitOrders() {
 // straight from the breakdown the GM shipped. Every success-chance preview in the order forms reads
 // this, so a "+2 Thief" blade shows in the odds the player is quoted. Falls back to the raw level
 // for an older report.
-function effSkillP(c, k) {
+export function effSkillP(c, k) {
   const e = c && c.skillEff && c.skillEff[k];
   if (e && typeof e.total === 'number') return e.total;
   return ((c && c.skills) || {})[k] || 0;

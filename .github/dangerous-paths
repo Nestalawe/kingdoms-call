@@ -11,11 +11,11 @@ supabase/**
 # CI, deploy and this warning.
 .github/**
 
-# Third-party code served with the site (the site is built from src/ since P1-05).
-src/vendor/**
+# Third-party code served with the site (copied as it is from public/ since P1-09d; src/vendor/ before).
+public/vendor/**
 
-# Which database the site talks to.
-src/db/kc-config.js
+# Which database the site talks to (public/ since P1-09d; src/db/ before).
+public/kc-config.js
 
 # The escaping helper. Uncomment when P0-19 creates it.
 src/ui/shared/kc-safe.js
@@ -50,3 +50,8 @@ tools/hooks/**
 tools/check.*
 tools/build.*
 tools/ratchet.*
+# The engine's loader (it bundles the engine for the tests, P1-09d), which files make each page (the build's checks
+# and the balance runner's read it), and the dev server (it must never reach the live database).
+tests/lib/engine.ts
+tools/pages.*
+tools/dev.*

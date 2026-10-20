@@ -1,15 +1,21 @@
+import { KC_QUALITY_DOWN } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { _isHumanoidRace } from '../discoveries.js';
+import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.js';
+
 // ── PLAGUE AND THE BLESS WARD (plan P1-08b: lifted out of resolveTurn) ────
 // The Plague's toll on a province's humanoid troops and its spread to the neighbours, and the Bless ward that may turn
 // an enemy spell aside. Each takes the turn's context first (src/engine/turn/context.js).
 // ── PLAGUE (Necromancy) ────
 // Each humanoid army unit in the province has a (10% + 5%/level) chance to lose an experience
 // level. Survivors are immunised (half chance thereafter). Only the four humanoid races suffer.
-const _PLAGUE_QDOWN = { ...KC_QUALITY_DOWN };
+export const _PLAGUE_QDOWN = { ...KC_QUALITY_DOWN };
 // ── Bless ward (item) ── A province blessed this turn can shrug off a later ENEMY negative spell
 // (Flood / Earthquake / Plague / Part Sea). Chance = 50% + 5% × the blesser's White skill, counted to
 // level 5. Returns true (and logs) when the ward turns the spell aside, so the caller skips the
 // effect. Rolls per incoming spell.
-function blessWardNegates(turnContext, prov, caster, spellName) {
+export function blessWardNegates(turnContext, prov, caster, spellName) {
   const { G, log } = turnContext;
   if (!prov || prov._blessWardTurn !== G.turn) return false;
   if (prov._blessWardBy == null || (caster && prov._blessWardBy === caster.player)) return false; // your own ward never blocks your own spell
@@ -28,7 +34,7 @@ function blessWardNegates(turnContext, prov, caster, spellName) {
   );
   return true;
 }
-function applyPlague(turnContext, prov, level, ph) {
+export function applyPlague(turnContext, prov, level, ph) {
   const { G, log } = turnContext;
   const chance = 0.1 + 0.05 * (level || 0);
   // Build the pool WITH provenance so affected units can be reported to the right player: units
@@ -83,7 +89,7 @@ function applyPlague(turnContext, prov, level, ph) {
   return { tested, affected };
 }
 // Each phase, an active plague spreads to adjacent provinces (15% each) and can spread further.
-function spreadPlagues(turnContext, ph) {
+export function spreadPlagues(turnContext, ph) {
   const { G, log } = turnContext;
   const sources = (G.world.provinces || []).filter((p) => p && p._plaguedTurn === G.turn);
   sources.forEach((p) => {

@@ -1,3 +1,26 @@
+import { dispFloor } from '../dice-and-army-names.js';
+import {
+  RECKONING_CALLER_MIN_FRAC,
+  RECKONING_DECAY_FROM_TURN,
+  RECKONING_DECAY_STEP_PCT,
+  RECKONING_FLOOR_PCT,
+  RECKONING_MIN_TURN,
+  reckoningAllyStepPct,
+  reckoningDecayOf,
+  reckoningThresholdPct,
+} from '../titles/perks.js';
+import {
+  _TITLE_LABEL,
+  alliedBloc,
+  reckoningBlocShare,
+  reckoningCallEligibility,
+  reckoningOwnShare,
+  reckoningThresholdFor,
+  reckoningWinner,
+} from '../titles/reckoning.js';
+import { areAllied, relKeyOf } from '../realms/relations-and-captures.js';
+import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.js';
+
 // ── DIPLOMACY RESOLUTION AND VICTORY (plan P1-08k4: two stages taken out of resolveTurn's own body) ────────────────
 // Once the turn has settled what its seasons left (after-the-phases-….js) and the bots have made any late declaration,
 // two stages run, in this order:
@@ -16,7 +39,7 @@
 // read here from the context (turnContext.diploDeclarations, turnContext.reckoningCalls). The bodies keep resolveTurn's
 // indent (plan P1-08's Decisions).
 
-function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings(turnContext) {
+export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings(turnContext) {
   const { G, diploDeclarations, log } = turnContext;
   // 6d. DIPLOMACY RESOLUTION (KC alliance system) — the declarations players submitted with THIS
   // turn's orders take effect now, so the new relations are already in force for next turn and the
@@ -182,7 +205,7 @@ function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings(turnCo
   }
 }
 
-function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnContext) {
+export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnContext) {
   const { G, reckoningCalls, log } = turnContext;
   // 6e. VICTORY — THE RECKONING (KC end-game). Process new claims, grace-period lapse, resolution.
   {

@@ -25,11 +25,11 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 
 | Path | What |
 |---|---|
-| `src/` | The site's source. `npm run build` puts it together into `site/` (git-ignored): what is published and what every test opens ([ARCHITECTURE.md](docs/ARCHITECTURE.md#the-build-src-becomes-site)). `manifest.ts` (which files make each page, in order: add a new file there), `engine/` (the turn engine, bots, world generation), `views/` (turn report, visibility; with `engine/`, the engine: loads alone in Node, `tests/lib/engine.ts`), `db/` (`kc-config.js`: which database; `kc-db-guard.js`: the version guard; telemetry), `content/kingdoms-call-data.js`, `ui/<page>/` (each page's template, styles and code), `ui/shared/` (`kc-safe.js`: `kcHtml`/`kcEsc`, the one way a page builds HTML, [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html); `kc-staging-footer.js`), `rulebook/`, `vendor/` (supabase-js, [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
+| `src/` | The site's source, ES modules. `npm run build` (Vite) builds it into `site/` (git-ignored): what is published and what every test opens ([ARCHITECTURE.md](docs/ARCHITECTURE.md#the-build-src-becomes-site)). `*.html` (the pages' templates), `engine/` (the turn engine, bots, world generation), `views/` (turn report, visibility; with `engine/`, the engine: bundled and loaded alone in Node, `tests/lib/engine.ts`), `db/` (`kc-db-guard.js`: the version guard; telemetry), `content/kingdoms-call-data.js`, `ui/<page>/` (each page's styles and code; `page.js`, its entry, imports its files in order, `globals.js`, last, what it keeps on `window`), `ui/shared/` (`kc-safe.js`: `kcHtml`/`kcEsc`, the one way a page builds HTML, [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html)), `rulebook/`. `public/`: copied as it is (`kc-config.js`: which database; `kc-staging-footer.js`; `vendor/`, supabase-js, [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `browser/*.spec.ts` (browser specs: Playwright Test, Chromium), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `lib/invariants.ts` and `lib/report-leaks.ts` (what must hold after every turn; what no report may show), `quarantine/` (kept, not run) |
 | `vitest.config.mts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, browser specs, strict TypeScript, lint, formatting, the exact Node version, the Claude Code hooks |
-| `tools/` | `build.ts` (`npm run build`), `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`; its report, `npm run balance:report`; named scenarios in `tests/balance/scenarios/`, `npm run balance -- <scenario>`), `github/` (the script that posts the balance report on a PR), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
+| `tools/` | `build.ts` (`npm run build`), `dev.ts` (`npm run dev`), `pages.ts` (which files make each page), `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`; its report, `npm run balance:report`; named scenarios in `tests/balance/scenarios/`, `npm run balance -- <scenario>`), `github/` (the script that posts the balance report on a PR), `legacy/` (older content-export tools, kept for reference; not run by the tests) |
 | `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the balance matrix and its report when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then build `site/` and publish it to Pages), `balance-report.yml` (posts the balance report on a PR once CI finishes, and warns while "What changes in play" is missing), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves), `nightly.yml` (`npm run test:full` with a random seed every night; blocks nothing) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js`, `.github/pull_request_template.md` | The dangerous-paths list and the warning's logic (see below); the PR template (fill in every section) |
 | `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
@@ -39,10 +39,11 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 Node exactly as in `.nvmrc` (24.22.0): `npm ci` and `npm test` refuse any other.
 
 ```sh
-npm ci && npx playwright install chromium   # once; npm run build puts src/ together into site/ (npm test builds first)
+npm ci && npx playwright install chromium   # once; npm run build builds src/ into site/ with Vite (npm test builds first)
 npm test                                    # Vitest: every test, by level, side by side (about 30 s); CI runs each level in its own job
 npx playwright test                         # the browser specs (tests/browser/) in Chromium, about 20 s; not part of npm test
 npm run check                               # the quick check of what you changed, about 20 s (parts: typecheck, lint, format:check, ratchet)
+npm run dev                                 # Vite's dev server of src/, against the local Supabase only (npm run dev -- config writes its kc-config.js)
 npm run balance                             # the balance matrix: 60 seeded games against tests/balance/baseline/ (about 20 s; CI plays it when an engine path changes); balance:update rewrites it; "-- battle" (or lair, encounter) plays a named scenario on main's site and here (about 1 min)
 npm run test:full                           # bigger fuzz and property runs, as the nightly run does (npm run test:quarantine: the quarantined harnesses, expected to fail)
 npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
@@ -79,8 +80,7 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
 **Tests**
 - **Test first, at the lowest level that can express it:** static, then unit, scenario, simulation,
   page. Every new test gets its level, and the reason a lower one wouldn't do, in the PR (levels:
-  [tests/README.md](tests/README.md#the-tests)). Until the engine is split into modules, "the function
-  is nested inside `resolveTurn`" is a valid reason.
+  [tests/README.md](tests/README.md#the-tests)).
 - **Fail first.** Show that the new test fails without your change (on `main`, or on a copy via
   `KC_SITE`) and passes with it. A test that can't fail proves nothing. For a pure refactor, label the
   PR `refactor-only`; then new tests must pass both before and after, and CI fails if the balance baseline changes.
@@ -112,6 +112,13 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
 - Don't silence errors, lint or types to get green, and don't raise a count in `tests/ratchet.json`.
 - Update `docs/ARCHITECTURE.md` and `docs/traps.md` when your change makes them wrong, this file when the workflow changes.
 - Write in plain language: [ISO 24495-1:2023](#plain-language-iso-24495-12023).
+- **The code's guardrails** (P1-09; the steps named bring the rest): (1) `src/engine/` and `src/views/` import no
+  Supabase client, `window` or UI code, so each function there runs on plain data; (2) no `Math.random` or `Date` there
+  (a lint rule from P1-13); (3) the engine emits events, never prose, which `src/views/` writes after perception
+  (P1-12); (4) a content effect lives in the rule registry, not in an `if` on its name inside a resolver (P1-19); (5) an
+  iteration order that can change a draw or the outcome is explicit; (6) all code and tests are TypeScript (P1-09e), with
+  no `any`, `@ts-ignore` or `eslint-disable` without a reviewed allowlist entry, and data crossing a boundary
+  (database, saved state, content) is parsed by its Zod schema (P1-10).
 
 **Never**
 1. **Never merge.** Toby merges. Never push to `main`, never force-push a shared branch, never run
@@ -121,13 +128,9 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
    credentials.
 3. **Never change repository, Pages or Supabase settings.** Those are Toby's. Write him a short
    numbered click-list instead.
-4. **Never commit private data.** That means:
-   - player, king or realm names from live games;
-   - pasted report or dispatch text;
-   - account ids or emails;
-   - database dumps or secrets (`.env*`, `*.dump` and `*.sql.gz` are git-ignored).
-
-   Toby's pasted reports stay in the session. Tests and PRs use made-up names.
+4. **Never commit private data**: player, king or realm names from live games; pasted report or dispatch text; account
+   ids or emails; database dumps or secrets (`.env*`, `*.dump` and `*.sql.gz` are git-ignored). Toby's pasted reports
+   stay in the session. Tests and PRs use made-up names.
 5. **Never describe security weaknesses in public.** Security-fix PRs get neutral titles and
    descriptions that don't say what was wrong or how it could be used. If you find a weakness, say so
    to the person running your session, for Theo; don't write it into an issue, PR, commit, comment or
@@ -138,18 +141,16 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
 
 ## Database changes
 
-The structure is in `supabase/` ([supabase/README.md](supabase/README.md)): edit `supabase/schemas/`,
-generate the migration, review it. Merging applies it: staging, then production once Toby approves, then
-the site ([supabase/README.md](supabase/README.md#how-a-migration-goes-live)). Never apply one to the live
-database yourself, and never ask Toby to paste SQL.
+The structure is in `supabase/` ([supabase/README.md](supabase/README.md)): edit `supabase/schemas/`, generate the
+migration, review it. Merging applies it: staging, then production once Toby approves, then the site
+([supabase/README.md](supabase/README.md#how-a-migration-goes-live)). Never apply one to the live database yourself, and
+never ask Toby to paste SQL.
 
-**Database and site changes go in separate PRs**, and each must work without the other: they go live at
-different moments, and old pages stay open
-([why, with an example](supabase/README.md#database-and-site-changes-go-separately)). CI's `db` check refuses
-a PR that changes both. Database first, then site, then any removal (expand, then contract).
-- **A migration PR** works with the site that's live now: it never loosens or removes an access-rule test
-  of what the game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of
-  what Toby is approving.
+**Database and site changes go in separate PRs**, and each must work without the other: they go live at different
+moments, and old pages stay open ([why, with an example](supabase/README.md#database-and-site-changes-go-separately)).
+CI's `db` check refuses a PR that changes both. Database first, then site, then any removal (expand, then contract).
+- **A migration PR** works with the site that's live now: it never loosens or removes an access-rule test of what the
+  game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of what Toby is approving.
 - **A site PR** that uses a new table or column either **copes** while it's missing (probe and fall back:
   [traps.md](docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), with a test that hides it
   (`MISSING` / `MISSING_COLS` in `tests/lib/stub-db.js`; example: `tests/meta-missing-turn.test.js`), or
@@ -165,33 +166,32 @@ refuses it); every migration has pgTAP tests.
 Some changes get Theo's eye before Toby merges them (decision D-07). Toby and Theo talk them through;
 nothing on GitHub enforces it.
 - **Paths:** any PR that changes a path in `.github/dangerous-paths` (today `supabase/**`, `.github/**`
-  and `src/vendor/**`) gets a warning comment from `.github/workflows/dangerous-paths.yml`. It never
+  and `public/vendor/**`) gets a warning comment from `.github/workflows/dangerous-paths.yml`. It never
   blocks the merge. The list is read from the PR's base branch, so editing it affects later PRs, not the current one.
-- **Everything else that needs Theo:** a change to who can see or change data, a plan step whose
-  STATUS row has ✓ in the Theo column, or any step of a unit (e.g. the cutover). Say so in the first
-  line of the PR description. If unsure, say so.
+- **Everything else that needs Theo:** a change to who can see or change data, a plan step whose STATUS row has ✓ in the
+  Theo column, or any step of a unit (e.g. the cutover). Say so in the first line of the PR description. If unsure, say
+  so.
 
 Labels: `staging` (when the PR needs staging and is ready to try: it puts the PR on the staging site, with its own database, and comments with the link; `.github/workflows/staging.yml`), `refactor-only`.
 
 ## Opening the PR for review
 
-Use the template in `.github/pull_request_template.md`. Write the top half for Toby, in game terms;
-keep engineering detail in the lower sections for Theo. "Staging" says whether it's needed and why; if it is,
-a numbered checklist he can follow without reading code.
+Use the template in `.github/pull_request_template.md`. Write the top half for Toby, in game terms; keep engineering
+detail in the lower sections for Theo. "Staging" says whether it's needed and why; if it is, a numbered checklist he can
+follow without reading code.
 
-**Playtester notes, every time.** Any PR that changes something players can notice starts its
-description with a `## For playtesters` section: one short, friendly paragraph per change, written for
-players (what's new or fixed and how it affects their game, with no code, numbers only where they help)
-and ready for Toby to paste. Once the change is merged and deployed, give Toby the same notes in the
-session.
+**Playtester notes, every time.** Any PR that changes something players can notice starts its description with a `## For
+playtesters` section: one short, friendly paragraph per change, written for players (what's new or fixed and how it
+affects their game, with no code, numbers only where they help) and ready for Toby to paste. Once the change is merged
+and deployed, give Toby the same notes in the session.
 
 ## Plain language (ISO 24495-1:2023)
 
-Write everything people read (messages to Toby, PRs, commits, playtester notes, rulings, docs,
-rulebooks, in-game text) to [ISO 24495-1:2023](https://www.iso.org/standard/78907.html): **relevant**
-(what readers need, nothing more), **findable** (most important first, clear headings),
-**understandable** (common words, short sentences, active voice, terms explained) and **usable**
-(numbered steps, the next action clear). Keep engineering detail accurate: explain it, don't drop it.
+Write everything people read (messages to Toby, PRs, commits, playtester notes, rulings, docs, rulebooks, in-game text)
+to [ISO 24495-1:2023](https://www.iso.org/standard/78907.html): **relevant** (what readers need, nothing more),
+**findable** (most important first, clear headings), **understandable** (common words, short sentences, active voice,
+terms explained) and **usable** (numbered steps, the next action clear). Keep engineering detail accurate: explain it,
+don't drop it.
 
 ## Talking to Toby
 

@@ -1,3 +1,23 @@
+import { monarchRestProvId } from '../grand-design.js';
+import { senseGravesUnderfoot } from '../graves.js';
+import { consecratedIds, relOfReport } from '../heroes/fame-and-consecration.js';
+import { gainedItemNote } from '../items/equipment.js';
+import { maxHpPlayers } from '../heroes/skills-and-hp.js';
+import { applyItemMaxHp } from '../personal-combat/helpers.js';
+import { perkTier } from '../titles/perks.js';
+import { progressNeutralHeroes } from '../heroes/charms-and-neutrals.js';
+import { MASS_HEALING_PCT, healFeatureMonsters } from '../chances-and-lair-grades.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { flushIntrusionNotifications } from './intrusion-warnings.js';
+import {
+  resolveAllPendingSkillGains,
+  syncAllMaxHp,
+  writeDeferredSkillLines,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { abandonHostOnFlight, disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.js';
+import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.js';
+import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.js';
+
 // ── AFTER THE PHASES (plan P1-08k3: the first stage taken out of resolveTurn's own body) ──────────────────────────
 // Once the turn's five phases are played (no phase is current any more, and every later line is filed after them),
 // the turn settles what the seasons left, in this order:
@@ -14,7 +34,7 @@
 // It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads no value of the phase loop's.
 // The body keeps resolveTurn's indent (plan P1-08's Decisions).
 
-function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames(turnContext) {
+export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames(turnContext) {
   const { G, log, _elvenEscapeQueue } = turnContext;
   // A stand-off struck in the final phase is still a stand-off: flag it now so the state that is
   // SAVED (and every player's map) shows the province as contested, and the fight is joined at the

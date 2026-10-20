@@ -1,8 +1,15 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { kcRng } from '../../engine/rng.js';
+import { sb } from './config.js';
+import { gameArchived, gamesListCols } from '../../db/game-meta.js';
+import { autoTurnReady, fmtDeadline, turnModeOf } from './turn-mode.js';
+import { runTurn } from './turn-shell.js';
+
 // ── AUTO-TURN WATCHER ────
 // Polls this GM's active games once a minute and runs any whose mode condition is met. Two guards
 // against a double run: a same-browser localStorage lease (two tabs of the same browser) and the
 // conditional save in runTurn (`.eq('turn',expected)`), which also covers two different devices.
-const AUTO_WATCH_MS = 60000;
+export const AUTO_WATCH_MS = 60000;
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
 globalThis._autoWatcherTimer = null;
 globalThis._autoRunBusy = false;
@@ -11,10 +18,10 @@ globalThis._autoRunBusy = false;
 // minute: without this, one broken build turns into a failed turn every 60 seconds per game, for as
 // long as the tab is open. After a failed run a game is left alone for AUTO_FAIL_COOLDOWN_MS, and
 // the watcher says so on the banner. Any successful run clears the mark, and so does a reload.
-const AUTO_FAIL_COOLDOWN_MS = 15 * 60000;
-const _autoFailUntil = new Map(); // gameId -> timestamp to resume trying
-const _tabId = kcRng().toString(36).slice(2);
-function _autoLease(gameId, take) {
+export const AUTO_FAIL_COOLDOWN_MS = 15 * 60000;
+export const _autoFailUntil = new Map(); // gameId -> timestamp to resume trying
+export const _tabId = kcRng().toString(36).slice(2);
+export function _autoLease(gameId, take) {
   try {
     const key = 'kc_autorun_' + gameId;
     if (!take) {
@@ -29,7 +36,7 @@ function _autoLease(gameId, take) {
     return true;
   } // no localStorage — fall back to the conditional save alone
 }
-function setAutoTurnStatus(html) {
+export function setAutoTurnStatus(html) {
   const el = document.getElementById('auto-turn-status');
   if (!el) return;
   el.style.display = html ? 'block' : 'none';
@@ -46,15 +53,15 @@ function setAutoTurnStatus(html) {
 // LOOP GUARD: sessionStorage remembers "already reloaded for <game>:<turn>", so whatever a server
 // or CDN does with caching, one due turn can cause at most ONE reload. No sessionStorage, a file://
 // page, a failed download or an unreadable stamp → never reload; the turn runs on the current build.
-const _KC_STAMP_RE = /GM Portal v(\d{4}\.\d{2}\.\d{2}-\d{4})/,
+export const _KC_STAMP_RE = /GM Portal v(\d{4}\.\d{2}\.\d{2}-\d{4})/,
   _KC_DATA_RE = /Data file v(\d{4}\.\d{2}\.\d{2}-\d{4})/;
-let _kcDataStampAtLoad = null;
-function runningBuildStamp() {
+export let _kcDataStampAtLoad = null;
+export function runningBuildStamp() {
   const el = document.getElementById('kc-build-stamp');
   const m = el && _KC_STAMP_RE.exec(el.textContent || '');
   return m ? m[1] : null;
 }
-async function _fetchBuildStamp(url, re, cacheMode) {
+export async function _fetchBuildStamp(url, re, cacheMode) {
   try {
     const r = await fetch(url, { cache: cacheMode });
     if (!r.ok) return null;
@@ -65,7 +72,7 @@ async function _fetchBuildStamp(url, re, cacheMode) {
   }
 }
 // Returns true when the tab is reloading (the caller must stop and let the reload happen).
-async function refreshIfNewerBuild(g) {
+export async function refreshIfNewerBuild(g) {
   if (!/^https?:$/.test(location.protocol)) return false;
   const key = g.id + ':' + g.turn;
   try {
@@ -93,7 +100,7 @@ async function refreshIfNewerBuild(g) {
   setTimeout(() => location.reload(), 400);
   return true;
 }
-function startAutoTurnWatcher() {
+export function startAutoTurnWatcher() {
   if (_autoWatcherTimer) return;
   if (/^https?:$/.test(location.protocol))
     _fetchBuildStamp('kingdoms-call-data.js', _KC_DATA_RE, 'default').then((v) => {
@@ -102,7 +109,7 @@ function startAutoTurnWatcher() {
   _autoWatcherTimer = setInterval(autoTurnTick, AUTO_WATCH_MS);
   setTimeout(autoTurnTick, 3000);
 }
-async function autoTurnTick() {
+export async function autoTurnTick() {
   if (!currentUser || _autoRunBusy) return;
   _autoRunBusy = true;
   try {

@@ -226,7 +226,10 @@ const gmPortal={
     const tick='_autoRunBusy=false;autoTurnTick().then(()=>{ _autoRunBusy=true; });';
     // a failure staged on purpose, which the engine also logs to the console: only that log is muted, for that step
     const quiet=code=>`{ const ce=console.error; console.error=()=>{}; Promise.resolve(${code}).finally(()=>{ console.error=ce; }); }`;
-    const turnFails=`window.migrateItemTiers=()=>{ throw new Error(${lit(W.error)}); };`+quiet('runTurn()');
+    // the turn fails where the turn's own work begins: its first draw of the dice (the turn's seed, after the orders are
+    // cleared) throws, then the dice go back. The throwing dice draw first, so every later draw is the one it was.
+    const turnFails=`{ const was=kcRng.use(()=>{ was(); throw new Error(${lit(W.error)}); }); const ce=console.error; console.error=()=>{};`
+      +' Promise.resolve(runTurn()).finally(()=>{ console.error=ce; kcRng.use(was); }); }';
     if(!m.user) return [['sign-in refused',fixed+`sb.auth.signInWithPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
       +val('si-email','gm@example.test')+val('si-password',W.password)+'doSignIn()']];
     if(m.user==='ov1') return [
@@ -252,15 +255,17 @@ const gmPortal={
       ['turn 0: the starting roster',ok+'closeEditInvites();runTurn0()'],
       ['turn 0: players unreadable',fail('game_players.select')+'runTurn0()'],
       ['turn 0: a bot realm not saved',ok+'runTurn0().then(()=>{ '+fail('game_players.insert')+'commitTurn0(); })'],
-      ['turn 0: the world not generated',ok+`runTurn0().then(()=>{ window.generateNewGame=async()=>{ throw new Error(${lit(W.error)}); };${quiet('commitTurn0()')} })`],
+      // generateNewGame's first step reads the map's size: here that read throws
+      ['turn 0: the world not generated',ok+`runTurn0().then(()=>{ _pendingTurn0.sz={get cols(){ throw new Error(${lit(W.error)}); }};${quiet('commitTurn0()')} })`],
       ['an active game',ok+"openGame('G1')"],
       ['an active game, reports unreadable',fail('rpc.gm_reported_messages')+'loadReportedDispatches(currentGame)'],
       ['the watcher: games waiting, one run fails',ok+'_autoRunBusy=false;'+quiet('autoTurnTick().then(()=>{ _autoRunBusy=true; })')],
       ['the watcher: a failed game paused',tick],
       ['the watcher: a game that can\'t load',fail('game_players.select')+`runTurn({auto:true,game:{id:'G1',name:${lit(W.db.games[0].name)},turn:3},reason:${lit(W.reason)}})`],
       ['the watcher: reloading for a newer build',ok+"{ const st=window.setTimeout; window.setTimeout=(f,ms)=>ms===400?0:st(f,ms);"
-        +"window._fetchBuildStamp=async()=>'2099.01.01-0000';"
-        +`refreshIfNewerBuild({id:'G1',turn:3,name:${lit(W.db.games[0].name)}}).then(()=>{ window.setTimeout=st; }); }`],
+        // the page downloads itself and its data file: both answer with a newer build's stamps
+        +"const f=window.fetch; window.fetch=async()=>({ok:true,text:async()=>'GM Portal v2099.01.01-0000 · Data file v2099.01.01-0000'});"
+        +`refreshIfNewerBuild({id:'G1',turn:3,name:${lit(W.db.games[0].name)}}).then(()=>{ window.setTimeout=st; if(f) window.fetch=f; else delete window.fetch; }); }`],
       ['an active game, settings not saved',"openGame('G1').then(()=>{ "+fail('games.update')+'saveTurnMode();saveBotDiplomacy(); })'],
       ['an active game, archiving unreadable',ok+fail('games.select')+"setGameArchived('G1',true)"],
       ['an active game, archiving not saved',ok+fail('games.update')+"setGameArchived('G1',true)"],
@@ -625,12 +630,12 @@ const playerPortal={
     const ok='Object.keys(supabase.stub.ERRORS).forEach(k=>{ delete supabase.stub.ERRORS[k]; });';
     const val=(id,v)=>`document.getElementById(${lit(id)}).value=${lit(v)};`;
     // the same answers on every run: dialogs say yes, random draws repeat, and the page's delayed moves (back to My
-    // Games after joining, closing a dialog after saving) and the Dispatches poll are held, so each screen stays as its
-    // step left it
+    // Games after joining, closing a dialog after saving) and the polls (the Dispatches' and the games', timers of a
+    // second or more) are held, so each screen stays as its step left it
     const fixed="window.confirm=()=>true;window.alert=()=>{};"
       +"Math.random=(()=>{let s=7;return ()=>(s=s*16807%2147483647)/2147483647;})();"
       +"{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms>=1000?0:st(f,ms,...a); }"
-      +"startMessagePolling=function(){};";
+      +"{ const si=window.setInterval; window.setInterval=(f,ms,...a)=>ms>=1000?0:si(f,ms,...a); }";
     if(!m.user) return [
       ['sign-in refused',fixed+`sb.auth.signInWithPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('si-email','player@example.test')+val('si-password',W.password)+'doSignIn()'],
@@ -731,9 +736,9 @@ const playerPortal={
       ];
     }
     if(m.report){
-      // the orders' running account redraws 120 ms after a change, so a screen could catch it before or after: it draws
-      // at once instead
-      const now="scheduleOrderLedgerP=function(){ renderOrderLedgerP(); };";
+      // the orders' running account redraws 120 ms after a change, so a screen could catch it before or after: its
+      // timer runs at once instead
+      const now="{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms===120?(f(...a),0):st(f,ms,...a); }";
       // the Call the Reckoning control lives in the orders form; without it, a stand-in holds its place
       const wrap="if(!document.getElementById('reckoning-wrap')){ const d=document.createElement('div'); d.id='reckoning-wrap'; document.getElementById('report-titles').after(d); }";
       const titles=o=>`Object.assign(currentReport.titles,${lit(o)});renderTitles(currentReport);${wrap}renderReckoningOrders();`;

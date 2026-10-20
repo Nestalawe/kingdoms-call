@@ -1,3 +1,6 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { kcDbGuard } from '../../db/kc-db-guard.js';
+
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // KINGDOMS CALL — HALL OF FAME
 // ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -12,23 +15,23 @@
 // alone renames players (P0-22, rulings D-09, D-11). The database enforces the same, so ?gm=1 by itself
 // grants nothing.
 if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load: reload the page.');
-const SUPABASE_URL = KC_CONFIG.supabaseUrl;
-const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const SUPABASE_URL = KC_CONFIG.supabaseUrl;
+export const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
+export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
-const KC_DB_MIN = '20261012064100';
+export const KC_DB_MIN = '20261012064100';
 
 // A declared global (plan P1-09b): one binding the page's files and its tests share (ui/leaderboard/globals.js says why).
 globalThis.GAMES = [];
-let TAB = 'champions',
+export let TAB = 'champions',
   GM = false,
   OVERLORD = false,
   ME = null,
   PEOPLE = {};
 // May the signed-in account edit this entry? Its GM, or the Overlord (the database's rule, P0-22).
-const canEdit = (g) => OVERLORD || !!(ME && g && g.gm_user_id === ME.id);
+export const canEdit = (g) => OVERLORD || !!(ME && g && g.gm_user_id === ME.id);
 // ── REALM ≠ PLAYER ────────────────────────────────────────────────────────────────────────────
 // A realm name is per game — the same person rules Aranthia one season and the Vale the next. The
 // PERSON is their auth account, and their name lives in `profiles.name`. Every player statistic on
@@ -40,16 +43,16 @@ const canEdit = (g) => OVERLORD || !!(ME && g && g.gm_user_id === ME.id);
 // FIRST build (lb1) put the KINGDOM name in that field, so a legacy row would otherwise print the
 // realm twice. Any stored name equal to the realm is therefore refused outright — it is either
 // that bug or a realm named after its ruler, and in both cases it tells the reader nothing.
-const personName = (st) => {
+export const personName = (st) => {
   if (!st) return null;
   if (st.uid && PEOPLE[st.uid]) return PEOPLE[st.uid];
   if (st.player && st.player !== st.realm) return st.player;
   return null;
 };
-const isLegacyRow = (g) =>
+export const isLegacyRow = (g) =>
   !(g && /lb[2-9]/.test(String(g.build || ''))) || !(g && (g.standings || []).some((st) => st && !st.bot && st.uid));
 // A record points at a realm by index; who that was lives once, in its game's standings.
-function whoOf(e) {
+export function whoOf(e) {
   const st = ((e.g && e.g.standings) || []).find((x) => x && x.pi === e.pi);
   if (st)
     return { realm: st.realm, player: personName(st), race: st.race, al: st.al, bot: !!st.bot, uid: st.uid || null };
@@ -63,9 +66,10 @@ function whoOf(e) {
     uid: null,
   };
 }
-const $ = (id) => document.getElementById(id);
-const nf = (n) => (n == null || !isFinite(n) ? '—' : Number(n).toLocaleString('en-NZ', { maximumFractionDigits: 2 }));
-const dstr = (s) => {
+export const $ = (id) => document.getElementById(id);
+export const nf = (n) =>
+  n == null || !isFinite(n) ? '—' : Number(n).toLocaleString('en-NZ', { maximumFractionDigits: 2 });
+export const dstr = (s) => {
   if (!s) return '—';
   const d = new Date(s);
   return isNaN(d) ? '—' : d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -76,7 +80,7 @@ const dstr = (s) => {
 // emits the keys; a key missing from here still appears, under "Other records", with its key
 // prettified — so the two can never fall out of step in a way that loses a record.
 // f: int · pct · x (a multiplier) · power (guardian band) · hp · turn
-const KC_CAT = [
+export const KC_CAT = [
   ['realm', '👑 Realm & dominion'],
   ['conquest', '⚔ Conquest'],
   ['armies', '🛡 Hosts & armies'],
@@ -91,7 +95,7 @@ const KC_CAT = [
   ['games', '🌍 The games themselves'],
   ['other', '❓ Other records'],
 ];
-const KC_ACH = {
+export const KC_ACH = {
   most_provinces: { c: 'realm', l: 'Widest realm', n: 'Most provinces held at one moment', f: 'int' },
   most_land: { c: 'realm', l: 'Greatest landholder', n: 'Most land provinces held at once', f: 'int' },
   most_sea: { c: 'realm', l: 'Master of the waves', n: 'Most sea provinces held at once', f: 'int' },
@@ -287,14 +291,14 @@ const KC_ACH = {
   most_lairs_game: { c: 'games', l: 'Most lairs fought', f: 'int' },
   most_spells_game: { c: 'games', l: 'Most spells cast', f: 'int' },
 };
-const POWER_WORD = ['—', 'Weak', 'Moderate', 'Powerful', 'Legendary'];
-function achDef(key) {
+export const POWER_WORD = ['—', 'Weak', 'Moderate', 'Powerful', 'Legendary'];
+export function achDef(key) {
   if (KC_ACH[key]) return KC_ACH[key];
   if (key.indexOf('sk_') === 0) return { c: 'skills', l: null, f: 'int' };
   if (key.indexOf('title_') === 0) return { c: 'titles', l: null, f: 'int' };
   return { c: 'other', l: null, f: 'int' };
 }
-function achLabel(key, rec) {
+export function achLabel(key, rec) {
   if (rec && rec.lbl) return rec.lbl;
   const d = KC_ACH[key];
   if (d && d.l) return d.l;
@@ -304,7 +308,7 @@ function achLabel(key, rec) {
     .replace(/_/g, ' ')
     .replace(/^./, (c) => c.toUpperCase());
 }
-function fmtVal(v, f) {
+export function fmtVal(v, f) {
   if (v == null) return '—';
   switch (f) {
     case 'pct':
@@ -323,7 +327,7 @@ function fmtVal(v, f) {
 }
 
 // ── LOADING ───────────────────────────────────────────────────────────────────────────────────
-async function loadAll(force) {
+export async function loadAll(force) {
   const msg = $('msg');
   try {
     const {
@@ -395,7 +399,7 @@ async function loadAll(force) {
   $('main').style.display = 'block';
   render();
 }
-function jp(v) {
+export function jp(v) {
   if (v == null) return null;
   if (typeof v === 'string') {
     try {
@@ -407,7 +411,7 @@ function jp(v) {
   return v;
 }
 
-function buildFilterOptions() {
+export function buildFilterOptions() {
   const opt = (sel, vals, fmt) => {
     const el = $(sel),
       cur = el.value;
@@ -421,13 +425,13 @@ function buildFilterOptions() {
   const maps = [...new Set(GAMES.map(mapKey).filter(Boolean))].sort();
   opt('f-map', maps);
 }
-function mapKey(g) {
+export function mapKey(g) {
   const s = g.setup || {};
   return s.cols && s.rows ? s.cols + '×' + s.rows : s.mapSize || null;
 }
 
 // ── FILTERING ─────────────────────────────────────────────────────────────────────────────────
-function filtered() {
+export function filtered() {
   const v = (id) => $(id).value,
     q = (v('f-q') || '').trim().toLowerCase();
   const from = v('f-from') ? new Date(v('f-from') + 'T00:00:00') : null;
@@ -469,7 +473,7 @@ function filtered() {
     return true;
   });
 }
-function resetFilters() {
+export function resetFilters() {
   ['f-kind', 'f-bots', 'f-diplo', 'f-realms', 'f-humans', 'f-map', 'f-sea', 'f-vic', 'f-len'].forEach(
     (i) => ($(i).value = ''),
   );
@@ -479,14 +483,14 @@ function resetFilters() {
   if ($('f-hidden')) $('f-hidden').checked = false;
   render();
 }
-function setTab(t) {
+export function setTab(t) {
   TAB = t;
   ['champions', 'achievements', 'peoples', 'games'].forEach((x) => $('tb-' + x).classList.toggle('active', x === t));
   render();
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────────────────────
-function render() {
+export function render() {
   const G = filtered();
   $('filter-count').textContent = `${G.length} of ${GAMES.length} recorded game${GAMES.length === 1 ? '' : 's'}`;
   const el = $('body');
@@ -513,7 +517,7 @@ function render() {
 // GM-only. Answers, on the page, the question "why are the names wrong?" — which of the three
 // possible causes is in play: rows written by the old builder, no player account on the slots, or
 // `profiles` unreadable.
-function lbDiagnostics(G) {
+export function lbDiagnostics(G) {
   const legacy = G.filter(isLegacyRow);
   let humanSlots = 0,
     withUid = 0,
@@ -552,17 +556,17 @@ function lbDiagnostics(G) {
       <tr><th>Names read from profiles</th><td class="num">${peopleN}</td><td class="muted">${peopleN ? 'read live, so a rename shows everywhere at once' : 'falling back to the name stored with each game'}</td></tr>
     </table>${warn}</div>`;
 }
-function winnerName(g) {
+export function winnerName(g) {
   const st = (g.standings || []).find((x) => x && x.winner);
   return (st && personName(st)) || g.winner_player || null;
 }
-function pctBar(n, d) {
+export function pctBar(n, d) {
   const p = d ? Math.round((100 * n) / d) : 0;
   return kcHtml`<div class="bar" title="${p}%"><i style="width:${p}%"></i></div>`;
 }
 
 // —— CHAMPIONS ————————————————————————————————————————————————————————————————————————————————
-function renderChampions(G) {
+export function renderChampions(G) {
   // One line per PERSON, keyed on their account id — not on a realm name and not on the name they
   // happened to be using at the time. A player who ruled Aranthia, then the Vale, then Karn is one
   // champion with three realms listed, and renaming themselves moves the whole line.
@@ -682,7 +686,7 @@ function renderChampions(G) {
 // rows built before lb3 hold one {entry}: the game's best — both are read). When the search box names
 // a realm or a player, each game that has them contributes only THEIR entries, so a player can find
 // every feat of theirs, not only the ones that make the top eight.
-function renderAchievements(G) {
+export function renderAchievements(G) {
   const q = (($('f-q') && $('f-q').value) || '').trim().toLowerCase();
   const whoMatch = (st) =>
     !!q && [st.realm, st.player, personName(st)].filter(Boolean).join(' ').toLowerCase().indexOf(q) >= 0;
@@ -753,7 +757,7 @@ function renderAchievements(G) {
 }
 
 // —— RACES & CREEDS ————————————————————————————————————————————————————————————————————————————
-function renderPeoples(G) {
+export function renderPeoples(G) {
   const tally = (pick) => {
     const m = {};
     G.forEach((g) =>
@@ -822,7 +826,7 @@ function renderPeoples(G) {
 }
 
 // —— GAMES ————————————————————————————————————————————————————————————————————————————————————
-function renderGames(G) {
+export function renderGames(G) {
   const out = [kcHtml`<div class="card"><h2>📜 Every recorded game</h2>`];
   out.push(
     kcHtml`<div class="muted" style="margin-bottom:9px">Newest first. Click a game to see its final standings.${GM ? (OVERLORD ? ' As the Overlord you can rename any game, change its date, add a note, hide it from the board, or delete it.' : ' As a Game Master you can rename your own games, change their date, add a note, hide them from the board, or delete them.') : ''}</div>`,
@@ -862,7 +866,7 @@ function renderGames(G) {
   out.push(kcHtml`</table></div>`);
   return kcHtml`${out}`;
 }
-function gameDetail(g) {
+export function gameDetail(g) {
   const out = [kcHtml`<div style="padding:4px 0 8px">`];
   out.push(
     kcHtml`<table class="kc"><tr><th class="num">Rank</th><th>Realm</th><th>Player</th><th>Race</th><th>Creed</th><th class="num">Score</th><th class="num">Provinces</th><th class="num">Gold</th><th class="num">Strength</th><th class="num">Titles</th><th>Fate</th></tr>`,
@@ -902,17 +906,17 @@ function gameDetail(g) {
   out.push(kcHtml`</div>`);
   return kcHtml`${out}`;
 }
-function toggleGame(id) {
+export function toggleGame(id) {
   const r = $('det-' + id);
   if (r) r.style.display = r.style.display === 'none' ? 'table-row' : 'none';
 }
-function toggleEdit(id) {
+export function toggleEdit(id) {
   const r = $('det-' + id);
   if (r && r.style.display === 'none') r.style.display = 'table-row';
   const b = $('edit-' + id);
   if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
 }
-async function saveGame(id) {
+export async function saveGame(id) {
   const msg = $('e-msg-' + id);
   const name = $('e-name-' + id).value.trim(),
     note = $('e-note-' + id).value.trim(),
@@ -929,7 +933,7 @@ async function saveGame(id) {
   if (g) Object.assign(g, patch);
   setTimeout(() => render(), 500);
 }
-async function setHidden(id, hide) {
+export async function setHidden(id, hide) {
   const { error } = await sb.from('game_records').update({ hidden: hide }).eq('game_id', id);
   if (error) {
     alert(error.message);
@@ -943,7 +947,7 @@ async function setHidden(id, hide) {
 // rename_player (P0-22, ruling D-11) writes `profiles.name`, the one place a person's name lives, and nothing
 // else; the Overlord only. Nothing in game_records is rewritten: the board reads names live, so the change shows
 // on every past game at once.
-async function renamePlayer(uid) {
+export async function renamePlayer(uid) {
   const cur = PEOPLE[uid] || '';
   const name = prompt(
     'Player name on the leaderboard.\n\nThis is the person, not their realm — it changes on every game they have played.',
@@ -967,7 +971,7 @@ async function renamePlayer(uid) {
   const m2 = $('rename-msg');
   if (m2) m2.innerHTML = kcHtml`<div class="msg-success">Renamed to ${t} — on every game they have played.</div>`;
 }
-async function deleteRecord(id, purge) {
+export async function deleteRecord(id, purge) {
   const g = GAMES.find((x) => x.game_id === id);
   const nm = g ? g.game_name : id;
   const q = purge

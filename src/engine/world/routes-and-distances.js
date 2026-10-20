@@ -1,9 +1,14 @@
+import { SEA_TYPES } from '../units/movement.js';
+import { getNeighborsP } from './map-helpers.js';
+import { relationBetween } from '../realms/relations-and-captures.js';
+import { canEnterTerrain } from '../units/movement-pools.js';
+
 // ── ROUTES AND DISTANCES (plan P1-08i1: lifted out of resolveTurn) ────
 // How many provinces apart two provinces are (provDistance, kept for the turn in the context's _distCache), and the first
 // step of a passable route toward a province (stepToward, stepTowardPath; stepTowardPreferSafe takes a route over safe
 // ground when it is no longer, provSafePassageFor). They take the turn's context first (src/engine/turn/context.js).
 // Breadth-first province distance (hex grid, wraps E/W like the rest of the map code).
-function provDistance(turnContext, fromId, toId) {
+export function provDistance(turnContext, fromId, toId) {
   const { _distCache, G } = turnContext;
   if (fromId == null || toId == null) return Infinity;
   if (fromId === toId) return 0;
@@ -37,7 +42,7 @@ function provDistance(turnContext, fromId, toId) {
 // the terrain the character's armies can actually cross. Returns null if no route. A province a
 // player's column can pass THROUGH without starting a fight or being turned back: their own land,
 // an ally's, or unowned ground with no live armed neutral guard.
-function provSafePassageFor(turnContext, p, pi) {
+export function provSafePassageFor(turnContext, p, pi) {
   const { G } = turnContext;
   if (!p) return false;
   if (p.owner === pi) return true;
@@ -53,7 +58,7 @@ function provSafePassageFor(turnContext, p, pi) {
 // is only preferred when it is NO LONGER than it — an equal-length detour onto friendly ground,
 // never a longer one. If the only short road runs through a rival's province, the column takes
 // it.
-function stepTowardPreferSafe(turnContext, c, toId) {
+export function stepTowardPreferSafe(turnContext, c, toId) {
   const any = stepTowardPath(turnContext, c, toId);
   if (!any) return null;
   if (c && c.player != null) {
@@ -67,13 +72,13 @@ function stepTowardPreferSafe(turnContext, c, toId) {
   }
   return any.first;
 }
-function stepToward(turnContext, c, toId, extraFilter) {
+export function stepToward(turnContext, c, toId, extraFilter) {
   const r = stepTowardPath(turnContext, c, toId, extraFilter);
   return r ? r.first : null;
 }
 // BFS from the character's province toward `toId`. Returns {first, depth} — the first step of a
 // shortest passable path and how many steps that path takes — or null if no route exists.
-function stepTowardPath(turnContext, c, toId, extraFilter) {
+export function stepTowardPath(turnContext, c, toId, extraFilter) {
   const { G, seaCap } = turnContext;
   const from = G.world.provinces[c.location];
   if (!from || toId == null || c.location === toId) return null;

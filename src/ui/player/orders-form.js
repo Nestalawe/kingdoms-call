@@ -1,3 +1,52 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.js';
+import { kcJoinP } from './startup.js';
+import {
+  RUMOUR_COST_BY_POWER_P,
+  SEASONS,
+  actionsFor,
+  discoveryChoiceBlockHTML,
+  isPreOrderIdP,
+  itemBoundTag,
+  itemSlotTag,
+  itemTierTagP,
+  itemUsableByP,
+  itemsForDisplayP,
+  renderConcede,
+  renderDiscoveryChoices,
+  skillsUnseenP,
+} from './items-and-heroes.js';
+import { renderDiplomacy } from './report.js';
+import { renderReckoningOrders } from './titles.js';
+import {
+  SPELL_TO_SCHOOL,
+  armyLabel,
+  combatSpellLimit,
+  effMagicLvl,
+  refreshLaterCastSpells,
+  unitEmoji,
+} from './order-chances.js';
+import {
+  DUEL_STANCES,
+  ENCOUNTER_TACTICS,
+  SKILL_LABELS,
+  applyHeroOrderP,
+  heirSelectorHTML,
+  heroOrderFromOrdersP,
+  refreshAllMoveModeNotes,
+} from './move-analysis.js';
+import {
+  getOrderTarget,
+  refreshAllOncePerTurn,
+  syncAllPreOrderCards,
+  syncAllResurrectCards,
+  syncResurrectCard,
+} from './pre-orders.js';
+import { effSkillP, itemAcquiredTagP, itemLoreTip, restoreSubmitWrap } from './briefing-and-submit.js';
+import { druidNeedP, formatRace, heroHireWageOfP, skillRowHTML } from './skills-and-projections.js';
+import { buildTargetField, predictedLocation, refreshExploreNotes } from './order-targets.js';
+import { provLinkHtml } from './map-symbols.js';
+
 // ── TREASURY LEDGER (2026-09-23, Toby item 6) ────
 // A running account at the top of the orders column (sticky, like the report's jump-bar): what the
 // treasury holds, what the orders entered so far will spend and on what, and an estimate of the
@@ -8,7 +57,7 @@
 // wages from the alignment table, the rest from report.orderPrices (the GM engine's own figures).
 // It is an ESTIMATE: an order that fails (unaffordable, target gone, province not taken) costs
 // nothing, and Hunting Rumours pays per lair actually heard of.
-function computeOrderLedgerP() {
+export function computeOrderLedgerP() {
   const rep = currentReport || {};
   const k = rep.kingdom || {};
   const P = rep.orderPrices || {};
@@ -123,7 +172,7 @@ function computeOrderLedgerP() {
     projected: gold - spend + tax - armyW - heroW - newWages,
   };
 }
-function renderOrderLedgerP() {
+export function renderOrderLedgerP() {
   const el = document.getElementById('orders-ledger');
   if (!el) return;
   if (!currentReport || !currentReport.kingdom || !document.querySelector('#orders-form select[id^="po-action-"]')) {
@@ -159,8 +208,8 @@ function renderOrderLedgerP() {
     ${L.notes.length ? kcHtml`<div style="font-size:.66rem;color:var(--stone)">${L.notes.join(' · ')}</div>` : ''}
   </div>`;
 }
-let _ledgerT = null;
-function scheduleOrderLedgerP() {
+export let _ledgerT = null;
+export function scheduleOrderLedgerP() {
   clearTimeout(_ledgerT);
   _ledgerT = setTimeout(() => {
     try {
@@ -185,7 +234,7 @@ document.addEventListener(
   true,
 );
 
-function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum) {
+export function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum) {
   // `report` is a LOCAL of openReport, not a global — referencing it here threw a ReferenceError
   // that aborted the whole form build (and, because renderPlayerMap is called on the next line of
   // openReport, silently blanked the map too). Use the module-level currentReport, as every other
@@ -612,7 +661,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum) {
 }
 
 // Render the "Pre-battle magic" control for a character from its hidden ep-preschool field.
-function renderPreSchool(charId) {
+export function renderPreSchool(charId) {
   const disp = document.getElementById(`ep-preschool-display-${charId}`);
   const hidden = document.getElementById(`ep-preschool-${charId}`);
   if (!disp || !hidden) return;
@@ -630,7 +679,7 @@ function renderPreSchool(charId) {
 }
 
 // Open the school picker for the pre-battle magic control.
-function openPreSchoolPicker(charId) {
+export function openPreSchoolPicker(charId) {
   const char = (currentReport?.characters || []).find((c) => String(c.id) === String(charId));
   const skills = char?.skills || {};
   const BATTLE_SCHOOLS = [
@@ -687,7 +736,7 @@ function openPreSchoolPicker(charId) {
   disp.after(spicker);
 }
 
-function clearPreSchool(charId) {
+export function clearPreSchool(charId) {
   const hidden = document.getElementById(`ep-preschool-${charId}`);
   if (hidden) hidden.value = '';
   const picker = document.getElementById(`ep-school-picker-${charId}`);
@@ -695,7 +744,7 @@ function clearPreSchool(charId) {
   renderPreSchool(charId);
 }
 
-function addEncounterTactic(charId, code) {
+export function addEncounterTactic(charId, code) {
   const hidden = document.getElementById(`ep-tactics-${charId}`);
   if (!hidden) return;
   const current = hidden.value ? hidden.value.split(',').filter(Boolean) : [];
@@ -869,7 +918,7 @@ function addEncounterTactic(charId, code) {
   refreshEncounterPlan(charId, current);
 }
 
-function confirmEPSpell(charId, spell, school, level, limitShown) {
+export function confirmEPSpell(charId, spell, school, level, limitShown) {
   const picker = document.getElementById(`ep-spell-picker-${charId}`);
   if (picker) picker.remove();
   const hidden = document.getElementById(`ep-tactics-${charId}`);
@@ -907,7 +956,7 @@ function confirmEPSpell(charId, spell, school, level, limitShown) {
   refreshEncounterPlan(charId, current);
 }
 
-function confirmEPSchool(charId, school) {
+export function confirmEPSchool(charId, school) {
   const picker = document.getElementById(`ep-school-picker-${charId}`);
   if (picker) picker.remove();
   const hidden = document.getElementById(`ep-preschool-${charId}`);
@@ -918,7 +967,7 @@ function confirmEPSchool(charId, school) {
 
 // ONE row renderer for the encounter plan, used by the initial build AND refreshEncounterPlan. ▲/▼
 // buttons give touch devices — which have no HTML5 drag — the same reordering.
-function epRowHtml(charId, t, i, n) {
+export function epRowHtml(charId, t, i, n) {
   return kcHtml`<div draggable="true" data-char="${charId}" data-idx="${i}"
       ondragstart="epDragStart(event,${kcArg(String(charId))},${kcArg(i)})"
       ondragover="event.preventDefault();this.style.outline='2px solid var(--crimson)'"
@@ -933,7 +982,7 @@ function epRowHtml(charId, t, i, n) {
       <button type="button" onclick="removeEncounterTactic(${kcArg(String(charId))},${kcArg(i)})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
     </div>`;
 }
-function epMoveTactic(charId, idx, dir) {
+export function epMoveTactic(charId, idx, dir) {
   const hidden = document.getElementById(`ep-tactics-${charId}`);
   if (!hidden) return;
   const tactics = hidden.value ? hidden.value.split(',').filter(Boolean) : [];
@@ -943,12 +992,12 @@ function epMoveTactic(charId, idx, dir) {
   hidden.value = tactics.join(',');
   refreshEncounterPlan(charId, tactics);
 }
-function epDragStart(event, charId, fromIdx) {
+export function epDragStart(event, charId, fromIdx) {
   event.dataTransfer.setData('text/plain', JSON.stringify({ charId: String(charId), fromIdx }));
   event.dataTransfer.effectAllowed = 'move';
 }
 
-function epDropTactic(event, charId, toIdx) {
+export function epDropTactic(event, charId, toIdx) {
   event.preventDefault();
   let data;
   try {
@@ -972,7 +1021,7 @@ function epDropTactic(event, charId, toIdx) {
   refreshEncounterPlan(charId, tactics);
 }
 
-function removeEncounterTactic(charId, idx) {
+export function removeEncounterTactic(charId, idx) {
   const hidden = document.getElementById(`ep-tactics-${charId}`);
   if (!hidden) return;
   const current = hidden.value ? hidden.value.split(',').filter(Boolean) : [];
@@ -981,7 +1030,7 @@ function removeEncounterTactic(charId, idx) {
   refreshEncounterPlan(charId, current);
 }
 
-function tacticLabel(code) {
+export function tacticLabel(code) {
   if (code.startsWith('CA:')) {
     const spell = code.slice(3);
     return `Cast Spell — ${spell}`;
@@ -994,13 +1043,13 @@ function tacticLabel(code) {
   return ENCOUNTER_TACTICS.find((et) => et.code === baseCode)?.label || code;
 }
 
-function refreshEncounterPlan(charId, tactics) {
+export function refreshEncounterPlan(charId, tactics) {
   const list = document.getElementById(`ep-list-${charId}`);
   if (!list) return;
   list.innerHTML = kcHtml`${tactics.map((t, i) => epRowHtml(String(charId), t, i, tactics.length))}`;
 }
 
-function onSpellChange(charId, ph, selectedSpell) {
+export function onSpellChange(charId, ph, selectedSpell) {
   // The resurrection order card belongs to a specific spell choice — rebuild/remove it whenever the
   // spell changes, not just when the corpse does. Deferred so the new secondary select exists
   // first.

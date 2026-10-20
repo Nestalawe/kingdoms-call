@@ -1,7 +1,12 @@
+import { kcRng } from '../rng.js';
+import { BLOOD_HARVEST_PER_UNIT } from '../items/tiers-and-hoards.js';
+import { armyUnitName } from '../dice-and-army-names.js';
+import { discSum, gdActive } from '../discoveries.js';
+
 // ── BLOOD HARVEST AND THE IRON THRONE (plan P1-08c: lifted out of resolveTurn) ────
 // What a victory gives back: a Pagan victor's gold from the fallen, and an Evil realm's fallen foes rising as its
 // skeletons (the Iron Throne of Skulls). Both take the turn's context first (src/engine/turn/context.js).
-function bloodHarvest(turnContext, winner, destroyed, narrative) {
+export function bloodHarvest(turnContext, winner, destroyed, narrative) {
   const { G } = turnContext;
   if (!winner || winner.player == null || !(destroyed > 0)) return;
   if (G.players[winner.player]?.alignment !== 'Pagan') return;
@@ -16,7 +21,7 @@ function bloodHarvest(turnContext, winner, destroyed, narrative) {
 // 20% chance to rise as your skeletons. Copies are pushed into the winner's WORKING array before
 // its survivor-filter, so they carry through to the surviving force. Already-skeletal dead are
 // left be.
-function ironThroneRaise(turnContext, winnerChar, deadUnits, narrative) {
+export function ironThroneRaise(turnContext, winnerChar, deadUnits, narrative) {
   const { G } = turnContext;
   if (!winnerChar || winnerChar.player == null || winnerChar.id == null || !Array.isArray(deadUnits)) return;
   const _pl = G.players[winnerChar.player];

@@ -7,13 +7,15 @@ a Hall of Fame and two rulebooks. Live at <https://nestalawe.github.io/kingdoms-
 
 | Folder | What's in it |
 |---|---|
-| `src/` | The site's source: the pages' templates and code, `kingdoms-call-data.js`, and the list of which files make each page (`src/manifest.ts`). |
-| `site/` | The site as it is published, put together from `src/` by `npm run build`. Not in git: never edit it. |
+| `src/` | The site's source: the pages' templates (`src/*.html`) and their code, ES modules (each page's entry is `src/ui/<page>/page.js`), and `kingdoms-call-data.js`. |
+| `public/` | What is published as it is: `kc-config.js` (which database the site talks to), the staging footer, and `vendor/` (supabase-js). |
+| `site/` | The site as it is published, built from `src/` and `public/` by Vite (`npm run build`). Not in git: never edit it. |
 | `tests/` | The automated checks. [tests/README.md](tests/README.md) lists them. |
-| `tools/` | The build (`tools/build.ts`), the checks an agent runs, the balance matrix. `tools/legacy/`: older content tools, kept for reference. |
+| `tools/` | The build (`tools/build.ts`) and the dev server (`tools/dev.ts`, `npm run dev`), the checks an agent runs, the balance matrix. `tools/legacy/`: older content tools, kept for reference. |
 
 Only `site/` is published, so page addresses don't change. Before you open a page locally, run `npm run build`
-(`npm test` builds first).
+(`npm test` builds first), or serve `src/` with `npm run dev`, which only ever talks to a local Supabase
+([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-build-src-becomes-site)).
 
 Every pull request runs `npm test`, the browser specs and the database's checks in GitHub Actions
 (`.github/workflows/ci.yml`). Merging to `main` runs the tests again and, if they pass, builds `site/` and publishes it to
@@ -37,7 +39,7 @@ You need exactly the Node version in `.nvmrc` (Node 24); `npm ci` and `npm test`
 
 ```sh
 npm ci                              # install the test tools (exact versions, from package-lock.json)
-npm run build                       # put the site together from src/ into site/ (npm test does it first)
+npm run build                       # build the site from src/ into site/ with Vite (npm test does it first)
 npx playwright install chromium     # once per machine: the headless browser the browser specs use
 npm test                            # the standard run, about 30 s
 npx playwright test                 # the browser specs, in Chromium, about 20 s

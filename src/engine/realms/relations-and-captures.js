@@ -1,3 +1,9 @@
+import { kcRng } from '../rng.js';
+import { QUALITY_TIERS } from '../army-tables.js';
+import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.js';
+import { armyUnitName } from '../dice-and-army-names.js';
+import { discSum } from '../discoveries.js';
+
 // ── RELATIONS AND CAPTURES (plan P1-08a: lifted out of resolveTurn) ────
 // Who is at war or allied with whom (G.relations, keyed "minIdx-maxIdx": see "DIPLOMACY" in resolveTurn), and what
 // happens when a province changes hands: its consecration breaks, its old owner is told, and an Evil conqueror loots
@@ -8,7 +14,7 @@
 // realm) and how many units the conqueror was leading. A capture from neutral/unowned ground
 // notifies nobody. Written straight to turnLog with charId:null (as notifyProvinceOwner does) so
 // the line never inherits the conqueror's log context and never lands in a character section.
-function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, byChar, _ph) {
+export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, byChar, _ph) {
   const { G, turnLog, log } = turnContext;
   const pl = G.players[prev];
   if (!pl) return;
@@ -52,7 +58,7 @@ function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, byChar, _
     { actor: newOwner, targets: [newOwner], provinceId: prov.id, charId: byChar.id, phase: _ph },
   );
 }
-function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
+export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
   const { _tel, G, turnLog } = turnContext;
   if (!prov) return;
   const prev = prov.owner;
@@ -111,31 +117,31 @@ function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
   });
 }
 
-function relKeyOf(a, b) {
+export function relKeyOf(a, b) {
   return a < b ? a + '-' + b : b + '-' + a;
 }
-function relationBetween(turnContext, a, b) {
+export function relationBetween(turnContext, a, b) {
   const { G } = turnContext;
   if (a == null || b == null) return 'neutral';
   if (a === b) return 'self';
   return G.relations[relKeyOf(a, b)] || 'neutral';
 }
-function areEnemies(turnContext, a, b) {
+export function areEnemies(turnContext, a, b) {
   return relationBetween(turnContext, a, b) === 'enemy';
 }
-function areAllied(turnContext, a, b) {
+export function areAllied(turnContext, a, b) {
   return relationBetween(turnContext, a, b) === 'allied';
 }
 // a valid RETREAT destination is a FRIENDLY province — one the player owns, or one held by an
 // ally. Never a neutral or enemy province (a beaten force cannot fall back onto ground it does
 // not hold).
-function isFriendlyProvFor(turnContext, prov, pi) {
+export function isFriendlyProvFor(turnContext, prov, pi) {
   return !!prov && pi != null && (prov.owner === pi || (prov.owner != null && areAllied(turnContext, pi, prov.owner)));
 }
 
 // ── EVIL conquest doctrine (loot OR enslave) ── applied whenever an Evil character CONQUERS a
 // province by force. Now every conquest site calls this. Runs once per province per turn.
-function applyEvilConquest(turnContext, cc, prov, pl) {
+export function applyEvilConquest(turnContext, cc, prov, pl) {
   const { G, log } = turnContext;
   if (!cc || !prov || !pl) return;
   if (G.players[cc.player]?.alignment !== 'Evil') return;

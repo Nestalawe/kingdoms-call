@@ -1,3 +1,51 @@
+import { KC_QUALITY_UP, SPELL_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import {
+  CHARMED_NO_TURN_SPELLS,
+  COMBAT_ONLY_TACTICS,
+  SKILL_LABELS,
+  SPELL_FNS_NEED_COLOCATED_TARGET,
+  demoteOrDisband,
+} from '../army-tables.js';
+import { CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.js';
+import { unitBaseStrength } from '../battle/strength.js';
+import { heroHireWage } from '../world/tables.js';
+import { ABILITIES_P, shuffleP } from '../battle/fortune.js';
+import { _escapesTheEnd, _garrethEscapeLine } from '../names.js';
+import { noteGraveIntel, skeletalRaiseCount, takeBestGrave } from '../graves.js';
+import { claimWandererName, itemNameList } from '../heroes/fame-and-consecration.js';
+import { activeItems } from '../items/equipment.js';
+import { armyUnitName, d100, dispFloor, fmtRoll, rng } from '../dice-and-army-names.js';
+import { markProvinceCombat } from '../bots/intel.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { TM, perkTier, skillLevel } from '../titles/perks.js';
+import { graveServedOther, isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.js';
+import { castChanceFor } from '../chances-and-lair-grades.js';
+import { _BEST_SCHOOL } from '../titles/reckoning.js';
+import { applyPendingSynthPlan, discSum, gdActive, hasDisc } from '../discoveries.js';
+import { emitNarrLine, logSplit, notifyProvinceOwner, notifyTarget, realmTag } from '../turn/log-line-helpers.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import {
+  effStat,
+  isHiddenChar,
+  isVanished,
+  isVeiled,
+  recalcHeroPay,
+} from '../heroes/effective-skills-and-hidden-heroes.js';
+import { setMovePool } from '../units/movement-pools.js';
+import { applyPlague, blessWardNegates } from '../magic/plague-and-bless-ward.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardKillXP,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
+import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.js';
+import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.js';
+import { normaliseAction } from '../turn/phase-intents-and-dependency-ordering.js';
+import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.js';
+
 // ── THE CAST SPELL ORDER (plan P1-08j7: the seventh family taken out of processOrder in resolveTurn) ──
 // A hero works a spell as a phase order: the casting limits (a school's casts a turn, a mastery spell once a turn), the
 // cast chance and its roll, then the spell itself, school by school: White Magic (Resurrect, Part Sea, Holy Symbol,
@@ -14,8 +62,8 @@
 // may bring the enchanter and their intended victim to blows: CHARM_BACKLASH_PCT chance of a
 // personal encounter on both encounter plans. If EITHER hero leads their plan with Flee there
 // is no encounter at all — one of them wants no part of it and the other cannot force it.
-const CHARM_BACKLASH_PCT = 50;
-function charmBacklash(turnContext, prov, caster, t, why) {
+export const CHARM_BACKLASH_PCT = 50;
+export function charmBacklash(turnContext, prov, caster, t, why) {
   const { log, G } = turnContext;
   if (!t || t.alive === false || t.location !== caster.location) return;
   const targetsPi = [caster.player, t.player].filter((x) => x != null);
@@ -124,7 +172,7 @@ function charmBacklash(turnContext, prov, caster, t, why) {
   }
 }
 // Cast Spell: the casting limits, the cast chance and its roll, then the spell, school by school (a spell item's Use Item arrives here as a cast).
-function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov, player, _itemCast) {
+export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov, player, _itemCast) {
   const { log, G, _tel, clairWatch } = turnContext;
   // target = spell name, extra = target province id or character id (if needed)
   const spellName = _itemCast ? _itemCast.spell : target;

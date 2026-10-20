@@ -1,3 +1,32 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { kcJoinP } from './startup.js';
+import { applyMapZoom, fitMapSvgHeight, setDeskView, setMobileView } from './layout.js';
+import { armyLabel, unitEmoji } from './order-chances.js';
+import { capitalise, formatRace } from './skills-and-projections.js';
+import {
+  CHIEFTAIN_MARKER_COLOR,
+  MAP_RACE_BADGE,
+  MAP_SYM,
+  TERRAIN_COLORS_MAP,
+  _garrisonNote,
+  _grandDesignNote,
+  _graveIntelById,
+  _graveNote,
+  _lairStar,
+  _lairsClearedNote,
+  _ownerLineP,
+  _rebuildGraveIntelIndex,
+  applyMapSymLegend,
+  makeTerrainIcon,
+  mapRaceBadgeHtml,
+  mapSymHtml,
+  mapSymSvg,
+  mapTextGlyph,
+  popupKnownChars,
+  terrorNoteP,
+  txtGlyph,
+} from './map-symbols.js';
+
 // ── EVERY PROVINCE NAME IN THE REPORT IS A MAP LINK (2026-09-20, Toby) ── Rather than editing the
 // ~40 places the report prints a province name (Chronicle lines, Realm Events, Your Provinces, Known
 // Lairs, Graveyards Known, sightings, spy reports, titles…), one pass walks the report column's TEXT
@@ -7,7 +36,7 @@
 // the surrounding colour (realm tints stay). A MutationObserver on the column re-runs the pass
 // (debounced) whenever a section is re-rendered or loaded late; a pass that finds nothing new
 // changes nothing, so it cannot loop.
-const _PROV_LINK_SKIP = new Set([
+export const _PROV_LINK_SKIP = new Set([
   'SCRIPT',
   'STYLE',
   'BUTTON',
@@ -20,10 +49,10 @@ const _PROV_LINK_SKIP = new Set([
   'SVG',
   'LABEL',
 ]);
-let _provNameRe = null,
+export let _provNameRe = null,
   _provNameMap = null,
   _provNameKey = '';
-function _buildProvNameIndex(report) {
+export function _buildProvNameIndex(report) {
   const map = new Map();
   const add = (id, name) => {
     if (id == null || !name || typeof name !== 'string') return;
@@ -43,7 +72,7 @@ function _buildProvNameIndex(report) {
     ? new RegExp('(?<![A-Za-z\u00C0-\u024F])(' + names.join('|') + ')(?![A-Za-z\u00C0-\u024F])', 'g')
     : null;
 }
-function _makeProvLinkEl(id, name) {
+export function _makeProvLinkEl(id, name) {
   const sp = document.createElement('span');
   sp.className = 'prov-link prov-auto';
   sp.setAttribute('data-prov-link', String(id));
@@ -57,8 +86,8 @@ function _makeProvLinkEl(id, name) {
   };
   return sp;
 }
-let _provLinking = false;
-function linkProvinceNames(root) {
+export let _provLinking = false;
+export function linkProvinceNames(root) {
   if (!root || _provLinking) return;
   _buildProvNameIndex(viewingReport || currentReport);
   if (!_provNameRe) return;
@@ -101,9 +130,9 @@ function linkProvinceNames(root) {
     _provLinking = false;
   }
 }
-let _provLinkObs = null,
+export let _provLinkObs = null,
   _provLinkTimer = null;
-function ensureProvinceLinking() {
+export function ensureProvinceLinking() {
   const col = document.getElementById('rp-report-col');
   if (!col) return;
   linkProvinceNames(col);
@@ -115,8 +144,8 @@ function ensureProvinceLinking() {
   });
   _provLinkObs.observe(col, { childList: true, subtree: true });
 }
-let _provHlTimer = null;
-function highlightMapProv(id, on) {
+export let _provHlTimer = null;
+export function highlightMapProv(id, on) {
   document.querySelectorAll('.prov-hl').forEach((n) => n.remove());
   if (!on) return;
   const ns = 'http://www.w3.org/2000/svg';
@@ -137,7 +166,7 @@ function highlightMapProv(id, on) {
     svg.appendChild(hl);
   });
 }
-function locateOnMap(id) {
+export function locateOnMap(id) {
   try {
     if (window.innerWidth < 821) setMobileView('map');
     else if (typeof _deskLeftView !== 'undefined' && _deskLeftView !== 'map' && typeof setDeskView === 'function')
@@ -160,7 +189,7 @@ function locateOnMap(id) {
     _provHlTimer = setTimeout(() => highlightMapProv(id, false), 4000);
   }, 60);
 }
-function renderMapIntoSvg(svgEl, report) {
+export function renderMapIntoSvg(svgEl, report) {
   const svgNS = 'http://www.w3.org/2000/svg';
   svgEl.innerHTML = '';
   _rebuildGraveIntelIndex(report); // province-id lookup for the hex popup's grave line
@@ -980,7 +1009,7 @@ function renderMapIntoSvg(svgEl, report) {
 
 // ── INLINE MAP ────
 // dismiss the sticky province popup (mobile — no mouse-leave to hide it).
-function _closeMapTip(ev) {
+export function _closeMapTip(ev) {
   if (ev) {
     ev.stopPropagation();
   }
@@ -996,7 +1025,7 @@ function _closeMapTip(ev) {
 // the player switched Map/Report/Orders views or tapped elsewhere. Fixes: clamp the popup inside
 // the viewport after it is shown; a tap or click anywhere outside the popup, an Escape key, a
 // view/tab switch or closing the fullscreen map all dismiss it.
-function _clampMapTip(tt) {
+export function _clampMapTip(tt) {
   try {
     const r = tt.getBoundingClientRect(),
       vw = window.innerWidth || 0,
@@ -1033,7 +1062,7 @@ document.addEventListener('keydown', (ev) => {
 // Each overlay icon type carries a CSS class (sym-<type>); a shared <style> hides the classes the
 // player has switched off, so the setting persists across map re-renders and applies to both the
 // inline and fullscreen maps. The toggle bar is built once.
-const MAP_ICON_TYPES = [
+export const MAP_ICON_TYPES = [
   { key: 'char', emoji: '\u{1F464}', label: 'Heroes' },
   { key: 'flag', sym: 'flag', label: 'Army flags' },
   { key: 'garrison', sym: 'garrison', label: 'Garrisons' },
@@ -1047,8 +1076,8 @@ const MAP_ICON_TYPES = [
   { key: 'graves', sym: 'gravesFresh', label: 'Graves' },
   { key: 'race', badge: 'Human', label: 'Races' },
 ];
-const _mapIconOff = new Set();
-function applyMapIconVisibility() {
+export const _mapIconOff = new Set();
+export function applyMapIconVisibility() {
   let st = document.getElementById('map-icon-style');
   if (!st) {
     st = document.createElement('style');
@@ -1063,12 +1092,12 @@ function applyMapIconVisibility() {
     b.style.textDecoration = off ? 'line-through' : 'none';
   });
 }
-function toggleMapIcon(key) {
+export function toggleMapIcon(key) {
   if (_mapIconOff.has(key)) _mapIconOff.delete(key);
   else _mapIconOff.add(key);
   applyMapIconVisibility();
 }
-function buildMapIconToggles() {
+export function buildMapIconToggles() {
   const bar = document.getElementById('map-icon-toggles');
   if (!bar || bar._built) return;
   bar._built = true;
@@ -1089,7 +1118,7 @@ function buildMapIconToggles() {
   )}`;
   applyMapIconVisibility();
 }
-function renderPlayerMap(report) {
+export function renderPlayerMap(report) {
   const svg = document.getElementById('report-map-svg');
   const r = report || viewingReport || currentReport;
   if (!svg || !r) return;
@@ -1101,7 +1130,7 @@ function renderPlayerMap(report) {
 }
 
 // ── FULLSCREEN MAP ────
-function showFullscreenMap() {
+export function showFullscreenMap() {
   const old = document.getElementById('map-fullscreen-modal');
   if (old) old.remove();
   const modal = document.createElement('div');

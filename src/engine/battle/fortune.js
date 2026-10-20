@@ -1,3 +1,7 @@
+import { KC_SKILLS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { dispFloor } from '../dice-and-army-names.js';
+
 // ── FORTUNE OF BATTLE ── the dice step of every army battle. Instead of two additive rolls off the
 // stronger side's strength, ONE swing S is drawn from a fixed, symmetric fortune curve and applied
 // as a pair of luck multipliers: attacker × e^(S/2), defender × e^(-S/2). Only the RATIO of the two
@@ -5,7 +9,7 @@
 // anchored: a swing that overturns a 2× advantage happens 20% of the time, one that overturns 3×
 // happens 10%, and none ever overturns 4× — straight-line interpolation between anchors (in
 // log-ratio space). Win chances by ratio: 1.1× 54%, 1.3× 61%, 1.5× 68%, 2× 80%, 3× 90%, 4× 100%.
-const FORTUNE_CURVE = [
+export const FORTUNE_CURVE = [
   [-Math.log(4), 0],
   [-Math.log(3), 0.1],
   [-Math.log(2), 0.2],
@@ -14,7 +18,7 @@ const FORTUNE_CURVE = [
   [Math.log(3), 0.9],
   [Math.log(4), 1],
 ];
-function battleFortune() {
+export function battleFortune() {
   const u = kcRng();
   for (let i = 1; i < FORTUNE_CURVE.length; i++) {
     const [a, fa] = FORTUNE_CURVE[i - 1],
@@ -30,7 +34,7 @@ function battleFortune() {
 // (players read that as their army being weakened). Strengths are shown untouched; fortune is
 // described as what it did to the EDGE: the pre-fortune ratio and win chance, which side luck ran
 // with and how rare the roll was, and the post-fortune edge.
-function fortuneCdf(x) {
+export function fortuneCdf(x) {
   const C = FORTUNE_CURVE;
   if (x <= C[0][0]) return 0;
   for (let i = 1; i < C.length; i++) {
@@ -41,22 +45,22 @@ function fortuneCdf(x) {
   return 1;
 }
 // Attacker's win chance for a strength ratio r = atk/def: P(S > -ln r).
-function fortuneWinChance(r) {
+export function fortuneWinChance(r) {
   if (!(r > 0)) return 0;
   if (!isFinite(r)) return 1;
   return 1 - fortuneCdf(-Math.log(r));
 }
-function fortuneEdgeNum(r) {
+export function fortuneEdgeNum(r) {
   const e = r >= 1 ? r : r > 0 ? 1 / r : Infinity;
   return !isFinite(e) ? '∞×' : `${e >= 10 ? e.toFixed(0) : e.toFixed(1)}×`;
 }
-function fortuneEdgeText(r) {
+export function fortuneEdgeText(r) {
   const e = r >= 1 ? r : r > 0 ? 1 / r : Infinity;
   if (!isFinite(e)) return 'total superiority';
   if (e < 1.05) return 'an even match';
   return `a ${fortuneEdgeNum(r)} edge`;
 }
-function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort) {
+export function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort) {
   if (!(defBase > 0)) return `${atkLabel} meets no effective resistance — **${atkLabel} wins**.`;
   if (!(atkBase > 0)) return `${atkLabel} brings no effective strength — **${defLabel} wins**.`;
   const r0 = atkBase / defBase,
@@ -93,7 +97,7 @@ function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort) {
 // `.sort(()=>Math.random()-0.5)` now goes through here — that comparator is not a fair shuffle
 // (engine-dependent, and it leaves elements near their original positions far more often than
 // chance), which skewed "pick n at random" draws toward the front of the list.
-function shuffleP(arr, rnd = kcRng) {
+export function shuffleP(arr, rnd = kcRng) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
@@ -101,4 +105,4 @@ function shuffleP(arr, rnd = kcRng) {
   }
   return a;
 }
-const ABILITIES_P = KC_SKILLS.slice();
+export const ABILITIES_P = KC_SKILLS.slice();

@@ -1,8 +1,11 @@
+import { _closeMapTip, renderPlayerMap } from './map.js';
+import { onMessagesShown, refreshMsgBadgeSoon } from './dispatches.js';
+
 // ── MOBILE VIEW SWITCHER ────
 // On narrow screens (see the @media block) the Map / Report / Orders columns are shown one at a
 // time, chosen by the fixed bottom tab bar. This toggles a single class on #rp-layout; on desktop
 // the class is inert (all three columns show regardless). No effect on the engine or on saved data.
-function setMobileView(view) {
+export function setMobileView(view) {
   const lay = document.getElementById('rp-layout');
   if (!lay) return;
   if (view === 'messages' && !_msgEnabled) view = 'report'; // no messaging in a one-human game
@@ -53,14 +56,14 @@ function setMobileView(view) {
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
 globalThis._msgEnabled = false;
 globalThis._deskLeftView = 'map';
-let _deskRightView = 'report';
+export let _deskRightView = 'report';
 // Whether the Orders view is currently AVAILABLE (true on the live turn; false on past turns and
 // Turn 0). On desktop the orders column's actual visibility is owned by applyDeskViews (the
 // right-panel tab), so the current/past-turn code sets this flag via refreshOrdersVisibility()
 // rather than poking the column's display directly — otherwise it would override the tab and stack
 // Orders on top of Report.
-let _ordersAvailable = true;
-function setupDeskLayout() {
+export let _ordersAvailable = true;
+export function setupDeskLayout() {
   const lay = document.getElementById('rp-layout');
   const map = document.getElementById('rp-map-col');
   const rep = document.getElementById('rp-report-col');
@@ -106,8 +109,8 @@ function setupDeskLayout() {
 // 220px), so their last 100px sat below the fold until the page itself was scrolled — and with them
 // the orders column's sticky Save Draft / Submit bar. Measured from where the panels really start,
 // and re-measured whenever something above them (the game bar, the new-turn banner) changes size.
-let _deskFitObs = null;
-function fitDeskPanels() {
+export let _deskFitObs = null;
+export function fitDeskPanels() {
   const l = document.getElementById('desk-left'),
     r = document.getElementById('desk-right');
   if (!l || !r) return;
@@ -127,7 +130,7 @@ function fitDeskPanels() {
       .forEach((el) => _deskFitObs.observe(el));
   }
 }
-function teardownDeskLayout() {
+export function teardownDeskLayout() {
   const lay = document.getElementById('rp-layout');
   const dl = document.getElementById('desk-left'),
     dr = document.getElementById('desk-right');
@@ -149,7 +152,7 @@ function teardownDeskLayout() {
   if (dr) dr.remove();
   lay.classList.remove('desk');
 }
-function setDeskView(side, view) {
+export function setDeskView(side, view) {
   if (side === 'left') {
     if (view === 'messages' && !_msgEnabled) view = 'map';
     _deskLeftView = view;
@@ -167,7 +170,7 @@ function setDeskView(side, view) {
     } catch (e) {}
   } else refreshMsgBadgeSoon();
 }
-function applyDeskViews() {
+export function applyDeskViews() {
   const map = document.getElementById('rp-map-col'),
     rep = document.getElementById('rp-report-col'),
     msg = document.getElementById('rp-msg-col'),
@@ -215,7 +218,7 @@ function applyDeskViews() {
 // desktop the right-panel tab governs the orders column (via applyDeskViews); on mobile we still
 // toggle the column's display directly, exactly as before, since the mobile view-switcher owns that
 // panel.
-function refreshOrdersVisibility(available) {
+export function refreshOrdersVisibility(available) {
   _ordersAvailable = !!available;
   const lay = document.getElementById('rp-layout');
   const oc = document.getElementById('orders-column');
@@ -230,12 +233,12 @@ function refreshOrdersVisibility(available) {
 // (container content size × zoom) so it genuinely overflows and the container (#report-map-container,
 // overflow:auto) shows horizontal AND vertical scroll bars for panning. Re-applied after every
 // render and on resize so the current zoom always matches the panel.
-let _mapZoom = 1;
+export let _mapZoom = 1;
 // Map fix: give an SVG an explicit pixel height matching its viewBox aspect ratio at the given
 // pixel width. Inline <svg> with CSS height:auto is NOT reliably sized from the viewBox on phone
 // browsers (it falls back to the 150px replaced-element default), which shrank the map to a thin
 // strip. Returns the height set (or null if the SVG has no usable viewBox).
-function fitMapSvgHeight(svgEl, widthPx) {
+export function fitMapSvgHeight(svgEl, widthPx) {
   if (!svgEl) return null;
   const vb = (svgEl.getAttribute('viewBox') || '')
     .trim()
@@ -249,8 +252,8 @@ function fitMapSvgHeight(svgEl, widthPx) {
   svgEl.style.height = h + 'px';
   return h;
 }
-const MOBILE_MAP_WIDTH = 700; // must match #report-map-zoomwrap width in the ≤820px media block
-function injectMapZoomBar() {
+export const MOBILE_MAP_WIDTH = 700; // must match #report-map-zoomwrap width in the ≤820px media block
+export function injectMapZoomBar() {
   const hdr = document.querySelector('#rp-map-col > div'); // the map header row
   if (!hdr || document.getElementById('map-zoom-bar')) return;
   const bar = document.createElement('span');
@@ -264,7 +267,7 @@ function injectMapZoomBar() {
   if (fs) hdr.insertBefore(bar, fs);
   else hdr.appendChild(bar);
 }
-function applyMapZoom() {
+export function applyMapZoom() {
   const svg = document.getElementById('report-map-svg');
   const cont = document.getElementById('report-map-container');
   const wrap = document.getElementById('report-map-zoomwrap');
@@ -326,7 +329,7 @@ function applyMapZoom() {
   const ch = Math.max(50, ((cont && cont.clientHeight) || 320) - pad);
   setW(cw * _mapZoom + 'px', ch * _mapZoom + 'px');
 }
-function mapZoom(delta) {
+export function mapZoom(delta) {
   _mapZoom = delta === 0 ? 1 : Math.max(1, Math.min(4, _mapZoom + delta));
   applyMapZoom();
 }
@@ -335,7 +338,7 @@ window.addEventListener('resize', () => {
   else setupDeskLayout();
   applyMapZoom();
 });
-function ensureMobileDefault() {
+export function ensureMobileDefault() {
   const lay = document.getElementById('rp-layout');
   if (lay && !/\bmv-(map|report|messages|orders)\b/.test(lay.className)) setMobileView('report');
 }

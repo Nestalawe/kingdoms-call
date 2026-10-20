@@ -1,3 +1,9 @@
+import { MONSTERS_P } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { ITEM_UNCAPPED_SKILLS, SKILL_BENEFIT_CAP, SKILL_MAX } from '../army-tables.js';
+import { activeItems } from '../items/equipment.js';
+import { DISC_BY_ID, discMaxHpFor } from '../discoveries.js';
+
 // ── EFFECTIVE SKILL ────
 // Every bonus that changes what a character's skill IS: equipped items, the Crown of Command aura
 // (+1 to all skills while the bearer — or a co-located ally of the same realm — carries it), and the
@@ -7,8 +13,8 @@
 // to search for an aura bearer (runTurn passes G.characters, the report passes
 // gameState.characters).
 // Skills whose TRAINED levels 6-9 also count for effect (not just items past 5). 2026-09-24: Druid.
-const FULL_RANGE_SKILLS = new Set(['druid']);
-function skillBonusBreakdown(c, stat, chars) {
+export const FULL_RANGE_SKILLS = new Set(['druid']);
+export function skillBonusBreakdown(c, stat, chars) {
   const out = { base: ((c && c.skills) || {})[stat] || 0, items: 0, aura: 0, curse: 0, sources: [] };
   if (!c) return out;
   // every source carries a `kind` so the portals can colour-code where a bonus comes from (item /
@@ -61,11 +67,11 @@ function skillBonusBreakdown(c, stat, chars) {
   out.bonus = out.total - _trained; // what the extras are actually WORTH
   return out;
 }
-function effSkillOf(c, stat, chars) {
+export function effSkillOf(c, stat, chars) {
   return skillBonusBreakdown(c, stat, chars).total;
 }
 
-function dedupeItemsByName(items) {
+export function dedupeItemsByName(items) {
   const seen = new Set();
   const out = [];
   (items || []).forEach((it) => {
@@ -83,29 +89,29 @@ function dedupeItemsByName(items) {
 // GAINS; the roll only sets how much: 1–3 while the earned base is under 40, 1–2 from 40, 1 from 50
 // (+5 on each shoulder for the Orcish edge). The old shrinking chance of any gain at all is gone.
 // A winner adds +1 (awardHpRoll). Skills no longer drive HP.
-const HPGAIN_START = 15,
+export const HPGAIN_START = 15,
   HPGAIN_START_ORC = 18,
   HPGAIN_ORC_SHIFT = 5,
   HPGAIN_MIGRATE_CLAMP = 60;
-const HPGAIN_S1 = 40,
+export const HPGAIN_S1 = 40,
   HPGAIN_S2 = 50;
 // The realms the max-HP helpers fall back on when they are given none: a field of one state object, not a top-level
 // `let` (plan P1-09b), so that once the engine is modules (P1-09d) the files that set it change a field, never another
 // file's binding. P1-10 passes the realms in and removes it.
-const maxHpPlayers = { players: null }; // set by runTurn / generateNewGame so module-level callers can see the realm races
-function maxHpIsOrc(ch, players) {
+export const maxHpPlayers = { players: null }; // set by runTurn / generateNewGame so module-level callers can see the realm races
+export function maxHpIsOrc(ch, players) {
   const pl = players || maxHpPlayers.players || [];
   return !!(ch && ch.race === 'Orcish' && ch.player != null && pl[ch.player] && pl[ch.player].race === 'Orcish');
 }
-function hpStartOf(ch, players) {
+export function hpStartOf(ch, players) {
   return maxHpIsOrc(ch, players) ? HPGAIN_START_ORC : HPGAIN_START;
 }
 // The earned base: start + pool, before any item/discovery bonus. This is what the gain curve
 // reads.
-function hpEarnedBase(ch, players) {
+export function hpEarnedBase(ch, players) {
   return hpStartOf(ch, players) + Math.max(0, Math.round((ch && ch.hpEarned) || 0));
 }
-function itemMaxHpBonus(ch) {
+export function itemMaxHpBonus(ch) {
   const seen = new Set();
   let b = 0;
   activeItems(ch).forEach((it) => {
@@ -116,7 +122,7 @@ function itemMaxHpBonus(ch) {
   });
   return b;
 }
-function computeMaxHp(ch, players) {
+export function computeMaxHp(ch, players) {
   if (!ch) return HPGAIN_START;
   // realm-wide `maxHp` discoveries (ro08 Thick Hides) add a flat amount on top.
   const _plHp = ch.player != null ? (players || maxHpPlayers.players || [])[ch.player] : null;
@@ -124,7 +130,7 @@ function computeMaxHp(ch, players) {
   return hpEarnedBase(ch, players) + itemMaxHpBonus(ch) + _discHp;
 }
 // The gain curve. Returns {lo, hi}: how much the NEXT roll gains, given the current earned base.
-function hpGainBand(ch, players) {
+export function hpGainBand(ch, players) {
   const base = hpEarnedBase(ch, players),
     sh = maxHpIsOrc(ch, players) ? HPGAIN_ORC_SHIFT : 0;
   if (base < HPGAIN_S1 + sh) return { lo: 1, hi: 3 };
@@ -134,7 +140,7 @@ function hpGainBand(ch, players) {
 // Roll a maximum-HP gain for a REAL character and apply it (the rise heals into the new headroom).
 // Every roll gains (item 16); the roll is only the amount. Returns {gain, maxHp}. `why` is only used
 // for the note.
-function rollHpGain(ch, players, why) {
+export function rollHpGain(ch, players, why) {
   if (!ch || ch.alive === false) return { gain: 0, maxHp: ch ? ch.maxHp : 0 };
   const band = hpGainBand(ch, players);
   const gain = Math.floor(kcRng() * (band.hi - band.lo + 1)) + band.lo;
@@ -142,7 +148,7 @@ function rollHpGain(ch, players, why) {
   syncMaxHp(ch, players);
   return { gain, maxHp: ch.maxHp, why: why || '' };
 }
-function hpGainLine(ch, r) {
+export function hpGainLine(ch, r) {
   if (!r) return '';
   // 2026-10-08/09 (Toby item 16): a wounded hero rolls too (r.wound); a winner gets +1 on the roll
   // (r.winBonus). Every roll gains — there is no longer a chance of nothing.
@@ -153,7 +159,7 @@ function hpGainLine(ch, r) {
 // Bring ch.maxHp in line with the formula. A rise heals current HP by the rise (new headroom is
 // filled); a fall clamps current HP to the new maximum (never below 1 for a living character).
 // Returns the change (0 when nothing moved).
-function syncMaxHp(ch, players) {
+export function syncMaxHp(ch, players) {
   if (!ch) return 0;
   const nu = computeMaxHp(ch, players),
     old = ch.maxHp != null ? ch.maxHp : nu;
@@ -170,8 +176,8 @@ function syncMaxHp(ch, players) {
 }
 // Retired Sage discoveries (never recycle an id — add to this set, never remove from it).
 // sd34 'Mounted Couriers' retired 2026-09-21: it never fired (no pre-order reaches the hire phase's own slot).
-const RETIRED_DISCOVERY_IDS = new Set(['sd34']);
-function retireDiscoveries(gs) {
+export const RETIRED_DISCOVERY_IDS = new Set(['sd34']);
+export function retireDiscoveries(gs) {
   let n = 0;
   ((gs && gs.players) || []).forEach((pl) => {
     if (!pl || !Array.isArray(pl.discoveries)) return;
@@ -197,7 +203,7 @@ function retireDiscoveries(gs) {
 // (60), pool = base − start. Saves made under the derived-HP formula keep their figures (never reset);
 // characters created since (hp 15) simply get pool 0. Runs every turn (cheap) so a hero spawned or
 // hired mid-turn is always initialised; the one-time chronicle note fires only on the first pass.
-function migrateMaxHpV2(gs) {
+export function migrateMaxHpV2(gs) {
   if (!gs) return;
   maxHpPlayers.players = gs.players || [];
   const first = !gs._maxHpV3;
@@ -224,13 +230,13 @@ function migrateMaxHpV2(gs) {
 // creature (matched by name) — once only.
 // A guardian's perks: `passives` (2026-10-14, batch item 7: one per grade, Weak 1 … Legendary 4) — or
 // the single `passive` an older save may still hold until migrateLairGuardiansV2 re-reads it.
-function guardianPassives(m) {
+export function guardianPassives(m) {
   if (!m) return [];
   if (Array.isArray(m.passives)) return m.passives.filter((p) => p && p.fx);
   return m.passive && m.passive.fx ? [m.passive] : [];
 }
-const GUARDIAN_TABLE_VER = 20; // 20 (2026-10-14, batch item 7): every guardian has one perk per grade (`passives`: Weak 1, Moderate 2, Powerful 3, Legendary 4), each scaled to its grade, many of them wards against a school of magic. · 19 (2026-10-14, batch item 4): every guardian special's castChance ×1.5, rounded, capped at 95 (was 35–70%, now 53–95%). · 18 (2026-10-08, Toby item 4): no guardian resists and is weak to the same thing — Rust-Mite Swarm now Elementally Frail, Sphinx Open to Arrows, Lich Acolyte keeps Hallowed Bane (every undead is open to White) and trades its spell ward for Hollow Bones (arrows deal 3 less), Dire Rat Old Enemy: Dwarven. · 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
-function migrateLairGuardiansV2(gs) {
+export const GUARDIAN_TABLE_VER = 20; // 20 (2026-10-14, batch item 7): every guardian has one perk per grade (`passives`: Weak 1, Moderate 2, Powerful 3, Legendary 4), each scaled to its grade, many of them wards against a school of magic. · 19 (2026-10-14, batch item 4): every guardian special's castChance ×1.5, rounded, capped at 95 (was 35–70%, now 53–95%). · 18 (2026-10-08, Toby item 4): no guardian resists and is weak to the same thing — Rust-Mite Swarm now Elementally Frail, Sphinx Open to Arrows, Lich Acolyte keeps Hallowed Bane (every undead is open to White) and trades its spell ward for Hollow Bones (arrows deal 3 less), Dire Rat Old Enemy: Dwarven. · 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+export function migrateLairGuardiansV2(gs) {
   if (!gs || !gs.world) return;
   if ((gs._guardiansVer || 0) >= GUARDIAN_TABLE_VER) return;
   const byName = {};

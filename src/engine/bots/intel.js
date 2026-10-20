@@ -1,3 +1,13 @@
+import { KC_HEX_DIRS, KC_RIVAL_RACE } from '../../content/kingdoms-call-data.js';
+import { battleFrontWidth, battleLineTotal } from '../battle/lines.js';
+import { unitBaseStrength } from '../battle/strength.js';
+import { TAMED_FLYER_TYPES_D, alignDistP, druIdPenaltyMult } from '../world/tables.js';
+import { consecratedIds } from '../heroes/fame-and-consecration.js';
+import { enemyCharVisibleTo, featDiscovered, nearSpiedProvIds } from '../../views/visibility.js';
+import { BOT_AERIAL_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL } from './war.js';
+import { botTurnCache } from './strategy.js';
+import { botSkillsFor } from './missions.js';
+
 // ══ BOT PLAYERS — Phase 3a: core movement AI (expansion) ════
 // Self-contained, module-top-level so it can run at order-merge time in runTurn with no dependency
 // on runTurn-local consts (avoids the HEX_DIRS/neighborInDir TDZ trap). Bots do not act beyond
@@ -36,7 +46,7 @@
 // colour blindness keeps intact, so it is the fallback cue when hue fails.
 // Names are for the design notes only; nothing in the code reads them.
 // Rose · Straw · Chartreuse · Emerald · Aqua · Slate · Cornflower · Amethyst · Mauve · Fuchsia
-const REALM_COLOURS = [
+export const REALM_COLOURS = [
   '#fcb4c0',
   '#d8d890',
   '#b4f000',
@@ -48,9 +58,9 @@ const REALM_COLOURS = [
   '#906090',
   '#fc78c0',
 ];
-const REALM_COLOUR_FALLBACK = '#c8b48c'; // an 11th seat should never happen; parchment-tan if it does
+export const REALM_COLOUR_FALLBACK = '#c8b48c'; // an 11th seat should never happen; parchment-tan if it does
 
-const BOT_TUNING = {
+export const BOT_TUNING = {
   kingAttackMargin: 1.35, // battle-model force ratio a bot KING needs before attacking (≈63% on the fortune curve; kings play safer — a king's death is costly)
   heroAttackMargin: 1.2, // battle-model force ratio a bot HERO needs before attacking (≈58%)
   assaultMargin: 1.4, // combined force ratio needed to launch a concentrated assault (buffers the contingent-unify roll)
@@ -66,14 +76,14 @@ const BOT_TUNING = {
 // plays at what was the Hard setting — bolder attack margins, the strongest rival bias, and 97% of income
 // on wages. The table keeps one row so botTuning reads the same shape; a game saved with 'easy' or
 // 'normal' (G.botDifficulty) resolves to it too, and telemetry keeps recording the word it finds.
-const BOT_DIFFICULTY = {
+export const BOT_DIFFICULTY = {
   hard: { attackMarginMult: 0.92, assaultMarginMult: 0.9, rivalBias: 12, upkeepCapFrac: 0.97 },
 };
 BOT_DIFFICULTY.easy = BOT_DIFFICULTY.normal = BOT_DIFFICULTY.hard;
-const BOT_DIFFICULTY_DEFAULT = 'hard';
+export const BOT_DIFFICULTY_DEFAULT = 'hard';
 // Effective weights for this game. Bot decision functions read these instead of BOT_TUNING directly.
 // Difficulty-neutral weights pass straight through.
-function botTuning(G, pi) {
+export function botTuning(G, pi) {
   const d = BOT_DIFFICULTY[(G && G.botDifficulty) || BOT_DIFFICULTY_DEFAULT] || BOT_DIFFICULTY.hard;
   const T = {
     kingAttackMargin: BOT_TUNING.kingAttackMargin * d.attackMarginMult,
@@ -119,8 +129,8 @@ function botTuning(G, pi) {
   }
   return T;
 }
-const BOT_HEX_DIRS = KC_HEX_DIRS.slice(); // MUST match the engine's HEX_DIRS order
-const BOT_OFF_EVEN = [
+export const BOT_HEX_DIRS = KC_HEX_DIRS.slice(); // MUST match the engine's HEX_DIRS order
+export const BOT_OFF_EVEN = [
   [-1, -1],
   [-1, 0],
   [0, -1],
@@ -128,7 +138,7 @@ const BOT_OFF_EVEN = [
   [1, -1],
   [1, 0],
 ]; // and its even/odd hex offsets
-const BOT_OFF_ODD = [
+export const BOT_OFF_ODD = [
   [-1, 0],
   [-1, 1],
   [0, -1],
@@ -136,7 +146,7 @@ const BOT_OFF_ODD = [
   [1, 0],
   [1, 1],
 ];
-function botNeighbourProv(G, prov, i) {
+export function botNeighbourProv(G, prov, i) {
   const cols = G.world.cols,
     rows = G.world.rows;
   const off = (prov.row % 2 === 0 ? BOT_OFF_EVEN : BOT_OFF_ODD)[i];
@@ -145,7 +155,7 @@ function botNeighbourProv(G, prov, i) {
   const nc = (((prov.col + off[1]) % cols) + cols) % cols;
   return G.world.provinces[nr * cols + nc];
 }
-function botForceStrength(armies) {
+export function botForceStrength(armies) {
   return (armies || []).reduce((s, a) => s + unitBaseStrength(a), 0);
 }
 
@@ -179,8 +189,8 @@ function botForceStrength(armies) {
 // the same snapshot the human's turn report was built from. Parity is therefore exact, not
 // approximate. _spiedProvincesThisTurn is cleared earlier in runTurn, so the previous turn's spy
 // set is preserved as _spiedProvincesLastTurn at that reset for this layer to read.
-const _botIntelCache = new WeakMap();
-function botIntel(G, pi) {
+export const _botIntelCache = new WeakMap();
+export function botIntel(G, pi) {
   let per = _botIntelCache.get(G);
   if (!per || per.turn !== G.turn) {
     per = { turn: G.turn, by: {} };
@@ -237,20 +247,20 @@ function botIntel(G, pi) {
   return o;
 }
 // Live forces in this province are visible to the realm.
-function botSees(G, pi, provId) {
+export function botSees(G, pi, provId) {
   return provId != null && botIntel(G, pi).sight.has(provId);
 }
 // Current terrain / owner / tax are visible (sight or border) — but NOT the forces standing there.
-function botScouted(G, pi, provId) {
+export function botScouted(G, pi, provId) {
   const I = botIntel(G, pi);
   return provId != null && (I.sight.has(provId) || I.border.has(provId));
 }
 // The realm has seen this ground at some point and may reason about it at all.
-function botKnows(G, pi, provId) {
+export function botKnows(G, pi, provId) {
   return provId != null && botIntel(G, pi).known.has(provId);
 }
 // One rule for "can this realm see that character", shared with the human report.
-function botSeesChar(G, pi, c) {
+export function botSeesChar(G, pi, c) {
   if (!c || !c.alive) return false;
   if (c.player === pi) return true;
   try {
@@ -261,13 +271,13 @@ function botSeesChar(G, pi, c) {
 }
 // Every character standing in `prov` that this realm may account for (its own always; others only
 // where it has line of sight and they are not hidden).
-function botVisibleCharsIn(G, pi, prov) {
+export function botVisibleCharsIn(G, pi, prov) {
   if (!prov) return [];
   return (G.characters || []).filter((c) => c && c.alive && c.location === prov.id && botSeesChar(G, pi, c));
 }
 // The province as this realm believes it to be: live when scouted, else the remembered snapshot,
 // else null (never seen — must not be reasoned about).
-function botBelief(G, pi, prov) {
+export function botBelief(G, pi, prov) {
   if (!prov) return null;
   if (botScouted(G, pi, prov.id))
     return {
@@ -295,7 +305,7 @@ function botBelief(G, pi, prov) {
   return null;
 }
 // Owner as believed (live if scouted, else last seen). `undefined` = never seen this ground.
-function botBelievedOwner(G, pi, prov) {
+export function botBelievedOwner(G, pi, prov) {
   const b = botBelief(G, pi, prov);
   return b ? b.owner : undefined;
 }
@@ -304,7 +314,7 @@ function botBelievedOwner(G, pi, prov) {
 // spread the world generator uses); a rival's province is guessed from its tax, because a wealthy
 // realm garrisons what it values. Deliberately a rough number: a bot marching on unscouted ground
 // should be able to be unpleasantly surprised, exactly as a human is.
-function botGuessDefence(G, pi, prov, terrain) {
+export function botGuessDefence(G, pi, prov, terrain) {
   const b = botBelief(G, pi, prov);
   if (!b) return 0;
   const AVG_UNIT = 6; // ≈ an average line unit's base strength
@@ -331,23 +341,23 @@ function botGuessDefence(G, pi, prov, terrain) {
   return units * AVG_UNIT * (owned ? 1.25 : 1) * BOT_DEF_BONUS;
 }
 // Discovered features only — an undiscovered lair is not on this realm's map at all.
-function botKnownFeatures(G, pi, prov) {
+export function botKnownFeatures(G, pi, prov) {
   return ((prov && prov.features) || []).filter((f) => f && featDiscovered(f, pi));
 }
 // Does this realm know battlefield graves lie here? Reads the very record the report's "Graveyards
 // Known" section is built from, so a bot needs a necromancer on the ground exactly as a player
 // does.
-function botKnowsGraves(G, pi, provId) {
+export function botKnowsGraves(G, pi, provId) {
   const g = botIntel(G, pi).graves;
   return !!(g && provId != null && g[provId]);
 }
 // Sept 2026 (bot upgrade): the strength a commander REALLY brings — every unit discounted by the
 // Druid shortfall penalty the engine will apply (same-race rule, Druidic realm, sd40 Dragon Taming
 // all honoured via druIdPenaltyMult).
-function botHasDisc(G, pi, id) {
+export function botHasDisc(G, pi, id) {
   return (((G.players || [])[pi] || {}).discoveries || []).some((d) => d && d.id === id);
 }
-function botEffForce(G, c, armies) {
+export function botEffForce(G, c, armies) {
   if (!c) return botForceStrength(armies);
   const align = (c.player != null ? ((G.players || [])[c.player] || {}).alignment : null) || 'Neutral';
   const tamed = c.player != null && botHasDisc(G, c.player, 'sd40');
@@ -374,7 +384,7 @@ function botEffForce(G, c, armies) {
 // mirrored for the estimate — kinship (+20% king's race, +20% leader's race), the old grudges (−20%),
 // unit terrain modifiers and the sea penalty, Elven Woodland Mastery (×1.5 in forest/jungle) and Dwarven
 // Bulwark (×1.5 defending). All public: races, terrain and the rulebook's numbers.
-function botRaceTerrainMult(G, c, a, terrain, defending, ownerPi) {
+export function botRaceTerrainMult(G, c, a, terrain, defending, ownerPi) {
   let m = 1;
   const uRace = a.race || null;
   const oPi = ownerPi != null ? ownerPi : c && c.player != null ? c.player : null;
@@ -402,7 +412,7 @@ function botRaceTerrainMult(G, c, a, terrain, defending, ownerPi) {
 // Whole-force multipliers the rulebook promises without a roll: Evil ×1.25 with any Monster (the Druidic
 // mirror, Wild Ferocity, was retired 2026-10-13), Undead skeletal fanaticism ×1.5 under the king / ×1.3 under
 // a hero, Good +10% defending its own land. Zeal itself is a roll and is left out, as before.
-function botFervourMult(G, c, armies, defending) {
+export function botFervourMult(G, c, armies, defending) {
   if (!c || c.player == null) return 1;
   const align = ((G.players || [])[c.player] || {}).alignment || 'Neutral';
   let m = 1;
@@ -411,7 +421,7 @@ function botFervourMult(G, c, armies, defending) {
   if (align === 'Good' && defending) m *= 1.1;
   return m;
 }
-function botBattleForce(G, c, armies, terrain, opts) {
+export function botBattleForce(G, c, armies, terrain, opts) {
   opts = opts || {};
   const defending = !!opts.defending;
   armies = armies || (c ? c.armies : null) || [];
@@ -449,11 +459,11 @@ function botBattleForce(G, c, armies, terrain, opts) {
 }
 // What an assault on province N is really up against: the standing defenders on N's own terrain
 // (guard hero's Tactical included), times the engine's ×1.25 fortification bonus.
-const BOT_DEF_BONUS = 1.25;
+export const BOT_DEF_BONUS = 1.25;
 // only counted from GROUND THE REALM CAN SEE INTO. On a province it has merely scouted from across
 // the border — or only remembers — it gets botGuessDefence's wealth-band estimate instead of the
 // true order of battle, which is all a human has to go on there.
-function botTargetDefence(G, pi, N) {
+export function botTargetDefence(G, pi, N) {
   if (!N) return 0;
   if (!botSees(G, pi, N.id)) return botGuessDefence(G, pi, N, N.terrain);
   const seen = botVisibleCharsIn(G, pi, N);
@@ -472,7 +482,7 @@ function botTargetDefence(G, pi, N) {
   return s * BOT_DEF_BONUS;
 }
 // Does this commander lead any unit at a Druid shortfall? Returns the worst shortfall (0 = none).
-function botDruidShortfall(G, c, armies) {
+export function botDruidShortfall(G, c, armies) {
   if (!c) return 0;
   const align = (c.player != null ? ((G.players || [])[c.player] || {}).alignment : null) || 'Neutral';
   const tamed = c.player != null && botHasDisc(G, c.player, 'sd40');
@@ -496,17 +506,17 @@ function botDruidShortfall(G, c, armies) {
 // eases (−8%/turn) toward a floor — a king never below 1.15×, a hero never below 1.0×. Neutral
 // guards take casualties even when they win, so a near-even assault still wears the garrison down
 // for the next attempt. Reset the moment land grows.
-function botStallTurns(G, pi) {
+export function botStallTurns(G, pi) {
   return ((G.players || [])[pi] || {})._botStall || 0;
 }
-function botMarginFor(G, pi, c, T) {
+export function botMarginFor(G, pi, c, T) {
   const base = c && c.isKing ? T.kingAttackMargin : T.heroAttackMargin;
   const floor = c && c.isKing ? 1.15 : 1.0;
   const mult = Math.max(0.6, 1 - 0.08 * botStallTurns(G, pi));
   const stake = Math.min(0.1, 0.02 * Math.max(0, ((c && c.armies) || []).length - 5)); // Sept 2026 (R5): the bigger the host, the more a loss costs
   return Math.max(Math.min(base, floor), base * mult) + stake;
 }
-function botNoteLand(G, pi) {
+export function botNoteLand(G, pi) {
   const p = (G.players || [])[pi];
   if (!p) return;
   const land = (G.world.provinces || []).filter((x) => x && x.owner === pi && x.terrain !== 'sea').length;
@@ -517,7 +527,7 @@ function botNoteLand(G, pi) {
   p._botLandPrev = land;
   p._botLandSeenTurn = G.turn;
 }
-function botRelationRaw(G, a, b) {
+export function botRelationRaw(G, a, b) {
   if (a == null || b == null || a === b) return 'neutral';
   const k = a < b ? a + '-' + b : b + '-' + a;
   return (G.relations || {})[k] || 'neutral';
@@ -530,7 +540,7 @@ function botRelationRaw(G, a, b) {
 // PLAYERS were in it and the per-player report only sets hadCombat for those realms, so a covert
 // ambush never advertises itself to a bystander who happens to have the province explored. Cleared
 // with the battle flags at the end of the turn.
-function markProvinceCombat(prov, players) {
+export function markProvinceCombat(prov, players) {
   if (!prov) return;
   const arr = prov._combatPlayersThisTurn || (prov._combatPlayersThisTurn = []);
   (players || []).forEach((pi) => {
@@ -545,16 +555,16 @@ function markProvinceCombat(prov, players) {
 // every turn until the pact is sealed. TWO steps or more => war. That is the whole rule: the old
 // war-on-contact default and the anti-runaway coalition no longer override it (see
 // botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim, src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.js).
-const BOT_ALLY_ALIGN_DIST = 1;
-function botAlignOf(G, pi) {
+export const BOT_ALLY_ALIGN_DIST = 1;
+export function botAlignOf(G, pi) {
   return ((G.players || [])[pi] || {}).alignment || 'Neutral';
 }
-function botAlignFriendly(G, a, b) {
+export function botAlignFriendly(G, a, b) {
   return alignDistP(botAlignOf(G, a), botAlignOf(G, b)) <= BOT_ALLY_ALIGN_DIST;
 }
 // A rival one of OUR allies is also at war with. Concentrating on the common foe is what an
 // alliance is for — it biases target selection, it does not change who we are at war with.
-function botMutualFoe(G, pi, j) {
+export function botMutualFoe(G, pi, j) {
   if (j == null || j === pi) return false;
   const pls = G.players || [];
   for (let a = 0; a < pls.length; a++) {
@@ -563,6 +573,6 @@ function botMutualFoe(G, pi, j) {
   }
   return false;
 }
-function botConceded(G, pi) {
+export function botConceded(G, pi) {
   return !!((G.players || [])[pi] || {}).conceded;
 }

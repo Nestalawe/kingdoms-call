@@ -8,7 +8,7 @@
 // more, then stops the same way: a page never carries on unchecked.
 // On success the version is kept in <html data-kc-db="…"> and announced as the "kc-db-version" event (the
 // staging footer shows it). Loaded after kc-config.js. Its one global name is kcDbGuard.
-async function kcDbGuard(sb, min) {
+export async function kcDbGuard(sb, min) {
   const ask = async () => {
     try {
       return await sb.rpc('kc_db_version');

@@ -1,3 +1,48 @@
+import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { QUALITY_TIERS } from '../army-tables.js';
+import {
+  ENCOUNTER_CLEAR_GOLD_BANDS,
+  encounterClearGold,
+  featureTreasure,
+  setFeatureTreasure,
+} from '../world/tables.js';
+import {
+  WILD_HUNT_TURNS,
+  WILD_HUNT_UNITS,
+  ensureLairHoard,
+  guardianCanUseItem,
+  isLegendaryItem,
+  itemLoreLines,
+  monsterCatLabel,
+  wildHuntPrice,
+} from '../items/tiers-and-hoards.js';
+import { recordBattleGraves, recordDeadHeroSighting } from '../graves.js';
+import { noteItemFound, rollMagicItemFor } from '../items/lair-items.js';
+import { itemNameList } from '../heroes/fame-and-consecration.js';
+import { discoverFeat, featDiscovered } from '../../views/visibility.js';
+import { gainedItemNote, hasItemBase } from '../items/equipment.js';
+import { RUMOUR_COST_BY_POWER, applyItemMaxHp, noteLairRumour, pcLearnWeakness } from '../personal-combat/helpers.js';
+import { armyUnitName, d100, fmtRoll, rng } from '../dice-and-army-names.js';
+import { markProvinceCombat } from '../bots/intel.js';
+import { botLairRating } from '../bots/missions.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { TM, creditMapped, perkTier, skillLevel } from '../titles/perks.js';
+import { discEff, discParam, discSum, hasDisc } from '../discoveries.js';
+import { emitNarrLine } from '../turn/log-line-helpers.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { refreshMovePool } from '../units/movement-pools.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardWinHp,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { resolveEncounter, rumourOddsBand, simulateLairOdds } from '../personal-combat/lair-guardians-and-the-odds.js';
+import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.js';
+import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.js';
+
 // ── THE EXPLORE AND SEARCH ORDERS (plan P1-08j2: the second family taken out of processOrder in resolveTurn) ──
 // Six orders a hero spends a phase on where he stands: Explore, Perform Rite, Hunting Rumours, Search Lair, Chart the
 // Unknown (Explorer 7) and Discover Lost Ruin (Explorer 9), each once processOrder has read the order and checked he
@@ -6,7 +51,7 @@
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break
 // became a return.
 // Explore: the province he stands in mapped further, and the lairs and ritual sites that come to light as it fills.
-function resolveExploreOrder(turnContext, c, prov) {
+export function resolveExploreOrder(turnContext, c, prov) {
   const { log, G } = turnContext;
   trySkillGain(turnContext, c, 'explorer', SKILLGAIN_COMMON); // Explorer: performing an Explore order
   // AK 3.2: Basic Exploration Number × (Explorer skill + 1)% Terrain table: Plain 50%, Desert
@@ -147,7 +192,7 @@ function resolveExploreOrder(turnContext, c, prov) {
   return;
 }
 // Perform Rite (Pagan realms, at a ritual site): the Rite of the Wild Hunt, or the Blood Offering.
-function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov, player) {
+export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov, player) {
   const { G, log } = turnContext;
   // ── PAGAN: Perform Rite ── Only Pagan realms; only at a DISCOVERED ritual site.
   if (G.players[c.player]?.alignment !== 'Pagan') {
@@ -306,7 +351,7 @@ function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov, player
 // (learned for good, exactly as a Scout would learn it), the hoard behind it (exact gold and
 // the magic that lies there), and the hero's own odds — measured by simulateLairOdds and read
 // back as one of five narrative bands.
-function resolveHuntingRumoursOrder(turnContext, c, target, prov, player) {
+export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player) {
   const { log, G } = turnContext;
   const _cost = RUMOUR_COST_BY_POWER;
   const _idxs = [
@@ -416,7 +461,7 @@ function resolveHuntingRumoursOrder(turnContext, c, target, prov, player) {
   return;
 }
 // Search Lair: the fight with a lair's guardian, and what the hero carries off, or leaves behind.
-function resolveSearchLairOrder(turnContext, c, ph, target, prov, player) {
+export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player) {
   const { log, G, _tel } = turnContext;
   // Find the feature
   let fi = 0;
@@ -767,7 +812,7 @@ function resolveSearchLairOrder(turnContext, c, ph, target, prov, player) {
   return;
 }
 // Chart the Unknown (Explorer 7, once a turn): one province mapped in full, and a glimpse of the ring round it.
-function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
+export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
   const { log, G } = turnContext;
   // Explorer L7: the survey may be run on the province the character stands in OR any
   // province adjacent to it — a cartographer works a horizon, not just the ground under their
@@ -824,7 +869,7 @@ function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
   return;
 }
 // Discover Lost Ruin (Explorer 9, once a turn): every lair of one class here and next door laid bare.
-function resolveDiscoverLostRuinOrder(turnContext, c, target, prov) {
+export function resolveDiscoverLostRuinOrder(turnContext, c, target, prov) {
   const { log, G } = turnContext;
   // Explorer L9: the order now names a CLASS of lair — Weak, Moderate, Powerful or Legendary
   // — and lays bare EVERY lair of that class in this province and in each province bordering

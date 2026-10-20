@@ -1,5 +1,12 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { sb } from './startup.js';
+import { show } from './init.js';
+import { loadMyGames, loadOpenGames, startUpdatePolling } from './game-lists.js';
+import { openReport } from './report.js';
+import { saveMessageReads, stopMessagePolling } from './dispatches.js';
+
 // ── AUTH ────
-function setAuthTab(tab) {
+export function setAuthTab(tab) {
   document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
   document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
   document.getElementById('auth-signin').style.display = tab === 'signin' ? 'block' : 'none';
@@ -7,7 +14,7 @@ function setAuthTab(tab) {
   document.getElementById('auth-msg').innerHTML = '';
 }
 
-async function doSignIn() {
+export async function doSignIn() {
   const email = document.getElementById('si-email').value.trim();
   const pwd = document.getElementById('si-password').value;
   const msg = document.getElementById('auth-msg');
@@ -29,7 +36,7 @@ async function doSignIn() {
   await onSignedIn();
 }
 
-async function doSignUp() {
+export async function doSignUp() {
   const name = document.getElementById('su-name').value.trim();
   const email = document.getElementById('su-email').value.trim();
   const pwd = document.getElementById('su-password').value;
@@ -63,7 +70,7 @@ async function doSignUp() {
   }
 }
 
-async function doSignOut() {
+export async function doSignOut() {
   try {
     stopMessagePolling();
     await saveMessageReads();
@@ -82,7 +89,7 @@ async function doSignOut() {
 // differently-named realm in every game. The Hall of Fame keys every player statistic on the auth
 // account and prints whatever this name is at the time it is read, so changing it here renames the
 // player on every game they have ever played rather than splitting their record in two.
-function changeDisplayName() {
+export function changeDisplayName() {
   if (document.getElementById('dn-overlay')) return;
   const cur = (currentProfile && currentProfile.name) || currentUser?.user_metadata?.display_name || '';
   const ov = document.createElement('div');
@@ -106,11 +113,11 @@ function changeDisplayName() {
   f.focus();
   f.select();
 }
-function closeDisplayName() {
+export function closeDisplayName() {
   const o = document.getElementById('dn-overlay');
   if (o) o.remove();
 }
-async function submitDisplayName() {
+export async function submitDisplayName() {
   const msg = document.getElementById('dn-msg');
   const name = (document.getElementById('dn-name').value || '').trim();
   if (name.length < 2) {
@@ -139,7 +146,7 @@ async function submitDisplayName() {
 }
 
 // ── Change Password (Supabase updateUser — requires the active signed-in session) ──
-function changePassword() {
+export function changePassword() {
   if (document.getElementById('cp-overlay')) return;
   const ov = document.createElement('div');
   ov.id = 'cp-overlay';
@@ -161,11 +168,11 @@ function changePassword() {
   document.body.appendChild(ov);
   document.getElementById('cp-new').focus();
 }
-function closeChangePassword() {
+export function closeChangePassword() {
   const o = document.getElementById('cp-overlay');
   if (o) o.remove();
 }
-async function submitChangePassword() {
+export async function submitChangePassword() {
   const p1 = document.getElementById('cp-new').value;
   const p2 = document.getElementById('cp-new2').value;
   const msg = document.getElementById('cp-msg');
@@ -191,7 +198,7 @@ async function submitChangePassword() {
   }
 }
 
-async function onSignedIn() {
+export async function onSignedIn() {
   // Load profile
   const { data: profile } = await sb.from('profiles').select('id,name').eq('id', currentUser.id).single(); // never email (P0-31)
   currentProfile = profile;
@@ -217,7 +224,7 @@ async function onSignedIn() {
 // open a game with a FULL browser reload. The reload picks up the latest portal build and a clean
 // state; the hash tells onSignedIn which report to open. Nothing unsaved can be lost here — this is
 // only reachable from the My Games list, never from inside an orders form.
-function openGameFresh(gamePlayerId) {
+export function openGameFresh(gamePlayerId) {
   try {
     history.replaceState(null, '', location.pathname + location.search + '#game=' + encodeURIComponent(gamePlayerId));
   } catch (e) {}
@@ -229,7 +236,7 @@ function openGameFresh(gamePlayerId) {
 // orders_submitted, and alignment while the game is in setup. It never reads another realm's game_players row
 // (the database answers those only for their own player and the game's GM: Unit B). Games the account may not
 // see are left out.
-async function fetchGameSlots(gameIds) {
+export async function fetchGameSlots(gameIds) {
   const ids = [...new Set((gameIds || []).filter(Boolean))];
   if (!ids.length) return { data: [], error: null };
   const { data, error } = await sb.rpc('get_game_slots', { p_games: ids });
@@ -237,7 +244,7 @@ async function fetchGameSlots(gameIds) {
 }
 
 // ── GAME LISTS ────
-async function loadAllGames() {
+export async function loadAllGames() {
   await Promise.all([loadMyGames(), loadOpenGames(), loadGmOffer()]);
 }
 
@@ -245,7 +252,7 @@ async function loadAllGames() {
 // The Overlord offers an account Game Master (P0-32b): its own game_masters row, open while accepted_at is
 // null. Accept and No thanks are database functions acting on the signed-in account's own offer. The banner
 // is an extra: if the read fails, it just stays hidden.
-async function loadGmOffer() {
+export async function loadGmOffer() {
   const el = document.getElementById('gm-offer-banner');
   const { data, error } = await sb
     .from('game_masters')
@@ -259,7 +266,7 @@ async function loadGmOffer() {
   }
   el.style.display = open ? 'block' : 'none';
 }
-async function answerGmOffer(fn) {
+export async function answerGmOffer(fn) {
   const ask = document.getElementById('gm-offer-ask'),
     msg = document.getElementById('gm-offer-msg');
   ask.querySelectorAll('button').forEach((b) => {
@@ -277,12 +284,12 @@ async function answerGmOffer(fn) {
   }
   return true;
 }
-async function acceptGmOffer() {
+export async function acceptGmOffer() {
   if (!(await answerGmOffer('gm_accept_offer'))) return;
   document.getElementById('gm-offer-ask').style.display = 'none';
   document.getElementById('gm-offer-done').style.display = 'block';
 }
-async function declineGmOffer() {
+export async function declineGmOffer() {
   if (!confirm('Turn down the offer to become a Game Master? The Overlord would have to offer again.')) return;
   if (await answerGmOffer('gm_decline_offer')) document.getElementById('gm-offer-banner').style.display = 'none';
 }

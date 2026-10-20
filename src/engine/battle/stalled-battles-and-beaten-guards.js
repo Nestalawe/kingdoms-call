@@ -1,3 +1,27 @@
+import { kcRng } from '../rng.js';
+import { demoteOrDisband, disbandLine, unitRef } from '../army-tables.js';
+import { SEA_TYPES } from '../units/movement.js';
+import { markOrcAttackWin } from '../units/drill-and-spoils.js';
+import { realmTag } from '../turn/log-line-helpers.js';
+import { newMercId } from '../turn/mercenary-ids-and-battle-records.js';
+import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.js';
+import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
+import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.js';
+import {
+  bestRetreat,
+  clearNavalHold,
+  navalHeldIn,
+  navalHoldLine,
+  navalSplitRetreat,
+  retreatOptions,
+  seaTrapLine,
+} from '../units/sea-lift-stranding-and-retreats.js';
+import { armyTotalStr } from './best-commander.js';
+import { emitBattle } from './battle-report-lines-and-force-markers.js';
+import { combatVsNPC } from './battles-against-province-defenders.js';
+import { combatVsChar } from './battles-between-heroes.js';
+import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.js';
+
 // ── STALLED BATTLES AND A BEATEN GUARD'S SURVIVORS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where a battle was left unresolved (the loser could not retreat) is fought over again at the start of
 // each phase until one side is gone or breaks away (resolveStalledBattles, which resolveTurn's phase loop and
@@ -14,12 +38,12 @@
 // Applied every time a guard loses a battle, not just the first. Each survivor either breaks away
 // as mercenaries, drops a quality tier, or — if already Green — disbands entirely (no graves:
 // nobody died, the unit simply ceased to exist).
-const GUARD_FLIGHT_CHANCE = 0.35;
+export const GUARD_FLIGHT_CHANCE = 0.35;
 // Of the survivors who hold their ground (don't flee), only SOME are bloodied down a quality
 // tier; the rest fight on unbowed.
-const GUARD_DEMOTE_CHANCE = 0.5;
+export const GUARD_DEMOTE_CHANCE = 0.5;
 // victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
-function erodeGuardSurvivors(turnContext, guard, prov, survivors, emit, victor) {
+export function erodeGuardSurvivors(turnContext, guard, prov, survivors, emit, victor) {
   const { G } = turnContext;
   const kept = [];
   const _vh = victor ? `${String(victor).replace(' (wandering)', '')}'s host` : null;
@@ -60,7 +84,7 @@ function erodeGuardSurvivors(turnContext, guard, prov, survivors, emit, victor) 
   return kept;
 }
 
-function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
+export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
   const { G, log, seaMovePoints, movePoints, SEASONS } = turnContext;
   (G.world.provinces || []).forEach((prov) => {
     if (onlyProvId != null && (!prov || prov.id !== onlyProvId)) return; // resolveWarFronts settles one province

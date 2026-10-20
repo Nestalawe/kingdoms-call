@@ -1,9 +1,11 @@
 // tests/lib/boot.js: the one way tests load the pages in site/.
 //
 //   SITE, sitePath(name)        where the deployable files live (site/, or $KC_SITE)
-//   readPage(nameOrPath)        page HTML with its local scripts (kingdoms-call-data.js, kc-config.js)
-//                               inlined and the supabase-js <script> removed, ready for jsdom
-//   pageFiles(nameOrPath)       the files readPage reads for that page: the page, then each script it inlines
+//   readPage(nameOrPath)        page HTML ready for jsdom, which runs no module script and loads no stylesheet: its
+//                               bundle (assets/<page>.js, P1-09d) as a classic script at the end of the body, strict as
+//                               a module is; its stylesheet inline where its <link> was; its local classic scripts
+//                               (kc-config.js, kc-staging-footer.js) inlined; the supabase-js <script> removed
+//   pageFiles(nameOrPath)       the files readPage reads for that page: the page, then each file it inlines
 //   bootJsdom(html, opts)       a jsdom with the page's scripts running and a Supabase stub installed
 //   serve(dir, port)            a static file server for Chromium (as the pages are deployed: one folder)
 //   routeExternal(target, cdn)  answers supabase-js with a stub and fonts with nothing (Playwright page/context)
@@ -22,8 +24,11 @@ const fs=require('fs'), path=require('path'), http=require('http');
 const SITE=path.resolve(process.env.KC_SITE||path.join(__dirname,'..','..','site'));
 const sitePath=name=>path.join(SITE,name);
 
-// A <script src="…"> naming a plain file beside the page (no "/" or ":"), e.g. kingdoms-call-data.js or kc-config.js.
+// A <script src="…"> naming a plain file beside the page (no "/" or ":"), e.g. kc-config.js.
 const LOCAL_TAG=/<script src="([A-Za-z0-9._-]+\.js)"><\/script>/g;
+// The page's bundle and its stylesheet, as Vite writes their tags (tools/build.ts, P1-09d).
+const BUNDLE_TAG=/[ \t]*<script type="module" crossorigin src="\.\/(assets\/[A-Za-z0-9._-]+\.js)"><\/script>\n?/g;
+const STYLE_TAG=/<link rel="stylesheet" crossorigin href="\.\/(assets\/[A-Za-z0-9._-]+\.css)">/g;
 // supabase-js: site/vendor/supabase-js-<version>.min.js since P0-18; a CDN before (still removed, so KC_SITE can point
 // at an older copy of the site). Tests install a stand-in instead.
 const SUPABASE_TAG=/<script src="(?:vendor\/supabase-js-[^"]*|https:\/\/cdn\.jsdelivr[^"]*)"><\/script>/g;
@@ -33,20 +38,33 @@ const SUPABASE_TAG=/<script src="(?:vendor\/supabase-js-[^"]*|https:\/\/cdn\.jsd
 const pageFile=nameOrPath=>/[\\/]/.test(nameOrPath)?nameOrPath:sitePath(nameOrPath);
 function readPage(nameOrPath){
   const file=pageFile(nameOrPath);
+  const beside=src=>path.join(path.dirname(file),src);
   let html=fs.readFileSync(file,'utf8');
   html=html.replace(LOCAL_TAG,(tag,src)=>{
-    const local=path.join(path.dirname(file),src);
+    const local=beside(src);
     return fs.existsSync(local)?'<script>'+fs.readFileSync(local,'utf8')+'</script>':tag;
   });
+  html=html.replace(STYLE_TAG,(tag,href)=>'<style>\n'+fs.readFileSync(beside(href),'utf8')+'</style>');
+  // A module script runs once the document is parsed, after the classic scripts, in strict mode: its classic stand-in
+  // goes last in the body, "use strict" first.
+  const bundles=[];
+  html=html.replace(BUNDLE_TAG,(tag,src)=>{ bundles.push(fs.readFileSync(beside(src),'utf8')); return ''; });
+  if(bundles.length){
+    const end=html.lastIndexOf('</body>');
+    if(end<0) throw new Error(file+': no </body> to put its bundle before');
+    html=html.slice(0,end)+bundles.map(b=>'<script>"use strict";\n'+b+'</script>\n').join('')+html.slice(end);
+  }
   return html.replace(SUPABASE_TAG,'');
 }
 
-// The files readPage reads for a page, as full paths: the page, then each local script it inlines. The balance runner
-// checks they are all engine paths (tools/balance/engine-paths.ts), so CI plays the matrix when one changes.
+// The files readPage reads for a page, as full paths: the page, then each file it inlines (its stylesheet, its local
+// scripts, its bundle). The balance runner checks the GM page's sources are all engine paths
+// (tools/balance/engine-paths.ts), so CI plays the matrix when one changes.
 function pageFiles(nameOrPath){
   const file=pageFile(nameOrPath);
-  const scripts=[...fs.readFileSync(file,'utf8').matchAll(LOCAL_TAG)].map(m=>path.join(path.dirname(file),m[1]));
-  return [file,...scripts.filter(f=>fs.existsSync(f))];
+  const html=fs.readFileSync(file,'utf8');
+  const named=[STYLE_TAG,LOCAL_TAG,BUNDLE_TAG].flatMap(re=>[...html.matchAll(re)].map(m=>path.join(path.dirname(file),m[1])));
+  return [file,...named.filter(f=>fs.existsSync(f))];
 }
 
 // sfc32, seeded through splitmix32 so nearby seeds give unrelated streams. The page's kcRng (src/engine/rng.js) is the
@@ -62,8 +80,8 @@ function seededRandom(seed){
     return (t>>>0)/4294967296;
   };
 }
-// The pages check the database's version before their first read (site/kc-db-guard.js). Every stand-in
-// database answers it as an up-to-date database would: the newest migration in the repo.
+// The pages check the database's version before their first read (src/db/kc-db-guard.js, bundled into each page).
+// Every stand-in database answers it as an up-to-date database would: the newest migration in the repo.
 const DB_VERSION=fs.readdirSync(path.join(__dirname,'..','..','supabase','migrations'))
   .map(f=>(/^(\d{14})_/.exec(f)||[])[1]).filter(Boolean).sort().pop();
 

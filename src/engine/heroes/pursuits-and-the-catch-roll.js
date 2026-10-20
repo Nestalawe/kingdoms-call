@@ -1,3 +1,27 @@
+import { COMBAT_ONLY_TACTICS } from '../army-tables.js';
+import { _escapesTheEnd, _garrethEscapeLine } from '../names.js';
+import { d100, dispFloor, rng } from '../dice-and-army-names.js';
+import { markProvinceCombat } from '../bots/intel.js';
+import { emitNarrLine, notifyTarget, realmTag } from '../turn/log-line-helpers.js';
+import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.js';
+import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
+import { effStat, isHiddenChar, oddsNote, statNote } from './effective-skills-and-hidden-heroes.js';
+import { clearNavalHold, navalHeldIn, navalHoldLine } from '../units/sea-lift-stranding-and-retreats.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardKillXP,
+  rollNavalVoyage,
+  trySkillGain,
+} from './experience-skill-rises-and-earned-hp.js';
+import { emitBattle } from '../battle/battle-report-lines-and-force-markers.js';
+import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
+import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.js';
+import { reportHeroFall } from './hero-death-and-leaderless-hosts.js';
+import { combatVsChar } from '../battle/battles-between-heroes.js';
+import { normaliseAction } from '../turn/phase-intents-and-dependency-ordering.js';
+import { stepToward } from '../world/routes-and-distances.js';
+
 // ── PURSUITS AND THE CATCH ROLL (plan P1-08i3: lifted out of resolveTurn) ────
 // A hero on a Pursue or Encounter Character order chases his quarry from province to province for the rest of the
 // turn (advancePursuit, called from processOrder and the phase loop), rolls to corner him once they stand together
@@ -5,7 +29,7 @@
 // reaching an armed quarry slips past the sentries on the ENC_BREAK_RANKS_* chance. pursuitCatchChance and
 // advancePursuit take the turn's context first (src/engine/turn/context.js); endPursuit takes none.
 // Encounter Character: an UNARMED challenger reaching an ARMED quarry (see advancePursuit).
-const ENC_BREAK_RANKS_BASE = 60,
+export const ENC_BREAK_RANKS_BASE = 60,
   ENC_BREAK_RANKS_PER_UNIT = 8,
   ENC_BREAK_RANKS_SPY = 5,
   ENC_BREAK_RANKS_TAC = 5,
@@ -24,7 +48,7 @@ const ENC_BREAK_RANKS_BASE = 60,
 // twice as easy to corner.) The roll is only ever made once the two
 // stand in the same province (advancePursuit), so the old divide-by-distance was dead code.
 // Clamped 5–100. A friendly quarry is always caught (a rendezvous, not a hunt).
-function pursuitCatchChance(turnContext, c, quarry) {
+export function pursuitCatchChance(turnContext, c, quarry) {
   if (quarry.player != null && quarry.player === c.player) return 100;
   const spy = effStat(turnContext, c, 'spy'),
     qSpy = effStat(turnContext, quarry, 'spy');
@@ -32,11 +56,11 @@ function pursuitCatchChance(turnContext, c, quarry) {
   return Math.max(5, Math.min(100, dispFloor(pct)));
 }
 
-function endPursuit(c) {
+export function endPursuit(c) {
   if (c._pursuit) c._pursuit.active = false;
 }
 
-function advancePursuit(turnContext, c, ph) {
+export function advancePursuit(turnContext, c, ph) {
   const { G, log, fieldBattlePhase, seaMovePoints, movePoints } = turnContext;
   const p = c._pursuit;
   if (!p || !p.active) return;

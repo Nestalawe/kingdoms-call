@@ -1,6 +1,22 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import {
+  KC_ITEM_UNCAPPED_SKILLS,
+  KC_MAGIC_SCHOOLS,
+  KC_SKILLS,
+  KC_UNIT_BASE_STR,
+  KC_UNIT_CLASS,
+  KC_UNIT_Q_MULT,
+  KC_UNIT_TYPE,
+} from '../../content/kingdoms-call-data.js';
+import { itemSlotP, itemUsableByP } from './items-and-heroes.js';
+import { SKILL_LABELS } from './move-analysis.js';
+import { getOrderExtra, getOrderTarget, syncCharmCard, syncResurrectCard } from './pre-orders.js';
+import { CREATURE_ARMIES_UI, HUMANOID_RACES_UI, MONSTER_ARMIES_UI, formatRace } from './skills-and-projections.js';
+import { buildTargetField } from './order-targets.js';
+
 // ── ORDERS FORM ────
 // ── SPELLS LIST ────
-const SPELLS_BY_SCHOOL = {
+export const SPELLS_BY_SCHOOL = {
   white: ['Resurrect', 'Part Sea', 'Bless Province', 'Holy Symbol', 'Spiritwrack', 'Sanctuary', 'Divine Judgment'],
   psychic: ['Charm', 'Oratory', 'Clairvoyance', 'Psychic Blast', 'Telekinetic Storm', 'Mass Confusion', 'Dominate'],
   illusory: [
@@ -28,7 +44,7 @@ const SPELLS_BY_SCHOOL = {
 // by the same castChanceFor() the action phase rolls against, so this is not an estimate — it is
 // the number. A spell worked from an ITEM is a flat 95%; a Wailing Phylactery makes the realm's
 // first Necromancy spell of the turn certain. Falls back to the plain formula for an older report.
-function castChanceNote(c, spellName, opts) {
+export function castChanceNote(c, spellName, opts) {
   opts = opts || {};
   const school = SPELL_TO_SCHOOL[spellName];
   if (!school) return '';
@@ -55,13 +71,13 @@ function castChanceNote(c, spellName, opts) {
 // own formulas, computed from the same effective skills the turn resolves with). Where a factor
 // cannot be known at order time — an enemy's counter-espionage, whether a vault is guarded, who
 // ends up practising alongside — the note says so instead of pretending the number is final.
-function chanceLine(txt, tone) {
+export function chanceLine(txt, tone) {
   const col = tone === 'bad' ? 'var(--crimson)' : tone === 'sure' ? '#2d6a2d' : 'var(--forest)';
   return kcHtml`<div style="font-size:.72rem;color:${col};margin-top:2px">🎲 ${txt}</div>`;
 }
 // Rebuild one order's target field in place — used when a choice within the field changes the odds
 // quoted beneath it (picking a different skill to practise). Mirrors what onSpellChange does.
-function rebuildTargetWrap(charId, ph) {
+export function rebuildTargetWrap(charId, ph) {
   const wrap = document.getElementById(`po-target-wrap-${charId}-${ph}`);
   const c = ((currentReport && currentReport.characters) || []).find((x) => String(x.id) === String(charId));
   if (!wrap || !c) return;
@@ -77,7 +93,7 @@ function rebuildTargetWrap(charId, ph) {
   }
   if (saved.action === 'Practice Skill') refreshLaterCastSpells(charId, ph); // a re-aimed practice moves later casts' limits
 }
-function orderChanceNote(c, action, ph) {
+export function orderChanceNote(c, action, ph) {
   const oc = (c && c.orderChance) || null;
   if (!oc) return '';
   const pct = (n) => kcHtml`<strong>${Math.max(0, Math.min(100, floorNumP(n)))}%</strong>`;
@@ -149,14 +165,14 @@ function orderChanceNote(c, action, ph) {
 }
 
 // Reverse lookup: spell name → school
-const SPELL_TO_SCHOOL = {};
+export const SPELL_TO_SCHOOL = {};
 Object.entries(SPELLS_BY_SCHOOL).forEach(([school, list]) =>
   list.forEach((s) => {
     SPELL_TO_SCHOOL[s] = school;
   }),
 );
 // L7/L9 mastery spells require the caster's RAW school level (past-5 comes from experience only).
-const SPELL_REQ_LEVEL = {
+export const SPELL_REQ_LEVEL = {
   Sanctuary: 7,
   'Divine Judgment': 9,
   'Mass Confusion': 7,
@@ -168,7 +184,7 @@ const SPELL_REQ_LEVEL = {
   'Raise Wraiths': 7,
   "Death's Dominion": 9,
 };
-const rawMagicLvl = (charObj, school) => ((charObj && charObj.skills) || {})[school] || 0;
+export const rawMagicLvl = (charObj, school) => ((charObj && charObj.skills) || {})[school] || 0;
 
 // Effective magic-skill level for a character = base skill + any magic-item bonuses to that school,
 // clamped 0..5. Mirrors the GM engine's effStat() for the spell schools, so an item that grants a
@@ -179,8 +195,8 @@ const rawMagicLvl = (charObj, school) => ((charObj && charObj.skills) || {})[sch
 // past a trained 5 to the ceiling of 9. Declared HERE, above effMagicLvl, its first reader — a const
 // declared further down the file is in the temporal dead zone for everything above it, which is
 // this project's oldest and most expensive bug class.
-const ITEM_UNCAPPED_SKILLS_P = new Set(KC_ITEM_UNCAPPED_SKILLS);
-function effMagicLvl(charObj, school) {
+export const ITEM_UNCAPPED_SKILLS_P = new Set(KC_ITEM_UNCAPPED_SKILLS);
+export function effMagicLvl(charObj, school) {
   const base = ((charObj && charObj.skills) || {})[school] || 0;
   // only EQUIPPED slot items count (unslotted items are always active).
   const bonus = ((charObj && charObj.items) || []).reduce(
@@ -201,7 +217,7 @@ function effMagicLvl(charObj, school) {
 }
 
 // Action spell limit per school level: 1→1, 2→1, 3→2, 4→3, 5→3
-function actionSpellLimit(level) {
+export function actionSpellLimit(level) {
   return level >= 4 ? 3 : level >= 3 ? 2 : 1;
 }
 
@@ -209,7 +225,7 @@ function actionSpellLimit(level) {
 // every Practice Skill order on it in an earlier phase succeeds (+1 each). Practice trains a skill
 // only up to 5 (6–9 come from experience), so a school already at 5 or more gains nothing; item
 // bonuses are then added as effMagicLvl does. `practising` is the set of schools with such an order.
-function projectedMagicLevels(c, ph) {
+export function projectedMagicLevels(c, ph) {
   const practice = {};
   for (let prevPh = 0; prevPh < ph; prevPh++) {
     const prevAction = document.getElementById(`po-action-${c.id}-${prevPh}`)?.value || '';
@@ -229,7 +245,7 @@ function projectedMagicLevels(c, ph) {
 
 // After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every
 // LATER Cast Spell order's dropdown is rebuilt so its projected level and casting limit stay true.
-function refreshLaterCastSpells(charId, fromPh) {
+export function refreshLaterCastSpells(charId, fromPh) {
   const c = ((currentReport && currentReport.characters) || []).find((x) => String(x.id) === String(charId));
   if (!c) return;
   for (let later = fromPh + 1; later <= 4; later++) {
@@ -267,12 +283,12 @@ function refreshLaterCastSpells(charId, fromPh) {
 }
 
 // Combat spell limit per school level: 1→1, 2+→2
-function combatSpellLimit(level) {
+export function combatSpellLimit(level) {
   return level >= 2 ? 2 : 1;
 }
 
 // Spell hints shown below the order form
-const SPELL_HINTS = {
+export const SPELL_HINTS = {
   Resurrect:
     'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies, and joins your command. Only a hero who never served ANOTHER realm can be raised \u2014 your own fallen, or a wanderer who was never in a rival\u2019s pay; a hero who ever served another crown (even one later released or who deserted) will not answer. Your own fallen KING can also be recalled — their body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your realm. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
   'Part Sea':
@@ -321,7 +337,7 @@ const SPELL_HINTS = {
   Plague:
     'Target: your province or an adjacent one. Each humanoid unit has a (10% + 5%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
 };
-const ALL_SKILLS = KC_SKILLS.slice();
+export const ALL_SKILLS = KC_SKILLS.slice();
 // ── DISPLAY ROUNDING (report text) ────
 // Belt-and-braces partner to the GM engine's n0(): the engine now rounds every battle statistic at
 // source, but this catches anything a future edit forgets. Rounds any decimal number in a report
@@ -331,12 +347,12 @@ const ALL_SKILLS = KC_SKILLS.slice();
 // 2026-09-12: every figure a player is shown is ROUNDED DOWN (toward zero). Mirrors dispFloor in
 // the GM portal: a float a hair under an integer (0.29*100) snaps to that integer rather than
 // losing a point.
-function floorNumP(v) {
+export function floorNumP(v) {
   const n = Number(v) || 0;
   const r = Math.round(n);
   return Math.abs(n - r) < 1e-9 ? r : Math.trunc(n);
 }
-function roundReportNumbers(text) {
+export function roundReportNumbers(text) {
   // The lookarounds matter: without them a dotted sequence such as a build stamp (2026.07.23) or a
   // rules citation (AK 7.6.1) gets partially rewritten, because the engine would happily match the
   // '2026.07' inside it. Only a decimal that is not adjacent to another dot or digit is rounded.
@@ -353,20 +369,20 @@ function roundReportNumbers(text) {
 // a deliberate duplicate — the same arrangement as PRIMAL_ARMY_SPEEDS below. KEEP THE TWO IN SYNC:
 // if a unit's strength is rebalanced in the GM engine it must be changed here too, or players will
 // be shown a number the battle engine does not agree with.
-const UNIT_BASE_STR_P = { ...KC_UNIT_BASE_STR };
+export const UNIT_BASE_STR_P = { ...KC_UNIT_BASE_STR };
 // The unit's TYPE word (2026-10-11): infantry, ranged, cavalry, flyer or naval, from the shared
 // KC_UNIT_TYPE table; a type the table has never heard of is infantry (same answer as the engine's unitTypeOf).
-function unitTypeOfP(armyType) {
+export function unitTypeOfP(armyType) {
   return (typeof KC_UNIT_TYPE !== 'undefined' && KC_UNIT_TYPE[armyType]) || 'infantry';
 }
-const UNIT_Q_MULT_P = { ...KC_UNIT_Q_MULT };
+export const UNIT_Q_MULT_P = { ...KC_UNIT_Q_MULT };
 // A unit's strength before any terrain, Tactical, Druid, fanaticism or magic modifier is applied.
-function unitBaseStrengthP(a) {
+export function unitBaseStrengthP(a) {
   return (UNIT_BASE_STR_P[a && a.type] || 4) * (UNIT_Q_MULT_P[(a && a.quality) || 'Average'] || 2);
 }
 
 // Army display helper — shows unit name if known, falls back to plain type+quality
-function armyLabel(a, opts = {}) {
+export function armyLabel(a, opts = {}) {
   const name = a.unitName ? `${a.unitName}` : '';
   if (opts.short) return name ? `${name}` : `${a.quality} ${a.type}`;
   // Classification first, then type, quality and the unit's base strength (type × quality tier) —
@@ -405,7 +421,7 @@ function armyLabel(a, opts = {}) {
 // an icon representing the *kind* of unit (land / sea / flying / creature / monster) so players can
 // tell them apart at a glance. Priority resolves overlaps (a Wyvern is a flying monster
 // → monster; a Whale Cohort is a sea creature → sea).
-function unitEmoji(type) {
+export function unitEmoji(type) {
   // Icons signal MOVEMENT CLASS first, then creature/monster nature — that is what a player needs
   // at a glance. Sea monsters therefore get their own icon rather than the land-dragon one, and the
   // winged primals are counted as flying because they genuinely cross water without a fleet. These

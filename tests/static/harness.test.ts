@@ -23,6 +23,7 @@ import { CHECK_LEVELS } from '../../tools/check.ts';
 import { ENGINE_PATHS, isEnginePath } from '../../tools/balance/engine-paths.ts';
 import { pageSources } from '../../tools/balance/run.ts';
 import { filesUnder } from '../../tools/build.ts';
+import { pageNames } from '../../tools/pages.ts';
 import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
 import { BASELINE_FILE, compare, measure, readBaseline } from '../../tools/ratchet.ts';
 import { LEVELS } from '../suite.ts';
@@ -109,16 +110,22 @@ describe('the lint rules', () => {
     expect(level(rules['@typescript-eslint/switch-exhaustiveness-check'])).toBe(2);
   });
 
-  // The engine's classic scripts get no-undef (plan P1-08a): a helper lifted out of resolveTurn that still reads a name
-  // from its closure is an error, not a ReferenceError the day it first runs.
-  test.for(['src/engine/run-turn.js', 'src/engine/turn/context.js', 'src/views/turn-report.js'])(
-    '%s gets no-undef',
-    async (file) => {
-      expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
-      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
-      expect(level(rules['no-undef'])).toBe(2);
-    },
-  );
+  // The site's modules get no-undef (plan P1-08a for the engine; P1-09d for all of src/): a file that reads a name it
+  // neither imports nor declares (a helper lifted out of resolveTurn that still reads its closure, a missing import)
+  // is an error, not a ReferenceError the day it first runs. The engine may read no page's or browser's name.
+  const ENGINE_FILES = ['src/engine/run-turn.js', 'src/engine/turn/context.js', 'src/views/turn-report.js'];
+  const PAGE_FILES = ['src/ui/gm/turn-shell.js', 'src/ui/player/map.js', 'src/db/telemetry.js'];
+  test.for([...ENGINE_FILES, ...PAGE_FILES])('%s gets no-undef, as a module', async (file) => {
+    expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
+    const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
+    expect(level(config.rules?.['no-undef'])).toBe(2);
+    const options = (config.languageOptions ?? {}) as { sourceType?: string; globals?: Record<string, unknown> };
+    expect(options.sourceType).toBe('module');
+    const globals = options.globals ?? {};
+    const known = (name: string) => name in globals && globals[name] !== 'off';
+    const pagesOwn = ['window', 'document', 'KC_CONFIG', 'supabase', 'currentGame', 'currentReport'];
+    expect(pagesOwn.filter(known)).toEqual(ENGINE_FILES.includes(file) ? [] : pagesOwn);
+  });
 
   test('a focused or skipped test is an error', async () => {
     const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'tests/static/x.test.ts'))) as Linter.Config)
@@ -430,17 +437,22 @@ describe('CI', () => {
     }
   });
 
-  // The plan's list (P1-02, Decisions; P1-05): the files the GM portal's page and every script it loads are built from
-  // (src/manifest.ts) and the build, the balance code and its baselines, the test helpers the balance code imports, and
-  // the tools it runs on (the locked packages, the Node pin).
+  // The plan's list (P1-02, Decisions; P1-05; P1-09's Decision 17): the files the GM portal's page is built from (its
+  // template, stylesheet and modules: tools/pages.ts), the other pages' templates (src/*.html), what is copied as it is
+  // (public/), the build and its page list, the balance code and its baselines, the test helpers the balance code
+  // imports, and the tools it runs on (the locked packages, the Node pin).
   test('the engine paths are the ones the plan lists, and the runner uses the same list', () => {
     const page = pageSources();
     expect(page).toContain('src/content/kingdoms-call-data.js');
     expect(page).toContain('src/engine/run-turn.js');
     expect(page.filter((f) => !isEnginePath(f))).toEqual([]);
-    // Under src/, the engine paths are exactly the page's sources: no other page's file plays the matrix.
+    // Under src/, the engine paths are exactly the page's sources and the pages' templates: no other page's code plays
+    // the matrix.
     const src = filesUnder(path.join(ROOT, 'src')).map((f) => 'src/' + f);
-    expect(src.filter(isEnginePath).sort()).toEqual(page.filter((f) => f.startsWith('src/')).sort());
+    const templates = pageNames().map((p) => 'src/' + p);
+    expect(src.filter(isEnginePath).sort()).toEqual(
+      [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates])].sort(),
+    );
     const dir = path.join(ROOT, 'tools', 'balance');
     const helpers = fs
       .readdirSync(dir)
@@ -448,10 +460,13 @@ describe('CI', () => {
         ...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '\.\.\/\.\.\/(tests\/lib\/[^']+)'/g),
       ])
       .map((m) => m[1] ?? '');
-    expect(ENGINE_PATHS.filter((g) => !g.startsWith('src/')).sort()).toEqual(
+    expect(ENGINE_PATHS.filter((g) => !g.startsWith('src/') || g === 'src/*.html').sort()).toEqual(
       [
         ...new Set([
+          'src/*.html',
+          'public/**',
           'tools/build.ts',
+          'tools/pages.ts',
           'tools/balance/**',
           'tests/balance/**',
           ...helpers,
@@ -482,15 +497,18 @@ describe('CI', () => {
     expect(deploy).toContain("needs.ci.result == 'success'");
   });
 
-  // P1-05: what is published is built from this commit's src/, just before it is published.
-  test('deploy and staging build site/ from src/ before they publish it', () => {
+  // P1-05: what is published is built from this commit's src/, just before it is published; P1-09d: by Vite, installed
+  // from the lock file first.
+  test('deploy and staging install the build, then build site/ from src/ before they publish it', () => {
     const deploy = read('.github/workflows/deploy.yml');
     expect(deploy).toMatch(
-      /^ {6}- run: npm run build\n\n {6}- uses: actions\/upload-pages-artifact@v\d+\n {8}with:\n {10}path: site\/$/m,
+      /^ {6}- run: npm ci\n\n {6}- run: npm run build\n\n {6}- uses: actions\/upload-pages-artifact@v\d+\n {8}with:\n {10}path: site\/$/m,
     );
     const staging = read('.github/workflows/staging.yml');
     const build = staging.indexOf('run: npm run build');
     expect(build).toBeGreaterThan(0);
+    expect(staging.indexOf('run: npm ci')).toBeGreaterThan(0);
+    expect(staging.indexOf('run: npm ci')).toBeLessThan(build);
     expect(build).toBeLessThan(staging.indexOf('> site/kc-config.js'));
     expect(staging.indexOf('> site/kc-config.js')).toBeLessThan(staging.indexOf('cp -R site/. staging-repo/'));
   });
@@ -563,6 +581,9 @@ describe('dangerous paths', () => {
       'tools/check.ts',
       'tools/ratchet.ts',
       'tools/build.ts',
+      'tools/pages.ts',
+      'tools/dev.ts',
+      'tests/lib/engine.ts',
       '.github/workflows/ci.yml',
       '.github/workflows/balance-report.yml',
       '.github/workflows/nightly.yml',
