@@ -2,11 +2,15 @@
 // Creature's and Monster's ability names appear in its player-portal blurb (UNIT_ABILITIES) and in its
 // comprehensive-rulebook roster row; the rulebook's battle-lines text says the flying beasts fight from the air
 // like the winged riders; and no page still promises an ability "with the beast abilities" to come.
+// The player portal and the data file are read from src/ by their syntax tree (tests/lib/source.ts): the blurbs as
+// entries of the object literal, the words as the strings each holds. (Until plan P1-09a they were matched in the built
+// files' text.)
 const fs=require('fs');
-const {sitePath}=require('./lib/boot');
+const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageText,stringsOf}=require('./lib/source.ts');
+const PP='kingdoms-call-player-portal.html';
 const {LIVE}=require('./lib/primal-decided');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8'), data=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8');
+const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=pageText(PP), data=stringsOf('content/kingdoms-call-data.js').join('\n');
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
 const norm=s=>s.replace(/[’‘]/g,"'");
 const ABILITIES={
@@ -20,9 +24,8 @@ const ABILITIES={
 };
 ok(LIVE.every(u=>u in ABILITIES),`every live beast has its abilities listed here (missing: ${LIVE.filter(u=>!(u in ABILITIES)).join(', ')||'none'})`);
 // the player portal's blurbs
-const ppBlock=(/const UNIT_ABILITIES=\{([\s\S]*?)\n\};/.exec(pp)||['',''])[1];
-ok(ppBlock.length>0,'the player portal declares UNIT_ABILITIES');
-const entries=[...ppBlock.matchAll(/\n\s*'((?:[^'\\]|\\.)*)':'((?:[^'\\]|\\.)*)'/g)].map(x=>[x[1],x[2]]);
+const entries=entriesOf(fileDeclaring(PP,'UNIT_ABILITIES'),'UNIT_ABILITIES').map(e=>[e.key,e.value]);
+ok(entries.length>0,'the player portal declares UNIT_ABILITIES');
 const blurbs=Object.fromEntries(entries);
 for(const [u,names] of Object.entries(ABILITIES)){
   ok(u in blurbs,`the player portal has a blurb for ${u}`); if(!(u in blurbs)) continue;
@@ -45,7 +48,7 @@ for(const [page,src] of [['rulebook',rules],['player portal',pp],['data file',da
 // Purity breaks a Spear Hedge or a Boulder Wall (Toby, 2026-10-12): the unicorns' blurb, their rulebook row and their
 // data-file description say so.
 { const brk=/breaks a Spear Hedge or a Boulder Wall/;
-  const ppU=(/\n\s*'Unicorn Herd':'((?:[^'\\]|\\.)*)'/.exec(pp)||['',''])[1], rowU=(/<tr><td><strong>Unicorn Herd<\/strong>[\s\S]*?<\/tr>/.exec(rules)||[''])[0];
+  const ppU=blurbs['Unicorn Herd']||'', rowU=(/<tr><td><strong>Unicorn Herd<\/strong>[\s\S]*?<\/tr>/.exec(rules)||[''])[0];
   ok(brk.test(ppU),"the player portal's Unicorn Herd blurb says Purity breaks a Spear Hedge or a Boulder Wall");
   ok(brk.test(rowU),"the rulebook's Unicorn Herd row says so");
   ok(brk.test(data),"the data file's Unicorn Herd description says so"); }

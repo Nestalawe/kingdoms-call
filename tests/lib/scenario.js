@@ -1,6 +1,6 @@
 // tests/lib/scenario.js: run one real turn on a small staged world, for scenario (level 2) tests.
 //
-//   const sc=await bootScenario({inject:[[anchor,replacement],…]});
+//   const sc=await bootScenario();
 //   const r=await sc.turn({realms:2, prepare(S,W){…}, orders:{[charId]:[o0,o1,o2,o3,o4]}});
 //   r.S      the world as staged (before the turn)      r.S2   the world as saved after the turn
 //   r.log    the GM's full log for the turn ({type,text,actor,targets,charId,phase,…} entries)
@@ -9,19 +9,16 @@
 //   r.events   the turn's statistics rows (turn_events, one per realm), with bootScenario({telemetry:true})
 //
 // Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living
-// character not given orders Rests all turn. `inject` adds lines at exact anchors in the GM portal
-// (see tests/README.md, code-anchor hooks): each anchor must appear exactly once. `seed` fixes the page's own
-// Math.random (bootJsdom's opts.seed); by default it comes from KC_SEED and how many pages this process has booted.
-// `now` pins the page's clock (bootJsdom's opts.now). `telemetry` has the page write its statistics rows, as it does
-// once it has found the turn_events table: the balance scenarios (tests/balance/scenarios/) read them.
+// character not given orders Rests all turn. `seed` fixes the page's own Math.random (bootJsdom's opts.seed); by
+// default it comes from KC_SEED and how many pages this process has booted. `now` pins the page's clock (bootJsdom's
+// opts.now). `telemetry` has the page write its statistics rows, as it does once it has found the turn_events table
+// (its own probe, run here as sign-in runs it, finds it on the stand-in database): the balance scenarios
+// (tests/balance/scenarios/) read them. (The code-anchor hooks, `inject`, are gone since plan P1-09a: a test that must
+// reach inside the turn plays it in the engine's bare vm, tests/lib/scenario-in-the-vm.ts.)
 const {readPage,bootJsdom}=require('./boot'); const {cannedStub}=require('./stub-db');
 
 async function bootScenario(opts={}){
-  let html=readPage(opts.page||'kingdoms-call-gm-portal.html');
-  for(const [a,b] of (opts.inject||[])){
-    if(html.split(a).length!==2) throw new Error('anchor not unique or missing: '+a.slice(0,70));
-    html=html.replace(a,()=>b);
-  }
+  const html=readPage(opts.page||'kingdoms-call-gm-portal.html');
   let ROWS={}; const WRITES=[]; const errs=[];
   const d=bootJsdom(html,{seed:opts.seed,now:opts.now,supabase:{createClient:()=>cannedStub({rows:()=>ROWS,writes:WRITES})},
     setup(w){
@@ -30,7 +27,7 @@ async function bootScenario(opts={}){
       w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,500)); const W=d.window;
   if(typeof W.runTurn!=='function') throw new Error('GM portal did not boot: '+errs.slice(0,2).join(' | '));
-  if(opts.telemetry) W.eval('_kcHasTel=true');
+  if(opts.telemetry&&!(await W.probeTelemetry())) throw new Error('telemetry: the page did not find the turn_events table');
   const rest=()=>[0,1,2,3,4].map(()=>({action:'rest',target:'',extra:'',desc:''}));
 
   // A fresh world: `realms` realms on a cols×rows map; safe start off; then prepare(S,W) edits it.

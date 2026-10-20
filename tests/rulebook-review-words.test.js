@@ -5,20 +5,25 @@
 // items to 9, ferrying, the beaten skeletons' step, Mithril, the Druid table, the four attack rules,
 // the battle's own heading, Rest, the home lair, grave decay, the Druid ward, Hand of Death's cap, the
 // volley, turn 2's recruiting and two links. Level 0 (static): reads site/ text and the engine's
-// constants; nothing runs. (The constants sit in the GM portal's source, and the claims are words.)
+// constants; nothing runs. (The constants sit in the GM portal's source, and the claims are words.) Each constant is
+// read from src/ by its syntax tree (tests/lib/source.ts): the value it is declared with, at top level or inside a
+// function; until plan P1-09a it was matched in the built GM portal's text.
 const fs=require('fs'), path=require('path');
+const {compactPage,initializersOf,pageScripts}=require('./lib/source.ts');
+const GM='kingdoms-call-gm-portal.html';
 const SITE=process.env.KC_SITE||path.join(__dirname,'..','site');
 const stripTags=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } }; // until stable (as the other words tests do)
 const read=f=>fs.readFileSync(path.join(SITE,f),'utf8');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const G=read('kingdoms-call-gm-portal.html'), RH=read('kingdoms-call-rules.html'), IH=read('kingdoms-call-rules-intro.html');
+const RH=read('kingdoms-call-rules.html'), IH=read('kingdoms-call-rules-intro.html');
 const R=stripTags(RH).replace(/\s+/g,' '), I=stripTags(IH).replace(/\s+/g,' ');
-const num=re=>{ const m=re.exec(G); return m?+m[1]:NaN; };
+// The number the GM portal's code declares `name` with (declared once, a plain number), else NaN.
+const num=name=>{ const vs=pageScripts(GM).flatMap(f=>initializersOf(f,name)); return vs.length===1&&/^\(?[\d.]+\)?$/.test(vs[0])?+vs[0].replace(/[()]/g,''):NaN; };
 ok(R.length>100000&&I.length>20000,'both rulebooks were read');
 
 // Cast chance: 30% + 10% a level, at most 95%; training counts to 5 (80%), and only an item's levels carry it on.
 // (Toby, 2026-10-15: the books follow the game. guard-cast-chance holds the figures.)
-const base=num(/const SPELL_CAST_BASE=(\d+)/);
+const base=num('SPELL_CAST_BASE');
 ok(base===30,`the engine's cast base is 30% (got ${base})`);
 ok(R.includes('80% at 5. Trained levels past 5 do not raise it')&&!R.includes('80% at 5, 90% at 7')&&!R.includes('95% from 7'),'the rulebook stops trained cast chance at 80% (level 5), not 90% or 95% at 7');
 
@@ -27,17 +32,17 @@ ok(!R.includes('each time a skill has already risen in a turn'),'the rulebook dr
 ok(R.includes('each Practice rise of a skill earlier in the turn makes its next chance from experience ×0.8'),'the rulebook ties the ×0.8 to Practice rises');
 
 // Slipping through a camp: 60% − 8% a unit.
-const sB=num(/ENC_BREAK_RANKS_BASE=(\d+)/), sU=num(/ENC_BREAK_RANKS_PER_UNIT=(\d+)/), five=sB-5*sU;
+const sB=num('ENC_BREAK_RANKS_BASE'), sU=num('ENC_BREAK_RANKS_PER_UNIT'), five=sB-5*sU;
 ok(five===20,`behind five units the engine gives ${five}%`);
 ok(R.includes('behind five, one time in five')&&!R.includes('behind five, one time in four'),'the rulebook says "one time in five"');
 
 // Carry-on casualties add 35% a round.
-ok(num(/CARRYON_DEATH_STEP=(0\.\d+)/)===0.35,'the engine\'s carry-on step is 0.35');
+ok(num('CARRYON_DEATH_STEP')===0.35,'the engine\'s carry-on step is 0.35');
 ok(!R.includes('×1.35 for every carry-on round'),'the losing side\'s step no longer says ×1.35 a round');
 ok(R.includes('+35% for every carry-on round'),'the losing side\'s step says +35% a round');
 
 // Standings from turn 5, claims from turn 10: five turns between.
-const pub=num(/const TITLES_PUBLIC_FROM_TURN=(\d+)/), claim=num(/const RECKONING_MIN_TURN=(\d+)/);
+const pub=num('TITLES_PUBLIC_FROM_TURN'), claim=num('RECKONING_MIN_TURN');
 ok(claim-pub===5,`standings are public ${claim-pub} turns before a claim`);
 ok(R.includes('five full turns before the throne itself can be claimed')&&!R.includes('four full turns before'),'the rulebook says five full turns');
 
@@ -88,14 +93,14 @@ ok(R.includes('Four rules that apply to every attack')&&!R.includes('Three rules
 ok(/<h3[^>]*>The battle, step by step<\/h3>/.test(RH),'the battle sequence has its own heading');
 
 // Rest heals 30% of maximum HP.
-const rest=num(/const REST_HEAL_PCT=(0\.\d+)/);
+const rest=num('REST_HEAL_PCT');
 ok(R.includes(`Rest — recover ${Math.round(rest*100)}% of maximum hit points`),`the orders list says Rest heals ${Math.round(rest*100)}%`);
 
 // Every home holds a Weak lair (R-018).
 ok(R.includes('Every home province holds a Weak lair'),'the world section promises the home lair');
 
 // Graves crumble 10% a turn.
-ok(/\?0\.05:0\.10;/.test(G),'the engine\'s grave decay is 10% (5% under an Undead realm)');
+ok(/\?0\.05:0\.1;/.test(compactPage(GM)),'the engine\'s grave decay is 10% (5% under an Undead realm)');
 ok(R.includes('grave has a 10% chance a turn to crumble'),'the rulebook gives the 10% grave decay');
 
 // The Druid ward misses elementals and aberrations.

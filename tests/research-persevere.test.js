@@ -5,7 +5,9 @@
 // tests/unit/research-and-practice-orders-called-directly.test.ts.
 const {readPage}=require('./lib/boot');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const rules=readPage('kingdoms-call-rules.html'), pp=readPage('kingdoms-call-player-portal.html');
+// the player portal's words, read from src/ by their syntax tree (tests/lib/source.ts; until plan P1-09a, the built
+// page's text)
+const rules=readPage('kingdoms-call-rules.html'), pp=require('./lib/source.ts').pageText('kingdoms-call-player-portal.html');
 ok(/Research[^<]*<\/strong>[\s\S]{0,600}Perseverance[\s\S]{0,200}×1\.2/.test(rules)||/Perseverance applies to Research too/.test(rules),'the rulebook gives Research the same Perseverance');
 ok(/Each failed Research this turn makes the hero's next one ×1\.2 likelier/.test(pp),'the order form\'s Research note says so');
 console.log(`\n${pass} pass, ${fail} fail`);

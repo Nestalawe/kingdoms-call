@@ -256,8 +256,9 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   with no dice or clock in it (P1-18b).
 - **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08, done in P1-08n). It is the save's
   parse and upgrades, the turn's context and its start values, the stages' calls, the phase loop calling its stages and
-  the reports: no rule of the game is written in it, and tests reach `resolveTurn`'s own lines by injecting code at exact source lines (see
-  [tests/README.md](../tests/README.md#code-anchor-hooks)). A lifted helper that reads the turn's state takes **the
+  the reports: no rule of the game is written in it. No test reaches inside it by a source line any more (P1-09a): a
+  test stands a top-level function in, in the engine's bare vm, or reads `src/` by its syntax tree
+  ([traps.md](traps.md#string-anchor-harness-hooks)). A lifted helper that reads the turn's state takes **the
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
   the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,

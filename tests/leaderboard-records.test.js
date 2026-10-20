@@ -3,12 +3,10 @@
 // stub engine tables, and hammers them with malformed telemetry. The builder runs inside the turn
 // path (writeTurnTelemetry → writeGameRecord), so it must never throw and must always produce a
 // JSON-serialisable row.
-const fs=require('fs'), vm=require('vm'); const {sitePath}=require('./lib/boot');
-const html=fs.readFileSync(process.argv[2]||sitePath('kingdoms-call-gm-portal.html'),'utf8');
-const from=html.indexOf('const _LB_SEA=new Set(');
-const to=html.indexOf('// Fetch this game\'s turn_events');
-if(from<0||to<0||to<from){ console.log('FAIL: could not slice the leaderboard block'); process.exit(1); }
-const src=html.slice(from,to);
+const fs=require('fs'), vm=require('vm'); const {sourceFrom}=require('./lib/source.ts');
+// The block is cut out of src/ui/gm/hall-of-fame.js by its syntax tree (tests/lib/source.ts): its declarations from
+// _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
+const src=sourceFrom('ui/gm/hall-of-fame.js','_LB_SEA','buildGameRecords');
 
 const ctx={
   console,

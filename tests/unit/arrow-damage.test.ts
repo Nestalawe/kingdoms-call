@@ -7,6 +7,7 @@
 import { expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
+import { pageText } from '../lib/source.ts';
 
 const { call, base, MON, pinned } = personalCombatEngine();
 const range = (c: Combatant) => [
@@ -45,7 +46,7 @@ test('the rulebook says 1–3 in both places', () => {
 });
 
 test('the Archery hover text says 1–3', () => {
-  const pp = readPage('kingdoms-call-player-portal.html');
+  const pp = pageText('kingdoms-call-player-portal.html'); // its words, from src/ (tests/lib/source.ts, plan P1-09a)
   expect(pp).toMatch(/for 1–3 damage plus half your Archery/);
   expect(pp).not.toMatch(/2–5 damage plus half your Archery/);
 });

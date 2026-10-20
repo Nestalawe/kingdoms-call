@@ -6,7 +6,8 @@
 const fs=require('fs'), vm=require('vm'); const {sitePath}=require('./lib/boot');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const read=f=>fs.readFileSync(sitePath(f),'utf8');
-const ctx={}; vm.createContext(ctx); vm.runInContext(read('kingdoms-call-data.js')+';this.M=MASTERY_UNLOCKS;',ctx);
+// the data file's perks, in the engine's bare vm (tests/lib/engine.ts; until plan P1-09a the data file was run from site/)
+const ctx={M:vm.runInContext('MASTERY_UNLOCKS',require('./lib/engine.ts').loadEngine({seed:1}))};
 // a perk's name: "New order — Forced March: …", "New spell — Sanctuary: …" or "Shimmer — enemy players …"
 const names=new Set();
 for(const v of Object.values(ctx.M||{})) for(const t of Object.values(v)){

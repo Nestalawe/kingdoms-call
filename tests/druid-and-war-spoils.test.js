@@ -1,30 +1,17 @@
 // Focused harness for the 2026-09-27 changes: unit-class / Druid tables and the Orc war-spoils
-// halving. Slices the real source out of the GM portal so the test runs the shipped code.
-const fs=require('fs'),vm=require('vm'); const {sitePath}=require('./lib/boot');
-const src=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
-function slice(startMarker,endMarker,label){
-  const a=src.indexOf(startMarker);
-  if(a<0) throw new Error('missing start: '+label);
-  const b=src.indexOf(endMarker,a);
-  if(b<0) throw new Error('missing end: '+label);
-  return src.slice(a,b+endMarker.length);
-}
+// halving. Cuts the real tables and functions out of src/ by their syntax tree (tests/lib/source.ts), so the test runs
+// the shipped code. (Until plan P1-09a they were sliced out of the built GM portal between exact strings.)
+const vm=require('vm'); const {sourceOf,scriptOf}=require('./lib/source.ts');
 const parts=[
-  slice("const FLYING_TYPES=",");",'FLYING_TYPES'),
-  slice("const CREATURE_ARMIES=",");",'CREATURE_ARMIES'),
-  slice("const MONSTER_ARMIES=",");",'MONSTER_ARMIES'),
-  slice("const DRUID_ARMY_LEVELS_P=","types)]));",'DRUID_ARMY_LEVELS_P'),
-  slice("function getDruidLevel(armyType){","\n}",'getDruidLevel'),
-  slice("const DISC_CLS_SETS={","\n};",'DISC_CLS_SETS'),
-  slice("function discUnitIs(cls, army, typeOnly){","\n}",'discUnitIs'),
-  slice("const ARMY_RACE_OF_TYPE={","'Orc Garrison':'Orcish'};",'ARMY_RACE_OF_TYPE'),
-  slice("function discUnitMatch(e, army, typeOnly){","\n}",'discUnitMatch'),
+  sourceOf('engine/units/movement.js',['FLYING_TYPES','CREATURE_ARMIES','MONSTER_ARMIES']),
+  sourceOf('engine/world/tables.js',['DRUID_ARMY_LEVELS_P','getDruidLevel']),
+  sourceOf('engine/discoveries.js',['DISC_CLS_SETS','discUnitIs','ARMY_RACE_OF_TYPE','discUnitMatch']),
 ];
 const ctx={console};
 vm.createContext(ctx);
 // 2026-09-27 (one-source pass): the engine's unit tables are now BUILT from the shared tables in
 // kingdoms-call-data.js, so the sandbox loads that file first.
-vm.runInContext(fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8'),ctx);
+vm.runInContext(scriptOf('content/kingdoms-call-data.js'),ctx);
 vm.runInContext(parts.join('\n'),ctx);
 
 let fail=0;

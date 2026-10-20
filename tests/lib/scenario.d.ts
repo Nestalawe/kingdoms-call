@@ -57,14 +57,9 @@ export interface Scenario {
   turn<S = unknown, X = unknown>(opts: TurnOptions<S, X>): Promise<Turn<S, X>>;
 }
 
-/** opts.seed fixes the page's own Math.random; opts.now pins its clock; opts.inject adds lines at code anchors;
- *  opts.telemetry has the page write its statistics rows (Turn.events). */
-export function bootScenario(opts?: {
-  seed?: number;
-  now?: number | string;
-  inject?: [anchor: string, replacement: string][];
-  telemetry?: boolean;
-}): Promise<Scenario>;
+/** opts.seed fixes the page's own Math.random; opts.now pins its clock; opts.telemetry has the page write its
+ *  statistics rows (Turn.events). */
+export function bootScenario(opts?: { seed?: number; now?: number | string; telemetry?: boolean }): Promise<Scenario>;
 
 export function order(action: string, target?: string | number, extra?: string | number): Order;
 /** Five orders: the given ones first, then Rest. */

@@ -9,7 +9,8 @@
 //     map popup calls it in all three of its branches (own, seen, distant) and the Your Provinces entry calls it.
 // Level 1 (unit): buildTurnReport and terrorNoteP are module-level functions of the booted portals, fed a staged
 // world; the popup is built inside renderPlayerMap's hover handler, so that it calls the note is read from the source
-// (level 0) rather than by driving the map's mouse events.
+// (level 0) rather than by driving the map's mouse events: by its syntax tree, in one layout whatever the file's
+// (tests/lib/source.ts; until plan P1-09a the built page's text was matched).
 const fs=require('fs');
 const {bootScenario}=require('./lib/scenario'); const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -56,7 +57,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok(/your own/i.test(t),'…and says when it is the realm\'s own');
     ok(note({})===''&&note({terror:null})==='','no Terror, no note');
   }
-  const pp=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8');
+  const pp=require('./lib/source.ts').compactPage('kingdoms-call-player-portal.html');
   const tip=(/const showTip=ev=>\{[\s\S]*?g\.addEventListener\('mousemove',showTip\)/.exec(pp)||[''])[0];
   const branches=(tip.match(/terrorNoteP\(pd\)/g)||[]).length;
   ok(tip.length>0&&branches===3,`the map popup writes the note in all three of its branches (found ${branches})`);

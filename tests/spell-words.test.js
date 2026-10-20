@@ -3,15 +3,20 @@
 // (40% of max HP on 10% a level, at most 60%), Telekinetic Storm (12% + 3% a level), Invisibility
 // (−10% −4% a level), Psychic Blast (no free attacks; 1 round + 1 per two levels), Spiritwrack (1 round
 // + 1 per two levels, not three phases) and Control Undead (a round per level counted to 5). The
-// rulebook said field experience stops at level 5; it carries a skill to 9. Level 0: the words.
-const fs=require('fs'), path=require('path');
+// rulebook said field experience stops at level 5; it carries a skill to 9. Level 0: the words. The player portal's
+// spell hints are read from src/ by their syntax tree (tests/lib/source.ts), the data file's descriptions in the
+// engine's bare vm (tests/lib/engine.ts); until plan P1-09a both were matched in site/ text.
+const fs=require('fs'), path=require('path'), vm=require('vm');
+const {loadEngine}=require('./lib/engine.ts'); const {entriesOf,fileDeclaring}=require('./lib/source.ts');
 const SITE=process.env.KC_SITE||path.join(__dirname,'..','site');
 const stripTags=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } }; // until stable (as the other words tests do)
 const read=f=>fs.readFileSync(path.join(SITE,f),'utf8');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const P=read('kingdoms-call-player-portal.html'), D=read('kingdoms-call-data.js'), R=stripTags(read('kingdoms-call-rules.html'));
-const pp=n=>(P.match(new RegExp(`\\n  '${n}':'([^\\n]*)',?\\n`))||[])[1]||'';
-const dd=n=>{ const i=D.indexOf(`\n  '${n}':`); if(i<0) return ''; return (D.slice(i,i+1200).match(/desc:'((?:[^'\\]|\\.)*)'/)||[])[1]||''; };
+const R=stripTags(read('kingdoms-call-rules.html'));
+const HINTS=entriesOf(fileDeclaring('kingdoms-call-player-portal.html','SPELL_HINTS'),'SPELL_HINTS');
+const SPELLS=vm.runInContext('SPELL_DEFS_P',loadEngine({seed:1}));
+const pp=n=>(HINTS.find(e=>e.key===n)||{value:''}).value;
+const dd=n=>(SPELLS[n]&&SPELLS[n].desc)||'';
 const both=(n,good,bad,what)=>{ [['player portal',pp(n)],['data file',dd(n)]].forEach(([w,t])=>{
   ok(t.length>20,`${w}: ${n}'s text was read`);
   good.forEach(g=>ok(g.test(t),`${w}: ${n} says ${what} (${g})`)); bad.forEach(b=>ok(!b.test(t),`${w}: ${n} no longer says ${b}`)); }); };

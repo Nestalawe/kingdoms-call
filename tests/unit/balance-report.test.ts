@@ -4,6 +4,7 @@
 // demand.
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import { formatBaseline, parseBaseline, type KeptGame } from '../../tools/balance/baseline.ts';
 import { TURN_COLUMNS, type TurnColumn } from '../../tools/balance/hash.ts';
@@ -23,6 +24,7 @@ import {
   RESHAPE_SHARE,
 } from '../../tools/balance/report.ts';
 import { PER_GAME, type Stats } from '../../tools/balance/stats.ts';
+import { sourceOf } from '../lib/source.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 
@@ -243,9 +245,12 @@ describe('where two runs first differ', () => {
   });
 
   test("the season names are the data file's", () => {
-    const data = fs.readFileSync(path.join(ROOT, 'site', 'kingdoms-call-data.js'), 'utf8');
-    const names = /const KC_PHASE_NAMES=(\[[^\]]*\]);/.exec(data)?.[1] ?? '';
-    expect(JSON.parse(names.replace(/'/g, '"'))).toEqual(PHASES);
+    // the value the data file declares, read from src/ by its syntax tree (tests/lib/source.ts; until plan P1-09a it was
+    // matched in site/'s copy of the file)
+    const names: unknown = vm.runInNewContext(
+      sourceOf('content/kingdoms-call-data.js', ['KC_PHASE_NAMES']) + ';KC_PHASE_NAMES',
+    );
+    expect(JSON.parse(JSON.stringify(names))).toEqual(PHASES);
   });
 });
 

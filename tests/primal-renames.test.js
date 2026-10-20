@@ -2,33 +2,21 @@
 // Thunderbirds (a different flying Creature: the elves already ride eagles), Kraken Tentacles → Eldritch Kraken,
 // Leviathan Pods → Dread Hydras (a land Monster of the same power). Level 1 (unit): the data file's tables carry
 // the new names and not the old; the discoveries that named them are reworded and re-keyed; the GM portal's
-// own tables and world-generation pools follow (sliced from the source); and the start-of-turn migration
+// own tables and world-generation pools follow (read from src/ by their syntax tree); and the start-of-turn migration
 // (`migrateLegacyUnitNames`, booted GM portal) turns a running game's companies, recruit pools, defenders,
 // graves and province races over — Leviathan companies and waters become Eldritch Kraken, a land beast being
 // unable to swim.
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {compactPage,pageInitializer,scriptOf}=require('./lib/source.ts');
 const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,MIGRATED,RACE_RENAMED}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const OLD=Object.keys(RENAMED), NEW=[...new Set(Object.values(RENAMED))];
-function slice(src,name,from=0){
-  const start=src.indexOf(`const ${name}=`,from); if(start<0) return null;
-  let i=src.indexOf('{',start), depth=0, q=null;
-  for(;i<src.length;i++){
-    const ch=src[i];
-    if(q){ if(ch==='\\') i++; else if(ch===q) q=null; continue; }
-    if(ch==="'"||ch==='"') q=ch;
-    else if(ch==='{') depth++;
-    else if(ch==='}'&&--depth===0) return {text:src.slice(start,i+1)+';',end:i};
-  }
-  return null;
-}
 
 (async()=>{
   // ── The data file ──
   const ctx=vm.createContext({});
-  const dataSrc=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8');
-  vm.runInContext(dataSrc,ctx);
+  vm.runInContext(scriptOf('content/kingdoms-call-data.js'),ctx);
   const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P,N:PRIMAL_UNIT_NAMES,DISC:SAGE_DISCOVERIES_P})',ctx);
   const druidOf=u=>{ for(const [l,list] of Object.entries(D.L)) if(list.includes(u)) return +l; return 0; };
   for(const u of NEW){
@@ -57,8 +45,10 @@ function slice(src,name,from=0){
   for(const d of D.DISC) for(const u of OLD) ok(!types(d).includes(u)&&!(d.desc||'').includes(u),`discovery ${d.id} no longer names ${u}`);
 
   // ── The GM portal's tables and world-generation pools ──
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
-  const ev=(name,from)=>{ const s=slice(gm,name,from); if(!s) return null; try{ return {v:vm.runInContext(s.text+`\n;${name}`,ctx),end:s.end}; }catch(e){ return null; } };
+  // each table and pool is the value the GM portal's code first declares it with, and its code is read in one layout,
+  // by its syntax tree (tests/lib/source.ts; until plan P1-09a both were cut out of the built page's text)
+  const gm=compactPage('kingdoms-call-gm-portal.html');
+  const ev=name=>{ const s=pageInitializer('kingdoms-call-gm-portal.html',name); if(!s) return null; try{ return {v:vm.runInContext(s,ctx)}; }catch(e){ return null; } };
   const US=ev('UNIT_SHORT'); ok(!!US&&NEW.every(u=>typeof US.v[u]==='string'&&/^[A-Za-z]{3,5}$/.test(US.v[u]))&&OLD.every(u=>!(u in US.v)),'UNIT_SHORT has a grid code for each new name and none for the old');
   const TM=ev('TERRAIN_MODS'); ok(!!TM,'TERRAIN_MODS evaluates');
   if(TM){ for(const u of NEW){ const d=ROSTER[u]; for(const t of P.LAND_TERRAINS){ const got=((TM.v[t]||{})[u])??1, want=(P.isLand(d)||d.type==='flyer')?((d.terr[t])??1):1; ok(Math.abs(got-want)<1e-9,`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`); } }

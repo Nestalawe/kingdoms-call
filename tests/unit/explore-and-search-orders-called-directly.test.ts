@@ -7,7 +7,6 @@
 // Wild Hunt unpaid or on foreign ground, the Blood Offering's graves, and the rumours of a lair with no weakness or with
 // its magic stolen. Level 1: one function, called with what processOrder hands it. A search's fight is the guardian's
 // own (resolveEncounter); where only the outcome of the fight matters, the test stands one in (`fightEndsIn`).
-import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {
@@ -30,6 +29,9 @@ import {
   type Province,
   withDice,
 } from '../lib/middle-of-a-bot-world.ts';
+import { compactDeclaration } from '../lib/source.ts';
+
+const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -450,7 +452,8 @@ describe('Chart the Unknown, called directly', () => {
 });
 
 test('every order of the family is a function of its own, and processOrder only calls it', () => {
-  const src = vm.runInContext('processOrder.toString()', engine) as string; // top-level since P1-08j9
+  // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
+  const src = compactDeclaration(DISPATCH, 'processOrder');
   for (const [key, name] of [
     ['explore', 'resolveExploreOrder'],
     ['rite', 'resolvePerformRiteOrder'],
@@ -460,6 +463,6 @@ test('every order of the family is a function of its own, and processOrder only 
     ['discover_ruin', 'resolveDiscoverLostRuinOrder'],
   ] as const) {
     expect(typeof fn(name)).toBe('function');
-    expect(src).toMatch(new RegExp(`case '${key}': ${name}\\(turnContext, c[^)]*\\); break;`));
+    expect(src).toMatch(new RegExp(`case '${key}':${name}\\(turnContext,c[^)]*\\);break;`));
   }
 });

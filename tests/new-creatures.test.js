@@ -16,19 +16,6 @@ const {sitePath}=require('./lib/boot');
 const {ROSTER}=require('./lib/primal-decided');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 
-// A `const NAME={…};` of the GM portal as source text (as tests/primal-roster does).
-function slice(src,name){
-  const start=src.indexOf(`const ${name}=`); if(start<0) return null;
-  let i=src.indexOf('{',start), depth=0, q=null;
-  for(;i<src.length;i++){
-    const ch=src[i];
-    if(q){ if(ch==='\\') i++; else if(ch===q) q=null; continue; }
-    if(ch==="'"||ch==='"') q=ch;
-    else if(ch==='{') depth++;
-    else if(ch==='}'&&--depth===0) return src.slice(start,i+1)+';';
-  }
-  return null;
-}
 const NEW_LAND={'Great Bears':['forest','mountain'],'Unicorn Herd':['plain','forest'],'Mammoth Host':['plain','desert']};
 const RICH=new Set(['Sea Giants','Eldritch Kraken','Great Turtles']);
 
@@ -39,8 +26,10 @@ const RICH=new Set(['Sea Giants','Eldritch Kraken','Great Turtles']);
   const nbrs=(S,p)=>W.getNeighborsP(p,S.world.cols,S.world.rows,S.world.provinces).filter(Boolean);
 
   // ── The pools, as written ──
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
-  const pool=name=>{ const s=slice(gm,name); if(!s) return null; try{ return vm.runInNewContext(s+'\n;'+name,{}); }catch(e){ return null; } };
+  // each pool is the value it is declared with in the GM portal's code, read by its syntax tree (tests/lib/source.ts;
+  // until plan P1-09a it was cut out of the built page's text)
+  const {initializersOf,pageScripts}=require('./lib/source.ts');
+  const pool=name=>{ const vs=pageScripts('kingdoms-call-gm-portal.html').flatMap(f=>initializersOf(f,name)); if(vs.length!==1) return null; try{ return vm.runInNewContext(vs[0],{}); }catch(e){ return null; } };
   const POOL=pool('CREATURE_BY_TERRAIN'), CBT=pool('CBT');
   ok(!!POOL&&!!CBT,'the GM portal declares CREATURE_BY_TERRAIN and its alignment-pass copy CBT');
   if(POOL&&CBT){

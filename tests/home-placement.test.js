@@ -1,12 +1,10 @@
-const fs=require('fs'); const {sitePath}=require('./lib/boot');
-const src=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
-function grab(startMark,endMark){
-  const a=src.indexOf(startMark); if(a<0) throw new Error('missing '+startMark);
-  const b=src.indexOf(endMark,a); if(b<0) throw new Error('missing '+endMark);
-  return src.slice(a,b+endMark.length);
-}
-const helpers=grab('  const cellIdRC=(r,c)=>r*cols+c;','  const cellDistRC=(a,b)=>{let dc=Math.abs(a.c-b.c);dc=Math.min(dc,cols-dc);const dr=Math.abs(a.r-b.r);return Math.max(dc,dr,(dc+dr)>>1);};');
-const place=grab('  const eligibleCells=[];','  let homeCells=_pick[0], homeMin=_pick[1][0];');
+// Home placement: the stretch of generateNewGame (src/engine/world/generate.js) that picks each king's home cell, cut
+// out by its syntax tree (tests/lib/source.ts: the statements from the one declaring cellIdRC through the one declaring
+// cellDistRC, and from eligibleCells through homeCells) and run on its own, many times a map size. Until plan P1-09a
+// the two stretches were cut out of the built GM portal between exact lines.
+const {statementsBetween}=require('./lib/source.ts');
+const helpers=statementsBetween('engine/world/generate.js','generateNewGame','cellIdRC','cellDistRC');
+const place=statementsBetween('engine/world/generate.js','generateNewGame','eligibleCells','homeCells');
 const body=`
 return (function(cols,rows,nPlayers){
   const setupPlayers=new Array(nPlayers).fill(0).map((_,i)=>({id:i}));

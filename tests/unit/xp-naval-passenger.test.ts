@@ -4,24 +4,35 @@
 // through rollNavalVoyage (src/engine/heroes/experience-skill-rises-and-earned-hp.js, plan P1-08c), called directly in
 // the bare vm (tests/lib/engine.ts); every experience roll is recorded by a wrapper around the top-level trySkillGain.
 // Level 0: no voyage path calls trySkillGain for Naval directly any more (only battles, won or lost, and the Naval 7/9
-// orders, which need a fleet, do).
+// orders, which need a fleet, do): every such call, as the function it is in and its arguments, is one of a known list.
 // This was tests/xp-naval-passenger.test.js, which ran one turn on the GM portal for the "  // 4. Run all 5 phases" hook
 // to hand rollNavalVoyage back, and hooked the first line of trySkillGain; the checks are the same.
 import vm from 'node:vm';
 import { afterAll, expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
+import { callsTo, pageScripts } from '../lib/source.ts';
 
+// Every experience roll for Naval in the GM portal's code, read by its syntax tree (tests/lib/source.ts, plan P1-09a:
+// the lines of the built page were matched until then), as the function it is made in and what it is handed: the
+// battles' rolls (won or lost, at sea), the Naval 7/9 orders' (Blockade, Raid the Coast) and rollNavalVoyage's own.
+const NAVAL_ROLLS = [
+  "combatVsChar(turnContext,won?atk:def,'naval',SKILLGAIN_STD,narrative)",
+  "combatVsChar(turnContext,won?def:atk,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
+  "combatVsNPC(turnContext,c,'naval',SKILLGAIN_STD,narrative)",
+  "combatVsNPC(turnContext,c,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
+  "combatVsNPC(turnContext,neutralGuardHero,'naval',SKILLGAIN_STD,narrative)",
+  "combatVsNPC(turnContext,neutralGuardHero,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
+  "resolveBlockadeOrder(turnContext,c,'naval',SKILLGAIN_STD)",
+  "resolveRaidTheCoastOrder(turnContext,c,'naval',SKILLGAIN_STD)",
+  "rollNavalVoyage(turnContext,c,'naval',base)",
+];
 test('no voyage rolls Naval outside rollNavalVoyage', () => {
-  const direct = readPage('kingdoms-call-gm-portal.html')
-    .split('\n')
-    .filter((l) => /trySkillGain\([^)]*['"]naval['"]/.test(l) || /trySkillGain\([^)]*\?\s*'naval'/.test(l));
-  // the Naval 7/9 orders' rolls and rollNavalVoyage's own, each with the turn's context first (plan P1-08c)
-  const allowed = (l: string) =>
-    /_rollNavalGain|neutralGuardHero|won\?atk:def|won\?def:atk|if\(!won\)/.test(l) ||
-    /^\s*trySkillGain\(turnContext,c,'naval',(SKILLGAIN_STD|base)\);\s*$/.test(l);
-  const stray = direct.filter((l) => !allowed(l));
-  expect(stray.map((l) => l.trim().slice(0, 90))).toEqual([]);
+  const rolls = pageScripts('kingdoms-call-gm-portal.html')
+    .flatMap((f) => callsTo(f, 'trySkillGain'))
+    .filter((c) => c.args.slice(2, 3).some((a) => a.includes("'naval'")))
+    .map((c) => `${String(c.within)}(${c.args.join(',')})`)
+    .sort();
+  expect(rolls).toEqual(NAVAL_ROLLS);
 });
 
 const engine = loadEngine({ seed: 1 });

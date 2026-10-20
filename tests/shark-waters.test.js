@@ -42,7 +42,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok(sharks.every(p=>typeof p.name==='string'&&p.name.length>0),`world ${k}: every shark sea has a name`);
   }
   ok(whalesAll+sharksAll>=6,`the three worlds dealt enough poor seas to mean something (${whalesAll} whale, ${sharksAll} shark)`);
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
+  const gm=require('./lib/source.ts').compactPage('kingdoms-call-gm-portal.html');   // its code in one layout (plan P1-09a)
   ok(W.eval("KC_UNIT_CLASS.primalSea.includes('Shark Shoals')&&KC_UNIT_CLASS.sea.includes('Shark Shoals')&&!KC_UNIT_CLASS.carrier.includes('Shark Shoals')"),'the Shark Shoals are a primal sea beast (they swim, carry nothing, and are raised only at sea) and no hull');
   ok(/NAME_SEA_BY_TYPE=\{[\s\S]{0,900}?\bshark:\s*\{pre:\[/.test(gm)&&/race==='Primal:Shark'\)\s*kind='shark'/.test(gm),'shark waters are named from their own pool (NAME_SEA_BY_TYPE.shark, chosen for the race Primal:Shark)');
 

@@ -12,6 +12,7 @@ import vm from 'node:vm';
 import { afterAll, describe, expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
+import { pageText } from '../lib/source.ts';
 
 const LADDER = [0, 0, 1, 1, 2, 3];
 const engine = loadEngine({ seed: 1 });
@@ -85,7 +86,7 @@ test('the bots plan with the same ladder', () => {
 
 test('no page still quotes the fast-column ladder, and the rulebook example uses the one rate', () => {
   const rules = readPage('kingdoms-call-rules.html'),
-    pp = readPage('kingdoms-call-player-portal.html');
+    pp = pageText('kingdoms-call-player-portal.html'); // its words, from src/ (tests/lib/source.ts, plan P1-09a)
   expect(rules + pp).not.toMatch(
     /Fast column|Fast \(base move 3\+\)|\+1\/\+1\/\+2\/\+2\/\+2|\+0\/\+1\/\+1\/\+2\/\+2\/\+2/,
   );

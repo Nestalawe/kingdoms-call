@@ -114,18 +114,26 @@ or written.
 
 ## String-anchor harness hooks
 
-Until the engine is split into modules (Phase 1), several tests reach inside the GM portal by matching
-**exact source lines** of the built page and injecting code there. Each line lives in one file under `src/`
-(mostly `src/engine/run-turn.js`). For example, `  // 4. Run all 5 phases` exposes the
-functions nested in `resolveTurn`. The full list is in
-[tests/README.md](../tests/README.md#code-anchor-hooks).
+They are gone (plan P1-09a). Until then several tests reached inside the GM portal by matching **exact source lines**
+of the built page and injecting code there, and others cut code out of a page between two exact strings, or matched
+its text with a regular expression: a reformat (Prettier, P1-09c) or the module switch (P1-09d) would have broken them,
+some silently. Now no test reads a page's source by line:
 
-- Editing, re-indenting or moving one of those lines breaks the tests that use it. They fail with
-  "anchor" or "missing" in the message. That means the hook needs updating, not that the game is
-  broken.
-- Update the anchor in the test in the same PR, and say so in the PR. Don't weaken what the test
-  checks.
-- If you add a test that needs a new anchor, add it to that table.
+- **A test that needs a piece of the site's code, or its words, asks [tests/lib/source.ts](../tests/lib/source.ts)**,
+  which reads `src/` by its syntax tree (TypeScript's parser, for `.js` and `.ts` alike): a file's named declarations
+  as a script (`sourceOf`, `sourceFrom`, `scriptOf`, `statementsBetween`), the values it declares
+  (`initializersOf`, `entriesOf`), the strings it holds (`stringsOf`, `pageText`), its calls (`callsTo`), or its code
+  in one canonical layout for a regular expression (`compactOf`, `compactPage`, `compactDeclaration`). The answers
+  are the same however the file is laid out (`tests/unit/the-source-read-by-its-syntax-tree.test.ts` checks every
+  file as written and after Prettier). A comment is read as written (`pageSource`).
+- **A test that must change a function's behaviour stands it in where it runs:** in the engine's bare vm
+  (`tests/lib/engine.ts`; a whole turn there with `tests/lib/scenario-in-the-vm.ts`), where a top-level function can be
+  replaced from outside (`W.trySkillGain = …`). On a booted page it can't be, once the page's files are modules: a
+  test that needs a page to fail where nothing outside can make it fail boots a page built from a planted copy of
+  `src/` (`plantedSite`, with `plantAtStart` or `plantBefore`, found by the syntax tree too).
+- Don't add a test that matches a line, an indent or a quote style of the site's code, or that writes to a page's
+  function or top-level variable from outside (`W.fn = …`, `W.eval('flag=true')`): after the module switch it would
+  do nothing, and the test could pass without testing anything.
 
 ## A lifted helper takes the turn's context first
 

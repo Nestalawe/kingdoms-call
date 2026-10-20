@@ -8,12 +8,14 @@
 // Both cases are staged so their outcome is overwhelming, not a matter of luck. (The Warg Riders no longer chase at
 // all: see warg-run-down.)
 // Level 2 (scenario): what is checked is a whole turn's order of events (one battle a phase, the chase held over to the
-// next season, the province's owner after it). The other ways a chase is held over, or met, are staged on the
-// functions directly in unit/pursuits-and-the-catch-roll.test.ts. It was tests/pursuit-one-battle.test.js, whose
-// code-anchor hook replaced `    const chance=pursuitCatchChance(c,quarry);` to make the catch certain; since plan
-// P1-08i3 pursuitCatchChance is a top-level function, wrapped on the page instead. The checks are the same.
+// next season, the province's owner after it), played in the engine's bare vm (lib/scenario-in-the-vm.ts). The other
+// ways a chase is held over, or met, are staged on the functions directly in unit/pursuits-and-the-catch-roll.test.ts.
+// It was tests/pursuit-one-battle.test.js, whose code-anchor hook replaced `    const chance=pursuitCatchChance(c,quarry);`
+// to make the catch certain; since plan P1-08i3 pursuitCatchChance is a top-level function, wrapped on the page, and
+// since plan P1-09a (a page's functions can't be stood in once its files are modules) wrapped in the vm, where the
+// turn is played. The checks are the same.
 import { expect, test } from 'vitest';
-import { bootScenario, order, plan, type ScenarioWindow } from '../lib/scenario.js';
+import { order, plan, scenarioInTheVm } from '../lib/scenario-in-the-vm.ts';
 
 interface Province {
   id: number;
@@ -41,8 +43,8 @@ interface World {
   world: { cols: number; rows: number; provinces: Province[] };
 }
 
-const sc = await bootScenario();
-const W = sc.W as ScenarioWindow & Record<string, unknown>;
+const sc = scenarioInTheVm({ seed: 1 });
+const W = sc.W;
 // The catch is made certain for case (2), as the old hook did: a missed catch would leave the two armies in a
 // stand-off, fought as an ordinary resumed battle instead.
 const realCatch = W['pursuitCatchChance'] as (...a: unknown[]) => number;
@@ -86,9 +88,9 @@ const clear = (S: World, ps: Province[]) => {
 };
 const text = (e: { text?: unknown }) => (typeof e.text === 'string' ? e.text : '');
 
-test('(1) a hunter attacked by his quarry first holds the chase over to the next season', async () => {
+test('(1) a hunter attacked by his quarry first holds the chase over to the next season', () => {
   W['__KC_CATCH'] = null;
-  const r = await sc.turn<World, { A: Character; B: Character; X: Province }>({
+  const r = sc.turn<World, { A: Character; B: Character; X: Province }>({
     realms: 2,
     cols: 10,
     rows: 6,
@@ -152,13 +154,13 @@ test('(1) a hunter attacked by his quarry first holds the chase over to the next
   expect(sc.errs).toEqual([]);
 });
 
-test('(2) a chase battle the hunter wins takes the province, and his report says so', async () => {
+test('(2) a chase battle the hunter wins takes the province, and his report says so', () => {
   // Hunter and quarry start next door to each other: the hunter in his own province X, the quarry in his own province
   // Y, with ground of his own (V) to fall back to. The catch is certain, and six Elite Warg Riders against two Green
   // levies win the battle.
   W['__KC_CATCH'] = 100;
   try {
-    const r = await sc.turn<World, { A: Character; Y: Province }>({
+    const r = sc.turn<World, { A: Character; Y: Province }>({
       realms: 2,
       cols: 10,
       rows: 6,
@@ -202,7 +204,7 @@ test('(2) a chase battle the hunter wins takes the province, and his report says
       r.log.some((e) => e.phase === forced?.phase && text(e).includes(A.name + "'s forces defeat")),
       '…and wins it (staging)',
     ).toBe(true);
-    const S2 = r.S2 as World;
+    const S2 = r.S2 as unknown as World;
     expect(S2.world.provinces[Y.id]?.owner, `winning the chase battle takes ${Y.name}`).toBe(0);
     expect(
       r.log.some((e) => /claims .* for /.test(text(e)) && text(e).includes(Y.name)),

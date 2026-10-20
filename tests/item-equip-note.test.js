@@ -43,7 +43,10 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(note(hero(),[item('Blade of Fury')])==='','nothing to say for an item the hero does not hold');
 
   // ── Static: every gain path writes the note ──
-  const src=readPage('kingdoms-call-gm-portal.html').split('\n');
+  // Each gain line is found by its message in the GM portal's code, and the note must come within the given number of
+  // statements after it (innermost statements, in the order they start), whatever the lines (tests/lib/source.ts;
+  // until plan P1-09a it was the same number of lines of the built page).
+  const {statementsFollowing}=require('./lib/source.ts');
   const PATHS=[
     ['lair hoard', /hauls out \$\{itemNameList\(baseDrops,false\)\}/, 4],
     ['lair theft', /out from under the guardian's nose!/, 2],
@@ -56,9 +59,9 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ['Steal Item', /deftly lifts the \$\{stolen\.name\} from/, 2],
     ['the Grand Heist', /pulls off a Grand Heist in/, 2],
   ];
-  PATHS.forEach(([what,re,within])=>{ const i=src.findIndex(l=>re.test(l));
-    ok(i>=0,`found the ${what} line`);
-    ok(i>=0&&src.slice(i,i+within+1).some(l=>/gainedItemNote\(/.test(l)),`${what}: the equip note follows`); });
+  PATHS.forEach(([what,re,within])=>{ const at=statementsFollowing('kingdoms-call-gm-portal.html',re,within);
+    ok(!!at,`found the ${what} line`);
+    ok(!!at&&/gainedItemNote\(/.test(at.text),`${what}: the equip note follows`); });
 
   // ── Scenario: a real Send Item ──
   let giver, recip;

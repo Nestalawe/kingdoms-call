@@ -6,29 +6,36 @@
 //
 // A hero stands where his `location` says, and each province keeps its own list of the heroes in it (`characters`):
 // every move, retreat and flight updates both by hand. "In two provinces" is a hero named in two lists, or in a list
-// other than his own province's. The hook at the end of each phase (`    syncAllMaxHp(turnContext); // a max-HP
-// rise…`) reads them. "Met" is the leak check's rule (lib/report-leaks.ts), with its parked breaches (lib/invariants.ts).
-// Level 2 (scenario): one real turn on a small staged world; the lists are checked between phases, inside runTurn,
-// and the reports are put together there too.
+// other than his own province's. They are read at the end of each phase: the last thing a phase does is
+// syncAllMaxHp(turnContext), which the turn calls once more after the phases (with no phase set), so standing it in
+// with a reader that runs after it, while a phase is set, reads them five times a turn. "Met" is the leak check's rule
+// (lib/report-leaks.ts), with its parked breaches (lib/invariants.ts).
+// Level 2 (scenario): one real turn on a small staged world, played in the engine's bare vm
+// (lib/scenario-in-the-vm.ts); the lists are checked between phases, inside the turn, and the reports are put together
+// there too. The engine reads no clock (unit/engine-purity.test.ts), so nothing pins one. Until plan P1-09a the turn
+// was played on the GM portal, with its clock pinned, and a code-anchor hook on syncAllMaxHp's line in the phase loop
+// read the lists.
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
-import { pinnedDate, type KcRng, type PageWindow } from '../lib/boot.js';
+import type { KcRng } from '../lib/boot.js';
 import { checkLeaks, describeBreaches, type SavedState } from '../lib/invariants.ts';
-import { bootScenario, type Order } from '../lib/scenario.js';
+import { scenarioInTheVm, type Order } from '../lib/scenario-in-the-vm.ts';
 
-const PHASE_END = '    syncAllMaxHp(turnContext); // a max-HP rise earned this phase heals into its headroom now\n';
-const NOW = '2026-10-01T12:00:00Z';
 const full = process.env['KC_FULL'] === '1';
 /** A turn takes about 80 ms: half the default inputs (about 4 s a property). */
 const RUNS = full ? 500 : 50;
 const TIMEOUT = (full ? 600 : 60) * 1000;
 
-const sc = await bootScenario({
-  now: NOW,
-  inject: [[PHASE_END, PHASE_END + '    if(window.__phaseEnd) window.__phaseEnd(ph,G);\n']],
-});
-const W = sc.W as unknown as PageWindow;
-const RealDate = W.eval('Object.getPrototypeOf(new Date(0)).constructor') as DateConstructor;
+const sc = scenarioInTheVm({ seed: 1 });
+const W = sc.W;
+type PhaseEnd = (ph: number, G: World) => void;
+let phaseEnd: PhaseEnd | null = null;
+const syncAllMaxHp = W['syncAllMaxHp'] as (tc: { _currentPhase: number | null; G: World }) => unknown;
+W['syncAllMaxHp'] = (tc: { _currentPhase: number | null; G: World }) => {
+  const r = syncAllMaxHp(tc);
+  if (phaseEnd && tc._currentPhase != null) phaseEnd(tc._currentPhase, tc.G);
+  return r;
+};
 
 interface World {
   characters: { id: number; name: string; alive?: boolean; location?: number; player?: number | null }[];
@@ -74,18 +81,18 @@ const turnArb = fc.integer({ min: 2, max: 4 }).chain((realms) =>
 type Input = typeof turnArb extends fc.Arbitrary<infer T> ? T : never;
 
 /** Plays one turn of `input`, with `onPhaseEnd` called at the end of each phase. */
-async function play(input: Input, onPhaseEnd: (ph: number, G: World) => void) {
+function play(input: Input, onPhaseEnd: PhaseEnd) {
   (W['kcRng'] as KcRng).seed(input.seed);
-  W['Date'] = pinnedDate(RealDate, NOW);
-  W['__phaseEnd'] = onPhaseEnd;
+  phaseEnd = onPhaseEnd;
   try {
-    return await sc.turn<World>({
+    return sc.turn({
       realms: input.realms,
       cols: input.cols,
       rows: input.rows,
       seaPct: input.seaPct,
       bots: input.bots,
-      orders: (S) => {
+      orders: (staged) => {
+        const S = staged as unknown as World;
         const heroes = S.characters.filter(
           (c) => c.alive !== false && c.player != null && !input.bots.includes(c.player),
         );
@@ -93,20 +100,20 @@ async function play(input: Input, onPhaseEnd: (ph: number, G: World) => void) {
       },
     });
   } finally {
-    W['__phaseEnd'] = null;
+    phaseEnd = null;
   }
 }
 
 test(
   'no hero ends a phase in two provinces',
-  async () => {
-    await fc.assert(
-      fc.asyncProperty(turnArb, async (input) => {
+  () => {
+    fc.assert(
+      fc.property(turnArb, (input) => {
         const found: string[] = [];
-        const r = await play(input, (ph, G) => {
+        const r = play(input, (ph, G) => {
           for (const line of inTwoPlaces(G)) found.push(`at the end of phase ${String(ph)}: ${line}`);
         });
-        expect(inTwoPlaces(r.S), 'the staged world').toEqual([]);
+        expect(inTwoPlaces(r.S as unknown as World), 'the staged world').toEqual([]);
         expect(found.join('\n')).toBe('');
         expect(sc.errs).toEqual([]);
       }),
@@ -118,13 +125,13 @@ test(
 
 test(
   "no realm's report names a realm it hasn't met",
-  async () => {
-    await fc.assert(
-      fc.asyncProperty(turnArb, async (input) => {
-        const r = await play(input, () => undefined);
+  () => {
+    fc.assert(
+      fc.property(turnArb, (input) => {
+        const r = play(input, () => undefined);
         const broke = checkLeaks({
-          before: r.S,
-          after: r.S2 as SavedState,
+          before: r.S as unknown as SavedState,
+          after: r.S2 as unknown as SavedState,
           gmLog: r.log,
           telemetry: [],
           players: [],

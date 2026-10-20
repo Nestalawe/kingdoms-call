@@ -49,21 +49,26 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   }
 
   // ── The words ──
+  // The rulebooks as site/ text; the portals' code in one layout and their files as written, and the data file as
+  // written and in one layout, from src/ (tests/lib/source.ts). Until plan P1-09a all were read as site/ text.
+  const {compactOf,compactPage,pageSource,SRC}=require('./lib/source.ts');
   const read=f=>fs.readFileSync(sitePath(f),'utf8');
-  const pp=read('kingdoms-call-player-portal.html'), gm=read('kingdoms-call-gm-portal.html'), rules=read('kingdoms-call-rules.html'), intro=read('kingdoms-call-rules-intro.html'), data=read('kingdoms-call-data.js');
+  const ppCode=compactPage('kingdoms-call-player-portal.html'), pp=pageSource('kingdoms-call-player-portal.html'), gm=compactPage('kingdoms-call-gm-portal.html');
+  const rules=read('kingdoms-call-rules.html'), intro=read('kingdoms-call-rules-intro.html');
+  const data=fs.readFileSync(require('path').join(SRC,'content','kingdoms-call-data.js'),'utf8'), dataCode=compactOf('content/kingdoms-call-data.js');
   const listOf=(src,re)=>(re.exec(src)||['',''])[1];
-  ok(!/Awaken the Wild|Call from the Pit/.test(listOf(pp,/const ACTIONS *= *\[([\s\S]*?)\];/)),"the player portal's order list offers neither order");
-  ok(!/Awaken the Wild|Call from the Pit/.test(listOf(pp,/const ALIGN_ACTIONS=\{([^}]*)\}/)),"the player portal's alignment orders no longer name them");
-  ok(!/Awaken the Wild|Call from the Pit/.test(listOf(pp,/const ACTION_DISPLAY_ORDER=\[([\s\S]*?)\];/)),'…nor its display order');
-  ok(!/case 'Awaken the Wild'|case 'Call from the Pit'/.test(pp),'the player portal has no target picker for them');
+  ok(!/Awaken the Wild|Call from the Pit/.test(listOf(ppCode,/const ACTIONS *= *\[([\s\S]*?)\];/)),"the player portal's order list offers neither order");
+  ok(!/Awaken the Wild|Call from the Pit/.test(listOf(ppCode,/const ALIGN_ACTIONS=\{([^}]*)\}/)),"the player portal's alignment orders no longer name them");
+  ok(!/Awaken the Wild|Call from the Pit/.test(listOf(ppCode,/const ACTION_DISPLAY_ORDER=\[([\s\S]*?)\];/)),'…nor its display order');
+  ok(!/case 'Awaken the Wild'|case 'Call from the Pit'/.test(ppCode),'the player portal has no target picker for them');
   for(const [page,src] of [['rulebook',rules],['intro',intro],['player portal',pp],['data file',data]]){
     const hits=(src.match(/[^.<>]{0,60}(Awaken the Wild|Call from the Pit)[^.<>]{0,40}/g)||[]);
     ok(hits.length===0,`${page}: no text still offers Awaken the Wild or Call from the Pit${hits.length?' — '+hits.slice(0,2).join(' … '):''}`);
   }
   ok(!/KC_AWAKEN_TIERS|KC_PIT_TIERS/.test(data),'the data file no longer holds the two tier tables');
   ok(!/'KC_AWAKEN_TIERS'|'KC_PIT_TIERS'/.test(listOf(gm,/const KC_SHARED_TABLE_NAMES=\[([^\]]*)\]/)),"the GM portal's shared-table guard no longer asks for them");
-  ok(!/'KC_AWAKEN_TIERS'|'KC_PIT_TIERS'/.test(listOf(pp,/const need=\[([^\]]*)\]/)),"…nor the player portal's");
-  ok(/"id":"au05"/.test(data)&&!/awakenCost/.test(data),'Deep Roots stays, without the cheaper awakening');
+  ok(!/'KC_AWAKEN_TIERS'|'KC_PIT_TIERS'/.test(listOf(ppCode,/const need=\[([^\]]*)\]/)),"…nor the player portal's");
+  ok(/\{id:'au05'/.test(dataCode)&&!/awakenCost/.test(dataCode),'Deep Roots stays, without the cheaper awakening');
 
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);

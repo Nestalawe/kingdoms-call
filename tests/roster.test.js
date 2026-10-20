@@ -10,6 +10,7 @@
 // of one line of text.
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {compactCode,pageInitializer,scriptOf}=require('./lib/source.ts');
 const R=require('./lib/roster-decided'); const {ROSTER,LAND_TERRAINS,NEW_UNITS,NEW_UNIT_PROVINCES,isLand}=R;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
@@ -27,25 +28,10 @@ const CELLS_BEFORE={
   mountain:{Human:['Human Garrison','Shieldwall Levies','Noble Griffons'],Elven:['Eagle Riders','Elven Bowmen','Elven Garrison'],Dwarven:['Dwarven Guard','Ironwood Crossbows','Mountain Guns','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Wyvern Riders','Orc Garrison']},
 };
 
-// A `const NAME={…};` of the GM portal as source text: from its declaration to the brace that closes the
-// literal (braces inside quoted keys and values are skipped).
-function slice(src,name){
-  const start=src.indexOf(`const ${name}=`); if(start<0) return null;
-  let i=src.indexOf('{',start), depth=0, q=null;
-  for(;i<src.length;i++){
-    const ch=src[i];
-    if(q){ if(ch==='\\') i++; else if(ch===q) q=null; continue; }
-    if(ch==="'"||ch==='"') q=ch;
-    else if(ch==='{') depth++;
-    else if(ch==='}'&&--depth===0) return src.slice(start,i+1)+';';
-  }
-  return null;
-}
-
 (async()=>{
   // ── The shared data file ──
   const ctx=vm.createContext({});
-  vm.runInContext(fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8'),ctx);
+  vm.runInContext(scriptOf('content/kingdoms-call-data.js'),ctx);
   const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,P:PROVINCE_ARMIES_P,N:ARMY_UNIT_NAMES})',ctx);
   for(const u of UNITS){
     const d=ROSTER[u];
@@ -80,11 +66,12 @@ function slice(src,name){
   }
 
   // ── The GM portal's own tables ──
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
+  // each table is the value the GM portal's code first declares it with, read by its syntax tree (tests/lib/source.ts;
+  // until plan P1-09a it was cut out of the built page's text)
   const G={};
   for(const name of ['ARMY_COST_MASTER','ARMY_SPEED_MASTER','TERRAIN_MODS','UNIT_SHORT','ARMY_RACE_OF_TYPE','DISC_CLS_SETS']){
-    const s=slice(gm,name); ok(!!s,`the GM portal declares ${name}`);
-    try{ G[name]=s?vm.runInContext(s+`\n;${name}`,ctx):{}; }catch(e){ G[name]={}; ok(false,`${name} evaluates on its own: ${e.message}`); }
+    const s=pageInitializer('kingdoms-call-gm-portal.html',name); ok(!!s,`the GM portal declares ${name}`);
+    try{ G[name]=s?vm.runInContext(s,ctx):{}; }catch(e){ G[name]={}; ok(false,`${name} evaluates on its own: ${e.message}`); }
   }
   for(const u of UNITS){
     const d=ROSTER[u];
@@ -109,7 +96,7 @@ function slice(src,name){
   ok(isSet(cls.infantry)&&['Shieldwall Levies','Men-at-Arms','Dwarven Guard','Orc Berserkers'].every(u=>cls.infantry.has(u)),'DISC_CLS_SETS.infantry reaches Men-at-Arms beside Levies, Guard and Berserkers');
   ok(isSet(cls.missile)&&typed('ranged').every(u=>cls.missile.has(u))&&!cls.missile.has('Goblin Horde'),'DISC_CLS_SETS.missile is the ranged units, Black Arrows in and Goblin Horde out');
   // The magic items' class sets inside runTurn (Golden Spur, Legionnaire's Mark, Eagle-Eye Pendant).
-  const itemSet=name=>{ const m=new RegExp(`const ${name}=new Set\\(\\[[^\\]]*\\]\\);`).exec(gm); if(!m) return null; try{ return vm.runInContext(m[0]+`;${name}`,ctx); }catch(e){ return null; } };
+  const itemSet=name=>{ const s=pageInitializer('kingdoms-call-gm-portal.html',name); if(!s||!/^new Set\(\[[^\]]*\]\);?$/.test(compactCode(s))) return null; try{ return vm.runInContext(s,ctx); }catch(e){ return null; } };
   const CAV_I=itemSet('CAV_I'), INF_I=itemSet('INF_I'), ARCH_I=itemSet('ARCH_I');
   ok(CAV_I&&typed('cavalry').every(u=>CAV_I.has(u)),"the Golden Spur's cavalry set (CAV_I) has every cavalry unit");
   ok(INF_I&&INF_I.has('Men-at-Arms'),"the Legionnaire's Mark's infantry set (INF_I) has Men-at-Arms");

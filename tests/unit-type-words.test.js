@@ -9,13 +9,17 @@
 //   3. The rulebook's roles table and the intro's kinds-of-unit list use the five words as headings.
 //   4. The player portal's unit blurbs, the GM portal's archery-phase report lines and the Hall of Fame's
 //      "Storm of arrows" label say ranged, not missile.
+// The rulebooks are read as site/ text; the portals and the Hall of Fame from src/ by their syntax tree
+// (tests/lib/source.ts), and the data file's table in the engine's bare vm (tests/lib/engine.ts). Until plan P1-09a
+// they were read as site/ text too.
 const fs=require('fs'), vm=require('vm');
-const {sitePath}=require('./lib/boot');
+const {sitePath}=require('./lib/boot'); const {loadEngine}=require('./lib/engine.ts');
+const {compactPage,entriesOf,fileDeclaring,pageStrings,pageText}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const read=n=>fs.readFileSync(sitePath(n),'utf8');
 const rules=read('kingdoms-call-rules.html'), intro=read('kingdoms-call-rules-intro.html');
-const gm=read('kingdoms-call-gm-portal.html'), pp=read('kingdoms-call-player-portal.html'), lb=read('kingdoms-call-leaderboard.html');
-const S=vm.runInNewContext(read('kingdoms-call-data.js')+'\n;KC_UNIT_BASE_STR',{});
+const LB='kingdoms-call-leaderboard.html', PP='kingdoms-call-player-portal.html';
+const S=vm.runInContext('KC_UNIT_BASE_STR',loadEngine({seed:1}));
 const TYPE_CELL=/^(Infantry|Ranged|Cavalry|Flyer|Naval)( \(garrison\))?$/;
 
 // 1. The roster table.
@@ -49,14 +53,13 @@ for(const w of ['Infantry','Ranged','Cavalry','Flyers','Naval']) ok(kinds.includ
 ok(!/<strong>Foot<\/strong>|<strong>Archers<\/strong>|<strong>Fleets<\/strong>/.test(kinds),'the intro list has dropped "Foot", "Archers" and "Fleets"');
 
 // 4. Portals and the Hall of Fame.
-const blurbs=(()=>{ const i=pp.indexOf('const UNIT_ABILITIES={'); return i<0?'':pp.slice(i,pp.indexOf('\n};',i)); })();
-ok(blurbs.length>500,'the player portal\'s UNIT_ABILITIES block was found');
-// Only the quoted blurbs are player-facing; a trailing code comment on a line is not.
-const blurbText=[...blurbs.matchAll(/^\s*'[^']+':'((?:[^'\\]|\\.)*)'/gm)].map(x=>x[1]).join('\n');
+// Only the quoted blurbs are player-facing; a code comment beside one is not.
+const blurbText=entriesOf(fileDeclaring(PP,'UNIT_ABILITIES'),'UNIT_ABILITIES').map(e=>e.value).join('\n');
+ok(blurbText.length>500,'the player portal\'s UNIT_ABILITIES block was found');
 ok(blurbText.length>500&&!/missile/i.test(blurbText),'no unit blurb in the player portal says "missile"');
-const archeryLines=gm.split('\n').filter(l=>l.includes('Archery Phase**'));
+const archeryLines=pageStrings('kingdoms-call-gm-portal.html').filter(l=>l.includes('Archery Phase**'));
 ok(archeryLines.length===2&&archeryLines.every(l=>/ranged unit/.test(l)&&!/missile unit/.test(l)),'both archery-phase report lines count "ranged units", not "missile units"');
-ok(/arrow_storm:\{[^}]*Strongest ranged host/.test(lb)&&!/Strongest missile host/.test(lb),'the Hall of Fame\'s "Storm of arrows" record says "ranged host"');
+ok(/arrow_storm:\{[^}]*Strongest ranged host/.test(compactPage(LB))&&!/Strongest missile host/.test(pageText(LB)),'the Hall of Fame\'s "Storm of arrows" record says "ranged host"');
 
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail?1:0);

@@ -8,6 +8,7 @@
 import { expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
+import { entriesOf, fileDeclaring, pageText, stringsOf } from '../lib/source.ts';
 
 const { engine, call, base, pinned } = personalCombatEngine();
 let nextId = 0;
@@ -44,9 +45,15 @@ test.for([1, 2, 3, 4, 5, 7])('Elemental %i: the bolt does 1–3 a level, counted
   expect([bolt(lvl, 0), bolt(lvl, 0.999999)]).toEqual([n, 3 * n]);
 });
 
-const data = readPage('kingdoms-call-data.js');
+// The data file's and the player portal's words are read from src/ by their syntax tree (tests/lib/source.ts, plan
+// P1-09a: until then the built files' text was matched).
+const data = stringsOf('content/kingdoms-call-data.js').join('\n');
 const rules = readPage('kingdoms-call-rules.html');
-const pp = readPage('kingdoms-call-player-portal.html');
+const pp = pageText('kingdoms-call-player-portal.html');
+const hint = (spell: string) =>
+  entriesOf(fileDeclaring('kingdoms-call-player-portal.html', 'SPELL_HINTS'), 'SPELL_HINTS').find(
+    (e) => e.key === spell,
+  )?.value ?? '';
 
 test("the spell's description says 1–3 per level", () => {
   expect(data).toMatch(/deals 1–3 damage per caster level/);
@@ -55,7 +62,7 @@ test('the rulebook says 1–3 per level', () => {
   expect(rules).toMatch(/Lightning Bolt<\/strong>[^\n]*Combat: <strong>1–3 damage per level<\/strong>/);
 });
 test("the player portal's spell note says 1–3 per level", () => {
-  expect(pp).toMatch(/'Lightning Bolt':'Combat: 1\\u20133 damage per caster level/);
+  expect(hint('Lightning Bolt')).toMatch(/^Combat: 1–3 damage per caster level/);
 });
 test('no page still says 2–4', () => {
   expect(data + rules + pp).not.toMatch(/2–4 damage per (caster )?level|2\\u20134 damage per caster level/);

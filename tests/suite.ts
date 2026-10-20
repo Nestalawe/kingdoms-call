@@ -105,7 +105,7 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'battle-spells-recorded', 'tests/battle-spells-recorded.test.js'],
     ['scenario', 'concede', 'tests/concede.test.js'],
     ['unit', 'monarch-grave', 'tests/monarch-grave.test.js'],
-    ['scenario', 'guardian-traits', 'tests/guardian-traits.test.js'],
+    ['unit', 'guardian-traits', 'tests/guardian-traits.test.js'],
     ['unit', 'unit-fates', 'tests/unit-fates.test.js'],
     ['scenario', 'overtures', 'tests/overtures.test.js'],
     ['page', 'orders-group-by-location', 'tests/orders-group-by-location.test.js'],
@@ -144,12 +144,7 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'defend-naval-overland', 'tests/defend-naval-overland.test.js'],
     ['scenario', 'defend-once', 'tests/defend-once.test.js'],
     ['scenario', 'hero-every-phase', 'tests/hero-every-phase.test.js'],
-    [
-      'simulation',
-      'report-privacy',
-      'tests/report-privacy.test.js',
-      full ? [GM, '6', '20', '6'] : [GM, '3', '10', '5'],
-    ],
+    ['simulation', 'report-privacy', 'tests/report-privacy.test.js', full ? ['6', '20', '6'] : ['3', '10', '5']],
     [
       'simulation',
       'fuzz-wages-combat',

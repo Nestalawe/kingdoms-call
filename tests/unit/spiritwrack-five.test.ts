@@ -8,6 +8,7 @@
 import { expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
+import { entriesOf, fileDeclaring, stringsOf } from '../lib/source.ts';
 
 const { call, base, MON, pinned } = personalCombatEngine();
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
@@ -69,11 +70,17 @@ test("the rulebook's Spiritwrack row says at most 3, or 4 against a weak guardia
 });
 
 test("the player portal's text says max 3 and max 4", () => {
-  const pp = (/\n {2}'Spiritwrack':'([^\n]*)',\n/.exec(readPage('kingdoms-call-player-portal.html')) ?? ['', ''])[1];
+  // its spell hint, read from src/ by its syntax tree (tests/lib/source.ts, plan P1-09a: until then matched in the built
+  // page's text)
+  const pp =
+    entriesOf(fileDeclaring('kingdoms-call-player-portal.html', 'SPELL_HINTS'), 'SPELL_HINTS').find(
+      (e) => e.key === 'Spiritwrack',
+    )?.value ?? '';
   expect(pp).toMatch(/\(max 3\)/);
   expect(pp).toMatch(/\(max 4\)/);
 });
 
 test("the data file's description says at most 3", () => {
-  expect(readPage('kingdoms-call-data.js')).toMatch(/plus 1 per two White levels \(at most 3\)/);
+  // its words, read from src/ by their syntax tree (plan P1-09a: until then site/'s copy of the file)
+  expect(stringsOf('content/kingdoms-call-data.js').join('\n')).toMatch(/plus 1 per two White levels \(at most 3\)/);
 });

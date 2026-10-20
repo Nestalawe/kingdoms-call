@@ -7,12 +7,14 @@
 //     hero sightings;
 //   • popupKnownChars (player portal, module level): the map popup writes the rough size for another realm's
 //     hero, the exact count for your own;
-//   • source (level 0): the province character intel and the intrusion alerts, both nested inside runTurn,
-//     use the one sight rule and the rough size.
+//   • source (level 0): the province character intel (in buildReports) and the intrusion alerts use the one sight
+//     rule and the rough size: read from src/ by their syntax tree, in one layout whatever the files' (tests/lib/
+//     source.ts; until plan P1-09a the built pages' text was matched).
 // Level 1 (unit): both functions are module level and take a staged world or record, so no turn needs to run;
 // the report-time Spy roll is staged by stamping its result (_unspottedTurn) on the characters.
 const fs=require('fs');
 const {bootScenario}=require('./lib/scenario'); const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {compactCode,compactPage,statementsBetween}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 
 (async()=>{
@@ -97,8 +99,8 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   }
 
   // ── Source: the two readers nested inside runTurn ──
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
-  const pci=(/── Province character intel[\s\S]*?report\.provinceCharIntel=provinceCharIntel;/.exec(gm)||[''])[0];
+  const gm=compactPage('kingdoms-call-gm-portal.html');
+  const pci=compactCode(statementsBetween('engine/turn/realm-reports-and-spy-stealth.js','buildReports','ownCharLocsPi','report.provinceCharIntel=provinceCharIntel;'));
   ok(pci.length>0&&/enemyCharVisibleTo\(/.test(pci),'the province character intel uses the one sight rule (enemyCharVisibleTo)');
   ok((pci.match(/armyCount:/g)||[]).length===1&&/c\.player===pi\?\{armyCount:armies\.length\}:\{armyBand:armySizeBand\(armies\.length\)\}/.test(pci),'…and sends the exact army count for your own heroes only, the rough size for anyone else');
   ok(!/describeEnemyForce/.test(gm),'the intrusion alerts no longer read the force by the watcher\'s Spy');
@@ -112,7 +114,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(/Invisibility is the one exception to both/.test(R),'…Invisibility still hides');
   ok(/5% chance per Spy level \(up to 25%\)/.test(R)&&!/older concealment rule/.test(R),'…wanderers keep a stated chance to slip by');
   ok(!/Accuracy of what you learn scales separately/.test(R),'…and no Spy-level accuracy ladder remains');
-  const ppSrc=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8');
+  const ppSrc=compactPage('kingdoms-call-player-portal.html');
   ok(!/\(x\.armies\|\|0\)/.test(ppSrc)&&!/\(tgt\.armies\|\|0\)/.test(ppSrc),'the player portal reads whether a target leads troops, not their count');
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);

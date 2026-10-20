@@ -2,12 +2,16 @@
 // map: an enemy hero leading no troops, in a province of yours with none of your heroes there, is reported only
 // if your people spot them (spotEnemyInOwnedProvince, the roll the report makes for the same hero, province and
 // turn). A hero of a realm you are not at war with is always reported, as the map always shows them.
-// Level 2 (scenario): the warnings are built inside runTurn. The roll is fixed by a code-anchor hook (the line
-// `  const explored=100;` in spotEnemyInOwnedProvince) that makes a marked hero win it, so no luck decides it.
-const {bootScenario}=require('./lib/scenario');
+// Level 2 (scenario): the warnings are built inside the turn, played in the engine's bare vm
+// (tests/lib/scenario-in-the-vm.ts). The roll is fixed by standing spotEnemyInOwnedProvince in there for the turn: a
+// marked hero wins it, so no luck decides it. (Until plan P1-09a the turn was played on the GM portal and a code-anchor
+// hook at the line `  const explored=100;` in spotEnemyInOwnedProvince did the same.)
+const {scenarioInTheVm}=require('./lib/scenario-in-the-vm.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
-  const sc=await bootScenario({inject:[["  const explored=100;\n","  if(enemyChar&&enemyChar.__testUnspotted) return false;\n  const explored=100;\n"]]});
+  const sc=scenarioInTheVm({seed:1});
+  const spot=sc.W.spotEnemyInOwnedProvince;
+  sc.W.spotEnemyInOwnedProvince=(gs,viewerPi,prov,enemyChar,turn)=>enemyChar&&enemyChar.__testUnspotted?false:spot(gs,viewerPi,prov,enemyChar,turn);
   let names={}, homeId=null;
   const r=await sc.turn({realms:3,
     prepare(S,W){
@@ -29,7 +33,6 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const rep=r.reports[0]||{};
   ok(!(rep.heroSightings||[]).some(s=>s.name===names.lurker),'…and the report agrees: the lurker is not among the sightings');
   ok((rep.heroSightings||[]).some(s=>s.name===names.peaceful),'…while the hero at peace is');
-  if(sc.errs.length) sc.errs.slice(0,3).forEach(e=>console.log('  page error: '+e));
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);
 })().catch(e=>{ console.error(e); process.exit(2); });

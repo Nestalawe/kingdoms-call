@@ -15,19 +15,17 @@
 //   Dread Hydras       Many Heads (×1.25 facing foot) · Venom Breath (unchanged)
 //   Shark Shoals       Shoal Swarm (+10% per other Shark Shoals in the force, to +30%) · Feeding Frenzy (tests/abilities-beasts-turn)
 //   Manticore Pride    Relentless Hunt (unchanged) · the pursuit of a broken foe (tests/abilities-beasts-turn)
-// Level 1 (unit): the grid, the facing, the fate rolls and unitAbilityMult are module-level functions of the booted GM
-// portal; applyMissileHit is nested inside runTurn, so the hook at "  // 4. Run all 5 phases" hands it back after one
-// real turn (as tests/hp-wound-gain does). Nothing here needs a battle's dice (the two rolls are fed).
-const {bootScenario}=require('./lib/scenario');
+// Level 1 (unit): the grid, the facing, the fate rolls, unitAbilityMult and applyMissileHit are top-level functions of
+// the engine, called directly in its bare vm (tests/lib/engine.ts). Until plan P1-09a this test booted the GM portal
+// and ran a real turn so the hook at "  // 4. Run all 5 phases" could hand applyMissileHit back (it was nested inside
+// runTurn then). Nothing here needs a battle's dice (the two rolls are fed).
+const vm=require('vm'); const {loadEngine,engineFn}=require('./lib/engine.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-6;
 
-(async()=>{
-  const sc=await bootScenario({inject:[["  // 4. Run all 5 phases\n","  window.__BEAST={applyMissileHit};\n  // 4. Run all 5 phases\n"]]});
-  await sc.turn({});
-  const w=sc.W; const ev=expr=>w.eval(expr);
-  ok(sc.errs.length===0,'the GM portal boots and runs a turn'+(sc.errs.length?' — '+sc.errs[0].split('\n')[0]:''));
-  const HIT=(w.__BEAST||{}).applyMissileHit; ok(typeof HIT==='function','hook: applyMissileHit exposed'); if(typeof HIT!=='function') process.exit(1);
+{
+  const engine=loadEngine({seed:1}); const ev=expr=>vm.runInContext(expr,engine);
+  const HIT=engineFn(engine,'applyMissileHit');
   const G=ev('battleGrid'), F=ev('battleFacing'), UAM=ev('unitAbilityMult'), FATES=ev('rollUnitFates');
   const BASE={'Shieldwall Levies':8,'Yeoman Longbows':8,'Free Lances':10,'Gilded Lances':12,'Orc Berserkers':12,'Noble Griffons':12,'Eagle Riders':12,
     'Thunderbirds':22,'Forest Ents':22,'Great Bears':22,'Stone Giants':26,'Unicorn Herd':26,'Mammoth Host':26,'Crimson Rocs':30,'Cave Trolls':22,'Manticore Pride':26,
@@ -142,4 +140,4 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
 
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);
-})().catch(e=>{ console.error(e); process.exit(2); });
+}

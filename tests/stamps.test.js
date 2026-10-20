@@ -5,9 +5,10 @@
 //   - kingdoms-call-gm-portal.html: the footer (`GM Portal v…` in #kc-build-stamp, read by the auto-reload)
 //     must equal KC_BUILD_STAMP (written into telemetry and Hall-of-Fame rows). The auto-reload reads the
 //     FIRST `GM Portal v…` in the page, so that one must be the footer's too.
-// Nothing is run. Reads site/ (or $KC_SITE).
-const fs=require('fs');
-const {sitePath}=require('./lib/boot');
+// Nothing is run. Reads the data file from src/ (until plan P1-09a, from site/), and the GM portal from site/ (or
+// $KC_SITE).
+const fs=require('fs'), path=require('path');
+const {sitePath}=require('./lib/boot'); const {SRC}=require('./lib/source.ts');
 
 const STAMP='(\\d{4}\\.\\d{2}\\.\\d{2}-\\d{4})';
 let fails=0;
@@ -17,7 +18,7 @@ const find=(src,re)=>{ const m=re.exec(src); return m?m[1]:null; };
 
 // Data file: the comment and KC_DATA_STAMP.
 {
-  const src=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8');
+  const src=fs.readFileSync(path.join(SRC,'content','kingdoms-call-data.js'),'utf8');
   const comment=find(src,new RegExp('^// Data file v'+STAMP,'m'));
   const stamp=find(src,new RegExp("\\bKC_DATA_STAMP\\s*=\\s*['\"]"+STAMP+"['\"]"));
   if(!comment) fail('kingdoms-call-data.js: no `// Data file v…` comment line');
