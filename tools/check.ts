@@ -109,7 +109,7 @@ export const lint = (files: string[]) =>
     return { ok: r.code === 0, out: r.out };
   });
 
-// Prettier skips the files .prettierignore leaves out (it lists the formatted files: the new ones).
+// Prettier skips the files .prettierignore leaves out (it lists the formatted files: the new ones, and src/'s .js and .css).
 export const format = (files: string[]) =>
   step('format', async () => {
     if (!files.length) return { ok: true, out: 'nothing changed' };
