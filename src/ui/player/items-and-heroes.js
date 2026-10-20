@@ -279,31 +279,32 @@ function actionsFor(c){
   }).sort((a,b)=>_actionRank(a)-_actionRank(b));
 }
 
-let currentUser = null;
-let currentProfile = null;
-let joiningGame = null;
-let joinSkills = {};
-let currentGamePlayer = null;
-let currentReport = null;
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+globalThis.currentUser = null;
+globalThis.currentProfile = null;
+globalThis.joiningGame = null;
+globalThis.joinSkills = {};
+globalThis.currentGamePlayer = null;
+globalThis.currentReport = null;
 // Diplomacy (alliance system): pending declarations for THIS turn, keyed by rival realm index →
 // 'treat' (propose alliance/peace) | 'enemy' (declare war). Submitted with orders; applied at end
 // of turn (Evil/Undead war: at the start of the turn).
-let diploChoices = {};
+globalThis.diploChoices = {};
 // Victory: whether the player is Calling the Reckoning this turn (king-only, when dominant).
 // Submitted with orders.
-let reckoningCall = false;
+globalThis.reckoningCall = false;
 // the player's own arrangement of their heroes in the orders column, as an array of character ids
 // (strings), most-recent order first-to-last. Players asked to be able to group similar heroes
 // together while planning. Submitted with orders; the engine stores it on the realm
 // (player.heroOrder) and hands it back on every later report, so the arrangement survives turn runs.
-let _heroOrder = [];
+globalThis._heroOrder = [];
 // the player may concede the game with their orders. Once the GM runs a turn with concede=true the
 // realm is out for good — its heroes only Defend from then on.
-let concedeGame = false;
+globalThis.concedeGame = false;
 // RESEARCH CHOICE (2026-09-21): a successful Research order turns up TWO discoveries; in the next
 // turn's orders the player keeps one and the other is forgotten for good. Keyed by the pending
 // pair's key → the kept discovery id. Submitted with orders as `discoveryChoices`.
-let discoveryChoices = {};
+globalThis.discoveryChoices = {};
 function _pendingDiscChoices(){ return ((currentReport&&currentReport.pendingDiscoveryChoices)||[]).filter(p=>p&&p.key&&Array.isArray(p.options)&&p.options.length); }
 function discoveryChoiceBlockHTML(){
   const pend=_pendingDiscChoices(); if(!pend.length) return '';

@@ -6,7 +6,7 @@
 // tests/unit/the-source-read-by-its-syntax-tree.test.ts.
 //
 //   sourceOf(file, names)        the named top-level declarations of a file, as one script (its order, `export` gone)
-//   topLevelNames(file)          the names a file declares at top level, in order
+//   topLevelNames(file)          the names a file declares at top level (its declared globals too), in order
 //   sourceFrom(file, first, last)   the top-level declarations from the one named `first` through `last`
 //   scriptOf(file)               the whole file as a classic script: imports gone, `export` gone, types gone
 //   statementsBetween(file, fn, first, last)   the statements of a function from the one declaring `first` through
@@ -119,8 +119,9 @@ interface TopLevel {
   code: string;
 }
 
-/** Every name a file declares at top level (functions, classes, each variable of a declaration), in order, each with
- *  its declaration as a statement of its own. `export` is dropped; types are kept (asJavaScript strips them). */
+/** Every name a file declares at top level (functions, classes, each variable of a declaration, each declared global),
+ *  in order, each with its declaration as a statement of its own. `export` is dropped; types are kept (asJavaScript
+ *  strips them). */
 function topLevel(file: string, opts: SourceOptions = {}): TopLevel[] {
   const { tree } = read(file, opts);
   const out: TopLevel[] = [];
@@ -133,9 +134,21 @@ function topLevel(file: string, opts: SourceOptions = {}): TopLevel[] {
       for (const d of statement.declarationList.declarations) {
         if (ts.isIdentifier(d.name)) out.push({ name: d.name.text, code: `${keyword} ${d.getText(tree)};` });
       }
+    } else {
+      const name = declaredGlobalName(statement);
+      if (name) out.push({ name, code: statement.getText(tree) });
     }
   }
   return out;
+}
+
+/** The name a declared global's statement declares (`globalThis.<name> = <value>;`, plan P1-09b: a page variable its
+ *  other files or its tests share), or null. */
+function declaredGlobalName(statement: ts.Statement): string | null {
+  if (!ts.isExpressionStatement(statement) || !ts.isBinaryExpression(statement.expression)) return null;
+  const { left, operatorToken } = statement.expression;
+  if (operatorToken.kind !== ts.SyntaxKind.EqualsToken || !ts.isPropertyAccessExpression(left)) return null;
+  return ts.isIdentifier(left.expression) && left.expression.text === 'globalThis' ? left.name.text : null;
 }
 
 /** The names `file` declares at top level, in the file's order. */

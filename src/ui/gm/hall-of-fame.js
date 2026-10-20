@@ -20,7 +20,8 @@
 // does not know is still shown, under "Other records", with the key prettified — so adding a record
 // here can never break the board, it only loses a nice label until the catalogue catches up.
 const KC_LB_V=3;                    // bump when the row shape changes (rows carry it in build) · 3: records hold every realm's best
-let _kcHasLb=false, _kcLbLastErr=null;
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+globalThis._kcHasLb=false; globalThis._kcLbLastErr=null;
 async function probeLeaderboard(){
   try{
     const {error}=await sb.from('game_records').select('game_id').limit(1);

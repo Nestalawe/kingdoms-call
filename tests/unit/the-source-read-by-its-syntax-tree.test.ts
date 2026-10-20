@@ -125,13 +125,20 @@ describe('each helper gives the same answer on both layouts', () => {
   });
 });
 
-describe('a module, and a TypeScript file, read as the classic script they will be', () => {
+describe('a module, a TypeScript file and a declared global, read as the classic script they will be', () => {
   const dense = "const A={a:'x'};\nfunction f(n){ return A.a+n; }\nlet hits=[f(1)];\n";
   const asModule =
     "import { g } from './g.js';\nexport const A={a:'x'};\nexport function f(n){ return A.a+n; }\nexport let hits=[f(1)];\nexport { g };\n";
   const asTypeScript =
     "import { g } from './g.ts';\nexport const A: Record<string, string> = { a: 'x' };\nexport function f(n: number): string {\n  return A['a'] + n;\n}\nexport let hits: string[] = [f(1)];\nexport type T = number;\nexport { g };\n";
-  const files = { 'dense.js': dense, 'module.js': asModule, 'typescript.ts': asTypeScript };
+  // a page variable its files and tests share, as a declared global (plan P1-09b): read as a declaration too
+  const asDeclaredGlobal = "const A={a:'x'};\nfunction f(n){ return A.a+n; }\nglobalThis.hits=[f(1)];\n";
+  const files = {
+    'dense.js': dense,
+    'module.js': asModule,
+    'typescript.ts': asTypeScript,
+    'declared-global.js': asDeclaredGlobal,
+  };
   for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(copy, name), text);
   const value = (code: string) => vm.runInNewContext(code + ';[A.a, f(2), hits[0]]') as unknown;
   test.each(Object.keys(files))('%s', (name) => {

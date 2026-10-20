@@ -34,8 +34,9 @@ function setMobileView(view){
 // block at the end of the script: a top-level `let` is hoisted but sits in its temporal dead zone until
 // its declaration executes, and setupDeskLayout / setMobileView can be reached from a hash-restored
 // report before the tail of the script has run. (The ITEMS_BY_TIER hang is the same trap.)
-let _msgEnabled=false;
-let _deskLeftView='map', _deskRightView='report';
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+globalThis._msgEnabled=false;
+globalThis._deskLeftView='map'; let _deskRightView='report';
 // Whether the Orders view is currently AVAILABLE (true on the live turn; false on past turns and
 // Turn 0). On desktop the orders column's actual visibility is owned by applyDeskViews (the
 // right-panel tab), so the current/past-turn code sets this flag via refreshOrdersVisibility()
