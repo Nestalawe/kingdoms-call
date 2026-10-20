@@ -72,7 +72,7 @@ None.
 ## Checklist
 
 - [ ] Needs Theo? Say so in the first line of the description if this changes who can see or change
-      data, is a ✓ plan step or a unit step. (Changes to `.github/**`, `supabase/**` or `src/vendor/**`
+      data, is a ✓ plan step or a unit step. (Changes to `.github/**`, `supabase/**` or `public/vendor/**`
       get a warning comment anyway; talk them through with Theo before merging.)
 - [ ] Updates STATUS? (Plan steps only; batches don't. See "Never" 6 in `CLAUDE.md`.)
 - [ ] Rule changes are mirrored everywhere the rule is restated (engine, player portal, rulebooks).
