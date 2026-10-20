@@ -68,16 +68,38 @@ describe('the compiler', () => {
     }
   });
 
-  test('it checks the tests and the tools', () => {
+  test("it checks the tests, the tools and the site, with the browser's types", () => {
     const files = parsed.fileNames.map((f) => path.relative(ROOT, f));
     for (const f of [
       'tests/static/harness.test.ts',
       'tests/legacy.test.ts',
       'tools/check.ts',
       'tools/hooks/after-edit.ts',
+      // the site (P1-09e): every file of src/, and the globals its modules read without importing
+      'src/engine/run-turn.ts',
+      'src/content/kingdoms-call-data.ts',
+      'src/ui/gm/page.ts',
+      'src/globals.d.ts',
     ]) {
       expect(files, f).toContain(f);
     }
+    expect(files.filter((f) => f.startsWith('src/')).length).toBe(
+      filesUnder(path.join(ROOT, 'src')).filter((f) => f.endsWith('.ts')).length,
+    );
+    expect(o.lib).toEqual(expect.arrayContaining(['lib.es2024.d.ts', 'lib.dom.d.ts', 'lib.dom.iterable.d.ts']));
+  });
+
+  // P1-09e: a file of src/ that TypeScript doesn't check says why in its first line (Decision 15); the ratchet counts
+  // them (tsNocheck), so they only fall.
+  test('a file of src/ that TypeScript skips says why, in its first line', () => {
+    const without = filesUnder(path.join(ROOT, 'src'))
+      .filter((f) => f.endsWith('.ts'))
+      .filter((f) => {
+        const text = read('src/' + f);
+        const at = text.search(new RegExp('@ts-' + 'nocheck'));
+        return at >= 0 && !new RegExp('^// @ts-' + 'nocheck: \\S.{10,}').test(text);
+      });
+    expect(without).toEqual([]);
   });
 });
 
@@ -113,8 +135,8 @@ describe('the lint rules', () => {
   // The site's modules get no-undef (plan P1-08a for the engine; P1-09d for all of src/): a file that reads a name it
   // neither imports nor declares (a helper lifted out of resolveTurn that still reads its closure, a missing import)
   // is an error, not a ReferenceError the day it first runs. The engine may read no page's or browser's name.
-  const ENGINE_FILES = ['src/engine/run-turn.js', 'src/engine/turn/context.js', 'src/views/turn-report.js'];
-  const PAGE_FILES = ['src/ui/gm/turn-shell.js', 'src/ui/player/map.js', 'src/db/telemetry.js'];
+  const ENGINE_FILES = ['src/engine/run-turn.ts', 'src/engine/turn/context.ts', 'src/views/turn-report.ts'];
+  const PAGE_FILES = ['src/ui/gm/turn-shell.ts', 'src/ui/player/map.ts', 'src/db/telemetry.ts'];
   test.for([...ENGINE_FILES, ...PAGE_FILES])('%s gets no-undef, as a module', async (file) => {
     expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
     const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
@@ -126,6 +148,33 @@ describe('the lint rules', () => {
     const pagesOwn = ['window', 'document', 'KC_CONFIG', 'supabase', 'currentGame', 'currentReport'];
     expect(pagesOwn.filter(known)).toEqual(ENGINE_FILES.includes(file) ? [] : pagesOwn);
   });
+
+  // The site's own tier (plan P1-09, Decision 15, P1-09e): ESLint's recommended rules and typescript-eslint's strict
+  // set, none switched off and each at least a warning (tools/ratchet.ts counts the warnings: eslintWarnings), no-undef
+  // and ban-ts-comment errors (a file left unchecked only with its reason), and no type-aware rule until P1-10 (no
+  // project service: with it off, a type-aware rule would stop ESLint).
+  const siteExpected: Partial<Linter.RulesRecord> = {};
+  for (const c of [js.configs.recommended, ...tseslint.configs.strict]) Object.assign(siteExpected, c.rules);
+  test.for([...ENGINE_FILES, ...PAGE_FILES, 'src/globals.d.ts'])(
+    "%s gets the site's rules: none off, two errors, nothing type-aware",
+    async (file) => {
+      const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
+      const rules = config.rules ?? {};
+      // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js)
+      const allowedOff = file === 'src/globals.d.ts' ? ['no-var'] : [];
+      const off = Object.entries(siteExpected)
+        .filter(([rule, v]) => !formatting.has(rule) && level(v) > 0 && level(rules[rule]) === 0)
+        .map(([rule]) => rule);
+      expect(off).toEqual(allowedOff);
+      expect(level(rules['no-undef'])).toBe(2);
+      const ban = rules['@typescript-eslint/ban-ts-comment'];
+      expect(level(ban)).toBe(2);
+      expect(Array.isArray(ban) ? ban[1] : undefined).toEqual({ 'ts-nocheck': 'allow-with-description' });
+      const parserOptions = (config.languageOptions as { parserOptions?: Record<string, unknown> } | undefined)
+        ?.parserOptions;
+      expect(parserOptions?.['projectService'] ?? parserOptions?.['project'] ?? null).toBeNull();
+    },
+  );
 
   test('a focused or skipped test is an error', async () => {
     const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'tests/static/x.test.ts'))) as Linter.Config)
@@ -443,8 +492,8 @@ describe('CI', () => {
   // imports, and the tools it runs on (the locked packages, the Node pin).
   test('the engine paths are the ones the plan lists, and the runner uses the same list', () => {
     const page = pageSources();
-    expect(page).toContain('src/content/kingdoms-call-data.js');
-    expect(page).toContain('src/engine/run-turn.js');
+    expect(page).toContain('src/content/kingdoms-call-data.ts');
+    expect(page).toContain('src/engine/run-turn.ts');
     expect(page.filter((f) => !isEnginePath(f))).toEqual([]);
     // Under src/, the engine paths are exactly the page's sources and the pages' templates: no other page's code plays
     // the matrix.
@@ -466,6 +515,7 @@ describe('CI', () => {
           'src/*.html',
           'public/**',
           'tools/build.ts',
+          'tsconfig.json',
           'tools/pages.ts',
           'tools/balance/**',
           'tests/balance/**',
@@ -606,8 +656,18 @@ describe('the ratchet', () => {
     expect(path.relative(ROOT, BASELINE_FILE)).toBe('tests/ratchet.json');
   });
 
-  test('no count is above its baseline', () => {
+  // measure() runs ESLint over src/ for eslintWarnings: a few seconds, more on a slow runner.
+  test('no count is above its baseline', { timeout: 60_000 }, () => {
     const { rose } = compare(readBaseline(), measure());
     expect(rose, 'Lower what rose, or, if the rise is right, talk it through with Theo.').toEqual([]);
+  });
+
+  // P1-09e: the site's lint warnings are counted, so they only fall; src/ has no JavaScript left but public/'s two
+  // classic scripts (copied as they are).
+  test("it counts the site's lint warnings and public/'s two scripts", { timeout: 60_000 }, () => {
+    const now = measure();
+    expect(now['eslintWarnings']).toBeGreaterThan(0);
+    expect(readBaseline()['eslintWarnings']).toBeDefined();
+    expect(now['sourceJavascriptFiles']).toBe(2);
   });
 });
