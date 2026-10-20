@@ -77,10 +77,10 @@ jobs:
           STAGING_SUPABASE_KEY: ${{ vars.STAGING_SUPABASE_KEY }}
           STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
 
-      # site/ from src/ (P1-05), as deploy.yml builds it (Vite, installed from the lock file: P1-09d); then the staging
-      # config replaces its kc-config.js.
+      # site/ from src/ (P1-05), as deploy.yml builds it (Vite, installed from the lock file: P1-09d, without its
+      # packages' install scripts, as in every job that holds a secret); then the staging config replaces its kc-config.js.
       - name: Install the build's tools
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build the site
         run: npm run build
