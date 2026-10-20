@@ -119,13 +119,10 @@ Object.assign(window, {
   PRIMAL_ARMY_SPEEDS, // ui/player/skills-and-projections.js
   renderDiplomacy, // ui/player/report.js
   renderMessageThread, // ui/player/dispatches.js
-  renderOrderLedgerP, // ui/player/orders-form.js
   renderReportView, // ui/player/report.js
   renderTitles, // ui/player/titles.js
   sb, // ui/player/startup.js
-  scheduleOrderLedgerP, // ui/player/orders-form.js
   setMsgChannel, // ui/player/dispatches.js
-  startMessagePolling, // ui/player/dispatches.js
   terrorNoteP, // ui/player/map-symbols.js
   unitTypeOfP, // ui/player/order-chances.js
   updateMsgComposer, // ui/player/dispatches.js

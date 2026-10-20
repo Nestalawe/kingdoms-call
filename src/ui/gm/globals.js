@@ -51,7 +51,6 @@ Object.assign(window, {
 });
 // The names its tests reach.
 Object.assign(window, {
-  _fetchBuildStamp, // ui/gm/auto-turn.js
   _LB_SEA, // ui/gm/hall-of-fame.js
   abilityMissileUnits, // engine/battle/strength.js
   activeItems, // engine/items/equipment.js
@@ -109,7 +108,6 @@ Object.assign(window, {
   LEGACY_UNIT_RENAMES, // engine/army-tables.js
   loadReportedDispatches, // ui/gm/sign-in.js
   loadTurnLog, // ui/gm/turn-log.js
-  migrateItemTiers, // engine/items/equipment.js
   migrateLairGuardiansV2, // engine/heroes/skills-and-hp.js
   migrateLegacyUnitNames, // engine/army-tables.js
   missileDamageMult, // engine/battle/strength.js

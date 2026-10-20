@@ -5,8 +5,7 @@
 // declared. This test reads the templates, the scripts and the tests (tests/lib/page-globals.ts says how) and checks:
 // - each list holds exactly what is needed, each name a function or a constant of the page, in the file it names;
 // - no handler or test reaches a page variable that isn't a declared global;
-// - no test stands a function in on a page (it would reach nothing once the page is modules), but the screen tours'
-//   five, parked for P1-09d (STATUS, "The hostile-name tours reach into a page's own functions and state");
+// - no test stands a function in on a page (it would reach nothing once the page is modules);
 // - the classic scripts a page keeps (its boot-failure reporter, kc-config.js, the staging footer) read none of its
 //   module names;
 // - every test's evaluated code is read, but the known calls below;
@@ -32,15 +31,6 @@ import {
   type PageReach,
   type ScriptPage,
 } from '../lib/page-globals.ts';
-
-/** Page functions the screen tours (tests/lib/screens.js) stand in from outside, kept until P1-09d restages them
- *  (STATUS, Parked: "The hostile-name tours reach into a page's own functions and state"). No other may be added. */
-const PARKED_STAND_INS: Record<ScriptPage, string[]> = {
-  'kingdoms-call-gm-portal.html': ['_fetchBuildStamp', 'generateNewGame', 'migrateItemTiers'],
-  'kingdoms-call-player-portal.html': ['scheduleOrderLedgerP', 'startMessagePolling'],
-  'kingdoms-call-leaderboard.html': [],
-  'kingdoms-call-overlord.html': [],
-};
 
 /** Evaluating calls whose code isn't a string, a template, a function or a constant of their file, and why each is
  *  safe to leave unread. */
@@ -100,7 +90,7 @@ function problemsOf(
         `a test reaches a ${String(kindOf(name))} that isn't a declared global: ${name} (${by.join('; ')})`,
       );
   for (const [name, by] of reach.writes)
-    if (kindOf(name) !== 'global' && !isVariable(name) && !PARKED_STAND_INS[page].includes(name))
+    if (kindOf(name) !== 'global' && !isVariable(name))
       problems.push(`a test stands in a page ${String(kindOf(name))}: ${name} (${by.join('; ')})`);
   for (const [name, by] of namesClassicScriptsRead(page, src))
     problems.push(`a classic script reads a module name: ${name} (${by.join('; ')})`);
@@ -114,14 +104,10 @@ describe.each(SCRIPT_PAGE_NAMES)('%s', (page) => {
     expect(problemsOf(page, reach.pages[page])).toEqual([]);
   });
 
-  test('the lists and the declared globals are not empty, and the parked stand-ins are still stood in', () => {
+  test('the lists are not empty', () => {
     const lists = globalsLists(page);
     expect(lists.handlers.length, 'the handlers list').toBeGreaterThan(0);
     expect(lists.tests.length, 'the tests list').toBeGreaterThan(0);
-    // When a tour stops standing one in, it leaves the parked list (and STATUS's Parked entry): so this list only falls.
-    expect(sorted([...reach.pages[page].writes.keys()].filter((n) => PARKED_STAND_INS[page].includes(n)))).toEqual(
-      PARKED_STAND_INS[page],
-    );
   });
 });
 
