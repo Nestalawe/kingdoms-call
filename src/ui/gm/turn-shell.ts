@@ -11,8 +11,8 @@ import { runningBuildStamp, setAutoTurnStatus } from './auto-turn.ts';
 import { resolveTurn } from '../../engine/run-turn.ts';
 
 // ── THE TURN SHELL (plan P1-18d, 2026-10-18) ────
-// runTurn runs one turn of a game for the GM: from the Resolve Turn button, or from the auto-turn watcher (auto-turn.js).
-// It does the turn's database and screen work, around the engine's resolveTurn (src/engine/run-turn.js), in this order:
+// runTurn runs one turn of a game for the GM: from the Resolve Turn button, or from the auto-turn watcher (auto-turn.ts).
+// It does the turn's database and screen work, around the engine's resolveTurn (src/engine/run-turn.ts), in this order:
 // confirm, load the game and its slots, check the turn, clear the orders, resolveTurn, save the world (only if the game
 // is still on that turn), then buildReports() and write each realm's report, the GM's log and the telemetry. It always
 // returns {ok, committed, conflict, error} (and `turn` when it worked); docs/traps.md, "Post-commit work in runTurn".
@@ -120,7 +120,7 @@ export async function runTurn(opts) {
     }
     _ordersCleared = true;
 
-    // The turn itself (src/engine/run-turn.js): resolveTurn brings the save up to date, merges the orders and resolves
+    // The turn itself (src/engine/run-turn.ts): resolveTurn brings the save up to date, merges the orders and resolves
     // the turn, with no database and no screen. It is synchronous, as the turn always was between the clear and the save.
     const playersWithOrders = freshPlayers.filter((p) => p.user_id && p.orders).length;
     msg.innerHTML = kcHtml`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders !== 1 ? 's' : ''}. Resolving 5 phases…</div>`;
@@ -128,7 +128,7 @@ export async function runTurn(opts) {
     // ── THE TURN'S DICE (P1-18e, 2026-10-18; P1-08m, 2026-10-20) ────
     // Each turn plays from its own seed: one number drawn from the page's dice, as a 32-bit integer (kcRngStream reads
     // 0 as 1, so 0 becomes 1 here and the seed returned is the one that played). resolveTurn takes the seed and lends
-    // itself the dice made from it (src/engine/run-turn.js), and lends them again to buildReports(), whose Spy-stealth
+    // itself the dice made from it (src/engine/run-turn.ts), and lends them again to buildReports(), whose Spy-stealth
     // rolls are the turn's too; it gives the page its own dice back after each, so the turn's are never lent across an
     // await, and nothing else the page runs meanwhile (another game's turn, the watcher) draws from them. runTurn returns
     // the seed.

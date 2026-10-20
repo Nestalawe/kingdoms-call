@@ -147,7 +147,7 @@ export function graveIntelFor(gs, pl) {
 // ── LIFTED OUT OF resolveTurn (plan P1-08c) ── a fallen hero's grave (for Resurrect), the dead units a battle leaves
 // in a province (for Skeletal Armies) or that slip away home (an Elven kingdom's units; resolveTurn's _elvenEscapeQueue,
 // which joins the turn's context by reference), and the dead heroes a realm has seen. recordHeroGrave,
-// recordBattleGraves and recordDeadHeroSighting take the turn's context first (src/engine/turn/context.js).
+// recordBattleGraves and recordDeadHeroSighting take the turn's context first (src/engine/turn/context.ts).
 // Record a dead hero into the persistent graveyard for Resurrect spell
 export function recordHeroGrave(turnContext, hero) {
   const { G } = turnContext;

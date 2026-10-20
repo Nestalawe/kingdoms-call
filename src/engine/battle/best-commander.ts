@@ -10,7 +10,7 @@ import { armStr, provIsCoastal } from './terrain-and-unit-strength.ts';
 
 // ── THE BEST COMMANDER (plan P1-08b: lifted out of resolveTurn) ────
 // Which of a realm's heroes leads a pooled host (commandScore, pickBattleCommander), the hand-over of command and its
-// line, and a host's total strength (armyTotalStr). Each takes the turn's context first (src/engine/turn/context.js),
+// line, and a host's total strength (armyTotalStr). Each takes the turn's context first (src/engine/turn/context.ts),
 // but commandHandoverLine, which reads none.
 // ── BEST COMMANDER TAKES THE FIELD ────
 // When two or more of a realm's characters pool their armies into ONE battle — an attacker joined

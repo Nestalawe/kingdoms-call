@@ -49,7 +49,7 @@ import { erodeGuardSurvivors } from '../battle/stalled-battles-and-beaten-guards
 // and checked he may act: where the order leads (a province's id, the portal's prov:<id>, a compass direction), the
 // border of a neutral realm, the sea and the coast, the march itself and what he sees on the way in, then whatever
 // holds the province: a neutral guard, an enemy hero, a garrison, nobody, or a friend. It takes the turn's context
-// first (src/engine/turn/context.js) and the values processOrder worked out before it. The body keeps
+// first (src/engine/turn/context.ts) and the values processOrder worked out before it. The body keeps
 // processOrder's indent (plan P1-08's Decisions); a case-level break became a return.
 export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, player) {
   const { movePoints, seaMovePoints, log, G, seaCap, lightSeaMoves, lightLandMoves } = turnContext;

@@ -12,7 +12,7 @@ import { resolvePersonalCombat } from './resolve-personal-combat.ts';
 // The magic items a fighter brings to bear (magicItemsLine), the item a character may drop when they break off a fight
 // with another character (duelFleeItemDrop), a duel between two commanders (resolveDuel) and a character's Encounter
 // with another character (resolveCharVsChar). duelFleeItemDrop, resolveDuel and resolveCharVsChar take the turn's
-// context first (src/engine/turn/context.js); magicItemsLine reads no turn state.
+// context first (src/engine/turn/context.ts); magicItemsLine reads no turn state.
 // which magic items a combatant brings to bear — announced at the start of a battle or duel so
 // every item "in play" is acknowledged (passive stat items boost the fight; Mithril also calls
 // out each blow it turns aside, see pcTakeHit). Only combat-relevant effects are listed.

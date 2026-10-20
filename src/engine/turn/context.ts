@@ -1,5 +1,5 @@
 // ── THE TURN'S CONTEXT (plan P1-08a, 2026-10-18) ────
-// What the helpers lifted out of resolveTurn (src/engine/run-turn.js) used to reach through its closure: the state
+// What the helpers lifted out of resolveTurn (src/engine/run-turn.ts) used to reach through its closure: the state
 // being changed, the GM's log and its collectors, and the phase being resolved. resolveTurn makes one each turn, just
 // after it parses the save, and passes it first to every lifted helper that needs it; a helper that needs none keeps
 // its arguments. An object (the state, a collector) joins it by reference. A value resolveTurn changes as the turn goes

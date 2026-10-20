@@ -27,7 +27,7 @@ import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
 // each phase until one side is gone or breaks away (resolveStalledBattles, which resolveTurn's phase loop and
 // resolveWarFronts call). Each time a neutral guard loses a battle, its survivors flee as mercenaries, lose heart and
 // drop a grade, or hold their ground (erodeGuardSurvivors, GUARD_FLIGHT_CHANCE, GUARD_DEMOTE_CHANCE). They take the
-// turn's context first (src/engine/turn/context.js).
+// turn's context first (src/engine/turn/context.ts).
 // ── STALLED-BATTLE RESOLVER ────
 // If a battle's loser could not retreat to an adjacent province, the opposing forces stay
 // co-located. At the start of the next phase they fight again — repeatedly, each phase, until one

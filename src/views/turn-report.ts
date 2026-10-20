@@ -2020,7 +2020,7 @@ export function buildTurnReport(gameState, playerIndex) {
     // Which GM build wrote this report. The player portal shows it when a feature the report should
     // carry is missing (e.g. the title-race percentages, added in v2026.09.20-0153), so a stale
     // uploaded GM portal is visible at a glance instead of looking like a player-portal bug. The page
-    // fills it in, here in its place (P1-18d): the turn shell (src/ui/gm/turn-shell.js) and Turn 0.
+    // fills it in, here in its place (P1-18d): the turn shell (src/ui/gm/turn-shell.ts) and Turn 0.
     engineStamp: null,
     // 2026-09-23 (Toby item 6): prices the orders-column spending tracker needs and the player portal
     // has no table for — each unit type's per-turn WAGE (its recruit price after this realm's

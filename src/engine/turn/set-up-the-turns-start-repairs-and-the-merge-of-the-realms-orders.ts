@@ -21,7 +21,7 @@ import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 //      orders stamped for another turn refused, the orders of heroes it means to hire, raise or charm held until the
 //      order lands, every other hero's phases written, a conceded realm's heroes made to hold, its encounter plans
 //      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied.
-// But for the first, each takes the turn's context (src/engine/turn/context.js) and nothing else: the merge makes the
+// But for the first, each takes the turn's context (src/engine/turn/context.ts) and nothing else: the merge makes the
 // collectors afresh each turn, joins them to the context and fills them (staleOrderWarnings, diploDeclarations,
 // safeStartRefused, discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read there
 // (they were declared in resolveTurn until plan P1-08l2). The bodies keep resolveTurn's indent (plan P1-08's Decisions).

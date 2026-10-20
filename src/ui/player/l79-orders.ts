@@ -1,6 +1,6 @@
 // ── L79_ORDERS: a constant read as the page loads ────
-// Moved here unchanged (plan P1-09b) from src/ui/player/items-and-heroes.js, the file just after this one in the page.
-// src/ui/player/pre-orders.js reads it as the page loads, and the two files are in one cycle of files that read each
+// Moved here unchanged (plan P1-09b) from src/ui/player/items-and-heroes.ts, the file just after this one in the page.
+// src/ui/player/pre-orders.ts reads it as the page loads, and the two files are in one cycle of files that read each
 // other: once the page is made of modules (P1-09d), the file that runs second could meet it before its line has run. A
 // file that reads nothing runs before every file that reads it (docs/traps.md, "Top-level declaration order").
 // L7/L9 mastery ORDERS — gated by the hero's RAW skill level (past-5 comes from experience only).

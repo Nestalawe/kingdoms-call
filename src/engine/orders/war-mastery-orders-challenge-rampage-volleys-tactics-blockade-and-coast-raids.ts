@@ -17,7 +17,7 @@ import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 // Melee's Challenge (single combat with an enemy hero who leads no army) and Rampage (companies cut down and their
 // commander bloodied); Archery's Rain of Arrows (companies felled) and Sniper's Mark (wounds and a chance to slay); and
 // the battle-strength flags a later battle this turn reads: Tactical's Feigned Retreat and Grand Stratagem, March's
-// Lightning Advance. Each takes the turn's context first (src/engine/turn/context.js), then the values processOrder
+// Lightning Advance. Each takes the turn's context first (src/engine/turn/context.ts), then the values processOrder
 // worked out before it that it reads, in the order processOrder declares them. Each body keeps processOrder's indent
 // (plan P1-08's Decisions); a case-level break became a return.
 // Blockade (Naval 7): a sea the hero is in or beside, sealed against enemy fleets this turn, half the time.

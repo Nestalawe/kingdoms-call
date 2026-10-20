@@ -8,7 +8,7 @@ import { skillLevel } from '../titles/perks.ts';
 
 // ── A HERO'S SKILLS IN PLAY, WHAT OTHERS MAY KNOW, AND WHO IS HIDDEN (plan P1-08a: lifted out of resolveTurn) ────
 // A hero's skill as it counts this turn, the notes a roll line may show another realm, a hero's wage, and the Veil and
-// Vanish tests. Each takes the turn's context first (src/engine/turn/context.js), but totalInit and recalcHeroPay,
+// Vanish tests. Each takes the turn's context first (src/engine/turn/context.ts), but totalInit and recalcHeroPay,
 // which read none.
 export function totalInit(c) {
   const s = c.skills || {};

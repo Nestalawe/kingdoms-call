@@ -19,7 +19,7 @@ import { erodeGuardSurvivors } from './stalled-battles-and-beaten-guards.ts';
 // settled the same phase: a battle against any enemy or neutral armies there, or the province taken if none stand in
 // the way (resolveUnitGainInProvince). While the phase's non-moving orders are still resolving, a host a Defend general
 // would answer waits in the queue (the context's _tier0Open and _unitGainQueue, read and written as
-// turnContext.<name>, as resolveTurn reads them). It takes the turn's context first (src/engine/turn/context.js).
+// turnContext.<name>, as resolveTurn reads them). It takes the turn's context first (src/engine/turn/context.ts).
 // when a character GAINS units in a province they don't own (Skeletal Armies, Elemental Summon,
 // action-phase Control Undead, mercenary hire, …), the new force is resolved the same
 // phase: enemy OR neutral armies present → a battle is fought; none present → the character takes

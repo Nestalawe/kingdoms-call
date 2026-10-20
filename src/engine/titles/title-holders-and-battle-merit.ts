@@ -4,7 +4,7 @@ import { TM, creditBeastUnit } from './perks.ts';
 // ── TITLE HOLDERS AND BATTLE MERIT (plan P1-08a: lifted out of resolveTurn) ────
 // Who holds a Title or a minor title this turn (G._titleHolders and G._minorHolders, worked out once at the start of
 // the turn: see "LIVE TITLE PERKS" in resolveTurn), and the merit a battle earns. Each takes the turn's context first
-// (src/engine/turn/context.js).
+// (src/engine/turn/context.ts).
 // ── TITLE MERIT: battles ── Grand Marshal (land) / Sea Lord (sea): the winner gains +1 per enemy
 // unit destroyed; the loser loses 1 per own unit lost. Counted from the pooled battle copies,
 // which still carry _died flags at the call site. 2026-09-16: credited for EVERY battle — a rival

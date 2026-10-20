@@ -25,7 +25,7 @@ import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experie
 // chance to raise a skill, with comrades, a mentor and Perseverance; Tactical and Naval also drill the troops he
 // leads), Rest (hit points back) and Research Breakthrough (Sage 7: a discovery, no roll), each once processOrder has
 // read the order and checked he may act (a bot's Practice on a skill already at 5 switched there first). Each takes
-// the turn's context first (src/engine/turn/context.js), then the values processOrder worked out before it that it
+// the turn's context first (src/engine/turn/context.ts), then the values processOrder worked out before it that it
 // reads, in the order processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a
 // case-level break became a return.
 // ── RESEARCH ── the scholar's own order: a roll for a Sage discovery. Available to any

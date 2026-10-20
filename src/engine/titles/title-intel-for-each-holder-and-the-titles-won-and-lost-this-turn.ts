@@ -19,7 +19,7 @@ import { MINOR_TITLES, computeMinorTitles, computeStandings } from './reckoning.
 //   2. the title changes: each realm's titles won and lost since last turn's snapshot (every title held, the first
 //      turn they are public), for the report, and this turn's snapshot.
 // Each was an immediately-invoked function in resolveTurn; each is a named function now, taking the turn's context
-// (src/engine/turn/context.js) and nothing else: it reads no value of the phase loop's. The bodies keep resolveTurn's
+// (src/engine/turn/context.ts) and nothing else: it reads no value of the phase loop's. The bodies keep resolveTurn's
 // indent inside the function they were (plan P1-08's Decisions).
 
 // ── IMPERIAL TITLE INTEL (Items 1, 2, 4) ── Titles are AWARDED here, AFTER all turn resolution

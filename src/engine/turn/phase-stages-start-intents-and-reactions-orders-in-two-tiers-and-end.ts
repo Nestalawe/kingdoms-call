@@ -42,7 +42,7 @@ import { processOrder } from '../orders/order-dispatch-the-checks-before-a-hero-
 //      Spring), the watches answering a host raised in them, and the ambushes;
 //   4. the end of the phase: skill rises told, a standing Defend cancelled by a later Move, intrusions told, the hosts
 //      of fallen commanders dispersed, and the map and each realm's view of it brought up to date.
-// Each takes the turn's context first (src/engine/turn/context.js), then the loop's values it reads: the phase, the
+// Each takes the turn's context first (src/engine/turn/context.ts), then the loop's values it reads: the phase, the
 // intents, where every hero stood as the phase began. The bodies keep the loop's indent (plan P1-08's Decisions).
 
 export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {

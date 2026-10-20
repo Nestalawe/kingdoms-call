@@ -47,7 +47,7 @@ import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.
 // Six orders a hero spends a phase on where he stands: Explore, Perform Rite, Hunting Rumours, Search Lair, Chart the
 // Unknown (Explorer 7) and Discover Lost Ruin (Explorer 9), each once processOrder has read the order and checked he
 // may act (a mastery once a turn, a search written for another province). Each takes the turn's context first
-// (src/engine/turn/context.js), then the values processOrder worked out before it that it reads, in the order
+// (src/engine/turn/context.ts), then the values processOrder worked out before it that it reads, in the order
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break
 // became a return.
 // Explore: the province he stands in mapped further, and the lairs and ritual sites that come to light as it fills.

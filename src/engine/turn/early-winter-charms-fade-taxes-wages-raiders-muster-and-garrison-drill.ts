@@ -35,7 +35,7 @@ import { setMovePool } from '../units/movement-pools.ts';
 //   4. Raiders' Muster: an orcish province that saw an orc victory this turn gains a Goblin Horde;
 //   5. garrison drill: an unled garrison company may rise one grade; then any column left at sea without hulls enough
 //      is settled.
-// It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads none of the loop's values (the
+// It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads none of the loop's values (the
 // phase, the intents, where each hero stood). The body keeps the loop's indent (plan P1-08's Decisions).
 
 export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(turnContext) {

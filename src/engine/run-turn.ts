@@ -49,13 +49,13 @@ import {
 // ── THE TURN ITSELF (plan P1-18d, 2026-10-18) ────
 // resolveTurn works out one turn: it brings the save up to date, merges the players' orders, has the bots plan,
 // resolves the five phases and the end of the turn. It is synchronous and reads no database, no screen and no clock.
-// Its dice come from its seed (P1-08m, below). The shell around it is runTurn (src/ui/gm/turn-shell.js): it loads the
+// Its dice come from its seed (P1-08m, below). The shell around it is runTurn (src/ui/gm/turn-shell.ts): it loads the
 // game, clears the orders, draws the seed, calls this, saves, and only then has the reports built and writes them.
 //   G                 the game's saved state as loaded (games.game_state, a JSON string): parsing it is the turn's copy
 //   freshPlayers      the game's slot rows as loaded (game_players), each with the orders it sent
 //   expectedTurnToRun the turn being run (the games row's turn, which the save checks)
 //   seed              the turn's seed, a 32-bit integer (kcRngStream reads 0 as 1); none (the tests' turns): the dice
-//                     in use (kcRng, src/engine/rng.js), as a test fixes them
+//                     in use (kcRng, src/engine/rng.ts), as a test fixes them
 // Returns {state, log, buildReports}:
 //   state             the world after the turn, as JSON: what the shell saves (with its two turn-mode stamps added)
 //   log               the GM's log of the turn (turnLog); buildReports adds the Spy-stealth lines to it
@@ -94,7 +94,7 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
       throw new Error(`Could not read the saved game: ${(e && e.message) || e}`);
     }
     // ── THE TURN'S CONTEXT (plan P1-08a) ── what the helpers lifted out of resolveTurn read: the state, the log
-    // and its collectors, the phase being resolved. They take it first (src/engine/turn/context.js).
+    // and its collectors, the phase being resolved. They take it first (src/engine/turn/context.ts).
     const turnContext = createTurnContext(G, freshPlayers, expectedTurnToRun);
     // ── MERCENARY BAND IDS (P1-18b, 2026-10-18) ── a band made this turn is `merc_t<turn>_<n>`, counted
     // afresh each turn: no clock and no dice, so the turn's dice don't depend on how many bands it makes.
@@ -294,7 +294,7 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // ── THE REPORTS, BUILT AFTER THE SAVE (P1-18d, 2026-10-18) ────
     // The shell calls buildReports() only once the turn is saved (_turnCommitted), so a report that fails costs reports,
     // never the turn (docs/traps.md, "Post-commit work in runTurn"). The reports are built on the working copy, as they
-    // always were: the Spy-stealth rolls in buildReports (engine/turn/realm-reports-and-spy-stealth.js) change it, and the
+    // always were: the Spy-stealth rolls in buildReports (engine/turn/realm-reports-and-spy-stealth.ts) change it, and the
     // reports read it with the turn's log and helpers.
     const _reports = { built: false };
     turnContext._reports = _reports;

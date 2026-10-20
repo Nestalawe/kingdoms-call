@@ -6,7 +6,7 @@ import { canEnterTerrain } from '../units/movement-pools.ts';
 // ── ROUTES AND DISTANCES (plan P1-08i1: lifted out of resolveTurn) ────
 // How many provinces apart two provinces are (provDistance, kept for the turn in the context's _distCache), and the first
 // step of a passable route toward a province (stepToward, stepTowardPath; stepTowardPreferSafe takes a route over safe
-// ground when it is no longer, provSafePassageFor). They take the turn's context first (src/engine/turn/context.js).
+// ground when it is no longer, provSafePassageFor). They take the turn's context first (src/engine/turn/context.ts).
 // Breadth-first province distance (hex grid, wraps E/W like the rest of the map code).
 export function provDistance(turnContext, fromId, toId) {
   const { _distCache, G } = turnContext;

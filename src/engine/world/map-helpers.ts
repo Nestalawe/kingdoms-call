@@ -142,7 +142,7 @@ export function hexDistP(a, b, cols) {
 }
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08b) ── a province's name by id, the province a hero stands in, and the
-// neighbour in a compass direction. Each takes the turn's context first (src/engine/turn/context.js).
+// neighbour in a compass direction. Each takes the turn's context first (src/engine/turn/context.ts).
 export function provName(turnContext, id) {
   const { G } = turnContext;
   return G.world.provinces[id]?.name || 'unknown';

@@ -5,11 +5,11 @@ import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';
 // ── THE ENCOUNTER AND DEFEND ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // Encounter Character sets a hero after a quarry he may hunt (never himself, a hero of the lord who holds him by a
 // Charm, a rival king unless he is one, a hidden or vanished hero), then takes the first step of the chase; the chase,
-// the catch and the meeting are advancePursuit's (src/engine/heroes/pursuits-and-the-catch-roll.js), in every phase
+// the catch and the meeting are advancePursuit's (src/engine/heroes/pursuits-and-the-catch-roll.ts), in every phase
 // that follows. Defend sets (or keeps) a watch over the province the hero stands in and the country about it, and says
 // so once a phase; the watch's reactions, ride-outs and ambushes are the Defend family's
-// (src/engine/units/defend-ride-outs-ambushes-and-reinforcements.js). Each takes the turn's context first
-// (src/engine/turn/context.js), then the values processOrder worked out before it that it reads, in the order
+// (src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts). Each takes the turn's context first
+// (src/engine/turn/context.ts), then the values processOrder worked out before it that it reads, in the order
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break became
 // a return.
 // Encounter Character: the quarry checked, then the chase set and its first step taken.

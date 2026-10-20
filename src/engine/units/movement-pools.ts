@@ -9,7 +9,7 @@ import { getSeaCapability } from './sea-lift-stranding-and-retreats.ts';
 // Where a column may step, and each hero's move points for the turn: the land and sea pools (resolveTurn's movePoints,
 // seaMovePoints, seaMoveActive, seaCap, moveMax and seaMoveMax, which join the turn's context by reference), set at
 // the start of the turn and refreshed when a column changes; and the chance that two contingents unify.
-// computeMovePoolMax, setMovePool and refreshMovePool take the turn's context first (src/engine/turn/context.js); the
+// computeMovePoolMax, setMovePool and refreshMovePool take the turn's context first (src/engine/turn/context.ts); the
 // rest read no turn state.
 export function canEnterTerrain(c, terrain, seaCap) {
   if (terrain === 'sea') {

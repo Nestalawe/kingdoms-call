@@ -31,7 +31,7 @@ import { isHostileInvasion, phaseInitCompare } from '../turn/phase-intents-and-d
 // is told when no battle came of it (reconcileDefendRideOuts); a hero with no troops lies in wait to ambush an enemy
 // who marches in (runDefendAmbush); and a column already marching to its own invaded province is hurried in ahead of
 // the invader (runReinforcementArrivals). resolveTurn's phase loop calls them, and resolveUnitGainInProvince calls
-// defendAnswerUnitGain. They take the turn's context first (src/engine/turn/context.js).
+// defendAnswerUnitGain. They take the turn's context first (src/engine/turn/context.ts).
 // ── DEFEND (AK [3.15]) ────
 // A general ordered to Defend keeps watch for the REST OF THE TURN. He reacts to an enemy
 // invasion of a province that is adjacent to both where he is standing and the centre of the

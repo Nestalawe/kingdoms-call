@@ -23,7 +23,7 @@ import { pcCombatXP } from './melee-flight-and-archery.ts';
 
 // ── PERSONAL COMBAT: COMBAT SPELLS AND GUARDIAN ABILITIES (plan P1-08e: lifted out of resolveTurn) ────
 // A spell cast in a personal fight (pcCastCombatSpell, with the spell-balance figures above it) and a guardian's
-// special ability (pcMonsterSpecial). Both take the turn's context first (src/engine/turn/context.js).
+// special ability (pcMonsterSpecial). Both take the turn's context first (src/engine/turn/context.ts).
 // --- Combat spell dispatch (per-school CSV effects slot in here) ------------- Returns true if
 // the spell resolved (successfully cast), false if it fizzled/was invalid.
 // NOTE: school-by-school CSV combat effects will be implemented here. For now it reproduces the

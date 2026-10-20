@@ -8,8 +8,8 @@ import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.ts';
 
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
 // The single combat between the two commanders before an army battle, and the morale each host carries into the battle
-// proper (preBattleDuel), for both battle paths: combatVsNPC (battle/battles-against-province-defenders.js) and
-// combatVsChar (battle/battles-between-heroes.js). It takes the turn's context first (src/engine/turn/context.js).
+// proper (preBattleDuel), for both battle paths: combatVsNPC (battle/battles-against-province-defenders.ts) and
+// combatVsChar (battle/battles-between-heroes.ts). It takes the turn's context first (src/engine/turn/context.ts).
 // Resolve a personal duel between two commanders. Returns {winner, loser} or {} if inconclusive.
 // Runs on the unified personal-combat engine, so duels, character encounters and monster
 // encounters all obey exactly the same rounds, ranges and action alternation. ── PRE-BATTLE DUEL

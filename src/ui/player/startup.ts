@@ -3,7 +3,7 @@ import * as KC_DATA_NS from '../../content/kingdoms-call-data.ts';
 
 // ── DATA FILE GUARD (2026-09-27, Toby: collapse to one source) ────
 // The player portal now reads the game's SHARED RULE TABLES (unit classes, the Druid ladder, unit
-// strengths, skills, seasons, the Wonders, the mastery text…) from kingdoms-call-data.js — the same
+// strengths, skills, seasons, the Wonders, the mastery text…) from kingdoms-call-data.ts — the same
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.

@@ -11,7 +11,7 @@ import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-an
 // The provinces a realm's characters entered this phase (noteEntered, into the context's enteredThisPhase, which
 // resolveTurn empties at each phase's start and end), each province's list of characters rebuilt from where they stand
 // (reconcileProvinceCharacters), and each realm's memory of the provinces it can see (updateProvinceMemory). They take
-// the turn's context first (src/engine/turn/context.js).
+// the turn's context first (src/engine/turn/context.ts).
 // ── Settle rallied garrisons once a contest ends ── Units folded into a defending hero during a
 // contested defence carry a _garrisonOf marker naming their home province. Called after every
 // stalled-battle resolution pass: for each such unit, once the home province is no longer

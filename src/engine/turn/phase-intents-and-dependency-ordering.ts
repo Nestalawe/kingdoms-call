@@ -8,7 +8,7 @@ import { stepTowardPreferSafe } from '../world/routes-and-distances.ts';
 // Before anyone acts in a phase: what every acting character intends to do (buildPhaseIntents), the order they act in
 // (orderPhaseActors: initiative in tiers, the AK [3.0] dependencies first), and the defenders an enemy column pins by
 // arriving before they can march out (applyMoveInterlocks). PHASE_ACTION_MAP turns an order's name into the action key
-// processOrder and the pipeline share. They take the turn's context first (src/engine/turn/context.js); normaliseAction and
+// processOrder and the pipeline share. They take the turn's context first (src/engine/turn/context.ts); normaliseAction and
 // _phaseActionTier take none.
 // ════
 // PHASE PIPELINE — intent table, dependency ordering, movement interlocks

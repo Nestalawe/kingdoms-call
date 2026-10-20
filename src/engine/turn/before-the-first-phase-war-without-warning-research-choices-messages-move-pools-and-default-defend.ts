@@ -29,7 +29,7 @@ import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
 //      and the Grand Cathedral's ward;
 //   4. once the bots have planned, every living realm hero's empty phase set to Defend, the orders recorded for the
 //      turn's statistics, and the hosts standing on a war front as the turn begins.
-// Each takes the turn's context (src/engine/turn/context.js) and nothing else: they read the merge's collectors from it
+// Each takes the turn's context (src/engine/turn/context.ts) and nothing else: they read the merge's collectors from it
 // (plan P1-08k7), and the third and fourth make the values the phases read and join them to it (the move pools,
 // SEASONS, the trackers, the war fronts). The bodies keep resolveTurn's indent (plan P1-08's Decisions). The comment
 // above the bots' research picks describes the war without warning (the second stage) and the bots' declarations,

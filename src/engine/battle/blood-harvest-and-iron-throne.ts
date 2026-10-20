@@ -5,7 +5,7 @@ import { discSum, gdActive } from '../discoveries.ts';
 
 // ── BLOOD HARVEST AND THE IRON THRONE (plan P1-08c: lifted out of resolveTurn) ────
 // What a victory gives back: a Pagan victor's gold from the fallen, and an Evil realm's fallen foes rising as its
-// skeletons (the Iron Throne of Skulls). Both take the turn's context first (src/engine/turn/context.js).
+// skeletons (the Iron Throne of Skulls). Both take the turn's context first (src/engine/turn/context.ts).
 export function bloodHarvest(turnContext, winner, destroyed, narrative) {
   const { G } = turnContext;
   if (!winner || winner.player == null || !(destroyed > 0)) return;

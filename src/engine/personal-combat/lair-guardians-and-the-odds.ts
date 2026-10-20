@@ -20,7 +20,7 @@ import { DUEL_FLEE_DROP } from './duels-and-character-encounters.ts';
 // What a guardian's nature makes it weak or strong against (monsterTraits), the guardian as a combatant
 // (pcBuildGuardian), the odds Hunting Rumours reads to a hero (simulateLairOdds, rumourOddsBand) and a hero's fight with
 // a lair's guardian (resolveEncounter). pcBuildGuardian, simulateLairOdds and resolveEncounter take the turn's context
-// first (src/engine/turn/context.js); monsterTraits and rumourOddsBand read no turn state.
+// first (src/engine/turn/context.ts); monsterTraits and rumourOddsBand read no turn state.
 // Derive a monster's combat weaknesses/resistances and closing speed from its nature, so that
 // different strategies suit different monsters (no single dominant encounter plan).
 // mods.melee/archery/spell — <1 resists that approach, >1 is vulnerable to it

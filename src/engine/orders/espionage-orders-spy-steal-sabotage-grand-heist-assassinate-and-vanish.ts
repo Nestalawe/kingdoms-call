@@ -32,7 +32,7 @@ import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 // (nothing can bring him to bay for the rest of the turn), each once processOrder has read the order and checked he may
 // act (a mastery order once a turn, never for a hero held by an enchantment). Before them, the two helpers the Spy,
 // Steal and Grand Heist orders share, nested in processOrder until this row: a thief caught in the act, and an item
-// lifted from a hero's pack. Each takes the turn's context first (src/engine/turn/context.js), then the values
+// lifted from a hero's pack. Each takes the turn's context first (src/engine/turn/context.ts), then the values
 // processOrder worked out before it that it reads, in the order processOrder declares them. Each body keeps
 // processOrder's indent (plan P1-08's Decisions); a case-level break became a return.
 // ── THIEF: caught in the act ────

@@ -17,7 +17,7 @@ import { pcAdvanceOrStrike, pcAttemptFlee, pcFireShot, pcMeleeStrike } from './m
 // ── PERSONAL COMBAT: TACTICS, COMBAT ITEMS AND EACH ACTION (plan P1-08e: lifted out of resolveTurn) ────
 // What a combatant does once their plan is spent (Temper), the potions, scrolls and devices carried into a fight, and
 // one combatant's action against the foe (pcAct). pcTryCombatItem, pcUseCombatItem and pcAct take the turn's context
-// first (src/engine/turn/context.js); the rest read no turn state.
+// first (src/engine/turn/context.ts); the rest read no turn state.
 // --- Tactic selection -------------------------------------------------------- Once a plan is
 // spent, Temper takes over: fight on, or look for a way out. Monsters never flee — they fight to
 // the last.

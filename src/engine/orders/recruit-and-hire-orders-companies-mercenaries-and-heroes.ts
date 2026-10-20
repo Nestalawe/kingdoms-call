@@ -34,8 +34,8 @@ import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.
 // Recruit Armies (companies raised in a province the realm holds, and mercenary bands hired where they roam) and Hire
 // Hero (a wandering hero sworn where he stands), each once processOrder has read the order and checked he may act;
 // and landHirePreOrders, which lands the hirer's pre-written orders for a hero once he is sworn (also the Broker's,
-// in realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.js). Each takes the turn's context first
-// (src/engine/turn/context.js), then the values processOrder worked out before it that it reads, in the order
+// in realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts). Each takes the turn's context first
+// (src/engine/turn/context.ts), then the values processOrder worked out before it that it reads, in the order
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break
 // became a return.
 // The humanoid races, as a Set: a recruit of any other race may raise the Druid skill of the hero it joins.

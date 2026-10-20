@@ -15,7 +15,7 @@ import { ARCHERY_FIELDCRAFT_PCT } from './melee-flight-and-archery.ts';
 // The engine's overview, then who acts first and who can change range (speed), the plan an un-ordered character fights
 // by (autoEncounterPlan, ensureEncounterPlan) and their answer to a challenge (duelStanceOf), and the two combatant
 // builders: a character (pcCharCombatant) and a guardian (pcMonsterCombatant), with their passives and item riders.
-// autoEncounterPlan, ensureEncounterPlan and pcCharCombatant take the turn's context first (src/engine/turn/context.js); the rest read no
+// autoEncounterPlan, ensureEncounterPlan and pcCharCombatant take the turn's context first (src/engine/turn/context.ts); the rest read no
 // turn state.
 // ====
 // UNIFIED PERSONAL COMBAT ENGINE (character-vs-character duels AND monster/feature encounters)

@@ -16,7 +16,7 @@ import { buildTurnReport } from '../../views/turn-report.ts';
 // Embeds the core map/character generation from kingdoms-call-gm.html so the GM portal is fully
 // self-contained. Holds the prepared Turn-0 plan (human + bot setups) between the roster preview
 // and confirmation.
-// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.ts says why).
 globalThis._pendingTurn0 = null;
 
 export async function runTurn0() {

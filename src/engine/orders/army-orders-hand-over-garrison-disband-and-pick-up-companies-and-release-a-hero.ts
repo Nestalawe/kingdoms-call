@@ -11,7 +11,7 @@ import { refreshMovePool } from '../units/movement-pools.ts';
 // holds), Release Hero (a hero leaves the realm's service a wanderer), Disband Army (companies become bands of
 // mercenaries) and Pick Up Army (companies taken from the garrison, or by an old order from a comrade), each once
 // processOrder has read the order and checked he may act (a hero held by an enchantment won't disband). Each takes the
-// turn's context first (src/engine/turn/context.js), then the values processOrder worked out before it that it reads,
+// turn's context first (src/engine/turn/context.ts), then the values processOrder worked out before it that it reads,
 // in the order processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a
 // case-level break became a return.
 // Leave/Transfer Army: companies handed to a comrade beside him, or left in the garrison of a province the realm holds.

@@ -19,7 +19,7 @@ import { flushDeferredSkillLogsFor } from './experience-skill-rises-and-earned-h
 // ── HERO DEATH AND LEADERLESS HOSTS (plan P1-08f: lifted out of resolveTurn) ────
 // What becomes of a dead commander's armies (disperseDeadCharArmies) and of the host a spared coward leaves behind
 // (abandonHostOnFlight), the one way a personal-combat death outside a battle is reported (reportHeroFall), and a
-// hero's death (handleHeroDeath). All four take the turn's context first (src/engine/turn/context.js).
+// hero's death (handleHeroDeath). All four take the turn's context first (src/engine/turn/context.ts).
 // ── Dispersal of a dead character's armies ── Extracted from handleHeroDeath so battle code can
 // defer it: a commander slain in a PRE-BATTLE DUEL keeps their army on the field (a junior
 // officer takes over) and the survivors are dispersed only AFTER the battle resolves.

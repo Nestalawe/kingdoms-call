@@ -6,7 +6,7 @@ import { discSum } from '../discoveries.ts';
 // ── EVIL TERROR (plan P1-08c: lifted out of resolveTurn) ────
 // Terror after an Evil victory: whether it grips a province for its realm (reignOfFearHere), its spread to the battle
 // province and its neighbours (spreadTerror), and its toll on the next defenders there (consumeTerror). spreadTerror
-// takes the turn's context first (src/engine/turn/context.js); the other two read no turn state.
+// takes the turn's context first (src/engine/turn/context.ts); the other two read no turn state.
 // ── EVIL TERROR EFFECT ────
 // A decisive Evil victory terrorises the battle province AND every adjacent province. Terror
 // lingers until the next battle fought there, demoralising whoever defends

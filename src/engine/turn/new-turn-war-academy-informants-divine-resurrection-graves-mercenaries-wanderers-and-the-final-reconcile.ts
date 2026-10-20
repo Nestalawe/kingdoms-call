@@ -5,7 +5,7 @@ import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
-// Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.js:
+// Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts:
 // the counter moved on, heirs crowned, the turn's summons and spells ended), the rest of the new turn, in this order:
 //   1. the War Academy (sd08) may drill each company a realm's heroes keep in its home province up a grade;
 //   2. Physick Gardens and Royal Physicians (`regen` discoveries) mend the realm's wounded;
@@ -20,7 +20,7 @@ import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-r
 //   8. wandering heroes may drift to a province around them;
 //   9. the turn's orders and scratch lists cleared, every province's list of heroes rebuilt from where each stands, and
 //      a neutral guard with no companies, or standing in a realm's land, made a wanderer.
-// It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads no value of the phase loop's. The
+// It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads no value of the phase loop's. The
 // body keeps resolveTurn's indent (plan P1-08's Decisions).
 
 export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile(

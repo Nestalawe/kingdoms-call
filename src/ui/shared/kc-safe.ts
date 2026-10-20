@@ -1,4 +1,4 @@
-// kc-safe.js: the one way a page builds HTML from data (P0-19). Each page that builds HTML loads it straight after its
+// kc-safe.ts: the one way a page builds HTML from data (P0-19). Each page that builds HTML loads it straight after its
 // boot-failure reporter, before anything else.
 //
 //   kcHtml`<td>${v}</td>`  HTML in which every value is shown as text (kcEsc), unless it is itself kcHtml or kcRaw. A list

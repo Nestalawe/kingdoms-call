@@ -11,7 +11,7 @@ import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-an
 
 // ── WHAT A SPY LEARNS (plan P1-08c: lifted out of resolveTurn) ────
 // Everything a successful spy learns about a province, for the Spy order and the Neutral Broker's paid intelligence
-// alike. It takes the turn's context first (src/engine/turn/context.js).
+// alike. It takes the turn's context first (src/engine/turn/context.ts).
 // Returns {won, narrative:[strings]} ── PAGAN: Blood Harvest ── After a battle a Pagan character
 // WINS, the old gods' tithe: +BLOOD_HARVEST_PER_UNIT gold per enemy unit destroyed, claimed as
 // offerings from the fallen. Called from both battle paths (combatVsNPC covers neutral guards AND

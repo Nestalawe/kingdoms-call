@@ -207,7 +207,7 @@ export const CREATURE_ARMIES_UI = new Set(KC_UNIT_CLASS.creature);
 export const MONSTER_ARMIES_UI = new Set(KC_UNIT_CLASS.monster);
 // ── DRUID: WHAT DOES THIS COMMANDER NEED TO LEAD THIS UNIT? (2026-09-27) ────────────────────────
 // The ONE player-side copy of the engine's druIdPenaltyMult rule. The level table itself is
-// KC_DRUID_LEVELS in kingdoms-call-data.js — the same table the engine builds its Sets from — so the
+// KC_DRUID_LEVELS in kingdoms-call-data.ts — the same table the engine builds its Sets from — so the
 // portal and the battle maths cannot drift apart again. (They had: the portal kept two hand-typed
 // tables with no level 1, and one of them ignored every waiver.)
 //   req       — Druid needed after waivers: skeletons 0; a creature under a Druidic realm OR a

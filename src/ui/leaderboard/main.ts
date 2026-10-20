@@ -23,7 +23,7 @@ export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // a database change").
 export const KC_DB_MIN = '20261012064100';
 
-// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/leaderboard/globals.js says why).
+// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/leaderboard/globals.ts says why).
 globalThis.GAMES = [];
 export let TAB = 'champions',
   GM = false,

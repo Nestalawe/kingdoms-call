@@ -7,7 +7,7 @@ import { discSum } from '../discoveries.ts';
 // ── RELATIONS AND CAPTURES (plan P1-08a: lifted out of resolveTurn) ────
 // Who is at war or allied with whom (G.relations, keyed "minIdx-maxIdx": see "DIPLOMACY" in resolveTurn), and what
 // happens when a province changes hands: its consecration breaks, its old owner is told, and an Evil conqueror loots
-// or enslaves. Each takes the turn's context first (src/engine/turn/context.js), but relKeyOf, which reads none.
+// or enslaves. Each takes the turn's context first (src/engine/turn/context.ts), but relKeyOf, which reads none.
 // ── PROVINCE CAPTURE ────
 // Every path that hands a province to a new realm goes through here. When the ground was another
 // player's, that player gets a line in their REALM EVENTS for the phase — who took it (hero and

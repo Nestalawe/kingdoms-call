@@ -280,7 +280,7 @@ export function magicL8CastBonus(c) {
 }
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08b) ── lair guardians heal between turns. It takes the turn's context first
-// (src/engine/turn/context.js).
+// (src/engine/turn/context.ts).
 // Feature guardians keep their wounds across phases within a turn (so a second searcher meets the
 // creature the first one bloodied) but recover fully between turns — a whole year passes.
 export function healFeatureMonsters(turnContext) {

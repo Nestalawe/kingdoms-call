@@ -7,7 +7,7 @@ export const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
 export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export const SEASONS = KC_SEASONS.slice();
 
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.ts says why).
 globalThis.currentUser = null;
 globalThis.currentGame = null;
 globalThis.currentGamePlayers = [];

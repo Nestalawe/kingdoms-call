@@ -17,7 +17,7 @@ import { pcAct } from './tactics-combat-items-and-actions.ts';
 
 // ── PERSONAL COMBAT: THE FIGHT (plan P1-08e: lifted out of resolveTurn) ────
 // resolvePersonalCombat runs a whole personal fight between two combatants, round by round. It takes the turn's
-// context first (src/engine/turn/context.js).
+// context first (src/engine/turn/context.ts).
 // --- Main entry: run a personal combat between two combatants ---------------- Combat runs up to
 // 16 rounds. Each round both sides take exactly one action from their plan, the
 // faster/higher-initiative side going first — a strict back-and-forth. opts: {maxRounds,

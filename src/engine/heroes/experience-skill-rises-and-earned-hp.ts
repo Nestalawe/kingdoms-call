@@ -13,7 +13,7 @@ import { refreshMovePool } from '../units/movement-pools.ts';
 // drawn from the candidates (resolvePendingSkillGain), the rise lines held back until the end of the phase
 // (writeDeferredSkillLines, flushDeferredSkillLogsFor), and the maximum-HP roll after a fight (awardKillXP, awardWinHp,
 // awardHpRoll), and every hero's current HP kept in step with his maximum after each phase (syncAllMaxHp, plan
-// P1-08i3, below). Each takes the turn's context first (src/engine/turn/context.js). The reassigned values they read,
+// P1-08i3, below). Each takes the turn's context first (src/engine/turn/context.ts). The reassigned values they read,
 // _deferredSkillLogs, _pcSimulating, _combatSkillProv, _chieftainDuelGain and _duelFoes, are read and written as
 // turnContext.<name>, as resolveTurn reads them.
 // ── SKILL GAIN THROUGH EXPERIENCE ────

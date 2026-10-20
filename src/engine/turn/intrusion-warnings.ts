@@ -3,7 +3,7 @@ import { armySizeBand } from '../../views/visibility.ts';
 
 // ── INTRUSION WARNINGS (plan P1-08b: lifted out of resolveTurn) ────
 // After each phase, the warnings a realm gets of enemy heroes in its land or beside its own heroes. It takes the turn's
-// context first (src/engine/turn/context.js): the state, the seasons' names and the turn's warnings so far
+// context first (src/engine/turn/context.ts): the state, the seasons' names and the turn's warnings so far
 // (_intrusionAcc), which flushIntrusionNotifications (plan P1-08i1, below) writes into the log after the phases.
 // ── INTRUSION NOTIFICATIONS ────
 // After each phase resolves, scan for situations where players need to be notified about things

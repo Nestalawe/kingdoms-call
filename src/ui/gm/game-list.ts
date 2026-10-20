@@ -209,7 +209,7 @@ export function showNewGame() {
 // {visibility:'private', invited:[<profile.id>,…]}. Existing/running games have no `visibility` key,
 // so they read as Public and are unaffected. (game_state is overwritten with world state at Turn 0,
 // by which point the game is 'active' and no longer joinable, so the invite list is self-cleaning.)
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.ts says why).
 globalThis._invitablePlayers = null; // cached profiles [{id,name,joined}]
 globalThis._inviteSelected = new Set(); // ids ticked in the New Game picker
 // 2026-09-25: how many profile rows the LAST fetch returned BEFORE the GM's own row was dropped.
@@ -318,7 +318,7 @@ export function invitedNames(ids) {
 }
 
 // ── EDIT INVITES (game-detail modal, setup-phase private games) ──
-// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.ts says why).
 globalThis._editInviteSelected = new Set();
 export async function openEditInvites() {
   if (!currentGame) {

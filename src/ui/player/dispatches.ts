@@ -50,7 +50,7 @@ export const MSG_SLOW_EVERY = 4; // … and one tick in four when it is not (≈
 export const MSG_MAX_LEN = 500; // the database refuses longer (P0-23, ruling D-05)
 export const MSG_PAGE = 400; // most recent dispatches loaded on entry; later ones arrive by id, and
 // anything older is fetched a page at a time by loadOlderMessages()
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._msgGameId = null;
 globalThis._msgMyIndex = null;
 export let _msgMyName = '',
@@ -63,7 +63,7 @@ globalThis._msgMoreOlder = false;
 globalThis._msgLoadingOlder = false;
 export let _msgReported = new Set(); // ids of dispatches this player has reported (P0-24), as strings
 export let _msgReads = {}; // channelKey -> highest message id this realm has seen
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._msgRealms = {}; // realm index -> {index,name,color,human,met,conceded,eliminated}
 globalThis._msgChannel = 'public';
 export let _msgExtraGroups = []; // conference channels opened this session that carry no messages yet
@@ -71,7 +71,7 @@ export let _msgTimer = null,
   _msgTick = 0,
   _msgBusy = false,
   _msgSending = false;
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._msgTableOk = null; // null = not probed, false = the SQL has not been run
 globalThis._msgErr = null;
 export let _msgReadsDirty = false,

@@ -353,7 +353,7 @@ export function applyPendingSynthPlan(G, hero, pi) {
 }
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the discovery helpers, and _isHumanoidRace (the Plague's victims). Each
-// takes the turn's context first (src/engine/turn/context.js), but discDuelVs, discFanaticApplies, discoveryArmyBonus
+// takes the turn's context first (src/engine/turn/context.ts), but discDuelVs, discFanaticApplies, discoveryArmyBonus
 // and _isHumanoidRace, which read none.
 // ── DISCOVERY EFFECT HELPERS ────
 // Returns true if player has a specific discovery

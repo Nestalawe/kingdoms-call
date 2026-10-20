@@ -11,7 +11,7 @@ import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
 // (flagEnemyStandoffs). A host that stands on enemy ground, or beside an enemy host, when the turn begins gets Spring
 // to act (warFrontThreats; resolveTurn keeps the start-of-turn list, the context's _warFrontAtStart and
 // _warFrontProvs), and at the end of Spring turns on the province if it is still there (resolveWarFronts). They take
-// the turn's context first (src/engine/turn/context.js).
+// the turn's context first (src/engine/turn/context.ts).
 // ── ENEMY STAND-OFF SWEEP ────
 // Any province where the armed, UNVEILED forces of two warring realms stand together is a battle
 // waiting to happen: flag it so resolveStalledBattles joins the fight and the province shows as

@@ -21,7 +21,7 @@ import { resolvePersonalCombat } from '../personal-combat/resolve-personal-comba
 // The duel forecast fights copies of the hunter and his quarry (ids -1 and -2) `n` times (20 by default) with the
 // engine's own personal combat and gives the share won and the share in which the hunter fell; while it runs no skill
 // can rise (turnContext._pcSimulating). The plan hands it to the movement pass with the turn's context.
-// Each takes the turn's context (src/engine/turn/context.js) first; their lines keep resolveTurn's indent (plan
+// Each takes the turn's context (src/engine/turn/context.ts) first; their lines keep resolveTurn's indent (plan
 // P1-08's Decisions).
 export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hunter, quarry, n) {
   // 2026-09-28: a forecast, not a fight — experience is muted exactly as in simulateLairOdds (the copies carry

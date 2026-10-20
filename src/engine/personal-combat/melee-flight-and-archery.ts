@@ -23,7 +23,7 @@ import {
 // Experience from a hit, the riposte, a melee blow, flight and the free strike a failed flight gives, closing in, and
 // archery (volleys, arrow damage and to-hit, the parting shot). pcCombatXP, pcTryCounter, pcMeleeStrike, pcFreeStrike,
 // pcAttemptFlee, pcAdvanceOrStrike, pcFireShot, pcArrowHitChance and pcFireOne take the turn's context first
-// (src/engine/turn/context.js); the rest read no turn state.
+// (src/engine/turn/context.ts); the rest read no turn state.
 // --- Shared attack routines -------------------------------------------------- MELEE L8
 // (Counterattack): when a foe MISSES this hero, a 50% chance to riposte with a free melee blow.
 // 2026-09-12b: a CAUTIOUS fighter ripostes too — 30% on a missed MELEE attack. Arrows cannot be

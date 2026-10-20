@@ -13,7 +13,7 @@ import { canEnterTerrain, refreshMovePool } from './movement-pools.ts';
 // Whether a column can put to sea (getSeaCapability, seaLiftShortfall), who is put ashore when the hulls can no longer
 // carry it (stranding), where a beaten force may fall back and which ground it prefers, and a fleet's retreat to water
 // with the hulls left ashore (naval holds). settleStrandedAtSea, retreatValue, bestRetreat, retreatOptions,
-// _navalLeaveBehind, navalHoldLine and navalSplitRetreat take the turn's context first (src/engine/turn/context.js);
+// _navalLeaveBehind, navalHoldLine and navalSplitRetreat take the turn's context first (src/engine/turn/context.ts);
 // the rest read no turn state.
 // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
 // stored per character for the whole turn

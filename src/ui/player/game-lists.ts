@@ -12,7 +12,7 @@ import { KC_MSG_READS, KC_MSG_TABLE, _msgArr, _msgNum, msgChannelKeyOf } from '.
 // • While a report/orders screen is open it NEVER re-renders or navigates on its own (that would
 // blank out unsaved orders). It only reveals a "new turn resolved" banner offering a manual
 // Refresh, so the player decides when to reload — protecting any orders they are mid-way through.
-// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._pollTimer = null;
 export let _lastMyGamesSig = null;
 export const POLL_MS = 20000;

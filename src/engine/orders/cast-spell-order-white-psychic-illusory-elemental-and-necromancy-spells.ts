@@ -54,7 +54,7 @@ import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.
 // Veil), Elemental (Earthquake, Flood, Summon Elemental, Chain Lightning, Cataclysm) and Necromancy (Control Undead,
 // Skeletal Armies, Curse, Plague, Raise Wraiths, Death's Dominion). A spell item used through Use Item arrives here as
 // a cast (processOrder turns it into one). Before it, the helper a failed Charm calls, nested in processOrder until this
-// row, with its constant. Each takes the turn's context first (src/engine/turn/context.js), then the values processOrder
+// row, with its constant. Each takes the turn's context first (src/engine/turn/context.ts), then the values processOrder
 // worked out before it that it reads, in the order processOrder declares them. Each body keeps processOrder's indent
 // (plan P1-08's Decisions); a case-level break became a return.
 // ── CHARM BACKLASH ────

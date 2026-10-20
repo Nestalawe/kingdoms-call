@@ -10,7 +10,7 @@ import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
 // The lines a battle report is built from: a force's header row (forceMarker), a unit's quality in words, a hero's
 // battlecry, a side's Druid shortfall and terrain notes, and emitBattle, which files a battle's lines in the GM's log
 // with its number (turnContext._battleSeq) and each line's tier. forceMarker, druidShortfallLine and emitBattle take the
-// turn's context first (src/engine/turn/context.js); the rest read no turn state.
+// turn's context first (src/engine/turn/context.ts); the rest read no turn state.
 // ── Structured battle-force marker (items 2 & 3) ── Emits a single parseable log line the player
 // Chronicle expands into: a header coloured in the owner's map colour (neutral = dark grey) + one
 // icon row per unit (same look as "Your Realm").

@@ -31,7 +31,7 @@ import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.ts
 //   7. every maximum HP is resynced (with a save's one-time note on the earned-HP pool);
 //   8. a coward spared on the field makes his way home, his host left behind, and the provinces' lists are rebuilt;
 //   9. every hero's location name is brought up to date.
-// It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads no value of the phase loop's.
+// It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads no value of the phase loop's.
 // The body keeps resolveTurn's indent (plan P1-08's Decisions).
 
 export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames(turnContext) {

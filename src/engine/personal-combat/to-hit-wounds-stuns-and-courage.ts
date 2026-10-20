@@ -18,7 +18,7 @@ import { discDuelVs, discSum } from '../discoveries.ts';
 // ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS AND COURAGE (plan P1-08e: lifted out of resolveTurn) ────
 // The melee to-hit and damage, how a ward or a guardian's passive is named, the one door every stun lands through,
 // the courage test against terror, the fading self-sustain of a long fight, a hit taken (pcTakeHit) and the start of
-// each round (pcRoundStart). pcHitChance and pcTakeHit take the turn's context first (src/engine/turn/context.js); the rest read no turn
+// each round (pcRoundStart). pcHitChance and pcTakeHit take the turn's context first (src/engine/turn/context.ts); the rest read no turn
 // state.
 // --- Small helpers ---------------------------------------------------------- 2026-09-10: MELEE
 // to-hit is base 30% + 10% per point of the striker's OWN Melee (counted to 5), with NO deduction

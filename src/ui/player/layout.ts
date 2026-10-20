@@ -53,7 +53,7 @@ export function setMobileView(view) {
 // block at the end of the script: a top-level `let` is hoisted but sits in its temporal dead zone until
 // its declaration executes, and setupDeskLayout / setMobileView can be reached from a hash-restored
 // report before the tail of the script has run. (The ITEMS_BY_TIER hang is the same trap.)
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._msgEnabled = false;
 globalThis._deskLeftView = 'map';
 export let _deskRightView = 'report';

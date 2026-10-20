@@ -12,7 +12,7 @@ import { areAllied, relationBetween } from '../realms/relations-and-captures.ts'
 // resolveTurn calls it twice: before the first phase, between the research choices and war without warning, so an Evil
 // or Undead bot's war is in force this very turn; and again after the phases, just before diplomacy is resolved, on the
 // world as the phases left it (the same rivals: those met when the turn began). It does nothing while Safe Start holds.
-// It takes the turn's context (src/engine/turn/context.js) and nothing else; its lines keep resolveTurn's indent (plan
+// It takes the turn's context (src/engine/turn/context.ts) and nothing else; its lines keep resolveTurn's indent (plan
 // P1-08's Decisions).
 export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(turnContext) {
   const { G, diploDeclarations, _botPlayerIdx, _botEncounteredAtStart } = turnContext;

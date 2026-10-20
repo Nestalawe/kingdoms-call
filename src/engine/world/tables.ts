@@ -121,7 +121,7 @@ export const SEA_TYPES_GEN = new Set(KC_UNIT_CLASS.sea);
 // 2026-09-27 (Toby: collapse to one source): this table used to exist THREE times — here and twice
 // in the player portal — and the player-portal copies had drifted (they lacked level 1, so a
 // foreign-race unit under a Druid-0 commander showed no penalty while the engine applied −20%).
-// The ONE copy is now KC_DRUID_LEVELS in kingdoms-call-data.js; this builds the engine's Sets
+// The ONE copy is now KC_DRUID_LEVELS in kingdoms-call-data.ts; this builds the engine's Sets
 // from it, in the same level order (getDruidLevel walks the levels ascending).
 export const DRUID_ARMY_LEVELS_P = Object.fromEntries(
   Object.entries(KC_DRUID_LEVELS).map(([lvl, types]) => [lvl, new Set(types)]),

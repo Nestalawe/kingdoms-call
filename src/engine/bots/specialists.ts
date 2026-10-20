@@ -96,7 +96,7 @@ export function botMagicScore(c) {
 export function botLandCount(G, pi) {
   return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea').length;
 }
-// The six-hex Defend zone about a province (the engine's inDefendZone, in engine/units/defend-ride-outs-ambushes-and-reinforcements.js, takes the turn's context).
+// The six-hex Defend zone about a province (the engine's inDefendZone, in engine/units/defend-ride-outs-ambushes-and-reinforcements.ts, takes the turn's context).
 export function botZoneOf(G, X) {
   const z = [X];
   for (let i = 0; i < 6; i++) {

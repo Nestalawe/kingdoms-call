@@ -34,7 +34,7 @@ import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
 //      the bar eroding while no claim stands), then elimination (one realm left with land or a living hero), then
 //      concession (one realm left that hasn't conceded, or one alliance), then the result announced once, with the
 //      Legacy standings.
-// Each takes the turn's context (src/engine/turn/context.js) and nothing else: they read no value of the phase loop's.
+// Each takes the turn's context (src/engine/turn/context.ts) and nothing else: they read no value of the phase loop's.
 // The realms' declarations and Reckoning calls are collected where the realms' orders are merged, in resolveTurn, and
 // read here from the context (turnContext.diploDeclarations, turnContext.reckoningCalls). The bodies keep resolveTurn's
 // indent (plan P1-08's Decisions).

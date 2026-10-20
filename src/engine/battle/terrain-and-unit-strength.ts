@@ -22,7 +22,7 @@ import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 // What one unit is worth in a battle: the ground it fights on (terrainMod, illusory terrain, the sea penalty), arrows
 // and pre-battle damage, kinship, Druid mastery and every per-unit modifier (armStr), and the rows of the strength
 // ladder built from them (ladderRow, finishSide). bestCurseSkill, druidMasteryGain, armStr and ladderRow take the
-// turn's context first (src/engine/turn/context.js); the rest read no turn state.
+// turn's context first (src/engine/turn/context.ts); the rest read no turn state.
 // ── TERRAIN STRENGTH MODIFIERS ────
 // Applied to individual army unit strength during battle resolution. Flyers (every KC_UNIT_CLASS.aerial
 // unit: the winged riders and the flying beasts) fight at 1.0 everywhere except under the trees: ×0.75 in

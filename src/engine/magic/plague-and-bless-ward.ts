@@ -6,7 +6,7 @@ import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
 
 // ── PLAGUE AND THE BLESS WARD (plan P1-08b: lifted out of resolveTurn) ────
 // The Plague's toll on a province's humanoid troops and its spread to the neighbours, and the Bless ward that may turn
-// an enemy spell aside. Each takes the turn's context first (src/engine/turn/context.js).
+// an enemy spell aside. Each takes the turn's context first (src/engine/turn/context.ts).
 // ── PLAGUE (Necromancy) ────
 // Each humanoid army unit in the province has a (10% + 5%/level) chance to lose an experience
 // level. Survivors are immunised (half chance thereafter). Only the four humanoid races suffer.

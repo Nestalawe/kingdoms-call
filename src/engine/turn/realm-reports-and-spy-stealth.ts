@@ -10,7 +10,7 @@ import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 // realm saw (its own deeds, lines sent to it, and public events where it had eyes at the time), its battle markers,
 // its province intelligence, its spies' lingering sight, unmet realms left nameless, and its Clairvoyance feed.
 // resolveTurn hands it to the shell wrapped with the turn's context ({state, log, buildReports}); the shell calls it
-// once the turn is saved. It takes the turn's context first (src/engine/turn/context.js) and reads the values
+// once the turn is saved. It takes the turn's context first (src/engine/turn/context.ts) and reads the values
 // resolveTurn joins to it: _reports (built once a turn), presenceByPhase, clairWatch, battleCommanders and _tel.
 export function buildReports(turnContext) {
   const { _reports, freshPlayers, G, log, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;

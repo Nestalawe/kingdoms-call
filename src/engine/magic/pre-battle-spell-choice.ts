@@ -7,7 +7,7 @@ import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 // ── PRE-BATTLE SPELL CHOICE (plan P1-08c: lifted out of resolveTurn) ────
 // Which battle spell a commander casts before the armies meet: one from the school in the Encounter Plan that has
 // something to hit on this field, or the spell named. Both functions take the turn's context first
-// (src/engine/turn/context.js).
+// (src/engine/turn/context.ts).
 // ── PRE-BATTLE MAGIC SCHOOL CHOICE ────
 // Players choose a magic SCHOOL in their Encounter Plan (tactic 'CS:<school>'); during the
 // pre-battle magic phase a RANDOM battle spell the commander can cast from that school is chosen.

@@ -27,7 +27,7 @@ import { stepToward } from '../world/routes-and-distances.ts';
 // turn (advancePursuit, called from processOrder and the phase loop), rolls to corner him once they stand together
 // (pursuitCatchChance), and fights or meets him when he does; endPursuit ends the chase. An unarmed challenger
 // reaching an armed quarry slips past the sentries on the ENC_BREAK_RANKS_* chance. pursuitCatchChance and
-// advancePursuit take the turn's context first (src/engine/turn/context.js); endPursuit takes none.
+// advancePursuit take the turn's context first (src/engine/turn/context.ts); endPursuit takes none.
 // Encounter Character: an UNARMED challenger reaching an ARMED quarry (see advancePursuit).
 export const ENC_BREAK_RANKS_BASE = 60,
   ENC_BREAK_RANKS_PER_UNIT = 8,

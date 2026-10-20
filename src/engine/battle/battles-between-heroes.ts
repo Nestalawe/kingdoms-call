@@ -124,9 +124,9 @@ import { preBattleDuel } from './pre-battle-duels.ts';
 
 // ── BATTLES BETWEEN TWO HEROES' HOSTS (plan P1-08h: lifted out of resolveTurn) ────
 // The army battle between two commanders' hosts in one province (combatVsChar): the duel before it
-// (battle/pre-battle-duels.js), the battle spells, the lines and volleys, the units' fates, the retreats and the
-// battle's report lines. It takes the turn's context first (src/engine/turn/context.js). The battle against a
-// province's own defenders is combatVsNPC (battle/battles-against-province-defenders.js), with the constants both read.
+// (battle/pre-battle-duels.ts), the battle spells, the lines and volleys, the units' fates, the retreats and the
+// battle's report lines. It takes the turn's context first (src/engine/turn/context.ts). The battle against a
+// province's own defenders is combatVsNPC (battle/battles-against-province-defenders.ts), with the constants both read.
 // Returns {won, narrative:[strings]}
 export function combatVsChar(turnContext, atk, def, prov) {
   const { G, _tel } = turnContext;

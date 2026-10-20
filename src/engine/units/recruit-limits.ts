@@ -3,7 +3,7 @@ import { twoATurn } from '../world/tables.ts';
 
 // ── RECRUIT LIMITS (plan P1-08b: lifted out of resolveTurn) ────
 // How many of a unit a province may raise this turn, and the count raised so far (resolveTurn's recruitedThisTurn,
-// which joins the turn's context by reference). Each takes the turn's context first (src/engine/turn/context.js).
+// which joins the turn's context by reference). Each takes the turn's context first (src/engine/turn/context.ts).
 export function getRecruitLimit(turnContext, armyType, prov, playerIndex) {
   const { G } = turnContext;
   if (twoATurn(armyType)) return 2; // garrisons; a shipyard's two hulls a season; Goblin Hordes (2026-10-11)

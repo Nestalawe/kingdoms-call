@@ -24,7 +24,7 @@ import { landHirePreOrders } from './recruit-and-hire-orders-companies-mercenari
 // The orders of a realm's creed (Consecrate, Call to Arms, Broker, Harvest the Field, and the refusal of the removed
 // Awaken the Wild and Call from the Pit) and three masteries (Awaken Grove, Wild Calling, Grand Design), each once
 // processOrder has read the order and checked he may act (a mastery once a turn; a charmed hero refuses a creed's rite
-// or a mastery). Each takes the turn's context first (src/engine/turn/context.js), then the values processOrder worked
+// or a mastery). Each takes the turn's context first (src/engine/turn/context.ts), then the values processOrder worked
 // out before it that it reads, in the order processOrder declares them. Each body keeps processOrder's indent (plan
 // P1-08's Decisions); a case-level break became a return.
 // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.

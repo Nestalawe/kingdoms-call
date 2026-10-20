@@ -107,8 +107,8 @@ import { preBattleDuel } from './pre-battle-duels.ts';
 // ── BATTLES AGAINST A PROVINCE'S DEFENDERS (plan P1-08g: lifted out of resolveTurn) ────
 // A host's battle against the defenders of a province that no hero of a realm holds: its neutral defenders, a local
 // chieftain or wandering guard leading them, or a realm's unled garrison (combatVsNPC). It takes the turn's context
-// first (src/engine/turn/context.js). Above it, the constants both battle paths read (combatVsNPC here, combatVsChar
-// in battle/battles-between-heroes.js): the carry-on death scaling, the airborne-at-sea penalties, the narrative verbs
+// first (src/engine/turn/context.ts). Above it, the constants both battle paths read (combatVsNPC here, combatVsChar
+// in battle/battles-between-heroes.ts): the carry-on death scaling, the airborne-at-sea penalties, the narrative verbs
 // and the battle spells of special units.
 // a battle that carries on round after round in the same province grows deadlier for BOTH sides.
 // prov._carryOnRounds counts the carry-ons (0 for the opening clash); death chances scale by 1 +

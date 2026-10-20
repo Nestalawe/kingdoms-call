@@ -1,7 +1,7 @@
 // ── LINES IN THE GM'S LOG (plan P1-08a: lifted out of resolveTurn) ────
 // The helpers that write a line other than log()'s own: a line from a shared narrative, a line to the hero or the
 // province owner it happened to, a private line with a public twin, and the spell records. Each takes the turn's
-// context first (src/engine/turn/context.js), but narrText, which reads none.
+// context first (src/engine/turn/context.ts), but narrText, which reads none.
 // A spell worked inside a battle or a duel (2026-10-09, Toby item 5): only the Cast order logged its
 // casts, so pre-battle, defender and duel magic never reached the spell records. ctx says where.
 export const telSpell = (turnContext, ch, spell, school, lvl, chance, roll, ctx) => {

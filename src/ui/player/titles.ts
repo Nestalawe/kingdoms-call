@@ -15,7 +15,7 @@ import { leadsArmiesP, reportColour } from './map-symbols.ts';
 // drifted on TEN entries — it told players that Melee, Archery and the magic schools at level 6/8
 // grant nothing, while the engine gives Parry, Counterattack, Impalement, Trueshot, Words of Awe,
 // Shimmer, Elemental Armour and the Necromantic Arts. It now reads the engine's own table from
-// kingdoms-call-data.js, so the two cannot disagree again.
+// kingdoms-call-data.ts, so the two cannot disagree again.
 export const MASTERY_EFFECTS = MASTERY_UNLOCKS;
 export function renderMastery(report) {
   const card = document.getElementById('mastery-card');

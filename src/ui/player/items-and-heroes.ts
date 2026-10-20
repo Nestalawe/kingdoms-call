@@ -9,7 +9,7 @@ import {
 import { L79_ORDERS } from './l79-orders.ts';
 import { _tintForDarkTooltip, reportColour } from './map-symbols.ts';
 
-// ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.js (KC_ITEM_SLOT_CAP) ──
+// ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.ts (KC_ITEM_SLOT_CAP) ──
 export const ITEM_SLOT_CAP_P = { ...KC_ITEM_SLOT_CAP };
 // Lair-guardian grade colours (map rings, lair cards, tooltips). One copy — it was typed four times.
 export const GUARD_POWER_COLORS_P = { Weak: '#4a8a4a', Moderate: '#c8922a', Powerful: '#8a1c1c', Legendary: '#5a0a9a' };
@@ -483,7 +483,7 @@ export function actionsFor(c) {
   }).sort((a, b) => _actionRank(a) - _actionRank(b));
 }
 
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis.currentUser = null;
 globalThis.currentProfile = null;
 globalThis.joiningGame = null;

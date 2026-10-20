@@ -1,7 +1,7 @@
 // ── MERCENARY BAND IDS AND WHO FOUGHT (plan P1-08a: lifted out of resolveTurn) ────
 // A new band's id, and the turn's records of who fought where: the commanders of each battle, the phase each hero last
 // stood in a field battle, and the Defend watches a battle fulfils. Each takes the turn's context first
-// (src/engine/turn/context.js).
+// (src/engine/turn/context.ts).
 export const newMercId = (turnContext) => `merc_t${turnContext.expectedTurnToRun}_${++turnContext._mercIds.n}`;
 
 export const recordBattleCmdrs = (turnContext, provId, ph, ids) => {
@@ -64,7 +64,7 @@ export const defendSpentThisPhase = (turnContext, c, ph) =>
   !!(c && c._defendSpent && c._defendSpent.turn === turnContext.G.turn && c._defendSpent.ph === ph);
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08c) ── a defeat breaks a general's Defend watch for the rest of the turn. It
-// takes the turn's context first (src/engine/turn/context.js).
+// takes the turn's context first (src/engine/turn/context.ts).
 export function noteBattleLoss(turnContext, charId, narrative) {
   const { G, log } = turnContext;
   const real = (G.characters || []).find((x) => x && x.id === charId);

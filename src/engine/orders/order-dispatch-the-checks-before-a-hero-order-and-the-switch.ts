@@ -78,7 +78,7 @@ import {
 // a charmed enemy hero won't disband, perform the rites or spend a mastery; a mastery is charged once a turn; a Forced
 // March becomes a Move that may slip past a battle; a spell item's Use Item becomes a cast. Then the switch hands the
 // order to its own function (src/engine/orders/, rows j1 to j8). It takes the turn's context first
-// (src/engine/turn/context.js).
+// (src/engine/turn/context.ts).
 // Process one order
 export function processOrder(turnContext, c, o, ph) {
   const { log, G, _botPlayerIdx } = turnContext;

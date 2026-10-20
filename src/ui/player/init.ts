@@ -20,7 +20,7 @@ import { saveMessageReads, stopMessagePolling } from './dispatches.ts';
 export function collectMessages() {
   return [];
 }
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis.currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
 // The report currently shown on the map (current turn, or a past-turn snapshot when browsing
 // history)

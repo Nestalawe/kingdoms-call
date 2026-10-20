@@ -18,7 +18,7 @@ import { discBlockedIds, discEligible, gdActive } from '../discoveries.ts';
 //      land back);
 //   5. the Grand Designs: the Iron Throne's skeleton rises join their winners, and the Grand Library gives each Neutral
 //      realm that has it one Sage discovery.
-// It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads no value of the phase loop's. The
+// It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads no value of the phase loop's. The
 // body keeps resolveTurn's indent (plan P1-08's Decisions).
 
 export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns(turnContext) {

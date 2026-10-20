@@ -54,7 +54,7 @@ export const ARMY_COST_MASTER = {
   'Wyvern Riders': 4,
   'Orcish Longships': 3,
   'Black Arrows': 2,
-  // Primal units: their cost is written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), and
+  // Primal units: their cost is written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.ts), and
   // added below — 2026-09-27, it used to be re-typed here and kept "in step" by hand.
 };
 Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t, d]) => {
@@ -99,13 +99,13 @@ export const ARMY_SPEED_MASTER = {
   'Wyvern Riders': 5,
   'Orcish Longships': 3,
   'Black Arrows': 2,
-  // Primal units: speed written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), added below.
+  // Primal units: speed written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.ts), added below.
 };
 Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t, d]) => {
   ARMY_SPEED_MASTER[t] = d.speed;
 });
 // Top-level copy of the primal sea beasts for report/order-data builders that run outside the
-// resolution scope. Built from KC_UNIT_CLASS (kingdoms-call-data.js), like PRIMAL_SEA_TYPES.
+// resolution scope. Built from KC_UNIT_CLASS (kingdoms-call-data.ts), like PRIMAL_SEA_TYPES.
 export const PRIMAL_SEA_NAMES = new Set(KC_UNIT_CLASS.primalSea);
 // ── DISPLAY ROUNDING ────
 // Battle maths is done in floats (flank ×0.5, tactical ×1.2, dice = kcRng()*range), but a
@@ -186,7 +186,7 @@ export const ITEM_UNCAPPED_SKILLS = new Set(KC_ITEM_UNCAPPED_SKILLS);
 export const SKILL_LABELS = { ...KC_SKILL_LABELS };
 // ── ONE-SOURCE ENGINE TABLES (2026-09-27, Toby: collapse to one source) ──────────────────────────
 // GM-only tables that had been re-typed at every site that needed them. Each old site now reads
-// the one below. (Tables BOTH portals need live in kingdoms-call-data.js as KC_*.)
+// the one below. (Tables BOTH portals need live in kingdoms-call-data.ts as KC_*.)
 // Personal-combat tactic codes a duel keeps from an encounter plan (Steal, Talk, Scout and the rest
 // are lair-only and dropped). FI / FIRE / ARROW is ARCHERY — the code the player portal writes for
 // "Fire Arrow" and that autoEncounterPlan writes for every ranged hero. Four of the five copies of

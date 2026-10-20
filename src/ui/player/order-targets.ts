@@ -443,7 +443,7 @@ export function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive) {
 // 2026-09-11 (items 7 & 12): ONE way to read what any character is ordered to do in any phase. The
 // live form (DOM) wins; before the form exists — the very first paint — the saved draft is
 // consulted, so "default to what a companion is doing" works on load as well as after a change.
-// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._draftOrdersSnapshot = {};
 export function draftOrderAt(charId, ph) {
   const actEl = document.getElementById(`po-action-${charId}-${ph}`);

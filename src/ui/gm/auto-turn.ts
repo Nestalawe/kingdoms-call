@@ -10,7 +10,7 @@ import { runTurn } from './turn-shell.ts';
 // against a double run: a same-browser localStorage lease (two tabs of the same browser) and the
 // conditional save in runTurn (`.eq('turn',expected)`), which also covers two different devices.
 export const AUTO_WATCH_MS = 60000;
-// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.ts says why).
 globalThis._autoWatcherTimer = null;
 globalThis._autoRunBusy = false;
 // ── CRASH COOLDOWN (2026-09-27) ────

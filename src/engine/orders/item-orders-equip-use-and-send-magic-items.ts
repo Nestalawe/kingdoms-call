@@ -11,7 +11,7 @@ import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises
 // item invoked: the Philosopher's Stone; a passive one needs no using) and Send Item (items handed to one of the
 // realm's own heroes, at once beside him or by courier by the turn's end), each once processOrder has read the order
 // and checked he may act (a spell item's Use Item became a Cast Spell there first). Each takes the turn's context
-// first (src/engine/turn/context.js), then the values processOrder worked out before it that it reads, in the order
+// first (src/engine/turn/context.ts), then the values processOrder worked out before it that it reads, in the order
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break became
 // a return.
 // Equip Items: the items named are worn or wielded, the rest taken off, a slot's limit kept (the first named wins); a slot left with room is filled again with the first item held.

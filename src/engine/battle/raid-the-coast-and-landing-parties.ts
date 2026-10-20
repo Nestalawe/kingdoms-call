@@ -1,6 +1,6 @@
 // ── RAID THE COAST AND LANDING PARTIES (plan P1-08c: lifted out of resolveTurn) ────
 // Whether a commander's Raid the Coast bonus applies to this battle, and the flags a landing party carries whoever
-// commands it. Both take the turn's context first (src/engine/turn/context.js).
+// commands it. Both take the turn's context first (src/engine/turn/context.ts).
 // NAVAL L9 Raid the Coast (2026-09-23e, Toby): the +25% applies only to a battle for the land
 // province this commander came ashore in, from the sea, THIS turn (_seaLandingAt, set by the
 // coastal-landing move) — was: any battle this turn in any province that merely bordered the sea,
