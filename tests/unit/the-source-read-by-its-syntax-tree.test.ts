@@ -1,7 +1,8 @@
 // The tests' way of reading the site's code (tests/lib/source.ts, plan P1-09a) reads the same whatever the layout: for
 // every file of the site's own code, its canonical layout (compactOf) and its strings (stringsOf) are the same as
-// written and once Prettier has formatted it at the repository's settings (P1-09c formats src/), and so is each
-// helper's answer on a few real files. A declaration with `export` in front, and a TypeScript file, read as the
+// written and once Prettier has laid it out otherwise (lines a half as long and the other quotes: unlike the
+// repository's own settings, which P1-09c applies to src/, it changes every file, before that row and after), and so
+// is each helper's answer on a few real files. A declaration with `export` in front, and a TypeScript file, read as the
 // classic script they will be after the module switch (P1-09d) and the rename (P1-09e).
 // Level 1 (unit): the helpers on src/ and on copies of it made here, in a temporary folder.
 import fs from 'node:fs';
@@ -35,9 +36,13 @@ const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-source-'));
 afterAll(() => {
   fs.rmSync(copy, { recursive: true, force: true });
 });
-const options = { ...(JSON.parse(fs.readFileSync(path.join(ROOT, '.prettierrc.json'), 'utf8')) as object) };
+const settings = JSON.parse(fs.readFileSync(path.join(ROOT, '.prettierrc.json'), 'utf8')) as {
+  printWidth: number;
+  singleQuote: boolean;
+};
+const options = { ...settings, printWidth: Math.round(settings.printWidth / 2), singleQuote: !settings.singleQuote };
 const own = filesUnder(SRC).filter((f) => f.endsWith('.js') && !f.startsWith('vendor/'));
-// src/ formatted by Prettier, file by file, into the copy
+// src/ laid out otherwise by Prettier, file by file, into the copy
 for (const f of own) fs.mkdirSync(path.dirname(path.join(copy, f)), { recursive: true });
 await Promise.all(
   own.map(async (f) => {
@@ -47,7 +52,7 @@ await Promise.all(
 );
 const pretty = { src: copy };
 
-describe('every file of the site reads the same after Prettier', () => {
+describe('every file of the site reads the same laid out otherwise', () => {
   test(`${String(own.length)} files: the same canonical layout`, () => {
     const differ = own.filter((f) => compactOf(f) !== compactOf(f, pretty));
     expect(differ).toEqual([]);
@@ -60,7 +65,7 @@ describe('every file of the site reads the same after Prettier', () => {
     const changed = own.filter(
       (f) => fs.readFileSync(path.join(SRC, f), 'utf8') !== fs.readFileSync(path.join(copy, f), 'utf8'),
     );
-    expect(changed.length).toBeGreaterThan(own.length / 2);
+    expect(changed.length).toBeGreaterThan(own.length * 0.9);
   });
 });
 
