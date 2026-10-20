@@ -4,7 +4,8 @@ import { SAFE_START_TURN } from '../../engine/army-tables.ts';
 import { sb } from './config.ts';
 import { openGame, renderOrdersStatus } from './game-detail.ts';
 import { TURN_MODES, metaPatch, normalizeTurnMode, parseGameState } from '../../db/game-meta.ts';
-import { gameMetaOf, isBotRow } from '../../engine/bots/setup.ts';
+import { isBotRow } from '../../engine/bots/setup.ts';
+import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { normSeaPct } from '../../engine/world/generate.ts';
 
 export function turnModeOf(game) {

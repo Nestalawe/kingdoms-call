@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
-import { ITEM_SLOT_CAP, gainedItemNote, itemSlot, normaliseEquipment } from '../items/equipment.ts';
+import { ITEM_SLOT_CAP, gainedItemNote, normaliseEquipment } from '../items/equipment.ts';
+import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { applyItemMaxHp, isMithril } from '../personal-combat/helpers.ts';
 import { isCharmedNow, isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';

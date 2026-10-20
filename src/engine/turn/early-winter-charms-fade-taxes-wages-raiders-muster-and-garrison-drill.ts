@@ -1,7 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
-import { CARRIER_TYPES, CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.ts';
+import {
+  CARRIER_TYPES,
+  CREATURE_ARMIES,
+  MONSTER_ARMIES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { neutralTradeGold } from '../grand-design.ts';
 import { isConsecrated } from '../heroes/fame-and-consecration.ts';
 import { activeItems } from '../items/equipment.ts';

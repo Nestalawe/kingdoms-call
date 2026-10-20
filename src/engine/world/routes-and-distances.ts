@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { SEA_TYPES } from '../units/movement.ts';
+import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { getNeighborsP } from './map-helpers.ts';
 import { relationBetween } from '../realms/relations-and-captures.ts';
 import { canEnterTerrain } from '../units/movement-pools.ts';

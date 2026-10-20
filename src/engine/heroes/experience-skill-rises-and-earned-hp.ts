@@ -2,9 +2,9 @@
 import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
-import { SEA_TYPES } from '../units/movement.ts';
+import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { hpGainLine, rollHpGain, syncMaxHp } from './skills-and-hp.ts';
-import { dispFloor } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { discSum, hasDisc } from '../discoveries.ts';
 import { recalcHeroPay, skillInPlayNote } from './effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';

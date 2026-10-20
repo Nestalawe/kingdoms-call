@@ -7,7 +7,6 @@ import {
   TITLE_DEFS,
 } from '../content/kingdoms-call-data.ts';
 import {
-  ALL_SKILLS,
   ARMY_COST_MASTER,
   ARMY_SPEED_MASTER,
   PRIMAL_SEA_NAMES,
@@ -15,13 +14,16 @@ import {
   SKILL_LABELS,
 } from '../engine/army-tables.ts';
 import {
+  ALL_SKILLS,
+  skillFameLabelM,
+  topSkillOf,
+} from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
+import { garrisonMoveRate, marchSpeedBonus, navalSpeedBonus } from '../engine/units/movement.ts';
+import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
-  garrisonMoveRate,
-  marchSpeedBonus,
-  navalSpeedBonus,
-} from '../engine/units/movement.ts';
-import { unitBaseStrength } from '../engine/battle/strength.ts';
+} from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { unitBaseStrength } from '../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import {
   gdActiveFor,
   homeFounderOf,
@@ -29,7 +31,8 @@ import {
   mapCentreColFor,
   neutralTradeGold,
 } from '../engine/grand-design.ts';
-import { heroHireWage, twoATurn } from '../engine/world/tables.ts';
+import { twoATurn } from '../engine/world/tables.ts';
+import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { ABILITIES_P } from '../engine/battle/fortune.ts';
 import { itemLore, monsterCatLabel, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
 import { graveIntelFor } from '../engine/graves.ts';
@@ -38,8 +41,6 @@ import {
   isConsecrated,
   provinceConsecrated,
   relOfReport,
-  skillFameLabelM,
-  topSkillOf,
 } from '../engine/heroes/fame-and-consecration.ts';
 import {
   armySizeBand,
@@ -48,10 +49,11 @@ import {
   featDiscovered,
   nearSpiedProvIds,
 } from './visibility.ts';
-import { LEGENDARY_NAMES_P, activeItems, effTemper, itemSlot, normaliseEquipment } from '../engine/items/equipment.ts';
+import { LEGENDARY_NAMES_P, activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
+import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { effSkillOf, skillBonusBreakdown } from '../engine/heroes/skills-and-hp.ts';
 import { lairRumourKey } from '../engine/personal-combat/helpers.ts';
-import { dispFloor } from '../engine/dice-and-army-names.ts';
+import { dispFloor } from '../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN, itemAcquiredThisTurn, perkTier } from '../engine/titles/perks.ts';
 import { graveServedOther } from '../engine/heroes/charms-and-neutrals.ts';
 import { MAGIC_L8_SCHOOLS, castChanceFor } from '../engine/chances-and-lair-grades.ts';

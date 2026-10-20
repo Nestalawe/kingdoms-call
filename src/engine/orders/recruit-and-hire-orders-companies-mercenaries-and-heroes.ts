@@ -2,15 +2,17 @@
 import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, SKILL_LABELS } from '../army-tables.ts';
-import { CREATURE_ARMIES, MONSTER_ARMIES, PRIMAL_SEA_TYPES } from '../units/movement.ts';
+import {
+  CREATURE_ARMIES,
+  MONSTER_ARMIES,
+  PRIMAL_SEA_TYPES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { beastCommandCount, beastCommandRoom, beastCommandWords } from '../world/tables.ts';
 import {
   alignDistP,
-  beastCommandCount,
-  beastCommandRoom,
-  beastCommandWords,
   heroHireWage,
   heroSkillWage,
-} from '../world/tables.ts';
+} from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { grantMithrilTo } from '../personal-combat/helpers.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { TM, creditBeastUnit, perkTier } from '../titles/perks.ts';

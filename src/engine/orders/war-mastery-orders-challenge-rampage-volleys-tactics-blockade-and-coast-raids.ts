@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
-import { SEA_TYPES } from '../units/movement.ts';
+import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { shuffleP } from '../battle/fortune.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { d100 } from '../dice-and-army-names.ts';

@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
-import { beastCommandCount, beastCommandRoom, beastCommandWords, heroSkillWage } from '../world/tables.ts';
+import { beastCommandCount, beastCommandRoom, beastCommandWords } from '../world/tables.ts';
+import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { notifyTarget } from '../turn/log-line-helpers.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';

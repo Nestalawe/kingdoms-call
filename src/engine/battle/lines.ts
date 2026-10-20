@@ -3,8 +3,7 @@ import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ownedUnitName } from '../army-tables.ts';
 import { ladderFm } from './ladder.ts';
-import { UNIT_BASE_STR } from './strength.ts';
-import { unitTypeOf } from '../world/tables.ts';
+import { UNIT_BASE_STR, unitTypeOf } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { DISC_BY_ID } from '../discoveries.ts';
 
 // ── SKELETONS AND THE CASUALTY LOOPS ────

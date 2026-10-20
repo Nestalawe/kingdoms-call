@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { battleLineTiers, battleTallyLine } from './fates.ts';
 import { druIdPenaltyMult, getDruidLevel } from '../world/tables.ts';
-import { dispFloor } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { dragonTamed } from '../discoveries.ts';
 import { emitNarrLine, narrText } from '../turn/log-line-helpers.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';

@@ -8,8 +8,15 @@ import {
   MISSILE_ARMIES_MASTER,
   ladderFm,
 } from './ladder.ts';
-import { AERIAL_TYPES, CREATURE_ARMIES, FLYING_TYPES, MONSTER_ARMIES, SEA_TYPES } from '../units/movement.ts';
-import { UNIT_BASE_STR, UNIT_Q_MULT, missileCap, unitAbilityMult, unitBaseStrength } from './strength.ts';
+import {
+  AERIAL_TYPES,
+  CREATURE_ARMIES,
+  FLYING_TYPES,
+  MONSTER_ARMIES,
+  SEA_TYPES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { missileCap, unitAbilityMult } from './strength.ts';
+import { UNIT_BASE_STR, UNIT_Q_MULT, unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { druIdPenaltyMult, getDruidLevel } from '../world/tables.ts';
 import { activeItems, hasItemBase } from '../items/equipment.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';

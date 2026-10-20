@@ -2,9 +2,13 @@
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
-import { CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.ts';
+import {
+  CREATURE_ARMIES,
+  MONSTER_ARMIES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { homeProvinceIdFor } from '../grand-design.ts';
-import { beastCommandCount, beastCommandRoom, heroHireWage } from '../world/tables.ts';
+import { beastCommandCount, beastCommandRoom } from '../world/tables.ts';
+import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { takeBestGrave } from '../graves.ts';
 import { consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { grantMithrilTo } from '../personal-combat/helpers.ts';

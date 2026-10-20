@@ -79,11 +79,12 @@ import { openGame } from './game-detail.ts';
 import { backfillHomeRosters, homeProvinceIdFor } from '../../engine/grand-design.ts';
 import { deleteGame, loadTurnLog } from './turn-log.ts';
 import { commitTurn0, runTurn0 } from './turn-zero.ts';
-import { druIdPenaltyMult, getDruidLevel, unitTypeOf } from '../../engine/world/tables.ts';
+import { druIdPenaltyMult, getDruidLevel } from '../../engine/world/tables.ts';
+import { unitTypeOf } from '../../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import { pickLairNameP } from '../../engine/names.ts';
 import { itemEffectKey, lairItemTier } from '../../engine/items/tiers-and-hoards.ts';
-import { itemRaceOf } from '../../engine/heroes/fame-and-consecration.ts';
-import { activeItems, gainedItemNote, itemSlot } from '../../engine/items/equipment.ts';
+import { itemRaceOf, itemSlot } from '../../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { activeItems, gainedItemNote } from '../../engine/items/equipment.ts';
 import { migrateLairGuardiansV2 } from '../../engine/heroes/skills-and-hp.ts';
 import { neutralDefBand } from '../../engine/units/drill-and-spoils.ts';
 import {
@@ -221,8 +222,8 @@ Object.assign(window, {
   hexDistP, // engine/world/map-helpers.ts
   homeProvinceIdFor, // engine/grand-design.ts
   itemEffectKey, // engine/items/tiers-and-hoards.ts
-  itemRaceOf, // engine/heroes/fame-and-consecration.ts
-  itemSlot, // engine/items/equipment.ts
+  itemRaceOf, // engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts
+  itemSlot, // engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts
   KC_BUILD_STAMP, // ui/gm/startup.ts
   KC_UNIT_CLASS, // content/kingdoms-call-data.ts
   kcRng, // engine/rng.ts
@@ -259,6 +260,6 @@ Object.assign(window, {
   shieldFortHolds, // engine/units/movement.ts
   unitAbilityMult, // engine/battle/strength.ts
   unitRef, // engine/army-tables.ts
-  unitTypeOf, // engine/world/tables.ts
+  unitTypeOf, // engine/rules-on-plain-values/unit-types-and-base-strength.ts
   writeGameRecord, // ui/gm/hall-of-fame.ts
 });

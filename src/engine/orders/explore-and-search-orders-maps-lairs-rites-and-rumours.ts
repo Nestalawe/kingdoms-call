@@ -13,11 +13,11 @@ import {
   WILD_HUNT_UNITS,
   ensureLairHoard,
   guardianCanUseItem,
-  isLegendaryItem,
   itemLoreLines,
   monsterCatLabel,
   wildHuntPrice,
 } from '../items/tiers-and-hoards.ts';
+import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { recordBattleGraves, recordDeadHeroSighting } from '../graves.ts';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.ts';
 import { itemNameList } from '../heroes/fame-and-consecration.ts';

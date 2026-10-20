@@ -2,7 +2,6 @@
 import {
   KC_ITEM_UNCAPPED_SKILLS,
   KC_QUALITY_TIERS,
-  KC_SKILLS,
   KC_SKILL_LABELS,
   KC_UNIT_CLASS,
   PRIMAL_ARMY_DEFS_P,
@@ -166,7 +165,6 @@ export function unitRef(ownerName, a) {
 }
 
 // ── SKILLS ────
-export const ALL_SKILLS = KC_SKILLS.slice();
 // TRAINING gives its benefit up to level 5; levels 6-9 buy mastery perks and mastery orders
 // instead. Magic items and the Crown of Command aura stack above that ONLY for melee and archery,
 // to the skill ceiling of 9. Those two are special: the engine already gives levels past 5 a real

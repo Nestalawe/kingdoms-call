@@ -1,7 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { battleFrontWidth, battleLineTotal } from './lines.ts';
-import { FLYING_TYPES, SEA_TYPES, tacMulted } from '../units/movement.ts';
-import { unitBaseStrength } from './strength.ts';
+import { tacMulted } from '../units/movement.ts';
+import {
+  FLYING_TYPES,
+  SEA_TYPES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { _KC_LOOT_GAINED } from '../personal-combat/helpers.ts';
 import { hasDisc } from '../discoveries.ts';

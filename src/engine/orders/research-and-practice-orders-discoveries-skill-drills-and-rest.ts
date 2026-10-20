@@ -6,7 +6,8 @@ import { homeFounderOf } from '../grand-design.ts';
 import { hasItemBase } from '../items/equipment.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE, humanXPMult } from '../units/drill-and-spoils.ts';
-import { d100, dispFloor, fmtRoll } from '../dice-and-army-names.ts';
+import { d100, fmtRoll } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { provOf } from '../world/map-helpers.ts';
 import { TM, perkTier, skillLevel } from '../titles/perks.ts';
 import {

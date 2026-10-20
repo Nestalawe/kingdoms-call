@@ -9,10 +9,9 @@ import {
   PROVINCE_ARMIES_P,
 } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { UNIT_Q_MULT } from '../battle/strength.ts';
+import { UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { HOME_FLEET_BY_RACE } from '../grand-design.ts';
 import {
-  ALIGNMENTS_P,
   COASTAL_NAVAL_CHANCE,
   HUMANOID_FLEET_TYPES,
   HUMANOID_RACES_GEN,
@@ -27,6 +26,7 @@ import {
   getDruidLevel,
   provincePoolSize,
 } from './tables.ts';
+import { ALIGNMENTS_P } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { ABILITIES_P, shuffleP } from '../battle/fortune.ts';
 import {
   SEA_GUARDIAN_NAMES,

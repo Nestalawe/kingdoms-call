@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
-import { ALL_SKILLS, SKILL_LABELS, SKILL_MAX } from '../army-tables.ts';
+import { SKILL_LABELS, SKILL_MAX } from '../army-tables.ts';
+import { ALL_SKILLS } from '../rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 
 // ── NEUTRAL HERO PROGRESSION (2026-09-17 (late), Toby item 1) ── see the end-of-turn call in
 // runTurn.

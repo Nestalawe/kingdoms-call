@@ -1,14 +1,14 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import { carrierBerths } from '../units/movement.ts';
 import {
   AERIAL_TYPES,
   FLYING_TYPES,
   PRIMAL_SEA_TYPES,
   SEA_TYPES,
-  carrierBerths,
   isAirCarriable,
-} from '../units/movement.ts';
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { senseGravesUnderfoot } from '../graves.ts';
 import { discoverFeat, featDiscovered } from '../../views/visibility.ts';
 import { activeItems } from '../items/equipment.ts';

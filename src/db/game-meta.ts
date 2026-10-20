@@ -4,7 +4,7 @@ import { sb } from '../ui/gm/config.ts';
 import { show } from '../ui/gm/sign-in.ts';
 import { loadGames } from '../ui/gm/game-list.ts';
 import { realmExemptFromOrders } from '../ui/gm/turn-mode.ts';
-import { gameMetaOf } from '../engine/bots/setup.ts';
+import { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 
 // ════
 // TURN RUNNING MODES (Sept 2026) — manual / auto / deadline. The mode lives inside game_state

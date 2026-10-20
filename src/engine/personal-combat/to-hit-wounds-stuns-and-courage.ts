@@ -13,7 +13,8 @@ import {
   pcPromotePending,
   pcWeaknessApplies,
 } from './helpers.ts';
-import { d100, dispFloor, fmtRoll, rng } from '../dice-and-army-names.ts';
+import { d100, fmtRoll, rng } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { discDuelVs, discSum } from '../discoveries.ts';
 
 // ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS AND COURAGE (plan P1-08e: lifted out of resolveTurn) ────

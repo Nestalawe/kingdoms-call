@@ -1,12 +1,13 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
-import { unitBaseStrength } from '../battle/strength.ts';
-import { heroHireWage } from '../world/tables.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { wildHuntPrice } from '../items/tiers-and-hoards.ts';
-import { consecratedIds, itemUsableBy } from '../heroes/fame-and-consecration.ts';
+import { consecratedIds } from '../heroes/fame-and-consecration.ts';
+import { itemSlot, itemUsableBy } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { featDiscovered } from '../../views/visibility.ts';
-import { ITEM_SLOT_CAP, activeItems, itemPowerScore, itemSlot } from '../items/equipment.ts';
+import { ITEM_SLOT_CAP, activeItems, itemPowerScore } from '../items/equipment.ts';
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { RUMOUR_COST_BY_POWER, isMithril } from '../personal-combat/helpers.ts';
 import {

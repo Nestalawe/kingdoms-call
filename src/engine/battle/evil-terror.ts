@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { dispFloor } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../../views/turn-report.ts';
 import { discSum } from '../discoveries.ts';

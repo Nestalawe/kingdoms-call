@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from './rng.ts';
 import { QUALITY_TIERS } from './army-tables.ts';
-import { unitBaseStrength } from './battle/strength.ts';
+import { unitBaseStrength } from './rules-on-plain-values/unit-types-and-base-strength.ts';
 import { effSkillOf } from './heroes/skills-and-hp.ts';
 import { armyUnitName } from './dice-and-army-names.ts';
 import { noteServedRealm } from './heroes/charms-and-neutrals.ts';
