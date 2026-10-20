@@ -144,12 +144,7 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'defend-naval-overland', 'tests/defend-naval-overland.test.js'],
     ['scenario', 'defend-once', 'tests/defend-once.test.js'],
     ['scenario', 'hero-every-phase', 'tests/hero-every-phase.test.js'],
-    [
-      'simulation',
-      'report-privacy',
-      'tests/report-privacy.test.js',
-      full ? ['6', '20', '6'] : ['3', '10', '5'],
-    ],
+    ['simulation', 'report-privacy', 'tests/report-privacy.test.js', full ? ['6', '20', '6'] : ['3', '10', '5']],
     [
       'simulation',
       'fuzz-wages-combat',
