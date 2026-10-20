@@ -1,9 +1,14 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── The units that fly, sail or can be carried through the air (plan P1-11a3) ────
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a).
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+
+/** A unit as these rules read it: its type, and whether it is a spectral double (a phantom, in a battle only). */
+export interface UnitOfAType {
+  readonly type: string;
+  readonly _phantom?: boolean | undefined;
+}
 
 // Flying armies can cross sea provinces without a fleet
 export const FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
@@ -33,7 +38,7 @@ export const SEA_TYPES = new Set([...CARRIER_TYPES, ...PRIMAL_SEA_TYPES]);
 // through the air, exactly as a fleet ferries land units across the sea. Cavalry, naval hulls,
 // sea beasts and creature/monster units are too heavy or unsuitable and are never carried.
 export const CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
-export function isAirCarriable(a) {
+export function isAirCarriable(a: UnitOfAType | null | undefined): boolean {
   if (!a) return false;
   const t = a.type;
   if (AERIAL_TYPES.has(t) || SEA_TYPES.has(t)) return false; // flyers carry, hulls/sea-beasts sail
@@ -45,7 +50,7 @@ export function isAirCarriable(a) {
 // least one humanoid flyer per carried unit (self-flying units ride for free: humanoid flyers and
 // primal winged beasts). Any grounded unit that can be neither carried nor fly on its own — a
 // horse, a fleet, a walking creature/monster — anchors the column to the earth.
-export function getFlyCapability(armies) {
+export function getFlyCapability(armies: readonly (UnitOfAType | null | undefined)[] | null | undefined): boolean {
   armies = (armies || []).filter((a) => a && !a._phantom); // spectral doubles are weightless — never carried, never counted
   if (armies.length === 0) return false;
   let carriers = 0,
