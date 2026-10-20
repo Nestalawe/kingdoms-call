@@ -132,6 +132,22 @@ function stripped(code: string): string {
   }).outputText;
 }
 
+// The kinds of node only TypeScript has, beside the types (ts.isTypeNode): type parameters, the type-only
+// declarations, `as`, `satisfies`, `!`, `<T>x` and decorators.
+const TYPESCRIPT_KINDS = new Set([
+  ts.SyntaxKind.TypeParameter,
+  ts.SyntaxKind.InterfaceDeclaration,
+  ts.SyntaxKind.TypeAliasDeclaration,
+  ts.SyntaxKind.EnumDeclaration,
+  ts.SyntaxKind.ModuleDeclaration,
+  ts.SyntaxKind.ImportEqualsDeclaration,
+  ts.SyntaxKind.AsExpression,
+  ts.SyntaxKind.SatisfiesExpression,
+  ts.SyntaxKind.NonNullExpression,
+  ts.SyntaxKind.TypeAssertionExpression,
+  ts.SyntaxKind.Decorator,
+]);
+
 // The modifiers only TypeScript has (export, async, static, default and accessor are JavaScript's too).
 const TYPESCRIPT_MODIFIERS = new Set([
   ts.SyntaxKind.DeclareKeyword,
@@ -153,28 +169,22 @@ const TYPESCRIPT_MODIFIERS = new Set([
 function hasTypeScriptSyntax(code: string, whole?: ts.SourceFile): boolean {
   // a whole file's tree is already made (read); a piece is parsed here
   const tree = whole ?? ts.createSourceFile('piece.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  // Read by each node's kind first (370,000 nodes on the GM page: the type guards one by one took half a second).
   const typescriptOnly = (node: ts.Node): boolean => {
-    if (
-      ts.isTypeNode(node) ||
-      ts.isTypeParameterDeclaration(node) ||
-      ts.isInterfaceDeclaration(node) ||
-      ts.isTypeAliasDeclaration(node) ||
-      ts.isEnumDeclaration(node) ||
-      ts.isModuleDeclaration(node) ||
-      ts.isImportEqualsDeclaration(node) ||
-      ts.isAsExpression(node) ||
-      ts.isSatisfiesExpression(node) ||
-      ts.isNonNullExpression(node) ||
-      ts.isTypeAssertionExpression(node) ||
-      ts.isDecorator(node) ||
-      (ts.isImportDeclaration(node) && node.importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword) ||
-      (ts.isExportDeclaration(node) && node.isTypeOnly) ||
-      ((ts.isImportSpecifier(node) || ts.isExportSpecifier(node)) && node.isTypeOnly) ||
-      (ts.isParameter(node) && node.questionToken !== undefined) ||
-      (ts.isHeritageClause(node) && node.token === ts.SyntaxKind.ImplementsKeyword) ||
-      (ts.canHaveModifiers(node) && (ts.getModifiers(node) ?? []).some((m) => TYPESCRIPT_MODIFIERS.has(m.kind)))
-    )
+    const kind = node.kind;
+    if (ts.isTypeNode(node) || TYPESCRIPT_KINDS.has(kind)) return true;
+    if (kind === ts.SyntaxKind.Parameter && (node as ts.ParameterDeclaration).questionToken) return true;
+    if (kind === ts.SyntaxKind.HeritageClause && (node as ts.HeritageClause).token === ts.SyntaxKind.ImplementsKeyword)
       return true;
+    if (kind === ts.SyntaxKind.ImportDeclaration) {
+      if ((node as ts.ImportDeclaration).importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword) return true;
+    } else if (kind === ts.SyntaxKind.ExportDeclaration) {
+      if ((node as ts.ExportDeclaration).isTypeOnly) return true;
+    } else if (kind === ts.SyntaxKind.ImportSpecifier || kind === ts.SyntaxKind.ExportSpecifier) {
+      if ((node as ts.ImportSpecifier | ts.ExportSpecifier).isTypeOnly) return true;
+    }
+    const modifiers = (node as { modifiers?: ts.NodeArray<ts.ModifierLike> }).modifiers;
+    if (modifiers?.some((m) => TYPESCRIPT_MODIFIERS.has(m.kind))) return true;
     return ts.forEachChild(node, typescriptOnly) ?? false;
   };
   return typescriptOnly(tree);
