@@ -8,6 +8,7 @@
   "packageManager": "npm@11.19.1",
   "scripts": {
     "build": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/build.ts",
+    "dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/dev.ts",
     "test": "vitest run",
     "test:full": "KC_FULL=1 vitest run",
     "test:quarantine": "KC_QUARANTINE=1 vitest run --project quarantine",
@@ -32,6 +33,7 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-playwright": "2.12.1",
     "fast-check": "4.10.2",
+    "globals": "17.13.0",
     "jsdom": "30.1.2",
     "prettier": "3.9.10",
     "tsx": "4.23.15",

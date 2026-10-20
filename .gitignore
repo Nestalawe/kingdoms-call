@@ -18,3 +18,5 @@ playwright-report/
 balance-report/
 # The site, built from src/ by npm run build (P1-05): what Pages publishes and the tests open. Edit src/, never site/.
 /site/
+# The dev server's database config (npm run dev -- config, tools/dev.ts): this machine's Supabase, never published.
+/public/dev/
