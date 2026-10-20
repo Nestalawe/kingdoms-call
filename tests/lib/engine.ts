@@ -135,7 +135,11 @@ function engineBundle(src: string): vm.Script {
 
 /** Runs the engine's bundle (the data file, then the engine's files) in a new vm context, and returns the context. */
 export function loadEngine({ seed, src = SRC }: EngineOptions): vm.Context {
-  const engine = vm.createContext({ KC_RNG_SEED: seed, console });
+  // Not contextified (P1-09d): the context's global object is an ordinary one, so the engine's top-level names (each a
+  // var in the bundle, a property of that object) read at full speed, without an interceptor on every read.
+  const engine = vm.createContext(vm.constants.DONT_CONTEXTIFY) as vm.Context & Record<string, unknown>;
+  engine['KC_RNG_SEED'] = seed;
+  engine['console'] = console;
   engineBundle(src).runInContext(engine);
   return engine;
 }
