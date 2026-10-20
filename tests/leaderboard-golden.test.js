@@ -7,16 +7,16 @@
 //   gold       Thornmere 100, 250, 180    Veyholt 300, 120, 90
 //   provinces  Thornmere   3,   5,   6    Veyholt   4,   4,  2
 //   turn 2     Thornmere fights 2, wins 2, kills 5, loses 1; Veyholt fights 2, wins 0, kills 1, loses 5
-const fs=require('fs'), vm=require('vm'); const {sitePath}=require('./lib/boot');
-const html=fs.readFileSync(process.argv[2]||sitePath('kingdoms-call-gm-portal.html'),'utf8');
-const from=html.indexOf('const _LB_SEA=new Set('), to=html.indexOf('// Fetch this game\'s turn_events');
-if(from<0||to<0||to<from){ console.log('FAIL: could not slice the leaderboard block (anchor moved?)'); process.exit(1); }
+const fs=require('fs'), vm=require('vm'); const {sourceFrom}=require('./lib/source.ts');
+// The block is cut out of src/ui/gm/hall-of-fame.js by its syntax tree (tests/lib/source.ts): its declarations from
+// _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
+const src=sourceFrom('ui/gm/hall-of-fame.js','_LB_SEA','buildGameRecords');
 
 const ctx={console, KC_UNIT_CLASS:{sea:[],aerial:[],creature:[],monster:[],missile:[],cavalry:[],flying:[],carrier:[],primalSea:[],garrison:[],lightFoot:[],tamedFlyer:[]},
   UNIT_BASE_STR:{}, UNIT_Q_MULT:{}, GUARDIAN_POWER_RANK:{}, SKILL_LABELS:{}, TITLE_DEFS:[], KC_BUILD_STAMP:'test', KC_LB_V:1,
   kcClock:Object.assign(()=>Date.now(),{date:()=>new Date()}),   // the engine's clock (src/engine/clock.js), not in the slice
   currentUser:{id:'gm-1'}, gameMetaOf:()=>null, computeStandings:()=>({titles:{}})};
-vm.createContext(ctx); vm.runInContext(html.slice(from,to),ctx);
+vm.createContext(ctx); vm.runInContext(src,ctx);
 
 const snap=(gold,provinces)=>({gold,provinces,chars:1,heroes:0,characters:[]});
 const ev=(turn,pi,gold,prov,battles)=>({turn,player_index:pi,is_bot:false,realm:pi?'Veyholt':'Thornmere',

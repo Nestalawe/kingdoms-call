@@ -3,13 +3,13 @@
 // leaderboard page through a stub Supabase client in JSDOM, then renders every tab and checks the
 // output for exceptions, empty boards, and undefined/NaN leaking into the HTML. Also exercises GM
 // mode (?gm=1) and the edit / hide / delete controls.
-const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {leaderboardStub}=require('./lib/stub-db');
-const GM_FILE=process.argv[2]||sitePath('kingdoms-call-gm-portal.html');
-const LB_FILE=process.argv[3]||sitePath('kingdoms-call-leaderboard.html');
+const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {sourceFrom}=require('./lib/source.ts'); const {leaderboardStub}=require('./lib/stub-db');
+const LB_FILE=process.argv[2]||sitePath('kingdoms-call-leaderboard.html');
 
 // ── 1. real builder, stub engine tables ────────────────────────────────────────────────────────
-const html=fs.readFileSync(GM_FILE,'utf8');
-const src=html.slice(html.indexOf('const _LB_SEA=new Set('), html.indexOf("// Fetch this game's turn_events"));
+// The block is cut out of src/ui/gm/hall-of-fame.js by its syntax tree (tests/lib/source.ts): its declarations from
+// _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
+const src=sourceFrom('ui/gm/hall-of-fame.js','_LB_SEA','buildGameRecords');
 const ctx={console, KC_LB_V:1, KC_BUILD_STAMP:'test', currentUser:{id:'gm-1'}, gameMetaOf:()=>null,
   KC_UNIT_CLASS:{sea:['Galleons','Whale Cohort'],aerial:['Rocs','Dragons'],creature:['Rocs'],monster:['Dragons'],
     missile:['Archers'],cavalry:['Heavy Horse'],flying:['Rocs'],carrier:['Galleons'],primalSea:['Whale Cohort'],
