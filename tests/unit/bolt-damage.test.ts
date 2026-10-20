@@ -47,7 +47,7 @@ test.for([1, 2, 3, 4, 5, 7])('Elemental %i: the bolt does 1–3 a level, counted
 
 // The data file's and the player portal's words are read from src/ by their syntax tree (tests/lib/source.ts, plan
 // P1-09a: until then the built files' text was matched).
-const data = stringsOf('content/kingdoms-call-data.js').join('\n');
+const data = stringsOf('content/kingdoms-call-data.ts').join('\n');
 const rules = readPage('kingdoms-call-rules.html');
 const pp = pageText('kingdoms-call-player-portal.html');
 const hint = (spell: string) =>

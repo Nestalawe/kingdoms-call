@@ -15,7 +15,7 @@
 // And the turn's dice (P1-18e): each turn plays from a seed of its own, drawn from the page's dice and returned, and
 // the page gets its own dice back; the shell hands resolveTurn that seed (P1-08m); the turn the page plays is the one
 // the engine plays alone, in the bare vm, from that seed.
-// Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.js)
+// Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.ts)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import path from 'node:path';
@@ -353,7 +353,7 @@ test('the save answers with an error and the game cannot be read again: nothing 
 // until plan P1-09a the booted page's buildTurnReport was stood in, which a page of modules doesn't allow).
 test('a turn report fails after the save: the turn stands, and the orders stay spent', async () => {
   const site = plantedSite({
-    'views/turn-report.js': (code, file) =>
+    'views/turn-report.ts': (code, file) =>
       plantAtStart(code, file, 'buildTurnReport', "throw new Error('a report could not be built');"),
   });
   const t = await stage(undefined, path.join(site.dir, 'kingdoms-call-gm-portal.html'));
@@ -497,7 +497,7 @@ test('each turn plays from its own seed, and the page gets its dice back', async
 // allow).
 test('the shell hands resolveTurn the seed it returns, each turn its own', async () => {
   const site = plantedSite({
-    'engine/run-turn.js': (code, file) =>
+    'engine/run-turn.ts': (code, file) =>
       plantAtStart(
         code,
         file,

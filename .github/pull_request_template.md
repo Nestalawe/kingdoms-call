@@ -76,5 +76,5 @@ None.
       get a warning comment anyway; talk them through with Theo before merging.)
 - [ ] Updates STATUS? (Plan steps only; batches don't. See "Never" 6 in `CLAUDE.md`.)
 - [ ] Rule changes are mirrored everywhere the rule is restated (engine, player portal, rulebooks).
-- [ ] If `kingdoms-call-data.js` changed: both its stamp lines and both portals' minimums are bumped.
+- [ ] If `kingdoms-call-data.ts` changed: both its stamp lines and both portals' minimums are bumped.
 - [ ] `docs/ARCHITECTURE.md` / `docs/traps.md` / `CLAUDE.md` updated, if this makes them wrong.

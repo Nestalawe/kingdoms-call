@@ -16,7 +16,7 @@ const OLD=Object.keys(RENAMED), NEW=[...new Set(Object.values(RENAMED))];
 (async()=>{
   // ── The data file ──
   const ctx=vm.createContext({});
-  vm.runInContext(scriptOf('content/kingdoms-call-data.js'),ctx);
+  vm.runInContext(scriptOf('content/kingdoms-call-data.ts'),ctx);
   const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P,N:PRIMAL_UNIT_NAMES,DISC:SAGE_DISCOVERIES_P})',ctx);
   const druidOf=u=>{ for(const [l,list] of Object.entries(D.L)) if(list.includes(u)) return +l; return 0; };
   for(const u of NEW){

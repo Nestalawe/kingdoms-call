@@ -1,4 +1,4 @@
-// A chase (lifted out of resolveTurn in plan P1-08i3: src/engine/heroes/pursuits-and-the-catch-roll.js), called directly
+// A chase (lifted out of resolveTurn in plan P1-08i3: src/engine/heroes/pursuits-and-the-catch-roll.ts), called directly
 // in the bare vm (tests/lib/engine.ts) on the middle of a bot world cleared for each case (tests/lib/middle-of-a-bot-world.ts):
 // realms 0 and 1 at war, 0 and 2 allied, 1 and 2 at peace.
 // - pursuitCatchChance (a property): 70% + 5% a level of the hunter's Spy − 5% a level of the quarry's, 5–100%, and a

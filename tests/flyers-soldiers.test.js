@@ -10,7 +10,7 @@ const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
 
 (async()=>{
   // the data file from src/, run as a script (tests/lib/source.ts; until plan P1-09a it was read from site/)
-  const D=vm.runInNewContext(require('./lib/source.ts').scriptOf('content/kingdoms-call-data.js')+'\n;({KC_UNIT_CLASS,KC_DRUID_LEVELS})',{});
+  const D=vm.runInNewContext(require('./lib/source.ts').scriptOf('content/kingdoms-call-data.ts')+'\n;({KC_UNIT_CLASS,KC_DRUID_LEVELS})',{});
   for(const r of RIDERS){
     ok(!D.KC_UNIT_CLASS.creature.includes(r)&&!D.KC_UNIT_CLASS.monster.includes(r),`${r} are neither Creature nor Monster`);
     ok(!D.KC_UNIT_CLASS.tamedFlyer.includes(r),`${r} are not a flyer to be tamed`);

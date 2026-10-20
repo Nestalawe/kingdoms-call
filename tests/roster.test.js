@@ -31,7 +31,7 @@ const CELLS_BEFORE={
 (async()=>{
   // ── The shared data file ──
   const ctx=vm.createContext({});
-  vm.runInContext(scriptOf('content/kingdoms-call-data.js'),ctx);
+  vm.runInContext(scriptOf('content/kingdoms-call-data.ts'),ctx);
   const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,P:PROVINCE_ARMIES_P,N:ARMY_UNIT_NAMES})',ctx);
   for(const u of UNITS){
     const d=ROSTER[u];

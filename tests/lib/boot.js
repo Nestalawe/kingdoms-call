@@ -15,7 +15,7 @@
 //
 // Fixed seed: when KC_SEED is set (npm test sets it), this Node process's Math.random is replaced by a seeded sfc32
 // generator (for a harness's own random orders), and every page booted with bootJsdom is given a seed: its dice,
-// kcRng() (src/engine/rng.js, P1-07), are the same sfc32 generator seeded the same way. Same seed, same random
+// kcRng() (src/engine/rng.ts, P1-07), are the same sfc32 generator seeded the same way. Same seed, same random
 // sequence. bootJsdom's opts.seed and opts.now pin one page completely: its dice and its clock (P1-01a). A page given
 // no seed seeds its dice from crypto.getRandomValues, as on the live site.
 const fs=require('fs'), path=require('path'), http=require('http');
@@ -67,7 +67,7 @@ function pageFiles(nameOrPath){
   return [file,...named.filter(f=>fs.existsSync(f))];
 }
 
-// sfc32, seeded through splitmix32 so nearby seeds give unrelated streams. The page's kcRng (src/engine/rng.js) is the
+// sfc32, seeded through splitmix32 so nearby seeds give unrelated streams. The page's kcRng (src/engine/rng.ts) is the
 // same generator, seeded the same way (tests/unit/rng.test.ts).
 function seededRandom(seed){
   let s=(Number(seed)>>>0)||1;
@@ -80,7 +80,7 @@ function seededRandom(seed){
     return (t>>>0)/4294967296;
   };
 }
-// The pages check the database's version before their first read (src/db/kc-db-guard.js, bundled into each page).
+// The pages check the database's version before their first read (src/db/kc-db-guard.ts, bundled into each page).
 // Every stand-in database answers it as an up-to-date database would: the newest migration in the repo.
 const DB_VERSION=fs.readdirSync(path.join(__dirname,'..','..','supabase','migrations'))
   .map(f=>(/^(\d{14})_/.exec(f)||[])[1]).filter(Boolean).sort().pop();
@@ -109,7 +109,7 @@ function withDbVersion(supabase,answers=DB_VERSION,calls){
 
 // A Date that starts at `now` and moves on 1 ms at every reading (new Date(), Date.now(), Date()), so a page's
 // clock is the same on every run and two readings never tie. Dates built from a value are ordinary. The engine's
-// kcClock() (src/engine/clock.js, P1-07) reads it.
+// kcClock() (src/engine/clock.ts, P1-07) reads it.
 function pinnedDate(RealDate,now){
   let t=typeof now==='number'?now:RealDate.parse(now);
   if(!Number.isFinite(t)) throw new Error('bootJsdom: opts.now is not a time: '+now);

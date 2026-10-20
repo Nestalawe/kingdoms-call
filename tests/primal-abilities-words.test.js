@@ -10,7 +10,7 @@ const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageText,
 const PP='kingdoms-call-player-portal.html';
 const {LIVE}=require('./lib/primal-decided');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=pageText(PP), data=stringsOf('content/kingdoms-call-data.js').join('\n');
+const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=pageText(PP), data=stringsOf('content/kingdoms-call-data.ts').join('\n');
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
 const norm=s=>s.replace(/[’‘]/g,"'");
 const ABILITIES={

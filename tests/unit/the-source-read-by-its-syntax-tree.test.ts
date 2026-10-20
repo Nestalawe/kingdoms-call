@@ -41,7 +41,7 @@ const settings = JSON.parse(fs.readFileSync(path.join(ROOT, '.prettierrc.json'),
   singleQuote: boolean;
 };
 const options = { ...settings, printWidth: Math.round(settings.printWidth / 2), singleQuote: !settings.singleQuote };
-const own = filesUnder(SRC).filter((f) => f.endsWith('.js') && !f.startsWith('vendor/'));
+const own = filesUnder(SRC).filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
 // src/ laid out otherwise by Prettier, file by file, into the copy
 for (const f of own) fs.mkdirSync(path.dirname(path.join(copy, f)), { recursive: true });
 await Promise.all(
@@ -84,14 +84,14 @@ describe('every file of the site reads the same laid out otherwise', () => {
 describe('each helper gives the same answer on both layouts', () => {
   type Read = (o: { src?: string }) => unknown;
   const reads: [string, Read][] = [
-    ['topLevelNames', (o) => topLevelNames('ui/gm/hall-of-fame.js', o)],
+    ['topLevelNames', (o) => topLevelNames('ui/gm/hall-of-fame.ts', o)],
     [
       'sourceFrom, run as a script',
       (o) => {
         const KC_UNIT_CLASS = { sea: [], aerial: [], creature: [], monster: [], missile: [], cavalry: [] };
         const ctx = vm.createContext({ KC_UNIT_CLASS });
         vm.runInContext(
-          sourceFrom('ui/gm/hall-of-fame.js', '_LB_SEA', 'lbSumStr', o) + ';this._t=typeof lbSumStr',
+          sourceFrom('ui/gm/hall-of-fame.ts', '_LB_SEA', 'lbSumStr', o) + ';this._t=typeof lbSumStr',
           ctx,
         );
         return ctx['_t'] as unknown;
@@ -102,26 +102,26 @@ describe('each helper gives the same answer on both layouts', () => {
       (o) =>
         JSON.stringify(
           vm.runInNewContext(
-            scriptOf('content/kingdoms-call-data.js', o) +
+            scriptOf('content/kingdoms-call-data.ts', o) +
               ';' +
-              sourceOf('engine/battle/lines.js', ['BATTLE_FRONT_RANGE'], o) +
+              sourceOf('engine/battle/lines.ts', ['BATTLE_FRONT_RANGE'], o) +
               ';[BATTLE_FRONT_RANGE, KC_PHASE_NAMES]',
           ),
         ),
     ],
     [
       'statementsBetween',
-      (o) => compactCode(statementsBetween('engine/world/generate.js', 'generateNewGame', 'cellIdRC', 'cellDistRC', o)),
+      (o) => compactCode(statementsBetween('engine/world/generate.ts', 'generateNewGame', 'cellIdRC', 'cellDistRC', o)),
     ],
     ['statementsFollowing', (o) => statementsFollowing('kingdoms-call-gm-portal.html', /hauls out/, 4, o)],
-    ['initializersOf', (o) => initializersOf('ui/gm/startup.js', 'KC_SHARED_TABLE_NAMES', o).map(compactCode)],
-    ['entriesOf', (o) => entriesOf('ui/player/briefing-and-submit.js', 'UNIT_ABILITIES', o)],
-    ['callsTo', (o) => callsTo('engine/battle/battles-between-heroes.js', 'trySkillGain', o)],
+    ['initializersOf', (o) => initializersOf('ui/gm/startup.ts', 'KC_SHARED_TABLE_NAMES', o).map(compactCode)],
+    ['entriesOf', (o) => entriesOf('ui/player/briefing-and-submit.ts', 'UNIT_ABILITIES', o)],
+    ['callsTo', (o) => callsTo('engine/battle/battles-between-heroes.ts', 'trySkillGain', o)],
     [
       'compactDeclaration',
       (o) =>
         compactDeclaration(
-          'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js',
+          'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts',
           'processOrder',
           o,
         ),
@@ -160,10 +160,24 @@ describe('a module, a TypeScript file and a declared global, read as the classic
     expect(compactDeclaration(path.join(copy, name), 'f')).toMatch(/^(export )?function f\(n\)\{return A/);
     expect(stringsOf(path.join(copy, name)).filter((s) => s === 'x')).toEqual(['x']);
   });
+  // P1-09e renamed every file of src/ .ts with no type in it: each piece must read byte for byte as it did as .js (a
+  // test matches `30`, not `"use strict";\n(30);\n`, the reprint transpileModule would give).
+  test('a .ts file with no types reads as the same text named .js, byte for byte', () => {
+    const text = "import { g } from './g.ts';\nexport const N = 30;\nexport const L = [\n  'a',\n  'b',\n];\n";
+    for (const name of ['untyped.js', 'untyped.ts']) fs.writeFileSync(path.join(copy, name), text);
+    const reads = (name: string) => [
+      initializersOf(path.join(copy, name), 'N'),
+      initializersOf(path.join(copy, name), 'L'),
+      sourceOf(path.join(copy, name), ['N', 'L']),
+      scriptOf(path.join(copy, name)),
+    ];
+    expect(reads('untyped.ts')).toEqual(reads('untyped.js'));
+    expect(reads('untyped.ts')[0]).toEqual(['(30)']);
+  });
 });
 
 describe('the planting helpers put the line in the same place in either layout', () => {
-  const file = 'engine/run-turn.js';
+  const file = 'engine/run-turn.ts';
   const planted = (o: { src?: string }) => {
     const code = fs.readFileSync(path.join(o.src ?? SRC, file), 'utf8');
     return [
@@ -182,8 +196,8 @@ describe('the planting helpers put the line in the same place in either layout',
     expect(planted(pretty).map((p) => p.map((i) => i > 0))).toEqual(planted({}).map((p) => p.map((i) => i > 0)));
   });
   test('replaceInitializer replaces the one value', () => {
-    const code = fs.readFileSync(path.join(SRC, 'engine/world/generate.js'), 'utf8');
-    const out = replaceInitializer(code, 'engine/world/generate.js', 'generateNewGame', '_freeNbrs', '[]');
+    const code = fs.readFileSync(path.join(SRC, 'engine/world/generate.ts'), 'utf8');
+    const out = replaceInitializer(code, 'engine/world/generate.ts', 'generateNewGame', '_freeNbrs', '[]');
     fs.writeFileSync(path.join(copy, 'generate.js'), out);
     expect(initializersOf(path.join(copy, 'generate.js'), '_freeNbrs')).toEqual(['([])']);
   });

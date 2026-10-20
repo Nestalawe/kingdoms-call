@@ -5,7 +5,7 @@
 //     cavalry's matchup (×0.85 facing foot, ×1.25 more facing skeletons) instead of the ×0.75 cap other horse meets.
 //   • Item 19 (ruling R-100): every flyer (the winged riders and the flying beasts) fights at ×0.75 in forest and
 //     jungle, and still at ×1 on open ground, in the mountains and over the sea.
-// Level 1 (unit): armStr and terrainMod (src/engine/battle/terrain-and-unit-strength.js, plan P1-08b) and the battle
+// Level 1 (unit): armStr and terrainMod (src/engine/battle/terrain-and-unit-strength.ts, plan P1-08b) and the battle
 // grid and facing (module level) are called directly in the bare vm (tests/lib/engine.ts), on a world the engine
 // makes. They were three blocks of tests/battle-tweaks.test.js, which ran one turn on the GM portal for the anchor
 // hook to hand armStr back; the checks are the same. Its fourth block, Terror's three stacks, needs spreadTerror,

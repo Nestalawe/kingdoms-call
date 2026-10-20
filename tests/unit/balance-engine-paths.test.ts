@@ -18,15 +18,16 @@ describe('the engine paths', () => {
   test.for([
     'src/kingdoms-call-gm-portal.html',
     'src/kingdoms-call-player-portal.html',
-    'src/engine/run-turn.js',
-    'src/views/turn-report.js',
-    'src/content/kingdoms-call-data.js',
-    'src/ui/shared/kc-safe.js',
-    'src/db/kc-db-guard.js',
+    'src/engine/run-turn.ts',
+    'src/views/turn-report.ts',
+    'src/content/kingdoms-call-data.ts',
+    'src/ui/shared/kc-safe.ts',
+    'src/db/kc-db-guard.ts',
     'public/kc-config.js',
     'public/kc-staging-footer.js',
     'public/vendor/supabase-js-2.117.3.min.js',
     'tools/build.ts',
+    'tsconfig.json',
     'tools/pages.ts',
     'tools/balance/run.ts',
     'tools/balance/engine-paths.ts',
@@ -41,11 +42,12 @@ describe('the engine paths', () => {
   });
 
   test.for([
-    'src/ui/player/map.js',
+    'src/ui/player/map.ts',
     'src/ui/player/style.css',
     'src/ui/landing/style.css',
     'src/rulebook/rulebook.css',
-    'src/rulebook/toc.js',
+    'src/rulebook/toc.ts',
+    'src/globals.d.ts',
     'src/engine.bak/run-turn.js',
     'site/kingdoms-call-gm-portal.html',
     'docs/ARCHITECTURE.md',
@@ -60,8 +62,8 @@ describe('the engine paths', () => {
 
   test('every file the matrix loads into its page is built from engine paths only', () => {
     const files = pageSources();
-    expect(files).toContain('src/content/kingdoms-call-data.js');
-    expect(files).toContain('src/engine/run-turn.js');
+    expect(files).toContain('src/content/kingdoms-call-data.ts');
+    expect(files).toContain('src/engine/run-turn.ts');
     expect(files.filter((f) => !isEnginePath(f))).toEqual([]);
   });
 
@@ -86,7 +88,7 @@ describe('the engine paths', () => {
 });
 
 describe('the decision', () => {
-  const engine = ['src/engine/run-turn.js'];
+  const engine = ['src/engine/run-turn.ts'];
   const baseline = ['tests/balance/baseline/matrix.json'];
 
   test('no engine path changed: nothing is played, in seconds', () => {
@@ -98,7 +100,7 @@ describe('the decision', () => {
   test('an engine path changed: the matrix is played', () => {
     const d = decide({ base: 'HEAD^1', changed: ['docs/traps.md', ...engine], refactorOnly: false });
     expect(d).toMatchObject({ play: true, fail: false });
-    expect(d.lines.join('\n')).toContain('src/engine/run-turn.js');
+    expect(d.lines.join('\n')).toContain('src/engine/run-turn.ts');
   });
 
   test('refactor-only, the baseline unchanged: played, so the games must come out identical', () => {
@@ -178,7 +180,7 @@ describe('the step, in plain Node', () => {
 
   git('init', '-q', '-b', 'main');
   const first = commit({
-    'src/engine/run-turn.js': 'v1',
+    'src/engine/run-turn.ts': 'v1',
     'tests/balance/baseline/matrix.json': '{}',
     'docs/a.md': 'a',
   });
@@ -191,14 +193,14 @@ describe('the step, in plain Node', () => {
   });
 
   test('a pull request that changes the engine: play=true', () => {
-    pullRequest({ 'src/engine/run-turn.js': 'v2' });
+    pullRequest({ 'src/engine/run-turn.ts': 'v2' });
     expect(run({ EVENT: 'pull_request', REFACTOR_ONLY: 'false' })).toMatchObject({ status: 0, output: 'play=true\n' });
   });
 
   test('a file renamed away from an engine path counts by its old name too', () => {
     git('checkout', '-q', 'main');
     git('checkout', '-q', '-B', 'pr');
-    git('mv', 'src/engine/run-turn.js', 'docs/old-run-turn.js');
+    git('mv', 'src/engine/run-turn.ts', 'docs/old-run-turn.js');
     git('commit', '-q', '-m', 'mv');
     git('checkout', '-q', '--detach', 'main');
     git('merge', '-q', '--no-ff', '-m', 'merge', 'pr');
@@ -206,7 +208,7 @@ describe('the step, in plain Node', () => {
   });
 
   test('refactor-only with a changed baseline: exit 1, and the log says why', () => {
-    pullRequest({ 'src/engine/run-turn.js': 'v2', 'tests/balance/baseline/matrix.json': '{"x":1}' });
+    pullRequest({ 'src/engine/run-turn.ts': 'v2', 'tests/balance/baseline/matrix.json': '{"x":1}' });
     const r = run({ EVENT: 'pull_request', REFACTOR_ONLY: 'true' });
     expect(r.status).toBe(1);
     expect(r.log).toContain('refactor-only');
@@ -219,7 +221,7 @@ describe('the step, in plain Node', () => {
     commit({ 'docs/a.md': 'c' });
     expect(run({ EVENT: 'push', BEFORE: before })).toMatchObject({ status: 0, output: 'play=false\n' });
     // A push of two commits: the engine change is in the first.
-    commit({ 'src/engine/run-turn.js': 'v3' });
+    commit({ 'src/engine/run-turn.ts': 'v3' });
     commit({ 'docs/a.md': 'd' });
     expect(run({ EVENT: 'push', BEFORE: before })).toMatchObject({ status: 0, output: 'play=true\n' });
     expect(run({ EVENT: 'push', BEFORE: first })).toMatchObject({ status: 0, output: 'play=true\n' });

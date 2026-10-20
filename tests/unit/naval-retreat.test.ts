@@ -3,7 +3,7 @@
 // own ground, holds the province, or scatters on a hostile shore; with no friendly water the hero and the troops march
 // inland and the ships stay. 4,000 fuzzed coastal retreats: no crash, no malformed line, and every unit ends up
 // somewhere.
-// Level 1 (unit): navalSplitRetreat (src/engine/units/sea-lift-stranding-and-retreats.js, plan P1-08b) is called
+// Level 1 (unit): navalSplitRetreat (src/engine/units/sea-lift-stranding-and-retreats.ts, plan P1-08b) is called
 // directly on a world the engine makes in the bare vm (tests/lib/engine.ts). It was tests/naval-retreat.test.js,
 // which ran one turn on the GM portal for the anchor hook to hand the function back; the checks are the same.
 import { afterAll, describe, expect, test } from 'vitest';

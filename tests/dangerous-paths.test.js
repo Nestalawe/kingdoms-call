@@ -60,7 +60,7 @@ test('the real paths file covers supabase/, .github/, the vendored code, the dat
   assert.equal(isDangerous('public/vendor/supabase-js-2.117.3.min.js',globs),true);
   assert.equal(isDangerous('package.json',globs),true);
   assert.equal(isDangerous('package-lock.json',globs),true);
-  for(const f of ['src/index.html','src/engine/run-turn.js','public/kc-staging-footer.js','tests/suite.ts'])
+  for(const f of ['src/index.html','src/engine/run-turn.ts','public/kc-staging-footer.js','tests/suite.ts'])
     assert.equal(isDangerous(f,globs),false,f);
 });
 

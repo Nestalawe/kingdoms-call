@@ -23,7 +23,7 @@ export const ROOT = path.resolve(import.meta.dirname, '..');
 export const SRC = path.join(ROOT, 'src');
 
 /** The data file, the engine's tables (plan P1-09, Decision 4). */
-export const DATA_FILE = 'content/kingdoms-call-data.js';
+export const DATA_FILE = 'content/kingdoms-call-data.ts';
 
 /** The pages: every .html file at the top of src/ (Vite's convention: an entry at the root is a published page). */
 export function pageNames(src = SRC): string[] {
@@ -95,7 +95,7 @@ function filesUnder(dir: string): string[] {
 export const GM_PAGE = 'kingdoms-call-gm-portal.html';
 
 /** The GM portal's entry, which imports its files in the order they ran as classic scripts until P1-09d. */
-export const GM_ENTRY = 'ui/gm/page.js';
+export const GM_ENTRY = 'ui/gm/page.ts';
 
 /** The engine's files (plan P1-18c, P1-09's Decision 11): the data file, then each file the GM portal's entry imports
  *  from engine/ or views/, in its order (the order the page ran them as classic scripts: engineFiles() of P1-05's

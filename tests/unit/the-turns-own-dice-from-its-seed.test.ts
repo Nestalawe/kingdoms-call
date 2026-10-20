@@ -1,8 +1,8 @@
 // The turn's seed, passed in (plan P1-08m): resolveTurn(state, rows, turn, seed) makes the dice of its seed
-// (kcRngStream(seed), src/engine/rng.js) once, lends them for the turn and again for buildReports(), whose Spy-stealth
+// (kcRngStream(seed), src/engine/rng.ts) once, lends them for the turn and again for buildReports(), whose Spy-stealth
 // rolls carry on from the turn's, and gives back the dice in use before after each, also when it throws. With no seed
 // (every other test's turn), the turn plays on the dice in use, as a test fixes them. Until P1-08m the shell
-// (src/ui/gm/turn-shell.js) lent the dice itself, around both calls (P1-18e); these tests hold what it did.
+// (src/ui/gm/turn-shell.ts) lent the dice itself, around both calls (P1-18e); these tests hold what it did.
 // One turn of the balance matrix's scripted-05 (lib/matrix-game.ts), with every hero a Spy 5 so that the reports roll
 // a die for each: a report drawn from other dice than the turn's shows in who moved unseen.
 // - The same seed plays the same turn, log, reports and telemetry, whatever the dice in use were; another seed plays

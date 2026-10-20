@@ -6,7 +6,7 @@
 // did. Letters of Marque, the Human discovery that only lifted Corsairs, now lifts the Galleon Fleet the same
 // way (+30% when attacking) until a full review of the discoveries (Toby, 2026-10-15).
 // Level 0 (static) for the words; level 1 (unit) for the migration: retireCorsairPools is a top-level function of
-// the engine (src/engine/grand-design.js), called on a hand-made world in its bare vm (tests/lib/engine.ts). The
+// the engine (src/engine/grand-design.ts), called on a hand-made world in its bare vm (tests/lib/engine.ts). The
 // rulebooks are read as site/ text; the player portal as its files under src/ (tests/lib/source.ts), the data file's
 // discoveries in the vm, and the call in the turn by its syntax tree. Until plan P1-09a the portals and the data file
 // were read as site/ text, and the migration ran on the booted GM portal.

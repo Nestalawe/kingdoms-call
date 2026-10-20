@@ -98,7 +98,7 @@ void monsterLists;
 const liveOf=f=>LIVE.filter(u=>ROSTER[u].family===f);
 const fury=(/savage fury[^()]*\(([^)]*)\)/i.exec(evil)||['',''])[1];
 for(const u of liveOf('Monster')) ok(fury.includes(u),`the Evil section's savage-fury list names ${u}`);
-const ppMon=(inOneString(/\[M\] Monsters:<\/span>([^<']*)/)||['',''])[1], ppMonSum=(/Monster armies — ([^—]*) — fight with savage fury/.exec(entry('ui/player/report.js','ALIGNMENT_SUMMARIES','Evil'))||['',''])[1];
+const ppMon=(inOneString(/\[M\] Monsters:<\/span>([^<']*)/)||['',''])[1], ppMonSum=(/Monster armies — ([^—]*) — fight with savage fury/.exec(entry('ui/player/report.ts','ALIGNMENT_SUMMARIES','Evil'))||['',''])[1];
 for(const u of liveOf('Monster')){ ok(ppMon.includes(u),`the player portal's [M] Monsters list names ${u}`); ok(ppMonSum.includes(u),`the player portal's Evil realm text names ${u} among the Monster armies`); }
 const ppCre=(inOneString(/\[C\] Creatures:<\/span>([^<']*)/)||['',''])[1];
 for(const u of liveOf('Creature')) ok(ppCre.includes(u),`the player portal's [C] Creatures list names ${u}`);
@@ -107,14 +107,14 @@ for(const u of LIVE.filter(u=>ROSTER[u].type==='naval'&&u!=='Whale Cohort')) ok(
 ok((norm(rules).match(/whale and shark waters/g)||[]).length>=2,'the rulebook\'s sea-tax texts say "whale and shark waters" where they said "whale waters"');
 // The four new Creatures (2026-10-13, Creatures and Monsters IV): the Creature lists name
 // them, the Druidic realm text names every live Creature, and no page still offers eagles or griffons to the wild.
-const ppDruSummary=entry('ui/player/report.js','ALIGNMENT_SUMMARIES','Druidic'), ppDruDesc=(inOneString(/^🌿 \*\*Druidic:\*\*[\s\S]*/)||[''])[0];
+const ppDruSummary=entry('ui/player/report.ts','ALIGNMENT_SUMMARIES','Druidic'), ppDruDesc=(inOneString(/^🌿 \*\*Druidic:\*\*[\s\S]*/)||[''])[0];
 for(const u of liveOf('Creature')) ok(ppDruSummary.includes(u),`the player portal's Druidic realm text names ${u} among the Creature armies`);
 ok(!/eagles|griffons/i.test(ppDruDesc),"the player portal's Druidic join-screen blurb no longer names griffons or eagles among the Creatures");
 const creaturesRow=norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1])), wildwarden=norm((/<tr><td>The Wildwarden<\/td>[\s\S]*?<\/tr>/.exec(rules)||[''])[0]);
 for(const w of ['bears','unicorns','mammoths','turtles']){ ok(new RegExp(w,'i').test(creaturesRow),`the kinds-of-unit Creatures row names ${w}`); ok(new RegExp(w,'i').test(wildwarden),`the Wildwarden title names ${w}`); }
 // The player portal's texts.
 ok(/Reign of Fear/.test(pp),'the player portal\'s Evil realm text names Reign of Fear');
-const ppEvilSummary=entry('ui/player/report.js','ALIGNMENT_SUMMARIES','Evil'), ppEvilDesc=(inOneString(/^💀 \*\*Evil:\*\*[\s\S]*/)||[''])[0];
+const ppEvilSummary=entry('ui/player/report.ts','ALIGNMENT_SUMMARIES','Evil'), ppEvilDesc=(inOneString(/^💀 \*\*Evil:\*\*[\s\S]*/)||[''])[0];
 ok(/Druid 1 from the outset|Druid \+1/.test(ppEvilSummary)&&/Druid \+1/.test(ppEvilDesc),"the player portal's Evil texts (the realm summary and the join-screen blurb) say the king starts with Druid +1");
 // The blurbs: the retired multipliers are gone.
 const blurb=u=>entry(fileDeclaring(PP,'UNIT_ABILITIES'),'UNIT_ABILITIES',u).replace(/[’‘]/g,"'");

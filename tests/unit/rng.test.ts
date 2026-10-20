@@ -1,4 +1,4 @@
-// The game's dice and the engine's clock (P1-07): src/engine/rng.js and src/engine/clock.js, each run on its own in a
+// The game's dice and the engine's clock (P1-07): src/engine/rng.ts and src/engine/clock.ts, each run on its own in a
 // fresh sandbox, as the GM portal runs them first of all its scripts (each a module that imports nothing, run as a
 // classic script: tests/lib/source.ts's scriptOf takes its `export` keywords off).
 // - kcRng() given a seed plays exactly the sequence of the tests' seededRandom (tests/lib/boot.js) for that seed, so
@@ -15,10 +15,10 @@ import { pinnedDate, seededRandom, type KcRng } from '../lib/boot.js';
 import { importsOf } from '../../tools/pages.ts';
 import { scriptOf } from '../lib/source.ts';
 
-const RNG = scriptOf('engine/rng.js');
-const CLOCK = scriptOf('engine/clock.js');
+const RNG = scriptOf('engine/rng.ts');
+const CLOCK = scriptOf('engine/clock.ts');
 
-/** Runs rng.js in a new sandbox with `globals` (e.g. KC_RNG_SEED, crypto) and returns its kcRng. */
+/** Runs rng.ts in a new sandbox with `globals` (e.g. KC_RNG_SEED, crypto) and returns its kcRng. */
 function loadRng(globals: Record<string, unknown>): KcRng {
   const sandbox = vm.createContext({ ...globals });
   vm.runInContext(RNG, sandbox);
@@ -92,7 +92,7 @@ describe('kcRng', () => {
 });
 
 describe('kcClock', () => {
-  /** Runs clock.js in a new sandbox whose Date is `D`, and returns the sandbox. */
+  /** Runs clock.ts in a new sandbox whose Date is `D`, and returns the sandbox. */
   function loadClock(D: DateConstructor) {
     const sandbox = vm.createContext({ Date: D });
     vm.runInContext(CLOCK, sandbox);
@@ -121,6 +121,6 @@ describe('kcClock', () => {
 });
 
 test('the dice and the clock import nothing, so each runs on its own, first on the page', () => {
-  expect(importsOf('engine/rng.js')).toEqual([]);
-  expect(importsOf('engine/clock.js')).toEqual([]);
+  expect(importsOf('engine/rng.ts')).toEqual([]);
+  expect(importsOf('engine/clock.ts')).toEqual([]);
 });

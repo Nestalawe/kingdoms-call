@@ -43,7 +43,7 @@ describe('a file that reaches the screen or the database as it loads stops the l
     fs.rmSync(copy, { recursive: true, force: true });
   });
   fs.cpSync(path.join(ROOT, 'src'), copy, { recursive: true });
-  const names = path.join(copy, 'engine', 'names.js');
+  const names = path.join(copy, 'engine', 'names.ts');
   const original = fs.readFileSync(names, 'utf8');
 
   test.each([

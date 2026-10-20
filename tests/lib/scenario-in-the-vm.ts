@@ -13,7 +13,7 @@
 //   sc.reportEveryRealm()  from now on, a report for every realm, bots' too
 //
 // The turn is the shell's: resolveTurn on the saved world (JSON) and the slot rows, with a seed drawn from the
-// engine's dice as the shell draws it from the page's (src/ui/gm/turn-shell.js), then buildReports(). Every realm is
+// engine's dice as the shell draws it from the page's (src/ui/gm/turn-shell.ts), then buildReports(). Every realm is
 // human-held (so no bot plans for it) unless listed in `bots`; every living character not given orders Rests all turn. The
 // engine's console is quiet (its log and its warnings, as the page's are in scenario.js) while it makes the world and
 // plays the turn.
@@ -184,7 +184,7 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
     return { ...played, S: before as unknown as St, extra };
   }
 
-  /** Plays one turn of the saved world `state` on the slot rows `rows`, as the shell does (src/ui/gm/turn-shell.js):
+  /** Plays one turn of the saved world `state` on the slot rows `rows`, as the shell does (src/ui/gm/turn-shell.ts):
    *  a seed drawn from the engine's dice, resolveTurn, then buildReports. Returns the world after the turn, the GM's
    *  log, each report by its realm, and the turn's statistics. */
   function play(state: World | string, rows: unknown[]) {

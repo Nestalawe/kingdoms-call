@@ -3,15 +3,15 @@
 // the shipped code. (Until plan P1-09a they were sliced out of the built GM portal between exact strings.)
 const vm=require('vm'); const {sourceOf,scriptOf}=require('./lib/source.ts');
 const parts=[
-  sourceOf('engine/units/movement.js',['FLYING_TYPES','CREATURE_ARMIES','MONSTER_ARMIES']),
-  sourceOf('engine/world/tables.js',['DRUID_ARMY_LEVELS_P','getDruidLevel']),
-  sourceOf('engine/discoveries.js',['DISC_CLS_SETS','discUnitIs','ARMY_RACE_OF_TYPE','discUnitMatch']),
+  sourceOf('engine/units/movement.ts',['FLYING_TYPES','CREATURE_ARMIES','MONSTER_ARMIES']),
+  sourceOf('engine/world/tables.ts',['DRUID_ARMY_LEVELS_P','getDruidLevel']),
+  sourceOf('engine/discoveries.ts',['DISC_CLS_SETS','discUnitIs','ARMY_RACE_OF_TYPE','discUnitMatch']),
 ];
 const ctx={console};
 vm.createContext(ctx);
 // 2026-09-27 (one-source pass): the engine's unit tables are now BUILT from the shared tables in
-// kingdoms-call-data.js, so the sandbox loads that file first.
-vm.runInContext(scriptOf('content/kingdoms-call-data.js'),ctx);
+// kingdoms-call-data.ts, so the sandbox loads that file first.
+vm.runInContext(scriptOf('content/kingdoms-call-data.ts'),ctx);
 vm.runInContext(parts.join('\n'),ctx);
 
 let fail=0;

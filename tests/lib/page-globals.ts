@@ -1,7 +1,7 @@
 // What each page must keep on `window` once its scripts are ES modules (plan P1-09, Decision 7), read from the code by
 // its syntax tree. A module's top-level names are its own: nothing outside it (an inline on…="…" handler, a test's
 // W.eval, a browser spec's page.evaluate) can reach one unless the page puts it on `window`. Each script page does
-// that in one reviewed file, src/ui/<page>/globals.js, the last file its entry (page.js) imports: two
+// that in one reviewed file, src/ui/<page>/globals.ts, the last file its entry (page.ts) imports: two
 // Object.assign(window, { … }) lists, the names its inline handlers call and the names its tests reach. A variable that
 // changes after the page has loaded can't go on a list (the list copies its value once, and the copy goes stale): it is
 // a declared global instead, `globalThis.<name> = <value>;` where it was declared, read and written by its bare name as
@@ -12,7 +12,7 @@
 //   declaredGlobals(page)        the page's declared globals: name → file
 //   handlerNames(page)           the page's names an inline handler calls, in its template or in its scripts' strings
 //   namesTestsReachOnPages()     for each page, the names the tests and tools read and write on it, and where
-//   globalsLists(page)           the two lists in the page's globals.js, each name with the file its comment names
+//   globalsLists(page)           the two lists in the page's globals.ts, each name with the file its comment names
 //
 // What counts as reaching a page (only in a file that opens one: it boots a page with bootJsdom, bootScenario, JSDOM,
 // playGame or page.goto, and the pages are the ones it names, or the GM portal for bootScenario and playGame):
@@ -44,7 +44,7 @@ export type ScriptPage = keyof typeof SCRIPT_PAGES;
 export const SCRIPT_PAGE_NAMES = Object.keys(SCRIPT_PAGES) as ScriptPage[];
 
 /** The page's globals file, relative to src/. */
-export const globalsFileOf = (page: ScriptPage): string => `${SCRIPT_PAGES[page]}/globals.js`;
+export const globalsFileOf = (page: ScriptPage): string => `${SCRIPT_PAGES[page]}/globals.ts`;
 
 export interface Declaration {
   /** The file that declares it, relative to src/. */
@@ -94,8 +94,8 @@ export function pageModuleFiles(page: ScriptPage, src = SRC): string[] {
   return pageModules(page, src);
 }
 
-/** The page's entry: src/ui/<page>/page.js, which imports its files in the order they ran as classic scripts. */
-export const entryOf = (page: ScriptPage): string => `${SCRIPT_PAGES[page]}/page.js`;
+/** The page's entry: src/ui/<page>/page.ts, which imports its files in the order they ran as classic scripts. */
+export const entryOf = (page: ScriptPage): string => `${SCRIPT_PAGES[page]}/page.ts`;
 
 /** The classic scripts the page keeps, as their code, each with where it is: the inline ones in its template (the
  *  boot-failure reporter), and those its template loads by a <script src> tag from public/, which is copied as it is
@@ -577,14 +577,14 @@ export function namesTestsReachOnPages(
   return { pages, unread };
 }
 
-/** One name on a globals.js list, and the file its comment names. */
+/** One name on a globals.ts list, and the file its comment names. */
 export interface ListedName {
   name: string;
-  /** The file named in the comment after it (`// ui/gm/turn-shell.js`), or '' if none. */
+  /** The file named in the comment after it (`// ui/gm/turn-shell.ts`), or '' if none. */
   file: string;
 }
 
-/** The page's globals.js: its two Object.assign(window, { … }) lists, in order, handlers first. Throws if the file isn't
+/** The page's globals.ts: its two Object.assign(window, { … }) lists, in order, handlers first. Throws if the file isn't
  *  two such statements (and the imports of the names they list, and comments) and nothing else. */
 export function globalsLists(page: ScriptPage, src = SRC): { handlers: ListedName[]; tests: ListedName[] } {
   const file = globalsFileOf(page);

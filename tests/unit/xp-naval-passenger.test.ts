@@ -1,7 +1,7 @@
 // 2026-10-14 (batch item 9): a hero learns Naval at sea only when leading ships or sea beasts. A passenger (a hero
 // carried in another's hulls, or riding out by sea with no fleet of his own) learns nothing from the voyage.
 // Level 1: every voyage roll (a sea move, a Defend ride-out by sea, a reinforcement or a pursuit step at sea) goes
-// through rollNavalVoyage (src/engine/heroes/experience-skill-rises-and-earned-hp.js, plan P1-08c), called directly in
+// through rollNavalVoyage (src/engine/heroes/experience-skill-rises-and-earned-hp.ts, plan P1-08c), called directly in
 // the bare vm (tests/lib/engine.ts); every experience roll is recorded by a wrapper around the top-level trySkillGain.
 // Level 0: no voyage path calls trySkillGain for Naval directly any more (only battles, won or lost, and the Naval 7/9
 // orders, which need a fleet, do): every such call, as the function it is in and its arguments, is one of a known list.

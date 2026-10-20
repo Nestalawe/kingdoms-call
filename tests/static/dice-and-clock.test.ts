@@ -1,8 +1,8 @@
 // The game's dice and the engine's clock each come from one place (P1-07). Every random number the site's own code
-// draws comes from kcRng() (src/engine/rng.js), the one seeded generator, so a test can replay a whole game from its
-// seed; and the engine and its views read the time only through kcClock() (src/engine/clock.js). So:
-// - no Math.random anywhere in src/ but src/engine/rng.js and src/vendor/;
-// - no Date in src/engine/ or src/views/ but src/engine/clock.js.
+// draws comes from kcRng() (src/engine/rng.ts), the one seeded generator, so a test can replay a whole game from its
+// seed; and the engine and its views read the time only through kcClock() (src/engine/clock.ts). So:
+// - no Math.random anywhere in src/ but src/engine/rng.ts and src/vendor/;
+// - no Date in src/engine/ or src/views/ but src/engine/clock.ts.
 // Comments and strings don't count: scripts are parsed (TypeScript's parser reads .js and .ts alike), and only code is
 // checked. Other files (the templates, the styles) have no code to parse, so their text is searched, outside HTML
 // comments. Until P1-13's lint rule does the same. Level 0 (static): it reads the sources and runs nothing.
@@ -14,8 +14,8 @@ import { filesUnder, ROOT } from '../../tools/build.ts';
 
 const SRC = path.join(ROOT, 'src');
 /** Where each ban doesn't apply, and why. */
-const RANDOM_ALLOWED = new Set(['engine/rng.js']); // the generator itself
-const DATE_ALLOWED = new Set(['engine/clock.js']); // the clock itself
+const RANDOM_ALLOWED = new Set(['engine/rng.ts']); // the generator itself
+const DATE_ALLOWED = new Set(['engine/clock.ts']); // the clock itself
 const DATE_BANNED_IN = ['engine/', 'views/'];
 
 /** One finding per banned read in `text` (the file `file`, relative to src/): "<file>:<line> <what>". */
@@ -66,12 +66,12 @@ describe('dice come from kcRng() and the engine reads the time through kcClock()
   const files = filesUnder(SRC);
 
   test('the sources are there to check', () => {
-    expect(files).toContain('engine/run-turn.js');
-    expect(files).toContain('engine/world/generate.js');
-    expect(files).toContain('views/turn-report.js');
+    expect(files).toContain('engine/run-turn.ts');
+    expect(files).toContain('engine/world/generate.ts');
+    expect(files).toContain('views/turn-report.ts');
   });
 
-  test('no Math.random in src/ (but rng.js and vendor/), and no Date in src/engine/ or src/views/ (but clock.js)', () => {
+  test('no Math.random in src/ (but rng.ts and vendor/), and no Date in src/engine/ or src/views/ (but clock.ts)', () => {
     expect(files.flatMap((f) => findings(f, fs.readFileSync(path.join(SRC, f), 'utf8')))).toEqual([]);
   });
 
@@ -95,15 +95,15 @@ describe('dice come from kcRng() and the engine reads the time through kcClock()
       'const r=kcRng(), t=kcClock();',
     ].join('\n');
     expect(findings('engine/x.js', quiet)).toEqual([]);
-    expect(findings('engine/rng.js', 'Math.random();')).toEqual([]);
-    expect(findings('engine/clock.js', 'Date.now();')).toEqual([]);
+    expect(findings('engine/rng.ts', 'Math.random();')).toEqual([]);
+    expect(findings('engine/clock.ts', 'Date.now();')).toEqual([]);
     expect(findings('vendor/lib.js', 'Math.random(); new Date();')).toEqual([]);
   });
 
-  test('a Math.random() and a new Date() planted in the real run-turn.js are found', () => {
-    const real = fs.readFileSync(path.join(SRC, 'engine/run-turn.js'), 'utf8');
-    const before = findings('engine/run-turn.js', real);
-    const planted = findings('engine/run-turn.js', real + '\nconst _x=Math.random(), _t=new Date();\n');
+  test('a Math.random() and a new Date() planted in the real run-turn.ts are found', () => {
+    const real = fs.readFileSync(path.join(SRC, 'engine/run-turn.ts'), 'utf8');
+    const before = findings('engine/run-turn.ts', real);
+    const planted = findings('engine/run-turn.ts', real + '\nconst _x=Math.random(), _t=new Date();\n');
     expect(planted.length - before.length).toBe(2);
   });
 });

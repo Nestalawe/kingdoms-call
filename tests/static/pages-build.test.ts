@@ -9,7 +9,7 @@
 //   template or stylesheet. A file nothing reaches is found (planted), and a file a module imports that isn't there
 //   stops the build (planted).
 // - tools/pages.ts names each page's files as Rolldown does, but a module nothing on the page reads, which Rolldown
-//   leaves out (kc-safe.js on the Overlord page, which calls none of it).
+//   leaves out (kc-safe.ts on the Overlord page, which calls none of it).
 // - The engine's files (tools/pages.ts's engineEntryFiles, which tests/lib/engine.ts bundles) are the data file and
 //   every file under src/engine/ and src/views/, each in the GM page's bundle, in the order the page's entry lists them,
 //   the dice and the clock first.
@@ -42,6 +42,8 @@ function unreached(src: string, r: BuildResult): string[] {
   const reached = new Set([
     ...Object.values(r.modules).flat(),
     ...pageNames(src).flatMap((page) => [page, ...pageEntries(page, src).styles]),
+    // Types only, for TypeScript (tsconfig.json includes src/): no module imports it and no bundle holds it (P1-09e).
+    'globals.d.ts',
   ]);
   return filesUnder(src).filter((f) => !reached.has(f));
 }
@@ -100,16 +102,16 @@ describe('every file under src/ is in a page', () => {
 
   test('a file nothing imports is found (planted)', () => {
     const copy = srcCopy((d) => {
-      fs.writeFileSync(path.join(d, 'engine', 'forgotten.js'), 'export const forgotten = 1;\n');
+      fs.writeFileSync(path.join(d, 'engine', 'forgotten.ts'), 'export const forgotten = 1;\n');
     });
-    expect(unreached(copy, build(path.join(tmp, 'site-forgotten'), copy))).toEqual(['engine/forgotten.js']);
+    expect(unreached(copy, build(path.join(tmp, 'site-forgotten'), copy))).toEqual(['engine/forgotten.ts']);
   });
 
   test('a file a module imports that is missing stops the build (planted)', () => {
     const copy = srcCopy((d) => {
-      fs.rmSync(path.join(d, 'engine', 'graves.js'));
+      fs.rmSync(path.join(d, 'engine', 'graves.ts'));
     });
-    expect(() => build(path.join(tmp, 'site-missing'), copy)).toThrow(/graves\.js/);
+    expect(() => build(path.join(tmp, 'site-missing'), copy)).toThrow(/graves\.ts/);
   });
 
   test.for(pages)("%s: tools/pages.ts names the files Rolldown's bundle holds", (page) => {
@@ -118,7 +120,7 @@ describe('every file under src/ is in a page', () => {
     expect(theirs.filter((f) => !ours.includes(f))).toEqual([]);
     const leftOut = ours.filter((f) => !theirs.includes(f) && !pageEntries(page).styles.includes(f) && f !== page);
     const scriptless = !pageEntries(page).modules.length;
-    expect(leftOut).toEqual(page === 'kingdoms-call-overlord.html' ? ['ui/shared/kc-safe.js'] : []);
+    expect(leftOut).toEqual(page === 'kingdoms-call-overlord.html' ? ['ui/shared/kc-safe.ts'] : []);
     expect(scriptless ? theirs : []).toEqual([]);
   });
 });
@@ -131,13 +133,13 @@ describe("the engine's files", () => {
   test('the data file, then every file under src/engine/ and src/views/, the dice and the clock first', () => {
     expect(files[0]).toBe(DATA_FILE);
     expect([...files.slice(1)].sort()).toEqual(inFolders);
-    expect(files.slice(1, 3)).toEqual(['engine/rng.js', 'engine/clock.js']);
+    expect(files.slice(1, 3)).toEqual(['engine/rng.ts', 'engine/clock.ts']);
   });
 
   test("each is in the GM page's bundle, in the order the page's entry lists them", () => {
     const inBundle = built.modules[GM] ?? [];
     expect(files.filter((f) => !inBundle.includes(f))).toEqual([]);
-    const listed = importsOf('ui/gm/page.js');
+    const listed = importsOf('ui/gm/page.ts');
     expect(files.filter((f) => listed.includes(f))).toEqual(listed.filter((f) => files.includes(f)));
   });
 });

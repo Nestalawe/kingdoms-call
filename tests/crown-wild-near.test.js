@@ -18,7 +18,7 @@ const {plantedSrc,replaceInitializer,pageStrings}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const N=+(process.argv[2]||4);   // worlds per size
 (async()=>{
-  const empty=plantedSrc({'engine/world/generate.js':(code,file)=>replaceInitializer(code,file,'generateNewGame','_freeNbrs','[]')});
+  const empty=plantedSrc({'engine/world/generate.ts':(code,file)=>replaceInitializer(code,file,'generateNewGame','_freeNbrs','[]')});
   for(const variant of ['natural','no free neighbour']){
   const engine=variant==='natural'?loadEngine({seed:1}):loadEngine({seed:1,src:empty.dir});
   const quiet=vm.runInContext('console',engine); const [log,warn]=[quiet.log,quiet.warn]; quiet.log=quiet.warn=()=>{};

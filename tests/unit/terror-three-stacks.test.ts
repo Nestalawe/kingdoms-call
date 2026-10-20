@@ -1,7 +1,7 @@
 // 2026-10-12 (Toby's batch, item 21; ruling R-102): Evil's lingering Terror stacks at most three times (−30% at the
 // base −10% a stack). A fourth decisive victory nearby adds nothing, and an older save holding five stacks demoralises
 // by three.
-// Level 1 (unit): spreadTerror and consumeTerror (src/engine/battle/evil-terror.js, plan P1-08c) are called directly in
+// Level 1 (unit): spreadTerror and consumeTerror (src/engine/battle/evil-terror.ts, plan P1-08c) are called directly in
 // the bare vm (tests/lib/engine.ts), on a world the engine makes. This was tests/terror-three-stacks.test.js, which ran
 // one turn on the GM portal for the "  // 4. Run all 5 phases" hook to hand them back; the checks are the same.
 import vm from 'node:vm';

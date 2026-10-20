@@ -1,9 +1,9 @@
 // Deterministic boot (P1-01a): the GM portal booted with the same seed and the same clock (bootJsdom's `seed` and
 // `now`) plays the same all-bot turn byte for byte: the saved world, every realm's report and the turn's log rows.
 // A different seed plays a different turn, so the seed is what decides it. The seed reaches the turn through the page's
-// dice, kcRng (src/engine/rng.js, P1-07): a run whose Math.random draws from another stream still plays the same bytes,
+// dice, kcRng (src/engine/rng.ts, P1-07): a run whose Math.random draws from another stream still plays the same bytes,
 // so nothing in the turn draws from Math.random. Level 4 (page): the turn runs inside the booted page (runTurn), and
-// the clock it reads (kcClock, src/engine/clock.js) is the page's own Date.
+// the clock it reads (kcClock, src/engine/clock.ts) is the page's own Date.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { bootJsdom, readPage, seededRandom } from '../lib/boot.js';
 import { makeStub } from '../lib/stub-db.js';

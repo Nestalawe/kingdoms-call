@@ -3,7 +3,7 @@
 // their turn in eight passes, in this order: a bot with no province left concedes; movement, handed the duel forecast
 // for its hunters and each company's strength on each terrain; the muster; the economy; the idle heroes' actions; the
 // Spring orders; the order hygiene; and a dominant bot king's call of the Reckoning, added to the realms' calls. Each
-// pass is a top-level function of src/engine/bots/ (or titles/reckoning.js), not part of what moved: what moved is the
+// pass is a top-level function of src/engine/bots/ (or titles/reckoning.ts), not part of what moved: what moved is the
 // calls, in order, with what each is handed, and the duel forecast (copies of the hunter and his quarry fight `n`
 // times, 20 by default, with no skill rising, for the share won and the share in which the hunter fell).
 // Staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), as P1-08k8's cases are: plain realms each

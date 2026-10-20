@@ -31,7 +31,7 @@
 //   plantedSrc(edits), plantedSite(edits)   a temporary copy of src/ with those edits made (for loadEngine({src})),
 //                                and a site built from it (for a page that must fail where nothing outside can make it)
 //
-// A file is named relative to src/ ('engine/world/generate.js'), or by a full path; `src` names another copy.
+// A file is named relative to src/ ('engine/world/generate.ts'), or by a full path; `src` names another copy.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -43,10 +43,10 @@ export const SRC = path.join(ROOT, 'src');
 
 /** The files every script page shares, which it loaded beside it until the module switch (P1-09d): a page's own code is
  *  the rest. */
-const SHARED_FILES = new Set([DATA_FILE, 'ui/shared/kc-safe.js', 'db/kc-db-guard.js']);
+const SHARED_FILES = new Set([DATA_FILE, 'ui/shared/kc-safe.ts', 'db/kc-db-guard.ts']);
 /** The files under src/ that make the page `page` (e.g. 'kingdoms-call-gm-portal.html') as the tests read them: its
  *  template (with its boot-failure reporter inline), its stylesheets, and its own modules in the order its entry lists
- *  them (an entry that only imports, page.js, stands for its list: the order the files ran as classic scripts), not
+ *  them (an entry that only imports, page.ts, stands for its list: the order the files ran as classic scripts), not
  *  the shared files. */
 function sourcesOf(page: string): string[] {
   const { modules, styles } = pageEntries(page);
@@ -104,12 +104,66 @@ function read(file: string, opts: SourceOptions = {}): { file: string; text: str
   return { file, text, tree: treeOf(fullPath(file, opts.src), text) };
 }
 
-/** `code` (a piece of `file`) as JavaScript: its types stripped if `file` is TypeScript, else as it is. */
+/** `code` (a piece of `file`) as JavaScript: its types stripped if `file` is TypeScript and the piece has any, else as
+ *  it is. A piece with no TypeScript syntax (every file of src/ the day it became .ts, P1-09e) stays byte for byte as
+ *  written, as a .js file's does: transpileModule would reprint it (its own indentation, a `;` and a new line after an
+ *  expression). Stripped, it gets no "use strict" line either. */
 function asJavaScript(file: string, code: string): string {
-  if (!isTypeScript(file)) return code;
+  if (!isTypeScript(file) || !hasTypeScriptSyntax(code)) return code;
   return ts.transpileModule(code, {
-    compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext, verbatimModuleSyntax: false },
+    compilerOptions: {
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      verbatimModuleSyntax: false,
+      alwaysStrict: false,
+    },
   }).outputText;
+}
+
+// The modifiers only TypeScript has (export, async, static, default and accessor are JavaScript's too).
+const TYPESCRIPT_MODIFIERS = new Set([
+  ts.SyntaxKind.DeclareKeyword,
+  ts.SyntaxKind.PublicKeyword,
+  ts.SyntaxKind.PrivateKeyword,
+  ts.SyntaxKind.ProtectedKeyword,
+  ts.SyntaxKind.ReadonlyKeyword,
+  ts.SyntaxKind.AbstractKeyword,
+  ts.SyntaxKind.OverrideKeyword,
+  ts.SyntaxKind.ConstKeyword,
+  ts.SyntaxKind.InKeyword,
+  ts.SyntaxKind.OutKeyword,
+]);
+
+/** Whether `code`, read as TypeScript, has anything JavaScript doesn't: a type (an annotation, a type argument or
+ *  parameter), a type-only declaration (interface, type, enum, namespace, declare), `as`, `satisfies`, `!`, `<T>x`, a
+ *  TypeScript modifier, an optional parameter, a decorator, an `implements`, or a type-only import or export. */
+function hasTypeScriptSyntax(code: string): boolean {
+  const tree = ts.createSourceFile('piece.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const typescriptOnly = (node: ts.Node): boolean => {
+    if (
+      ts.isTypeNode(node) ||
+      ts.isTypeParameterDeclaration(node) ||
+      ts.isInterfaceDeclaration(node) ||
+      ts.isTypeAliasDeclaration(node) ||
+      ts.isEnumDeclaration(node) ||
+      ts.isModuleDeclaration(node) ||
+      ts.isImportEqualsDeclaration(node) ||
+      ts.isAsExpression(node) ||
+      ts.isSatisfiesExpression(node) ||
+      ts.isNonNullExpression(node) ||
+      ts.isTypeAssertionExpression(node) ||
+      ts.isDecorator(node) ||
+      (ts.isImportDeclaration(node) && node.importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword) ||
+      (ts.isExportDeclaration(node) && node.isTypeOnly) ||
+      ((ts.isImportSpecifier(node) || ts.isExportSpecifier(node)) && node.isTypeOnly) ||
+      (ts.isParameter(node) && node.questionToken !== undefined) ||
+      (ts.isHeritageClause(node) && node.token === ts.SyntaxKind.ImplementsKeyword) ||
+      (ts.canHaveModifiers(node) && (ts.getModifiers(node) ?? []).some((m) => TYPESCRIPT_MODIFIERS.has(m.kind)))
+    )
+      return true;
+    return ts.forEachChild(node, typescriptOnly) ?? false;
+  };
+  return typescriptOnly(tree);
 }
 
 const hasModifier = (node: ts.Node, kind: ts.SyntaxKind) =>
@@ -439,7 +493,7 @@ export function entriesOf(file: string, name: string, opts: SourceOptions = {}):
 }
 
 /** The script files under src/ that make the published page `page` (e.g. 'kingdoms-call-gm-portal.html'), in its
- *  order: its own code, not the files every page shares (the data file, kc-safe.js, kc-db-guard.js). */
+ *  order: its own code, not the files every page shares (the data file, kc-safe.ts, kc-db-guard.ts). */
 export function pageScripts(page: string): string[] {
   return sourcesOf(page).filter((f) => /\.[cm]?[jt]s$/.test(f));
 }
@@ -459,7 +513,7 @@ export function fileDeclaring(page: string, name: string, opts: SourceOptions = 
 }
 
 /** Every file under src/ that makes the page `page`, as written, one after another, a line between files: its
- *  template, its styles and its scripts (not the files every page shares: the data file, kc-safe.js, kc-db-guard.js), as
+ *  template, its styles and its scripts (not the files every page shares: the data file, kc-safe.ts, kc-db-guard.ts), as
  *  the built page held them until the module switch (P1-09d). For a test that counts a word wherever the page's own
  *  files hold it, comments included (Prettier keeps comments' words; what a comment says is only in the source). */
 export function pageSource(page: string, opts: SourceOptions = {}): string {
@@ -583,7 +637,7 @@ export function compactOf(file: string, opts: SourceOptions = {}): string {
 }
 
 /** The top-level declaration `name` of `file` (a function, a class, a variable) in compact's canonical layout, its
- *  types stripped first: `compactDeclaration('engine/run-turn.js', 'resolveTurn')`. */
+ *  types stripped first: `compactDeclaration('engine/run-turn.ts', 'resolveTurn')`. */
 export function compactDeclaration(file: string, name: string, opts: SourceOptions = {}): string {
   const tree = canonicalTreeOf(file, opts);
   const found = tree.statements.filter((s) => declares(s, name));

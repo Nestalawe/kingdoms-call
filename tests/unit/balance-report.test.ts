@@ -248,7 +248,7 @@ describe('where two runs first differ', () => {
     // the value the data file declares, read from src/ by its syntax tree (tests/lib/source.ts; until plan P1-09a it was
     // matched in site/'s copy of the file)
     const names: unknown = vm.runInNewContext(
-      sourceOf('content/kingdoms-call-data.js', ['KC_PHASE_NAMES']) + ';KC_PHASE_NAMES',
+      sourceOf('content/kingdoms-call-data.ts', ['KC_PHASE_NAMES']) + ';KC_PHASE_NAMES',
     );
     expect(JSON.parse(JSON.stringify(names))).toEqual(PHASES);
   });
