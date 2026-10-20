@@ -189,7 +189,6 @@ function lairItemTier(power){ return ITEM_TIER_OF_POWER[power]||1; }
 // fewest items placed so far, preferring the tier the lair's power would have rolled.
 // Names stay unique game-wide (gs._awardedItems). Lairs created later in play (Discover Lost Ruin
 // etc.) still draw through rollMagicItem.
-const HOARD_CATEGORIES=['weapon','armour','shield','helm','cloak','ring','amulet','combat','trinket'];
 function itemHoardCategory(it){ return itemSlot(it)||'trinket'; }
 // the Consumable slot became the Combat Item slot. A live save still holds its old tally under the
 // retired key; fold it into the new one so the even-distribution draw does not decide the realm has

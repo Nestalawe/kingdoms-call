@@ -324,4 +324,3 @@ function botHireOrder(G,pi,c,L){
 //     working level trains its skill at the capital (so the mentor rule fires); at the working level it goes
 //     to work. Fighters (Melee/Archery 3+) additionally travel to any beatable discovered lair in reach.
 // Everything a role reads is gated on what the realm can see (botKnows / botSees / botSeesChar), as before.
-const BOT_SPECIALIST_SKILLS={scholar:'sage',scout:'explorer',spy:'spy',thief:'thief',slayer:'melee',mage:'magic'};   // 'magic' = the mage's two focus schools (botMageSchools), not a skill key

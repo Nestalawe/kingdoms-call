@@ -2,8 +2,6 @@
 // strongest (a complementary pick when he holds only one: Elemental with White, otherwise White with Elemental).
 // He casts wherever a cast is worth making (botCastPlan already ranks every school's spells by the situation),
 // stands with the general when nothing is, and trains the weaker of his two schools between times.
-// NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
-const BOT_SCHOOLS=['elemental','white','psychic','illusory','necromancy'];
 function botMageSchools(c){ const s=(c&&c.skills)||{}; const ranked=[...BOT_SCHOOLS].sort((a,b)=>(s[b]||0)-(s[a]||0)||BOT_SCHOOLS.indexOf(a)-BOT_SCHOOLS.indexOf(b));
   const s1=ranked[0]; let s2=ranked.find(x=>x!==s1&&(s[x]||0)>0)||null; if(!s2) s2=(s1==='elemental')?'white':'elemental'; return [s1,s2]; }
 function botMageAptitude(c){ const s=(c&&c.skills)||{}; const [a,b]=botMageSchools(c); return (s[a]||0)*4+(s[b]||0)*3; }
