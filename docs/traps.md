@@ -10,8 +10,8 @@ Since P1-05, `site/` is build output ([ARCHITECTURE.md](ARCHITECTURE.md#the-buil
 rewritten from `src/` by every test run. An edit there is never committed, and the next build quietly undoes it.
 
 - Change the file in `src/` (or `public/`, for what is copied as it is). A page's files are what its entry
-  (`src/ui/<page>/page.js`) imports, directly or not.
-- A new file is imported where it is read (and by the page's `page.js` if it does something as it loads). A file no
+  (`src/ui/<page>/page.ts`) imports, directly or not.
+- A new file is imported where it is read (and by the page's `page.ts` if it does something as it loads). A file no
   page reaches fails `pages-build`.
 - `node tests/<name>.test.js` and a page opened in a browser read `site/` as last built: run `npm run build` first.
   `npm run dev` serves `src/` as it is, against the local Supabase ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)).
@@ -26,12 +26,12 @@ boot-failure reporter shows the error). Rolldown, the bundler, writes each top-l
 bundle the read may instead find `undefined`, silently. Inside a function, read later, a cycle is harmless.
 
 - **A constant another file reads as it loads lives in a file of its own that imports nothing** (P1-09b:
-  `engine/items/hoard-categories.js`, `engine/bots/specialist-skills.js`, `engine/bots/schools.js`,
-  `ui/player/l79-orders.js`), re-exported from its old file. A file that imports nothing always runs first.
-- **What files do as they load keeps its order through the page's entry** (`ui/<page>/page.js` imports every file in
-  the order the classic scripts ran): the item tables are built in `engine/items/tiers-and-hoards.js` and then
-  re-tiered in `engine/items/equipment.js`, because `page.js` imports them in that order. The engine's bundle
-  (`tests/lib/engine.ts`) takes the same order. Don't reorder `page.js`.
+  `engine/items/hoard-categories.ts`, `engine/bots/specialist-skills.ts`, `engine/bots/schools.ts`,
+  `ui/player/l79-orders.ts`), re-exported from its old file. A file that imports nothing always runs first.
+- **What files do as they load keeps its order through the page's entry** (`ui/<page>/page.ts` imports every file in
+  the order the classic scripts ran): the item tables are built in `engine/items/tiers-and-hoards.ts` and then
+  re-tiered in `engine/items/equipment.ts`, because `page.ts` imports them in that order. The engine's bundle
+  (`tests/lib/engine.ts`) takes the same order. Don't reorder `page.ts`.
 - Code that runs at top level calls only top-level helpers. A lifted engine helper may need the turn's context
   (`effStat(turnContext, c, stat)`; use `effSkillOf` outside a turn), and one handed to another as a value is wrapped
   with it (`(...a)=>f(turnContext,...a)`, as the bots' duel forecast is). Declare shared helpers as hoisted
@@ -48,7 +48,7 @@ longer boots.
 
 Both portals refuse to start on a data file older than the one they were cut against.
 
-- **When `kingdoms-call-data.js` changes:** bump `KC_DATA_STAMP`, the `// Data file v…` comment above
+- **When `kingdoms-call-data.ts` changes:** bump `KC_DATA_STAMP`, the `// Data file v…` comment above
   it, `KC_DATA_MIN` (GM portal) and `KC_DATA_MIN_P` (player portal), in the same PR.
 - **When you add a shared table:** add its name to `KC_SHARED_TABLE_NAMES` (GM portal) and to the
   player portal's inline list, or a stale file passes the guard and fails later with a bare
@@ -103,7 +103,7 @@ and site changes go in separate PRs ([supabase/README.md](../supabase/README.md#
 
 Every page that uses the database (both portals and the Hall of Fame) declares `KC_DB_MIN`, the oldest
 database version it works with (a migration's 14-digit version), and starts through
-`kcDbGuard(sb, KC_DB_MIN)` (`src/db/kc-db-guard.js`, P0-34). Before the first read, it asks the database for
+`kcDbGuard(sb, KC_DB_MIN)` (`src/db/kc-db-guard.ts`, P0-34). Before the first read, it asks the database for
 its version (`kc_db_version()`, the newest migration applied). On an older database, or one without the
 function, or no answer after one retry, the page stops with "The game is being updated" and nothing is read
 or written.
@@ -142,11 +142,15 @@ some silently. Now no test reads a page's source by line:
 - Don't add a test that matches a line, an indent or a quote style of the site's code, or that writes to a page's
   function or top-level variable from outside (`W.fn = …`, `W.eval('flag=true')`): after the module switch it would
   do nothing, and the test could pass without testing anything.
+- **A check that picks the site's files by their name must fail when it reads none.** When the files became `.ts`
+  (P1-09e), `html-lint` and `sort-comparators`, which read every `src/**/*.js`, still passed reading only the templates:
+  `html-lint`'s stale allowlist entry gave it away. Both now fail if a module of any page (`tools/pages.ts`'s
+  `pageModules`) isn't among the files they read. A new check of `src/` reads the pages' modules, or checks it does.
 
 ## A lifted helper takes the turn's context first
 
 Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state takes `turnContext` as its first argument
-(`src/engine/turn/context.js`; [ARCHITECTURE.md](ARCHITECTURE.md#the-turn-engine-gm-portal)).
+(`src/engine/turn/context.ts`; [ARCHITECTURE.md](ARCHITECTURE.md#the-turn-engine-gm-portal)).
 
 - A call that leaves it out doesn't fail: every argument moves along by one, and the helper quietly reads the wrong
   thing. `no-undef` can't see it. The balance matrix catches it in the code it runs; anywhere else, a direct test.
@@ -187,7 +191,7 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   arguments that way.
 - A stage of the phase loop taken out of `resolveTurn` (since P1-08k1: the start of the phase, intents and reactions,
   the orders in two tiers, the end of the phase, in
-  `engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.js`) is a function of its statements,
+  `engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts`) is a function of its statements,
   taking the context, then the loop's values it reads, in the order the loop declares them (`ph`, `_phaseStartLoc`,
   `intents`): those stay declared in the loop and are passed in. A stage that reads none of them takes the context alone
   (P1-08k2's Early Winter, the body of `if(ph===4){…}`, which keeps its `if` and its call). A stage of `resolveTurn`'s own body (P1-08k3's after the phases, from the loop's end to the bots' late
@@ -253,13 +257,13 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`, P1-08i3 for `_tier0Open`, `_unitGainQueue`, `_warFrontAtStart` and `_warFrontProvs`. P1-08k4 and P1-08k7 for the merge's six collectors. P1-08k8 added no join and no `let` (the values it makes were joined before; their join lines moved with them), so it didn't rerun it. P1-08l1 reran it for `_botEncounteredAtStart`; P1-08l2 added none (the merge's six collectors moved into the merge with their join lines, still joined before anything reads them), so it didn't. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
   does: a test of a lifted helper that reads one it doesn't set gets `undefined`, not the turn's value.
 
-## Nothing is on `window` but `globals.js`
+## Nothing is on `window` but `globals.ts`
 
 The site's code is ES modules (P1-09d): a module's top-level names are its own, so an inline `on…="…"` handler, a
 browser spec's `page.evaluate` or a test's `W.eval` reaches only what the page puts on `window`. Each script page does
-that in one file, `src/ui/<page>/globals.js`, the last its entry imports (P1-09b).
+that in one file, `src/ui/<page>/globals.ts`, the last its entry imports (P1-09b).
 
-- **A function or a constant a handler calls or a test reaches goes on a list** in `globals.js`, the handlers' or the
+- **A function or a constant a handler calls or a test reaches goes on a list** in `globals.ts`, the handlers' or the
   tests', with the file that declares it, and is imported there.
 - **A variable a test (or a handler) reads or writes is a declared global**, `globalThis.<name> = <value>;` where it is
   declared: a list copies a value once, and a variable's copy goes stale.
@@ -298,7 +302,7 @@ it passed. Every turn report then threw.
 
 ## Post-commit work in `runTurn`
 
-The one `try` in `runTurn`, the turn's shell (`src/ui/gm/turn-shell.js`), runs from the load through `resolveTurn`
+The one `try` in `runTurn`, the turn's shell (`src/ui/gm/turn-shell.ts`), runs from the load through `resolveTurn`
 to the conditional save and on to the reports. Everything after the save (reports, `turn_logs`, telemetry) runs
 after the turn is already resolved and stored. A throw there must not restore orders, re-flag `orders_submitted`,
 or let the watcher retry the turn: that combination once made live games resolve themselves once a minute.
@@ -383,11 +387,11 @@ ones it can't, or they cost time:
 - **No `kcEsc` (or an older escaper) inside `kcHtml`.** The value is escaped twice and `&` shows as `&amp;`.
 - **`kcArg` keeps a value's type.** `onclick="f('${id}')"` passed a string; `onclick="f(${kcArg(id)})"` passes `id` as
   it is, so a numeric id now arrives as a number. Write `kcArg(String(id))` where the handler compares strings.
-- **`kc-safe.js`'s four helpers are bundled into each page** (since P1-09d), so a page and its helpers are always the
+- **`kc-safe.ts`'s four helpers are bundled into each page** (since P1-09d), so a page and its helpers are always the
   same build. Until P1-06 hashes the file names, a browser can still pair a new page with its cached copy of the old
   bundle for a few minutes after a deploy, as before.
-- **A test that runs a slice of a page in `vm`** (the Hall of Fame record tests do) must load `kc-safe.js` into its
-  context first if the slice calls the helpers (`scriptOf('ui/shared/kc-safe.js')`, `tests/lib/source.ts`).
+- **A test that runs a slice of a page in `vm`** (the Hall of Fame record tests do) must load `kc-safe.ts` into its
+  context first if the slice calls the helpers (`scriptOf('ui/shared/kc-safe.ts')`, `tests/lib/source.ts`).
 - **Show it looks the same.** Converting a page must not change it for ordinary names: run
   `node tests/tools/same-dom.js <main's site>` and put its output in the pull request.
 - **An exception goes in `html-lint`'s `ALLOWED`** with a one-line reason, for Theo to review. The check is strict: no
@@ -407,16 +411,16 @@ ones it can't, or they cost time:
 
 ## Dice come from `kcRng()`
 
-Every random number the GM portal's own code draws comes from `kcRng()` (`src/engine/rng.js`, P1-07): one sfc32
+Every random number the GM portal's own code draws comes from `kcRng()` (`src/engine/rng.ts`, P1-07): one sfc32
 generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.js`) or, on the
 live site, from `crypto.getRandomValues`. Each turn rolls its own dice (P1-18e): the turn's shell draws a seed from
 the page's dice and hands it to `resolveTurn`, which lends itself `kcRngStream(seed)` with `kcRng.use`, once for the
 turn and once for `buildReports()`, giving the dice in use back after each (P1-08m). Nothing in the engine or its views reads the time (P1-18d): only the
-turn's shell does, through `kcClock()` (`src/engine/clock.js`, which reads `Date.now()` when called), to stamp when
+turn's shell does, through `kcClock()` (`src/engine/clock.ts`, which reads `Date.now()` when called), to stamp when
 the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Math.random` that throw.
 
-- Don't write `Math.random` anywhere in `src/` (but `rng.js` and `vendor/`), or `Date` in `src/engine/` or
-  `src/views/` (but `clock.js`): `npm test`'s `dice-and-clock` fails. Pass the generator as `kcRng` (e.g.
+- Don't write `Math.random` anywhere in `src/` (but `rng.ts` and `vendor/`), or `Date` in `src/engine/` or
+  `src/views/` (but `clock.ts`): `npm test`'s `dice-and-clock` fails. Pass the generator as `kcRng` (e.g.
   `shuffleP(list, kcRng)`); a date is `kcClock.date()`. The page's own screens (deadlines, "x minutes ago") still read
   `Date`.
 - Adding, removing or moving one draw shifts every draw after it, so every balance game changes
@@ -447,13 +451,13 @@ A unit type is keyed by its name in tables spread over three files, and nothing 
 missed: a unit with no cost recruits for 2g, one with no speed never marches, one with no names is "the
 Guard", one missing from a terrain block fights at ×1 there. When adding (or renaming) a unit, touch:
 
-- `src/content/kingdoms-call-data.js`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
+- `src/content/kingdoms-call-data.ts`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
   starting companies are the first two non-garrison types of his home's cell), `ARMY_UNIT_NAMES` (40
   names), `KC_UNIT_CLASS` (cavalry / missile / lightFoot / flying …), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`,
   `KC_UNIT_BASE_STR`.
 - GM portal: `ARMY_COST_MASTER`, `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
   `'Orc Garrison':'Orcish'};` as its last entry: a test slices the source up to it), `DISC_CLS_SETS`,
-  `TERRAIN_MODS` (`engine/battle/terrain-and-unit-strength.js`) and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
+  `TERRAIN_MODS` (`engine/battle/terrain-and-unit-strength.ts`) and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
 - Player portal: `UNIT_ABILITIES` and the race blurbs. Rulebook: the roster, home-roster, move-rate and
   kinds-of-unit tables and the light-foot list. The intro's list of kinds.
 
@@ -602,7 +606,7 @@ the player portal shows for it.
 
 A running game's saved world holds its own copies of content: awarded items, the guardians in
 uncleared lairs, held Sage discoveries, unit names. The engine reads those copies, so changing a table
-in `kingdoms-call-data.js` changes new games only, unless a migration carries the change into running
+in `kingdoms-call-data.ts` changes new games only, unless a migration carries the change into running
 games.
 
 - **Migrations run at the start of every turn**, on the world `resolveTurn` has just read:

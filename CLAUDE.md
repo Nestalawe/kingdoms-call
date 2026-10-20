@@ -16,7 +16,7 @@ published.
 3. [docs/traps.md](docs/traps.md): standing gotchas. Read it before changing a portal or a test.
 4. [tests/README.md](tests/README.md): every test, its level, quarantine, and the code-anchor hooks.
 5. Only then the code you need, in `src/`: **edit `src/`, never `site/`** (it's built). Files run to a few hundred
-   lines, a few to 2,000 (`src/engine/run-turn.js` ~230): search the long ones, and edit with unique anchors.
+   lines, a few to 2,000 (`src/engine/run-turn.ts` ~230): search the long ones, and edit with unique anchors.
 
 **Toby's rulings are in [docs/rulings/](docs/rulings/README.md)**, one file each, with an index. Before
 changing a rule, read its ruling; never "fix" what a ruling says is deliberate without a fresh one.
@@ -25,7 +25,7 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 
 | Path | What |
 |---|---|
-| `src/` | The site's source, ES modules. `npm run build` (Vite) builds it into `site/` (git-ignored): what is published and what every test opens ([ARCHITECTURE.md](docs/ARCHITECTURE.md#the-build-src-becomes-site)). `*.html` (the pages' templates), `engine/` (the turn engine, bots, world generation), `views/` (turn report, visibility; with `engine/`, the engine: bundled and loaded alone in Node, `tests/lib/engine.ts`), `db/` (`kc-db-guard.js`: the version guard; telemetry), `content/kingdoms-call-data.js`, `ui/<page>/` (each page's styles and code; `page.js`, its entry, imports its files in order, `globals.js`, last, what it keeps on `window`), `ui/shared/` (`kc-safe.js`: `kcHtml`/`kcEsc`, the one way a page builds HTML, [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html)), `rulebook/`. `public/`: copied as it is (`kc-config.js`: which database; `kc-staging-footer.js`; `vendor/`, supabase-js, [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
+| `src/` | The site's source, TypeScript modules (most files still say `// @ts-nocheck`: P1-10 and P1-16 type them). `npm run build` (Vite) builds it into `site/` (git-ignored): what is published and what every test opens ([ARCHITECTURE.md](docs/ARCHITECTURE.md#the-build-src-becomes-site)). `*.html` (the pages' templates), `engine/` (the turn engine, bots, world generation), `views/` (turn report, visibility; with `engine/`, the engine: bundled and loaded alone in Node, `tests/lib/engine.ts`), `db/` (`kc-db-guard.ts`: the version guard; telemetry), `content/kingdoms-call-data.ts`, `ui/<page>/` (each page's styles and code; `page.ts`, its entry, imports its files in order, `globals.ts`, last, what it keeps on `window`), `ui/shared/` (`kc-safe.ts`: `kcHtml`/`kcEsc`, the one way a page builds HTML, [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html)), `rulebook/`, `globals.d.ts` (the names the modules read without importing them). `public/`: copied as it is (`kc-config.js`: which database; `kc-staging-footer.js`; `vendor/`, supabase-js, [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `browser/*.spec.ts` (browser specs: Playwright Test, Chromium), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `lib/invariants.ts` and `lib/report-leaks.ts` (what must hold after every turn; what no report may show), `quarantine/` (kept, not run) |
 | `vitest.config.mts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, browser specs, strict TypeScript, lint, formatting, the exact Node version, the Claude Code hooks |
@@ -56,7 +56,7 @@ npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (l
 **The checks run themselves** (hooks in `.claude/settings.json`): each edit is type-checked, linted and format-checked,
 and you can't finish while `npm run check` fails (after three tries, say "`npm run check` still fails: tell Theo").
 Before every push run `npm test` and `npx playwright test` (and the access-rule tests when `supabase/` changes): all
-green. New tests are TypeScript, in `tests/<level>/` or `tests/browser/` ([tests/README.md](tests/README.md)).
+green. **All new code is TypeScript** (P1-09e), type-checked (no new `@ts-nocheck`); new tests in `tests/<level>/` or `tests/browser/` ([tests/README.md](tests/README.md)).
 
 ## How work arrives
 
