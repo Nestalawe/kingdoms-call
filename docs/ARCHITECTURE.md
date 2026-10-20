@@ -124,6 +124,12 @@ scope**. A name declared in two scripts is a `SyntaxError` that stops the page l
 `const` used before its line runs is a temporal-dead-zone throw that hangs the page
 ([traps.md](traps.md#top-level-declaration-order-the-items_by_tier-class)).
 
+Each script page's main list ends with `ui/<page>/globals.js` (P1-09b): two `Object.assign(window, { … })` lists,
+the names the page's inline handlers call and the names its tests reach, so that once the scripts are modules
+(P1-09d) those stay on `window`. A variable the page's files or its tests share is a declared global instead,
+`globalThis.<name> = <value>;` where it is declared (a list's copy of a variable goes stale). `npm test`'s
+`page-globals` keeps the lists exact ([traps.md](traps.md#top-level-names-arent-on-window-in-tests)).
+
 ## How a page builds HTML
 
 Every name and message on screen was typed by someone, so a page treats every value as text (P0-19).

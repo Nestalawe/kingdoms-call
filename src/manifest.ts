@@ -149,6 +149,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',
+        'ui/gm/globals.js',
       ],
     },
   },
@@ -179,6 +180,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'ui/player/map.js',
         'ui/player/dispatches.js',
         'ui/player/start.js',
+        'ui/player/globals.js',
       ],
     },
   },
@@ -187,7 +189,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
     blocks: {
       'boot-reporter': ['ui/leaderboard/boot-reporter.js'],
       style: ['ui/leaderboard/style.css'],
-      main: ['ui/leaderboard/main.js'],
+      main: ['ui/leaderboard/main.js', 'ui/leaderboard/globals.js'],
     },
   },
   'kingdoms-call-overlord.html': {
@@ -195,7 +197,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
     blocks: {
       'boot-reporter': ['ui/overlord/boot-reporter.js'],
       style: ['ui/overlord/style.css'],
-      main: ['ui/overlord/main.js'],
+      main: ['ui/overlord/main.js', 'ui/overlord/globals.js'],
     },
   },
   'index.html': {
