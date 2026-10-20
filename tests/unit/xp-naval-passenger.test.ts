@@ -26,14 +26,22 @@ const NAVAL_ROLLS = [
   "resolveRaidTheCoastOrder(turnContext,c,'naval',SKILLGAIN_STD)",
   "rollNavalVoyage(turnContext,c,'naval',base)",
 ];
-test('no voyage rolls Naval outside rollNavalVoyage', () => {
-  const rolls = pageScripts('kingdoms-call-gm-portal.html')
-    .flatMap((f) => callsTo(f, 'trySkillGain'))
-    .filter((c) => c.args.slice(2, 3).some((a) => a.includes("'naval'")))
-    .map((c) => `${String(c.within)}(${c.args.join(',')})`)
-    .sort();
-  expect(rolls).toEqual(NAVAL_ROLLS);
-});
+// It reads every file of the GM page by its syntax tree: under a second here, 3 to 5 s on a CI runner (2.2 s on #169's,
+// 4.9 s on #171's), so it has time enough of its own, as the source test's every-file checks do (Vitest's default, 5 s,
+// failed on a slow runner).
+const EVERY_FILE_MS = 60_000;
+test(
+  'no voyage rolls Naval outside rollNavalVoyage',
+  () => {
+    const rolls = pageScripts('kingdoms-call-gm-portal.html')
+      .flatMap((f) => callsTo(f, 'trySkillGain'))
+      .filter((c) => c.args.slice(2, 3).some((a) => a.includes("'naval'")))
+      .map((c) => `${String(c.within)}(${c.args.join(',')})`)
+      .sort();
+    expect(rolls).toEqual(NAVAL_ROLLS);
+  },
+  EVERY_FILE_MS,
+);
 
 const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
