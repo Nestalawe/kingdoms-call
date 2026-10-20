@@ -45,7 +45,8 @@ async function boot(name,config){
     if(!el) fail(`${name}: no staging line with the staging config (does the page load kc-config.js and kc-staging-footer.js?)`);
     else{
       const text=el.textContent, href=el.getAttribute('href');
-      const want='Staging · PR #21 · abcdef1'+(/\bcreateClient\s*\(/.test(fs.readFileSync(sitePath(name),'utf8'))?` · database ${DB_VERSION}`:'');
+      // a page that uses the database: one whose code (its bundle, since P1-09d: readPage inlines it) makes a client
+      const want='Staging · PR #21 · abcdef1'+(/\bcreateClient\s*\(/.test(readPage(name))?` · database ${DB_VERSION}`:'');
       const placed=doc.querySelector('footer')?!!el.closest('footer'):el.style.position==='fixed';
       if(text!==want) fail(`${name}: the staging line reads "${text}", expected "${want}"`);
       else if(href!=='https://github.com/Nestalawe/kingdoms-call/pull/21') fail(`${name}: the staging line links to ${href}`);

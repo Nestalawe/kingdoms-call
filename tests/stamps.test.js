@@ -3,12 +3,13 @@
 //   - kingdoms-call-data.js: the `// Data file v…` comment (read by the GM tab's auto-reload) must equal
 //     KC_DATA_STAMP (read by both portals' data-file guard).
 //   - kingdoms-call-gm-portal.html: the footer (`GM Portal v…` in #kc-build-stamp, read by the auto-reload)
-//     must equal KC_BUILD_STAMP (written into telemetry and Hall-of-Fame rows). The auto-reload reads the
-//     FIRST `GM Portal v…` in the page, so that one must be the footer's too.
-// Nothing is run. Reads the data file from src/ (until plan P1-09a, from site/), and the GM portal from site/ (or
-// $KC_SITE).
+//     must equal KC_BUILD_STAMP (ui/gm/startup.js; written into telemetry and Hall-of-Fame rows). The auto-reload
+//     reads the FIRST `GM Portal v…` in the page, so that one must be the footer's too.
+// Nothing is run. Reads src/: the data file, the GM portal's template (the published page is the template with its
+// tags for the bundle and the stylesheet; its scripts are in the bundle, which the auto-reload doesn't read) and
+// ui/gm/startup.js (until plan P1-09d, the GM portal from site/).
 const fs=require('fs'), path=require('path');
-const {sitePath}=require('./lib/boot'); const {SRC}=require('./lib/source.ts');
+const {SRC}=require('./lib/source.ts');
 
 const STAMP='(\\d{4}\\.\\d{2}\\.\\d{2}-\\d{4})';
 let fails=0;
@@ -31,8 +32,9 @@ const find=(src,re)=>{ const m=re.exec(src); return m?m[1]:null; };
 
 // GM portal: the footer, the first `GM Portal v…` in the page, and KC_BUILD_STAMP.
 {
-  const src=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
-  const stamp=find(src,new RegExp("\\bKC_BUILD_STAMP\\s*=\\s*['\"]"+STAMP+"['\"]"));
+  const src=fs.readFileSync(path.join(SRC,'kingdoms-call-gm-portal.html'),'utf8');
+  const startup=fs.readFileSync(path.join(SRC,'ui','gm','startup.js'),'utf8');
+  const stamp=find(startup,new RegExp("\\bKC_BUILD_STAMP\\s*=\\s*['\"]"+STAMP+"['\"]"));
   const footer=find(src,new RegExp('id="kc-build-stamp"[^>]*>[^<]*GM Portal v'+STAMP));
   const first=find(src,new RegExp('GM Portal v'+STAMP));
   if(!stamp) fail('kingdoms-call-gm-portal.html: no KC_BUILD_STAMP');
