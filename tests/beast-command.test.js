@@ -68,12 +68,15 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 
   // ── The words (level 0) ──
   { const fs=require('fs'), {sitePath}=require('./lib/boot');
-    const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), intro=fs.readFileSync(sitePath('kingdoms-call-rules-intro.html'),'utf8'), pp=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8');
+    // the player portal: its files as written, and its code in one layout (tests/lib/source.ts; until plan P1-09a,
+    // the built page's text)
+    const {compactPage,pageSource}=require('./lib/source.ts'), ppCode=compactPage('kingdoms-call-player-portal.html');
+    const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), intro=fs.readFileSync(sitePath('kingdoms-call-rules-intro.html'),'utf8'), pp=pageSource('kingdoms-call-player-portal.html');
     ok(/A hero leads at most as many Creature and Monster units as his Druid level/.test(rules),"the rulebook's Druid skill says a hero leads at most as many beasts as his Druid level");
     ok((rules.match(/a hero leads at most as many Creature and Monster units as his Druid level/g)||[]).length>=2,'…and both crowns\' sections say so beside their waiver');
     ok((intro.match(/a hero leads as many beasts as his Druid level/g)||[]).length===2,"the intro's Druidic and Evil rows say so");
     ok(!/no Druid training at all/.test(pp),'the player portal no longer says a crown\'s heroes lead beasts with no Druid training at all');
-    ok(/function beastCommandCountP/.test(pp)&&/🐾 beasts \$\{_bLed\}\/\$\{druLevel\}/.test(pp),"the hero's card counts his beasts against his Druid"); }
+    ok(/function beastCommandCountP/.test(ppCode)&&/🐾 beasts \$\{_bLed\}\/\$\{druLevel\}/.test(ppCode),"the hero's card counts his beasts against his Druid"); }
 
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);

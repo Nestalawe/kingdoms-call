@@ -30,6 +30,9 @@ import {
   stageCase,
   type RecruitHireAndWorksOrderCase,
 } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
+import { compactDeclaration } from '../lib/source.ts';
+
+const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -809,8 +812,9 @@ describe('Grand Design, called directly', () => {
 });
 
 test('every order of the family is a function of its own, processOrder only calls it, and landHirePreOrders is top-level', () => {
-  const src = vm.runInContext('processOrder.toString()', engine) as string; // top-level since P1-08j9
-  const turn = vm.runInContext('resolveTurn.toString()', engine) as string;
+  // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
+  const src = compactDeclaration(DISPATCH, 'processOrder');
+  const turn = compactDeclaration('engine/run-turn.js', 'resolveTurn');
   for (const [key, name] of [
     ['recruit', 'resolveRecruitArmiesOrder'],
     ['hire', 'resolveHireHeroOrder'],
@@ -824,11 +828,9 @@ test('every order of the family is a function of its own, processOrder only call
     ['grand_design', 'resolveGrandDesignOrder'],
   ] as const) {
     expect(typeof fn(name)).toBe('function');
-    expect(src).toMatch(new RegExp(`case '${key}': ${name}\\(turnContext, c[^)]*\\); break;`));
+    expect(src).toMatch(new RegExp(`case '${key}':${name}\\(turnContext,c[^)]*\\);break;`));
   }
-  expect(src).toContain(
-    "case 'awaken_wild':\n      case 'call_pit': resolveRemovedAwakenTheWildAndCallFromThePitOrders(",
-  );
+  expect(src).toContain("case 'awaken_wild':case 'call_pit':resolveRemovedAwakenTheWildAndCallFromThePitOrders(");
   expect(typeof fn('landHirePreOrders')).toBe('function');
   for (const s of [src, turn]) {
     expect(s).not.toContain('function landHirePreOrders');

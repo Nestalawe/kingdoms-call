@@ -88,7 +88,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   ok(faced(r.them,'Orc Garrison').every(u=>near(u.m,1.15)&&!/Bloodthirsty/.test(u.why)),'facing cavalry it has infantry\'s ×1.15 only');
 
   // Dread is gone: no fanaticism penalty, no defenders'-bonus cut, no "one eye on the sky" line
-  const src=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
+  const src=require('./lib/source.ts').compactPage('kingdoms-call-gm-portal.html');   // its code in one layout (plan P1-09a)
   ok(!/one eye on the sky/.test(src)&&!/_wyvAtk\?0\.15/.test(src)&&!/_wyvDef\?0\.15/.test(src),'the GM portal no longer cuts fanaticism for Wyverns overhead');
 
   dom.window.close();

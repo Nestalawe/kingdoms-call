@@ -7,6 +7,7 @@
 import { expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
+import { pageText } from '../lib/source.ts';
 
 const { call, value, base, MON, pinned } = personalCombatEngine();
 const ITEMS = value('ALL_MAGIC_ITEMS_P') as { name: string }[];
@@ -71,5 +72,6 @@ test("the rulebook says the Dreamstone's round comes after the doubling", () => 
 });
 
 test("the player portal's Psychic Blast text says so", () => {
-  expect(readPage('kingdoms-call-player-portal.html')).toMatch(/Dreamstone \+1, after any doubling/);
+  // its words, from src/ (tests/lib/source.ts, plan P1-09a: until then the built page's text)
+  expect(pageText('kingdoms-call-player-portal.html')).toMatch(/Dreamstone \+1, after any doubling/);
 });

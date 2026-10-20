@@ -10,7 +10,9 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 const near=(a,b)=>Math.abs(a-b)<1e-9;
 const read=f=>fs.readFileSync(sitePath(f),'utf8');
 const rules=read('kingdoms-call-rules.html'), intro=read('kingdoms-call-rules-intro.html');
-const gm=read('kingdoms-call-gm-portal.html'), pp=read('kingdoms-call-player-portal.html');
+// the portals as their files under src/, as written (tests/lib/source.ts; until plan P1-09a, the built pages' text)
+const {pageSource}=require('./lib/source.ts');
+const gm=pageSource('kingdoms-call-gm-portal.html'), pp=pageSource('kingdoms-call-player-portal.html');
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
 const cap=s=>s[0].toUpperCase()+s.slice(1);
 

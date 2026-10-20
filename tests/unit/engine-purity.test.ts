@@ -24,6 +24,7 @@ import { MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { ROOT } from '../../tools/build.ts';
 import { DATA_FILE, loadEngine } from '../lib/engine.ts';
 import { GAME, newWorld, slotRows } from '../lib/matrix-game.ts';
+import { plantBefore } from '../lib/source.ts';
 
 /** The caches a turn seeds afresh at its start, so they carry nothing from one turn to the next. */
 const RESEEDED = ['_usedHeroNames', '_usedHeroFirsts', '_usedHeroEpithets', '_usedArmyUnitNames', '_MAXHP_PLAYERS'];
@@ -183,25 +184,21 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     fs.rmSync(copy, { recursive: true, force: true });
   });
   fs.cpSync(path.join(ROOT, 'src'), copy, { recursive: true });
-  // Where each fault goes: at the start of the five phases, and at the start of the reports (buildReports, lifted out
-  // of resolveTurn in P1-08d).
+  // Where each fault goes, found by the syntax tree (tests/lib/source.ts, plan P1-09a: until then by an exact line): in
+  // resolveTurn, just before the five phases (the statement that takes the turn's log from its context), and at the
+  // start of the reports (buildReports, lifted out of resolveTurn in P1-08d: the statement that lists the played realms).
   const AT = {
-    resolution: { file: 'engine/run-turn.js', at: '  // 4. Run all 5 phases\n' },
-    reports: {
-      file: 'engine/turn/realm-reports-and-spy-stealth.js',
-      at: '  const activePlayers=freshPlayers.filter(p=>p.user_id);\n',
-    },
+    resolution: { file: 'engine/run-turn.js', fn: 'resolveTurn', before: 'turnLog' },
+    reports: { file: 'engine/turn/realm-reports-and-spy-stealth.js', fn: 'buildReports', before: 'activePlayers' },
   };
   const originals = Object.fromEntries(
     Object.values(AT).map(({ file }) => [file, fs.readFileSync(path.join(copy, file), 'utf8')]),
   );
   const world = newWorld(pureEngine().engine);
-  // The engine from the copy, with `line` planted after `at` in `file`, and every other file as it was.
-  const planted = ({ file, at }: { file: string; at: string }, line: string): Engine => {
+  // The engine from the copy, with `line` planted before that statement in `file`, and every other file as it was.
+  const planted = ({ file, fn, before }: { file: string; fn: string; before: string }, line: string): Engine => {
     for (const [name, text] of Object.entries(originals)) fs.writeFileSync(path.join(copy, name), text);
-    const original = originals[file] ?? '';
-    if (original.split(at).length !== 2) throw new Error(`not once in ${file}: ${at}`);
-    fs.writeFileSync(path.join(copy, file), original.replace(at, `${at}  ${line}\n`));
+    fs.writeFileSync(path.join(copy, file), plantBefore(originals[file] ?? '', file, fn, before, line));
     return pureEngine(copy);
   };
   const FAULTS = [

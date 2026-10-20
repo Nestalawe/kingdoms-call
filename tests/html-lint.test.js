@@ -12,12 +12,14 @@
 //   load          a page that builds HTML doesn't load kc-safe.js as its first <script src>.
 // Every file must have none (P0-19 converted the pages one pull request at a time; since its last, the check is strict).
 // ALLOWED: reviewed exceptions, each with a reason; an entry that matches nothing fails, so the list can't go stale.
+// An entry is found by a piece of the statement it is in, in one layout whatever the file's (tests/lib/source.ts's
+// compactCode, plan P1-09a: until then by a piece of the source line, which a reformat moves).
 const fs=require('fs'); const path=require('path');
 const acorn=require('acorn');
-const {SITE}=require('./lib/boot');
+const {SITE}=require('./lib/boot'); const {compactCode}=require('./lib/source.ts');
 const {JSDOM}=require('jsdom');
 
-// {file, rule, line: a piece of the source line, reason}
+// {file, rule, line: a piece of the statement it is in, in compactCode's layout, reason}
 const ALLOWED=[
   {file:'kingdoms-call-player-portal.html',rule:'concat',line:"_provNameRe=names.length?new RegExp('(?<!",
     reason:"a RegExp's source, not HTML: '(?<!' is a lookbehind (the report's province names become map links as DOM nodes)"},
@@ -93,7 +95,10 @@ const containsKc=n=>{ for(const [x] of walk(n)) if(isKcValue(x)) return true; re
 function check(code){
   const found=[];
   const ast=acorn.parse(code,{ecmaVersion:'latest',sourceType:'script',locations:true,allowHashBang:true});
-  const add=(rule,n)=>found.push({rule,line:n.loc.start.line});
+  // the innermost statement (or declaration) holding a node, as code in one layout
+  const statements=[]; for(const [x] of walk(ast,null)) if(/(Statement|Declaration)$/.test(x.type)&&x.type!=='BlockStatement') statements.push(x);
+  const statementOf=n=>{ let best=null; for(const st of statements) if(st.start<=n.start&&n.end<=st.end&&(!best||st.end-st.start<best.end-best.start)) best=st; return best?compactCode(code.slice(best.start,best.end)):''; };
+  const add=(rule,n)=>found.push({rule,line:n.loc.start.line,statement:statementOf(n)});
   for(const [n,parent] of walk(ast,null)){
     if(n.type==='TemplateLiteral'&&n.expressions.length&&!(isKcTag(parent)&&parent.quasi===n)
       &&MARKUP.test(n.quasis.map(q=>q.value.cooked).join('')) ) add('template',n);
@@ -152,8 +157,7 @@ for(const f of files){
     catch(e){ fail(`${f}: a script that starts on line ${p.line} doesn't parse: ${e.message}`); }
   }
   findings=findings.filter(x=>{
-    const text=lines[x.line-1]||'';
-    const i=ALLOWED.findIndex(a=>a.file===f&&a.rule===x.rule&&text.includes(a.line));
+    const i=ALLOWED.findIndex(a=>a.file===f&&a.rule===x.rule&&x.statement.includes(a.line));
     if(i<0) return true;
     usedAllowed.add(i); return false;
   });

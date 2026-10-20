@@ -6,7 +6,7 @@
 // Level 1 (unit): guardCastChance is module level, fed a hand-made guard; that the defender's battle magic calls
 // it (inside runTurn) is read from the source (level 0).
 const fs=require('fs');
-const {bootScenario}=require('./lib/scenario'); const {sitePath}=require('./lib/boot');
+const {bootScenario}=require('./lib/scenario'); const {sitePath}=require('./lib/boot'); const {compactPage}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const sc=await bootScenario(); const W=sc.W; const {S}=await sc.world({realms:2});
@@ -25,7 +25,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     const withItem=g(5); withItem.items=[{name:'Test Focus',equipped:true,effect:{stat:'elemental',bonus:2}}];
     ok(fn(withItem,'elemental',S.characters)===95,`a guard whose item lifts Elemental to 7 casts at 95% (got ${fn(withItem,'elemental',S.characters)})`);
   } else ok(false,'a guard was found');
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
+  const gm=compactPage('kingdoms-call-gm-portal.html');   // its code in one layout (tests/lib/source.ts; plan P1-09a)
   ok(/const castChance=guardCastChance\(defHero,school,G\.characters\)/.test(gm)&&!/Math\.min\(90,30\+defSpellLvl\*15\)/.test(gm),'the defender\'s battle magic uses it');
   // the books
   const strip=t=>{ for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };

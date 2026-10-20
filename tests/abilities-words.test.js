@@ -3,10 +3,13 @@
 // comprehensive-rulebook roster row; the four retired abilities (Massed Volley, Shock of the Charge, Skyward
 // Retreat, the Wyverns' Dread) are named on no page; the rulebook explains the new conditions of Shieldwall,
 // Shield Fort and Sheer Numbers.
+// The player portal is read from src/ by its syntax tree (tests/lib/source.ts): its blurbs as entries of the object
+// literal, its words as the strings it holds. (Until plan P1-09a they were matched in the built page's text.)
 const fs=require('fs');
-const {sitePath}=require('./lib/boot');
+const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageText}=require('./lib/source.ts');
+const PP='kingdoms-call-player-portal.html';
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8');
+const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=pageText(PP);
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
 const ABILITIES={
   'Shieldwall Levies':['Spear Hedge','Shieldwall'], 'Men-at-Arms':['Halberds','Sergeants'], 'Yeoman Longbows':['Bodkin Points','Prepared Ground'],
@@ -21,10 +24,10 @@ const ABILITIES={
 };
 const norm=s=>s.replace(/[’‘]/g,"'");
 // the player portal's blurbs
-const ppBlock=(/const UNIT_ABILITIES=\{([\s\S]*?)\n\};/.exec(pp)||['',''])[1];
+// Every `'Unit':'blurb',` entry, in order, duplicates kept (no regex is built from a unit name).
+const entries=entriesOf(fileDeclaring(PP,'UNIT_ABILITIES'),'UNIT_ABILITIES').map(e=>[e.key,e.value]);
+const ppBlock=entries.map(e=>e[1]).join('\n');
 ok(ppBlock.length>0,'the player portal declares UNIT_ABILITIES');
-// Every `'Unit':'blurb',` entry, parsed once (no regex is built from a unit name).
-const entries=[...ppBlock.matchAll(/\n\s*'((?:[^'\\]|\\.)*)':'((?:[^'\\]|\\.)*)'/g)].map(x=>[x[1],x[2]]);
 { // one blurb per unit: in an object literal the last key wins, so a second entry silently replaces the first
   const keys=entries.map(e=>e[0]);
   const dup=keys.filter((k,i)=>keys.indexOf(k)!==i);

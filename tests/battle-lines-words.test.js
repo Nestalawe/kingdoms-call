@@ -1,21 +1,22 @@
 // 2026-10-11 (Toby, battle lines I: rows and columns) — the front the ground allows is written in three
-// places: the engine's BATTLE_FRONT_RANGE table and the two rulebooks. Level 0 (static): reads site/
-// text; nothing runs. In every rulebook sentence about the front, each width claimed for a terrain must
+// places: the engine's BATTLE_FRONT_RANGE table and the two rulebooks. Level 0 (static): reads the rulebooks'
+// site/ text and the engine's tables in its bare vm (tests/lib/engine.ts; until plan P1-09a they were cut out of the
+// built GM portal's text); nothing runs. In every rulebook sentence about the front, each width claimed for a terrain must
 // be that terrain's range in the engine's table ("6–8 on plains or desert"), every terrain must be
 // claimed somewhere, and the old fixed-width wording (6 / 4 / 3, "four lines", flyers "always ... from
 // the front") must be gone. Battle lines II: every facing multiplier in BATTLE_FACING must appear in the
 // rulebook's "Who faces whom" step. Battle lines III: both rulebooks say the better-explored side lines up
 // second. A rule written twice must change twice (docs/traps.md).
 const fs=require('fs'), vm=require('vm');
-const {sitePath}=require('./lib/boot');
+const {sitePath}=require('./lib/boot'); const {loadEngine}=require('./lib/engine.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const read=n=>fs.readFileSync(sitePath(n),'utf8');
 
-// The engine's table, read off the GM portal's source.
-const gm=read('kingdoms-call-gm-portal.html');
-const m=/const BATTLE_FRONT_RANGE=(\{[^}]*\});/.exec(gm);
+// The engine's tables, read in the engine itself.
+const engine=loadEngine({seed:1}), table=n=>vm.runInContext(`typeof ${n}==='object'?${n}:null`,engine);
+const m=table('BATTLE_FRONT_RANGE');
 ok(!!m,'the GM portal declares BATTLE_FRONT_RANGE');
-const RANGE=m?vm.runInNewContext('('+m[1]+')',{}):{};
+const RANGE=m||{};
 const TERRAINS=['plain','desert','forest','jungle','mountain','sea'];
 ok(TERRAINS.every(t=>Array.isArray(RANGE[t])&&RANGE[t].length===2&&RANGE[t][0]<=RANGE[t][1]),'the table gives every terrain a low–high range');
 const want=t=>RANGE[t]?`${RANGE[t][0]}–${RANGE[t][1]}`:null;
@@ -50,9 +51,8 @@ ok(/<li><strong>The battle lines\.<\/strong>/.test(rules),'the rulebook\'s "How 
 
 // Battle lines II: the facing multipliers are written in the engine's BATTLE_FACING and in the
 // rulebook's "Who faces whom" step; every multiplier must appear there as ×n.
-const fm=/const BATTLE_FACING=(\{[\s\S]*?\n\});/.exec(gm);
-ok(!!fm,'the GM portal declares BATTLE_FACING');
-const FACING=fm?vm.runInNewContext('('+fm[1]+')',{}):null;
+const FACING=table('BATTLE_FACING');
+ok(!!FACING,'the GM portal declares BATTLE_FACING');
 const stepAt=rules.indexOf('<li><strong>Who faces whom.</strong>'), step=stepAt<0?'':rules.slice(stepAt,rules.indexOf('</li>',stepAt));
 ok(stepAt>=0,'the rulebook\'s "How a battle is fought" has its "Who faces whom" step');
 if(FACING){

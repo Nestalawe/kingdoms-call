@@ -8,6 +8,7 @@
 import { afterAll, expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { pageText } from '../lib/source.ts';
 
 const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
@@ -36,7 +37,7 @@ test('a quarry of one’s own realm is always met', () => {
 
 test('the rulebook says 70% both times it states the chance, and the Encounter Character hint states it', () => {
   const rules = readPage('kingdoms-call-rules.html');
-  const pp = readPage('kingdoms-call-player-portal.html');
+  const pp = pageText('kingdoms-call-player-portal.html'); // its words, from src/ (tests/lib/source.ts, plan P1-09a)
   const said = rules.match(/<strong>(\d+)%, \+5% per level of your Spy, −5% per level of theirs<\/strong>/g) ?? [];
   expect(said.length).toBe(2);
   expect(said.every((x) => />70%/.test(x))).toBe(true);

@@ -5,13 +5,20 @@
 // its home, Reign of Fear; Call from the Pit and Awaken the Wild were removed on 2026-10-12, tests/beast-calls-gone); the orders table; the player portal's alignment texts and order
 // list; and no page keeps a retired rule (Wild Ferocity, the terrain multipliers now written once, Wyvern Riders
 // named as Monsters).
+// The rulebooks are read as site/ text; the player portal from src/ by its syntax tree (tests/lib/source.ts): its
+// words as the strings it holds, its blurbs and realm texts as entries of their object literals. (Until plan P1-09a
+// it was matched in the built page's text.)
 const fs=require('fs');
-const {sitePath}=require('./lib/boot');
+const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageStrings,pageText}=require('./lib/source.ts');
+const PP='kingdoms-call-player-portal.html';
+const entry=(file,name,key)=>(entriesOf(file,name).find(e=>e.key===key)||{value:''}).value;
+// the first of the page's strings `re` matches, or null (a match never runs from one string into the next)
+const inOneString=re=>{ for(const t of pageStrings(PP)){ const m=re.exec(t); if(m) return m; } return null; };
 const P=require('./lib/primal-decided'); const {ROSTER,LIVE,REIGN_OF_FEAR}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
 const read=f=>fs.readFileSync(sitePath(f),'utf8');
-const rules=read('kingdoms-call-rules.html'), intro=read('kingdoms-call-rules-intro.html'), pp=read('kingdoms-call-player-portal.html');
+const rules=read('kingdoms-call-rules.html'), intro=read('kingdoms-call-rules-intro.html'), pp=pageText(PP);
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
 const cap=s=>s[0].toUpperCase()+s.slice(1);
 const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
@@ -91,26 +98,26 @@ void monsterLists;
 const liveOf=f=>LIVE.filter(u=>ROSTER[u].family===f);
 const fury=(/savage fury[^()]*\(([^)]*)\)/i.exec(evil)||['',''])[1];
 for(const u of liveOf('Monster')) ok(fury.includes(u),`the Evil section's savage-fury list names ${u}`);
-const ppMon=(/\[M\] Monsters:<\/span>([^<']*)/.exec(pp)||['',''])[1], ppMonSum=(/Monster armies — ([^—]*) — fight with savage fury/.exec(pp)||['',''])[1];
+const ppMon=(inOneString(/\[M\] Monsters:<\/span>([^<']*)/)||['',''])[1], ppMonSum=(/Monster armies — ([^—]*) — fight with savage fury/.exec(entry('ui/player/report.js','ALIGNMENT_SUMMARIES','Evil'))||['',''])[1];
 for(const u of liveOf('Monster')){ ok(ppMon.includes(u),`the player portal's [M] Monsters list names ${u}`); ok(ppMonSum.includes(u),`the player portal's Evil realm text names ${u} among the Monster armies`); }
-const ppCre=(/\[C\] Creatures:<\/span>([^<']*)/.exec(pp)||['',''])[1];
+const ppCre=(inOneString(/\[C\] Creatures:<\/span>([^<']*)/)||['',''])[1];
 for(const u of liveOf('Creature')) ok(ppCre.includes(u),`the player portal's [C] Creatures list names ${u}`);
 const seaBeasts=norm(((/<tr><td><strong>Sea-beasts<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]));
 for(const u of LIVE.filter(u=>ROSTER[u].type==='naval'&&u!=='Whale Cohort')) ok(new RegExp(u.split(' ').pop().replace(/s$/,'').toLowerCase()+'s?','i').test(seaBeasts),`the kinds-of-unit Sea-beasts row names the ${u} (every swimming beast that is no hull)`);
 ok((norm(rules).match(/whale and shark waters/g)||[]).length>=2,'the rulebook\'s sea-tax texts say "whale and shark waters" where they said "whale waters"');
 // The four new Creatures (2026-10-13, Creatures and Monsters IV): the Creature lists name
 // them, the Druidic realm text names every live Creature, and no page still offers eagles or griffons to the wild.
-const ppDruSummary=(/Druidic:`[^`]*`/.exec(pp)||[''])[0], ppDruDesc=(/Druidic:'🌿 \*\*Druidic:\*\*(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
+const ppDruSummary=entry('ui/player/report.js','ALIGNMENT_SUMMARIES','Druidic'), ppDruDesc=(inOneString(/^🌿 \*\*Druidic:\*\*[\s\S]*/)||[''])[0];
 for(const u of liveOf('Creature')) ok(ppDruSummary.includes(u),`the player portal's Druidic realm text names ${u} among the Creature armies`);
 ok(!/eagles|griffons/i.test(ppDruDesc),"the player portal's Druidic join-screen blurb no longer names griffons or eagles among the Creatures");
 const creaturesRow=norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1])), wildwarden=norm((/<tr><td>The Wildwarden<\/td>[\s\S]*?<\/tr>/.exec(rules)||[''])[0]);
 for(const w of ['bears','unicorns','mammoths','turtles']){ ok(new RegExp(w,'i').test(creaturesRow),`the kinds-of-unit Creatures row names ${w}`); ok(new RegExp(w,'i').test(wildwarden),`the Wildwarden title names ${w}`); }
 // The player portal's texts.
 ok(/Reign of Fear/.test(pp),'the player portal\'s Evil realm text names Reign of Fear');
-const ppEvilSummary=(/Evil:`[^`]*`/.exec(pp)||[''])[0], ppEvilDesc=(/Evil:'💀 \*\*Evil:\*\*(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
+const ppEvilSummary=entry('ui/player/report.js','ALIGNMENT_SUMMARIES','Evil'), ppEvilDesc=(inOneString(/^💀 \*\*Evil:\*\*[\s\S]*/)||[''])[0];
 ok(/Druid 1 from the outset|Druid \+1/.test(ppEvilSummary)&&/Druid \+1/.test(ppEvilDesc),"the player portal's Evil texts (the realm summary and the join-screen blurb) say the king starts with Druid +1");
 // The blurbs: the retired multipliers are gone.
-const blurb=u=>(new RegExp(`\\n\\s*'${u}':'((?:[^'\\\\]|\\\\.)*)'`).exec(pp)||['',''])[1].replace(/[’‘]/g,"'");
+const blurb=u=>entry(fileDeclaring(PP,'UNIT_ABILITIES'),'UNIT_ABILITIES',u).replace(/[’‘]/g,"'");
 ok(!/Mountain Bulwark/.test(blurb('Stone Giants')),"the Stone Giants blurb no longer promises Mountain Bulwark");
 ok(!/Rooted Grove/.test(blurb('Forest Ents')),"the Forest Ents blurb no longer promises Rooted Grove");
 ok(!/×1\.2|×1\.3/.test(blurb('Cave Trolls')),"the Cave Trolls blurb no longer promises an always-on multiplier");

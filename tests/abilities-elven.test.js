@@ -97,7 +97,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     ok(MTP(enemy,0,eagles[1],eagles).some(a=>a.type==='Shadow Archers'),'…unless Eagle Riders fly with the shooters'); }
 
   // Skyward Retreat is gone: no Eagle unit climbs out of a trap untouched
-  const src=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
+  const src=require('./lib/source.ts').compactPage('kingdoms-call-gm-portal.html');   // its code in one layout (plan P1-09a)
   ok(!/climb away over the encircling lines/.test(src)&&!/a\.type==='Eagle Riders'\)\{\s*narr(ative)?\.push/.test(src),'the GM portal no longer lets Eagle Riders climb out of a trap');
 
   dom.window.close();

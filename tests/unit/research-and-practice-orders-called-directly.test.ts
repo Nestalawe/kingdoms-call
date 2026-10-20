@@ -35,6 +35,9 @@ import {
   stageCase,
   type ResearchAndPracticeOrderCase,
 } from '../lib/research-and-practice-order-cases.ts';
+import { compactDeclaration } from '../lib/source.ts';
+
+const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.js';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -810,7 +813,8 @@ describe('Research Breakthrough, called directly', () => {
 });
 
 test('every order of the family is a function of its own, and processOrder only calls it', () => {
-  const src = vm.runInContext('processOrder.toString()', engine) as string; // top-level since P1-08j9
+  // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
+  const src = compactDeclaration(DISPATCH, 'processOrder');
   for (const [key, name] of [
     ['research', 'resolveResearchOrder'],
     ['practice', 'resolvePracticeSkillOrder'],
@@ -818,6 +822,6 @@ test('every order of the family is a function of its own, and processOrder only 
     ['research_breakthrough', 'resolveResearchBreakthroughOrder'],
   ] as const) {
     expect(typeof fn(name)).toBe('function');
-    expect(src).toMatch(new RegExp(`case '${key}': ${name}\\(turnContext, c[^)]*\\); break;`));
+    expect(src).toMatch(new RegExp(`case '${key}':${name}\\(turnContext,c[^)]*\\);break;`));
   }
 });
