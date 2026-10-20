@@ -552,7 +552,7 @@ describe('CI', () => {
   test('deploy and staging install the build, then build site/ from src/ before they publish it', () => {
     const deploy = read('.github/workflows/deploy.yml');
     expect(deploy).toMatch(
-      /^ {6}- run: npm ci\n\n {6}- run: npm run build\n\n {6}- uses: actions\/upload-pages-artifact@v\d+\n {8}with:\n {10}path: site\/$/m,
+      /^ {6}- run: npm ci --ignore-scripts\n\n {6}- run: npm run build\n\n {6}- uses: actions\/upload-pages-artifact@v\d+\n {8}with:\n {10}path: site\/$/m,
     );
     const staging = read('.github/workflows/staging.yml');
     const build = staging.indexOf('run: npm run build');
@@ -561,6 +561,57 @@ describe('CI', () => {
     expect(staging.indexOf('run: npm ci')).toBeLessThan(build);
     expect(build).toBeLessThan(staging.indexOf('> site/kc-config.js'));
     expect(staging.indexOf('> site/kc-config.js')).toBeLessThan(staging.indexOf('cp -R site/. staging-repo/'));
+  });
+
+  // Every job that holds a secret or a deploy token installs from the lock file without running its packages' install
+  // scripts: npm ci --ignore-scripts, nothing else (the build needs none). Read from each workflow's text, job by job
+  // (each job's id two spaces in, under "jobs:"), with its comments left out; what a workflow sets above "jobs:" counts
+  // for every job in it.
+  const HOLDS_A_SECRET = /secrets\.|github\.token|id-token: write|pages: write|environment:/;
+  const AN_INSTALL = /\bnpm +(?:ci|install|i|add|update|rebuild)\b.*$/gm;
+  function installsInJobsWithSecrets(workflow: string): { checked: string[]; wrong: string[] } {
+    const text = workflow.replace(/^\s*#.*$/gm, '');
+    const [head = '', body = ''] = text.split(/^jobs:\n/m);
+    const checked: string[] = [];
+    const wrong: string[] = [];
+    for (const block of body.split(/^(?= {2}[\w-]+:\n)/m)) {
+      const id = /^ {2}([\w-]+):\n/.exec(block)?.[1];
+      if (!id || !HOLDS_A_SECRET.test(head + block)) continue;
+      for (const [install] of block.matchAll(AN_INSTALL)) {
+        checked.push(id);
+        if (install.trim() !== 'npm ci --ignore-scripts') wrong.push(`${id}: ${install.trim()}`);
+      }
+    }
+    return { checked, wrong };
+  }
+  const workflows = fs
+    .readdirSync(path.join(ROOT, '.github', 'workflows'))
+    .filter((f) => f.endsWith('.yml'))
+    .map((f) => ({ f, text: read(`.github/workflows/${f}`) }));
+
+  test('every job that holds a secret or a deploy token installs with npm ci --ignore-scripts', () => {
+    const checked: string[] = [];
+    for (const { f, text } of workflows) {
+      const found = installsInJobsWithSecrets(text);
+      expect(found.wrong, f).toEqual([]);
+      checked.push(...found.checked.map((id) => `${f} ${id}`));
+    }
+    expect(checked).toEqual(expect.arrayContaining(['deploy.yml deploy', 'staging.yml staging']));
+  });
+
+  test('a planted job that holds a secret and installs any other way is caught', () => {
+    const deploy = read('.github/workflows/deploy.yml');
+    const staging = read('.github/workflows/staging.yml');
+    expect(installsInJobsWithSecrets(deploy.replace('npm ci --ignore-scripts', 'npm ci')).wrong).toEqual([
+      'deploy: npm ci',
+    ]);
+    expect(installsInJobsWithSecrets(staging.replace('npm ci --ignore-scripts', 'npm install')).wrong).toEqual([
+      'staging: npm install',
+    ]);
+    // ci.yml's jobs hold none today; one that gains a secret falls under the rule.
+    expect(installsInJobsWithSecrets(ci).wrong).toEqual([]);
+    const planted = ci.replace(/^( {2}unit-scenario:\n)/m, '$1    environment: production\n');
+    expect(installsInJobsWithSecrets(planted).wrong).toEqual(['unit-scenario: npm ci']);
   });
 });
 

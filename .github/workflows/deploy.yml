@@ -109,8 +109,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      # The same build the tests ran on (ci.yml): Vite, installed from the lock file (P1-09d).
-      - run: npm ci
+      # The same build the tests ran on (ci.yml): Vite, installed from the lock file (P1-09d), without its packages'
+      # install scripts: the build needs none. Every job that holds a secret or a deploy token installs this way
+      # (tests/static/harness.test.ts).
+      - run: npm ci --ignore-scripts
 
       - run: npm run build
 

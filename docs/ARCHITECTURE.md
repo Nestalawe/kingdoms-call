@@ -66,8 +66,10 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
 - **Who builds:** `npm test` and `npx playwright test` before any test (`tests/setup/global.ts`; not when `KC_SITE`
   names another copy), `npm run balance` (and the base branch's copy, with that branch's own build:
   `tools/balance/sides.ts`), every CI job that tests, the deploy just before it publishes, and staging just before it
-  writes its own `kc-config.js`. The deploy and staging install the build's tools first (`npm ci`). Run `npm run build`
-  yourself before opening a page or running one test script on its own.
+  writes its own `kc-config.js`. The deploy and staging install the build's tools first (`npm ci --ignore-scripts`:
+  every job that holds a secret or a deploy token installs without the packages' install scripts, which the build
+  doesn't need; `tests/static/harness.test.ts` checks it). Run `npm run build` yourself before opening a page or
+  running one test script on its own.
 - **`npm run dev`** (`tools/dev.ts`) serves the pages with Vite's dev server, against the local Supabase only: it serves
   `kc-config.js` from `public/dev/kc-config.js` (git-ignored, never published; `npm run dev -- config` writes it from
   `npx supabase status`), and refuses to start without one, or with one that names another database
