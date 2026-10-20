@@ -269,9 +269,9 @@ describe('After the phases: what it calls', () => {
     const b = fresh();
     const h = at(b);
     G(b)['_maxHpMigration'] = [{ charId: h.id, player: 0, old: 80, nu: 60 }];
-    const players = vm.runInContext('()=>_MAXHP_PLAYERS', engine) as () => unknown;
+    const players = vm.runInContext('()=>maxHpPlayers.players', engine) as () => unknown;
     let seen: unknown = null;
-    vm.runInContext('_MAXHP_PLAYERS=null', engine);
+    vm.runInContext('maxHpPlayers.players=null', engine);
     const calls = standIn(b, ['syncAllMaxHp'], () => after(b), {
       syncAllMaxHp: () => {
         seen = players();

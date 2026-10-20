@@ -5,7 +5,8 @@ const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = KC_SEASONS.slice();
 
-let currentUser = null;
-let currentGame = null;
-let currentGamePlayers = [];
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+globalThis.currentUser = null;
+globalThis.currentGame = null;
+globalThis.currentGamePlayers = [];
 

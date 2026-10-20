@@ -3,16 +3,18 @@
 //   * a general who loses a battle and lives rolls for Tactical (Naval at sea);
 //   * a hero who loses a personal fight and lives (beaten and spared, or fled) rolls for Melee.
 // Level 2 (scenario) for the battle, which lives inside runTurn: the battle is staged hopeless, and every experience
-// roll is recorded by a wrapper around the top-level trySkillGain. The fight is tests/unit/xp-fled-fight.test.ts
+// roll is recorded by a wrapper around the top-level trySkillGain, in the engine's bare vm, where the turn is played
+// (tests/lib/scenario-in-the-vm.ts; until plan P1-09b on the GM portal, where the wrapper won't reach the turn's calls
+// once the page is made of modules). The fight is tests/unit/xp-fled-fight.test.ts
 // (level 1: resolvePersonalCombat is top-level since plan P1-08e). A failed Spy (on a province or a hero) and a failed
 // Steal are cases of tests/lib/espionage-order-cases.ts (plan P1-08j6), and a fizzled Cast Spell one of
 // tests/lib/cast-spell-order-cases.ts (plan P1-08j7): their rolls fixed for a whole turn, no hook.
-const {bootScenario,order,plan}=require('./lib/scenario');
+const {scenarioInTheVm,order,plan}=require('./lib/scenario-in-the-vm.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 // every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
-const XP_RECORD="{ const tryOne=trySkillGain; trySkillGain=function(turnContext, char, skill, base, narr, mult){ if(window.__xp) window.__xp.push({id:char&&char.id,skill,base,mult}); return tryOne.apply(this, arguments); }; }";
+const XP_RECORD="{ const tryOne=trySkillGain; trySkillGain=function(turnContext, char, skill, base, narr, mult){ if(globalThis.__xp) globalThis.__xp.push({id:char&&char.id,skill,base,mult}); return tryOne.apply(this, arguments); }; }";
 (async()=>{
-  const sc=await bootScenario({}); const W=sc.W;
+  const sc=scenarioInTheVm({seed:1}); const W=sc.W;
   W.eval(XP_RECORD);
   const nb=(S,p)=>W.getNeighborsP(p,S.world.cols,S.world.rows,S.world.provinces).filter(Boolean);
   const place=(S,c,p)=>{ S.world.provinces.forEach(q=>{ q.characters=(q.characters||[]).filter(id=>id!==c.id); }); p.characters=[...(p.characters||[]),c.id]; c.location=p.id; c.locationName=p.name; };

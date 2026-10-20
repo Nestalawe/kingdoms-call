@@ -165,7 +165,8 @@ async function backfillGameMeta(){
 // are usually deleted to tidy the list, and their data is the whole point. The Stats tab has a
 // "forget deleted games" button for when that is NOT wanted.
 const KC_TEL_V=1;                 // bump when the row shape changes (rows carry it in build)
-let _kcHasTel=false, _kcTelLastErr=null;
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+globalThis._kcHasTel=false; globalThis._kcTelLastErr=null;
 async function probeTelemetry(){
   try{
     const a=await sb.from('turn_events').select('id').limit(1);
@@ -208,7 +209,8 @@ function renderTelemetryBanner(){
 // game_id is TEXT and casts the other side (gp.game_id::text) so it does not matter whether the games
 // table's key is uuid or text, and the rows outlive the game row itself. The tables and their policies
 // are in supabase/schemas/, with their tests in supabase/tests/.
-let _kcHasMsg=false;
+// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+globalThis._kcHasMsg=false;
 async function probeMessaging(){
   try{
     const a=await sb.from('game_messages').select('id').limit(1);

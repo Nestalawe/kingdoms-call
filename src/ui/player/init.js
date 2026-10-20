@@ -12,13 +12,14 @@
 // To restore the old composer, put the `<div id="dispatch-compose"></div>` back in _realmTop and
 // re-add the render/sync helpers — nothing else was removed.
 function collectMessages(){ return []; }
-let currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+globalThis.currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
 // The report currently shown on the map (current turn, or a past-turn snapshot when browsing
 // history)
-let viewingReport = null;
+globalThis.viewingReport = null;
 // Which past turn the player is currently viewing (null = the current/latest turn). See
 // refreshTurnNavHighlight().
-let viewedTurn = null;
+globalThis.viewedTurn = null;
 // Restyle the turn-nav buttons: the current turn is full crimson; the past turn currently being
 // viewed (if any) is a LIGHTER crimson; all others are the plain outlined style. Buttons carry
 // their turn number in data-turn and the navigator stores the resolved turn in data-resolved, so

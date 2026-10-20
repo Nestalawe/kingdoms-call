@@ -45,6 +45,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/world/tables.js',
         'engine/battle/fortune.js',
         'engine/names.js',
+        'engine/items/hoard-categories.js',
         'engine/items/tiers-and-hoards.js',
         'engine/graves.js',
         'engine/items/lair-items.js',
@@ -64,7 +65,9 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/bots/setup.js',
         'engine/bots/intel.js',
         'engine/bots/war.js',
+        'engine/bots/specialist-skills.js',
         'engine/bots/strategy.js',
+        'engine/bots/schools.js',
         'engine/bots/specialists.js',
         'engine/bots/missions.js',
         'engine/bots/movement.js',
@@ -146,6 +149,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'engine/run-turn.js',
         'ui/gm/turn-shell.js',
         'ui/gm/start.js',
+        'ui/gm/globals.js',
       ],
     },
   },
@@ -156,6 +160,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
       style: ['ui/player/style.css'],
       main: [
         'ui/player/startup.js',
+        'ui/player/l79-orders.js',
         'ui/player/items-and-heroes.js',
         'ui/player/init.js',
         'ui/player/layout.js',
@@ -175,6 +180,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
         'ui/player/map.js',
         'ui/player/dispatches.js',
         'ui/player/start.js',
+        'ui/player/globals.js',
       ],
     },
   },
@@ -183,7 +189,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
     blocks: {
       'boot-reporter': ['ui/leaderboard/boot-reporter.js'],
       style: ['ui/leaderboard/style.css'],
-      main: ['ui/leaderboard/main.js'],
+      main: ['ui/leaderboard/main.js', 'ui/leaderboard/globals.js'],
     },
   },
   'kingdoms-call-overlord.html': {
@@ -191,7 +197,7 @@ export const PAGES: Readonly<Record<string, Page>> = {
     blocks: {
       'boot-reporter': ['ui/overlord/boot-reporter.js'],
       style: ['ui/overlord/style.css'],
-      main: ['ui/overlord/main.js'],
+      main: ['ui/overlord/main.js', 'ui/overlord/globals.js'],
     },
   },
   'index.html': {

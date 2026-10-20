@@ -52,15 +52,27 @@ await Promise.all(
 );
 const pretty = { src: copy };
 
+// Each of the two checks below reads every file twice: about 2 s here and 4 to 8 s on a CI runner, so they have time
+// enough of their own (Vitest's default, 5 s, failed on a slow runner).
+const EVERY_FILE_TWICE_MS = 60_000;
+
 describe('every file of the site reads the same laid out otherwise', () => {
-  test(`${String(own.length)} files: the same canonical layout`, () => {
-    const differ = own.filter((f) => compactOf(f) !== compactOf(f, pretty));
-    expect(differ).toEqual([]);
-  });
-  test(`${String(own.length)} files: the same strings, in the same order`, () => {
-    const differ = own.filter((f) => JSON.stringify(stringsOf(f)) !== JSON.stringify(stringsOf(f, pretty)));
-    expect(differ).toEqual([]);
-  });
+  test(
+    `${String(own.length)} files: the same canonical layout`,
+    () => {
+      const differ = own.filter((f) => compactOf(f) !== compactOf(f, pretty));
+      expect(differ).toEqual([]);
+    },
+    EVERY_FILE_TWICE_MS,
+  );
+  test(
+    `${String(own.length)} files: the same strings, in the same order`,
+    () => {
+      const differ = own.filter((f) => JSON.stringify(stringsOf(f)) !== JSON.stringify(stringsOf(f, pretty)));
+      expect(differ).toEqual([]);
+    },
+    EVERY_FILE_TWICE_MS,
+  );
   test('Prettier did change the files (the copy is not the source)', () => {
     const changed = own.filter(
       (f) => fs.readFileSync(path.join(SRC, f), 'utf8') !== fs.readFileSync(path.join(copy, f), 'utf8'),
@@ -125,13 +137,20 @@ describe('each helper gives the same answer on both layouts', () => {
   });
 });
 
-describe('a module, and a TypeScript file, read as the classic script they will be', () => {
+describe('a module, a TypeScript file and a declared global, read as the classic script they will be', () => {
   const dense = "const A={a:'x'};\nfunction f(n){ return A.a+n; }\nlet hits=[f(1)];\n";
   const asModule =
     "import { g } from './g.js';\nexport const A={a:'x'};\nexport function f(n){ return A.a+n; }\nexport let hits=[f(1)];\nexport { g };\n";
   const asTypeScript =
     "import { g } from './g.ts';\nexport const A: Record<string, string> = { a: 'x' };\nexport function f(n: number): string {\n  return A['a'] + n;\n}\nexport let hits: string[] = [f(1)];\nexport type T = number;\nexport { g };\n";
-  const files = { 'dense.js': dense, 'module.js': asModule, 'typescript.ts': asTypeScript };
+  // a page variable its files and tests share, as a declared global (plan P1-09b): read as a declaration too
+  const asDeclaredGlobal = "const A={a:'x'};\nfunction f(n){ return A.a+n; }\nglobalThis.hits=[f(1)];\n";
+  const files = {
+    'dense.js': dense,
+    'module.js': asModule,
+    'typescript.ts': asTypeScript,
+    'declared-global.js': asDeclaredGlobal,
+  };
   for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(copy, name), text);
   const value = (code: string) => vm.runInNewContext(code + ';[A.a, f(2), hits[0]]') as unknown;
   test.each(Object.keys(files))('%s', (name) => {

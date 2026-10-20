@@ -62,10 +62,12 @@ describe('the sources', () => {
       .map(([block, files]) => [`${page} ${block}`, files] as const),
   );
 
-  test('the GM portal and the player portal are cut into files', () => {
+  test('the four script pages are cut into files (the Hall of Fame and the Overlord page since P1-09b: globals.js)', () => {
     expect(cutBlocks.map(([name]) => name)).toEqual([
       'kingdoms-call-gm-portal.html main',
       'kingdoms-call-player-portal.html main',
+      'kingdoms-call-leaderboard.html main',
+      'kingdoms-call-overlord.html main',
     ]);
   });
 

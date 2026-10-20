@@ -1128,7 +1128,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   ensureAllLairHoards(_newGameState);   // every lair's gold and magic decided now
   // 2026-09-10 revert: earned HP — every starting character opens with an empty pool (15 HP; 18 for
   // an Orc of an Orcish realm), at full health.
-  _MAXHP_PLAYERS=players;
+  maxHpPlayers.players=players;
   allChars.forEach(c=>{ c.hpEarned=0; c.maxHp=computeMaxHp(c,players); c.hp=c.maxHp; });
   _newGameState._maxHpV2=true; _newGameState._maxHpV3=true; _newGameState._guardiansV2=true; _newGameState._guardiansVer=GUARDIAN_TABLE_VER;
   return _newGameState;

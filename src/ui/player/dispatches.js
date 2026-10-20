@@ -43,19 +43,22 @@ const MSG_SLOW_EVERY=4;      // … and one tick in four when it is not (≈32s,
 const MSG_MAX_LEN=500;   // the database refuses longer (P0-23, ruling D-05)
 const MSG_PAGE=400;          // most recent dispatches loaded on entry; later ones arrive by id, and
                              // anything older is fetched a page at a time by loadOlderMessages()
-let _msgGameId=null, _msgMyIndex=null, _msgMyName='', _msgMyColor=null;
-let _msgRows=[], _msgIds=new Set(), _msgMaxId=0, _msgMinId=0, _msgMoreOlder=false, _msgLoadingOlder=false;
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+globalThis._msgGameId=null; globalThis._msgMyIndex=null; let _msgMyName='', _msgMyColor=null;
+globalThis._msgRows=[]; let _msgIds=new Set(), _msgMaxId=0, _msgMinId=0; globalThis._msgMoreOlder=false; globalThis._msgLoadingOlder=false;
 let _msgReported=new Set();   // ids of dispatches this player has reported (P0-24), as strings
 let _msgReads={};            // channelKey -> highest message id this realm has seen
-let _msgRealms={};           // realm index -> {index,name,color,human,met,conceded,eliminated}
-let _msgChannel='public';
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+globalThis._msgRealms={};           // realm index -> {index,name,color,human,met,conceded,eliminated}
+globalThis._msgChannel='public';
 let _msgExtraGroups=[];      // conference channels opened this session that carry no messages yet
 let _msgTimer=null, _msgTick=0, _msgBusy=false, _msgSending=false;
-let _msgTableOk=null;        // null = not probed, false = the SQL has not been run
-let _msgErr=null, _msgReadsDirty=false, _msgReadSaveTimer=null;
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
+globalThis._msgTableOk=null;        // null = not probed, false = the SQL has not been run
+globalThis._msgErr=null; let _msgReadsDirty=false, _msgReadSaveTimer=null;
 // R-075 (P0-25): what this realm may send. _msgOut: null, 'conceded' or 'eliminated' (its dynasty extinguished), from
 // its own turn report. _msgGameOver: the game has ended. _msgBlockOut: the GM's switch (games.block_eliminated_msgs).
-let _msgOut=null, _msgGameOver=false, _msgBlockOut=false;
+globalThis._msgOut=null; let _msgGameOver=false; globalThis._msgBlockOut=false;
 
 function _msgNum(v){ const n=Number(v); return Number.isFinite(n)?n:null; }
 function _msgArr(v){ return Array.isArray(v)?v:[]; }

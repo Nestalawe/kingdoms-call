@@ -20,7 +20,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // a database change").
 const KC_DB_MIN='20261012064100';
 
-let GAMES=[], TAB='champions', GM=false, OVERLORD=false, ME=null, PEOPLE={};
+// A declared global (plan P1-09b): one binding the page's files and its tests share (ui/leaderboard/globals.js says why).
+globalThis.GAMES=[]; let TAB='champions', GM=false, OVERLORD=false, ME=null, PEOPLE={};
 // May the signed-in account edit this entry? Its GM, or the Overlord (the database's rule, P0-22).
 const canEdit=g=>OVERLORD||!!(ME&&g&&g.gm_user_id===ME.id);
 // ── REALM ≠ PLAYER ────────────────────────────────────────────────────────────────────────────

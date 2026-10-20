@@ -28,6 +28,10 @@ portal hangs on its spinner (the boot-failure reporter now shows the error).
   with it (`(...a)=>f(turnContext,...a)`, as the bots' duel forecast is). Declare shared helpers as hoisted
   `function`s.
 - Prefer building lookup tables lazily inside the function that needs them over a top-level IIFE.
+- A constant that another file reads as the page loads, where the two files read each other, lives in a file of its
+  own that reads nothing (P1-09b: `engine/items/hoard-categories.js`, `engine/bots/specialist-skills.js`,
+  `engine/bots/schools.js`, `ui/player/l79-orders.js`), listed just before its old file. Once the page is modules
+  (P1-09d), a cycle of files can run the reader first; a file that reads nothing always runs first.
 - A flag read by layout code that can run early (e.g. a hash-restored view) must be declared above
   that code, not in its feature's block further down.
 - Never declare the same top-level name in the data file and a portal: that's a `SyntaxError` and the
@@ -254,6 +258,15 @@ every "X is absent" check **by accident**.
 - Assert that the table was actually read, i.e. is non-empty, before asserting anything about its
   contents.
 - jsdom has no `innerText`; use `textContent`.
+- **From P1-09d a page's scripts are modules**, and a test reaches only what the page puts on `window` (P1-09b). A
+  function or a constant a test reaches goes on the second list of `src/ui/<page>/globals.js`, with the file that
+  declares it. A variable a test (or an inline handler) reads or writes is a declared global instead,
+  `globalThis.<name> = <value>;` where it is declared: a list copies a value once, and a variable's copy goes stale.
+  Don't stand a page function in from a test (`W.f = …`): once the page is modules its own calls never see the
+  stand-in, and the test passes without testing anything. Stand it in in the engine's `vm`
+  (`tests/lib/scenario-in-the-vm.ts`), or build a page from a planted copy (`plantedSite`, `tests/lib/source.ts`).
+  `npm test`'s `page-globals` fails on a name missing from a list, a variable that isn't a declared global, or a new
+  page stand-in.
 
 ## `game_state` is a string
 

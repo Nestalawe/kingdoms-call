@@ -3,7 +3,8 @@
 // against a double run: a same-browser localStorage lease (two tabs of the same browser) and the
 // conditional save in runTurn (`.eq('turn',expected)`), which also covers two different devices.
 const AUTO_WATCH_MS=60000;
-let _autoWatcherTimer=null, _autoRunBusy=false;
+// Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
+globalThis._autoWatcherTimer=null; globalThis._autoRunBusy=false;
 // ── CRASH COOLDOWN (2026-09-27) ────
 // A turn that throws is very likely to throw again on identical input, and the watcher ticks once a
 // minute: without this, one broken build turns into a failed turn every 60 seconds per game, for as
