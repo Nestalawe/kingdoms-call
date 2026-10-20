@@ -254,9 +254,9 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   shell's `await`s (P1-18e had the shell lend them; `tests/unit/the-turns-own-dice-from-its-seed.test.ts`). A mercenary
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
-- **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08). Since P1-08m it is the set-up,
-  the stages' calls, the phase loop calling its stages and the reports; two lines of set-up rules are still in it (the
-  map's swords of last turn cleared, the bots' flag stamped on each realm), and tests reach `resolveTurn`'s own lines by injecting code at exact source lines (see
+- **Engine functions are lifted out of `resolveTurn` one area at a time** (P1-08, done in P1-08n). It is the save's
+  parse and upgrades, the turn's context and its start values, the stages' calls, the phase loop calling its stages and
+  the reports: no rule of the game is written in it, and tests reach `resolveTurn`'s own lines by injecting code at exact source lines (see
   [tests/README.md](../tests/README.md#code-anchor-hooks)). A lifted helper that reads the turn's state takes **the
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.js`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
@@ -406,7 +406,7 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   research choices settled; war without warning, the titles held, the merge's lines, the GM's removals and the
   messages; the move pools, the turn's trackers and the save's sweeps; and, after the bots' passes, every empty phase
   Defend, the record of orders and the war fronts at the start. `resolveTurn` keeps between them the bots' code
-  (P1-08l), the turn's start values and the `_kcTest` hook. P1-08l1 took the bots' diplomacy out, the first of the bots'
+  (P1-08l) and the turn's start values. P1-08l1 took the bots' diplomacy out, the first of the bots'
   code, in `engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.js`
   (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, taking only the context): each bot realm's Treat or war on each
   rival it had met when the turn began (`_botEncounteredAtStart`, which joins the context for it), by alignment, the
@@ -417,6 +417,10 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   context, and `botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hunter, quarry, n)`): the eight passes
   in which the bot realms decide their turn, between the move pools and the default to Defend, and the duel forecast
   the movement pass is handed; and it moved the merge's six collectors into the merge, which makes them each turn.
+  P1-08n made the last two lines of set-up rules named functions in the set-up's file, beside the stages they come
+  before: `lastTurnsBattleAndDuelSwordsClearedFromTheMap(G)` (as the save is read, with its upgrades: the map's
+  crossed swords the save still holds from last turn) and `everyRealmStampedBotOrHumanFromTheBotSlotRows`, taking only
+  the context (each realm's bot flag, from the slot rows); and removed a test hook nothing read (`window._kcTest`).
   A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 

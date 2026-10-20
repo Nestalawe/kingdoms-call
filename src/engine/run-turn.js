@@ -31,12 +31,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun, seed){
     retireDiscoveries(G);   // strip retired Sage discovery ids (sd34) from live saves
     migrateLegacyUnitNames(G); // pre-2026.09.06 unit-type strings → current names (idempotent)
     snapshotHeldItems(G);      // remember every pack as it stands NOW, so the report can mark what was gained this turn
-    // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
-    // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
-    // saved, so the saved state still carried them and the next turn loaded last turn's fights,
-    // reporting them a second time (the "duel icon that won't go away"). Clear them here, at the
-    // top of the turn, whatever the save held.
-    (G.world&&G.world.provinces||[]).forEach(p=>{ if(p){ delete p._hadBattleThisTurn; delete p._combatPlayersThisTurn; } });
+    lastTurnsBattleAndDuelSwordsClearedFromTheMap(G); // the save still holds last turn's crossed swords on the map
   }catch(e){
     // the orders are already cleared: the catch at the end of runTurn puts them back
     throw new Error(`Could not read the saved game: ${e&&e.message||e}`);
@@ -64,10 +59,7 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun, seed){
   // next turn — reusing the existing human war tempo.
   const _botPlayerIdx=new Set((freshPlayers||[]).filter(isBotRow).map(p=>p.player_index));
   turnContext._botPlayerIdx=_botPlayerIdx;
-  // Sept 2026 (bot strategy batch): stamp the bot flag onto the persisted player objects so the
-  // module-level bot passes can tell bot realms from human ones (botIsBotPlayer) — bots never war
-  // one another while a human king still reigns, and coordinate against the humans instead.
-  (G.players||[]).forEach((p,i)=>{ if(p) p._isBot=_botPlayerIdx.has(i); });
+  everyRealmStampedBotOrHumanFromTheBotSlotRows(turnContext);
   const _botEncounteredAtStart={};
   turnContext._botEncounteredAtStart=_botEncounteredAtStart;
   _botPlayerIdx.forEach(idx=>{ _botEncounteredAtStart[idx]=[...(((G.players||[])[idx]||{})._encountered||[])]; });
@@ -167,9 +159,6 @@ function resolveTurn(G, freshPlayers, expectedTurnToRun, seed){
   // final ownership. Desert/mountain 30%, plains 45%, forest/jungle 60%.
   const _elvenEscapeQueue=[];
   turnContext._elvenEscapeQueue=_elvenEscapeQueue;
-
-  // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
-  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter:(...a)=>resolveEncounter(turnContext,...a),resolvePersonalCombat:(...a)=>resolvePersonalCombat(turnContext,...a),resolveCharVsChar:(...a)=>resolveCharVsChar(turnContext,...a),combatVsChar:(...a)=>combatVsChar(turnContext,...a),effStat:(...a)=>effStat(turnContext,...a),rng,pcCharCombatant:(...a)=>pcCharCombatant(turnContext,...a),pcMonsterCombatant,trySkillGain:(...a)=>trySkillGain(turnContext,...a),resolveDuel:(...a)=>resolveDuel(turnContext,...a),duelFleeItemDrop:(...a)=>duelFleeItemDrop(turnContext,...a),pcCastCombatSpell:(...a)=>pcCastCombatSpell(turnContext,...a),preBattleDuel:(...a)=>preBattleDuel(turnContext,...a),awardWinHp:(...a)=>awardWinHp(turnContext,...a),awardKillXP:(...a)=>awardKillXP(turnContext,...a)}; }catch(e){}
 
   movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan(turnContext);
   // ── BOT DECISIONS + default-to-Defend ── run here, after every helper const in this block is initialised

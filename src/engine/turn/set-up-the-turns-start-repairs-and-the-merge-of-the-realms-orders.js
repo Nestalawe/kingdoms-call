@@ -1,21 +1,42 @@
 // ── THE SET-UP: THE TURN'S START REPAIRS AND THE MERGE OF THE REALMS' ORDERS (plan P1-08k7: two stages taken out of
-// the start of resolveTurn's own body) ───────────────────────────────────────────────────────────────────────────────
-// Once the save is read, the turn's context made and the bots' flags stamped, two stages, in this order, each once a
-// turn and before any line is logged (log() isn't ready yet: what they have to tell is kept for later):
-//   1. the turn's start repairs: a neutral hero wearing a beast's race is given a people's race; a guard stranded
+// the start of resolveTurn's own body; P1-08n: two lines of it before them) ──────────────────────────────────────────
+// Each once a turn and before any line is logged (log() isn't ready yet: what they have to tell is kept for later), in
+// this order:
+//   1. as the save is read, before the turn's context is made: last turn's crossed swords cleared from the map (plan
+//      P1-08n). It takes the save (G), as the save's upgrades beside its call do, and a failure in it is a save that
+//      can't be read;
+//   2. once the context is made: every realm stamped a bot's or a human's from the slot rows (plan P1-08n);
+//   3. the turn's start repairs: a neutral hero wearing a beast's race is given a people's race; a guard stranded
 //      without companies, or inside a realm's land, becomes a wanderer; no company carries a stranded hull's marker
 //      into the turn; a hero in a realm's service loses his " (wandering)" tag (stashed on the save, told at the
 //      turn's end); then the turn's orders and its scratch lists start empty, every living hero noting the realm he
 //      serves, and every living realm's hero starts with five empty phases (Defend, later);
-//   2. the merge of the realms' orders: each realm that sent orders has its hero order kept, its declarations (or the
+//   4. the merge of the realms' orders: each realm that sent orders has its hero order kept, its declarations (or the
 //      Safe Start's refusal), research choices, Reckoning call, messages and concession collected for later stages,
 //      orders stamped for another turn refused, the orders of heroes it means to hire, raise or charm held until the
 //      order lands, every other hero's phases written, a conceded realm's heroes made to hold, its encounter plans
 //      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied.
-// Each takes the turn's context (src/engine/turn/context.js) and nothing else: the merge makes the collectors afresh
-// each turn, joins them to the context and fills them (staleOrderWarnings, diploDeclarations, safeStartRefused,
-// discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read there (they were
-// declared in resolveTurn until plan P1-08l2). The bodies keep resolveTurn's indent (plan P1-08's Decisions).
+// But for the first, each takes the turn's context (src/engine/turn/context.js) and nothing else: the merge makes the
+// collectors afresh each turn, joins them to the context and fills them (staleOrderWarnings, diploDeclarations,
+// safeStartRefused, discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read there
+// (they were declared in resolveTurn until plan P1-08l2). The bodies keep resolveTurn's indent (plan P1-08's Decisions).
+
+function lastTurnsBattleAndDuelSwordsClearedFromTheMap(G){
+    // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
+    // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
+    // saved, so the saved state still carried them and the next turn loaded last turn's fights,
+    // reporting them a second time (the "duel icon that won't go away"). Clear them here, at the
+    // top of the turn, whatever the save held.
+    (G.world&&G.world.provinces||[]).forEach(p=>{ if(p){ delete p._hadBattleThisTurn; delete p._combatPlayersThisTurn; } });
+}
+
+function everyRealmStampedBotOrHumanFromTheBotSlotRows(turnContext){
+  const {G, _botPlayerIdx}=turnContext;
+  // Sept 2026 (bot strategy batch): stamp the bot flag onto the persisted player objects so the
+  // module-level bot passes can tell bot realms from human ones (botIsBotPlayer) — bots never war
+  // one another while a human king still reigns, and coordinate against the humans instead.
+  (G.players||[]).forEach((p,i)=>{ if(p) p._isBot=_botPlayerIdx.has(i); });
+}
 
 function turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext){
   const {G}=turnContext;

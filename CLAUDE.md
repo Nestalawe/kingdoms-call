@@ -15,8 +15,8 @@ published.
    together.
 3. [docs/traps.md](docs/traps.md): standing gotchas. Read it before changing a portal or a test.
 4. [tests/README.md](tests/README.md): every test, its level, quarantine, and the code-anchor hooks.
-5. Only then the code you need, in `src/`: **edit `src/`, never `site/`** (it's built). Most files are a few hundred
-   lines; `src/engine/run-turn.js` is ~13,000: search it, don't read it whole, and edit with unique anchors.
+5. Only then the code you need, in `src/`: **edit `src/`, never `site/`** (it's built). Files run to a few hundred
+   lines, a few to 2,000 (`src/engine/run-turn.js` ~230): search the long ones, and edit with unique anchors.
 
 **Toby's rulings are in [docs/rulings/](docs/rulings/README.md)**, one file each, with an index. Before
 changing a rule, read its ruling; never "fix" what a ruling says is deliberate without a fresh one.
