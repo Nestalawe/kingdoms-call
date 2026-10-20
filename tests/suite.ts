@@ -105,7 +105,7 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'battle-spells-recorded', 'tests/battle-spells-recorded.test.js'],
     ['scenario', 'concede', 'tests/concede.test.js'],
     ['unit', 'monarch-grave', 'tests/monarch-grave.test.js'],
-    ['scenario', 'guardian-traits', 'tests/guardian-traits.test.js'],
+    ['unit', 'guardian-traits', 'tests/guardian-traits.test.js'],
     ['unit', 'unit-fates', 'tests/unit-fates.test.js'],
     ['scenario', 'overtures', 'tests/overtures.test.js'],
     ['page', 'orders-group-by-location', 'tests/orders-group-by-location.test.js'],

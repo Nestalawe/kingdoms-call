@@ -4,21 +4,29 @@
 // battle's report (before, the surgery line came ahead of the whole battle report and the duel still
 // said "is slain"). A hero the surgeons cannot save reads "is slain in the duel!", then "too late",
 // to his own realm only.
-// Level 2 (scenario): the duel and the death live inside runTurn. The hero is staged to lose for
-// certain (1 HP against a strong chieftain) and the surgery roll is fixed through a hook.
+// Level 2 (scenario): the duel and the death live inside the turn, played in the engine's bare vm
+// (tests/lib/scenario-in-the-vm.ts). The hero is staged to lose for certain (1 HP against a strong chieftain) and the
+// surgery roll is fixed by standing two functions in there: handleHeroDeath (top-level since plan P1-08f), on the way
+// in, makes the next percentile roll (d100) the chosen one, and the surgery roll is the first it makes. (Until plan
+// P1-09a the turn was played on the GM portal and a code-anchor hook on the roll's line fixed it.)
 // Static (level 0): every other personal-combat death goes through reportHeroFall, which resolves the
-// death before it writes "slain".
-const {readPage}=require('./lib/boot'); const {bootScenario,order,plan}=require('./lib/scenario');
+// death before it writes "slain": read from the GM portal's source by its syntax tree (tests/lib/source.ts).
+const {scenarioInTheVm,order,plan}=require('./lib/scenario-in-the-vm.ts');
+const {callsTo,compactPage,pageScripts}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const SURG="      const _sRoll=d100(); const _bsPct=Math.round(discParam('sd36','pct',0.2)*100);";
 (async()=>{
-  const sc=await bootScenario({inject:[[SURG,"      const _sRoll=(window.__SURG!=null)?window.__SURG:d100(); const _bsPct=Math.round(discParam('sd36','pct',0.2)*100);"]]}); const W=sc.W;
+  const sc=scenarioInTheVm({seed:1}); const W=sc.W;
+  // The surgery roll: handleHeroDeath makes no other roll before it, and a roll it doesn't make is not kept.
+  let SURG=null, next=null;
+  const d100=W.d100, death=W.handleHeroDeath;
+  W.d100=()=>{ if(next!=null){ const r=next; next=null; return r; } return d100(); };
+  W.handleHeroDeath=(...a)=>{ next=SURG; try{ return death(...a); } finally{ next=null; } };
   const SD36=W.eval("SAGE_DISCOVERIES_P.find(d=>d.id==='sd36')");
   ok(!!SD36,'Battlefield Surgery is in the discovery table');
   const nb=(S,p)=>W.getNeighborsP(p,S.world.cols,S.world.rows,S.world.provinces).filter(Boolean);
   const place=(S,c,p)=>{ S.world.provinces.forEach(q=>{ q.characters=(q.characters||[]).filter(id=>id!==c.id); }); p.characters=[...(p.characters||[]),c.id]; c.location=p.id; c.locationName=p.name; };
   async function run(roll){
-    W.__SURG=roll;
+    SURG=roll;
     return sc.turn({cols:10,rows:6,seaPct:10,prepare(S){
       const H=S.characters.find(c=>c.alive&&c.player===0&&!c.isKing);
       let g,N,P;
@@ -58,12 +66,11 @@ const SURG="      const _sRoll=d100(); const _bsPct=Math.round(discParam('sd36',
     ok(late>=0&&Array.isArray(L[late].targets)&&L[late].targets.length===1&&L[late].targets[0]===0&&!L[late].public,'…and only the hero\'s own realm reads it'); }
 
   // ── Static: the other deaths ──
-  const src=readPage('kingdoms-call-gm-portal.html');
-  const calls=src.split('\n').filter(l=>/handleHeroDeath\(/.test(l)&&!/function handleHeroDeath/.test(l));
-  ok(calls.length===3,`handleHeroDeath is called only by reportHeroFall, the pre-battle duel and its own copy guard (${calls.length} calls)`);
+  const src=compactPage('kingdoms-call-gm-portal.html');
+  const calls=pageScripts('kingdoms-call-gm-portal.html').flatMap(f=>callsTo(f,'handleHeroDeath')).map(c=>c.within).sort();
+  ok(calls.join()==='handleHeroDeath,preBattleDuel,reportHeroFall',`handleHeroDeath is called only by reportHeroFall, the pre-battle duel and its own copy guard (${calls.length} calls: ${calls.join(', ')})`);
   ok((src.match(/reportHeroFall\(/g)||[]).length>=13,'every other personal-combat death (thief, Charm backlash, lair, assassination, duel, shot, ambush, chase) goes through reportHeroFall');
   ok(!/log\('combat',`[^`]*(slain|cut down|felled|falls in the duel|struck down)[^`]*`[^;]*\);\s*handleHeroDeath\(/.test(src),'no "slain" line is written before the death is resolved');
-  console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);
-  sc.errs.slice(0,3).forEach(e=>console.log('  ! '+e.split('\n').slice(0,2).join(' | ')));
-  process.exit(fail||sc.errs.length?1:0);
+  console.log(`\n${pass} pass, ${fail} fail`);
+  process.exit(fail?1:0);
 })().catch(e=>{ console.error(e); process.exit(2); });

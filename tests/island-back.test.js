@@ -2,34 +2,38 @@
 // table's last ability, left out of the beast-abilities PR because it is a sea-lift rule, not a battle-line one.
 //   • the data file: the Great Turtles are a carrier (KC_UNIT_CLASS.carrier) and KC_CARRIER_BERTHS gives them two
 //     berths; the shared table is in both portals' guard lists;
-//   • the engine (getSeaCapability and seaLiftShortfall are nested in runTurn: the hook hands them back): a turtle
-//     carries two heavy units or four light foot where a galleon carries one or two; a third heavy unit is a
+//   • the engine (getSeaCapability and seaLiftShortfall, top-level functions called directly in its bare vm): a
+//     turtle carries two heavy units or four light foot where a galleon carries one or two; a third heavy unit is a
 //     shortfall; a Whale Cohort still carries one;
 //   • the player portal's mirror (poSeaAnalysis, module level) counts the same berths;
 //   • a turn: a hero with a turtle and two Gilded Lances puts out from his coast into his own waters and arrives with
 //     everyone aboard; with three Gilded Lances the move is blocked for want of a berth;
 //   • the words: the rulebook's Naval row, Sea-beasts row and turtle row, and the player portal's blurb, say so.
-// Level 2 (scenario) for the hook and the turn; the rest is level 0/1 in the same file.
+// Level 2 (scenario) for the turn, played in the engine's bare vm (tests/lib/scenario-in-the-vm.ts); the rest is level
+// 0/1 in the same file. The guard lists and the blurb are read from src/ by their syntax tree (tests/lib/source.ts).
+// Until plan P1-09a the turn was played on the GM portal, a code-anchor hook at "  // 4. Run all 5 phases" handed the
+// two functions back, and the lists and the blurb were matched in the built pages' text.
 const fs=require('fs');
-const {bootScenario, order, plan}=require('./lib/scenario');
+const {scenarioInTheVm, order, plan}=require('./lib/scenario-in-the-vm.ts');
+const {initializersOf, entriesOf}=require('./lib/source.ts');
 const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
 const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
 
 (async()=>{
-  const sc=await bootScenario({inject:[["  // 4. Run all 5 phases\n","  window.__LIFT={getSeaCapability,seaLiftShortfall};\n  // 4. Run all 5 phases\n"]]});
-  await sc.turn({});
+  const sc=scenarioInTheVm({seed:1});
   const W=sc.W;
-  const L=W.__LIFT||{}; ok(typeof L.getSeaCapability==='function'&&typeof L.seaLiftShortfall==='function','hook: getSeaCapability and seaLiftShortfall exposed'); if(typeof L.getSeaCapability!=='function') process.exit(1);
+  const L={getSeaCapability:W.getSeaCapability,seaLiftShortfall:W.seaLiftShortfall};
 
   // ── The data file ──
   ok(W.eval("KC_UNIT_CLASS.carrier.includes('Great Turtles')&&KC_UNIT_CLASS.primalSea.includes('Great Turtles')&&KC_UNIT_CLASS.sea.includes('Great Turtles')"),'the Great Turtles are a carrier, and still a primal sea beast');
   ok(W.eval("typeof KC_CARRIER_BERTHS!=='undefined'&&KC_CARRIER_BERTHS['Great Turtles']===2"),"KC_CARRIER_BERTHS gives the Great Turtles two berths (Island Back)");
   ok(W.eval("typeof KC_CARRIER_BERTHS==='undefined'||Object.keys(KC_CARRIER_BERTHS).every(t=>KC_UNIT_CLASS.carrier.includes(t))"),'every unit with a berth count is a carrier');
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8'), pp=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8'), rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8');
-  ok(/const KC_SHARED_TABLE_NAMES=\[[^\]]*'KC_CARRIER_BERTHS'/.test(gm),"KC_CARRIER_BERTHS is in the GM portal's KC_SHARED_TABLE_NAMES (the data-file guard)");
-  ok(/const need=\[[^\]]*'KC_CARRIER_BERTHS'/.test(pp),"KC_CARRIER_BERTHS is in the player portal's list of needed tables");
+  const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8');
+  const listed=(file,name)=>initializersOf(file,name).some(v=>{ const list=new Function('return '+v)(); return Array.isArray(list)&&list.includes('KC_CARRIER_BERTHS'); });
+  ok(listed('ui/gm/startup.js','KC_SHARED_TABLE_NAMES'),"KC_CARRIER_BERTHS is in the GM portal's KC_SHARED_TABLE_NAMES (the data-file guard)");
+  ok(listed('ui/player/startup.js','need'),"KC_CARRIER_BERTHS is in the player portal's list of needed tables");
 
   // ── The engine's lift ──
   const u=(type,n)=>Array.from({length:n||1},(_,i)=>({type,quality:'Average',unitName:`${type} ${i+1}`}));
@@ -80,12 +84,11 @@ const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
   ok(/Great Turtles/.test(row('Naval','Warships'))&&/two/.test(row('Naval','Warships')),`the rulebook's Naval kinds-of-unit row names the Great Turtles among the ferries, two units a hull — "${row('Naval','Warships').slice(0,160)}…"`);
   ok(/Island Back/.test(row('Great Turtles'))&&/two/.test(row('Great Turtles'))&&!/carries? nothing|carry nothing/.test(row('Great Turtles')),`the turtle row names Island Back and no longer says they carry nothing — "${row('Great Turtles').slice(-200)}"`);
   ok(/turtles/i.test(row('Sea-beasts'))&&/(carr(y|ies)|ferr(y|ies)) /.test(row('Sea-beasts')),"the Sea-beasts row makes the turtles the exception to 'they carry nothing'");
-  const blurb=(/\n\s*'Great Turtles':'((?:[^'\\]|\\.)*)'/.exec(pp)||['',''])[1];
+  const blurb=(entriesOf('ui/player/briefing-and-submit.js','UNIT_ABILITIES').find(e=>e.key==='Great Turtles')||{value:''}).value;
   ok(/Island Back/.test(blurb)&&/two/.test(blurb)&&!/carry nothing/.test(blurb),`the player portal's turtle blurb names Island Back — "${blurb.slice(0,140)}…"`);
-  const data=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8');
-  ok(/'Great Turtles'\s*:\{[^}]*Island Back/.test(data)&&!/'Great Turtles'\s*:\{[^}]*carry nothing/.test(data),"the data file's turtle description names Island Back and no longer says they carry nothing");
+  const turtle=JSON.stringify(W.eval("PRIMAL_ARMY_DEFS_P['Great Turtles']")||{});
+  ok(/Island Back/.test(turtle)&&!/carry nothing/.test(turtle),"the data file's turtle description names Island Back and no longer says they carry nothing");
 
-  console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);
-  sc.errs.slice(0,3).forEach(e=>console.log('  ! '+e.split('\n').slice(0,2).join(' | ')));
-  process.exit(fail||sc.errs.length?1:0);
+  console.log(`\n${pass} pass, ${fail} fail`);
+  process.exit(fail?1:0);
 })().catch(e=>{ console.error(e); process.exit(2); });

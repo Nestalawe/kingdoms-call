@@ -6,25 +6,24 @@
 //   natural — world generation as it is (the alignment pass usually puts the province right beside
 //     the home, so these worlds already passed before item 12);
 //   no free neighbour — the alignment pass is made to find no free neighbour (the case its comment
-//     allows: "may be empty"), via the code-anchor hook on its `_freeNbrs` line. Before item 12 these
-//     worlds left crowns with no wild country of their own near home.
-// Simulation level: world generation is one long function and the property is over whole worlds.
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+//     allows: "may be empty"): the engine is loaded from a copy of src/ whose `_freeNbrs` is declared empty, found by
+//     its syntax tree (tests/lib/source.ts). Before item 12 these worlds left crowns with no wild country of their own
+//     near home.
+// Simulation level: world generation is one long function and the property is over whole worlds. The worlds are made
+// in the engine's bare vm (tests/lib/engine.ts). Until plan P1-09a they were made on the GM portal, and a code-anchor
+// hook on the `_freeNbrs` line emptied it.
+const vm=require('vm');
+const {readPage}=require('./lib/boot'); const {loadEngine,engineFn}=require('./lib/engine.ts');
+const {plantedSrc,replaceInitializer,pageStrings}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const N=+(process.argv[2]||4);   // worlds per size
 (async()=>{
-  const ANCHOR="        const _freeNbrs=_allFreeNbrs.filter(n=>!_protectedIds.has(n.id)); // may be empty -> no alignment neighbour; the pair wins\n";
+  const empty=plantedSrc({'engine/world/generate.js':(code,file)=>replaceInitializer(code,file,'generateNewGame','_freeNbrs','[]')});
   for(const variant of ['natural','no free neighbour']){
-  let html=readPage('kingdoms-call-gm-portal.html');
-  if(variant!=='natural'){ if(html.split(ANCHOR).length!==2){ console.log('anchor not unique or missing: '+ANCHOR); process.exit(1); }
-    html=html.replace(ANCHOR,"        const _freeNbrs=[];\n"); }
-  const errs=[];
-  const d=bootJsdom(html,{supabase:{createClient:()=>cannedStub({rows:()=>({}),writes:[]})},
-    setup(w){ w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
-      w.console.error=(...a)=>{ const t=a.map(String).join(' '); if(/Could not load|stub|fetch/i.test(t)) return; errs.push('console.error: '+t); };
-      w.console.warn=()=>{}; w.console.log=()=>{}; }});
-  await new Promise(r=>setTimeout(r,500)); const W=d.window;
-  if(typeof W.generateNewGame!=='function'){ console.log('GM portal did not boot'); errs.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
+  const engine=variant==='natural'?loadEngine({seed:1}):loadEngine({seed:1,src:empty.dir});
+  const quiet=vm.runInContext('console',engine); const [log,warn]=[quiet.log,quiet.warn]; quiet.log=quiet.warn=()=>{};
+  const W={eval:x=>vm.runInContext(x,engine),generateBotSetups:engineFn(engine,'generateBotSetups'),
+    generateNewGame:engineFn(engine,'generateNewGame'),getNeighborsP:engineFn(engine,'getNeighborsP')};
   const CRE=new Set(W.eval('KC_UNIT_CLASS.creature')), MON=new Set(W.eval('KC_UNIT_CLASS.monster'));
   ok(CRE.size>5&&MON.size>5,'the Creature and Monster tables were read');
   const sizes=[[2,8,5],[3,8,7],[4,9,7],[6,16,10],[10,20,12]];
@@ -51,10 +50,11 @@ const N=+(process.argv[2]||4);   // worlds per size
   ok(!missing.length,`${variant}: every Druidic home has a land Creature province within two provinces, and every Evil home a Monster one (${missing.length} missing: ${missing.slice(0,3).join(' | ')})`);
   ok(!capBroken.length,`${variant}: no home's ring holds more than one wild province (${capBroken.slice(0,3).join(' | ')})`);
   ok(!pairBroken.length,`${variant}: every home still borders a province of its own race (${pairBroken.slice(0,3).join(' | ')})`);
-  if(errs.length){ fail++; console.log(`  ✗ ${variant}: page errors ${errs.length}`); errs.slice(0,3).forEach(e=>console.log('  ! '+e.split('\n').slice(0,2).join(' | '))); }
+  quiet.log=log; quiet.warn=warn;
   }
+  empty.remove();
   // The books say so: both crowns' rulebook entries and their player-portal blurbs.
-  const rules=readPage('kingdoms-call-rules.html'), pp=readPage('kingdoms-call-player-portal.html');
+  const rules=readPage('kingdoms-call-rules.html'), pp=pageStrings('kingdoms-call-player-portal.html').join('\n');
   ok((rules.match(/always at least one (Creature|Monster) province within two provinces of your home/g)||[]).length===2,'the rulebook promises both crowns their wild country within two provinces');
   ok(/Creature province within two provinces of your home/.test(pp)&&/Monster province you can lead from turn one, and there is always at least one within two provinces/.test(pp),'the player portal\'s Druidic and Evil blurbs say the same');
   console.log(`\n${pass} pass, ${fail} fail`);

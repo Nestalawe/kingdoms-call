@@ -3,15 +3,22 @@
 // experience in single combat with <the general> before the Battle for <province>." The duel itself is
 // folded inside the battle's full report, so the short account alone never said why. The line stays
 // the owner's own news.
-// Level 2 (scenario): the duel, the skill-rise draw and the end-of-phase report all live inside
-// runTurn. The rise is made certain (and every other one impossible) by a hook on the experience roll (the anchor below), and the
-// chieftain is staged far too weak to win, so the outcome does not depend on the dice.
-const {bootScenario,order,plan}=require('./lib/scenario');
+// Level 2 (scenario): the duel, the skill-rise draw and the end-of-phase report all live inside the
+// turn, played in the engine's bare vm (tests/lib/scenario-in-the-vm.ts). The rise is made certain, and every other one
+// impossible, by standing the experience roll's function in there (trySkillGain, top-level since plan P1-08c): the
+// hero's Melee rolls at an endless multiplier (a chance of 1), and nobody else rolls at all; the chieftain is staged
+// far too weak to win, so the outcome does not depend on the dice. (Until plan P1-09a the turn was played on the GM
+// portal and a code-anchor hook on the roll's line decided it.)
+const {scenarioInTheVm,order,plan}=require('./lib/scenario-in-the-vm.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const ROLL="    if(kcRng()<Math.min(1,chance*_humanLearn*_diminish*mult)){";
 (async()=>{
-  const sc=await bootScenario({inject:[[ROLL,"    if(window.__riseRule?window.__riseRule(skill,real):kcRng()<Math.min(1,chance*_humanLearn*_diminish*mult)){"]]}); const W=sc.W;
-  W.__riseRule=(sk,who)=>sk==='melee'&&!!who&&who.player===0;   // the hero's Melee rises for certain; nobody else's (a chieftain duel allows one advance)
+  const sc=scenarioInTheVm({seed:1}); const W=sc.W;
+  // the hero's Melee rises for certain; nobody else's (a chieftain duel allows one advance)
+  const tryOne=W.trySkillGain;
+  W.trySkillGain=(turnContext,char,skill,base,narr,mult)=>{
+    if(skill!=='melee'||!char||char.player!==0) return;
+    return tryOne(turnContext,char,skill,base,narr,Infinity);
+  };
   const nb=(S,p)=>W.getNeighborsP(p,S.world.cols,S.world.rows,S.world.provinces).filter(Boolean);
   const place=(S,c,p)=>{ S.world.provinces.forEach(q=>{ q.characters=(q.characters||[]).filter(id=>id!==c.id); }); p.characters=[...(p.characters||[]),c.id]; c.location=p.id; c.locationName=p.name; };
   const r=await sc.turn({cols:10,rows:6,seaPct:10,prepare(S){
@@ -39,7 +46,6 @@ const ROLL="    if(kcRng()<Math.min(1,chance*_humanLearn*_diminish*mult)){";
   const rep=((r.reports[H.player]||{}).lastTurnLog||[]).map(e=>e.text);
   ok(rep.some(t=>t===line.text),'the line reaches the owner\'s turn report');
   ok(!L.some(e=>/rises to level/.test(e.text||'')&&/undefined|NaN/.test(e.text)),'no undefined / NaN in the rise lines');
-  console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);
-  sc.errs.slice(0,3).forEach(e=>console.log('  ! '+e.split('\n').slice(0,2).join(' | ')));
-  process.exit(fail||sc.errs.length?1:0);
+  console.log(`\n${pass} pass, ${fail} fail`);
+  process.exit(fail?1:0);
 })().catch(e=>{ console.error(e); process.exit(2); });

@@ -57,12 +57,11 @@ export interface Scenario {
   turn<S = unknown, X = unknown>(opts: TurnOptions<S, X>): Promise<Turn<S, X>>;
 }
 
-/** opts.seed fixes the page's own Math.random; opts.now pins its clock; opts.inject adds lines at code anchors;
- *  opts.telemetry has the page write its statistics rows (Turn.events). */
+/** opts.seed fixes the page's own Math.random; opts.now pins its clock; opts.telemetry has the page write its
+ *  statistics rows (Turn.events). */
 export function bootScenario(opts?: {
   seed?: number;
   now?: number | string;
-  inject?: [anchor: string, replacement: string][];
   telemetry?: boolean;
 }): Promise<Scenario>;
 
