@@ -13,12 +13,14 @@
 //      answers 'infantry' for a type it has never heard of (old saves and test fixtures name such types).
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {compactPage,scriptOf}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const TYPES=['infantry','ranged','cavalry','flyer','naval'];
 
 (async()=>{
   // 1–3: the data file on its own.
-  const src=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8');
+  // the data file from src/, run as a script (tests/lib/source.ts; until plan P1-09a it was read from site/)
+  const src=scriptOf('content/kingdoms-call-data.js');
   const D=vm.runInNewContext(src+'\n;({T:(typeof KC_UNIT_TYPE==="undefined")?undefined:KC_UNIT_TYPE, S:KC_UNIT_BASE_STR, C:KC_UNIT_CLASS})',{});
   const T=D.T||{}, S=D.S||{}, C=D.C||{};
   ok(D.T&&typeof D.T==='object'&&Object.keys(T).length>0,'KC_UNIT_TYPE is declared in kingdoms-call-data.js and is not empty');
@@ -38,7 +40,8 @@ const TYPES=['infantry','ranged','cavalry','flyer','naval'];
   ok(T['Goblin Horde']==='infantry'&&!(C.missile||[]).includes('Goblin Horde'),'Goblin Horde is plain infantry (its thrown spears were retired with the army roster, 2026-10-11)');
 
   // 4: the portals.
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8'), pp=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8');
+  // the portals' code in one layout, by its syntax tree (until plan P1-09a, the built pages' text)
+  const gm=compactPage('kingdoms-call-gm-portal.html'), pp=compactPage('kingdoms-call-player-portal.html');
   const gmList=(/KC_SHARED_TABLE_NAMES=\[([^\]]*)\]/.exec(gm)||[])[1]||'', ppList=(/const need=\[([^\]]*)\]/.exec(pp)||[])[1]||'';
   ok(/'KC_UNIT_TYPE'/.test(gmList),"the GM portal's KC_SHARED_TABLE_NAMES includes 'KC_UNIT_TYPE' (the data-file guard)");
   ok(/'KC_UNIT_TYPE'/.test(ppList),"the player portal's required-table list includes 'KC_UNIT_TYPE' (the data-file guard)");

@@ -28,8 +28,10 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const k=r.S2&&r.S2.characters.find(c=>c.id===kingId);
   ok(k&&((k.tm&&k.tm.holyCasts)||0)===0,`…and it earned no Hierophant merit (holyCasts ${k&&k.tm&&k.tm.holyCasts})`);
   // the words
-  const D=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8'), R=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8');
-  const hiero=(D.match(/\{key:'hiero',[^\n]*/)||[''])[0];
+  // the title as the data file declares it, in the engine's bare vm (tests/lib/engine.ts; until plan P1-09a its line
+  // was matched in site/'s copy of the file)
+  const R=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8');
+  const hiero=JSON.stringify(require('vm').runInContext("TITLE_DEFS.find(t=>t.key==='hiero')",require('./lib/engine.ts').loadEngine({seed:1}))||'');
   ok(hiero.length>0&&!/Consecrate/.test(hiero)&&/Bless/.test(hiero)&&/Resurrect/.test(hiero),`the title's description drops Consecrate: ${hiero.slice(0,140)}`);
   ok(/<tr><td>The Hierophant<\/td><td>Highest White skill, plus Bless Province, Holy Symbol and Resurrect casts\.<\/td>/.test(R),'the rulebook\'s Titles table drops Consecrate');
   ok(!/Nothing here is weighted toward a creed's natural lane/.test(R),'the creed note no longer claims nothing leans toward a creed');

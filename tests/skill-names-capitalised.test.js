@@ -16,7 +16,10 @@ const DIRS=['NW','NE','W','E','SW','SE'];
 const ACTIONS=['defend','defend','rest','practice','recruit','move','move','research','search','explore'];
 
 // ── static ──
-{ const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8'), data=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8');
+// the GM portal's code and the data file in one layout, by their syntax tree (tests/lib/source.ts; until plan P1-09a,
+// the built files' text)
+{ const {compactOf,compactPage}=require('./lib/source.ts');
+  const gm=compactPage('kingdoms-call-gm-portal.html'), data=compactOf('content/kingdoms-call-data.js');
   const RAW=[/\(\$\{school\} \$\{/, /no \$\{school\} skill/, /\$\{school\} spell limit/, /\(\[k,v\]\)=>k\+' '\+v/, /naval drills|naval theory|tactical theory|commanding druid'/];
   RAW.forEach(re=>{ const m=gm.match(re); ok(!m,`the engine never prints a raw skill key: ${re} ${m?'found "'+gm.slice(m.index-40,m.index+40).replace(/\n/g,' ')+'"':''}`); });
   const low=data.match(/desc:'[^']*\((white|psychic|illusory|elemental|necromancy)\)/g)||[];

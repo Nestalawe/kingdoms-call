@@ -11,28 +11,15 @@
 // retired or widened here are module-level functions the booted portals answer directly.
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {pageInitializer,scriptOf}=require('./lib/source.ts');
 const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,LAND_TERRAINS,LIVE,COMING}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
 
-// A `const NAME={…};` of the GM portal as source text (as tests/roster does).
-function slice(src,name){
-  const start=src.indexOf(`const ${name}=`); if(start<0) return null;
-  let i=src.indexOf('{',start), depth=0, q=null;
-  for(;i<src.length;i++){
-    const ch=src[i];
-    if(q){ if(ch==='\\') i++; else if(ch===q) q=null; continue; }
-    if(ch==="'"||ch==='"') q=ch;
-    else if(ch==='{') depth++;
-    else if(ch==='}'&&--depth===0) return src.slice(start,i+1)+';';
-  }
-  return null;
-}
-
 (async()=>{
   // ── The shared data file ──
   const ctx=vm.createContext({});
-  vm.runInContext(fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8'),ctx);
+  vm.runInContext(scriptOf('content/kingdoms-call-data.js'),ctx);
   const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P})',ctx);
   const druidOf=u=>{ for(const [l,list] of Object.entries(D.L)) if(list.includes(u)) return +l; return 0; };
   for(const u of LIVE){
@@ -53,9 +40,10 @@ function slice(src,name){
   for(const u of Object.keys(RENAMED)) ok(!(u in D.S)&&!(u in D.T),`${u} is out of the tables (it is ${RENAMED[u]} now)`);
 
   // ── The GM portal's own tables ──
-  const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8');
-  const tm=slice(gm,'TERRAIN_MODS'); ok(!!tm,'the GM portal declares TERRAIN_MODS');
-  let TM={}; try{ TM=tm?vm.runInContext(tm+'\n;TERRAIN_MODS',ctx):{}; }catch(e){ ok(false,'TERRAIN_MODS evaluates on its own: '+e.message); }
+  // the table is the value the GM portal's code first declares it with, read by its syntax tree (tests/lib/source.ts;
+  // until plan P1-09a it was cut out of the built page's text)
+  const tm=pageInitializer('kingdoms-call-gm-portal.html','TERRAIN_MODS'); ok(!!tm,'the GM portal declares TERRAIN_MODS');
+  let TM={}; try{ TM=tm?vm.runInContext(tm,ctx):{}; }catch(e){ ok(false,'TERRAIN_MODS evaluates on its own: '+e.message); }
   for(const u of LIVE){
     const d=ROSTER[u];
     for(const t of LAND_TERRAINS){
@@ -63,8 +51,6 @@ function slice(src,name){
       ok(near(got,want),`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`);
     }
   }
-  const names=/const KC_SHARED_TABLE_NAMES=\[([^\]]*)\]/.exec(gm);
-  const pp=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8');
 
   // ── The booted GM portal ──
   const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+page,
