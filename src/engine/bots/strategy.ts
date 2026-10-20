@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
+import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { heroHireWage } from '../world/tables.ts';
@@ -64,6 +64,7 @@ export function botHomeId(G, pi) {
   });
   return best ? best.id : null;
 }
+export const BOT_GARRISON_UNIT_TYPES = new Set(KC_UNIT_CLASS.garrison);
 // Hops per turn this column can march over land (mirror of computeMovePoolMax's land branch on base
 // stats — flyers ignore March; an unarmed character walks 5). `extraTypes` lets a planner include
 // units it is about to recruit this turn.
@@ -76,8 +77,9 @@ export function botLandReach(c, extraTypes) {
   const ml = Math.min((c.skills || {}).march || 0, 5);
   let mn = 99;
   types.forEach((t) => {
-    const base = ARMY_SPEED_MASTER[t] || 3;
-    const sp = BOT_AERIAL_TYPES.has(t) ? base : base + marchSpeedBonus(ml);
+    const base = ARMY_SPEED_MASTER[t] ?? 3;
+    // EXPERIMENT: a garrison unit never moves (0): no March bonus, like a flyer
+    const sp = BOT_AERIAL_TYPES.has(t) || BOT_GARRISON_UNIT_TYPES.has(t) ? base : base + marchSpeedBonus(ml);
     if (sp < mn) mn = sp;
   });
   return Math.max(0, Math.min(5, mn));
@@ -95,7 +97,7 @@ export function botSeaReach(c) {
       5,
       Math.min(
         ...sh.map((a) => {
-          const b = ARMY_SPEED_MASTER[a.type] || 3;
+          const b = ARMY_SPEED_MASTER[a.type] ?? 3;
           return b + navalSpeedBonus(b, nl);
         }),
       ),

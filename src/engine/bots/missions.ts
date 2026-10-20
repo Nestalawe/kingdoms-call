@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { KC_CARRIER_BERTHS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
 import { unitBaseStrength } from '../battle/strength.ts';
 import { heroHireWage } from '../world/tables.ts';
@@ -1027,7 +1027,7 @@ export function botFlyerPorts(G, pi) {
 export function botAirReach(c) {
   const sp = (c.armies || [])
     .filter((a) => a && BOT_AERIAL_TYPES.has(a.type))
-    .map((a) => ARMY_SPEED_MASTER[a.type] || 3);
+    .map((a) => ARMY_SPEED_MASTER[a.type] ?? 3);
   return sp.length ? Math.max(0, Math.min(5, Math.min(...sp))) : 0;
 }
 // Nearest of `list` (owned land provinces) by path length; {X,d} or null. Unarmed walks through any land.
@@ -1449,9 +1449,15 @@ export function botPickupOrder(G, pi, c, prov) {
   cache.swept = cache.swept || new Set();
   if (cache.swept.has(prov.id)) return null;
   const val = (a) => unitBaseStrength(a) * botRaceTerrainMult(G, c, a, null, false, pi);
-  const ranked = garr.map((a, i) => ({ i, v: a ? val(a) : -1 })).sort((x, y) => y.v - x.v);
+  // EXPERIMENT (garrisons move 0): a garrison-type unit would pin the column to the spot, so it is never taken up;
+  // it stays behind, beyond the units the province is meant to keep.
+  const immobile = new Set(KC_UNIT_CLASS.garrison);
+  const ranked = garr
+    .map((a, i) => ({ i, v: a ? val(a) : -1, a }))
+    .filter((x) => !(x.a && immobile.has(x.a.type)))
+    .sort((x, y) => y.v - x.v);
   const take = ranked
-    .slice(0, garr.length - keep)
+    .slice(0, Math.max(0, garr.length - keep))
     .map((x) => x.i)
     .sort((a, b) => a - b);
   if (!take.length) return null;

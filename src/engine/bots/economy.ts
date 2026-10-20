@@ -91,7 +91,7 @@ export function botRecruitableTypes(prov, G, cmdr) {
   // one hop a turn, which costs far more conquest than its strength buys. Skip them when anything
   // else exists.
   if (cmdr && cmdr._botRole === 'defender') return all; // a posted defender never marches: Mountain Guns are welcome
-  const mobile = all.filter((t) => (ARMY_SPEED_MASTER[t] || 3) >= 2);
+  const mobile = all.filter((t) => (ARMY_SPEED_MASTER[t] ?? 3) >= 2);
   return mobile.length ? mobile : all;
 }
 export function botUpkeep(G, pi) {

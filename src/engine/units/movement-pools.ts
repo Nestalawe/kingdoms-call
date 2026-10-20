@@ -1,6 +1,13 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ARMY_SPEED_R } from '../battle/ladder.ts';
-import { AERIAL_TYPES, SEA_TYPES, getFlyCapability, marchSpeedBonus, navalSpeedBonus } from './movement.ts';
+import {
+  AERIAL_TYPES,
+  GARRISON_UNIT_TYPES,
+  SEA_TYPES,
+  getFlyCapability,
+  marchSpeedBonus,
+  navalSpeedBonus,
+} from './movement.ts';
 import { discEff, discUnitMatch } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -76,7 +83,8 @@ export function computeMovePoolMax(turnContext, c) {
     const landArmies = armies.filter((a) => !SEA_TYPES.has(a.type));
     if (landArmies.length > 0) {
       const landSpeeds = landArmies.map((a) => {
-        const base = ARMY_SPEED_R[a.type] || 3;
+        const base = ARMY_SPEED_R[a.type] ?? 3;
+        if (GARRISON_UNIT_TYPES.has(a.type)) return base; // EXPERIMENT: a garrison unit never moves (0): no March, no road
         if (AERIAL_TYPES.has(a.type)) return base; // no flyer (rider or winged beast) is sped by March (item 14)
         // sd13 Road Network (+1 for speed 1-2 land armies) and Item 5 `move` discoveries (race /
         // cls filtered), same speed band.
@@ -95,7 +103,7 @@ export function computeMovePoolMax(turnContext, c) {
     const seaArmies = armies.filter((a) => SEA_TYPES.has(a.type));
     if (seaArmies.length > 0) {
       const seaSpeeds = seaArmies.map((a) => {
-        const base = ARMY_SPEED_R[a.type] || 3;
+        const base = ARMY_SPEED_R[a.type] ?? 3;
         return base + navalSpeedBonus(base, navalLevel);
       });
       sea = Math.min(...seaSpeeds);
@@ -113,7 +121,7 @@ export function computeMovePoolMax(turnContext, c) {
     // self-flying units (humanoid flyers + primal winged beasts) set the pace; carried infantry
     // ride along at that speed. March does not speed flight (flyers already ignore March above).
     if (getFlyCapability(armies) && !armies.every((a) => AERIAL_TYPES.has(a.type))) {
-      const flyerSpeeds = armies.filter((a) => AERIAL_TYPES.has(a.type)).map((a) => ARMY_SPEED_R[a.type] || 3);
+      const flyerSpeeds = armies.filter((a) => AERIAL_TYPES.has(a.type)).map((a) => ARMY_SPEED_R[a.type] ?? 3);
       if (flyerSpeeds.length) {
         land = Math.min(...flyerSpeeds);
         sea = land;

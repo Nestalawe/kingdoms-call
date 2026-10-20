@@ -21,12 +21,21 @@ export function marchSpeedBonus(marchLevel) {
 export const GARRISON_SEA_TYPES_R = new Set(KC_UNIT_CLASS.sea);
 export const GARRISON_AIR_TYPES_R = new Set(KC_UNIT_CLASS.aerial);
 export const GARRISON_FLY_TYPES_R = new Set(KC_UNIT_CLASS.flying);
+// EXPERIMENT (garrisons move 0): the four racial garrison types never move: no March bonus, no road.
+export const GARRISON_UNIT_TYPES = new Set(KC_UNIT_CLASS.garrison);
 export function garrisonMoveRate(a, pl) {
   if (!a) return {};
-  const base = ARMY_SPEED_MASTER[a.type] || 3;
+  const base = ARMY_SPEED_MASTER[a.type] ?? 3;
   const sea = GARRISON_SEA_TYPES_R.has(a.type);
   let road = 0;
-  if (!sea && !GARRISON_FLY_TYPES_R.has(a.type) && base <= 2 && pl && typeof discEffectsOf === 'function')
+  if (
+    !sea &&
+    !GARRISON_FLY_TYPES_R.has(a.type) &&
+    !GARRISON_UNIT_TYPES.has(a.type) &&
+    base <= 2 &&
+    pl &&
+    typeof discEffectsOf === 'function'
+  )
     discEffectsOf(pl, 'move').forEach((e) => {
       if (discUnitMatch(e, a)) road += e.extra || 0;
     });
