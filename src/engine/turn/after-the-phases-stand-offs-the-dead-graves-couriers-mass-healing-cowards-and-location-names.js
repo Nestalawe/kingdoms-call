@@ -208,7 +208,7 @@ function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocati
   // discoveries) at the close of the turn and any change is announced in their Chronicle. Combat
   // wins announce their own gain at the moment of victory (rollHpGain); this catches item/discovery
   // moves.
-  _MAXHP_PLAYERS=G.players;
+  maxHpPlayers.players=G.players;
   (G._maxHpMigration||[]).forEach(r=>{ // one-time note for saves migrated to the earned-HP pool
     const ch=(G.characters||[]).find(c=>c&&c.id===r.charId); if(!ch) return;
     log('system',`📜 A new reckoning of vigour: ${ch.name}'s maximum HP is now earned in battle rather than set by skill — ${r.old} becomes ${r.nu}. Victories over lair guardians and enemy commanders will raise it from here.`,{actor:r.player,targets:[r.player],charId:ch.id,public:true});

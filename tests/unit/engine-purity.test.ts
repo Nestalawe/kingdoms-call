@@ -8,7 +8,7 @@
 //   so the bots' two test hooks behind `typeof window`, __botDiag and __botHyg, stay off.)
 // - The engine says nothing on console.warn or console.error, where a failure a try caught would show.
 // - A turn changes no global but the dice (kcRng's slot) and the five caches the turn seeds afresh at its start
-//   (seedUsedHeroNames, seedUsedArmyNames, _MAXHP_PLAYERS): every table is read-only, and no new global appears.
+//   (seedUsedHeroNames, seedUsedArmyNames, maxHpPlayers): every table is read-only, and no new global appears.
 // - Each fault planted in the copy turns it red: Date.now(), Math.random(), document and sb, in the resolution and in
 //   the reports; and a write to a table and a new global, which the check of the globals sees.
 // Level 1 (unit): the engine alone, with no page. It plays a whole game, world generation included, so that as much of
@@ -27,7 +27,7 @@ import { GAME, newWorld, slotRows } from '../lib/matrix-game.ts';
 import { plantBefore } from '../lib/source.ts';
 
 /** The caches a turn seeds afresh at its start, so they carry nothing from one turn to the next. */
-const RESEEDED = ['_usedHeroNames', '_usedHeroFirsts', '_usedHeroEpithets', '_usedArmyUnitNames', '_MAXHP_PLAYERS'];
+const RESEEDED = ['_usedHeroNames', '_usedHeroFirsts', '_usedHeroEpithets', '_usedArmyUnitNames', 'maxHpPlayers'];
 
 // Run in the vm once it has loaded: the clock and Math.random become stand-ins that note the reach and throw,
 // document and sb tripwires that do the same, and the console quiet but for warnings and errors, which are noted.

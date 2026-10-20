@@ -56,9 +56,12 @@ function dedupeItemsByName(items){
 // A winner adds +1 (awardHpRoll). Skills no longer drive HP.
 const HPGAIN_START=15, HPGAIN_START_ORC=18, HPGAIN_ORC_SHIFT=5, HPGAIN_MIGRATE_CLAMP=60;
 const HPGAIN_S1=40, HPGAIN_S2=50;
-let _MAXHP_PLAYERS=null; // set by runTurn / generateNewGame so module-level callers can see the realm races
+// The realms the max-HP helpers fall back on when they are given none: a field of one state object, not a top-level
+// `let` (plan P1-09b), so that once the engine is modules (P1-09d) the files that set it change a field, never another
+// file's binding. P1-10 passes the realms in and removes it.
+const maxHpPlayers={players:null}; // set by runTurn / generateNewGame so module-level callers can see the realm races
 function maxHpIsOrc(ch, players){
-  const pl=players||_MAXHP_PLAYERS||[];
+  const pl=players||maxHpPlayers.players||[];
   return !!(ch&&ch.race==='Orcish'&&ch.player!=null&&pl[ch.player]&&pl[ch.player].race==='Orcish');
 }
 function hpStartOf(ch, players){ return maxHpIsOrc(ch,players)?HPGAIN_START_ORC:HPGAIN_START; }
@@ -73,7 +76,7 @@ function itemMaxHpBonus(ch){
 function computeMaxHp(ch, players){
   if(!ch) return HPGAIN_START;
   // realm-wide `maxHp` discoveries (ro08 Thick Hides) add a flat amount on top.
-  const _plHp=(ch.player!=null)?((players||_MAXHP_PLAYERS||[])[ch.player]):null;
+  const _plHp=(ch.player!=null)?((players||maxHpPlayers.players||[])[ch.player]):null;
   const _discHp=_plHp?discMaxHpFor(_plHp,ch):0;
   return hpEarnedBase(ch,players)+itemMaxHpBonus(ch)+_discHp;
 }
@@ -140,13 +143,13 @@ function retireDiscoveries(gs){
 // hired mid-turn is always initialised; the one-time chronicle note fires only on the first pass.
 function migrateMaxHpV2(gs){
   if(!gs) return;
-  _MAXHP_PLAYERS=gs.players||[];
+  maxHpPlayers.players=gs.players||[];
   const first=!gs._maxHpV3;
   (gs.characters||[]).forEach(ch=>{
     if(!ch||!ch.alive) return;
     if(ch.hpEarned==null){
       const old=ch.maxHp||HPGAIN_START;
-      const _pl=(ch.player!=null)?(_MAXHP_PLAYERS[ch.player]):null;
+      const _pl=(ch.player!=null)?(maxHpPlayers.players[ch.player]):null;
       const bonuses=itemMaxHpBonus(ch)+(_pl?discMaxHpFor(_pl,ch):0);
       const base=Math.min(HPGAIN_MIGRATE_CLAMP, old-bonuses);
       ch.hpEarned=Math.max(0, Math.round(base-hpStartOf(ch,gs.players)));
