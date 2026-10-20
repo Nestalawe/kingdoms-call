@@ -98,7 +98,14 @@ import {
   toggleArchivedView,
 } from '../../db/game-meta.js';
 import { exportStats, forgetDeletedGames, openStats, renderStats } from './stats-tab.js';
-import { _LB_SEA, backfillGameRecords, renderLeaderboardBanner } from './hall-of-fame.js';
+import {
+  _LB_SEA,
+  backfillGameRecords,
+  buildGameRecords,
+  probeLeaderboard,
+  renderLeaderboardBanner,
+  writeGameRecord,
+} from './hall-of-fame.js';
 import {
   removePlayer,
   saveBlockEliminated,
@@ -106,7 +113,7 @@ import {
   saveTurnMode,
   updateTurnModeFields,
 } from './turn-mode.js';
-import { autoTurnTick } from './auto-turn.js';
+import { autoTurnTick, refreshIfNewerBuild } from './auto-turn.js';
 import { BOT_SKILL_BUILD, generateBotSetups } from '../../engine/bots/setup.js';
 import { botBattleForce } from '../../engine/bots/intel.js';
 import { botRaiseTargets } from '../../engine/bots/movement.js';
@@ -117,15 +124,14 @@ import { buildTurnReport } from '../../views/turn-report.js';
 import { runTurn } from './turn-shell.js';
 
 // ── The GM portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
-// Once the page's scripts are ES modules (P1-09d), a top-level name belongs to its own file: an inline on…="…" handler,
-// a test's W.eval or a browser spec's page.evaluate can't reach it. This file, last on the page, puts on window the
-// names they need, in two lists: first the names the page's inline handlers call (in its template and in its kcHtml
-// strings), then the names its tests reach. Each name says the file that declares it. tests/static/page-globals.test.ts
-// keeps both lists exact: a name a handler or a test needs that is missing fails it, and so does a name nothing needs.
-// Only functions and constants go on a list, because a list copies each value once and a variable that changes later
-// would go stale here. Those are declared globals instead (14 on this page): `globalThis.<name> = <value>;` where they
-// are declared, read and written by their bare names. Until P1-09d the page's scripts share one global scope, where
-// every name is already reached by its bare name, so the lists change nothing the page does.
+// The page's scripts are ES modules (P1-09d), so a top-level name belongs to its own file: an inline on…="…" handler, a
+// test's W.eval or a browser spec's page.evaluate can't reach it. This file, the last one its entry (page.js) imports,
+// puts on window the names they need, in two lists: first the names the page's inline handlers call (in its template
+// and in its kcHtml strings), then the names its tests reach. Each name says the file that declares it.
+// tests/static/page-globals.test.ts keeps both lists exact: a name a handler or a test needs that is missing fails it,
+// and so does a name nothing needs. Only functions and constants go on a list, because a list copies each value once
+// and a variable that changes later would go stale here. Those are declared globals instead (14 on this page):
+// `globalThis.<name> = <value>;` where they are declared, read and written by their bare names.
 // The names its inline handlers call.
 Object.assign(window, {
   backfillGameRecords, // ui/gm/hall-of-fame.js
@@ -201,6 +207,7 @@ Object.assign(window, {
   botBattleForce, // engine/bots/intel.js
   botRaiseTargets, // engine/bots/movement.js
   buildGameMeta, // db/game-meta.js
+  buildGameRecords, // ui/gm/hall-of-fame.js
   buildTurnReport, // views/turn-report.js
   castChanceFor, // engine/chances-and-lair-grades.js
   disbandLine, // engine/army-tables.js
@@ -237,9 +244,11 @@ Object.assign(window, {
   PRIMAL_ARMY_DEFS_P, // content/kingdoms-call-data.js
   primalStrikeChance, // engine/chances-and-lair-grades.js
   probeGameMeta, // db/game-meta.js
+  probeLeaderboard, // ui/gm/hall-of-fame.js
   probeMessaging, // db/game-meta.js
   probeTelemetry, // db/game-meta.js
   PROVINCE_ARMIES_P, // content/kingdoms-call-data.js
+  refreshIfNewerBuild, // ui/gm/auto-turn.js
   renderLeaderboardBanner, // ui/gm/hall-of-fame.js
   renderMessagingBanner, // db/game-meta.js
   renderTelemetryBanner, // db/game-meta.js
@@ -251,4 +260,5 @@ Object.assign(window, {
   unitAbilityMult, // engine/battle/strength.js
   unitRef, // engine/army-tables.js
   unitTypeOf, // engine/world/tables.js
+  writeGameRecord, // ui/gm/hall-of-fame.js
 });

@@ -16,9 +16,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, test } from 'vitest';
-import { PAGES } from '../../src/manifest.ts';
 import { ROOT } from '../../tools/build.ts';
+import { importsOf } from '../../tools/pages.ts';
 import {
+  entryOf,
   globalsFileOf,
   globalsLists,
   handlerNames,
@@ -50,7 +51,7 @@ function problemsOf(
   page: ScriptPage,
   reach: PageReach,
   src?: string,
-  main: readonly string[] = PAGES[page]?.blocks['main'] ?? [],
+  main: readonly string[] = importsOf(entryOf(page), src),
 ): string[] {
   const problems: string[] = [];
   const declarations = pageDeclarations(page, src);
@@ -58,7 +59,8 @@ function problemsOf(
   const handlers = handlerNames(page, src);
   const kindOf = (name: string) => declarations.get(name)?.kind;
   const isVariable = (name: string) => kindOf(name) === 'let' || kindOf(name) === 'var';
-  if (main[main.length - 1] !== globalsFileOf(page)) problems.push(`${globalsFileOf(page)} isn't last on the page`);
+  if (main[main.length - 1] !== globalsFileOf(page))
+    problems.push(`${globalsFileOf(page)} isn't the last file ${entryOf(page)} imports`);
   const listed = [...lists.handlers, ...lists.tests];
   for (const { name, file } of listed) {
     const d = declarations.get(name);
@@ -192,10 +194,12 @@ describe('a fault planted in a copy of src/ is seen', () => {
     expect(problems).toContain('listed, but a let (its copy would go stale): _deskRightView');
   });
 
-  test('globals.js not last on the page', () => {
-    const main = PAGES[GM]?.blocks['main'] ?? [];
+  test('globals.js not the last file the entry imports', () => {
+    const main = importsOf(entryOf(GM));
     const moved = [...main.slice(0, -2), globalsFileOf(GM), ...main.slice(-2, -1)];
-    expect(problemsOf(GM, reach.pages[GM], undefined, moved)).toEqual(["ui/gm/globals.js isn't last on the page"]);
+    expect(problemsOf(GM, reach.pages[GM], undefined, moved)).toEqual([
+      "ui/gm/globals.js isn't the last file ui/gm/page.js imports",
+    ]);
   });
 });
 

@@ -37,9 +37,9 @@ test('the GM portal boots, links to the GM leaderboard and has its leaderboard f
       'no ?gm=1 Leaderboard link',
     )
     .toBe(true);
-  // The script's own expressions, run in the page as written: they also see top-level const and let.
-  const fns = await page.evaluate(`['buildGameRecords','writeGameRecord','backfillGameRecords','probeLeaderboard',
-    'renderLeaderboardBanner'].map(n=>{ try{ return typeof eval(n); }catch(e){ return 'missing'; } })`);
+  // Each name as code, so tests/static/page-globals.test.ts reads it: the page must put it on window (P1-09d).
+  const fns = await page.evaluate(`[typeof buildGameRecords, typeof writeGameRecord, typeof backfillGameRecords,
+    typeof probeLeaderboard, typeof renderLeaderboardBanner]`);
   expect.soft(fns, 'leaderboard functions not defined').toEqual(Array<string>(5).fill('function'));
   const tbl = await page.evaluate(`({sql:typeof KC_LB_SQL, sea:(typeof _LB_SEA!=='undefined')&&_LB_SEA.size>0,
     banner:!!document.getElementById('msg-leaderboard')})`);

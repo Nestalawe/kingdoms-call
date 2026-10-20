@@ -1,10 +1,11 @@
 // What each page must keep on `window` once its scripts are ES modules (plan P1-09, Decision 7), read from the code by
 // its syntax tree. A module's top-level names are its own: nothing outside it (an inline on…="…" handler, a test's
 // W.eval, a browser spec's page.evaluate) can reach one unless the page puts it on `window`. Each script page does
-// that in one reviewed file, src/ui/<page>/globals.js, last in its main list: two Object.assign(window, { … }) lists,
-// the names its inline handlers call and the names its tests reach. A variable that changes after the page has loaded
-// can't go on a list (the list copies its value once, and the copy goes stale): it is a declared global instead,
-// `globalThis.<name> = <value>;` where it was declared, read and written by its bare name as before.
+// that in one reviewed file, src/ui/<page>/globals.js, the last file its entry (page.js) imports: two
+// Object.assign(window, { … }) lists, the names its inline handlers call and the names its tests reach. A variable that
+// changes after the page has loaded can't go on a list (the list copies its value once, and the copy goes stale): it is
+// a declared global instead, `globalThis.<name> = <value>;` where it was declared, read and written by its bare name as
+// before.
 // tests/static/page-globals.test.ts checks the lists against what this module finds:
 //
 //   pageDeclarations(page)       every top-level name of the files that become the page's modules, with its file and kind
@@ -27,7 +28,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { filesUnder, ROOT } from '../../tools/build.ts';
-import { COPIES, PAGES } from '../../src/manifest.ts';
+import { pageModules } from '../../tools/pages.ts';
 
 const SRC = path.join(ROOT, 'src');
 
@@ -45,11 +46,6 @@ export const SCRIPT_PAGE_NAMES = Object.keys(SCRIPT_PAGES) as ScriptPage[];
 /** The page's globals file, relative to src/. */
 export const globalsFileOf = (page: ScriptPage): string => `${SCRIPT_PAGES[page]}/globals.js`;
 
-/** Scripts a page loads that stay classic scripts after the switch (P1-09d puts them in public/), so their names stay
- *  on `window` by themselves; and the boot-failure reporter, which stays inline. */
-const STAYS_CLASSIC =
-  /^(db\/kc-config\.js|ui\/shared\/kc-staging-footer\.js|vendor\/.*|ui\/[\w-]+\/boot-reporter\.js)$/;
-
 export interface Declaration {
   /** The file that declares it, relative to src/. */
   file: string;
@@ -58,8 +54,18 @@ export interface Declaration {
 }
 
 /** What a template's `${…}` is read as: a name no page declares, which parses wherever a value or a name can stand
- *  (`f(${x})`, `${x}.concat(…)`, `{${k}:1}`). */
+ *  (`f(${x})`, `${x}.concat(…)`, `{${k}:1}`); where a statement can start (after `;`, `{` or `}`, or first), a
+ *  statement of its own (`…;${moreCode}next();`), so the code after it is read as written. */
 const INTERPOLATION = '__interpolated';
+/** Pieces of code with an unknown value (null: a `${…}`, or a piece of a `+` chain that isn't a string) between them,
+ *  joined as INTERPOLATION says. */
+function joinPieces(pieces: readonly (string | null)[]): string {
+  let out = '';
+  for (const piece of pieces) out += piece ?? (/(^|[;{}])\s*$/.test(out) ? `${INTERPOLATION};` : INTERPOLATION);
+  return out;
+}
+const templateText = (n: ts.TemplateExpression): string =>
+  joinPieces([n.head.text, ...n.templateSpans.flatMap((s) => [null, s.literal.text])]);
 
 const parsed = new Map<string, ts.SourceFile>();
 function treeOf(file: string, text: string, kind: ts.ScriptKind): ts.SourceFile {
@@ -83,41 +89,42 @@ const kindOf = (file: string) => (/\.[cm]?ts$/.test(file) ? ts.ScriptKind.TS : t
 const sourceTree = (file: string, src = SRC) =>
   treeOf(file, fs.readFileSync(path.join(src, file), 'utf8'), kindOf(file));
 
-/** The script files under src/ that become the page's modules, in the page's order: those its template loads by a
- *  <script src> tag from the site's own files (the data file, kc-safe.js, kc-db-guard.js), then its main list. */
+/** The page's modules (tools/pages.ts): the files under src/ its entry imports, directly or not, in the order they run. */
 export function pageModuleFiles(page: ScriptPage, src = SRC): string[] {
-  const p = PAGES[page];
-  if (!p) throw new Error(`${page}: not in src/manifest.ts`);
-  const template = fs.readFileSync(path.join(src, p.template), 'utf8');
-  const tagged = [...template.matchAll(/<script\s+src="([^"]+)"/g)]
-    .map((m) => COPIES[m[1] ?? ''])
-    .filter((f): f is string => typeof f === 'string');
-  return [...tagged, ...(p.blocks['main'] ?? [])].filter((f) => !STAYS_CLASSIC.test(f));
+  return pageModules(page, src);
 }
 
-/** The script files under src/ the page keeps as classic scripts: its boot-failure reporter, and those its template
- *  loads by a <script src> tag that stay as they are (kc-config.js, kc-staging-footer.js; not supabase-js, which isn't
- *  the site's code). */
-export function pageClassicFiles(page: ScriptPage, src = SRC): string[] {
-  const p = PAGES[page];
-  if (!p) throw new Error(`${page}: not in src/manifest.ts`);
-  const template = fs.readFileSync(path.join(src, p.template), 'utf8');
-  const tagged = [...template.matchAll(/<script\s+src="([^"]+)"/g)]
-    .map((m) => COPIES[m[1] ?? ''])
-    .filter((f): f is string => typeof f === 'string');
-  return [...(p.blocks['boot-reporter'] ?? []), ...tagged].filter(
-    (f) => STAYS_CLASSIC.test(f) && !f.startsWith('vendor/'),
-  );
+/** The page's entry: src/ui/<page>/page.js, which imports its files in the order they ran as classic scripts. */
+export const entryOf = (page: ScriptPage): string => `${SCRIPT_PAGES[page]}/page.js`;
+
+/** The classic scripts the page keeps, as their code, each with where it is: the inline ones in its template (the
+ *  boot-failure reporter), and those its template loads by a <script src> tag from public/, which is copied as it is
+ *  (kc-config.js, kc-staging-footer.js; not supabase-js, which isn't the site's code). */
+export function pageClassicScripts(page: ScriptPage, src = SRC): { where: string; code: string }[] {
+  const template = fs.readFileSync(path.join(src, page), 'utf8');
+  const out: { where: string; code: string }[] = [];
+  for (const m of template.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
+    const attributes = m[1] ?? '';
+    if (/\btype="module"/.test(attributes)) continue;
+    const named = /\bsrc="([^"]+)"/.exec(attributes)?.[1];
+    if (named === undefined) out.push({ where: `${page} (inline)`, code: m[2] ?? '' });
+    else if (!named.startsWith('vendor/')) {
+      const file = path.join(src, '..', 'public', named);
+      const kept = fs.existsSync(file) ? file : path.join(ROOT, 'public', named);
+      out.push({ where: `public/${named}`, code: fs.readFileSync(kept, 'utf8') });
+    }
+  }
+  return out;
 }
 
-/** The page's module names its classic scripts read: name → the files that do. */
+/** The page's module names its classic scripts read: name → the scripts that do. */
 export function namesClassicScriptsRead(page: ScriptPage, src = SRC): Map<string, string[]> {
   const names = pageDeclarations(page, src);
   const out = new Map<string, string[]>();
-  for (const file of pageClassicFiles(page, src)) {
-    const reach = reachOf(fs.readFileSync(path.join(src, file), 'utf8'), ts.ScriptKind.JS);
-    if (!reach) throw new Error(`${file}: does not parse`);
-    for (const name of reach.reads) if (names.has(name)) out.set(name, [...(out.get(name) ?? []), file]);
+  for (const { where, code } of pageClassicScripts(page, src)) {
+    const reach = reachOf(code, ts.ScriptKind.JS);
+    if (!reach) throw new Error(`${where}: does not parse`);
+    for (const name of reach.reads) if (names.has(name)) out.set(name, [...(out.get(name) ?? []), where]);
   }
   return out;
 }
@@ -284,8 +291,7 @@ function stringsIn(tree: ts.SourceFile): string[] {
   const out: string[] = [];
   const visit = (n: ts.Node): void => {
     if (ts.isStringLiteralLike(n)) out.push(n.text);
-    else if (ts.isTemplateExpression(n))
-      out.push(n.head.text + n.templateSpans.map((s) => INTERPOLATION + s.literal.text).join(''));
+    else if (ts.isTemplateExpression(n)) out.push(templateText(n));
     ts.forEachChild(n, visit);
   };
   visit(tree);
@@ -302,9 +308,8 @@ const wordsOf = (code: string): string[] =>
  *  none does today. */
 export function handlerNames(page: ScriptPage, src = SRC): Map<string, string[]> {
   const names = pageDeclarations(page, src);
-  const p = PAGES[page];
   const out = new Map<string, string[]>();
-  for (const file of [p?.template ?? '', ...(p?.blocks['main'] ?? [])]) {
+  for (const file of [page, ...pageModuleFiles(page, src)]) {
     const texts = /\.html$/.test(file)
       ? [fs.readFileSync(path.join(src, file), 'utf8')]
       : stringsIn(sourceTree(file, src));
@@ -393,6 +398,12 @@ function tourPageOf(node: ts.Node): ScriptPage | null {
   return null;
 }
 
+/** A `+` expression. */
+const isPlus = (n: ts.Node): n is ts.BinaryExpression =>
+  ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.PlusToken;
+/** The pieces of a `+` chain, in order (`a + b + c` is `(a + b) + c`). */
+const plusPieces = (n: ts.Expression): ts.Expression[] => (isPlus(n) ? [...plusPieces(n.left), n.right] : [n]);
+
 /** Each name a file's code reaches on a page, with how ("eval", "W.", "tour of <page>", …). */
 export interface FileReach {
   reads: Map<string, Set<string>>;
@@ -444,15 +455,11 @@ export function reachOfTestFile(file: string, text: string): FileReach {
   const codeOf = (a: ts.Expression | undefined, depth = 0): [string, ts.ScriptKind] | null => {
     if (!a || depth > 4) return null;
     if (ts.isStringLiteralLike(a)) return [a.text, ts.ScriptKind.JS];
-    if (ts.isTemplateExpression(a))
-      return [a.head.text + a.templateSpans.map((s) => INTERPOLATION + s.literal.text).join(''), ts.ScriptKind.JS];
+    if (ts.isTemplateExpression(a)) return [templateText(a), ts.ScriptKind.JS];
     if (ts.isArrowFunction(a) || ts.isFunctionExpression(a)) return [`(${a.getText(tree)})`, kindOf(file)];
     if (ts.isParenthesizedExpression(a)) return codeOf(a.expression, depth + 1);
     if (ts.isIdentifier(a)) return codeOf(constants.get(a.text), depth + 1);
-    if (ts.isBinaryExpression(a) && a.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-      const [left, right] = [codeOf(a.left, depth + 1), codeOf(a.right, depth + 1)];
-      return [(left?.[0] ?? INTERPOLATION) + (right?.[0] ?? INTERPOLATION), ts.ScriptKind.JS];
-    }
+    if (isPlus(a)) return [joinPieces(plusPieces(a).map((p) => codeOf(p, depth + 1)?.[0] ?? null)), ts.ScriptKind.JS];
     return null;
   };
   /** The name an evaluating call's enclosing one-parameter function is bound to, if it hands that parameter on. */
@@ -504,7 +511,10 @@ export function reachOfTestFile(file: string, text: string): FileReach {
         if (code) addReach(reachOf(...code), 'eval');
       }
     }
-    if (everyString && (ts.isStringLiteralLike(n) || ts.isTemplateExpression(n))) {
+    // In the tours, every string, and every whole `+` chain of them (a step's code is often joined from pieces that
+    // don't parse on their own).
+    const wholeChain = isPlus(n) && !(isPlus(n.parent) && n.parent.left === n);
+    if (everyString && (ts.isStringLiteralLike(n) || ts.isTemplateExpression(n) || wholeChain)) {
       const code = codeOf(n);
       if (code && doesSomething(code[0])) addReach(reachOf(...code), `${TOUR}${tourPageOf(n) ?? ''}`);
     }
@@ -575,33 +585,37 @@ export interface ListedName {
 }
 
 /** The page's globals.js: its two Object.assign(window, { … }) lists, in order, handlers first. Throws if the file isn't
- *  two such statements (and comments) and nothing else. */
+ *  two such statements (and the imports of the names they list, and comments) and nothing else. */
 export function globalsLists(page: ScriptPage, src = SRC): { handlers: ListedName[]; tests: ListedName[] } {
   const file = globalsFileOf(page);
   const text = fs.readFileSync(path.join(src, file), 'utf8');
   const tree = treeOf(file, text, ts.ScriptKind.JS);
   if (parseErrors(tree)) throw new Error(`${file}: does not parse`);
-  const lists = tree.statements.map((s) => {
-    const call = ts.isExpressionStatement(s) && ts.isCallExpression(s.expression) ? s.expression : null;
-    const [target, names] = call?.arguments ?? [];
-    if (
-      !call ||
-      call.getText(tree).slice(0, 'Object.assign('.length) !== 'Object.assign(' ||
-      call.arguments.length !== 2 ||
-      !target ||
-      !ts.isIdentifier(target) ||
-      target.text !== 'window' ||
-      !names ||
-      !ts.isObjectLiteralExpression(names)
-    )
-      throw new Error(`${file}: a statement that isn't Object.assign(window, { … }): ${s.getText(tree).slice(0, 60)}`);
-    return names.properties.map((prop): ListedName => {
-      if (!ts.isShorthandPropertyAssignment(prop))
-        throw new Error(`${file}: ${prop.getText(tree)}: each entry is a bare name`);
-      const after = text.slice(prop.end).match(/^,?[ \t]*\/\/[ \t]*(\S+)/);
-      return { name: prop.name.text, file: after?.[1] ?? '' };
+  const lists = tree.statements
+    .filter((s) => !ts.isImportDeclaration(s))
+    .map((s) => {
+      const call = ts.isExpressionStatement(s) && ts.isCallExpression(s.expression) ? s.expression : null;
+      const [target, names] = call?.arguments ?? [];
+      if (
+        !call ||
+        call.getText(tree).slice(0, 'Object.assign('.length) !== 'Object.assign(' ||
+        call.arguments.length !== 2 ||
+        !target ||
+        !ts.isIdentifier(target) ||
+        target.text !== 'window' ||
+        !names ||
+        !ts.isObjectLiteralExpression(names)
+      )
+        throw new Error(
+          `${file}: a statement that isn't Object.assign(window, { … }): ${s.getText(tree).slice(0, 60)}`,
+        );
+      return names.properties.map((prop): ListedName => {
+        if (!ts.isShorthandPropertyAssignment(prop))
+          throw new Error(`${file}: ${prop.getText(tree)}: each entry is a bare name`);
+        const after = text.slice(prop.end).match(/^,?[ \t]*\/\/[ \t]*(\S+)/);
+        return { name: prop.name.text, file: after?.[1] ?? '' };
+      });
     });
-  });
   if (lists.length !== 2) throw new Error(`${file}: ${String(lists.length)} lists, not two`);
   return { handlers: lists[0] ?? [], tests: lists[1] ?? [] };
 }
