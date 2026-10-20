@@ -1,7 +1,29 @@
 import { unitBaseStrength } from '../battle/strength.js';
-import { BOT_DEF_BONUS, BOT_HEX_DIRS, botBattleForce, botConceded, botEffForce, botForceStrength, botMarginFor, botNeighbourProv, botRelationRaw, botSees, botTargetDefence, botTuning, botVisibleCharsIn } from './intel.js';
+import {
+  BOT_DEF_BONUS,
+  BOT_HEX_DIRS,
+  botBattleForce,
+  botConceded,
+  botEffForce,
+  botForceStrength,
+  botMarginFor,
+  botNeighbourProv,
+  botRelationRaw,
+  botSees,
+  botTargetDefence,
+  botTuning,
+  botVisibleCharsIn,
+} from './intel.js';
 import { BOT_SEA_ALL, botEnemyChars, botIsValuable } from './war.js';
-import { botFieldRecruitTokens, botHexDist, botHomeId, botLedger, botRecruitOrder, botRoles, botTurnCache } from './strategy.js';
+import {
+  botFieldRecruitTokens,
+  botHexDist,
+  botHomeId,
+  botLedger,
+  botRecruitOrder,
+  botRoles,
+  botTurnCache,
+} from './strategy.js';
 import { botMoveOrder, botNearbyThreat } from './specialists.js';
 import { botIsTeach } from './missions.js';
 import { botAtWar } from './economy.js';

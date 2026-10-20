@@ -1,5 +1,11 @@
 import { kcHtml } from '../shared/kc-safe.js';
-import { KC_ALIGNMENTS, KC_DRUID_LEVELS, KC_HUMANOID_RACES, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.js';
+import {
+  KC_ALIGNMENTS,
+  KC_DRUID_LEVELS,
+  KC_HUMANOID_RACES,
+  KC_UNIT_CLASS,
+  PRIMAL_ARMY_DEFS_P,
+} from '../../content/kingdoms-call-data.js';
 import { kcJoinP } from './startup.js';
 import { ITEM_UNCAPPED_SKILLS_P } from './order-chances.js';
 import { SKILL_LABELS } from './move-analysis.js';

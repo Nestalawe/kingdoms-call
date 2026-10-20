@@ -4,10 +4,25 @@ import { UNIT_BASE_STR } from '../battle/strength.js';
 import { TAMED_FLYER_TYPES_D, druIdPenaltyMult, heroHireWage } from '../world/tables.js';
 import { effSkillOf } from '../heroes/skills-and-hp.js';
 import { UNIT_DRILL_BASE } from '../units/drill-and-spoils.js';
-import { BOT_HEX_DIRS, botBelievedOwner, botHasDisc, botNeighbourProv, botRaceTerrainMult, botRelationRaw, botSeesChar } from './intel.js';
+import {
+  BOT_HEX_DIRS,
+  botBelievedOwner,
+  botHasDisc,
+  botNeighbourProv,
+  botRaceTerrainMult,
+  botRelationRaw,
+  botSeesChar,
+} from './intel.js';
 import { BOT_CARRIER_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL } from './war.js';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.js';
-import { botFieldRecruitTokens, botGarrisonOrder, botHireOrder, botLedger, botRecruitOrder, botRoles } from './strategy.js';
+import {
+  botFieldRecruitTokens,
+  botGarrisonOrder,
+  botHireOrder,
+  botLedger,
+  botRecruitOrder,
+  botRoles,
+} from './strategy.js';
 import { BOT_SCHOOLS } from './schools.js';
 import { BOT_SPECIALIST_ROLES, botNearbyThreat, botPathLen, botPracticeFallback } from './specialists.js';
 import { botIsTeach, botOrderLocs, botPickupOrder } from './missions.js';

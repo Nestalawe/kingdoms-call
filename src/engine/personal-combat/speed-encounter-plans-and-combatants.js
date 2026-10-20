@@ -153,7 +153,12 @@ export function autoEncounterPlan(turnContext, ch) {
 // challenge 'refuse' — will not duel; costs their force 20% strength if challenged (a player's
 // default since 2026-10-13, Toby: a hero with no stance set no longer answers a challenge)
 export const DUEL_STANCES_P = ['challenge', 'accept', 'refuse'];
-export const NPC_DUEL_STANCE_BY_TEMPER = { Berserk: 'challenge', Brave: 'challenge', Cautious: 'accept', Cowardly: 'refuse' };
+export const NPC_DUEL_STANCE_BY_TEMPER = {
+  Berserk: 'challenge',
+  Brave: 'challenge',
+  Cautious: 'accept',
+  Cowardly: 'refuse',
+};
 export function duelStanceOf(ch) {
   const v = ch && ch.encounterPlan && ch.encounterPlan.duelStance;
   if (DUEL_STANCES_P.includes(v)) return v;

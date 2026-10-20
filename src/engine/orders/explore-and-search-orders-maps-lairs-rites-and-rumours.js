@@ -1,8 +1,22 @@
 import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
 import { QUALITY_TIERS } from '../army-tables.js';
-import { ENCOUNTER_CLEAR_GOLD_BANDS, encounterClearGold, featureTreasure, setFeatureTreasure } from '../world/tables.js';
-import { WILD_HUNT_TURNS, WILD_HUNT_UNITS, ensureLairHoard, guardianCanUseItem, isLegendaryItem, itemLoreLines, monsterCatLabel, wildHuntPrice } from '../items/tiers-and-hoards.js';
+import {
+  ENCOUNTER_CLEAR_GOLD_BANDS,
+  encounterClearGold,
+  featureTreasure,
+  setFeatureTreasure,
+} from '../world/tables.js';
+import {
+  WILD_HUNT_TURNS,
+  WILD_HUNT_UNITS,
+  ensureLairHoard,
+  guardianCanUseItem,
+  isLegendaryItem,
+  itemLoreLines,
+  monsterCatLabel,
+  wildHuntPrice,
+} from '../items/tiers-and-hoards.js';
 import { recordBattleGraves, recordDeadHeroSighting } from '../graves.js';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.js';
 import { itemNameList } from '../heroes/fame-and-consecration.js';
@@ -19,7 +33,12 @@ import { emitNarrLine } from '../turn/log-line-helpers.js';
 import { charMinor } from '../titles/title-holders-and-battle-merit.js';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
 import { refreshMovePool } from '../units/movement-pools.js';
-import { SKILLGAIN_COMMON, SKILLGAIN_STD, awardWinHp, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardWinHp,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { resolveEncounter, rumourOddsBand, simulateLairOdds } from '../personal-combat/lair-guardians-and-the-odds.js';
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.js';
 import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.js';

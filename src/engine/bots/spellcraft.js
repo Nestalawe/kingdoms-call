@@ -2,7 +2,19 @@ import { TITLE_DEFS } from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../army-tables.js';
 import { featDiscovered } from '../../views/visibility.js';
-import { BOT_HEX_DIRS, botBelief, botConceded, botKnows, botKnowsGraves, botNeighbourProv, botRelationRaw, botScouted, botSees, botSeesChar, botVisibleCharsIn } from './intel.js';
+import {
+  BOT_HEX_DIRS,
+  botBelief,
+  botConceded,
+  botKnows,
+  botKnowsGraves,
+  botNeighbourProv,
+  botRelationRaw,
+  botScouted,
+  botSees,
+  botSeesChar,
+  botVisibleCharsIn,
+} from './intel.js';
 import { BOT_SEA_ALL, botDefenceNeed, botEnemyDefence } from './war.js';
 import { botTurnCache } from './strategy.js';
 import { BOT_SCHOOLS } from './schools.js';

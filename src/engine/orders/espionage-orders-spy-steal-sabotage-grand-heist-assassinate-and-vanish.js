@@ -14,7 +14,12 @@ import { areEnemies } from '../realms/relations-and-captures.js';
 import { charMinor } from '../titles/title-holders-and-battle-merit.js';
 import { effStat, isVanished, oddsNote, statNote } from '../heroes/effective-skills-and-hidden-heroes.js';
 import { provIsCoastal } from '../battle/terrain-and-unit-strength.js';
-import { SKILLGAIN_COMMON, SKILLGAIN_STD, awardKillXP, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardKillXP,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { applySpySuccess } from '../espionage/what-a-spy-learns.js';
 import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.js';

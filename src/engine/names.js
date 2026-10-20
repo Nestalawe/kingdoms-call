@@ -1,4 +1,9 @@
-import { HERO_EPITHET_OVERFLOW, HERO_NAME_PARTS, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P } from '../content/kingdoms-call-data.js';
+import {
+  HERO_EPITHET_OVERFLOW,
+  HERO_NAME_PARTS,
+  LAIR_POOLS_CAT_P,
+  LAIR_POOLS_MONSTER_P,
+} from '../content/kingdoms-call-data.js';
 import { kcRng } from './rng.js';
 import { shuffleP } from './battle/fortune.js';
 

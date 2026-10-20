@@ -3,7 +3,29 @@ import { kcJoinP } from './startup.js';
 import { applyMapZoom, fitMapSvgHeight, setDeskView, setMobileView } from './layout.js';
 import { armyLabel, unitEmoji } from './order-chances.js';
 import { capitalise, formatRace } from './skills-and-projections.js';
-import { CHIEFTAIN_MARKER_COLOR, MAP_RACE_BADGE, MAP_SYM, TERRAIN_COLORS_MAP, _garrisonNote, _grandDesignNote, _graveIntelById, _graveNote, _lairStar, _lairsClearedNote, _ownerLineP, _rebuildGraveIntelIndex, applyMapSymLegend, makeTerrainIcon, mapRaceBadgeHtml, mapSymHtml, mapSymSvg, mapTextGlyph, popupKnownChars, terrorNoteP, txtGlyph } from './map-symbols.js';
+import {
+  CHIEFTAIN_MARKER_COLOR,
+  MAP_RACE_BADGE,
+  MAP_SYM,
+  TERRAIN_COLORS_MAP,
+  _garrisonNote,
+  _grandDesignNote,
+  _graveIntelById,
+  _graveNote,
+  _lairStar,
+  _lairsClearedNote,
+  _ownerLineP,
+  _rebuildGraveIntelIndex,
+  applyMapSymLegend,
+  makeTerrainIcon,
+  mapRaceBadgeHtml,
+  mapSymHtml,
+  mapSymSvg,
+  mapTextGlyph,
+  popupKnownChars,
+  terrorNoteP,
+  txtGlyph,
+} from './map-symbols.js';
 
 // ── EVERY PROVINCE NAME IN THE REPORT IS A MAP LINK (2026-09-20, Toby) ── Rather than editing the
 // ~40 places the report prints a province name (Chronicle lines, Realm Events, Your Provinces, Known

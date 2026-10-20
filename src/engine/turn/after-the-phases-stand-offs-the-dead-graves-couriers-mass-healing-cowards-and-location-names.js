@@ -9,7 +9,11 @@ import { progressNeutralHeroes } from '../heroes/charms-and-neutrals.js';
 import { MASS_HEALING_PCT, healFeatureMonsters } from '../chances-and-lair-grades.js';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
 import { flushIntrusionNotifications } from './intrusion-warnings.js';
-import { resolveAllPendingSkillGains, syncAllMaxHp, writeDeferredSkillLines } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import {
+  resolveAllPendingSkillGains,
+  syncAllMaxHp,
+  writeDeferredSkillLines,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { abandonHostOnFlight, disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.js';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.js';
 import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.js';

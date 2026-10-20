@@ -10,7 +10,13 @@ import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
 import { effStat, isHiddenChar, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.js';
 import { canStepBetween } from './movement-pools.js';
 import { armyTotalStr, commandHandoverLine, pickBattleCommander, syncLeaderCopy } from '../battle/best-commander.js';
-import { SKILLGAIN_COMMON, SKILLGAIN_STD, awardKillXP, rollNavalVoyage, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardKillXP,
+  rollNavalVoyage,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { emitBattle } from '../battle/battle-report-lines-and-force-markers.js';
 import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.js';

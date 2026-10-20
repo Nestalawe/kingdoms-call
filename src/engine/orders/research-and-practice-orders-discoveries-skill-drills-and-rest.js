@@ -8,7 +8,14 @@ import { UNIT_DRILL_BASE, humanXPMult } from '../units/drill-and-spoils.js';
 import { d100, dispFloor, fmtRoll } from '../dice-and-army-names.js';
 import { provOf } from '../world/map-helpers.js';
 import { TM, perkTier, skillLevel } from '../titles/perks.js';
-import { HIDDEN_DISCOVERY_CAP_PCT, HIDDEN_DISCOVERY_DIVISOR, RESEARCH_HIDDEN_CATS, discAvailableFor, discSum, hasDisc } from '../discoveries.js';
+import {
+  HIDDEN_DISCOVERY_CAP_PCT,
+  HIDDEN_DISCOVERY_DIVISOR,
+  RESEARCH_HIDDEN_CATS,
+  discAvailableFor,
+  discSum,
+  hasDisc,
+} from '../discoveries.js';
 import { charMinor } from '../titles/title-holders-and-battle-merit.js';
 import { effStat, recalcHeroPay, skillInPlayNote } from '../heroes/effective-skills-and-hidden-heroes.js';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';

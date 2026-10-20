@@ -1,12 +1,103 @@
 import { unitBaseStrength } from '../battle/strength.js';
 import { heroHireWage } from '../world/tables.js';
-import { BOT_HEX_DIRS, botBattleForce, botConceded, botForceStrength, botNeighbourProv, botNoteLand, botRelationRaw, botSeesChar, botTargetDefence, botTuning, botVisibleCharsIn } from './intel.js';
-import { BOT_AERIAL_TYPES, BOT_CARRIER_TYPES, BOT_FLYING_TYPES, BOT_SEA_ALL, botCanFly, botEnemyDefence, botIsValuable, botLairDir, botPlanAssaults, botSeaCap } from './war.js';
-import { botFieldRecruitTokens, botGarrisonOrder, botHeroCap, botHireBias, botHireOrder, botHomeId, botLandReach, botLedger, botPassable, botRecruitOrder, botRoles, botSeaReach, botSpend, botTurnCache, botUnderAttack } from './strategy.js';
-import { botChainHops, botDefenderOrders, botDefenderPost, botDistantStrike, botFillOrders, botFrontierTarget, botHomeThreat, botMoveOrder, botNearbyThreat, botPathDirs, botPathLen, botPracticeFallback, botRoamOrders, botRoleWork, botScanTargets, botSpecialistOrders, botSpecialistRoles, botZoneOf } from './specialists.js';
-import { BOT_INFILTRATE_RANGE, botAirReach, botAirStrike, botAssumedChar, botCoastalPorts, botConsecrateTarget, botFlyerPorts, botInfiltrateOrders, botInfiltrateSchool, botItemPre, botLairPlan, botLiftable, botMasteryPre, botNearestOf, botOnlySkeletal, botOrphanHostOrders, botRitePre, botRunSlayerSchool, botSeaStrike, botSetDuelStances, botSignaturePre, botSpareBerths } from './missions.js';
+import {
+  BOT_HEX_DIRS,
+  botBattleForce,
+  botConceded,
+  botForceStrength,
+  botNeighbourProv,
+  botNoteLand,
+  botRelationRaw,
+  botSeesChar,
+  botTargetDefence,
+  botTuning,
+  botVisibleCharsIn,
+} from './intel.js';
+import {
+  BOT_AERIAL_TYPES,
+  BOT_CARRIER_TYPES,
+  BOT_FLYING_TYPES,
+  BOT_SEA_ALL,
+  botCanFly,
+  botEnemyDefence,
+  botIsValuable,
+  botLairDir,
+  botPlanAssaults,
+  botSeaCap,
+} from './war.js';
+import {
+  botFieldRecruitTokens,
+  botGarrisonOrder,
+  botHeroCap,
+  botHireBias,
+  botHireOrder,
+  botHomeId,
+  botLandReach,
+  botLedger,
+  botPassable,
+  botRecruitOrder,
+  botRoles,
+  botSeaReach,
+  botSpend,
+  botTurnCache,
+  botUnderAttack,
+} from './strategy.js';
+import {
+  botChainHops,
+  botDefenderOrders,
+  botDefenderPost,
+  botDistantStrike,
+  botFillOrders,
+  botFrontierTarget,
+  botHomeThreat,
+  botMoveOrder,
+  botNearbyThreat,
+  botPathDirs,
+  botPathLen,
+  botPracticeFallback,
+  botRoamOrders,
+  botRoleWork,
+  botScanTargets,
+  botSpecialistOrders,
+  botSpecialistRoles,
+  botZoneOf,
+} from './specialists.js';
+import {
+  BOT_INFILTRATE_RANGE,
+  botAirReach,
+  botAirStrike,
+  botAssumedChar,
+  botCoastalPorts,
+  botConsecrateTarget,
+  botFlyerPorts,
+  botInfiltrateOrders,
+  botInfiltrateSchool,
+  botItemPre,
+  botLairPlan,
+  botLiftable,
+  botMasteryPre,
+  botNearestOf,
+  botOnlySkeletal,
+  botOrphanHostOrders,
+  botRitePre,
+  botRunSlayerSchool,
+  botSeaStrike,
+  botSetDuelStances,
+  botSignaturePre,
+  botSpareBerths,
+} from './missions.js';
 import { BOT_NAVAL_TYPES, botAtWar, botCoastalFleetType } from './economy.js';
-import { botBeatableLairIn, botCastPlan, botHuntTarget, botOffensiveMagic, botPathAny, botPathLenAny, botPlannedAttackTarget, botRaidTarget, botSchoolLimit } from './spellcraft.js';
+import {
+  botBeatableLairIn,
+  botCastPlan,
+  botHuntTarget,
+  botOffensiveMagic,
+  botPathAny,
+  botPathLenAny,
+  botPlannedAttackTarget,
+  botRaidTarget,
+  botSchoolLimit,
+} from './spellcraft.js';
 import { graveServedOther } from '../heroes/charms-and-neutrals.js';
 
 // ══ RAISE THE FALLEN (2026-09-28, Toby: bots with white mages resurrect their heroes) ════

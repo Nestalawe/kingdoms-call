@@ -8,11 +8,57 @@ import { featDiscovered } from '../../views/visibility.js';
 import { ITEM_SLOT_CAP, activeItems, itemPowerScore, itemSlot } from '../items/equipment.js';
 import { effSkillOf } from '../heroes/skills-and-hp.js';
 import { RUMOUR_COST_BY_POWER, isMithril } from '../personal-combat/helpers.js';
-import { BOT_DEF_BONUS, BOT_HEX_DIRS, botBattleForce, botBelief, botBelievedOwner, botKnows, botKnowsGraves, botMarginFor, botNeighbourProv, botRaceTerrainMult, botRelationRaw, botSees, botSeesChar, botTargetDefence, botVisibleCharsIn } from './intel.js';
-import { BOT_AERIAL_TYPES, BOT_CARRIER_TYPES, BOT_CAVALRY_TYPES, BOT_CREATURE_ARMIES, BOT_FLYING_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL, botCanFly, botEnemyChars, botSeaCap } from './war.js';
-import { botFleetOnly, botGarrisonTarget, botHeroCap, botHireBias, botHomeId, botIsLeader, botSpend, botTurnCache } from './strategy.js';
+import {
+  BOT_DEF_BONUS,
+  BOT_HEX_DIRS,
+  botBattleForce,
+  botBelief,
+  botBelievedOwner,
+  botKnows,
+  botKnowsGraves,
+  botMarginFor,
+  botNeighbourProv,
+  botRaceTerrainMult,
+  botRelationRaw,
+  botSees,
+  botSeesChar,
+  botTargetDefence,
+  botVisibleCharsIn,
+} from './intel.js';
+import {
+  BOT_AERIAL_TYPES,
+  BOT_CARRIER_TYPES,
+  BOT_CAVALRY_TYPES,
+  BOT_CREATURE_ARMIES,
+  BOT_FLYING_TYPES,
+  BOT_MONSTER_ARMIES,
+  BOT_SEA_ALL,
+  botCanFly,
+  botEnemyChars,
+  botSeaCap,
+} from './war.js';
+import {
+  botFleetOnly,
+  botGarrisonTarget,
+  botHeroCap,
+  botHireBias,
+  botHomeId,
+  botIsLeader,
+  botSpend,
+  botTurnCache,
+} from './strategy.js';
 import { BOT_SCHOOLS } from './schools.js';
-import { BOT_SPECIALIST_ROLES, botFillOrders, botHasMetPlayers, botIsEdge, botMoveOrder, botNearbyThreat, botPathDirs, botPathLen, botSpyTarget } from './specialists.js';
+import {
+  BOT_SPECIALIST_ROLES,
+  botFillOrders,
+  botHasMetPlayers,
+  botIsEdge,
+  botMoveOrder,
+  botNearbyThreat,
+  botPathDirs,
+  botPathLen,
+  botSpyTarget,
+} from './specialists.js';
 import { botAtWar, botCoastalFleetType, botNavalEnemyCoast } from './economy.js';
 import { botDuelRating, botPathAny, botPathLenAny } from './spellcraft.js';
 import { isCharmedNow } from '../heroes/charms-and-neutrals.js';

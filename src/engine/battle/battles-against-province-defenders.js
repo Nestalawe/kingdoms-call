@@ -1,11 +1,54 @@
 import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P, SPELL_DEFS_P } from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
-import { BATTLE_MAGIC_SPELL_NAMES, FANATIC_CHANCE_BY_ALIGN, QUALITY_TIERS, SKILL_LABELS, unitRef } from '../army-tables.js';
+import {
+  BATTLE_MAGIC_SPELL_NAMES,
+  FANATIC_CHANCE_BY_ALIGN,
+  QUALITY_TIERS,
+  SKILL_LABELS,
+  unitRef,
+} from '../army-tables.js';
 import { battleMarginBand, rollUnitFates } from './fates.js';
-import { battleDeploy, battleFacedClauses, battleGridLines, battleLineTotal, battleMovesLine, battleScout, battleScoutLine, battleWidthLine, rollBattleWidth } from './lines.js';
-import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, aAn, ladderFm, ladderLines } from './ladder.js';
-import { AERIAL_TYPES, FLYING_TYPES, MONSTER_ARMIES, OPEN_COUNTRY, SEA_TYPES, countType, isHalfOrMore, rideThemDownBonus, shieldFortHolds, tacMulted } from '../units/movement.js';
-import { abilityMissileUnits, abilityVolleys, applyFlakScreen, archeryBlockedBy, eyesOfTheForestLine, missileDamageMult, missileTargetPool, unitBaseStrength } from './strength.js';
+import {
+  battleDeploy,
+  battleFacedClauses,
+  battleGridLines,
+  battleLineTotal,
+  battleMovesLine,
+  battleScout,
+  battleScoutLine,
+  battleWidthLine,
+  rollBattleWidth,
+} from './lines.js';
+import {
+  ARCHERY_MISSILE_PCT,
+  UNDEAD_SKEL_HERO_FAN,
+  UNDEAD_SKEL_KING_FAN,
+  aAn,
+  ladderFm,
+  ladderLines,
+} from './ladder.js';
+import {
+  AERIAL_TYPES,
+  FLYING_TYPES,
+  MONSTER_ARMIES,
+  OPEN_COUNTRY,
+  SEA_TYPES,
+  countType,
+  isHalfOrMore,
+  rideThemDownBonus,
+  shieldFortHolds,
+  tacMulted,
+} from '../units/movement.js';
+import {
+  abilityMissileUnits,
+  abilityVolleys,
+  applyFlakScreen,
+  archeryBlockedBy,
+  eyesOfTheForestLine,
+  missileDamageMult,
+  missileTargetPool,
+  unitBaseStrength,
+} from './strength.js';
 import { homeFounderOf } from '../grand-design.js';
 import { battleFortune, fortuneNarrative, shuffleP } from './fortune.js';
 import { recordBattleGraves } from '../graves.js';
@@ -16,13 +59,40 @@ import { d100, dispFloor, pick, rng } from '../dice-and-army-names.js';
 import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.js';
 import { perkTier } from '../titles/perks.js';
 import { SPELL_CAST_BASE, guardCastChance, magicL8CastBonus, primalStrikeChance } from '../chances-and-lair-grades.js';
-import { DISC_DEFOWN_CAP, discDeathMult, discFanaticApplies, discPromo, discSum, discoveryArmyBonus, hasDisc } from '../discoveries.js';
+import {
+  DISC_DEFOWN_CAP,
+  discDeathMult,
+  discFanaticApplies,
+  discPromo,
+  discSum,
+  discoveryArmyBonus,
+  hasDisc,
+} from '../discoveries.js';
 import { telSpell } from '../turn/log-line-helpers.js';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.js';
 import { charMinor } from '../titles/title-holders-and-battle-merit.js';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
-import { MISSILE_CAP_FRACTION, REIGN_OF_FEAR_MULT, SEA_LAND_PENALTY, applyMissileHit, armStr, bestCurseSkill, curseSkillLabel, finishSide, illusoryTerrainMult, isAirborneAtSea, kinNarrative, ladderRow, provIsCoastal } from './terrain-and-unit-strength.js';
-import { bestRetreat, navalSplitRetreat, retreatOptions, seaTrapLine } from '../units/sea-lift-stranding-and-retreats.js';
+import {
+  MISSILE_CAP_FRACTION,
+  REIGN_OF_FEAR_MULT,
+  SEA_LAND_PENALTY,
+  applyMissileHit,
+  armStr,
+  bestCurseSkill,
+  curseSkillLabel,
+  finishSide,
+  illusoryTerrainMult,
+  isAirborneAtSea,
+  kinNarrative,
+  ladderRow,
+  provIsCoastal,
+} from './terrain-and-unit-strength.js';
+import {
+  bestRetreat,
+  navalSplitRetreat,
+  retreatOptions,
+  seaTrapLine,
+} from '../units/sea-lift-stranding-and-retreats.js';
 import { realCharOf } from './best-commander.js';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { druidShortfallLine, forceMarker, terrainNoteList } from './battle-report-lines-and-force-markers.js';

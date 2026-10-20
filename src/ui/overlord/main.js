@@ -365,7 +365,11 @@ export function suspendedText(a) {
     ? 'Suspended until lifted'
     : 'Suspended until ' + t.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
 }
-export const SUSPEND_FOR = { day: ['for a day', 864e5], week: ['for a week', 7 * 864e5], lifted: ['until you lift it', null] };
+export const SUSPEND_FOR = {
+  day: ['for a day', 864e5],
+  week: ['for a week', 7 * 864e5],
+  lifted: ['until you lift it', null],
+};
 export function accountActions(a) {
   const suspension = a.suspended_until
     ? el(

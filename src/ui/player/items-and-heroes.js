@@ -1,5 +1,11 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.js';
-import { KC_GRAND_DESIGNS, KC_ITEM_RACE_ALIAS, KC_ITEM_SLOT_CAP, KC_RUMOUR_COST_BY_POWER, KC_SEASONS } from '../../content/kingdoms-call-data.js';
+import {
+  KC_GRAND_DESIGNS,
+  KC_ITEM_RACE_ALIAS,
+  KC_ITEM_SLOT_CAP,
+  KC_RUMOUR_COST_BY_POWER,
+  KC_SEASONS,
+} from '../../content/kingdoms-call-data.js';
 import { L79_ORDERS } from './l79-orders.js';
 import { _tintForDarkTooltip, reportColour } from './map-symbols.js';
 
@@ -256,7 +262,14 @@ export function updateEquipTarget(charId, ph) {
 }
 
 export const SEASONS = KC_SEASONS.slice();
-export const DIRECTIONS = { NW: 'North West', NE: 'North East', W: 'West', E: 'East', SW: 'South West', SE: 'South East' };
+export const DIRECTIONS = {
+  NW: 'North West',
+  NE: 'North East',
+  W: 'West',
+  E: 'East',
+  SW: 'South West',
+  SE: 'South East',
+};
 export const ACTIONS = [
   'Move',
   'Explore',

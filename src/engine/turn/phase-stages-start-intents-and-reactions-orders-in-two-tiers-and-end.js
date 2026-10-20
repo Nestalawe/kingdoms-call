@@ -4,11 +4,24 @@ import { defendSpentThisPhase } from './mercenary-ids-and-battle-records.js';
 import { settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.js';
 import { generateIntrusionNotifications } from './intrusion-warnings.js';
 import { spreadPlagues } from '../magic/plague-and-bless-ward.js';
-import { resolveAllPendingSkillGains, writeDeferredSkillLines } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import {
+  resolveAllPendingSkillGains,
+  writeDeferredSkillLines,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.js';
 import { applyMoveInterlocks, normaliseAction, orderPhaseActors } from './phase-intents-and-dependency-ordering.js';
-import { reconcileProvinceCharacters, settleRalliedGarrisons, updateProvinceMemory } from '../world/province-bookkeeping-and-rallied-garrisons.js';
-import { reconcileDefendRideOuts, runDefendAmbush, runDefendMaterializedReactions, runDefendReactions, runReinforcementArrivals } from '../units/defend-ride-outs-ambushes-and-reinforcements.js';
+import {
+  reconcileProvinceCharacters,
+  settleRalliedGarrisons,
+  updateProvinceMemory,
+} from '../world/province-bookkeeping-and-rallied-garrisons.js';
+import {
+  reconcileDefendRideOuts,
+  runDefendAmbush,
+  runDefendMaterializedReactions,
+  runDefendReactions,
+  runReinforcementArrivals,
+} from '../units/defend-ride-outs-ambushes-and-reinforcements.js';
 import { resolveStalledBattles } from '../battle/stalled-battles-and-beaten-guards.js';
 import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.js';
 import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.js';

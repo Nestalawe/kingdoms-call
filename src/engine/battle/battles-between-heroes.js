@@ -1,11 +1,58 @@
 import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
-import { BATTLE_MAGIC_SPELL_NAMES, FANATIC_CHANCE_BY_ALIGN, QUALITY_TIERS, SKILL_LABELS, n0, ownedUnitName } from '../army-tables.js';
+import {
+  BATTLE_MAGIC_SPELL_NAMES,
+  FANATIC_CHANCE_BY_ALIGN,
+  QUALITY_TIERS,
+  SKILL_LABELS,
+  n0,
+  ownedUnitName,
+} from '../army-tables.js';
 import { battleMarginBand, rollUnitFates } from './fates.js';
-import { battleDeploy, battleFacedClauses, battleFacing, battleGrid, battleGridLines, battleLineTotal, battleMovesLine, battleScout, battleScoutLine, battleWidthLine, rollBattleWidth } from './lines.js';
-import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, aAn, ladderFm, ladderLines } from './ladder.js';
-import { AERIAL_TYPES, FLYING_TYPES, MONSTER_ARMIES, OPEN_COUNTRY, RUN_THEM_DOWN_PCT, SEA_TYPES, countType, isHalfOrMore, rideThemDownBonus, shieldFortHolds, tacMulted } from '../units/movement.js';
-import { abilityMissileUnits, abilityVolleys, applyFlakScreen, archeryBlockedBy, eyesOfTheForestLine, missileDamageMult, missileTargetPool, unitBaseStrength } from './strength.js';
+import {
+  battleDeploy,
+  battleFacedClauses,
+  battleFacing,
+  battleGrid,
+  battleGridLines,
+  battleLineTotal,
+  battleMovesLine,
+  battleScout,
+  battleScoutLine,
+  battleWidthLine,
+  rollBattleWidth,
+} from './lines.js';
+import {
+  ARCHERY_MISSILE_PCT,
+  UNDEAD_SKEL_HERO_FAN,
+  UNDEAD_SKEL_KING_FAN,
+  aAn,
+  ladderFm,
+  ladderLines,
+} from './ladder.js';
+import {
+  AERIAL_TYPES,
+  FLYING_TYPES,
+  MONSTER_ARMIES,
+  OPEN_COUNTRY,
+  RUN_THEM_DOWN_PCT,
+  SEA_TYPES,
+  countType,
+  isHalfOrMore,
+  rideThemDownBonus,
+  shieldFortHolds,
+  tacMulted,
+} from '../units/movement.js';
+import {
+  abilityMissileUnits,
+  abilityVolleys,
+  applyFlakScreen,
+  archeryBlockedBy,
+  eyesOfTheForestLine,
+  missileDamageMult,
+  missileTargetPool,
+  unitBaseStrength,
+} from './strength.js';
 import { homeFounderOf } from '../grand-design.js';
 import { battleFortune, fortuneNarrative, shuffleP } from './fortune.js';
 import { recordBattleGraves } from '../graves.js';
@@ -16,13 +63,45 @@ import { d100, describeArmy, dispFloor, pick, rng } from '../dice-and-army-names
 import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.js';
 import { perkTier } from '../titles/perks.js';
 import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeChance } from '../chances-and-lair-grades.js';
-import { DISC_DEFOWN_CAP, discDeathMult, discFanaticApplies, discPromo, discSum, discoveryArmyBonus, hasDisc } from '../discoveries.js';
+import {
+  DISC_DEFOWN_CAP,
+  discDeathMult,
+  discFanaticApplies,
+  discPromo,
+  discSum,
+  discoveryArmyBonus,
+  hasDisc,
+} from '../discoveries.js';
 import { telSpell } from '../turn/log-line-helpers.js';
-import { completeDefendWatches, noteBattleLoss, noteFieldBattle, recordBattleCmdrs } from '../turn/mercenary-ids-and-battle-records.js';
+import {
+  completeDefendWatches,
+  noteBattleLoss,
+  noteFieldBattle,
+  recordBattleCmdrs,
+} from '../turn/mercenary-ids-and-battle-records.js';
 import { charMinor } from '../titles/title-holders-and-battle-merit.js';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
-import { REIGN_OF_FEAR_MULT, SEA_LAND_PENALTY, applyMissileHit, armStr, bestCurseSkill, curseSkillLabel, finishSide, illusoryTerrainMult, isAirborneAtSea, kinNarrative, ladderRow, provIsCoastal } from './terrain-and-unit-strength.js';
-import { bestRetreat, getSeaCapability, navalSplitRetreat, retreatOptions, seaTrapLine } from '../units/sea-lift-stranding-and-retreats.js';
+import {
+  REIGN_OF_FEAR_MULT,
+  SEA_LAND_PENALTY,
+  applyMissileHit,
+  armStr,
+  bestCurseSkill,
+  curseSkillLabel,
+  finishSide,
+  illusoryTerrainMult,
+  isAirborneAtSea,
+  kinNarrative,
+  ladderRow,
+  provIsCoastal,
+} from './terrain-and-unit-strength.js';
+import {
+  bestRetreat,
+  getSeaCapability,
+  navalSplitRetreat,
+  retreatOptions,
+  seaTrapLine,
+} from '../units/sea-lift-stranding-and-retreats.js';
 import { realCharOf } from './best-commander.js';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { druidShortfallLine, forceMarker, terrainNoteList } from './battle-report-lines-and-force-markers.js';
@@ -32,7 +111,15 @@ import { bloodHarvest, ironThroneRaise } from './blood-harvest-and-iron-throne.j
 import { raidLandedHere } from './raid-the-coast-and-landing-parties.js';
 import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
 import { magicItemsLine } from '../personal-combat/duels-and-character-encounters.js';
-import { BATTLE_ARMY_SPELLS, CARRYON_DEATH_CAP, CARRYON_DEATH_STEP, DEF_VERBS, SEA_AIRBORNE_FLYER_PENALTY, SEA_AIRBORNE_LAND_PENALTY, WIN_VERBS } from './battles-against-province-defenders.js';
+import {
+  BATTLE_ARMY_SPELLS,
+  CARRYON_DEATH_CAP,
+  CARRYON_DEATH_STEP,
+  DEF_VERBS,
+  SEA_AIRBORNE_FLYER_PENALTY,
+  SEA_AIRBORNE_LAND_PENALTY,
+  WIN_VERBS,
+} from './battles-against-province-defenders.js';
 import { preBattleDuel } from './pre-battle-duels.js';
 
 // ── BATTLES BETWEEN TWO HEROES' HOSTS (plan P1-08h: lifted out of resolveTurn) ────

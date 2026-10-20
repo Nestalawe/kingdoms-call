@@ -67,7 +67,8 @@ export function whoOf(e) {
   };
 }
 export const $ = (id) => document.getElementById(id);
-export const nf = (n) => (n == null || !isFinite(n) ? '—' : Number(n).toLocaleString('en-NZ', { maximumFractionDigits: 2 }));
+export const nf = (n) =>
+  n == null || !isFinite(n) ? '—' : Number(n).toLocaleString('en-NZ', { maximumFractionDigits: 2 });
 export const dstr = (s) => {
   if (!s) return '—';
   const d = new Date(s);

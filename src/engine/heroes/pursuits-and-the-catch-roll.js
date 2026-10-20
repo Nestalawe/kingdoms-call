@@ -7,7 +7,13 @@ import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relat
 import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
 import { effStat, isHiddenChar, oddsNote, statNote } from './effective-skills-and-hidden-heroes.js';
 import { clearNavalHold, navalHeldIn, navalHoldLine } from '../units/sea-lift-stranding-and-retreats.js';
-import { SKILLGAIN_COMMON, SKILLGAIN_STD, awardKillXP, rollNavalVoyage, trySkillGain } from './experience-skill-rises-and-earned-hp.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardKillXP,
+  rollNavalVoyage,
+  trySkillGain,
+} from './experience-skill-rises-and-earned-hp.js';
 import { emitBattle } from '../battle/battle-report-lines-and-force-markers.js';
 import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.js';

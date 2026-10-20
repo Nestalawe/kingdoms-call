@@ -4,7 +4,16 @@ import { _kcOverlord, loadReportedDispatches, show } from './sign-in.js';
 import { invitedNames, loadInvitablePlayers } from './game-list.js';
 import { loadTurnLog } from './turn-log.js';
 import { gameArchived, gameArchivedAt } from '../../db/game-meta.js';
-import { fmtLastRun, ordersWaitingOn, realmConcededIn, realmExemptIn, renderTurnModePanel, seaPctOf, turnModeOf, turnModeSummary } from './turn-mode.js';
+import {
+  fmtLastRun,
+  ordersWaitingOn,
+  realmConcededIn,
+  realmExemptIn,
+  renderTurnModePanel,
+  seaPctOf,
+  turnModeOf,
+  turnModeSummary,
+} from './turn-mode.js';
 import { botConfigFor, gameVisibility, isBotRow } from '../../engine/bots/setup.js';
 
 // ── GAME DETAIL ────

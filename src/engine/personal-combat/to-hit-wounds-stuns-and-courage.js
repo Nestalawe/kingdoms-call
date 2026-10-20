@@ -2,7 +2,16 @@ import { kcRng } from '../rng.js';
 import { temperOf } from '../world/tables.js';
 import { GUARDIAN_MELEE_BASE, PC_HIT_CAP_FRAC } from '../names.js';
 import { hasItemBase } from '../items/equipment.js';
-import { PC_DMG_FLOOR_FRACTION, PC_SPELL_SCHOOL_MAP, PC_WEAK_MULT, PC_WEAK_NO_DMG_DOUBLE, pcLearnWeakness, pcPenaltyFade, pcPromotePending, pcWeaknessApplies } from './helpers.js';
+import {
+  PC_DMG_FLOOR_FRACTION,
+  PC_SPELL_SCHOOL_MAP,
+  PC_WEAK_MULT,
+  PC_WEAK_NO_DMG_DOUBLE,
+  pcLearnWeakness,
+  pcPenaltyFade,
+  pcPromotePending,
+  pcWeaknessApplies,
+} from './helpers.js';
 import { d100, dispFloor, fmtRoll, rng } from '../dice-and-army-names.js';
 import { discDuelVs, discSum } from '../discoveries.js';
 

@@ -1,7 +1,15 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.js';
 import { KC_CARRIER_BERTHS, KC_RIVAL_RACE, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
 import { kcJoinP, sb } from './startup.js';
-import { GUARD_POWER_COLORS_P, deadHeroRealmTagP, itemBoundTag, itemSlotTag, itemTierTagP, itemUsableByP, itemsForDisplayP } from './items-and-heroes.js';
+import {
+  GUARD_POWER_COLORS_P,
+  deadHeroRealmTagP,
+  itemBoundTag,
+  itemSlotTag,
+  itemTierTagP,
+  itemUsableByP,
+  itemsForDisplayP,
+} from './items-and-heroes.js';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.js';
 import { refreshOrdersVisibility } from './layout.js';
 import { turnDeadlineText } from './game-lists.js';
@@ -11,8 +19,26 @@ import { armyLabel, floorNumP, unitBaseStrengthP, unitEmoji } from './order-chan
 import { SKILL_LABELS } from './move-analysis.js';
 import { buildOrdersForm } from './orders-form.js';
 import { effSkillP, itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.js';
-import { CREATURE_ARMIES_UI, MONSTER_ARMIES_UI, capitalise, druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.js';
-import { CHIEFTAIN_MARKER_COLOR, _lairName, beastCommandCountP, bulletizeDesc, provLinkHtml, provinceGrandDesignHTML, reportColour, skillFameLabel, spiedExtraP, terrorNoteP } from './map-symbols.js';
+import {
+  CREATURE_ARMIES_UI,
+  MONSTER_ARMIES_UI,
+  capitalise,
+  druidNeedP,
+  formatRace,
+  skillRowHTML,
+} from './skills-and-projections.js';
+import {
+  CHIEFTAIN_MARKER_COLOR,
+  _lairName,
+  beastCommandCountP,
+  bulletizeDesc,
+  provLinkHtml,
+  provinceGrandDesignHTML,
+  reportColour,
+  skillFameLabel,
+  spiedExtraP,
+  terrorNoteP,
+} from './map-symbols.js';
 import { ensureProvinceLinking, renderPlayerMap } from './map.js';
 import { initMessaging } from './dispatches.js';
 

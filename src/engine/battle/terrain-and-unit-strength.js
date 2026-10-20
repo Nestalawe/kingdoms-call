@@ -1,6 +1,12 @@
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
 import { battleGrid } from './lines.js';
-import { DRUID_MASTERY_CAP, DRUID_MASTERY_MAX_LVL, DRUID_MASTERY_PER_LVL, MISSILE_ARMIES_MASTER, ladderFm } from './ladder.js';
+import {
+  DRUID_MASTERY_CAP,
+  DRUID_MASTERY_MAX_LVL,
+  DRUID_MASTERY_PER_LVL,
+  MISSILE_ARMIES_MASTER,
+  ladderFm,
+} from './ladder.js';
 import { AERIAL_TYPES, CREATURE_ARMIES, FLYING_TYPES, MONSTER_ARMIES, SEA_TYPES } from '../units/movement.js';
 import { UNIT_BASE_STR, UNIT_Q_MULT, missileCap, unitAbilityMult, unitBaseStrength } from './strength.js';
 import { druIdPenaltyMult, getDruidLevel } from '../world/tables.js';

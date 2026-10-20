@@ -3,7 +3,17 @@ import { CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.js';
 import { ITEMS_BY_TIER } from '../items/tiers-and-hoards.js';
 import { activeItems } from '../items/equipment.js';
 import { botConceded } from '../bots/intel.js';
-import { RECKONING_CALLER_MIN_FRAC, RECKONING_MIN_TURN, RELIC_PRIZE_EACH, _MAGIC_SCHOOLS, _skillItem, reckoningAllyStepPct, reckoningDecayOf, reckoningThreshold, skillLevel } from './perks.js';
+import {
+  RECKONING_CALLER_MIN_FRAC,
+  RECKONING_MIN_TURN,
+  RELIC_PRIZE_EACH,
+  _MAGIC_SCHOOLS,
+  _skillItem,
+  reckoningAllyStepPct,
+  reckoningDecayOf,
+  reckoningThreshold,
+  skillLevel,
+} from './perks.js';
 
 export function _legendaryNames() {
   return new Set((ITEMS_BY_TIER[4] || []).map((it) => it.name));

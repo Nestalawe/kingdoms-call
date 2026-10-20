@@ -62,7 +62,9 @@ export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hu
   }
 }
 
-export function botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning(turnContext) {
+export function botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning(
+  turnContext,
+) {
   const { G, _botPlayerIdx, log, reckoningCalls } = turnContext;
   // Phase 3 (pre) — item 2: any bot realm that has lost its last province concedes before it plans
   // a turn.

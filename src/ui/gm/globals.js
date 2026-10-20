@@ -1,14 +1,80 @@
-import { ALL_MAGIC_ITEMS_P, KC_UNIT_CLASS, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, MONSTERS_P, PRIMAL_ARMY_DEFS_P, PROVINCE_ARMIES_P, SAGE_DISCOVERIES_P } from '../../content/kingdoms-call-data.js';
+import {
+  ALL_MAGIC_ITEMS_P,
+  KC_UNIT_CLASS,
+  LAIR_POOLS_CAT_P,
+  LAIR_POOLS_MONSTER_P,
+  MONSTERS_P,
+  PRIMAL_ARMY_DEFS_P,
+  PROVINCE_ARMIES_P,
+  SAGE_DISCOVERIES_P,
+} from '../../content/kingdoms-call-data.js';
 import { kcRng, kcRngStream } from '../../engine/rng.js';
 import { KC_BUILD_STAMP } from './startup.js';
-import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, LEGACY_UNIT_RENAMES, disbandLine, migrateLegacyUnitNames, ownedUnitName, unitRef } from '../../engine/army-tables.js';
+import {
+  ARMY_COST_MASTER,
+  ARMY_SPEED_MASTER,
+  LEGACY_UNIT_RENAMES,
+  disbandLine,
+  migrateLegacyUnitNames,
+  ownedUnitName,
+  unitRef,
+} from '../../engine/army-tables.js';
 import { battleTallyLine, rollUnitFates } from '../../engine/battle/fates.js';
-import { BATTLE_FACING, BATTLE_FRONT_RANGE, battleDeploy, battleFacedClauses, battleFacing, battleFacingStage, battleFrontWidth, battleGrid, battleGridLines, battleGridStage, battleLegal, battleLineTotal, battleMovesLine, battleRole, battleScout, battleScoutLine, battleWidthChoices, battleWidthLine, rollBattleWidth } from '../../engine/battle/lines.js';
+import {
+  BATTLE_FACING,
+  BATTLE_FRONT_RANGE,
+  battleDeploy,
+  battleFacedClauses,
+  battleFacing,
+  battleFacingStage,
+  battleFrontWidth,
+  battleGrid,
+  battleGridLines,
+  battleGridStage,
+  battleLegal,
+  battleLineTotal,
+  battleMovesLine,
+  battleRole,
+  battleScout,
+  battleScoutLine,
+  battleWidthChoices,
+  battleWidthLine,
+  rollBattleWidth,
+} from '../../engine/battle/lines.js';
 import { shieldFortHolds } from '../../engine/units/movement.js';
-import { abilityMissileUnits, archeryBlockedBy, missileDamageMult, missileTargetPool, unitAbilityMult } from '../../engine/battle/strength.js';
+import {
+  abilityMissileUnits,
+  archeryBlockedBy,
+  missileDamageMult,
+  missileTargetPool,
+  unitAbilityMult,
+} from '../../engine/battle/strength.js';
 import { sb } from './config.js';
-import { changePassword, closeChangePassword, deleteReportedDispatch, doSignIn, doSignOut, loadReportedDispatches, show, submitChangePassword } from './sign-in.js';
-import { closeEditInvites, createGame, loadGames, openEditInvites, renderGameList, renderInviteCheckboxes, saveEditInvites, showNewGame, toggleInvite, updateBotHint, updateGameVisibility, updateMaxPlayersForMap, updateSeaHint } from './game-list.js';
+import {
+  changePassword,
+  closeChangePassword,
+  deleteReportedDispatch,
+  doSignIn,
+  doSignOut,
+  loadReportedDispatches,
+  show,
+  submitChangePassword,
+} from './sign-in.js';
+import {
+  closeEditInvites,
+  createGame,
+  loadGames,
+  openEditInvites,
+  renderGameList,
+  renderInviteCheckboxes,
+  saveEditInvites,
+  showNewGame,
+  toggleInvite,
+  updateBotHint,
+  updateGameVisibility,
+  updateMaxPlayersForMap,
+  updateSeaHint,
+} from './game-list.js';
 import { openGame } from './game-detail.js';
 import { backfillHomeRosters, homeProvinceIdFor } from '../../engine/grand-design.js';
 import { deleteGame, loadTurnLog } from './turn-log.js';
@@ -20,10 +86,26 @@ import { itemRaceOf } from '../../engine/heroes/fame-and-consecration.js';
 import { activeItems, gainedItemNote, itemSlot } from '../../engine/items/equipment.js';
 import { migrateLairGuardiansV2 } from '../../engine/heroes/skills-and-hp.js';
 import { neutralDefBand } from '../../engine/units/drill-and-spoils.js';
-import { buildGameMeta, gameArchived, probeGameMeta, probeMessaging, probeTelemetry, renderMessagingBanner, renderTelemetryBanner, setGameArchived, toggleArchivedView } from '../../db/game-meta.js';
+import {
+  buildGameMeta,
+  gameArchived,
+  probeGameMeta,
+  probeMessaging,
+  probeTelemetry,
+  renderMessagingBanner,
+  renderTelemetryBanner,
+  setGameArchived,
+  toggleArchivedView,
+} from '../../db/game-meta.js';
 import { exportStats, forgetDeletedGames, openStats, renderStats } from './stats-tab.js';
 import { _LB_SEA, backfillGameRecords, renderLeaderboardBanner } from './hall-of-fame.js';
-import { removePlayer, saveBlockEliminated, saveBotDiplomacy, saveTurnMode, updateTurnModeFields } from './turn-mode.js';
+import {
+  removePlayer,
+  saveBlockEliminated,
+  saveBotDiplomacy,
+  saveTurnMode,
+  updateTurnModeFields,
+} from './turn-mode.js';
 import { autoTurnTick } from './auto-turn.js';
 import { BOT_SKILL_BUILD, generateBotSetups } from '../../engine/bots/setup.js';
 import { botBattleForce } from '../../engine/bots/intel.js';

@@ -2,12 +2,28 @@ import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
 import { ARMY_COST_MASTER, SKILL_LABELS } from '../army-tables.js';
 import { CREATURE_ARMIES, MONSTER_ARMIES, PRIMAL_SEA_TYPES } from '../units/movement.js';
-import { alignDistP, beastCommandCount, beastCommandRoom, beastCommandWords, heroHireWage, heroSkillWage } from '../world/tables.js';
+import {
+  alignDistP,
+  beastCommandCount,
+  beastCommandRoom,
+  beastCommandWords,
+  heroHireWage,
+  heroSkillWage,
+} from '../world/tables.js';
 import { grantMithrilTo } from '../personal-combat/helpers.js';
 import { armyUnitName } from '../dice-and-army-names.js';
 import { TM, creditBeastUnit, perkTier } from '../titles/perks.js';
 import { orderCharRef } from '../heroes/charms-and-neutrals.js';
-import { applyPendingSynthPlan, discRecruitQChance, discSum, discUnitIs, gdActive, hasDisc, isGarrisonUnitType, realmRecruitCost } from '../discoveries.js';
+import {
+  applyPendingSynthPlan,
+  discRecruitQChance,
+  discSum,
+  discUnitIs,
+  gdActive,
+  hasDisc,
+  isGarrisonUnitType,
+  realmRecruitCost,
+} from '../discoveries.js';
 import { notifyTarget } from '../turn/log-line-helpers.js';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.js';
 import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.js';

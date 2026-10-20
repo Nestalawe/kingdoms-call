@@ -1,7 +1,28 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
 import { unitBaseStrength } from '../battle/strength.js';
 import { alignDistP } from '../world/tables.js';
-import { BOT_DEF_BONUS, BOT_TUNING, botAlignOf, botBattleForce, botBelief, botBelievedOwner, botEffForce, botForceStrength, botGuessDefence, botKnownFeatures, botKnows, botMarginFor, botNeighbourProv, botRelationRaw, botSees, botSeesChar, botStallTurns, botTargetDefence, botTuning, botVisibleCharsIn } from './intel.js';
+import {
+  BOT_DEF_BONUS,
+  BOT_TUNING,
+  botAlignOf,
+  botBattleForce,
+  botBelief,
+  botBelievedOwner,
+  botEffForce,
+  botForceStrength,
+  botGuessDefence,
+  botKnownFeatures,
+  botKnows,
+  botMarginFor,
+  botNeighbourProv,
+  botRelationRaw,
+  botSees,
+  botSeesChar,
+  botStallTurns,
+  botTargetDefence,
+  botTuning,
+  botVisibleCharsIn,
+} from './intel.js';
 import { botFillOrders } from './specialists.js';
 import { botEnemyIntel } from './missions.js';
 import { botCanBeatGuardian, botPathLenAny } from './spellcraft.js';

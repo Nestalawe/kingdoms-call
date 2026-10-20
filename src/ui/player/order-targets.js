@@ -1,13 +1,63 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.js';
 import { KC_BASIC_EXPLORE, KC_HEX_DIRS } from '../../content/kingdoms-call-data.js';
 import { L79_ORDERS } from './l79-orders.js';
-import { DIRECTIONS, ITEM_SLOT_CAP_P, ITEM_SLOT_LABEL_P, ITEM_SLOT_ORDER_P, ITEM_TIER_NAME_P, RUMOUR_COST_BY_POWER_P, SEASONS, gdHintFor, isLegendaryItemP, itemSlotP, itemTierTagP, itemUsableByP, orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP, skillsUnseenP, unseenSuffixP } from './items-and-heroes.js';
+import {
+  DIRECTIONS,
+  ITEM_SLOT_CAP_P,
+  ITEM_SLOT_LABEL_P,
+  ITEM_SLOT_ORDER_P,
+  ITEM_TIER_NAME_P,
+  RUMOUR_COST_BY_POWER_P,
+  SEASONS,
+  gdHintFor,
+  isLegendaryItemP,
+  itemSlotP,
+  itemTierTagP,
+  itemUsableByP,
+  orderTargetCharsP,
+  preOrderTagP,
+  realmNameP,
+  realmOptStyleP,
+  skillsUnseenP,
+  unseenSuffixP,
+} from './items-and-heroes.js';
 import { spellSecondaryHtml } from './titles.js';
-import { ALL_SKILLS, SPELLS_BY_SCHOOL, SPELL_REQ_LEVEL, SPELL_TO_SCHOOL, actionSpellLimit, armyLabel, castChanceNote, effMagicLvl, orderChanceNote, projectedMagicLevels, rawMagicLvl, unitEmoji } from './order-chances.js';
-import { SKILL_LABELS, lastMoveDirOf, moveOriginProv, poMoveModeNote, projectedMoveHost, refreshAllMoveModeNotes } from './move-analysis.js';
+import {
+  ALL_SKILLS,
+  SPELLS_BY_SCHOOL,
+  SPELL_REQ_LEVEL,
+  SPELL_TO_SCHOOL,
+  actionSpellLimit,
+  armyLabel,
+  castChanceNote,
+  effMagicLvl,
+  orderChanceNote,
+  projectedMagicLevels,
+  rawMagicLvl,
+  unitEmoji,
+} from './order-chances.js';
+import {
+  SKILL_LABELS,
+  lastMoveDirOf,
+  moveOriginProv,
+  poMoveModeNote,
+  projectedMoveHost,
+  refreshAllMoveModeNotes,
+} from './move-analysis.js';
 import { getOrderTarget } from './pre-orders.js';
 import { effSkillP } from './briefing-and-submit.js';
-import { CREATURE_ARMIES_UI, MONSTER_ARMIES_UI, _isAutoGarrisonRecruit, _projRecruitUnits, alignDistPP, capitalise, heroHireWageOfP, heroHireWagePP, predictedItems, projectedGarrison } from './skills-and-projections.js';
+import {
+  CREATURE_ARMIES_UI,
+  MONSTER_ARMIES_UI,
+  _isAutoGarrisonRecruit,
+  _projRecruitUnits,
+  alignDistPP,
+  capitalise,
+  heroHireWageOfP,
+  heroHireWagePP,
+  predictedItems,
+  projectedGarrison,
+} from './skills-and-projections.js';
 import { heroFameTextP } from './map-symbols.js';
 
 // ── 2026-09-24 (Toby): TRANSFER CHAINS ──────────────────────────────────────────────────────────

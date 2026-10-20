@@ -6,7 +6,13 @@ import { guardianPassives } from '../heroes/skills-and-hp.js';
 import { pcArmourMerge, transferableItems } from './helpers.js';
 import { d100 } from '../dice-and-army-names.js';
 import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.js';
-import { autoEncounterPlan, pcApplyFx, pcCharCombatant, pcHasRanged, pcMonsterCombatant } from './speed-encounter-plans-and-combatants.js';
+import {
+  autoEncounterPlan,
+  pcApplyFx,
+  pcCharCombatant,
+  pcHasRanged,
+  pcMonsterCombatant,
+} from './speed-encounter-plans-and-combatants.js';
 import { resolvePersonalCombat } from './resolve-personal-combat.js';
 import { DUEL_FLEE_DROP } from './duels-and-character-encounters.js';
 

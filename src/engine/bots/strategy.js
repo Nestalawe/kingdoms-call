@@ -5,8 +5,25 @@ import { heroHireWage } from '../world/tables.js';
 import { botNeighbourProv, botRelationRaw, botSeesChar, botTuning } from './intel.js';
 import { BOT_AERIAL_TYPES, BOT_CARRIER_TYPES, BOT_FLYING_TYPES, BOT_SEA_ALL } from './war.js';
 import { botFrontierTarget, botHasMetPlayers, botIsEdge, botLandCount, botMagicScore } from './specialists.js';
-import { BOT_RUMOUR_FUND_PER_SLAYER, botFlyerPorts, botFlyerType, botLiftable, botSeaWorthTaking, botUpdateIntel } from './missions.js';
-import { BOT_NAVAL_TYPES, botAtWar, botCoastalFleetType, botFleetHullCount, botMaxEnemyStack, botNavalEnemyCoast, botRecruitableTypes, botTaxIncome, botUpkeep } from './economy.js';
+import {
+  BOT_RUMOUR_FUND_PER_SLAYER,
+  botFlyerPorts,
+  botFlyerType,
+  botLiftable,
+  botSeaWorthTaking,
+  botUpdateIntel,
+} from './missions.js';
+import {
+  BOT_NAVAL_TYPES,
+  botAtWar,
+  botCoastalFleetType,
+  botFleetHullCount,
+  botMaxEnemyStack,
+  botNavalEnemyCoast,
+  botRecruitableTypes,
+  botTaxIncome,
+  botUpkeep,
+} from './economy.js';
 import { BOT_P1, botInContact } from './phase-one.js';
 
 // ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ════

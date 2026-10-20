@@ -2,14 +2,70 @@ import { kcRng } from '../rng.js';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS, STEAL_TIER_PEN } from '../army-tables.js';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.js';
 import { featDiscovered } from '../../views/visibility.js';
-import { BOT_DEF_BONUS, BOT_HEX_DIRS, botAlignFriendly, botBattleForce, botBelief, botBelievedOwner, botDruidShortfall, botEffForce, botForceStrength, botKnows, botKnowsGraves, botMarginFor, botMutualFoe, botNeighbourProv, botRelationRaw, botSees, botSeesChar, botTargetDefence, botVisibleCharsIn } from './intel.js';
+import {
+  BOT_DEF_BONUS,
+  BOT_HEX_DIRS,
+  botAlignFriendly,
+  botBattleForce,
+  botBelief,
+  botBelievedOwner,
+  botDruidShortfall,
+  botEffForce,
+  botForceStrength,
+  botKnows,
+  botKnowsGraves,
+  botMarginFor,
+  botMutualFoe,
+  botNeighbourProv,
+  botRelationRaw,
+  botSees,
+  botSeesChar,
+  botTargetDefence,
+  botVisibleCharsIn,
+} from './intel.js';
 import { BOT_SEA_ALL, botDefenceNeed, botEnemyChars, botIsLoadedFleet, botIsValuable, botSeaCap } from './war.js';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.js';
-import { BOT_SLAYER_FIGHTERS_ONLY, botFieldRecruitTokens, botFleetOnly, botHeroCap, botHexDist, botHomeId, botIsFighter, botLandReach, botPassable, botRecruitOrder, botRoles, botTurnCache } from './strategy.js';
+import {
+  BOT_SLAYER_FIGHTERS_ONLY,
+  botFieldRecruitTokens,
+  botFleetOnly,
+  botHeroCap,
+  botHexDist,
+  botHomeId,
+  botIsFighter,
+  botLandReach,
+  botPassable,
+  botRecruitOrder,
+  botRoles,
+  botTurnCache,
+} from './strategy.js';
 import { BOT_SCHOOLS } from './schools.js';
-import { botAllyNear, botDuelSkill, botEnemyIntel, botHostMargin, botLairCandidates, botLairPlan, botMasteryPre, botPickupOrder, botRememberedHostAt, botSkillsUnknown, botSlayerHasLairsToGrowInto, botSlayerTrainSkill } from './missions.js';
+import {
+  botAllyNear,
+  botDuelSkill,
+  botEnemyIntel,
+  botHostMargin,
+  botLairCandidates,
+  botLairPlan,
+  botMasteryPre,
+  botPickupOrder,
+  botRememberedHostAt,
+  botSkillsUnknown,
+  botSlayerHasLairsToGrowInto,
+  botSlayerTrainSkill,
+} from './missions.js';
 import { BOT_NAVAL_TYPES, botAtWar, botPracticeSkill } from './economy.js';
-import { botBeatableLairIn, botCastPlan, botCrossTrainSkill, botPathAny, botPathLenAny, botPlannedAttackTarget, botSchoolLimit, botTargetTitles, botTitleFocusSkill } from './spellcraft.js';
+import {
+  botBeatableLairIn,
+  botCastPlan,
+  botCrossTrainSkill,
+  botPathAny,
+  botPathLenAny,
+  botPlannedAttackTarget,
+  botSchoolLimit,
+  botTargetTitles,
+  botTitleFocusSkill,
+} from './spellcraft.js';
 import { botPins } from './phase-one.js';
 
 // ── MAGE (2026-09-26, Toby): a specialist who focuses on TWO schools of magic — his strongest, and the next

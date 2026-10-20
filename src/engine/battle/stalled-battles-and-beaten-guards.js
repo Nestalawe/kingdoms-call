@@ -7,7 +7,15 @@ import { newMercId } from '../turn/mercenary-ids-and-battle-records.js';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.js';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.js';
-import { bestRetreat, clearNavalHold, navalHeldIn, navalHoldLine, navalSplitRetreat, retreatOptions, seaTrapLine } from '../units/sea-lift-stranding-and-retreats.js';
+import {
+  bestRetreat,
+  clearNavalHold,
+  navalHeldIn,
+  navalHoldLine,
+  navalSplitRetreat,
+  retreatOptions,
+  seaTrapLine,
+} from '../units/sea-lift-stranding-and-retreats.js';
 import { armyTotalStr } from './best-commander.js';
 import { emitBattle } from './battle-report-lines-and-force-markers.js';
 import { combatVsNPC } from './battles-against-province-defenders.js';

@@ -1,12 +1,47 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.js';
 import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.js';
 import { kcJoinP } from './startup.js';
-import { RUMOUR_COST_BY_POWER_P, SEASONS, actionsFor, discoveryChoiceBlockHTML, isPreOrderIdP, itemBoundTag, itemSlotTag, itemTierTagP, itemUsableByP, itemsForDisplayP, renderConcede, renderDiscoveryChoices, skillsUnseenP } from './items-and-heroes.js';
+import {
+  RUMOUR_COST_BY_POWER_P,
+  SEASONS,
+  actionsFor,
+  discoveryChoiceBlockHTML,
+  isPreOrderIdP,
+  itemBoundTag,
+  itemSlotTag,
+  itemTierTagP,
+  itemUsableByP,
+  itemsForDisplayP,
+  renderConcede,
+  renderDiscoveryChoices,
+  skillsUnseenP,
+} from './items-and-heroes.js';
 import { renderDiplomacy } from './report.js';
 import { renderReckoningOrders } from './titles.js';
-import { SPELL_TO_SCHOOL, armyLabel, combatSpellLimit, effMagicLvl, refreshLaterCastSpells, unitEmoji } from './order-chances.js';
-import { DUEL_STANCES, ENCOUNTER_TACTICS, SKILL_LABELS, applyHeroOrderP, heirSelectorHTML, heroOrderFromOrdersP, refreshAllMoveModeNotes } from './move-analysis.js';
-import { getOrderTarget, refreshAllOncePerTurn, syncAllPreOrderCards, syncAllResurrectCards, syncResurrectCard } from './pre-orders.js';
+import {
+  SPELL_TO_SCHOOL,
+  armyLabel,
+  combatSpellLimit,
+  effMagicLvl,
+  refreshLaterCastSpells,
+  unitEmoji,
+} from './order-chances.js';
+import {
+  DUEL_STANCES,
+  ENCOUNTER_TACTICS,
+  SKILL_LABELS,
+  applyHeroOrderP,
+  heirSelectorHTML,
+  heroOrderFromOrdersP,
+  refreshAllMoveModeNotes,
+} from './move-analysis.js';
+import {
+  getOrderTarget,
+  refreshAllOncePerTurn,
+  syncAllPreOrderCards,
+  syncAllResurrectCards,
+  syncResurrectCard,
+} from './pre-orders.js';
 import { effSkillP, itemAcquiredTagP, itemLoreTip, restoreSubmitWrap } from './briefing-and-submit.js';
 import { druidNeedP, formatRace, heroHireWageOfP, skillRowHTML } from './skills-and-projections.js';
 import { buildTargetField, predictedLocation, refreshExploreNotes } from './order-targets.js';

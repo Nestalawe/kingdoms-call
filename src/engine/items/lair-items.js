@@ -3,7 +3,20 @@ import { kcRng } from '../rng.js';
 import { homeProvinceIdFor } from '../grand-design.js';
 import { shuffleP } from '../battle/fortune.js';
 import { HOARD_CATEGORIES } from './hoard-categories.js';
-import { LAIR_EFFECT_SPREAD, LAIR_ITEM_ODDS, awardedEffectSet, ensureLairHoard, isLegendaryItem, itemEffectKey, itemFallbackOk, itemHoardCategory, lairItemTier, migrateHoardTally, preferFreshEffects, rollMagicItem } from './tiers-and-hoards.js';
+import {
+  LAIR_EFFECT_SPREAD,
+  LAIR_ITEM_ODDS,
+  awardedEffectSet,
+  ensureLairHoard,
+  isLegendaryItem,
+  itemEffectKey,
+  itemFallbackOk,
+  itemHoardCategory,
+  lairItemTier,
+  migrateHoardTally,
+  preferFreshEffects,
+  rollMagicItem,
+} from './tiers-and-hoards.js';
 import { hexDistP } from '../world/map-helpers.js';
 
 // ── EVEN DISTRIBUTION PER PLAYER (2026-09-11, Toby: "so players won't keep finding the same type

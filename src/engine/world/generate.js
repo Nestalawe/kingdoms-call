@@ -1,11 +1,46 @@
-import { KC_HUMANOID_RACES, KC_RIVAL_RACE, KC_UNIT_CLASS, MONSTERS_P, PRIMAL_ARMY_DEFS_P, PRIMAL_UNIT_NAMES, PROVINCE_ARMIES_P } from '../../content/kingdoms-call-data.js';
+import {
+  KC_HUMANOID_RACES,
+  KC_RIVAL_RACE,
+  KC_UNIT_CLASS,
+  MONSTERS_P,
+  PRIMAL_ARMY_DEFS_P,
+  PRIMAL_UNIT_NAMES,
+  PROVINCE_ARMIES_P,
+} from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
 import { UNIT_Q_MULT } from '../battle/strength.js';
 import { HOME_FLEET_BY_RACE } from '../grand-design.js';
-import { ALIGNMENTS_P, COASTAL_NAVAL_CHANCE, HUMANOID_FLEET_TYPES, HUMANOID_RACES_GEN, PRIMAL_LAND_CHANCE, RACES_P, SEA_TYPES_GEN, SIGNATURE_TERRAIN_P, SIGNATURE_WEIGHT_P, TEMPERS_P, buildHumanoidPool, fullRaceLandRoster, getDruidLevel, provincePoolSize } from './tables.js';
+import {
+  ALIGNMENTS_P,
+  COASTAL_NAVAL_CHANCE,
+  HUMANOID_FLEET_TYPES,
+  HUMANOID_RACES_GEN,
+  PRIMAL_LAND_CHANCE,
+  RACES_P,
+  SEA_TYPES_GEN,
+  SIGNATURE_TERRAIN_P,
+  SIGNATURE_WEIGHT_P,
+  TEMPERS_P,
+  buildHumanoidPool,
+  fullRaceLandRoster,
+  getDruidLevel,
+  provincePoolSize,
+} from './tables.js';
 import { ABILITIES_P, shuffleP } from '../battle/fortune.js';
-import { SEA_GUARDIAN_NAMES, _usedHeroEpithets, _usedHeroFirsts, _usedHeroNames, nextHeroName, renameLairsThematicP } from '../names.js';
-import { FEATURE_POOLS_P, ITEMS_BY_TIER, RITUAL_SITE_CHANCE_HUMANOID, RITUAL_SITE_NAMES } from '../items/tiers-and-hoards.js';
+import {
+  SEA_GUARDIAN_NAMES,
+  _usedHeroEpithets,
+  _usedHeroFirsts,
+  _usedHeroNames,
+  nextHeroName,
+  renameLairsThematicP,
+} from '../names.js';
+import {
+  FEATURE_POOLS_P,
+  ITEMS_BY_TIER,
+  RITUAL_SITE_CHANCE_HUMANOID,
+  RITUAL_SITE_NAMES,
+} from '../items/tiers-and-hoards.js';
 import { ensureAllLairHoards } from '../items/lair-items.js';
 import { discoverFeat } from '../../views/visibility.js';
 import { GUARDIAN_TABLE_VER, computeMaxHp, maxHpPlayers } from '../heroes/skills-and-hp.js';

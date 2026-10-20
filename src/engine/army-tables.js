@@ -1,4 +1,11 @@
-import { KC_ITEM_UNCAPPED_SKILLS, KC_QUALITY_TIERS, KC_SKILLS, KC_SKILL_LABELS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../content/kingdoms-call-data.js';
+import {
+  KC_ITEM_UNCAPPED_SKILLS,
+  KC_QUALITY_TIERS,
+  KC_SKILLS,
+  KC_SKILL_LABELS,
+  KC_UNIT_CLASS,
+  PRIMAL_ARMY_DEFS_P,
+} from '../content/kingdoms-call-data.js';
 
 // ════
 // MASTER UNIT TABLES — single source of truth

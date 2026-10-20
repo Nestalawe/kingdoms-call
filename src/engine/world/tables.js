@@ -1,4 +1,14 @@
-import { KC_ALIGNMENTS, KC_DRUID_LEVELS, KC_HUMANOID_RACES, KC_TEMPERS, KC_TERRAIN_COLORS, KC_UNIT_CLASS, KC_UNIT_TYPE, PROVINCE_ARMIES_P, TEMPER_TRAITS } from '../../content/kingdoms-call-data.js';
+import {
+  KC_ALIGNMENTS,
+  KC_DRUID_LEVELS,
+  KC_HUMANOID_RACES,
+  KC_TEMPERS,
+  KC_TERRAIN_COLORS,
+  KC_UNIT_CLASS,
+  KC_UNIT_TYPE,
+  PROVINCE_ARMIES_P,
+  TEMPER_TRAITS,
+} from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
 import { shuffleP } from '../battle/fortune.js';
 import { activeItems } from '../items/equipment.js';

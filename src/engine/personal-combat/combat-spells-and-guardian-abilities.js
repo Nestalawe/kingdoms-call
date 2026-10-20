@@ -10,7 +10,15 @@ import { discSum } from '../discoveries.js';
 import { telSpell } from '../turn/log-line-helpers.js';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
 import { pcNewStatus } from './speed-encounter-plans-and-combatants.js';
-import { pcCourageChance, pcHitSkill, pcLandStun, pcMeleeDamage, pcStunTurned, pcTakeHit, pcWardWord } from './to-hit-wounds-stuns-and-courage.js';
+import {
+  pcCourageChance,
+  pcHitSkill,
+  pcLandStun,
+  pcMeleeDamage,
+  pcStunTurned,
+  pcTakeHit,
+  pcWardWord,
+} from './to-hit-wounds-stuns-and-courage.js';
 import { pcCombatXP } from './melee-flight-and-archery.js';
 
 // ── PERSONAL COMBAT: COMBAT SPELLS AND GUARDIAN ABILITIES (plan P1-08e: lifted out of resolveTurn) ────

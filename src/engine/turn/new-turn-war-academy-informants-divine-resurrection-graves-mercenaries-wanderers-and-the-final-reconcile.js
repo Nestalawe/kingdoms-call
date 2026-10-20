@@ -23,7 +23,9 @@ import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-r
 // It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads no value of the phase loop's. The
 // body keeps resolveTurn's indent (plan P1-08's Decisions).
 
-export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile(turnContext) {
+export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile(
+  turnContext,
+) {
   const { G, log } = turnContext;
   // 7d. sd08 War Academy: promote one random army in each player's home province
   G.players.forEach((p, pi) => {

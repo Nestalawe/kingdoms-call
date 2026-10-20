@@ -1,4 +1,11 @@
-import { ALL_MAGIC_ITEMS_P, KC_ITEM_SLOT_CAP, LEGENDARY_ITEMS_P, SPELL_DEFS_P, _ITEM_NAME_ALTS, _VARIANT_BANK } from '../../content/kingdoms-call-data.js';
+import {
+  ALL_MAGIC_ITEMS_P,
+  KC_ITEM_SLOT_CAP,
+  LEGENDARY_ITEMS_P,
+  SPELL_DEFS_P,
+  _ITEM_NAME_ALTS,
+  _VARIANT_BANK,
+} from '../../content/kingdoms-call-data.js';
 import { SKILL_LABELS } from '../army-tables.js';
 import { HOARD_CATEGORIES } from './hoard-categories.js';
 import { ITEMS_BY_TIER, ITEM_LORE_BY_NAME, isLegendaryItem, itemHoardCategory } from './tiers-and-hoards.js';

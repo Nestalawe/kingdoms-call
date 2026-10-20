@@ -15,15 +15,36 @@ import { createTurnContext } from './turn/context.js';
 import { syncAllMaxHp } from './heroes/experience-skill-rises-and-earned-hp.js';
 import { buildReports } from './turn/realm-reports-and-spy-stealth.js';
 import { buildPhaseIntents } from './turn/phase-intents-and-dependency-ordering.js';
-import { everyRealmStampedBotOrHumanFromTheBotSlotRows, lastTurnsBattleAndDuelSwordsClearedFromTheMap, mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans, turnStartRepairsAndAFreshSlateOfOrdersForEveryHero } from './turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.js';
-import { missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart, movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan, relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks, warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages } from './turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.js';
-import { endPhaseSkillRisesFallenCommandersAndProvinceMemory, pinAndReactToPhaseIntents, resolvePhaseOrdersInTwoTiersAroundTheDefendStep, startPhaseHealingSnapshotsAndStalledBattles } from './turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.js';
+import {
+  everyRealmStampedBotOrHumanFromTheBotSlotRows,
+  lastTurnsBattleAndDuelSwordsClearedFromTheMap,
+  mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans,
+  turnStartRepairsAndAFreshSlateOfOrdersForEveryHero,
+} from './turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.js';
+import {
+  missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart,
+  movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan,
+  relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks,
+  warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages,
+} from './turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.js';
+import {
+  endPhaseSkillRisesFallenCommandersAndProvinceMemory,
+  pinAndReactToPhaseIntents,
+  resolvePhaseOrdersInTwoTiersAroundTheDefendStep,
+  startPhaseHealingSnapshotsAndStalledBattles,
+} from './turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.js';
 import { earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill } from './turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.js';
 import { afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames } from './turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.js';
-import { diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings, victoryTheReckoningEliminationConcessionAndTheAnnouncement } from './turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.js';
+import {
+  diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings,
+  victoryTheReckoningEliminationConcessionAndTheAnnouncement,
+} from './turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.js';
 import { newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns } from './turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.js';
 import { newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile } from './turn/new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-final-reconcile.js';
-import { imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy, titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn } from './titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.js';
+import {
+  imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy,
+  titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn,
+} from './titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.js';
 
 // ── THE TURN ITSELF (plan P1-18d, 2026-10-18) ────
 // resolveTurn works out one turn: it brings the save up to date, merges the players' orders, has the bots plan,

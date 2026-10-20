@@ -1,5 +1,11 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.js';
-import { KC_CARRIER_BERTHS, KC_HEX_DIRS, KC_SKILL_LABELS, KC_TEMPERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import {
+  KC_CARRIER_BERTHS,
+  KC_HEX_DIRS,
+  KC_SKILL_LABELS,
+  KC_TEMPERS,
+  KC_UNIT_CLASS,
+} from '../../content/kingdoms-call-data.js';
 import { kcJoinP, sb } from './startup.js';
 import { SKILL_COLUMNS } from './join-and-chronicle.js';
 import { getOrderTarget } from './pre-orders.js';

@@ -1,6 +1,12 @@
 import { KC_QUALITY_UP, SPELL_DEFS_P } from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
-import { CHARMED_NO_TURN_SPELLS, COMBAT_ONLY_TACTICS, SKILL_LABELS, SPELL_FNS_NEED_COLOCATED_TARGET, demoteOrDisband } from '../army-tables.js';
+import {
+  CHARMED_NO_TURN_SPELLS,
+  COMBAT_ONLY_TACTICS,
+  SKILL_LABELS,
+  SPELL_FNS_NEED_COLOCATED_TARGET,
+  demoteOrDisband,
+} from '../army-tables.js';
 import { CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.js';
 import { unitBaseStrength } from '../battle/strength.js';
 import { heroHireWage } from '../world/tables.js';
@@ -19,10 +25,21 @@ import { _BEST_SCHOOL } from '../titles/reckoning.js';
 import { applyPendingSynthPlan, discSum, gdActive, hasDisc } from '../discoveries.js';
 import { emitNarrLine, logSplit, notifyProvinceOwner, notifyTarget, realmTag } from '../turn/log-line-helpers.js';
 import { charMinor } from '../titles/title-holders-and-battle-merit.js';
-import { effStat, isHiddenChar, isVanished, isVeiled, recalcHeroPay } from '../heroes/effective-skills-and-hidden-heroes.js';
+import {
+  effStat,
+  isHiddenChar,
+  isVanished,
+  isVeiled,
+  recalcHeroPay,
+} from '../heroes/effective-skills-and-hidden-heroes.js';
 import { setMovePool } from '../units/movement-pools.js';
 import { applyPlague, blessWardNegates } from '../magic/plague-and-bless-ward.js';
-import { SKILLGAIN_COMMON, SKILLGAIN_STD, awardKillXP, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardKillXP,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.js';
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.js';

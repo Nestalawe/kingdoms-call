@@ -8,7 +8,18 @@ import { GARRISON_DRILL_LEVEL, UNIT_DRILL_BASE, humanXPMult } from '../units/dri
 import { armyUnitName } from '../dice-and-army-names.js';
 import { perkTier } from '../titles/perks.js';
 import { noteServedRealm } from '../heroes/charms-and-neutrals.js';
-import { capItemTaxGold, discEff, discHeroWage, discTaxAdd, discUpkeepWage, gdActive, hasDisc, realmBaseTax, taxBonusCap, taxRecordsGold } from '../discoveries.js';
+import {
+  capItemTaxGold,
+  discEff,
+  discHeroWage,
+  discTaxAdd,
+  discUpkeepWage,
+  gdActive,
+  hasDisc,
+  realmBaseTax,
+  taxBonusCap,
+  taxRecordsGold,
+} from '../discoveries.js';
 import { charMinor } from '../titles/title-holders-and-battle-merit.js';
 import { isOpenSea, seaLiftShortfall, settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.js';
 import { setMovePool } from '../units/movement-pools.js';

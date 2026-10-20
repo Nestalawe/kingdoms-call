@@ -1,6 +1,13 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
 import { kcRng } from '../rng.js';
-import { AERIAL_TYPES, FLYING_TYPES, PRIMAL_SEA_TYPES, SEA_TYPES, carrierBerths, isAirCarriable } from '../units/movement.js';
+import {
+  AERIAL_TYPES,
+  FLYING_TYPES,
+  PRIMAL_SEA_TYPES,
+  SEA_TYPES,
+  carrierBerths,
+  isAirCarriable,
+} from '../units/movement.js';
 import { senseGravesUnderfoot } from '../graves.js';
 import { discoverFeat, featDiscovered } from '../../views/visibility.js';
 import { activeItems } from '../items/equipment.js';
@@ -14,10 +21,20 @@ import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.js';
 import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from '../realms/relations-and-captures.js';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
 import { effStat, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.js';
-import { clearNavalHold, getSeaCapability, navalHeldIn, navalHoldLine } from '../units/sea-lift-stranding-and-retreats.js';
+import {
+  clearNavalHold,
+  getSeaCapability,
+  navalHeldIn,
+  navalHoldLine,
+} from '../units/sea-lift-stranding-and-retreats.js';
 import { canEnterTerrain, contingentUnifyChance, refreshMovePool, setMovePool } from '../units/movement-pools.js';
 import { commandHandoverLine, pickBattleCommander, relocateChar, syncLeaderCopy } from '../battle/best-commander.js';
-import { SKILLGAIN_COMMON, SKILLGAIN_STD, rollNavalVoyage, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  rollNavalVoyage,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { emitBattle } from '../battle/battle-report-lines-and-force-markers.js';
 import { landingPartyFlags } from '../battle/raid-the-coast-and-landing-parties.js';
 import { combatVsNPC } from '../battle/battles-against-province-defenders.js';

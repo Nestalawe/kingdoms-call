@@ -1,5 +1,13 @@
 import { kcHtml } from '../shared/kc-safe.js';
-import { KC_ITEM_UNCAPPED_SKILLS, KC_MAGIC_SCHOOLS, KC_SKILLS, KC_UNIT_BASE_STR, KC_UNIT_CLASS, KC_UNIT_Q_MULT, KC_UNIT_TYPE } from '../../content/kingdoms-call-data.js';
+import {
+  KC_ITEM_UNCAPPED_SKILLS,
+  KC_MAGIC_SCHOOLS,
+  KC_SKILLS,
+  KC_UNIT_BASE_STR,
+  KC_UNIT_CLASS,
+  KC_UNIT_Q_MULT,
+  KC_UNIT_TYPE,
+} from '../../content/kingdoms-call-data.js';
 import { itemSlotP, itemUsableByP } from './items-and-heroes.js';
 import { SKILL_LABELS } from './move-analysis.js';
 import { getOrderExtra, getOrderTarget, syncCharmCard, syncResurrectCard } from './pre-orders.js';

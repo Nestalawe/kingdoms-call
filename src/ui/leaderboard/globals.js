@@ -1,4 +1,17 @@
-import { $, deleteRecord, filtered, loadAll, renamePlayer, render, resetFilters, saveGame, setHidden, setTab, toggleEdit, toggleGame } from './main.js';
+import {
+  $,
+  deleteRecord,
+  filtered,
+  loadAll,
+  renamePlayer,
+  render,
+  resetFilters,
+  saveGame,
+  setHidden,
+  setTab,
+  toggleEdit,
+  toggleGame,
+} from './main.js';
 
 // ── The Hall of Fame's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // Once the page's scripts are ES modules (P1-09d), a top-level name belongs to its own file: an inline on…="…" handler,

@@ -1,6 +1,23 @@
 import { dispFloor } from '../dice-and-army-names.js';
-import { RECKONING_CALLER_MIN_FRAC, RECKONING_DECAY_FROM_TURN, RECKONING_DECAY_STEP_PCT, RECKONING_FLOOR_PCT, RECKONING_MIN_TURN, reckoningAllyStepPct, reckoningDecayOf, reckoningThresholdPct } from '../titles/perks.js';
-import { _TITLE_LABEL, alliedBloc, reckoningBlocShare, reckoningCallEligibility, reckoningOwnShare, reckoningThresholdFor, reckoningWinner } from '../titles/reckoning.js';
+import {
+  RECKONING_CALLER_MIN_FRAC,
+  RECKONING_DECAY_FROM_TURN,
+  RECKONING_DECAY_STEP_PCT,
+  RECKONING_FLOOR_PCT,
+  RECKONING_MIN_TURN,
+  reckoningAllyStepPct,
+  reckoningDecayOf,
+  reckoningThresholdPct,
+} from '../titles/perks.js';
+import {
+  _TITLE_LABEL,
+  alliedBloc,
+  reckoningBlocShare,
+  reckoningCallEligibility,
+  reckoningOwnShare,
+  reckoningThresholdFor,
+  reckoningWinner,
+} from '../titles/reckoning.js';
 import { areAllied, relKeyOf } from '../realms/relations-and-captures.js';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.js';
 

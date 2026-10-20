@@ -4,7 +4,12 @@ import { gainedItemNote, hasItemBase } from '../items/equipment.js';
 import { applyItemMaxHp, pcFoeCat, transferableItems } from './helpers.js';
 import { dispFloor } from '../dice-and-army-names.js';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
-import { SKILLGAIN_COMMON, SKILLGAIN_STD, awardHpRoll, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import {
+  SKILLGAIN_COMMON,
+  SKILLGAIN_STD,
+  awardHpRoll,
+  trySkillGain,
+} from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { pcSpeedOf } from './speed-encounter-plans-and-combatants.js';
 import { pcHitChance, pcMeleeDamage, pcPerkWord, pcRoundStart, pcTakeHit } from './to-hit-wounds-stuns-and-courage.js';
 import { pcAttemptFlee } from './melee-flight-and-archery.js';

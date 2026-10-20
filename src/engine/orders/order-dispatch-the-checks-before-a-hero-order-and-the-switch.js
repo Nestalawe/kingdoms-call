@@ -6,16 +6,69 @@ import { skillLevel } from '../titles/perks.js';
 import { areEnemies } from '../realms/relations-and-captures.js';
 import { PHASE_ACTION_MAP, normaliseAction } from '../turn/phase-intents-and-dependency-ordering.js';
 import { resolveMoveOrder } from './move-order-marches-voyages-and-battles-on-arrival.js';
-import { resolveChartTheUnknownOrder, resolveDiscoverLostRuinOrder, resolveExploreOrder, resolveHuntingRumoursOrder, resolvePerformRiteOrder, resolveSearchLairOrder } from './explore-and-search-orders-maps-lairs-rites-and-rumours.js';
-import { resolveHireHeroOrder, resolveRecruitArmiesOrder } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.js';
-import { resolveAwakenGroveOrder, resolveBrokerOrder, resolveCallToArmsOrder, resolveConsecrateOrder, resolveGrandDesignOrder, resolveHarvestTheFieldOrder, resolveRemovedAwakenTheWildAndCallFromThePitOrders, resolveWildCallingOrder } from './realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.js';
-import { resolvePracticeSkillOrder, resolveResearchBreakthroughOrder, resolveResearchOrder, resolveRestOrder } from './research-and-practice-orders-discoveries-skill-drills-and-rest.js';
-import { resolveEquipItemsOrder, resolveSendItemOrder, resolveUseItemOrder } from './item-orders-equip-use-and-send-magic-items.js';
-import { resolveDisbandArmyOrder, resolveLeaveOrTransferArmyOrder, resolvePickUpArmyOrder, resolveReleaseHeroOrder } from './army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.js';
-import { resolveAssassinateOrder, resolveGrandHeistOrder, resolveSabotageOrder, resolveSpyOrder, resolveStealOrder, resolveVanishOrder } from './espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.js';
+import {
+  resolveChartTheUnknownOrder,
+  resolveDiscoverLostRuinOrder,
+  resolveExploreOrder,
+  resolveHuntingRumoursOrder,
+  resolvePerformRiteOrder,
+  resolveSearchLairOrder,
+} from './explore-and-search-orders-maps-lairs-rites-and-rumours.js';
+import {
+  resolveHireHeroOrder,
+  resolveRecruitArmiesOrder,
+} from './recruit-and-hire-orders-companies-mercenaries-and-heroes.js';
+import {
+  resolveAwakenGroveOrder,
+  resolveBrokerOrder,
+  resolveCallToArmsOrder,
+  resolveConsecrateOrder,
+  resolveGrandDesignOrder,
+  resolveHarvestTheFieldOrder,
+  resolveRemovedAwakenTheWildAndCallFromThePitOrders,
+  resolveWildCallingOrder,
+} from './realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.js';
+import {
+  resolvePracticeSkillOrder,
+  resolveResearchBreakthroughOrder,
+  resolveResearchOrder,
+  resolveRestOrder,
+} from './research-and-practice-orders-discoveries-skill-drills-and-rest.js';
+import {
+  resolveEquipItemsOrder,
+  resolveSendItemOrder,
+  resolveUseItemOrder,
+} from './item-orders-equip-use-and-send-magic-items.js';
+import {
+  resolveDisbandArmyOrder,
+  resolveLeaveOrTransferArmyOrder,
+  resolvePickUpArmyOrder,
+  resolveReleaseHeroOrder,
+} from './army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.js';
+import {
+  resolveAssassinateOrder,
+  resolveGrandHeistOrder,
+  resolveSabotageOrder,
+  resolveSpyOrder,
+  resolveStealOrder,
+  resolveVanishOrder,
+} from './espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.js';
 import { resolveCastSpellOrder } from './cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.js';
-import { resolveDefendOrder, resolveEncounterCharacterOrder } from './encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.js';
-import { resolveBlockadeOrder, resolveChallengeOrder, resolveFeignedRetreatOrder, resolveGrandStratagemOrder, resolveLightningAdvanceOrder, resolveRaidTheCoastOrder, resolveRainOfArrowsOrder, resolveRampageOrder, resolveSnipersMarkOrder } from './war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.js';
+import {
+  resolveDefendOrder,
+  resolveEncounterCharacterOrder,
+} from './encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.js';
+import {
+  resolveBlockadeOrder,
+  resolveChallengeOrder,
+  resolveFeignedRetreatOrder,
+  resolveGrandStratagemOrder,
+  resolveLightningAdvanceOrder,
+  resolveRaidTheCoastOrder,
+  resolveRainOfArrowsOrder,
+  resolveRampageOrder,
+  resolveSnipersMarkOrder,
+} from './war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.js';
 
 // ── ONE HERO'S ORDER, CHECKED AND HANDED TO ITS ORDER'S FUNCTION (plan P1-08j9: lifted out of resolveTurn) ────
 // processOrder carries out one hero's order for one phase: resolveTurn's phase loop calls it for each hero in turn.

@@ -3,7 +3,16 @@ import { sb } from './config.js';
 import { _kcOverlord, show } from './sign-in.js';
 import { openGame } from './game-detail.js';
 import { _showArchived, gameArchived, gameArchivedAt, gamesListCols, metaPatch } from '../../db/game-meta.js';
-import { fmtAgo, fmtLastRun, readTurnModeForm, realmExemptIn, seaPctOf, turnModeOf, turnModeSummary, updateTurnModeFields } from './turn-mode.js';
+import {
+  fmtAgo,
+  fmtLastRun,
+  readTurnModeForm,
+  realmExemptIn,
+  seaPctOf,
+  turnModeOf,
+  turnModeSummary,
+  updateTurnModeFields,
+} from './turn-mode.js';
 import { botConfigFor, gameVisibility, isBotRow } from '../../engine/bots/setup.js';
 import { SEA_PCT_DEFAULT, normSeaPct } from '../../engine/world/generate.js';
 

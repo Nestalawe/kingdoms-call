@@ -5,7 +5,19 @@ import { d100, dispFloor, rng } from '../dice-and-army-names.js';
 import { discDuelVs, discSum } from '../discoveries.js';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
 import { pcHasRanged, pcRangeStep, pcSkillLabel, pcSpeedOf } from './speed-encounter-plans-and-combatants.js';
-import { PC_HIT_MAX, PC_HIT_MIN, pcHitChance, pcHitSkill, pcMeleeDamage, pcPerkWord, pcSkillHitPct, pcSustainMult, pcTakeHit, pcWardIcon, pcWardWord } from './to-hit-wounds-stuns-and-courage.js';
+import {
+  PC_HIT_MAX,
+  PC_HIT_MIN,
+  pcHitChance,
+  pcHitSkill,
+  pcMeleeDamage,
+  pcPerkWord,
+  pcSkillHitPct,
+  pcSustainMult,
+  pcTakeHit,
+  pcWardIcon,
+  pcWardWord,
+} from './to-hit-wounds-stuns-and-courage.js';
 
 // ── PERSONAL COMBAT: MELEE, FLIGHT AND ARCHERY (plan P1-08e: lifted out of resolveTurn) ────
 // Experience from a hit, the riposte, a melee blow, flight and the free strike a failed flight gives, closing in, and

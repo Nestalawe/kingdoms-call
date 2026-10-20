@@ -3,7 +3,17 @@ import { KC_SEASONS } from '../../content/kingdoms-call-data.js';
 import { L79_ORDERS } from './l79-orders.js';
 import { SEASONS, _pendingDiscChoices, actionsFor } from './items-and-heroes.js';
 import { refreshLaterCastSpells } from './order-chances.js';
-import { DUEL_STANCES, ENCOUNTER_TACTICS, HEIR_TEMPERS_LIST, SKILL_LABELS, heirAddedTo, heirPointsRemaining, heirTotalAdded, refreshAllMoveModeNotes, refreshMoveModeNote } from './move-analysis.js';
+import {
+  DUEL_STANCES,
+  ENCOUNTER_TACTICS,
+  HEIR_TEMPERS_LIST,
+  SKILL_LABELS,
+  heirAddedTo,
+  heirPointsRemaining,
+  heirTotalAdded,
+  refreshAllMoveModeNotes,
+  refreshMoveModeNote,
+} from './move-analysis.js';
 import { buildOrdersForm, refreshEncounterPlan, renderPreSchool } from './orders-form.js';
 import { doSaveOrders, doSubmitOrders, restoreSubmitWrap } from './briefing-and-submit.js';
 import { heroHireWageOfP } from './skills-and-projections.js';
