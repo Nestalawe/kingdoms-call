@@ -43,8 +43,9 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(note(hero(),[item('Blade of Fury')])==='','nothing to say for an item the hero does not hold');
 
   // ── Static: every gain path writes the note ──
-  // Each gain line is found by its message in the GM portal's code, and the note must come within a few statements
-  // after it, whatever the lines (tests/lib/source.ts; until plan P1-09a it was within a few lines of the built page).
+  // Each gain line is found by its message in the GM portal's code, and the note must come within the given number of
+  // statements after it (innermost statements, in the order they start), whatever the lines (tests/lib/source.ts;
+  // until plan P1-09a it was the same number of lines of the built page).
   const {statementsFollowing}=require('./lib/source.ts');
   const PATHS=[
     ['lair hoard', /hauls out \$\{itemNameList\(baseDrops,false\)\}/, 4],

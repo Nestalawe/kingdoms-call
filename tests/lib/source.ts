@@ -591,9 +591,10 @@ export function callsTo(file: string, name: string, opts: SourceOptions = {}): C
 
 /** Where the page's scripts first hold a string or template literal whose code (in compact's layout, a template's
  *  `${…}` parts as written) matches `re`, in the pages' file order: that file, and the code of the statement holding it
- *  and of the `count` statements that come next in the file (each statement once, in the order they start; a block's
- *  braces are not one), in compact's layout, a line between each. Null if no literal matches. For a test that a call
- *  follows a message closely, whatever the lines: `statementsFollowing(GM, /hauls out/, 4)`. */
+ *  and of the `count` statements that come next in the file, in compact's layout, a line between each. Only the
+ *  innermost statements count (a statement with others inside it, an `if` with a block, is not one: its statements
+ *  are), each in the order it starts, so the window is the same whatever the lines. Null if no literal matches. For a
+ *  test that a call follows a message closely: `statementsFollowing(GM, /hauls out/, 3)`. */
 export function statementsFollowing(
   page: string,
   re: RegExp,
@@ -609,7 +610,12 @@ export function statementsFollowing(
         re.test(compact(n, tree)),
     );
     if (!literal) continue;
-    const statements = all.filter((n): n is ts.Statement => isStatement(n) && !ts.isBlock(n));
+    const statements = all.filter(
+      (n): n is ts.Statement =>
+        isStatement(n) &&
+        !ts.isBlock(n) &&
+        ![...nodesUnder(n)].some((d) => d !== n && isStatement(d) && !ts.isBlock(d)),
+    );
     let holder: ts.Node = literal;
     while (!statements.includes(holder as ts.Statement) && !ts.isSourceFile(holder)) holder = holder.parent;
     const at = statements.indexOf(holder as ts.Statement);
