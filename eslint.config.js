@@ -1,45 +1,58 @@
 // ESLint, flat config. TypeScript files get typescript-eslint's strictest type-checked rules, an error for a switch
 // that misses a case, and rules against focused (.only) and skipped tests: Vitest's for the Vitest tests, Playwright's
-// for the browser specs (tests/browser/), which also may not wait a fixed time. Today's JavaScript isn't linted yet: it
-// becomes TypeScript during Phase 1 (P1-09, P1-14). The one exception is the engine (src/engine/, src/views/): it gets
-// no-undef, so code lifted out of resolveTurn can't keep a name it reached through the closure (plan P1-08a). Formatting
-// is Prettier's job (eslint-config-prettier).
+// for the browser specs (tests/browser/), which also may not wait a fixed time. Formatting is Prettier's job
+// (eslint-config-prettier).
+//
+// The site's JavaScript (src/, ES modules since P1-09d) gets no-undef, so a file can't read a name it doesn't import or
+// declare: the engine (src/engine/, src/views/, the data file) only JavaScript's own built-ins and console, not window,
+// document or sb; the rest of src/ the browser's names too, the page's own classic scripts' (KC_CONFIG from
+// kc-config.js, supabase from supabase-js) and its declared globals. The rest of its rules come with TypeScript
+// (P1-09e). The other JavaScript (tests' scripts, tools/legacy/) isn't linted yet: it becomes TypeScript in Phase 1.
 const { defineConfig, globalIgnores } = require('eslint/config');
 const js = require('@eslint/js');
 const tseslint = require('typescript-eslint');
 const vitest = require('@vitest/eslint-plugin');
 const playwright = require('eslint-plugin-playwright');
 const prettier = require('eslint-config-prettier');
+const globals = require('globals');
 const fs = require('node:fs');
 const path = require('node:path');
 const acorn = require('acorn');
-const { engineFiles } = require('./src/manifest.ts');
 
-// The engine's files are classic scripts sharing the GM page's one global scope, so each may read what the others and
-// the data file declare at top level. Those names are its globals, worked out here from the files themselves (no list
-// kept by hand), with JavaScript's own built-ins (ecmaVersion) and console. Nothing else: not window, document or sb.
-const ENGINE_SCRIPTS = ['content/kingdoms-call-data.js', ...engineFiles()];
-const engineGlobals = {};
-for (const file of ENGINE_SCRIPTS) {
-  const tree = acorn.parse(fs.readFileSync(path.join(__dirname, 'src', file), 'utf8'), { ecmaVersion: 'latest' });
+// A page's declared globals (plan P1-09b): the variables its files and its tests share, each declared once as
+// `globalThis.<name> = <value>;` at the top of the file that owns it and read and written by its bare name. Worked out
+// here from the files themselves (no list kept by hand); tests/static/page-globals.test.ts checks each is one a
+// handler or a test needs, or another file writes.
+const ENGINE = ['src/engine/**/*.js', 'src/views/**/*.js', 'src/content/**/*.js'];
+const declaredGlobals = {};
+for (const entry of fs.readdirSync(path.join(__dirname, 'src'), { recursive: true, withFileTypes: true })) {
+  const file = path.join(entry.parentPath, entry.name);
+  if (!entry.isFile() || !file.endsWith('.js') || /[\\/]src[\\/](engine|views|content)[\\/]/.test(file)) continue;
+  const tree = acorn.parse(fs.readFileSync(file, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' });
   for (const node of tree.body) {
-    if (node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration')
-      engineGlobals[node.id.name] = 'readonly';
-    if (node.type === 'VariableDeclaration') {
-      for (const d of node.declarations) if (d.id.type === 'Identifier') engineGlobals[d.id.name] = 'readonly';
-    }
+    const e = node.type === 'ExpressionStatement' ? node.expression : null;
+    if (e && e.type === 'AssignmentExpression' && e.operator === '=' && e.left.type === 'MemberExpression')
+      if (e.left.object.type === 'Identifier' && e.left.object.name === 'globalThis' && !e.left.computed)
+        declaredGlobals[e.left.property.name] = 'writable';
   }
 }
 
 module.exports = defineConfig(
-  globalIgnores(['**/*.js', '!src/engine/**/*.js', '!src/views/**/*.js', '**/*.cjs', '**/*.mjs', 'site/']),
+  globalIgnores(['**/*.js', '!src/**/*.js', '**/*.cjs', '**/*.mjs', 'site/']),
   {
-    files: ['src/engine/**/*.js', 'src/views/**/*.js'],
+    files: ['src/**/*.js'],
+    ignores: ENGINE,
     languageOptions: {
       ecmaVersion: 'latest',
-      sourceType: 'script',
-      globals: { ...engineGlobals, console: 'readonly' },
+      sourceType: 'module',
+      globals: { ...globals.browser, KC_CONFIG: 'readonly', supabase: 'readonly', ...declaredGlobals },
     },
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+    rules: { 'no-undef': 'error' },
+  },
+  {
+    files: ENGINE,
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { console: 'readonly' } },
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: { 'no-undef': 'error' },
   },
