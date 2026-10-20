@@ -1,6 +1,6 @@
 # Puts a pull request on the staging site (https://kingdoms-call-staging.github.io/), talking to the
 # staging database, when it carries the label "staging" (P0-13). New commits on a labelled PR go up too. The site
-# is built from src/ first (npm run build, P1-05).
+# is built from src/ first (npm run build: Vite since P1-09d).
 # One PR is on staging at a time: the newest one deployed. Its PR gets an "On staging" comment, and the
 # PR it replaced is told so. Merging changes nothing on staging.
 #
@@ -16,7 +16,7 @@
 # time), it waits for their verdict (.github/scripts/staging.js wait-ci, up to 20 minutes) and stops if CI failed. The site is pushed to the staging repo with a deploy key (secret STAGING_DEPLOY_KEY), with a
 # kc-config.js pointing at the staging database (variables STAGING_SUPABASE_URL, STAGING_SUPABASE_KEY),
 # all in the "staging" environment. That kc-config.js also names the PR and commit, which every page's
-# footer shows (src/ui/shared/kc-staging-footer.js).
+# footer shows (public/kc-staging-footer.js).
 name: Staging
 
 on:
@@ -50,6 +50,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          cache: npm
 
       - name: Wait for CI to pass on this commit
         run: node .github/scripts/staging.js wait-ci
@@ -76,7 +77,11 @@ jobs:
           STAGING_SUPABASE_KEY: ${{ vars.STAGING_SUPABASE_KEY }}
           STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
 
-      # site/ from src/ (P1-05), as deploy.yml builds it; then the staging config replaces its kc-config.js.
+      # site/ from src/ (P1-05), as deploy.yml builds it (Vite, installed from the lock file: P1-09d); then the staging
+      # config replaces its kc-config.js.
+      - name: Install the build's tools
+        run: npm ci
+
       - name: Build the site
         run: npm run build
 

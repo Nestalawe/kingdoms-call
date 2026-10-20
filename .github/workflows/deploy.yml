@@ -107,8 +107,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          cache: npm
 
-      # The same build the tests ran on (ci.yml). It needs Node only: nothing is installed.
+      # The same build the tests ran on (ci.yml): Vite, installed from the lock file (P1-09d).
+      - run: npm ci
+
       - run: npm run build
 
       - uses: actions/upload-pages-artifact@v5
