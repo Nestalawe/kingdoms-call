@@ -3,10 +3,19 @@
 // with the current turn (stale stamps from earlier turns are simply ignored).
 // 2026-09-24 (Toby item 3): when `battle` is passed, a closing line is appended to its narrative
 // naming how many Orcish units earned the spoils — so it is called BEFORE emitBattle.
-function markOrcAttackWin(ch, gs, battle){
-  if(!ch||ch.player==null||!gs.players[ch.player]||gs.players[ch.player].race!=='Orcish') return 0;
-  let n=0; (ch.armies||[]).forEach(a=>{ if(a&&a.race==='Orcish'&&!a._phantom){ a._orcAtkWinTurn=gs.turn; n++; } });
-  if(n>0&&battle&&Array.isArray(battle.narrative)) battle.narrative.push(`🪓 **Orcish war-spoils**: ${n} Orcish unit${n!==1?'s':''} of ${ch.name.replace(' (wandering)','')}'s host plunder${n===1?'s':''} the field — their wages are halved this turn.`);
+function markOrcAttackWin(ch, gs, battle) {
+  if (!ch || ch.player == null || !gs.players[ch.player] || gs.players[ch.player].race !== 'Orcish') return 0;
+  let n = 0;
+  (ch.armies || []).forEach((a) => {
+    if (a && a.race === 'Orcish' && !a._phantom) {
+      a._orcAtkWinTurn = gs.turn;
+      n++;
+    }
+  });
+  if (n > 0 && battle && Array.isArray(battle.narrative))
+    battle.narrative.push(
+      `🪓 **Orcish war-spoils**: ${n} Orcish unit${n !== 1 ? 's' : ''} of ${ch.name.replace(' (wandering)', '')}'s host plunder${n === 1 ? 's' : ''} the field — their wages are halved this turn.`,
+    );
   return n;
 }
 
@@ -17,14 +26,17 @@ function markOrcAttackWin(ch, gs, battle){
 // drilling skill level. Read by Practice Tactical / Naval and by the end-of-turn GARRISON DRILL,
 // which drills every garrisoned unit as a commander of GARRISON_DRILL_LEVEL would (2026-09-23c, Toby:
 // land and air units as if by Tactical 1, fleets and sea-beasts as if by Naval 1).
-const UNIT_DRILL_BASE={Green:0.05,Average:0.04,Veteran:0.03,Crack:0.02,Elite:0};
-const GARRISON_DRILL_LEVEL=1;
-function humanXPMult(a, ownerPi, gs){
-  return (a&&a.race==='Human'&&ownerPi!=null&&gs.players[ownerPi]&&gs.players[ownerPi].race==='Human')?2:1;
+const UNIT_DRILL_BASE = { Green: 0.05, Average: 0.04, Veteran: 0.03, Crack: 0.02, Elite: 0 };
+const GARRISON_DRILL_LEVEL = 1;
+function humanXPMult(a, ownerPi, gs) {
+  return a && a.race === 'Human' && ownerPi != null && gs.players[ownerPi] && gs.players[ownerPi].race === 'Human'
+    ? 2
+    : 1;
 }
 
-
-function rP(a,b){return Math.floor(kcRng()*(b-a+1))+a;}
+function rP(a, b) {
+  return Math.floor(kcRng() * (b - a + 1)) + a;
+}
 // Starting neutral defender count by wealth tier. MUST use the SAME tax thresholds as the
 // player-facing wealth label (tax>=7 Rich / tax>=4 Prosperous / else Poor) — otherwise a province
 // shown as "Prosperous"
@@ -36,32 +48,45 @@ function rP(a,b){return Math.floor(kcRng()*(b-a+1))+a;}
 // Single source of truth used by every world-gen defender pass (land, sea, primal, home-race
 // conversion). 2026-09-13: the BAND is split out so the count and the audit sweep can never drift
 // apart. neutralDefBand returns [lo,hi] for a tax value; neutralDefCount rolls inside it.
-function neutralDefBand(tax){return tax>=7?[3,4]:tax>=4?[2,3]:[1,2];}
-function neutralDefCount(tax){const b=neutralDefBand(tax);return rP(b[0],b[1]);}
+function neutralDefBand(tax) {
+  return tax >= 7 ? [3, 4] : tax >= 4 ? [2, 3] : [1, 2];
+}
+function neutralDefCount(tax) {
+  const b = neutralDefBand(tax);
+  return rP(b[0], b[1]);
+}
 // Bring a neutral LAND province's defender list back inside the band its FINAL tax demands. Called
 // by the end-of-worldgen audit below, because several home-tailoring passes raise or lower a
 // province's tax AFTER its garrison was rolled (see the sweep's comment). No-ops when the count is
 // already legal, so a province that generated correctly is never re-rolled. Sea is never touched —
 // open water is deliberately undefended and the home coastal guarantee depends on that.
-function resyncNeutralDefenders(prov){
-  if(!prov||prov.terrain==='sea'||prov.owner!=null) return false;
-  const defs=prov.neutralDefenders||(prov.neutralDefenders=[]);
-  const [lo,hi]=neutralDefBand(prov.tax||0);
-  if(defs.length>=lo&&defs.length<=hi) return false;
-  const want=rP(lo,hi);
-  if(defs.length>want){ defs.length=want; }
-  else{
+function resyncNeutralDefenders(prov) {
+  if (!prov || prov.terrain === 'sea' || prov.owner != null) return false;
+  const defs = prov.neutralDefenders || (prov.neutralDefenders = []);
+  const [lo, hi] = neutralDefBand(prov.tax || 0);
+  if (defs.length >= lo && defs.length <= hi) return false;
+  const want = rP(lo, hi);
+  if (defs.length > want) {
+    defs.length = want;
+  } else {
     // Draw extras from the same pool world gen uses: the province's own recruitable types, minus
     // garrison units (no neutral army starts the game as a garrison) and minus sea types on land.
-    const pool=(prov.armyTypes||[]).filter(t=>!String(t).toLowerCase().includes('garrison')&&!SEA_TYPES_GEN.has(t));
-    const draw=pool.length?pool:(prov.armyTypes||[]);
-    const proto=defs[0]||null;
-    while(defs.length<want){
-      const dt=draw.length?draw[Math.floor(kcRng()*draw.length)]:(proto?proto.type:'Shieldwall Levies');
-      defs.push({type:dt,quality:proto?proto.quality:'Average',race:(proto?proto.race:(prov.race||'Human')),unitName:armyUnitName(dt)});
+    const pool = (prov.armyTypes || []).filter(
+      (t) => !String(t).toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t),
+    );
+    const draw = pool.length ? pool : prov.armyTypes || [];
+    const proto = defs[0] || null;
+    while (defs.length < want) {
+      const dt = draw.length ? draw[Math.floor(kcRng() * draw.length)] : proto ? proto.type : 'Shieldwall Levies';
+      defs.push({
+        type: dt,
+        quality: proto ? proto.quality : 'Average',
+        race: proto ? proto.race : prov.race || 'Human',
+        unitName: armyUnitName(dt),
+      });
     }
   }
-  prov.npcArmies=defs.length;
+  prov.npcArmies = defs.length;
   return true;
 }
 
@@ -74,23 +99,32 @@ function resyncNeutralDefenders(prov){
 // slots' qualities, kept as they were dealt. Ties keep the first mix in the province's own type
 // order. Draws no dice. Returns the list of types, one per slot, or null when there is nothing to
 // choose.
-function bestNeutralMix(armyTypes, quals, terrain, race){
-  const types=[...new Set((armyTypes||[]).filter(t=>!String(t).toLowerCase().includes('garrison')&&!SEA_TYPES_GEN.has(t)))];
-  const n=(quals||[]).length;
-  if(types.length<2||!n) return null;
-  const G={players:[],turn:-1};
-  let best=null, bestF=-1;
-  const pick=[];
-  const walk=(from)=>{
-    if(pick.length===n){
-      const armies=pick.map((t,i)=>({type:t,quality:quals[i],race}));
-      const f=botBattleForce(G,null,armies,terrain,{defending:true});
-      if(f>bestF+1e-9){ bestF=f; best=pick.slice(); }
+function bestNeutralMix(armyTypes, quals, terrain, race) {
+  const types = [
+    ...new Set((armyTypes || []).filter((t) => !String(t).toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t))),
+  ];
+  const n = (quals || []).length;
+  if (types.length < 2 || !n) return null;
+  const G = { players: [], turn: -1 };
+  let best = null,
+    bestF = -1;
+  const pick = [];
+  const walk = (from) => {
+    if (pick.length === n) {
+      const armies = pick.map((t, i) => ({ type: t, quality: quals[i], race }));
+      const f = botBattleForce(G, null, armies, terrain, { defending: true });
+      if (f > bestF + 1e-9) {
+        bestF = f;
+        best = pick.slice();
+      }
       return;
     }
-    for(let i=from;i<types.length;i++){ pick.push(types[i]); walk(i); pick.pop(); }
+    for (let i = from; i < types.length; i++) {
+      pick.push(types[i]);
+      walk(i);
+      pick.pop();
+    }
   };
   walk(0);
   return best;
 }
-

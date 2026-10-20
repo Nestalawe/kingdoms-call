@@ -11,7 +11,9 @@
 //    lines already written into past turn reports still render when a player browses their history.
 // To restore the old composer, put the `<div id="dispatch-compose"></div>` back in _realmTop and
 // re-add the render/sync helpers — nothing else was removed.
-function collectMessages(){ return []; }
+function collectMessages() {
+  return [];
+}
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
 globalThis.currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
 // The report currently shown on the map (current turn, or a past-turn snapshot when browsing
@@ -35,63 +37,95 @@ globalThis.viewedTurn = null;
 // renumbered — snapshotTurnLabel() converts it to the turn the player knew it as: the report
 // written when turn N finished is the briefing acted on during turn N+1, and the founding
 // snapshot (key 0) is the Turn 1 briefing.
-function snapshotTurnLabel(key){ return (parseInt(key)||0)+1; }
-function refreshTurnNavHighlight(){
-  const navEl=document.getElementById('turn-nav-btns');
-  if(!navEl) return;
-  const resolved=parseInt(navEl.dataset.resolved??'-1');
-  [...navEl.children].forEach(btn=>{
-    const d=parseInt(btn.dataset.turn);
-    const isCurrent=d===resolved;
-    const isViewed=(viewedTurn!=null)&&(d===viewedTurn)&&!isCurrent;
-    let bg='transparent',border='var(--stone)',color='var(--stone)';
-    if(isCurrent){ bg='var(--crimson)'; border='var(--crimson)'; color='#fff'; }
-    else if(isViewed){ bg='#b34a4a'; border='var(--crimson)'; color='#fff'; } // lighter crimson = the turn on screen
-    btn.style.cssText=`font-size:.68rem;padding:2px 8px;border:1px solid ${border};background:${bg};color:${color};cursor:pointer;border-radius:2px`;
+function snapshotTurnLabel(key) {
+  return (parseInt(key) || 0) + 1;
+}
+function refreshTurnNavHighlight() {
+  const navEl = document.getElementById('turn-nav-btns');
+  if (!navEl) return;
+  const resolved = parseInt(navEl.dataset.resolved ?? '-1');
+  [...navEl.children].forEach((btn) => {
+    const d = parseInt(btn.dataset.turn);
+    const isCurrent = d === resolved;
+    const isViewed = viewedTurn != null && d === viewedTurn && !isCurrent;
+    let bg = 'transparent',
+      border = 'var(--stone)',
+      color = 'var(--stone)';
+    if (isCurrent) {
+      bg = 'var(--crimson)';
+      border = 'var(--crimson)';
+      color = '#fff';
+    } else if (isViewed) {
+      bg = '#b34a4a';
+      border = 'var(--crimson)';
+      color = '#fff';
+    } // lighter crimson = the turn on screen
+    btn.style.cssText = `font-size:.68rem;padding:2px 8px;border:1px solid ${border};background:${bg};color:${color};cursor:pointer;border-radius:2px`;
   });
 }
 
 // ── INIT ────
-async function init(){
-  try{
-    document.getElementById('spinner').style.display='none';
-    const {data:{session},error} = await sb.auth.getSession();
-    if(error) throw error;
-    if(session){ currentUser=session.user; await onSignedIn(); }
-    else show('sec-auth');
-  } catch(e){
-    document.getElementById('spinner').style.display='block';
-    document.getElementById('spinner').textContent='Connection error: '+e.message+'. Check your internet connection and refresh.';
-    console.error('Init failed:',e);
+async function init() {
+  try {
+    document.getElementById('spinner').style.display = 'none';
+    const {
+      data: { session },
+      error,
+    } = await sb.auth.getSession();
+    if (error) throw error;
+    if (session) {
+      currentUser = session.user;
+      await onSignedIn();
+    } else show('sec-auth');
+  } catch (e) {
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('spinner').textContent =
+      'Connection error: ' + e.message + '. Check your internet connection and refresh.';
+    console.error('Init failed:', e);
   }
 }
 
 // scroll the report column to one of its main sections, keeping the target heading clear of the
 // sticky jump-bar. On desktop the middle column is its own scroll container; on a phone
 // (single-column view) the page scrolls, so fall back to scrollIntoView there.
-function jumpToReportSection(id){
-  const tgt=document.getElementById(id); if(!tgt) return;
-  if(tgt.style.display==='none') return;
-  const col=document.getElementById('rp-report-col');
-  const bar=document.getElementById('report-jumpbar');
-  const barH=bar?bar.offsetHeight:0;
-  if(col && col.scrollHeight>col.clientHeight && getComputedStyle(col).overflowY!=='visible'){
-    const top=col.scrollTop+tgt.getBoundingClientRect().top-col.getBoundingClientRect().top-barH;
-    col.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+function jumpToReportSection(id) {
+  const tgt = document.getElementById(id);
+  if (!tgt) return;
+  if (tgt.style.display === 'none') return;
+  const col = document.getElementById('rp-report-col');
+  const bar = document.getElementById('report-jumpbar');
+  const barH = bar ? bar.offsetHeight : 0;
+  if (col && col.scrollHeight > col.clientHeight && getComputedStyle(col).overflowY !== 'visible') {
+    const top = col.scrollTop + tgt.getBoundingClientRect().top - col.getBoundingClientRect().top - barH;
+    col.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   } else {
-    tgt.style.scrollMarginTop=barH+'px';
-    tgt.scrollIntoView({behavior:'smooth',block:'start'});
+    tgt.style.scrollMarginTop = barH + 'px';
+    tgt.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
-function show(id){
-  try{ _closeMapTip(); }catch(e){} // dismiss any province popup when leaving/entering a section
+function show(id) {
+  try {
+    _closeMapTip();
+  } catch (e) {} // dismiss any province popup when leaving/entering a section
   // leaving the report drops the "#game=…" address, so a refresh from any other screen does not
   // bounce back into a report.
-  if(id!=='sec-report'&&/^#game=/.test(location.hash||'')){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} }
-  if(id!=='sec-report'){ try{ stopMessagePolling(); saveMessageReads(); }catch(e){} } // no dispatch poll off the report screen
-  document.querySelectorAll('section').forEach(s=>s.classList.remove('section-active'));
+  if (id !== 'sec-report' && /^#game=/.test(location.hash || '')) {
+    try {
+      history.replaceState(null, '', location.pathname + location.search);
+    } catch (e) {}
+  }
+  if (id !== 'sec-report') {
+    try {
+      stopMessagePolling();
+      saveMessageReads();
+    } catch (e) {}
+  } // no dispatch poll off the report screen
+  document.querySelectorAll('section').forEach((s) => s.classList.remove('section-active'));
   document.getElementById(id)?.classList.add('section-active');
   // On a phone, default the report screen to the Report view the first time it's shown.
-  if(id==='sec-report'){ ensureMobileDefault(); if(window.innerWidth<821) teardownDeskLayout(); else setupDeskLayout(); }
+  if (id === 'sec-report') {
+    ensureMobileDefault();
+    if (window.innerWidth < 821) teardownDeskLayout();
+    else setupDeskLayout();
+  }
 }
-

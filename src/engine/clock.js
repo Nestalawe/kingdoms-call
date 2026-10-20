@@ -6,6 +6,9 @@
 // stamp when the turn ran.
 //   kcClock()        now, in ms since 1970
 //   kcClock.date()   now, as a Date (one reading of the clock, as new Date() is)
-function kcClock(){ return Date.now(); }
-kcClock.date=function(){ return new Date(kcClock()); };
-
+function kcClock() {
+  return Date.now();
+}
+kcClock.date = function () {
+  return new Date(kcClock());
+};
