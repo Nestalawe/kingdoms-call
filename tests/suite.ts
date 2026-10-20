@@ -148,7 +148,7 @@ export function suite(full: boolean): Script[] {
       'simulation',
       'report-privacy',
       'tests/report-privacy.test.js',
-      full ? [GM, '6', '20', '6'] : [GM, '3', '10', '5'],
+      full ? ['6', '20', '6'] : ['3', '10', '5'],
     ],
     [
       'simulation',

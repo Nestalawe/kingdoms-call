@@ -3,18 +3,12 @@
 // report-leak check (lib/report-leaks.ts, P1-04c) on each turn: no realm reads
 // another realm's private line, names a realm it hasn't met, or sees a hero under Invisibility.
 // It also counts how many DIFFERENT realms were shown the same line.
-const {readPage,bootJsdom,reportEveryRealm}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+// The games are played in the engine's bare vm, as the shell plays them (tests/lib/scenario-in-the-vm.ts). Until plan
+// P1-09a they were played on the booted GM portal, its buildReports wrapped from outside.
+const {scenarioInTheVm}=require('./lib/scenario-in-the-vm.ts');
 const {checkLeaks,describeBreaches}=require('./lib/invariants.ts');
-const GMF=process.argv[2]||'kingdoms-call-gm-portal.html', GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5;
-const html=readPage(GMF);
-let ROWS={}; const WRITES=[];
-const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});
+const GAMES=+process.argv[2]||3, TURNS=+process.argv[3]||10, BOTS=+process.argv[4]||5;
 const errors=[];
-const dom=bootJsdom(html,{supabase:{createClient:()=>sbStub()},
-  setup(w){
-    w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message)));
-    w.console.error=(...a)=>errors.push('console.error: '+a.map(String).join(' '));
-    w.console.warn=()=>{}; w.console.log=()=>{};}});
 // Lines that are ONE realm's own business are the leak check's PRIVATE_LINES (lib/report-leaks.ts).
 // Lines an onlooker standing in the province may legitimately see — counted, not failed.
 const WATCHED=[
@@ -23,11 +17,10 @@ const WATCHED=[
   ['Skeletal Armies',         /calls forth .* rises from the graves/],
 ];
 (async()=>{
-  await new Promise(r=>setTimeout(r,500)); const W=dom.window;
-  if(typeof W.runTurn!=='function'){ console.log('engine did not boot'); errors.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
+  const sc=scenarioInTheVm({seed:1}), W=sc.W;
   // Reports are only built for HUMAN slots; an all-bot game therefore writes none. Build one for
   // EVERY realm so the visibility filter can be measured on real bot activity.
-  reportEveryRealm(W);
+  sc.reportEveryRealm();
   const seenBy={};   // line text -> Set of player indices shown it
   let turns=0, reportsSeen=0, linesSeen=0; const leaks=[];
   for(let g=0;g<GAMES;g++){
@@ -36,21 +29,14 @@ const WATCHED=[
     const players=setup.map(sp=>({id:sp.gamePlayerId,user_id:null,player_index:sp.id,display_name:sp.name,orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));
     const byGp={}; players.forEach(p=>byGp[p.id]=p.player_index);
     for(let t=1;t<=TURNS;t++){
-      ROWS={games_one:{id:'g'+g,name:'T',turn:t,status:'active',game_state:JSON.stringify(S),max_turns:999,game_players:players},game_players_list:players,turn_logs_list:[]};
-      W.eval(`currentGame={id:'g${g}',turn:${t},status:'active',name:'T'};`); WRITES.length=0;
-      try{ await W.runTurn(); }catch(e){ console.log('runTurn threw',e.message); break; }
-      await new Promise(r=>setTimeout(r,10));
-      // per-realm reports are written to turn_logs with the realm's player_index
-      WRITES.filter(w=>w.table==='turn_logs'&&w.val&&w.val.player_index>=0&&w.val.entries).forEach(w=>{
-        const pi=w.val.player_index; const rep=w.val.entries;
-        reportsSeen++; (rep.lastTurnLog||[]).forEach(e=>{ linesSeen++; const k=`g${g}t${t}|${e.text}`; (seenBy[k]=seenBy[k]||new Set()).add(pi); });
+      let r; try{ r=sc.play(S,players); }catch(e){ console.log('the turn threw',e.message); errors.push(String(e.stack||e)); break; }
+      // each realm's report, as the shell writes it to turn_logs with the realm's player_index
+      Object.entries(r.reports).forEach(([pi,rep])=>{
+        reportsSeen++; (rep.lastTurnLog||[]).forEach(e=>{ linesSeen++; const k=`g${g}t${t}|${e.text}`; (seenBy[k]=seenBy[k]||new Set()).add(+pi); });
       });
-      if(g===0&&t===1){ const tally={}; WRITES.forEach(w=>{ const k=w.table+':'+Object.keys(w.val||{}).join(','); tally[k]=(tally[k]||0)+1; }); console.log('WRITES tally t1:', JSON.stringify(tally)); }
-      const gsW=[...WRITES].reverse().find(w=>w.table==='games'&&w.val&&w.val.game_state);
-      if(!gsW) break; const before=S; S=JSON.parse(gsW.val.game_state); turns++;
-      const logs=WRITES.filter(w=>w.table==='turn_logs'&&w.val&&w.val.entries);
-      const broke=checkLeaks({before,after:S,gmLog:logs.filter(w=>w.val.player_index===-1).flatMap(w=>w.val.entries),
-        telemetry:[],players:[],reports:logs.filter(w=>w.val.player_index>=0).map(w=>({realm:w.val.player_index,report:w.val.entries}))});
+      const before=S; S=JSON.parse(JSON.stringify(r.S2)); turns++;
+      const broke=checkLeaks({before,after:S,gmLog:r.log,
+        telemetry:[],players:[],reports:Object.entries(r.reports).map(([realm,report])=>({realm:+realm,report}))});
       if(broke.length) leaks.push(describeBreaches(`game ${g} turn ${t}`,broke));
     }
   }

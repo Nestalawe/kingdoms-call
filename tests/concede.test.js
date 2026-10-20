@@ -1,7 +1,10 @@
 // 2026-09-27 (items 7 & 8) — a conceded realm in the Diplomacy card, and the Reckoning called
-// the moment every rival but one has quit.
-const {readPage,bootJsdom,reportEveryRealm}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
-const GMF=process.argv[2]||'kingdoms-call-gm-portal.html', PPF=process.argv[3]||'kingdoms-call-player-portal.html';
+// the moment every rival but one has quit. The turns are played in the engine's bare vm, as the shell plays them
+// (tests/lib/scenario-in-the-vm.ts), with a report for every realm, bots' too; the Diplomacy card on the booted player
+// portal. (Until plan P1-09a the turns were played on the booted GM portal, its buildReports wrapped from outside.)
+const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+const {scenarioInTheVm}=require('./lib/scenario-in-the-vm.ts');
+const PPF=process.argv[2]||'kingdoms-call-player-portal.html';
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 let ROWS={}; const WRITES=[];
 const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});
@@ -18,27 +21,19 @@ function boot(file,extra){
 }
 (async()=>{
   // ── item 8 — every rival concedes ──
-  const {d:gd,errs:gerr}=boot(GMF);
-  await new Promise(r=>setTimeout(r,500)); const W=gd.window;
-  if(typeof W.runTurn!=='function'){ console.log('GM portal did not boot'); gerr.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
-  reportEveryRealm(W);   // a report for every realm, bots' too
+  const sc=scenarioInTheVm({seed:1}), W=sc.W;
+  sc.reportEveryRealm();   // a report for every realm, bots' too
   const setup=W.generateBotSetups([],4,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
   let S=await W.generateNewGame(setup,{cols:12,rows:7},999,{seaPct:35}); S.botDifficulty='hard';
   const players=setup.map(sp=>({id:sp.gamePlayerId,user_id:null,player_index:sp.id,display_name:sp.name,orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));
-  const runOne=async(state,turn)=>{
-    ROWS={games_one:{id:'gc',name:'T',turn,status:'active',game_state:JSON.stringify(state),max_turns:999,game_players:players},game_players_list:players,turn_logs_list:[]};
-    W.eval(`currentGame={id:'gc',turn:${turn},status:'active',name:'T'};`); WRITES.length=0;
-    await W.runTurn(); await new Promise(r=>setTimeout(r,10));
-    const w=[...WRITES].reverse().find(x=>x.table==='games'&&x.val&&x.val.game_state);
-    return {state:w?JSON.parse(w.val.game_state):null, writes:[...WRITES]};
-  };
-  let r=await runOne(S,1); S=r.state;
+  const runOne=(state)=>{ const t=sc.play(state,players); return {state:t.S2, gmLog:t.log, reports:t.reports}; };
+  let r=runOne(S); S=r.state;
   ok(!!S && !S.gameOver,'item 8: a normal turn does not end the game');
   // every realm but #1 concedes; make sure the survivor has met them all so the Diplomacy card has
   // rows to show (two bot turns are not enough for four realms to meet on a 12x7 map).
   S.players.forEach((p,i)=>{ if(i!==1){ p.conceded=true; p.concededTurn=S.turn; } });
   S.players[1]._encountered=S.players.map((_,i)=>i).filter(i=>i!==1);
-  r=await runOne(S,S.turn); const S2=r.state;
+  r=runOne(S); const S2=r.state;
   ok(!!S2 && !!S2.gameOver,'item 8: the game ends the turn the last rival concedes');
   if(S2&&S2.gameOver){
     ok(S2.gameOver.winner===1,`item 8: the realm still standing wins (winner=${S2.gameOver.winner})`);
@@ -49,12 +44,12 @@ function boot(file,extra){
     ok(st.some(x=>Array.isArray(x.titles)),'item 8: the standings carry each realm\'s titles');
     ok(st.every(x=>typeof x.score==='number'),'item 8: every realm has a Legacy score');
   }
-  const gmLog=(r.writes.find(w=>w.table==='turn_logs'&&w.val&&w.val.player_index===-1)||{val:{}}).val.entries||[];
+  const gmLog=r.gmLog||[];
   const txt=gmLog.map(e=>e&&e.text||'').join('\n');
   ok(/THE RECKONING IS CALLED/.test(txt),'item 8: the world is told the Reckoning has been called');
   ok(/THE GAME IS DECIDED/.test(txt),'item 8: the result is announced');
   // the surviving realm's report must show the conceded rivals as such
-  const rep=(r.writes.filter(w=>w.table==='turn_logs'&&w.val&&w.val.player_index===1).slice(-1)[0]||{val:{}}).val.entries;
+  const rep=r.reports[1];
   const known=(rep&&rep.diplomacy&&rep.diplomacy.known)||[];
   ok(known.length>0,'item 7: the survivor has encountered realms to list');
   ok(known.every(k=>k.conceded===true),`item 7: every rival is flagged conceded in the report payload (${known.filter(k=>k.conceded).length}/${known.length})`);
@@ -81,8 +76,7 @@ function boot(file,extra){
   ok(P.eval("diploChoices[0]===undefined"),'item 7: a pending declaration against them is dropped');
   ok(/setDiploChoice\(2,/.test(live),'item 7: a live realm keeps its diplomacy controls');
   ok(/Extinguished/.test(dead)&&!/setDiploChoice\(3,/.test(dead),'item 7: an extinguished dynasty is shown and cannot be treated with');
-  console.log(`\n${pass} pass, ${fail} fail · GM page errors ${gerr.length}, player page errors ${perr.length}`);
-  gerr.slice(0,2).forEach(e=>console.log('  ! GM',e.split('\n').slice(0,2).join(' | ')));
+  console.log(`\n${pass} pass, ${fail} fail · player page errors ${perr.length}`);
   perr.slice(0,2).forEach(e=>console.log('  ! PP',e.split('\n').slice(0,2).join(' | ')));
-  process.exit(fail||gerr.length||perr.length?1:0);
+  process.exit(fail||perr.length?1:0);
 })();

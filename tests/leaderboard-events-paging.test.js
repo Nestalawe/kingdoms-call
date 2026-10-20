@@ -3,8 +3,14 @@
 // per turn, so the order of rows within a turn is the database's choice and may differ between page
 // queries: rows at a page edge were skipped or read twice. A failed page was skipped silently and the
 // record saved from whatever had arrived. Unit (level 1): writeGameRecord against a stub that serves
-// the pages as a database may; buildGameRecords is swapped for a probe that keeps what it was given.
-const {readPage,bootJsdom}=require('./lib/boot'); const {pagedEventsStub}=require('./lib/stub-db');
+// the pages as a database may. writeGameRecord and what it calls in its own file are cut out of
+// src/ui/gm/hall-of-fame.js by their syntax tree (tests/lib/source.ts) and run on their own, beside a probe in
+// buildGameRecords' place that keeps what it was given. (Until plan P1-09a they ran on the booted GM portal, with its
+// buildGameRecords stood in from outside, which a page of modules doesn't allow.)
+const vm=require('vm');
+const {pagedEventsStub}=require('./lib/stub-db'); const {sourceOf}=require('./lib/source.ts');
+const HOF='ui/gm/hall-of-fame.js';
+const CUT=sourceOf(HOF,['_kcHasLb','_kcLbLastErr','writeGameRecord','_lbProfCache','_lbProfErr','lbProfileNames','_lbTally','lbCountRow']);
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   // 8 realms × 90 turns = 720 rows: two pages, with the page edge in the middle of a turn.
@@ -12,15 +18,14 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const results=[{game_id:'g1',player_index:0}];
   async function run(errorFrom){
     const calls=[]; const errs=[];
-    const d=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:{createClient:()=>pagedEventsStub({events,results,errorFrom,calls})},
-      setup(w){ w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
-        w.console.warn=()=>{}; w.console.log=()=>{}; w.console.error=()=>{}; }});
-    await new Promise(r=>setTimeout(r,400)); const W=d.window;
-    W.eval('_kcHasLb=true;');
     let got=null;
-    W.buildGameRecords=(gid,gameRow,players,res,ev)=>{ got=ev.slice(); return {game_id:gid,standings:[],records:{}}; };
-    const saved=await W.writeGameRecord('g1',{gameRow:{id:'g1'},players:[],gs:{players:[]}});
-    return {saved,got,calls,errs,lastErr:W.eval('_kcLbLastErr')};
+    const ctx=vm.createContext({console:{warn(){},log(){},error(){}},
+      sb:pagedEventsStub({events,results,errorFrom,calls}),
+      buildGameRecords:(gid,gameRow,players,res,ev)=>{ got=ev.slice(); return {game_id:gid,standings:[],records:{}}; },
+      renderLeaderboardBanner(){}, parseGameState:()=>null});
+    vm.runInContext(CUT+'\n_kcHasLb=true;',ctx);
+    const saved=await vm.runInContext('writeGameRecord',ctx)('g1',{gameRow:{id:'g1'},players:[],gs:{players:[]}});
+    return {saved,got,calls,errs,lastErr:vm.runInContext('_kcLbLastErr',ctx)};
   }
   const a=await run(null);
   ok(a.got&&a.got.length===events.length,`every turn_events row reaches the record builder (got ${a.got&&a.got.length} of ${events.length})`);

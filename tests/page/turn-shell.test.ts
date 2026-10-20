@@ -18,11 +18,13 @@
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.js)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import path from 'node:path';
 import vm from 'node:vm';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
 import { loadEngine } from '../lib/engine.ts';
 import { GAME, newWorld, slotRows, slotRowsJson } from '../lib/matrix-game.ts';
 import { makeStub, type Row, type Stub } from '../lib/stub-db.js';
+import { plantAtStart, plantedSite } from '../lib/source.ts';
 
 const NOW = '2026-10-01T12:00:00Z';
 const ERROR = { message: 'the database is unreachable' };
@@ -69,10 +71,10 @@ interface Staged {
   message(): string;
 }
 
-// Boots the GM portal and stages Turn 1 of a two-realm game: realm 0 has sent its orders, realm 1 has saved a draft
-// (any other payload counts as sent).
-async function stage(orders: [string, string] = [SENT, DRAFT]): Promise<Staged> {
-  return seat(await boot(), (W) => {
+// Boots the GM portal (or `page`, a GM portal built from a planted copy of src/) and stages Turn 1 of a two-realm
+// game: realm 0 has sent its orders, realm 1 has saved a draft (any other payload counts as sent).
+async function stage(orders: [string, string] = [SENT, DRAFT], page?: string): Promise<Staged> {
+  return seat(await boot(4321, page), (W) => {
     W['__sp'] = [0, 1].map((i) => ({
       id: i,
       gamePlayerId: 'gp' + String(i),
@@ -110,11 +112,11 @@ interface Booted {
   logged: string[];
 }
 
-// Boots the GM portal on the stand-in database, with the page's dice seeded from `seed`.
-async function boot(seed = 4321): Promise<Booted> {
+// Boots the GM portal (or `page`) on the stand-in database, with the page's dice seeded from `seed`.
+async function boot(seed = 4321, page = 'kingdoms-call-gm-portal.html'): Promise<Booted> {
   const S = makeStub();
   const logged: string[] = [];
-  const dom = bootJsdom(readPage('kingdoms-call-gm-portal.html'), {
+  const dom = bootJsdom(readPage(page), {
     supabase: S.supabase,
     seed,
     now: NOW,
@@ -347,10 +349,15 @@ test('the save answers with an error and the game cannot be read again: nothing 
 }, 30_000);
 
 // Passes on main too: it holds today's behaviour, for P1-18d (which moves the reports after the save) to keep.
+// The page's report builder fails: it is built from a copy of src/ whose buildTurnReport throws (tests/lib/source.ts;
+// until plan P1-09a the booted page's buildTurnReport was stood in, which a page of modules doesn't allow).
 test('a turn report fails after the save: the turn stands, and the orders stay spent', async () => {
-  const t = await stage();
+  const site = plantedSite({
+    'views/turn-report.js': (code, file) =>
+      plantAtStart(code, file, 'buildTurnReport', "throw new Error('a report could not be built');"),
+  });
+  const t = await stage(undefined, path.join(site.dir, 'kingdoms-call-gm-portal.html'));
   try {
-    t.W.eval("window.buildTurnReport=()=>{ throw new Error('a report could not be built'); };");
     const result = await t.run();
     expect(result, 'the run failed after the save').toMatchObject({ ok: false, committed: true, conflict: false });
     expect(result.error).toBe('a report could not be built');
@@ -359,6 +366,7 @@ test('a turn report fails after the save: the turn stands, and the orders stay s
     expect(t.message()).toMatch(/Turn 1 WAS resolved and saved/);
   } finally {
     t.W.close();
+    site.remove();
   }
 }, 30_000);
 
@@ -484,11 +492,21 @@ test('each turn plays from its own seed, and the page gets its dice back', async
 
 // Fails on the base of P1-08m, where the shell lent the turn its dice itself and handed resolveTurn three arguments.
 // Since P1-08m resolveTurn takes the seed and lends itself the dice (tests/unit/the-turns-own-dice-from-its-seed).
+// What resolveTurn is handed is recorded by a page built from a copy of src/ whose resolveTurn records it first thing
+// (tests/lib/source.ts; until plan P1-09a the booted page's resolveTurn was wrapped, which a page of modules doesn't
+// allow).
 test('the shell hands resolveTurn the seed it returns, each turn its own', async () => {
-  const t = await stage();
+  const site = plantedSite({
+    'engine/run-turn.js': (code, file) =>
+      plantAtStart(
+        code,
+        file,
+        'resolveTurn',
+        '(globalThis.__handed||(globalThis.__handed=[])).push([...arguments].slice(3));',
+      ),
+  });
+  const t = await stage(undefined, path.join(site.dir, 'kingdoms-call-gm-portal.html'));
   try {
-    t.W.eval(`(function(){ const real=resolveTurn; window.__handed=[];
-      window.resolveTurn=function(...a){ __handed.push(a.slice(3)); return real(...a); }; })()`);
     const first = await t.run();
     const second = await t.run();
     expect(first, 'turn 1 was saved').toMatchObject({ ok: true, committed: true, turn: 2 });
@@ -500,6 +518,7 @@ test('the shell hands resolveTurn the seed it returns, each turn its own', async
     ).toEqual([[first.seed], [second.seed]]);
   } finally {
     t.W.close();
+    site.remove();
   }
 }, 60_000);
 
