@@ -173,6 +173,11 @@ describe('a module, a TypeScript file and a declared global, read as the classic
     ];
     expect(reads('untyped.ts')).toEqual(reads('untyped.js'));
     expect(reads('untyped.ts')[0]).toEqual(['(30)']);
+    // and a piece with types has them stripped, whichever TypeScript-only form it uses
+    const typed = 'export const A = f<number>(x!) as number;\nexport function g(a?: string): void {}\n';
+    fs.writeFileSync(path.join(copy, 'typed.ts'), typed);
+    expect(initializersOf(path.join(copy, 'typed.ts'), 'A')).toEqual(['f(x)']);
+    expect(sourceOf(path.join(copy, 'typed.ts'), ['g'])).toBe('function g(a) { }\n');
   });
 });
 

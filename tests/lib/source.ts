@@ -132,62 +132,22 @@ function stripped(code: string): string {
   }).outputText;
 }
 
-// The kinds of node only TypeScript has, beside the types (ts.isTypeNode): type parameters, the type-only
-// declarations, `as`, `satisfies`, `!`, `<T>x` and decorators.
-const TYPESCRIPT_KINDS = new Set([
-  ts.SyntaxKind.TypeParameter,
-  ts.SyntaxKind.InterfaceDeclaration,
-  ts.SyntaxKind.TypeAliasDeclaration,
-  ts.SyntaxKind.EnumDeclaration,
-  ts.SyntaxKind.ModuleDeclaration,
-  ts.SyntaxKind.ImportEqualsDeclaration,
-  ts.SyntaxKind.AsExpression,
-  ts.SyntaxKind.SatisfiesExpression,
-  ts.SyntaxKind.NonNullExpression,
-  ts.SyntaxKind.TypeAssertionExpression,
-  ts.SyntaxKind.Decorator,
-]);
-
-// The modifiers only TypeScript has (export, async, static, default and accessor are JavaScript's too).
-const TYPESCRIPT_MODIFIERS = new Set([
-  ts.SyntaxKind.DeclareKeyword,
-  ts.SyntaxKind.PublicKeyword,
-  ts.SyntaxKind.PrivateKeyword,
-  ts.SyntaxKind.ProtectedKeyword,
-  ts.SyntaxKind.ReadonlyKeyword,
-  ts.SyntaxKind.AbstractKeyword,
-  ts.SyntaxKind.OverrideKeyword,
-  ts.SyntaxKind.ConstKeyword,
-  ts.SyntaxKind.InKeyword,
-  ts.SyntaxKind.OutKeyword,
-]);
+// TypeScript's parser marks every node that holds TypeScript's own syntax (ContainsTypeScript, in each node's
+// transformFlags, gathered up to the file's): what its transpiler reads to know whether there are types to strip. Not
+// in its published types, so read with a check, as parseDiagnostics is (treeOf).
+const CONTAINS_TYPESCRIPT = (ts as unknown as { TransformFlags?: { ContainsTypeScript?: unknown } }).TransformFlags
+  ?.ContainsTypeScript;
 
 /** Whether `code`, read as TypeScript, has anything JavaScript doesn't: a type (an annotation, a type argument or
- *  parameter), a type-only declaration (interface, type, enum, namespace, declare), `as`, `satisfies`, `!`, `<T>x`, a
- *  TypeScript modifier, an optional parameter, a decorator, an `implements`, or a type-only import or export. `whole`:
- *  the tree of `code` as TypeScript, when there is one already. */
+ *  parameter), a type-only declaration or import, `as`, `satisfies`, `!`, a TypeScript modifier, an optional
+ *  parameter, an `implements`. `whole`: the tree of `code` as TypeScript, when there is one already. */
 function hasTypeScriptSyntax(code: string, whole?: ts.SourceFile): boolean {
   // a whole file's tree is already made (read); a piece is parsed here
   const tree = whole ?? ts.createSourceFile('piece.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  // Read by each node's kind first (370,000 nodes on the GM page: the type guards one by one took half a second).
-  const typescriptOnly = (node: ts.Node): boolean => {
-    const kind = node.kind;
-    if (ts.isTypeNode(node) || TYPESCRIPT_KINDS.has(kind)) return true;
-    if (kind === ts.SyntaxKind.Parameter && (node as ts.ParameterDeclaration).questionToken) return true;
-    if (kind === ts.SyntaxKind.HeritageClause && (node as ts.HeritageClause).token === ts.SyntaxKind.ImplementsKeyword)
-      return true;
-    if (kind === ts.SyntaxKind.ImportDeclaration) {
-      if ((node as ts.ImportDeclaration).importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword) return true;
-    } else if (kind === ts.SyntaxKind.ExportDeclaration) {
-      if ((node as ts.ExportDeclaration).isTypeOnly) return true;
-    } else if (kind === ts.SyntaxKind.ImportSpecifier || kind === ts.SyntaxKind.ExportSpecifier) {
-      if ((node as ts.ImportSpecifier | ts.ExportSpecifier).isTypeOnly) return true;
-    }
-    const modifiers = (node as { modifiers?: ts.NodeArray<ts.ModifierLike> }).modifiers;
-    if (modifiers?.some((m) => TYPESCRIPT_MODIFIERS.has(m.kind))) return true;
-    return ts.forEachChild(node, typescriptOnly) ?? false;
-  };
-  return typescriptOnly(tree);
+  const flags = (tree as ts.SourceFile & { transformFlags?: unknown }).transformFlags;
+  if (typeof CONTAINS_TYPESCRIPT !== 'number' || typeof flags !== 'number')
+    throw new Error("tests/lib/source.ts: this TypeScript no longer marks a node's TypeScript syntax (transformFlags)");
+  return (flags & CONTAINS_TYPESCRIPT) !== 0;
 }
 
 const hasModifier = (node: ts.Node, kind: ts.SyntaxKind) =>
