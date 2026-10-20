@@ -470,11 +470,15 @@ export function botGarrisonTarget(G, prov, pi) {
   // 2026-09-26 (Toby): FEWER GARRISONS, BIGGER FIELD HOST. Only the capital is garrisoned in peace (one unit);
   // once an enemy host is on the doorstep the capital takes two and a Rich province (tax 7+) one. Everything
   // else is held by the defenders and the field army — every levy not sunk into a garrison marches with the general.
+  // EXPERIMENT (Toby, 2026-10-20): a walled world. Every owned land province keeps two garrison units, in peace and in
+  // war, the capital included. The rule above is kept below it for the record.
+  if (BOT_WALLED_WORLD) return 2;
   const home = prov.id === botHomeId(G, pi);
   const attacked = botUnderAttack(G, pi);
   if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn
   return attacked && (prov.tax || 0) >= 7 ? 1 : 0;
 }
+const BOT_WALLED_WORLD = true;
 export function botGarrisonType(prov) {
   return (prov.armyTypes || []).find((x) => /garrison/i.test(x)) || null;
 }
