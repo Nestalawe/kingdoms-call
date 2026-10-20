@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { AERIAL_TYPES, FLYING_TYPES, SEA_TYPES, carrierBerths, getFlyCapability, isAirCarriable } from './movement.ts';
 import { unitBaseStrength } from '../battle/strength.ts';

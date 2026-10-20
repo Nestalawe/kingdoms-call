@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { beastCommandCount, beastCommandRoom, beastCommandWords, heroSkillWage } from '../world/tables.ts';
 import { isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';

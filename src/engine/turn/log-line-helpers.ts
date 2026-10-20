@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── LINES IN THE GM'S LOG (plan P1-08a: lifted out of resolveTurn) ────
 // The helpers that write a line other than log()'s own: a line from a shared narrative, a line to the hero or the
 // province owner it happened to, a private line with a public twin, and the spell records. Each takes the turn's

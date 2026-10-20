@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { kcJoinP } from './startup.ts';
 import { applyMapZoom, fitMapSvgHeight, setDeskView, setMobileView } from './layout.ts';

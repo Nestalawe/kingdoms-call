@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── kcRng: the game's dice (P1-07) ────
 // Every random number the site's own code draws comes from kcRng(): dice, shuffles, bot choices, the world map,
 // id suffixes. Nothing calls Math.random (tests/static/dice-and-clock.test.ts). One generator per page: sfc32,

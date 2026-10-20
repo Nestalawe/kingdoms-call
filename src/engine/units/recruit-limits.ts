@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { homeFounderOf } from '../grand-design.ts';
 import { twoATurn } from '../world/tables.ts';
 

@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SEA_TYPES } from '../units/movement.ts';
 import { getNeighborsP } from './map-helpers.ts';
 import { relationBetween } from '../realms/relations-and-captures.ts';

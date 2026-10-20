@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { armySizeBand, enemyCharVisibleTo } from '../../views/visibility.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { perkTier } from '../titles/perks.ts';

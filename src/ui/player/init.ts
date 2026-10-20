@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { sb } from './startup.ts';
 import { ensureMobileDefault, setupDeskLayout, teardownDeskLayout } from './layout.ts';
 import { onSignedIn } from './sign-in.ts';

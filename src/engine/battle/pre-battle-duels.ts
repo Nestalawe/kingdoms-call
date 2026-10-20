@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { isVanished } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { awardKillXP, awardWinHp } from '../heroes/experience-skill-rises-and-earned-hp.ts';

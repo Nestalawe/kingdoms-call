@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { safeStartLocked } from '../army-tables.ts';
 import { botAlignFriendly } from './intel.ts';
 import { BOT_WAR, botOwnPower, botRivalPower, botWarAssess } from './war.ts';

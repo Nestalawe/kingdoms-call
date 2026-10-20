@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { homeProvinceIdFor } from '../grand-design.ts';
 import { spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { featDiscovered } from '../../views/visibility.ts';

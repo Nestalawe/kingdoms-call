@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, MASTERY_ORDER_LABEL, SKILL_LABELS } from '../army-tables.ts';
 import { botDrillUseful, botPracticeSkill } from '../bots/economy.ts';

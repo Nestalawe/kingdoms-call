@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_DATA_STAMP } from '../../content/kingdoms-call-data.ts';
 import * as KC_DATA_NS from '../../content/kingdoms-call-data.ts';
 

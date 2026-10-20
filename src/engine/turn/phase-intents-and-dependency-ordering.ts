@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
 import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';

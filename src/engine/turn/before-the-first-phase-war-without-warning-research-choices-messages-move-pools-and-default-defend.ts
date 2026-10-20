@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { SAFE_START_TURN } from '../army-tables.ts';

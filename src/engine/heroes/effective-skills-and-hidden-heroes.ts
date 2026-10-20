@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SKILL_LABELS } from '../army-tables.ts';
 import { heroSkillWage } from '../world/tables.ts';
 import { activeItems } from '../items/equipment.ts';

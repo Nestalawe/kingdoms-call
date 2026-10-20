@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_CARRIER_BERTHS, KC_RIVAL_RACE, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcJoinP, sb } from './startup.ts';

@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { battleFrontWidth, battleLineTotal } from './lines.ts';
 import { FLYING_TYPES, SEA_TYPES, tacMulted } from '../units/movement.ts';
 import { unitBaseStrength } from './strength.ts';

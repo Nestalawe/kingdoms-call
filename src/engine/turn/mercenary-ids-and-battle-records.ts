@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── MERCENARY BAND IDS AND WHO FOUGHT (plan P1-08a: lifted out of resolveTurn) ────
 // A new band's id, and the turn's records of who fought where: the commanders of each battle, the phase each hero last
 // stood in a field battle, and the Defend watches a battle fulfils. Each takes the turn's context first

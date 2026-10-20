@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { defendSpentThisPhase } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isHiddenChar } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';

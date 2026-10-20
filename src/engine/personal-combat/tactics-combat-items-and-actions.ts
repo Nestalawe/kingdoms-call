@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { NPC_SCHOOL_SPELL, STEAL_TIER_PEN } from '../army-tables.ts';
 import { encounterClearGold, temperOf } from '../world/tables.ts';

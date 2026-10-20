@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { unitBaseStrength } from '../battle/strength.ts';
 import {
   BOT_DEF_BONUS,

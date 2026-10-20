@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import { L79_ORDERS } from './l79-orders.ts';

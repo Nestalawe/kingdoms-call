@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS, SAGE_DISCOVERIES_P } from '../content/kingdoms-call-data.ts';
 import { CREATURE_ARMIES, FLYING_TYPES, MONSTER_ARMIES } from './units/movement.ts';
 import { gdActiveFor, homeFounderOf } from './grand-design.ts';

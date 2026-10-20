@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_ITEM_RACE_ALIAS } from '../../content/kingdoms-call-data.ts';
 import { ALL_SKILLS } from '../army-tables.ts';
 import { homeFounderOf } from '../grand-design.ts';

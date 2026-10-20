@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_RUMOUR_COST_BY_POWER } from '../../content/kingdoms-call-data.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { _ITEM_ALT_BASE } from '../items/equipment.ts';

@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { runBotConcessions } from './missions.ts';
 import { runBotMovement } from './movement.ts';

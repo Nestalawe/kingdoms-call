@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_MAGIC_SCHOOLS, KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.ts';
 import { sb } from './startup.ts';

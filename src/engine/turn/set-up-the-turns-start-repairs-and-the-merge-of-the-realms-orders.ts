@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { safeStartLocked } from '../army-tables.ts';
 import { RACES_P, TEMPERS_P } from '../world/tables.ts';
 import { normaliseOwnedNames, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';

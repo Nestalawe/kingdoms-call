@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { noteRealmBattle } from '../bots/war.ts';
 import { TM, creditBeastUnit } from './perks.ts';
 

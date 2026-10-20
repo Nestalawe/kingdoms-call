@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { PC_MAX_LINGER_ROUNDS, pcPushDot } from './helpers.ts';

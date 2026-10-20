@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { fullRaceLandRoster } from './world/tables.ts';
 import { discProvCoastal } from './discoveries.ts';
 

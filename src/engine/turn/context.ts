@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── THE TURN'S CONTEXT (plan P1-08a, 2026-10-18) ────
 // What the helpers lifted out of resolveTurn (src/engine/run-turn.ts) used to reach through its closure: the state
 // being changed, the GM's log and its collectors, and the phase being resolved. resolveTurn makes one each turn, just

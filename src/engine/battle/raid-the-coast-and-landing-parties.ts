@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── RAID THE COAST AND LANDING PARTIES (plan P1-08c: lifted out of resolveTurn) ────
 // Whether a commander's Raid the Coast bonus applies to this battle, and the flags a landing party carries whoever
 // commands it. Both take the turn's context first (src/engine/turn/context.ts).

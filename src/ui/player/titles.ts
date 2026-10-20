@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
 import { orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP } from './items-and-heroes.ts';

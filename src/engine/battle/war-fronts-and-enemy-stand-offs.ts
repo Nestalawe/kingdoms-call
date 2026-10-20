@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { realmTag } from '../turn/log-line-helpers.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';

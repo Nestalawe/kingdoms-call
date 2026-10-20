@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { BLOOD_HARVEST_PER_UNIT } from '../items/tiers-and-hoards.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';

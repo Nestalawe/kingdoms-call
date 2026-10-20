@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ARMY_SPEED_R } from '../battle/ladder.ts';
 import { AERIAL_TYPES, SEA_TYPES, getFlyCapability, marchSpeedBonus, navalSpeedBonus } from './movement.ts';
 import { discEff, discUnitMatch } from '../discoveries.ts';

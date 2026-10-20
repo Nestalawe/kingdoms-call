@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { MONSTERS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ITEM_UNCAPPED_SKILLS, SKILL_BENEFIT_CAP, SKILL_MAX } from '../army-tables.ts';

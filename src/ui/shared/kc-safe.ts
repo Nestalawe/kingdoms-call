@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // kc-safe.ts: the one way a page builds HTML from data (P0-19). Each page that builds HTML loads it straight after its
 // boot-failure reporter, before anything else.
 //

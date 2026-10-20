@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { dispFloor } from '../dice-and-army-names.ts';
 import {
   RECKONING_CALLER_MIN_FRAC,

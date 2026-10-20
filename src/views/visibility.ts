@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { relOfReport, spotEnemyInOwnedProvince } from '../engine/heroes/fame-and-consecration.ts';
 import { activeItems } from '../engine/items/equipment.ts';
 import { getNeighborsP } from '../engine/world/map-helpers.ts';

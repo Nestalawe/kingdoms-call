@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { NPC_SCHOOL_SPELL } from '../army-tables.ts';
 import { temperOf } from '../world/tables.ts';
 import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd, monsterCat } from '../names.ts';

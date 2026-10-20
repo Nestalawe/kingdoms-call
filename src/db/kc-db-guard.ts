@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // Kingdoms Call: the database version guard (P0-34). Every page that uses the database declares KC_DB_MIN,
 // the oldest database version it works with (a migration's 14-digit version), and starts with
 //   kcDbGuard(sb, KC_DB_MIN).then(init)

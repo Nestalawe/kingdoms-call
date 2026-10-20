@@ -1,3 +1,4 @@
+// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { discParam, hasDisc } from '../discoveries.ts';
 import { noteSilentHeroes } from './log-line-helpers.ts';
 import { defendSpentThisPhase } from './mercenary-ids-and-battle-records.ts';
