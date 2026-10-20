@@ -4089,6 +4089,85 @@ export const DEATHS_DOMINION_CASES: CastSpellOrderCase[] = [
   },
 ];
 
+// ── The casting limits, at each level (plan P1-11a1) ────────────────────────────────────────────────────────────
+// Each limit at each level a hero can reach in a school, one spell past it: the action spells of a school a hero may
+// cast in a turn (the Cast Spell order), and the combat spells of a school he may cast in one personal combat (here the
+// fight a failed Charm brings on, the caster's Encounter Plan naming the spells). The last spell is refused; every one
+// before it is worked. The levels run to 5, where a school's effective level stops (a White 9 casts as a White 5).
+/** Action spells of one school a turn, by level (the rulebook's table: 1 at level 1 or 2, 2 at 3, 3 at 4 or 5). */
+const ACTION_SPELLS_A_TURN: [level: number, allowed: number][] = [
+  [1, 1],
+  [2, 1],
+  [3, 2],
+  [4, 3],
+  [5, 3],
+];
+/** Combat spells of one school a fight, by level (1 at level 1, 2 from level 2 to 5). */
+const COMBAT_SPELLS_A_FIGHT: [level: number, allowed: number][] = [
+  [1, 1],
+  [2, 2],
+  [3, 2],
+  [4, 2],
+  [5, 2],
+];
+/** The Necromancy combat spells, in the order the caster's plan names them. */
+const NECROMANCY_COMBAT_SPELLS = ['Curse', 'Hand of Death', 'Control Undead'];
+const plural = (n: number, what: string) => `${String(n)} ${what}${n === 1 ? '' : 's'}`;
+export const CASTING_LIMIT_CASES: CastSpellOrderCase[] = [
+  ...ACTION_SPELLS_A_TURN.map(([level, allowed]): CastSpellOrderCase => ({
+    name: `at White ${String(level)}, ${plural(allowed, 'action spell')} of the school a turn: one more is blocked, unrolled`,
+    stage: (b) => mage(b, { white: level }, ...Array.from({ length: allowed + 1 }, () => cast('Holy Symbol'))),
+    check(o, s) {
+      return {
+        got: {
+          rolls: o.lines.filter((l) => l.text.startsWith(`📊 ${s.hero.name} casts`)).length,
+          blocked: o.lines.filter((l) => l.text.includes('casting limit')).map((l) => l.text),
+        },
+        want: {
+          rolls: allowed,
+          blocked: [
+            `${s.hero.name}: White Magic level ${String(level)} casting limit (${String(allowed)}/${String(allowed)} per turn). Holy Symbol blocked.`,
+          ],
+        },
+      };
+    },
+  })),
+  ...COMBAT_SPELLS_A_FIGHT.map(([level, allowed]): CastSpellOrderCase => ({
+    name: `at Necromancy ${String(level)}, ${plural(allowed, 'combat spell')} of the school a fight: one more is refused`,
+    dice: rollOf(20),
+    stage(b) {
+      const m = rival(b, {}, { melee: 1 });
+      m['_charmResist'] = 30;
+      m['encounterPlan'] = { tactics: ['ME'], duelStance: 'accept' };
+      const s = { ...psychic(b, 2, 'Charm', m.id, { necromancy: level }), mark: m };
+      s.hero['encounterPlan'] = {
+        tactics: NECROMANCY_COMBAT_SPELLS.slice(0, allowed + 1).map((spell) => 'CA:' + spell),
+        duelStance: 'accept',
+      };
+      return s;
+    },
+    check(o, s) {
+      const refused = must(NECROMANCY_COMBAT_SPELLS[allowed], 'the spell past the limit');
+      return {
+        got: {
+          worked: o.all
+            .filter((l) => l.text.includes(`${s.hero.name} calls on the necromantic arts, weaving `))
+            .map((l) => /weaving (.+?) \(/.exec(l.text)?.[1]),
+          refused: o.all
+            .filter((l) => l.text.includes(`${s.hero.name}: Necromancy spell limit reached this combat.`))
+            .map((l) => l.text.trim()),
+          tried: anySays(o, `weaving ${refused} (`),
+        },
+        want: {
+          worked: NECROMANCY_COMBAT_SPELLS.slice(0, allowed),
+          refused: [`${s.hero.name}: Necromancy spell limit reached this combat.`],
+          tried: false,
+        },
+      };
+    },
+  })),
+];
+
 /** Stages `c` on `b`, from plain realms. */
 export const stageCase = (b: Board, c: CastSpellOrderCase): Staged => {
   plainRealms(b);
@@ -4101,6 +4180,7 @@ export const stageCase = (b: Board, c: CastSpellOrderCase): Staged => {
 /** Every case, by part of the order. */
 export const CAST_SPELL_ORDER_CASES: [string, CastSpellOrderCase[]][] = [
   ['casting', CASTING_CASES],
+  ['the casting limits, at each level', CASTING_LIMIT_CASES],
   ['Resurrect', RESURRECT_CASES],
   ['Part Sea', PART_SEA_CASES],
   ['Holy Symbol', HOLY_SYMBOL_CASES],

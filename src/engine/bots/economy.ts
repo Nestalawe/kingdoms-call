@@ -28,6 +28,7 @@ import { BOT_SCHOOLS } from './schools.ts';
 import { BOT_SPECIALIST_ROLES, botNearbyThreat, botPathLen, botPracticeFallback } from './specialists.ts';
 import { botIsTeach, botOrderLocs, botPickupOrder } from './missions.ts';
 import { skillLevel } from '../titles/perks.ts';
+import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 
 // ══ BOT PLAYERS — Phase 3b: economy (recruit / hire) ════
@@ -549,7 +550,7 @@ export function botCastLimit(G, c, school, practised) {
     _BEST_SCHOOL(c) === skillLevel(c, school)
       ? 1
       : 0;
-  return (l >= 4 ? 3 : l >= 3 ? 2 : 1) + w;
+  return actionSpellsAllowedPerSchoolEachTurn(l) + w;
 }
 export function runBotOrderHygiene(G, botIdxSet) {
   const tally = typeof window !== 'undefined' && window.__botHyg ? window.__botHyg : null;

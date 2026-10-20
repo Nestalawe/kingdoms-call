@@ -458,6 +458,12 @@ changes, bump its stamps and both portals' minimums together** ([traps.md](traps
   before: `lastTurnsBattleAndDuelSwordsClearedFromTheMap(G)` (as the save is read, with its upgrades: the map's
   crossed swords the save still holds from last turn) and `everyRealmStampedBotOrHumanFromTheBotSlotRows`, taking only
   the context (each realm's bot flag, from the slot rows); and removed a test hook nothing read (`window._kcTest`).
+  P1-11a1 gave the two casting limits one function each, in
+  `engine/rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts`:
+  `actionSpellsAllowedPerSchoolEachTurn(level)` (the Cast Spell order and the bots call it; the Warlock's extra cast is
+  added beside the call) and `combatSpellsAllowedPerSchoolEachFight(level)` (personal combat calls it). It is the
+  first file of `engine/rules-on-plain-values/`, the rules of a hero, an army, an item, a level or a number, whose files
+  import only `src/content` and each other, so the player portal can share them (P1-11a).
   A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
