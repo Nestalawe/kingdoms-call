@@ -1,7 +1,8 @@
 // One game of the balance matrix, scripted-05, set up for the engine in its bare vm (tests/lib/engine.ts) as
 // tools/balance/play.ts sets a game up on the page: realm 0 is a player's, on the matrix's scripted orders, and the
 // other three are bots. tests/unit/engine-purity.test.ts plays it whole in the vm; tests/page/turn-shell.test.ts plays
-// one turn of it on the page and in the vm, from the same seed, and compares the two (P1-18e).
+// one turn of it on the page and in the vm, from the same seed, and compares the two (P1-18e); tests/lib/player-portal-copies.ts
+// plays it with the engine's modules imported directly, from SETUPS (P1-11a2).
 import vm from 'node:vm';
 import { MAP_SIZES, matrix, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { scriptedOrders, type State } from '../../tools/balance/scripted.ts';
@@ -11,7 +12,7 @@ if (!found) throw new Error('the balance matrix has no game scripted-05');
 export const GAME = found;
 
 // The realms as tools/balance/play.ts sets them up: realm 0 the scripted player's, the others bots.
-const SETUPS = Array.from({ length: GAME.realms }, (_, i) => ({
+export const SETUPS = Array.from({ length: GAME.realms }, (_, i) => ({
   id: i,
   gamePlayerId: 'gp' + String(i),
   isBot: i !== SCRIPTED_REALM,
