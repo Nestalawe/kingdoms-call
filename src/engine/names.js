@@ -1,10 +1,14 @@
+import { HERO_EPITHET_OVERFLOW, HERO_NAME_PARTS, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P } from '../content/kingdoms-call-data.js';
+import { kcRng } from './rng.js';
+import { shuffleP } from './battle/fortune.js';
+
 // ── UNIQUE-NAME OVERFLOW POOLS (KC item: no two characters share a given name OR a descriptor) ──
 // A game names up to ~184 neutral heroes on the largest map, plus kings and heirs (~210 names).
 // Each alignment's flavoured pools alone cannot supply that many DISTINCT epithets, so these
 // alignment-neutral overflow pools top the shared master lists up well past any hero count. A hero
 // still draws from its own alignment's flavoured pool FIRST (for theme); only when that is spent
 // does it borrow from the shared master list. Given/epithet uniqueness is tracked globally.
-const HERO_FIRST_OVERFLOW = [
+export const HERO_FIRST_OVERFLOW = [
   'Aldwin',
   'Brenna',
   'Caldor',
@@ -87,22 +91,22 @@ const HERO_FIRST_OVERFLOW = [
   'Haldis',
 ];
 // Shared master lists = every alignment's flavoured names + the overflow. Built once at load.
-const ALL_HERO_FIRSTS = (() => {
+export const ALL_HERO_FIRSTS = (() => {
   const set = new Set();
   Object.values(HERO_NAME_PARTS).forEach((v) => (v.firsts || []).forEach((x) => set.add(x)));
   HERO_FIRST_OVERFLOW.forEach((x) => set.add(x));
   return [...set];
 })();
-const ALL_HERO_EPITHETS = (() => {
+export const ALL_HERO_EPITHETS = (() => {
   const set = new Set();
   Object.values(HERO_NAME_PARTS).forEach((v) => (v.epithets || []).forEach((x) => set.add(x)));
   HERO_EPITHET_OVERFLOW.forEach((x) => set.add(x));
   return [...set];
 })();
-const _usedHeroFirsts = new Set();
-const _usedHeroEpithets = new Set();
+export const _usedHeroFirsts = new Set();
+export const _usedHeroEpithets = new Set();
 // Draw an unused entry: try the preferred (alignment) pool first, then the shared master list.
-function _pickUnusedNamePart(prefPool, masterPool, usedSet) {
+export function _pickUnusedNamePart(prefPool, masterPool, usedSet) {
   for (const pool of [prefPool || [], masterPool]) {
     const shuffled = shuffleP(pool);
     for (const x of shuffled) {
@@ -116,28 +120,28 @@ function _pickUnusedNamePart(prefPool, masterPool, usedSet) {
 }
 // ── SECRET: the wanderer who cannot fall. One neutral hero each game is Garreth the Independent,
 // who somehow survives every killing blow. No rules/help text ever mentions him — Easter egg only.
-function _escapesTheEnd(ch) {
+export function _escapesTheEnd(ch) {
   return !!(ch && ch._unkillable);
 }
-const _GARRETH_ESCAPES = [
+export const _GARRETH_ESCAPES = [
   ' somehow slips the final blow and is gone before the dust settles.',
   ' takes what should be a mortal stroke \u2014 and walks out of it without a scratch.',
   ' should by all rights have fallen, yet somehow escapes the final blow.',
   ' reels from a killing hit, staggers into the smoke, and simply isn\u2019t there when it clears.',
   ' is run through \u2014 or seems to be \u2014 but slips free, whole and unbothered.',
 ];
-function _garrethEscapeLine(ch) {
+export function _garrethEscapeLine(ch) {
   return `\u{1F340} ${ch && ch.name ? ch.name : 'The wanderer'}${_GARRETH_ESCAPES[Math.floor(kcRng() * _GARRETH_ESCAPES.length)]}`;
 }
-const _usedHeroNames = new Set();
-function _toRoman(n) {
+export const _usedHeroNames = new Set();
+export function _toRoman(n) {
   const M = ['', 'X', 'XX', 'XXX'],
     C = ['', 'C', 'CC', 'CCC', 'CD', 'D', 'DC', 'DCC', 'DCCC', 'CM'],
     X = ['', 'X', 'XX', 'XXX', 'XL', 'L', 'LX', 'LXX', 'LXXX', 'XC'],
     I = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
   return M[Math.floor(n / 1000)] + C[Math.floor((n % 1000) / 100)] + X[Math.floor((n % 100) / 10)] + I[n % 10];
 }
-function nextHeroName(alignment) {
+export function nextHeroName(alignment) {
   const parts = HERO_NAME_PARTS[alignment] || HERO_NAME_PARTS.Neutral;
   // Unique GIVEN name and unique DESCRIPTOR, tracked globally across the whole game (item: no two
   // characters share a name or a descriptor). Prefer the alignment's flavoured pools, then the
@@ -181,7 +185,7 @@ function nextHeroName(alignment) {
   _usedHeroNames.add(nm);
   return nm;
 }
-function seedUsedHeroNames(gameState) {
+export function seedUsedHeroNames(gameState) {
   _usedHeroNames.clear();
   _usedHeroFirsts.clear();
   _usedHeroEpithets.clear();
@@ -201,11 +205,11 @@ function seedUsedHeroNames(gameState) {
 // 2026-10-08 (Toby item 4a): HALF, not a third, and for EVERY hit in personal combat — a guardian on
 // a hero, a hero on a guardian, a hero on a hero in a duel. A tighter cap the target already carries
 // (GUARDIAN_BODY_CAP_PCT, a cap ward) is applied first and still wins.
-const PC_HIT_CAP_FRAC = 1 / 2;
+export const PC_HIT_CAP_FRAC = 1 / 2;
 // 2026-10-08 (Toby item 2): a guardian's melee blow rolls a base that grows with its tier, then adds
 // its Melee (+1 a level since 2026-10-14, item 20; a hero's blow adds ⌈Melee ÷ 2⌉) (pcMeleeDamage). Heroes keep 1–3. A special's damage is
 // that same blow × the special's weight, so it grows with the tier too.
-const GUARDIAN_MELEE_BASE = { Weak: [1, 3], Moderate: [2, 5], Powerful: [3, 7], Legendary: [4, 9] };
+export const GUARDIAN_MELEE_BASE = { Weak: [1, 3], Moderate: [2, 5], Powerful: [3, 7], Legendary: [4, 9] };
 // the mirror of the rule above, pointing the other way — A LEGENDARY CREATURE CANNOT BE FELLED BY
 // ONE BLOW. Measured on the 2026-09-15 build, the whole Legendary band collapsed from a 43% hero
 // win rate to 97% across a SINGLE rung of hero progression: the rung that first hands out tier-4
@@ -215,12 +219,12 @@ const GUARDIAN_MELEE_BASE = { Weak: [1, 3], Moderate: [2, 5], Powerful: [3, 7], 
 // total blunts exactly that burst and leaves an ordinary sword arm alone, which turns the top band
 // back into a long fight. Applied in pcMonsterCombatant and merged as a ward, so a creature that
 // already declares a cap of its own (Kraken, Elder Titan) is unaffected.
-const GUARDIAN_BODY_CAP_PCT = { Legendary: 20 };
+export const GUARDIAN_BODY_CAP_PCT = { Legendary: 20 };
 // One name for one lair, drawn from the guardian's own pool, never repeated in the world. `used` is
 // the live set of names already given out. Falls back to a place-suffixed form
 // ("Wolf Den of Karnholt") when a guardian's pools are exhausted, so uniqueness always holds.
 // The connectives a place-qualified lair name uses ("Wolf Den beneath Karnholt").
-const LAIR_NAME_CONNECTIVES_P = [
+export const LAIR_NAME_CONNECTIVES_P = [
   'of',
   'beneath',
   'under',
@@ -234,7 +238,7 @@ const LAIR_NAME_CONNECTIVES_P = [
 ];
 // A lair's BASE name: its name without the place qualifier or a number ("Wolf Den beneath Karnholt (2)"
 // → "Wolf Den"). 2026-10-13 (item 4, Toby): no province holds two lairs with the same base name.
-function lairBaseNameP(name, provName) {
+export function lairBaseNameP(name, provName) {
   let b = String(name || '').replace(/ \(\d+\)$/, '');
   if (provName) {
     for (const conn of LAIR_NAME_CONNECTIVES_P) {
@@ -249,7 +253,7 @@ function lairBaseNameP(name, provName) {
 }
 // `provBases` (optional): the base names the lairs already named in this province carry; none of
 // them is given again here.
-function pickLairNameP(monster, terrain, used, provName, rnd, provBases) {
+export function pickLairNameP(monster, terrain, used, provName, rnd, provBases) {
   const R = rnd || kcRng;
   const here = provBases || new Set();
   const isSea = terrain === 'sea';
@@ -327,7 +331,7 @@ function pickLairNameP(monster, terrain, used, provName, rnd, provBases) {
 // Rename every lair in the world from its guardian's pools, uniquely. Run once at world generation
 // (after the regrade pass has settled each lair's guardian) and once as a migration on any older save.
 // Ritual sites keep their sacred names — they have no guardian to be thematic about.
-function renameLairsThematicP(gs) {
+export function renameLairsThematicP(gs) {
   if (!gs || !gs.world || !Array.isArray(gs.world.provinces)) return 0;
   const used = new Set();
   (gs.world.provinces || []).forEach((p) => {
@@ -349,7 +353,7 @@ function renameLairsThematicP(gs) {
   gs._lairNamesV2 = true;
   return n;
 }
-const SEA_GUARDIAN_NAMES = new Set([
+export const SEA_GUARDIAN_NAMES = new Set([
   'Sea Serpent',
   'Kraken Spawn',
   'Storm Eagle',
@@ -384,7 +388,7 @@ const SEA_GUARDIAN_NAMES = new Set([
   'Giant Octopus',
   'Kraken',
 ]);
-const MONSTER_CAT_ITEM_USE = {
+export const MONSTER_CAT_ITEM_USE = {
   humanoid: 'all',
   undead: 'all',
   giant: 'all',
@@ -397,8 +401,8 @@ const MONSTER_CAT_ITEM_USE = {
   elemental: 'none',
   construct: 'none',
 };
-const _TRINKET_SLOTS = new Set(['ring', 'amulet', 'cloak', 'helm', 'combat']); // combat items added 2026-09-11 as 'consumable' (they had no slot before, so were always wieldable); renamed to the Combat Item slot 2026-09-14
-function monsterCat(m) {
+export const _TRINKET_SLOTS = new Set(['ring', 'amulet', 'cloak', 'helm', 'combat']); // combat items added 2026-09-11 as 'consumable' (they had no slot before, so were always wieldable); renamed to the Combat Item slot 2026-09-14
+export function monsterCat(m) {
   if (m && m.cat) return m.cat;
   const n = ((m && m.name) || '').toLowerCase();
   if (

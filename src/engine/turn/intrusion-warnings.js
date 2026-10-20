@@ -1,3 +1,6 @@
+import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.js';
+import { armySizeBand } from '../../views/visibility.js';
+
 // ── INTRUSION WARNINGS (plan P1-08b: lifted out of resolveTurn) ────
 // After each phase, the warnings a realm gets of enemy heroes in its land or beside its own heroes. It takes the turn's
 // context first (src/engine/turn/context.js): the state, the seasons' names and the turn's warnings so far
@@ -5,7 +8,7 @@
 // ── INTRUSION NOTIFICATIONS ────
 // After each phase resolves, scan for situations where players need to be notified about things
 // happening in their territory or in provinces where their heroes are present.
-function generateIntrusionNotifications(turnContext, ph) {
+export function generateIntrusionNotifications(turnContext, ph) {
   const { SEASONS, G, _intrusionAcc } = turnContext;
   const phaseLabel = SEASONS[ph];
   G.players.forEach((targetPlayer, targetPi) => {
@@ -70,7 +73,7 @@ function generateIntrusionNotifications(turnContext, ph) {
   });
 }
 
-function flushIntrusionNotifications(turnContext) {
+export function flushIntrusionNotifications(turnContext) {
   const { SEASONS, _intrusionAcc, log } = turnContext;
   const fmtPhases = (phs) => {
     const s = [...phs].sort((a, b) => a - b);

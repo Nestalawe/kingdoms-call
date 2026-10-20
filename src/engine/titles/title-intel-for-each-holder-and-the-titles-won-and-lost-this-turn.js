@@ -1,3 +1,13 @@
+import { TITLE_DEFS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { SKILL_LABELS } from '../army-tables.js';
+import { SEA_TYPES } from '../units/movement.js';
+import { unitBaseStrength } from '../battle/strength.js';
+import { noteGraveIntel } from '../graves.js';
+import { dispFloor } from '../dice-and-army-names.js';
+import { TITLES_PUBLIC_FROM_TURN, TITLE_CREATURE_ARMIES, TITLE_MONSTER_ARMIES } from './perks.js';
+import { MINOR_TITLES, computeMinorTitles, computeStandings } from './reckoning.js';
+
 // ── THE TITLES AT THE TURN'S END (plan P1-08k6: the last stages taken out of the end of resolveTurn's body) ─────────
 // Once the new turn is done (new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-
 // final-reconcile.js: the final reconcile and the stranded guards), two stages, in this order, each once a turn:
@@ -18,7 +28,7 @@
 // the holders board and each report's gains/losses therefore never disagree on who holds what.
 // Each rival / piece of intel is its OWN line, and any character named carries their province.
 // Gated: nothing emits before Titles go public (turn 5) or once the game is over.
-function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy(turnContext) {
+export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy(turnContext) {
   const { G, log } = turnContext;
   const _pub = (G.turn || 1) >= TITLES_PUBLIC_FROM_TURN || !!G.gameOver;
   if (!_pub) return;
@@ -577,7 +587,7 @@ function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy(t
 
 // ── TITLE CHANGES ── compare this turn's holders to last turn's snapshot so each player's report
 // can announce titles their characters/realm newly won this turn (with how + effect).
-function titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn(turnContext) {
+export function titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn(turnContext) {
   const { G } = turnContext;
   let curMajor = {},
     curMinor = {};

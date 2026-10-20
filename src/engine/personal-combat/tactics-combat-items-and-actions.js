@@ -1,3 +1,19 @@
+import { kcRng } from '../rng.js';
+import { NPC_SCHOOL_SPELL, STEAL_TIER_PEN } from '../army-tables.js';
+import { encounterClearGold, temperOf } from '../world/tables.js';
+import { ensureLairHoard } from '../items/tiers-and-hoards.js';
+import { itemNameList } from '../heroes/fame-and-consecration.js';
+import { hasItemBase } from '../items/equipment.js';
+import { guardianPassives } from '../heroes/skills-and-hp.js';
+import { PARLEY_ENABLED, SCOUT_ENABLED, pcDeferEffect, pcFoeCat, pcLearnWeakness, pcPushDot } from './helpers.js';
+import { d100, dispFloor, rng } from '../dice-and-army-names.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { pcHasRanged, pcMoveCheck } from './speed-encounter-plans-and-combatants.js';
+import { pcHitSkill, pcLandStun, pcStunTurned, pcTakeHit } from './to-hit-wounds-stuns-and-courage.js';
+import { pcCastCombatSpell, pcMonsterSpecial } from './combat-spells-and-guardian-abilities.js';
+import { pcAdvanceOrStrike, pcAttemptFlee, pcFireShot, pcMeleeStrike } from './melee-flight-and-archery.js';
+
 // ── PERSONAL COMBAT: TACTICS, COMBAT ITEMS AND EACH ACTION (plan P1-08e: lifted out of resolveTurn) ────
 // What a combatant does once their plan is spent (Temper), the potions, scrolls and devices carried into a fight, and
 // one combatant's action against the foe (pcAct). pcTryCombatItem, pcUseCombatItem and pcAct take the turn's context
@@ -5,7 +21,7 @@
 // --- Tactic selection -------------------------------------------------------- Once a plan is
 // spent, Temper takes over: fight on, or look for a way out. Monsters never flee — they fight to
 // the last.
-function pcTemperFallback(actor, foe) {
+export function pcTemperFallback(actor, foe) {
   const tt = temperOf(actor.temper);
   const ratio = actor.hp / (actor.maxHp || 20);
   // once a character's chosen encounter actions are spent, they DEFAULT to attacking with melee
@@ -20,7 +36,7 @@ function pcTemperFallback(actor, foe) {
   if ((tt.fleeUrge || 0) > 0 && kcRng() < tt.fleeUrge) return 'FL';
   return 'ME';
 }
-function pcNextTactic(actor, foe) {
+export function pcNextTactic(actor, foe) {
   if (actor.tacIdx < actor.tactics.length) {
     const t = actor.tactics[actor.tacIdx];
     actor.tacIdx++;
@@ -37,7 +53,7 @@ function pcNextTactic(actor, foe) {
 // into a personal fight. Each fires ONCE per fight (never consumed), costs the user's action, and
 // only when it makes sense — the trigger table below. Characters bring their equipped/active
 // combatUse items; a guardian brings the lair's items its category lets it wield.
-const _CI_PRIORITY = [
+export const _CI_PRIORITY = [
   'heal',
   'secondwind',
   'hot',
@@ -58,7 +74,7 @@ const _CI_PRIORITY = [
   'dmg',
   'drain',
 ];
-function pcCombatItemWanted(actor, foe, it, state) {
+export function pcCombatItemWanted(actor, foe, it, state) {
   const e = it.effect || {};
   const ratio = actor.hp / (actor.maxHp || 20);
   const st = actor.status || {};
@@ -97,7 +113,7 @@ function pcCombatItemWanted(actor, foe, it, state) {
   }
   return false;
 }
-function pcTryCombatItem(turnContext, actor, foe, narrative, state) {
+export function pcTryCombatItem(turnContext, actor, foe, narrative, state) {
   const list = actor.combatItems || [];
   if (!list.length) return false;
   actor._itemsUsed = actor._itemsUsed || new Set();
@@ -120,7 +136,7 @@ function pcTryCombatItem(turnContext, actor, foe, narrative, state) {
     trySkillGain(turnContext, actor.ref, 'sage', SKILLGAIN_COMMON, narrative); // 2026-09-21: using a magic item may teach Sage (small chance)
   return true;
 }
-function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
+export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
   const e = it.effect || {};
   const nm = it.name;
   const st = actor.status;
@@ -305,7 +321,7 @@ function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
 
 // --- One combatant performs their next action against the foe --------------- Actions alternate
 // strictly, one per combatant per round, in initiative order.
-function pcAct(turnContext, actor, foe, narrative, state) {
+export function pcAct(turnContext, actor, foe, narrative, state) {
   const { G } = turnContext;
   if (actor.status.stun > 0) {
     narrative.push(`  ${actor.name} is stunned and cannot act. (${actor.status.stun} left)`);

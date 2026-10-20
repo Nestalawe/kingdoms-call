@@ -1,3 +1,11 @@
+import { ALL_MAGIC_ITEMS_P } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { homeProvinceIdFor } from '../grand-design.js';
+import { shuffleP } from '../battle/fortune.js';
+import { HOARD_CATEGORIES } from './hoard-categories.js';
+import { LAIR_EFFECT_SPREAD, LAIR_ITEM_ODDS, awardedEffectSet, ensureLairHoard, isLegendaryItem, itemEffectKey, itemFallbackOk, itemHoardCategory, lairItemTier, migrateHoardTally, preferFreshEffects, rollMagicItem } from './tiers-and-hoards.js';
+import { hexDistP } from '../world/map-helpers.js';
+
 // ── EVEN DISTRIBUTION PER PLAYER (2026-09-11, Toby: "so players won't keep finding the same type
 // of
 // item all the time") ────
@@ -14,7 +22,7 @@
 // record (`_itemsFoundByCat`) and are kept by noteItemFound().
 // A lair's contents are still fixed at generation and a scout report still tells the truth about
 // them — nothing is decided at the moment of opening the chest.
-function lairRegionOf(gs, prov) {
+export function lairRegionOf(gs, prov) {
   const pls = (gs && gs.players) || [];
   if (!prov || !pls.length) return 0;
   const provs = (gs.world && gs.world.provinces) || [];
@@ -34,7 +42,7 @@ function lairRegionOf(gs, prov) {
   return best;
 }
 // Remember what a realm has actually WON, by category — the tally the corrective draw reads.
-function noteItemFound(gs, playerIndex, it) {
+export function noteItemFound(gs, playerIndex, it) {
   if (!gs || playerIndex == null || !it) return;
   const pl = (gs.players || [])[playerIndex];
   if (!pl) return;
@@ -46,7 +54,7 @@ function noteItemFound(gs, playerIndex, it) {
 // A lair-tier roll for a NAMED player: same tier odds as rollMagicItem, but among the categories
 // this realm has found least of. Falls back to the plain roll when no category has stock in the
 // chosen tier.
-function rollMagicItemFor(gs, playerIndex, monsterPower, taken, takenEff) {
+export function rollMagicItemFor(gs, playerIndex, monsterPower, taken, takenEff) {
   taken = taken || new Set();
   if (!takenEff) takenEff = awardedEffectSet(gs);
   const pl = ((gs && gs.players) || [])[playerIndex];
@@ -75,7 +83,7 @@ function rollMagicItemFor(gs, playerIndex, monsterPower, taken, takenEff) {
   const pool = preferFreshEffects(avail(cat, atTier ? t : null), takenEff);
   return pool.length ? pool[Math.floor(kcRng() * pool.length)] : rollMagicItem(monsterPower, taken, takenEff);
 }
-function ensureAllLairHoards(gs) {
+export function ensureAllLairHoards(gs) {
   const provs = (gs && gs.world && gs.world.provinces) || [];
   const powOf = (f) => (f.monster && f.monster.power) || 'Weak';
   const lairs = [];

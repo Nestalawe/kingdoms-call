@@ -1,5 +1,14 @@
+import { TITLE_DEFS } from '../content/kingdoms-call-data.js';
+import { KC_BUILD_STAMP } from '../ui/gm/startup.js';
+import { sb } from '../ui/gm/config.js';
+import { KC_TEL_V, parseGameState, renderTelemetryBanner } from './game-meta.js';
+import { writeGameRecord } from '../ui/gm/hall-of-fame.js';
+import { gameMetaOf, isBotRow } from '../engine/bots/setup.js';
+import { computeStandings } from '../engine/titles/reckoning.js';
+import { telRealmSnapshot } from '../views/turn-report.js';
+
 // Final standings order: score, then tax base, then treasury (the Reckoning tie-break).
-function telRankOrder(gs) {
+export function telRankOrder(gs) {
   const s = computeStandings(gs);
   const idx = s.standings.map((st) => st.index);
   idx.sort(
@@ -14,11 +23,11 @@ function telRankOrder(gs) {
   });
   return { rank, standings: s };
 }
-function telBotDifficultyOf(gs) {
+export function telBotDifficultyOf(gs) {
   return (gs && gs.botDifficulty) || 'hard';
 } // 2026-09-26: 'hard' is the only strength now; older saves keep whatever word they carry
 // One game_results row per realm, from a FINISHED state (gs.gameOver set). `players` = game_players rows.
-function buildGameResultRows(gs, gameRow, players) {
+export function buildGameResultRows(gs, gameRow, players) {
   if (!gs || !gs.players) return [];
   const bots = new Set((players || []).filter(isBotRow).map((p) => p.player_index));
   const { rank } = telRankOrder(gs);
@@ -80,7 +89,7 @@ function buildGameResultRows(gs, gameRow, players) {
     .filter(Boolean);
 }
 // Record the results of a finished game (idempotent — upsert on game_id + player_index).
-async function writeGameResults(gs, gameRow, players) {
+export async function writeGameResults(gs, gameRow, players) {
   if (!_kcHasTel) return false;
   const rows = buildGameResultRows(gs, gameRow, players);
   if (!rows.length) return false;
@@ -93,7 +102,7 @@ async function writeGameResults(gs, gameRow, players) {
   return true;
 }
 // One-off / repair: any of this GM's COMPLETE games with no game_results rows gets them now.
-async function backfillGameResults() {
+export async function backfillGameResults() {
   if (!_kcHasTel || !currentUser) return 0;
   try {
     const { data: games, error } = await sb
@@ -130,7 +139,7 @@ async function backfillGameResults() {
   }
 }
 // The per-realm view of what the collectors caught this turn, plus the before/after deltas.
-function telOutcomesFor(gs, pi, tel, pre, post, rank) {
+export function telOutcomesFor(gs, pi, tel, pre, post, rank) {
   const B = (tel.battles || []).filter((b) => b.atkPi === pi || b.defPi === pi);
   const mine = (b) => b.atkPi === pi;
   const battles = {
@@ -186,7 +195,7 @@ function telOutcomesFor(gs, pi, tel, pre, post, rank) {
     score: post && post._score != null ? post._score : null,
   };
 }
-async function writeTurnTelemetry(gs, gameRow, players, tel, turn) {
+export async function writeTurnTelemetry(gs, gameRow, players, tel, turn) {
   if (!_kcHasTel || !gs || !gs.players) return false;
   const bots = new Set((players || []).filter(isBotRow).map((p) => p.player_index));
   const { rank, standings } = telRankOrder(gs);

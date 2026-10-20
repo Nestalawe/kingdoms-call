@@ -1,3 +1,14 @@
+import { KC_RIVAL_RACE } from '../../content/kingdoms-call-data.js';
+import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow } from '../army-tables.js';
+import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.js';
+import { heroHireWage } from '../world/tables.js';
+import { botNeighbourProv, botRelationRaw, botSeesChar, botTuning } from './intel.js';
+import { BOT_AERIAL_TYPES, BOT_CARRIER_TYPES, BOT_FLYING_TYPES, BOT_SEA_ALL } from './war.js';
+import { botFrontierTarget, botHasMetPlayers, botIsEdge, botLandCount, botMagicScore } from './specialists.js';
+import { BOT_RUMOUR_FUND_PER_SLAYER, botFlyerPorts, botFlyerType, botLiftable, botSeaWorthTaking, botUpdateIntel } from './missions.js';
+import { BOT_NAVAL_TYPES, botAtWar, botCoastalFleetType, botFleetHullCount, botMaxEnemyStack, botNavalEnemyCoast, botRecruitableTypes, botTaxIncome, botUpkeep } from './economy.js';
+import { BOT_P1, botInContact } from './phase-one.js';
+
 // ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ════
 // Design (BOT_PLAYERS_DESIGN §8, v2.4): ONE big field army under the bot's BEST GENERAL is both its
 // offence and its defence. It expands as fast as its move pool allows (multi-hop turns), garrisons
@@ -7,25 +18,25 @@
 // second field army is raised under the next-best general, and so on. Bots hire every wandering
 // hero they can reach, drill their hosts with Tactical while campaigning, and never war one another
 // while a human king reigns.
-function botIsBotPlayer(G, j) {
+export function botIsBotPlayer(G, j) {
   const p = (G.players || [])[j];
   return !!(p && (p._isBot || p.isBot));
 }
 // Land a column may march through freely: our own, or an ally's (free passage).
-function botPassable(G, pi, N) {
+export function botPassable(G, pi, N) {
   return (
     !!N && N.terrain !== 'sea' && (N.owner === pi || (N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied'))
   );
 }
 // Hex distance with the map's east-west wrap — mirrors generateNewGame's cellDistRC.
-function botHexDist(G, a, b) {
+export function botHexDist(G, a, b) {
   const cols = G.world.cols;
   let dc = Math.abs(a.col - b.col);
   dc = Math.min(dc, cols - dc);
   const dr = Math.abs(a.row - b.row);
   return Math.max(dc, dr, (dc + dr) >> 1);
 }
-function botHomeId(G, pi) {
+export function botHomeId(G, pi) {
   const p = G.players[pi] || {};
   const h = G.world.provinces[p.homeProvinceId];
   if (h && h.owner === pi) return h.id;
@@ -38,7 +49,7 @@ function botHomeId(G, pi) {
 // Hops per turn this column can march over land (mirror of computeMovePoolMax's land branch on base
 // stats — flyers ignore March; an unarmed character walks 5). `extraTypes` lets a planner include
 // units it is about to recruit this turn.
-function botLandReach(c, extraTypes) {
+export function botLandReach(c, extraTypes) {
   const types = (c.armies || [])
     .filter((a) => a && !BOT_SEA_ALL.has(a.type))
     .map((a) => a.type)
@@ -56,7 +67,7 @@ function botLandReach(c, extraTypes) {
 // 2026-09-28 (Toby: bots never take the sea): a FLEET'S reach — the slowest ship sets the pace, Naval
 // speeds it (mirrors computeMovePoolMax's sea pool). Before this a hulls-only column read botLandReach = 0
 // and every admiral who had bought his fleet held in harbour for the rest of the game.
-function botSeaReach(c) {
+export function botSeaReach(c) {
   const sh = (c.armies || []).filter((a) => a && BOT_SEA_ALL.has(a.type));
   if (!sh.length) return 0;
   const nl = Math.min((c.skills || {}).naval || 0, 5);
@@ -74,11 +85,11 @@ function botSeaReach(c) {
   );
 }
 // a column of ships only (nothing that can step ashore) — it may claim or clear water, never land.
-function botFleetOnly(armies) {
+export function botFleetOnly(armies) {
   armies = armies || [];
   return armies.length > 0 && armies.every((a) => a && BOT_SEA_ALL.has(a.type));
 }
-function botEmpireDiameter(G, pi) {
+export function botEmpireDiameter(G, pi) {
   const own = (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea');
   let d = 0;
   for (let i = 0; i < own.length; i++)
@@ -92,7 +103,7 @@ function botEmpireDiameter(G, pi) {
 // March
 // (reach), then personal combat; the units already under command add a little so the current holder of
 // the host is not displaced by a marginally better tactician every turn.
-function botGeneralship(c) {
+export function botGeneralship(c) {
   const s = c.skills || {};
   const a = c.armies || [];
   const n = a.length;
@@ -115,8 +126,8 @@ function botGeneralship(c) {
 } // +8 sticky bonus: handing a host to a marginally better general cost a turn of conquest every time a hero was hired
 // Per-turn scratch state (roles + treasury ledger), keyed by the live game-state object so it never
 // leaks into the persisted game_state and never survives into the next turn.
-const _botTurnCache = new WeakMap();
-function botTurnCache(G) {
+export const _botTurnCache = new WeakMap();
+export function botTurnCache(G) {
   let o = _botTurnCache.get(G);
   if (!o || o.turn !== G.turn) {
     o = { turn: G.turn, roles: {}, ledger: {} };
@@ -127,7 +138,7 @@ function botTurnCache(G) {
 // ROLES — field-army LEADERS (best generals; one per desired field army) vs FEEDERS (everyone
 // else). Desired field armies = 1 + floor(empire diameter / primary reach): once the realm is wider
 // than the main host can cross in a turn, a second host is raised, and so on.
-function botRoles(G, pi) {
+export function botRoles(G, pi) {
   const cache = botTurnCache(G);
   if (cache.roles[pi]) return cache.roles[pi];
   botUpdateIntel(G, pi); // Sept 2026: refresh the memory of rival generals and heroes first
@@ -268,12 +279,12 @@ function botRoles(G, pi) {
   cache.roles[pi] = r;
   return r;
 }
-function botIsLeader(G, pi, id) {
+export function botIsLeader(G, pi, id) {
   return botRoles(G, pi).leaders.includes(id);
 }
 // LEDGER — one treasury/upkeep budget per bot per turn, shared by the movement and economy passes
 // so a recruit written in phase 0 by a marching host is not double-spent by an idle holder later.
-function botLedger(G, pi) {
+export function botLedger(G, pi) {
   const cache = botTurnCache(G);
   if (cache.ledger[pi]) return cache.ledger[pi];
   const T = botTuning(G, pi),
@@ -394,21 +405,21 @@ function botLedger(G, pi) {
   cache.ledger[pi] = L;
   return L;
 }
-const BOT_NAV_CAP_FRAC = 0.2,
+export const BOT_NAV_CAP_FRAC = 0.2,
   BOT_AIR_CAP_FRAC = 0.15,
   BOT_NAV_CAP_MIN = 4,
   BOT_AIR_CAP_MIN = 4; // 2026-09-28: see botLedger
-function botCanAfford(L, cost) {
+export function botCanAfford(L, cost) {
   return L.budget >= cost && L.upkeep + cost <= L.upkeepCap;
 }
-function botSpend(L, cost) {
+export function botSpend(L, cost) {
   L.budget -= cost;
   L.upkeep += cost;
 }
 // GARRISONS: one cheap unit per province — enough to make an enemy stop and fight, never meant to
 // hold. Only once a player is actually on our doorstep (in or beside our land) do valuable
 // provinces get 2 and the capital 3.
-function botUnderAttack(G, pi) {
+export function botUnderAttack(G, pi) {
   // an enemy host counts only once the realm can see it (in our own land, or in ground we have eyes
   // on beside it) — botSeesChar is the same rule the player's map uses.
   return (G.characters || []).some((e) => {
@@ -432,7 +443,7 @@ function botUnderAttack(G, pi) {
     return false;
   });
 }
-function botGarrisonTarget(G, prov, pi) {
+export function botGarrisonTarget(G, prov, pi) {
   if (!prov || prov.owner !== pi || prov.terrain === 'sea') return 0;
   // Sept 2026 (Toby): garrisons only in Prosperous/Rich land (tax 4+; the capital always), never
   // more than 2 per province. Defence proper is the DEFENDER heroes (botRoles / botDefenderOrders).
@@ -444,10 +455,10 @@ function botGarrisonTarget(G, prov, pi) {
   if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn
   return attacked && (prov.tax || 0) >= 7 ? 1 : 0;
 }
-function botGarrisonType(prov) {
+export function botGarrisonType(prov) {
   return (prov.armyTypes || []).find((x) => /garrison/i.test(x)) || null;
 }
-function botGarrisonOrder(G, pi, prov, L) {
+export function botGarrisonOrder(G, pi, prov, L) {
   const tgt = botGarrisonTarget(G, prov, pi),
     have = (prov.garrisonArmies || []).length;
   if (have >= tgt) return null;
@@ -470,7 +481,7 @@ function botGarrisonOrder(G, pi, prov, L) {
 // here.
 // 2026-09-28 (Toby): troops raised for the ADMIRAL or the FLYING GENERAL are paid from their own wage cap
 // (L.nav / L.air, see botLedger) — the ledger's ceiling is swapped for the pool's while the muster runs.
-function botRecruitCmdr(G, pi, c) {
+export function botRecruitCmdr(G, pi, c) {
   if (c && (c._botRole === 'admiral' || c._botRole === 'skygeneral')) return c;
   return (
     (G.characters || []).find(
@@ -478,7 +489,7 @@ function botRecruitCmdr(G, pi, c) {
     ) || c
   );
 }
-function botFieldRecruitTokens(G, pi, c, prov, L) {
+export function botFieldRecruitTokens(G, pi, c, prov, L) {
   const cm = botRecruitCmdr(G, pi, c);
   const pool = cm._botRole === 'admiral' ? L.nav : cm._botRole === 'skygeneral' ? L.air : null;
   if (!pool) return botFieldRecruitTokensCore(G, pi, c, prov, L);
@@ -494,7 +505,7 @@ function botFieldRecruitTokens(G, pi, c, prov, L) {
     L.upkeepCap = sc;
   }
 }
-function botFieldRecruitTokensCore(G, pi, c, prov, L) {
+export function botFieldRecruitTokensCore(G, pi, c, prov, L) {
   if (!prov || !prov.armyTypes || prov.owner !== pi) return [];
   const done = (L.recruitedByProv[prov.id] = L.recruitedByProv[prov.id] || {});
   const perTypeLimit = L.upkeepCap - L.upkeep >= 12 ? 3 : prov.tax >= 10 || L.budget >= 20 ? 2 : 1; // Sept 2026 (§99): the ledger showed 17g of unused wage ceiling per turn with few holders in recruit provinces — a wide ceiling buys three of a kind
@@ -611,7 +622,7 @@ function botFieldRecruitTokensCore(G, pi, c, prov, L) {
   }
   return tokens;
 }
-function botRecruitOrder(tokens, destId) {
+export function botRecruitOrder(tokens, destId) {
   if (!tokens.length) return null;
   const n = tokens.reduce((s, tk) => s + parseInt(tk.split('|')[1] || 1), 0);
   return {
@@ -621,7 +632,7 @@ function botRecruitOrder(tokens, destId) {
     desc: 'Recruit ' + n + ' unit' + (n > 1 ? 's' : ''),
   };
 }
-function botHeroCap(G, pi) {
+export function botHeroCap(G, pi) {
   const land = (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea').length;
   const pl = (G.players || [])[pi] || {};
   return 4 + land + (pl.alignment === 'Neutral' ? 1 : 0) + ((pl.gold || 0) > 30 ? 2 : 0);
@@ -631,20 +642,20 @@ function botHeroCap(G, pi) {
 // BOT_SLAYER_FIGHTERS_ONLY (option 1, strict): true = only a fighter may hold the slayer role at all. Tested
 // 2026-09-28: 2.5× the clears per slayer, but 60% fewer slayers and −14% lairs cleared overall (the trainee
 // slayers grow into hunters and are the group-practice partners), so it ships OFF; the hiring preference stays on.
-const BOT_SLAYER_FIGHTERS_ONLY = false;
-function botIsFighter(h) {
+export const BOT_SLAYER_FIGHTERS_ONLY = false;
+export function botIsFighter(h) {
   const s = (h && h.skills) || {};
   return (s.melee || 0) >= 2 || (s.archery || 0) >= 2;
 }
-function botNeedsSlayer(G, pi) {
+export function botNeedsSlayer(G, pi) {
   return !(G.characters || []).some(
     (c) => c && c.alive && c.player === pi && c._botRole === 'slayer' && botIsFighter(c),
   );
 }
-function botHireBias(G, pi, h) {
+export function botHireBias(G, pi, h) {
   return botIsFighter(h) && botNeedsSlayer(G, pi) ? 2 : 0;
 }
-function botHireOrder(G, pi, c, L) {
+export function botHireOrder(G, pi, c, L) {
   L.hired = L.hired || new Set(); // one claimant per wanderer per turn
   // botSeesChar — a hero standing beside our own character is normally plainly visible, but one who
   // moved in unspotted, is Invisible or wears a Cloak of Many Faces is not, and the human's Hire

@@ -1,3 +1,19 @@
+import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { ARMY_COST_MASTER, SKILL_LABELS } from '../army-tables.js';
+import { CREATURE_ARMIES, MONSTER_ARMIES, PRIMAL_SEA_TYPES } from '../units/movement.js';
+import { alignDistP, beastCommandCount, beastCommandRoom, beastCommandWords, heroHireWage, heroSkillWage } from '../world/tables.js';
+import { grantMithrilTo } from '../personal-combat/helpers.js';
+import { armyUnitName } from '../dice-and-army-names.js';
+import { TM, creditBeastUnit, perkTier } from '../titles/perks.js';
+import { orderCharRef } from '../heroes/charms-and-neutrals.js';
+import { applyPendingSynthPlan, discRecruitQChance, discSum, discUnitIs, gdActive, hasDisc, isGarrisonUnitType, realmRecruitCost } from '../discoveries.js';
+import { notifyTarget } from '../turn/log-line-helpers.js';
+import { refreshMovePool, setMovePool } from '../units/movement-pools.js';
+import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.js';
+import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.js';
+
 // ── THE RECRUIT AND HIRE ORDERS (plan P1-08j3: the third family taken out of processOrder in resolveTurn) ──
 // Recruit Armies (companies raised in a province the realm holds, and mercenary bands hired where they roam) and Hire
 // Hero (a wandering hero sworn where he stands), each once processOrder has read the order and checked he may act;
@@ -7,7 +23,7 @@
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break
 // became a return.
 // The humanoid races, as a Set: a recruit of any other race may raise the Druid skill of the hero it joins.
-const HUMANOID_RACES_SG = new Set(KC_HUMANOID_RACES);
+export const HUMANOID_RACES_SG = new Set(KC_HUMANOID_RACES);
 // ── HIRE PRE-ORDERS LAND (shared by Hire Hero and the Neutral BROKER hire) ────
 // The hirer's pre-written orders are applied only once the hire has landed. Matched on hero + this
 // realm (an exact match on the hiring character wins if two cards were somehow submitted), so a
@@ -16,7 +32,7 @@ const HUMANOID_RACES_SG = new Set(KC_HUMANOID_RACES);
 // called this — since hire pre-orders became PENDING (09-21) a brokered hero's pre-written orders
 // were silently dropped, his remaining phases were left empty, and his encounter plan was never
 // set. Both paths now share this one function.
-function landHirePreOrders(turnContext, h, c, ph, player) {
+export function landHirePreOrders(turnContext, h, c, ph, player) {
   const { G, log } = turnContext;
   // Matched on hero + this realm (an exact match on the hiring character wins if two cards
   // were somehow submitted), so a rival's pre-orders for the same hero are ignored. Phases are
@@ -57,7 +73,7 @@ function landHirePreOrders(turnContext, h, c, ph, player) {
   }
 }
 // Recruit Armies: mercenary bands hired where they roam, then companies raised in a province the realm holds, to the recruiter, a comrade or the garrison.
-function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, prov, player) {
+export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, prov, player) {
   const { G, log, recruitedThisTurn } = turnContext;
   const ARMY_COST_P = ARMY_COST_MASTER; // alias → master table at top of script
   // ── First: mercenary bands roaming this province ── The order form now lists mercenaries
@@ -310,7 +326,7 @@ function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, prov, play
   return;
 }
 // Hire Hero: a wandering hero where the hirer stands, for a wage set by the distance between their alignments.
-function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
+export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   const { G, log, SEASONS } = turnContext;
   // resolve the hero by id, not by array position (defensive — the id==index invariant holds
   // today, but a positional lookup would silently hire the WRONG hero if it ever broke).

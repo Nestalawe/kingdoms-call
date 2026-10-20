@@ -1,5 +1,23 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { KC_CARRIER_BERTHS, KC_RIVAL_RACE, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { kcJoinP, sb } from './startup.js';
+import { GUARD_POWER_COLORS_P, deadHeroRealmTagP, itemBoundTag, itemSlotTag, itemTierTagP, itemUsableByP, itemsForDisplayP } from './items-and-heroes.js';
+import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.js';
+import { refreshOrdersVisibility } from './layout.js';
+import { turnDeadlineText } from './game-lists.js';
+import { buildChronicle, loadPastReport, returnToCurrentReport } from './join-and-chronicle.js';
+import { renderMastery, renderTitles } from './titles.js';
+import { armyLabel, floorNumP, unitBaseStrengthP, unitEmoji } from './order-chances.js';
+import { SKILL_LABELS } from './move-analysis.js';
+import { buildOrdersForm } from './orders-form.js';
+import { effSkillP, itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.js';
+import { CREATURE_ARMIES_UI, MONSTER_ARMIES_UI, capitalise, druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.js';
+import { CHIEFTAIN_MARKER_COLOR, _lairName, beastCommandCountP, bulletizeDesc, provLinkHtml, provinceGrandDesignHTML, reportColour, skillFameLabel, spiedExtraP, terrorNoteP } from './map-symbols.js';
+import { ensureProvinceLinking, renderPlayerMap } from './map.js';
+import { initMessaging } from './dispatches.js';
+
 // ── TURN REPORT ────
-async function openReport(gamePlayerId) {
+export async function openReport(gamePlayerId) {
   currentGamePlayerId = gamePlayerId;
   try {
     history.replaceState(null, '', location.pathname + location.search + '#game=' + encodeURIComponent(gamePlayerId));
@@ -166,7 +184,7 @@ async function openReport(gamePlayerId) {
 // Renders the full read-only report body (chronicle, realm, provinces, intel, discoveries,
 // diplomacy, titles, mastery, and the map) from whatever report object it is handed — the live
 // turn_report for the current turn, or a per-turn snapshot when viewing history.
-function renderReportView(report) {
+export function renderReportView(report) {
   // Render chronicle
   buildChronicle(report.lastTurnLog || [], report.characters || []);
 
@@ -949,11 +967,11 @@ function renderReportView(report) {
 // 9: the report card keeps the INFORMATION (relations, pending declarations); the Declare War /
 // Propose Peace / Propose Alliance BUTTONS now live at the top of the Orders column
 // (#orders-diplomacy), beside the dispatch composer and the Concede control.
-function renderDiplomacy(report) {
+export function renderDiplomacy(report) {
   _renderDiplomacyInto(document.getElementById('report-diplomacy'), report, false);
   _renderDiplomacyInto(document.getElementById('orders-diplomacy'), report, true);
 }
-function _renderDiplomacyInto(el, report, withControls) {
+export function _renderDiplomacyInto(el, report, withControls) {
   if (!el) return;
   const known = (report && report.diplomacy && report.diplomacy.known) || [];
   const alliancesAllowed = !report || !report.diplomacy || report.diplomacy.alliancesAllowed !== false;
@@ -1034,7 +1052,7 @@ function _renderDiplomacyInto(el, report, withControls) {
       : ''
   }`;
 }
-function setDiploChoice(idx, val) {
+export function setDiploChoice(idx, val) {
   if (val == null || val === 'null') delete diploChoices[idx];
   else diploChoices[idx] = val;
   if (currentReport) renderDiplomacy(currentReport);
@@ -1043,7 +1061,7 @@ function setDiploChoice(idx, val) {
 // ── COLLAPSIBLE SECTIONS ────
 // Minimise/maximise the report-column cards and the per-hero order blocks so a player can navigate
 // without scrolling. Purely presentational — no engine/data effect.
-function _setSecCollapsed(sec, collapse) {
+export function _setSecCollapsed(sec, collapse) {
   sec.classList.toggle('sec-collapsed', collapse);
   const b = sec.querySelector('.sec-toggle, .cc-toggle');
   if (b) {
@@ -1053,7 +1071,7 @@ function _setSecCollapsed(sec, collapse) {
 }
 // 2026-09-23d (Toby item 1): a battle in the Chronicle shows its SHORT account by default; the side
 // button swaps it for the full report (and back). The two views sit side by side in one .battle-fold.
-function toggleBattleFold(btn) {
+export function toggleBattleFold(btn) {
   const box = btn && btn.closest('.battle-fold');
   if (!box) return;
   const full = box.querySelector('.bf-full'),
@@ -1064,12 +1082,12 @@ function toggleBattleFold(btn) {
   short.style.display = open ? 'none' : 'block';
   box.querySelectorAll('.bf-toggle').forEach((b) => b.setAttribute('aria-expanded', open ? 'true' : 'false'));
 }
-function toggleSection(btn) {
+export function toggleSection(btn) {
   const sec = btn.closest('.card, .orders-char-block, .char-chronicle');
   if (!sec) return;
   _setSecCollapsed(sec, !sec.classList.contains('sec-collapsed'));
 }
-function collapseAllSections(scopeSel, collapse) {
+export function collapseAllSections(scopeSel, collapse) {
   const scope = document.querySelector(scopeSel);
   if (!scope) return;
   scope.querySelectorAll('.card, .orders-char-block, .char-chronicle').forEach((sec) => {
@@ -1078,11 +1096,11 @@ function collapseAllSections(scopeSel, collapse) {
   });
 }
 // fold/unfold every Chronicle character & event block (scoped to the Chronicle log).
-function collapseAllChronicle(collapse) {
+export function collapseAllChronicle(collapse) {
   document.querySelectorAll('#report-log .char-chronicle').forEach((sec) => _setSecCollapsed(sec, collapse));
 }
 // The report-column cards are static markup, so inject a toggle into each card's <h2> once.
-function initReportCollapsers() {
+export function initReportCollapsers() {
   const col = document.getElementById('rp-report-col');
   if (!col) return;
   col.querySelectorAll('.card').forEach((card) => {

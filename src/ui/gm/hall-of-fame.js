@@ -1,3 +1,14 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { KC_UNIT_CLASS, TITLE_DEFS } from '../../content/kingdoms-call-data.js';
+import { kcClock } from '../../engine/clock.js';
+import { KC_BUILD_STAMP } from './startup.js';
+import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../../engine/army-tables.js';
+import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../engine/battle/strength.js';
+import { sb } from './config.js';
+import { kcMissingMsg, parseGameState } from '../../db/game-meta.js';
+import { gameMetaOf } from '../../engine/bots/setup.js';
+import { computeStandings } from '../../engine/titles/reckoning.js';
+
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 // LEADERBOARD & ACHIEVEMENTS (2026-09-27) — the Hall of Fame's one table
 // ════════════════════════════════════════════════════════════════════════════════════════════════
@@ -19,11 +30,11 @@
 // categories lives in kingdoms-call-leaderboard.html (KC_ACH). A key emitted here that the board
 // does not know is still shown, under "Other records", with the key prettified — so adding a record
 // here can never break the board, it only loses a nice label until the catalogue catches up.
-const KC_LB_V = 3; // bump when the row shape changes (rows carry it in build) · 3: records hold every realm's best
+export const KC_LB_V = 3; // bump when the row shape changes (rows carry it in build) · 3: records hold every realm's best
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
 globalThis._kcHasLb = false;
 globalThis._kcLbLastErr = null;
-async function probeLeaderboard() {
+export async function probeLeaderboard() {
   try {
     const { error } = await sb.from('game_records').select('game_id').limit(1);
     _kcHasLb = !error;
@@ -34,7 +45,7 @@ async function probeLeaderboard() {
   renderLeaderboardBanner();
   return _kcHasLb;
 }
-function renderLeaderboardBanner() {
+export function renderLeaderboardBanner() {
   const el = document.getElementById('msg-leaderboard');
   if (!el) return;
   if (!_kcHasLb) {
@@ -49,23 +60,23 @@ function renderLeaderboardBanner() {
 }
 
 // ── unit maths on a SNAPSHOT unit record ({t:type, q:quality, sk:1 if skeletal}) ──────────────────
-const _LB_SEA = new Set(KC_UNIT_CLASS.sea);
-const _LB_AIR = new Set(KC_UNIT_CLASS.aerial);
-const _LB_BEAST = new Set([...KC_UNIT_CLASS.creature, ...KC_UNIT_CLASS.monster]);
-const _LB_MISSILE = new Set(KC_UNIT_CLASS.missile);
-const _LB_CAV = new Set(KC_UNIT_CLASS.cavalry);
+export const _LB_SEA = new Set(KC_UNIT_CLASS.sea);
+export const _LB_AIR = new Set(KC_UNIT_CLASS.aerial);
+export const _LB_BEAST = new Set([...KC_UNIT_CLASS.creature, ...KC_UNIT_CLASS.monster]);
+export const _LB_MISSILE = new Set(KC_UNIT_CLASS.missile);
+export const _LB_CAV = new Set(KC_UNIT_CLASS.cavalry);
 // A snapshot arrives as JSON written by an older build, or by a hook that caught a half-built
 // object: every list and map below is defended, because this runs on the turn path.
-const _lbArr = (v) => (Array.isArray(v) ? v : []);
-const _lbObj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
-const _lbN = (v) => {
+export const _lbArr = (v) => (Array.isArray(v) ? v : []);
+export const _lbObj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+export const _lbN = (v) => {
   const n = Number(v);
   return isFinite(n) ? n : 0;
 };
-function lbUnitStr(u) {
+export function lbUnitStr(u) {
   return u && typeof u === 'object' ? (UNIT_BASE_STR[u.t] || 4) * (UNIT_Q_MULT[u.q || 'Average'] || 2) : 0;
 }
-function lbSumStr(units, pred) {
+export function lbSumStr(units, pred) {
   return _lbArr(units).reduce((s, u) => s + (!pred || pred(u) ? lbUnitStr(u) : 0), 0);
 }
 
@@ -75,7 +86,7 @@ function lbSumStr(units, pred) {
 // elimination, a long-shot spell). 2026-10-09 (Toby item 5): it kept only the game's single best, so
 // a realm whose best battle was beaten by another realm in the same game had nothing on the board.
 // A "most" record of zero is no feat and is not kept. finish() returns {key: [entries, best first]}.
-function lbRecorder() {
+export function lbRecorder() {
   const R = {};
   return {
     R,
@@ -108,7 +119,7 @@ function lbRecorder() {
 // and the board resolves them by `pi`. Two reasons: the row is far smaller (no identity repeated
 // on 95 records), and a player who later renames themselves is renamed on every record at once,
 // because nothing is snapshotted in the record itself.
-function lbCtx(pi, turn, extra) {
+export function lbCtx(pi, turn, extra) {
   return Object.assign({ pi: pi == null ? null : pi, t: turn == null ? null : turn }, extra || {});
 }
 
@@ -129,7 +140,7 @@ function lbCtx(pi, turn, extra) {
 // a fallback only); the board keys every player statistic on `uid` and prints the CURRENT name, so
 // one person is one line on the leaderboard however many realms they have ruled, and a rename
 // rewrites their whole history rather than splitting it in two.
-function buildGameRecords(gameId, gameRow, players, results, events, gs, profNames) {
+export function buildGameRecords(gameId, gameRow, players, results, events, gs, profNames) {
   results = (results || []).filter(Boolean);
   events = (events || []).filter(Boolean);
   if (!results.length) return null;
@@ -581,7 +592,7 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs, profNam
 
 // Fetch this game's turn_events (only the two columns the records need) and write its record row.
 // Idempotent: upsert on game_id. `preserve` keeps a GM's hand edits (note, hidden, display name).
-async function writeGameRecord(gameId, opts) {
+export async function writeGameRecord(gameId, opts) {
   if (!_kcHasLb) return false;
   opts = opts || {};
   try {
@@ -661,9 +672,9 @@ async function writeGameRecord(gameId, opts) {
 // read the table — the invite picker does. Cached for the tab's lifetime so a backfill over twenty
 // games is one query, not twenty. A failure is not fatal: the standings then carry uid but no name,
 // and the board falls back to whatever name it can resolve itself.
-let _lbProfCache = null,
+export let _lbProfCache = null,
   _lbProfErr = null;
-async function lbProfileNames(players) {
+export async function lbProfileNames(players) {
   if (!_lbProfCache) {
     _lbProfCache = {};
     _lbProfErr = null;
@@ -687,8 +698,8 @@ async function lbProfileNames(players) {
 }
 // What the last build actually managed to resolve — the tally the rebuild button reports, so a
 // silent "names are still wrong" has a visible cause instead of needing the console.
-const _lbTally = { games: 0, humans: 0, uids: 0, named: 0 };
-function lbCountRow(row) {
+export const _lbTally = { games: 0, humans: 0, uids: 0, named: 0 };
+export function lbCountRow(row) {
   _lbTally.games++;
   (row.standings || []).forEach((st) => {
     if (!st || st.bot) return;
@@ -700,7 +711,7 @@ function lbCountRow(row) {
 // Build a Hall-of-Fame row for every finished game of this GM's that has results but no record yet.
 // Button-driven, NOT automatic at sign-in: each game costs one sweep of its turn_events, and the
 // Disk-IO lesson says never to put that on a path that runs by itself.
-async function backfillGameRecords(force) {
+export async function backfillGameRecords(force) {
   if (!_kcHasLb || !currentUser) return 0;
   const btn = document.getElementById('lb-build-btn');
   const say = (t) => {

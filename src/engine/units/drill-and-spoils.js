@@ -1,9 +1,14 @@
+import { kcRng } from '../rng.js';
+import { SEA_TYPES_GEN } from '../world/tables.js';
+import { armyUnitName } from '../dice-and-army-names.js';
+import { botBattleForce } from '../bots/intel.js';
+
 // ── ORC WAR-SPOILS ── Flag the Orcish units of an Orcish realm that just won a battle as part of
 // an ATTACKING force. The wage pass at end of turn halves that turn's upkeep for any unit stamped
 // with the current turn (stale stamps from earlier turns are simply ignored).
 // 2026-09-24 (Toby item 3): when `battle` is passed, a closing line is appended to its narrative
 // naming how many Orcish units earned the spoils — so it is called BEFORE emitBattle.
-function markOrcAttackWin(ch, gs, battle) {
+export function markOrcAttackWin(ch, gs, battle) {
   if (!ch || ch.player == null || !gs.players[ch.player] || gs.players[ch.player].race !== 'Orcish') return 0;
   let n = 0;
   (ch.armies || []).forEach((a) => {
@@ -26,15 +31,15 @@ function markOrcAttackWin(ch, gs, battle) {
 // drilling skill level. Read by Practice Tactical / Naval and by the end-of-turn GARRISON DRILL,
 // which drills every garrisoned unit as a commander of GARRISON_DRILL_LEVEL would (2026-09-23c, Toby:
 // land and air units as if by Tactical 1, fleets and sea-beasts as if by Naval 1).
-const UNIT_DRILL_BASE = { Green: 0.05, Average: 0.04, Veteran: 0.03, Crack: 0.02, Elite: 0 };
-const GARRISON_DRILL_LEVEL = 1;
-function humanXPMult(a, ownerPi, gs) {
+export const UNIT_DRILL_BASE = { Green: 0.05, Average: 0.04, Veteran: 0.03, Crack: 0.02, Elite: 0 };
+export const GARRISON_DRILL_LEVEL = 1;
+export function humanXPMult(a, ownerPi, gs) {
   return a && a.race === 'Human' && ownerPi != null && gs.players[ownerPi] && gs.players[ownerPi].race === 'Human'
     ? 2
     : 1;
 }
 
-function rP(a, b) {
+export function rP(a, b) {
   return Math.floor(kcRng() * (b - a + 1)) + a;
 }
 // Starting neutral defender count by wealth tier. MUST use the SAME tax thresholds as the
@@ -48,10 +53,10 @@ function rP(a, b) {
 // Single source of truth used by every world-gen defender pass (land, sea, primal, home-race
 // conversion). 2026-09-13: the BAND is split out so the count and the audit sweep can never drift
 // apart. neutralDefBand returns [lo,hi] for a tax value; neutralDefCount rolls inside it.
-function neutralDefBand(tax) {
+export function neutralDefBand(tax) {
   return tax >= 7 ? [3, 4] : tax >= 4 ? [2, 3] : [1, 2];
 }
-function neutralDefCount(tax) {
+export function neutralDefCount(tax) {
   const b = neutralDefBand(tax);
   return rP(b[0], b[1]);
 }
@@ -60,7 +65,7 @@ function neutralDefCount(tax) {
 // province's tax AFTER its garrison was rolled (see the sweep's comment). No-ops when the count is
 // already legal, so a province that generated correctly is never re-rolled. Sea is never touched —
 // open water is deliberately undefended and the home coastal guarantee depends on that.
-function resyncNeutralDefenders(prov) {
+export function resyncNeutralDefenders(prov) {
   if (!prov || prov.terrain === 'sea' || prov.owner != null) return false;
   const defs = prov.neutralDefenders || (prov.neutralDefenders = []);
   const [lo, hi] = neutralDefBand(prov.tax || 0);
@@ -99,7 +104,7 @@ function resyncNeutralDefenders(prov) {
 // slots' qualities, kept as they were dealt. Ties keep the first mix in the province's own type
 // order. Draws no dice. Returns the list of types, one per slot, or null when there is nothing to
 // choose.
-function bestNeutralMix(armyTypes, quals, terrain, race) {
+export function bestNeutralMix(armyTypes, quals, terrain, race) {
   const types = [
     ...new Set((armyTypes || []).filter((t) => !String(t).toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t))),
   ];

@@ -1,3 +1,16 @@
+import { kcRng } from '../rng.js';
+import { SEA_TYPES } from '../units/movement.js';
+import { shuffleP } from '../battle/fortune.js';
+import { _escapesTheEnd, _garrethEscapeLine } from '../names.js';
+import { d100 } from '../dice-and-army-names.js';
+import { markProvinceCombat } from '../bots/intel.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { skillLevel } from '../titles/perks.js';
+import { areEnemies } from '../realms/relations-and-captures.js';
+import { SKILLGAIN_STD, awardKillXP, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { pcCharCombatant } from '../personal-combat/speed-encounter-plans-and-combatants.js';
+import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.js';
+
 // ── THE WAR MASTERY ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // The masteries a hero of level 7 or 9 in a war skill may order once a turn (processOrder checks that first): Naval's
 // Blockade (a sea sealed against enemy fleets, half the time) and Raid the Coast (an amphibious assault's bonus);
@@ -8,7 +21,7 @@
 // worked out before it that it reads, in the order processOrder declares them. Each body keeps processOrder's indent
 // (plan P1-08's Decisions); a case-level break became a return.
 // Blockade (Naval 7): a sea the hero is in or beside, sealed against enemy fleets this turn, half the time.
-function resolveBlockadeOrder(turnContext, c, target) {
+export function resolveBlockadeOrder(turnContext, c, target) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'naval') < 7) {
     log('system', `${c.name} lacks the Naval mastery (7) to raise a Blockade.`, {
@@ -61,7 +74,7 @@ function resolveBlockadeOrder(turnContext, c, target) {
   return;
 }
 // Challenge (Melee 7): single combat with an enemy hero beside him who leads no army.
-function resolveChallengeOrder(turnContext, c, target, prov) {
+export function resolveChallengeOrder(turnContext, c, target, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'melee') < 7) {
     log('system', `${c.name} lacks the Melee mastery (7) to issue a Challenge.`, {
@@ -136,7 +149,7 @@ function resolveChallengeOrder(turnContext, c, target, prov) {
   return;
 }
 // Rampage (Melee 9): companies of an enemy host beside him cut down, and its commander bloodied.
-function resolveRampageOrder(turnContext, c, target, prov) {
+export function resolveRampageOrder(turnContext, c, target, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'melee') < 9) {
     log('system', `${c.name} lacks the Melee mastery (9) to Rampage.`, { actor: c.player, targets: [c.player] });
@@ -178,7 +191,7 @@ function resolveRampageOrder(turnContext, c, target, prov) {
   return;
 }
 // Rain of Arrows (Archery 7): companies of an enemy host beside him felled by the volley.
-function resolveRainOfArrowsOrder(turnContext, c, target, prov) {
+export function resolveRainOfArrowsOrder(turnContext, c, target, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'archery') < 7) {
     log('system', `${c.name} lacks the Archery mastery (7) for a Rain of Arrows.`, {
@@ -220,7 +233,7 @@ function resolveRainOfArrowsOrder(turnContext, c, target, prov) {
   return;
 }
 // Sniper's Mark (Archery 9): wounds to an enemy hero beside him, and a chance to slay him.
-function resolveSnipersMarkOrder(turnContext, c, target, prov) {
+export function resolveSnipersMarkOrder(turnContext, c, target, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'archery') < 9) {
     log('system', `${c.name} lacks the Archery mastery (9) for a Sniper's Mark.`, {
@@ -281,7 +294,7 @@ function resolveSnipersMarkOrder(turnContext, c, target, prov) {
   return;
 }
 // Feigned Retreat (Tactical 7): his counter-attack strikes harder this turn.
-function resolveFeignedRetreatOrder(turnContext, c, prov) {
+export function resolveFeignedRetreatOrder(turnContext, c, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'tactical') < 7) {
     log('system', `${c.name} lacks the Tactical mastery (7) for a Feigned Retreat.`, {
@@ -300,7 +313,7 @@ function resolveFeignedRetreatOrder(turnContext, c, prov) {
   return;
 }
 // Grand Stratagem (Tactical 9): his next battle this turn is fought at greater strength.
-function resolveGrandStratagemOrder(turnContext, c, prov) {
+export function resolveGrandStratagemOrder(turnContext, c, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'tactical') < 9) {
     log('system', `${c.name} lacks the Tactical mastery (9) for a Grand Stratagem.`, {
@@ -319,7 +332,7 @@ function resolveGrandStratagemOrder(turnContext, c, prov) {
   return;
 }
 // Lightning Advance (March 9): any enemy he attacks this turn is caught unready.
-function resolveLightningAdvanceOrder(turnContext, c, prov) {
+export function resolveLightningAdvanceOrder(turnContext, c, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'march') < 9) {
     log('system', `${c.name} lacks the March mastery (9) for a Lightning Advance.`, {
@@ -338,7 +351,7 @@ function resolveLightningAdvanceOrder(turnContext, c, prov) {
   return;
 }
 // Raid the Coast (Naval 9): an assault from the sea this turn strikes harder, and plunders the treasury it takes.
-function resolveRaidTheCoastOrder(turnContext, c, prov) {
+export function resolveRaidTheCoastOrder(turnContext, c, prov) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'naval') < 9) {
     log('system', `${c.name} lacks the Naval mastery (9) to Raid the Coast.`, { actor: c.player, targets: [c.player] });

@@ -1,3 +1,5 @@
+import { $, doSignIn, doSignOut, loadAll, renderAccounts, sb } from './main.js';
+
 // ── The Overlord page's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // Once the page's scripts are ES modules (P1-09d), a top-level name belongs to its own file: an inline on…="…" handler,
 // a test's W.eval or a browser spec's page.evaluate can't reach it. This file, last on the page, puts on window the

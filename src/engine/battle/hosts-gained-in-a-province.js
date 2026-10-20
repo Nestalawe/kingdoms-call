@@ -1,3 +1,19 @@
+import { recordBattleGraves } from '../graves.js';
+import { markOrcAttackWin } from '../units/drill-and-spoils.js';
+import { describeArmy } from '../dice-and-army-names.js';
+import { narrText, notifyProvinceOwner, notifyTarget, realmTag } from '../turn/log-line-helpers.js';
+import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.js';
+import { applyEvilConquest, areAllied, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.js';
+import { creditBattle } from '../titles/title-holders-and-battle-merit.js';
+import { clearNavalHold, navalHeldIn, navalHoldLine } from '../units/sea-lift-stranding-and-retreats.js';
+import { refreshMovePool } from '../units/movement-pools.js';
+import { commandHandoverLine, pickBattleCommander, syncLeaderCopy } from './best-commander.js';
+import { emitBattle } from './battle-report-lines-and-force-markers.js';
+import { combatVsNPC } from './battles-against-province-defenders.js';
+import { combatVsChar } from './battles-between-heroes.js';
+import { defendAnswerUnitGain } from '../units/defend-ride-outs-ambushes-and-reinforcements.js';
+import { erodeGuardSurvivors } from './stalled-battles-and-beaten-guards.js';
+
 // ── A HOST GAINED IN A PROVINCE (plan P1-08i3: lifted out of resolveTurn) ────
 // When a character gains units in a province he doesn't own (raised, summoned, hired, taken over), the new host is
 // settled the same phase: a battle against any enemy or neutral armies there, or the province taken if none stand in
@@ -8,7 +24,7 @@
 // action-phase Control Undead, mercenary hire, …), the new force is resolved the same
 // phase: enemy OR neutral armies present → a battle is fought; none present → the character takes
 // control. Enemy and neutral armies are treated the same. Returns true if a battle was fought.
-function resolveUnitGainInProvince(turnContext, c, prov, ph) {
+export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
   const { log, G } = turnContext;
   if (!c || !prov || c.player == null) return false;
   if (prov.owner === c.player) return false; // already ours — nothing to contest

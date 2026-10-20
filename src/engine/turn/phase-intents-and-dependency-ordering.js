@@ -1,3 +1,9 @@
+import { getNeighborsP, neighborInDir } from '../world/map-helpers.js';
+import { orderCharRef } from '../heroes/charms-and-neutrals.js';
+import { areEnemies } from '../realms/relations-and-captures.js';
+import { totalInit } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { stepTowardPreferSafe } from '../world/routes-and-distances.js';
+
 // ── THE PHASE PIPELINE: INTENTS, DEPENDENCY ORDERING, MOVEMENT INTERLOCKS (plan P1-08i1: lifted out of resolveTurn) ────
 // Before anyone acts in a phase: what every acting character intends to do (buildPhaseIntents), the order they act in
 // (orderPhaseActors: initiative in tiers, the AK [3.0] dependencies first), and the defenders an enemy column pins by
@@ -15,7 +21,7 @@
 
 // Canonical order-name → internal action-key map. Shared by processOrder and the phase pipeline
 // (buildPhaseIntents / phaseDependencies) so both always agree on what a character is doing.
-const PHASE_ACTION_MAP = {
+export const PHASE_ACTION_MAP = {
   move: 'move',
   explore: 'explore',
   'explore province': 'explore',
@@ -125,7 +131,7 @@ const PHASE_ACTION_MAP = {
 };
 
 // Resolve a move order's destination WITHOUT moving anybody.
-function intendedDestination(turnContext, c, order) {
+export function intendedDestination(turnContext, c, order) {
   const { G } = turnContext;
   if (!order) return null;
   const t = order.target || '';
@@ -146,13 +152,13 @@ function intendedDestination(turnContext, c, order) {
   return G.world.provinces[id] || null;
 }
 
-function normaliseAction(order) {
+export function normaliseAction(order) {
   const raw = ((order && order.action) || 'defend').toLowerCase().trim();
   return PHASE_ACTION_MAP[raw] || 'defend';
 }
 
 // Characters who may act this phase (hired heroes only become active the phase AFTER hiring).
-function actingThisPhase(turnContext, ph) {
+export function actingThisPhase(turnContext, ph) {
   const { G } = turnContext;
   return (G.characters || []).filter((c) => {
     if (c.player === null || !c.alive) return false;
@@ -165,7 +171,7 @@ function actingThisPhase(turnContext, ph) {
   });
 }
 
-function buildPhaseIntents(turnContext, ph) {
+export function buildPhaseIntents(turnContext, ph) {
   const { G } = turnContext;
   const intents = new Map();
   actingThisPhase(turnContext, ph).forEach((c) => {
@@ -192,7 +198,7 @@ function buildPhaseIntents(turnContext, ph) {
 }
 
 // Does this intent amount to an armed attack on a province held by another player?
-function isHostileInvasion(turnContext, it) {
+export function isHostileInvasion(turnContext, it) {
   const { G, seaMovePoints, movePoints } = turnContext;
   if (!it || it.cancelled || it.action !== 'move' || !it.leadsArmy || !it.dest) return false;
   const d = it.dest;
@@ -225,7 +231,7 @@ function isHostileInvasion(turnContext, it) {
 
 // ── Dependency ordering (AK [3.0] exceptions) ────
 // Returns [charId_before, charId_after] pairs meaning "before" must be processed first.
-function phaseDependencies(turnContext, ph, intents) {
+export function phaseDependencies(turnContext, ph, intents) {
   const { G } = turnContext;
   const edges = [];
   const list = [...intents.values()];
@@ -300,10 +306,10 @@ function phaseDependencies(turnContext, ph, intents) {
 // act. Dependency edges (buildPhaseIntents → phaseDependencies, e.g. a hero marching in to receive
 // an item) still override this tiering through Kahn's topological sort, so the AK [3.0]
 // exceptions that require a specific move-before/after ordering are preserved.
-function _phaseActionTier(d) {
+export function _phaseActionTier(d) {
   return d === 'defend' ? 2 : d === 'move' || d === 'pursue' || d === 'encounter' ? 1 : 0;
 } // Encounter relocates (chases), so it tiers with Move
-function phaseInitCompare(turnContext, ph) {
+export function phaseInitCompare(turnContext, ph) {
   const { G } = turnContext;
   return (a, b) => {
     const aD = normaliseAction((G.turnOrders[a.id] || [])[ph]);
@@ -320,7 +326,7 @@ function phaseInitCompare(turnContext, ph) {
 // Kahn's algorithm over the dependency edges, using initiative order as the tie-break priority.
 // Any characters left in a dependency cycle (e.g. two heroes each Giving to the other) are
 // appended in plain initiative order rather than dropped.
-function orderPhaseActors(turnContext, ph, intents) {
+export function orderPhaseActors(turnContext, ph, intents) {
   const cmp = phaseInitCompare(turnContext, ph);
   const nodes = [...intents.values()].map((it) => it.c).sort(cmp);
   const edges = phaseDependencies(turnContext, ph, intents).filter(
@@ -365,7 +371,7 @@ function orderPhaseActors(turnContext, ph, intents) {
 // head-on swap is just the most visible case of the general rule, so both are handled here: a
 // defender is pinned whenever an armed enemy is due to arrive in his province BEFORE he leaves.
 // "Before he leaves" is decided by initiative, so a fast general still gets clear in time.
-function applyMoveInterlocks(turnContext, ph, intents) {
+export function applyMoveInterlocks(turnContext, ph, intents) {
   const { G, log } = turnContext;
   const list = [...intents.values()];
   const invasions = list.filter((...a) => isHostileInvasion(turnContext, ...a));

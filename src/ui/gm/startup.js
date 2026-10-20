@@ -1,3 +1,7 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { KC_DATA_STAMP } from '../../content/kingdoms-call-data.js';
+import * as KC_DATA_NS from '../../content/kingdoms-call-data.js';
+
 // ── DATA FILE GUARD ── the content tables (items, monsters, names, spells, titles, discoveries)
 // live in kingdoms-call-data.js, which MUST be served from the same folder and is loaded by the
 // script tag just above this block. Without it every table below is undefined and the portal
@@ -7,14 +11,14 @@
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN = '2026.10.15-1202';
+export const KC_DATA_MIN = '2026.10.15-1202';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change"). Now P0-25's: the game screen's switch saves games.block_eliminated_msgs. (Since P0-32e,
 // Master GM mode (P0-32g) has needed the Overlord's rights on every game.)
-const KC_DB_MIN = '20261015062128';
+export const KC_DB_MIN = '20261015062128';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
-const KC_SHARED_TABLE_NAMES = [
+export const KC_SHARED_TABLE_NAMES = [
   'KC_UNIT_CLASS',
   'KC_UNIT_TYPE',
   'KC_DRUID_LEVELS',
@@ -43,7 +47,7 @@ const KC_SHARED_TABLE_NAMES = [
   'KC_HEX_DIRS',
   'KC_GRAND_DESIGNS',
 ];
-const KC_BUILD_STAMP = '2026.10.18-2300'; // this build (the footer shows the same; telemetry rows carry it)
+export const KC_BUILD_STAMP = '2026.10.18-2300'; // this build (the footer shows the same; telemetry rows carry it)
 (function () {
   const need = [
     'ALL_MAGIC_ITEMS_P',
@@ -69,7 +73,7 @@ const KC_BUILD_STAMP = '2026.10.18-2300'; // this build (the footer shows the sa
   ];
   const missing = need.filter((n) => {
     try {
-      return typeof eval(n) === 'undefined';
+      return typeof KC_DATA_NS[n] === 'undefined';
     } catch (e) {
       return true;
     }

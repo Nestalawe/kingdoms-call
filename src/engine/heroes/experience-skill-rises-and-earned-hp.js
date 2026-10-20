@@ -1,3 +1,13 @@
+import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { SKILL_LABELS } from '../army-tables.js';
+import { SEA_TYPES } from '../units/movement.js';
+import { hpGainLine, rollHpGain, syncMaxHp } from './skills-and-hp.js';
+import { dispFloor } from '../dice-and-army-names.js';
+import { discSum, hasDisc } from '../discoveries.js';
+import { recalcHeroPay, skillInPlayNote } from './effective-skills-and-hidden-heroes.js';
+import { refreshMovePool } from '../units/movement-pools.js';
+
 // ── EXPERIENCE, SKILL RISES AND EARNED HP (plan P1-08c: lifted out of resolveTurn) ────
 // A hero's chance to raise a skill by using it (trySkillGain, and rollNavalVoyage for a voyage), the one rise a phase
 // drawn from the candidates (resolvePendingSkillGain), the rise lines held back until the end of the phase
@@ -10,7 +20,7 @@
 // Characters may improve a skill by performing the matching action. Base 10% at level 0, easing
 // off slightly as the skill rises. Common actions (move/explore) use a lower base because they
 // happen so often. Combat resolves on COPIES, so we award to the real character.
-const SKILLGAIN_STD = 0.1,
+export const SKILLGAIN_STD = 0.1,
   SKILLGAIN_COMMON = 0.04;
 
 // a character who dies later in the phase must not have a skill rise reported AFTER the fight
@@ -23,7 +33,7 @@ const SKILLGAIN_STD = 0.1,
 // battle report there in the same phase, rather than after everything else the phase brought —
 // the lines of one rise stay together and in order. With `inPlace` (a hero falling, whose battle
 // is not yet written) every line is simply logged where it stands.
-function writeDeferredSkillLines(turnContext, list, inPlace) {
+export function writeDeferredSkillLines(turnContext, list, inPlace) {
   const { log, turnLog } = turnContext;
   const blocks = new Map();
   (list || []).forEach(([msg, meta]) => {
@@ -49,7 +59,7 @@ function writeDeferredSkillLines(turnContext, list, inPlace) {
     else turnLog.splice(at + 1, 0, ...ents);
   });
 }
-function flushDeferredSkillLogsFor(turnContext, charId) {
+export function flushDeferredSkillLogsFor(turnContext, charId) {
   const { G } = turnContext;
   if (charId != null) {
     const _pc = (G.characters || []).find((r) => r && r.id === charId);
@@ -64,7 +74,7 @@ function flushDeferredSkillLogsFor(turnContext, charId) {
   writeDeferredSkillLines(turnContext, mine, true);
 }
 
-function trySkillGain(turnContext, char, skill, base, narr, mult) {
+export function trySkillGain(turnContext, char, skill, base, narr, mult) {
   const { G } = turnContext;
   if (!char || turnContext._pcSimulating) return;
   mult = mult > 0 ? mult : 1;
@@ -165,11 +175,11 @@ function trySkillGain(turnContext, char, skill, base, narr, mult) {
 // by sea with no fleet) learns nothing from the voyage. Every voyage path rolls through here — a sea
 // move, a Defend ride-out by sea, a reinforcement or a pursuit step at sea. (From 2026-09-21 until
 // now a passenger rolled at the frequent-action rate.)
-function rollNavalVoyage(turnContext, c, base) {
+export function rollNavalVoyage(turnContext, c, base) {
   if (!c || !(c.armies || []).some((a) => a && !a._died && SEA_TYPES.has(a.type))) return;
   trySkillGain(turnContext, c, 'naval', base);
 }
-function resolvePendingSkillGain(turnContext, real) {
+export function resolvePendingSkillGain(turnContext, real) {
   const { G, log } = turnContext;
   const P = real && real._sgPending;
   if (!P) return;
@@ -266,7 +276,7 @@ function resolvePendingSkillGain(turnContext, real) {
     ]);
   }
 }
-function resolveAllPendingSkillGains(turnContext) {
+export function resolveAllPendingSkillGains(turnContext) {
   const { G } = turnContext;
   (G.characters || []).forEach((c) => {
     if (c && c._sgPending) resolvePendingSkillGain(turnContext, c);
@@ -279,7 +289,7 @@ function resolveAllPendingSkillGains(turnContext) {
 // leaders. Mirrors the maxHp gain heroes get for defeating feature monsters, scaled to the fallen
 // foe's toughness. If a narrative array is given (battle report), the message is pushed there;
 // otherwise it is logged.
-function awardKillXP(turnContext, killer, victim, narrative) {
+export function awardKillXP(turnContext, killer, victim, narrative) {
   if (!killer || !victim || killer === victim || (killer.hp || 0) <= 0) return;
   if (victim.alive === true && !victim.killedThisTurn) return; // the victim was saved (Battlefield Surgery / unkillable) — no kill, no lesson
   // Sept 2026 redesign: no permanent-HP reward. A kill is a hard lesson in the killer's fighting
@@ -293,13 +303,13 @@ function awardKillXP(turnContext, killer, victim, narrative) {
 // ── EARNED HP ── one combat win = one rollHpGain on the REAL character. Wins that count: lair
 // guardian cleared, enemy character slain (any personal-combat path), pre-battle duel won
 // (kill or the loser breaking off). A fled Encounter/chase/thief fight and a pacified beast do NOT count.
-function awardWinHp(turnContext, ch, narrative, why) {
+export function awardWinHp(turnContext, ch, narrative, why) {
   return awardHpRoll(turnContext, ch, narrative, why, true);
 }
 // 2026-10-08/09 (Toby item 16): one maximum-HP roll for a hero after a fight — for the WINNER (isWin)
 // or for a hero who was wounded in it (resolvePersonalCombat). The roll sets the amount; a winner
 // gains the roll +1.
-function awardHpRoll(turnContext, ch, narrative, why, isWin) {
+export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
   const { G, log } = turnContext;
   if (!ch || ch.alive === false) return null;
   const real = (ch.id != null && (G.characters || []).find((r) => r && r.id === ch.id)) || ch;
@@ -360,7 +370,7 @@ function awardHpRoll(turnContext, ch, narrative, why, isWin) {
 // whenever a character's maximum HP rises for ANY reason (item picked up, bought or received, a
 // discovery, a title…) the current HP rises by the same amount at once — syncMaxHp already heals
 // into new headroom, so the rule is: resync everyone after EVERY phase, not just at turn end.
-function syncAllMaxHp(turnContext) {
+export function syncAllMaxHp(turnContext) {
   const { G, log } = turnContext;
   (G.characters || []).forEach((ch) => {
     if (!ch || !ch.alive) return;

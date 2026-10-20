@@ -1,11 +1,23 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { KC_SEASONS } from '../../content/kingdoms-call-data.js';
+import { L79_ORDERS } from './l79-orders.js';
+import { SEASONS, _pendingDiscChoices, actionsFor } from './items-and-heroes.js';
+import { refreshLaterCastSpells } from './order-chances.js';
+import { DUEL_STANCES, ENCOUNTER_TACTICS, HEIR_TEMPERS_LIST, SKILL_LABELS, heirAddedTo, heirPointsRemaining, heirTotalAdded, refreshAllMoveModeNotes, refreshMoveModeNote } from './move-analysis.js';
+import { buildOrdersForm, refreshEncounterPlan, renderPreSchool } from './orders-form.js';
+import { doSaveOrders, doSubmitOrders, restoreSubmitWrap } from './briefing-and-submit.js';
+import { heroHireWageOfP } from './skills-and-projections.js';
+import { buildTargetField, predictedLocation, refreshExploreNotes } from './order-targets.js';
+import { leadsArmiesP, provLinkHtml, skillFameLabel } from './map-symbols.js';
+
 // ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
 // L7/L9 mastery order (GM MASTERY_ORDER_KEYS — exactly the L79_ORDERS set) and of Call to Arms. Once a
 // character has one of them in a phase, every LATER phase's action dropdown stops offering it. Each
 // select remembers its full option list (data-all-opts) so an option comes back the moment the earlier
 // phase is changed; a later phase already holding the order is cleared (with a note) rather than
 // left to be refused at resolution.
-const ONCE_PER_TURN_ACTIONS = new Set([...Object.keys(L79_ORDERS), 'Call to Arms']);
-function refreshOncePerTurnOptions(charId) {
+export const ONCE_PER_TURN_ACTIONS = new Set([...Object.keys(L79_ORDERS), 'Call to Arms']);
+export function refreshOncePerTurnOptions(charId) {
   const taken = new Set();
   for (let ph = 0; ph < 5; ph++) {
     const sel = document.getElementById(`po-action-${charId}-${ph}`);
@@ -38,7 +50,7 @@ function refreshOncePerTurnOptions(charId) {
     if (ONCE_PER_TURN_ACTIONS.has(sel.value)) taken.add(sel.value);
   }
 }
-function refreshAllOncePerTurn() {
+export function refreshAllOncePerTurn() {
   const ids = new Set(
     [...document.querySelectorAll('select[id^="po-action-"]')].map((el) =>
       el.id.replace(/^po-action-/, '').replace(/-\d+$/, ''),
@@ -50,7 +62,7 @@ function refreshAllOncePerTurn() {
     } catch (_) {}
   });
 }
-function onActionChange(charId, ph, charIdx) {
+export function onActionChange(charId, ph, charIdx) {
   const action = document.getElementById(`po-action-${charId}-${ph}`)?.value;
   const wrap = document.getElementById(`po-target-wrap-${charId}-${ph}`);
   if (!wrap) return;
@@ -82,7 +94,7 @@ function onActionChange(charId, ph, charIdx) {
 // this character's later MOVE orders — their direction dropdowns relabel to the new predicted path
 // — and flag each later move with an "update me" note so the player re-checks it. Re-picking a
 // flagged later move clears its own note and cascades to the moves after it.
-function onMoveEdited(charId, ph) {
+export function onMoveEdited(charId, ph) {
   const char = (currentReport?.characters || []).find((c) => String(c.id) === String(charId));
   if (!char) return;
   setTimeout(refreshExploreNotes, 0); // a changed path moves where later Explore orders land
@@ -125,7 +137,7 @@ function onMoveEdited(charId, ph) {
 // and idled the rest of the turn, with nothing in their Chronicle after the hire line.
 // _fillSyntheticOrderCard pours a saved order set back into a freshly injected card, exactly as
 // _fillResurrectCard does for a resurrect card.
-function _fillSyntheticOrderCard(fakeId, savedPhases, savedEP) {
+export function _fillSyntheticOrderCard(fakeId, savedPhases, savedEP) {
   const fake = ((currentReport && currentReport.characters) || []).find((c) => String(c.id) === String(fakeId));
   if (!fake) return;
   const first = (fake.hiredInPhase ?? -1) + 1;
@@ -173,7 +185,7 @@ function _fillSyntheticOrderCard(fakeId, savedPhases, savedEP) {
 // Walk every rendered order row and re-inject whichever hired-hero / charm cards the restored form
 // calls for, filling each from the draft. Repeated a few times so a NESTED hire (a hero hired this
 // turn who himself hires another) gets his own card once his card exists to be read from.
-function syncAllPreOrderCards(savedOrders, savedEncounterPlans) {
+export function syncAllPreOrderCards(savedOrders, savedEncounterPlans) {
   savedOrders = savedOrders || {};
   savedEncounterPlans = savedEncounterPlans || {};
   const SEL = '[id^="hired-hero-orders-"],[id^="charm-orders-"]';
@@ -213,7 +225,7 @@ function syncAllPreOrderCards(savedOrders, savedEncounterPlans) {
 // unregister its placeholder character. Mirrors syncResurrectCard. the Neutral king's Broker action
 // ALSO hires a hero (a remote hire, target 'hire:<id>'), so it must pop the same future-orders
 // window. A Broker 'spy:<provId>' target is not a hire and gets no card.
-function syncHiredHeroCard(charId, ph) {
+export function syncHiredHeroCard(charId, ph) {
   const containerId = `hired-hero-orders-${charId}-${ph}`;
   const existing = document.getElementById(containerId);
   const action = document.getElementById(`po-action-${charId}-${ph}`)?.value || '';
@@ -248,10 +260,10 @@ function syncHiredHeroCard(charId, ph) {
 // Resurrect order on a body (any caster, any phase) shares a single card, anchored under the
 // earliest caster; the GM applies it whichever of your casters actually raises the hero. The card
 // is also rebuilt when a saved draft is reopened.
-function syncResurrectCard(charId, ph) {
+export function syncResurrectCard(charId, ph) {
   syncAllResurrectCards();
 }
-function _resurrectCastersByHero() {
+export function _resurrectCastersByHero() {
   const out = {};
   const chars = (currentReport && currentReport.characters) || [];
   chars.forEach((c) => {
@@ -267,7 +279,7 @@ function _resurrectCastersByHero() {
   Object.values(out).forEach((list) => list.sort((x, y) => x.ph - y.ph));
   return out;
 }
-function _readResurrectCardOrders(fakeId) {
+export function _readResurrectCardOrders(fakeId) {
   return {
     phases: [0, 1, 2, 3, 4].map((p) => ({
       action: document.getElementById(`po-action-${fakeId}-${p}`)?.value || '',
@@ -279,12 +291,12 @@ function _readResurrectCardOrders(fakeId) {
     duel: document.getElementById(`ep-duel-${fakeId}`)?.value || '',
   };
 }
-function _teardownResurrectCard(card) {
+export function _teardownResurrectCard(card) {
   const stale = card.getAttribute('data-fakeid');
   if (stale && currentReport) currentReport.characters = (currentReport.characters || []).filter((c) => c.id !== stale);
   card.remove();
 }
-function _fillResurrectCard(fakeId, saved) {
+export function _fillResurrectCard(fakeId, saved) {
   const fake = ((currentReport && currentReport.characters) || []).find((c) => c.id === fakeId);
   if (!fake || !saved) return;
   const first = (fake.hiredInPhase ?? -1) + 1;
@@ -319,7 +331,7 @@ function _fillResurrectCard(fakeId, saved) {
     if (d) d.value = saved.duel;
   }
 }
-function _setResurrectCasterNote(card, casters) {
+export function _setResurrectCasterNote(card, casters) {
   const el = card.querySelector('.resurrect-casters');
   if (!el) return;
   const SEASONS_R = KC_SEASONS.slice();
@@ -331,7 +343,7 @@ function _setResurrectCasterNote(card, casters) {
 }
 // savedByHero: { heroId: {phases, tactics, notes, duel} } — orders to pour into a card as it is
 // (re)built.
-function syncAllResurrectCards(savedByHero) {
+export function syncAllResurrectCards(savedByHero) {
   savedByHero = savedByHero || {};
   // clear last pass's "no orders to give" notes — injectResurrectOrders rebuilds whichever are
   // still wanted. They carry no orders, so nothing is lost by dropping them.
@@ -372,7 +384,7 @@ function syncAllResurrectCards(savedByHero) {
   });
 }
 
-function injectResurrectOrders(charId, ph, heroId, casters) {
+export function injectResurrectOrders(charId, ph, heroId, casters) {
   const report = currentReport || {};
   // The GM's id grammar is resurrect_<heroId>_via_<casterId>_ph<N>, all numeric (a caster hired
   // this same turn has a synthetic id and cannot anchor a card — rare, and the cast still resolves;
@@ -537,7 +549,7 @@ function injectResurrectOrders(charId, ph, heroId, casters) {
 // holds PENDING until the Charm actually lands, so a failed cast (or a rival charming the hero
 // first) simply drops them. Only offered for a wandering target; commanding an ENEMY hero is not
 // modelled.
-function syncCharmCard(charId, ph) {
+export function syncCharmCard(charId, ph) {
   const containerId = `charm-orders-${charId}-${ph}`;
   const existing = document.getElementById(containerId);
   const action = document.getElementById(`po-action-${charId}-${ph}`)?.value || '';
@@ -560,7 +572,7 @@ function syncCharmCard(charId, ph) {
   injectCharmOrders(charId, ph, heroId, containerId);
 }
 
-function injectCharmOrders(charId, ph, heroId, containerId) {
+export function injectCharmOrders(charId, ph, heroId, containerId) {
   const report = currentReport || {};
   // The GM id grammar is charm_<heroId>_via_<casterId>_ph<N>, all numeric — a caster who is
   // themselves a synthetic (hired/raised/charmed) hero this same turn can't anchor a charm
@@ -703,7 +715,7 @@ function injectCharmOrders(charId, ph, heroId, containerId) {
 
 // After a player selects Hire Hero in phase ph, add an order card for that hero covering phases
 // ph+1 to 4 (they can't act in ph or earlier)
-function injectHiredHeroOrders(charId, ph, charIdx) {
+export function injectHiredHeroOrders(charId, ph, charIdx) {
   let heroId = getOrderTarget(charId, ph);
   if (!heroId) return;
   // the Broker action encodes its hire target as 'hire:<id>' (and 'spy:<provId>' for a paid spy,
@@ -891,20 +903,20 @@ function injectHiredHeroOrders(charId, ph, charIdx) {
 }
 
 // Get target value — handles both regular selects/inputs and recruit checkbox lists
-function getOrderTarget(charId, ph) {
+export function getOrderTarget(charId, ph) {
   // For recruit, the hidden input holds the comma-joined checkbox values
   const hidden = document.getElementById(`po-target-${charId}-${ph}`);
   if (hidden) return hidden.value || '';
   return '';
 }
-function getOrderExtra(charId, ph) {
+export function getOrderExtra(charId, ph) {
   const el = document.getElementById(`po-extra-${charId}-${ph}`);
   return el?.value || '';
 }
 
 // read the Blood Offering per-unit Sacrifice/Empower selectors into the hidden extra field
 // ("S:i,j|E:a,b"), show the block only for the Blood Offering rite, and warn if the counts don't match.
-function updateBloodOffering(charId, ph) {
+export function updateBloodOffering(charId, ph) {
   const rite = document.getElementById(`po-target-${charId}-${ph}`)?.value || '';
   const block = document.getElementById(`bo-block-${charId}-${ph}`);
   const extra = document.getElementById(`po-extra-${charId}-${ph}`);
@@ -944,7 +956,7 @@ function updateBloodOffering(charId, ph) {
   if (typeof doSaveOrders === 'function') doSaveOrders();
 }
 
-async function submitOrders() {
+export async function submitOrders() {
   const chars = currentReport?.characters || [];
   const btn = document.getElementById('submit-btn');
   const msg = document.getElementById('orders-msg');
@@ -987,7 +999,7 @@ async function submitOrders() {
   await doSubmitOrders();
 }
 
-function setHeirName(charId, value) {
+export function setHeirName(charId, value) {
   if (!currentReport) return;
   const c = currentReport.characters.find((x) => x.id === charId);
   if (!c || !c._isHeir) return;
@@ -995,7 +1007,7 @@ function setHeirName(charId, value) {
   doSaveOrders(); // persist without re-rendering, so the field keeps focus
 }
 
-function setHeirTemper(charId, value) {
+export function setHeirTemper(charId, value) {
   if (!currentReport) return;
   const c = currentReport.characters.find((x) => x.id === charId);
   if (!c || !c._isHeir) return;
@@ -1006,7 +1018,7 @@ function setHeirTemper(charId, value) {
 
 // Spend or refund a succession skill point. delta is +1 or −1. Caps mirror the join screen: a
 // 4-point budget, at most +2 into any single skill, never reducing a skill below its crowned base.
-async function allocateHeirSkill(charId, skill, delta) {
+export async function allocateHeirSkill(charId, skill, delta) {
   if (!currentReport) return;
   const c = currentReport.characters.find((x) => x.id === charId);
   if (!c || !c._isHeir) return;
@@ -1035,7 +1047,7 @@ async function allocateHeirSkill(charId, skill, delta) {
   );
 }
 
-async function resubmitOrders() {
+export async function resubmitOrders() {
   // Re-enable all order form inputs so the player can update before resubmitting
   const gp = currentGamePlayer;
   if (!gp) return;

@@ -1,3 +1,11 @@
+import { kcRng } from './rng.js';
+import { QUALITY_TIERS } from './army-tables.js';
+import { unitBaseStrength } from './battle/strength.js';
+import { effSkillOf } from './heroes/skills-and-hp.js';
+import { armyUnitName } from './dice-and-army-names.js';
+import { noteServedRealm } from './heroes/charms-and-neutrals.js';
+import { discSum } from './discoveries.js';
+
 // ══ GRAVEYARD LORE ════
 // A character with any Necromancy at all feels the battlefield dead underfoot. At the end of their
 // last phase they learn that a province they stand in HOLDS graves — nothing more. A stronger
@@ -14,7 +22,7 @@
 // the report can say "at least". A partial reading with nothing to show is NOT treated as "seen
 // bare" — the title simply found no crack or elite dead there, which says nothing about whether
 // other graves lie in the province.
-function noteGraveIntel(pl, provId, turn, graves, opts) {
+export function noteGraveIntel(pl, provId, turn, graves, opts) {
   if (!pl || provId == null) return;
   if (!pl._graveIntel || typeof pl._graveIntel !== 'object' || Array.isArray(pl._graveIntel)) pl._graveIntel = {};
   const partial = !!(opts && opts.partial);
@@ -53,11 +61,11 @@ function noteGraveIntel(pl, provId, turn, graves, opts) {
 // naming them is the whole point of it.
 // Skeletal Armies: how many grave units one successful cast raises, by the caster's effective
 // Necromancy (0-5 benefit scale): 1 at level 1-2, 2 at level 3-4, 3 at level 5+.
-function skeletalRaiseCount(lvl) {
+export function skeletalRaiseCount(lvl) {
   lvl = lvl || 0;
   return lvl >= 5 ? 3 : lvl >= 3 ? 2 : 1;
 }
-function takeBestGrave(prov) {
+export function takeBestGrave(prov) {
   const gs = (prov && prov.battleGraves) || [];
   if (!gs.length) return null;
   const qi = (g) => {
@@ -93,7 +101,7 @@ function takeBestGrave(prov) {
 // column that marches back and forth does not spam the Chronicle — and a province read on the way
 // through is already in `_graveIntel`, so it shows up in the report's Graveyards Known either way.
 // `emit` is the log function to use (the callers differ in phase/context), or null for silent.
-function senseGravesUnderfoot(state, c, pv, emit) {
+export function senseGravesUnderfoot(state, c, pv, emit) {
   if (!c || !c.alive || c.player == null || !pv) return false;
   // SCOPE TRAP: runTurn declares its own effStat() helper, which is invisible to
   // this module-level function — calling it threw ReferenceError and aborted EVERY turn. Go straight
@@ -118,7 +126,7 @@ function senseGravesUnderfoot(state, c, pv, emit) {
   return true;
 }
 // The realm's graveyard lore, shaped for the player report ("Graveyards known").
-function graveIntelFor(gs, pl) {
+export function graveIntelFor(gs, pl) {
   if (!gs || !pl || !pl._graveIntel) return [];
   return Object.keys(pl._graveIntel)
     .map((k) => {
@@ -141,7 +149,7 @@ function graveIntelFor(gs, pl) {
 // which joins the turn's context by reference), and the dead heroes a realm has seen. recordHeroGrave,
 // recordBattleGraves and recordDeadHeroSighting take the turn's context first (src/engine/turn/context.js).
 // Record a dead hero into the persistent graveyard for Resurrect spell
-function recordHeroGrave(turnContext, hero) {
+export function recordHeroGrave(turnContext, hero) {
   const { G } = turnContext;
   if (!G.heroGraveyard) G.heroGraveyard = [];
   // Don't double-record
@@ -170,10 +178,10 @@ function recordHeroGrave(turnContext, hero) {
   });
 }
 
-function elvenEscapeChance(terrain) {
+export function elvenEscapeChance(terrain) {
   return terrain === 'desert' || terrain === 'mountain' ? 30 : terrain === 'forest' || terrain === 'jungle' ? 60 : 45;
 }
-function recordBattleGraves(turnContext, prov, killedArmies, ownerPlayer) {
+export function recordBattleGraves(turnContext, prov, killedArmies, ownerPlayer) {
   const { G, _elvenEscapeQueue } = turnContext;
   if (!killedArmies || !killedArmies.length) return;
   if (!prov.battleGraves) prov.battleGraves = [];
@@ -207,7 +215,7 @@ function recordBattleGraves(turnContext, prov, killedArmies, ownerPlayer) {
 }
 
 // When a player's character visits/spies a province, record any dead heroes there as seen
-function recordDeadHeroSighting(turnContext, playerIdx, provId) {
+export function recordDeadHeroSighting(turnContext, playerIdx, provId) {
   const { G } = turnContext;
   if (!G.heroGraveyard) return;
   G.heroGraveyard

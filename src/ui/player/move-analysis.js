@@ -1,3 +1,12 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { KC_CARRIER_BERTHS, KC_HEX_DIRS, KC_SKILL_LABELS, KC_TEMPERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { kcJoinP, sb } from './startup.js';
+import { SKILL_COLUMNS } from './join-and-chronicle.js';
+import { getOrderTarget } from './pre-orders.js';
+import { effSkillP } from './briefing-and-submit.js';
+import { _isAutoGarrisonRecruit, _projRecruitUnits } from './skills-and-projections.js';
+import { predictedLocation, projectedLedArmies } from './order-targets.js';
+
 // ══ MOVE ANALYSIS (2026-09-26, Toby item 1) ═══════════════════════════════════════════════════
 // Before a Move order is submitted, tell the player what KIND of move it is — a land march, a
 // voyage, or a flight — and warn them when they are ordering a column into the sea that their
@@ -5,23 +14,23 @@
 // (AERIAL_TYPES / SEA_TYPES / CARRIER_TYPES / FLYING_TYPES, isAirCarriable, getFlyCapability,
 // getSeaCapability and seaLiftShortfall). If any of those change in the engine, change these too —
 // a warning that disagrees with the resolver is worse than no warning at all.
-const PO_SEA_TYPES = new Set(KC_UNIT_CLASS.sea);
-const PO_CARRIER_TYPES = new Set(KC_UNIT_CLASS.carrier);
-const PO_AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
-const PO_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
-const PO_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
-const PO_CREATURE_TYPES = new Set(KC_UNIT_CLASS.creature);
-const PO_MONSTER_TYPES = new Set(KC_UNIT_CLASS.monster);
+export const PO_SEA_TYPES = new Set(KC_UNIT_CLASS.sea);
+export const PO_CARRIER_TYPES = new Set(KC_UNIT_CLASS.carrier);
+export const PO_AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
+export const PO_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
+export const PO_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
+export const PO_CREATURE_TYPES = new Set(KC_UNIT_CLASS.creature);
+export const PO_MONSTER_TYPES = new Set(KC_UNIT_CLASS.monster);
 // Light foot take half a hull; everything else takes a whole one (engine: LIGHT_ARMIES).
-const PO_LIGHT_TYPES = new Set([...KC_UNIT_CLASS.lightFoot, '__projected foot__']); // a unit the player has ordered raised or summoned earlier this turn — counted as light foot
+export const PO_LIGHT_TYPES = new Set([...KC_UNIT_CLASS.lightFoot, '__projected foot__']); // a unit the player has ordered raised or summoned earlier this turn — counted as light foot
 // The stand-in type for a unit an earlier order will produce whose TYPE cannot be known in advance
 // (a grave raised by Skeletal Armies or Harvest the Field). It belongs to no aerial, sea, creature
 // or monster set, so poAirCarriable treats it as humanoid foot and PO_LIGHT_TYPES prices it at half
 // a hull — the commonest case by far for a raised or harvested unit.
-const PO_PROJECTED_FOOT = '__projected foot__';
+export const PO_PROJECTED_FOOT = '__projected foot__';
 // A humanoid flyer lifts ONE foot soldier. Horses, hulls, sea-beasts and walking creatures or
 // monsters are too heavy or unsuitable and can only go aboard ship.
-function poAirCarriable(t) {
+export function poAirCarriable(t) {
   if (PO_AERIAL_TYPES.has(t) || PO_SEA_TYPES.has(t)) return false;
   if (PO_CREATURE_TYPES.has(t) || PO_MONSTER_TYPES.has(t)) return false;
   if (PO_CAVALRY_TYPES.has(t)) return false;
@@ -29,7 +38,7 @@ function poAirCarriable(t) {
 }
 // Can the WHOLE column take to the air? Every foot soldier must be liftable and there must be a
 // humanoid flyer for each one; self-flying units ride for free.
-function poFlyCapability(armies) {
+export function poFlyCapability(armies) {
   const A = (armies || []).filter(Boolean);
   if (!A.length) return false;
   let carriers = 0,
@@ -55,7 +64,7 @@ function poFlyCapability(armies) {
 }
 // The engine's getSeaCapability, plus the figures the note needs to explain itself.
 // cap: 'all' (nothing to carry), 'sea' (hulls and flyers lift the lot), 'land' (cannot put to sea).
-function poSeaAnalysis(armies, navalRaw) {
+export function poSeaAnalysis(armies, navalRaw) {
   const A = (armies || []).filter(Boolean);
   const hulls = A.reduce(
     (s, a) => s + (PO_CARRIER_TYPES.has(a.type) ? (KC_CARRIER_BERTHS && KC_CARRIER_BERTHS[a.type]) || 1 : 0),
@@ -151,9 +160,9 @@ function poSeaAnalysis(armies, navalRaw) {
 // Orders whose units can be neither typed nor counted in advance (Awaken Grove, Wild Calling,
 // Control Undead, Raise Wraiths, Death's Dominion) are listed in `uncounted` and named in the note
 // rather than guessed at.
-const PO_UNCOUNTABLE_ACTIONS = new Set(['Awaken Grove', 'Wild Calling']);
-const PO_UNCOUNTABLE_SPELLS = new Set(['Control Undead', 'Raise Wraiths', "Death's Dominion", 'Phantom Host']);
-function projectedMoveHost(charId, ph) {
+export const PO_UNCOUNTABLE_ACTIONS = new Set(['Awaken Grove', 'Wild Calling']);
+export const PO_UNCOUNTABLE_SPELLS = new Set(['Control Undead', 'Raise Wraiths', "Death's Dominion", 'Phantom Host']);
+export function projectedMoveHost(charId, ph) {
   const report = currentReport || {};
   const ch = (report.characters || []).find((x) => String(x.id) === String(charId));
   const out = { armies: [], uncounted: [], gained: 0, base: 0 };
@@ -296,7 +305,7 @@ function projectedMoveHost(charId, ph) {
   out.uncounted = [...new Set(out.uncounted)];
   return out;
 }
-function poMoveModeNote(ch, destProv, host, fromProv) {
+export function poMoveModeNote(ch, destProv, host, fromProv) {
   const H = host || {
     armies: ((ch && ch.armies) || []).map((a) => ({ ...a })),
     uncounted: [],
@@ -402,7 +411,7 @@ function poMoveModeNote(ch, destProv, host, fromProv) {
 }
 // The province a Move order SETS OUT from at this phase, with its terrain — predictedLocation gives
 // only {id,name}, so the full worldMeta record is looked up for the terrain the note needs.
-function moveOriginProv(charId, ph) {
+export function moveOriginProv(charId, ph) {
   const provs = (currentReport && currentReport.worldMeta && currentReport.worldMeta.provinces) || [];
   const loc = typeof predictedLocation === 'function' ? predictedLocation(charId, ph) : null;
   if (!loc) return null;
@@ -410,7 +419,7 @@ function moveOriginProv(charId, ph) {
 }
 // Recompute the notice under one Move order (the dropdown's onchange; later phases are rebuilt
 // wholesale by onMoveEdited, which regenerates the note with them).
-function refreshMoveModeNote(charId, ph) {
+export function refreshMoveModeNote(charId, ph) {
   const host = document.getElementById(`po-move-mode-${charId}-${ph}`);
   if (!host) return;
   const ch = ((currentReport && currentReport.characters) || []).find((c) => String(c.id) === String(charId));
@@ -431,7 +440,7 @@ function refreshMoveModeNote(charId, ph) {
 // summoning in ANY phase — this hero's or another of the player's — changes the host a later move
 // sets out with, so the notices are refreshed wholesale whenever an order changes rather than only
 // when the move's own dropdown is touched.
-function refreshAllMoveModeNotes() {
+export function refreshAllMoveModeNotes() {
   const chars = (currentReport && currentReport.characters) || [];
   chars.forEach((c) => {
     if (!c || c.alive === false) return;
@@ -447,7 +456,7 @@ function refreshAllMoveModeNotes() {
 // ids, so the direction is recovered by matching the target against the six neighbours of wherever
 // the character set out from). No earlier move — or that direction is off the map from here — and
 // the list simply opens as it always did.
-function lastMoveDirOf(charId, beforePhase) {
+export function lastMoveDirOf(charId, beforePhase) {
   const report = currentReport;
   if (!report || !report.worldMeta) return null;
   const wm = report.worldMeta,
@@ -504,16 +513,16 @@ function lastMoveDirOf(charId, beforePhase) {
   return found;
 }
 
-const SKILL_LABELS = { ...KC_SKILL_LABELS };
+export const SKILL_LABELS = { ...KC_SKILL_LABELS };
 
 // Encounter plan tactics (AK 5.0-5.8) How a commander answers the call to single combat at the
 // start of an army battle.
-const DUEL_STANCES = [
+export const DUEL_STANCES = [
   { code: 'challenge', label: '⚔ Challenge — ride out and demand single combat' },
   { code: 'accept', label: '🛡 Accept — will not initiate, but will answer a challenge' },
   { code: 'refuse', label: '🏳 Refuse — will not duel (−20% strength if challenged)' },
 ];
-const ENCOUNTER_TACTICS = [
+export const ENCOUNTER_TACTICS = [
   { code: 'ME', label: 'Melee — close and fight in hand-to-hand combat' },
   { code: 'FI', label: 'Fire Arrow — move to bow range and shoot (requires Archery skill; 2 arrows at Archery 3+)' },
   {
@@ -540,15 +549,15 @@ const ENCOUNTER_TACTICS = [
 // The crowned heir keeps their base skills; the player spends 4 points on top of that, max +2 into
 // any single skill — exactly the join-screen rule (join skills add on top of the king's base
 // {melee:2,archery:1,sage:1}). _heirBase is the untouchable floor.
-const HEIR_TEMPERS_LIST = KC_TEMPERS.slice();
-function heirBaseSkills(c) {
+export const HEIR_TEMPERS_LIST = KC_TEMPERS.slice();
+export function heirBaseSkills(c) {
   return (c && c._heirBase) || (c && c.skills) || {};
 }
-function heirAddedTo(c, skill) {
+export function heirAddedTo(c, skill) {
   const b = heirBaseSkills(c);
   return ((c.skills || {})[skill] || 0) - (b[skill] || 0);
 }
-function heirTotalAdded(c) {
+export function heirTotalAdded(c) {
   const b = heirBaseSkills(c),
     s = c.skills || {},
     keys = new Set([...Object.keys(s), ...Object.keys(b)]);
@@ -558,13 +567,13 @@ function heirTotalAdded(c) {
   });
   return t;
 }
-function heirPointsRemaining(c) {
+export function heirPointsRemaining(c) {
   return 4 - heirTotalAdded(c);
 }
 
 // Build the succession panel (name + temper + skill pips, styled like the join screen). Returns ''
 // when the player has no heir awaiting setup.
-function heirSelectorHTML(chars) {
+export function heirSelectorHTML(chars) {
   const heir = (chars || []).find((c) => c._isHeir);
   if (!heir) return '';
   const remaining = heirPointsRemaining(heir);
@@ -611,7 +620,7 @@ function heirSelectorHTML(chars) {
 // half-typed order, target and encounter plan in the column survives a reorder untouched. Any cards
 // injected under a hero (a hired hero, a resurrection or charm pre-order) are siblings that follow
 // their parent block, so they travel with it as a group — see heroGroupP().
-function heroOrderFromOrdersP(existingOrders) {
+export function heroOrderFromOrdersP(existingOrders) {
   try {
     const r = typeof existingOrders === 'string' ? JSON.parse(existingOrders || '{}') : existingOrders || {};
     return Array.isArray(r.heroOrder) && r.heroOrder.length ? r.heroOrder.map(String) : null;
@@ -619,7 +628,7 @@ function heroOrderFromOrdersP(existingOrders) {
     return null;
   }
 }
-function applyHeroOrderP(chars, order) {
+export function applyHeroOrderP(chars, order) {
   const list = [...(chars || [])];
   if (order && order.length) {
     const rank = new Map(order.map((id, i) => [String(id), i]));
@@ -632,13 +641,13 @@ function applyHeroOrderP(chars, order) {
   }
   return list.sort((a, b) => (a.isKing || a._isHeir ? 0 : 1) - (b.isKing || b._isHeir ? 0 : 1));
 }
-function heroBlocksP() {
+export function heroBlocksP() {
   const form = document.getElementById('orders-form');
   return form ? [...form.querySelectorAll(':scope > .orders-char-block[data-hero]')] : [];
 }
 // A hero's block plus every element that follows it up to the next hero block — i.e. the injected
 // hired-hero / resurrect / charm cards that `charBlock.after(card)` parked underneath it.
-function heroGroupP(block) {
+export function heroGroupP(block) {
   const g = [block];
   let n = block.nextElementSibling;
   while (n && !(n.classList.contains('orders-char-block') && n.hasAttribute('data-hero'))) {
@@ -649,11 +658,11 @@ function heroGroupP(block) {
 }
 // The arrangement as it stands right now: read from the DOM when the editable column is on screen,
 // otherwise the last known copy (the read-only submitted view has no hero blocks to read).
-function currentHeroOrderP() {
+export function currentHeroOrderP() {
   const fromDom = heroBlocksP().map((b) => b.getAttribute('data-hero'));
   return fromDom.length ? fromDom : (_heroOrder || []).slice();
 }
-function moveHeroBlock(charId, dir) {
+export function moveHeroBlock(charId, dir) {
   const blocks = heroBlocksP();
   const i = blocks.findIndex((b) => b.getAttribute('data-hero') === String(charId));
   const j = i + dir;
@@ -681,7 +690,7 @@ function moveHeroBlock(charId, dir) {
 // each other. Provinces come in the order their first hero already appears (so the king's stays on
 // top), and heroes keep their old order inside each province. Each hero moves with the cards parked
 // under it, and the result is remembered exactly like a ▲▼ reorder.
-function groupHeroesByLocation() {
+export function groupHeroesByLocation() {
   const blocks = heroBlocksP();
   if (blocks.length < 2) return;
   const chars = (currentReport && currentReport.characters) || [];
@@ -710,7 +719,7 @@ function groupHeroesByLocation() {
   persistHeroOrder();
 }
 // Re-disable the first ▲ and the last ▼ after every move.
-function refreshHeroMoveButtonsP() {
+export function refreshHeroMoveButtonsP() {
   const blocks = heroBlocksP();
   blocks.forEach((b, i) => {
     const up = b.querySelector('.hero-move-up'),
@@ -722,7 +731,7 @@ function refreshHeroMoveButtonsP() {
 // Persist the arrangement on its own, MERGED into whatever orders payload is already stored, so a
 // reorder never rewrites (or un-submits) the orders themselves. The engine picks `heroOrder` out of
 // the payload and keeps it on the realm from then on.
-async function persistHeroOrder() {
+export async function persistHeroOrder() {
   const gp = currentGamePlayer;
   if (!gp || !gp.id || !_heroOrder.length) return;
   // Never write while a past-turn report is on screen (same guard doSaveOrders uses).

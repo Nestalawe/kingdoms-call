@@ -4,7 +4,7 @@
 // context first (src/engine/turn/context.js), but narrText, which reads none.
 // A spell worked inside a battle or a duel (2026-10-09, Toby item 5): only the Cast order logged its
 // casts, so pre-battle, defender and duel magic never reached the spell records. ctx says where.
-const telSpell = (turnContext, ch, spell, school, lvl, chance, roll, ctx) => {
+export const telSpell = (turnContext, ch, spell, school, lvl, chance, roll, ctx) => {
   const { _tel } = turnContext;
   try {
     if (ch && ch.player != null)
@@ -36,10 +36,10 @@ const telSpell = (turnContext, ch, spell, school, lvl, chance, roll, ctx) => {
 // ordinary shared entry for everything else. Because it is logged in sequence with the rest of
 // the narrative, the owner still reads it exactly where it happened in the fight. narrText() is
 // for the rare consumer that needs the raw string (splice-point searches, etc.).
-function narrText(line) {
+export function narrText(line) {
   return line && typeof line === 'object' && line.text != null ? line.text : line;
 }
-function emitNarrLine(turnContext, type, line, meta) {
+export function emitNarrLine(turnContext, type, line, meta) {
   const { log } = turnContext;
   meta = meta || {};
   if (line && typeof line === 'object' && line.text != null) {
@@ -67,7 +67,7 @@ function emitNarrLine(turnContext, type, line, meta) {
 // to them, a spell cast on them (friendly or hostile) — file a line in THAT character's own
 // Chronicle section for the phase it happened. charId routes it into their section; targets makes
 // sure their player sees it even when the actor was an enemy. This never leaks to anyone else.
-function notifyTarget(turnContext, targetChar, text, ph, type) {
+export function notifyTarget(turnContext, targetChar, text, ph, type) {
   const { log } = turnContext;
   if (!targetChar) return;
   const _ph =
@@ -88,7 +88,7 @@ function notifyTarget(turnContext, targetChar, text, ph, type) {
 // did nothing. Run at the end of each phase: a living realm hero with no line of his own for the
 // phase — by charId, by charIds, or as a commander of one of its battles (the same tests the report
 // uses to file a line under him) — gets a plain line saying where the season leaves him.
-function noteSilentHeroes(turnContext, ph, startLoc) {
+export function noteSilentHeroes(turnContext, ph, startLoc) {
   const { turnLog, battleCommanders, G, log } = turnContext;
   const heard = new Set();
   turnLog.forEach((e) => {
@@ -132,7 +132,7 @@ function noteSilentHeroes(turnContext, ph, startLoc) {
 // the same second-person sentence with no province in it. `logSplit` writes the caster's line
 // privately and a third-person line for everyone else who can see the province (notFor keeps the
 // caster from reading it twice). Both carry the province so the report can place them.
-function logSplit(turnContext, type, privText, pubText, meta = {}) {
+export function logSplit(turnContext, type, privText, pubText, meta = {}) {
   const { log, turnLog } = turnContext;
   const actor = meta.actor ?? null;
   log(type, privText, {
@@ -159,11 +159,11 @@ function logSplit(turnContext, type, privText, pubText, meta = {}) {
     notFor: [actor].concat(meta.alsoNotFor || []).filter((x) => x != null),
   });
 }
-function realmTag(turnContext, pi) {
+export function realmTag(turnContext, pi) {
   const { G } = turnContext;
   return pi != null && G.players[pi] ? ` (${G.players[pi].name})` : '';
 }
-function notifyProvinceOwner(turnContext, prov, text, casterPlayer, ph) {
+export function notifyProvinceOwner(turnContext, prov, text, casterPlayer, ph) {
   const { turnLog } = turnContext;
   if (!prov || prov.owner == null || prov.owner === casterPlayer) return;
   const _ph =

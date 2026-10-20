@@ -1,3 +1,11 @@
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { unitBaseStrength } from '../battle/strength.js';
+import { alignDistP } from '../world/tables.js';
+import { BOT_DEF_BONUS, BOT_TUNING, botAlignOf, botBattleForce, botBelief, botBelievedOwner, botEffForce, botForceStrength, botGuessDefence, botKnownFeatures, botKnows, botMarginFor, botNeighbourProv, botRelationRaw, botSees, botSeesChar, botStallTurns, botTargetDefence, botTuning, botVisibleCharsIn } from './intel.js';
+import { botFillOrders } from './specialists.js';
+import { botEnemyIntel } from './missions.js';
+import { botCanBeatGuardian, botPathLenAny } from './spellcraft.js';
+
 // ══ WAR ASSESSMENT (2026-09-29, Toby) ══════════════════════════════════════════════════════════════
 // A bot no longer declares war the moment it meets a crown two or more steps away on the alignment
 // wheel. It declares only when it judges the war winnable, from what it KNOWS (hosts seen in the last
@@ -26,7 +34,7 @@
 // Tuning 2026-09-29b (Toby: "I still want bloody games") — chosen over 32 fuzz games of 6 bots × 20 turns
 // against the old war-on-contact rule: realm battles ≈ the same (38 vs 38 a game), realms eliminated
 // 17 vs 12, ~7 standing wars a game at mid-game.
-const BOT_WAR = {
+export const BOT_WAR = {
   base: 0.8,
   floor: 0.75,
   farStep: 0.1,
@@ -55,18 +63,18 @@ const BOT_WAR = {
   acceptNoPrize: 0.7,
 }; // accept a rival's peace below these ratios (and below the bar)
 // Battles between two realms, kept a few turns so bots can read recent fortunes (GM creditBattle).
-function noteRealmBattle(G, provId, atk, def, won, atkLost, defLost) {
+export function noteRealmBattle(G, provId, atk, def, won, atkLost, defLost) {
   const t = G.turn || 0;
   G._battleNews = (G._battleNews || []).filter((x) => x && t - x.t <= BOT_WAR.newsTurns);
   G._battleNews.push({ t, p: provId, a: atk, d: def, w: won ? 1 : 0, al: atkLost || 0, dl: defLost || 0 });
 }
 // News of a battle reaches realm pi if it or an ally fought in it, or it can see the field.
-function botHeardBattle(G, pi, x) {
+export function botHeardBattle(G, pi, x) {
   if (x.a === pi || x.d === pi) return true;
   if (botRelationRaw(G, pi, x.a) === 'allied' || botRelationRaw(G, pi, x.d) === 'allied') return true;
   return x.p != null && botSees(G, pi, x.p);
 }
-function botOwnPower(G, pi) {
+export function botOwnPower(G, pi) {
   let field = 0,
     gar = 0,
     heroes = 0,
@@ -86,7 +94,7 @@ function botOwnPower(G, pi) {
 // What realm pi BELIEVES realm j can put in the field. Hosts seen lately (their plain-ground
 // strength), or — where the realm has seen little — about one unit for each province it has seen
 // them hold; their wealth from the land it has seen; the characters it has met.
-function botRivalPower(G, pi, j) {
+export function botRivalPower(G, pi, j) {
   const I = botEnemyIntel(G, pi),
     turn = G.turn || 0,
     seen = new Set();
@@ -120,7 +128,7 @@ function botRivalPower(G, pi, j) {
   return field + 3 + 2 * inc + 3 * Math.max(1, seen.size); // +3: the capital's garrison, assumed
 }
 // The realm's standing with j: {since, peaceAt} kept on the player record.
-function botWarBook(G, pi, j) {
+export function botWarBook(G, pi, j) {
   const p = (G.players || [])[pi];
   if (!p) return {};
   p._botWar = p._botWar || {};
@@ -134,7 +142,7 @@ function botWarBook(G, pi, j) {
   return b;
 }
 // Is there a province of j's on our border that one of our hosts could take?
-function botWarPrize(G, pi, j) {
+export function botWarPrize(G, pi, j) {
   const hosts = (G.characters || []).filter((c) => c && c.alive && c.player === pi && (c.armies || []).length);
   if (!hosts.length) return false;
   const T = botTuning(G, pi);
@@ -165,7 +173,7 @@ function botWarPrize(G, pi, j) {
   });
 }
 // Free neutral land still on our border (and we are not stalled against it)?
-function botStillExpanding(G, pi) {
+export function botStillExpanding(G, pi) {
   if (botStallTurns(G, pi) >= BOT_WAR.stallFree) return false;
   return (G.world.provinces || []).some((P) => {
     if (!P || P.owner !== pi || P.terrain === 'sea') return false;
@@ -177,7 +185,7 @@ function botStillExpanding(G, pi) {
     return false;
   });
 }
-function botWarAssess(G, pi, j, opts) {
+export function botWarAssess(G, pi, j, opts) {
   opts = opts || {};
   const turn = G.turn || 0,
     pls = G.players || [];
@@ -301,7 +309,7 @@ function botWarAssess(G, pi, j, opts) {
 // (their armies) plus any standing garrison. An undefended enemy province reads 0 → walked in freely.
 // `viewerPi` is the realm doing the looking. Without sight of the province it gets the wealth-band
 // guess, never the true garrison.
-function botEnemyDefence(G, prov, ownerPi, viewerPi) {
+export function botEnemyDefence(G, prov, ownerPi, viewerPi) {
   if (!prov) return 0;
   if (viewerPi != null && !botSees(G, viewerPi, prov.id))
     return botGuessDefence(G, viewerPi, prov, prov.terrain) / BOT_DEF_BONUS;
@@ -320,7 +328,7 @@ function botEnemyDefence(G, prov, ownerPi, viewerPi) {
 }
 // A province worth defending: the bot's home capital, or Rich land (tax ≥ 7). Marginal frontier
 // provinces are not worth freezing a field army over — they can be lost and retaken.
-function botIsValuable(G, prov, pi) {
+export function botIsValuable(G, prov, pi) {
   if (!prov) return false;
   const home = (G.players[pi] || {}).homeProvinceId;
   return prov.id === home || (prov.tax || 0) >= BOT_TUNING.valuableTax;
@@ -328,7 +336,7 @@ function botIsValuable(G, prov, pi) {
 // How under-defended an owned province is RIGHT NOW: (strongest at-war enemy force adjacent to it)
 // minus (its own defenders + garrison). >0 means an enemy on its border could take it as it stands
 // — a candidate to reinforce. 0 means adequately held (or unthreatened).
-function botDefenceNeed(G, prov, pi) {
+export function botDefenceNeed(G, prov, pi) {
   if (!prov || prov.owner !== pi) return 0;
   let threat = 0;
   for (let i = 0; i < 6; i++) {
@@ -364,7 +372,7 @@ function botDefenceNeed(G, prov, pi) {
 // excludes characters pinned to hold their own threatened capital or needed to reinforce a
 // threatened valuable neighbour — defence outranks a gang-up. Assigned character ids are added to
 // `assigned` so the per-character pass skips them.
-function botPlanAssaults(G, pi, chars, assigned) {
+export function botPlanAssaults(G, pi, chars, assigned) {
   const T = botTuning(G, pi);
   const ASSAULT_MARGIN = T.assaultMargin; // combined edge needed (buffers the unify roll)
   const isPinnedOrNeeded = (c, P) => {
@@ -454,20 +462,20 @@ function botPlanAssaults(G, pi, chars, assigned) {
 // Module-level mirrors of the engine's sea taxonomy + getSeaCapability, so the bot movement/economy
 // passes (which live at module scope, above runTurn) can reason about fleets. Kept in sync with the
 // in-engine sets around the FLYING_TYPES/CARRIER_TYPES block.
-const BOT_CARRIER_TYPES = new Set(KC_UNIT_CLASS.carrier);
-const BOT_PRIMAL_SEA_TYPES = new Set(KC_UNIT_CLASS.primalSea);
-const BOT_AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
-const BOT_SEA_ALL = new Set([...BOT_CARRIER_TYPES, ...BOT_PRIMAL_SEA_TYPES]);
-const BOT_LIGHT_ARMIES = new Set(KC_UNIT_CLASS.lightFoot); // mirrors LIGHT_ARMIES in getSeaCapability
+export const BOT_CARRIER_TYPES = new Set(KC_UNIT_CLASS.carrier);
+export const BOT_PRIMAL_SEA_TYPES = new Set(KC_UNIT_CLASS.primalSea);
+export const BOT_AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
+export const BOT_SEA_ALL = new Set([...BOT_CARRIER_TYPES, ...BOT_PRIMAL_SEA_TYPES]);
+export const BOT_LIGHT_ARMIES = new Set(KC_UNIT_CLASS.lightFoot); // mirrors LIGHT_ARMIES in getSeaCapability
 // 'all' (empty / only flyers-or-sea), 'sea' (fleets carry every land unit aboard), or 'land' (not
 // enough hulls to put to sea). Mirrors getSeaCapability exactly.
-const BOT_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
-const BOT_CREATURE_ARMIES = new Set(KC_UNIT_CLASS.creature);
-const BOT_MONSTER_ARMIES = new Set(KC_UNIT_CLASS.monster);
-const BOT_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
+export const BOT_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
+export const BOT_CREATURE_ARMIES = new Set(KC_UNIT_CLASS.creature);
+export const BOT_MONSTER_ARMIES = new Set(KC_UNIT_CLASS.monster);
+export const BOT_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
 // bot mirror of getFlyCapability — can the humanoid flyers lift every foot soldier so the whole
 // column flies (and crosses sea without a fleet)?
-function botCanFly(armies) {
+export function botCanFly(armies) {
   armies = armies || [];
   if (!armies.length) return false;
   let carriers = 0,
@@ -495,7 +503,7 @@ function botCanFly(armies) {
   }
   return selfFly && carriers >= carried;
 }
-function botSeaCap(armies) {
+export function botSeaCap(armies) {
   armies = armies || [];
   if (armies.length === 0) return 'all';
   const landArmies = armies.filter((a) => a && !BOT_AERIAL_TYPES.has(a.type) && !BOT_SEA_ALL.has(a.type));
@@ -526,7 +534,7 @@ function botSeaCap(armies) {
   return byAir <= armies.filter((a) => a && BOT_FLYING_TYPES.has(a.type)).length ? 'sea' : 'land';
 }
 // A force carrying land troops it can ferry (has fleets AND land armies) — the invasion package.
-function botIsLoadedFleet(armies) {
+export function botIsLoadedFleet(armies) {
   armies = armies || [];
   return (
     armies.some((a) => a && BOT_CARRIER_TYPES.has(a.type)) &&
@@ -535,7 +543,7 @@ function botIsLoadedFleet(armies) {
 }
 // only the enemy characters this realm can actually see. On ground it cannot see into, the answer
 // is honestly empty — the bot then judges the province on its wealth-band guess alone.
-function botEnemyChars(G, prov, pi) {
+export function botEnemyChars(G, prov, pi) {
   let force = 0,
     value = 0,
     hasKing = false,
@@ -552,7 +560,7 @@ function botEnemyChars(G, prov, pi) {
 }
 // seek out a beatable, uncleared lair in our OWN adjacent land (safe to enter) so heroes actively
 // go clear hoards rather than only searching lairs they happen to stand on.
-function botLairDir(G, P, c, pi) {
+export function botLairDir(G, P, c, pi) {
   // botKnownFeatures — an UNDISCOVERED lair is not on this realm's map. A player must Explore or
   // Search to find one; bots were reading every hoard in their territory the moment the world was
   // generated.

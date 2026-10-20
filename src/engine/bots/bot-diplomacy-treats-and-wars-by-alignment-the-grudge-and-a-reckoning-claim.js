@@ -1,3 +1,8 @@
+import { safeStartLocked } from '../army-tables.js';
+import { botAlignFriendly } from './intel.js';
+import { BOT_WAR, botOwnPower, botRivalPower, botWarAssess } from './war.js';
+import { areAllied, relationBetween } from '../realms/relations-and-captures.js';
+
 // ── BOT DIPLOMACY: TREATS AND WARS BY ALIGNMENT, THE GRUDGE AND A RECKONING CLAIM (plan P1-08l1: lifted out of
 // resolveTurn) ──────────────────────────────────────────────────────────────────────────────────────────────────────
 // Each bot realm writes its declarations for the turn into the realms' declarations (turnContext.diploDeclarations),
@@ -9,7 +14,7 @@
 // world as the phases left it (the same rivals: those met when the turn began). It does nothing while Safe Start holds.
 // It takes the turn's context (src/engine/turn/context.js) and nothing else; its lines keep resolveTurn's indent (plan
 // P1-08's Decisions).
-function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(turnContext) {
+export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(turnContext) {
   const { G, diploDeclarations, _botPlayerIdx, _botEncounteredAtStart } = turnContext;
   if (safeStartLocked(G, G.turn)) return; // SAFE START: bots make no Treat or declaration before Turn SAFE_START_TURN either
   // ── BOT DIPLOMACY — ALIGNMENT DECIDES ────

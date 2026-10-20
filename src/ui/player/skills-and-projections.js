@@ -1,9 +1,17 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { KC_ALIGNMENTS, KC_DRUID_LEVELS, KC_HUMANOID_RACES, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { kcJoinP } from './startup.js';
+import { ITEM_UNCAPPED_SKILLS_P } from './order-chances.js';
+import { SKILL_LABELS } from './move-analysis.js';
+import { effSkillP } from './briefing-and-submit.js';
+import { predictedLocation, projectedLedArmies } from './order-targets.js';
+
 // (ITEM_UNCAPPED_SKILLS_P is declared above effMagicLvl — see the note there.)
 // ── BONUS SOURCE COLOURS ────
 // Every skill bonus is coloured by WHERE it comes from, and every one is named in full beneath the
 // skill list rather than hidden in a hover tooltip (a tooltip is unreachable on a phone, which is
 // how half of these were effectively invisible). `kind` colours it; `scope` says when it applies.
-const BONUS_KIND_P = {
+export const BONUS_KIND_P = {
   item: { c: '#9a6b12', bg: '#f7edd4', label: 'Item' },
   aura: { c: '#b05e12', bg: '#fbe8d6', label: 'Aura' },
   title: { c: '#6a4a9a', bg: '#ece5f6', label: 'Title' },
@@ -14,14 +22,14 @@ const BONUS_KIND_P = {
   // with var(--crimson). One token, used by both branches, so every penalty reads the same red.
   curse: { c: 'var(--crimson)', bg: '#f6dede', label: 'Curse' },
 };
-const BONUS_SCOPE_MARK_P = { combat: '⚔', battle: '⚑', move: '➤', order: '✎' };
-const BONUS_SCOPE_TEXT_P = {
+export const BONUS_SCOPE_MARK_P = { combat: '⚔', battle: '⚑', move: '➤', order: '✎' };
+export const BONUS_SCOPE_TEXT_P = {
   combat: 'personal combat only',
   battle: 'army battles only',
   move: 'movement points only',
   order: 'that order’s own roll only',
 };
-function _bonusKindP(k) {
+export function _bonusKindP(k) {
   return BONUS_KIND_P[k] || { c: '#555', bg: '#eeeeee', label: 'Other' };
 }
 // Every source for one skill: the always-on ones the engine has already folded into the skill, then
@@ -31,8 +39,8 @@ function _bonusKindP(k) {
 // gold ITEM colour: a penalty that read on screen as a bonus. Old reports stay readable in the
 // Chronicle for the life of a game, so the fallback has to be sign-aware — nothing that subtracts
 // from a skill can be an item or a title.
-const _kindFallbackP = (delta, pos) => ((delta || 0) < 0 ? 'curse' : pos);
-function _skillSourcesP(c, k) {
+export const _kindFallbackP = (delta, pos) => ((delta || 0) < 0 ? 'curse' : pos);
+export function _skillSourcesP(c, k) {
   const e = (c && c.skillEff && c.skillEff[k]) || null;
   const out = [];
   if (e && Array.isArray(e.sources))
@@ -50,7 +58,7 @@ function _skillSourcesP(c, k) {
   );
   return out;
 }
-function skillRowHTML(c, style) {
+export function skillRowHTML(c, style) {
   const eff = c && c.skillEff,
     raw = (c && c.skills) || {};
   const extra = (c && (c.skillExtra || c.combatSkillBonus)) || {};
@@ -180,7 +188,7 @@ function skillRowHTML(c, style) {
   return kcHtml`${out}`;
 }
 
-function capitalise(s) {
+export function capitalise(s) {
   return s ? s[0].toUpperCase() + s.slice(1) : '';
 }
 // Every primal sub-race is either a Creature or a Monster (mirrors the GM engine's CREATURE_ARMIES
@@ -188,9 +196,9 @@ function capitalise(s) {
 // internal engine term; players only ever see Creature or Monster. Player-facing class of each
 // primal unit TYPE, mirroring the engine's CREATURE_ARMIES / MONSTER_ARMIES sets. Used where only
 // the unit type is known (race stored as a bare 'Primal').
-const HUMANOID_RACES_UI = new Set(KC_HUMANOID_RACES);
-const CREATURE_ARMIES_UI = new Set(KC_UNIT_CLASS.creature);
-const MONSTER_ARMIES_UI = new Set(KC_UNIT_CLASS.monster);
+export const HUMANOID_RACES_UI = new Set(KC_HUMANOID_RACES);
+export const CREATURE_ARMIES_UI = new Set(KC_UNIT_CLASS.creature);
+export const MONSTER_ARMIES_UI = new Set(KC_UNIT_CLASS.monster);
 // ── DRUID: WHAT DOES THIS COMMANDER NEED TO LEAD THIS UNIT? (2026-09-27) ────────────────────────
 // The ONE player-side copy of the engine's druIdPenaltyMult rule. The level table itself is
 // KC_DRUID_LEVELS in kingdoms-call-data.js — the same table the engine builds its Sets from — so the
@@ -202,7 +210,7 @@ const MONSTER_ARMIES_UI = new Set(KC_UNIT_CLASS.monster);
 //   shortfall — levels short (each costs 20% strength in battle)
 //   counts    — whether leading this unit depends on Druid training at all (an own-race unit's
 //               level-1 need is met by birth, so it does not count)
-const DRUID_LEVEL_OF_P = (() => {
+export const DRUID_LEVEL_OF_P = (() => {
   const m = {};
   Object.entries(KC_DRUID_LEVELS).forEach(([lvl, types]) =>
     types.forEach((t) => {
@@ -211,8 +219,8 @@ const DRUID_LEVEL_OF_P = (() => {
   );
   return m;
 })();
-const TAMED_FLYERS_P = new Set(KC_UNIT_CLASS.tamedFlyer);
-function druidNeedP(a, c, report) {
+export const TAMED_FLYERS_P = new Set(KC_UNIT_CLASS.tamedFlyer);
+export function druidNeedP(a, c, report) {
   const rep = report || currentReport || {};
   if (!a || a.skeletal || a._isSkeletal) return { req: 0, effDru: 0, shortfall: 0, counts: false };
   let req = DRUID_LEVEL_OF_P[a.type] || 0;
@@ -226,7 +234,7 @@ function druidNeedP(a, c, report) {
   const effDru = sameRace ? Math.max(1, druLevel) : druLevel;
   return { req, effDru, shortfall: Math.max(0, req - effDru), counts: req > 0 && !(sameRace && req <= 1) };
 }
-const PRIMAL_SUBRACE_CLASS = {
+export const PRIMAL_SUBRACE_CLASS = {
   'Stone Giant': 'Creature',
   'Forest Ent': 'Creature',
   Thunderbird: 'Creature',
@@ -252,7 +260,7 @@ const PRIMAL_SUBRACE_CLASS = {
 // player-facing
 // category — 'Primal:Stone Giant' → 'Creature (Stone Giant)', 'Primal:Cave Troll' → 'Monster (Cave
 // Troll)' — and empty/sea provinces as 'Uninhabited'. Never shows the word "Primal".
-function formatRace(race, unitType) {
+export function formatRace(race, unitType) {
   if (!race) return 'Uninhabited';
   if (race.startsWith('Primal')) {
     const sub = race.slice(7).trim(); // '' for bare 'Primal', else the sub-race after 'Primal:'
@@ -268,17 +276,17 @@ function formatRace(race, unitType) {
 
 // Primal army speeds (for UI calculations) — built from the one primal table in the data file (2026-10-13:
 // this was a hand-typed copy, and the roster PR would have left it a move behind).
-const PRIMAL_ARMY_SPEEDS = Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t, d]) => [t, d.speed]));
+export const PRIMAL_ARMY_SPEEDS = Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t, d]) => [t, d.speed]));
 
 // ── Alignment spectrum & hero hire pricing (mirrors the GM engine) ────
-const ALIGN_SPECTRUM_PP = KC_ALIGNMENTS.slice();
-function alignDistPP(a, b) {
+export const ALIGN_SPECTRUM_PP = KC_ALIGNMENTS.slice();
+export function alignDistPP(a, b) {
   const i = ALIGN_SPECTRUM_PP.indexOf(a),
     j = ALIGN_SPECTRUM_PP.indexOf(b);
   if (i < 0 || j < 0) return 0;
   return Math.abs(i - j);
 }
-function heroHireWagePP(kingdomAlign, heroAlign) {
+export function heroHireWagePP(kingdomAlign, heroAlign) {
   const d = alignDistPP(kingdomAlign, heroAlign);
   if (d >= 6) return null; // Divine <-> Undead: will never serve
   return 2 + Math.floor(d / 2);
@@ -288,7 +296,7 @@ function heroHireWagePP(kingdomAlign, heroAlign) {
 // for a hero who will not serve); the alignment-only estimate above is kept only for a report from an
 // older engine that does not send it. Every hire price the order form shows goes through here, so the
 // dropdown, the Broker list, the hired hero's card and the order ledger agree with the report.
-function heroHireWageOfP(h, report) {
+export function heroHireWageOfP(h, report) {
   if (h && Object.prototype.hasOwnProperty.call(h, 'hireWage')) return h.hireWage;
   return heroHireWagePP(((report || currentReport || {}).kingdom || {}).alignment || 'Neutral', h && h.alignment);
 }
@@ -297,7 +305,7 @@ function heroHireWageOfP(h, report) {
 // EARLIER phases exactly as the GM engine resolves them (splice from giver, push to recipient — so
 // item INDICES stay aligned with what the engine will see at resolution time). This lets a
 // character who RECEIVES an item in an earlier phase pass it on in a later one.
-function predictedItems(charId, upToPhaseExclusive) {
+export function predictedItems(charId, upToPhaseExclusive) {
   const report = currentReport;
   if (!report) return [];
   // ── 2026-09-24 (Toby): keyed by String(id) throughout ──────────────────────────────────────────
@@ -386,11 +394,11 @@ function predictedItems(charId, upToPhaseExclusive) {
 // Garrison units always muster straight into the province garrison when recruited, whatever the
 // "Muster to" choice (GM engine, 2026-09-23c). Native recruiting needs the province, so any
 // non-mercenary garrison-type recruit is projected into the garrison, never onto a character.
-const GARRISON_UNIT_TYPES_P = new Set(KC_UNIT_CLASS.garrison);
-function _isAutoGarrisonRecruit(u) {
+export const GARRISON_UNIT_TYPES_P = new Set(KC_UNIT_CLASS.garrison);
+export function _isAutoGarrisonRecruit(u) {
   return !!u && !u._merc && GARRISON_UNIT_TYPES_P.has(u.type);
 }
-function _projRecruitUnits(tokens) {
+export function _projRecruitUnits(tokens) {
   const out = [];
   const mercs = (currentReport || {}).mercIntel || [];
   const toks = (tokens || []).map((t) => String(t || '').trim()).filter(Boolean);
@@ -429,7 +437,7 @@ function _projRecruitUnits(tokens) {
 // pick-ups are only replayed for strictly earlier phases. This keeps the `g:i` indices the form
 // emits aligned with the engine's live garrison. Rival/neutral changes to the garrison can't be
 // foreseen.
-function projectedGarrison(provId, phase, includeSamePhase, excludeCharId, _memo) {
+export function projectedGarrison(provId, phase, includeSamePhase, excludeCharId, _memo) {
   // _memo: the shared projection cache threaded down from the top-level call (see
   // projectedLedArmies). projectedGarrison and projectedLedArmies call EACH OTHER — a Pick Up reads
   // the garrison, and the garrison is built from other characters' Leave orders — so they share one

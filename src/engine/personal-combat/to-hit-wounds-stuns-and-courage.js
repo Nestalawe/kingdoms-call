@@ -1,3 +1,11 @@
+import { kcRng } from '../rng.js';
+import { temperOf } from '../world/tables.js';
+import { GUARDIAN_MELEE_BASE, PC_HIT_CAP_FRAC } from '../names.js';
+import { hasItemBase } from '../items/equipment.js';
+import { PC_DMG_FLOOR_FRACTION, PC_SPELL_SCHOOL_MAP, PC_WEAK_MULT, PC_WEAK_NO_DMG_DOUBLE, pcLearnWeakness, pcPenaltyFade, pcPromotePending, pcWeaknessApplies } from './helpers.js';
+import { d100, dispFloor, fmtRoll, rng } from '../dice-and-army-names.js';
+import { discDuelVs, discSum } from '../discoveries.js';
+
 // ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS AND COURAGE (plan P1-08e: lifted out of resolveTurn) ────
 // The melee to-hit and damage, how a ward or a guardian's passive is named, the one door every stun lands through,
 // the courage test against terror, the fading self-sustain of a long fight, a hit taken (pcTakeHit) and the start of
@@ -13,7 +21,7 @@
 // aura and ward is applied to THAT real figure. Only the FINAL result is clamped, to a hard 80% —
 // so a Melee 6 hero meeting a −15% guardian hits at 75%, not 65%, while a Melee 5 hero meeting
 // the same guardian hits at 65%. No melee or arrow ever exceeds 80%, temper bonuses included.
-const PC_MELEE_HIT_BASE = 30,
+export const PC_MELEE_HIT_BASE = 30,
   PC_MELEE_HIT_PER_LVL = 10,
   PC_HIT_SKILL_CAP = 5,
   PC_HIT_PER_LVL_ABOVE = 5,
@@ -23,20 +31,20 @@ const PC_MELEE_HIT_BASE = 30,
 // stat
 // (guardians carry their melee/archery straight). effStat caps at 5, so meleeRaw is what carries
 // mastery into the hit chance now that levels past 5 are worth something.
-function pcHitSkill(cbt, which) {
+export function pcHitSkill(cbt, which) {
   const raw = which === 'archery' ? cbt.archeryRaw : cbt.meleeRaw;
   const base = which === 'archery' ? cbt.archery || 0 : cbt.melee || 0;
   const down = which === 'archery' ? 0 : (cbt.status && cbt.status.meleeDown) || 0; // "−1 melee for next round"
   return Math.max(0, Math.max(raw != null ? raw : 0, base) - down);
 }
-function pcSkillHitPct(lvl) {
+export function pcSkillHitPct(lvl) {
   return (
     PC_MELEE_HIT_BASE +
     PC_MELEE_HIT_PER_LVL * Math.min(PC_HIT_SKILL_CAP, lvl) +
     PC_HIT_PER_LVL_ABOVE * Math.max(0, lvl - PC_HIT_SKILL_CAP)
   );
 }
-function pcHitChance(turnContext, attacker, defender) {
+export function pcHitChance(turnContext, attacker, defender) {
   let chance = pcSkillHitPct(pcHitSkill(attacker, 'melee'));
   // ── AK §2.4 Tempers ── the attacker's aggression against the defender's guard. A Berserk has a
   // negative `defence`: they attack wide open and are easier to hit.
@@ -65,7 +73,7 @@ function pcHitChance(turnContext, attacker, defender) {
   const _guardCap = Math.max(0, temperOf(defender.temper).defence || 0);
   return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX - _guardCap, dispFloor(chance))); // hard ceiling, applied AFTER every modifier
 }
-function pcMeleeDamage(attacker, defender) {
+export function pcMeleeDamage(attacker, defender) {
   // Sept 2026 redesign: blows scale with the striker's OWN skill (+ceil(Melee/2)).
   // 2026-09-26: base roll cut from 2–5 to 1–3 and the skill-gap bonus (+max(0, yourMelee − theirMelee))
   // removed — out-skilling a foe now shows up only in hit chance, not in damage per blow.
@@ -95,7 +103,7 @@ function pcMeleeDamage(attacker, defender) {
 }
 // Which damage channel a hit belongs to, so a monster's vulnerabilities/resistances
 // (monsterTraits) scale it: blades, arrows or magic.
-const PC_CHANNEL = {
+export const PC_CHANNEL = {
   blow: 'melee',
   'free strike': 'melee',
   'parting blow': 'melee',
@@ -106,7 +114,7 @@ const PC_CHANNEL = {
 // Troll Regeneration knits flesh…" rather than "…armour knits flesh…"). Characters keep the
 // armour/shield wording.
 // `key` names the effect (regen, meleeDR, …) so a guardian with several perks names the right one.
-function pcWardWord(t, word, key) {
+export function pcWardWord(t, word, key) {
   if (t && t.kind === 'monster') {
     const nm = (key && t._perkName && t._perkName[key]) || ((t.perks || []).length <= 1 ? t.passiveName : null);
     if (nm) return `${t.name}'s ${nm}`;
@@ -114,10 +122,10 @@ function pcWardWord(t, word, key) {
   }
   return `${t.name}'s ${word}`;
 }
-function pcPerkWord(t, key, dflt) {
+export function pcPerkWord(t, key, dflt) {
   return (t && t._perkName && t._perkName[key]) || (t && t.passiveName) || dflt;
 }
-function pcWardIcon(t) {
+export function pcWardIcon(t) {
   return t && t.kind === 'monster' ? '🜏' : '🛡';
 }
 // ── STUNS LAND THROUGH ONE DOOR (2026-10-14, batch item 3) ────
@@ -126,13 +134,13 @@ function pcWardIcon(t) {
 // riding on a blow (promoted after the round-start check) cost one more. Every stun now arrives
 // through pcLandStun, which asks the target's ward first. pcStunWard is the chance (0–100) that a
 // stun is shrugged off as it lands; 100 means it never takes hold.
-function pcStunWard(t) {
+export function pcStunWard(t) {
   const a = t && t.arm;
   if (!a) return 0;
   return a.stunImmune ? 100 : Math.max(0, Math.min(100, a.stunWard || 0));
 }
 // pcStunTurned rolls the ward once and says so when it turns the stun.
-function pcStunTurned(target, narrative, what) {
+export function pcStunTurned(target, narrative, what) {
   const w = pcStunWard(target);
   if (!(w >= 100 || (w > 0 && d100() <= w))) return false;
   const _why =
@@ -146,7 +154,7 @@ function pcStunTurned(target, narrative, what) {
   return true;
 }
 // Returns true if the stun takes hold (and adds it), false if the ward turns it.
-function pcLandStun(target, n, narrative, what) {
+export function pcLandStun(target, n, narrative, what) {
   if (!target || !target.status || !(n > 0)) return false;
   if (pcStunTurned(target, narrative, what)) return false;
   target.status.stun = (target.status.stun || 0) + n;
@@ -162,13 +170,13 @@ function pcLandStun(target, n, narrative, what) {
 // warding stun/hold (the Signet of the Sleepless Crown) refuses the grip outright — handled by
 // the caller. The band is 10–70%: nobody is ever immune by statistics alone, and nobody is ever
 // helpless. A Melee 1 novice of Brave temper breaks on 40%; a Melee 9 master with White 2 on 10%.
-const PC_TERROR_BASE = 55,
+export const PC_TERROR_BASE = 55,
   PC_TERROR_PER_LVL = 5,
   PC_TERROR_MIN = 10,
   PC_TERROR_MAX = 70;
-const PC_TERROR_TEMPER = { Berserk: -15, Brave: -10, Cautious: -5, Cowardly: 10 };
-const PC_TERROR_BY_POWER = { Weak: 0, Moderate: 0, Powerful: 5, Legendary: 15 };
-function pcCourageChance(foe, actor) {
+export const PC_TERROR_TEMPER = { Berserk: -15, Brave: -10, Cautious: -5, Cowardly: 10 };
+export const PC_TERROR_BY_POWER = { Weak: 0, Moderate: 0, Powerful: 5, Legendary: 15 };
+export function pcCourageChance(foe, actor) {
   const nerve = Math.max(
     foe.meleeRaw != null ? foe.meleeRaw : foe.melee || 0,
     foe.archeryRaw != null ? foe.archeryRaw : foe.archery || 0,
@@ -184,14 +192,14 @@ function pcCourageChance(foe, actor) {
 // grinding one down is a race against the clock and the curve is a slope instead of a cliff.
 // Deliberately NOT applied to characters: a hero's Troll-Hide, Carapace or Ninefold Band is worn
 // equipment the player paid for, and this is a fix for guardian pacing, not an item nerf.
-const PC_SUSTAIN_FULL_ROUNDS = 4,
+export const PC_SUSTAIN_FULL_ROUNDS = 4,
   PC_SUSTAIN_HALF_ROUNDS = 8;
-function pcSustainMult(cbt) {
+export function pcSustainMult(cbt) {
   if (!cbt || cbt.kind !== 'monster') return 1;
   const r = cbt._roundNo || 1;
   return r <= PC_SUSTAIN_FULL_ROUNDS ? 1 : r <= PC_SUSTAIN_HALF_ROUNDS ? 0.5 : 0;
 }
-function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
+export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   const { G } = turnContext;
   // Beg-for-Mercy narration (2026-09-21): remember WHERE in the narrative a character's fatal blow
   // began, so a Cowardly plea can be told just before that blow lands (see resolvePersonalCombat).
@@ -420,7 +428,7 @@ function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   }
   return d;
 }
-function pcRoundStart(cbt, narrative) {
+export function pcRoundStart(cbt, narrative) {
   // ── ARMOUR ── Ashen Plate: lingering harm never takes hold; Troll-Hide: regenerate; Steadfast
   // Harness: aim penalties fade twice as fast and half of all stuns are shrugged off.
   cbt._roundNo = (cbt._roundNo || 0) + 1;

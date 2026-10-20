@@ -1,3 +1,15 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { KC_BASIC_EXPLORE, KC_HEX_DIRS } from '../../content/kingdoms-call-data.js';
+import { L79_ORDERS } from './l79-orders.js';
+import { DIRECTIONS, ITEM_SLOT_CAP_P, ITEM_SLOT_LABEL_P, ITEM_SLOT_ORDER_P, ITEM_TIER_NAME_P, RUMOUR_COST_BY_POWER_P, SEASONS, gdHintFor, isLegendaryItemP, itemSlotP, itemTierTagP, itemUsableByP, orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP, skillsUnseenP, unseenSuffixP } from './items-and-heroes.js';
+import { spellSecondaryHtml } from './titles.js';
+import { ALL_SKILLS, SPELLS_BY_SCHOOL, SPELL_REQ_LEVEL, SPELL_TO_SCHOOL, actionSpellLimit, armyLabel, castChanceNote, effMagicLvl, orderChanceNote, projectedMagicLevels, rawMagicLvl, unitEmoji } from './order-chances.js';
+import { SKILL_LABELS, lastMoveDirOf, moveOriginProv, poMoveModeNote, projectedMoveHost, refreshAllMoveModeNotes } from './move-analysis.js';
+import { getOrderTarget } from './pre-orders.js';
+import { effSkillP } from './briefing-and-submit.js';
+import { CREATURE_ARMIES_UI, MONSTER_ARMIES_UI, _isAutoGarrisonRecruit, _projRecruitUnits, alignDistPP, capitalise, heroHireWageOfP, heroHireWagePP, predictedItems, projectedGarrison } from './skills-and-projections.js';
+import { heroFameTextP } from './map-symbols.js';
+
 // ── 2026-09-24 (Toby): TRANSFER CHAINS ──────────────────────────────────────────────────────────
 // This used to take a `_depth` counter and refuse to recurse past `_depth<2`, added to stop "mutual
 // transfers recursing forever". That worry was unfounded: a transfer always recurses with a STRICTLY
@@ -16,7 +28,7 @@
 // insurance against repeated subtree work rather than as a fix for a measured problem. The cache lives
 // for ONE top-level call, so it can never serve a stale answer after the player changes an order.
 // Callers mutate what they get back (splice/push), so every hit returns fresh copies.
-function projectedLedArmies(charId, upToPhaseExclusive, _memo) {
+export function projectedLedArmies(charId, upToPhaseExclusive, _memo) {
   const report = currentReport || {};
   const char = (report.characters || []).find((x) => x.id === charId);
   if (!char) return [];
@@ -133,7 +145,7 @@ function projectedLedArmies(charId, upToPhaseExclusive, _memo) {
 // projected exploration gain for ONE Explore order — mirror of the GM engine's explore formula
 // (terrainBase × (Explorer+1) × Scouts&Rangers × Compass × race/alignment explore discoveries ×
 // Loremaster/Trailblazer, capped at 100). Explorer-boosting items aren't visible here.
-function exploreGainFor(c, terr) {
+export function exploreGainFor(c, terr) {
   const report = currentReport || {};
   const BASIC_EXPLORE_P = { ...KC_BASIC_EXPLORE };
   const basicRate = BASIC_EXPLORE_P[terr] || 15;
@@ -158,7 +170,7 @@ function exploreGainFor(c, terr) {
 }
 // Sum of exploration already queued for a province by EARLIER Explore orders (this hero's earlier
 // phases, and every other hero's orders in this phase or earlier).
-function exploreQueuedBefore(charId, ph, provId) {
+export function exploreQueuedBefore(charId, ph, provId) {
   let sum = 0;
   const chars = (currentReport && currentReport.characters) || [];
   chars.forEach((o) => {
@@ -182,7 +194,7 @@ function exploreQueuedBefore(charId, ph, provId) {
 // 2% per army led at March 6+). Mirrors the engine's explGainMove so the projection below counts
 // ground the hero will have mapped on arrival. Returns 0 if they do not move in during `upTo`
 // phases.
-function exploreMoveGainBefore(c, upToPhaseExclusive, provId) {
+export function exploreMoveGainBefore(c, upToPhaseExclusive, provId) {
   let gain = 0;
   for (let p = 0; p < upToPhaseExclusive; p++) {
     const act = document.getElementById(`po-action-${c.id}-${p}`)?.value;
@@ -199,7 +211,7 @@ function exploreMoveGainBefore(c, upToPhaseExclusive, provId) {
   }
   return gain;
 }
-function exploreProjectionNote(c, ph) {
+export function exploreProjectionNote(c, ph) {
   const loc = predictedLocation(c.id, ph);
   const report = currentReport || {};
   const pd = loc ? (report.provinceOrderData || {})[loc.id] : null;
@@ -235,7 +247,7 @@ function exploreProjectionNote(c, ph) {
     return kcHtml`🧭 ${loc.name} is already fully mapped${prior ? ` ${prior}` : ''} — this Explore order would add nothing.`;
   return kcHtml`🧭 ${loc.name} (${capitalise(terr)}) is <strong>${before}%</strong> mapped; this order adds about <strong>+${gain}%</strong> → <strong>${after}%</strong>${after >= 100 ? ' — fully explored' : ''}${prior}.`;
 }
-function refreshExploreNotes() {
+export function refreshExploreNotes() {
   const chars = (currentReport && currentReport.characters) || [];
   chars.forEach((c) => {
     if (!c || c.alive === false) return;
@@ -245,7 +257,7 @@ function refreshExploreNotes() {
     }
   });
 }
-function predictedLocation(charId, upToPhaseExclusive) {
+export function predictedLocation(charId, upToPhaseExclusive) {
   const report = currentReport;
   if (!report) return null;
   const char = (report.characters || []).find((c) => c.id === charId);
@@ -314,7 +326,7 @@ function predictedLocation(charId, upToPhaseExclusive) {
 // province to another on the offset-hex map, used to label an as-yet unexplored target province as
 // e.g. "Unknown province (West)" instead of a meaningless internal number. Rows shift by half a
 // column with parity (pointy-top offset), and columns wrap around the map edge.
-function provDirectionLabel(fromId, toId, provs, cols) {
+export function provDirectionLabel(fromId, toId, provs, cols) {
   if (!Array.isArray(provs)) return null;
   const a = provs.find((p) => p.id === fromId),
     b = provs.find((p) => p.id === toId);
@@ -335,7 +347,7 @@ function provDirectionLabel(fromId, toId, provs, cols) {
   return dirs[Math.round(((ang + 360) % 360) / 45) % 8];
 }
 
-function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive) {
+export function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive) {
   // The recruit cap is PER PROVINCE per unit type (the GM engine keys it `provId:type`), so this
   // tally must be keyed the same way — otherwise recruiting a type in one province wrongly zeroes
   // it out in every OTHER province this character musters in this turn. Returns counts keyed
@@ -383,17 +395,17 @@ function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive) {
 // consulted, so "default to what a companion is doing" works on load as well as after a change.
 // A declared global (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
 globalThis._draftOrdersSnapshot = {};
-function draftOrderAt(charId, ph) {
+export function draftOrderAt(charId, ph) {
   const actEl = document.getElementById(`po-action-${charId}-${ph}`);
   if (actEl) return { action: actEl.value || '', target: getOrderTarget(charId, ph) };
   const sv = ((_draftOrdersSnapshot || {})[charId] || [])[ph] || {};
   return { action: sv.action || '', target: sv.target || '' };
 }
-const LAIR_POWER_RANK = { Weak: 0, Moderate: 1, Powerful: 2, Legendary: 3 };
+export const LAIR_POWER_RANK = { Weak: 0, Moderate: 1, Powerful: 2, Legendary: 3 };
 // the default Search Lair target is the LOWEST-power lair known in the province the character will
 // stand in, skipping any lair already chosen by an earlier Search Lair order — this character's
 // earlier phases, or any other of the realm's characters in any phase (same province, same lair).
-function defaultLairTarget(c, ph, provId, feats) {
+export function defaultLairTarget(c, ph, provId, feats) {
   const taken = new Set();
   ((currentReport && currentReport.characters) || []).forEach((o) => {
     if (!o || o.alive === false) return;
@@ -418,7 +430,7 @@ function defaultLairTarget(c, ph, provId, feats) {
 }
 // Research defaults to the field a companion is researching in the SAME province and phase, else
 // this character's own earlier Research this turn, else any other character's Research this turn.
-function defaultResearchField(c, ph) {
+export function defaultResearchField(c, ph) {
   const here = predictedLocation(c.id, ph);
   const hereId = here ? here.id : c.locationId;
   const chars = ((currentReport && currentReport.characters) || []).filter((o) => o && o.alive !== false);
@@ -459,7 +471,7 @@ function defaultResearchField(c, ph) {
 // when there is not, so the group-drill default now survives a first paint. This reverses the
 // earlier "no other orders get this system" call — Practice Skill was the one order that visibly
 // needed it.
-function practiceCompanionSkill(c, ph) {
+export function practiceCompanionSkill(c, ph) {
   const report = currentReport || {};
   const here = predictedLocation(c.id, ph);
   const hereId = here ? here.id : c.locationId;
@@ -482,7 +494,7 @@ function practiceCompanionSkill(c, ph) {
   });
   return best;
 }
-function practiceOwnEarlierSkill(c, ph) {
+export function practiceOwnEarlierSkill(c, ph) {
   for (let q = ph - 1; q >= 0; q--) {
     const d = draftOrderAt(c.id, q);
     if (d.action !== 'Practice Skill') continue;
@@ -490,7 +502,7 @@ function practiceOwnEarlierSkill(c, ph) {
   }
   return '';
 }
-function buildTargetField(c, ph, saved) {
+export function buildTargetField(c, ph, saved) {
   const action = saved.action || '';
   const target = saved.target || '';
   const extra = saved.extra || '';
@@ -1764,7 +1776,7 @@ function buildTargetField(c, ph, saved) {
 }
 
 // Helper: update hidden leave target from checkboxes
-function updateLeaveTarget(charId, ph) {
+export function updateLeaveTarget(charId, ph) {
   const wrap = document.querySelector(`#po-target-${charId}-${ph}`)?.parentElement;
   if (!wrap) return;
   const allChk = document.getElementById(`po-leave-all-${charId}-${ph}`);
@@ -1774,7 +1786,7 @@ function updateLeaveTarget(charId, ph) {
   if (hidden) hidden.value = checked.join(',');
   if (typeof refreshAllMoveModeNotes === 'function') setTimeout(refreshAllMoveModeNotes, 0); // the host a later move sets out with has changed
 }
-function leaveToggleAll(charId, ph, checked) {
+export function leaveToggleAll(charId, ph, checked) {
   const wrap = document.querySelector(`#po-target-${charId}-${ph}`)?.parentElement;
   if (!wrap) return;
   wrap.querySelectorAll('input[type=checkbox]:not([value=all])').forEach((cb) => {
@@ -1786,7 +1798,7 @@ function leaveToggleAll(charId, ph, checked) {
 }
 
 // Helper: update hidden recruit target from checkboxes
-function updateRecruitTarget(charId, ph) {
+export function updateRecruitTarget(charId, ph) {
   const wrap = document.getElementById(`po-target-wrap-inner-${charId}-${ph}`);
   if (!wrap) return;
   const checked = [...wrap.querySelectorAll('input[type=checkbox]:checked')].map((cb) => cb.value);

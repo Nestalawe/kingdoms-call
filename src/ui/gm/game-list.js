@@ -1,7 +1,16 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { sb } from './config.js';
+import { _kcOverlord, show } from './sign-in.js';
+import { openGame } from './game-detail.js';
+import { _showArchived, gameArchived, gameArchivedAt, gamesListCols, metaPatch } from '../../db/game-meta.js';
+import { fmtAgo, fmtLastRun, readTurnModeForm, realmExemptIn, seaPctOf, turnModeOf, turnModeSummary, updateTurnModeFields } from './turn-mode.js';
+import { botConfigFor, gameVisibility, isBotRow } from '../../engine/bots/setup.js';
+import { SEA_PCT_DEFAULT, normSeaPct } from '../../engine/world/generate.js';
+
 // ── GAME LIST ────
-let _listGames = []; // the last list read: the GM's own games, or every game for the Overlord
-let _gmNames = {}; // Master GM mode: account id -> name, for grouping by GM
-async function loadGames() {
+export let _listGames = []; // the last list read: the GM's own games, or every game for the Overlord
+export let _gmNames = {}; // Master GM mode: account id -> name, for grouping by GM
+export async function loadGames() {
   const el = document.getElementById('games-list');
   el.innerHTML = '<div class="msg-info">Loading…</div>';
   // Disk-IO (2026-09-25): the list needs name / turn / status / meta and the slots' submitted flags —
@@ -29,7 +38,7 @@ async function loadGames() {
   renderGameList();
 }
 // Master GM mode: every game, newest first, light columns, in pages of 200.
-async function loadEveryGame() {
+export async function loadEveryGame() {
   const rows = [];
   for (let from = 0; ; from += 200) {
     const { data, error } = await sb
@@ -43,7 +52,7 @@ async function loadEveryGame() {
   }
   return { data: rows, error: null };
 }
-function renderGameList() {
+export function renderGameList() {
   const el = document.getElementById('games-list');
   const data = _listGames;
   if (!data || data.length === 0) {
@@ -100,7 +109,7 @@ function renderGameList() {
   }
   el.innerHTML = kcHtml`${_switch}${_banner}${_rows.map((g) => gameCardHtml(g))}`;
 }
-function gameCardHtml(g) {
+export function gameCardHtml(g) {
   const total = g.game_players?.length || 0;
   const joined = g.game_players?.filter((p) => p.user_id).length || 0;
   const submitted = g.game_players?.filter((p) => p.orders_submitted).length || 0;
@@ -158,7 +167,7 @@ function gameCardHtml(g) {
 }
 
 // ── NEW GAME ────
-function showNewGame() {
+export function showNewGame() {
   document.getElementById('new-game-msg').innerHTML = '';
   updateMaxPlayersForMap(); // ensure the player-count options match the selected map size
   // Reset visibility to Public (the default / current behaviour) each time the form opens.
@@ -200,11 +209,11 @@ globalThis._inviteSelected = new Set(); // ids ticked in the New Game picker
 // a permissions problem exactly as it did for a genuinely empty table. Zero raw rows means the
 // query could not even see the signed-in account's own profile: that is an RLS symptom, and the
 // empty-list message now says so.
-let _invitableRawCount = null;
+export let _invitableRawCount = null;
 
 // Fetch every registered player's name and the month they joined (never their email: ruling D-08, P0-31).
 // Excludes the signed-in GM. Cached for the session; pass force=true to refetch.
-async function loadInvitablePlayers(force) {
+export async function loadInvitablePlayers(force) {
   if (_invitablePlayers && !force) return _invitablePlayers;
   const { data, error } = await sb.from('profiles').select('id,name,created_at').order('name', { ascending: true });
   if (error) {
@@ -219,7 +228,7 @@ async function loadInvitablePlayers(force) {
   return _invitablePlayers;
 }
 // "Oct 2026", to tell two players of one name apart. Fixed month names: browsers differ ("Sep" / "Sept").
-function joinedMonth(ts) {
+export function joinedMonth(ts) {
   const d = new Date(ts);
   if (!ts || isNaN(d)) return '';
   return (
@@ -230,7 +239,7 @@ function joinedMonth(ts) {
 }
 
 // Toggle the picker when Public/Private changes; lazily load the player list the first time.
-async function updateGameVisibility() {
+export async function updateGameVisibility() {
   const priv = document.querySelector('input[name="new-game-visibility"]:checked')?.value === 'private';
   const wrap = document.getElementById('new-game-invite-wrap');
   if (wrap) wrap.style.display = priv ? 'block' : 'none';
@@ -249,7 +258,7 @@ async function updateGameVisibility() {
 
 // Shared renderer for both the New Game picker and the detail-screen Edit-Invites modal. Reads the
 // cached _invitablePlayers, filters by the search box, and reflects/updates the given Set of ids.
-function renderInviteCheckboxes(listId, searchId, selectedSet, countId) {
+export function renderInviteCheckboxes(listId, searchId, selectedSet, countId) {
   const list = document.getElementById(listId);
   if (!list) return;
   const q = (document.getElementById(searchId)?.value || '').trim().toLowerCase();
@@ -283,7 +292,7 @@ function renderInviteCheckboxes(listId, searchId, selectedSet, countId) {
   // stash the working Set + ids on the list so toggleInvite can reach the right one
   list._selectedSet = selectedSet;
 }
-function toggleInvite(listId, searchId, countId, id, on) {
+export function toggleInvite(listId, searchId, countId, id, on) {
   const list = document.getElementById(listId);
   const set = list && list._selectedSet;
   if (!set) return;
@@ -293,7 +302,7 @@ function toggleInvite(listId, searchId, countId, id, on) {
   if (cnt) cnt.textContent = `${set.size} player${set.size !== 1 ? 's' : ''} invited`;
 }
 // Map a set/array of invited ids to display names (for the detail screen).
-function invitedNames(ids) {
+export function invitedNames(ids) {
   const byId = {};
   (_invitablePlayers || []).forEach((p) => (byId[p.id] = p.name));
   return (ids || []).map((id) => byId[id] || '(unknown player)');
@@ -302,7 +311,7 @@ function invitedNames(ids) {
 // ── EDIT INVITES (game-detail modal, setup-phase private games) ──
 // A declared global (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
 globalThis._editInviteSelected = new Set();
-async function openEditInvites() {
+export async function openEditInvites() {
   if (!currentGame) {
     return;
   }
@@ -340,11 +349,11 @@ async function openEditInvites() {
       l.innerHTML = kcHtml`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
   }
 }
-function closeEditInvites() {
+export function closeEditInvites() {
   const o = document.getElementById('edit-invite-overlay');
   if (o) o.remove();
 }
-async function saveEditInvites() {
+export async function saveEditInvites() {
   const msg = document.getElementById('edit-invite-msg');
   if (!currentGame) {
     closeEditInvites();
@@ -378,8 +387,8 @@ async function saveEditInvites() {
 
 // Comfortable player caps per map size — the most kings that fit with at least ~3 provinces between
 // every pair of home provinces (worked out from the best-of-N home placement). Minimum 2.
-const MAP_MAX_PLAYERS = { p2: 2, p3: 3, p4: 4, p5: 5, p6: 6, p7: 7, p8: 8, p9: 9, p10: 10 };
-function updateMaxPlayersForMap() {
+export const MAP_MAX_PLAYERS = { p2: 2, p3: 3, p4: 4, p5: 5, p6: 6, p7: 7, p8: 8, p9: 9, p10: 10 };
+export function updateMaxPlayersForMap() {
   const sizeEl = document.getElementById('new-game-mapsize');
   const sel = document.getElementById('new-game-maxplayers');
   if (!sizeEl || !sel) return;
@@ -399,7 +408,7 @@ function updateMaxPlayersForMap() {
 
 // Sea share (2026-09-25): 20–80% in steps of 5, default 35% (the old fixed fill averaged ~33%). The
 // hint tells the GM what the share does to the world before they commit.
-function updateSeaHint() {
+export function updateSeaHint() {
   const el = document.getElementById('new-game-seapct'),
     lab = document.getElementById('new-game-seapct-label'),
     hint = document.getElementById('new-game-sea-hint');
@@ -441,7 +450,7 @@ function updateSeaHint() {
 }
 // Bot realms (Phase 1): validate the bot count against map capacity and show the GM the resulting
 // human/bot split. Bots consume the same realm capacity as humans.
-function updateBotHint() {
+export function updateBotHint() {
   const maxEl = document.getElementById('new-game-maxplayers');
   const botEl = document.getElementById('new-game-botcount');
   const allEl = document.getElementById('new-game-allbot');
@@ -468,7 +477,7 @@ function updateBotHint() {
   }
 }
 
-async function createGame() {
+export async function createGame() {
   const name = document.getElementById('new-game-name').value.trim();
   const mapSize = document.getElementById('new-game-mapsize').value;
   const cap = MAP_MAX_PLAYERS[mapSize] || 10;

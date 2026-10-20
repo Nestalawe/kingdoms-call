@@ -1,4 +1,11 @@
-function _legendaryNames() {
+import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS, TITLE_DEFS } from '../../content/kingdoms-call-data.js';
+import { CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.js';
+import { ITEMS_BY_TIER } from '../items/tiers-and-hoards.js';
+import { activeItems } from '../items/equipment.js';
+import { botConceded } from '../bots/intel.js';
+import { RECKONING_CALLER_MIN_FRAC, RECKONING_MIN_TURN, RELIC_PRIZE_EACH, _MAGIC_SCHOOLS, _skillItem, reckoningAllyStepPct, reckoningDecayOf, reckoningThreshold, skillLevel } from './perks.js';
+
+export function _legendaryNames() {
   return new Set((ITEMS_BY_TIER[4] || []).map((it) => it.name));
 }
 // THE SEA LORD NO LONGER COUNTS THE WAVES. `SEA_LORD_PROVINCE_PTS` gave one merit point per sea
@@ -6,7 +13,7 @@ function _legendaryNames() {
 // only territorial component in any character title, and it meant a realm that ruled the deep could
 // hold the Sea Lord's baton on geography alone with a mediocre admiral. Withdrawn: the title is now
 // the admiral's own Naval skill and the battles they have actually won at sea.
-function _charTitleMerit(c, ctx) {
+export function _charTitleMerit(c, ctx) {
   const tm = c.tm || {};
   const magic = _MAGIC_SCHOOLS.reduce((s, sc) => s + _skillItem(c, sc), 0);
   const spellItems = activeItems(c).filter((it) => it.effect && _MAGIC_SCHOOLS.includes(it.effect.stat)).length;
@@ -64,7 +71,7 @@ function _charTitleMerit(c, ctx) {
 // are that ally's business; they bring themselves to the claim, not their friends. Each of those
 // allies also raises the bar (reckoningAllyStepPct), so a bloc is a real commitment rather than a
 // free ride, and a bloc padded with tiny passengers is worse than no bloc at all.
-function alliedBloc(state, pi) {
+export function alliedBloc(state, pi) {
   const rel = state.relations || {},
     np = (state.players || []).length;
   const key = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
@@ -75,7 +82,7 @@ function alliedBloc(state, pi) {
   return out;
 }
 // Main scoring — pure function over a game state. Returns titles, relics, per-realm standings, tax.
-function computeStandings(state) {
+export function computeStandings(state) {
   const players = state.players || [];
   const chars = (state.characters || []).filter((c) => c && c.player != null && c.alive);
   // Reckoning tax base counts EVERY province — land AND sea (owned sea now carries features,
@@ -184,7 +191,7 @@ function computeStandings(state) {
 //                       is a character of ANOTHER realm; the holder's own second-best is no rival.
 // Realm titles (Throne, Vaultkeeper) use the realm metric and name the king. Only percentages are
 // shipped — never a rival's name or raw merit — so this leaks nothing the standings board does not.
-function titleRaceFor(state, st, pi) {
+export function titleRaceFor(state, st, pi) {
   const chars = (state.characters || []).filter((c) => c && c.player != null && c.alive);
   const out = {};
   const pctOf = (v, top) => (top > 0 ? Math.max(0, Math.min(100, Math.floor((Math.max(0, v) / top) * 100 + 1e-9))) : 0);
@@ -233,7 +240,7 @@ function titleRaceFor(state, st, pi) {
   return out;
 }
 // Winner at a Reckoning: highest standing, ties broken by tax base then treasury.
-function reckoningWinner(state) {
+export function reckoningWinner(state) {
   const s = computeStandings(state);
   let best = null;
   s.standings.forEach((st) => {
@@ -248,26 +255,26 @@ function reckoningWinner(state) {
   return { winner: best, standings: s };
 }
 // Share of world tax base held by a player's allied bloc (bloc-aware Reckoning threshold).
-function reckoningBlocShare(state, pi) {
+export function reckoningBlocShare(state, pi) {
   const s = computeStandings(state);
   const bloc = alliedBloc(state, pi);
   const blocTax = bloc.reduce((sum, b) => sum + (s.taxByPlayer[b] || 0), 0);
   return s.worldTax > 0 ? blocTax / s.worldTax : 0;
 }
 // A realm's OWN share of the world tax base — allies excluded.
-function reckoningOwnShare(state, pi) {
+export function reckoningOwnShare(state, pi) {
   const s = computeStandings(state);
   return s.worldTax > 0 ? (s.taxByPlayer[pi] || 0) / s.worldTax : 0;
 }
 // The bar THIS realm's claim must carry — its own bloc's size decides it.
-function reckoningThresholdFor(state, pi) {
+export function reckoningThresholdFor(state, pi) {
   return reckoningThreshold((state.players || []).length, reckoningDecayOf(state), alliedBloc(state, pi).length);
 }
 // May THIS realm lodge the claim? Bloc share carries the bar; the caller still has to be a
 // contributor worth naming; and no claim at all stands before RECKONING_MIN_TURN. Returns {ok,
 // blocShare, ownShare, threshold, callerMin, blocSize, soloThreshold, minTurn, reason}.
 // `reason` is one of null | 'tooEarly' | 'blocShort' | 'callerShort'.
-function reckoningCallEligibility(state, pi) {
+export function reckoningCallEligibility(state, pi) {
   const nP = (state.players || []).length,
     dec = reckoningDecayOf(state);
   const bloc = alliedBloc(state, pi);
@@ -296,7 +303,7 @@ function reckoningCallEligibility(state, pi) {
 // bot kings to the reckoningCalls set built from human orders. During a rival's active Reckoning a
 // trailing bot keeps warring/expanding as usual, which naturally pressures the claimant (focused
 // anti-leader targeting is a later tuning pass).
-function runBotReckoning(G, botIdxSet, reckoningCalls) {
+export function runBotReckoning(G, botIdxSet, reckoningCalls) {
   if (!botIdxSet || !botIdxSet.size || !reckoningCalls) return;
   if (G.reckoning || G.gameOver) return; // a claim is already live / game already decided
   if ((G.turn || 0) < RECKONING_MIN_TURN) return; // no claim before turn 10
@@ -306,7 +313,7 @@ function runBotReckoning(G, botIdxSet, reckoningCalls) {
     if (kingAlive && reckoningCallEligibility(G, pi).ok) reckoningCalls.add(pi); // bloc bar AND the caller's own floor
   });
 }
-const _TITLE_LABEL = {
+export const _TITLE_LABEL = {
   throne: 'Throne',
   vault: 'Vaultkeeper',
   marshal: 'Grand Marshal',
@@ -325,8 +332,8 @@ const _TITLE_LABEL = {
 // ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
 // character a small perk. Each is awarded every turn to the single best living character by its
 // metric (ties → first found; a metric of 0 leaves the title vacant). See the design doc.
-const MINOR_CAV = new Set(KC_UNIT_CLASS.cavalry); // flyers are not cavalry — matches CAVALRY_TYPES and the rulebook
-const MINOR_HEAVY = new Set([
+export const MINOR_CAV = new Set(KC_UNIT_CLASS.cavalry); // flyers are not cavalry — matches CAVALRY_TYPES and the rulebook
+export const MINOR_HEAVY = new Set([
   'Mountain Guns',
   'Dwarf Ironclads',
   'Galleon Fleet',
@@ -337,8 +344,8 @@ const MINOR_HEAVY = new Set([
   'Great Turtles',
   'Siege Towers',
 ]); // the ferries count (the turtles since Island Back, 2026-10-13)
-const _BEST_SCHOOL = (c) => Math.max(0, ...KC_MAGIC_SCHOOLS.map((s) => skillLevel(c, s)));
-const MINOR_TITLES = [
+export const _BEST_SCHOOL = (c) => Math.max(0, ...KC_MAGIC_SCHOOLS.map((s) => skillLevel(c, s)));
+export const MINOR_TITLES = [
   {
     key: 'duelist',
     name: 'The Duelist',
@@ -481,7 +488,7 @@ const MINOR_TITLES = [
     metric: (c) => _BEST_SCHOOL(c),
   },
 ];
-function computeMinorTitles(state) {
+export function computeMinorTitles(state) {
   const chars = (state.characters || []).filter((c) => c && c.player != null && c.alive);
   const out = {};
   MINOR_TITLES.forEach((t) => {
@@ -516,7 +523,7 @@ function computeMinorTitles(state) {
 // 'move' — movement points only — computeMovePoolMax
 // 'order' — the order's own success roll only (e.g. Sage research)
 // Every entry here must correspond to a REAL engine site; the harness asserts each one.
-const SKILL_EXTRA_MINORS = [
+export const SKILL_EXTRA_MINORS = [
   // key skills delta kind scope
   ['duelist', ['melee'], 1, 'title', 'combat'],
   ['marksman', ['archery'], 1, 'title', 'combat'],
@@ -527,7 +534,7 @@ const SKILL_EXTRA_MINORS = [
   ['seawolf', ['naval'], 1, 'title', 'move'],
   ['loreseeker', ['sage'], 1, 'title', 'order'],
 ];
-const SKILL_EXTRA_SCOPE_NOTE = {
+export const SKILL_EXTRA_SCOPE_NOTE = {
   combat: 'personal combat only',
   battle: 'army battles only',
   move: 'movement points only',
@@ -535,7 +542,7 @@ const SKILL_EXTRA_SCOPE_NOTE = {
 };
 // `minorHolders` is the freshly-computed map where one is to hand; the last resolved turn's map is
 // the fallback, so a character still sees their own perk before Titles go public.
-function extraSkillBonuses(c, state, minorHolders) {
+export function extraSkillBonuses(c, state, minorHolders) {
   const out = {};
   if (!c) return out;
   const mh = minorHolders || (state && state._minorHolders) || {};

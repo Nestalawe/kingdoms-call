@@ -1,3 +1,10 @@
+import { KC_SKILLS, SAGE_DISCOVERIES_P } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { TEMPERS_P } from '../world/tables.js';
+import { nextHeroName } from '../names.js';
+import { ownedConsecratedProvs } from '../heroes/fame-and-consecration.js';
+import { discBlockedIds, discEligible, gdActive } from '../discoveries.js';
+
 // ── THE NEW TURN, FIRST PART (plan P1-08k5a: one stage taken out of resolveTurn's own body) ─────────────────────────
 // Once the turn's diplomacy and victory are settled (diplomacy-resolution-and-victory-….js), the turn counter moves on
 // and the new turn begins, in this order:
@@ -14,7 +21,7 @@
 // It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads no value of the phase loop's. The
 // body keeps resolveTurn's indent (plan P1-08's Decisions).
 
-function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns(turnContext) {
+export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns(turnContext) {
   const { G, log } = turnContext;
   // 7. Advance turn counter
   G.turn = (G.turn || 1) + 1;

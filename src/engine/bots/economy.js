@@ -1,3 +1,19 @@
+import { KC_RIVAL_RACE, KC_UNIT_CLASS, SPELL_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.js';
+import { UNIT_BASE_STR } from '../battle/strength.js';
+import { TAMED_FLYER_TYPES_D, druIdPenaltyMult, heroHireWage } from '../world/tables.js';
+import { effSkillOf } from '../heroes/skills-and-hp.js';
+import { UNIT_DRILL_BASE } from '../units/drill-and-spoils.js';
+import { BOT_HEX_DIRS, botBelievedOwner, botHasDisc, botNeighbourProv, botRaceTerrainMult, botRelationRaw, botSeesChar } from './intel.js';
+import { BOT_CARRIER_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL } from './war.js';
+import { BOT_SPECIALIST_SKILLS } from './specialist-skills.js';
+import { botFieldRecruitTokens, botGarrisonOrder, botHireOrder, botLedger, botRecruitOrder, botRoles } from './strategy.js';
+import { BOT_SCHOOLS } from './schools.js';
+import { BOT_SPECIALIST_ROLES, botNearbyThreat, botPathLen, botPracticeFallback } from './specialists.js';
+import { botIsTeach, botOrderLocs, botPickupOrder } from './missions.js';
+import { skillLevel } from '../titles/perks.js';
+import { _BEST_SCHOOL } from '../titles/reckoning.js';
+
 // ══ BOT PLAYERS — Phase 3b: economy (recruit / hire) ════
 // Runs AFTER runBotMovement: any bot character still HOLDING (no movement order) in an owned
 // province spends the treasury on reinforcements. Tax income is PASSIVE in this engine (applied
@@ -8,8 +24,8 @@
 // above ARMY_COST_MASTER). So recruitment is gated on BOTH an upfront gold reserve AND an upkeep
 // cap (total wages kept ≤ 90% of the bot's tax income). This ties army size to economic base — a
 // bot recruits more only as it expands — and prevents a wage spiral that would bankrupt it.
-const BOT_NAVAL_TYPES = new Set(KC_UNIT_CLASS.sea);
-function botRecruitableTypes(prov, G, cmdr) {
+export const BOT_NAVAL_TYPES = new Set(KC_UNIT_CLASS.sea);
+export function botRecruitableTypes(prov, G, cmdr) {
   // rank by the strength the intended COMMANDER gets out of the unit (Druid shortfall applied, race
   // = the province's race as the engine assigns it), not the raw table value — a Druid-0 king
   // buying Cave Trolls at −60% was throwing gold away.
@@ -62,7 +78,7 @@ function botRecruitableTypes(prov, G, cmdr) {
   const mobile = all.filter((t) => (ARMY_SPEED_MASTER[t] || 3) >= 2);
   return mobile.length ? mobile : all;
 }
-function botUpkeep(G, pi) {
+export function botUpkeep(G, pi) {
   let w = 0;
   (G.characters || []).forEach((c) => {
     if (c && c.alive && c.player === pi)
@@ -85,7 +101,7 @@ function botUpkeep(G, pi) {
   }); // hero wages are real wages too
   return w;
 }
-function botTaxIncome(G, pi) {
+export function botTaxIncome(G, pi) {
   let inc = 0;
   (G.world.provinces || []).forEach((p) => {
     if (p && p.owner === pi) inc += p.tax || 0;
@@ -95,7 +111,7 @@ function botTaxIncome(G, pi) {
 // ── ECONOMY helpers for the 2026-08 batch ────
 // is this bot AT WAR (any at-war relation with a live player)? At-war bots spend their treasury
 // down and raise their sustainable army ceiling to build for the fight.
-function botAtWar(G, pi) {
+export function botAtWar(G, pi) {
   return (G.players || []).some(
     (p, j) =>
       j !== pi &&
@@ -106,7 +122,7 @@ function botAtWar(G, pi) {
 }
 // the biggest army stack (unit count) any at-war enemy is currently leading. Used to decide when to
 // go to a war footing and roughly how big an army to build toward.
-function botMaxEnemyStack(G, pi) {
+export function botMaxEnemyStack(G, pi) {
   // the biggest host this realm has EYES ON, not the biggest in the world.
   let mx = 0;
   (G.characters || []).forEach((c) => {
@@ -125,12 +141,12 @@ function botMaxEnemyStack(G, pi) {
   return mx;
 }
 // a CARRIER fleet type this province can raise (for sea conquest / troop transport), else null.
-function botCoastalFleetType(prov) {
+export function botCoastalFleetType(prov) {
   return (prov.armyTypes || []).find((t) => BOT_CARRIER_TYPES.has(t)) || null;
 }
 // Sept 2026: an at-war ENEMY coast one sea-hop from this province (the only naval reason worth a
 // fleet while land remains to conquer).
-function botNavalEnemyCoast(G, prov, pi) {
+export function botNavalEnemyCoast(G, prov, pi) {
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, prov, i);
     if (!N || N.terrain !== 'sea') continue;
@@ -144,7 +160,7 @@ function botNavalEnemyCoast(G, prov, pi) {
 }
 // how many fleet hulls the bot already leads across its whole roster (so it stops over-building
 // ships).
-function botFleetHullCount(G, pi) {
+export function botFleetHullCount(G, pi) {
   let h = 0;
   (G.characters || []).forEach((c) => {
     if (c && c.alive && c.player === pi)
@@ -154,7 +170,7 @@ function botFleetHullCount(G, pi) {
   });
   return h;
 }
-function runBotEconomy(G, botIdxSet) {
+export function runBotEconomy(G, botIdxSet) {
   if (!botIdxSet || !botIdxSet.size || !G.world) return;
   G.turnOrders = G.turnOrders || {};
   botIdxSet.forEach((pi) => {
@@ -455,7 +471,7 @@ function runBotEconomy(G, botIdxSet) {
 // monster-strength gate like the guard gate, so it belongs with Phase 4 combat assessment) and
 // action-phase spells / battle magic (school knowledge, per-turn limits, fizzle, and summon-before-
 // battle timing that ties into Phase 4 — deferred to a dedicated spell pass).
-function botPracticeSkill(c) {
+export function botPracticeSkill(c) {
   const sk = c.skills || {};
   // Prefer the highest skill still below the drill cap (push a strength toward its level-5 perks).
   let best = null,
@@ -486,9 +502,9 @@ function botPracticeSkill(c) {
 // Tactical / Naval, to drill troops that can still improve). Heroes still train TOGETHER: a phase freed here is
 // first offered to a comrade training in the same place (learn from him, teach him, or pair at equal level for
 // +50% each), and a final pass pulls a free hero standing with a trainee into teaching or pairing with him.
-const BOT_PRACTICE_BASE = [0.25, 0.2, 0.15, 0.1, 0.05]; // the engine's solo chance by level (case 'practice')
-const BOT_HYG_CRAFT = new Set(['sage', 'explorer', 'spy', 'thief']);
-function botDrillUseful(c, S) {
+export const BOT_PRACTICE_BASE = [0.25, 0.2, 0.15, 0.1, 0.05]; // the engine's solo chance by level (case 'practice')
+export const BOT_HYG_CRAFT = new Set(['sage', 'explorer', 'spy', 'thief']);
+export function botDrillUseful(c, S) {
   if (S !== 'tactical' && S !== 'naval') return false;
   const sea = new Set((KC_UNIT_CLASS && KC_UNIT_CLASS.sea) || []);
   return (c.armies || []).some(
@@ -502,7 +518,7 @@ function botDrillUseful(c, S) {
 }
 // `practised`: Practice orders on this school earlier in the turn. Like the player's order form
 // (item 16, 2026-10-13), the limit assumes each one succeeds (+1 a time, training stops at 5).
-function botCastLimit(G, c, school, practised) {
+export function botCastLimit(G, c, school, practised) {
   const raw = skillLevel(c, school),
     pr = practised || 0;
   const l = effSkillOf(
@@ -519,7 +535,7 @@ function botCastLimit(G, c, school, practised) {
       : 0;
   return (l >= 4 ? 3 : l >= 3 ? 2 : 1) + w;
 }
-function runBotOrderHygiene(G, botIdxSet) {
+export function runBotOrderHygiene(G, botIdxSet) {
   const tally = typeof window !== 'undefined' && window.__botHyg ? window.__botHyg : null;
   const bump = (k) => {
     if (tally) tally[k] = (tally[k] || 0) + 1;

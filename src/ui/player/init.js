@@ -1,3 +1,9 @@
+import { sb } from './startup.js';
+import { ensureMobileDefault, setupDeskLayout, teardownDeskLayout } from './layout.js';
+import { onSignedIn } from './sign-in.js';
+import { _closeMapTip } from './map.js';
+import { saveMessageReads, stopMessagePolling } from './dispatches.js';
+
 // ── PLAYER-TO-PLAYER DISPATCHES (compose) — RETIRED 2026-09-27 (Toby item 4) ────
 // This was the turn-bound composer at the head of the Orders column: you queued up to one message
 // per recipient per turn and the GM engine delivered it into their next report. The ✉ Dispatches
@@ -11,7 +17,7 @@
 //    lines already written into past turn reports still render when a player browses their history.
 // To restore the old composer, put the `<div id="dispatch-compose"></div>` back in _realmTop and
 // re-add the render/sync helpers — nothing else was removed.
-function collectMessages() {
+export function collectMessages() {
   return [];
 }
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
@@ -37,10 +43,10 @@ globalThis.viewedTurn = null;
 // renumbered — snapshotTurnLabel() converts it to the turn the player knew it as: the report
 // written when turn N finished is the briefing acted on during turn N+1, and the founding
 // snapshot (key 0) is the Turn 1 briefing.
-function snapshotTurnLabel(key) {
+export function snapshotTurnLabel(key) {
   return (parseInt(key) || 0) + 1;
 }
-function refreshTurnNavHighlight() {
+export function refreshTurnNavHighlight() {
   const navEl = document.getElementById('turn-nav-btns');
   if (!navEl) return;
   const resolved = parseInt(navEl.dataset.resolved ?? '-1');
@@ -65,7 +71,7 @@ function refreshTurnNavHighlight() {
 }
 
 // ── INIT ────
-async function init() {
+export async function init() {
   try {
     document.getElementById('spinner').style.display = 'none';
     const {
@@ -88,7 +94,7 @@ async function init() {
 // scroll the report column to one of its main sections, keeping the target heading clear of the
 // sticky jump-bar. On desktop the middle column is its own scroll container; on a phone
 // (single-column view) the page scrolls, so fall back to scrollIntoView there.
-function jumpToReportSection(id) {
+export function jumpToReportSection(id) {
   const tgt = document.getElementById(id);
   if (!tgt) return;
   if (tgt.style.display === 'none') return;
@@ -103,7 +109,7 @@ function jumpToReportSection(id) {
     tgt.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
-function show(id) {
+export function show(id) {
   try {
     _closeMapTip();
   } catch (e) {} // dismiss any province popup when leaving/entering a section

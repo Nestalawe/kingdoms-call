@@ -1,3 +1,11 @@
+import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.js';
+import { ITEM_SLOT_CAP, gainedItemNote, itemSlot, normaliseEquipment } from '../items/equipment.js';
+import { syncMaxHp } from '../heroes/skills-and-hp.js';
+import { applyItemMaxHp, isMithril } from '../personal-combat/helpers.js';
+import { isCharmedNow, isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.js';
+import { notifyTarget } from '../turn/log-line-helpers.js';
+import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+
 // ── THE ITEM ORDERS (plan P1-08j5: the fifth family taken out of processOrder in resolveTurn) ──
 // Equip Items (which of the items a hero carries he wears or wields, a slot's limit kept), Use Item (an active magic
 // item invoked: the Philosopher's Stone; a passive one needs no using) and Send Item (items handed to one of the
@@ -7,7 +15,7 @@
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break became
 // a return.
 // Equip Items: the items named are worn or wielded, the rest taken off, a slot's limit kept (the first named wins); a slot left with room is filled again with the first item held.
-function resolveEquipItemsOrder(turnContext, c, target) {
+export function resolveEquipItemsOrder(turnContext, c, target) {
   const { log } = turnContext;
   // choose which slot items are worn/wielded. target = comma-separated item names (or ids) to
   // equip. Every slot item NOT named is unequipped; slot caps are enforced (first named
@@ -51,7 +59,7 @@ function resolveEquipItemsOrder(turnContext, c, target) {
   return;
 }
 // Use Item: an active magic item invoked (the Philosopher's Stone); a passive one needs no using.
-function resolveUseItemOrder(turnContext, c, target, prov) {
+export function resolveUseItemOrder(turnContext, c, target, prov) {
   const { G, log } = turnContext;
   // Trigger an ACTIVE magic item (one that must be invoked, not a passive bonus).
   // 2026-09-24 (Toby): not while charmed. An enchanted mind fights with what it carries — its
@@ -187,7 +195,7 @@ function resolveUseItemOrder(turnContext, c, target, prov) {
   return;
 }
 // Send Item (once Give Item): items handed to one of the realm's own living heroes, at once in the same province or by courier by the turn's end.
-function resolveSendItemOrder(turnContext, c, ph, target, extra) {
+export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
   const { G, log } = turnContext;
   // SEND ITEM (was Give Item). A character can hand over MORE THAN ONE
   // item at once (comma-separated indices, or "all"; splice high→low so indices stay aligned) to

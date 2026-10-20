@@ -1,11 +1,19 @@
+import { KC_ITEM_RACE_ALIAS } from '../../content/kingdoms-call-data.js';
+import { ALL_SKILLS } from '../army-tables.js';
+import { homeFounderOf } from '../grand-design.js';
+import { isLegendaryItem } from '../items/tiers-and-hoards.js';
+import { hexDistP } from '../world/map-helpers.js';
+import { perkTier } from '../titles/perks.js';
+import { discProvCoastal, discSumOf } from '../discoveries.js';
+
 // ── HERO FAME ── a wandering hero's reputation is described, never numbered: the Hire and Broker
 // dropdowns quote the same words the Intelligence report uses. Module level; buildPlayerReport's
 // own copies delegate here so the two can never drift apart.
-function skillFameLabelM(level) {
+export function skillFameLabelM(level) {
   const l = level || 0;
   return l >= 7 ? 'has a heroic level of' : l >= 4 ? 'legendary for' : 'renowned for';
 }
-function topSkillOf(char) {
+export function topSkillOf(char) {
   const skills = Object.entries((char && char.skills) || {}).filter(([, v]) => v > 0);
   if (!skills.length) return null;
   const maxLevel = Math.max(...skills.map(([, v]) => v));
@@ -15,7 +23,7 @@ function topSkillOf(char) {
   const [sk, lv] = tied[0];
   return { skill: sk, level: lv };
 }
-function itemNameList(items, withDesc) {
+export function itemNameList(items, withDesc) {
   const wd = withDesc !== false;
   return (items || [])
     .map((d) => (isLegendaryItem(d) ? 'the LEGENDARY ' : 'the ') + d.name + (wd && d.desc ? ' (' + d.desc + ')' : ''))
@@ -26,12 +34,12 @@ function itemNameList(items, withDesc) {
 // carry 'Elven'/ 'Dwarven'/'Orcish', so every non-Human race-bound item was inert in its OWN race's
 // hands. The item data now uses the canonical names; this alias map keeps items already rolled into
 // saved games working.
-const _ITEM_RACE_ALIAS = { ...KC_ITEM_RACE_ALIAS };
-function itemRaceOf(it) {
+export const _ITEM_RACE_ALIAS = { ...KC_ITEM_RACE_ALIAS };
+export function itemRaceOf(it) {
   const r = it && it.race;
   return r ? _ITEM_RACE_ALIAS[r] || r : r;
 }
-function itemUsableBy(it, c) {
+export function itemUsableBy(it, c) {
   if (!it) return false;
   if (it.race && (!c || c.race !== itemRaceOf(it))) return false;
   if (it.alignment && (!c || c.alignment !== it.alignment)) return false;
@@ -42,7 +50,7 @@ function itemUsableBy(it, c) {
 // realm. Kept out of ALL_MAGIC_ITEMS_P so rollMagicItem never awards it and every qualifying dwarf
 // can hold their own copy. Effect stat 'mithrilArmour' reduces melee damage dealt to the wearer by
 // 2 (applied per-hit in pcMeleeDamage; non-stacking — one suit is enough).
-const MITHRIL_ARMOUR = {
+export const MITHRIL_ARMOUR = {
   name: 'Mithril Armour',
   slot: 'armour',
   desc: 'Melee and arrow attacks against the wearer deal 2 less damage',
@@ -59,11 +67,11 @@ const MITHRIL_ARMOUR = {
 // save into the list on first read.
 // 2026-09-24 (Toby item 7): only the profane profit from casting down altars — an UNDEAD realm's
 // column always rises a level, an EVIL realm's has a 50% chance per unit, everyone else gains nothing.
-const CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT = { Undead: 100, Evil: 50 };
-function consecCaptureXpPct(pl) {
+export const CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT = { Undead: 100, Evil: 50 };
+export function consecCaptureXpPct(pl) {
   return (pl && CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT[pl.alignment]) || 0;
 }
-function consecratedIds(pl) {
+export function consecratedIds(pl) {
   if (!pl) return [];
   if (!Array.isArray(pl.consecratedProvIds)) {
     pl.consecratedProvIds = pl.consecratedProvId != null ? [pl.consecratedProvId] : [];
@@ -71,20 +79,20 @@ function consecratedIds(pl) {
   }
   return pl.consecratedProvIds;
 }
-function isConsecrated(pl, provId) {
+export function isConsecrated(pl, provId) {
   return consecratedIds(pl).includes(provId);
 }
 // DIVINE RETURN needs holy ground. The consecrated provinces a realm still OWNS — the only places a
 // fallen Divine character can be restored. `nearestConsecratedProv` picks the one closest (hex
 // distance, ties → the richer) to where the body lies.
-function ownedConsecratedProvs(state, pi) {
+export function ownedConsecratedProvs(state, pi) {
   const pl = (state.players || [])[pi];
   if (!pl) return [];
   return consecratedIds(pl)
     .map((id) => state.world.provinces[id])
     .filter((pv) => pv && pv.owner === pi);
 }
-function nearestConsecratedProv(state, pi, fromProvId) {
+export function nearestConsecratedProv(state, pi, fromProvId) {
   const list = ownedConsecratedProvs(state, pi);
   if (!list.length) return null;
   const from = fromProvId != null ? state.world.provinces[fromProvId] : null;
@@ -103,7 +111,7 @@ function nearestConsecratedProv(state, pi, fromProvId) {
 // a neutral province guard becomes an ordinary wandering hero (hireable, listed under Wandering
 // Heroes, labelled "(wandering)"). Used when a guard survives the loss of his last unit, and by the
 // turn-start / pre-report safety net for any guard left troopless or standing in a player's land.
-function demoteGuardToWanderer(h) {
+export function demoteGuardToWanderer(h) {
   if (!h) return;
   h._isNeutralGuard = false; // (armies are left as they are — the combat site has already emptied them)
   const base = String(h.name || '')
@@ -115,7 +123,7 @@ function demoteGuardToWanderer(h) {
 // path that puts a masterless hero into a realm's service must take it off again — the Hire order
 // did, but Charm's permanent join and Resurrect did not, leaving heroes called "Marigold the Bright
 // (wandering)" serving a crown. One helper, used by all of them.
-function claimWandererName(h) {
+export function claimWandererName(h) {
   if (!h) return;
   h.name = String(h.name || '')
     .replace(/\s*\(wandering\)/gi, '')
@@ -124,7 +132,7 @@ function claimWandererName(h) {
 // Safety net for saves already carrying the bug (and for any future path that forgets): no
 // character who serves a crown may wear the wandering tag. Run at turn start. Returns the number
 // repaired.
-function normaliseOwnedNames(gs) {
+export function normaliseOwnedNames(gs) {
   let n = 0;
   (gs.characters || []).forEach((c) => {
     if (!c || c.player == null) return;
@@ -137,7 +145,7 @@ function normaliseOwnedNames(gs) {
 }
 // Safety net: every living neutral "guard" who leads no troops, or who stands in a province a
 // player now owns, is really a wanderer — normalise them. Returns the number repaired.
-function normaliseStrandedGuards(gs) {
+export function normaliseStrandedGuards(gs) {
   let n = 0;
   (gs.characters || []).forEach((c) => {
     if (!c || c.player !== null || !c.alive || !c._isNeutralGuard) return;
@@ -152,14 +160,14 @@ function normaliseStrandedGuards(gs) {
 // consecration is holy ground anyone can SEE (altars, standing stones), not a private fact of the
 // owner. This tells us whether a province is consecrated by its CURRENT owner, so the map can mark
 // it for every player who can see the province — not only the Divine king who blessed it.
-function provinceConsecrated(gs, prov) {
+export function provinceConsecrated(gs, prov) {
   if (!prov || prov.owner == null) return false;
   const owner = gs && gs.players && gs.players[prov.owner];
   return !!owner && isConsecrated(owner, prov.id);
 }
 // relation lookup usable at MODULE level (buildTurnReport can't reach the runTurn-nested
 // areEnemies/relationBetween). Relations live in gs.relations keyed "min-max".
-function relOfReport(gs, a, b) {
+export function relOfReport(gs, a, b) {
   if (a == null || b == null || a === b) return 'neutral';
   const k = a < b ? a + '-' + b : b + '-' + a;
   return (gs.relations || {})[k] || 'neutral';
@@ -167,7 +175,7 @@ function relOfReport(gs, a, b) {
 // Deterministic 0..1 roll so the same (turn, viewer, enemy, province) always resolves the same way
 // — the map is built once, but this keeps a GM preview and the saved report identical, and re-rolls
 // each turn.
-function detRoll(turn, viewerPi, charId, provId) {
+export function detRoll(turn, viewerPi, charId, provId) {
   let h = 2166136261 >>> 0;
   const s = turn + '|' + viewerPi + '|' + charId + '|' + provId;
   for (let i = 0; i < s.length; i++) {
@@ -180,7 +188,7 @@ function detRoll(turn, viewerPi, charId, provId) {
 // Chance = your exploration% of the province, −20%/enemy Spy level (cap L5), +10%/highest friendly
 // (own or allied) Spy level present (cap L5), clamped 5–95%. Replaces the flat _unspottedTurn cloak
 // for owned provinces. Kings roll exactly as heroes do. Returns true if spotted.
-function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn) {
+export function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn) {
   // turn: the report's turn (default gs.turn)
   // 2026-09-21 — A PROVINCE YOU HOLD IS GROUND YOU KNOW.
   // This read `exploredBy[viewerPi]`, and NOTHING writes that on conquest — only marching in does,

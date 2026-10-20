@@ -1,3 +1,17 @@
+import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { battleGrid } from './lines.js';
+import { DRUID_MASTERY_CAP, DRUID_MASTERY_MAX_LVL, DRUID_MASTERY_PER_LVL, MISSILE_ARMIES_MASTER, ladderFm } from './ladder.js';
+import { AERIAL_TYPES, CREATURE_ARMIES, FLYING_TYPES, MONSTER_ARMIES, SEA_TYPES } from '../units/movement.js';
+import { UNIT_BASE_STR, UNIT_Q_MULT, missileCap, unitAbilityMult, unitBaseStrength } from './strength.js';
+import { druIdPenaltyMult, getDruidLevel } from '../world/tables.js';
+import { activeItems, hasItemBase } from '../items/equipment.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { perkTier } from '../titles/perks.js';
+import { MINOR_CAV, MINOR_HEAVY } from '../titles/reckoning.js';
+import { discUnitMult, dragonTamed, gdActive } from '../discoveries.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+
 // ── TERRAIN, SEA AND A UNIT'S STRENGTH (plan P1-08b: lifted out of resolveTurn) ────
 // What one unit is worth in a battle: the ground it fights on (terrainMod, illusory terrain, the sea penalty), arrows
 // and pre-battle damage, kinship, Druid mastery and every per-unit modifier (armStr), and the rows of the strength
@@ -8,7 +22,7 @@
 // unit: the winged riders and the flying beasts) fight at 1.0 everywhere except under the trees: ×0.75 in
 // forest and jungle (2026-10-12, Toby item 19; they had been terrain-immune). Naval units: no terrain
 // effect anywhere — and the Naval skill lifts them on land too.
-const TERRAIN_MODS = {
+export const TERRAIN_MODS = {
   // NAVAL UNITS FIGHT AT FULL STRENGTH IN EVERY PROVINCE, land or sea — the old ×0.60 "beached
   // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
   // terrainMod() short-circuits them like flyers. Sea Giants' Tidal Might is now a coastal-land
@@ -280,7 +294,7 @@ const TERRAIN_MODS = {
 };
 
 // Returns terrain modifier for a given army type in given terrain
-function terrainMod(armyType, terrain) {
+export function terrainMod(armyType, terrain) {
   // flyers read their row like anyone (×1 unless listed: ×0.75 in forest and jungle since item 19, 2026-10-12)
   if (SEA_TYPES.has(armyType)) return 1.0; // fleets and sea-beasts fight at 100% on land and sea alike
   const t = TERRAIN_MODS[terrain];
@@ -296,8 +310,8 @@ function terrainMod(armyType, terrain) {
 // otherwise wrongly floor naval/flying units). Flyers' worst ground is now the woods (×0.75, item 19,
 // 2026-10-12), so the illusion takes them to ×0.75 (it was the 0.85 floor while they ignored terrain). Stacks on top of the real terrain penalty,
 // exactly as the old flat 20% did.
-const ILLUSORY_TERRAIN_KEYS = ['plain', 'desert', 'forest', 'jungle', 'mountain'];
-function illusoryTerrainMult(armyType) {
+export const ILLUSORY_TERRAIN_KEYS = ['plain', 'desert', 'forest', 'jungle', 'mountain'];
+export function illusoryTerrainMult(armyType) {
   let worst = 1.0;
   for (const t of ILLUSORY_TERRAIN_KEYS) {
     const m = terrainMod(armyType, t);
@@ -311,7 +325,7 @@ function illusoryTerrainMult(armyType) {
 // target and cappable. Battle-magic Curse: pick the commander's best combat-affecting skill to
 // halve. Candidates are Tactical (land battles), Druid (army penalties/creature buffs) and Naval
 // (sea battles).
-function bestCurseSkill(turnContext, hero) {
+export function bestCurseSkill(turnContext, hero) {
   // 2026-09-09e: Druid was read RAW here while Tactical and Naval were item-boosted, so a commander
   // whose Druid came from an item had the wrong skill chosen for the Curse. All three now use the
   // same stack.
@@ -321,7 +335,7 @@ function bestCurseSkill(turnContext, hero) {
   if (nav >= tac && nav >= dru && nav > 0) return 'naval';
   return tac >= dru ? 'tactical' : 'druid';
 }
-function curseSkillLabel(stat) {
+export function curseSkillLabel(stat) {
   return stat === 'naval' ? 'Naval command' : stat === 'druid' ? 'Druid mastery' : 'Tactical command';
 }
 // Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
@@ -331,10 +345,10 @@ function curseSkillLabel(stat) {
 // Winged riders take double and are shot first. What a TARGET can lose is capped: 40% of its own
 // base strength (80% for a winged rider; Ironwood Crossbows' Punch Through lifts both to 55% / 90% — see
 // missileCap). The 25% pre-battle floor below still applies on top.
-const MISSILE_SHOT_PCT = 0.3,
+export const MISSILE_SHOT_PCT = 0.3,
   MISSILE_ARCH_PER_LVL = 0.1,
   MISSILE_CAP_FRACTION = 0.4; // 2026-10-11 (Toby): volleys 20% → 30%
-function missileShotDamage(firer, archSkill, dmgMult) {
+export function missileShotDamage(firer, archSkill, dmgMult) {
   const fs = firer ? unitBaseStrength(firer) : 10;
   return Math.max(
     1,
@@ -346,10 +360,10 @@ function missileShotDamage(firer, archSkill, dmgMult) {
 // by several effects (e.g. Spiritwrack + Fireball + Choking Spores + arrows) could be softened to
 // zero before the real fighting began. This floor guarantees every unit still enters the melee with
 // at least this fraction of its (druid/terrain-adjusted) strength — no unit is ever softened away.
-const PREBATTLE_STR_FLOOR = 0.25;
+export const PREBATTLE_STR_FLOOR = 0.25;
 // Subtract a unit's pre-battle damage from a strength figure, never below PREBATTLE_STR_FLOOR of it.
 // Two steps, as before: this battle's damage, then any all-turn reduction.
-function applyPrebattleDamage(army, str) {
+export function applyPrebattleDamage(army, str) {
   if (army._tempStrReduction) {
     const f = Math.max(1, Math.floor(str * PREBATTLE_STR_FLOOR));
     str = Math.max(f, str - army._tempStrReduction);
@@ -360,7 +374,7 @@ function applyPrebattleDamage(army, str) {
   } // persists all turn
   return str;
 }
-function applyMissileHit(target, archSkill, firer, opts) {
+export function applyMissileHit(target, archSkill, firer, opts) {
   opts = opts || {};
   // DWARF — Armoured Hulls: arrows and bolts simply do not tell against plated warships.
   if (target && target.type === 'Dwarf Ironclads')
@@ -387,9 +401,9 @@ function applyMissileHit(target, archSkill, firer, opts) {
 
 // Sea penalty for non-flying land units fighting in sea provinces ×0.75 = roughly one quality tier
 // lower
-const SEA_LAND_PENALTY = 0.75;
+export const SEA_LAND_PENALTY = 0.75;
 
-function isAirborneAtSea(force) {
+export function isAirborneAtSea(force) {
   const f = (force || []).filter(Boolean);
   if (!f.length) return false;
   if (f.some((a) => SEA_TYPES.has(a.type))) return false;
@@ -398,7 +412,7 @@ function isAirborneAtSea(force) {
 // the race-affinity ("kin") bonus has always been applied inside armStr, but no battle line ever
 // said so, so players could not tell it was in effect. One line per side, before the force rows.
 // ownerRace = race of the OWNING king (the province owner's for a leaderless garrison).
-function kinNarrative(force, leader, ownerRace, sideName) {
+export function kinNarrative(force, leader, ownerRace, sideName) {
   const f = (force || []).filter((a) => a && a.race);
   if (!f.length) return null;
   const lr = (leader && leader.race) || null;
@@ -419,11 +433,11 @@ function kinNarrative(force, leader, ownerRace, sideName) {
 // tests can reach them.
 // a COASTAL province is a land province with at least one sea neighbour (used by Sea Giants' Tidal
 // Might). Module-level so every battle path and the bot model can share it.
-function provIsCoastal(G, prov) {
+export function provIsCoastal(G, prov) {
   if (!G || !G.world || !prov || prov.terrain === 'sea') return false;
   return getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).some((n) => n && n.terrain === 'sea');
 }
-function seaPenalty(armyType, terrain) {
+export function seaPenalty(armyType, terrain) {
   if (terrain !== 'sea') return 1.0;
   // 2026-09-23e (Toby): EVERY flyer fights normally at sea — the flying beasts (Thunderbirds,
   // Manticore Pride, Crimson Rocs, Elder Dragons: AERIAL_TYPES) included. They were caught by the
@@ -434,7 +448,7 @@ function seaPenalty(armyType, terrain) {
 
 // DRUID MASTERY gain for one unit under one commander → {gain (0‥1), lvl, min}. runTurn scope
 // (needs effStat / dragonTamed). Mirrors the player portal's "Armies leading" panel.
-function druidMasteryGain(turnContext, heroChar, army, playerAlignment) {
+export function druidMasteryGain(turnContext, heroChar, army, playerAlignment) {
   const none = { gain: 0, lvl: 0, min: 0 };
   if (!heroChar || !army || army._isSkeletal) return none;
   if (!(CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type))) return none;
@@ -449,7 +463,7 @@ function druidMasteryGain(turnContext, heroChar, army, playerAlignment) {
   const gain = Math.min(DRUID_MASTERY_CAP, DRUID_MASTERY_PER_LVL * Math.max(0, lvl - min));
   return { gain: Math.round(gain * 100) / 100, lvl, min };
 }
-function armStr(turnContext, army, heroChar, playerAlignment, terrain, ctx, opts) {
+export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ctx, opts) {
   const { G } = turnContext;
   const ARMY_STR = UNIT_BASE_STR; // alias → master (was a stale 6th copy of the strength table)
   const Q_MULT = UNIT_Q_MULT; // alias → master
@@ -745,7 +759,7 @@ function armStr(turnContext, army, heroChar, playerAlignment, terrain, ctx, opts
 // 2026-09-24 (Toby): BATTLE TIMING — every unit modifier (armStr) and command multiplier is applied
 // to the UNDAMAGED unit first; only then is this battle's pre-battle damage (arrows, battle magic,
 // primal strikes, flak) subtracted. `_cmdS` = the figure before damage, `_dmg` = what came off.
-function ladderRow(turnContext, a, hero, align, terrain, ctx, cmd) {
+export function ladderRow(turnContext, a, hero, align, terrain, ctx, cmd) {
   const tr = [];
   const u = ctx
     ? armStr(turnContext, a, hero, align, terrain, Object.assign({}, ctx, { trace: tr }), { deferDamage: true })
@@ -764,7 +778,7 @@ function ladderRow(turnContext, a, hero, align, terrain, ctx, cmd) {
 // the side's final strength; the rows keep every stage for the ladder.
 // opts (2026-10-11): {terrain, tac, enemy, enemyTac, out} — the grid is built here, on the finished
 // figures, and handed back through opts.out.grid for the report and the ladder.
-function finishSide(rows, width, flank, forceMods, opts) {
+export function finishSide(rows, width, flank, forceMods, opts) {
   const F = (forceMods || []).reduce((p, x) => p * (x && isFinite(x.m) ? x.m : 1), 1);
   rows.forEach((r) => {
     const pre = r._cmdS * F,
@@ -791,4 +805,4 @@ function finishSide(rows, width, flank, forceMods, opts) {
 // province still gripped by that realm's own Terror — the mirror of the Druids' Home of the Wild, on ground
 // Evil makes its own by winning. 2026-10-12 (Toby): only when they ATTACK there, never when defending it. Read at battle start, BEFORE consumeTerror
 // clears the stacks (reignOfFearHere), and applied in armStr through ctx.reignOfFear.
-const REIGN_OF_FEAR_MULT = 1.5;
+export const REIGN_OF_FEAR_MULT = 1.5;

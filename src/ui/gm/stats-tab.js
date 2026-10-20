@@ -1,11 +1,20 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { KC_BUILD_STAMP } from './startup.js';
+import { ARMY_COST_MASTER } from '../../engine/army-tables.js';
+import { sb } from './config.js';
+import { _kcOverlord, show } from './sign-in.js';
+import { fortuneWinChance } from '../../engine/battle/fortune.js';
+import { KC_TEL_V } from '../../db/game-meta.js';
+
 // ════
 // STATS TAB (2026-09-25) — reads turn_events + game_results and answers the balance questions.
 // ════
 // All the maths is done client-side on the raw rows (a few hundred realm-turns is a few MB, fine).
 // Charts are plain HTML bars in the portal's own palette — no chart library, so nothing to load or
 // fail. Every chart is also a table: the number sits beside every bar.
-const _stats = { rows: null, results: null, games: null, loadedAt: 0 };
-const STATS_ACTION_LABEL = {
+export const _stats = { rows: null, results: null, games: null, loadedAt: 0 };
+export const STATS_ACTION_LABEL = {
   move: 'Move',
   defend: 'Defend',
   explore: 'Explore',
@@ -35,8 +44,8 @@ const STATS_ACTION_LABEL = {
   harvest_field: 'Harvest Field',
   rite: 'Rite',
 };
-const STATS_COL = { crimson: '#7a1c1c', forest: '#2d4a1e', gold: '#c8922a', blue: '#2f5f8f', stone: '#6b5a42' };
-async function openStats(force) {
+export const STATS_COL = { crimson: '#7a1c1c', forest: '#2d4a1e', gold: '#c8922a', blue: '#2f5f8f', stone: '#6b5a42' };
+export async function openStats(force) {
   show('sec-stats');
   const msg = document.getElementById('stats-msg'),
     body = document.getElementById('stats-body');
@@ -106,7 +115,7 @@ async function openStats(force) {
   sel.value = ids.includes(keep) ? keep : '';
   renderStats();
 }
-function _statsJ(v) {
+export function _statsJ(v) {
   if (v == null) return null;
   if (typeof v === 'string') {
     try {
@@ -117,10 +126,10 @@ function _statsJ(v) {
   }
   return v;
 }
-function _statsFinished(gameId) {
+export function _statsFinished(gameId) {
   return (_stats.results || []).some((r) => r.game_id === gameId);
 }
-function _statsFilter() {
+export function _statsFilter() {
   const gid = document.getElementById('stats-game').value,
     who = document.getElementById('stats-who').value,
     diff = document.getElementById('stats-diff').value,
@@ -134,7 +143,7 @@ function _statsFilter() {
   };
 }
 // ── tiny chart kit ── a horizontal bar per row: label · bar · value text. `items` = [{label, v, txt, col, sub}]
-function statsBars(items, opt) {
+export function statsBars(items, opt) {
   opt = opt || {};
   const max = Math.max(1e-9, ...items.map((i) => i.v || 0), opt.max || 0);
   return kcHtml`<div style="display:grid;grid-template-columns:${opt.labelW || 150}px 1fr auto;gap:4px 8px;align-items:center;font-size:.8rem">${items.map(
@@ -145,7 +154,7 @@ function statsBars(items, opt) {
   )}</div>`;
 }
 // a small SVG line chart: series = [{name, pts:[[x,y]...], col}], x = turn number
-function statsLines(series, opt) {
+export function statsLines(series, opt) {
   opt = opt || {};
   const W = 560,
     H = 170,
@@ -192,12 +201,12 @@ function statsLines(series, opt) {
   );
   return kcHtml`<div>${svg}<div style="font-size:.74rem;color:var(--stone);margin-top:2px">${series.map((s, i) => kcHtml`${i ? kcHtml` &nbsp; ` : ''}<span style="display:inline-block;width:10px;height:10px;background:${s.col};border-radius:2px;vertical-align:middle;margin-right:4px"></span>${s.name}`)}${opt.note ? ' · ' + opt.note : ''}</div></div>`;
 }
-function statsCard(title, body, note) {
+export function statsCard(title, body, note) {
   return kcHtml`<div class="card"><h2>${title}</h2>${note ? kcHtml`<div style="font-size:.78rem;color:var(--stone);margin:-6px 0 10px">${note}</div>` : ''}${body}</div>`;
 }
-const _pct = (a, b) => (b > 0 ? Math.round((100 * a) / b) : 0);
-const _avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
-function renderStats() {
+export const _pct = (a, b) => (b > 0 ? Math.round((100 * a) / b) : 0);
+export const _avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
+export function renderStats() {
   const body = document.getElementById('stats-body');
   if (!body || !_stats.rows) return;
   const { rows, results, allRows } = _statsFilter();
@@ -663,7 +672,7 @@ function renderStats() {
   body.innerHTML = kcHtml`${html}`;
 }
 // ── exports ──
-function _csv(rows, cols) {
+export function _csv(rows, cols) {
   const esc = (v) => {
     if (v == null) return '';
     const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
@@ -673,7 +682,7 @@ function _csv(rows, cols) {
     .concat(rows.map((r) => cols.map((c) => esc(typeof c === 'function' ? c(r) : r[c])).join(',')))
     .join('\n');
 }
-function _download(name, text, type) {
+export function _download(name, text, type) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: type || 'text/csv' }));
   a.download = name;
@@ -684,7 +693,7 @@ function _download(name, text, type) {
     a.remove();
   }, 500);
 }
-function exportStats(kind) {
+export function exportStats(kind) {
   if (!_stats.rows) return;
   const { rows, results } = _statsFilter();
   const stamp = new Date().toISOString().slice(0, 10);
@@ -878,7 +887,7 @@ function exportStats(kind) {
     );
   }
 }
-async function forgetDeletedGames() {
+export async function forgetDeletedGames() {
   if (!_stats.rows) return;
   // A game is "deleted" only if no games row exists for it, whoever runs it: the statistics on screen can include
   // other GMs' games (the Overlord sees every game's, since P0-22), so _stats.games (this account's own) can't decide.

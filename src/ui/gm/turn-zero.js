@@ -1,3 +1,17 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { SKILL_LABELS } from '../../engine/army-tables.js';
+import { sb } from './config.js';
+import { MAP_MAX_PLAYERS } from './game-list.js';
+import { renderOrdersStatus } from './game-detail.js';
+import { seedUsedHeroNames } from '../../engine/names.js';
+import { seedUsedArmyNames } from '../../engine/dice-and-army-names.js';
+import { metaPatch, normalizeTurnMode, parseGameState } from '../../db/game-meta.js';
+import { computeNextDeadline } from './turn-mode.js';
+import { runningBuildStamp } from './auto-turn.js';
+import { botConfigFor, generateBotSetups, isBotRow } from '../../engine/bots/setup.js';
+import { generateNewGame, normSeaPct } from '../../engine/world/generate.js';
+import { buildTurnReport } from '../../views/turn-report.js';
+
 // ── TURN 0 — FULL INLINE MAP GENERATION ────
 // Embeds the core map/character generation from kingdoms-call-gm.html so the GM portal is fully
 // self-contained. Holds the prepared Turn-0 plan (human + bot setups) between the roster preview
@@ -5,7 +19,7 @@
 // A declared global (plan P1-09b): one binding the page's files and its tests share (ui/gm/globals.js says why).
 globalThis._pendingTurn0 = null;
 
-async function runTurn0() {
+export async function runTurn0() {
   const msg = document.getElementById('detail-msg');
   msg.innerHTML = '<div class="msg-info">⏳ Preparing world setup…</div>';
 
@@ -119,7 +133,7 @@ async function runTurn0() {
 }
 
 // Render the Turn-0 roster (humans + generated bots) for GM sanity-check before committing.
-function renderTurn0Preview() {
+export function renderTurn0Preview() {
   const msg = document.getElementById('detail-msg');
   if (!_pendingTurn0) {
     msg.innerHTML = '';
@@ -156,7 +170,7 @@ function renderTurn0Preview() {
 }
 
 // Commit the prepared Turn-0 plan: persist bot rows, generate the world, push reports.
-async function commitTurn0() {
+export async function commitTurn0() {
   const msg = document.getElementById('detail-msg');
   if (!_pendingTurn0) {
     msg.innerHTML = '<div class="msg-error">No pending setup — press Run Turn 0 again.</div>';

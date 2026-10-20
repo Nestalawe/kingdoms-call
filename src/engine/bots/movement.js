@@ -1,3 +1,14 @@
+import { unitBaseStrength } from '../battle/strength.js';
+import { heroHireWage } from '../world/tables.js';
+import { BOT_HEX_DIRS, botBattleForce, botConceded, botForceStrength, botNeighbourProv, botNoteLand, botRelationRaw, botSeesChar, botTargetDefence, botTuning, botVisibleCharsIn } from './intel.js';
+import { BOT_AERIAL_TYPES, BOT_CARRIER_TYPES, BOT_FLYING_TYPES, BOT_SEA_ALL, botCanFly, botEnemyDefence, botIsValuable, botLairDir, botPlanAssaults, botSeaCap } from './war.js';
+import { botFieldRecruitTokens, botGarrisonOrder, botHeroCap, botHireBias, botHireOrder, botHomeId, botLandReach, botLedger, botPassable, botRecruitOrder, botRoles, botSeaReach, botSpend, botTurnCache, botUnderAttack } from './strategy.js';
+import { botChainHops, botDefenderOrders, botDefenderPost, botDistantStrike, botFillOrders, botFrontierTarget, botHomeThreat, botMoveOrder, botNearbyThreat, botPathDirs, botPathLen, botPracticeFallback, botRoamOrders, botRoleWork, botScanTargets, botSpecialistOrders, botSpecialistRoles, botZoneOf } from './specialists.js';
+import { BOT_INFILTRATE_RANGE, botAirReach, botAirStrike, botAssumedChar, botCoastalPorts, botConsecrateTarget, botFlyerPorts, botInfiltrateOrders, botInfiltrateSchool, botItemPre, botLairPlan, botLiftable, botMasteryPre, botNearestOf, botOnlySkeletal, botOrphanHostOrders, botRitePre, botRunSlayerSchool, botSeaStrike, botSetDuelStances, botSignaturePre, botSpareBerths } from './missions.js';
+import { BOT_NAVAL_TYPES, botAtWar, botCoastalFleetType } from './economy.js';
+import { botBeatableLairIn, botCastPlan, botHuntTarget, botOffensiveMagic, botPathAny, botPathLenAny, botPlannedAttackTarget, botRaidTarget, botSchoolLimit } from './spellcraft.js';
+import { graveServedOther } from '../heroes/charms-and-neutrals.js';
+
 // ══ RAISE THE FALLEN (2026-09-28, Toby: bots with white mages resurrect their heroes) ════
 // Before any other plan, each body the realm may raise — one of ITS OWN fallen heroes whose death it knows of (never
 // one who served another realm; the engine refuses those too), or its most recently fallen MONARCH (the engine lets
@@ -6,7 +17,7 @@
 // richest held province) and casts Resurrect on that body as often as his White allows in the phases left — a
 // second cast only matters if the first fizzles (the engine allows one raise per body per turn). A body more than
 // four hops away is walked toward over several years (up to eight hops). Richest bodies first: the king, then by skill.
-function botRaiseTargets(G, pi) {
+export function botRaiseTargets(G, pi) {
   const p = (G.players || [])[pi] || {};
   const known = new Set(p.knownDeadHeroIds || []);
   return (G.heroGraveyard || [])
@@ -29,7 +40,7 @@ function botRaiseTargets(G, pi) {
     .filter((x) => x.loc != null)
     .sort((a, b) => b.val - a.val);
 }
-function botResurrectErrands(G, pi, all, roles, assigned) {
+export function botResurrectErrands(G, pi, all, roles, assigned) {
   const targets = botRaiseTargets(G, pi);
   if (!targets.length) return;
   const D = (botTurnCache(G).raiseDiag = botTurnCache(G).raiseDiag || []);
@@ -65,7 +76,7 @@ function botResurrectErrands(G, pi, all, roles, assigned) {
     D.push({ pi, grave: g.id, monarch: !!g._monarch, mage: c.id, hops: best.path.length });
   });
 }
-function runBotMovement(G, botIdxSet, hooks) {
+export function runBotMovement(G, botIdxSet, hooks) {
   hooks = hooks || {};
   if (!botIdxSet || !botIdxSet.size || !G.world) return;
   G.turnOrders = G.turnOrders || {};

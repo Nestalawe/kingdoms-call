@@ -1,3 +1,6 @@
+import { noteRealmBattle } from '../bots/war.js';
+import { TM, creditBeastUnit } from './perks.js';
+
 // ── TITLE HOLDERS AND BATTLE MERIT (plan P1-08a: lifted out of resolveTurn) ────
 // Who holds a Title or a minor title this turn (G._titleHolders and G._minorHolders, worked out once at the start of
 // the turn: see "LIVE TITLE PERKS" in resolveTurn), and the merit a battle earns. Each takes the turn's context first
@@ -11,7 +14,7 @@
 // combatVsChar/combatVsNPC's OWN casualty counts. A leaderless defence
 // (an enemy realm's garrison) has no commander to debit, so only the attacker's merit moves; the
 // attacker is still debited for their own dead when a garrison throws them back.
-function creditBattle(turnContext, atkChar, defChar, battle, prov) {
+export function creditBattle(turnContext, atkChar, defChar, battle, prov) {
   const { G } = turnContext;
   if (!atkChar || !battle || atkChar.player == null) return;
   // WAR ASSESSMENT news (2026-09-29): a battle between two realms is remembered a few turns.
@@ -44,7 +47,7 @@ function creditBattle(turnContext, atkChar, defChar, battle, prov) {
   if (victor && victor.alive !== false) (victor.armies || []).forEach((a) => creditBeastUnit(TM(victor), a, 1)); // a dead victor showed no mastery of the beast
 }
 
-function charHoldsTitle(turnContext, c, key) {
+export function charHoldsTitle(turnContext, c, key) {
   const { G } = turnContext;
   return !!(
     c &&
@@ -54,11 +57,11 @@ function charHoldsTitle(turnContext, c, key) {
     G._titleHolders[key].charId === c.id
   );
 }
-function playerHoldsTitle(turnContext, pi, key) {
+export function playerHoldsTitle(turnContext, pi, key) {
   const { G } = turnContext;
   return !!(G._titleHolders && G._titleHolders[key] && G._titleHolders[key].playerIndex === pi);
 }
-function charMinor(turnContext, c, key) {
+export function charMinor(turnContext, c, key) {
   const { G } = turnContext;
   return !!(c && G._minorHolders && G._minorHolders[key] && G._minorHolders[key].charId === c.id);
 }

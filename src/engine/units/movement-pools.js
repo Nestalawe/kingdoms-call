@@ -1,10 +1,17 @@
+import { ARMY_SPEED_R } from '../battle/ladder.js';
+import { AERIAL_TYPES, SEA_TYPES, getFlyCapability, marchSpeedBonus, navalSpeedBonus } from './movement.js';
+import { discEff, discUnitMatch } from '../discoveries.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { getSeaCapability } from './sea-lift-stranding-and-retreats.js';
+
 // ── MOVEMENT POOLS (plan P1-08b: lifted out of resolveTurn) ────
 // Where a column may step, and each hero's move points for the turn: the land and sea pools (resolveTurn's movePoints,
 // seaMovePoints, seaMoveActive, seaCap, moveMax and seaMoveMax, which join the turn's context by reference), set at
 // the start of the turn and refreshed when a column changes; and the chance that two contingents unify.
 // computeMovePoolMax, setMovePool and refreshMovePool take the turn's context first (src/engine/turn/context.js); the
 // rest read no turn state.
-function canEnterTerrain(c, terrain, seaCap) {
+export function canEnterTerrain(c, terrain, seaCap) {
   if (terrain === 'sea') {
     if (seaCap === 'all' || seaCap === 'sea') return true;
     if (c._partSeaThisPhase) return true; // Part Sea spell active this phase
@@ -24,7 +31,7 @@ function canEnterTerrain(c, terrain, seaCap) {
 // reinforcement checked terrain alone, so a general with ships and troops in a coastal province rode
 // out overland to a neighbour on Defend. Every path that marches a column without a Move order now
 // asks this instead.
-function canStepBetween(c, from, to, cap) {
+export function canStepBetween(c, from, to, cap) {
   if (!to || !canEnterTerrain(c, to.terrain, cap)) return false;
   const naval = (c.armies || []).some((a) => a && SEA_TYPES.has(a.type));
   if (naval && from && from.terrain !== 'sea' && to.terrain !== 'sea') return false;
@@ -33,7 +40,7 @@ function canStepBetween(c, from, to, cap) {
 
 // The March speed table is MARCH_NAVAL_BONUS at module level (item 14: one rate for every unit).
 // Unify chance table [0 distance, 1 distance, 2 distance] by March level
-const MARCH_UNIFY = [
+export const MARCH_UNIFY = [
   [80, 50, 20],
   [90, 60, 30],
   [100, 70, 40],
@@ -43,7 +50,7 @@ const MARCH_UNIFY = [
 ];
 
 // Naval table: similar to March but for sea movement, +20% fleet str per level
-const NAVAL_UNIFY = [
+export const NAVAL_UNIFY = [
   [80, 50, 20],
   [90, 60, 30],
   [100, 70, 40],
@@ -55,7 +62,7 @@ const NAVAL_UNIFY = [
 // Pure computation of a character's move-pool MAXIMUMS from CURRENT army composition + skills.
 // Returns {land, sea, seaActive, cap}. Shared by setMovePool (turn start) and refreshMovePool
 // (mid-turn, after composition or March/Naval changes), so both stay perfectly in step.
-function computeMovePoolMax(turnContext, c) {
+export function computeMovePoolMax(turnContext, c) {
   const armies = (c.armies || []).filter((a) => a && !a._phantom); // illusions set no pace and take no berth
   const marchLevel = effStat(turnContext, c, 'march');
   const navalLevel = effStat(turnContext, c, 'naval');
@@ -118,7 +125,7 @@ function computeMovePoolMax(turnContext, c) {
   if (charMinor(turnContext, c, 'seawolf') && sea > 0) sea += 1;
   return { land, sea, seaActive, cap: getSeaCapability(armies, c) };
 }
-function setMovePool(turnContext, c) {
+export function setMovePool(turnContext, c) {
   const { movePoints, seaMovePoints, seaMoveActive, seaCap, moveMax, seaMoveMax } = turnContext;
   const m = computeMovePoolMax(turnContext, c);
   movePoints[c.id] = m.land;
@@ -133,7 +140,7 @@ function setMovePool(turnContext, c) {
 // are preserved, so dropping a slow unit correctly frees up the extra reach for the rest of the
 // turn, and picking up a slow unit correctly reduces it. (Fixes: army stuck at an old slow speed
 // after a slow unit was transferred out; move rate not rising when March increased mid-turn.)
-function refreshMovePool(turnContext, c) {
+export function refreshMovePool(turnContext, c) {
   const { moveMax, movePoints, seaMoveMax, seaMovePoints, seaMoveActive, seaCap } = turnContext;
   if (!c || c.id == null) return;
   const oldLandMax = moveMax[c.id] != null ? moveMax[c.id] : (movePoints[c.id] ?? 0);
@@ -163,7 +170,7 @@ function refreshMovePool(turnContext, c) {
 }
 
 // Contingent unify helper — used when two friendly forces attack same province same phase
-function contingentUnifyChance(marchOrNaval, distanceProvinces, isNaval) {
+export function contingentUnifyChance(marchOrNaval, distanceProvinces, isNaval) {
   const table = isNaval ? NAVAL_UNIFY : MARCH_UNIFY;
   const row = table[Math.min(marchOrNaval, 5)] || table[0];
   return row[Math.min(distanceProvinces, 2)] || row[row.length - 1];

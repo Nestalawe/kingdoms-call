@@ -1,3 +1,6 @@
+import { fullRaceLandRoster } from './world/tables.js';
+import { discProvCoastal } from './discoveries.js';
+
 // ── GRAND DESIGN ────
 // A Wonder stands in the province it was raised in. Its realm-wide blessings flow only while the
 // realm that built it still CONTROLS that province: lose the ground and every effect lapses at
@@ -7,7 +10,7 @@
 // checks the realm's alignment in the same breath, since each Wonder belongs to exactly one
 // alignment. Module level so buildPlayerReport (which works from gameState, not the runTurn-scoped
 // G) shares it.
-function gdActiveFor(gs, playerIndex, align) {
+export function gdActiveFor(gs, playerIndex, align) {
   const pl = gs && gs.players && gs.players[playerIndex];
   if (!pl) return false;
   if (align && pl.alignment !== align) return false;
@@ -17,7 +20,7 @@ function gdActiveFor(gs, playerIndex, align) {
   const pv = gs.world && gs.world.provinces && gs.world.provinces[pid];
   return !!pv && pv.owner === playerIndex;
 }
-function homeProvinceIdFor(gs, playerIndex) {
+export function homeProvinceIdFor(gs, playerIndex) {
   const pl = ((gs && gs.players) || [])[playerIndex];
   if (!pl) return null;
   if (pl.homeProvinceId != null) return pl.homeProvinceId;
@@ -40,7 +43,7 @@ function homeProvinceIdFor(gs, playerIndex) {
 // changes hands, which is exactly what this is meant to prevent. Item 4: who FOUNDED this province
 // as their capital (null if nobody). Home-ground bonuses belong only to that player — defending it,
 // or attacking to win it back.
-function homeFounderOf(gs, provId) {
+export function homeFounderOf(gs, provId) {
   const pls = (gs && gs.players) || [];
   for (let i = 0; i < pls.length; i++) {
     if (pls[i] && homeProvinceIdFor(gs, i) === provId) return i;
@@ -50,14 +53,14 @@ function homeFounderOf(gs, provId) {
 
 // Neutral trade bonus: +20% of province tax income, rounded down. Exact integer division so the
 // end-of-turn collector and the Tax Income forecast can never disagree by a floating-point hair.
-function neutralTradeGold(pl, income) {
+export function neutralTradeGold(pl, income) {
   return pl && pl.alignment === 'Neutral' ? Math.floor((income || 0) / 5) : 0;
 }
 
 // Existing saves: every king's home province recruits his race's FULL land roster. Idempotent -
 // appends any missing land type to the home's armyTypes, keeping fleets and order. Runs at the top
 // of every runTurn; a no-op once the roster is complete.
-function backfillHomeRosters(gs) {
+export function backfillHomeRosters(gs) {
   ((gs && gs.players) || []).forEach((pl, pi) => {
     if (!pl) return;
     const hid = homeProvinceIdFor(gs, pi);
@@ -74,7 +77,7 @@ function backfillHomeRosters(gs) {
       h.armyTypes.push(fleet);
   });
 }
-const HOME_FLEET_BY_RACE = {
+export const HOME_FLEET_BY_RACE = {
   Human: 'Galleon Fleet',
   Elven: 'Elven Galleys',
   Dwarven: 'Dwarf Ironclads',
@@ -84,7 +87,7 @@ const HOME_FLEET_BY_RACE = {
 // province of a game already running whose pool still offers it now offers the Galleon Fleet in its
 // place (or simply loses it, if the Galleon is already there). A Corsair company already raised is
 // kept and fights as before. Idempotent: runs at the top of every runTurn.
-function retireCorsairPools(gs) {
+export function retireCorsairPools(gs) {
   ((gs && gs.world && gs.world.provinces) || []).forEach((p) => {
     if (!p || !Array.isArray(p.armyTypes)) return;
     const i = p.armyTypes.indexOf('Corsair Fleet');
@@ -103,7 +106,7 @@ function retireCorsairPools(gs) {
 // 2026-10-08 (Toby item 1): this is worked out ONCE, when the king dies (handleHeroDeath), and
 // stored on the grave. The body then stays there, even if that province is captured later; every
 // reader uses the stored `g.location`, so the map, the Resurrect list and the engine always agree.
-function monarchRestProvId(gs, playerIndex) {
+export function monarchRestProvId(gs, playerIndex) {
   const pl = ((gs && gs.players) || [])[playerIndex];
   if (!pl) return null;
   const owned = (pl.provinces || []).map((id) => ((gs.world && gs.world.provinces) || [])[id]).filter(Boolean);
@@ -113,7 +116,7 @@ function monarchRestProvId(gs, playerIndex) {
   return owned.reduce((best, pv) => (pv.tax >= (best ? best.tax || 0 : 0) ? pv : best), owned[0]).id;
 }
 // The column the map should be rolled around, or null to leave the map unshifted.
-function mapCentreColFor(gs, playerIndex) {
+export function mapCentreColFor(gs, playerIndex) {
   const hid = homeProvinceIdFor(gs, playerIndex);
   if (hid == null) return null;
   const hp = ((gs.world && gs.world.provinces) || [])[hid];

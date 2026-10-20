@@ -1,3 +1,11 @@
+import { _escapesTheEnd, _garrethEscapeLine } from '../names.js';
+import { isVanished } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { awardKillXP, awardWinHp } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { pushBattlecry } from './battle-report-lines-and-force-markers.js';
+import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
+import { resolveDuel } from '../personal-combat/duels-and-character-encounters.js';
+import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.js';
+
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
 // The single combat between the two commanders before an army battle, and the morale each host carries into the battle
 // proper (preBattleDuel), for both battle paths: combatVsNPC (battle/battles-against-province-defenders.js) and
@@ -9,7 +17,7 @@
 // It previously lived inline in combatVsChar ONLY, which is why duels never fired in the far more
 // common battles against province guardians. Returns the morale multiplier each side carries into
 // the battle proper; callers must apply both to their strength totals or the duel has no effect.
-function preBattleDuel(turnContext, atk, def, narrative) {
+export function preBattleDuel(turnContext, atk, def, narrative) {
   const { _botPlayerIdx, G } = turnContext;
   const DUEL_MORALE_PENALTY = 0.8;
   let atkMorale = 1,

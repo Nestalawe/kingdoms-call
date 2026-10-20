@@ -1,5 +1,14 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { sb } from './config.js';
+import { _kcOverlord, loadReportedDispatches, show } from './sign-in.js';
+import { invitedNames, loadInvitablePlayers } from './game-list.js';
+import { loadTurnLog } from './turn-log.js';
+import { gameArchived, gameArchivedAt } from '../../db/game-meta.js';
+import { fmtLastRun, ordersWaitingOn, realmConcededIn, realmExemptIn, renderTurnModePanel, seaPctOf, turnModeOf, turnModeSummary } from './turn-mode.js';
+import { botConfigFor, gameVisibility, isBotRow } from '../../engine/bots/setup.js';
+
 // ── GAME DETAIL ────
-async function openGame(gameId) {
+export async function openGame(gameId) {
   show('sec-game-detail');
   document.getElementById('detail-game-name').textContent = 'Loading…';
   document.getElementById('detail-msg').innerHTML = '';
@@ -156,7 +165,7 @@ async function openGame(gameId) {
   }
 }
 
-function renderOrdersStatus(game) {
+export function renderOrdersStatus(game) {
   const players = currentGamePlayers.filter((p) => p.user_id);
   const bots = currentGamePlayers.filter(isBotRow);
   // Bots are auto-satisfied (Phase 1: they submit no orders and default to Defend). The run button

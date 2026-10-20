@@ -1,3 +1,39 @@
+import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P, SPELL_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { BATTLE_MAGIC_SPELL_NAMES, FANATIC_CHANCE_BY_ALIGN, QUALITY_TIERS, SKILL_LABELS, unitRef } from '../army-tables.js';
+import { battleMarginBand, rollUnitFates } from './fates.js';
+import { battleDeploy, battleFacedClauses, battleGridLines, battleLineTotal, battleMovesLine, battleScout, battleScoutLine, battleWidthLine, rollBattleWidth } from './lines.js';
+import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, aAn, ladderFm, ladderLines } from './ladder.js';
+import { AERIAL_TYPES, FLYING_TYPES, MONSTER_ARMIES, OPEN_COUNTRY, SEA_TYPES, countType, isHalfOrMore, rideThemDownBonus, shieldFortHolds, tacMulted } from '../units/movement.js';
+import { abilityMissileUnits, abilityVolleys, applyFlakScreen, archeryBlockedBy, eyesOfTheForestLine, missileDamageMult, missileTargetPool, unitBaseStrength } from './strength.js';
+import { homeFounderOf } from '../grand-design.js';
+import { battleFortune, fortuneNarrative, shuffleP } from './fortune.js';
+import { recordBattleGraves } from '../graves.js';
+import { demoteGuardToWanderer, isConsecrated } from '../heroes/fame-and-consecration.js';
+import { activeItems, hasItemBase } from '../items/equipment.js';
+import { humanXPMult } from '../units/drill-and-spoils.js';
+import { d100, dispFloor, pick, rng } from '../dice-and-army-names.js';
+import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.js';
+import { perkTier } from '../titles/perks.js';
+import { SPELL_CAST_BASE, guardCastChance, magicL8CastBonus, primalStrikeChance } from '../chances-and-lair-grades.js';
+import { DISC_DEFOWN_CAP, discDeathMult, discFanaticApplies, discPromo, discSum, discoveryArmyBonus, hasDisc } from '../discoveries.js';
+import { telSpell } from '../turn/log-line-helpers.js';
+import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { MISSILE_CAP_FRACTION, REIGN_OF_FEAR_MULT, SEA_LAND_PENALTY, applyMissileHit, armStr, bestCurseSkill, curseSkillLabel, finishSide, illusoryTerrainMult, isAirborneAtSea, kinNarrative, ladderRow, provIsCoastal } from './terrain-and-unit-strength.js';
+import { bestRetreat, navalSplitRetreat, retreatOptions, seaTrapLine } from '../units/sea-lift-stranding-and-retreats.js';
+import { realCharOf } from './best-commander.js';
+import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+import { druidShortfallLine, forceMarker, terrainNoteList } from './battle-report-lines-and-force-markers.js';
+import { consumeTerror, reignOfFearHere, spreadTerror } from './evil-terror.js';
+import { battleSpellUseful, pickBattleSpell } from '../magic/pre-battle-spell-choice.js';
+import { bloodHarvest, ironThroneRaise } from './blood-harvest-and-iron-throne.js';
+import { raidLandedHere } from './raid-the-coast-and-landing-parties.js';
+import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.js';
+import { magicItemsLine } from '../personal-combat/duels-and-character-encounters.js';
+import { preBattleDuel } from './pre-battle-duels.js';
+
 // ── BATTLES AGAINST A PROVINCE'S DEFENDERS (plan P1-08g: lifted out of resolveTurn) ────
 // A host's battle against the defenders of a province that no hero of a realm holds: its neutral defenders, a local
 // chieftain or wandering guard leading them, or a realm's unled garrison (combatVsNPC). It takes the turn's context
@@ -7,7 +43,7 @@
 // a battle that carries on round after round in the same province grows deadlier for BOTH sides.
 // prov._carryOnRounds counts the carry-ons (0 for the opening clash); death chances scale by 1 +
 // CARRYON_DEATH_STEP per round, capped at CARRYON_DEATH_CAP×.
-const CARRYON_DEATH_STEP = 0.35,
+export const CARRYON_DEATH_STEP = 0.35,
   CARRYON_DEATH_CAP = 2.5;
 
 // a force at sea is AIRBORNE when it contains at least one land unit
@@ -15,20 +51,20 @@ const CARRYON_DEATH_STEP = 0.35,
 // flyers carried them. Carried land units then fight at ×0.25 and the carrying humanoid flyers at
 // ×0.5
 // (applied in armStr). Module-level so both battle paths and the narrative lines can share it.
-const SEA_AIRBORNE_LAND_PENALTY = 0.25,
+export const SEA_AIRBORNE_LAND_PENALTY = 0.25,
   SEA_AIRBORNE_FLYER_PENALTY = 0.5;
 
 // Simple combat resolve
 // ── ARMY BATTLE NARRATIVE ENGINE ────
 // Narrative vocabulary helpers
-const ATK_VERBS = ['advances on', 'charges into', 'storms', 'attacks', 'assaults', 'drives into'];
-const DEF_VERBS = ['holds the line in', 'stands firm in', 'defends', 'fortifies', 'guards'];
-const WIN_VERBS = ['rout', 'break', 'scatter', 'overwhelm', 'destroy']; // plural — every use reads "<name>'s forces <verb>" (2026-09-23b)
-const LOSE_VERBS = ['is repulsed by', 'retreats before', 'cannot break', 'is driven back by'];
+export const ATK_VERBS = ['advances on', 'charges into', 'storms', 'attacks', 'assaults', 'drives into'];
+export const DEF_VERBS = ['holds the line in', 'stands firm in', 'defends', 'fortifies', 'guards'];
+export const WIN_VERBS = ['rout', 'break', 'scatter', 'overwhelm', 'destroy']; // plural — every use reads "<name>'s forces <verb>" (2026-09-23b)
+export const LOSE_VERBS = ['is repulsed by', 'retreats before', 'cannot break', 'is driven back by'];
 
 // Battle spells for special standard army units (used in pre-battle magic phase) castChance is base
 // % before druid bonus; dmg reduces a target army's effective strength
-const BATTLE_ARMY_SPELLS = {
+export const BATTLE_ARMY_SPELLS = {
   'Wyvern Riders': [
     {
       name: 'Acid Spit Volley',
@@ -42,7 +78,7 @@ const BATTLE_ARMY_SPELLS = {
   ],
 };
 
-function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
+export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const { G, _tel } = turnContext;
   turnContext._combatSkillProv = prov && prov.id != null ? prov.id : null; // battle-series key (cleared at each loop boundary)
   // a resumed battle is another carry-on round (deadlier); a fresh clash resets the count.

@@ -1,5 +1,10 @@
+import { KC_UNIT_BASE_STR, KC_UNIT_Q_MULT } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { MISSILE_ARMIES_MASTER } from './ladder.js';
+import { FLYING_TYPES, ORC_FOOT_TYPES } from '../units/movement.js';
+
 // ── Force-composition strength multipliers (applied inside armStr) ──
-function unitAbilityMult(army, ctx, terrain) {
+export function unitAbilityMult(army, ctx, terrain) {
   if (!army || !ctx) return 1;
   const t = army.type,
     force = ctx.force || [],
@@ -44,7 +49,7 @@ function unitAbilityMult(army, ctx, terrain) {
 }
 
 // ── Archery-phase ability helpers ── Which units actually loose this phase, and in what order.
-function abilityMissileUnits(force, terrain) {
+export function abilityMissileUnits(force, terrain) {
   const list = (force || []).filter((a) => MISSILE_ARMIES_MASTER.has(a.type));
   // HUMAN — Broadside: at sea a galleon is a floating battery.
   if (terrain === 'sea')
@@ -65,15 +70,15 @@ function abilityMissileUnits(force, terrain) {
 // hard; Ironwood Crossbows punch further; Dwarf Ironclads are arrow-immune. A unit at the cap gains
 // nothing from more shots, so the target pool skips it (kept in this scope so missileTargetPool
 // sees it).
-const _MISSILE_CAP_FRAC = 0.4; // mirrors MISSILE_CAP_FRACTION (kept local to this module scope) — 2026-09-24: 30% → 40% (80% winged)
-function missileCap(target, firer) {
+export const _MISSILE_CAP_FRAC = 0.4; // mirrors MISSILE_CAP_FRACTION (kept local to this module scope) — 2026-09-24: 30% → 40% (80% winged)
+export function missileCap(target, firer) {
   const baseStr = unitBaseStrength(target);
   const isFly = FLYING_TYPES.has(target.type);
   let capFraction = isFly ? _MISSILE_CAP_FRAC * 2 : _MISSILE_CAP_FRAC;
   if (firer && firer.type === 'Ironwood Crossbows') capFraction = isFly ? 0.9 : 0.55; // Punch Through: +15 points on the ground (was 45 vs 30); winged 90 (was 90 vs 60)
   return Math.max(1, Math.floor(baseStr * capFraction));
 }
-function missileCapReached(target, firer) {
+export function missileCapReached(target, firer) {
   if (!target) return true;
   if (target.type === 'Dwarf Ironclads' || target.type === 'Great Turtles') return true; // arrow-immune (Armoured Hulls; the turtles' Shell Wall) — never worth a shot
   return (target._archeryRed || 0) >= missileCap(target, firer);
@@ -82,7 +87,7 @@ function missileCapReached(target, firer) {
 // still below their arrow cap; only when none is left does it pick at random among ALL the other
 // enemy units below their cap (no "front row" any more). Shadow Archers stay hidden while anything
 // else is visible (Loosed From Cover). `frontWidth` is ignored — kept so old callers still work.
-function missileTargetPool(enemyArmies, frontWidth, firer, myForce) {
+export function missileTargetPool(enemyArmies, frontWidth, firer, myForce) {
   const all = (enemyArmies || []).filter(Boolean);
   // ELF — Eyes of the Forest: with Eagle Riders overhead nothing hides, Shadow Archers included.
   const visible = eyesOfTheForest(myForce) ? all : all.filter((a) => a.type !== 'Shadow Archers');
@@ -94,16 +99,16 @@ function missileTargetPool(enemyArmies, frontWidth, firer, myForce) {
 }
 // ELF — Ambush: enemy archers never get a clear shot at Wardens in their own woods — unless Eagle Riders
 // fly with the shooters (Eyes of the Forest, 2026-10-11): then the Wardens are seen and the volley flies.
-function eyesOfTheForest(force) {
+export function eyesOfTheForest(force) {
   return (force || []).some((a) => a && a.type === 'Eagle Riders');
 }
-function archeryBlockedBy(defenderForce, terrain, shooters) {
+export function archeryBlockedBy(defenderForce, terrain, shooters) {
   if (terrain !== 'forest' && terrain !== 'jungle') return false;
   if (eyesOfTheForest(shooters)) return false;
   return (defenderForce || []).some((a) => a && a.type === 'Forest Wardens');
 }
 // The line the report shows when Eyes of the Forest lifts an Ambush (null when it does not apply).
-function eyesOfTheForestLine(defenderForce, terrain, shooters, shooterName) {
+export function eyesOfTheForestLine(defenderForce, terrain, shooters, shooterName) {
   if ((terrain !== 'forest' && terrain !== 'jungle') || !eyesOfTheForest(shooters)) return null;
   if (!(defenderForce || []).some((a) => a && a.type === 'Forest Wardens')) return null;
   return `🦅 ${shooterName}'s Eagle Riders mark the Forest Wardens in the thickets — the Ambush is spoiled and the volley flies.`;
@@ -111,7 +116,7 @@ function eyesOfTheForestLine(defenderForce, terrain, shooters, shooterName) {
 // Per-shot damage multipliers from the firing unit's ability. isAtk: the firer's side attacks.
 // 2026-10-11 (Toby, the unit abilities): the Longbows' Massed Volley is retired (theirs are Bodkin Points
 // and Prepared Ground); the Black Arrows' Raiders' Volley arrives.
-function missileDamageMult(firer, force, terrain, target, isAtk) {
+export function missileDamageMult(firer, force, terrain, target, isAtk) {
   if (!firer) return 1;
   let m = 1;
   // ELF — Woodland Volley: elven bows in elven woods.
@@ -124,7 +129,7 @@ function missileDamageMult(firer, force, terrain, target, isAtk) {
 }
 // Prepared Ground: a defending Longbow company looses two volleys. How many shots a unit fires this
 // phase, before any quiver the commander carries.
-function abilityVolleys(firer, isAtk) {
+export function abilityVolleys(firer, isAtk) {
   return firer && firer.type === 'Yeoman Longbows' && !isAtk ? 2 : 1;
 }
 
@@ -139,9 +144,9 @@ function abilityVolleys(firer, isAtk) {
 // in a battle against province defenders, so it only surfaced in games that actually saw combat.
 // Same trap as FLYING_TYPES and ITEMS_BY_TIER before it: shared lookup tables and the helpers that
 // read them live at module top level, always.
-const UNIT_BASE_STR = { ...KC_UNIT_BASE_STR };
-const UNIT_Q_MULT = { ...KC_UNIT_Q_MULT };
-function unitBaseStrength(army) {
+export const UNIT_BASE_STR = { ...KC_UNIT_BASE_STR };
+export const UNIT_Q_MULT = { ...KC_UNIT_Q_MULT };
+export function unitBaseStrength(army) {
   return (UNIT_BASE_STR[army.type] || 4) * (UNIT_Q_MULT[army.quality || 'Average'] || 2);
 }
 
@@ -152,7 +157,7 @@ function unitBaseStrength(army) {
 // with game state, and a winged rider harried once was immune to Flak Screen for the rest of the
 // GAME. It is now deleted alongside those flags at every one of those five sites. If a new
 // battle-only flag is added, add it to all five.
-function applyFlakScreen(myForce, enemyForce, myName, narr) {
+export function applyFlakScreen(myForce, enemyForce, myName, narr) {
   const gyros = (myForce || []).filter((a) => a && a.type === 'Gnomish Gyrocopters');
   if (!gyros.length) return;
   const flyers = (enemyForce || []).filter((a) => a && FLYING_TYPES.has(a.type) && !a._flakTargeted);

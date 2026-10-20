@@ -1,3 +1,11 @@
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { beastCommandCount, beastCommandRoom, beastCommandWords, heroSkillWage } from '../world/tables.js';
+import { isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.js';
+import { notifyTarget } from '../turn/log-line-helpers.js';
+import { newMercId } from '../turn/mercenary-ids-and-battle-records.js';
+import { isOpenSea, seaLiftShortfall, strandLabel } from '../units/sea-lift-stranding-and-retreats.js';
+import { refreshMovePool } from '../units/movement-pools.js';
+
 // ── THE ARMY ORDERS (plan P1-08j5: the fifth family taken out of processOrder in resolveTurn) ──
 // Leave/Transfer Army (companies handed to a comrade beside him, or left in the garrison of a province the realm
 // holds), Release Hero (a hero leaves the realm's service a wanderer), Disband Army (companies become bands of
@@ -7,7 +15,7 @@
 // in the order processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a
 // case-level break became a return.
 // Leave/Transfer Army: companies handed to a comrade beside him, or left in the garrison of a province the realm holds.
-function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extra, prov) {
+export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extra, prov) {
   const { G, log, movePoints, seaMovePoints } = turnContext;
   // a pre-order hero's synthetic id is a CHARACTER recipient — parseInt gave NaN, which fell
   // through to the garrison branch and quietly garrisoned the troops (2026-09-23).
@@ -182,7 +190,7 @@ function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extra, prov
   return;
 }
 // Release Hero: a hero leaves the realm's service a wanderer, with what he carries.
-function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
+export function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
   const { log, G } = turnContext;
   // ── RELEASE HERO ── dismiss a hero from the realm's service. They become an ordinary
   // wandering hero (player===null, not a guard), keep every magic item they carry, keep their
@@ -238,7 +246,7 @@ function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
   return;
 }
 // Disband Army: companies become bands of mercenaries where he stands (the risen dead crumble).
-function resolveDisbandArmyOrder(turnContext, c, target, prov) {
+export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
   const { log, G, movePoints, seaMovePoints } = turnContext;
   // Disband armies — they become wandering mercenaries (skeletal armies just die)
   if ((c.armies || []).length === 0) {
@@ -311,7 +319,7 @@ function resolveDisbandArmyOrder(turnContext, c, target, prov) {
   return;
 }
 // Pick Up Army: companies taken from the garrison where he stands (or, by an old order, from a comrade), as many as his Druid and his ships allow.
-function resolvePickUpArmyOrder(turnContext, c, target, prov) {
+export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
   const { log, G, movePoints, seaMovePoints } = turnContext;
   const _pickBefore = (c.armies || []).slice();
   let _pickSrc = null; // for the at-sea capacity check below

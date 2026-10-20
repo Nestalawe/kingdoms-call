@@ -9,7 +9,7 @@
 // and another hero takes command, the pooled host carries the raid as `_raidCarriedAt` rather than
 // the raider's own order flag — syncLeaderCopy writes the copy's keys back onto the real commander,
 // and he must never look as though HE gave the Naval-9 order (the move-time plunder reads it).
-function raidLandedHere(turnContext, ch, prov) {
+export function raidLandedHere(turnContext, ch, prov) {
   const { G } = turnContext;
   if (!ch || !prov || prov.terrain === 'sea') return false;
   const k = ch._raidCarriedAt;
@@ -19,7 +19,7 @@ function raidLandedHere(turnContext, ch, prov) {
   return !!l && l.turn === G.turn && l.prov === prov.id;
 }
 // The pooled-host fields a landing party carries whoever commands it.
-function landingPartyFlags(turnContext, party, prov) {
+export function landingPartyFlags(turnContext, party, prov) {
   const { G } = turnContext;
   const o = { _amphibiousAssault: (party || []).some((m) => m && m._amphibiousAssault) }; // Reaver Crews (2026-09-23e)
   if (prov && (party || []).some((m) => raidLandedHere(turnContext, m, prov)))

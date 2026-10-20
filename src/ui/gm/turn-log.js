@@ -1,4 +1,11 @@
-async function loadTurnLog(gameId, turn) {
+import { kcHtml } from '../shared/kc-safe.js';
+import { KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.js';
+import { sb } from './config.js';
+import { show } from './sign-in.js';
+import { loadGames } from './game-list.js';
+import { parseGameState } from '../../db/game-meta.js';
+
+export async function loadTurnLog(gameId, turn) {
   const { data } = await sb.from('turn_logs').select('*').eq('game_id', gameId).eq('turn', turn).eq('player_index', -1);
   const el = document.getElementById('detail-log');
   if (!data || data.length === 0) {
@@ -156,7 +163,7 @@ async function loadTurnLog(gameId, turn) {
 // SURVIVED the games row — a deleted game went on being counted in the Stats tab and went on
 // showing on the leaderboard for ever, with no way to reach it. All four are purged here. If you
 // want the game kept but out of the way, use Archive instead.
-async function deleteGame(gameId) {
+export async function deleteGame(gameId) {
   if (
     !confirm(
       'Delete this game permanently?\n\nThe world, the players, every turn report and dispatch, all recorded statistics AND its Hall-of-Fame leaderboard entry are destroyed. This cannot be undone.\n\nTo keep the game but take it out of your list, cancel and use Archive instead.',

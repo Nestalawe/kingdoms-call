@@ -1,3 +1,23 @@
+import { sb } from './startup.js';
+import { setConcede, setDiscoveryChoice, updateEquipTarget, updateRumourTarget } from './items-and-heroes.js';
+import { jumpToReportSection, show } from './init.js';
+import { mapZoom, setDeskView, setMobileView } from './layout.js';
+import { acceptGmOffer, changeDisplayName, changePassword, closeChangePassword, closeDisplayName, declineGmOffer, doSignIn, doSignOut, doSignUp, loadAllGames, openGameFresh, setAuthTab, submitChangePassword, submitDisplayName } from './sign-in.js';
+import { loadMyGames, loadOpenGames, pollForUpdates, refreshOpenReport, toggleArchivedGamesCard } from './game-lists.js';
+import { adjustSkill, doJoinGame, hideSkillTip, joinGame, loadPastReport, returnToCurrentReport, showJoinGame, showSkillTip } from './join-and-chronicle.js';
+import { _renderDiplomacyInto, collapseAllChronicle, collapseAllSections, openReport, renderDiplomacy, renderReportView, setDiploChoice, toggleBattleFold, toggleSection } from './report.js';
+import { renderTitles, setReckoningCall } from './titles.js';
+import { rebuildTargetWrap, unitTypeOfP } from './order-chances.js';
+import { groupHeroesByLocation, moveHeroBlock, poSeaAnalysis, refreshAllMoveModeNotes } from './move-analysis.js';
+import { addEncounterTactic, buildOrdersForm, clearPreSchool, computeOrderLedgerP, confirmEPSchool, confirmEPSpell, epDragStart, epDropTactic, epMoveTactic, onSpellChange, openPreSchoolPicker, removeEncounterTactic } from './orders-form.js';
+import { allocateHeirSkill, onActionChange, onMoveEdited, resubmitOrders, setHeirName, setHeirTemper, submitOrders, syncCharmCard, syncHiredHeroCard, syncResurrectCard, updateBloodOffering } from './pre-orders.js';
+import { cancelSubmit, doSaveOrders, doSubmitOrders, reviseOrders, updateAlignmentDesc, updateRaceDesc, updateTemperDesc } from './briefing-and-submit.js';
+import { DRUID_LEVEL_OF_P, PRIMAL_ARMY_SPEEDS, druidNeedP } from './skills-and-projections.js';
+import { buildTargetField, leaveToggleAll, updateLeaveTarget, updateRecruitTarget } from './order-targets.js';
+import { popupKnownChars, terrorNoteP } from './map-symbols.js';
+import { _closeMapTip, highlightMapProv, locateOnMap, showFullscreenMap, toggleMapIcon } from './map.js';
+import { createMsgGroup, initMessaging, loadMessageRoster, loadMyReports, loadOlderMessages, msgChannelKeyOf, msgContacts, onMsgInput, refreshMessages, renderMessageThread, reportMessage, sendMessage, setMsgChannel, toggleMsgGroupPicker, updateMsgComposer } from './dispatches.js';
+
 // ── The player portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // Once the page's scripts are ES modules (P1-09d), a top-level name belongs to its own file: an inline on…="…" handler,
 // a test's W.eval or a browser spec's page.evaluate can't reach it. This file, last on the page, puts on window the

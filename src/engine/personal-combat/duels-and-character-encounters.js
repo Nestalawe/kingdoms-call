@@ -1,3 +1,13 @@
+import { kcRng } from '../rng.js';
+import { isLegendaryItem } from '../items/tiers-and-hoards.js';
+import { activeItems, gainedItemNote } from '../items/equipment.js';
+import { transferableItems } from './helpers.js';
+import { d100 } from '../dice-and-army-names.js';
+import { perkTier } from '../titles/perks.js';
+import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.js';
+import { pcCharCombatant } from './speed-encounter-plans-and-combatants.js';
+import { resolvePersonalCombat } from './resolve-personal-combat.js';
+
 // ── PERSONAL COMBAT: DUELS AND CHARACTER ENCOUNTERS (plan P1-08f: lifted out of resolveTurn) ────
 // The magic items a fighter brings to bear (magicItemsLine), the item a character may drop when they break off a fight
 // with another character (duelFleeItemDrop), a duel between two commanders (resolveDuel) and a character's Encounter
@@ -6,7 +16,7 @@
 // which magic items a combatant brings to bear — announced at the start of a battle or duel so
 // every item "in play" is acknowledged (passive stat items boost the fight; Mithril also calls
 // out each blow it turns aside, see pcTakeHit). Only combat-relevant effects are listed.
-const _COMBAT_ITEM_STATS = new Set([
+export const _COMBAT_ITEM_STATS = new Set([
   'melee',
   'archery',
   'druid',
@@ -25,7 +35,7 @@ const _COMBAT_ITEM_STATS = new Set([
   'pc',
   'combatUse',
 ]); // + illusory, pc riders, combat-item riders. consumables
-function magicItemsLine(ch) {
+export function magicItemsLine(ch) {
   const its = activeItems(ch).filter(
     (it) => it && it.name && (!it.effect || _COMBAT_ITEM_STATS.has(it.effect.stat) || it.effect.combat),
   );
@@ -36,8 +46,8 @@ function magicItemsLine(ch) {
 // has a DUEL_FLEE_DROP chance of dropping one magic item in the scramble; the character who held
 // the field keeps it. Mithril never drops (granted relic). Both ends are resolved on the REAL
 // character records since fights are often fought on pooled copies. Returns the item or null.
-const DUEL_FLEE_DROP = 0.5; // 2026-09-10 item 2: raised 30% → 50%; the same odds apply to a flight from a lair guardian (lairFleeItemDrop)
-function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
+export const DUEL_FLEE_DROP = 0.5; // 2026-09-10 item 2: raised 30% → 50%; the same odds apply to a flight from a lair guardian (lairFleeItemDrop)
+export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
   const { G } = turnContext;
   if (!runnerCbt || !stayerCbt || runnerCbt.kind !== 'character' || stayerCbt.kind !== 'character') return null;
   const _real = (x) => (x && x.id != null && (G.characters || []).find((r) => r && r.id === x.id)) || x;
@@ -71,7 +81,7 @@ function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
   } // item 10
   return it;
 }
-function resolveDuel(turnContext, atk, def, narrative) {
+export function resolveDuel(turnContext, atk, def, narrative) {
   const _ia = magicItemsLine(atk),
     _ib = magicItemsLine(def); // item 5
   if (_ia) narrative.push(_ia);
@@ -105,7 +115,7 @@ function resolveDuel(turnContext, atk, def, narrative) {
 // damageToHero, narrative:[...strings]} Character vs Character encounter (triggered by 'Encounter
 // Character' order). Runs on the unified personal-combat engine — identical rounds, ranges and
 // alternation to duels and monster encounters. The only difference is who is on the other side.
-function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics, prov, effStat, rng, G) {
+export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics, prov, effStat, rng, G) {
   const narrative = [];
   narrative.push(
     `${atk.name} (${atk.race}, ${atk.temper}) meets ${def.name} (${def.race}, ${def.player !== null ? G.players[def.player]?.name : 'wandering'}) in a personal encounter.`,

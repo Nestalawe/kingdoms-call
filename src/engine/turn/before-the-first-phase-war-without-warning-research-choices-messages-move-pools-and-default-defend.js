@@ -1,3 +1,19 @@
+import { KC_SEASONS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { SAFE_START_TURN } from '../army-tables.js';
+import { homeProvinceIdFor } from '../grand-design.js';
+import { renameLairsThematicP } from '../names.js';
+import { RETIRED_DISCOVERY_IDS } from '../heroes/skills-and-hp.js';
+import { grantMithrilToDwarves } from '../personal-combat/helpers.js';
+import { botResearchPick } from '../bots/missions.js';
+import { TITLES_PUBLIC_FROM_TURN, TITLE_PERKS_ENABLED } from '../titles/perks.js';
+import { computeMinorTitles, computeStandings } from '../titles/reckoning.js';
+import { telOrdersFor } from '../../views/turn-report.js';
+import { DISC_BY_ID, gdActive } from '../discoveries.js';
+import { relKeyOf } from '../realms/relations-and-captures.js';
+import { setMovePool } from '../units/movement-pools.js';
+import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.js';
+
 // ── BEFORE THE FIRST PHASE: WAR WITHOUT WARNING, RESEARCH CHOICES, MESSAGES, MOVE POOLS AND DEFAULT DEFEND (plan
 // P1-08k8: four stages taken out of resolveTurn's own body, before the phase loop) ──────────────────────────────────
 // Once the realms' orders are merged and log() is ready, four stages, in this order, each once a turn, with the bots'
@@ -20,7 +36,7 @@
 // which resolveTurn makes between the first two; the notes on the army tables and the title perks are older: both
 // moved as they were.
 
-function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(turnContext) {
+export function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(turnContext) {
   const { G, _botPlayerIdx, discoveryChoicePicks, log } = turnContext;
   // ── DIPLOMACY (KC alliance system) ────
   // Relations live in G.relations, keyed "minIdx-maxIdx" → 'enemy' | 'allied'. A pair with no
@@ -76,7 +92,7 @@ function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(tur
   });
 }
 
-function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(turnContext) {
+export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(turnContext) {
   const { G, diploDeclarations, log, safeStartRefused, staleOrderWarnings, freshPlayers, playerMessages } = turnContext;
   {
     const _npW = (G.players || []).length;
@@ -215,7 +231,7 @@ function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMess
   }
 }
 
-function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan(turnContext) {
+export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan(turnContext) {
   const { G, log } = turnContext;
   // Army-type classification tables (PRIMAL_ARMY_DEFS_P, ARMY_SPEED_R, FLYING_TYPES, AERIAL_TYPES,
   // CREATURE_ARMIES, MONSTER_ARMIES, CARRIER_TYPES, PRIMAL_SEA_TYPES, SEA_TYPES) moved to module
@@ -388,7 +404,7 @@ function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPla
   });
 }
 
-function missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart(turnContext) {
+export function missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart(turnContext) {
   const { G, _tel, diploDeclarations, reckoningCalls, expectedTurnToRun } = turnContext;
   // 3. Default any missing orders to Defend
   (G.characters || [])

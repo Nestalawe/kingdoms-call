@@ -1,3 +1,7 @@
+import { defendSpentThisPhase } from '../turn/mercenary-ids-and-battle-records.js';
+import { isHiddenChar } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.js';
+
 // ── THE ENCOUNTER AND DEFEND ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // Encounter Character sets a hero after a quarry he may hunt (never himself, a hero of the lord who holds him by a
 // Charm, a rival king unless he is one, a hidden or vanished hero), then takes the first step of the chase; the chase,
@@ -9,7 +13,7 @@
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break became
 // a return.
 // Encounter Character: the quarry checked, then the chase set and its first step taken.
-function resolveEncounterCharacterOrder(turnContext, c, ph, target, prov) {
+export function resolveEncounterCharacterOrder(turnContext, c, ph, target, prov) {
   const { G, log } = turnContext;
   // Encounter Character no longer requires the quarry to be standing in the same province.
   // The hero sets out and CHASES the target wherever they go — one province per phase, a
@@ -89,7 +93,7 @@ function resolveEncounterCharacterOrder(turnContext, c, ph, target, prov) {
   return;
 }
 // Defend: the watch set over the province the hero stands in, or kept, and told once a phase.
-function resolveDefendOrder(turnContext, c, o, ph, prov) {
+export function resolveDefendOrder(turnContext, c, o, ph, prov) {
   const { log } = turnContext;
   // A move that was cancelled by the invasion interlock is rewritten to a Defend order; the
   // interlock already logged a much better line, so don't tack a bland one on top of it.

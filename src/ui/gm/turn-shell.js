@@ -1,3 +1,15 @@
+import { kcHtml } from '../shared/kc-safe.js';
+import { kcRng } from '../../engine/rng.js';
+import { kcClock } from '../../engine/clock.js';
+import { sb } from './config.js';
+import { loadGames } from './game-list.js';
+import { openGame } from './game-detail.js';
+import { metaPatch, normalizeTurnMode } from '../../db/game-meta.js';
+import { writeTurnTelemetry } from '../../db/telemetry.js';
+import { computeNextDeadline } from './turn-mode.js';
+import { runningBuildStamp, setAutoTurnStatus } from './auto-turn.js';
+import { resolveTurn } from '../../engine/run-turn.js';
+
 // ── THE TURN SHELL (plan P1-18d, 2026-10-18) ────
 // runTurn runs one turn of a game for the GM: from the Resolve Turn button, or from the auto-turn watcher (auto-turn.js).
 // It does the turn's database and screen work, around the engine's resolveTurn (src/engine/run-turn.js), in this order:
@@ -5,7 +17,7 @@
 // is still on that turn), then buildReports() and write each realm's report, the GM's log and the telemetry. It always
 // returns {ok, committed, conflict, error} (and `turn` when it worked); docs/traps.md, "Post-commit work in runTurn".
 // Once the turn has started it returns its `seed` too: the turn's dice (P1-18e, "The turn's dice" below).
-async function runTurn(opts) {
+export async function runTurn(opts) {
   opts = opts || {};
   const auto = !!opts.auto;
   const gameRow = opts.game || currentGame;

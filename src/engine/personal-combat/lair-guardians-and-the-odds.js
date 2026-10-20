@@ -1,3 +1,15 @@
+import { kcRng } from '../rng.js';
+import { monsterCat } from '../names.js';
+import { ensureLairHoard, guardianCanUseItem, isLegendaryItem, monsterCatLabel } from '../items/tiers-and-hoards.js';
+import { _ITEM_ALT_BASE } from '../items/equipment.js';
+import { guardianPassives } from '../heroes/skills-and-hp.js';
+import { pcArmourMerge, transferableItems } from './helpers.js';
+import { d100 } from '../dice-and-army-names.js';
+import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.js';
+import { autoEncounterPlan, pcApplyFx, pcCharCombatant, pcHasRanged, pcMonsterCombatant } from './speed-encounter-plans-and-combatants.js';
+import { resolvePersonalCombat } from './resolve-personal-combat.js';
+import { DUEL_FLEE_DROP } from './duels-and-character-encounters.js';
+
 // ── PERSONAL COMBAT: LAIR GUARDIANS AND THE ODDS (plan P1-08f: lifted out of resolveTurn) ────
 // What a guardian's nature makes it weak or strong against (monsterTraits), the guardian as a combatant
 // (pcBuildGuardian), the odds Hunting Rumours reads to a hero (simulateLairOdds, rumourOddsBand) and a hero's fight with
@@ -8,7 +20,7 @@
 // mods.melee/archery/spell — <1 resists that approach, >1 is vulnerable to it
 // pacifiable — a beast that Talk (Druid) can turn aside
 // closeRounds — rounds to reach melee (fast 1 / medium 2 / slow 3): the archer's window
-function monsterTraits(m) {
+export function monsterTraits(m) {
   const n = (m.name || '').toLowerCase();
   const mods = { melee: 1, archery: 1, spell: 1 };
   // category-driven (name regex only refines flyers/armour and covers legacy saves).
@@ -74,7 +86,7 @@ function monsterTraits(m) {
 // Rumours simulation builds the guardian EXACTLY as a real lair fight does — hoard items wielded,
 // nature-based vulnerabilities, pacifiable flag. `m` may be the live feature.monster (a real
 // fight) or a deep copy of it (a simulation); the hoard is read from the feature either way.
-function pcBuildGuardian(turnContext, feature, m, narrative) {
+export function pcBuildGuardian(turnContext, feature, m, narrative) {
   const { G } = turnContext;
   narrative = narrative || [];
   const traits = monsterTraits(m);
@@ -126,9 +138,9 @@ function pcBuildGuardian(turnContext, feature, m, narrative) {
 // ids no live character carries. The two writes that reach OUTSIDE the refs are guarded here:
 // `_pcSimulating` mutes trySkillGain, and pcLearnWeakness's realm-level record is snapshotted and
 // restored, so a weakness that happens to bite in the sandbox teaches the realm nothing.
-const RUMOUR_SIM_FIGHTS = 300;
+export const RUMOUR_SIM_FIGHTS = 300;
 // (`_pcSimulating` itself is declared beside trySkillGain, above every call site, so it can never be read in its TDZ.)
-const RUMOUR_ODDS_BANDS = [
+export const RUMOUR_ODDS_BANDS = [
   // upper bound of the band (kill %), and the line read to the player
   {
     max: 20,
@@ -154,10 +166,10 @@ const RUMOUR_ODDS_BANDS = [
     text: (g) => `the talk is certain: you are all but sure to defeat the ${g} — only ill fortune could turn it`,
   },
 ];
-function rumourOddsBand(pct) {
+export function rumourOddsBand(pct) {
   return RUMOUR_ODDS_BANDS.find((b) => pct < b.max) || RUMOUR_ODDS_BANDS[RUMOUR_ODDS_BANDS.length - 1];
 }
-function simulateLairOdds(turnContext, c, feature, fights) {
+export function simulateLairOdds(turnContext, c, feature, fights) {
   const { G } = turnContext;
   fights = fights || RUMOUR_SIM_FIGHTS;
   const m0 = feature && feature.monster;
@@ -200,7 +212,7 @@ function simulateLairOdds(turnContext, c, feature, fights) {
   return { pct: Math.round((100 * wins) / ran), wins, fights: ran };
 }
 
-function resolveEncounter(turnContext, c, feature, prov, tactics, effStat, rng, player) {
+export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat, rng, player) {
   const { G } = turnContext;
   const m = feature.monster || { name: 'creature', hp: 10, power: '', minG: 1, maxG: 3 };
   const narrative = [];

@@ -1,3 +1,8 @@
+import { dispFloor } from '../dice-and-army-names.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../../views/turn-report.js';
+import { discSum } from '../discoveries.js';
+
 // ── EVIL TERROR (plan P1-08c: lifted out of resolveTurn) ────
 // Terror after an Evil victory: whether it grips a province for its realm (reignOfFearHere), its spread to the battle
 // province and its neighbours (spreadTerror), and its toll on the next defenders there (consumeTerror). spreadTerror
@@ -8,10 +13,10 @@
 // (−10% strength per stack, at most 3 stacks: −30%; 2026-10-12, Toby item 21 — it was 5, −50%). Repeated terror
 // events stack up to that cap; a save already holding more is read as 3. (TERROR_PCT_PER_STACK and
 // TERROR_MAX_STACKS live at module level, beside buildTurnReport, which shows Evil realms the reading.)
-function reignOfFearHere(prov, playerIdx) {
+export function reignOfFearHere(prov, playerIdx) {
   return !!(prov && playerIdx != null && (prov._terrorStacks || 0) > 0 && prov._terrorisedBy === playerIdx);
 }
-function spreadTerror(turnContext, battleProv, byPlayer, narrative) {
+export function spreadTerror(turnContext, battleProv, byPlayer, narrative) {
   const { G } = turnContext;
   const targets = [battleProv, ...getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)];
   const seen = new Set();
@@ -33,7 +38,7 @@ function spreadTerror(turnContext, battleProv, byPlayer, narrative) {
   }
 }
 // Consume any lingering terror in a province at the start of a battle: returns true if applied.
-function consumeTerror(prov, defenders, narrative) {
+export function consumeTerror(prov, defenders, narrative) {
   // Terror lingers until the NEXT battle fought here — same turn or later. It is safe to consume
   // same-turn because consumeTerror runs at battle START and spreadTerror at battle END, so a
   // battle can never consume the terror it itself created. (Previously gated to

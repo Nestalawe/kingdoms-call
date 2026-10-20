@@ -1,8 +1,13 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { KC_GRAND_DESIGNS, KC_ITEM_RACE_ALIAS, KC_ITEM_SLOT_CAP, KC_RUMOUR_COST_BY_POWER, KC_SEASONS } from '../../content/kingdoms-call-data.js';
+import { L79_ORDERS } from './l79-orders.js';
+import { _tintForDarkTooltip, reportColour } from './map-symbols.js';
+
 // ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.js (KC_ITEM_SLOT_CAP) ──
-const ITEM_SLOT_CAP_P = { ...KC_ITEM_SLOT_CAP };
+export const ITEM_SLOT_CAP_P = { ...KC_ITEM_SLOT_CAP };
 // Lair-guardian grade colours (map rings, lair cards, tooltips). One copy — it was typed four times.
-const GUARD_POWER_COLORS_P = { Weak: '#4a8a4a', Moderate: '#c8922a', Powerful: '#8a1c1c', Legendary: '#5a0a9a' };
-const ITEM_SLOT_LABEL_P = {
+export const GUARD_POWER_COLORS_P = { Weak: '#4a8a4a', Moderate: '#c8922a', Powerful: '#8a1c1c', Legendary: '#5a0a9a' };
+export const ITEM_SLOT_LABEL_P = {
   weapon: 'Weapon',
   armour: 'Armour',
   shield: 'Shield',
@@ -12,7 +17,7 @@ const ITEM_SLOT_LABEL_P = {
   amulet: 'Amulet / talisman',
   combat: 'Combat Items (up to two)',
 };
-const ITEM_SLOT_ORDER_P = ['weapon', 'armour', 'shield', 'cloak', 'helm', 'ring', 'amulet', 'combat'];
+export const ITEM_SLOT_ORDER_P = ['weapon', 'armour', 'shield', 'cloak', 'helm', 'ring', 'amulet', 'combat'];
 // ── ONLY THE LIVING TAKE ORDERS ────
 // `report.characters` deliberately carries a hero (or king) who FELL THIS TURN, so the Chronicle
 // can still print their final section. Every ORDER form that lists characters as targets or
@@ -25,10 +30,10 @@ const ITEM_SLOT_ORDER_P = ['weapon', 'armour', 'shield', 'cloak', 'helm', 'ring'
 // — and an ENEMY hero seized by Charm (who goes home at turn's end) never receives items or troops
 // (opts.allowCharmEnemy lets a friendly spell reach them). The engine resolves these ids to the
 // real hero and refuses the order if the hire / raise / charm did not land.
-function isPreOrderIdP(id) {
+export function isPreOrderIdP(id) {
   return typeof id === 'string' && /^(?:hired|resurrect|charm)_\d+_via_/.test(id);
 }
-function orderTargetCharsP(report, ph, opts) {
+export function orderTargetCharsP(report, ph, opts) {
   return ((report && report.characters) || []).filter((x) => {
     if (!x || x.alive === false) return false;
     if (isPreOrderIdP(x.id)) {
@@ -41,7 +46,7 @@ function orderTargetCharsP(report, ph, opts) {
 }
 // the suffix a pre-order hero carries in a recipient list, so the player knows it depends on the
 // hire / raise / charm landing.
-function preOrderTagP(x) {
+export function preOrderTagP(x) {
   if (!x || !isPreOrderIdP(x.id)) return '';
   const k = String(x.id).split('_')[0];
   return k === 'hired' ? ' — if the hire lands' : k === 'resurrect' ? ' — if raised' : ' — if charmed';
@@ -51,16 +56,16 @@ function preOrderTagP(x) {
 // with their realm's name, and the <option> is tinted in that realm's colour (browsers honour an
 // inline colour on <option> in the open list; the closed control shows plain text). A wandering
 // hero has no realm and keeps its "(wandering)" label.
-function realmOfP(playerIdx, report) {
+export function realmOfP(playerIdx, report) {
   const rep = report || currentReport || {};
   if (playerIdx == null) return null;
   return (rep.allKingdoms || []).find((k) => k && k.index === playerIdx) || null;
 }
-function realmNameP(playerIdx, report) {
+export function realmNameP(playerIdx, report) {
   const k = realmOfP(playerIdx, report);
   return k ? k.name : 'enemy';
 }
-function realmOptStyleP(playerIdx, report) {
+export function realmOptStyleP(playerIdx, report) {
   const k = realmOfP(playerIdx, report);
   return k && k.color ? kcHtml` style="color:${reportColour(k.color)};font-weight:600"` : '';
 }
@@ -69,7 +74,7 @@ function realmOptStyleP(playerIdx, report) {
 // crown is refused — so every place a dead hero is shown must say which realm held them when they
 // fell. `player` is null for a hero who never served anyone. `opts.dark` tints for the map tooltip's
 // dark background; `opts.bare` drops the leading em-dash for callers that supply their own.
-function deadHeroRealmTagP(h, report, opts) {
+export function deadHeroRealmTagP(h, report, opts) {
   opts = opts || {};
   const rep = report || currentReport || {};
   const own = rep.playerIndex != null ? rep.playerIndex : null;
@@ -88,7 +93,7 @@ function deadHeroRealmTagP(h, report, opts) {
 // Send Item order addresses items by their INDEX into the character's real `items` array and the GM
 // engine splices by that same index. Reordering the underlying array would hand the wrong item to
 // the courier, so nothing here ever touches `c.items`.
-function itemsForDisplayP(c) {
+export function itemsForDisplayP(c) {
   const src = (c && c.items) || [];
   const rank = (it) => {
     const sl = itemSlotP(it);
@@ -104,7 +109,7 @@ function itemsForDisplayP(c) {
     .sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.i - b.i) // stable within a slot group
     .map((x) => x.it);
 }
-const ITEM_SLOT_OF_P = {
+export const ITEM_SLOT_OF_P = {
   'Blade of Fury': 'weapon',
   'Elven Longbow': 'weapon',
   'Staff of the Wildwood': 'weapon',
@@ -160,21 +165,21 @@ const ITEM_SLOT_OF_P = {
 // that does nothing in a fight; Moderate = the first rung of combat kit; Powerful = the second. A lair
 // holds exactly one item, of its own guardian's tier, so the tier a player is shown is the danger
 // they beat for it. Only a legendary relic scores a point.
-const ITEM_TIER_NAME_P = { 1: 'Weak', 2: 'Moderate', 3: 'Powerful', 4: 'Legendary' };
-function isLegendaryItemP(it) {
+export const ITEM_TIER_NAME_P = { 1: 'Weak', 2: 'Moderate', 3: 'Powerful', 4: 'Legendary' };
+export function isLegendaryItemP(it) {
   return !!it && it.tier === 4;
 }
 // 2026-09-27 (Toby item 5): darkened for readability on parchment — the old tier pills (mid-green,
 // tan, #b8860b goldenrod) and the gold item name sat at ~2.3:1 against #f2e8d0 and were hard to
 // read. Every tier now clears 5:1, and the item name/description use --item-ink / --item-desc.
-const ITEM_TIER_COLOUR_P = { 1: 'var(--stone)', 2: '#2c4a1e', 3: '#6a3d08', 4: '#7a5806' };
+export const ITEM_TIER_COLOUR_P = { 1: 'var(--stone)', 2: '#2c4a1e', 3: '#6a3d08', 4: '#7a5806' };
 // The small pill shown beside an item name wherever a pack is listed.
-function itemTierTagP(it) {
+export function itemTierTagP(it) {
   const n = (it && it.tier) || 1;
   const leg = n === 4;
   return kcHtml`<span style="color:${ITEM_TIER_COLOUR_P[n]};font-weight:${leg ? 700 : 600};font-size:.9em">${leg ? ' \u2728 Legendary' : ' \u00b7 ' + ITEM_TIER_NAME_P[n]}</span>`;
 }
-function itemSlotP(it) {
+export function itemSlotP(it) {
   if (!it) return null;
   // A shield is a shield even when its power is a once-per-fight ward (Anvil-Brand Shield) -
   // mirrors the GM engine, where the shield test runs before the combat-item test.
@@ -186,25 +191,25 @@ function itemSlotP(it) {
 }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded. Item 4:
 // race/alignment-bound items are inert in the wrong hands.
-const _ITEM_RACE_ALIAS_P = { ...KC_ITEM_RACE_ALIAS }; // 2026-09-10 item 3: mirrors GM itemRaceOf()
-function itemRaceOfP(it) {
+export const _ITEM_RACE_ALIAS_P = { ...KC_ITEM_RACE_ALIAS }; // 2026-09-10 item 3: mirrors GM itemRaceOf()
+export function itemRaceOfP(it) {
   const r = it && it.race;
   return r ? _ITEM_RACE_ALIAS_P[r] || r : r;
 }
-function itemUsableByP(it, c) {
+export function itemUsableByP(it, c) {
   if (!it) return false;
   if (it.race && (!c || c.race !== itemRaceOfP(it))) return false;
   if (it.alignment && (!c || c.alignment !== it.alignment)) return false;
   return true;
 }
-function itemBoundTag(it, c) {
+export function itemBoundTag(it, c) {
   if (!it || (!it.race && !it.alignment)) return '';
   const who = it.race ? `${itemRaceOfP(it)} characters` : `${it.alignment} characters`;
   return itemUsableByP(it, c)
     ? ''
     : kcHtml` <span style="color:#7a1010;font-size:.72rem">[${who} only — unusable by this character]</span>`;
 }
-function itemSlotTag(it, c) {
+export function itemSlotTag(it, c) {
   // name the slot AND how many of that slot the character still has free.
   const sl = itemSlotP(it);
   if (!sl) return kcHtml` <span style="color:#2a2419;font-size:.72rem">[carried — needs no slot]</span>`;
@@ -219,8 +224,8 @@ function itemSlotTag(it, c) {
   return kcHtml` <span style="color:${it.equipped === false ? '#5b5b5b' : '#43350f'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
 }
 // Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
-const RUMOUR_COST_BY_POWER_P = { ...KC_RUMOUR_COST_BY_POWER }; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
-function updateRumourTarget(charId, ph) {
+export const RUMOUR_COST_BY_POWER_P = { ...KC_RUMOUR_COST_BY_POWER }; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
+export function updateRumourTarget(charId, ph) {
   const wrap = document.getElementById(`po-rumour-wrap-${charId}-${ph}`);
   const hidden = document.getElementById(`po-target-${charId}-${ph}`);
   if (!wrap || !hidden) return;
@@ -242,7 +247,7 @@ function updateRumourTarget(charId, ph) {
     if (cost) cost.textContent = `${sum}g`;
   } // the first <strong> is the cost of the ticked lairs
 }
-function updateEquipTarget(charId, ph) {
+export function updateEquipTarget(charId, ph) {
   const wrap = document.getElementById(`po-equip-wrap-${charId}-${ph}`);
   const hidden = document.getElementById(`po-target-${charId}-${ph}`);
   if (!wrap || !hidden) return;
@@ -250,9 +255,9 @@ function updateEquipTarget(charId, ph) {
   hidden.value = [...new Set(vals)].join(',');
 }
 
-const SEASONS = KC_SEASONS.slice();
-const DIRECTIONS = { NW: 'North West', NE: 'North East', W: 'West', E: 'East', SW: 'South West', SE: 'South East' };
-const ACTIONS = [
+export const SEASONS = KC_SEASONS.slice();
+export const DIRECTIONS = { NW: 'North West', NE: 'North East', W: 'West', E: 'East', SW: 'South West', SE: 'South East' };
+export const ACTIONS = [
   'Move',
   'Explore',
   'Search Lair',
@@ -303,7 +308,7 @@ const ACTIONS = [
 // Alignment-signature actions: shown only to the realm that owns them (and Perform Rite joins the
 // same gating — no more dangling Pagan action in every dropdown). King-only actions are hidden from
 // heroes' dropdowns entirely.
-const ALIGN_ACTIONS = {
+export const ALIGN_ACTIONS = {
   'Perform Rite': 'Pagan',
   Consecrate: 'Divine',
   'Call to Arms': 'Good',
@@ -313,27 +318,27 @@ const ALIGN_ACTIONS = {
 // King-only actions — the engine rejects these from a hero, so they are hidden from heroes'
 // dropdowns entirely (Consecrate is king-only: only the anointed crown can hallow ground — see the
 // engine handler).
-const KING_ONLY_ACTIONS = new Set(['Call to Arms', 'Broker', 'Consecrate']);
+export const KING_ONLY_ACTIONS = new Set(['Call to Arms', 'Broker', 'Consecrate']);
 // ── THE SEVEN WONDERS ────
 // One per alignment, mirroring _GD_DEFS in the GM engine. Keep the two in step: the engine decides
 // what the Wonder DOES, this decides what the player is told it will do before they spend the order.
-const GD_BY_ALIGNMENT = { ...KC_GRAND_DESIGNS };
+export const GD_BY_ALIGNMENT = { ...KC_GRAND_DESIGNS };
 // 2026-09-27 (Toby item 4): ONE Wonder per realm, ever. The engine pushes the discovery with id 'gd'
 // and refuses a second outright, so once it is there the order is withdrawn from every hero of the
 // realm rather than being offered and then rejected at resolution.
-function gdAlreadyBuiltP(report) {
+export function gdAlreadyBuiltP(report) {
   const r = report || currentReport || {};
   return (r.discoveries || []).some((d) => d && d.id === 'gd');
 }
 // The Grand Design hint for the reader's own realm, naming the Wonder they would actually raise.
-function gdHintFor(report) {
+export function gdHintFor(report) {
   const r = report || currentReport || {};
   const al = (r.kingdom && r.kingdom.alignment) || null;
   const gd = al ? GD_BY_ALIGNMENT[al] : null;
   if (!gd) return L79_ORDERS['Grand Design'].hint;
   return kcHtml`Sage 9 · ONCE EVER, and only in a province you hold. Your ${al} realm raises the <strong>${gd.name}</strong> — ${gd.desc} The Wonder stands in the province it is built in: hold that ground and its blessing flows, lose the province and the blessing lapses until you take it back. The Wonder itself is never destroyed, and a conqueror gains nothing from it but the view.`;
 }
-const rawSkillLvl = (charObj, sk) => ((charObj && charObj.skills) || {})[sk] || 0;
+export const rawSkillLvl = (charObj, sk) => ((charObj && charObj.skills) || {})[sk] || 0;
 // ── A CHARACTER WHOSE SHEET THE PLAYER CANNOT READ ──────────────────────────────────────────────
 // Two pre-order cards carry one: a hero being HIRED this turn (`_unknownSkills` — the GM ships only
 // their fame, never their levels) and a hero being CHARMED (`_hiddenSkills` — you have borrowed a
@@ -346,9 +351,9 @@ const rawSkillLvl = (charObj, sk) => ((charObj && charObj.skills) || {})[sk] || 
 // a different day, so gates closed for a hired hero stood wide open for a charmed one (the Steal and
 // Spy percentages, the Research and Explore notes, and the whole L7/L9 set). ONE
 // predicate now serves every site. Add future gates through it; never test either flag directly.
-const skillsUnseenP = (c) => !!(c && (c._hiddenSkills || c._unknownSkills));
+export const skillsUnseenP = (c) => !!(c && (c._hiddenSkills || c._unknownSkills));
 // …and the two reasons, phrased for the player. `hidden` never becomes visible; `unknown` does, next turn.
-const unseenSuffixP = (c) =>
+export const unseenSuffixP = (c) =>
   c && c._unknownSkills
     ? `${(c && c.name) || 'this hero'}’s level is not known until they have joined`
     : `${(c && c.name) || 'this hero'}’s level is hidden from you`;
@@ -357,7 +362,7 @@ const unseenSuffixP = (c) =>
 // pinned to the VERY TOP (each is only shown to its own realm, so this simply puts a realm's special order
 // first when it appears). Mastery (L7/L9) orders sink to the bottom as rare, situational picks.
 // Adjust freely — this array is the single source of the ordering.
-const ACTION_DISPLAY_ORDER = [
+export const ACTION_DISPLAY_ORDER = [
   // ── SPECIAL actions the character can take — pinned to the very top ── Alignment-signature
   // orders (each shown only to its own realm)…
   'Broker',
@@ -411,11 +416,11 @@ const ACTION_DISPLAY_ORDER = [
   'Steal',
   'Rest',
 ];
-const _actionRank = (a) => {
+export const _actionRank = (a) => {
   const i = ACTION_DISPLAY_ORDER.indexOf(a);
   return i < 0 ? ACTION_DISPLAY_ORDER.length : i;
 };
-function actionsFor(c) {
+export function actionsFor(c) {
   const align = currentReport?.kingdom?.alignment;
   return ACTIONS.filter((a) => {
     if (ALIGN_ACTIONS[a] && ALIGN_ACTIONS[a] !== align) return false;
@@ -491,12 +496,12 @@ globalThis.concedeGame = false;
 // turn's orders the player keeps one and the other is forgotten for good. Keyed by the pending
 // pair's key → the kept discovery id. Submitted with orders as `discoveryChoices`.
 globalThis.discoveryChoices = {};
-function _pendingDiscChoices() {
+export function _pendingDiscChoices() {
   return ((currentReport && currentReport.pendingDiscoveryChoices) || []).filter(
     (p) => p && p.key && Array.isArray(p.options) && p.options.length,
   );
 }
-function discoveryChoiceBlockHTML() {
+export function discoveryChoiceBlockHTML() {
   const pend = _pendingDiscChoices();
   if (!pend.length) return '';
   return kcHtml`<div id="orders-discovery-top" class="orders-char-block" style="background:#f4f7ec">
@@ -507,7 +512,7 @@ function discoveryChoiceBlockHTML() {
       <div id="orders-discovery-choice" style="padding:6px 10px 10px"></div>
     </div>`;
 }
-function renderDiscoveryChoices() {
+export function renderDiscoveryChoices() {
   const w = document.getElementById('orders-discovery-choice');
   if (!w) return;
   const pend = _pendingDiscChoices();
@@ -528,11 +533,11 @@ function renderDiscoveryChoices() {
     </div>`,
   )}`;
 }
-function setDiscoveryChoice(key, id) {
+export function setDiscoveryChoice(key, id) {
   discoveryChoices[key] = id;
   renderDiscoveryChoices();
 }
-function renderConcede() {
+export function renderConcede() {
   const w = document.getElementById('concede-wrap');
   if (!w) return;
   const k = currentReport?.kingdom || {};
@@ -544,7 +549,7 @@ function renderConcede() {
     ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px">\u{1F3F3} <strong>You will CONCEDE the game with these orders.</strong> This cannot be undone once the turn runs. <button type="button" onclick="setConcede(false)" style="margin-left:6px;font-size:.7rem;padding:2px 8px;cursor:pointer">Cancel</button></div>`
     : `<button type="button" onclick="setConcede(true)" style="font-family:'Cinzel',serif;font-size:.66rem;padding:4px 10px;border:1px solid #999;background:#f4f0e6;color:#2a2419;border-radius:2px;cursor:pointer" title="Withdraw your realm from the game">\u{1F3F3} Concede the game\u2026</button>`;
 }
-function setConcede(v) {
+export function setConcede(v) {
   if (
     v &&
     !confirm(

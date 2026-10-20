@@ -1,17 +1,25 @@
-function turnModeOf(game) {
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { SAFE_START_TURN } from '../../engine/army-tables.js';
+import { sb } from './config.js';
+import { openGame, renderOrdersStatus } from './game-detail.js';
+import { TURN_MODES, metaPatch, normalizeTurnMode, parseGameState } from '../../db/game-meta.js';
+import { gameMetaOf, isBotRow } from '../../engine/bots/setup.js';
+import { normSeaPct } from '../../engine/world/generate.js';
+
+export function turnModeOf(game) {
   const m = gameMetaOf(game);
   return normalizeTurnMode(m ? m.turnMode : parseGameState(game).turnMode);
 }
 // The game's sea share: the setup cfg before Turn 0, the world record after it. Games made before
 // the setting existed carry neither and read as the default.
-function seaPctOf(game) {
+export function seaPctOf(game) {
   const m = gameMetaOf(game);
   if (m && m.seaPct != null) return normSeaPct(m.seaPct);
   const gs = parseGameState(game);
   return normSeaPct(gs.seaPct != null ? gs.seaPct : gs.world && gs.world.seaPct);
 }
 // First HH:MM (local clock) strictly after `from` + (everyDays-1) days.
-function computeNextDeadline(tm, from) {
+export function computeNextDeadline(tm, from) {
   tm = normalizeTurnMode(tm);
   const base = new Date(
     (from instanceof Date ? from : new Date(from || Date.now())).getTime() + (tm.everyDays - 1) * 86400000,
@@ -21,7 +29,7 @@ function computeNextDeadline(tm, from) {
   if (d.getTime() <= base.getTime()) d.setDate(d.getDate() + 1);
   return d.toISOString();
 }
-function fmtDeadline(iso) {
+export function fmtDeadline(iso) {
   if (!iso) return '—';
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -37,7 +45,7 @@ function fmtDeadline(iso) {
 }
 // Absolute date+time of a past event, for the games list. Unlike fmtDeadline (which looks forward
 // and omits the year), this includes the year, because the list can hold games months old.
-function fmtLastRun(iso) {
+export function fmtLastRun(iso) {
   const d = asDate(iso);
   if (!d) return '';
   try {
@@ -55,14 +63,14 @@ function fmtLastRun(iso) {
 // Parse to a valid Date or null. normalizeTurnMode passes turnRanAt through untouched, so a corrupt
 // or hand-edited game_state can hold junk here; without this the card would print a bare "Invalid
 // Date".
-function asDate(iso) {
+export function asDate(iso) {
   if (!iso || (typeof iso !== 'string' && typeof iso !== 'number')) return null;
   const d = new Date(iso);
   return isFinite(d.getTime()) ? d : null;
 }
 // "just now" / "3h ago" / "2 days ago" — the at-a-glance scan value when a GM has many games
 // running.
-function fmtAgo(iso) {
+export function fmtAgo(iso) {
   const d = asDate(iso);
   if (!d) return '';
   const mins = Math.floor((Date.now() - d.getTime()) / 60000);
@@ -78,7 +86,7 @@ function fmtAgo(iso) {
 }
 // Human slots the turn is still waiting on. `rows` = game_players; G = parsed active state (may be
 // {}).
-function realmExemptFromOrders(G, idx) {
+export function realmExemptFromOrders(G, idx) {
   const pl = ((G && G.players) || [])[idx];
   if (!pl) return false;
   if (pl.conceded || pl._eliminated) return true;
@@ -87,19 +95,19 @@ function realmExemptFromOrders(G, idx) {
   return !hasProv && !hasChar;
 }
 // The same test from a games ROW: meta.exempt when the row carries meta, else the parsed state.
-function realmExemptIn(game, idx) {
+export function realmExemptIn(game, idx) {
   const m = gameMetaOf(game);
   if (m && Array.isArray(m.exempt)) return m.exempt.includes(idx);
   return realmExemptFromOrders(parseGameState(game), idx);
 }
-function ordersWaitingOn(rows, game) {
+export function ordersWaitingOn(rows, game) {
   return (rows || []).filter(
     (p) => p.user_id && !isBotRow(p) && !realmExemptIn(game, p.player_index) && !p.orders_submitted,
   );
 }
 // Has this realm already conceded (voluntarily or by GM removal)? Read from the parsed state — the
 // light `meta` column only carries the combined exempt list, which also covers extinguished realms.
-function realmConcededIn(game, idx) {
+export function realmConcededIn(game, idx) {
   const gs = parseGameState(game);
   const pl = ((gs && gs.players) || [])[idx];
   return !!(pl && pl.conceded);
@@ -112,7 +120,7 @@ function realmConcededIn(game, idx) {
 // it from the victory count and never waits on its orders — and only then is the seat deleted, so
 // the removed player can no longer reach the game at all. The realm's provinces, armies and
 // characters stay on the map exactly as they were; they simply never advance again.
-async function removePlayer(gamePlayerId) {
+export async function removePlayer(gamePlayerId) {
   if (!currentGame) return;
   const row = (currentGamePlayers || []).find((p) => String(p.id) === String(gamePlayerId));
   if (!row) {
@@ -163,7 +171,7 @@ async function removePlayer(gamePlayerId) {
   }
 }
 // {ready, reason} for the auto-turn watcher. Requires an active game with at least one realm.
-function autoTurnReady(game, rows, tm) {
+export function autoTurnReady(game, rows, tm) {
   if (!game || game.status !== 'active') return { ready: false, reason: 'not active' };
   tm = tm || turnModeOf(game);
   if (tm.mode === 'manual') return { ready: false, reason: 'manual' };
@@ -176,25 +184,25 @@ function autoTurnReady(game, rows, tm) {
     return { ready: true, reason: 'deadline passed' };
   return { ready: false, reason: `waiting on ${waiting.length}` };
 }
-function turnModeSummary(tm) {
+export function turnModeSummary(tm) {
   tm = normalizeTurnMode(tm);
   if (tm.mode === 'manual') return '🧑‍⚖️ Manual';
   if (tm.mode === 'auto') return '⚙️ Auto (all orders in)';
   return `⏱ Auto · deadline ${fmtDeadline(tm.nextDeadlineAt)} (${tm.time}${tm.everyDays > 1 ? ' every ' + tm.everyDays + ' days' : ' daily'})`;
 }
-function updateTurnModeFields(prefix) {
+export function updateTurnModeFields(prefix) {
   const sel = document.getElementById(prefix + '-turnmode'),
     f = document.getElementById(prefix + '-turnmode-fields');
   if (sel && f) f.style.display = sel.value === 'deadline' ? 'block' : 'none';
 }
-function readTurnModeForm(prefix) {
+export function readTurnModeForm(prefix) {
   return normalizeTurnMode({
     mode: document.getElementById(prefix + '-turnmode')?.value,
     time: document.getElementById(prefix + '-deadline-time')?.value,
     everyDays: document.getElementById(prefix + '-deadline-days')?.value,
   });
 }
-function turnModeFormHtml(prefix, tm) {
+export function turnModeFormHtml(prefix, tm) {
   tm = normalizeTurnMode(tm);
   return kcHtml`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <select id="${prefix}-turnmode" onchange="updateTurnModeFields(${kcArg(prefix)})" style="flex:1;min-width:220px">
@@ -207,7 +215,7 @@ function turnModeFormHtml(prefix, tm) {
     </div>`;
 }
 // Game-detail panel: shows the current mode and lets the GM switch it (setup or active).
-function renderTurnModePanel(game) {
+export function renderTurnModePanel(game) {
   const wrap = document.getElementById('detail-turnmode-wrap');
   if (!wrap) return;
   if (!game || game.status === 'complete') {
@@ -233,7 +241,7 @@ function renderTurnModePanel(game) {
 // R-075 (P0-25): the GM's switch for realms that are out. Until the game is over, a realm that has conceded or been
 // extinguished sends no private dispatches; with the switch on it sends none at all. Saved in
 // games.block_eliminated_msgs (the game's GM, or the Overlord as Master GM); the player portal applies it.
-function blockEliminatedPanelHtml(game) {
+export function blockEliminatedPanelHtml(game) {
   const on = !!(game && game.block_eliminated_msgs);
   return kcHtml`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c;margin-top:8px">
       <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--parchment);font-weight:600;cursor:pointer">
@@ -244,7 +252,7 @@ function blockEliminatedPanelHtml(game) {
       <div id="detail-block-eliminated-msg" style="font-size:.78rem;margin-top:4px"></div>
     </div>`;
 }
-async function saveBlockEliminated(on) {
+export async function saveBlockEliminated(on) {
   if (!currentGame) return;
   const msg = document.getElementById('detail-block-eliminated-msg');
   const say = (t, c) => {
@@ -276,7 +284,7 @@ async function saveBlockEliminated(on) {
 // their alignment; some may ally with humans) or Aggressive (every bot at war with every human realm,
 // never allied). Set at creation; editable here during setup or play. Takes effect from the next
 // turn resolved (an existing bot–human alliance is broken by the bot's declaration of war then).
-function _gameHasBots(gs) {
+export function _gameHasBots(gs) {
   if (!gs) return false;
   if (
     typeof currentGamePlayers !== 'undefined' &&
@@ -288,14 +296,14 @@ function _gameHasBots(gs) {
   return (gs.botCount || 0) > 0 || !!gs.allBot;
 }
 // SAFE START (2026-09-29): read-only note in the game detail — set at creation, not changeable.
-function safeStartNoteHtml(game) {
+export function safeStartNoteHtml(game) {
   const gs = parseGameState(game);
   if (!gs || !gs.safeStart) return '';
   const t = Number(game && game.turn) || 0,
     open = t >= SAFE_START_TURN;
   return kcHtml`<div style="border:1px solid var(--gold);border-radius:4px;padding:8px 10px;background:#20160c;margin-top:8px;color:var(--parchment);font-size:.84rem">🕊 <strong>Safe Start</strong> — no Treats or declarations of war until the orders for Turn ${SAFE_START_TURN}. ${open ? kcHtml`<span style="color:var(--stone)">(Diplomacy is now open.)</span>` : ''}</div>`;
 }
-function botDiplomacyPanelHtml(game) {
+export function botDiplomacyPanelHtml(game) {
   const gs = parseGameState(game);
   if (!_gameHasBots(gs)) return '';
   const cur = gs.botDiplomacy === 'hostile' ? 'hostile' : 'normal';
@@ -311,7 +319,7 @@ function botDiplomacyPanelHtml(game) {
       <div id="detail-botdiplomacy-msg" style="font-size:.78rem;margin-top:4px"></div>
     </div>`;
 }
-async function saveBotDiplomacy() {
+export async function saveBotDiplomacy() {
   const msg = document.getElementById('detail-botdiplomacy-msg');
   if (!currentGame) return;
   const v = document.getElementById('detail-botdiplomacy')?.value === 'hostile' ? 'hostile' : 'normal';
@@ -339,7 +347,7 @@ async function saveBotDiplomacy() {
   Object.assign(currentGame, metaPatch(gs));
   if (msg) msg.innerHTML = '<span style="color:#8c8">Saved — applies from the next turn resolved.</span>';
 }
-async function saveTurnMode() {
+export async function saveTurnMode() {
   const msg = document.getElementById('detail-turnmode-msg');
   if (!currentGame) return;
   const prev = turnModeOf(currentGame);

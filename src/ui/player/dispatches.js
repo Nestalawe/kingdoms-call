@@ -1,3 +1,10 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { sb } from './startup.js';
+import { applyDeskViews } from './layout.js';
+import { fetchGameSlots } from './sign-in.js';
+import { _activeSectionId } from './game-lists.js';
+import { _tintForDarkTooltip } from './map-symbols.js';
+
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
 // DISPATCHES — realm-to-realm messaging (2026-09-27, Toby)
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -36,62 +43,62 @@
 // be auth.uid(). The "must have met them" rule, by contrast, is enforced only in this UI — a
 // determined player could address an unmet realm straight through the API. That leaks nothing (they
 // still cannot READ anything not addressed to them) and is recorded in DEV_LOG as a known limit.
-const KC_MSG_TABLE = 'game_messages';
-const KC_MSG_READS = 'game_message_reads';
-const MSG_POLL_MS = 8000; // tick length while the Dispatches view is open
-const MSG_SLOW_EVERY = 4; // … and one tick in four when it is not (≈32s, for the unread badge)
-const MSG_MAX_LEN = 500; // the database refuses longer (P0-23, ruling D-05)
-const MSG_PAGE = 400; // most recent dispatches loaded on entry; later ones arrive by id, and
+export const KC_MSG_TABLE = 'game_messages';
+export const KC_MSG_READS = 'game_message_reads';
+export const MSG_POLL_MS = 8000; // tick length while the Dispatches view is open
+export const MSG_SLOW_EVERY = 4; // … and one tick in four when it is not (≈32s, for the unread badge)
+export const MSG_MAX_LEN = 500; // the database refuses longer (P0-23, ruling D-05)
+export const MSG_PAGE = 400; // most recent dispatches loaded on entry; later ones arrive by id, and
 // anything older is fetched a page at a time by loadOlderMessages()
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
 globalThis._msgGameId = null;
 globalThis._msgMyIndex = null;
-let _msgMyName = '',
+export let _msgMyName = '',
   _msgMyColor = null;
 globalThis._msgRows = [];
-let _msgIds = new Set(),
+export let _msgIds = new Set(),
   _msgMaxId = 0,
   _msgMinId = 0;
 globalThis._msgMoreOlder = false;
 globalThis._msgLoadingOlder = false;
-let _msgReported = new Set(); // ids of dispatches this player has reported (P0-24), as strings
-let _msgReads = {}; // channelKey -> highest message id this realm has seen
+export let _msgReported = new Set(); // ids of dispatches this player has reported (P0-24), as strings
+export let _msgReads = {}; // channelKey -> highest message id this realm has seen
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
 globalThis._msgRealms = {}; // realm index -> {index,name,color,human,met,conceded,eliminated}
 globalThis._msgChannel = 'public';
-let _msgExtraGroups = []; // conference channels opened this session that carry no messages yet
-let _msgTimer = null,
+export let _msgExtraGroups = []; // conference channels opened this session that carry no messages yet
+export let _msgTimer = null,
   _msgTick = 0,
   _msgBusy = false,
   _msgSending = false;
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
 globalThis._msgTableOk = null; // null = not probed, false = the SQL has not been run
 globalThis._msgErr = null;
-let _msgReadsDirty = false,
+export let _msgReadsDirty = false,
   _msgReadSaveTimer = null;
 // R-075 (P0-25): what this realm may send. _msgOut: null, 'conceded' or 'eliminated' (its dynasty extinguished), from
 // its own turn report. _msgGameOver: the game has ended. _msgBlockOut: the GM's switch (games.block_eliminated_msgs).
 globalThis._msgOut = null;
-let _msgGameOver = false;
+export let _msgGameOver = false;
 globalThis._msgBlockOut = false;
 
-function _msgNum(v) {
+export function _msgNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
-function _msgArr(v) {
+export function _msgArr(v) {
   return Array.isArray(v) ? v : [];
 }
 
 // ── channel keys ──
-function msgChannelKeyOf(row) {
+export function msgChannelKeyOf(row) {
   if (!row) return 'public';
   if (row.scope === 'public' || !_msgArr(row.to_indexes).length) return 'public';
   return msgGroupKey([_msgNum(row.from_index), ..._msgArr(row.to_indexes).map(_msgNum)]);
 }
 // Sorted, de-duplicated, numeric — the ONE place a key is spelled, so the sender's key and the
 // recipient's key cannot drift apart.
-function msgGroupKey(indices) {
+export function msgGroupKey(indices) {
   const set = [
     ...new Set(
       _msgArr(indices)
@@ -101,7 +108,7 @@ function msgGroupKey(indices) {
   ].sort((a, b) => a - b);
   return 'p:' + set.join('-');
 }
-function msgParticipantsOf(key) {
+export function msgParticipantsOf(key) {
   if (!key || key === 'public') return [];
   return String(key)
     .slice(2)
@@ -109,11 +116,11 @@ function msgParticipantsOf(key) {
     .map(_msgNum)
     .filter((i) => i != null);
 }
-function msgRealmName(i) {
+export function msgRealmName(i) {
   const r = _msgRealms[i];
   return (r && r.name) || 'Realm ' + ((_msgNum(i) || 0) + 1);
 }
-function msgRealmColour(i) {
+export function msgRealmColour(i) {
   const r = _msgRealms[i];
   const hex = (r && r.color) || null;
   if (!hex) return '#c9b189';
@@ -127,7 +134,7 @@ function msgRealmColour(i) {
 }
 
 // ── ROSTER ── who is in this game, who is human, and whom this realm has met.
-async function loadMessageRoster(gameId, report) {
+export async function loadMessageRoster(gameId, report) {
   const known = {};
   _msgArr(report && report.diplomacy && report.diplomacy.known).forEach((k) => {
     const i = _msgNum(k && k.index);
@@ -179,15 +186,15 @@ async function loadMessageRoster(gameId, report) {
   return { humans: humans.size, total };
 }
 // The realms this player may address privately: met, human, and not themselves.
-function msgContacts() {
+export function msgContacts() {
   return Object.values(_msgRealms)
     .filter((r) => r && r.met && r.human && r.index !== _msgMyIndex)
     .sort((a, b) => a.index - b.index);
 }
-function msgChannelIsSendable(key) {
+export function msgChannelIsSendable(key) {
   return msgChannelOpen(key) && !msgOutReason(key);
 }
-function msgChannelOpen(key) {
+export function msgChannelOpen(key) {
   if (key === 'public') return true;
   const others = msgParticipantsOf(key).filter((i) => i !== _msgMyIndex);
   if (!others.length) return false;
@@ -201,7 +208,7 @@ function msgChannelOpen(key) {
 // R-075 (P0-25): until the game is over, a realm that has conceded or been extinguished sends no private dispatches,
 // and none at all while the GM's switch is on. Returns the reason the composer shows, or null when it may send.
 // Enforced on this screen only: the database can't yet tell who is out (that lives in the world), until P2-04.
-function msgOutReason(key) {
+export function msgOutReason(key) {
   if (!_msgOut || _msgGameOver) return null;
   if (_msgBlockOut)
     return (
@@ -211,14 +218,14 @@ function msgOutReason(key) {
   if (key !== 'public') return msgOutPrivateOff() + ' You can still write to 📣 All Realms.';
   return null;
 }
-function msgOutWho() {
+export function msgOutWho() {
   return _msgOut === 'eliminated' ? 'Your dynasty is extinguished' : 'Your realm has conceded';
 }
 // Said on the public channel too, so a realm that is out knows before it looks for a private one.
-function msgOutPrivateOff() {
+export function msgOutPrivateOff() {
   return _msgOut && !_msgGameOver ? msgOutWho() + ', so you send no private dispatches until the game is over.' : '';
 }
-function msgChannelLabel(key) {
+export function msgChannelLabel(key) {
   if (key === 'public') return '📣 All Realms';
   const others = msgParticipantsOf(key).filter((i) => i !== _msgMyIndex);
   if (!others.length) return 'Private note';
@@ -227,7 +234,7 @@ function msgChannelLabel(key) {
 }
 
 // ── ENTRY POINT ── called by openReport once the report is in hand.
-async function initMessaging(gameId, myIndex, report, game) {
+export async function initMessaging(gameId, myIndex, report, game) {
   const same = String(_msgGameId) === String(gameId) && _msgMyIndex === _msgNum(myIndex);
   _msgGameId = gameId != null ? String(gameId) : null;
   _msgMyIndex = _msgNum(myIndex);
@@ -278,7 +285,7 @@ async function initMessaging(gameId, myIndex, report, game) {
   await refreshMessages(true);
   startMessagePolling();
 }
-async function probeMessagesTable() {
+export async function probeMessagesTable() {
   try {
     const { error } = await sb.from(KC_MSG_TABLE).select('id').limit(1);
     _msgTableOk = !error;
@@ -289,7 +296,7 @@ async function probeMessagesTable() {
   }
   return _msgTableOk;
 }
-async function loadMessageReads() {
+export async function loadMessageReads() {
   if (!_msgGameId || _msgMyIndex == null) return;
   try {
     const { data, error } = await sb
@@ -305,7 +312,7 @@ async function loadMessageReads() {
     _msgReads = {};
   } // no row yet, or the table is missing — everything reads as unread
 }
-function queueMessageReadSave() {
+export function queueMessageReadSave() {
   _msgReadsDirty = true;
   if (_msgReadSaveTimer) return;
   _msgReadSaveTimer = setTimeout(() => {
@@ -313,7 +320,7 @@ function queueMessageReadSave() {
     saveMessageReads();
   }, 1200);
 }
-async function saveMessageReads() {
+export async function saveMessageReads() {
   if (!_msgReadsDirty || !_msgGameId || _msgMyIndex == null || !currentUser) return;
   _msgReadsDirty = false;
   try {
@@ -334,7 +341,7 @@ async function saveMessageReads() {
 
 // ── POLLING ── one timer. Every tick while the view is open; one tick in four otherwise, which keeps
 // the unread badge live without a request every 8 seconds for a panel nobody is looking at.
-function startMessagePolling() {
+export function startMessagePolling() {
   if (_msgTimer) return;
   _msgTimer = setInterval(() => {
     _msgTick++;
@@ -351,18 +358,18 @@ function startMessagePolling() {
 // view, and coming back to the browser tab, now asks for new dispatches at once (one small query for
 // ids above the newest held). try/catch: a view switch can run before the tail of the script has
 // declared the messaging state (see _msgEnabled above).
-function refreshMsgBadgeSoon() {
+export function refreshMsgBadgeSoon() {
   try {
     if (_msgEnabled && _msgGameId && _activeSectionId() === 'sec-report') refreshMessages(false);
   } catch (e) {}
 }
-function stopMessagePolling() {
+export function stopMessagePolling() {
   if (_msgTimer) {
     clearInterval(_msgTimer);
     _msgTimer = null;
   }
 }
-function _msgViewVisible() {
+export function _msgViewVisible() {
   if (_activeSectionId() !== 'sec-report') return false;
   const lay = document.getElementById('rp-layout');
   if (!lay) return false;
@@ -372,7 +379,7 @@ function _msgViewVisible() {
 
 // ── FETCH ── first call pulls the most recent MSG_PAGE rows; every later call asks only for ids above
 // the highest already held, so a long game does not re-download its whole correspondence each tick.
-async function refreshMessages(force) {
+export async function refreshMessages(force) {
   if (!_msgEnabled || !_msgGameId) return;
   if (_msgBusy && !force) return;
   if (_msgTableOk === null) await probeMessagesTable();
@@ -413,7 +420,7 @@ async function refreshMessages(force) {
 
 // Fold a fetched page into the held rows, ignoring anything already there (a poll and a manual refresh
 // can overlap). Returns how many were new, and keeps the id watermarks in step.
-function _msgAbsorb(rows) {
+export function _msgAbsorb(rows) {
   let added = 0;
   _msgArr(rows).forEach((r) => {
     const id = _msgNum(r && r.id);
@@ -429,7 +436,7 @@ function _msgAbsorb(rows) {
 }
 // A game that has run to hundreds of dispatches loads only its most recent page on entry; this walks
 // back through the rest one page at a time, so nothing written is ever out of reach.
-async function loadOlderMessages() {
+export async function loadOlderMessages() {
   if (_msgLoadingOlder || !_msgMoreOlder || !_msgGameId || _msgMinId <= 0) return;
   _msgLoadingOlder = true;
   renderMessageThread();
@@ -455,17 +462,17 @@ async function loadOlderMessages() {
 }
 
 // ── UNREAD ──
-function msgRowsOf(key) {
+export function msgRowsOf(key) {
   return _msgRows.filter((r) => msgChannelKeyOf(r) === key);
 }
-function msgUnreadIn(key) {
+export function msgUnreadIn(key) {
   const seen = _msgNum(_msgReads[key]) || 0;
   return msgRowsOf(key).filter((r) => (_msgNum(r.id) || 0) > seen && _msgNum(r.from_index) !== _msgMyIndex).length;
 }
-function msgUnreadTotal() {
+export function msgUnreadTotal() {
   return msgChannelKeys().reduce((n, k) => n + msgUnreadIn(k), 0);
 }
-function markChannelRead(key) {
+export function markChannelRead(key) {
   const rows = msgRowsOf(key);
   if (!rows.length) return;
   const top = rows.reduce((m, r) => Math.max(m, _msgNum(r.id) || 0), 0);
@@ -475,7 +482,7 @@ function markChannelRead(key) {
   updateMsgBadges();
   renderMessageChannels();
 }
-function updateMsgBadges() {
+export function updateMsgBadges() {
   const n = _msgEnabled ? msgUnreadTotal() : 0;
   const txt = n ? (n > 99 ? '99+' : String(n)) : '';
   ['desk-msg-badge', 'mt-msg-badge'].forEach((id) => {
@@ -488,7 +495,7 @@ function updateMsgBadges() {
 
 // ── CHANNEL LIST ── public, then every met human realm (whether or not it has been written to yet),
 // then any conference thread that exists in the history or was opened this session.
-function msgChannelKeys() {
+export function msgChannelKeys() {
   const keys = ['public'];
   msgContacts().forEach((r) => {
     const k = msgGroupKey([_msgMyIndex, r.index]);
@@ -504,7 +511,7 @@ function msgChannelKeys() {
   });
   return keys.concat([...groups].sort());
 }
-function setMsgChannel(key) {
+export function setMsgChannel(key) {
   _msgChannel = key || 'public';
   renderMessageChannels();
   renderMessageThread();
@@ -515,7 +522,7 @@ function setMsgChannel(key) {
       ta.focus();
     } catch (e) {}
 }
-function renderMessageChannels() {
+export function renderMessageChannels() {
   const el = document.getElementById('msg-channels');
   if (!el) return;
   const keys = msgChannelKeys();
@@ -543,7 +550,7 @@ function renderMessageChannels() {
 }
 // One delegated listener rather than an inline onclick per chip: a channel key would otherwise have to
 // survive being written into an HTML attribute and read back as JavaScript.
-function _msgBindChannelClicks() {
+export function _msgBindChannelClicks() {
   const el = document.getElementById('msg-channels');
   if (!el || el._bound) return;
   el._bound = true;
@@ -554,17 +561,17 @@ function _msgBindChannelClicks() {
 }
 
 // ── THREAD ──
-function _msgWhen(iso) {
+export function _msgWhen(iso) {
   const d = new Date(iso);
   if (isNaN(d)) return '';
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
-function _msgDay(iso) {
+export function _msgDay(iso) {
   const d = new Date(iso);
   if (isNaN(d)) return '';
   return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
 }
-function renderMessageThread() {
+export function renderMessageThread() {
   const el = document.getElementById('msg-thread');
   if (!el) return;
   if (!_msgEnabled) {
@@ -634,7 +641,7 @@ function renderMessageThread() {
   if (atBottom) el.scrollTop = el.scrollHeight;
   updateMsgComposer();
 }
-function onMessagesShown() {
+export function onMessagesShown() {
   _msgBindChannelClicks();
   renderMessageChannels();
   renderMessageThread();
@@ -647,12 +654,12 @@ function onMessagesShown() {
 // ── REPORT (P0-24, rulings D-01 and D-13g) ── a player shows a dispatch they received to the game's GM, or to the
 // Overlord when the GM plays in the game (gm_reported_messages decides). One report per dispatch; the player sees
 // their own reports (message_reports' read rule), so a reported dispatch stays marked after a reload.
-async function loadMyReports() {
+export async function loadMyReports() {
   if (!_msgGameId) return;
   const { data, error } = await sb.from('message_reports').select('message_id').eq('game_id', String(_msgGameId));
   if (!error) _msgReported = new Set(_msgArr(data).map((r) => String(r.message_id)));
 }
-async function reportMessage(id) {
+export async function reportMessage(id) {
   const r = _msgRows.find((x) => _msgNum(x.id) === _msgNum(id));
   if (!r || _msgMyIndex == null || _msgNum(r.from_index) === _msgMyIndex) return;
   const why = prompt(
@@ -677,7 +684,7 @@ async function reportMessage(id) {
 }
 
 // ── COMPOSER ──
-function updateMsgComposer() {
+export function updateMsgComposer() {
   const btn = document.getElementById('msg-send-btn'),
     ta = document.getElementById('msg-input'),
     hint = document.getElementById('msg-hint'),
@@ -702,12 +709,12 @@ function updateMsgComposer() {
     note.textContent = _msgErr || '';
   }
 }
-function onMsgInput() {
+export function onMsgInput() {
   updateMsgComposer();
 }
 // Ctrl/Cmd+Enter sends; a bare Enter stays a newline, because a dispatch is usually a paragraph and
 // not a chat line.
-function _msgBindComposerKeys() {
+export function _msgBindComposerKeys() {
   const ta = document.getElementById('msg-input');
   if (!ta || ta._bound) return;
   ta._bound = true;
@@ -718,7 +725,7 @@ function _msgBindComposerKeys() {
     }
   });
 }
-async function sendMessage() {
+export async function sendMessage() {
   const ta = document.getElementById('msg-input');
   if (!ta) return;
   const body = (ta.value || '').trim();
@@ -766,7 +773,7 @@ async function sendMessage() {
 }
 
 // ── CONFERENCE PICKER ── address one private dispatch to several met realms at once.
-function toggleMsgGroupPicker(force) {
+export function toggleMsgGroupPicker(force) {
   const p = document.getElementById('msg-group-pick');
   if (!p) return;
   const open = force === undefined ? p.style.display !== 'block' : !!force;
@@ -784,7 +791,7 @@ function toggleMsgGroupPicker(force) {
         )}`
       : '<span style="font-size:.76rem;color:#8a7a5c">You have not met another player\'s realm yet.</span>';
 }
-function createMsgGroup() {
+export function createMsgGroup() {
   const list = document.getElementById('msg-group-list');
   if (!list) return;
   const picked = [...list.querySelectorAll('input[type=checkbox]:checked')]

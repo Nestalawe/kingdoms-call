@@ -1,3 +1,11 @@
+import { realmTag } from '../turn/log-line-helpers.js';
+import { areEnemies } from '../realms/relations-and-captures.js';
+import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { armyTotalStr } from './best-commander.js';
+import { settleRalliedGarrisons } from '../world/province-bookkeeping-and-rallied-garrisons.js';
+import { resolveStalledBattles } from './stalled-battles-and-beaten-guards.js';
+import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.js';
+
 // ── WAR FRONTS AND ENEMY STAND-OFFS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where the armed hosts of two warring realms stand together is flagged as a battle waiting to happen
 // (flagEnemyStandoffs). A host that stands on enemy ground, or beside an enemy host, when the turn begins gets Spring
@@ -9,7 +17,7 @@
 // waiting to happen: flag it so resolveStalledBattles joins the fight and the province shows as
 // contested. This is the intermittent "holds armed forces of 2 players but is NOT flagged
 // _battleUnresolved" failure in scenario.js.
-function flagEnemyStandoffs(turnContext, exceptProvIds) {
+export function flagEnemyStandoffs(turnContext, exceptProvIds) {
   const { G } = turnContext;
   (G.world.provinces || []).forEach((pv) => {
     if (!pv || pv._battleUnresolved) return;
@@ -49,7 +57,7 @@ function flagEnemyStandoffs(turnContext, exceptProvIds) {
 // anything still contested carries on through the ordinary stalled-battle sweep. Contests left
 // over from LAST turn (already flagged _battleUnresolved) are not war fronts — they resume at the
 // top of Spring as before.
-function warFrontThreats(turnContext) {
+export function warFrontThreats(turnContext) {
   const { G } = turnContext;
   const out = [];
   (G.characters || []).forEach((c) => {
@@ -76,7 +84,7 @@ function warFrontThreats(turnContext) {
   return out;
 }
 
-function resolveWarFronts(turnContext, ph) {
+export function resolveWarFronts(turnContext, ph) {
   const { _warFrontAtStart, _warFrontProvs, G, log, SEASONS } = turnContext;
   if (!_warFrontAtStart.size) return;
   _warFrontProvs.forEach((pid) => {

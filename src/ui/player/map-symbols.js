@@ -1,8 +1,15 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { KC_TERRAIN_COLORS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { kcJoinP } from './startup.js';
+import { GD_BY_ALIGNMENT, GUARD_POWER_COLORS_P, deadHeroRealmTagP } from './items-and-heroes.js';
+import { ALL_SKILLS, armyLabel, unitEmoji } from './order-chances.js';
+import { SKILL_LABELS } from './move-analysis.js';
+
 // ── TERRAIN COLORS ────
-const TERRAIN_COLORS_MAP = { ...KC_TERRAIN_COLORS };
+export const TERRAIN_COLORS_MAP = { ...KC_TERRAIN_COLORS };
 
 // ── TERRAIN ICONS (proper SVG element creation) ────
-function makeTerrainIcon(svgNS, cx, cy, terrain) {
+export function makeTerrainIcon(svgNS, cx, cy, terrain) {
   const els = [];
   const mk = (tag, attrs) => {
     const el = document.createElementNS(svgNS, tag);
@@ -116,7 +123,7 @@ function makeTerrainIcon(svgNS, cx, cy, terrain) {
 // period followed by whitespace, so decimals (×1.5), ranges (2–5) and mid-clause em-dashes stay
 // intact (their period isn't followed by a space). Curated wording is preserved verbatim; only the
 // presentation changes. `text` is shown as text, and each **bold** run becomes <strong> (P0-19).
-function bulletizeDesc(text) {
+export function bulletizeDesc(text) {
   if (!text) return '';
   const bold = (s) => s.split(/\*\*(.+?)\*\*/).map((x, i) => (i % 2 ? kcHtml`<strong>${x}</strong>` : x));
   const raw = String(text).trim();
@@ -131,7 +138,7 @@ function bulletizeDesc(text) {
   });
   return kcHtml`<ul style="margin:2px 0 0;padding-left:1.15em;line-height:1.45">${lis}</ul>`;
 }
-function neutralCharLabel(c) {
+export function neutralCharLabel(c) {
   const base = String((c && c.name) || '')
     .replace(/\s*\(wandering\)/gi, '')
     .trim();
@@ -144,24 +151,24 @@ function neutralCharLabel(c) {
 // forms, standings) it is darkened until it reads. Both keep the hue — a realm stays recognisably
 // its own colour — and move only as far as a contrast ratio needs (WCAG: 4.5 on the parchment,
 // 6 on the near-black popup). Map BORDERS and hex fills use the raw realm colour, untouched.
-function _hexRgb(hex) {
+export function _hexRgb(hex) {
   if (!hex || typeof hex !== 'string' || hex[0] !== '#' || hex.length !== 7) return null;
   const v = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
   return v.some(isNaN) ? null : v;
 }
-function _relLum(rgb) {
+export function _relLum(rgb) {
   const f = (c) => {
     c /= 255;
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   };
   return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]);
 }
-function _contrast(a, b) {
+export function _contrast(a, b) {
   const la = _relLum(a),
     lb = _relLum(b);
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
-function _toHex(rgb) {
+export function _toHex(rgb) {
   return (
     '#' +
     rgb
@@ -173,7 +180,7 @@ function _toHex(rgb) {
       .join('')
   );
 }
-function _shiftForContrast(hex, bgHex, target, toward) {
+export function _shiftForContrast(hex, bgHex, target, toward) {
   const rgb = _hexRgb(hex),
     bg = _hexRgb(bgHex);
   if (!rgb || !bg) return hex;
@@ -188,7 +195,7 @@ function _shiftForContrast(hex, bgHex, target, toward) {
 // 2026-09-26b (Toby item 6): the map popup's "Owned by …" line shows the owning realm's name in the
 // realm's own colour (lifted for the dark tooltip) followed by the player's standing with it —
 // Neutral, Allied or Enemy — read from report.diplomacy.known (matched by owner index, else by name).
-function _ownerLineP(pd) {
+export function _ownerLineP(pd) {
   if (!pd || !pd.ownerName) return 'Unclaimed';
   const r = currentReport || {};
   const known = (r.diplomacy && r.diplomacy.known) || [];
@@ -200,11 +207,11 @@ function _ownerLineP(pd) {
     rel && REL[rel] ? kcHtml` <span style="color:${REL[rel][1]};font-weight:600">(${REL[rel][0]})</span>` : '';
   return kcHtml`Owned by <strong style="color:${col}">${pd.ownerName}</strong>${tag}`;
 }
-function _tintForDarkTooltip(hex) {
+export function _tintForDarkTooltip(hex) {
   return _shiftForContrast(hex, '#1a1208', 6, 255);
 }
 // text on the light report parchment (checked against its palest card, #fdf5e0)
-function reportColour(hex) {
+export function reportColour(hex) {
   return _shiftForContrast(hex, '#fdf5e0', 4.5, 0);
 }
 // ══ ONE SYMBOL TABLE FOR THE HEX AND ITS POPUP ════
@@ -232,18 +239,18 @@ function reportColour(hex) {
 // picture in its own colour — different from the desktop's Segoe/Apple Symbols cross. A marker with
 // `path` is drawn as SVG geometry (box×box units, centred on 0,0) by BOTH renderers, so it is
 // pixel-for-pixel the same shape in the same fill on every platform, and `fill` is always honoured.
-const MAP_CROSS_PATH = 'M-0.7 -5H0.7V-2.2H3.2V-0.8H0.7V5H-0.7V-0.8H-3.2V-2.2H-0.7Z'; // slim Latin cross (2026-09-19: skinnier)
+export const MAP_CROSS_PATH = 'M-0.7 -5H0.7V-2.2H3.2V-0.8H0.7V5H-0.7V-0.8H-3.2V-2.2H-0.7Z'; // slim Latin cross (2026-09-19: skinnier)
 // A bare skull (2026-09-21) — cranium and jaw as one outline, then the two eye sockets, the nasal
 // triangle and two tooth gaps as sub-paths that evenodd punches out. Box 10, centred on 0,0, same
 // convention as MAP_CROSS_PATH.
-const MAP_SKULL_PATH =
+export const MAP_SKULL_PATH =
   'M0,-4.8C3.3,-4.8 4,-2.2 4,0.1C4,1.5 3.35,2.25 2.5,2.6L2.5,3.9C2.5,4.5 2.1,4.9 1.5,4.9L-1.5,4.9C-2.1,4.9 -2.5,4.5 -2.5,3.9L-2.5,2.6C-3.35,2.25 -4,1.5 -4,0.1C-4,-2.2 -3.3,-4.8 0,-4.8Z' +
   'M-2.95,-1A1.2,1.2 0 1,1 -0.55,-1A1.2,1.2 0 1,1 -2.95,-1Z' +
   'M0.55,-1A1.2,1.2 0 1,1 2.95,-1A1.2,1.2 0 1,1 0.55,-1Z' +
   'M0,0.45L0.8,1.95L-0.8,1.95Z' +
   'M-1.15,2.95L-0.6,2.95L-0.6,4.75L-1.15,4.75Z' +
   'M0.6,2.95L1.15,2.95L1.15,4.75L0.6,4.75Z';
-const MAP_SYM = {
+export const MAP_SYM = {
   // 2026-09-21: the fallen hero is a plain WHITE SKULL, not a skull-and-crossbones. Like the graves
   // cross it is SVG geometry rather than a font glyph (MAP_CROSS_PATH's reasoning applies twice over
   // here: ☠ has no dependable text-style glyph on phones, so the emoji font answered with its own
@@ -289,7 +296,7 @@ const MAP_SYM = {
 // the caller's x/y/font-size/stroke/filter/title/pointer-events are carried across, so the caller
 // must append the RETURN VALUE, not its own text node. Callers of glyph markers still get their own
 // node back.
-function mapSymSvg(el, sym, fill) {
+export function mapSymSvg(el, sym, fill) {
   const f = fill != null ? fill : sym.fill;
   if (sym.path) {
     const ns = 'http://www.w3.org/2000/svg';
@@ -326,7 +333,7 @@ function mapSymSvg(el, sym, fill) {
   return el;
 }
 // Render one as HTML (the popup), lifted for the dark ground.
-function mapSymHtml(sym, colour, size) {
+export function mapSymHtml(sym, colour, size) {
   if (sym.path) {
     // geometry, not a font glyph — identical on every platform (see MAP_CROSS_PATH)
     const raw = colour != null ? colour : sym.fill || sym.legend;
@@ -347,14 +354,14 @@ function mapSymHtml(sym, colour, size) {
 // a wandering-hero line). Same font stack, same VS15 pin — otherwise a phone draws these two in its
 // emoji font at emoji size and in emoji colour, which is exactly the desktop/mobile drift item 2 is
 // about.
-function txtGlyph(ch, colour) {
+export function txtGlyph(ch, colour) {
   return kcHtml`<span style="${colour ? `color:${colour};` : ''}font-family:${MAP_SYMBOL_FONT}">${ch}︎</span>`;
 }
 // ── THE LEGEND IS DRAWN FROM THE SAME TABLE AS THE MAP ────
 // Each legend swatch is an empty <span data-mapsym="key"> in the markup; this fills it in from
 // MAP_SYM at boot. A legend entry therefore cannot describe a glyph or a colour the map does not
 // actually draw, and both get the symbol font and the variation selector on every platform.
-function applyMapSymLegend(root) {
+export function applyMapSymLegend(root) {
   (root || document).querySelectorAll('[data-mapsym]').forEach((el) => {
     const sym = MAP_SYM[el.getAttribute('data-mapsym')];
     if (!sym) return;
@@ -369,14 +376,14 @@ function applyMapSymLegend(root) {
 // The popup's own copy of the hex's race badge — the same lettered disc at text size, so the corner
 // of the hex and the line in the popup are visibly the same mark, not a badge and an unrelated
 // emoji.
-function mapRaceBadgeHtml(race) {
+export function mapRaceBadgeHtml(race) {
   const rb = MAP_RACE_BADGE[race];
   if (!rb) return '';
   return kcHtml`<svg width="13" height="13" viewBox="0 0 13 13" style="vertical-align:-2px" aria-hidden="true"><circle cx="6.5" cy="6.5" r="6" fill="${rb.fill}"></circle><text x="6.5" y="9.2" text-anchor="middle" font-size="8" font-weight="700" font-family="Cinzel,serif" fill="${rb.text}">${rb.glyph}</text></svg>`;
 }
 // each lair in a province popup gets its OWN star, tinted by the guardian's
 // difficulty (Weak→green, Moderate→gold, Powerful→orange, Legendary→crimson).
-function _lairStar(f) {
+export function _lairStar(f) {
   // use the SAME difficulty palette as the Known Lairs card and the Chronicle
   // (POWER_COLORS) — the old star used a different orange/red set — and tint the lair name too.
   // province feature data carries `monsterPower` (not `power`) — every popup lair was falling
@@ -400,7 +407,7 @@ function _lairStar(f) {
 // and `cleared` is the world's own flag — so a lair another realm cleared counts, and a lair a
 // rival has hidden behind a Veil of Illusions is not known to be there at all. The note reports
 // what the player knows.
-function _lairsClearedNote(pd) {
+export function _lairsClearedNote(pd) {
   if (!pd || pd.explored == null || pd.explored < 100) return '';
   const lairs = (pd.features || []).filter((f) => f && !f.ritualSite);
   if (lairs.length === 0)
@@ -415,9 +422,9 @@ function _lairsClearedNote(pd) {
 // Grave-sight, crack and elite only), or a bare sensing (a necromancer marching through). All three
 // are stamped with the turn they were learned, because none of them refreshes on its own — the
 // graves may since have been raised as skeletons or rotted to nothing.
-let _graveIntelById = null; // rebuilt each report load by _rebuildGraveIntelIndex()
-let _graveIntelTurn = null; // the report's own turn, so the popup can colour a reading the way the hex does
-function _rebuildGraveIntelIndex(report) {
+export let _graveIntelById = null; // rebuilt each report load by _rebuildGraveIntelIndex()
+export let _graveIntelTurn = null; // the report's own turn, so the popup can colour a reading the way the hex does
+export function _rebuildGraveIntelIndex(report) {
   _graveIntelById = {};
   _graveIntelTurn = report && report.turnNumber != null ? report.turnNumber : null;
   ((report && report.graveIntel) || []).forEach((g) => {
@@ -429,7 +436,7 @@ function _rebuildGraveIntelIndex(report) {
 // character standing in right now (live tier; the GM ships garrisonArmies on that tier) — reports
 // how many units are garrisoned and what they are, tinted in the owner's colour. Nothing is shown
 // for border/remembered ground: the report never carries a garrison the player cannot see.
-function _garrisonNote(pd) {
+export function _garrisonNote(pd) {
   if (!pd || !(pd.tier === 'owned' || pd.tier === 'live')) return '';
   const g = pd.garrisonArmies || [];
   if (!g.length) return '';
@@ -444,7 +451,7 @@ function _garrisonNote(pd) {
     .join(', ');
   return kcHtml`<br>\u{1F6E1} <span style="color:${col}">${g.length} unit${g.length !== 1 ? 's' : ''} garrisoned${pd.tier === 'live' && pd.ownerName ? ` (${pd.ownerName})` : ''}</span> <span style="opacity:.8;font-size:.9em">— ${list}</span>`;
 }
-function _graveNote(pd) {
+export function _graveNote(pd) {
   if (!pd || pd.id == null || !_graveIntelById) return '';
   const g = _graveIntelById[pd.id];
   if (!g) return '';
@@ -464,7 +471,7 @@ function _graveNote(pd) {
 // tint a lair name by its guardian's difficulty (Weak→Legendary), for inline
 // lists (owned-province cards, etc.). Ritual sites and unknown-difficulty lairs render in plain
 // text.
-function _lairName(f) {
+export function _lairName(f) {
   if (!f) return '';
   const col = GUARD_POWER_COLORS_P[f.monsterPower || f.power] || null;
   return col ? kcHtml`<span style="color:${col}">${f.name}</span>` : f.name || '';
@@ -477,7 +484,7 @@ function _lairName(f) {
 // report's pale page rather than the dark popup. No reading (any other crown, or no Terror there) → nothing.
 // BEAST COMMAND (2026-10-12, Toby item 24; mirrors the GM portal's beastCommandCount): the units that count against a
 // hero's Druid level — every living Creature or Monster, not skeletons, a summoned grove or Wild Hunt beasts.
-function beastCommandCountP(a) {
+export function beastCommandCountP(a) {
   const C = new Set([...KC_UNIT_CLASS.creature, ...KC_UNIT_CLASS.monster]);
   return (
     !!a &&
@@ -491,13 +498,13 @@ function beastCommandCountP(a) {
     !a.phantom
   );
 }
-function terrorNoteP(pd, light) {
+export function terrorNoteP(pd, light) {
   const t = pd && pd.terror;
   if (!t || !(t.pct > 0)) return '';
   const col = light ? '#701010' : '#e08a8a';
   return kcHtml`<br><span style="color:${col}">\u{1F480} Terror ${t.pct}% \u2014 ${t.stacks} stack${t.stacks !== 1 ? 's' : ''}${t.byYou ? ' of your own' : ''}: its next defenders fight at \u2212${t.pct}%${t.byYou ? ' (yours are spared where you hold the ground)' : ''}</span>`;
 }
-function _grandDesignNote(pd) {
+export function _grandDesignNote(pd) {
   const gd = pd && pd.grandDesign;
   if (!gd) return '';
   return kcHtml`<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span><span style="opacity:.85"> \u2014 a Grand Design raised by <strong>${gd.ownerName || 'a fallen realm'}</strong>${gd.active ? '.' : ', dormant while another crown holds this ground.'}</span>`;
@@ -510,8 +517,8 @@ function _grandDesignNote(pd) {
 // whether it is active, not its alignment), so the wording can never drift from the engine's.
 // (Built lazily, never as a top-level IIFE: a throw at script top level stops the whole portal
 // booting — the standing ITEMS_BY_TIER lesson.)
-let _GD_DESC_BY_NAME = null;
-function grandDesignDesc(name) {
+export let _GD_DESC_BY_NAME = null;
+export function grandDesignDesc(name) {
   if (!_GD_DESC_BY_NAME) {
     _GD_DESC_BY_NAME = {};
     try {
@@ -522,7 +529,7 @@ function grandDesignDesc(name) {
   }
   return _GD_DESC_BY_NAME[name] || '';
 }
-function provinceGrandDesignHTML(p) {
+export function provinceGrandDesignHTML(p) {
   const gd = p && p.grandDesign;
   if (!gd) return '';
   const desc = grandDesignDesc(gd.name);
@@ -541,12 +548,12 @@ function provinceGrandDesignHTML(p) {
 }
 // 2026-10-15 (D1): does a hero your orders can target lead troops? A report now says so (leadsArmies)
 // rather than giving another realm's exact count; an older report still carries the count.
-function leadsArmiesP(x) {
+export function leadsArmiesP(x) {
   return x && x.leadsArmies != null ? !!x.leadsArmies : ((x && x.armies) || 0) > 0;
 }
 // 2026-10-15 (Toby, D2/D9): what a Spy on the hero read besides their skills — the magic items they
 // carried and the army units they led, as of that spy. Empty for a hero never spied on.
-function spiedExtraP(s) {
+export function spiedExtraP(s) {
   if (!s) return '';
   const h = [];
   if (Array.isArray(s.spiedItems))
@@ -566,7 +573,7 @@ function spiedExtraP(s) {
     );
   return h.length ? kcHtml`${h}` : '';
 }
-function popupKnownChars(pd, deadHeroes) {
+export function popupKnownChars(pd, deadHeroes) {
   const chars = (pd && pd.characters) || [];
   // a fallen hero must appear ONCE — as "(dead)". De-dupe the dead list by id, and drop from the
   // live lists any character that also appears among the dead (the dead entry wins), so a hero
@@ -637,7 +644,7 @@ function popupKnownChars(pd, deadHeroes) {
 // characters, and for any hero your Spy (or Clairvoyance) has actually read. A wandering hero's
 // reputation as one phrase — "legendary for Tactical". Mirrors the GM engine's heroFameText(); the
 // level itself is never shown.
-function heroFameTextP(h) {
+export function heroFameTextP(h) {
   let ts = (h && h.topSkill) || null;
   if (!ts) {
     const sk = Object.entries((h && h.skills) || {}).filter(([, v]) => v > 0);
@@ -650,7 +657,7 @@ function heroFameTextP(h) {
   }
   return ts ? `${skillFameLabel(ts.level)} ${SKILL_LABELS[ts.skill] || ts.skill}` : 'no notable skills';
 }
-function skillFameLabel(level) {
+export function skillFameLabel(level) {
   const l = level || 0;
   return l >= 7 ? 'has a heroic level of' : l >= 4 ? 'legendary for' : 'renowned for';
 }
@@ -674,27 +681,27 @@ function skillFameLabel(level) {
 // draws the colour emoji. Their `fill` is then ignored by the renderer, which costs nothing for
 // the garrison shield (navy was decoration) — but the Wonder's gold/grey DID carry meaning, so
 // active vs dormant is now shown by OPACITY, which emoji honour on every platform.
-const MAP_SYMBOL_FONT =
+export const MAP_SYMBOL_FONT =
   "'Noto Sans Symbols 2','Noto Sans Symbols','Segoe UI Symbol','Apple Symbols','Symbola','DejaVu Sans',sans-serif";
 // set the glyph WITHOUT wiping child elements \u2014 callers append a <title> tooltip before
 // calling these, and `textContent=` was silently deleting it.
-function _setGlyphText(el, s) {
+export function _setGlyphText(el, s) {
   Array.from(el.childNodes).forEach((n) => {
     if (n.nodeType === 3) el.removeChild(n);
   });
   el.appendChild(document.createTextNode(s));
 }
-function mapTextGlyph(el, ch) {
+export function mapTextGlyph(el, ch) {
   el.setAttribute('font-family', MAP_SYMBOL_FONT);
   _setGlyphText(el, ch + '\uFE0E');
   return el;
 }
-function mapEmojiGlyph(el, ch) {
+export function mapEmojiGlyph(el, ch) {
   _setGlyphText(el, ch + '\uFE0F');
   return el;
 }
 
-const MAP_RACE_BADGE = {
+export const MAP_RACE_BADGE = {
   Human: { glyph: 'H', fill: '#c9a961', text: '#1a1208' },
   Elven: { glyph: 'E', fill: '#6fbf73', text: '#0c2a0e' },
   Dwarven: { glyph: 'D', fill: '#9fa8b8', text: '#151a22' },
@@ -702,13 +709,13 @@ const MAP_RACE_BADGE = {
   Creature: { glyph: 'C', fill: '#4fa3c9', text: '#0a1f28' },
   Monster: { glyph: 'M', fill: '#7d4fb5', text: '#fff' },
 };
-const CHIEFTAIN_MARKER_COLOR = '#8f6a38'; // darkened from #b08a5a — luminance 111 stays just above the tooltip's 110 lightening threshold so the popup shows the same brown
+export const CHIEFTAIN_MARKER_COLOR = '#8f6a38'; // darkened from #b08a5a — luminance 111 stays just above the tooltip's 110 lightening threshold so the popup shows the same brown
 // ── LOCATE A PROVINCE ON THE MAP (2026-09-20, Toby) ── A province name in the report can be
 // hovered to light up its hex on the map (desktop: the map sits beside the report), and clicked or
 // tapped to bring the map into view and light it up for a few seconds (phones: switches to the Map
 // tab). Every drawn hex group carries data-prov=<id>; the highlight is a pulsing outline laid over
 // the whole map (pointer-events:none) so it never blocks the hex popup.
-function provLinkHtml(id, name, extraCls) {
+export function provLinkHtml(id, name, extraCls) {
   if (id == null || id === '') return name;
   return kcHtml`<span class="prov-link${extraCls ? ' ' + extraCls : ''}" onmouseenter="highlightMapProv(${kcArg(Number(id))},true)" onmouseleave="highlightMapProv(${kcArg(Number(id))},false)" onclick="locateOnMap(${kcArg(Number(id))})" title="Hover to light up ${name} on the map — click or tap to show it">${name}</span>`;
 }

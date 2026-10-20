@@ -1,3 +1,9 @@
+import { kcRng } from '../rng.js';
+import { QUALITY_TIERS } from '../army-tables.js';
+import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.js';
+import { discEff, discParam, discSum, hasDisc } from '../discoveries.js';
+import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.js';
+
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
 // Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.js:
 // the counter moved on, heirs crowned, the turn's summons and spells ended), the rest of the new turn, in this order:
@@ -17,7 +23,7 @@
 // It takes the turn's context (src/engine/turn/context.js) and nothing else: it reads no value of the phase loop's. The
 // body keeps resolveTurn's indent (plan P1-08's Decisions).
 
-function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile(turnContext) {
+export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile(turnContext) {
   const { G, log } = turnContext;
   // 7d. sd08 War Academy: promote one random army in each player's home province
   G.players.forEach((p, pi) => {

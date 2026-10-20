@@ -1,3 +1,14 @@
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { AERIAL_TYPES, FLYING_TYPES, SEA_TYPES, carrierBerths, getFlyCapability, isAirCarriable } from './movement.js';
+import { unitBaseStrength } from '../battle/strength.js';
+import { describeArmy } from '../dice-and-army-names.js';
+import { BOT_LIGHT_ARMIES } from '../bots/war.js';
+import { getNeighborsP } from '../world/map-helpers.js';
+import { perkTier } from '../titles/perks.js';
+import { newMercId } from '../turn/mercenary-ids-and-battle-records.js';
+import { isFriendlyProvFor, setProvinceOwner } from '../realms/relations-and-captures.js';
+import { canEnterTerrain, refreshMovePool } from './movement-pools.js';
+
 // ── SEA LIFT, STRANDING AND RETREATS (plan P1-08b: lifted out of resolveTurn) ────
 // Whether a column can put to sea (getSeaCapability, seaLiftShortfall), who is put ashore when the hulls can no longer
 // carry it (stranding), where a beaten force may fall back and which ground it prefers, and a fleet's retreat to water
@@ -6,7 +17,7 @@
 // the rest read no turn state.
 // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
 // stored per character for the whole turn
-function getSeaCapability(armies, leadChar) {
+export function getSeaCapability(armies, leadChar) {
   // spectral doubles are illusions — they weigh nothing, need no berth and no griffon, and are
   // never counted against a force's lift. (They normally live outside ch.armies entirely; this
   // guards the case where a fighting copy is still attached mid-phase.)
@@ -64,13 +75,13 @@ function getSeaCapability(armies, leadChar) {
 // Skipped: flooded land (a Flood strands a land host by design) and any province whose battle is
 // still unresolved — a beaten column pinned at sea stays aboard and fights on (see retreatOptions).
 // Hulls are never shared between characters: each commander's ships carry his own troops only.
-function isOpenSea(prov) {
+export function isOpenSea(prov) {
   return !!prov && prov.terrain === 'sea' && !prov._flood;
 }
 // 0 exactly when getSeaCapability(armies) !== 'land'; otherwise a positive measure of the lift
 // missing — berths short for units only a hull can take (in half-hulls, ×1000), then foot left
 // over beyond what the flyers can lift. Mirrors getSeaCapability's pooled hull + flyer rule.
-function seaLiftShortfall(armies, leadChar) {
+export function seaLiftShortfall(armies, leadChar) {
   armies = (armies || []).filter((a) => a && !a._phantom);
   if (getSeaCapability(armies, leadChar) !== 'land') return 0;
   const capOf = (a) => (BOT_LIGHT_ARMIES.has(a.type) ? 1 : 2); // half-hulls: light foot 1, everything else 2
@@ -95,7 +106,7 @@ function seaLiftShortfall(armies, leadChar) {
 }
 // The land units to put ashore so the rest can be carried: repeatedly the WEAKEST land unit whose
 // removal actually reduces the shortfall (fallback: the weakest outright). Never flyers or hulls.
-function pickStrandedUnits(armies, leadChar) {
+export function pickStrandedUnits(armies, leadChar) {
   const kept = (armies || []).filter((a) => a && !a._phantom),
     out = [];
   let sf = seaLiftShortfall(kept, leadChar),
@@ -142,11 +153,11 @@ function pickStrandedUnits(armies, leadChar) {
     });
   return out;
 }
-function strandLabel(a) {
+export function strandLabel(a) {
   return a.unitName ? `${a.unitName} (${a.quality} ${a.type})` : `a ${a.quality} ${a.type}`;
 }
 // Called after every order, at the top and end of every phase, and after wages (see the phase loop).
-function settleStrandedAtSea(turnContext, ph, cause) {
+export function settleStrandedAtSea(turnContext, ph, cause) {
   const { G, log } = turnContext;
   (G.characters || []).forEach((c) => {
     if (!c || c.alive === false || c.player == null || !(c.armies || []).length) return;
@@ -248,7 +259,7 @@ function settleStrandedAtSea(turnContext, ph, cause) {
 // first (the one number the game already uses for a province's worth), then own ground ahead of
 // an ally's, then the hero's own capital, then a friendly garrison already standing there, and
 // finally province id so the result is deterministic rather than map-order chance.
-function retreatValue(turnContext, ch, p) {
+export function retreatValue(turnContext, ch, p) {
   const { G } = turnContext;
   if (!p) return -Infinity;
   const own = ch && ch.player != null && p.owner === ch.player ? 1 : 0;
@@ -258,7 +269,7 @@ function retreatValue(turnContext, ch, p) {
   return (p.tax || 0) * 1000 + own * 400 + home * 200 + garrison * 100 + (1 - (p.id || 0) / 1e6);
 }
 // Best of a list of candidate retreat provinces (null when the list is empty).
-function bestRetreat(turnContext, ch, list) {
+export function bestRetreat(turnContext, ch, list) {
   let best = null,
     bv = -Infinity;
   (list || []).forEach((p) => {
@@ -270,7 +281,7 @@ function bestRetreat(turnContext, ch, list) {
   });
   return best;
 }
-function retreatOptions(turnContext, ch, prov, force) {
+export function retreatOptions(turnContext, ch, prov, force) {
   const { G } = turnContext;
   if (!ch || !prov) return [];
   force = (force || []).filter((a) => a && !a._died && !a._disbanded);
@@ -290,7 +301,7 @@ function retreatOptions(turnContext, ch, prov, force) {
 // 2026-10-09 (Toby item 10): a beaten force NEVER falls back into a FLOODED province. It may fall
 // back onto a sea province PARTED into dry ground, but only when no province of ordinary land is open
 // to it. (Open sea stays open to a fleet: that is not magic ground.)
-function preferDryGround(list) {
+export function preferDryGround(list) {
   const open = (list || []).filter((p) => p && !p._flood);
   const ordinary = open.filter((p) => p.terrain !== 'sea' && !p._partSea);
   return ordinary.length ? open.filter((p) => !p._partSea) : open;
@@ -313,7 +324,7 @@ function preferDryGround(list) {
 // on ground the realm does not hold — a landing thrown back off an enemy coast — have no
 // garrison to join and no commander left, so they scatter as mercenaries: the same fate the
 // engine already gives a fallen commander's host on hostile ground.
-function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, cName) {
+export function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, cName) {
   const { G } = turnContext;
   if (!units || !units.length) return false;
   const owner = ch._charmTempControl && ch._charmOriginalPlayer != null ? ch._charmOriginalPlayer : ch.player;
@@ -373,7 +384,7 @@ function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, cName) 
 // live in prov.garrisonArmies but must be kept out of every "the garrison retreats with the
 // hero" sweep, and they count as forces still holding the ground when the winner tries to claim
 // it. `against` is the would-be claimant: hulls of that same realm are not an obstacle to it.
-function navalHeldIn(prov, against) {
+export function navalHeldIn(prov, against) {
   const out = [];
   ((prov && prov.garrisonArmies) || []).forEach((a) => {
     if (!a || a._navalHold == null || a._died || a._disbanded) return;
@@ -384,12 +395,12 @@ function navalHeldIn(prov, against) {
 }
 // The tag is a within-phase marker only: once the battle's outcome is logged the hulls are
 // ordinary garrison again (a stalled battle resumes against them through resolveUnitGainInProvince).
-function clearNavalHold(prov) {
+export function clearNavalHold(prov) {
   ((prov && prov.garrisonArmies) || []).forEach((a) => {
     if (a && a._navalHold != null) delete a._navalHold;
   });
 }
-function navalHoldLine(turnContext, prov, units, claimant) {
+export function navalHoldLine(turnContext, prov, units, claimant) {
   const { G } = turnContext;
   const who =
     units[0] && units[0]._navalHold != null && G.players[units[0]._navalHold]
@@ -397,7 +408,7 @@ function navalHoldLine(turnContext, prov, units, claimant) {
       : 'the enemy';
   return `⚓ ${who}'s ${describeArmy(units)} still ${units.length === 1 ? 'lies' : 'lie'} off ${prov.name} — the ground is not ${claimant}'s while ${units.length === 1 ? 'it is' : 'they are'} there, and the fight resumes next phase.`;
 }
-function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName, noSea) {
+export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName, noSea) {
   const { G } = turnContext;
   if (!ch || !prov || prov.terrain === 'sea' || ch.alive === false || ch.killedThisTurn) return '';
   live = (live || []).filter((a) => a && !a._died && !a._disbanded && !a._phantom);
@@ -501,7 +512,7 @@ function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName, noSea)
   return ''; // nothing to fall back on at all — the ordinary rules decide
 }
 // The line that explains WHY a beaten force at sea cannot fall back (null when that is not why).
-function seaTrapLine(name, ch, prov, force) {
+export function seaTrapLine(name, ch, prov, force) {
   if (!isOpenSea(prov)) return null;
   force = (force || []).filter((a) => a && !a._died && !a._disbanded);
   if (getSeaCapability(force, ch) !== 'land') return null;

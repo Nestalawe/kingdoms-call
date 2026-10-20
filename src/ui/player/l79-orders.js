@@ -6,7 +6,7 @@
 // L7/L9 mastery ORDERS — gated by the hero's RAW skill level (past-5 comes from experience only).
 // target: 'none' (self/current province), 'province' (a seen province), or 'character' (an enemy
 // hero here).
-const L79_ORDERS = {
+export const L79_ORDERS = {
   Sabotage: {
     skill: 'spy',
     lvl: 7,

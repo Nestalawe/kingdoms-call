@@ -1,3 +1,23 @@
+import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.js';
+import { ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.js';
+import { unitBaseStrength } from '../battle/strength.js';
+import { heroHireWage } from '../world/tables.js';
+import { wildHuntPrice } from '../items/tiers-and-hoards.js';
+import { consecratedIds, itemUsableBy } from '../heroes/fame-and-consecration.js';
+import { featDiscovered } from '../../views/visibility.js';
+import { ITEM_SLOT_CAP, activeItems, itemPowerScore, itemSlot } from '../items/equipment.js';
+import { effSkillOf } from '../heroes/skills-and-hp.js';
+import { RUMOUR_COST_BY_POWER, isMithril } from '../personal-combat/helpers.js';
+import { BOT_DEF_BONUS, BOT_HEX_DIRS, botBattleForce, botBelief, botBelievedOwner, botKnows, botKnowsGraves, botMarginFor, botNeighbourProv, botRaceTerrainMult, botRelationRaw, botSees, botSeesChar, botTargetDefence, botVisibleCharsIn } from './intel.js';
+import { BOT_AERIAL_TYPES, BOT_CARRIER_TYPES, BOT_CAVALRY_TYPES, BOT_CREATURE_ARMIES, BOT_FLYING_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL, botCanFly, botEnemyChars, botSeaCap } from './war.js';
+import { botFleetOnly, botGarrisonTarget, botHeroCap, botHireBias, botHomeId, botIsLeader, botSpend, botTurnCache } from './strategy.js';
+import { BOT_SCHOOLS } from './schools.js';
+import { BOT_SPECIALIST_ROLES, botFillOrders, botHasMetPlayers, botIsEdge, botMoveOrder, botNearbyThreat, botPathDirs, botPathLen, botSpyTarget } from './specialists.js';
+import { botAtWar, botCoastalFleetType, botNavalEnemyCoast } from './economy.js';
+import { botDuelRating, botPathAny, botPathLenAny } from './spellcraft.js';
+import { isCharmedNow } from '../heroes/charms-and-neutrals.js';
+import { DISC_BY_ID } from '../discoveries.js';
+
 // ══ INFILTRATOR — conjure a host behind the enemy line ════
 // A caster with Necromancy or Elemental magic takes provinces by himself, with no army at all. He
 // walks UNARMED into undefended enemy ground (no guard engages an unarmed character, so he can
@@ -22,8 +42,8 @@
 // (counted as enemy-owned neighbours: that is the "behind the front line" test), rich ground, and —
 // for a necromancer — graves, less 3 per hop of walking. Unowned undefended land is a legal
 // secondary target and needs no war.
-const BOT_INFILTRATE_RANGE = 5; // an unarmed character's full walking reach
-function botInfiltrateSchool(c) {
+export const BOT_INFILTRATE_RANGE = 5; // an unarmed character's full walking reach
+export function botInfiltrateSchool(c) {
   const s = c.skills || {};
   const nec = s.necromancy || 0,
     ele = s.elemental || 0;
@@ -31,7 +51,7 @@ function botInfiltrateSchool(c) {
   return nec >= ele ? 'necromancy' : 'elemental';
 }
 // All of this character's units are conjured skeletons (i.e. everything he has, he raised himself).
-function botOnlySkeletal(c) {
+export function botOnlySkeletal(c) {
   const a = c.armies || [];
   return a.length > 0 && a.every((x) => x && x._isSkeletal);
 }
@@ -40,7 +60,7 @@ function botOnlySkeletal(c) {
 // empty-looking province is only believed empty if the realm has seen it before AND its wealth band
 // suggests little there — and the caster can still walk into a garrison nobody told him about,
 // exactly as a player's infiltrator can.
-function botProvUndefended(G, prov, pi) {
+export function botProvUndefended(G, prov, pi) {
   if (!prov || prov.terrain === 'sea') return false;
   if (!botKnows(G, pi, prov.id)) return false; // never seen — not a plan, a guess in the dark
   if (!botSees(G, pi, prov.id)) {
@@ -54,7 +74,7 @@ function botProvUndefended(G, prov, pi) {
   );
 }
 // Best province to conjure a host in, within `range` hops. {P,d,sc} or null.
-function botInfiltrateTarget(G, pi, c, school, range) {
+export function botInfiltrateTarget(G, pi, c, school, range) {
   const from = G.world.provinces[c.location];
   if (!from) return null;
   // the scan is confined to ground this realm has SEEN, judged on what it believes rather than on
@@ -88,7 +108,7 @@ function botInfiltrateTarget(G, pi, c, school, range) {
   return best;
 }
 // Build the full 5-phase infiltration order list, or null if it will not fit. `pre` is consumed.
-function botInfiltrateOrders(G, pi, c, pre, school, range) {
+export function botInfiltrateOrders(G, pi, c, pre, school, range) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   const tgt = botInfiltrateTarget(G, pi, c, school, range);
@@ -109,7 +129,7 @@ function botInfiltrateOrders(G, pi, c, pre, school, range) {
 // Until now no bot ever used its alignment's signature order. Each helper returns a pre-order (or null)
 // for the character standing in `P`, spending through the turn ledger where gold is involved. One
 // signature pre-order per character per turn; the engine's own once-per-turn rules still apply.
-function botConsecrateOK(G, pi, c, X) {
+export function botConsecrateOK(G, pi, c, X) {
   const pl = (G.players || [])[pi];
   if (!pl || pl.alignment !== 'Divine' || !c.isKing || !X || X.owner !== pi || X.terrain === 'sea') return false;
   const home = botHomeId(G, pi);
@@ -130,7 +150,7 @@ function botConsecrateOK(G, pi, c, X) {
   return list.length < ((c.skills || {}).white || 0);
 }
 // The richest consecratable owned province within `maxD` hops of the king (through own land). {X,d} or null.
-function botConsecrateTarget(G, pi, c, maxD) {
+export function botConsecrateTarget(G, pi, c, maxD) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   let best = null;
@@ -143,7 +163,7 @@ function botConsecrateTarget(G, pi, c, maxD) {
   });
   return best;
 }
-function botSignaturePre(G, pi, c, P, L) {
+export function botSignaturePre(G, pi, c, P, L) {
   const pl = (G.players || [])[pi];
   if (!pl || !P) return null;
   const sk = c.skills || {};
@@ -224,7 +244,7 @@ function botSignaturePre(G, pi, c, P, L) {
 // PERFORM RITE (Pagan): only for an armed host standing at a ritual site with a fight ahead. The Wild
 // Hunt binds two wage-free Veterans of the province's wild kind for the price of one; a host of 6+ that
 // cannot hunt makes a Blood Offering — its two weakest for two tiers on its two strongest.
-function botRitePre(G, pi, c, P, L, fightAhead) {
+export function botRitePre(G, pi, c, P, L, fightAhead) {
   const pl = (G.players || [])[pi];
   if (!pl || pl.alignment !== 'Pagan' || !P || !fightAhead) return null;
   if (P._riteTurn === G.turn) return null;
@@ -259,7 +279,7 @@ function botRitePre(G, pi, c, P, L, fightAhead) {
 }
 // RESEARCH CHOICE (R1): a bot keeps the discovery whose category / wording fits its situation — war-craft
 // while at war, statecraft and wealth while expanding, espionage once other crowns are met. Public fields only.
-function botResearchPick(G, pi, options) {
+export function botResearchPick(G, pi, options) {
   const war = botAtWar(G, pi),
     met = botHasMetPlayers(G, pi);
   const CAT = {
@@ -288,7 +308,7 @@ function botResearchPick(G, pi, options) {
 // normaliseEquipment dons whatever came first), send combat kit from the court's scholars and scouts to
 // the general who fights, and crack the Philosopher's Stone once the realm has an army worth promoting.
 // One item pre-order per character per turn. Reads only the bot's own items.
-const BOT_FIGHT_STATS = new Set([
+export const BOT_FIGHT_STATS = new Set([
   'melee',
   'archery',
   'tactical',
@@ -298,7 +318,7 @@ const BOT_FIGHT_STATS = new Set([
   'combatUse',
   'druid',
 ]);
-function botItemPre(G, pi, c, roles) {
+export function botItemPre(G, pi, c, roles) {
   const items = (c.items || []).filter(Boolean);
   if (!items.length) return null;
   // 1. Philosopher's Stone — every unit of the realm one tier up, once per game
@@ -404,7 +424,7 @@ function botItemPre(G, pi, c, roles) {
 }
 // Which role a character's KIT should serve. Leaders are generals (the admiral and flying general keep their
 // own names), armed kings and defenders fight, specialists are their craft.
-function botItemRoleOf(G, pi, c, roles) {
+export function botItemRoleOf(G, pi, c, roles) {
   if (c._botRole === 'admiral' || c._botRole === 'skygeneral') return c._botRole;
   if (roles && roles.leaders.includes(c.id)) return 'general';
   if (c.isKing) return (c.armies || []).length ? 'general' : 'slayer';
@@ -412,7 +432,7 @@ function botItemRoleOf(G, pi, c, roles) {
   if (BOT_SPECIALIST_ROLES.has(c._botRole)) return c._botRole;
   return (c.armies || []).length ? 'general' : 'none';
 }
-const _BOT_DUEL_KIT = [
+export const _BOT_DUEL_KIT = [
   'melee',
   'archery',
   'maxHp',
@@ -427,7 +447,7 @@ const _BOT_DUEL_KIT = [
   'necromancy',
   'psychic',
 ];
-const BOT_ROLE_ITEM_STATS = {
+export const BOT_ROLE_ITEM_STATS = {
   general: new Set([
     ..._BOT_DUEL_KIT,
     'tactical',
@@ -461,7 +481,7 @@ const BOT_ROLE_ITEM_STATS = {
   none: new Set([]),
 };
 // the stats a role is the FIRST home for (breaks ties between several willing recipients)
-const BOT_ROLE_ITEM_PRIMARY = {
+export const BOT_ROLE_ITEM_PRIMARY = {
   general: new Set(['tactical', 'march', 'armyBonus', 'aura', 'undeadBonus', 'siege']),
   slayer: new Set(_BOT_DUEL_KIT),
   admiral: new Set(['naval', 'fleet']),
@@ -474,7 +494,7 @@ const BOT_ROLE_ITEM_PRIMARY = {
 };
 // ALLIED FRONT (review R7): a target within two hexes of an allied realm's field host is worth more — two
 // crowns pressing one border beat two crowns pressing two. Only hosts the bot can see.
-function botAllyNear(G, pi, X) {
+export function botAllyNear(G, pi, X) {
   if (!X) return false;
   return (G.characters || []).some((e) => {
     if (!(
@@ -501,7 +521,7 @@ function botAllyNear(G, pi, X) {
 // troops, p._botIntel.heroes for the unarmed. Only characters botSeesChar can see are recorded, so the
 // memory is exactly what a human's past reports hold. A remembered host that is no longer visible still
 // counts against a target for three turns (it may still be there), and remembered heroes are hunted.
-function botUpdateIntel(G, pi) {
+export function botUpdateIntel(G, pi) {
   const p = (G.players || [])[pi];
   if (!p) return null;
   const I = (p._botIntel = p._botIntel || { generals: {}, heroes: {} });
@@ -553,12 +573,12 @@ function botUpdateIntel(G, pi) {
   });
   return I;
 }
-function botEnemyIntel(G, pi) {
+export function botEnemyIntel(G, pi) {
   const p = (G.players || [])[pi];
   return (p && p._botIntel) || { generals: {}, heroes: {} };
 }
 // Remembered at-war hosts last seen in province `provId` within three turns and not visible now: {units,strength}.
-function botRememberedHostAt(G, pi, provId) {
+export function botRememberedHostAt(G, pi, provId) {
   const I = botEnemyIntel(G, pi);
   let units = 0,
     strength = 0;
@@ -575,7 +595,7 @@ function botRememberedHostAt(G, pi, provId) {
   return { units, strength };
 }
 // The margin demanded against an enemy HOST (Toby): 1.5× a five-unit column, rising 0.05 per unit to 2×.
-function botHostMargin(base, hostUnits) {
+export function botHostMargin(base, hostUnits) {
   if (!(hostUnits > 0)) return base;
   return Math.max(base, Math.min(2.0, 1.5 + 0.05 * Math.max(0, hostUnits - 5)));
 }
@@ -584,8 +604,8 @@ function botHostMargin(base, hostUnits) {
 // told him (f._rumourOdds[pi] — the same five bands the player reads). Only a band of "almost certain"
 // (80%+) sends him in. A rumour by another hero, or older than three turns, or bought before the hero
 // gained a level, is stale. Lairs are taken weakest grade first.
-const BOT_LAIR_GRADE = { '': 0, Weak: 0, Moderate: 1, Powerful: 2, Legendary: 3 };
-function botRumourFor(G, pi, c, f) {
+export const BOT_LAIR_GRADE = { '': 0, Weak: 0, Moderate: 1, Powerful: 2, Legendary: 3 };
+export function botRumourFor(G, pi, c, f) {
   const r = f && f._rumourOdds && f._rumourOdds[pi];
   if (!r || r.charId !== c.id) return null;
   if ((G.turn || 0) - r.turn > 3) return null;
@@ -593,7 +613,7 @@ function botRumourFor(G, pi, c, f) {
   if (BOT_LAIR_REASK_GAIN > 0 && r.rating != null && botLairRating(c) >= r.rating + BOT_LAIR_REASK_GAIN) return null;
   return r;
 } // 2026-09-28: stale only if he has WEAKENED since (a level gained no longer voids it)
-function botLairRating(c) {
+export function botLairRating(c) {
   const sk = c.skills || {};
   return (
     (c.maxHp || 20) +
@@ -605,7 +625,7 @@ function botLairRating(c) {
   );
 }
 // Candidate lairs for this hero: {X,li,f,grade,d,rumour}. `maxD` hops through own/allied/unowned ground.
-function botLairCandidates(G, pi, c, maxD) {
+export function botLairCandidates(G, pi, c, maxD) {
   const from = G.world.provinces[c.location];
   if (!from) return [];
   const out = [];
@@ -643,13 +663,13 @@ function botLairCandidates(G, pi, c, maxD) {
 // school at 1, Melee 4, school 2, Melee 5, school 3, Melee 6, then Archery. The school is Elemental unless
 // another duelling school (Necromancy, Psychic, White) is already the hero's strongest: the auto encounter
 // plan casts that school's spell in every lair fight (autoEncounterPlan → CA:), so every level is used.
-function botSlayerSchool(c) {
+export function botSlayerSchool(c) {
   const s = (c && c.skills) || {};
   return ['elemental', 'necromancy', 'psychic', 'white'].sort(
     (a, b) => (s[b] || 0) - (s[a] || 0) || (a === 'elemental' ? -1 : b === 'elemental' ? 1 : 0),
   )[0];
 }
-function botSlayerTrainSkill(c) {
+export function botSlayerTrainSkill(c) {
   const s = c.skills || {};
   const sch = botSlayerSchool(c);
   // 2026-09-28 (Toby): never a skill already at 5 — Practice cannot take it further (levels 6–9 come only from
@@ -679,13 +699,13 @@ function botSlayerTrainSkill(c) {
 // Hunt Rumours phase resolves. The planner used to demand it from the muster budget, which the leaders (who plan
 // first) had usually spent to nothing — a slayer with lairs in reach then trained instead of asking, one slayer
 // year in five. Now the rumour goes ahead whenever the treasury itself can pay it with a little to spare.
-const BOT_RUMOUR_FUND_PER_SLAYER = 4;
-function botRumourAffordable(G, pi, L, price) {
+export const BOT_RUMOUR_FUND_PER_SLAYER = 4;
+export function botRumourAffordable(G, pi, L, price) {
   return (
     (L.rumourFund || 0) >= price || L.budget >= price + 1 || (((G.players || [])[pi] || {}).gold || 0) >= price + 3
   );
 }
-function botSpendRumour(L, price) {
+export function botSpendRumour(L, price) {
   const f = Math.min(L.rumourFund || 0, price);
   L.rumourFund = (L.rumourFund || 0) - f;
   L.budget -= price - f;
@@ -700,7 +720,7 @@ function botSpendRumour(L, price) {
 // • He rests before a hunt when hurt (to 75% of max HP — Rest heals 30% a phase), and searches every lair he
 //   can reach in the year, up to three; every search after the first carries `_botMinHp` (0.6): the engine
 //   turns it into a Rest if the earlier fight left him under 60%.
-const BOT_LAIR_WEAK_BAND = 80,
+export const BOT_LAIR_WEAK_BAND = 80,
   BOT_LAIR_WEAK_HP = 0.95,
   BOT_LAIR_REACH = 6,
   BOT_LAIR_MAX_RUMOURS = 3; // 2026-09-28 (options 3, 5)
@@ -709,28 +729,28 @@ const BOT_LAIR_WEAK_BAND = 80,
 // 2026-09-29 tuning knobs (defaults = previous behaviour): BOT_LAIR_GO_BAND_HI is the rumour band that sends a hero
 // into a Moderate-or-higher lair (BOT_LAIR_GO_BAND stays the Weak one); BOT_LAIR_REASK_GAIN > 0 lets a hero re-ask a
 // lair once his botLairRating has risen that much since he was told (0 = off: he waits out the six turns).
-const BOT_LAIR_GO_BAND_HI = 90,
+export const BOT_LAIR_GO_BAND_HI = 90,
   BOT_LAIR_REASK_GAIN = 3; // 2026-09-29 (Toby, study C4): re-ask once his rating has risen 3
-function botGoBand(g) {
+export function botGoBand(g) {
   return g > 0 ? BOT_LAIR_GO_BAND_HI : BOT_LAIR_GO_BAND;
 }
-const BOT_LAIR_GO_BAND = 90,
+export const BOT_LAIR_GO_BAND = 90,
   BOT_LAIR_OWN_AFTER = 2,
   BOT_LAIR_PROMOTE_AT = 2,
   BOT_LAIR_RETRY_EXTRA = 0,
   BOT_LAIR_MIN_HP = 0.75,
   BOT_LAIR_NEXT_HP = 0.6,
   BOT_LAIR_MAX_SEARCHES = 3;
-const BOT_LAIR_GN = ['Weak', 'Moderate', 'Powerful', 'Legendary'];
+export const BOT_LAIR_GN = ['Weak', 'Moderate', 'Powerful', 'Legendary'];
 // 2026-09-29 (Toby): PROMOTION ON STRENGTH as well as kills. A hero who owns his grade and is already
 // kitted or trained for the grade above asks about it without waiting for the kill count: equipped items
 // at least BOT_LAIR_STRONG_ITEMS[g], OR his best fighting skill (Melee, Archery or a duelling school,
 // items included) at least BOT_LAIR_STRONG_SKILL[g]. Indexed by the grade he would move UP to. Moderate
 // 4 items / skill 5, Powerful 6 / 7, Legendary 8 / 9 — the guardian-ladder benchmark heroes carry 5
 // tier-1 items for Moderate.
-const BOT_LAIR_STRONG_ITEMS = [0, 3, 5, 7],
+export const BOT_LAIR_STRONG_ITEMS = [0, 3, 5, 7],
   BOT_LAIR_STRONG_SKILL = [0, 4, 6, 8]; // 2026-09-29 (Toby, study C4): was [0,4,6,8] / [0,5,7,9]
-function botLairStrongFor(c, g) {
+export function botLairStrongFor(c, g) {
   if (!c || g < 1 || g > 3) return false;
   const n = activeItems(c).length;
   const best = Math.max(
@@ -738,7 +758,7 @@ function botLairStrongFor(c, g) {
   );
   return n >= BOT_LAIR_STRONG_ITEMS[g] || best >= BOT_LAIR_STRONG_SKILL[g];
 }
-function botLairTiers(c) {
+export function botLairTiers(c) {
   const K = c._botLairKills || {};
   const k = (g) => K[BOT_LAIR_GN[g]] || 0;
   const lad = c._botLadder || {};
@@ -754,7 +774,7 @@ function botLairTiers(c) {
     up = cur + 1;
   return { cur, up, k };
 }
-function botLairPlan(G, pi, c, pre, L) {
+export function botLairPlan(G, pi, c, pre, L) {
   const sk = c.skills || {};
   const _cs = Math.max(sk.elemental || 0, sk.necromancy || 0, sk.psychic || 0);
   if (
@@ -923,7 +943,7 @@ function botLairPlan(G, pi, c, pre, L) {
 }
 // Are there known, uncleared lairs within a slayer's reach that he cannot yet clear? Then training is what
 // makes them clearable — he trains; with NO lair known in reach he explores to find one (2026-09-26, Toby).
-function botSlayerHasLairsToGrowInto(G, pi, c) {
+export function botSlayerHasLairsToGrowInto(G, pi, c) {
   return botLairCandidates(G, pi, c, 4).some((k) => k.f && k.f.monster);
 }
 // ══ NAVAL DOCTRINE (Sept 2026, Toby) ════
@@ -932,11 +952,11 @@ function botSlayerHasLairsToGrowInto(G, pi, c) {
 // enemy coasts — the scorer's −40 on sea targets does not apply to him. A realm wants one admiral once it
 // holds two coastal provinces that can build ships and there is sea worth taking (unowned sea in reach, or
 // an at-war coast across the water). Fleets are still bought for ordinary hosts only for the old reasons.
-function botCoastalPorts(G, pi) {
+export function botCoastalPorts(G, pi) {
   return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea' && botCoastalFleetType(p));
 }
 // 2026-09-26 (Toby item 1/6): ONE port is enough to want an admiral (was two — most realms never got there).
-function botSeaWorthTaking(G, pi) {
+export function botSeaWorthTaking(G, pi) {
   const ports = botCoastalPorts(G, pi);
   if (ports.length < 1) return false;
   return ports.some((p) => {
@@ -951,20 +971,20 @@ function botSeaWorthTaking(G, pi) {
 // ── FLYING GENERAL (2026-09-26, Toby item 8) ── the owned provinces that raise a humanoid flyer (the
 // only units that both fly AND carry a foot soldier), and the reach of an airborne column: the slowest
 // self-flying unit sets the pace, March never speeds flight (mirrors computeMovePoolMax's FLYING CARRY).
-function botFlyerType(prov) {
+export function botFlyerType(prov) {
   return ((prov && prov.armyTypes) || []).find((t) => BOT_FLYING_TYPES.has(t)) || null;
 }
-function botFlyerPorts(G, pi) {
+export function botFlyerPorts(G, pi) {
   return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea' && botFlyerType(p));
 }
-function botAirReach(c) {
+export function botAirReach(c) {
   const sp = (c.armies || [])
     .filter((a) => a && BOT_AERIAL_TYPES.has(a.type))
     .map((a) => ARMY_SPEED_MASTER[a.type] || 3);
   return sp.length ? Math.max(0, Math.min(5, Math.min(...sp))) : 0;
 }
 // Nearest of `list` (owned land provinces) by path length; {X,d} or null. Unarmed walks through any land.
-function botNearestOf(G, pi, c, list, unarmed) {
+export function botNearestOf(G, pi, c, list, unarmed) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   let best = null;
@@ -976,7 +996,7 @@ function botNearestOf(G, pi, c, list, unarmed) {
   return best;
 }
 // The berths an admiral still has free: hulls minus the liftable land units he already carries.
-function botSpareBerths(c) {
+export function botSpareBerths(c) {
   const a = (c && c.armies) || [];
   return (
     a.reduce(
@@ -985,7 +1005,7 @@ function botSpareBerths(c) {
     ) - a.filter((x) => x && botLiftable(x.type) && !BOT_SEA_ALL.has(x.type)).length
   );
 } // berths: a turtle's Island Back offers two
-function botLiftable(t) {
+export function botLiftable(t) {
   return !(
     BOT_SEA_ALL.has(t) ||
     BOT_AERIAL_TYPES.has(t) ||
@@ -1002,7 +1022,7 @@ function botLiftable(t) {
 // falls out of the same gate — a weak fleet can only take a poorly-held coast, a strong one prefers the
 // wealth. Item 7: an admiral with spare berths also sails to an owned coast where a GENERAL stands with
 // liftable troops (a rendezvous: the general hands his foot soldiers over next turn).
-function botSeaStrike(G, pi, c, P, myStr, T, maxHops) {
+export function botSeaStrike(G, pi, c, P, myStr, T, maxHops) {
   if (maxHops <= 0 || botSeaCap(c.armies) === 'land') return null;
   const margin = botMarginFor(G, pi, c, T);
   const plainStr = botBattleForce(G, c, null, 'plain');
@@ -1136,7 +1156,7 @@ function botSeaStrike(G, pi, c, P, myStr, T, maxHops) {
 // own and allied land and unowned land it could simply take, and looks for the best winnable target within
 // its reach: an enemy province BEHIND THE FRONT (one that touches none of our land, +25 — a lightning
 // strike on the rear), any other enemy province, or unowned land / sea to claim. Returns {moves,N} or null.
-function botAirStrike(G, pi, c, P, myStr, T, maxHops) {
+export function botAirStrike(G, pi, c, P, myStr, T, maxHops) {
   if (maxHops <= 0 || !botCanFly(c.armies)) return null;
   const margin = botMarginFor(G, pi, c, T);
   const plainStr = botBattleForce(G, c, null, 'plain');
@@ -1230,8 +1250,8 @@ function botAirStrike(G, pi, c, P, myStr, T, maxHops) {
 // A bot reads a rival's skills only from there (eight turns' currency); otherwise it plans against an
 // ASSUMED profile — a Tactical-2 general, a Melee-3/Archery-2 duellist with a school at 2 — as a human
 // would guess from the report's silence. Spies therefore spy on generals and hunters' marks first.
-const BOT_ASSUMED_SKILLS = { melee: 3, archery: 2, tactical: 2, elemental: 2 };
-function botKnownSkills(G, pi, e) {
+export const BOT_ASSUMED_SKILLS = { melee: 3, archery: 2, tactical: 2, elemental: 2 };
+export function botKnownSkills(G, pi, e) {
   if (!e) return null;
   if (e.player === pi || e.player == null) return e.skills || {}; // our own; wanderers are hired on sight of their skills
   const p = (G.players || [])[pi];
@@ -1239,11 +1259,11 @@ function botKnownSkills(G, pi, e) {
   if (r && (G.turn || 0) - (r.turn || 0) <= 8) return r.skills || {};
   return null;
 }
-function botSkillsFor(G, pi, e) {
+export function botSkillsFor(G, pi, e) {
   return botKnownSkills(G, pi, e) || BOT_ASSUMED_SKILLS;
 }
 // A clone of a rival with only the skills we know (for the duel forecast).
-function botAssumedChar(G, pi, e) {
+export function botAssumedChar(G, pi, e) {
   const k = botKnownSkills(G, pi, e);
   if (k === (e.skills || {}) || e.player === pi) return e;
   const c = JSON.parse(JSON.stringify(e));
@@ -1253,11 +1273,11 @@ function botAssumedChar(G, pi, e) {
   }
   return c;
 }
-function botSkillsUnknown(G, pi, e) {
+export function botSkillsUnknown(G, pi, e) {
   return botKnownSkills(G, pi, e) === null;
 }
 // ══ MASTERY ORDERS (review II A7) ════
-function botMasteryPre(G, pi, c, P, ctx) {
+export function botMasteryPre(G, pi, c, P, ctx) {
   const sk = c.skills || {};
   ctx = ctx || {};
   if (ctx.fightAhead) {
@@ -1321,11 +1341,11 @@ function botMasteryPre(G, pi, c, P, ctx) {
 // (a fighting skill or battle school at 4+, 80%+ health) and any enemy general seen within two hexes
 // is forecast beaten (on the skills our spies know); ACCEPT when he can hold his own (a duel skill at
 // 2+, 60%+ health); REFUSE when he cannot (the 20% morale cost is cheaper than a dead general).
-function botDuelSkill(c) {
+export function botDuelSkill(c) {
   const s = c.skills || {};
   return Math.max(s.melee || 0, s.archery || 0, s.elemental || 0, s.necromancy || 0, s.psychic || 0);
 }
-function botDuelStance(G, pi, c, duelSim) {
+export function botDuelStance(G, pi, c, duelSim) {
   const hp = c.hp != null ? c.hp : c.maxHp || 20,
     mhp = c.maxHp || 20;
   const d = botDuelSkill(c);
@@ -1360,7 +1380,7 @@ function botDuelStance(G, pi, c, duelSim) {
   if (worst != null && worst < 0.65) return 'accept';
   return 'challenge';
 }
-function botSetDuelStances(G, pi, duelSim) {
+export function botSetDuelStances(G, pi, duelSim) {
   (G.characters || []).forEach((c) => {
     if (!(c && c.alive && c.player === pi)) return;
     c.encounterPlan = c.encounterPlan || {};
@@ -1373,7 +1393,7 @@ function botSetDuelStances(G, pi, duelSim) {
 // Arms, Elven Homeward Flight, a dispersed column). A character standing in such a province takes the
 // surplus into his column with `pickup_army` target "g:<i>,g:<j>" — the best units for HIM (strength ×
 // kinship/grudge), leaving the two weakest behind as the tripwire. One sweep per province per turn.
-function botPickupOrder(G, pi, c, prov) {
+export function botPickupOrder(G, pi, c, prov) {
   if (!prov || prov.owner !== pi || prov.terrain === 'sea') return null;
   const garr = prov.garrisonArmies || [];
   const keep = Math.min(2, botGarrisonTarget(G, prov, pi));
@@ -1399,7 +1419,7 @@ function botPickupOrder(G, pi, c, prov) {
 // ORPHANED HOST (2026-09-26, Toby): when a commander falls his host garrisons the nearest friendly province
 // (disperseDeadCharArmies). Any owned land province holding three or more garrison units beyond its target is
 // such a host; the nearest free hero walks there and takes it up. One claimant per province per turn.
-function botOrphanHostOrders(G, pi, c, pre) {
+export function botOrphanHostOrders(G, pi, c, pre) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   const cache = botTurnCache(G);
@@ -1433,7 +1453,7 @@ function botOrphanHostOrders(G, pi, c, pre) {
 // stops being waited on
 // (realmExemptFromOrders) and it no longer counts toward the last-realm-standing victory test.
 // MUST run before the bot movement/economy/action passes so a conceding realm never writes orders.
-function runBotConcessions(G, botIdxSet, logFn) {
+export function runBotConcessions(G, botIdxSet, logFn) {
   if (!botIdxSet || !botIdxSet.size || !G || !G.world) return;
   if (!(G.world.provinces || []).length) return; // world not built — never concede on a blank state
   if ((G.turn || 0) < 1) return;
@@ -1469,18 +1489,18 @@ function runBotConcessions(G, botIdxSet, logFn) {
 // are used, and only in a province the realm owns at the start of the year. A phase the KING meant to spend
 // recruiting is handed to another hero standing with him — he raises the same troops for the king's host — so
 // the king is free to teach ("heroes other than the king recruit to the general").
-const BOT_TEACH_KING = ['melee', 'archery', ...BOT_SCHOOLS];
-function botIsTeach(o) {
+export const BOT_TEACH_KING = ['melee', 'archery', ...BOT_SCHOOLS];
+export function botIsTeach(o) {
   return !!(o && o.action === 'practice' && /\(teach /.test(o.desc || ''));
 }
-function botSlayerSkillPri(S, sk) {
+export function botSlayerSkillPri(S, sk) {
   if (S === 'melee') return 0;
   if (S === botSlayerSchool({ skills: sk })) return 1;
   if (S === 'archery') return 2;
   if (S === 'elemental' || S === 'necromancy' || S === 'psychic') return 3;
   return 4;
 }
-function botOrderLocs(G, c) {
+export function botOrderLocs(G, c) {
   const o = G.turnOrders[c.id] || [];
   const out = [];
   let cur = G.world.provinces[c.location];
@@ -1497,14 +1517,14 @@ function botOrderLocs(G, c) {
   }
   return out;
 }
-function botTeachFree(G, pi, m, p) {
+export function botTeachFree(G, pi, m, p) {
   const k = (G.turnOrders[m.id] || [])[p];
   if (!k) return true;
   if (k.action === 'practice')
     return !/drill the host|drill the fleet|lead the host cleanly/.test(k.desc || '') && !botIsTeach(k);
   return k.action === 'defend' && p > 0 && !botNearbyThreat(G, pi, m);
 }
-function botRunSlayerSchool(G, pi, roles) {
+export function botRunSlayerSchool(G, pi, roles) {
   const res = (botTurnCache(G).teach = botTurnCache(G).teach || {}); // mentorId → {phase: skill}
   const mine = (G.characters || []).filter((x) => x && x.alive && x.player === pi && !x._isHeir);
   const king = mine.find((x) => x.isKing) || null;

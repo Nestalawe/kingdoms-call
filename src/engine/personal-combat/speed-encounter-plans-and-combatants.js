@@ -1,3 +1,16 @@
+import { NPC_SCHOOL_SPELL } from '../army-tables.js';
+import { temperOf } from '../world/tables.js';
+import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd, monsterCat } from '../names.js';
+import { activeItems, effTemper } from '../items/equipment.js';
+import { dedupeItemsByName, guardianPassives } from '../heroes/skills-and-hp.js';
+import { pcArmourMerge, pcArmourOf } from './helpers.js';
+import { rng } from '../dice-and-army-names.js';
+import { pcSkillCap, perkTier, skillLevel } from '../titles/perks.js';
+import { discSum, hasDisc } from '../discoveries.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { ARCHERY_FIELDCRAFT_PCT } from './melee-flight-and-archery.js';
+
 // ── PERSONAL COMBAT: SPEED, ENCOUNTER PLANS AND COMBATANTS (plan P1-08e: lifted out of resolveTurn) ────
 // The engine's overview, then who acts first and who can change range (speed), the plan an un-ordered character fights
 // by (autoEncounterPlan, ensureEncounterPlan) and their answer to a challenge (duelStanceOf), and the two combatant
@@ -33,24 +46,24 @@
 // Numeric speed decides who acts first each round and whether a combatant can change range
 // (advance to firing range, or break away from melee to fire).
 // monsters: fast 3 / medium 2 / slow 1 characters: 2 + any bonus
-function pcSpeedOf(cbt) {
+export function pcSpeedOf(cbt) {
   if (!cbt) return 2;
   if (cbt.kind === 'monster') return { fast: 3, medium: 2, slow: 1 }[cbt.speedName || 'medium'] || 2;
   return 2 + (cbt.speedBonus || 0);
 }
-function pcHasRanged(cbt) {
+export function pcHasRanged(cbt) {
   if (!cbt) return false;
   if (cbt.kind === 'monster') return (cbt.archery || 0) > 0 || !!cbt.ranged;
   return (cbt.archery || 0) > 0;
 }
-const PC_RANGES = ['spell', 'bow', 'melee'];
-function pcRangeStep(from, dir) {
+export const PC_RANGES = ['spell', 'bow', 'melee'];
+export function pcRangeStep(from, dir) {
   const i = Math.max(0, Math.min(2, PC_RANGES.indexOf(from) + dir));
   return PC_RANGES[i];
 }
 // Chance to change range. Advancing into firing range is a test of one's own speed; breaking back
 // out of melee is an opposed contest — a faster foe pins you in place.
-function pcMoveCheck(actor, foe, mode) {
+export function pcMoveCheck(actor, foe, mode) {
   const a = pcSpeedOf(actor),
     f = pcSpeedOf(foe);
   // a slow guardian is not penalised when ADVANCING to firing range (counts as medium).
@@ -71,8 +84,8 @@ function pcMoveCheck(actor, foe, mode) {
 // (aggressive actions, no Flee anywhere), so they will ISSUE a pre-battle challenge.
 // Cautious and Cowardly open with Flee, so they REFUSE a challenge rather than risk single combat
 // — trading 20% of their force's strength for their commander's life.
-const NPC_SPELL_BY_SCHOOL = { ...NPC_SCHOOL_SPELL };
-function autoEncounterPlan(turnContext, ch) {
+export const NPC_SPELL_BY_SCHOOL = { ...NPC_SCHOOL_SPELL };
+export function autoEncounterPlan(turnContext, ch) {
   const melee = effStat(turnContext, ch, 'melee'),
     arch = effStat(turnContext, ch, 'archery');
   // NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
@@ -139,9 +152,9 @@ function autoEncounterPlan(turnContext, ch) {
 // 'challenge' — rides out and demands a duel 'accept' — will not initiate, but answers a
 // challenge 'refuse' — will not duel; costs their force 20% strength if challenged (a player's
 // default since 2026-10-13, Toby: a hero with no stance set no longer answers a challenge)
-const DUEL_STANCES_P = ['challenge', 'accept', 'refuse'];
-const NPC_DUEL_STANCE_BY_TEMPER = { Berserk: 'challenge', Brave: 'challenge', Cautious: 'accept', Cowardly: 'refuse' };
-function duelStanceOf(ch) {
+export const DUEL_STANCES_P = ['challenge', 'accept', 'refuse'];
+export const NPC_DUEL_STANCE_BY_TEMPER = { Berserk: 'challenge', Brave: 'challenge', Cautious: 'accept', Cowardly: 'refuse' };
+export function duelStanceOf(ch) {
   const v = ch && ch.encounterPlan && ch.encounterPlan.duelStance;
   if (DUEL_STANCES_P.includes(v)) return v;
   // NPC commanders have no orders, so Temper decides — across all THREE stances, not just the two
@@ -152,7 +165,7 @@ function duelStanceOf(ch) {
 }
 
 // Give any un-ordered character (player === null) a plan the moment one is needed.
-function ensureEncounterPlan(turnContext, ch) {
+export function ensureEncounterPlan(turnContext, ch) {
   const { _botPlayerIdx } = turnContext;
   if (!ch) return null;
   const t = ch.encounterPlan && ch.encounterPlan.tactics;
@@ -177,7 +190,7 @@ function ensureEncounterPlan(turnContext, ch) {
 }
 
 // --- Combatant builders -----------------------------------------------------
-function pcNewStatus() {
+export function pcNewStatus() {
   return {
     stun: 0,
     hitPenalty: 0,
@@ -200,7 +213,7 @@ function pcNewStatus() {
 }
 // "Melee 6" alone looks like a bug when the sheet says 4. Show the boost and its size: "Archery 6
 // (4 +2 bonus)". Monsters and unboosted characters print the plain figure.
-function pcSkillLabel(cbt, stat) {
+export function pcSkillLabel(cbt, stat) {
   const cur = (cbt && cbt[stat]) || 0,
     base = cbt && cbt[stat + 'Base'];
   const cap = stat === 'melee' ? 'Melee' : 'Archery';
@@ -210,7 +223,7 @@ function pcSkillLabel(cbt, stat) {
   if (base == null || cur <= base) return `${cap} ${cur}`;
   return `${cap} ${cur} (${base} +${cur - base} bonus)`;
 }
-function pcCharCombatant(turnContext, ch) {
+export function pcCharCombatant(turnContext, ch) {
   ensureEncounterPlan(turnContext, ch);
   const maxHp = ch.maxHp || 20;
   // Rage (AK §2.4): a Berserker shrugs off pain.
@@ -323,11 +336,11 @@ function pcCharCombatant(turnContext, ch) {
 // would heal.
 // (A `drain` PASSIVE — Undying Thirst, Sanguine Feeding — is not an ability on the plan and is not
 // covered here; it leeches a share of each melee blow and is unchanged.)
-function pcSpecialHealsSelf(sp) {
+export function pcSpecialHealsSelf(sp) {
   const eff = String((sp && sp.effect) || '');
   return /heals half/i.test(eff) || /(?:regains|gains)\s*\+?\d+\s*HP/i.test(eff) || /heal|regenerat/i.test(eff);
 }
-function pcMonsterPlan(m) {
+export function pcMonsterPlan(m) {
   // A GUARDIAN DOES NOT OPEN BY HEALING. Now healing abilities are pulled out of the rotation
   // entirely and appended ONCE at the very end of the plan, so a guardian reaches for them only
   // if the fight has run long. pcMonsterSpecial enforces the once-per-combat rule as well, so two
@@ -359,7 +372,7 @@ function pcMonsterPlan(m) {
 // read by the engine directly. 2026-09-11: ONE applier for every fx table — guardian passives AND
 // the new items' `effect.pc` riders. Stacking: wards merge, aura/drain take the best,
 // burn/hitBonus/dmgBonus add.
-function pcApplyFx(cbt, fx, name) {
+export function pcApplyFx(cbt, fx, name) {
   if (!cbt || !fx) return;
   if (fx.ward) cbt.arm = pcArmourMerge(cbt.arm, fx, name);
   if (fx.aura > 0) cbt.aura = Math.max(cbt.aura || 0, fx.aura); // foe −N% to hit for the whole fight (status.auraPenalty)
@@ -368,7 +381,7 @@ function pcApplyFx(cbt, fx, name) {
   if (fx.hitBonus > 0) cbt.status.hitBonus = (cbt.status.hitBonus || 0) + fx.hitBonus;
   if (fx.dmgBonus > 0) cbt.dmgBonus = (cbt.dmgBonus || 0) + fx.dmgBonus;
 }
-function pcApplyMonsterPassive(cbt, m) {
+export function pcApplyMonsterPassive(cbt, m) {
   // 2026-10-14 (batch item 7): every perk of the guardian, not just one. `passiveName` stays the
   // first (its signature perk); `_perkName` names the perk behind each effect for the narrative.
   const ps = guardianPassives(m);
@@ -385,12 +398,12 @@ function pcApplyMonsterPassive(cbt, m) {
 }
 // Items a CHARACTER wears that carry a personal-combat rider (`effect.pc`) — one copy of each
 // name counts.
-function pcApplyItemFx(cbt, items) {
+export function pcApplyItemFx(cbt, items) {
   dedupeItemsByName(items || []).forEach((it) => {
     if (it && it.effect && it.effect.pc) pcApplyFx(cbt, it.effect.pc, it.name);
   });
 }
-function pcMonsterCombatant(m) {
+export function pcMonsterCombatant(m) {
   // a guardian enters EVERY fight at full health — it heals completely at the end of each combat
   // (see resolveEncounter). _hpFull is the creature's undamaged total; m.hp is only consulted
   // when _hpFull was never set (fresh table creature).

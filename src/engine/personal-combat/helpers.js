@@ -1,3 +1,8 @@
+import { KC_RUMOUR_COST_BY_POWER } from '../../content/kingdoms-call-data.js';
+import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.js';
+import { _ITEM_ALT_BASE } from '../items/equipment.js';
+import { syncMaxHp } from '../heroes/skills-and-hp.js';
+
 // ── GUARDIAN WEAKNESSES ────
 // Every lair guardian in MONSTERS_P carries a `weak` — one exploitable flaw a player can learn and
 // then build a hero around. Deliberately NOT melee: blades are what everyone swings anyway.
@@ -9,35 +14,35 @@
 // Thematic by category: every undead guardian is weak to White Magic, fiends likewise or to the
 // Divine/Good; constructs shatter under Elemental force; fey wither under Necromancy or cold
 // dwarven iron; giants are easily deceived; dragons' vast prideful minds open to Psychic magic.
-const PC_WEAK_MULT = 2;
+export const PC_WEAK_MULT = 2;
 // the Talk/Parley encounter tactic is withdrawn. Set true to bring it back — see the 'TA' case in
 // pcRunTactic for the full checklist of what else to restore alongside it.
-const PARLEY_ENABLED = false;
+export const PARLEY_ENABLED = false;
 // the Scout encounter tactic is withdrawn too. Same pattern — the mechanic below is intact; see the
 // 'SC' case in pcRunTactic for what else to restore alongside it.
-const SCOUT_ENABLED = false;
+export const SCOUT_ENABLED = false;
 // ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ── the order that replaces most of what Scout
 // did, bought in the taverns rather than read off the beast. Cost per lair by grade. 2026-09-23d
 // (Toby): every fact paid for is LEARNED — the old 50% + 10%/Spy roll per fact is retired.
-const RUMOUR_COST_BY_POWER = { ...KC_RUMOUR_COST_BY_POWER };
+export const RUMOUR_COST_BY_POWER = { ...KC_RUMOUR_COST_BY_POWER };
 // ── DAMAGE FLOOR ────
 // No stack of REDUCTIONS may now take a landed attack below HALF of what it would have dealt.
 // Outright PREVENTION is untouched: a mirror image, a first-hit cuirass or a
 // shield block still stops a blow completely — they return before the floor is ever considered.
-const PC_DMG_FLOOR_FRACTION = 0.5;
+export const PC_DMG_FLOOR_FRACTION = 0.5;
 // ── LINGERING EFFECTS ────
 // Nothing that ticks or clings lasts a whole fight any more. Every damage-over-time is clamped to
 // three rounds at the point it is applied (guardian specials, spells, items and Impalement all run
 // through pcPushDot), and a to-hit penalty always burns off inside three rounds however deep it is.
-const PC_MAX_LINGER_ROUNDS = 3;
-function pcLingerRounds(n) {
+export const PC_MAX_LINGER_ROUNDS = 3;
+export function pcLingerRounds(n) {
   n = parseInt(n);
   if (!Number.isFinite(n) || n < 1) n = 1;
   return Math.min(PC_MAX_LINGER_ROUNDS, n);
 }
 // The ONE place a damage-over-time is added, so the three-round cap cannot be bypassed by a new
 // effect that forgets it. Merges nothing — several bleeds may run at once, each on its own clock.
-function pcPushDot(cbt, dmg, rounds, label) {
+export function pcPushDot(cbt, dmg, rounds, label) {
   if (!cbt || !cbt.status) return null;
   cbt.status.dot = cbt.status.dot || [];
   const lbl = label || 'Lingering harm';
@@ -66,7 +71,7 @@ function pcPushDot(cbt, dmg, rounds, label) {
 // · Damage-over-time. It already ticks in pcRoundStart, so a bleed applied mid-round first bites at
 // the start of the next round — it is the round after by construction, and deferring it again would
 // cost it a round.
-function pcDeferEffect(cbt, fn) {
+export function pcDeferEffect(cbt, fn) {
   if (!cbt || !cbt.status || typeof fn !== 'function') return false;
   (cbt.status._pending = cbt.status._pending || []).push(fn);
   return true;
@@ -75,7 +80,7 @@ function pcDeferEffect(cbt, fn) {
 // round's fades and decrements, so a freshly-promoted penalty does not lose a tick of its life on
 // arrival (a −20% aim penalty promoted here fades for the first time at the start of the round
 // after).
-function pcPromotePending(cbt) {
+export function pcPromotePending(cbt) {
   if (!cbt || !cbt.status) return;
   const q = cbt.status._pending;
   if (!q || !q.length) return;
@@ -88,13 +93,13 @@ function pcPromotePending(cbt) {
 }
 // A to-hit penalty sheds at least a third of itself each round (minimum 5), so even a Legendary
 // dragon's −30% is gone by the third round rather than fading 5% a round for six.
-const PC_PEN_FADE_MIN = 5;
-function pcPenaltyFade(pen) {
+export const PC_PEN_FADE_MIN = 5;
+export function pcPenaltyFade(pen) {
   return Math.max(PC_PEN_FADE_MIN, Math.ceil(pen / PC_MAX_LINGER_ROUNDS));
 }
 // Which school a personal-combat spell belongs to. Module scope so pcTakeHit can name the school of
 // the blow that landed; pcCastCombatSpell reads the same table (one source of truth).
-const PC_SPELL_SCHOOL_MAP = {
+export const PC_SPELL_SCHOOL_MAP = {
   'Holy Symbol': 'white',
   Spiritwrack: 'white',
   'Psychic Blast': 'psychic',
@@ -111,8 +116,8 @@ const PC_SPELL_SCHOOL_MAP = {
 // Percentage-of-max-HP spells are exempt from the DAMAGE doubling — Hand of Death already takes
 // half a guardian's total, and doubling that is an instant kill on anything. A Necromancy-weak
 // guardian gets the take-hold chance doubled instead (see pcCastCombatSpell).
-const PC_WEAK_NO_DMG_DOUBLE = new Set(['Hand of Death']);
-function pcWeaknessApplies(w, o) {
+export const PC_WEAK_NO_DMG_DOUBLE = new Set(['Hand of Death']);
+export function pcWeaknessApplies(w, o) {
   if (!w || !o) return false;
   switch (w.kind) {
     case 'archery':
@@ -128,7 +133,7 @@ function pcWeaknessApplies(w, o) {
 }
 // Once a realm has SEEN a weakness bite (or scouted it), it knows that creature's flaw for good —
 // keyed by guardian NAME, so the lesson carries to every lair holding the same kind of beast.
-function pcLearnWeakness(gs, playerIndex, monsterName) {
+export function pcLearnWeakness(gs, playerIndex, monsterName) {
   if (!gs || playerIndex == null || !monsterName) return false;
   const pl = (gs.players || [])[playerIndex];
   if (!pl) return false;
@@ -141,10 +146,10 @@ function pcLearnWeakness(gs, playerIndex, monsterName) {
 // `<provinceId>:<featureIndex>` (the same idx the order forms and the search handler use), so the
 // Known Lairs card can show it every turn after. Only the hoard is kept; a weakness goes to
 // _knownWeak and the odds are never stored.
-function lairRumourKey(provId, idx) {
+export function lairRumourKey(provId, idx) {
   return String(provId) + ':' + String(idx);
 }
-function noteLairRumour(pl, provId, idx, rec) {
+export function noteLairRumour(pl, provId, idx, rec) {
   if (!pl) return;
   if (!pl._lairRumours || typeof pl._lairRumours !== 'object') pl._lairRumours = {};
   pl._lairRumours[lairRumourKey(provId, idx)] = rec;
@@ -152,7 +157,7 @@ function noteLairRumour(pl, provId, idx, rec) {
 // ── ARMOUR ── fold every worn `stat:'armour'` item into one ward table for personal combat. Flat
 // reductions add, percentages take the best, flags OR. Used by pcCharCombatant and by a guardian
 // wielding a hoard's armour (resolveEncounter).
-function pcArmourMerge(a, e, name) {
+export function pcArmourMerge(a, e, name) {
   a = a || { names: [] };
   e = e || {};
   switch (e.ward) {
@@ -241,7 +246,7 @@ function pcArmourMerge(a, e, name) {
   if (name && !a.names.includes(name)) a.names.push(name);
   return a;
 }
-function pcArmourOf(items) {
+export function pcArmourOf(items) {
   let a = null;
   const seen = new Set();
   (items || []).forEach((it) => {
@@ -254,12 +259,12 @@ function pcArmourOf(items) {
   return a;
 }
 // Legacy name kept for the item-grant call sites: granting (or losing) a max-HP item just resyncs.
-function applyItemMaxHp(ch, item) {
+export function applyItemMaxHp(ch, item) {
   if (!ch) return;
   if (item && item.effect && item.effect.stat !== 'maxHp') return;
   syncMaxHp(ch);
 }
-function grantMithrilTo(ch, gs) {
+export function grantMithrilTo(ch, gs) {
   if (!ch || ch.alive === false) return;
   ch.items = ch.items || [];
   if (ch.items.some((it) => it.effect && it.effect.stat === 'mithrilArmour')) return; // already suited
@@ -274,11 +279,11 @@ function grantMithrilTo(ch, gs) {
 // untransferable on every path (inheritance, a killer's spoils, mercy-price, theft, Send Item), and
 // the sweep below is the self-healing net for saves made before that was true: at most ONE suit per
 // character, and none at all in hands that do not qualify.
-function isMithril(it) {
+export function isMithril(it) {
   return !!(it && it.effect && it.effect.stat === 'mithrilArmour');
 }
 // The part of a pack that is free to change hands — everything except the granted relics.
-function transferableItems(items) {
+export function transferableItems(items) {
   return (items || []).filter((it) => !isMithril(it));
 }
 // Items handed to a killer by handleHeroDeath this session (2026-09-23c). Battles are fought on
@@ -286,8 +291,8 @@ function transferableItems(items) {
 // the fight — `items` included. Loot landed on the real record mid-battle is therefore re-added by
 // syncLeaderCopy if the copy's item list does not carry it. Item objects are fresh per turn (the
 // state is parsed from JSON), so a module-level WeakSet never leaks between turns.
-const _KC_LOOT_GAINED = new WeakSet();
-function mithrilQualifies(ch, gs) {
+export const _KC_LOOT_GAINED = new WeakSet();
+export function mithrilQualifies(ch, gs) {
   return !!(
     ch &&
     ch.alive !== false &&
@@ -299,7 +304,7 @@ function mithrilQualifies(ch, gs) {
     gs.players[ch.player].race === 'Dwarven'
   );
 }
-function grantMithrilToDwarves(gs) {
+export function grantMithrilToDwarves(gs) {
   if (!gs || !gs.characters || !gs.players) return;
   gs.characters.forEach((ch) => {
     if (!ch) return;
@@ -322,6 +327,6 @@ function grantMithrilToDwarves(gs) {
 }
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the kind of foe a personal fight is against. It reads no turn state.
-function pcFoeCat(foe) {
+export function pcFoeCat(foe) {
   return foe.cat || (foe.kind === 'character' ? (foe.isUndead ? 'undead' : 'humanoid') : 'beast');
 }

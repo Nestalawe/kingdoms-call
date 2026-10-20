@@ -1,3 +1,9 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { sb } from './startup.js';
+import { fetchGameSlots } from './sign-in.js';
+import { openReport } from './report.js';
+import { KC_MSG_READS, KC_MSG_TABLE, _msgArr, _msgNum, msgChannelKeyOf } from './dispatches.js';
+
 // ── LIVE UPDATE POLLING ────
 // A light background poll keeps the portal current without the player having to reload the page. It
 // is deliberately NON-DESTRUCTIVE:
@@ -8,20 +14,20 @@
 // Refresh, so the player decides when to reload — protecting any orders they are mid-way through.
 // A declared global (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.js says why).
 globalThis._pollTimer = null;
-let _lastMyGamesSig = null;
-const POLL_MS = 20000;
+export let _lastMyGamesSig = null;
+export const POLL_MS = 20000;
 
-function _activeSectionId() {
+export function _activeSectionId() {
   const s = document.querySelector('section.section-active');
   return s ? s.id : null;
 }
 
-function startUpdatePolling() {
+export function startUpdatePolling() {
   if (_pollTimer) return; // never stack timers
   _pollTimer = setInterval(pollForUpdates, POLL_MS);
 }
 
-async function pollForUpdates() {
+export async function pollForUpdates() {
   if (!currentUser) return;
   if (document.hidden) return; // don't poll a backgrounded tab
   try {
@@ -87,13 +93,13 @@ async function pollForUpdates() {
 // turn_report); the player triggered it, so replacing the current view is expected. Any draft they
 // had already saved is reloaded from the server by openReport; a draft only typed but not saved is
 // theirs to re-enter.
-function refreshOpenReport() {
+export function refreshOpenReport() {
   const b = document.getElementById('new-turn-banner');
   if (b) b.style.display = 'none';
   if (currentGamePlayerId) openReport(currentGamePlayerId);
 }
 
-async function loadMyGames() {
+export async function loadMyGames() {
   const el = document.getElementById('my-games-list');
   // Step 1: get player's own slots
   const { data: mySlots, error } = await sb.from('game_players').select('*').eq('user_id', currentUser.id);
@@ -176,15 +182,15 @@ async function loadMyGames() {
 // Minimised state is remembered per browser: once the player folds the card it stays folded on
 // every later visit until they open it again. localStorage can be unavailable (private windows,
 // blocked site data) — every access is wrapped, and the card then simply starts open.
-const ARCH_CARD_KEY = 'kc_archived_games_min';
-function archivedCardMinimised() {
+export const ARCH_CARD_KEY = 'kc_archived_games_min';
+export function archivedCardMinimised() {
   try {
     return localStorage.getItem(ARCH_CARD_KEY) === '1';
   } catch (e) {
     return false;
   }
 }
-function renderArchivedGamesCard(cards) {
+export function renderArchivedGamesCard(cards) {
   const card = document.getElementById('archived-games-card');
   if (!card) return;
   if (!cards.length) {
@@ -198,7 +204,7 @@ function renderArchivedGamesCard(cards) {
   if (list) list.innerHTML = kcHtml`${cards}`;
   applyArchivedCardState();
 }
-function applyArchivedCardState() {
+export function applyArchivedCardState() {
   const min = archivedCardMinimised();
   const list = document.getElementById('archived-games-list');
   if (list) list.style.display = min ? 'none' : '';
@@ -208,7 +214,7 @@ function applyArchivedCardState() {
     b.setAttribute('aria-expanded', min ? 'false' : 'true');
   }
 }
-function toggleArchivedGamesCard() {
+export function toggleArchivedGamesCard() {
   const min = !archivedCardMinimised();
   try {
     if (min) localStorage.setItem(ARCH_CARD_KEY, '1');
@@ -223,7 +229,7 @@ function toggleArchivedGamesCard() {
 // addressed to them, or public), so no filtering on addressee is needed here. Only games with two or
 // more HUMAN realms have messaging at all. Light columns only — never the message bodies. If the
 // tables do not exist yet (the GM has not run the SQL) the query errors and every count is simply 0.
-async function fetchUnreadDispatchCounts(mySlots, allSlots) {
+export async function fetchUnreadDispatchCounts(mySlots, allSlots) {
   const out = {};
   try {
     const humans = {};
@@ -276,7 +282,7 @@ async function fetchUnreadDispatchCounts(mySlots, allSlots) {
   }
   return out;
 }
-function unreadDispatchPillP(n) {
+export function unreadDispatchPillP(n) {
   if (!n) return '';
   return kcHtml` <span class="pill" style="background:#a32020;color:#fff" title="${n} unread dispatch${n !== 1 ? 'es' : ''} — open the game and choose ✉ Dispatches">✉ ${n > 99 ? '99+' : n} new</span>`;
 }
@@ -287,7 +293,7 @@ function unreadDispatchPillP(n) {
 // portal's own tally (loadGames / ordersWaitingOn): bot slots (no user_id) and conceded or
 // extinguished realms are exempt and appear on neither side of the fraction, so the number matches
 // the GM's readiness pill.
-function parseGameStateP(g) {
+export function parseGameStateP(g) {
   try {
     return typeof g.game_state === 'string' ? JSON.parse(g.game_state) : g.game_state || {};
   } catch (e) {
@@ -299,8 +305,8 @@ function parseGameStateP(g) {
 // exempt:[player indices], …}. My Games used to pull every game's full world (hundreds of KB per
 // game, on every page load) just to read the turn mode and which realms are exempt from orders;
 // it now reads the summary and only falls back to the world for a row that has none.
-const GAME_LITE_COLS_P = 'id,name,gm_user_id,status,turn,max_players,created_at,meta';
-function gameMetaP(g) {
+export const GAME_LITE_COLS_P = 'id,name,gm_user_id,status,turn,max_players,created_at,meta';
+export function gameMetaP(g) {
   if (!g || g.meta == null) return null;
   try {
     const m = typeof g.meta === 'string' ? JSON.parse(g.meta) : g.meta;
@@ -311,19 +317,19 @@ function gameMetaP(g) {
 }
 // ARCHIVED (2026-09-27, Toby item 1). The GM portal writes `archived` onto game_state and mirrors it
 // into meta; nothing is deleted, so an archived game still opens and still shows every past turn.
-function gameArchivedP(g) {
+export function gameArchivedP(g) {
   const m = gameMetaP(g);
   if (m && m.archived !== undefined) return !!m.archived;
   return !!parseGameStateP(g).archived;
 }
 // Light read of games by id; if the meta column does not exist yet (the GM has not run the
 // one-line migration) the query errors on the unknown column and we fall back to the full rows.
-async function fetchGamesLite(ids) {
+export async function fetchGamesLite(ids) {
   let r = await sb.from('games').select(GAME_LITE_COLS_P).in('id', ids);
   if (r.error && /meta/i.test(r.error.message || '')) r = await sb.from('games').select('*').in('id', ids);
   return r;
 }
-function realmExemptFromOrdersP(G, idx) {
+export function realmExemptFromOrdersP(G, idx) {
   const pl = ((G && G.players) || [])[idx];
   if (!pl) return false;
   if (pl.conceded || pl._eliminated) return true;
@@ -331,12 +337,12 @@ function realmExemptFromOrdersP(G, idx) {
   const hasChar = ((G && G.characters) || []).some((c) => c && c.alive && c.player === idx);
   return !hasProv && !hasChar;
 }
-function realmExemptInP(g, idx) {
+export function realmExemptInP(g, idx) {
   const m = gameMetaP(g);
   if (m && Array.isArray(m.exempt)) return m.exempt.includes(idx);
   return realmExemptFromOrdersP(parseGameStateP(g), idx);
 }
-function ordersInTextP(g, slots) {
+export function ordersInTextP(g, slots) {
   if (!g || g.status !== 'active') return '';
   const need = (slots || []).filter((p) => p && !p.is_bot && !realmExemptInP(g, p.player_index));
   if (need.length === 0) return '';
@@ -351,7 +357,7 @@ function ordersInTextP(g, slots) {
 // ── Turn running mode (mirror of the GM portal's turnMode; read-only here) ────
 // The GM chooses manual / automatic / automatic-with-deadline. Players are shown the deadline (in
 // their own local time), and the COUNT of realms whose orders are in — never which ones.
-function turnModeOfGame(g) {
+export function turnModeOfGame(g) {
   let gs = gameMetaP(g);
   if (!gs) {
     try {
@@ -366,7 +372,7 @@ function turnModeOfGame(g) {
     nextDeadlineAt: tm.nextDeadlineAt || null,
   };
 }
-function fmtDeadlineP(iso) {
+export function fmtDeadlineP(iso) {
   if (!iso) return '';
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -380,7 +386,7 @@ function fmtDeadlineP(iso) {
     return String(iso);
   }
 }
-function turnDeadlineText(g) {
+export function turnDeadlineText(g) {
   if (!g || g.status !== 'active') return '';
   const tm = turnModeOfGame(g);
   if (tm.mode === 'auto')
@@ -392,7 +398,7 @@ function turnDeadlineText(g) {
   return '';
 }
 
-async function loadOpenGames() {
+export async function loadOpenGames() {
   const el = document.getElementById('open-games-list');
   // Get my game IDs to exclude them
   const { data: mySlots } = await sb.from('game_players').select('game_id').eq('user_id', currentUser.id);

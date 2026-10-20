@@ -11,7 +11,7 @@
 //   kcRng.seed(n)   starts again from seed n (any number; read as an unsigned 32-bit integer, 0 as 1)
 //   kcRng.use(fn)   draws from fn from now on (a turn's dice, a test's fixed dice) and returns what it drew from before:
 //                   const was=kcRng.use(()=>0.5); try{ … } finally{ kcRng.use(was); }
-function kcRngStream(seed) {
+export function kcRngStream(seed) {
   let s = Number(seed) >>> 0 || 1;
   const mix = () => {
     s = (s + 0x9e3779b9) >>> 0;
@@ -41,10 +41,10 @@ function kcRngStream(seed) {
 // The generator in use is a property of an object, not a top-level let: with a let, V8 (Node 24.22) sometimes keeps
 // the value an optimised kcRng was compiled with, so after kcRng.seed or kcRng.use the dice can quietly go back to the
 // old stream (docs/traps.md, "Dice come from kcRng()").
-const _kcRng = {
+export const _kcRng = {
   next: kcRngStream(typeof KC_RNG_SEED !== 'undefined' ? KC_RNG_SEED : crypto.getRandomValues(new Uint32Array(1))[0]),
 };
-function kcRng() {
+export function kcRng() {
   return _kcRng.next();
 }
 kcRng.seed = function (seed) {

@@ -1,9 +1,15 @@
+import { ARMY_UNIT_NAMES } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { ALIGNMENTS_P, RACES_P, TEMPERS_P, alignDistP } from '../world/tables.js';
+import { _toRoman, nextHeroName } from '../names.js';
+import { BOT_ALLY_ALIGN_DIST } from './intel.js';
+
 // ══ BOT PLAYERS — Phase 1: existence & identity ════
 // GM-controlled bot realms. Phase 1 generates a bot's identity and persists its row; bots do NOT
 // act yet (they submit no orders, so runTurn defaults their characters to Defend). A bot is marked
 // by an `isBot:true` flag INSIDE its game_players.turn_report JSON — no Supabase column is required
 // (an unknown insert column would be rejected). Bot rows have user_id === null.
-function isBotRow(p) {
+export function isBotRow(p) {
   if (!p || p.user_id) return false;
   // Disk-IO (2026-09-25): the game list and the auto-turn watcher now fetch slots WITHOUT
   // turn_report (it is the biggest column in the table). On such a row the only rows with no
@@ -16,7 +22,7 @@ function isBotRow(p) {
   } catch (e) {}
   return false;
 }
-function gameMetaOf(game) {
+export function gameMetaOf(game) {
   if (!game || game.meta == null) return null;
   try {
     const m = typeof game.meta === 'string' ? JSON.parse(game.meta) : game.meta;
@@ -26,7 +32,7 @@ function gameMetaOf(game) {
   }
 }
 // Read {botCount, allBot} from a game's setup-phase config (stored in game_state at creation).
-function botConfigFor(game) {
+export function botConfigFor(game) {
   let cfg = gameMetaOf(game) || {};
   if (!cfg.v) {
     try {
@@ -40,7 +46,7 @@ function botConfigFor(game) {
 }
 // Read {private, invited[]} from a game's setup-phase game_state. Games with no `visibility` key
 // (all pre-existing games, and every game once it goes active) read as Public with no invite list.
-function gameVisibility(game) {
+export function gameVisibility(game) {
   let cfg = gameMetaOf(game) || {};
   if (!cfg.v) {
     try {
@@ -52,7 +58,7 @@ function gameVisibility(game) {
 }
 // Alignment → four starting skill points, drawn from each alignment's Title signature lane
 // (see KC-design-victory-and-titles.md §5). Real engine skills only (SKILL_LABELS). Each totals 4.
-const BOT_SKILL_BUILD = {
+export const BOT_SKILL_BUILD = {
   // Sept 2026 (bot strategy batch): every build now carries Tactical >=1 so the bot king can drill
   // his host from turn 1 — Divine swaps druid->tactical, Neutral drops a Sage point, Pagan drops an
   // Explorer point.
@@ -66,21 +72,21 @@ const BOT_SKILL_BUILD = {
 };
 // Divine & Undead are one-per-game — mirrors the human join rule (player portal
 // UNIQUE_ALIGNS_CHECK).
-const BOT_UNIQUE_ALIGNS = ['Divine', 'Undead'];
+export const BOT_UNIQUE_ALIGNS = ['Divine', 'Undead'];
 // Race → a signature unit whose faction-name pool (ARMY_UNIT_NAMES) we borrow for realm names.
 // This reuses existing themed pools rather than inventing new name content (the engine has no
 // realm-name generator: human players type theirs).
-const BOT_KINGDOM_NAME_UNIT = {
+export const BOT_KINGDOM_NAME_UNIT = {
   Human: 'Free Lances',
   Elven: 'Elven Bowmen',
   Dwarven: 'Dwarven Guard',
   Orcish: 'Orc Berserkers',
 };
-const _usedBotKingdomNames = new Set();
-function _capRealm(s) {
+export const _usedBotKingdomNames = new Set();
+export function _capRealm(s) {
   return String(s).replace(/^the\b/, 'The');
 }
-function botKingdomName(race) {
+export function botKingdomName(race) {
   const unit = BOT_KINGDOM_NAME_UNIT[race] || 'Free Lances';
   const pool = (typeof ARMY_UNIT_NAMES !== 'undefined' && ARMY_UNIT_NAMES[unit]) || ['the Free Company'];
   for (let att = 0; att < 400; att++) {
@@ -101,7 +107,7 @@ function botKingdomName(race) {
   return _capRealm(nm);
 }
 // Pick a bot alignment: spread across the field, never duplicate a unique alignment already taken.
-function pickBotAlignment(takenCounts) {
+export function pickBotAlignment(takenCounts) {
   const used = new Set(Object.keys(takenCounts).filter((a) => takenCounts[a] > 0));
   const legal = ALIGNMENTS_P.filter((a) => !(BOT_UNIQUE_ALIGNS.includes(a) && used.has(a)));
   const unused = legal.filter((a) => !used.has(a));
@@ -132,7 +138,7 @@ function pickBotAlignment(takenCounts) {
 // balance term ties, and ties are then broken at random. Divine/Undead uniqueness is honoured
 // exactly as
 // pickBotAlignment does. `humanAligns` empty (an all-bot game) → fall back to pickBotAlignment.
-function pickBotAlignmentBalanced(takenCounts, humanAligns, friends, foes) {
+export function pickBotAlignmentBalanced(takenCounts, humanAligns, friends, foes) {
   if (!humanAligns || !humanAligns.length) return pickBotAlignment(takenCounts);
   const used = new Set(Object.keys(takenCounts).filter((a) => takenCounts[a] > 0));
   const legal = ALIGNMENTS_P.filter((a) => !(BOT_UNIQUE_ALIGNS.includes(a) && used.has(a)));
@@ -155,7 +161,7 @@ function pickBotAlignmentBalanced(takenCounts, humanAligns, friends, foes) {
 // game_players.player_index). humanSetups seed the alignment spread + uniqueness so bots avoid
 // clustering on the humans' choices, and drive the half-friendly / half-hostile balance described
 // above.
-function generateBotSetups(humanSetups, count, startIndex) {
+export function generateBotSetups(humanSetups, count, startIndex) {
   const takenCounts = {};
   (humanSetups || []).forEach((s) => {
     if (s.alignment) takenCounts[s.alignment] = (takenCounts[s.alignment] || 0) + 1;

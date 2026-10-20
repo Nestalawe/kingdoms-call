@@ -1,3 +1,8 @@
+import { safeStartLocked } from '../army-tables.js';
+import { RACES_P, TEMPERS_P } from '../world/tables.js';
+import { normaliseOwnedNames, normaliseStrandedGuards } from '../heroes/fame-and-consecration.js';
+import { noteServedRealm } from '../heroes/charms-and-neutrals.js';
+
 // ── THE SET-UP: THE TURN'S START REPAIRS AND THE MERGE OF THE REALMS' ORDERS (plan P1-08k7: two stages taken out of
 // the start of resolveTurn's own body; P1-08n: two lines of it before them) ──────────────────────────────────────────
 // Each once a turn and before any line is logged (log() isn't ready yet: what they have to tell is kept for later), in
@@ -21,7 +26,7 @@
 // safeStartRefused, discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read there
 // (they were declared in resolveTurn until plan P1-08l2). The bodies keep resolveTurn's indent (plan P1-08's Decisions).
 
-function lastTurnsBattleAndDuelSwordsClearedFromTheMap(G) {
+export function lastTurnsBattleAndDuelSwordsClearedFromTheMap(G) {
   // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
   // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
   // saved, so the saved state still carried them and the next turn loaded last turn's fights,
@@ -35,7 +40,7 @@ function lastTurnsBattleAndDuelSwordsClearedFromTheMap(G) {
   });
 }
 
-function everyRealmStampedBotOrHumanFromTheBotSlotRows(turnContext) {
+export function everyRealmStampedBotOrHumanFromTheBotSlotRows(turnContext) {
   const { G, _botPlayerIdx } = turnContext;
   // Sept 2026 (bot strategy batch): stamp the bot flag onto the persisted player objects so the
   // module-level bot passes can tell bot realms from human ones (botIsBotPlayer) — bots never war
@@ -45,7 +50,7 @@ function everyRealmStampedBotOrHumanFromTheBotSlotRows(turnContext) {
   });
 }
 
-function turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext) {
+export function turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext) {
   const { G } = turnContext;
   // a defeated sea neutral-guard becomes a plain wandering hero (player===null, no longer
   // _isNeutralGuard) but keeps the 'Creature'/'Monster' pseudo-race it wore to label the beasts it
@@ -107,7 +112,7 @@ function turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext) {
     });
 }
 
-function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans(turnContext) {
+export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans(turnContext) {
   const { freshPlayers, G, expectedTurnToRun } = turnContext;
   // Encounter plans persist across turns until the player changes them, so we do NOT wipe them here
   // — the new submissions below overwrite only the characters whose orders include a plan. Collect

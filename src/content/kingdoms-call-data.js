@@ -8,7 +8,7 @@
 // Data file v2026.10.15-1202
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP = '2026.10.15-1202';
+export const KC_DATA_STAMP = '2026.10.15-1202';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -23,7 +23,7 @@ const KC_DATA_STAMP = '2026.10.15-1202';
 // Druid-4 beast about 2.6–2.75 strength a gold, a Druid-5 beast 2.4–2.6, because a realm's own-race troops
 // carry a ×1.44 kinship no beast gets; every flyer moves 5, no walker slower than 2. Terrain is written ONCE,
 // in the GM portal's TERRAIN_MODS; the always-on terrain multipliers these units used to carry on top are gone.
-const PRIMAL_ARMY_DEFS_P = {
+export const PRIMAL_ARMY_DEFS_P = {
   // ── Druid 4 — Land ──
   'Stone Giants': {
     str: 13,
@@ -272,7 +272,7 @@ const PRIMAL_ARMY_DEFS_P = {
 // spells out what the new level grants: the passive that strengthens, and any new mastery ORDER
 // (non-magic skills) or SPELL (magic schools) they can now use. L7/L9 unlocks are fully wired and
 // gated; L6/L8 describe the wired passive that deepens at that level.
-const MASTERY_UNLOCKS = {
+export const MASTERY_UNLOCKS = {
   melee: {
     6: 'Parry — in personal combat, each enemy melee blow that lands has a 50% chance to be reduced by 1 up to half your Melee skill.',
     7: 'New order — Challenge: call out an enemy commander in your province to single combat.',
@@ -365,7 +365,7 @@ const MASTERY_UNLOCKS = {
   },
 };
 
-const PROVINCE_ARMIES_P = {
+export const PROVINCE_ARMIES_P = {
   // 2026-10-11 (Toby, the army roster): the four new units are APPENDED to their cells — order is data
   // (a king's two starting companies are the first two non-garrison types of his home's cell, and a
   // province's pool is drawn from the cell). Men-at-Arms: plain, jungle, mountain. Stag Riders: forest,
@@ -439,7 +439,7 @@ const PROVINCE_ARMIES_P = {
 // defence ALSO lowers the 80% melee hit ceiling for anyone attacking them
 // openingShot the first move up to firing range in a fight cannot fail
 // mercy may beg for mercy when felled instead of dying
-const TEMPER_TRAITS = {
+export const TEMPER_TRAITS = {
   Berserk: {
     meleeHit: 18,
     archeryHit: 0,
@@ -546,7 +546,7 @@ const TEMPER_TRAITS = {
 // space (≈30 × 18 ≈ 540 per alignment) comfortably names every hero even on the huge map, and a
 // used-name set guarantees uniqueness across the whole game (with a numeral fallback if ever
 // exhausted). Kings keep their player-chosen realm name; only heroes/heirs use this.
-const HERO_NAME_PARTS = {
+export const HERO_NAME_PARTS = {
   Divine: {
     firsts: [
       'Auriel',
@@ -941,7 +941,7 @@ const HERO_NAME_PARTS = {
   },
 };
 
-const HERO_EPITHET_OVERFLOW = [
+export const HERO_EPITHET_OVERFLOW = [
   'the Tall',
   'the Short',
   'the Swift',
@@ -1089,7 +1089,7 @@ const HERO_EPITHET_OVERFLOW = [
   'the Mended',
 ];
 
-const MONSTERS_P = [
+export const MONSTERS_P = [
   // ── 2026-10-14 (batch item 7): every guardian has ONE PERK PER GRADE in `passives` (Weak 1,
   // Moderate 2, Powerful 3, Legendary 4), each valued by its grade (the decided table in
   // tests/guardian-perks.test.js); many are `schoolWard`s (−N to one school's cast chance). The note
@@ -5488,7 +5488,7 @@ const MONSTERS_P = [
 // their guardian showed the right one. That is the "lair and guardian are different colours"
 // report. Unique names fix it at the root, and incidentally let a player tell three lairs apart in
 // one report.
-const LAIR_POOLS_CAT_P = {
+export const LAIR_POOLS_CAT_P = {
   humanoid: {
     land: [
       'Bandit Stronghold',
@@ -5683,7 +5683,7 @@ const LAIR_POOLS_CAT_P = {
 
 // Signature lairs for the great named powers — at least three each, so a Legendary guardian is
 // never found in a name a Dire Rat might also be sitting in.
-const LAIR_POOLS_MONSTER_P = {
+export const LAIR_POOLS_MONSTER_P = {
   'Elder Dragon': ['Hoard of the Elder Wyrm', 'The Cindered Peak', 'Vault of Melted Gold', 'Throat of the Mountain'],
   'Ancient Wyrm': [
     'Barrow of the Ancient Wyrm',
@@ -5743,7 +5743,7 @@ const LAIR_POOLS_MONSTER_P = {
 };
 
 // Comprehensive magic items — one or more per skill, plus special army-type bonuses
-const ALL_MAGIC_ITEMS_P = [
+export const ALL_MAGIC_ITEMS_P = [
   // ── Melee ──
   // ── POWERFUL WEAPONS, OPEN TO ANYONE ────
   // Every Powerful-tier weapon in the game was gated by race or alignment, so a Human hero of a
@@ -9235,7 +9235,7 @@ const ALL_MAGIC_ITEMS_P = [
 // so the finite treasury is deep enough that strict per-name uniqueness (rollMagicItem never awards
 // a name already found — see below) holds even on the largest maps. The original entry stays as
 // version 1; the two curated alternates below are cloned in. Tier-3 legendaries stay one-of-a-kind.
-const _ITEM_NAME_ALTS = {
+export const _ITEM_NAME_ALTS = {
   // ── 2026-09-07 item 4: the 80 new combat-use and race/alignment items come in TWO named versions
   // ──
   'Potion of Healing': ['Red Draught of Mending'],
@@ -9402,7 +9402,7 @@ const _ITEM_NAME_ALTS = {
 // powers the scorer cannot price at all ("Spy always succeeds", "once per game, promote every
 // army"); they are marked _unscorable so the balance harness does not judge them by a number that
 // was never meant to describe them.
-const LEGENDARY_ITEMS_P = [
+export const LEGENDARY_ITEMS_P = [
   // -- weapon --
   {
     name: 'Sword of the First Emperor',
@@ -9591,7 +9591,7 @@ const LEGENDARY_ITEMS_P = [
 ];
 
 // --- Name bank for minted versions ----------------------------------------------------------
-const _VARIANT_BANK = {
+export const _VARIANT_BANK = {
   // A weapon's NOUN must suit what the weapon does - a sabre cannot grant Archery, and a bow cannot
   // grant Melee - so the weapon bank is split by kind and chosen from the seed's own effect.
   weapon: {
@@ -9972,7 +9972,7 @@ const _VARIANT_BANK = {
   },
 };
 
-const PRIMAL_UNIT_NAMES = {
+export const PRIMAL_UNIT_NAMES = {
   'Stone Giants': [
     'the Stoneback Clan',
     'the Mountain-Shapers',
@@ -10338,7 +10338,7 @@ const PRIMAL_UNIT_NAMES = {
 // Unique army unit name descriptors by race+type. Pools are sized generously to the largest-map
 // distribution (Huge 20×12, 10 players) so descriptive names rarely repeat; the fallback below
 // composes further descriptive names rather than appending a bare number.
-const ARMY_UNIT_NAMES = {
+export const ARMY_UNIT_NAMES = {
   'Shieldwall Levies': [
     'the Ironfoot Company',
     'the Shield-Brothers',
@@ -11873,7 +11873,7 @@ const ARMY_UNIT_NAMES = {
   ],
 };
 
-const TITLE_DEFS = [
+export const TITLE_DEFS = [
   {
     key: 'throne',
     name: 'The Throne',
@@ -11974,7 +11974,7 @@ const TITLE_DEFS = [
   },
 ];
 
-const SAGE_DISCOVERIES_P = [
+export const SAGE_DISCOVERIES_P = [
   // 2026-09-21 REBALANCE (Toby): 296 discoveries (148 → 296, every field doubled), every effect unique
   // (no two share a kind+scope anywhere in the table), magnitudes tuned to one value target; the
   // descriptions are GENERATED from the effect rows (t/gen.js) so text and mechanics cannot drift.
@@ -14354,7 +14354,7 @@ const SAGE_DISCOVERIES_P = [
 // target: 'province'|'character'|'self'|'army'|'none'
 // encounter: true = available in CA encounter tactic phase: true = available as a Cast Spell phase
 // order
-const SPELL_DEFS_P = {
+export const SPELL_DEFS_P = {
   // ══ WHITE MAGIC ══
   Resurrect: {
     school: 'white',
@@ -14689,7 +14689,7 @@ const SPELL_DEFS_P = {
 //   garrison   — the four racial garrisons (always muster into the province garrison)
 //   lightFoot  — take HALF a hull aboard ship
 //   tamedFlyer — winged beasts sd40 Dragon Taming leads with no Druid (not the Gyrocopter: a machine)
-const KC_UNIT_CLASS = {
+export const KC_UNIT_CLASS = {
   flying: ['Eagle Riders', 'Noble Griffons', 'Gnomish Gyrocopters', 'Wyvern Riders'],
   aerial: [
     'Eagle Riders',
@@ -14776,7 +14776,7 @@ const KC_UNIT_CLASS = {
 // infantry (old saves and test fixtures name types that no longer exist). Garrisons are infantry that
 // muster into the province; "light foot" (half a hull) stays a shipping tag, not a type. Goblin Horde is
 // plain infantry: its thrown spears were retired with the army roster (2026-10-11).
-const KC_UNIT_TYPE = {
+export const KC_UNIT_TYPE = {
   // Human
   'Shieldwall Levies': 'infantry',
   'Free Lances': 'cavalry',
@@ -14842,7 +14842,7 @@ const KC_UNIT_TYPE = {
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;
 // skeletons are exempt. Level 2 is empty since 2026-09-27 (Gyrocopters are machines).
-const KC_DRUID_LEVELS = {
+export const KC_DRUID_LEVELS = {
   1: [
     'Shieldwall Levies',
     'Free Lances',
@@ -14898,7 +14898,7 @@ const KC_DRUID_LEVELS = {
 // then the five summoned elementals. 2026-10-11 (Toby, the army roster): Free Lances 5→6, Gilded
 // Lances 6→7, Forest Wardens 5→4, Shadow Archers 6→7, Ironwood Crossbows 5→4, Warg Riders 5→6; the
 // costs moved with them in ARMY_COST_MASTER (GM portal). tests/roster holds both to the decided table.
-const KC_UNIT_BASE_STR = Object.assign(
+export const KC_UNIT_BASE_STR = Object.assign(
   {
     'Shieldwall Levies': 4,
     'Free Lances': 6,
@@ -14935,11 +14935,11 @@ const KC_UNIT_BASE_STR = Object.assign(
   Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t, d]) => [t, d.str])),
   { 'Air Elemental': 10, 'Fire Elemental': 10, 'Earth Elemental': 11, 'Water Elemental': 10, 'Darkness Elemental': 11 },
 );
-const KC_UNIT_Q_MULT = { Green: 1, Average: 2, Veteran: 3, Crack: 4, Elite: 5 };
-const KC_QUALITY_TIERS = ['Green', 'Average', 'Veteran', 'Crack', 'Elite'];
-const KC_QUALITY_UP = { Green: 'Average', Average: 'Veteran', Veteran: 'Crack', Crack: 'Elite', Elite: 'Elite' };
-const KC_QUALITY_DOWN = { Elite: 'Crack', Crack: 'Veteran', Veteran: 'Average', Average: 'Green' };
-const KC_SKILLS = [
+export const KC_UNIT_Q_MULT = { Green: 1, Average: 2, Veteran: 3, Crack: 4, Elite: 5 };
+export const KC_QUALITY_TIERS = ['Green', 'Average', 'Veteran', 'Crack', 'Elite'];
+export const KC_QUALITY_UP = { Green: 'Average', Average: 'Veteran', Veteran: 'Crack', Crack: 'Elite', Elite: 'Elite' };
+export const KC_QUALITY_DOWN = { Elite: 'Crack', Crack: 'Veteran', Veteran: 'Average', Average: 'Green' };
+export const KC_SKILLS = [
   'melee',
   'archery',
   'tactical',
@@ -14958,8 +14958,8 @@ const KC_SKILLS = [
 ];
 // The five magic schools in their standard order. Some code deliberately keeps its OWN order as a
 // tie-break priority (a bot preferring Elemental on a tie, say) — those lists are not copies of this.
-const KC_MAGIC_SCHOOLS = ['white', 'psychic', 'illusory', 'elemental', 'necromancy'];
-const KC_SKILL_LABELS = {
+export const KC_MAGIC_SCHOOLS = ['white', 'psychic', 'illusory', 'elemental', 'necromancy'];
+export const KC_SKILL_LABELS = {
   melee: 'Melee',
   archery: 'Archery',
   tactical: 'Tactical',
@@ -14976,9 +14976,9 @@ const KC_SKILL_LABELS = {
   elemental: 'Elemental Magic',
   necromancy: 'Necromancy',
 };
-const KC_ITEM_UNCAPPED_SKILLS = ['melee', 'archery', 'white', 'psychic', 'illusory', 'elemental', 'necromancy'];
-const KC_ITEM_SLOT_CAP = { weapon: 1, armour: 1, shield: 1, cloak: 1, helm: 1, ring: 2, amulet: 1, combat: 2 };
-const KC_ITEM_RACE_ALIAS = {
+export const KC_ITEM_UNCAPPED_SKILLS = ['melee', 'archery', 'white', 'psychic', 'illusory', 'elemental', 'necromancy'];
+export const KC_ITEM_SLOT_CAP = { weapon: 1, armour: 1, shield: 1, cloak: 1, helm: 1, ring: 2, amulet: 1, combat: 2 };
+export const KC_ITEM_RACE_ALIAS = {
   Elf: 'Elven',
   Elves: 'Elven',
   Dwarf: 'Dwarven',
@@ -14986,13 +14986,13 @@ const KC_ITEM_RACE_ALIAS = {
   Orc: 'Orcish',
   Orcs: 'Orcish',
 };
-const KC_RUMOUR_COST_BY_POWER = { Weak: 1, Moderate: 2, Powerful: 3, Legendary: 4 };
+export const KC_RUMOUR_COST_BY_POWER = { Weak: 1, Moderate: 2, Powerful: 3, Legendary: 4 };
 // The Druidic and Evil summoning orders' two tier tables were removed with the orders on 2026-10-12 (Toby item 22).
 // Berths a carrier offers land units (a hull not listed offers one; light foot take half a berth). 2026-10-13 (Creatures
 // and Monsters VI): the Great Turtles' Island Back carries two.
-const KC_CARRIER_BERTHS = { 'Great Turtles': 2 };
-const KC_BASIC_EXPLORE = { plain: 35, desert: 25, forest: 20, mountain: 20, jungle: 15, sea: 25 };
-const KC_TERRAIN_COLORS = {
+export const KC_CARRIER_BERTHS = { 'Great Turtles': 2 };
+export const KC_BASIC_EXPLORE = { plain: 35, desert: 25, forest: 20, mountain: 20, jungle: 15, sea: 25 };
+export const KC_TERRAIN_COLORS = {
   plain: '#d1a63a',
   desert: '#c66b3d',
   forest: '#2d7a2d',
@@ -15000,15 +15000,15 @@ const KC_TERRAIN_COLORS = {
   mountain: '#8a7a6a',
   sea: '#3a7abf',
 };
-const KC_PHASE_NAMES = ['Spring', 'Early Summer', 'Late Summer', 'Fall', 'Early Winter', 'End of Turn'];
-const KC_PHASE_COLORS = ['#2d6a2d', '#7a5a10', '#8a6010', '#6a3a10', '#1a3a6a', '#555'];
-const KC_SEASONS = ['Spring', 'Early Summer', 'Late Summer', 'Fall', 'Early Winter'];
-const KC_ALIGNMENTS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'];
-const KC_TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
-const KC_HUMANOID_RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'];
-const KC_RIVAL_RACE = { Elven: 'Dwarven', Dwarven: 'Elven', Human: 'Orcish', Orcish: 'Human' };
-const KC_HEX_DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
-const KC_GRAND_DESIGNS = {
+export const KC_PHASE_NAMES = ['Spring', 'Early Summer', 'Late Summer', 'Fall', 'Early Winter', 'End of Turn'];
+export const KC_PHASE_COLORS = ['#2d6a2d', '#7a5a10', '#8a6010', '#6a3a10', '#1a3a6a', '#555'];
+export const KC_SEASONS = ['Spring', 'Early Summer', 'Late Summer', 'Fall', 'Early Winter'];
+export const KC_ALIGNMENTS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'];
+export const KC_TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
+export const KC_HUMANOID_RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'];
+export const KC_RIVAL_RACE = { Elven: 'Dwarven', Dwarven: 'Elven', Human: 'Orcish', Orcish: 'Human' };
+export const KC_HEX_DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
+export const KC_GRAND_DESIGNS = {
   Divine: {
     name: 'Grand Cathedral',
     desc: 'Bless costs you no casting slot, and its ward lies permanently over your capital.',

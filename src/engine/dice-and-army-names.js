@@ -1,10 +1,13 @@
+import { ARMY_UNIT_NAMES, PRIMAL_UNIT_NAMES } from '../content/kingdoms-call-data.js';
+import { kcRng } from './rng.js';
+
 // ── Percentage dice ────
 // d100() returns an integer 1–100. A percentage check SUCCEEDS when the rolled number is LESS THAN
 // OR EQUAL TO the chance, so a roll exactly equal to the % of success is a success (e.g. rolling 30
 // against a 30% chance succeeds). This gives exactly `chance` winning faces out of 100 and makes
 // the displayed integer roll honest (no float rounding artefact where a shown "30" was really 30.4
 // and missed).
-function d100() {
+export function d100() {
   return Math.floor(kcRng() * 100) + 1;
 }
 // ONE canonical way to show a percentage roll in the report — the success CHANCE and the actual
@@ -17,12 +20,12 @@ function d100() {
 // then miss on a roll of 50. With integer d100 rolls, roll<=floor(chance) is exactly roll<=chance,
 // so the shown figure is the true test. A float a hair under an integer (0.29*100 = 28.999…) snaps
 // to that integer rather than dropping a point.
-function dispFloor(v) {
+export function dispFloor(v) {
   const n = Number(v) || 0;
   const r = Math.round(n);
   return Math.abs(n - r) < 1e-9 ? r : Math.trunc(n);
 }
-function fmtRoll(chance, roll) {
+export function fmtRoll(chance, roll) {
   const c = Math.max(0, Math.min(100, dispFloor(chance)));
   const r = dispFloor(roll);
   return `${c}% [roll ${r} ${r <= c ? '✓' : '✗'}]`;
@@ -30,16 +33,16 @@ function fmtRoll(chance, roll) {
 // 2026-09-10 item 1: pctRoll(chance) — the ONE way to make a displayed percentage check. Rounds the
 // chance to an integer first so the shown "N%" and the pass/fail test agree exactly; a roll equal
 // to the chance succeeds.
-function pctRoll(chance) {
+export function pctRoll(chance) {
   const c = Math.max(0, Math.min(100, dispFloor(chance)));
   const roll = d100();
   return { chance: c, roll, ok: roll <= c };
 }
 
 // Track all army unit names in use across the game to ensure uniqueness
-const _usedArmyUnitNames = new Set();
+export const _usedArmyUnitNames = new Set();
 
-const _NAME_EPITHETS = [
+export const _NAME_EPITHETS = [
   'the Reformed',
   'the Second',
   'the Third',
@@ -61,7 +64,7 @@ const _NAME_EPITHETS = [
   'the Steadfast',
   'the Vengeful',
 ];
-const _NAME_TAILS = [
+export const _NAME_TAILS = [
   'of the Reserve',
   'of the Old Guard',
   'of the New Levy',
@@ -71,7 +74,7 @@ const _NAME_TAILS = [
   'of the Long March',
   'of the Last Stand',
 ];
-function armyUnitName(type) {
+export function armyUnitName(type) {
   const pool = { ...ARMY_UNIT_NAMES, ...PRIMAL_UNIT_NAMES }[type] || ['the Guard'];
   // Try to find a unique name from the (generously sized) pool.
   let name;
@@ -119,7 +122,7 @@ function armyUnitName(type) {
 }
 
 // Seed _usedArmyUnitNames from an existing game state (called after loading)
-function seedUsedArmyNames(gameState) {
+export function seedUsedArmyNames(gameState) {
   _usedArmyUnitNames.clear();
   (gameState.characters || []).forEach((c) => {
     (c.armies || []).forEach((a) => {
@@ -141,13 +144,13 @@ function seedUsedArmyNames(gameState) {
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08a) ── a random whole number from a to b, a random pick, and a host described
 // for a battle line. They read no turn state.
-function rng(a, b) {
+export function rng(a, b) {
   return Math.floor(kcRng() * (b - a + 1)) + a;
 }
 
-const pick = (arr) => arr[Math.floor(kcRng() * arr.length)];
+export const pick = (arr) => arr[Math.floor(kcRng() * arr.length)];
 
-function describeArmy(armies) {
+export function describeArmy(armies) {
   if (!armies || armies.length === 0) return 'no armies';
   const named = [];
   const unnamed = {};

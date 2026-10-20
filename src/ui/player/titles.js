@@ -1,3 +1,11 @@
+import { kcArg, kcHtml } from '../shared/kc-safe.js';
+import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.js';
+import { orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP } from './items-and-heroes.js';
+import { SPELL_HINTS, floorNumP } from './order-chances.js';
+import { SKILL_LABELS } from './move-analysis.js';
+import { predictedLocation, provDirectionLabel } from './order-targets.js';
+import { leadsArmiesP, reportColour } from './map-symbols.js';
+
 // ── SKILL MASTERY reference ────
 // A permanent, always-available reference: for every one of your characters who has pushed a skill
 // to level 6 or beyond (reachable only through hard experience), list what that mastery grants —
@@ -8,8 +16,8 @@
 // grant nothing, while the engine gives Parry, Counterattack, Impalement, Trueshot, Words of Awe,
 // Shimmer, Elemental Armour and the Necromantic Arts. It now reads the engine's own table from
 // kingdoms-call-data.js, so the two cannot disagree again.
-const MASTERY_EFFECTS = MASTERY_UNLOCKS;
-function renderMastery(report) {
+export const MASTERY_EFFECTS = MASTERY_UNLOCKS;
+export function renderMastery(report) {
   const card = document.getElementById('mastery-card');
   const el = document.getElementById('report-mastery');
   if (!card || !el) return;
@@ -56,7 +64,7 @@ function renderMastery(report) {
 }
 
 // ── TITLES & VICTORY (Reckoning) ────
-const _TITLE_ORDER = [
+export const _TITLE_ORDER = [
   ['throne', 'The Throne', 20],
   ['vault', 'The Vaultkeeper', 10],
   ['marshal', 'The Grand Marshal', 10],
@@ -69,7 +77,7 @@ const _TITLE_ORDER = [
 ];
 // One sentence on where this realm stands in a title race, from the engine's `race` record
 // (titleRaceFor in the GM portal). Shared by the Titles card and the Intelligence Reports block.
-function titleRaceLine(r) {
+export function titleRaceLine(r) {
   if (!r) return '';
   const who = r.charName ? kcHtml`<strong>${r.charName}</strong>` : '';
   if (r.mine)
@@ -83,7 +91,7 @@ function titleRaceLine(r) {
 // (titleStandingIntelHTML removed 2026-09-21 — the Intelligence card's "Your standing in the
 // Imperial Titles" block duplicated the per-title percentages that 🏆 Titles & Victory already
 // prints against each title. titleRaceLine above is still the single source of that wording.)
-function renderTitles(report) {
+export function renderTitles(report) {
   const el = document.getElementById('report-titles');
   if (!el) return;
   const t = (report && report.titles) || {};
@@ -291,7 +299,7 @@ function renderTitles(report) {
        <div style="font-size:.75rem;color:#332c20;margin-bottom:2px">The Imperial Titles — who holds them &amp; how they are won <span style="color:#aaa">(yours first, then the ones you stand closest to winning)</span></div>
        ${majorHtml}${callCtrl}${reckoningInfo}${renderMinorTitles(t)}`;
 }
-function renderMinorTitles(t) {
+export function renderMinorTitles(t) {
   const m = t && t.minor;
   if (!m) return '';
   // list ONLY the minor titles held by this player's own characters.
@@ -310,7 +318,7 @@ function renderMinorTitles(t) {
     ${mineHtml}
   </div>`;
 }
-function setReckoningCall(v) {
+export function setReckoningCall(v) {
   reckoningCall = !!v;
   if (currentReport) renderTitles(currentReport);
   renderReckoningOrders();
@@ -318,7 +326,7 @@ function setReckoningCall(v) {
 //the Call the Reckoning control ALSO lives in Orders → 🏰 Realm, beside Concede —
 // and when it cannot be called the section still says where the button will be and what is missing
 // (titles not yet public / king dead / share short / already called), so a player never hunts for it.
-function renderReckoningOrders() {
+export function renderReckoningOrders() {
   const w = document.getElementById('reckoning-wrap');
   if (!w) return;
   const t = (currentReport && currentReport.titles) || {};
@@ -362,7 +370,7 @@ function renderReckoningOrders() {
 
 // the spell-target (secondary) field builder, extracted from the Cast Spell form so the Use Item
 // form can offer the same province / character targeting for spell items.
-function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
+export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
   const NEEDS_PROV = new Set([
     'Bless Province',
     'Part Sea',

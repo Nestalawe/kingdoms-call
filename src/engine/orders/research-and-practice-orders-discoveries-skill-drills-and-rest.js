@@ -1,3 +1,18 @@
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { QUALITY_TIERS, SKILL_LABELS } from '../army-tables.js';
+import { homeFounderOf } from '../grand-design.js';
+import { hasItemBase } from '../items/equipment.js';
+import { syncMaxHp } from '../heroes/skills-and-hp.js';
+import { UNIT_DRILL_BASE, humanXPMult } from '../units/drill-and-spoils.js';
+import { d100, dispFloor, fmtRoll } from '../dice-and-army-names.js';
+import { provOf } from '../world/map-helpers.js';
+import { TM, perkTier, skillLevel } from '../titles/perks.js';
+import { HIDDEN_DISCOVERY_CAP_PCT, HIDDEN_DISCOVERY_DIVISOR, RESEARCH_HIDDEN_CATS, discAvailableFor, discSum, hasDisc } from '../discoveries.js';
+import { charMinor } from '../titles/title-holders-and-battle-merit.js';
+import { effStat, recalcHeroPay, skillInPlayNote } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.js';
+
 // ── THE RESEARCH AND PRACTICE ORDERS (plan P1-08j4: the fourth family taken out of processOrder in resolveTurn) ──
 // Research (a Sage's roll for a discovery of the realm, or an unlooked-for find in a hidden field), Practice Skill (a
 // chance to raise a skill, with comrades, a mentor and Perseverance; Tactical and Naval also drill the troops he
@@ -9,7 +24,7 @@
 // ── RESEARCH ── the scholar's own order: a roll for a Sage discovery. Available to any
 // character with Sage 1+ (the player portal hides it below that; the engine re-checks). Does
 // NOT train the Sage skill unless a discovery is actually made.
-function resolveResearchOrder(turnContext, c, ph, target, player) {
+export function resolveResearchOrder(turnContext, c, ph, target, player) {
   const { log, G } = turnContext;
   const sageRaw = skillLevel(c, 'sage');
   if (sageRaw < 1) {
@@ -229,7 +244,7 @@ function resolveResearchOrder(turnContext, c, ph, target, player) {
   return;
 }
 // Practice Skill: a chance to raise one skill (to 5 at most), likelier beside comrades of the same level, certain beside a better one, and likelier after each failure this turn; Tactical drills the land and air companies he leads, Naval his fleets.
-function resolvePracticeSkillOrder(turnContext, c, ph, target) {
+export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
   const { G, log } = turnContext;
   const skill = target;
   if (!skill) return;
@@ -429,7 +444,7 @@ function resolvePracticeSkillOrder(turnContext, c, ph, target) {
   return;
 }
 // Rest: hit points back, 30% of his maximum (more for a Divine realm, all of it with Medical Arts).
-function resolveRestOrder(turnContext, c, prov) {
+export function resolveRestOrder(turnContext, c, prov) {
   const { G, log } = turnContext;
   const REST_HEAL_PCT = 0.3;
   // sd28 Medical Arts: better healing on rest
@@ -463,7 +478,7 @@ function resolveRestOrder(turnContext, c, prov) {
   return;
 }
 // Research Breakthrough (Sage 7): a discovery the realm can make, chosen by the dice, with no roll to fail.
-function resolveResearchBreakthroughOrder(turnContext, c) {
+export function resolveResearchBreakthroughOrder(turnContext, c) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'sage') < 7) {
     log('system', `${c.name} lacks the Sage mastery (7) for a Research Breakthrough.`, {

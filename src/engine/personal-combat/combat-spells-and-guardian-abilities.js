@@ -1,3 +1,18 @@
+import { KC_MAGIC_SCHOOLS } from '../../content/kingdoms-call-data.js';
+import { kcRng } from '../rng.js';
+import { SKILL_LABELS } from '../army-tables.js';
+import { hasItemBase } from '../items/equipment.js';
+import { PC_SPELL_SCHOOL_MAP, PC_WEAK_MULT, pcDeferEffect, pcFoeCat, pcLearnWeakness, pcPushDot } from './helpers.js';
+import { d100, dispFloor, rng } from '../dice-and-army-names.js';
+import { skillLevel } from '../titles/perks.js';
+import { SPELL_CAST_BASE, magicL8CastBonus } from '../chances-and-lair-grades.js';
+import { discSum } from '../discoveries.js';
+import { telSpell } from '../turn/log-line-helpers.js';
+import { effStat } from '../heroes/effective-skills-and-hidden-heroes.js';
+import { pcNewStatus } from './speed-encounter-plans-and-combatants.js';
+import { pcCourageChance, pcHitSkill, pcLandStun, pcMeleeDamage, pcStunTurned, pcTakeHit, pcWardWord } from './to-hit-wounds-stuns-and-courage.js';
+import { pcCombatXP } from './melee-flight-and-archery.js';
+
 // ── PERSONAL COMBAT: COMBAT SPELLS AND GUARDIAN ABILITIES (plan P1-08e: lifted out of resolveTurn) ────
 // A spell cast in a personal fight (pcCastCombatSpell, with the spell-balance figures above it) and a guardian's
 // special ability (pcMonsterSpecial). Both take the turn's context first (src/engine/turn/context.js).
@@ -13,28 +28,28 @@
 // Storm and Invisibility were identical at school level 1 and level 5, so a dabbler got a
 // master's spell. Second, White had no way to convert an action into an advantage at all. Each
 // spell keeps what it does; the numbers below are what changed.
-const SPELL_FIREBALL_BASE_PCT = 10,
+export const SPELL_FIREBALL_BASE_PCT = 10,
   SPELL_FIREBALL_PCT_PER_LVL = 2; // burn, % of target max HP a round (2026-10-14, batch item 6: was 3 + 1 a level)
-const SPELL_HOLY_PEN_PER_LVL = 8; // Holy Symbol to-hit penalty a level
-const SPELL_HOLY_HEAL_PCT = 10; // …and the light closes the caster's hurts
-const SPELL_HOLY_BURN_PCT = 6; // …and sears the foe (×1.5 vs undead and fiends)
-const SPELL_HOLY_UNCLEAN_MULT = 1.5; // penalty and burn against the undead and fiends (was ×2 until 2026-10-14)
-const SPELL_SPIRITWRACK_BASE_ROUNDS = 1,
+export const SPELL_HOLY_PEN_PER_LVL = 8; // Holy Symbol to-hit penalty a level
+export const SPELL_HOLY_HEAL_PCT = 10; // …and the light closes the caster's hurts
+export const SPELL_HOLY_BURN_PCT = 6; // …and sears the foe (×1.5 vs undead and fiends)
+export const SPELL_HOLY_UNCLEAN_MULT = 1.5; // penalty and burn against the undead and fiends (was ×2 until 2026-10-14)
+export const SPELL_SPIRITWRACK_BASE_ROUNDS = 1,
   SPELL_SPIRITWRACK_MAX_ROUNDS = 3; // 1 + floor(level/2), level counted to 5: max 3 (4 vs a White-weak guardian)
 // 2026-09-26 (Toby item 3): a Powerful or Legendary guardian may shrug the binding off at the start
 // of every round after the first in which it held — this chance a round.
-const SPIRITWRACK_SHRUG_PCT = { Powerful: 25, Legendary: 40 };
-const SPELL_BLAST_BASE_ROUNDS = 1; // +1 per two levels
-const SPELL_TKS_BASE_PCT = 12,
+export const SPIRITWRACK_SHRUG_PCT = { Powerful: 25, Legendary: 40 };
+export const SPELL_BLAST_BASE_ROUNDS = 1; // +1 per two levels
+export const SPELL_TKS_BASE_PCT = 12,
   SPELL_TKS_PCT_PER_LVL = 3; // Telekinetic Storm, % of target max HP
-const SPELL_INVIS_BASE_PCT = 10,
+export const SPELL_INVIS_BASE_PCT = 10,
   SPELL_INVIS_PCT_PER_LVL = 4; // Invisibility, foe to-hit reduction
-const SPELL_HOD_BITE_PCT = 40,
+export const SPELL_HOD_BITE_PCT = 40,
   SPELL_HOD_MAX_PCT = 60; // Hand of Death
-const SPELL_MIRROR_HP_PCT = 40,
+export const SPELL_MIRROR_HP_PCT = 40,
   SPELL_MIRROR_ROUNDS = 3; // Mirror Image, see the case below
-const PC_CAST_BASE = SPELL_CAST_BASE; // personal-combat casting is 30 + school level × 10 · 2026-09-11: every path now shares SPELL_CAST_BASE
-function pcCastCombatSpell(turnContext, caster, target, spellName, narrative, state) {
+export const PC_CAST_BASE = SPELL_CAST_BASE; // personal-combat casting is 30 + school level × 10 · 2026-09-11: every path now shares SPELL_CAST_BASE
+export function pcCastCombatSpell(turnContext, caster, target, spellName, narrative, state) {
   const { G } = turnContext;
   const SPELL_SCHOOL = PC_SPELL_SCHOOL_MAP; // one shared table (pcTakeHit reads it too)
   const school = SPELL_SCHOOL[spellName];
@@ -411,7 +426,7 @@ function pcCastCombatSpell(turnContext, caster, target, spellName, narrative, st
 // special is its equivalent of a Cast action: it appears in the creature's action plan as
 // MS:<name> and resolves here. Effects are parsed from the ability's `effect` text so new
 // monsters can be added as data without touching the engine.
-function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) {
+export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) {
   narrative.push(`  ✨ ${actor.name} uses **${sp.name}**!${sp.flavour ? ` "${sp.flavour}"` : ''}`);
   const eff = String(sp.effect || '');
   let dealt = 0;
