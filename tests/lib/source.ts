@@ -104,12 +104,24 @@ function read(file: string, opts: SourceOptions = {}): { file: string; text: str
   return { file, text, tree: treeOf(fullPath(file, opts.src), text) };
 }
 
+// What asJavaScript gave for each piece of TypeScript already read in this process: a test that reads the same files
+// many times reads each once (the trees of whole files are kept the same way).
+const javascriptOf = new Map<string, string>();
+
 /** `code` (a piece of `file`) as JavaScript: its types stripped if `file` is TypeScript and the piece has any, else as
  *  it is. A piece with no TypeScript syntax (every file of src/ the day it became .ts, P1-09e) stays byte for byte as
  *  written, as a .js file's does: transpileModule would reprint it (its own indentation, a `;` and a new line after an
  *  expression). Stripped, it gets no "use strict" line either. */
-function asJavaScript(file: string, code: string): string {
-  if (!isTypeScript(file) || !hasTypeScriptSyntax(code)) return code;
+function asJavaScript(file: string, code: string, tree?: ts.SourceFile): string {
+  if (!isTypeScript(file)) return code;
+  const kept = javascriptOf.get(code);
+  if (kept !== undefined) return kept;
+  const out = hasTypeScriptSyntax(code, tree) ? stripped(code) : code;
+  javascriptOf.set(code, out);
+  return out;
+}
+
+function stripped(code: string): string {
   return ts.transpileModule(code, {
     compilerOptions: {
       target: ts.ScriptTarget.ESNext,
@@ -136,9 +148,11 @@ const TYPESCRIPT_MODIFIERS = new Set([
 
 /** Whether `code`, read as TypeScript, has anything JavaScript doesn't: a type (an annotation, a type argument or
  *  parameter), a type-only declaration (interface, type, enum, namespace, declare), `as`, `satisfies`, `!`, `<T>x`, a
- *  TypeScript modifier, an optional parameter, a decorator, an `implements`, or a type-only import or export. */
-function hasTypeScriptSyntax(code: string): boolean {
-  const tree = ts.createSourceFile('piece.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+ *  TypeScript modifier, an optional parameter, a decorator, an `implements`, or a type-only import or export. `whole`:
+ *  the tree of `code` as TypeScript, when there is one already. */
+function hasTypeScriptSyntax(code: string, whole?: ts.SourceFile): boolean {
+  // a whole file's tree is already made (read); a piece is parsed here
+  const tree = whole ?? ts.createSourceFile('piece.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const typescriptOnly = (node: ts.Node): boolean => {
     if (
       ts.isTypeNode(node) ||
@@ -257,7 +271,8 @@ export function sourceFrom(file: string, first: string, last: string, opts: Sour
 /** The whole of `file` as a classic script, to run on its own in a vm or a page: its import declarations dropped,
  *  `export` dropped from its declarations (an `export { … }` list goes too), types stripped. */
 export function scriptOf(file: string, opts: SourceOptions = {}): string {
-  const js = asJavaScript(file, read(file, opts).text);
+  const whole = read(file, opts);
+  const js = asJavaScript(file, whole.text, whole.tree);
   const tree = treeOf(file.replace(/\.[cm]?ts$/, '.js'), js);
   const cuts: [number, number][] = [];
   for (const statement of tree.statements) {
@@ -409,7 +424,7 @@ function canonicalTree(js: string): ts.SourceFile {
 
 /** The canonical tree (canonicalTree) of `file`, its types stripped first. */
 const canonicalTreeOf = (file: string, opts: SourceOptions = {}) =>
-  canonicalTree(asJavaScript(file, read(file, opts).text));
+  canonicalTree(asJavaScript(file, read(file, opts).text, read(file, opts).tree));
 
 /** `code` (JavaScript) in compact's canonical layout. */
 export function compactCode(code: string): string {
