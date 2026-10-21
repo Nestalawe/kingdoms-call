@@ -7,11 +7,12 @@
 // recommended rules and typescript-eslint's strict set, which read the code alone, not its types (the type-aware ones
 // stay off for src/ until P1-10 turns them on folder by folder: with most files not type-checked, everything is any).
 // What they found in the JavaScript as it was renamed is a warning, not an error: tools/ratchet.ts counts the warnings
-// (eslintWarnings), so they only fall. Two rules are errors. no-undef (P1-09d), so a file can't read a name it doesn't
+// (eslintWarnings), so they only fall. Four rules are errors. no-undef (P1-09d), so a file can't read a name it doesn't
 // import or declare: the engine (src/engine/, src/views/, the data file) only JavaScript's own built-ins and console,
 // not window, document or sb; the rest of src/ the browser's names too, the page's own classic scripts' (KC_CONFIG from
-// kc-config.js, supabase from supabase-js) and its declared globals. And ban-ts-comment: a file is left unchecked
-// (ts-nocheck) only with its reason. The other JavaScript (tests' scripts, tools/legacy/, public/'s two scripts) isn't
+// kc-config.js, supabase from supabase-js) and its declared globals. ban-ts-comment: a file is left unchecked
+// (ts-nocheck) only with its reason. And no type assertion (`as`, but `as const`) and no non-null assertion (`x!`), each
+// a claim the compiler takes on trust (plan P1-10, Decision 2): a file passes strict TypeScript with what it checks. The other JavaScript (tests' scripts, tools/legacy/, public/'s two scripts) isn't
 // linted yet: the tests' and tools' become TypeScript in Phase 1; public/'s are copied as they are.
 const { defineConfig, globalIgnores } = require('eslint/config');
 const js = require('@eslint/js');
@@ -64,7 +65,18 @@ const siteRules = {
   ...asWarnings,
   'no-undef': 'error',
   '@typescript-eslint/ban-ts-comment': ['error', { 'ts-nocheck': 'allow-with-description' }],
+  '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
+  '@typescript-eslint/no-non-null-assertion': 'error',
 };
+// The three type assertions src/ held when the rule came in (P1-11a3 wrote them, for reads TypeScript can't follow
+// without a statement changed: a table read by any name, a key that may be missing, the first of a list that is never
+// empty). P1-10b replaces each with a check, and this list goes; tests/static/harness.test.ts checks that it only
+// shrinks and that each file holds just its one.
+const TYPE_ASSERTIONS_KEPT = [
+  'src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts',
+  'src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts',
+  'src/engine/rules-on-plain-values/unit-types-and-base-strength.ts',
+];
 
 module.exports = defineConfig(
   globalIgnores(['**/*.js', '**/*.cjs', '**/*.mjs', 'site/']),
@@ -97,6 +109,10 @@ module.exports = defineConfig(
   {
     files: ['src/engine/rng.ts'],
     languageOptions: { globals: { crypto: 'readonly', KC_RNG_SEED: 'readonly' } },
+  },
+  {
+    files: TYPE_ASSERTIONS_KEPT,
+    rules: { '@typescript-eslint/consistent-type-assertions': 'off' },
   },
   {
     // TypeScript's form for a global variable is `declare var`: with `let` or `const`, globalThis.<name> (how a page's

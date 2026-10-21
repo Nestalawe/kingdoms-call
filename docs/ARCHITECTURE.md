@@ -47,7 +47,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   statistics snapshots, what a realm can see), `db/` (the version guard, telemetry and the light `meta` rows),
   `content/` (the data file), `shared/` (the player portal's one door to the engine: it re-exports the rules of
   `engine/rules-on-plain-values/` the portal calls, and nothing else; [below](#kingdoms-call-datats-the-one-source-for-shared-rules)),
-  `ui/<page>/` (each page's styles, its entry and the rest of its code), `ui/shared/` (`kc-safe.ts`), `rulebook/`. The
+  `schemas/` (the types of the world, from Zod schemas: below), `ui/<page>/` (each page's styles,
+  its entry and the rest of its code), `ui/shared/` (`kc-safe.ts`), `rulebook/`. The
   templates are at the top of `src/`. The GM portal's code is 128 modules; `src/engine/run-turn.ts` (the turn,
   `resolveTurn`, once ~13,000 lines, now ~240) was taken apart by P1-08, one area at a time (below). The player portal's
   is 35: its own 23, the data file, `kc-safe.ts`, `kc-db-guard.ts`, `src/shared/`'s file and the folder's eight.
@@ -56,7 +57,24 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   rename: strict TypeScript found errors in each); P1-10 and P1-16 type them, and the ratchet's `tsNocheck` only falls.
   A new file is checked from the start. `src/globals.d.ts` declares what the modules read without importing it:
   `KC_CONFIG` and `supabase` (the pages' classic scripts), `KC_RNG_SEED` (the tests' seed) and each page's declared
-  globals (`tests/static/globals-d-ts.test.ts` checks it names exactly those).
+  globals (`tests/static/globals-d-ts.test.ts` checks it names exactly those). No file of `src/` may claim what the
+  compiler can't check: a type assertion (`x as T`; `as const` is fine) or a non-null assertion (`x!`) is a lint error
+  (P1-10a1). The three assertions P1-11a3 wrote before the rule are let through, one in each of its files
+  (`eslint.config.js`, `TYPE_ASSERTIONS_KEPT`, which `tests/static/harness.test.ts` checks only shrinks); P1-10b
+  replaces them with checks.
+- **The types of the world come from Zod schemas, in `src/schemas/`**
+  (P1-10a1): the saved game state (`saved-game-state.ts`: `GameState`, `Realm`, `Character`, `Army`, `Item`,
+  `Province`, `Grave`, `Mercenary`, and the shapes they share), the orders a realm submits (`orders-a-realm-submits.ts`:
+  `OrdersARealmSubmits`, `PhaseOrder`, `EncounterPlan`) and the branded ids (`ids-of-provinces-heroes-and-realms.ts`:
+  `ProvinceId`, `CharacterId`, `RealmIndex`, so a hero's id can't be passed as a province's). Each type is
+  `z.infer` of its schema, so one definition types the code now and later checks a save at load (P1-15) and a database
+  row (P1-17). They are on today's shape, written from the balance matrix's 2,687 saved states and tidied by hand: a
+  field only some code reads is added when the file that reads it is typed (P1-10a3, P1-10b). `src/` imports them as
+  types only (`import type`) until P1-15, so no page's bundle holds them or Zod; `pages-build` refuses a value import.
+  Their objects are `z.object`, which drops a key it doesn't name; the tests parse strictly
+  (`tests/lib/strict-schema.ts`), and `tests/unit/the-saved-game-state-schemas-parse-every-state-of-a-matrix-game.test.ts`
+  parses a whole matrix game's states and orders. Nothing types the engine with them yet: most of its files still say
+  `@ts-nocheck` (P1-10a3 and P1-10b).
 - **The engine is `engine/` and `views/`** (P1-18c): nothing in them reads the screen, the database or the page's other
   globals, and every name they read is imported from them or the data file: P1-18d moved the last exceptions, the
   turn's database and screen work and the reports' build stamp, into the turn's shell (`ui/gm/turn-shell.ts`).
@@ -627,9 +645,11 @@ TypeScript and CSS in `src/` too (since P1-09c), and `public/`'s two scripts, bu
 whitespace is content, nor `public/vendor/`. ESLint lints the site's modules (`src/**/*.ts`) in a tier of their own
 (P1-09e): ESLint's recommended rules and typescript-eslint's `strict` set, which read the code, not its types (the
 type-aware rules stay off for `src/` until P1-10), each a warning: what they found as the code became TypeScript (347
-findings) is counted by the ratchet (`eslintWarnings`), so it only falls. Two rules are errors. `ban-ts-comment`: a
-file is left unchecked only with its reason. And `no-undef` (since P1-09d): a file that reads a name it neither imports
-nor declares fails the lint, not the page that first runs it (P1-08a began it for the engine). The engine
+findings) is counted by the ratchet (`eslintWarnings`), so it only falls. Four rules are errors. `ban-ts-comment`: a
+file is left unchecked only with its reason. `consistent-type-assertions` (no `as` but `as const`) and
+`no-non-null-assertion` (since P1-10a1): no claim the compiler takes on trust. And `no-undef` (since P1-09d): a file
+that reads a name it neither imports nor declares fails the lint, not the page that first runs it (P1-08a began it for
+the engine). The engine
 (`src/engine/`, `src/views/`, the data file) may read only JavaScript's own names and `console`; the rest of `src/` the
 browser's names too, `KC_CONFIG` and `supabase` (the page's classic scripts'), and its declared globals, which
 `eslint.config.js` works out from the files' `globalThis.<name> = …` lines.
