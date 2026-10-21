@@ -9,7 +9,7 @@
 //   types only).
 // The file as it is compiles with no error. Level 0 (static): the compiler reads the copies and nothing runs; a lower
 // level has nothing to read. The data file imports nothing, so each copy compiles on its own (with tsconfig.json's
-// settings), not the whole repository.
+// settings), not the whole repository. About 1.6 s here and up to 5 s on CI's runners, so its limit is a minute.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -86,20 +86,24 @@ function errorsIn(copies: Record<string, string>): Record<string, string[]> {
   );
 }
 
-test('the data file compiles as it is, and each planted copy fails in the tables that must list the unit', () => {
-  expect(errorsIn(PLANTS)).toEqual({
-    'as it is': [],
-    "Black Arrows' base strength left out": ['TS1360 in KC_UNIT_BASE_STR: Black Arrows'],
-    "the Darkness Elemental's base strength left out": ['TS1360 in KC_UNIT_BASE_STR: Darkness Elemental'],
-    'a new unit type, Planted Pikemen, with nothing else written for it': [
-      'TS1360 in ARMY_UNIT_NAMES: Planted Pikemen',
-      'TS1360 in KC_UNIT_BASE_STR: Planted Pikemen',
-    ],
-    "Black Arrows' names left out": ['TS1360 in ARMY_UNIT_NAMES: Black Arrows'],
-    'Great Turtles left out of KC_UNIT_TYPE': [
-      'TS2353 in ARMY_UNIT_NAMES: Great Turtles',
-      'TS2353 in KC_CARRIER_BERTHS: Great Turtles',
-      'TS2353 in PRIMAL_ARMY_DEFS_P: Great Turtles',
-    ],
-  });
-});
+test(
+  'the data file compiles as it is, and each planted copy fails in the tables that must list the unit',
+  { timeout: 60_000 },
+  () => {
+    expect(errorsIn(PLANTS)).toEqual({
+      'as it is': [],
+      "Black Arrows' base strength left out": ['TS1360 in KC_UNIT_BASE_STR: Black Arrows'],
+      "the Darkness Elemental's base strength left out": ['TS1360 in KC_UNIT_BASE_STR: Darkness Elemental'],
+      'a new unit type, Planted Pikemen, with nothing else written for it': [
+        'TS1360 in ARMY_UNIT_NAMES: Planted Pikemen',
+        'TS1360 in KC_UNIT_BASE_STR: Planted Pikemen',
+      ],
+      "Black Arrows' names left out": ['TS1360 in ARMY_UNIT_NAMES: Black Arrows'],
+      'Great Turtles left out of KC_UNIT_TYPE': [
+        'TS2353 in ARMY_UNIT_NAMES: Great Turtles',
+        'TS2353 in KC_CARRIER_BERTHS: Great Turtles',
+        'TS2353 in PRIMAL_ARMY_DEFS_P: Great Turtles',
+      ],
+    });
+  },
+);

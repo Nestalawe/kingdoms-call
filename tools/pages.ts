@@ -59,7 +59,18 @@ export function pageEntries(page: string, src = SRC): { modules: string[]; style
  *  with verbatimModuleSyntax the build leaves a bare import of the file. */
 export function importsOf(file: string, src = SRC): string[] {
   const text = fs.readFileSync(path.join(src, file), 'utf8');
-  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+  return namesImportedForCode(text).map((name) =>
+    path.posix.normalize(path.posix.join(path.posix.dirname(file), name)),
+  );
+}
+
+/** The module names a file's text imports for its code, by the text: the parse is the slow part (the data file is
+ *  15,000 lines), and the tests ask for the same files again and again. */
+const namesByText = new Map<string, readonly string[]>();
+function namesImportedForCode(text: string): readonly string[] {
+  const known = namesByText.get(text);
+  if (known) return known;
+  const tree = ts.createSourceFile('module.ts', text, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
   const named: string[] = [];
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
@@ -75,7 +86,8 @@ export function importsOf(file: string, src = SRC): string[] {
     ts.forEachChild(node, visit);
   };
   visit(tree);
-  return named.map((name) => path.posix.normalize(path.posix.join(path.posix.dirname(file), name)));
+  namesByText.set(text, named);
+  return named;
 }
 
 /** Every module of the page, in the order they run: depth first from each entry, each file after the files it imports,
