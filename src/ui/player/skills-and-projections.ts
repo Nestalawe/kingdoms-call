@@ -1,12 +1,12 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
 import {
-  KC_ALIGNMENTS,
   KC_DRUID_LEVELS,
   KC_HUMANOID_RACES,
   KC_UNIT_CLASS,
   PRIMAL_ARMY_DEFS_P,
 } from '../../content/kingdoms-call-data.ts';
+import { heroHireWage } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import { ITEM_UNCAPPED_SKILLS_P } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
@@ -285,19 +285,6 @@ export function formatRace(race, unitType) {
 // this was a hand-typed copy, and the roster PR would have left it a move behind).
 export const PRIMAL_ARMY_SPEEDS = Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t, d]) => [t, d.speed]));
 
-// ── Alignment spectrum & hero hire pricing (mirrors the GM engine) ────
-export const ALIGN_SPECTRUM_PP = KC_ALIGNMENTS.slice();
-export function alignDistPP(a, b) {
-  const i = ALIGN_SPECTRUM_PP.indexOf(a),
-    j = ALIGN_SPECTRUM_PP.indexOf(b);
-  if (i < 0 || j < 0) return 0;
-  return Math.abs(i - j);
-}
-export function heroHireWagePP(kingdomAlign, heroAlign) {
-  const d = alignDistPP(kingdomAlign, heroAlign);
-  if (d >= 6) return null; // Divine <-> Undead: will never serve
-  return 2 + Math.floor(d / 2);
-}
 // 2026-10-08 (Toby item 12): the price of hiring THIS hero, as the engine will charge it. The report
 // now sends it with every hireable hero (hireWage: alignment distance + the hero's skill premium, null
 // for a hero who will not serve); the alignment-only estimate above is kept only for a report from an
@@ -305,7 +292,7 @@ export function heroHireWagePP(kingdomAlign, heroAlign) {
 // dropdown, the Broker list, the hired hero's card and the order ledger agree with the report.
 export function heroHireWageOfP(h, report) {
   if (h && Object.prototype.hasOwnProperty.call(h, 'hireWage')) return h.hireWage;
-  return heroHireWagePP(((report || currentReport || {}).kingdom || {}).alignment || 'Neutral', h && h.alignment);
+  return heroHireWage(((report || currentReport || {}).kingdom || {}).alignment || 'Neutral', h && h.alignment);
 }
 
 // Predict each character's item list at the given phase by replaying the Give Item orders of all

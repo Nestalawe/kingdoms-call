@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
+import { skillFameLabelM } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import { SEASONS, _pendingDiscChoices, actionsFor } from './items-and-heroes.ts';
 import { refreshLaterCastSpells } from './order-chances.ts';
@@ -19,7 +20,7 @@ import { buildOrdersForm, refreshEncounterPlan, renderPreSchool } from './orders
 import { doSaveOrders, doSubmitOrders, restoreSubmitWrap } from './briefing-and-submit.ts';
 import { heroHireWageOfP } from './skills-and-projections.ts';
 import { buildTargetField, predictedLocation, refreshExploreNotes } from './order-targets.ts';
-import { leadsArmiesP, provLinkHtml, skillFameLabel } from './map-symbols.ts';
+import { leadsArmiesP, provLinkHtml } from './map-symbols.ts';
 
 // ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
 // L7/L9 mastery order (GM MASTERY_ORDER_KEYS — exactly the L79_ORDERS set) and of Call to Arms. Once a
@@ -829,7 +830,7 @@ export function injectHiredHeroOrders(charId, ph, charIdx) {
     if (sk.length) hireTop = { skill: sk[0][0], level: sk[0][1] };
   }
   const skillStr = hireTop
-    ? kcHtml`<span style="color:var(--forest)"><strong>${skillFameLabel(hireTop.level)}</strong> ${SKILL_LABELS[hireTop.skill] || hireTop.skill}</span>`
+    ? kcHtml`<span style="color:var(--forest)"><strong>${skillFameLabelM(hireTop.level)}</strong> ${SKILL_LABELS[hireTop.skill] || hireTop.skill}</span>`
     : kcHtml`<span style="color:#aaa">No notable skills</span>`;
 
   card.innerHTML = kcHtml`

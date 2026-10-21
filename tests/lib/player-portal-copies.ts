@@ -1,27 +1,32 @@
-// The player portal's copies of the engine's rules, and the engine's functions they restate (plan P1-11a, Decisions 5
-// and 6): the pairs, and the values they are compared on. tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts
+// The player portal's copies of the engine's rules that are left, the engine's functions it now calls in their place,
+// and the values both are checked on (plan P1-11a, Decisions 5, 6 and 7). tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts
 // checks them.
 //
-// The player page loads no engine file: where it needs a rule of a hero, an army, an item or a number, it keeps its own
-// copy (`floorNumP`, `unitBaseStrengthP`, …). P1-11a swaps each copy that agrees with the engine's function for that
-// function. Before that, this file says whether they agree, two ways (Decision 6):
-//   swap   the copy and the engine's function on the same value: the one the portal is handed. It decides whether
-//          the copy can go.
-//   truth  the copy on the report's value, the engine's function on the state's value the report made it from. It says
-//          whether the portal tells the player what the turn will do. None where the portal is handed the very value
-//          the engine reads (a number, a level, an alignment, a games row): there it is the swap.
+// Until P1-11a4 the player page loaded no engine file: where it needed a rule of a hero, an army, an item or a number, it
+// kept its own copy (`floorNumP`, `unitBaseStrengthP`, …). P1-11a4 swapped each of the 16 copies that agreed with the
+// engine's function for that function, which the portal now imports through src/shared/. So two ways of checking are
+// left (Decision 7):
+//   projection  the engine's function on the report's value against it on the state's value the report made it from:
+//               the report hands the portal what the engine reads. For the 9 swapped rules whose value the report
+//               makes from the state (the other 7 take a number, a level, an alignment or a games row: one function on
+//               one value, nothing left to compare).
+//   truth       for the three copies that stay until P1-11b (they read the report's shape): the copy on the report's
+//               value, the engine's function on the state's. It says whether the portal tells the player what the turn
+//               will do.
 //
 // The copies are read from src/ui/player/ by their syntax tree (tests/lib/source.ts) and run in a context of their
-// own, with the data file run beside them as a script: the content as the player page holds it, before the engine
-// rewrites the item catalogue's tiers as it loads. The player page's modules can't be imported here: they start the
-// page (its database client) as they load. The engine's functions are imported directly, with no vm (P1-11a1).
+// own, with the data file run beside them as a script (the content as the player page holds it, before the engine
+// rewrites the item catalogue's tiers as it loads) and the names src/shared/ hands the portal, as it imports them. The
+// player page's modules can't be imported here: they start the page (its database client) as they load. The engine's
+// functions are imported directly, with no vm (P1-11a1).
 //
 // The values (Decision 5): the balance matrix's game scripted-05 played with the engine's modules imported directly,
 // its scripted realm's report after every turn and the state it was built from; and a staged world in the engine's
 // shape handed through the report's own projection (buildTurnReport): every catalogue item, held by a hero of every
 // race and alignment; every unit type at every quality, with the flags the engine and the report use; columns made of
-// every kind of unit, led by heroes with and without the naval mastery that doubles a hull. Then every alignment pair,
-// every level from -1 to 10, a set of games rows, and every number the reports hold, with fractions.
+// every kind of unit, led by heroes with and without the naval mastery that doubles a hull. The checks read the
+// realm's own heroes, their units and their items: the values the report makes from the state. (Until P1-11a4 the swap
+// cases also took every alignment pair, every level, games rows and every number the reports hold.)
 import vm from 'node:vm';
 import {
   ALL_MAGIC_ITEMS_P,
@@ -36,8 +41,6 @@ import {
 } from '../../src/content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../../src/engine/army-tables.ts';
 import { getSeaCapability } from '../../src/engine/units/sea-lift-stranding-and-retreats.ts';
-import { gameMetaOf } from '../../src/engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
-import { dispFloor } from '../../src/engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import {
   isLegendaryItem,
   itemRaceOf,
@@ -55,18 +58,11 @@ import {
   isAirCarriable,
 } from '../../src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { beastCommandCount } from '../../src/engine/world/tables.ts';
-import {
-  alignDistP,
-  heroHireWage,
-} from '../../src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
-import {
-  actionSpellsAllowedPerSchoolEachTurn,
-  combatSpellsAllowedPerSchoolEachFight,
-} from '../../src/engine/rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { resolveTurn } from '../../src/engine/run-turn.ts';
 import { kcRng } from '../../src/engine/rng.ts';
 import { buildTurnReport } from '../../src/views/turn-report.ts';
+import * as theRulesTheSharedDoorHandsThePortal from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { GAME, SETUPS, slotRowsJson } from './matrix-game.ts';
 import { scriptOf, sourceOf, type SourceOptions } from './source.ts';
@@ -80,78 +76,35 @@ const SCHOOLS: string[] = KC_MAGIC_SCHOOLS;
 
 // ── The copies ────
 
-/** The copies (and the tables they read) by file, as the player portal declares them. */
+/** The copies left (and the tables they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
-  'ui/player/items-and-heroes.ts': [
-    'ITEM_SLOT_OF_P',
-    'isLegendaryItemP',
-    'itemSlotP',
-    '_ITEM_RACE_ALIAS_P',
-    'itemRaceOfP',
-    'itemUsableByP',
-  ],
-  'ui/player/order-chances.ts': [
-    'ITEM_UNCAPPED_SKILLS_P',
-    'effMagicLvl',
-    'actionSpellLimit',
-    'combatSpellLimit',
-    'ALL_SKILLS',
-    'floorNumP',
-    'UNIT_BASE_STR_P',
-    'unitTypeOfP',
-    'UNIT_Q_MULT_P',
-    'unitBaseStrengthP',
-  ],
-  'ui/player/skills-and-projections.ts': ['ALIGN_SPECTRUM_PP', 'alignDistPP', 'heroHireWagePP'],
-  'ui/player/map-symbols.ts': ['beastCommandCountP', 'heroFameTextP', 'skillFameLabel'],
-  'ui/player/game-lists.ts': ['gameMetaP'],
+  'ui/player/order-chances.ts': ['ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl'],
+  'ui/player/map-symbols.ts': ['beastCommandCountP'],
   'ui/player/move-analysis.ts': [
     'PO_SEA_TYPES',
     'PO_CARRIER_TYPES',
     'PO_AERIAL_TYPES',
     'PO_FLYING_TYPES',
-    'PO_CAVALRY_TYPES',
-    'PO_CREATURE_TYPES',
-    'PO_MONSTER_TYPES',
     'PO_LIGHT_TYPES',
-    'poAirCarriable',
-    'poFlyCapability',
     'poSeaAnalysis',
-    'SKILL_LABELS',
   ],
 };
-/** The functions among them that the pairs call. */
-const COPY_FUNCTIONS = [
-  'floorNumP',
-  'unitTypeOfP',
-  'unitBaseStrengthP',
-  'isLegendaryItemP',
-  'itemSlotP',
-  'itemRaceOfP',
-  'itemUsableByP',
-  'alignDistPP',
-  'heroHireWagePP',
-  'gameMetaP',
-  'skillFameLabel',
-  'heroFameTextP',
-  'poAirCarriable',
-  'poFlyCapability',
-  'actionSpellLimit',
-  'combatSpellLimit',
-  'beastCommandCountP',
-  'poSeaAnalysis',
-  'effMagicLvl',
-] as const;
+/** The functions among them that the checks call. */
+const COPY_FUNCTIONS = ['beastCommandCountP', 'poSeaAnalysis', 'effMagicLvl'] as const;
 export type CopyName = (typeof COPY_FUNCTIONS)[number];
 export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 
-/** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file beside them. */
+/** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file beside them and
+ *  the names src/shared/ hands the portal (effMagicLvl calls itemSlot and itemUsableBy; poSeaAnalysis getFlyCapability
+ *  and isAirCarriable). */
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   const code = [
     scriptOf('content/kingdoms-call-data.ts', opts),
     ...Object.entries(COPIES).map(([file, names]) => sourceOf(file, names, opts)),
   ].join('\n');
-  const made: unknown = vm.runInNewContext(`(() => {\n${code}\nreturn { ${COPY_FUNCTIONS.join(', ')} };\n})()`);
+  const made: unknown = vm.runInNewContext(`(() => {\n${code}\nreturn { ${COPY_FUNCTIONS.join(', ')} };\n})()`, {
+    ...theRulesTheSharedDoorHandsThePortal,
+  });
   if (!isObj(made)) throw new Error('the copies did not load');
   for (const name of COPY_FUNCTIONS)
     if (typeof made[name] !== 'function') throw new Error(`the player portal has no function ${name}`);
@@ -166,24 +119,12 @@ export interface Projected {
   readonly state: Obj | null;
 }
 export interface Samples {
-  /** Every number the reports hold, and fractions of it. */
-  readonly numbers: number[];
-  /** Every level a skill can be at, and past both ends; and none. */
-  readonly levels: unknown[];
-  /** Every pair of alignments, an unknown one and none included. */
-  readonly alignmentPairs: [unknown, unknown][];
-  /** Games rows as the database hands them (meta: JSON text, an object, missing, broken). */
-  readonly gameRows: unknown[];
-  /** Every unit type: the content's, the reports', and two the tables don't know. */
-  readonly unitTypes: string[];
-  /** Every unit in the reports (a hero's, a garrison's, …); a hero's with the state's unit. */
+  /** Every unit of the realm's heroes in the reports, with the state's unit. */
   readonly armies: Projected[];
-  /** Every item in the reports; a hero's with the state's item and both its holders. */
+  /** Every item of the realm's heroes in the reports, with the state's item and both its holders. */
   readonly items: (Projected & { readonly holder: Projected | null })[];
   /** Every one of the realm's heroes in the reports, with the state's hero. */
   readonly heroes: Projected[];
-  /** The skills of every hero in the reports, and staged ties, as a hero without the report's top skill. */
-  readonly skillSets: Obj[];
   /** How many reports the values come from: the game's, and the staged world's. */
   readonly reports: number;
 }
@@ -331,24 +272,6 @@ export function stagedWorld(): { state: Obj; report: Obj } {
   return { state, report };
 }
 
-/** Every number `x` holds, at any depth. */
-function numbersIn(x: unknown, into: Set<number>): void {
-  if (typeof x === 'number') into.add(x);
-  else if (Array.isArray(x)) for (const v of x) numbersIn(v, into);
-  else if (isObj(x)) for (const v of Object.values(x)) numbersIn(v, into);
-}
-/** Every object `x` holds, at any depth, that `is` picks. */
-function objectsIn(x: unknown, is: (o: Obj) => boolean, into: Obj[] = []): Obj[] {
-  if (Array.isArray(x)) for (const v of x) objectsIn(v, is, into);
-  else if (isObj(x)) {
-    if (is(x)) into.push(x);
-    for (const v of Object.values(x)) objectsIn(v, is, into);
-  }
-  return into;
-}
-const isArmy = (o: Obj) => typeof o['type'] === 'string' && 'quality' in o;
-const isItem = (o: Obj) => typeof o['name'] === 'string' && isObj(o['effect']);
-
 /** `fn`, with the engine's echo of the GM's log to console.log (engine/turn/context.ts) quiet. */
 function quietly<T>(fn: () => T): T {
   const was = console.log;
@@ -361,92 +284,35 @@ function quietly<T>(fn: () => T): T {
 }
 
 let made: Samples | null = null;
-/** The values the pairs are compared on (made once in a process: the game takes about a second). */
+/** The values the checks are made on (made once in a process: the game takes about a second). */
 export function samples(): Samples {
   if (made) return made;
   const pairs = quietly(() => [...scripted05(), stagedWorld()]);
-  const numbers = new Set<number>();
   const armies: Projected[] = [];
   const items: (Projected & { holder: Projected | null })[] = [];
   const heroes: Projected[] = [];
   for (const { state, report } of pairs) {
-    numbersIn(report, numbers);
     const stateHeroes = new Map(objects(state['characters']).map((c) => [c['id'], c]));
     const own = objects(report['characters']);
-    const ownArmies = new Set<Obj>();
-    const ownItems = new Set<Obj>();
     for (const c of own) {
       const sc = stateHeroes.get(c['id']) ?? null;
       const holder = { report: c, state: sc };
       heroes.push(holder);
       objects(c['armies']).forEach((a, i) => {
-        ownArmies.add(a);
         armies.push({ report: a, state: sc ? (objects(sc['armies'])[i] ?? null) : null });
       });
       objects(c['items']).forEach((it, i) => {
-        ownItems.add(it);
         items.push({ report: it, state: sc ? (objects(sc['items'])[i] ?? null) : null, holder });
       });
     }
-    // The rest the report shows: garrisons, other realms' columns, lair hoards, the market, …
-    for (const a of objectsIn(report, isArmy)) if (!ownArmies.has(a)) armies.push({ report: a, state: null });
-    for (const it of objectsIn(report, isItem))
-      if (!ownItems.has(it)) items.push({ report: it, state: null, holder: null });
   }
-  for (const n of [...numbers]) for (const m of [n + 0.5, n * 0.29, n / 7, -n - 0.5, n - 1e-12]) numbers.add(m);
-  const alignments: unknown[] = [...KC_ALIGNMENTS, 'Nonsense', undefined];
-  const unitTypes = [
-    ...new Set([...Object.keys(KC_UNIT_TYPE), ...armies.map((a) => String(a.report['type'])), 'Unknown Thing', '']),
-  ];
-  const skillSets: Obj[] = [
-    ...heroes.map((h) => ({ skills: h.report['skills'] })),
-    {},
-    { skills: {} },
-    { skills: { melee: 3, tactical: 3 } },
-    { skills: { tactical: 3, melee: 3 } },
-    { skills: { white: 0, spy: 2, thief: 2, sage: 2 } },
-    { skills: { druid: 9 } },
-    { skills: { necromancy: 7, white: 7, melee: 4 } },
-  ];
-  made = {
-    numbers: [...numbers],
-    levels: [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2.5, undefined, null],
-    alignmentPairs: alignments.flatMap((a) => alignments.map((b): [unknown, unknown] => [a, b])),
-    gameRows: [
-      null,
-      {},
-      { meta: null },
-      { meta: '{"v":1,"botCount":2}' },
-      { meta: '{"botCount":2}' },
-      { meta: 'not json' },
-      { meta: { v: 2, archived: true } },
-      { meta: { v: 0 } },
-      { meta: '"text"' },
-      { meta: '[1]' },
-      { meta: 7 },
-    ],
-    unitTypes,
-    armies,
-    items,
-    heroes,
-    skillSets,
-    reports: pairs.length,
-  };
+  made = { armies, items, heroes, reports: pairs.length };
   deepFreeze(made);
   return made;
 }
 
-// ── The pairs ────
+// ── Comparing answers ────
 
-/** One value compared: what the copy answers, what the engine answers, and whether the engine's function tried to
- *  change its input (a read that writes: plan P1-11a, "What the code is"). The values are frozen, so a write throws:
- *  the answer is then "(wrote to its input)". */
-export interface Comparison {
-  readonly on: unknown;
-  readonly copy: unknown;
-  readonly engine: unknown;
-  readonly engineChangedItsInput: boolean;
-}
 /** The same answer: undefined, NaN and -0 told apart, a Set as its members. */
 export function sameAnswer(a: unknown, b: unknown): boolean {
   return canonical(a) === canonical(b);
@@ -485,41 +351,44 @@ function engineOn(fn: (...args: never[]) => unknown, args: unknown[]): { answer:
     throw e;
   }
 }
-const compare = (on: unknown, copy: unknown, engine: { answer: unknown; changed: boolean }): Comparison => ({
-  on,
-  copy,
-  engine: engine.answer,
-  engineChangedItsInput: engine.changed,
-});
-
-/** The values of `list` with no two the same (by canonical), so a count says how many different values were checked. */
-function distinct<T>(list: T[], key: (x: T) => unknown = (x) => x): T[] {
-  const seen = new Set<string>();
-  return list.filter((x) => {
-    const k = canonical(key(x));
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-}
-
-/** A pair: a copy in the player portal and the engine's function it restates. */
-export interface Pair {
-  /** The portal's name and the engine's. */
-  readonly copy: string;
-  readonly engine: string;
-  /** What the copy is handed. */
-  readonly on: string;
-  /** Swap parity: both on what the portal is handed. */
-  readonly swap: (c: Copies, s: Samples) => Comparison[];
-  /** Truth parity: the copy on the report's value, the engine's function on the state's. Absent where the portal is
-   *  handed the very value the engine reads. */
-  readonly truth?: (c: Copies, s: Samples) => Comparison[];
-}
-
 const withState = <T extends { state: Obj | null }>(list: T[]) =>
   list.filter((x): x is T & { state: Obj } => x.state !== null);
-/** The text heroFameTextP builds, from the engine's top skill and fame label. */
+
+// ── The projections ────
+
+/** One value compared: the engine's answer on the report's value and on the state's value it was made from, and
+ *  whether the engine's function tried to change either (the values are frozen, so a write throws: the answer is then
+ *  "(wrote to its input)"). */
+export interface ProjectionComparison {
+  readonly on: unknown;
+  readonly fromTheReport: unknown;
+  readonly fromTheState: unknown;
+  readonly engineChangedItsInput: boolean;
+}
+const project = (
+  on: unknown,
+  fromTheReport: { answer: unknown; changed: boolean },
+  fromTheState: { answer: unknown; changed: boolean },
+): ProjectionComparison => ({
+  on,
+  fromTheReport: fromTheReport.answer,
+  fromTheState: fromTheState.answer,
+  engineChangedItsInput: fromTheReport.changed || fromTheState.changed,
+});
+
+/** A rule the portal now calls the engine's function for, whose value the report makes from the state. */
+export interface Projection {
+  /** The engine's function, and the portal's copy P1-11a4 retired for it. */
+  readonly engine: string;
+  readonly retiredCopy: string;
+  /** What it is handed. */
+  readonly on: string;
+  /** The engine's function on the report's value and on the state's. */
+  readonly cases: (s: Samples) => ProjectionComparison[];
+}
+
+/** The text heroFameTextP builds when the hero carries no top skill of his own, from the engine's top skill and fame
+ *  label. */
 const engineFameText = (hero: unknown): { answer: unknown; changed: boolean } => {
   const top = engineOn(topSkillOf, [hero]);
   const ts = top.answer as { skill: string; level: number } | null;
@@ -530,99 +399,63 @@ const engineFameText = (hero: unknown): { answer: unknown; changed: boolean } =>
   };
 };
 
-/** The 16 pairs whose copy P1-11a swaps for the engine's function. */
-export const PAIRS: Pair[] = [
+/** The 9 rules of the 16 P1-11a4 swapped whose value the report makes from the state: their truth cases, now that the
+ *  portal calls the engine's function, as projection cases (Decision 7). */
+export const PROJECTIONS: Projection[] = [
   {
-    copy: 'floorNumP',
-    engine: 'dispFloor',
-    on: 'every number the reports hold, and fractions of it',
-    swap: (c, s) => s.numbers.map((n) => compare(n, c.floorNumP(n), engineOn(dispFloor, [n]))),
-  },
-  {
-    copy: 'unitTypeOfP',
     engine: 'unitTypeOf',
-    on: 'every unit type',
-    swap: (c, s) => s.unitTypes.map((t) => compare(t, c.unitTypeOfP(t), engineOn(unitTypeOf, [t]))),
-    truth: (c, s) =>
+    retiredCopy: 'unitTypeOfP',
+    on: "every unit of the realm's heroes",
+    cases: (s) =>
       withState(s.armies).map((a) =>
-        compare(a.report, c.unitTypeOfP(a.report['type']), engineOn(unitTypeOf, [a.state['type']])),
+        project(a.report, engineOn(unitTypeOf, [a.report['type']]), engineOn(unitTypeOf, [a.state['type']])),
       ),
   },
   {
-    copy: 'unitBaseStrengthP',
     engine: 'unitBaseStrength',
-    on: 'every unit the reports show',
-    swap: (c, s) =>
-      distinct(s.armies, (a) => a.report).map((a) =>
-        compare(a.report, c.unitBaseStrengthP(a.report), engineOn(unitBaseStrength, [a.report])),
-      ),
-    truth: (c, s) =>
+    retiredCopy: 'unitBaseStrengthP',
+    on: "every unit of the realm's heroes",
+    cases: (s) =>
       withState(s.armies).map((a) =>
-        compare(a.report, c.unitBaseStrengthP(a.report), engineOn(unitBaseStrength, [a.state])),
+        project(a.report, engineOn(unitBaseStrength, [a.report]), engineOn(unitBaseStrength, [a.state])),
       ),
   },
   {
-    copy: 'isLegendaryItemP',
     engine: 'isLegendaryItem',
-    on: 'every item the reports show',
-    swap: (c, s) =>
-      distinct(s.items, (i) => i.report).map((i) =>
-        compare(i.report, c.isLegendaryItemP(i.report), engineOn(isLegendaryItem, [i.report])),
-      ),
-    truth: (c, s) =>
+    retiredCopy: 'isLegendaryItemP',
+    on: "every item of the realm's heroes",
+    cases: (s) =>
       withState(s.items).map((i) =>
-        compare(i.report, c.isLegendaryItemP(i.report), engineOn(isLegendaryItem, [i.state])),
+        project(i.report, engineOn(isLegendaryItem, [i.report]), engineOn(isLegendaryItem, [i.state])),
       ),
   },
   {
-    copy: 'itemSlotP',
     engine: 'itemSlot',
-    on: 'every item the reports show',
-    swap: (c, s) =>
-      distinct(s.items, (i) => i.report).map((i) =>
-        compare(i.report, c.itemSlotP(i.report), engineOn(itemSlot, [i.report])),
-      ),
-    truth: (c, s) =>
-      withState(s.items).map((i) => compare(i.report, c.itemSlotP(i.report), engineOn(itemSlot, [i.state]))),
+    retiredCopy: 'itemSlotP',
+    on: "every item of the realm's heroes",
+    cases: (s) =>
+      withState(s.items).map((i) => project(i.report, engineOn(itemSlot, [i.report]), engineOn(itemSlot, [i.state]))),
   },
   {
-    copy: 'itemRaceOfP',
     engine: 'itemRaceOf',
-    on: 'every item the reports show',
-    swap: (c, s) =>
-      distinct(s.items, (i) => i.report).map((i) =>
-        compare(i.report, c.itemRaceOfP(i.report), engineOn(itemRaceOf, [i.report])),
+    retiredCopy: 'itemRaceOfP',
+    on: "every item of the realm's heroes",
+    cases: (s) =>
+      withState(s.items).map((i) =>
+        project(i.report, engineOn(itemRaceOf, [i.report]), engineOn(itemRaceOf, [i.state])),
       ),
-    truth: (c, s) =>
-      withState(s.items).map((i) => compare(i.report, c.itemRaceOfP(i.report), engineOn(itemRaceOf, [i.state]))),
   },
   {
-    copy: 'itemUsableByP',
     engine: 'itemUsableBy',
-    on: 'every item a hero holds in the reports, and that hero; every item, and no hero',
-    swap: (c, s) => [
-      ...s.items.flatMap((i) =>
-        i.holder
-          ? [
-              compare(
-                [i.report, i.holder.report],
-                c.itemUsableByP(i.report, i.holder.report),
-                engineOn(itemUsableBy, [i.report, i.holder.report]),
-              ),
-            ]
-          : [],
-      ),
-      ...distinct(s.items, (i) => i.report).map((i) =>
-        compare([i.report, null], c.itemUsableByP(i.report, null), engineOn(itemUsableBy, [i.report, null])),
-      ),
-    ],
-    truth: (c, s) =>
+    retiredCopy: 'itemUsableByP',
+    on: "every item of the realm's heroes, and the hero who holds it",
+    cases: (s) =>
       withState(s.items).flatMap((i) =>
         i.holder?.state
           ? [
-              compare(
+              project(
                 [i.report, i.holder.report],
-                c.itemUsableByP(i.report, i.holder.report),
+                engineOn(itemUsableBy, [i.report, i.holder.report]),
                 engineOn(itemUsableBy, [i.state, i.holder.state]),
               ),
             ]
@@ -630,92 +463,52 @@ export const PAIRS: Pair[] = [
       ),
   },
   {
-    copy: 'alignDistPP',
-    engine: 'alignDistP',
-    on: 'every pair of alignments',
-    swap: (c, s) => s.alignmentPairs.map((p) => compare(p, c.alignDistPP(...p), engineOn(alignDistP, p))),
-  },
-  {
-    copy: 'heroHireWagePP',
-    engine: 'heroHireWage (the realm and the hero alignments only)',
-    on: 'every pair of alignments',
-    swap: (c, s) => s.alignmentPairs.map((p) => compare(p, c.heroHireWagePP(...p), engineOn(heroHireWage, p))),
-  },
-  {
-    copy: 'gameMetaP',
-    engine: 'gameMetaOf',
-    on: 'games rows',
-    swap: (c, s) => s.gameRows.map((g) => compare(g, c.gameMetaP(g), engineOn(gameMetaOf, [g]))),
-  },
-  {
-    copy: 'skillFameLabel',
-    engine: 'skillFameLabelM',
-    on: 'every level',
-    swap: (c, s) => s.levels.map((l) => compare(l, c.skillFameLabel(l), engineOn(skillFameLabelM, [l]))),
-  },
-  {
-    copy: "heroFameTextP's top skill",
     engine: 'topSkillOf (with skillFameLabelM)',
-    on: "every hero's skills in the reports, and staged ties, without the report's top skill",
-    swap: (c, s) => distinct(s.skillSets).map((h) => compare(h, c.heroFameTextP(h), engineFameText(h))),
-    truth: (c, s) =>
-      withState(s.heroes).map((h) => compare(h.report, c.heroFameTextP(h.report), engineFameText(h.state))),
+    retiredCopy: "heroFameTextP's top skill",
+    on: "every one of the realm's heroes",
+    cases: (s) => withState(s.heroes).map((h) => project(h.report, engineFameText(h.report), engineFameText(h.state))),
   },
   {
-    copy: 'poAirCarriable (of a unit type)',
-    engine: 'isAirCarriable (of a unit)',
-    on: 'every unit type; every unit the reports show',
-    swap: (c, s) => [
-      ...s.unitTypes.map((type) => compare(type, c.poAirCarriable(type), engineOn(isAirCarriable, [{ type }]))),
-      ...distinct(s.armies, (a) => a.report).map((a) =>
-        compare(a.report, c.poAirCarriable(a.report['type']), engineOn(isAirCarriable, [a.report])),
-      ),
-    ],
-    truth: (c, s) =>
+    engine: 'isAirCarriable',
+    retiredCopy: 'poAirCarriable',
+    on: "every unit of the realm's heroes",
+    cases: (s) =>
       withState(s.armies).map((a) =>
-        compare(a.report, c.poAirCarriable(a.report['type']), engineOn(isAirCarriable, [a.state])),
+        project(a.report, engineOn(isAirCarriable, [a.report]), engineOn(isAirCarriable, [a.state])),
       ),
   },
   {
-    copy: 'poFlyCapability',
     engine: 'getFlyCapability',
-    on: 'every column a hero leads in the reports, and none',
-    swap: (c, s) => [
-      ...distinct(s.heroes, (h) => h.report['armies']).map((h) =>
-        compare(
-          h.report['armies'],
-          c.poFlyCapability(h.report['armies']),
-          engineOn(getFlyCapability, [h.report['armies']]),
-        ),
-      ),
-      ...[undefined, null, []].map((none) =>
-        compare(none, c.poFlyCapability(none), engineOn(getFlyCapability, [none])),
-      ),
-    ],
-    truth: (c, s) =>
+    retiredCopy: 'poFlyCapability',
+    on: "every column the realm's heroes lead",
+    cases: (s) =>
       withState(s.heroes).map((h) =>
-        compare(
+        project(
           h.report['armies'],
-          c.poFlyCapability(h.report['armies']),
+          engineOn(getFlyCapability, [h.report['armies']]),
           engineOn(getFlyCapability, [h.state['armies']]),
         ),
       ),
   },
-  {
-    copy: 'actionSpellLimit',
-    engine: 'actionSpellsAllowedPerSchoolEachTurn',
-    on: 'every level',
-    swap: (c, s) =>
-      s.levels.map((l) => compare(l, c.actionSpellLimit(l), engineOn(actionSpellsAllowedPerSchoolEachTurn, [l]))),
-  },
-  {
-    copy: 'combatSpellLimit',
-    engine: 'combatSpellsAllowedPerSchoolEachFight',
-    on: 'every level',
-    swap: (c, s) =>
-      s.levels.map((l) => compare(l, c.combatSpellLimit(l), engineOn(combatSpellsAllowedPerSchoolEachFight, [l]))),
-  },
 ];
+
+// ── The copies that stay ────
+
+/** One value compared: what the copy answers, what the engine answers, and whether the engine's function tried to
+ *  change its input (a read that writes: plan P1-11a, "What the code is"). The values are frozen, so a write throws:
+ *  the answer is then "(wrote to its input)". */
+export interface Comparison {
+  readonly on: unknown;
+  readonly copy: unknown;
+  readonly engine: unknown;
+  readonly engineChangedItsInput: boolean;
+}
+const compare = (on: unknown, copy: unknown, engine: { answer: unknown; changed: boolean }): Comparison => ({
+  on,
+  copy,
+  engine: engine.answer,
+  engineChangedItsInput: engine.changed,
+});
 
 /** A copy that stays in P1-11a (it reads the report's shape: P1-11b's), and the engine's function it restates. */
 export interface Staying {

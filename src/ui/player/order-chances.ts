@@ -4,12 +4,14 @@ import {
   KC_ITEM_UNCAPPED_SKILLS,
   KC_MAGIC_SCHOOLS,
   KC_SKILLS,
-  KC_UNIT_BASE_STR,
   KC_UNIT_CLASS,
-  KC_UNIT_Q_MULT,
-  KC_UNIT_TYPE,
 } from '../../content/kingdoms-call-data.ts';
-import { itemSlotP, itemUsableByP } from './items-and-heroes.ts';
+import {
+  dispFloor,
+  itemSlot,
+  itemUsableBy,
+  unitBaseStrength,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
 import { getOrderExtra, getOrderTarget, syncCharmCard, syncResurrectCard } from './pre-orders.ts';
 import { CREATURE_ARMIES_UI, HUMANOID_RACES_UI, MONSTER_ARMIES_UI, formatRace } from './skills-and-projections.ts';
@@ -97,7 +99,7 @@ export function rebuildTargetWrap(charId, ph) {
 export function orderChanceNote(c, action, ph) {
   const oc = (c && c.orderChance) || null;
   if (!oc) return '';
-  const pct = (n) => kcHtml`<strong>${Math.max(0, Math.min(100, floorNumP(n)))}%</strong>`;
+  const pct = (n) => kcHtml`<strong>${Math.max(0, Math.min(100, dispFloor(n)))}%</strong>`;
   switch (action) {
     case 'Spy': {
       const o = oc.spy || {};
@@ -206,8 +208,8 @@ export function effMagicLvl(charObj, school) {
       (it &&
       it.effect &&
       it.effect.stat === school &&
-      itemUsableByP(it, charObj) &&
-      (!itemSlotP(it) || it.equipped !== false)
+      itemUsableBy(it, charObj) &&
+      (!itemSlot(it) || it.equipped !== false)
         ? it.effect.bonus || 0
         : 0),
     0,
@@ -215,11 +217,6 @@ export function effMagicLvl(charObj, school) {
   // reads the same set the engine does, so the spell dropdown and the cast chance it quotes cannot
   // drift from what will actually be rolled. Spell EFFECTS still read the level counted to 5.
   return Math.max(0, Math.min(ITEM_UNCAPPED_SKILLS_P.has(school) ? 9 : 5, base + bonus));
-}
-
-// Action spell limit per school level: 1→1, 2→1, 3→2, 4→3, 5→3
-export function actionSpellLimit(level) {
-  return level >= 4 ? 3 : level >= 3 ? 2 : 1;
 }
 
 // 2026-10-13 (item 2, Toby): the level each magic school may have reached by phase `ph`, assuming
@@ -283,11 +280,6 @@ export function refreshLaterCastSpells(charId, fromPh) {
   }
 }
 
-// Combat spell limit per school level: 1→1, 2+→2
-export function combatSpellLimit(level) {
-  return level >= 2 ? 2 : 1;
-}
-
 // Spell hints shown below the order form
 export const SPELL_HINTS = {
   Resurrect:
@@ -338,21 +330,15 @@ export const SPELL_HINTS = {
   Plague:
     'Target: your province or an adjacent one. Each humanoid unit has a (10% + 5%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
 };
-export const ALL_SKILLS = KC_SKILLS.slice();
 // ── DISPLAY ROUNDING (report text) ────
 // Belt-and-braces partner to the GM engine's n0(): the engine now rounds every battle statistic at
 // source, but this catches anything a future edit forgets. Rounds any decimal number in a report
 // line to a whole number — EXCEPT one immediately preceded by '×', because multipliers are the one
 // place a decimal carries meaning ('× tactical ×1.2' rounded to '×1' would say nothing at all).
 // Percentages already arrive as integers from the engine, so they pass through untouched.
-// 2026-09-12: every figure a player is shown is ROUNDED DOWN (toward zero). Mirrors dispFloor in
-// the GM portal: a float a hair under an integer (0.29*100) snaps to that integer rather than
-// losing a point.
-export function floorNumP(v) {
-  const n = Number(v) || 0;
-  const r = Math.round(n);
-  return Math.abs(n - r) < 1e-9 ? r : Math.trunc(n);
-}
+// 2026-09-12: every figure a player is shown is ROUNDED DOWN (toward zero), by the engine's own
+// dispFloor (src/shared/): a float a hair under an integer (0.29*100) snaps to that integer rather
+// than losing a point.
 export function roundReportNumbers(text) {
   // The lookarounds matter: without them a dotted sequence such as a build stamp (2026.07.23) or a
   // rules citation (AK 7.6.1) gets partially rewritten, because the engine would happily match the
@@ -361,25 +347,8 @@ export function roundReportNumbers(text) {
   // cause of the "× fortune 1" report: the old "fortune 0.50" had no × directly before it and was
   // rounded to 1.)
   return String(text || '').replace(/(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d\u00d7])/g, (m, mult, whole, frac) =>
-    mult ? m : String(floorNumP(Number(whole + '.' + frac))),
+    mult ? m : String(dispFloor(Number(whole + '.' + frac))),
   ); // rounded DOWN, never to nearest
-}
-
-// Module-level base unit strength, mirroring the GM engine's UNIT_BASE_STR / UNIT_Q_MULT
-// (kingdoms-call-gm-portal.html). The portals are separate files with no shared module, so this is
-// a deliberate duplicate — the same arrangement as PRIMAL_ARMY_SPEEDS below. KEEP THE TWO IN SYNC:
-// if a unit's strength is rebalanced in the GM engine it must be changed here too, or players will
-// be shown a number the battle engine does not agree with.
-export const UNIT_BASE_STR_P = { ...KC_UNIT_BASE_STR };
-// The unit's TYPE word (2026-10-11): infantry, ranged, cavalry, flyer or naval, from the shared
-// KC_UNIT_TYPE table; a type the table has never heard of is infantry (same answer as the engine's unitTypeOf).
-export function unitTypeOfP(armyType) {
-  return (typeof KC_UNIT_TYPE !== 'undefined' && KC_UNIT_TYPE[armyType]) || 'infantry';
-}
-export const UNIT_Q_MULT_P = { ...KC_UNIT_Q_MULT };
-// A unit's strength before any terrain, Tactical, Druid, fanaticism or magic modifier is applied.
-export function unitBaseStrengthP(a) {
-  return (UNIT_BASE_STR_P[a && a.type] || 4) * (UNIT_Q_MULT_P[(a && a.quality) || 'Average'] || 2);
 }
 
 // Army display helper — shows unit name if known, falls back to plain type+quality
@@ -398,7 +367,7 @@ export function armyLabel(a, opts = {}) {
   // with the bare Creature / Monster word.
   const _humanoidRace = !!(a.race && HUMANOID_RACES_UI.has(a.race));
   const lead = _humanoidRace ? (primalWord ? `${race} (${primalWord})` : race) : primalWord || race;
-  const str = unitBaseStrengthP(a);
+  const str = unitBaseStrength(a);
   // 2026-09-23 (Toby item 7): the unit's own movement rate after its strength — computed by the GM
   // report with every bonus the engine applies (March / Naval incl. items, Road & race `move`
   // discoveries, the Swift / Sea-Wolf titles). Shown only where the report supplies it (your led
