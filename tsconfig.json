@@ -19,6 +19,6 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["*.ts", "*.mts", "eslint.config.js", "tests", "tools", "src"],
+  "include": ["*.ts", "*.mts", ".dependency-cruiser.mts", "eslint.config.js", "tests", "tools", "src"],
   "exclude": ["node_modules", "site"]
 }

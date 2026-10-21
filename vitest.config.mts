@@ -3,7 +3,7 @@
 // in npm run test:quarantine.
 //
 // The same answer every time: Node pinned (tests/setup/global.ts), time zone and locale fixed, the seed fixed
-// (KC_SEED; the default in tests/setup/fixed.ts; fast-check's too, tests/setup/fast-check.ts), no retries and no .only. A test that logs console.error fails
+// (KC_SEED; the default in tests/setup/fixed.mts; fast-check's too, tests/setup/fast-check.ts), no retries and no .only. A test that logs console.error fails
 // (tests/setup/each.ts). The footer prints the seed and how to repeat each failure (tests/setup/reporter.ts).
 //
 // This file is .mts and imports only types and constants from tests/: package.json has no "type" (the test scripts
@@ -11,7 +11,7 @@
 import os from 'node:os';
 import { defineConfig, type TestProjectInlineConfiguration } from 'vitest/config';
 import type { Level } from './tests/suite.ts';
-import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.ts';
+import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';
 
 // The levels, slowest first so the longest script starts at once. tests/legacy.test.ts checks that they are the
 // levels in tests/suite.ts, so no script is left without a project to run it.

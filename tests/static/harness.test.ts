@@ -3,7 +3,7 @@
 // Vitest and in Playwright), the test runs' own checks, the Node pin, the Claude Code hooks and their stop limit, the
 // CI jobs and the required "ci" check, the build that every test job, the deploy and staging run first (P1-05), the
 // balance job and its engine paths, the nightly random-seed run and fast-check's seed, the dangerous paths, and the
-// ratchet. Every later step that adds a guarantee
+// ratchet, and the architecture rules (dependency-cruiser and knip, P1-13a). Every later step that adds a guarantee
 // adds its check here. Level 1 (static): it reads settings files and the counts, and runs nothing.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -16,6 +16,8 @@ import tseslint from 'typescript-eslint';
 import ts from 'typescript';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
+import archConfig from '../../.dependency-cruiser.mts';
+import knipConfig from '../../knip.ts';
 import config from '../../vitest.config.mts';
 import pwConfig from '../../playwright.config.ts';
 import dangerous from '../../.github/scripts/dangerous-paths.js';
@@ -25,7 +27,13 @@ import { pageSources } from '../../tools/balance/run.ts';
 import { filesUnder } from '../../tools/build.ts';
 import { pageNames } from '../../tools/pages.ts';
 import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
-import { BASELINE_FILE, compare, measure, readBaseline } from '../../tools/ratchet.ts';
+import {
+  BASELINE_FILE,
+  compare,
+  KNOWN_ARCHITECTURE_VIOLATIONS_FILE,
+  measure,
+  readBaseline,
+} from '../../tools/ratchet.ts';
 import { LEVELS } from '../suite.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
@@ -75,6 +83,9 @@ describe('the compiler', () => {
       'tests/legacy.test.ts',
       'tools/check.ts',
       'tools/hooks/after-edit.ts',
+      // the architecture rules' configs (P1-13a)
+      '.dependency-cruiser.mts',
+      'knip.ts',
       // the site (P1-09e): every file of src/, and the globals its modules read without importing
       'src/engine/run-turn.ts',
       'src/content/kingdoms-call-data.ts',
@@ -120,6 +131,8 @@ describe('the lint rules', () => {
     'tools/check.ts',
     'vitest.config.mts',
     'playwright.config.ts',
+    '.dependency-cruiser.mts',
+    'knip.ts',
     'tests/browser/x.spec.ts',
     'tests/browser/third-party-requests.spec.ts',
   ])('%s gets the strict rules at full strength', async (file) => {
@@ -408,9 +421,10 @@ describe('the Claude Code hooks', () => {
     expect(decide(2, true)).toEqual({ block: false, blocked: 0 });
   });
 
-  test('npm run check runs the type check, lint, format, ratchet and every level but page', () => {
+  test('npm run check runs the type check, lint, format, the import rules, ratchet and every level but page', () => {
     expect(pkg.scripts['check']).toBe('tsx tools/check.ts');
-    expect(read('tools/check.ts')).toMatch(/typecheck\(\), lint\(files\), format\(files\), ratchet\(\)/);
+    expect(read('tools/check.ts')).toMatch(/typecheck\(\), lint\(files\), format\(files\), lintArch\(\), ratchet\(\)/);
+    expect(read('tools/check.ts')).toContain("await run('npm', ['run', '--silent', 'lint:arch'])");
     expect(read('tools/check.ts')).toContain('await tests(files)');
     expect(CHECK_LEVELS).toEqual(['static', 'unit', 'scenario', 'simulation']);
   });
@@ -433,11 +447,12 @@ describe('CI', () => {
     expect(field('db', 'name')).toBe('db');
   });
 
-  test('the static checks have their own job: type check, lint, format, ratchet and the static tests', () => {
+  test('the static checks have their own job: type check, lint, the import rules, format, ratchet and the static tests', () => {
     expect(runs('static')).toEqual([
       'npm ci',
       'npm run typecheck',
       'npm run lint',
+      'npm run lint:arch',
       'npm run format:check',
       'npm run ratchet',
       'npm run build',
@@ -718,14 +733,19 @@ describe('dangerous paths', () => {
       'playwright.config.ts',
       'eslint.config.js',
       '.dependency-cruiser.cjs',
+      '.dependency-cruiser.mts',
+      '.dependency-cruiser-known-violations.json',
+      'eslint-suppressions.json',
+      'tools/eslint-rules/html-is-built-only-through-kc-html.ts',
       'knip.json',
+      'knip.ts',
       '.nvmrc',
       '.npmrc',
       'package.json',
       'package-lock.json',
       'tests/setup/each.ts',
       'tests/setup/global.ts',
-      'tests/setup/fixed.ts',
+      'tests/setup/fixed.mts',
       'tests/legacy.test.ts',
       'tests/ratchet.json',
       'tests/static/harness.test.ts',
@@ -777,5 +797,78 @@ describe('the ratchet', () => {
     expect(now['eslintWarnings']).toBeGreaterThan(0);
     expect(readBaseline()['eslintWarnings']).toBeDefined();
     expect(now['sourceJavascriptFiles']).toBe(2);
+  });
+
+  // P1-13a: the import rules' known violations and knip's findings are counted, so they only fall (plan P1-13,
+  // Decision 4). The known violations are the entries of dependency-cruiser's own list, the one npm run lint:arch lets
+  // through.
+  test("it counts the import rules' known violations and what knip finds unused", { timeout: 60_000 }, () => {
+    const now = measure();
+    const known = JSON.parse(read(KNOWN_ARCHITECTURE_VIOLATIONS_FILE)) as unknown[];
+    expect(now['knownArchitectureViolations']).toBe(known.length);
+    expect(now['unusedCode']).toBeGreaterThan(0);
+    for (const key of ['knownArchitectureViolations', 'unusedCode']) expect(readBaseline()[key], key).toBeDefined();
+  });
+});
+
+// The architecture rules (plan P1-13a, Decisions 2 to 4): dependency-cruiser's layers and no cycle, every rule an error,
+// with only the findings of its known-violations list let through; knip from the pages' real entries, with nothing
+// left out but the quarantine. tests/static/the-architecture-rules-refuse-planted-imports-cycles-and-unused-code.test.ts
+// shows each rule refusing its planted case.
+describe('the architecture rules', () => {
+  test('npm run lint:arch runs dependency-cruiser over src/, letting through only the known violations', () => {
+    expect(pkg.scripts['lint:arch']).toBe('depcruise src --ignore-known --output-type err');
+    expect(pkg.scripts['knip']).toBe('knip');
+    expect(KNOWN_ARCHITECTURE_VIOLATIONS_FILE).toBe('.dependency-cruiser-known-violations.json');
+    // one config: dependency-cruiser would read another of these names first
+    for (const f of ['.json', '.js', '.cjs', '.mjs', '.ts', '.cts'].map((x) => '.dependency-cruiser' + x)) {
+      expect(fs.existsSync(path.join(ROOT, f)), f).toBe(false);
+    }
+  });
+
+  test("every rule is an error, the layers are the plan's, and a cycle counts only through imports that bring code", () => {
+    expect(archConfig.allowed).toBeUndefined();
+    expect(archConfig.required).toBeUndefined();
+    const rules = archConfig.forbidden ?? [];
+    expect(rules.filter((r) => r.severity !== 'error').map((r) => r.name)).toEqual([]);
+    expect(rules.map((r) => r.name)).toEqual([
+      'no-cycle-through-imports-that-bring-code',
+      'the-content-imports-nothing',
+      'the-engine-imports-only-the-engine-and-the-content',
+      'the-rules-on-plain-values-import-only-each-other-and-the-content',
+      'the-views-import-only-the-views-the-engine-and-the-content',
+      'shared-imports-only-the-views-the-rules-on-plain-values-and-the-content',
+      'schemas-are-imported-as-types-only',
+      'the-database-code-imports-only-itself-and-the-schemas',
+      'only-the-pages-import-the-database-code',
+      'a-page-imports-no-other-pages-code-but-ui-shared',
+      'ui-shared-imports-only-itself',
+      'only-the-gm-page-imports-the-engine',
+      'only-src-db-imports-supabase-js',
+      'every-import-resolves',
+    ]);
+    const cycle = rules[0];
+    expect(cycle?.from).toEqual({ path: '^src/' });
+    expect(cycle && 'to' in cycle ? cycle.to : undefined).toEqual({
+      circular: true,
+      viaOnly: { dependencyTypesNot: ['type-only'] },
+    });
+    // Imports are read before TypeScript erases the type-only ones, so each is seen and labelled as the cycle rule and
+    // the schemas' rule expect (and as the known violations were counted); every file of src/ is read: none left out.
+    const options = archConfig.options ?? {};
+    expect(options.tsPreCompilationDeps).toBe(true);
+    expect(options.doNotFollow).toEqual({ path: 'node_modules' });
+    for (const key of ['exclude', 'includeOnly', 'focus', 'reaches', 'collapse'])
+      expect(options, key).not.toHaveProperty(key);
+  });
+
+  test("knip starts from every page's entries and leaves out only the quarantine", () => {
+    expect(Object.keys(knipConfig).sort()).toEqual(['entry', 'ignore', 'ignoreExportsUsedInFile', 'project']);
+    expect(knipConfig.ignore).toEqual(['tests/quarantine/**']);
+    expect(knipConfig.ignoreExportsUsedInFile).toBe(true);
+    const entry: string[] = knipConfig.entry;
+    for (const page of ['src/ui/gm/page.ts', 'src/ui/player/page.ts', 'src/rulebook/toc.ts'])
+      expect(entry).toContain(page);
+    expect(entry).toContain('tests/balance/scenarios/*.ts');
   });
 });

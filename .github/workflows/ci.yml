@@ -1,6 +1,6 @@
 # Runs every check on every pull request, in jobs side by side, so the fastest failure shows first (P1-01c). Each job
 # that tests builds site/ from src/ first (npm run build, P1-05), so every test opens the pages this commit makes:
-#   static         the type check, lint, format check, ratchet and the static tests (a minute or less)
+#   static         the type check, lint, the import rules, format check, ratchet and the static tests (a minute or less)
 #   unit-scenario  the unit and scenario tests;  simulation;  page   (npm test, one Vitest project or two each)
 #   browser        the browser specs in Chromium (npx playwright test)
 #   balance        the balance matrix (P1-02b), played only when an engine path changed (tools/balance/engine-paths.ts),
@@ -46,6 +46,10 @@ jobs:
 
       - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run lint
+
+      # The layers of src/ and no import cycle (P1-13, .dependency-cruiser.mts); the known violations are let through.
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run lint:arch
 
       - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run format:check

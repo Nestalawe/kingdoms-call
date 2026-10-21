@@ -1,7 +1,8 @@
 // npm run check: the quick check an agent runs before it finishes (the Stop hook runs it too: tools/hooks/).
 // It looks at what this branch changes (against main, plus anything not yet committed) and runs, side by side:
-// the type check (incremental), ESLint (cached) and Prettier on the changed files, and the ratchet
-// (tools/ratchet.ts); then the tests. The full suite, page level included, runs in CI.
+// the type check (incremental), ESLint (cached) and Prettier on the changed files, the import rules over all of src/
+// (npm run lint:arch, under a second) and the ratchet (tools/ratchet.ts); then the tests. The full suite, page level
+// included, runs in CI.
 //
 // Which tests: `vitest related` finds the Vitest tests that import a changed TypeScript file. It can't see what the
 // test scripts (tests/*.test.js) read: each runs in its own process and loads site/ (built from src/) by file name. So
@@ -121,6 +122,14 @@ export const format = (files: string[]) =>
     };
   });
 
+// The layers and cycles (plan P1-13, .dependency-cruiser.mts): every file of src/, since an import anywhere can make a
+// cycle; the known violations are let through.
+export const lintArch = () =>
+  step('import rules', async () => {
+    const r = await run('npm', ['run', '--silent', 'lint:arch']);
+    return { ok: r.code === 0, out: r.code === 0 ? '' : r.out };
+  });
+
 export const ratchet = () =>
   step('ratchet', () => {
     const { rose } = compare(readBaseline(), measure());
@@ -143,7 +152,7 @@ export const tests = (files: string[]) =>
 export async function runCheck(): Promise<Step[]> {
   fs.mkdirSync(CACHE, { recursive: true });
   const files = await changedFiles();
-  const quick = await Promise.all([typecheck(), lint(files), format(files), ratchet()]);
+  const quick = await Promise.all([typecheck(), lint(files), format(files), lintArch(), ratchet()]);
   return [...quick, await tests(files)];
 }
 

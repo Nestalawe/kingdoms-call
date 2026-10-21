@@ -1,0 +1,6148 @@
+[
+  {
+    "type": "cycle",
+    "from": "src/db/game-meta.ts",
+    "to": "src/ui/gm/game-list.ts",
+    "unresolvedTo": "../ui/gm/game-list.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/db/game-meta.ts",
+    "to": "src/ui/gm/sign-in.ts",
+    "unresolvedTo": "../ui/gm/sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/db/game-meta.ts",
+    "to": "src/ui/gm/turn-mode.ts",
+    "unresolvedTo": "../ui/gm/turn-mode.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/turn-mode.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/db/telemetry.ts",
+    "to": "src/db/game-meta.ts",
+    "unresolvedTo": "./game-meta.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/telemetry.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/db/telemetry.ts",
+    "to": "src/ui/gm/hall-of-fame.ts",
+    "unresolvedTo": "../ui/gm/hall-of-fame.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/hall-of-fame.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/telemetry.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/battle/hosts-gained-in-a-province.ts",
+    "to": "src/engine/battle/stalled-battles-and-beaten-guards.ts",
+    "unresolvedTo": "./stalled-battles-and-beaten-guards.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/battle/stalled-battles-and-beaten-guards.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/battle/hosts-gained-in-a-province.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/battle/ladder.ts",
+    "to": "src/engine/battle/lines.ts",
+    "unresolvedTo": "./lines.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/battle/lines.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/battle/ladder.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/economy.ts",
+    "to": "src/engine/bots/intel.ts",
+    "unresolvedTo": "./intel.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/economy.ts",
+    "to": "src/engine/bots/missions.ts",
+    "unresolvedTo": "./missions.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/economy.ts",
+    "to": "src/engine/bots/specialists.ts",
+    "unresolvedTo": "./specialists.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/economy.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/economy.ts",
+    "to": "src/engine/bots/war.ts",
+    "unresolvedTo": "./war.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/economy.ts",
+    "to": "src/engine/titles/reckoning.ts",
+    "unresolvedTo": "../titles/reckoning.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/titles/reckoning.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/economy.ts",
+    "to": "src/engine/units/drill-and-spoils.ts",
+    "unresolvedTo": "../units/drill-and-spoils.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/units/drill-and-spoils.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/intel.ts",
+    "to": "src/engine/bots/missions.ts",
+    "unresolvedTo": "./missions.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/intel.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/intel.ts",
+    "to": "src/engine/bots/war.ts",
+    "unresolvedTo": "./war.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/missions.ts",
+    "to": "src/engine/bots/specialists.ts",
+    "unresolvedTo": "./specialists.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/missions.ts",
+    "to": "src/engine/bots/spellcraft.ts",
+    "unresolvedTo": "./spellcraft.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/missions.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/missions.ts",
+    "to": "src/engine/bots/war.ts",
+    "unresolvedTo": "./war.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/movement.ts",
+    "to": "src/engine/bots/missions.ts",
+    "unresolvedTo": "./missions.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/movement.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/movement.ts",
+    "to": "src/engine/bots/specialists.ts",
+    "unresolvedTo": "./specialists.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/movement.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/movement.ts",
+    "to": "src/engine/bots/spellcraft.ts",
+    "unresolvedTo": "./spellcraft.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/movement.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/movement.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/titles/reckoning.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/movement.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/movement.ts",
+    "to": "src/engine/bots/war.ts",
+    "unresolvedTo": "./war.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/movement.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/phase-one.ts",
+    "to": "src/engine/bots/economy.ts",
+    "unresolvedTo": "./economy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/phase-one.ts",
+    "to": "src/engine/bots/intel.ts",
+    "unresolvedTo": "./intel.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/phase-one.ts",
+    "to": "src/engine/bots/missions.ts",
+    "unresolvedTo": "./missions.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/phase-one.ts",
+    "to": "src/engine/bots/specialists.ts",
+    "unresolvedTo": "./specialists.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/phase-one.ts",
+    "to": "src/engine/bots/spellcraft.ts",
+    "unresolvedTo": "./spellcraft.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/phase-one.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/phase-one.ts",
+    "to": "src/engine/bots/war.ts",
+    "unresolvedTo": "./war.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/phase-one.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/specialists.ts",
+    "to": "src/engine/bots/intel.ts",
+    "unresolvedTo": "./intel.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/specialists.ts",
+    "to": "src/engine/bots/spellcraft.ts",
+    "unresolvedTo": "./spellcraft.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/specialists.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/specialists.ts",
+    "to": "src/engine/bots/war.ts",
+    "unresolvedTo": "./war.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/specialists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/spellcraft.ts",
+    "to": "src/engine/bots/economy.ts",
+    "unresolvedTo": "./economy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/titles/reckoning.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/spellcraft.ts",
+    "to": "src/engine/bots/intel.ts",
+    "unresolvedTo": "./intel.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/spellcraft.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/economy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/titles/reckoning.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/spellcraft.ts",
+    "to": "src/engine/bots/war.ts",
+    "unresolvedTo": "./war.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/spellcraft.ts",
+    "to": "src/engine/titles/reckoning.ts",
+    "unresolvedTo": "../titles/reckoning.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/titles/reckoning.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/spellcraft.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/strategy.ts",
+    "to": "src/engine/bots/war.ts",
+    "unresolvedTo": "./war.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/intel.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/discoveries.ts",
+    "to": "src/engine/grand-design.ts",
+    "unresolvedTo": "./grand-design.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/grand-design.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/discoveries.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/discoveries.ts",
+    "to": "src/engine/personal-combat/helpers.ts",
+    "unresolvedTo": "./personal-combat/helpers.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/personal-combat/helpers.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/heroes/fame-and-consecration.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/discoveries.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/discoveries.ts",
+    "to": "src/engine/world/tables.ts",
+    "unresolvedTo": "./world/tables.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/world/tables.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/heroes/skills-and-hp.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/discoveries.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/grand-design.ts",
+    "to": "src/engine/world/tables.ts",
+    "unresolvedTo": "./world/tables.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/world/tables.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/heroes/skills-and-hp.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/discoveries.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/grand-design.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/heroes/fame-and-consecration.ts",
+    "to": "src/engine/titles/perks.ts",
+    "unresolvedTo": "../titles/perks.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/titles/perks.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/items/equipment.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/items/tiers-and-hoards.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/heroes/fame-and-consecration.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/heroes/skills-and-hp.ts",
+    "to": "src/engine/discoveries.ts",
+    "unresolvedTo": "../discoveries.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/discoveries.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/personal-combat/helpers.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/heroes/skills-and-hp.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/heroes/skills-and-hp.ts",
+    "to": "src/engine/items/equipment.ts",
+    "unresolvedTo": "../items/equipment.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/items/equipment.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/items/tiers-and-hoards.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/heroes/fame-and-consecration.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/discoveries.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/grand-design.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/world/tables.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/heroes/skills-and-hp.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/items/equipment.ts",
+    "to": "src/engine/items/tiers-and-hoards.ts",
+    "unresolvedTo": "./tiers-and-hoards.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/items/tiers-and-hoards.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/items/equipment.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/items/tiers-and-hoards.ts",
+    "to": "src/engine/world/tables.ts",
+    "unresolvedTo": "../world/tables.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/world/tables.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/items/equipment.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/items/tiers-and-hoards.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/personal-combat/melee-flight-and-archery.ts",
+    "to": "src/engine/personal-combat/speed-encounter-plans-and-combatants.ts",
+    "unresolvedTo": "./speed-encounter-plans-and-combatants.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/personal-combat/speed-encounter-plans-and-combatants.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/personal-combat/melee-flight-and-archery.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/units/movement-pools.ts",
+    "to": "src/engine/units/sea-lift-stranding-and-retreats.ts",
+    "unresolvedTo": "./sea-lift-stranding-and-retreats.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/engine/units/sea-lift-stranding-and-retreats.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/units/movement-pools.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/auto-turn.ts",
+    "to": "src/db/game-meta.ts",
+    "unresolvedTo": "../../db/game-meta.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/auto-turn.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/auto-turn.ts",
+    "to": "src/ui/gm/turn-mode.ts",
+    "unresolvedTo": "./turn-mode.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/turn-mode.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/auto-turn.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/auto-turn.ts",
+    "to": "src/ui/gm/turn-shell.ts",
+    "unresolvedTo": "./turn-shell.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/turn-shell.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/auto-turn.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/game-detail.ts",
+    "to": "src/db/game-meta.ts",
+    "unresolvedTo": "../../db/game-meta.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/game-detail.ts",
+    "to": "src/ui/gm/game-list.ts",
+    "unresolvedTo": "./game-list.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/game-detail.ts",
+    "to": "src/ui/gm/sign-in.ts",
+    "unresolvedTo": "./sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/game-detail.ts",
+    "to": "src/ui/gm/turn-log.ts",
+    "unresolvedTo": "./turn-log.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/turn-log.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/game-detail.ts",
+    "to": "src/ui/gm/turn-mode.ts",
+    "unresolvedTo": "./turn-mode.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/turn-mode.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/game-list.ts",
+    "to": "src/ui/gm/sign-in.ts",
+    "unresolvedTo": "./sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/game-list.ts",
+    "to": "src/ui/gm/turn-mode.ts",
+    "unresolvedTo": "./turn-mode.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/turn-mode.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/hall-of-fame.ts",
+    "to": "src/db/game-meta.ts",
+    "unresolvedTo": "../../db/game-meta.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/hall-of-fame.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/sign-in.ts",
+    "to": "src/db/telemetry.ts",
+    "unresolvedTo": "../../db/telemetry.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/db/telemetry.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/hall-of-fame.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/turn-log.ts",
+    "to": "src/ui/gm/game-list.ts",
+    "unresolvedTo": "./game-list.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/turn-log.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/turn-log.ts",
+    "to": "src/ui/gm/sign-in.ts",
+    "unresolvedTo": "./sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/turn-log.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/turn-shell.ts",
+    "to": "src/db/telemetry.ts",
+    "unresolvedTo": "../../db/telemetry.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/db/telemetry.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/hall-of-fame.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/auto-turn.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/turn-shell.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/gm/turn-shell.ts",
+    "to": "src/ui/gm/turn-mode.ts",
+    "unresolvedTo": "./turn-mode.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/gm/turn-mode.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/db/game-meta.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-list.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/game-detail.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/auto-turn.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/gm/turn-shell.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/briefing-and-submit.ts",
+    "to": "src/ui/player/init.ts",
+    "unresolvedTo": "./init.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/briefing-and-submit.ts",
+    "to": "src/ui/player/items-and-heroes.ts",
+    "unresolvedTo": "./items-and-heroes.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/briefing-and-submit.ts",
+    "to": "src/ui/player/layout.ts",
+    "unresolvedTo": "./layout.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/briefing-and-submit.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/briefing-and-submit.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/briefing-and-submit.ts",
+    "to": "src/ui/player/order-targets.ts",
+    "unresolvedTo": "./order-targets.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/briefing-and-submit.ts",
+    "to": "src/ui/player/orders-form.ts",
+    "unresolvedTo": "./orders-form.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/briefing-and-submit.ts",
+    "to": "src/ui/player/pre-orders.ts",
+    "unresolvedTo": "./pre-orders.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/dispatches.ts",
+    "to": "src/ui/player/game-lists.ts",
+    "unresolvedTo": "./game-lists.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/dispatches.ts",
+    "to": "src/ui/player/layout.ts",
+    "unresolvedTo": "./layout.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/dispatches.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/dispatches.ts",
+    "to": "src/ui/player/sign-in.ts",
+    "unresolvedTo": "./sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/game-lists.ts",
+    "to": "src/ui/player/report.ts",
+    "unresolvedTo": "./report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/game-lists.ts",
+    "to": "src/ui/player/sign-in.ts",
+    "unresolvedTo": "./sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/init.ts",
+    "to": "src/ui/player/dispatches.ts",
+    "unresolvedTo": "./dispatches.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/init.ts",
+    "to": "src/ui/player/layout.ts",
+    "unresolvedTo": "./layout.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/init.ts",
+    "to": "src/ui/player/map.ts",
+    "unresolvedTo": "./map.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/init.ts",
+    "to": "src/ui/player/sign-in.ts",
+    "unresolvedTo": "./sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/items-and-heroes.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/briefing-and-submit.ts",
+    "unresolvedTo": "./briefing-and-submit.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/init.ts",
+    "unresolvedTo": "./init.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/items-and-heroes.ts",
+    "unresolvedTo": "./items-and-heroes.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/layout.ts",
+    "unresolvedTo": "./layout.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/order-chances.ts",
+    "unresolvedTo": "./order-chances.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/report.ts",
+    "unresolvedTo": "./report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/join-and-chronicle.ts",
+    "to": "src/ui/player/sign-in.ts",
+    "unresolvedTo": "./sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/layout.ts",
+    "to": "src/ui/player/map.ts",
+    "unresolvedTo": "./map.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/map-symbols.ts",
+    "to": "src/ui/player/order-chances.ts",
+    "unresolvedTo": "./order-chances.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/map.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/map.ts",
+    "to": "src/ui/player/order-chances.ts",
+    "unresolvedTo": "./order-chances.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/map.ts",
+    "to": "src/ui/player/skills-and-projections.ts",
+    "unresolvedTo": "./skills-and-projections.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/skills-and-projections.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/move-analysis.ts",
+    "to": "src/ui/player/order-targets.ts",
+    "unresolvedTo": "./order-targets.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/move-analysis.ts",
+    "to": "src/ui/player/pre-orders.ts",
+    "unresolvedTo": "./pre-orders.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/move-analysis.ts",
+    "to": "src/ui/player/skills-and-projections.ts",
+    "unresolvedTo": "./skills-and-projections.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/skills-and-projections.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-chances.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-chances.ts",
+    "to": "src/ui/player/order-targets.ts",
+    "unresolvedTo": "./order-targets.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-chances.ts",
+    "to": "src/ui/player/pre-orders.ts",
+    "unresolvedTo": "./pre-orders.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-chances.ts",
+    "to": "src/ui/player/skills-and-projections.ts",
+    "unresolvedTo": "./skills-and-projections.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/skills-and-projections.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-targets.ts",
+    "to": "src/ui/player/items-and-heroes.ts",
+    "unresolvedTo": "./items-and-heroes.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-targets.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-targets.ts",
+    "to": "src/ui/player/pre-orders.ts",
+    "unresolvedTo": "./pre-orders.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-targets.ts",
+    "to": "src/ui/player/skills-and-projections.ts",
+    "unresolvedTo": "./skills-and-projections.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/skills-and-projections.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-targets.ts",
+    "to": "src/ui/player/titles.ts",
+    "unresolvedTo": "./titles.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/titles.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/items-and-heroes.ts",
+    "unresolvedTo": "./items-and-heroes.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/order-chances.ts",
+    "unresolvedTo": "./order-chances.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/order-targets.ts",
+    "unresolvedTo": "./order-targets.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/pre-orders.ts",
+    "unresolvedTo": "./pre-orders.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/report.ts",
+    "unresolvedTo": "./report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/skills-and-projections.ts",
+    "unresolvedTo": "./skills-and-projections.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/skills-and-projections.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/orders-form.ts",
+    "to": "src/ui/player/titles.ts",
+    "unresolvedTo": "./titles.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/titles.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/orders-form.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/pre-orders.ts",
+    "to": "src/ui/player/items-and-heroes.ts",
+    "unresolvedTo": "./items-and-heroes.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/pre-orders.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/pre-orders.ts",
+    "to": "src/ui/player/skills-and-projections.ts",
+    "unresolvedTo": "./skills-and-projections.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/skills-and-projections.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/dispatches.ts",
+    "unresolvedTo": "./dispatches.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/init.ts",
+    "unresolvedTo": "./init.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/items-and-heroes.ts",
+    "unresolvedTo": "./items-and-heroes.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/layout.ts",
+    "unresolvedTo": "./layout.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/map.ts",
+    "unresolvedTo": "./map.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/skills-and-projections.ts",
+    "unresolvedTo": "./skills-and-projections.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/skills-and-projections.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/report.ts",
+    "to": "src/ui/player/titles.ts",
+    "unresolvedTo": "./titles.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/titles.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/sign-in.ts",
+    "to": "src/ui/player/report.ts",
+    "unresolvedTo": "./report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/sign-in.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/titles.ts",
+    "to": "src/ui/player/map-symbols.ts",
+    "unresolvedTo": "./map-symbols.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/layout.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/titles.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/titles.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/titles.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/titles.ts",
+    "to": "src/ui/player/order-chances.ts",
+    "unresolvedTo": "./order-chances.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/titles.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/game-meta.ts",
+    "to": "src/engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
+    "unresolvedTo": "../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/game-meta.ts",
+    "to": "src/ui/gm/config.ts",
+    "unresolvedTo": "../ui/gm/config.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/game-meta.ts",
+    "to": "src/ui/gm/game-list.ts",
+    "unresolvedTo": "../ui/gm/game-list.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/game-meta.ts",
+    "to": "src/ui/gm/sign-in.ts",
+    "unresolvedTo": "../ui/gm/sign-in.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/game-meta.ts",
+    "to": "src/ui/gm/turn-mode.ts",
+    "unresolvedTo": "../ui/gm/turn-mode.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/game-meta.ts",
+    "to": "src/ui/shared/kc-safe.ts",
+    "unresolvedTo": "../ui/shared/kc-safe.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
+    "to": "src/content/kingdoms-call-data.ts",
+    "unresolvedTo": "../content/kingdoms-call-data.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
+    "to": "src/engine/bots/setup.ts",
+    "unresolvedTo": "../engine/bots/setup.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
+    "to": "src/engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
+    "unresolvedTo": "../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
+    "to": "src/engine/titles/reckoning.ts",
+    "unresolvedTo": "../engine/titles/reckoning.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
+    "to": "src/ui/gm/config.ts",
+    "unresolvedTo": "../ui/gm/config.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
+    "to": "src/ui/gm/hall-of-fame.ts",
+    "unresolvedTo": "../ui/gm/hall-of-fame.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
+    "to": "src/ui/gm/startup.ts",
+    "unresolvedTo": "../ui/gm/startup.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
+    "to": "src/views/turn-report.ts",
+    "unresolvedTo": "../views/turn-report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/battle/evil-terror.ts",
+    "to": "src/views/turn-report.ts",
+    "unresolvedTo": "../../views/turn-report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/bots/intel.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/bots/missions.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/bots/specialists.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/bots/spellcraft.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/espionage/what-a-spy-learns.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/run-turn.ts",
+    "to": "src/views/turn-report.ts",
+    "unresolvedTo": "../views/turn-report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts",
+    "to": "src/views/turn-report.ts",
+    "unresolvedTo": "../../views/turn-report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/turn/intrusion-warnings.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/turn/realm-reports-and-spy-stealth.ts",
+    "to": "src/views/turn-report.ts",
+    "unresolvedTo": "../../views/turn-report.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/turn/realm-reports-and-spy-stealth.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/world/generate.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/engine/world/province-bookkeeping-and-rallied-garrisons.ts",
+    "to": "src/views/visibility.ts",
+    "unresolvedTo": "../../views/visibility.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-engine-imports-only-the-engine-and-the-content"
+    }
+  }
+]

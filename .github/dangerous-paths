@@ -27,9 +27,8 @@ package-lock.json
 # The test harness: the Claude Code hooks and settings, the tool settings, the Node pin, the test run's own
 # checks, the ratchet, the harness's self-test (P1-01b), the balance matrix's code (P1-02) and the script that
 # posts its report (P1-03a), and the build that makes the site every test opens (P1-05). Loosening any of
-# them should be seen. Some files don't exist yet (dependency-cruiser, knip): listed so they're covered from the
-# start. The balance baselines (tests/balance/baseline/) aren't listed: CI's balance job checks them, so a pull
-# request that changes play isn't flagged for its data.
+# them should be seen. The balance baselines (tests/balance/baseline/) aren't listed: CI's balance job checks
+# them, so a pull request that changes play isn't flagged for its data.
 .claude/**
 tsconfig*.json
 vitest.config.*
@@ -37,6 +36,13 @@ playwright.config.*
 eslint.config.*
 .dependency-cruiser.*
 knip.*
+# The findings the architecture and lint rules let through when they came in (plan P1-13): each only shrinks, so
+# adding to one should be seen (the ratchet's own baseline, tests/ratchet.json, is below). eslint-suppressions.json
+# comes with P1-13b, and the project's own ESLint rules (tools/eslint-rules/) with P1-13c and P1-13d: listed from
+# the start.
+.dependency-cruiser-known-violations.json
+eslint-suppressions.json
+tools/eslint-rules/**
 .nvmrc
 .npmrc
 tests/setup/**
