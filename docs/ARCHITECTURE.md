@@ -335,8 +335,10 @@ line's text at every bold run and every name, and wraps only those pieces in `kc
 list of `kcHtml` pieces with a separator between them goes in through the player portal's `kcJoinP(list, sep)`. A
 page whose content is mostly fixed builds elements instead (the Overlord page's `el()`), which is just as safe.
 
-Every page builds its HTML this way. `npm test`'s `html-lint` refuses HTML built any other way, and each page that
-builds HTML from data has a hostile-name test. Mistakes to avoid: [traps.md](traps.md#html-is-built-only-through-kchtml).
+Every page builds its HTML this way. The lint rule `kc/html-is-built-only-through-kc-html` (`tools/eslint-rules/`,
+P1-13d) refuses HTML built any other way, in the editor, in `npm run lint` and in CI, and each page that builds HTML
+from data has a hostile-name test. Its reviewed exceptions are `HTML_EXCEPTIONS` in `eslint.config.js`, each with its
+reason; one that matches nothing is itself a finding. Mistakes to avoid: [traps.md](traps.md#html-is-built-only-through-kchtml).
 
 ## `kingdoms-call-data.ts`: the one source for shared rules
 
@@ -818,8 +820,9 @@ through any object's `Math`, as `window.Math.random` (`no-restricted-syntax`). O
 client's global; the four pages' `createClient` calls are in the suppressions, for P1-17's access layer.
 
 **The project's own rules** are ESLint rules in TypeScript (`tools/eslint-rules/`, the plugin `kc`, P1-13c), each with
-its RuleTester test in `tests/unit/`: `kc/no-random-or-argument-less-sort-comparator` ([traps.md](traps.md#a-sort-comparator-must-give-the-same-answer-every-time))
-and `kc/big-tables-and-profiles-are-read-by-named-columns` ([traps.md](traps.md#select-on-big-tables)). They run on
+its RuleTester test in `tests/unit/`: `kc/no-random-or-argument-less-sort-comparator` ([traps.md](traps.md#a-sort-comparator-must-give-the-same-answer-every-time)),
+`kc/big-tables-and-profiles-are-read-by-named-columns` ([traps.md](traps.md#select-on-big-tables)) and
+`kc/html-is-built-only-through-kc-html` (P1-13d, [above](#how-a-page-builds-html)). They run on
 `src/` and on the classic scripts: `public/`'s two, which ESLint lints as classic scripts with its recommended rules
 (`kc-config.js` declares `KC_CONFIG`, the global the others read), and the templates' inline scripts and `on…="…"`
 handlers, which ESLint's command line doesn't read: `tests/static/the-templates-scripts-pass-the-sites-lint-rules.test.ts`
