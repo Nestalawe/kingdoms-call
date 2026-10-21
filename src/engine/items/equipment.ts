@@ -4,13 +4,17 @@ import {
   KC_ITEM_SLOT_CAP,
   LEGENDARY_ITEMS_P,
   SPELL_DEFS_P,
-  _ITEM_NAME_ALTS,
   _VARIANT_BANK,
 } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
 import { HOARD_CATEGORIES } from './hoard-categories.ts';
-import { ITEMS_BY_TIER, ITEM_LORE_BY_NAME, isLegendaryItem, itemHoardCategory } from './tiers-and-hoards.ts';
-import { itemUsableBy } from '../heroes/fame-and-consecration.ts';
+import { ITEMS_BY_TIER, ITEM_LORE_BY_NAME, itemHoardCategory } from './tiers-and-hoards.ts';
+import {
+  _ITEM_ALT_BASE,
+  isLegendaryItem,
+  itemSlot,
+  itemUsableBy,
+} from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 
 // ── EQUIPMENT SLOTS ────
 // Worn/wielded items occupy a slot; only ONE per slot (two rings) can be EQUIPPED, and only
@@ -19,65 +23,6 @@ import { itemUsableBy } from '../heroes/fame-and-consecration.ts';
 // (auto-equips an empty slot with the first item held, trims any over-cap), so pre-existing saves
 // and new pick-ups need no migration.
 export const ITEM_SLOT_CAP = { ...KC_ITEM_SLOT_CAP }; // shield slot added 2026-09-10 · combat ×2 added 2026-09-11
-export const ITEM_SLOT_OF = {
-  'Blade of Fury': 'weapon',
-  'Elven Longbow': 'weapon',
-  'Staff of the Wildwood': 'weapon',
-  'Sword of the First Emperor': 'weapon',
-  'Black Sceptre': 'weapon',
-  'Warbringer Gauntlets': 'armour',
-  'Gloves of the Nightcrawler': 'armour',
-  'Boots of the Wind': 'armour',
-  'Tower Shield of the Wall': 'shield',
-  'Anvil-Brand Shield': 'shield',
-  'Shield of the Innocent': 'shield', // shield slot; overrides any stale inline slot — see itemSlot
-  "Traveller's Cloak": 'cloak',
-  Shadowcloak: 'cloak',
-  'Veil of Illusions': 'cloak',
-  'Cloak of Many Faces': 'cloak',
-  "Sage's Crown": 'helm',
-  'Crown of Command': 'helm',
-  'Imperial Regalia': 'helm',
-  'Ring of the Explorer': 'ring',
-  "Death's Finger Ring": 'ring',
-  "Siege Master's Ring": 'ring',
-  'Ring of Wealth': 'ring',
-  'Mithril Armour': 'armour', // the granted suit now occupies the armour slot
-  "Mind's Eye Amulet": 'amulet',
-  'Amulet of Fortitude': 'amulet',
-  'Iron Heart Talisman': 'amulet',
-  'Eagle-Eye Pendant': 'amulet',
-  "Legionnaire's Mark": 'amulet',
-};
-// the two alternate-named clones of every tier-1/2 item share the base item's slot (previously
-// 'Sword of Wrath' etc. had no slot and so were ALWAYS active, bypassing Equip Items).
-export const _ITEM_ALT_BASE = {};
-Object.entries(_ITEM_NAME_ALTS).forEach(([base, alts]) =>
-  alts.forEach((a) => {
-    _ITEM_ALT_BASE[a] = base;
-  }),
-);
-export const _SHIELD_BASES = new Set([
-  'Tower Shield of the Wall',
-  'Anvil-Brand Shield',
-  'Shield of the Innocent',
-  'Kite Shield of the Marches',
-  'Bronze Buckler',
-  'Oaken Roundshield',
-  'Mirror-Bright Shield',
-  'Shield of the Ward-Saints',
-  'Dragonbone Shield',
-]);
-export function itemSlot(it) {
-  if (!it) return null;
-  // a SHIELD is a shield even when its power is a once-per-fight ward - the Anvil-Brand Shield is
-  // strapped to the arm, not drunk. The shield test therefore comes first.
-  if (_SHIELD_BASES.has(_ITEM_ALT_BASE[it.name] || it.name)) return 'shield';
-  if (it.effect && it.effect.stat === 'combatUse') return 'combat'; // every other potion, scroll or device is a COMBAT ITEM and takes a Combat Item slot (two per character). This test runs BEFORE `it.slot` is read, so items saved with the old inline slot:'consumable' re-resolve here with no migration.
-  if (it.effect && it.effect.stat === 'mithrilArmour') return 'armour'; // Mithril is worn in the armour slot // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
-  if (it.slot !== undefined) return it.slot || null;
-  return ITEM_SLOT_OF[it.name] || ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name]] || null;
-}
 
 export const LEGENDARY_NAMES_P = new Set(LEGENDARY_ITEMS_P.map((it) => it.name));
 

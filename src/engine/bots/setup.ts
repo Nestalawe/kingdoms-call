@@ -1,9 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ARMY_UNIT_NAMES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { ALIGNMENTS_P, RACES_P, TEMPERS_P, alignDistP } from '../world/tables.ts';
+import { RACES_P, TEMPERS_P } from '../world/tables.ts';
+import { ALIGNMENTS_P, alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { _toRoman, nextHeroName } from '../names.ts';
 import { BOT_ALLY_ALIGN_DIST } from './intel.ts';
+import { gameMetaOf } from '../rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 
 // ══ BOT PLAYERS — Phase 1: existence & identity ════
 // GM-controlled bot realms. Phase 1 generates a bot's identity and persists its row; bots do NOT
@@ -22,15 +24,6 @@ export function isBotRow(p) {
     if (r && r.isBot === true) return true;
   } catch (e) {}
   return false;
-}
-export function gameMetaOf(game) {
-  if (!game || game.meta == null) return null;
-  try {
-    const m = typeof game.meta === 'string' ? JSON.parse(game.meta) : game.meta;
-    return m && typeof m === 'object' && m.v ? m : null;
-  } catch (e) {
-    return null;
-  }
 }
 // Read {botCount, allBot} from a game's setup-phase config (stored in game_state at creation).
 export function botConfigFor(game) {

@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
-import { unitBaseStrength } from '../battle/strength.ts';
-import { alignDistP } from '../world/tables.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
   BOT_DEF_BONUS,
   BOT_TUNING,

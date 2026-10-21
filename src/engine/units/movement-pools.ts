@@ -1,6 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ARMY_SPEED_R } from '../battle/ladder.ts';
-import { AERIAL_TYPES, SEA_TYPES, getFlyCapability, marchSpeedBonus, navalSpeedBonus } from './movement.ts';
+import { marchSpeedBonus, navalSpeedBonus } from './movement.ts';
+import {
+  AERIAL_TYPES,
+  SEA_TYPES,
+  getFlyCapability,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { discEff, discUnitMatch } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';

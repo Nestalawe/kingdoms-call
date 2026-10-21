@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_SKILLS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { dispFloor } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 
 // ── FORTUNE OF BATTLE ── the dice step of every army battle. Instead of two additive rolls off the
 // stronger side's strength, ONE swing S is drawn from a fixed, symmetric fortune curve and applied

@@ -1,8 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_UNIT_BASE_STR, KC_UNIT_Q_MULT } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
-import { FLYING_TYPES, ORC_FOOT_TYPES } from '../units/movement.ts';
+import { ORC_FOOT_TYPES } from '../units/movement.ts';
+import { FLYING_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 
 // ── Force-composition strength multipliers (applied inside armStr) ──
 export function unitAbilityMult(army, ctx, terrain) {
@@ -145,11 +146,6 @@ export function abilityVolleys(firer, isAtk) {
 // in a battle against province defenders, so it only surfaced in games that actually saw combat.
 // Same trap as FLYING_TYPES and ITEMS_BY_TIER before it: shared lookup tables and the helpers that
 // read them live at module top level, always.
-export const UNIT_BASE_STR = { ...KC_UNIT_BASE_STR };
-export const UNIT_Q_MULT = { ...KC_UNIT_Q_MULT };
-export function unitBaseStrength(army) {
-  return (UNIT_BASE_STR[army.type] || 4) * (UNIT_Q_MULT[army.quality || 'Average'] || 2);
-}
 
 // 2026-09-27: `_flakTargeted` marks a flyer as already engaged so two gyrocopters cannot double up
 // on one target IN THE SAME BATTLE. It was set here and never cleared anywhere — not by the three

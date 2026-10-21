@@ -9,7 +9,6 @@ import {
   LAIR_ITEM_ODDS,
   awardedEffectSet,
   ensureLairHoard,
-  isLegendaryItem,
   itemEffectKey,
   itemFallbackOk,
   itemHoardCategory,
@@ -18,6 +17,7 @@ import {
   preferFreshEffects,
   rollMagicItem,
 } from './tiers-and-hoards.ts';
+import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { hexDistP } from '../world/map-helpers.ts';
 
 // ── EVEN DISTRIBUTION PER PLAYER (2026-09-11, Toby: "so players won't keep finding the same type

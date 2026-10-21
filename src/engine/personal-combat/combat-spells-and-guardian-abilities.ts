@@ -5,7 +5,8 @@ import { combatSpellsAllowedPerSchoolEachFight } from '../rules-on-plain-values/
 import { SKILL_LABELS } from '../army-tables.ts';
 import { hasItemBase } from '../items/equipment.ts';
 import { PC_SPELL_SCHOOL_MAP, PC_WEAK_MULT, pcDeferEffect, pcFoeCat, pcLearnWeakness, pcPushDot } from './helpers.ts';
-import { d100, dispFloor, rng } from '../dice-and-army-names.ts';
+import { d100, rng } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { skillLevel } from '../titles/perks.ts';
 import { SPELL_CAST_BASE, magicL8CastBonus } from '../chances-and-lair-grades.ts';
 import { discSum } from '../discoveries.ts';

@@ -32,18 +32,20 @@ import {
   ladderLines,
 } from './ladder.ts';
 import {
-  AERIAL_TYPES,
-  FLYING_TYPES,
-  MONSTER_ARMIES,
   OPEN_COUNTRY,
   RUN_THEM_DOWN_PCT,
-  SEA_TYPES,
   countType,
   isHalfOrMore,
   rideThemDownBonus,
   shieldFortHolds,
   tacMulted,
 } from '../units/movement.ts';
+import {
+  AERIAL_TYPES,
+  FLYING_TYPES,
+  MONSTER_ARMIES,
+  SEA_TYPES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import {
   abilityMissileUnits,
   abilityVolleys,
@@ -52,15 +54,16 @@ import {
   eyesOfTheForestLine,
   missileDamageMult,
   missileTargetPool,
-  unitBaseStrength,
 } from './strength.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { homeFounderOf } from '../grand-design.ts';
 import { battleFortune, fortuneNarrative, shuffleP } from './fortune.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { isConsecrated } from '../heroes/fame-and-consecration.ts';
 import { activeItems, hasItemBase } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
-import { d100, describeArmy, dispFloor, pick, rng } from '../dice-and-army-names.ts';
+import { d100, describeArmy, pick, rng } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeChance } from '../chances-and-lair-grades.ts';

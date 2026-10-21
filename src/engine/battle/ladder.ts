@@ -2,7 +2,7 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { BATTLE_LINE_MULTS, battleFacingStage, battleGridStage, battleLineTotal, flankLineMults } from './lines.ts';
-import { UNIT_BASE_STR, UNIT_Q_MULT } from './strength.ts';
+import { UNIT_BASE_STR, UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 
 // ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
 // "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid

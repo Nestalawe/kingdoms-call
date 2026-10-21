@@ -1,50 +1,15 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_ITEM_RACE_ALIAS } from '../../content/kingdoms-call-data.ts';
-import { ALL_SKILLS } from '../army-tables.ts';
 import { homeFounderOf } from '../grand-design.ts';
-import { isLegendaryItem } from '../items/tiers-and-hoards.ts';
+import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { hexDistP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { discProvCoastal, discSumOf } from '../discoveries.ts';
 
-// ── HERO FAME ── a wandering hero's reputation is described, never numbered: the Hire and Broker
-// dropdowns quote the same words the Intelligence report uses. Module level; buildPlayerReport's
-// own copies delegate here so the two can never drift apart.
-export function skillFameLabelM(level) {
-  const l = level || 0;
-  return l >= 7 ? 'has a heroic level of' : l >= 4 ? 'legendary for' : 'renowned for';
-}
-export function topSkillOf(char) {
-  const skills = Object.entries((char && char.skills) || {}).filter(([, v]) => v > 0);
-  if (!skills.length) return null;
-  const maxLevel = Math.max(...skills.map(([, v]) => v));
-  const tied = skills.filter(([, v]) => v === maxLevel);
-  // Deterministic tie-break by canonical skill order, so the same hero reads the same everywhere.
-  tied.sort((a, b) => ALL_SKILLS.indexOf(a[0]) - ALL_SKILLS.indexOf(b[0]));
-  const [sk, lv] = tied[0];
-  return { skill: sk, level: lv };
-}
 export function itemNameList(items, withDesc) {
   const wd = withDesc !== false;
   return (items || [])
     .map((d) => (isLegendaryItem(d) ? 'the LEGENDARY ' : 'the ') + d.name + (wd && d.desc ? ' (' + d.desc + ')' : ''))
     .join(', ');
-}
-// Which race / alignment an item is bound to, if any; an item a character cannot use is inert in
-// their hands. 2026-09-10 item 3: race-bound items were tagged 'Elf'/'Dwarf'/'Orc' while characters
-// carry 'Elven'/ 'Dwarven'/'Orcish', so every non-Human race-bound item was inert in its OWN race's
-// hands. The item data now uses the canonical names; this alias map keeps items already rolled into
-// saved games working.
-export const _ITEM_RACE_ALIAS = { ...KC_ITEM_RACE_ALIAS };
-export function itemRaceOf(it) {
-  const r = it && it.race;
-  return r ? _ITEM_RACE_ALIAS[r] || r : r;
-}
-export function itemUsableBy(it, c) {
-  if (!it) return false;
-  if (it.race && (!c || c.race !== itemRaceOf(it))) return false;
-  if (it.alignment && (!c || c.alignment !== it.alignment)) return false;
-  return true;
 }
 
 // ── MITHRIL ARMOUR ── A GRANTED (never lair-rolled) relic worn by Dwarven characters of a Dwarven

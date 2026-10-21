@@ -4,10 +4,10 @@ import { KC_UNIT_CLASS, TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { kcClock } from '../../engine/clock.ts';
 import { KC_BUILD_STAMP } from './startup.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../../engine/army-tables.ts';
-import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../engine/battle/strength.ts';
+import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import { sb } from './config.ts';
 import { kcMissingMsg, parseGameState } from '../../db/game-meta.ts';
-import { gameMetaOf } from '../../engine/bots/setup.ts';
+import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { computeStandings } from '../../engine/titles/reckoning.ts';
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════

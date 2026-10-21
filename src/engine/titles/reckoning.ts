@@ -1,6 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS, TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
-import { CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.ts';
+import {
+  CREATURE_ARMIES,
+  MONSTER_ARMIES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { ITEMS_BY_TIER } from '../items/tiers-and-hoards.ts';
 import { activeItems } from '../items/equipment.ts';
 import { botConceded } from '../bots/intel.ts';

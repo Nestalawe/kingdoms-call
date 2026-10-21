@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { demoteOrDisband, disbandLine, unitRef } from '../army-tables.ts';
-import { SEA_TYPES } from '../units/movement.ts';
+import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';

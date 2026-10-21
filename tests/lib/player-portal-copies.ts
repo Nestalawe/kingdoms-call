@@ -36,20 +36,29 @@ import {
 } from '../../src/content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../../src/engine/army-tables.ts';
 import { getSeaCapability } from '../../src/engine/units/sea-lift-stranding-and-retreats.ts';
-import { gameMetaOf } from '../../src/engine/bots/setup.ts';
-import { dispFloor } from '../../src/engine/dice-and-army-names.ts';
-import { itemSlot } from '../../src/engine/items/equipment.ts';
-import { isLegendaryItem } from '../../src/engine/items/tiers-and-hoards.ts';
+import { gameMetaOf } from '../../src/engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
+import { dispFloor } from '../../src/engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import {
+  isLegendaryItem,
   itemRaceOf,
+  itemSlot,
   itemUsableBy,
-  MITHRIL_ARMOUR,
+} from '../../src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts';
+import {
   skillFameLabelM,
   topSkillOf,
-} from '../../src/engine/heroes/fame-and-consecration.ts';
-import { unitBaseStrength } from '../../src/engine/battle/strength.ts';
-import { getFlyCapability, isAirCarriable } from '../../src/engine/units/movement.ts';
-import { alignDistP, beastCommandCount, heroHireWage, unitTypeOf } from '../../src/engine/world/tables.ts';
+} from '../../src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
+import { unitBaseStrength, unitTypeOf } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
+import {
+  getFlyCapability,
+  isAirCarriable,
+} from '../../src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { beastCommandCount } from '../../src/engine/world/tables.ts';
+import {
+  alignDistP,
+  heroHireWage,
+} from '../../src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
   actionSpellsAllowedPerSchoolEachTurn,
   combatSpellsAllowedPerSchoolEachFight,

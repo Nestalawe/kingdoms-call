@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { unitBaseStrength } from '../battle/strength.ts';
-import { heroHireWage } from '../world/tables.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
   BOT_HEX_DIRS,
   botBattleForce,

@@ -1,12 +1,10 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
-  KC_ALIGNMENTS,
   KC_DRUID_LEVELS,
   KC_HUMANOID_RACES,
   KC_TEMPERS,
   KC_TERRAIN_COLORS,
   KC_UNIT_CLASS,
-  KC_UNIT_TYPE,
   PROVINCE_ARMIES_P,
   TEMPER_TRAITS,
 } from '../../content/kingdoms-call-data.ts';
@@ -132,12 +130,6 @@ export const DRUID_ARMY_LEVELS_P = Object.fromEntries(
 // (Gnomish Gyrocopters are machines, not beasts, and are deliberately NOT tamed).
 export const TAMED_FLYER_TYPES_D = new Set(KC_UNIT_CLASS.tamedFlyer);
 // Returns the Druid level required to lead a given army type
-// The unit's TYPE word (2026-10-11): infantry, ranged, cavalry, flyer or naval, from the shared
-// KC_UNIT_TYPE table. Anything the table has never heard of (an old save, a test fixture) is infantry,
-// which is what such a unit already does in battle: it holds a place in the line.
-export function unitTypeOf(armyType) {
-  return (typeof KC_UNIT_TYPE !== 'undefined' && KC_UNIT_TYPE[armyType]) || 'infantry';
-}
 export function getDruidLevel(armyType) {
   for (const [lvl, armies] of Object.entries(DRUID_ARMY_LEVELS_P)) {
     if (armies.has(armyType)) return parseInt(lvl);
@@ -232,36 +224,6 @@ export function druIdPenaltyMult(heroChar, army, playerAlignment, tamed) {
 
   // 20% strength penalty per level of shortfall
   return Math.max(0.1, 1 - shortfall * 0.2);
-}
-export const ALIGNMENTS_P = KC_ALIGNMENTS.slice();
-// ── Alignment spectrum & hero hire economics ────
-// ALIGNMENTS_P doubles as the moral SPECTRUM: Divine(0) … Neutral(3) … Undead(6). A wandering
-// hero's wage is 2g base +1g per 2 steps of distance from the hiring KINGDOM's alignment — Neutral
-// kings sit mid-spectrum and hire everyone at 2–3g; Divine and Undead kings pay through the nose
-// for the far side. Distance 6 (Divine<->Undead) is an outright refusal: no wage buys that service
-// (waived by sd31 Diplomatic Protocols, at the maximum 5g).
-export function alignDistP(a, b) {
-  const i = ALIGNMENTS_P.indexOf(a),
-    j = ALIGNMENTS_P.indexOf(b);
-  if (i < 0 || j < 0) return 0;
-  return Math.abs(i - j);
-}
-// A hero's SKILL premium on top of the alignment base. Neutral heroes now grow while they wander
-// (progressNeutralHeroes + battle experience), so a chieftain who has held his province for twenty
-// turns is a far better buy than a fresh wanderer — and used to cost exactly the same, because the
-// hire wage was alignment-only. The premium mirrors the in-service wage formula (ceil(total/4))
-// with the starting hero's one gold taken off, so a freshly generated 3-point wanderer still hires
-// at the old 2–5g and every point earned since shows up in the asking price.
-export function heroSkillTotal(ch) {
-  return Object.values((ch && ch.skills) || {}).reduce((s, v) => s + (v || 0), 0);
-}
-export function heroSkillWage(ch) {
-  return Math.max(0, Math.ceil(heroSkillTotal(ch) / 4) - 1);
-}
-export function heroHireWage(kingdomAlign, heroAlign, waiveBan, hero) {
-  const d = alignDistP(kingdomAlign, heroAlign);
-  if (d >= 6 && !waiveBan) return null; // Divine <-> Undead: will never serve
-  return 2 + Math.floor(Math.min(d, 6) / 2) + (hero ? heroSkillWage(hero) : 0);
 }
 export const TEMPERS_P = KC_TEMPERS.slice();
 export function temperOf(t) {

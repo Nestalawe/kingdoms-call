@@ -1,8 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_RIVAL_RACE, KC_UNIT_CLASS, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
-import { UNIT_BASE_STR } from '../battle/strength.ts';
-import { TAMED_FLYER_TYPES_D, druIdPenaltyMult, heroHireWage } from '../world/tables.ts';
+import { UNIT_BASE_STR } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { TAMED_FLYER_TYPES_D, druIdPenaltyMult } from '../world/tables.ts';
+import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE } from '../units/drill-and-spoils.ts';
 import {

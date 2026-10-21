@@ -2,10 +2,10 @@
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
-import { SEA_TYPES } from '../units/movement.ts';
-import { unitBaseStrength } from '../battle/strength.ts';
+import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { noteGraveIntel } from '../graves.ts';
-import { dispFloor } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { TITLES_PUBLIC_FROM_TURN, TITLE_CREATURE_ARMIES, TITLE_MONSTER_ARMIES } from './perks.ts';
 import { MINOR_TITLES, computeMinorTitles, computeStandings } from './reckoning.ts';
 

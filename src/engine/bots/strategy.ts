@@ -2,7 +2,7 @@
 import { KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
-import { heroHireWage } from '../world/tables.ts';
+import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { botNeighbourProv, botRelationRaw, botSeesChar, botTuning } from './intel.ts';
 import { BOT_AERIAL_TYPES, BOT_CARRIER_TYPES, BOT_FLYING_TYPES, BOT_SEA_ALL } from './war.ts';
 import { botFrontierTarget, botHasMetPlayers, botIsEdge, botLandCount, botMagicScore } from './specialists.ts';

@@ -2,7 +2,8 @@
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { PC_MAX_LINGER_ROUNDS, pcPushDot } from './helpers.ts';
-import { d100, dispFloor, rng } from '../dice-and-army-names.ts';
+import { d100, rng } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { discDuelVs, discSum } from '../discoveries.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { pcHasRanged, pcRangeStep, pcSkillLabel, pcSpeedOf } from './speed-encounter-plans-and-combatants.ts';

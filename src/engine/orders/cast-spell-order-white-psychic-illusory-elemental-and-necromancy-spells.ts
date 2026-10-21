@@ -9,15 +9,19 @@ import {
   SPELL_FNS_NEED_COLOCATED_TARGET,
   demoteOrDisband,
 } from '../army-tables.ts';
-import { CREATURE_ARMIES, MONSTER_ARMIES } from '../units/movement.ts';
-import { unitBaseStrength } from '../battle/strength.ts';
-import { heroHireWage } from '../world/tables.ts';
+import {
+  CREATURE_ARMIES,
+  MONSTER_ARMIES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { ABILITIES_P, shuffleP } from '../battle/fortune.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { noteGraveIntel, skeletalRaiseCount, takeBestGrave } from '../graves.ts';
 import { claimWandererName, itemNameList } from '../heroes/fame-and-consecration.ts';
 import { activeItems } from '../items/equipment.ts';
-import { armyUnitName, d100, dispFloor, fmtRoll, rng } from '../dice-and-army-names.ts';
+import { armyUnitName, d100, fmtRoll, rng } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM, perkTier, skillLevel } from '../titles/perks.ts';

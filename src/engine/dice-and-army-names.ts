@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ARMY_UNIT_NAMES, PRIMAL_UNIT_NAMES } from '../content/kingdoms-call-data.ts';
 import { kcRng } from './rng.ts';
+import { dispFloor } from './rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 
 // ── Percentage dice ────
 // d100() returns an integer 1–100. A percentage check SUCCEEDS when the rolled number is LESS THAN
@@ -21,11 +22,6 @@ export function d100() {
 // then miss on a roll of 50. With integer d100 rolls, roll<=floor(chance) is exactly roll<=chance,
 // so the shown figure is the true test. A float a hair under an integer (0.29*100 = 28.999…) snaps
 // to that integer rather than dropping a point.
-export function dispFloor(v) {
-  const n = Number(v) || 0;
-  const r = Math.round(n);
-  return Math.abs(n - r) < 1e-9 ? r : Math.trunc(n);
-}
 export function fmtRoll(chance, roll) {
   const c = Math.max(0, Math.min(100, dispFloor(chance)));
   const r = dispFloor(roll);

@@ -1,7 +1,14 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
-import { AERIAL_TYPES, FLYING_TYPES, SEA_TYPES, carrierBerths, getFlyCapability, isAirCarriable } from './movement.ts';
-import { unitBaseStrength } from '../battle/strength.ts';
+import { carrierBerths } from './movement.ts';
+import {
+  AERIAL_TYPES,
+  FLYING_TYPES,
+  SEA_TYPES,
+  getFlyCapability,
+  isAirCarriable,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { describeArmy } from '../dice-and-army-names.ts';
 import { BOT_LIGHT_ARMIES } from '../bots/war.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';

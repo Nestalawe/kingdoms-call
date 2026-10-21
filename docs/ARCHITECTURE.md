@@ -464,6 +464,19 @@ changes, bump its stamps and both portals' minimums together** ([traps.md](traps
   added beside the call) and `combatSpellsAllowedPerSchoolEachFight(level)` (personal combat calls it). It is the
   first file of `engine/rules-on-plain-values/`, the rules of a hero, an army, an item, a level or a number, whose files
   import only `src/content` and each other, so the player portal can share them (P1-11a).
+  P1-11a3 moved into it the 14 engine functions the player portal restates, with the tables and helpers they read, in
+  seven files by topic: `a-number-shown-to-a-player-rounded-down.ts` (`dispFloor`), `unit-types-and-base-strength.ts`
+  (`unitTypeOf`, `unitBaseStrength`, `UNIT_BASE_STR`, `UNIT_Q_MULT`),
+  `units-that-fly-sail-or-can-be-carried-through-the-air.ts` (`isAirCarriable`, `getFlyCapability` and the unit-class
+  sets `FLYING_TYPES`, `AERIAL_TYPES`, `CREATURE_ARMIES`, `MONSTER_ARMIES`, `CARRIER_TYPES`, `PRIMAL_SEA_TYPES`,
+  `SEA_TYPES`, `CAVALRY_TYPES`), `items-slots-races-and-who-may-use-them.ts` (`isLegendaryItem`, `itemSlot`,
+  `itemRaceOf`, `itemUsableBy` and their tables), `alignments-and-a-wandering-heros-hire-wage.ts` (`ALIGNMENTS_P`,
+  `alignDistP`, `heroSkillTotal`, `heroSkillWage`, `heroHireWage`), `skills-in-order-and-a-heros-fame-in-words.ts`
+  (`ALL_SKILLS`, `skillFameLabelM`, `topSkillOf`) and `a-games-settings-read-from-its-row.ts` (`gameMetaOf`). Every
+  caller, in the engine, the views, the GM portal and `src/db/`, imports them there; the static test
+  `rules-on-plain-values-import-only-the-content-and-each-other` refuses any other import in the folder. The move
+  changed the order in which some engine files run as a page loads (a file runs where its first importer pulls it in),
+  but every table holds the same values once the page has loaded.
   A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 

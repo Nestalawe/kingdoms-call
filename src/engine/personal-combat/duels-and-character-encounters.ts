@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
-import { isLegendaryItem } from '../items/tiers-and-hoards.ts';
+import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { activeItems, gainedItemNote } from '../items/equipment.ts';
 import { transferableItems } from './helpers.ts';
 import { d100 } from '../dice-and-army-names.ts';

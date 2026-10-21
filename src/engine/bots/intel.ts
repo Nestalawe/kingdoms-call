@@ -1,8 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_HEX_DIRS, KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
 import { battleFrontWidth, battleLineTotal } from '../battle/lines.ts';
-import { unitBaseStrength } from '../battle/strength.ts';
-import { TAMED_FLYER_TYPES_D, alignDistP, druIdPenaltyMult } from '../world/tables.ts';
+import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { TAMED_FLYER_TYPES_D, druIdPenaltyMult } from '../world/tables.ts';
+import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { enemyCharVisibleTo, featDiscovered, nearSpiedProvIds } from '../../views/visibility.ts';
 import { BOT_AERIAL_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL } from './war.ts';

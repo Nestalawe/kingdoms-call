@@ -5,7 +5,8 @@ import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { ENCOUNTER_CLEAR_GOLD_BANDS, setFeatureTreasure } from '../world/tables.ts';
 import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS, monsterCat } from '../names.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
-import { itemRole, itemSlot } from './equipment.ts';
+import { itemRole } from './equipment.ts';
+import { isLegendaryItem, itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 
 // ── GUARDIAN CATEGORY, SHOWN TO THE PLAYER ────
 // The category already decided which hoard items a guardian could wield, and White Magic's double
@@ -153,9 +154,6 @@ export const FEATURE_POOLS_P = {
 })();
 
 export const ITEM_TIER_OF_POWER = { Weak: 1, Moderate: 2, Powerful: 3, Legendary: 4 };
-export function isLegendaryItem(it) {
-  return !!it && it.tier === 4;
-}
 export const ITEMS_BY_TIER = { 1: [], 2: [], 3: [], 4: [] };
 ALL_MAGIC_ITEMS_P.forEach((it) => {
   (ITEMS_BY_TIER[it.tier || 1] || ITEMS_BY_TIER[1]).push(it);

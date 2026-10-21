@@ -1,7 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
-import { d100, dispFloor, rng } from '../dice-and-army-names.ts';
+import { d100, rng } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { emitNarrLine, notifyTarget, realmTag } from '../turn/log-line-helpers.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';

@@ -4,7 +4,8 @@ import { KC_BUILD_STAMP } from '../ui/gm/startup.ts';
 import { sb } from '../ui/gm/config.ts';
 import { KC_TEL_V, parseGameState, renderTelemetryBanner } from './game-meta.ts';
 import { writeGameRecord } from '../ui/gm/hall-of-fame.ts';
-import { gameMetaOf, isBotRow } from '../engine/bots/setup.ts';
+import { isBotRow } from '../engine/bots/setup.ts';
+import { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { computeStandings } from '../engine/titles/reckoning.ts';
 import { telRealmSnapshot } from '../views/turn-report.ts';
 

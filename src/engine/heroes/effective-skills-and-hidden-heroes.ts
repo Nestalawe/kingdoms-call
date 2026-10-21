@@ -1,9 +1,10 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SKILL_LABELS } from '../army-tables.ts';
-import { heroSkillWage } from '../world/tables.ts';
+import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { activeItems } from '../items/equipment.ts';
 import { effSkillOf, skillBonusBreakdown } from './skills-and-hp.ts';
-import { dispFloor, fmtRoll } from '../dice-and-army-names.ts';
+import { fmtRoll } from '../dice-and-army-names.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { botKnownSkills } from '../bots/missions.ts';
 import { skillLevel } from '../titles/perks.ts';
 
