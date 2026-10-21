@@ -19,7 +19,7 @@ import {
   reckoningThresholdFor,
   reckoningWinner,
 } from '../titles/reckoning.ts';
-import { areAllied, relKeyOf } from '../realms/relations-and-captures.ts';
+import { areAllied, realmHasMet, relKeyOf } from '../realms/relations-and-captures.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
 
 // ── DIPLOMACY RESOLUTION AND VICTORY (plan P1-08k4: two stages taken out of resolveTurn's own body) ────────────────
@@ -58,7 +58,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
     const validDecl = (from, to) => {
       const d = diploDeclarations[from] && diploDeclarations[from][to];
       if (d !== 'treat' && d !== 'enemy') return null;
-      if (!((G.players[from] && G.players[from]._encountered) || []).includes(to)) return null; // must have met them
+      if (!realmHasMet(turnContext, from, to)) return null; // must have met them
       // 2026-10-08 (Toby item 3b): in a game of three realms or fewer no alliance can be forged, so
       // a Treat between two NEUTRAL realms can achieve nothing. The portal never offers it; a bot's
       // is dropped here, so nobody is asked to answer an offer that cannot be accepted.

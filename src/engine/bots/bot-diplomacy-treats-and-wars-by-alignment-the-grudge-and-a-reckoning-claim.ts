@@ -2,7 +2,7 @@
 import { safeStartLocked } from '../army-tables.ts';
 import { botAlignFriendly } from './intel.ts';
 import { BOT_WAR, botOwnPower, botRivalPower, botWarAssess } from './war.ts';
-import { areAllied, relationBetween } from '../realms/relations-and-captures.ts';
+import { areAllied, realmHasMet, relationBetween } from '../realms/relations-and-captures.ts';
 
 // ── BOT DIPLOMACY: TREATS AND WARS BY ALIGNMENT, THE GRUDGE AND A RECKONING CLAIM (plan P1-08l1: lifted out of
 // resolveTurn) ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -50,14 +50,15 @@ export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(
   // pact can only be sealed by a MUTUAL treat, refusing to offer is enough to make an alliance (or
   // even a return to peace) impossible. Stored on the bot's own player record so it survives the
   // save, and recorded from the raw declarations before they are resolved, so the grudge is already
-  // in force on the very turn war is declared.
+  // in force on the very turn war is declared: but only from a war the resolution would read (on a bot
+  // the realm has met).
   Object.keys(diploDeclarations).forEach((k) => {
     const from = Number(k);
     if (!Number.isInteger(from) || _botPlayerIdx.has(from)) return; // human declarations only
     const decl = diploDeclarations[from] || {};
     Object.keys(decl).forEach((k2) => {
       const to = Number(k2);
-      if (decl[k2] !== 'enemy' || !_botPlayerIdx.has(to)) return;
+      if (decl[k2] !== 'enemy' || !_botPlayerIdx.has(to) || !realmHasMet(turnContext, from, to)) return;
       const bp = (G.players || [])[to];
       if (!bp) return;
       if (!Array.isArray(bp.botGrudges)) bp.botGrudges = [];

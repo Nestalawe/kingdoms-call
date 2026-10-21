@@ -10,7 +10,9 @@
 // Safe Start's refusal), research choices, Reckoning call, messages and concession taken for the stages that act on
 // them; orders sent for another turn refused, and told; the orders written for a hero it means to raise, hire or charm
 // held until that lands; a conceded realm's heroes made to hold; its encounter plans set (or held, for a hero not yet
-// its own); and a new heir's skills, name and temper applied.
+// its own); and a new heir's skills, name and temper applied. What a realm sends is taken only for its own heroes (the
+// rest set aside, and the GM told); a plan keeps only the fields a plan has; an heir's skills are taken only as his
+// crowned skills plus at most his points.
 // scenario/set-up-and-order-merge-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/set-up-and-order-merge-called-directly.test.ts calls the two stages directly on the staged world. A case stages
 // its world and what each realm sends; after the turn it reads what it needs from the world (as the first phase began,
@@ -248,6 +250,15 @@ export const heir = (b: Board, pi = 0) => {
   Object.assign(h, { _isHeir: true, _pendingSkillAllocation: 4, temper: 'Cautious' });
   return h;
 };
+/** A newly crowned heir of realm `pi`, as `heir` makes him, crowned with `skills`. */
+export const heirCrownedWith = (b: Board, pi: number, skills: Record<string, number>) =>
+  Object.assign(heir(b, pi), { skills: { ...skills } });
+/** The GM's line when a realm's orders name heroes not in its service (by the ids as sent): those parts are set aside. */
+export const notInService = (realmName: string, ids: (string | number)[]) =>
+  `⚠ Set aside from ${realmName}'s orders: what it sent for heroes not in its service (${ids.map(String).join(', ')}).`;
+/** The GM's line when a realm sends skills for its heir that aren't his crowned skills plus at most `points` more. */
+export const heirSkillsSetAside = (realmName: string, heirName: string, points: number) =>
+  `⚠ Set aside from ${realmName}'s orders: skills for its heir ${heirName} that are not his crowned skills plus at most ${String(points)} points (no more than 2 in one skill); he keeps his crowned skills.`;
 /** The game's Sage discovery `id`, as the data file has it. */
 export const discovery = (b: Board, id: string) =>
   JSON.parse(vm.runInContext(`JSON.stringify(DISC_BY_ID[${JSON.stringify(id)}])`, b.engine) as string) as {
@@ -644,7 +655,7 @@ export const READ_CASES: SetUpCase[] = [
     merged: (m, s) => ({ got: { orders: mergedOrders(m, s) }, want: { orders: MOVE_REST } }),
   },
   {
-    name: 'orders sent without encounter plans are read as the older form: no hero’s phases are found, so the hero Defends (the list of messages is kept as if a hero’s)',
+    name: 'orders sent without encounter plans are read as the older form: no hero’s phases are found, so the hero Defends (the list of messages, no hero of the realm’s, is set aside)',
     stage: (b) => {
       const s = marcher(b);
       return { ...s, slots: { 1: { orders: JSON.stringify(sentAs(b, s, 1, {}, 'encounterPlans')) } } };
@@ -652,7 +663,7 @@ export const READ_CASES: SetUpCase[] = [
     check: (o, s) => ({ got: marched(o, s), want: STOOD(s) }),
     merged: (m, s) => ({
       got: { orders: mergedOrders(m, s), keys: orderedHeroes(m.G).filter((k) => !/^\d+$/.test(k)) },
-      want: { orders: NO_ORDERS, keys: ['messages'] },
+      want: { orders: NO_ORDERS, keys: [] },
     }),
   },
   {
@@ -1401,7 +1412,7 @@ export const HELD_ORDER_CASES: SetUpCase[] = [
     }),
   },
   {
-    name: 'a written key that doesn’t match the form is kept as if a hero’s, and nobody has it',
+    name: 'a written key that doesn’t match the form names no hero of the realm’s: it is set aside, and held for nobody',
     stage: () => ({
       sends: {
         1: {
@@ -1422,14 +1433,7 @@ export const HELD_ORDER_CASES: SetUpCase[] = [
         held: [held(o.first, '_pendingResurrectOrders'), held(o.first, '_pendingHireOrders')],
       },
       want: {
-        keys: [
-          '9z',
-          'charm_7_via_x_ph1',
-          'hired_5_ph1',
-          'resurrect_5_via_hired_3_via_1_ph0_ph2',
-          'resurrect_6_via_3_ph2x',
-          'resurrect_x_via_3_ph1',
-        ],
+        keys: [],
         held: [[], []],
       },
     }),
@@ -1440,14 +1444,7 @@ export const HELD_ORDER_CASES: SetUpCase[] = [
         nine: ordersOf(m.G, 9),
       },
       want: {
-        keys: [
-          '9z',
-          'charm_7_via_x_ph1',
-          'hired_5_ph1',
-          'resurrect_5_via_hired_3_via_1_ph0_ph2',
-          'resurrect_6_via_3_ph2x',
-          'resurrect_x_via_3_ph1',
-        ],
+        keys: [],
         held: [[], [], []],
         nine: null,
       },
@@ -1458,6 +1455,7 @@ export const HELD_ORDER_CASES: SetUpCase[] = [
 // ── Encounter plans ──────────────────────────────────────────────────────────────────────────────────────────────
 const FLEE = { tactics: ['FL'], duelStance: 'refuse' };
 const STAND = { tactics: ['MA', 'MA'], duelStance: 'accept' };
+const FULL = { tactics: ['FL', 'CS:white'], notes: 'For the crown!', duelStance: 'refuse', evilMode: 'enslave' };
 export const PLAN_CASES: SetUpCase[] = [
   {
     name: 'a realm’s encounter plan for its hero is set, and kept for later turns',
@@ -1529,6 +1527,51 @@ export const PLAN_CASES: SetUpCase[] = [
     merged: (m) => ({ got: { held: held(m.G, '_pendingSynthPlans') }, want: { held: [] } }),
   },
   {
+    name: 'an encounter plan keeps only the fields a plan has: its tactics, notes, duel stance and conquest doctrine',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      const sent = { ...FULL, _botStance: true, _auto: true, hp: 99 };
+      return { hero: h, sends: { 1: { encounterPlans: { [h.id]: sent } } } };
+    },
+    check: (o, s) => ({ got: { plan: charIn(o.world, hero(s))['encounterPlan'] }, want: { plan: FULL } }),
+    merged: (m, s) => ({ got: { plan: charIn(m.G, hero(s))['encounterPlan'] }, want: { plan: FULL } }),
+  },
+  {
+    name: 'a field of a plan sent as the wrong kind is not kept, nor a tactic that isn’t text',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      const sent = { tactics: ['FL', 5], notes: 7, duelStance: 'refuse', evilMode: null };
+      return { hero: h, sends: { 1: { encounterPlans: { [h.id]: sent } } } };
+    },
+    check: (o, s) => ({ got: { plan: charIn(o.world, hero(s))['encounterPlan'] }, want: { plan: FLEE } }),
+    merged: (m, s) => ({ got: { plan: charIn(m.G, hero(s))['encounterPlan'] }, want: { plan: FLEE } }),
+  },
+  {
+    name: 'a plan sent as text, not as a plan, leaves the hero’s plan as it was',
+    stage: (b) => {
+      const h = realmHero(b, 1, { encounterPlan: STAND });
+      return { hero: h, sends: { 1: { encounterPlans: { [h.id]: 'FL' } } } };
+    },
+    check: (o, s) => ({ got: { plan: charIn(o.world, hero(s))['encounterPlan'] }, want: { plan: STAND } }),
+    merged: (m, s) => ({ got: { plan: charIn(m.G, hero(s))['encounterPlan'] }, want: { plan: STAND } }),
+  },
+  {
+    name: 'a plan held for a hero to be hired keeps only the fields a plan has',
+    stage: (b) => {
+      const w = wanderer(b);
+      const sent = { ...FULL, _botStance: true, hp: 99 };
+      return { hero: w, sends: { 2: { encounterPlans: { [`hired_${String(w.id)}_via_9_ph1`]: sent } } } };
+    },
+    check: (o, s) => ({
+      got: { held: held(o.first, '_pendingSynthPlans') },
+      want: { held: [{ heroId: hero(s).id, player: 2, plan: FULL }] },
+    }),
+    merged: (m, s) => ({
+      got: { held: held(m.G, '_pendingSynthPlans') },
+      want: { held: [{ heroId: hero(s).id, player: 2, plan: FULL }] },
+    }),
+  },
+  {
     name: 'a plan for a hero nobody has is set on nobody, and the turn goes on',
     stage: (b) => ({ ...marcher(b), sends: { 1: { encounterPlans: { 987654: FLEE } } } }),
     check: (o, s) => ({ got: marched(o, s), want: MARCHED(s) }),
@@ -1550,12 +1593,39 @@ const heirOf = (w: World, c: Character) => {
     allocation: h['_pendingSkillAllocation'] ?? null,
   };
 };
+/** An heir's crowned skills, and those skills with his four points placed (one each in melee, tactical, march, spy). */
+const CROWNED = { melee: 2, tactical: 1, march: 1 };
 const SKILLS = { melee: 3, tactical: 2, march: 2, spy: 1 };
+/** The name an heir is crowned with, where a case needs it after the merge has renamed him. */
+const CROWNED_AS = 'Edric the Young';
+/** Realm 1's heir, crowned with CROWNED as CROWNED_AS, sent `skills` (named and tempered as the first case). */
+const heirSent = (b: Board, skills: unknown, extra: Raw = {}): Staged => {
+  const h = Object.assign(heirCrownedWith(b, 1, CROWNED), { name: CROWNED_AS }, extra);
+  return { hero: h, sends: { 1: { kingSkills: { [h.id]: { skills, name: 'Aldric the Bold', temper: 'Brave' } } } } };
+};
+/** The heir after a set-aside: his crowned skills, but the name and temper chosen, and an heir no longer. */
+const KEPT_CROWN = { skills: CROWNED, name: 'Aldric the Bold', temper: 'Brave', heir: false, allocation: null };
+/** A case where realm 1's heir is sent `skills` that aren't his crowned skills plus at most his points. */
+const setAside = (name: string, skills: unknown, extra: Raw = {}, points = 4): SetUpCase => ({
+  name,
+  stage: (b) => heirSent(b, skills, extra),
+  check: (o, s) => ({
+    got: { heir: heirOf(o.first, hero(s)), told: told(o, heirSkillsSetAside(nm(o, 1), CROWNED_AS, points)) },
+    want: { heir: KEPT_CROWN, told: [{ targets: [], public: false }] },
+  }),
+  merged: (m, s) => ({
+    got: { heir: heirOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+    want: {
+      heir: KEPT_CROWN,
+      warnings: [heirSkillsSetAside(nameOf(must(s.board, 'board'), 1), CROWNED_AS, points)],
+    },
+  }),
+});
 export const HEIR_CASES: SetUpCase[] = [
   {
     name: 'a new heir is given the skills, name and temper his realm chose, and is an heir no longer',
     stage: (b) => {
-      const h = heir(b, 1);
+      const h = heirCrownedWith(b, 1, CROWNED);
       return {
         hero: h,
         sends: { 1: { kingSkills: { [h.id]: { skills: SKILLS, name: '  Aldric the Bold  ', temper: 'Brave' } } } },
@@ -1570,6 +1640,48 @@ export const HEIR_CASES: SetUpCase[] = [
       want: { heir: { skills: SKILLS, name: 'Aldric the Bold', temper: 'Brave', heir: false, allocation: null } },
     }),
   },
+  {
+    name: 'an heir may be given fewer points than he has (two in one skill): the rest are not kept for later',
+    stage: (b) => heirSent(b, { melee: 4, tactical: 1, march: 1 }),
+    check: (o, s) => ({
+      got: { heir: heirOf(o.first, hero(s)), told: starting(o, '⚠ Set aside') },
+      want: { heir: { ...KEPT_CROWN, skills: { melee: 4, tactical: 1, march: 1 } }, told: [] },
+    }),
+    merged: (m, s) => ({
+      got: { heir: heirOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: { heir: { ...KEPT_CROWN, skills: { melee: 4, tactical: 1, march: 1 } }, warnings: [] },
+    }),
+  },
+  setAside(
+    'an heir’s skills are his crowned skills plus at most his points: more points are set aside, he keeps his crowned skills, and the GM is told',
+    { melee: 4, tactical: 3, march: 2 },
+  ),
+  setAside('an heir is given no more than two points in one skill: three are set aside', {
+    melee: 5,
+    tactical: 1,
+    march: 1,
+  }),
+  setAside('an heir’s skills never fall below his crowned skills: a skill lowered to raise others is set aside', {
+    melee: 1,
+    tactical: 1,
+    march: 1,
+    spy: 2,
+    sage: 2,
+  }),
+  setAside('an heir’s skills are skills the game has: one it doesn’t know is set aside', {
+    melee: 2,
+    tactical: 1,
+    march: 1,
+    flying: 1,
+  }),
+  setAside('an heir’s skill levels are whole numbers: a fraction is set aside', { melee: 2.5, tactical: 1, march: 1 }),
+  setAside('an heir’s skills sent as a list, not by skill, are set aside', [3, 2, 2]),
+  setAside(
+    'the points an heir may place are those the game gave him, whatever the orders say: two points, sent three, are set aside',
+    { melee: 3, tactical: 2, march: 2 },
+    { _pendingSkillAllocation: 2 },
+    2,
+  ),
   {
     name: 'an heir’s name is cut to 40 letters, once the spaces around it are gone',
     stage: (b) => {
@@ -1631,6 +1743,126 @@ export const HEIR_CASES: SetUpCase[] = [
   },
 ];
 
+// ── Only a realm's own heroes take what it sends ─────────────────────────────────────────────────────────────────
+/** Realm 0's hero in the middle, and realm 1's orders naming him: march to the province next to the middle. */
+const namedBy1 = (b: Board, extra: Raw = {}): Staged => {
+  const h = realmHero(b, 0, extra);
+  return { hero: h, there: ring1(b, 0), sends: { 1: { orders: { [h.id]: plan(order('move', ring1(b, 0).id)) } } } };
+};
+const RESTS = [REST, REST, REST, REST, REST];
+/** The GM's line for the case's hero, named by realm 1 (in a whole turn, or called directly). */
+const toldOf1 = (o: Outcome, s: Staged) => told(o, notInService(nm(o, 1), [hero(s).id]));
+const warnedOf1 = (s: Staged) => [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).id])];
+const GM_ONLY = [{ targets: [], public: false }];
+export const OWN_CASES: SetUpCase[] = [
+  {
+    name: 'a hero takes orders only from his own realm: another realm’s orders for him are set aside, the GM is told, and he does as his own realm ordered',
+    stage: (b) => namedBy1(b),
+    check: (o, s) => ({
+      got: { orders: ordersOf(o.first, hero(s)), at: whereIs(o.world, hero(s)), told: toldOf1(o, s) },
+      want: { orders: RESTS, at: hero(s).location, told: GM_ONLY },
+    }),
+    merged: (m, s) => ({
+      got: { orders: ordersOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: { orders: RESTS, warnings: warnedOf1(s) },
+    }),
+  },
+  {
+    name: 'a hero takes orders only from his own realm, whichever row comes first',
+    stage: (b) => ({ ...namedBy1(b), rowOrder: [1, 0, 2] }),
+    check: (o, s) => ({
+      got: { orders: ordersOf(o.first, hero(s)), at: whereIs(o.world, hero(s)) },
+      want: { orders: RESTS, at: hero(s).location },
+    }),
+    merged: (m, s) => ({ got: { orders: ordersOf(m.G, hero(s)) }, want: { orders: RESTS } }),
+  },
+  {
+    name: 'a wandering hero takes no realm’s orders: they are set aside, and the GM is told',
+    stage: (b) => {
+      const w = wanderer(b);
+      return { hero: w, sends: { 1: { orders: { [w.id]: plan(order('move', ring1(b, 0).id)) } } } };
+    },
+    check: (o, s) => ({
+      got: { orders: ordersOf(o.first, hero(s)), told: toldOf1(o, s) },
+      want: { orders: null, told: GM_ONLY },
+    }),
+    merged: (m, s) => ({
+      got: { orders: ordersOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: { orders: null, warnings: warnedOf1(s) },
+    }),
+  },
+  {
+    name: 'a hero’s encounter plan is set only by his own realm: another realm’s is set aside, and the GM is told',
+    stage: (b) => {
+      const h = realmHero(b, 0, { encounterPlan: STAND });
+      return { hero: h, sends: { 1: { encounterPlans: { [h.id]: FLEE } } } };
+    },
+    check: (o, s) => ({
+      got: { plan: charIn(o.world, hero(s))['encounterPlan'], told: toldOf1(o, s) },
+      want: { plan: STAND, told: GM_ONLY },
+    }),
+    merged: (m, s) => ({
+      got: { plan: charIn(m.G, hero(s))['encounterPlan'], warnings: collected(m, 'staleOrderWarnings') },
+      want: { plan: STAND, warnings: warnedOf1(s) },
+    }),
+  },
+  {
+    name: 'an heir’s skills, name and temper are chosen only by his own realm: another realm’s choices are set aside, he is still an heir, and the GM is told',
+    stage: (b) => {
+      const h = heirCrownedWith(b, 0, CROWNED);
+      return {
+        hero: h,
+        sends: { 1: { kingSkills: { [h.id]: { skills: SKILLS, name: 'Usurper', temper: 'Brave' } } } },
+      };
+    },
+    check: (o, s) => ({
+      got: { heir: heirOf(o.first, hero(s)), told: toldOf1(o, s) },
+      want: {
+        heir: { skills: CROWNED, name: hero(s).name, temper: 'Cautious', heir: true, allocation: 4 },
+        told: GM_ONLY,
+      },
+    }),
+    merged: (m, s) => ({
+      got: { heir: heirOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: {
+        heir: { skills: CROWNED, name: hero(s).name, temper: 'Cautious', heir: true, allocation: 4 },
+        warnings: warnedOf1(s),
+      },
+    }),
+  },
+  {
+    name: 'what a realm sends for heroes not its own is told to the GM in one line, each hero once, in the order sent',
+    stage: (b) => {
+      const h = realmHero(b, 0, { encounterPlan: STAND });
+      const w = wanderer(b);
+      return {
+        hero: h,
+        others: [w],
+        sends: {
+          1: {
+            orders: { [h.id]: plan(order('rest')), [w.id]: plan(order('rest')) },
+            encounterPlans: { [h.id]: FLEE },
+          },
+        },
+      };
+    },
+    check: (o, s) => ({
+      got: { told: told(o, notInService(nm(o, 1), [hero(s).id, other(s, 0).id])) },
+      want: { told: GM_ONLY },
+    }),
+    merged: (m, s) => ({
+      got: { warnings: collected(m, 'staleOrderWarnings') },
+      want: { warnings: [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).id, other(s, 0).id])] },
+    }),
+  },
+  {
+    name: 'a realm whose orders name only its own heroes is told nothing',
+    stage: (b) => marcher(b),
+    check: (o) => ({ got: { told: starting(o, '⚠ Set aside') }, want: { told: [] } }),
+    merged: (m) => ({ got: { warnings: collected(m, 'staleOrderWarnings') }, want: { warnings: [] } }),
+  },
+];
+
 // ── The turn's record of orders ──────────────────────────────────────────────────────────────────────────────────
 const recordOf = (o: Outcome, pi: number) => must(o.record[String(pi)], 'the record of realm ' + String(pi));
 export const RECORD_CASES: SetUpCase[] = [
@@ -1687,5 +1919,6 @@ export const SET_UP_CASES: [string, SetUpCase[]][] = [
   ['orders held for a hero to come', HELD_ORDER_CASES],
   ['encounter plans', PLAN_CASES],
   ['a new heir’s choices', HEIR_CASES],
+  ['only a realm’s own heroes', OWN_CASES],
   ['the turn’s record of orders', RECORD_CASES],
 ];

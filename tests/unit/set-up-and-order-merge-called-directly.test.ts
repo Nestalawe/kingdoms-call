@@ -8,7 +8,8 @@
 // save doesn't have, the per-turn lists missing when the merge runs, a save with no map or gaps in it. Properties
 // (fast-check): the repairs leave every living hero of a realm, and only them, five empty phases, the five per-turn
 // lists empty, each living hero's own realm in his record once, a people's race on every unclaimed hero who wore a
-// beast's, and no stranded hull's marker; the merge writes exactly the hero orders a realm sends as lists, holds exactly
+// beast's, and no stranded hull's marker; the merge writes exactly the hero orders a realm sends as lists for its own
+// heroes, holds exactly
 // the written orders in their lists with their numbers read, and nothing of a payload for another turn; a conceded
 // realm's living heroes always hold; declarations are taken, or refused under Safe Start, exactly as the rule says.
 // Level 1: two functions, called with the context resolveTurn hands them.
@@ -472,9 +473,14 @@ describe('The set-up: properties', () => {
     );
   });
 
-  test('the merge writes exactly the hero orders a realm sends as lists, holds exactly the written orders in their lists with their numbers read, in order, and passes over the column’s order', () => {
+  test('the merge writes exactly the hero orders a realm sends as lists for its own heroes, holds exactly the written orders in their lists with their numbers read, in order, and passes over the column’s order', () => {
     const entry = fc.oneof(
-      fc.record({ kind: fc.constant('hero' as const), id: fc.integer({ min: 1, max: 60 }), list: fc.boolean() }),
+      fc.record({
+        kind: fc.constant('hero' as const),
+        id: fc.integer({ min: 1, max: 60 }),
+        king: fc.option(fc.constantFrom(0, 1, 2), { nil: undefined }),
+        list: fc.boolean(),
+      }),
       fc.record({
         kind: fc.constantFrom('resurrect' as const, 'charm' as const),
         hero: fc.integer({ min: 0, max: 99 }),
@@ -494,9 +500,18 @@ describe('The set-up: properties', () => {
         const b = fresh();
         setUp(b.tc);
         const sends: Record<number, { orders: Raw }> = { 0: { orders: {} }, 1: { orders: {} }, 2: { orders: {} } };
+        const kingIdOf = (pi: number) =>
+          String(
+            must(
+              b.G.characters.find((c) => c.isKing && c.player === pi),
+              'king',
+            ).id,
+          );
         const keyOf = (e: (typeof sent)[number][1]) =>
           e.kind === 'hero'
-            ? String(e.id)
+            ? e.king === undefined
+              ? String(e.id)
+              : kingIdOf(e.king)
             : e.kind === 'column'
               ? 'heroOrder'
               : `${e.kind}_${String(e.hero)}_via_${String(e.by)}_ph${String(e.ph)}`;
@@ -509,7 +524,10 @@ describe('The set-up: properties', () => {
         const kings = b.G.characters.map((c) => String(c.id));
         given(b, rowsOf(b, { sends }));
         merge(b.tc);
-        const written = [...last.values()].filter(([, e]) => e.kind === 'hero' && e.list).map(([, e]) => keyOf(e));
+        const itsOwn = (pi: number, k: string) => b.G.characters.some((c) => String(c.id) === k && c.player === pi);
+        const written = [...last.values()]
+          .filter(([pi, e]) => e.kind === 'hero' && e.list && itsOwn(pi, keyOf(e)))
+          .map(([, e]) => keyOf(e));
         expect(orderedHeroes(b.G)).toEqual([...new Set([...kings, ...written])].sort());
         const want = (kind: string) =>
           [0, 1, 2].flatMap((pi) =>

@@ -133,6 +133,11 @@ export function areEnemies(turnContext, a, b) {
 export function areAllied(turnContext, a, b) {
   return relationBetween(turnContext, a, b) === 'allied';
 }
+// A realm may declare a Treat or war only on a realm it has met (its record of meetings): diplomacy's resolution reads
+// no other declaration, and the bots' grudge is recorded only from a war it would read.
+export function realmHasMet(turnContext, from, to) {
+  return (((turnContext.G.players || [])[from] || {})._encountered || []).includes(to);
+}
 // a valid RETREAT destination is a FRIENDLY province — one the player owns, or one held by an
 // ally. Never a neutral or enemy province (a beaten force cannot fall back onto ground it does
 // not hold).

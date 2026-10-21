@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { safeStartLocked } from '../army-tables.ts';
+import { KC_SKILLS } from '../../content/kingdoms-call-data.ts';
 import { RACES_P, TEMPERS_P } from '../world/tables.ts';
 import { normaliseOwnedNames, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
 import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
@@ -21,7 +22,9 @@ import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 //      Safe Start's refusal), research choices, Reckoning call, messages and concession collected for later stages,
 //      orders stamped for another turn refused, the orders of heroes it means to hire, raise or charm held until the
 //      order lands, every other hero's phases written, a conceded realm's heroes made to hold, its encounter plans
-//      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied.
+//      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied. A realm's orders,
+//      encounter plans and heir's choices are taken only for its own heroes (the rest set aside, and the GM told); a
+//      plan keeps only the fields a plan has; an heir's skills only as his crowned skills plus at most his points.
 // But for the first, each takes the turn's context (src/engine/turn/context.ts) and nothing else: the merge makes the
 // collectors afresh each turn, joins them to the context and fills them (staleOrderWarnings, diploDeclarations,
 // safeStartRefused, discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read there
@@ -113,6 +116,45 @@ export function turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext) 
     });
 }
 
+// A hero of realm `pi`, by his id as a realm's orders name him (the id's digits alone), or null.
+function heroOfTheRealm(G, pi, charId) {
+  const key = String(charId);
+  if (!/^\d+$/.test(key)) return null;
+  const ch = (G.characters || []).find((c) => c && String(c.id) === key);
+  return ch && ch.player === pi ? ch : null;
+}
+
+// An encounter plan as a realm sends it, kept to the fields a plan has (its tactics, notes, duel stance and an Evil
+// hero's conquest doctrine), each of its kind; null when what was sent is no plan.
+function encounterPlanAsAPlanHasIt(plan) {
+  if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return null;
+  const kept = {};
+  if (Array.isArray(plan.tactics)) kept.tactics = plan.tactics.filter((t) => typeof t === 'string');
+  if (typeof plan.notes === 'string') kept.notes = plan.notes;
+  if (typeof plan.duelStance === 'string') kept.duelStance = plan.duelStance;
+  if (typeof plan.evilMode === 'string') kept.evilMode = plan.evilMode;
+  return kept;
+}
+
+// A new heir's skills as his realm sends them, if they are his crowned skills (as the save holds them) plus at most the
+// points he may place (_pendingSkillAllocation), no more than 2 in one skill (the player portal's rule, as for a new
+// king), each a skill the game has, at a whole level; otherwise null.
+function heirsSkillsWithinHisPoints(ch, sent) {
+  if (!sent || typeof sent !== 'object' || Array.isArray(sent)) return null;
+  const crowned = ch.skills || {};
+  const points = Number.isInteger(ch._pendingSkillAllocation) ? ch._pendingSkillAllocation : 0;
+  if (Object.keys(sent).some((k) => !KC_SKILLS.includes(k) || !Number.isInteger(sent[k]))) return null;
+  let placed = 0;
+  for (const k of KC_SKILLS) {
+    const was = crowned[k] || 0;
+    const now = sent[k] ?? was;
+    if (now < was || now - was > 2) return null;
+    placed += now - was;
+  }
+  if (placed > points) return null;
+  return { ...crowned, ...sent };
+}
+
 export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans(turnContext) {
   const { freshPlayers, G, expectedTurnToRun } = turnContext;
   // Encounter plans persist across turns until the player changes them, so we do NOT wipe them here
@@ -196,6 +238,12 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
         );
         return; // skip this player's stale orders entirely
       }
+      const realmName = G.players[gp.player_index]?.name || 'a player';
+      // What the realm sent for heroes not in its service, set aside (the GM is told, once, below).
+      const notItsOwn = [];
+      const setAside = (charId) => {
+        if (!notItsOwn.includes(String(charId))) notItsOwn.push(String(charId));
+      };
       Object.entries(ordersObj).forEach(([charId, phaseOrders]) => {
         if (charId === 'heroOrder') return; // an array, but not a character's phase orders
         if (!Array.isArray(phaseOrders)) return;
@@ -255,6 +303,10 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
           });
           return;
         }
+        if (!heroOfTheRealm(G, gp.player_index, charId)) {
+          setAside(charId);
+          return;
+        }
         G.turnOrders[charId] = phaseOrders;
       });
       // a conceded realm's characters ALWAYS hold — override whatever was submitted.
@@ -278,19 +330,35 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
           // 2026-09-21: a plan on a card for a hero not yet in this realm's service is held until the
           // hire/raise/charm actually lands (see applyPendingSynthPlan). An encounter plan persists
           // turn to turn, so writing it here let a rival set a hero's combat stance for good.
-          if (!plan) return;
+          const kept = encounterPlanAsAPlanHasIt(plan);
+          if (!kept) return;
           if (!G._pendingSynthPlans) G._pendingSynthPlans = [];
-          G._pendingSynthPlans.push({ heroId: parseInt(syn[1]), player: gp.player_index, plan });
+          G._pendingSynthPlans.push({ heroId: parseInt(syn[1]), player: gp.player_index, plan: kept });
           return;
         }
-        const ch = G.characters.find((c) => c.id === parseInt(charId));
-        if (ch && plan) ch.encounterPlan = plan;
+        const kept = encounterPlanAsAPlanHasIt(plan);
+        if (!kept) return;
+        const ch = heroOfTheRealm(G, gp.player_index, charId);
+        if (ch) ch.encounterPlan = kept;
+        else setAside(charId);
       });
       // Apply royal-succession skill allocations to a newly-crowned heir, then retire the flags.
       Object.entries(kingSkillsObj).forEach(([charId, alloc]) => {
-        const ch = G.characters.find((c) => c.id === parseInt(charId));
-        if (ch && ch._isHeir && alloc) {
-          if (alloc.skills) ch.skills = alloc.skills;
+        if (!alloc) return;
+        const ch = heroOfTheRealm(G, gp.player_index, charId);
+        if (!ch) {
+          setAside(charId);
+          return;
+        }
+        if (ch._isHeir) {
+          if (alloc.skills) {
+            const skills = heirsSkillsWithinHisPoints(ch, alloc.skills);
+            if (skills) ch.skills = skills;
+            else
+              staleOrderWarnings.push(
+                `⚠ Set aside from ${realmName}'s orders: skills for its heir ${ch.name} that are not his crowned skills plus at most ${ch._pendingSkillAllocation || 0} points (no more than 2 in one skill); he keeps his crowned skills.`,
+              );
+          }
           // The player may christen their heir and choose the Temper they were raised with.
           const nm = String(alloc.name || '')
             .trim()
@@ -301,5 +369,9 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
           delete ch._pendingSkillAllocation;
         }
       });
+      if (notItsOwn.length)
+        staleOrderWarnings.push(
+          `⚠ Set aside from ${realmName}'s orders: what it sent for heroes not in its service (${notItsOwn.join(', ')}).`,
+        ); // logged (to the GM alone) once the log() helper exists
     });
 }
