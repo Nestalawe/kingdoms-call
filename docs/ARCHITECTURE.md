@@ -785,9 +785,19 @@ strictly, and the site's since P1-09e (`npm run typecheck`, `tsconfig.json`); ES
 `.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). Prettier formats the site's own
 TypeScript and CSS in `src/` too (since P1-09c), and `public/`'s two scripts, but not the HTML templates, where
 whitespace is content, nor `public/vendor/`. ESLint lints the site's modules (`src/**/*.ts`) in a tier of their own
-(P1-09e): ESLint's recommended rules and typescript-eslint's `strict` set, which read the code, not its types (the
-type-aware rules stay off for `src/` until P1-10), each a warning: what they found as the code became TypeScript (347
-findings) is counted by the ratchet (`eslintWarnings`), so it only falls. Four rules are errors. `ban-ts-comment`: a
+(P1-09e): ESLint's recommended rules and typescript-eslint's `strict` set, which read the code, not its types. A file
+of `src/` that TypeScript checks (its first line doesn't switch the check off) gets typescript-eslint's two type-aware
+sets too, `strictTypeChecked` and `stylisticTypeChecked`, as the tests and tools do (P1-13b); a file TypeScript skips
+doesn't, since with nothing checked every value is `any`. `eslint.config.js` reads which files are which from the
+files themselves, so a file freed from the switch-off meets the type-aware sets in that same PR. Only one rule of those
+sets is off: `non-nullable-type-assertion-style`, which asks for `x!` where `no-non-null-assertion` forbids it.
+**Every rule is an error; none warns** (P1-13b). What the rules found when they came in (809 findings: the 346 the
+site's tier found as the code became TypeScript, and what the type-aware sets found) is listed in
+`eslint-suppressions.json`, ESLint's own bulk suppressions, per file and rule with a count. The command line reads it
+(`npm run lint`, `npm run check`, the edit hook): a new finding fails, and a listed one that no longer occurs fails too
+until it is taken out of the list (`npx eslint --prune-suppressions`,
+[traps.md](traps.md#a-fixed-lint-finding-must-leave-the-suppressions)). The ratchet counts the list
+(`eslintSuppressions`), so it only falls. Four rules are the site's own. `ban-ts-comment`: a
 file is left unchecked only with its reason. `consistent-type-assertions` (no `as` but `as const`) and
 `no-non-null-assertion` (since P1-10a1): no claim the compiler takes on trust. And `no-undef` (since P1-09d): a file
 that reads a name it neither imports nor declares fails the lint, not the page that first runs it (P1-08a began it for
@@ -804,8 +814,8 @@ TypeScript tests that import a changed file (`vitest related`), or every level b
 since the test scripts load `site/` (built from `src/`) by file name and `vitest related` can't follow that. `npm run ratchet`
 (`tools/ratchet.ts`) keeps the counts in `tests/ratchet.json` from rising: switched-off checks, allowlist entries,
 JavaScript files, quarantined tests, tests on `tests/lib/stub-db.js`, tests on the engine's `vm` loader
-(`vmLoaderTests`, P1-09d: P1-14 moves them to the engine's modules), the site's lint warnings (`eslintWarnings`,
-P1-09e), the import rules' known violations (`knownArchitectureViolations`) and what knip finds unused (`unusedCode`,
+(`vmLoaderTests`, P1-09d: P1-14 moves them to the engine's modules), ESLint's suppressed findings
+(`eslintSuppressions`, P1-13b; the site's lint warnings, `eslintWarnings`, before it), the import rules' known violations (`knownArchitectureViolations`) and what knip finds unused (`unusedCode`,
 both P1-13a). `tests/static/harness.test.ts` fails if any
 of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a
 dangerous path.

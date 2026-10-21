@@ -476,6 +476,26 @@ table with a key left out.
   `(x || {}).y`, `catch (e)` then `e.message`, `.filter(Boolean)`, and a literal table read by any string.
 - **Don't write the line's text in a comment:** the ratchet and `tests/static/harness.test.ts` count it anywhere in
   a file of `src/`. Say "its ts-nocheck line" instead.
+- **A freed file meets the type-aware lint rules** in the same PR ([below](#a-fixed-lint-finding-must-leave-the-suppressions)):
+  fix what they find, or suppress it with `npx eslint --suppress-all <file>`. That PR may raise `eslintSuppressions`
+  by that file's findings alone, and lists them (plan P1-13, Decision 5).
+
+## A fixed lint finding must leave the suppressions
+
+Since P1-13b every lint rule is an error. What the rules found when they came in (809 findings) is listed in
+`eslint-suppressions.json`: ESLint's bulk suppressions, which say, per file and rule, how many findings that file may
+hold. ESLint's command line reads it (`npm run lint`, `npm run check`, the edit hook); its API (`new ESLint()`, as
+`tests/static/harness.test.ts` uses) doesn't. The ratchet counts the list (`eslintSuppressions`), so it only falls.
+
+- **A new finding fails**, even of a rule the file already has suppressed findings of. Once a file holds more than
+  its count, ESLint reports every finding of that rule in the file, not only the new one: `src/db/game-meta.ts` may
+  hold five unused variables, and a sixth shows all six. Fix the new one.
+- **A fixed finding fails too, until it leaves the list.** Fix one of the five and lint stops with "There are
+  suppressions left that do not occur anymore" (exit 2). Run `npx eslint --prune-suppressions`, which lowers the
+  count, then `npm run ratchet -- --update`, and commit both with the fix. Never `--pass-on-unpruned-suppressions`.
+- **Moving code moves its findings.** A function moved to another file takes its findings with it: the old file
+  holds fewer (prune it), the new one more (it fails). Run `npx eslint --suppress-all <new file>` and
+  `npx eslint --prune-suppressions`: the total stays the same, and the ratchet refuses a rise.
 
 ## A new army unit is a dozen tables
 
