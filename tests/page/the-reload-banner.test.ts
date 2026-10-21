@@ -1,14 +1,13 @@
 // The reload banner (plan P1-06, Decision 11; src/ui/shared/the-reload-banner.ts): when the game has been updated
 // while a page is open, a bar at the top says "A new version of Kingdoms Call is ready", with a Reload button. On each
-// of the two portals (the GM portal, the player portal; the Hall of Fame and the Overlord page next):
+// of the four pages that read the database (the GM portal, the player portal, the Hall of Fame, the Overlord page):
 // - the page reads version.json as it loads, then every 5 minutes, never from the browser's cache;
 // - no bar while version.json names this page's own fingerprint (its kc-page-version meta), however long it has been;
 // - another fingerprint, first seen at a check: no bar then, none at the check 9 minutes after, the bar at the check
 //   10 minutes after (GitHub's cache can hand out the old page for 10 minutes after a deploy); one bar, however many
 //   checks follow; it never reloads by itself, and its button reloads the page;
 // - a failed fetch, an error answer, an answer that isn't JSON or isn't version.json: no bar, and no console.error.
-// The rulebooks and the landing page have no data to go stale: they never read version.json (nor, until the next
-// commit, the Hall of Fame and the Overlord page).
+// The rulebooks and the landing page have no data to go stale: they never read version.json.
 // Level 4 (page): the bar is DOM on a booted page, from the page's own metas and address, with fetch, the page's clock
 // and its 5-minute timer stood in. The decision on plain values is tests/unit/a-newer-version-is-ready.test.ts. The
 // pages boot signed out, on a stand-in client that answers "no session" (no stand-in database, lib/stub-db.js: the bar
@@ -19,14 +18,13 @@ import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
 const START = Date.parse('2026-10-22T10:00:00Z');
 const MINUTE = 60_000;
 const BANNER_TEXT = "A new version of Kingdoms Call is ready. Save what you're doing, then reload.";
-const PAGES_WITH_THE_BANNER = ['kingdoms-call-gm-portal.html', 'kingdoms-call-player-portal.html'];
-const PAGES_WITHOUT_IT = [
-  'index.html',
-  'kingdoms-call-rules.html',
-  'kingdoms-call-rules-intro.html',
+const PAGES_WITH_THE_BANNER = [
+  'kingdoms-call-gm-portal.html',
+  'kingdoms-call-player-portal.html',
   'kingdoms-call-leaderboard.html',
   'kingdoms-call-overlord.html',
 ];
+const PAGES_WITHOUT_IT = ['index.html', 'kingdoms-call-rules.html', 'kingdoms-call-rules-intro.html'];
 
 /** A Supabase client with nobody signed in: every read answers nothing. */
 function signedOutClient(): unknown {

@@ -4,4 +4,5 @@
 import '../shared/kc-safe.ts';
 import '../../db/kc-db-guard.ts';
 import './main.ts';
+import '../shared/the-reload-banner.ts';
 import './globals.ts';

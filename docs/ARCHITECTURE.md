@@ -785,10 +785,17 @@ Each page's version is in its HTML, filled in by `tools/build.ts` after Vite (P1
   meta's commit, 7 characters: telemetry rows (`GM 3f2a9c1 tel3`), Hall of Fame records (`lb3`), the Stats export and
   each report's `engineStamp` carry it. `src/ui/shared/a-newer-version-of-this-page.ts` compares this page's
   fingerprint with the one `version.json` names for it: another one counts once this page has known of it for 10
-  minutes (GitHub's cache can hand out the old page for 10 minutes after a deploy). Started with the GM tab's
-  automatic-turn watcher, it reads `version.json` every 5 minutes and when the tab is shown again (at most once a
-  minute), never from the browser's cache; a failed read is no news. The GM tab's reload before a due turn asks it
-  ([above](#the-turn-engine-gm-portal)).
+  minutes (GitHub's cache can hand out the old page for 10 minutes after a deploy). The decision itself is a function
+  on plain values (`whatVersionJsonSaysOf`). The GM tab's reload before a due turn asks it
+  ([above](#the-turn-engine-gm-portal)), and so does the reload banner.
+- **The reload banner** (P1-06d, `src/ui/shared/the-reload-banner.ts`), on the four pages that read the database: each
+  page's entry (`page.ts`) imports it, which starts the watch as the page loads. It reads `version.json` then, every 5
+  minutes, and when the tab is shown again (at most once a minute), never from the browser's cache; a failed read is no
+  news, and where `version.json` can't be read (`file://`, jsdom without a `fetch`) it watches nothing. Once a newer
+  version of the page counts, a bar at the top says "A new version of Kingdoms Call is ready. Save what you're doing,
+  then reload.", with a **Reload** button: 10 to 15 minutes after a deploy that changed the page, never after one that
+  didn't. It never reloads by itself, since a player may be writing orders. The rulebooks and the landing page have no
+  data to go stale and have no banner.
 
 ## Staging
 

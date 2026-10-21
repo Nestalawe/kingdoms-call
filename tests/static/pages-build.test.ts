@@ -12,7 +12,8 @@
 //   schemas of src/schemas/ (P1-10a1), which src/ imports as types only (`import type`) until P1-15 parses a save at
 //   load: a value import of one (planted) is refused, and a type-only one (planted) leaves every bundle without it.
 // - tools/pages.ts names each page's files as Rolldown does, but a module nothing on the page reads, which Rolldown
-//   leaves out (kc-safe.ts on the Overlord page, which calls none of it). Its importsOf reads a module's imports that
+//   would leave out (none today: kc-safe.ts was one, on the Overlord page, until its reload banner called it, P1-06d;
+//   so the test now expects none on any page). Its importsOf reads a module's imports that
 //   bring code, and leaves out a type-only one (P1-10a2: engine/turn/context.ts imports the schemas' types), in every
 //   form (planted).
 // - The engine's files (tools/pages.ts's engineEntryFiles, which tests/lib/engine.ts bundles) are the data file and
@@ -293,7 +294,7 @@ describe('every file under src/ is in a page', () => {
     expect(theirs.filter((f) => !ours.includes(f))).toEqual([]);
     const leftOut = ours.filter((f) => !theirs.includes(f) && !pageEntries(page).styles.includes(f) && f !== page);
     const scriptless = !pageEntries(page).modules.length;
-    expect(leftOut).toEqual(page === 'kingdoms-call-overlord.html' ? ['ui/shared/kc-safe.ts'] : []);
+    expect(leftOut).toEqual([]);
     expect(scriptless ? theirs : []).toEqual([]);
   });
 });
