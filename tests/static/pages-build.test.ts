@@ -30,6 +30,10 @@ import { DATA_FILE, engineEntryFiles, importsOf, pageEntries, pageFiles, pageNam
 const SRC = path.join(ROOT, 'src');
 const PUBLIC = path.join(ROOT, 'public');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-pages-build-'));
+// A test that builds the site again (each build is Vite's, one per page) takes about a second here and up to 6 s on
+// CI's runners when the static tests run side by side, past Vitest's default of 5 s: its time limit is sized to the
+// work.
+const BUILDS = { timeout: 30_000 };
 afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
@@ -194,28 +198,32 @@ describe('every file under src/ is in a page', () => {
     ]);
   });
 
-  test("a type-only import of src/schemas/ from a page's module leaves every bundle without it (planted)", () => {
-    const copy = srcCopy((d) => {
-      const file = path.join(d, 'engine', 'rng.ts');
-      fs.writeFileSync(
-        file,
-        "import type { GameState } from '../schemas/saved-game-state.ts';\n" +
-          "export type { Realm } from '../schemas/saved-game-state.ts';\n" +
-          'export type StateTheDiceServe = GameState;\n' +
-          fs.readFileSync(file, 'utf8'),
-      );
-    });
-    expect(valueImportsOfTheSchemas(copy)).toEqual([]);
-    const r = build(path.join(tmp, 'site-types-only'), copy);
-    expect(Object.values(r.modules).flat().filter(isTypesOnly)).toEqual([]);
-    expect(unreached(copy, r)).toEqual([]);
-    // …and tools/pages.ts names no schema for any page either (P1-10a2: importsOf leaves type-only imports out).
-    expect(
-      pageNames(copy)
-        .flatMap((page) => pageFiles(page, copy))
-        .filter(isTypesOnly),
-    ).toEqual([]);
-  });
+  test(
+    "a type-only import of src/schemas/ from a page's module leaves every bundle without it (planted)",
+    BUILDS,
+    () => {
+      const copy = srcCopy((d) => {
+        const file = path.join(d, 'engine', 'rng.ts');
+        fs.writeFileSync(
+          file,
+          "import type { GameState } from '../schemas/saved-game-state.ts';\n" +
+            "export type { Realm } from '../schemas/saved-game-state.ts';\n" +
+            'export type StateTheDiceServe = GameState;\n' +
+            fs.readFileSync(file, 'utf8'),
+        );
+      });
+      expect(valueImportsOfTheSchemas(copy)).toEqual([]);
+      const r = build(path.join(tmp, 'site-types-only'), copy);
+      expect(Object.values(r.modules).flat().filter(isTypesOnly)).toEqual([]);
+      expect(unreached(copy, r)).toEqual([]);
+      // …and tools/pages.ts names no schema for any page either (P1-10a2: importsOf leaves type-only imports out).
+      expect(
+        pageNames(copy)
+          .flatMap((page) => pageFiles(page, copy))
+          .filter(isTypesOnly),
+      ).toEqual([]);
+    },
+  );
 
   test("tools/pages.ts's importsOf reads the imports that bring code, and not a type-only one (planted)", () => {
     const copy = srcCopy((d) => {
@@ -275,7 +283,7 @@ describe("the engine's files", () => {
   });
 });
 
-test("public/dev/ (the dev server's config) is never published", () => {
+test("public/dev/ (the dev server's config) is never published", BUILDS, () => {
   const pub = path.join(tmp, 'public');
   fs.cpSync(PUBLIC, pub, { recursive: true });
   fs.mkdirSync(path.join(pub, 'dev'), { recursive: true });
@@ -286,7 +294,7 @@ test("public/dev/ (the dev server's config) is never published", () => {
   expect(filesUnder(out)).toContain('kc-config.js');
 });
 
-test('the build writes only what changed, and removes what it no longer makes', () => {
+test('the build writes only what changed, and removes what it no longer makes', BUILDS, () => {
   const out = path.join(tmp, 'site-again');
   const first = build(out);
   expect(first.written).toHaveLength(first.files);

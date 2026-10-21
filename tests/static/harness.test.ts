@@ -211,11 +211,12 @@ describe('the lint rules', () => {
     expect(srcFiles.filter((f) => !typeChecked(f)).length).toBeGreaterThan(0);
   });
   // A planted finding of a type-aware rule (a `||` that should be `??`: it needs the value's type) is an error in a file
-  // TypeScript checks, and isn't looked for in one it skips.
+  // TypeScript checks, and isn't looked for in one it skips. ESLint builds the checked file's program first: over 4 s
+  // on CI.
   test.for([
     ['src/engine/clock.ts', true],
     ['src/engine/turn/context.ts', false],
-  ] as const)('%s: a planted type-aware finding is an error: %s', async ([file, isError]) => {
+  ] as const)('%s: a planted type-aware finding is an error: %s', { timeout: 30_000 }, async ([file, isError]) => {
     expect(typeChecked(file)).toBe(isError);
     const code = read(file) + '\nexport const planted = (x: string | undefined) => x || "a";\n';
     const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
@@ -415,7 +416,7 @@ describe('the lint rules', () => {
     ],
     ['src/engine/rng.ts', 'export const r = Math.random();\n', []],
     ['src/engine/clock.ts', 'export const t = Date.now();\n', []],
-  ] as const)('%s: planted %j finds %j', async ([file, code, expected]) => {
+  ] as const)('%s: planted %j finds %j', { timeout: 30_000 }, async ([file, code, expected]) => {
     expect(await restrictedFindings(file, code)).toEqual(expected);
   });
   test('a Math.random() and a new Date() planted in the real run-turn.ts are found', { timeout: 30_000 }, async () => {
@@ -427,14 +428,24 @@ describe('the lint rules', () => {
     expect(before).toEqual([]);
     expect(planted).toEqual([`${line} no-restricted-properties`, `${line} no-restricted-globals`]);
   });
-  // Each name the engine may not read, planted in an engine file: refused; in an exception's own file, only its name
-  // passes.
+  // Each name the engine may not read, planted in an engine file: refused. In each exception's own file its one name
+  // passes and another is still refused (the test above pins each file's whole list).
   test.for(NOT_IN_THE_ENGINE)('typeof %s planted in the engine is refused', async (name) => {
-    const code = `export const planted = typeof ${name};\n`;
-    expect(await restrictedFindings('src/engine/x.ts', code)).toEqual(['1 no-restricted-globals']);
-    for (const [file, except] of Object.entries(PURITY_EXCEPTIONS))
-      expect(await restrictedFindings(file, code), file).toEqual(name === except ? [] : ['1 no-restricted-globals']);
+    expect(await restrictedFindings('src/engine/x.ts', `export const planted = typeof ${name};\n`)).toEqual([
+      '1 no-restricted-globals',
+    ]);
   });
+  // Two of the three are files TypeScript checks, so ESLint builds their program first: up to several seconds on CI.
+  test.for(Object.entries(PURITY_EXCEPTIONS))(
+    '%s may read %s, and nothing else the engine may not',
+    { timeout: 30_000 },
+    async ([file, except]) => {
+      expect(await restrictedFindings(file, `export const planted = typeof ${except};\n`)).toEqual([]);
+      expect(await restrictedFindings(file, 'export const planted = typeof document;\n')).toEqual([
+        '1 no-restricted-globals',
+      ]);
+    },
+  );
 
   // The type assertions src/ held when the rule came in (eslint.config.js's TYPE_ASSERTIONS_KEPT, written by P1-11a3):
   // only those files may hold one, one each, and the list only shrinks (P1-10b replaces each with a check).
