@@ -2,6 +2,7 @@
 // tests honest is missing or weakened: the compiler flags, the lint rules' severities, no retries and no .only (in
 // Vitest and in Playwright), the test runs' own checks, the Node pin, the Claude Code hooks and their stop limit, the
 // CI jobs and the required "ci" check, the build that every test job, the deploy and staging run first (P1-05), the
+// deploy's and staging's build in a job that can only read, published by a job that runs no npm (P1-06a), the
 // balance job and its engine paths, the nightly random-seed run and fast-check's seed, the dangerous paths, and the
 // ratchet, the architecture rules (dependency-cruiser and knip, P1-13a), ESLint's bulk suppressions (P1-13b), and the
 // engine's purity, the dice and the project's own lint rules (P1-13c). It
@@ -945,42 +946,260 @@ describe('CI', () => {
     expect(runs('db')).toContain('supabase db lint --local --level warning --fail-on warning');
   });
 
-  test('deploy runs this workflow and publishes only when all of it passed', () => {
-    const deploy = read('.github/workflows/deploy.yml');
-    expect(deploy).toMatch(/^ {2}ci:\n {4}uses: \.\/\.github\/workflows\/ci\.yml$/m);
-    expect(deploy).toContain("needs.ci.result == 'success'");
-  });
-
-  // P1-05: what is published is built from this commit's src/, just before it is published; P1-09d: by Vite, installed
-  // from the lock file first.
-  test('deploy and staging install the build, then build site/ from src/ before they publish it', () => {
-    const deploy = read('.github/workflows/deploy.yml');
-    expect(deploy).toMatch(
-      /^ {6}- run: npm ci --ignore-scripts\n\n {6}- run: npm run build\n\n {6}- uses: actions\/upload-pages-artifact@v\d+\n {8}with:\n {10}path: site\/$/m,
-    );
-    const staging = read('.github/workflows/staging.yml');
-    const build = staging.indexOf('run: npm run build');
-    expect(build).toBeGreaterThan(0);
-    expect(staging.indexOf('run: npm ci')).toBeGreaterThan(0);
-    expect(staging.indexOf('run: npm ci')).toBeLessThan(build);
-    expect(build).toBeLessThan(staging.indexOf('> site/kc-config.js'));
-    expect(staging.indexOf('> site/kc-config.js')).toBeLessThan(staging.indexOf('cp -R site/. staging-repo/'));
-  });
-
-  // Every job that holds a secret or a deploy token installs from the lock file without running its packages' install
-  // scripts: npm ci --ignore-scripts, nothing else (the build needs none). Read from each workflow's text, job by job
-  // (each job's id two spaces in, under "jobs:"), with its comments left out; what a workflow sets above "jobs:" counts
-  // for every job in it.
-  const HOLDS_A_SECRET = /secrets\.|github\.token|id-token: write|pages: write|environment:/;
-  const AN_INSTALL = /\bnpm +(?:ci|install|i|add|update|rebuild)\b.*$/gm;
-  function installsInJobsWithSecrets(workflow: string): { checked: string[]; wrong: string[] } {
-    const text = workflow.replace(/^\s*#.*$/gm, '');
-    const [head = '', body = ''] = text.split(/^jobs:\n/m);
-    const checked: string[] = [];
-    const wrong: string[] = [];
+  // The deploy (deploy.yml) and staging (staging.yml) since P1-06a: a build job installs (npm ci --ignore-scripts) and
+  // builds site/ from this commit's src/ (P1-05; Vite since P1-09d), then hands it on as an artifact; the job that
+  // publishes it only publishes. The build job can't publish: it reads only, outside any environment, with no secret.
+  // The job that publishes, and every job that can write, runs in an environment or reads a secret, runs no npm, no
+  // npx and no build (P1-06, Decision 2). Each workflow is read from its text, job by job (each job's id two spaces in,
+  // under "jobs:"), with its comments left out.
+  interface Workflow {
+    head: string;
+    jobs: Map<string, string>;
+  }
+  function readWorkflow(text: string): Workflow {
+    const [head = '', body = ''] = text.replace(/^\s*#.*$/gm, '').split(/^jobs:\n/m);
+    const jobs = new Map<string, string>();
     for (const block of body.split(/^(?= {2}[\w-]+:\n)/m)) {
       const id = /^ {2}([\w-]+):\n/.exec(block)?.[1];
-      if (!id || !HOLDS_A_SECRET.test(head + block)) continue;
+      if (id) jobs.set(id, block);
+    }
+    return { head, jobs };
+  }
+  // The permissions set at one indent (0: the workflow's, 4: a job's), one "scope: level" each ("{}" is none);
+  // undefined when there are none at that indent.
+  function permissionsAt(text: string, indent: number): string[] | undefined {
+    const pad = ' '.repeat(indent);
+    const inline = new RegExp(`^${pad}permissions: *(\\S.*)$`, 'm').exec(text)?.[1];
+    if (inline !== undefined) return inline === '{}' ? [] : [inline];
+    const listed = new RegExp(`^${pad}permissions:\\n((?:${pad} {2}.+\\n?)*)`, 'm').exec(text)?.[1];
+    return listed
+      ?.split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+  const READS_A_SECRET = /\bsecrets(?:\.|\[| *: *inherit)/;
+  // A job can publish or holds a secret when its token can write anything (its own permissions, else the workflow's;
+  // with neither, the repository's default, which may write), it runs in an environment, or it reads a secret.
+  function canPublishOrHoldsASecret({ head }: Workflow, block: string): boolean {
+    const permissions = permissionsAt(block, 4) ?? permissionsAt(head, 0);
+    if (!permissions || permissions.some((p) => p.includes('write'))) return true;
+    return /^ {4}environment:/m.test(block) || READS_A_SECRET.test(block);
+  }
+  // npm, npx, another package manager, Vite or the build script, anywhere in the job (setup-node's npm cache too).
+  const RUNS_NPM_OR_THE_BUILD = /\b(?:npm|npx|pnpm|yarn|bun|vite)\b|tools\/build/;
+  function publishingJobsThatRunNpm(text: string): { checked: string[]; wrong: string[] } {
+    const workflow = readWorkflow(text);
+    const checked: string[] = [];
+    const wrong: string[] = [];
+    for (const [id, block] of workflow.jobs) {
+      if (!canPublishOrHoldsASecret(workflow, block)) continue;
+      checked.push(id);
+      for (const line of block.split('\n')) if (RUNS_NPM_OR_THE_BUILD.test(line)) wrong.push(`${id}: ${line.trim()}`);
+    }
+    return { checked, wrong };
+  }
+  // A job's `if:`, its folded lines joined; then whether it holds only when `guard` does: the guard is one of the
+  // expression's top-level `&&` terms, and no `||` stands at the top level beside them.
+  function conditionOf(block: string): string {
+    const m = /^ {4}if: *(.*)\n((?: {6,}.*\n?)*)/m.exec(block);
+    if (!m) return '';
+    const text = /^[>|]-?$/.test(m[1] ?? '') ? (m[2] ?? '') : (m[1] ?? '');
+    return text
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^\$\{\{(.*)\}\}$/, '$1')
+      .trim();
+  }
+  function holdsOnlyWhen(condition: string, guard: string): boolean {
+    const terms: string[] = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i < condition.length; i++) {
+      const c = condition[i];
+      if (c === '(') depth++;
+      else if (c === ')') depth--;
+      else if (depth === 0 && condition.startsWith('||', i)) return false;
+      else if (depth === 0 && condition.startsWith('&&', i)) {
+        terms.push(condition.slice(start, i).trim());
+        start = i + 2;
+      }
+    }
+    terms.push(condition.slice(start).trim());
+    return terms.includes(guard);
+  }
+  const ON_MAIN = "github.ref == 'refs/heads/main'";
+  const STATUS_FUNCTION = /\b(?:always|cancelled|failure)\(\)/;
+  // Everything that must hold of the deploy's and staging's jobs, as a list of what doesn't (empty when all holds).
+  function buildJobProblems(workflow: Workflow, id: string): string[] {
+    const block = workflow.jobs.get(id);
+    if (!block) return [`no ${id} job`];
+    const problems: string[] = [];
+    const permissions = permissionsAt(block, 4);
+    if (!permissions) problems.push(`${id}: names no permissions of its own`);
+    for (const p of permissions ?? []) if (!/^[a-z-]+: read$/.test(p)) problems.push(`${id}: ${p}`);
+    if (/^ {4}environment:/m.test(block)) problems.push(`${id}: runs in an environment`);
+    if (READS_A_SECRET.test(block)) problems.push(`${id}: reads a secret`);
+    if (!/^ {6}- run: npm ci --ignore-scripts\n\n {6}- run: npm run build\n/m.test(block)) {
+      problems.push(`${id}: doesn't install with npm ci --ignore-scripts, then build`);
+    }
+    return problems;
+  }
+  function deployProblems(text: string): string[] {
+    const workflow = readWorkflow(text);
+    const problems = buildJobProblems(workflow, 'build');
+    const build = workflow.jobs.get('build') ?? '';
+    if (
+      !/^ {6}- run: npm run build\n\n {6}- uses: actions\/upload-pages-artifact@v\d+\n {8}with:\n {10}path: site\/\n/m.test(
+        build,
+      )
+    ) {
+      problems.push("build: doesn't upload site/ as the Pages artifact right after the build");
+    }
+    if (!holdsOnlyWhen(conditionOf(build), "needs.ci.result == 'success'"))
+      problems.push('build: not only once CI passed');
+    const deploy = workflow.jobs.get('deploy') ?? '';
+    if (!/^ {4}needs: (?:build|\[(?:[\w-]+, )*build(?:, [\w-]+)*\])$/m.test(deploy))
+      problems.push("deploy: doesn't need build");
+    if (!holdsOnlyWhen(conditionOf(deploy), ON_MAIN)) problems.push('deploy: not only on main');
+    if (STATUS_FUNCTION.test(conditionOf(deploy))) problems.push('deploy: runs even when a job it needs failed');
+    if (!/^ {4}environment:\n {6}name: github-pages$/m.test(deploy))
+      problems.push('deploy: not in the github-pages environment');
+    const steps = deploy.match(/^ {6}- /gm) ?? [];
+    if (steps.length !== 1 || !/^ {8}uses: actions\/deploy-pages@v\d+$/m.test(deploy)) {
+      problems.push(`deploy: ${String(steps.length)} steps, not only actions/deploy-pages`);
+    }
+    if (!holdsOnlyWhen(conditionOf(workflow.jobs.get('migrate-production') ?? ''), ON_MAIN)) {
+      problems.push('migrate-production: not only on main');
+    }
+    return problems;
+  }
+  function stagingProblems(text: string): string[] {
+    const workflow = readWorkflow(text);
+    const problems = buildJobProblems(workflow, 'build');
+    const build = workflow.jobs.get('build') ?? '';
+    const handOff =
+      /^ {6}- (?:name: .*\n {8})?uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: site\n {10}path: site\/\n/m;
+    if (!handOff.test(build)) problems.push("build: doesn't upload site/ as the artifact site");
+    const staging = workflow.jobs.get('staging') ?? '';
+    if (!/^ {4}needs: build$/m.test(staging)) problems.push("staging: doesn't need build");
+    const download = staging.search(
+      /^ {6}- (?:name: .*\n {8})?uses: actions\/download-artifact@v\d+\n {8}with:\n {10}name: site\n {10}path: site\/\n/m,
+    );
+    const config = staging.indexOf('> site/kc-config.js');
+    const publish = staging.indexOf('cp -R site/. staging-repo/');
+    if (!(download > 0 && download < config && config < publish)) {
+      problems.push("staging: doesn't download site/, then write its kc-config.js, then publish it");
+    }
+    return problems;
+  }
+  // The same text with `from` replaced by `to` inside one job only: how a planted copy changes one job.
+  function inJob(text: string, id: string, from: string | RegExp, to: string): string {
+    const start = text.search(new RegExp(`^ {2}${id}:\\n`, 'm'));
+    const rest = text.slice(start + 1).search(/^ {2}[\w-]+:\n/m);
+    const end = rest < 0 ? text.length : start + 1 + rest;
+    const changed = text.slice(start, end).replace(from, to);
+    expect(changed, `${id}: the plant changed nothing`).not.toBe(text.slice(start, end));
+    return text.slice(0, start) + changed + text.slice(end);
+  }
+  const workflows = fs
+    .readdirSync(path.join(ROOT, '.github', 'workflows'))
+    .filter((f) => f.endsWith('.yml'))
+    .map((f) => ({ f, text: read(`.github/workflows/${f}`) }));
+  const deployText = read('.github/workflows/deploy.yml');
+  const stagingText = read('.github/workflows/staging.yml');
+
+  test('deploy runs this workflow first', () => {
+    expect(deployText).toMatch(/^ {2}ci:\n {4}uses: \.\/\.github\/workflows\/ci\.yml$/m);
+  });
+
+  test('deploy builds site/ in a job that can only read, and publishes it, on main only, in a job that only publishes', () => {
+    expect(deployProblems(deployText)).toEqual([]);
+  });
+
+  test('staging builds site/ in a job that can only read, and publishes it in a job that runs no npm', () => {
+    expect(stagingProblems(stagingText)).toEqual([]);
+  });
+
+  test('no job that can publish, runs in an environment or reads a secret runs npm, npx or the build, in any workflow', () => {
+    const checked: string[] = [];
+    for (const { f, text } of workflows) {
+      const found = publishingJobsThatRunNpm(text);
+      expect(found.wrong, f).toEqual([]);
+      checked.push(...found.checked.map((id) => `${f} ${id}`));
+    }
+    expect(checked).toEqual(
+      expect.arrayContaining(['deploy.yml migrate-production', 'deploy.yml deploy', 'staging.yml staging']),
+    );
+    expect(checked).not.toContain('deploy.yml build');
+    expect(checked).not.toContain('staging.yml build');
+  });
+
+  test('planted copies are caught: npm or the build where it publishes, a build job that can write, a missing main guard', () => {
+    const npmStep = '      - run: npm ci --ignore-scripts\n\n';
+    // An npm step in the job that publishes.
+    const deployWithNpm = inJob(deployText, 'deploy', /^( {6}- id: deployment\n)/m, `${npmStep}$1`);
+    expect(publishingJobsThatRunNpm(deployWithNpm).wrong).toEqual(['deploy: - run: npm ci --ignore-scripts']);
+    expect(deployProblems(deployWithNpm)).toEqual(['deploy: 2 steps, not only actions/deploy-pages']);
+    const stagingWithNpm = inJob(stagingText, 'staging', /^( {6}- name: Write the staging config\n)/m, `${npmStep}$1`);
+    expect(publishingJobsThatRunNpm(stagingWithNpm).wrong).toEqual(['staging: - run: npm ci --ignore-scripts']);
+    // The build back in the staging job, in place of the download.
+    const download = /^ {6}- name: Download the site the build job built\n(?: {8}.*\n)+\n/m;
+    const rebuilt = inJob(stagingText, 'staging', download, `${npmStep}      - run: npm run build\n\n`);
+    expect(publishingJobsThatRunNpm(rebuilt).wrong).toEqual([
+      'staging: - run: npm ci --ignore-scripts',
+      'staging: - run: npm run build',
+    ]);
+    expect(stagingProblems(rebuilt)).toEqual([
+      "staging: doesn't download site/, then write its kc-config.js, then publish it",
+    ]);
+    // A build job that can write.
+    const writes = (text: string, scope: string) =>
+      inJob(text, 'build', /^( {4}permissions:\n {6}contents: read\n)/m, `$1      ${scope}: write\n`);
+    const deployBuildWrites = writes(deployText, 'pages');
+    expect(deployProblems(deployBuildWrites)).toEqual(['build: pages: write']);
+    expect(publishingJobsThatRunNpm(deployBuildWrites).wrong).toEqual([
+      'build: cache: npm',
+      'build: - run: npm ci --ignore-scripts',
+      'build: - run: npm run build',
+    ]);
+    expect(stagingProblems(writes(stagingText, 'pull-requests'))).toEqual(['build: pull-requests: write']);
+    // A build job in an environment, or reading a secret.
+    const inAnEnvironment = inJob(deployText, 'build', /^( {4}permissions:\n)/m, '    environment: github-pages\n$1');
+    expect(deployProblems(inAnEnvironment)).toEqual(['build: runs in an environment']);
+    const withASecret = inJob(
+      stagingText,
+      'build',
+      /^( {6}- run: npm run build\n)/m,
+      '$1        env:\n          KEY: ${{ secrets.STAGING_DEPLOY_KEY }}\n',
+    );
+    expect(stagingProblems(withASecret)).toEqual(['build: reads a secret']);
+    // The publishing job's main guard dropped, or let through by an "or".
+    const deployIf = /^ {4}if: .*\n/m;
+    expect(deployProblems(inJob(deployText, 'deploy', deployIf, ''))).toEqual(['deploy: not only on main']);
+    const orAnyRun = `    if: ${ON_MAIN} || github.event_name == 'workflow_dispatch'\n`;
+    expect(deployProblems(inJob(deployText, 'deploy', deployIf, orAnyRun))).toEqual(['deploy: not only on main']);
+    expect(deployProblems(inJob(deployText, 'deploy', deployIf, `    if: always() && ${ON_MAIN}\n`))).toEqual([
+      'deploy: runs even when a job it needs failed',
+    ]);
+    expect(deployProblems(inJob(deployText, 'deploy', 'name: github-pages', 'name: production'))).toEqual([
+      'deploy: not in the github-pages environment',
+    ]);
+    // migrate-production's main guard dropped.
+    const migrate = inJob(deployText, 'migrate-production', ` && ${ON_MAIN}`, '');
+    expect(deployProblems(migrate)).toEqual(['migrate-production: not only on main']);
+  });
+
+  // Every install in the deploy's and staging's jobs (what they build is published), and in every job of any workflow
+  // that holds a secret or a token, is from the lock file without its packages' install scripts: npm ci
+  // --ignore-scripts, nothing else (the build needs none). What a workflow sets above "jobs:" counts for every job in it.
+  const HOLDS_A_SECRET = /secrets\.|github\.token|id-token: write|pages: write|environment:/;
+  const AN_INSTALL = /\bnpm +(?:ci|install|i|add|update|rebuild)\b.*$/gm;
+  function installsInJobsWithSecrets(text: string, everyJob = false): { checked: string[]; wrong: string[] } {
+    const { head, jobs } = readWorkflow(text);
+    const checked: string[] = [];
+    const wrong: string[] = [];
+    for (const [id, block] of jobs) {
+      if (!everyJob && !HOLDS_A_SECRET.test(head + block)) continue;
       for (const [install] of block.matchAll(AN_INSTALL)) {
         checked.push(id);
         if (install.trim() !== 'npm ci --ignore-scripts') wrong.push(`${id}: ${install.trim()}`);
@@ -988,30 +1207,25 @@ describe('CI', () => {
     }
     return { checked, wrong };
   }
-  const workflows = fs
-    .readdirSync(path.join(ROOT, '.github', 'workflows'))
-    .filter((f) => f.endsWith('.yml'))
-    .map((f) => ({ f, text: read(`.github/workflows/${f}`) }));
+  const PUBLISHED = new Set(['deploy.yml', 'staging.yml']);
 
-  test('every job that holds a secret or a deploy token installs with npm ci --ignore-scripts', () => {
+  test("every install in the deploy's and staging's jobs, and in every job that holds a secret or a token, is npm ci --ignore-scripts", () => {
     const checked: string[] = [];
     for (const { f, text } of workflows) {
-      const found = installsInJobsWithSecrets(text);
+      const found = installsInJobsWithSecrets(text, PUBLISHED.has(f));
       expect(found.wrong, f).toEqual([]);
       checked.push(...found.checked.map((id) => `${f} ${id}`));
     }
-    expect(checked).toEqual(expect.arrayContaining(['deploy.yml deploy', 'staging.yml staging']));
+    expect(checked).toEqual(expect.arrayContaining(['deploy.yml build', 'staging.yml build']));
   });
 
-  test('a planted job that holds a secret and installs any other way is caught', () => {
-    const deploy = read('.github/workflows/deploy.yml');
-    const staging = read('.github/workflows/staging.yml');
-    expect(installsInJobsWithSecrets(deploy.replace('npm ci --ignore-scripts', 'npm ci')).wrong).toEqual([
-      'deploy: npm ci',
+  test('a planted install any other way is caught, in the build jobs and in a job that gains a secret', () => {
+    expect(installsInJobsWithSecrets(deployText.replace('npm ci --ignore-scripts', 'npm ci'), true).wrong).toEqual([
+      'build: npm ci',
     ]);
-    expect(installsInJobsWithSecrets(staging.replace('npm ci --ignore-scripts', 'npm install')).wrong).toEqual([
-      'staging: npm install',
-    ]);
+    expect(
+      installsInJobsWithSecrets(stagingText.replace('npm ci --ignore-scripts', 'npm install'), true).wrong,
+    ).toEqual(['build: npm install']);
     // ci.yml's jobs hold none today; one that gains a secret falls under the rule.
     expect(installsInJobsWithSecrets(ci).wrong).toEqual([]);
     const planted = ci.replace(/^( {2}unit-scenario:\n)/m, '$1    environment: production\n');
