@@ -154,7 +154,7 @@ export function detRoll(turn, viewerPi, charId, provId) {
 // Chance = your exploration% of the province, −20%/enemy Spy level (cap L5), +10%/highest friendly
 // (own or allied) Spy level present (cap L5), clamped 5–95%. Replaces the flat _unspottedTurn cloak
 // for owned provinces. Kings roll exactly as heroes do. Returns true if spotted.
-export function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn) {
+export function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn?) {
   // turn: the report's turn (default gs.turn)
   // 2026-09-21 — A PROVINCE YOU HOLD IS GROUND YOU KNOW.
   // This read `exploredBy[viewerPi]`, and NOTHING writes that on conquest — only marching in does,

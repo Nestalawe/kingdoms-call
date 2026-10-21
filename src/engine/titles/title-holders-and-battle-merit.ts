@@ -1,6 +1,7 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { noteRealmBattle } from '../bots/war.ts';
 import { TM, creditBeastUnit } from './perks.ts';
+import type { Character, MajorTitleKey, MinorTitleKey, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
 
 // ── TITLE HOLDERS AND BATTLE MERIT (plan P1-08a: lifted out of resolveTurn) ────
 // Who holds a Title or a minor title this turn (G._titleHolders and G._minorHolders, worked out once at the start of
@@ -15,7 +16,13 @@ import { TM, creditBeastUnit } from './perks.ts';
 // combatVsChar/combatVsNPC's OWN casualty counts. A leaderless defence
 // (an enemy realm's garrison) has no commander to debit, so only the attacker's merit moves; the
 // attacker is still debited for their own dead when a garrison throws them back.
-export function creditBattle(turnContext, atkChar, defChar, battle, prov) {
+export function creditBattle(
+  turnContext: TurnContext,
+  atkChar: Character | null | undefined,
+  defChar: Character | null | undefined,
+  battle: { won?: boolean | undefined; atkLost?: number | undefined; defLost?: number | undefined } | null | undefined,
+  prov: Province | null | undefined,
+) {
   const { G } = turnContext;
   if (!atkChar || !battle || atkChar.player == null) return;
   // WAR ASSESSMENT news (2026-09-29): a battle between two realms is remembered a few turns.
@@ -48,7 +55,7 @@ export function creditBattle(turnContext, atkChar, defChar, battle, prov) {
   if (victor && victor.alive !== false) (victor.armies || []).forEach((a) => creditBeastUnit(TM(victor), a, 1)); // a dead victor showed no mastery of the beast
 }
 
-export function charHoldsTitle(turnContext, c, key) {
+export function charHoldsTitle(turnContext: TurnContext, c: Character | null | undefined, key: MajorTitleKey) {
   const { G } = turnContext;
   return !!(
     c &&
@@ -58,11 +65,11 @@ export function charHoldsTitle(turnContext, c, key) {
     G._titleHolders[key].charId === c.id
   );
 }
-export function playerHoldsTitle(turnContext, pi, key) {
+export function playerHoldsTitle(turnContext: TurnContext, pi: number | null | undefined, key: MajorTitleKey) {
   const { G } = turnContext;
   return !!(G._titleHolders && G._titleHolders[key] && G._titleHolders[key].playerIndex === pi);
 }
-export function charMinor(turnContext, c, key) {
+export function charMinor(turnContext: TurnContext, c: Character | null | undefined, key: MinorTitleKey) {
   const { G } = turnContext;
   return !!(c && G._minorHolders && G._minorHolders[key] && G._minorHolders[key].charId === c.id);
 }

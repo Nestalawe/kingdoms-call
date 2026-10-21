@@ -1,15 +1,21 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { relOfReport, spotEnemyInOwnedProvince } from '../engine/heroes/fame-and-consecration.ts';
 import { activeItems } from '../engine/items/equipment.ts';
 import { getNeighborsP } from '../engine/world/map-helpers.ts';
+import type { Character, GameState, ProvinceFeature } from '../schemas/saved-game-state.ts';
 
 // ── Items 1 & 12: ONE visibility rule for non-own characters ────
 // (the map's Spy-contest vs the list's flat cloak). Every consumer now calls this.
 // ctx: {ownedProvIds:Set, ownCharLocs:Set, spiedThisTurn:Set, nearSpied?:Set} — all keyed by province id.
 // Returns true when viewer `viewerPi` can see character `c` where it stands right now.
+export interface SightContext {
+  ownedProvIds: Set<number>;
+  ownCharLocs: Set<number>;
+  spiedThisTurn: Set<number>;
+  nearSpied?: Set<number> | undefined;
+}
 // 2026-10-15 (Toby, D2): the provinces next to those spied this turn (not the spied ones themselves).
-export function nearSpiedProvIds(gs, spiedIds) {
-  const out = new Set(),
+export function nearSpiedProvIds(gs: GameState, spiedIds: Set<number>) {
+  const out = new Set<number>(),
     W = gs.world,
     P = W.provinces || [];
   spiedIds.forEach((id) => {
@@ -23,7 +29,7 @@ export function nearSpiedProvIds(gs, spiedIds) {
 }
 // 2026-10-15 (Toby, D1): how big a force a hero you have not spied leads, as a glance across the field
 // gives it — never the exact count. One wording for the map, the hero sightings and the intrusion alerts.
-export function armySizeBand(n) {
+export function armySizeBand(n: number) {
   return n <= 0
     ? 'no armies'
     : n <= 2
@@ -36,7 +42,12 @@ export function armySizeBand(n) {
             ? 'a large host'
             : 'a vast host';
 }
-export function enemyCharVisibleTo(gs, viewerPi, c, ctx) {
+export function enemyCharVisibleTo(
+  gs: GameState,
+  viewerPi: number,
+  c: Character | null | undefined,
+  ctx: SightContext,
+) {
   if (!c || !c.alive) return false;
   if (c.player === viewerPi) return true;
   const p = gs.world.provinces[c.location];
@@ -71,7 +82,7 @@ export function enemyCharVisibleTo(gs, viewerPi, c, ctx) {
   return true;
 }
 // Why a VISIBLE character still cannot be the target of an Encounter Character order (null = can).
-export function encounterUntargetableReason(c) {
+export function encounterUntargetableReason(c: Character | null | undefined) {
   if (c && activeItems(c).some((it) => it && it.effect && it.effect.stat === 'hidden')) return 'faceless';
   return null;
 }
@@ -81,14 +92,14 @@ export function encounterUntargetableReason(c) {
 // instead ask featDiscovered(f, playerIndex). Legacy saves (features with discovered:true but no
 // discoveredBy array) are grandfathered as visible to everyone who could already see them
 // (_legacyAll), so upgrading mid-game never takes knowledge away from a player.
-export function featDiscovered(f, pi) {
+export function featDiscovered(f: ProvinceFeature | null | undefined, pi: number | null | undefined) {
   if (!f) return false;
   if (pi == null) return !!f.discovered; // engine-internal: anyone
   if (f._legacyAll) return true; // pre-upgrade discovery: everyone keeps it
   if (Array.isArray(f.discoveredBy)) return f.discoveredBy.includes(pi);
   return !!f.discovered; // legacy save, array never created yet
 }
-export function discoverFeat(f, pi) {
+export function discoverFeat(f: ProvinceFeature | null | undefined, pi: number | null | undefined) {
   if (!f) return false;
   const wasKnown = featDiscovered(f, pi);
   if (pi != null) {

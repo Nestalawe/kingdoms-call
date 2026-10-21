@@ -1,11 +1,18 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── MERCENARY BAND IDS AND WHO FOUGHT (plan P1-08a: lifted out of resolveTurn) ────
 // A new band's id, and the turn's records of who fought where: the commanders of each battle, the phase each hero last
 // stood in a field battle, and the Defend watches a battle fulfils. Each takes the turn's context first
 // (src/engine/turn/context.ts).
-export const newMercId = (turnContext) => `merc_t${turnContext.expectedTurnToRun}_${++turnContext._mercIds.n}`;
+import type { Character, Province } from '../../schemas/saved-game-state.ts';
+import type { NarrativeLine, TurnContext } from './context.ts';
+export const newMercId = (turnContext: TurnContext) =>
+  `merc_t${turnContext.expectedTurnToRun}_${++turnContext._mercIds.n}`;
 
-export const recordBattleCmdrs = (turnContext, provId, ph, ids) => {
+export const recordBattleCmdrs = (
+  turnContext: TurnContext,
+  provId: number | null | undefined,
+  ph: number | null | undefined,
+  ids: (number | null | undefined)[],
+) => {
   const { battleCommanders } = turnContext;
   if (provId == null || ph == null || ph < 0 || ph > 4) return;
   const k = provId + '@' + ph;
@@ -15,13 +22,18 @@ export const recordBattleCmdrs = (turnContext, provId, ph, ids) => {
   });
 };
 
-export function noteFieldBattle(turnContext, atk, def, prov) {
+export function noteFieldBattle(
+  turnContext: TurnContext,
+  atk: Character | null | undefined,
+  def: Character | null | undefined,
+  prov: Province | null | undefined,
+) {
   const { fieldBattlePhase, G } = turnContext;
   const ph = turnContext._currentPhase,
-    ids = [];
+    ids: number[] = [];
   if (ph == null || !prov) return ids;
-  const sides = new Set([atk && atk.player, def && def.player].filter((x) => x != null));
-  const add = (id) => {
+  const sides = new Set<number | null>([atk && atk.player, def && def.player].filter((x) => x != null));
+  const add = (id: number | null | undefined) => {
     if (id == null) return;
     fieldBattlePhase[id] = ph;
     if (!ids.includes(id)) ids.push(id);
@@ -39,7 +51,11 @@ export function noteFieldBattle(turnContext, atk, def, prov) {
 // province was attacked, or one pooled in alongside — keeps no further watch, win or lose (a loss
 // already broke it: noteBattleLoss). Only a Defend order given for a LATER phase sets a new one; the
 // same phase's own Defend order, which resolves after the battle, must not re-arm it.
-export function completeDefendWatches(turnContext, ids, narrative) {
+export function completeDefendWatches(
+  turnContext: TurnContext,
+  ids: number[] | null | undefined,
+  narrative: NarrativeLine[] | null | undefined,
+) {
   const { G, log } = turnContext;
   const ph = turnContext._currentPhase;
   (ids || []).forEach((id) => {
@@ -61,12 +77,16 @@ export function completeDefendWatches(turnContext, ids, narrative) {
     }
   });
 }
-export const defendSpentThisPhase = (turnContext, c, ph) =>
+export const defendSpentThisPhase = (turnContext: TurnContext, c: Character | null | undefined, ph: number) =>
   !!(c && c._defendSpent && c._defendSpent.turn === turnContext.G.turn && c._defendSpent.ph === ph);
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08c) ── a defeat breaks a general's Defend watch for the rest of the turn. It
 // takes the turn's context first (src/engine/turn/context.ts).
-export function noteBattleLoss(turnContext, charId, narrative) {
+export function noteBattleLoss(
+  turnContext: TurnContext,
+  charId: number,
+  narrative: NarrativeLine[] | null | undefined,
+) {
   const { G, log } = turnContext;
   const real = (G.characters || []).find((x) => x && x.id === charId);
   if (!real || !real._defend || !real._defend.active) return;

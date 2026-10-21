@@ -134,6 +134,11 @@ export const ArmySchema = z.object({
   _died: z.boolean().optional(),
   _meritTallied: z.boolean().optional(),
   _garrisonOf: z.number().optional(),
+  // Fields the matrix's states don't hold, written by the code (P1-10a3: each read by a file freed of ts-nocheck)
+  // Evil terror: the strength a defending unit keeps while terror grips it, set as a battle starts
+  _terrorMult: z.number().optional(),
+  // an illusory unit (Illusory magic's phantom troops)
+  _phantom: z.boolean().optional(),
 });
 export type Army = z.infer<typeof ArmySchema>;
 
@@ -256,7 +261,8 @@ export const CharacterSchema = z.object({
   _invisTurn: z.number().optional(),
   _unspottedTurn: z.number().optional(),
   _spySpotted: z.object({ turn: z.number(), ids: z.array(z.number()) }).optional(),
-  _defendSpent: z.object({ turn: z.number(), ph: z.number() }).optional(),
+  // the phase is the turn's _currentPhase, null outside the phases (the matrix's states hold a number)
+  _defendSpent: z.object({ turn: z.number(), ph: z.number().nullable() }).optional(),
   killedThisTurn: z.boolean().optional(),
   _mercyFledTurn: z.number().optional(),
   _justDefeated: z.boolean().optional(),
@@ -282,6 +288,19 @@ export const CharacterSchema = z.object({
   _divineReturn: z.boolean().optional(),
   _grandStratagemTurn: z.number().optional(),
   _grandHeistTurn: z.number().optional(),
+  // Fields the matrix's states don't hold, written by the code (P1-10a3: each read by a file freed of ts-nocheck)
+  // Raid the Coast: the turn a hero gave the order, and the landing a pooled host carries it for
+  _raidCoastTurn: z.number().optional(),
+  _raidCarriedAt: z.object({ turn: z.number(), prov: z.number() }).optional(),
+  // a hero a Charm seized for the rest of the turn, and the realm he serves again at its end
+  _charmTempControl: z.boolean().optional(),
+  _charmOriginalPlayer: RealmIndexSchema.nullable().optional(),
+  // a fallen commander whose host fights on under a captain
+  _leaderlessHost: z.boolean().optional(),
+  // the turn the hero worked Vanish (Thief 9)
+  _vanishTurn: z.number().optional(),
+  // the turn the hero ordered a Feigned Retreat (Tactical 7)
+  _feignedRetreatTurn: z.number().optional(),
 });
 export type Character = z.infer<typeof CharacterSchema>;
 
@@ -355,6 +374,9 @@ export const ProvinceSchema = z.object({
       ritualSite: z.boolean().optional(),
       _stolenItems: z.array(z.string()).optional(),
       _pickedCleanBy: z.array(z.number()).optional(),
+      // Fields the matrix's states don't hold, written by the code (P1-10a3: each read by a file freed of ts-nocheck)
+      // a feature found before discoveries were kept by realm (an old save): every realm keeps it
+      _legacyAll: z.boolean().optional(),
     }),
   ),
   npcArmies: z.number(),
@@ -390,10 +412,13 @@ export const ProvinceSchema = z.object({
   _evilConqTurn: z.number().optional(),
   _sabotagedForTurn: z.number().optional(),
   _blockadeTurn: z.number().optional(),
-  _blockadeBy: z.number().optional(),
+  // the realm of the hero who threw the Blockade (null for a hero who serves none; the matrix's states hold a number)
+  _blockadeBy: z.number().nullable().optional(),
   _richSurveyed: z.boolean().optional(),
 });
 export type Province = z.infer<typeof ProvinceSchema>;
+/** A province's feature: a lair, a ruin, a ritual site. */
+export type ProvinceFeature = Province['features'][number];
 
 export const RealmSchema = z.object({
   id: RealmIndexSchema,
@@ -414,7 +439,8 @@ export const RealmSchema = z.object({
   consecratedProvIds: z.array(z.number()).optional(),
   _spiedProvincesLastTurn: z.array(z.number()).optional(),
   _spiedProvincesThisTurn: z.array(z.number()).optional(),
-  _clairCharThisTurn: z.null().optional(),
+  // the hero the realm watches with Clairvoyance this turn (the matrix's states hold only null)
+  _clairCharThisTurn: z.number().nullable().optional(),
   _spiedHeroSkills: z
     .record(
       z.string(),
@@ -838,3 +864,6 @@ export const GameStateSchema = z.object({
     .optional(),
 });
 export type GameState = z.infer<typeof GameStateSchema>;
+/** A Title's key (`throne`, `vault`, …) and a minor title's (`duelist`, …), as the turn keeps their holders. */
+export type MajorTitleKey = keyof NonNullable<GameState['_titleHolders']>;
+export type MinorTitleKey = keyof NonNullable<GameState['_minorHolders']>;

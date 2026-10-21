@@ -386,7 +386,7 @@ export function discEff(turnContext, pi, kind) {
   const { G } = turnContext;
   return pi == null ? [] : discEffectsOf(G.players[pi], kind);
 }
-export function discSum(turnContext, pi, kind, field, pred) {
+export function discSum(turnContext, pi, kind, field, pred?) {
   const { G } = turnContext;
   return pi == null ? 0 : discSumOf(G.players[pi], kind, field, pred);
 }

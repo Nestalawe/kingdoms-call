@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { battleLineTiers, battleTallyLine } from './fates.ts';
 import { druIdPenaltyMult, getDruidLevel } from '../world/tables.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -6,6 +5,9 @@ import { dragonTamed } from '../discoveries.ts';
 import { emitNarrLine, narrText } from '../turn/log-line-helpers.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
+import type { Quality } from '../../content/kingdoms-call-data.ts';
+import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
+import type { NarrativeLine, TurnContext } from '../turn/context.ts';
 
 // ── BATTLE REPORT LINES AND FORCE MARKERS (plan P1-08c: lifted out of resolveTurn) ────
 // The lines a battle report is built from: a force's header row (forceMarker), a unit's quality in words, a hero's
@@ -16,7 +18,15 @@ import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
 // Chronicle expands into: a header coloured in the owner's map colour (neutral = dark grey) + one
 // icon row per unit (same look as "Your Realm").
 // playerIdx null → neutral. role: 'attacker' | 'defender'. verbText overrides the default verb.
-export function forceMarker(turnContext, name, playerIdx, role, armies, verbText, opts) {
+export function forceMarker(
+  turnContext: TurnContext,
+  name: string | null | undefined,
+  playerIdx: number | null | undefined,
+  role: string | null | undefined,
+  armies: Army[] | null | undefined,
+  verbText?: string | null,
+  opts?: { guard?: boolean | undefined } | null,
+) {
   const { G } = turnContext;
   const color = playerIdx != null && G.players[playerIdx] ? G.players[playerIdx].color || null : null;
   const guard = !!(opts && opts.guard); // a local chieftain's force — the player portal tints it chieftain-brown
@@ -61,7 +71,7 @@ export function forceMarker(turnContext, name, playerIdx, role, armies, verbText
   );
 }
 
-export function qualityAdj(quality) {
+export function qualityAdj(quality: Quality) {
   return (
     { Green: 'inexperienced', Average: 'seasoned', Veteran: 'veteran', Elite: 'elite', Crack: 'crack' }[quality] ||
     'seasoned'
@@ -71,11 +81,11 @@ export function qualityAdj(quality) {
 // A character's Encounter-Plan "battlecry" — the words they shout at an enemy (a monster in a
 // feature, or a rival character) as combat/duel begins. Stored in encounterPlan.notes by the
 // player portal's "Describe your battlecry" field.
-export function battlecryOf(ch) {
+export function battlecryOf(ch: Character | null | undefined) {
   const n = ch && ch.encounterPlan && ch.encounterPlan.notes;
   return typeof n === 'string' ? n.trim() : '';
 }
-export function pushBattlecry(narrative, ch, foeName) {
+export function pushBattlecry(narrative: NarrativeLine[], ch: Character, foeName: string) {
   const cry = battlecryOf(ch);
   if (!cry) return;
   narrative.push(`📣 ${ch.name} cries out to ${foeName}: “${cry}”`);
@@ -92,10 +102,16 @@ export function pushBattlecry(narrative, ch, foeName) {
 // unit). Same test both paths used: a unit short of its Druid requirement whose penalty actually
 // bites (skeletal / exempt / tamed units return 1.0 and are left out). Inside runTurn because
 // dragonTamed is.
-export function druidShortfallLine(turnContext, sideName, ch, force, align) {
+export function druidShortfallLine(
+  turnContext: TurnContext,
+  sideName: string,
+  ch: Character | null | undefined,
+  force: Army[] | null | undefined,
+  align: string,
+) {
   if (!ch) return null;
   const lvl = effStat(turnContext, ch, 'druid');
-  const m = new Map();
+  const m = new Map<string, number>();
   (force || []).forEach((a) => {
     if (!a || a._phantom) return;
     const req = getDruidLevel(a.type);
@@ -112,8 +128,8 @@ export function druidShortfallLine(turnContext, sideName, ch, force, align) {
 // Terrain note for one side of a battle: "Free Lances +15%, 2× Forest Ents −40%" (2026-09-23d: both
 // battle paths share this — the PvP copy printed "Free Lances:+15%" and mixed both sides
 // together). Inside runTurn because terrainMod / seaPenalty are (despite their column-0 indent).
-export function terrainNoteList(force, terrain) {
-  const m = new Map();
+export function terrainNoteList(force: Army[] | null | undefined, terrain: string) {
+  const m = new Map<string, number>();
   (force || []).forEach((a) => {
     if (!a || a._phantom) return;
     const combined = terrainMod(a.type, terrain) * seaPenalty(a.type, terrain);
@@ -125,7 +141,19 @@ export function terrainNoteList(force, terrain) {
   return m.size ? [...m].map(([k, n]) => (n > 1 ? `${n}× ${k}` : k)).join(', ') : null;
 }
 
-export function emitBattle(turnContext, battle, prov, ph, participants, opts) {
+export function emitBattle(
+  turnContext: TurnContext,
+  battle: { narrative?: NarrativeLine[] | undefined; summaryText?: string | undefined } | null | undefined,
+  prov: Province | null | undefined,
+  ph: number | null | undefined,
+  participants: (number | null | undefined)[] | null | undefined,
+  opts?: {
+    actor?: number | null | undefined;
+    charId?: number | null | undefined;
+    charIds?: number[] | null | undefined;
+    summaryText?: string | undefined;
+  } | null,
+) {
   const { log } = turnContext;
   opts = opts || {};
   const parts = (participants || []).filter((x) => x != null);

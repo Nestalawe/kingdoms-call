@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { isVanished } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { awardKillXP, awardWinHp } from '../heroes/experience-skill-rises-and-earned-hp.ts';
@@ -6,6 +5,8 @@ import { pushBattlecry } from './battle-report-lines-and-force-markers.ts';
 import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { resolveDuel } from '../personal-combat/duels-and-character-encounters.ts';
 import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.ts';
+import type { Character } from '../../schemas/saved-game-state.ts';
+import type { LogMeta, NarrativeLine, TurnContext } from '../turn/context.ts';
 
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
 // The single combat between the two commanders before an army battle, and the morale each host carries into the battle
@@ -18,7 +19,12 @@ import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.ts';
 // It previously lived inline in combatVsChar ONLY, which is why duels never fired in the far more
 // common battles against province guardians. Returns the morale multiplier each side carries into
 // the battle proper; callers must apply both to their strength totals or the duel has no effect.
-export function preBattleDuel(turnContext, atk, def, narrative) {
+export function preBattleDuel(
+  turnContext: TurnContext,
+  atk: Character | null | undefined,
+  def: Character | null | undefined,
+  narrative: NarrativeLine[],
+) {
   const { _botPlayerIdx, G } = turnContext;
   const DUEL_MORALE_PENALTY = 0.8;
   let atkMorale = 1,
@@ -31,7 +37,7 @@ export function preBattleDuel(turnContext, atk, def, narrative) {
   // THIEF L9 Vanish: no one rides out against a commander who is not there, and none may call him
   // out.
   if (isVanished(turnContext, atk) || isVanished(turnContext, def)) return { atkMorale, defMorale };
-  const demoralise = (who, why) => {
+  const demoralise = (who: Character, why: string) => {
     if (who === atk) atkMorale = DUEL_MORALE_PENALTY;
     else defMorale = DUEL_MORALE_PENALTY;
     narrative.push(`\u{1F4C9} ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
@@ -43,7 +49,7 @@ export function preBattleDuel(turnContext, atk, def, narrative) {
   // 2026-09-28 (Toby): a BOT commander never duels a LOCAL CHIEFTAIN (a neutral province guard). He issues
   // no challenge and refuses one (his host takes the usual −20% for it), so the chieftain lives on as a
   // wanderer after the battle — more heroes left in the world to hire. Human players choose for themselves.
-  const _botVsChief = (me, foe) =>
+  const _botVsChief = (me: Character, foe: Character) =>
     !!(
       me &&
       me.player != null &&
@@ -76,7 +82,7 @@ export function preBattleDuel(turnContext, atk, def, narrative) {
     const loser = duelResult.loser,
       winner = duelResult.winner;
     // Battles are often fought on pooled COPIES ({...char}) — resolve on the REAL characters.
-    const _real = (x) => (x && x.id != null && (G.characters || []).find((r) => r && r.id === x.id)) || x;
+    const _real = (x: Character) => (x && x.id != null && (G.characters || []).find((r) => r && r.id === x.id)) || x;
     const realLoser = _real(loser),
       realWinner = _real(winner);
     // SECRET: the unkillable wanderer is beaten but escapes the killing blow — he lives, so
@@ -103,7 +109,11 @@ export function preBattleDuel(turnContext, atk, def, narrative) {
     // "too late", to his own realm); if Battlefield Surgery saves him, "at death's door, but not
     // slain" and the surgery line. Before, "slain" was written regardless and the surgery line
     // was logged at once, so it came before the whole battle report.
-    const _dOpts = { keepArmies: true, lines: [] };
+    const _dOpts: {
+      keepArmies: boolean;
+      lines: { type: string; text: string; meta?: LogMeta; priv?: number | null }[];
+      outcome?: string;
+    } = { keepArmies: true, lines: [] };
     const _duelDied = handleHeroDeath(turnContext, realLoser, realWinner, _dOpts);
     const _saved = _duelDied === false && _dOpts.outcome === 'surgery';
     narrative.push(

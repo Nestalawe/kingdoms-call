@@ -1,7 +1,8 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ARMY_UNIT_NAMES, PRIMAL_UNIT_NAMES } from '../content/kingdoms-call-data.ts';
 import { kcRng } from './rng.ts';
 import { dispFloor } from './rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
+import type { UnitType } from '../content/kingdoms-call-data.ts';
+import type { Army, GameState } from '../schemas/saved-game-state.ts';
 
 // ── Percentage dice ────
 // d100() returns an integer 1–100. A percentage check SUCCEEDS when the rolled number is LESS THAN
@@ -22,7 +23,7 @@ export function d100() {
 // then miss on a roll of 50. With integer d100 rolls, roll<=floor(chance) is exactly roll<=chance,
 // so the shown figure is the true test. A float a hair under an integer (0.29*100 = 28.999…) snaps
 // to that integer rather than dropping a point.
-export function fmtRoll(chance, roll) {
+export function fmtRoll(chance: number, roll: number) {
   const c = Math.max(0, Math.min(100, dispFloor(chance)));
   const r = dispFloor(roll);
   return `${c}% [roll ${r} ${r <= c ? '✓' : '✗'}]`;
@@ -30,7 +31,7 @@ export function fmtRoll(chance, roll) {
 // 2026-09-10 item 1: pctRoll(chance) — the ONE way to make a displayed percentage check. Rounds the
 // chance to an integer first so the shown "N%" and the pass/fail test agree exactly; a roll equal
 // to the chance succeeds.
-export function pctRoll(chance) {
+export function pctRoll(chance: number) {
   const c = Math.max(0, Math.min(100, dispFloor(chance)));
   const roll = d100();
   return { chance: c, roll, ok: roll <= c };
@@ -71,7 +72,7 @@ export const _NAME_TAILS = [
   'of the Long March',
   'of the Last Stand',
 ];
-export function armyUnitName(type) {
+export function armyUnitName(type: UnitType) {
   const pool = { ...ARMY_UNIT_NAMES, ...PRIMAL_UNIT_NAMES }[type] || ['the Guard'];
   // Try to find a unique name from the (generously sized) pool.
   let name;
@@ -119,7 +120,7 @@ export function armyUnitName(type) {
 }
 
 // Seed _usedArmyUnitNames from an existing game state (called after loading)
-export function seedUsedArmyNames(gameState) {
+export function seedUsedArmyNames(gameState: GameState) {
   _usedArmyUnitNames.clear();
   (gameState.characters || []).forEach((c) => {
     (c.armies || []).forEach((a) => {
@@ -141,16 +142,16 @@ export function seedUsedArmyNames(gameState) {
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08a) ── a random whole number from a to b, a random pick, and a host described
 // for a battle line. They read no turn state.
-export function rng(a, b) {
+export function rng(a: number, b: number) {
   return Math.floor(kcRng() * (b - a + 1)) + a;
 }
 
-export const pick = (arr) => arr[Math.floor(kcRng() * arr.length)];
+export const pick = <T>(arr: readonly T[]) => arr[Math.floor(kcRng() * arr.length)];
 
-export function describeArmy(armies) {
+export function describeArmy(armies: Army[] | null | undefined) {
   if (!armies || armies.length === 0) return 'no armies';
-  const named = [];
-  const unnamed = {};
+  const named: string[] = [];
+  const unnamed: Record<string, number> = {};
   armies.forEach((a) => {
     const hasName = a.unitName && a.unitName !== a.type && !a.unitName.startsWith('undefined');
     if (a._phantom) {

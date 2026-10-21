@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { shuffleP } from '../battle/fortune.ts';
@@ -11,6 +10,8 @@ import { areEnemies } from '../realms/relations-and-captures.ts';
 import { SKILLGAIN_STD, awardKillXP, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { pcCharCombatant } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
+import type { Character, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
 
 // ── THE WAR MASTERY ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // The masteries a hero of level 7 or 9 in a war skill may order once a turn (processOrder checks that first): Naval's
@@ -22,7 +23,7 @@ import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 // worked out before it that it reads, in the order processOrder declares them. Each body keeps processOrder's indent
 // (plan P1-08's Decisions); a case-level break became a return.
 // Blockade (Naval 7): a sea the hero is in or beside, sealed against enemy fleets this turn, half the time.
-export function resolveBlockadeOrder(turnContext, c, target) {
+export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, target: string) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'naval') < 7) {
     log('system', `${c.name} lacks the Naval mastery (7) to raise a Blockade.`, {
@@ -75,7 +76,7 @@ export function resolveBlockadeOrder(turnContext, c, target) {
   return;
 }
 // Challenge (Melee 7): single combat with an enemy hero beside him who leads no army.
-export function resolveChallengeOrder(turnContext, c, target, prov) {
+export function resolveChallengeOrder(turnContext: TurnContext, c: Character, target: string, prov: Province) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'melee') < 7) {
     log('system', `${c.name} lacks the Melee mastery (7) to issue a Challenge.`, {
@@ -150,7 +151,7 @@ export function resolveChallengeOrder(turnContext, c, target, prov) {
   return;
 }
 // Rampage (Melee 9): companies of an enemy host beside him cut down, and its commander bloodied.
-export function resolveRampageOrder(turnContext, c, target, prov) {
+export function resolveRampageOrder(turnContext: TurnContext, c: Character, target: string, prov: Province) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'melee') < 9) {
     log('system', `${c.name} lacks the Melee mastery (9) to Rampage.`, { actor: c.player, targets: [c.player] });
@@ -192,7 +193,7 @@ export function resolveRampageOrder(turnContext, c, target, prov) {
   return;
 }
 // Rain of Arrows (Archery 7): companies of an enemy host beside him felled by the volley.
-export function resolveRainOfArrowsOrder(turnContext, c, target, prov) {
+export function resolveRainOfArrowsOrder(turnContext: TurnContext, c: Character, target: string, prov: Province) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'archery') < 7) {
     log('system', `${c.name} lacks the Archery mastery (7) for a Rain of Arrows.`, {
@@ -234,7 +235,7 @@ export function resolveRainOfArrowsOrder(turnContext, c, target, prov) {
   return;
 }
 // Sniper's Mark (Archery 9): wounds to an enemy hero beside him, and a chance to slay him.
-export function resolveSnipersMarkOrder(turnContext, c, target, prov) {
+export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, target: string, prov: Province) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'archery') < 9) {
     log('system', `${c.name} lacks the Archery mastery (9) for a Sniper's Mark.`, {
@@ -295,7 +296,7 @@ export function resolveSnipersMarkOrder(turnContext, c, target, prov) {
   return;
 }
 // Feigned Retreat (Tactical 7): his counter-attack strikes harder this turn.
-export function resolveFeignedRetreatOrder(turnContext, c, prov) {
+export function resolveFeignedRetreatOrder(turnContext: TurnContext, c: Character, prov: Province) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'tactical') < 7) {
     log('system', `${c.name} lacks the Tactical mastery (7) for a Feigned Retreat.`, {
@@ -314,7 +315,7 @@ export function resolveFeignedRetreatOrder(turnContext, c, prov) {
   return;
 }
 // Grand Stratagem (Tactical 9): his next battle this turn is fought at greater strength.
-export function resolveGrandStratagemOrder(turnContext, c, prov) {
+export function resolveGrandStratagemOrder(turnContext: TurnContext, c: Character, prov: Province) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'tactical') < 9) {
     log('system', `${c.name} lacks the Tactical mastery (9) for a Grand Stratagem.`, {
@@ -333,7 +334,7 @@ export function resolveGrandStratagemOrder(turnContext, c, prov) {
   return;
 }
 // Lightning Advance (March 9): any enemy he attacks this turn is caught unready.
-export function resolveLightningAdvanceOrder(turnContext, c, prov) {
+export function resolveLightningAdvanceOrder(turnContext: TurnContext, c: Character, prov: Province) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'march') < 9) {
     log('system', `${c.name} lacks the March mastery (9) for a Lightning Advance.`, {
@@ -352,7 +353,7 @@ export function resolveLightningAdvanceOrder(turnContext, c, prov) {
   return;
 }
 // Raid the Coast (Naval 9): an assault from the sea this turn strikes harder, and plunders the treasury it takes.
-export function resolveRaidTheCoastOrder(turnContext, c, prov) {
+export function resolveRaidTheCoastOrder(turnContext: TurnContext, c: Character, prov: Province) {
   const { log, G } = turnContext;
   if (skillLevel(c, 'naval') < 9) {
     log('system', `${c.name} lacks the Naval mastery (9) to Raid the Coast.`, { actor: c.player, targets: [c.player] });
