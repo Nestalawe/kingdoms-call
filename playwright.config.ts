@@ -3,11 +3,11 @@
 // deliberately broken one).
 //
 // The same answer every time, as in vitest.config.mts: Node pinned (tests/setup/global.ts), time zone and locale
-// fixed in Node and in the browser, the seed fixed (KC_SEED; the default in tests/setup/fixed.ts), no retries and no
+// fixed in Node and in the browser, the seed fixed (KC_SEED; the default in tests/setup/fixed.mts), no retries and no
 // .only. A failing spec keeps its trace (npx playwright show-trace test-results/…/trace.zip).
 import path from 'node:path';
 import { defineConfig } from '@playwright/test';
-import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.ts';
+import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';
 
 // Set before the workers start, so they start with them (tests/lib/boot.js reads KC_SEED when it loads).
 Object.assign(process.env, FIXED, { KC_SEED: process.env['KC_SEED'] || DEFAULT_SEED });

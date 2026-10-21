@@ -9,6 +9,7 @@
 !/.claude/settings.json
 !/tests/ratchet.json
 !/tests/**/*.ts
+!/tests/**/*.mts
 !/tools/**/*.ts
 !/src/**/*.ts
 !/src/**/*.css

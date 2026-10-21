@@ -725,7 +725,7 @@ describe('dangerous paths', () => {
       'package-lock.json',
       'tests/setup/each.ts',
       'tests/setup/global.ts',
-      'tests/setup/fixed.ts',
+      'tests/setup/fixed.mts',
       'tests/legacy.test.ts',
       'tests/ratchet.json',
       'tests/static/harness.test.ts',
