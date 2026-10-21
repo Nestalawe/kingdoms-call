@@ -9,7 +9,7 @@ export interface HeroWithSkills {
   readonly skills?: Readonly<Record<string, number>> | null | undefined;
 }
 
-export const ALL_SKILLS = KC_SKILLS.slice();
+export const ALL_SKILLS: string[] = KC_SKILLS.slice();
 
 // ── HERO FAME ── a wandering hero's reputation is described, never numbered: the Hire and Broker
 // dropdowns quote the same words the Intelligence report uses. Module level; buildPlayerReport's
