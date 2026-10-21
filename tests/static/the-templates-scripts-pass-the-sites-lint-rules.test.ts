@@ -39,26 +39,22 @@ const decoded = (value: string, where: string): string =>
   });
 
 /** A template's classic code: each inline <script> (one with no src and no type), then each on…="…" attribute outside
- *  the scripts, styles and comments, in order. */
+ *  the styles and comments, in order: in the markup, and in the HTML an inline script writes (its strings). */
 function piecesOf(template: string, html: string): Piece[] {
   const lineAt = (i: number) => html.slice(0, i).split('\n').length;
   const blank = (s: string) => s.replace(/[^\n]/g, ' ');
   const scripts: Piece[] = [];
-  let rest = html.replace(/<!--[\s\S]*?-->/g, blank).replace(/<style\b[\s\S]*?<\/style>/gi, blank);
-  rest = rest.replace(
-    /<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi,
-    (whole, attributes: string | undefined, code: string, at: number) => {
-      if (!/\b(src|type)\s*=/i.test(attributes ?? ''))
-        scripts.push({
-          file: `src/${template}/script-${String(scripts.length + 1)}.js`,
-          line: lineAt(at + whole.indexOf('>') + 1),
-          code,
-        });
-      return blank(whole);
-    },
-  );
+  const markup = html.replace(/<!--[\s\S]*?-->/g, blank).replace(/<style\b[\s\S]*?<\/style>/gi, blank);
+  for (const m of markup.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi)) {
+    if (/\b(src|type)\s*=/i.test(m[1] ?? '')) continue;
+    scripts.push({
+      file: `src/${template}/script-${String(scripts.length + 1)}.js`,
+      line: lineAt(m.index + m[0].indexOf('>') + 1),
+      code: m[2] ?? '',
+    });
+  }
   const handlers: Piece[] = [];
-  for (const m of rest.matchAll(/\son[a-z]+\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
+  for (const m of markup.matchAll(/\son[a-z]+\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
     const where = `src/${template}:${String(lineAt(m.index))}`;
     handlers.push({
       file: `src/${template}/handler-${String(handlers.length + 1)}.js`,
@@ -143,8 +139,9 @@ describe("the templates' scripts and handlers pass the site's lint rules", () =>
     expect(await findingsIn(template, read(template))).toEqual([]);
   });
 
-  // The faults the retired tests found in a template (a random sort, a Math.random() in a handler), and the rules'
-  // others, planted in a copy of the GM page's template: each is found, at its line.
+  // The faults the retired tests found in a template (a random sort, a Math.random() in a handler, also in the HTML an
+  // inline script writes), and the rules' others, planted in a copy of the GM page's template: each is found, at its
+  // line.
   test('a fault planted in a template is found', { timeout: 30_000 }, async () => {
     const template = 'kingdoms-call-gm-portal.html';
     const html = read(template);
@@ -156,6 +153,7 @@ describe("the templates' scripts and handlers pass the site's lint rules", () =>
       '<button onclick="window.Math[\'random\']()"></button>',
       '<button onclick="notOnThePage()"></button>',
       '<button onclick="doSignIn()"></button>',
+      `<script>document.body.insertAdjacentHTML('beforeend', '<b onclick="Math.random()"></b>');</script>`,
     ];
     const at = html.slice(0, end).split('\n').length;
     const copy = html.slice(0, end) + planted.join('\n') + '\n' + html.slice(end);
@@ -173,6 +171,7 @@ describe("the templates' scripts and handlers pass the site's lint rules", () =>
       '2 no-restricted-properties',
       '3 no-restricted-syntax',
       '4 no-undef',
+      '6 no-restricted-properties',
     ]);
   });
 });
