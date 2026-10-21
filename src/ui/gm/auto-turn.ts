@@ -5,11 +5,7 @@ import { sb } from './config.ts';
 import { gameArchived, gamesListCols } from '../../db/game-meta.ts';
 import { autoTurnReady, fmtDeadline, turnModeOf } from './turn-mode.ts';
 import { runTurn } from './turn-shell.ts';
-import {
-  checkForANewerVersion,
-  thisPagesBuild,
-  watchForANewerVersion,
-} from '../shared/a-newer-version-of-this-page.ts';
+import { checkForANewerVersion, thisPagesBuild } from '../shared/a-newer-version-of-this-page.ts';
 
 // ── AUTO-TURN WATCHER ────
 // Polls this GM's active games once a minute and runs any whose mode condition is met. Two guards
@@ -87,7 +83,6 @@ export async function refreshIfNewerBuild(g) {
 }
 export function startAutoTurnWatcher() {
   if (_autoWatcherTimer) return;
-  watchForANewerVersion();
   _autoWatcherTimer = setInterval(autoTurnTick, AUTO_WATCH_MS);
   setTimeout(autoTurnTick, 3000);
 }

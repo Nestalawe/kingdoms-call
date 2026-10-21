@@ -31,10 +31,14 @@ pages before and after the change). If Toby finds a problem on staging, that's a
    CI checks to pass, then staging's database is rebuilt for it). If CI fails, nothing goes on staging: the
    staging check turns red and says which CI job failed.
    Every page's footer on staging then says **"Staging · PR #N · abc1234"**: check it names this pull request.
+   The GM portal, the player portal, the Hall of Fame and the Overlord page also show their build line, e.g.
+   "build 3f2a9c1 · 22 Oct 2026, 10:15". On staging it names the commit actually built, GitHub's merge of the pull
+   request into its base, so its seven letters and digits differ from the staging line's.
 3. Open the staging site, sign in with a test account (below), and follow the pull request's **"What to try
    on staging"** checklist.
 4. Works → talk it through if needed, then merge. Doesn't → say what went wrong on the pull request; new
-   commits go up to staging by themselves while the label is on.
+   commits go up to staging by themselves while the label is on. A page left open while a new commit goes up shows
+   the bar "A new version of Kingdoms Call is ready" 10 to 15 minutes later, if that commit changed the page.
 
 **What "rebuilt for it" means.** Each time a pull request goes on staging, staging's database is emptied
 (games and accounts too) and built again: first exactly as the live database is meant to be (`main`'s

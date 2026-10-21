@@ -36,7 +36,13 @@ export interface BootOptions {
 export function readPage(nameOrPath: string): string;
 /** The files readPage reads for a page, as full paths: the page, then each local script it inlines. */
 export function pageFiles(nameOrPath: string): string[];
-export function bootJsdom(html: string, opts?: BootOptions): { window: PageWindow };
+/** jsdom's console for the page: its own messages ("jsdomError", e.g. "Not implemented: navigation…" when the page
+ *  reloads, which jsdom can't do) are printed by default; a test may take them over. */
+export interface PageVirtualConsole {
+  removeAllListeners(event: 'jsdomError'): unknown;
+  on(event: 'jsdomError', listener: (e: { message: string }) => void): unknown;
+}
+export function bootJsdom(html: string, opts?: BootOptions): { window: PageWindow; virtualConsole: PageVirtualConsole };
 export function seededRandom(seed: number | string): () => number;
 export function pinnedDate(RealDate: DateConstructor, now: number | string): DateConstructor;
 export const SITE: string;
