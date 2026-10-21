@@ -293,7 +293,7 @@ export function battleRegrid(g) {
 }
 // The old entry point, kept for the estimates that only need a total (the bots, the Strategist's
 // command score, the stay-or-retreat test). opts as battleGrid's, plus `terrain`.
-export function battleLineTotal(rows, width, flank, opts) {
+export function battleLineTotal(rows, width, flank, opts?) {
   return battleGrid(rows, width, (opts && opts.terrain) || null, Object.assign({}, opts || {}, { flank })).total;
 }
 // ── The grid in the report ── one line names the ground, then two 📊 lines a side: cells five wide,

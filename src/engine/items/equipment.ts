@@ -6,6 +6,7 @@ import {
   SPELL_DEFS_P,
   _VARIANT_BANK,
 } from '../../content/kingdoms-call-data.ts';
+import type { Item } from '../../schemas/saved-game-state.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
 import { HOARD_CATEGORIES } from './hoard-categories.ts';
 import { ITEMS_BY_TIER, ITEM_LORE_BY_NAME, itemHoardCategory } from './tiers-and-hoards.ts';
@@ -551,7 +552,7 @@ export function gainedItemNote(ch, items) {
       .join(' ')
   );
 }
-export function activeItems(c) {
+export function activeItems(c): Item[] {
   if (!c || !Array.isArray(c.items)) return [];
   normaliseEquipment(c);
   return c.items.filter((it) => it && itemUsableBy(it, c) && (!itemSlot(it) || it.equipped === true));

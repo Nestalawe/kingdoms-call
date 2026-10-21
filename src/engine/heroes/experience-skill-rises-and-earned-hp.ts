@@ -75,7 +75,7 @@ export function flushDeferredSkillLogsFor(turnContext, charId) {
   writeDeferredSkillLines(turnContext, mine, true);
 }
 
-export function trySkillGain(turnContext, char, skill, base, narr, mult) {
+export function trySkillGain(turnContext, char, skill, base, narr?, mult?) {
   const { G } = turnContext;
   if (!char || turnContext._pcSimulating) return;
   mult = mult > 0 ? mult : 1;
@@ -290,7 +290,7 @@ export function resolveAllPendingSkillGains(turnContext) {
 // leaders. Mirrors the maxHp gain heroes get for defeating feature monsters, scaled to the fallen
 // foe's toughness. If a narrative array is given (battle report), the message is pushed there;
 // otherwise it is logged.
-export function awardKillXP(turnContext, killer, victim, narrative) {
+export function awardKillXP(turnContext, killer, victim, narrative?) {
   if (!killer || !victim || killer === victim || (killer.hp || 0) <= 0) return;
   if (victim.alive === true && !victim.killedThisTurn) return; // the victim was saved (Battlefield Surgery / unkillable) — no kill, no lesson
   // Sept 2026 redesign: no permanent-HP reward. A kill is a hard lesson in the killer's fighting

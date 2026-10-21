@@ -14,7 +14,7 @@
 // resolveTurn adds the rest as it reaches them: _mercIds, _tel, battleCommanders, fieldBattlePhase, _logCtx,
 // _currentPhase, _afterPhases, and more as each lifted area needs them (docs/ARCHITECTURE.md lists them). The lifted code keeps resolveTurn's two-space indent (plan P1-08's Decisions).
 // TurnContext, below the function, is the context's type (plan P1-10a2), and LogLine the type of a line of the log.
-import type { Dispatch } from '../../schemas/orders-a-realm-submits.ts';
+import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 
 export function createTurnContext(G, freshPlayers, expectedTurnToRun) {
@@ -76,8 +76,8 @@ export interface TheGamesSlotRow {
 export interface LogMeta {
   /** The realm whose hero acts (null: nobody's). */
   actor?: number | null | undefined;
-  /** The realms that always see the line. */
-  targets?: number[] | undefined;
+  /** The realms that always see the line (callers pass `[c.player]`, which is null for a hero who serves no realm). */
+  targets?: (number | null)[] | undefined;
   provinceId?: number | null | undefined;
   /** Everyone with a hero in the province, or owning it, sees it. */
   public?: boolean | undefined;
@@ -98,6 +98,9 @@ export interface LogMeta {
   /** The line's place in a battle's report: 'k' key, 'd' detail, 't' tally, 's' an onlooker's summary. */
   bTier?: string | null | undefined;
   gameEnd?: boolean | undefined;
+  /** Passed by emitBattle on a battle's lines (and by emitNarrLine), but log() leaves both out of the line it files. */
+  battleDetail?: boolean | undefined;
+  summary?: boolean | undefined;
 }
 
 /** A line of the GM's log (turnLog): its type ('system', 'combat', 'move', …), its text, and every field of LogMeta,
@@ -106,7 +109,7 @@ export interface LogLine {
   type: string;
   text: string;
   actor: number | null;
-  targets: number[];
+  targets: (number | null)[];
   provinceId: number | null;
   public: boolean;
   spy: boolean;
@@ -121,6 +124,15 @@ export interface LogLine {
   bTier: string | null;
   gameEnd: boolean;
 }
+
+/** A line of a battle's or a duel's narrative: shown to everyone there, or (an object with onlyPlayer) to one realm
+ *  alone (turn/log-line-helpers.ts, emitNarrLine). */
+export type NarrativeLine =
+  string | { text: string; onlyPlayer?: number | null | undefined; charId?: number | null | undefined };
+
+/** A hero's order for one phase as the turn holds it (G.turnOrders, by hero, then by phase): his realm's order, or one
+ *  the engine writes (a march the invasion interlock cancelled becomes a Defend, `_pinned`). */
+export type TurnOrder = PhaseOrder & { _pinned?: boolean | undefined };
 
 /** The turn's telemetry: each realm's situation and orders before anything happens, and what the turn's hooks
  *  collect (db/telemetry.ts writes it; its entries are its own shapes). */

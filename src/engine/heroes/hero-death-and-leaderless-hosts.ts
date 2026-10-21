@@ -213,7 +213,7 @@ export function abandonHostOnFlight(turnContext, c) {
 // death's door, but not slain" when Battlefield Surgery saves them, with the surgery line
 // straight after it; nothing of its own when they vanished or escaped (those write their own
 // line). Returns what handleHeroDeath returns (false = they live).
-export function reportHeroFall(turnContext, dead, killer, slainLine, meta, hopts) {
+export function reportHeroFall(turnContext, dead, killer, slainLine, meta, hopts?) {
   const { log } = turnContext;
   const o = { ...(hopts || {}), lines: [] };
   const res = handleHeroDeath(turnContext, dead, killer, o);
