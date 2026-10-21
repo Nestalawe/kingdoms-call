@@ -11,7 +11,9 @@
 //   schemas of src/schemas/ (P1-10a1), which src/ imports as types only (`import type`) until P1-15 parses a save at
 //   load: a value import of one (planted) is refused, and a type-only one (planted) leaves every bundle without it.
 // - tools/pages.ts names each page's files as Rolldown does, but a module nothing on the page reads, which Rolldown
-//   leaves out (kc-safe.ts on the Overlord page, which calls none of it).
+//   leaves out (kc-safe.ts on the Overlord page, which calls none of it). Its importsOf reads a module's imports that
+//   bring code, and leaves out a type-only one (P1-10a2: engine/turn/context.ts imports the schemas' types), in every
+//   form (planted).
 // - The engine's files (tools/pages.ts's engineEntryFiles, which tests/lib/engine.ts bundles) are the data file and
 //   every file under src/engine/ and src/views/, each in the GM page's bundle, in the order the page's entry lists them,
 //   the dice and the clock first.
@@ -207,6 +209,40 @@ describe('every file under src/ is in a page', () => {
     const r = build(path.join(tmp, 'site-types-only'), copy);
     expect(Object.values(r.modules).flat().filter(isTypesOnly)).toEqual([]);
     expect(unreached(copy, r)).toEqual([]);
+    // …and tools/pages.ts names no schema for any page either (P1-10a2: importsOf leaves type-only imports out).
+    expect(
+      pageNames(copy)
+        .flatMap((page) => pageFiles(page, copy))
+        .filter(isTypesOnly),
+    ).toEqual([]);
+  });
+
+  test("tools/pages.ts's importsOf reads the imports that bring code, and not a type-only one (planted)", () => {
+    const copy = srcCopy((d) => {
+      fs.writeFileSync(
+        path.join(d, 'engine', 'imports-in-every-form.ts'),
+        [
+          "import type { GameState } from '../schemas/saved-game-state.ts';",
+          "export type { Realm } from '../schemas/saved-game-state.ts';",
+          "import { kcRng } from './rng.ts';",
+          "import { type kcClock } from './clock.ts';",
+          "import './graves.ts';",
+          "export * from './discoveries.ts';",
+          "export { KC_UNIT_TYPE } from '../content/kingdoms-call-data.ts';",
+          "export const later = () => import('./world/map-helpers.ts');",
+          'export const roll = (g: GameState) => (g ? kcRng() : 0);',
+          '',
+        ].join('\n'),
+      );
+    });
+    expect(importsOf('engine/imports-in-every-form.ts', copy)).toEqual([
+      'engine/rng.ts',
+      'engine/clock.ts',
+      'engine/graves.ts',
+      'engine/discoveries.ts',
+      'content/kingdoms-call-data.ts',
+      'engine/world/map-helpers.ts',
+    ]);
   });
 
   test.for(pages)("%s: tools/pages.ts names the files Rolldown's bundle holds", (page) => {

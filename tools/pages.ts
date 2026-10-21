@@ -9,12 +9,12 @@
 //                               in the order it imports them, from the page's entries)
 //   pageFiles(page, src)        the page's template, its stylesheets and its modules: the files under src/ it is built
 //                               from
-//   importsOf(file, src)        the files a module imports, in its order, relative to src/
+//   importsOf(file, src)        the files a module imports for its code, in its order, relative to src/ (an `import type`
+//                               or `export type … from` brings no code, so it isn't one)
 //   engineEntryFiles(src)       the files of the engine (plan P1-18c): the data file, then the files under engine/ and
 //                               views/ the GM portal's entry imports, in its order, then any other file there
 //
-// It imports nothing but Node's own modules and TypeScript (its preProcessFile reads a file's imports without a full
-// parse).
+// It imports nothing but Node's own modules and TypeScript (its parser reads a file's imports).
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -53,12 +53,29 @@ export function pageEntries(page: string, src = SRC): { modules: string[]; style
   };
 }
 
-/** The files the module `file` imports (static imports and re-exports), in its order, relative to src/. */
+/** The files the module `file` imports for its code (static imports, re-exports and `import()`), in its order, relative
+ *  to src/. A type-only import or re-export (`import type`, `export type … from`) is left out (plan P1-10a2): the build
+ *  erases it, so no bundle holds the file for it (src/schemas/ is reached only so). `import { type X } from` is kept:
+ *  with verbatimModuleSyntax the build leaves a bare import of the file. */
 export function importsOf(file: string, src = SRC): string[] {
   const text = fs.readFileSync(path.join(src, file), 'utf8');
-  return ts
-    .preProcessFile(text, true, false)
-    .importedFiles.map((i) => path.posix.normalize(path.posix.join(path.posix.dirname(file), i.fileName)));
+  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+  const named: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      const typeOnly = ts.isImportDeclaration(node)
+        ? node.importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword
+        : node.isTypeOnly;
+      if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && !typeOnly)
+        named.push(node.moduleSpecifier.text);
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const [specifier] = node.arguments;
+      if (specifier && ts.isStringLiteralLike(specifier)) named.push(specifier.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return named.map((name) => path.posix.normalize(path.posix.join(path.posix.dirname(file), name)));
 }
 
 /** Every module of the page, in the order they run: depth first from each entry, each file after the files it imports,
