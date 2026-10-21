@@ -122,8 +122,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   site and puts back every file that site's pages name (scripts, stylesheets, `vendor/`, and the `url()`s in their
   stylesheets), and every file its `published-files.json` lists as live within the last 24 hours, that the new build
   lacks. A file the new build makes is never overwritten. It then writes the new `published-files.json`. The deploy
-  reads the previous site from the newest successful Deploy run on `main`: its `github-pages` artifact, exactly what it
-  published (`actions: read`; kept 30 days). With no artifact (none yet, or expired: the last deploy is over 30 days
+  reads the previous site from the newest Deploy run on `main` whose `deploy` job succeeded (a run can succeed with that
+  job skipped, having published nothing): its `github-pages` artifact, exactly what it published (`actions: read`; kept 30 days). With no artifact (none yet, or expired: the last deploy is over 30 days
   old), it reads the live site over HTTPS. Staging reads its previous site from a shallow clone of the staging
   repository, which is public. Anything wrong (no previous site, a missing file, a failed request) stops the `build`
   job, so nothing is published and the site stays as it was (`tests/unit/a-deploy-keeps-the-files-a-cached-page-still-names.test.ts`,

@@ -40,6 +40,20 @@ put the old files back ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-
   in a bundle (`//#region src/…`) from the folder it runs in, so a copy of `src/` built from elsewhere differs in every
   bundle, and so in every name (`tests/unit/a-deploy-keeps-the-files-a-cached-page-still-names.test.ts`).
 
+## A job after a skipped job is skipped, unless its `if` says otherwise
+
+A job whose `if` names no status function (`!cancelled()`, `always()`, `success()`, `failure()`) gets GitHub's
+`success()`, which reads **every** job before it in the `needs` chain, not only the ones it names. In `deploy.yml`,
+`migrate-production` is skipped on every merge that adds no migration, so a job after it with a plain `if` is skipped
+too, and the run still shows "success". That is how the deploys of #184 to #186 published nothing.
+
+- **A job after one that may be skipped says `!cancelled()` and the results it needs**, as `build` and `deploy` do
+  (`deploy`: `!cancelled() && needs.build.result == 'success' && github.ref == 'refs/heads/main'`).
+  `tests/static/harness.test.ts` refuses `deploy` without them, or with `always()`.
+- **"Success" on a run doesn't mean it published.** Check the `deploy` job, and the live `version.json`'s commit (after
+  the 10-minute cache). The keep step finds the previous deploy the same way: the newest run whose `deploy` job
+  succeeded.
+
 ## A constant read at load time must live in a leaf module
 
 The site's code is ES modules (P1-09d): each file runs after the files it imports. That orders almost everything by

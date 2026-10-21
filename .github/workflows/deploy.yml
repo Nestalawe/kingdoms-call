@@ -116,8 +116,9 @@ jobs:
 
       - run: npm run build
 
-      # The previous deploy is the newest successful run of this workflow on main; its Pages artifact is exactly the site
-      # it published. With none (no run yet, or its artifact expired: the last deploy is over 30 days old, so no cached
+      # The previous deploy is the newest run of this workflow on main whose deploy job succeeded (a run can succeed
+      # with its deploy job skipped, and then it published nothing); its Pages artifact is exactly the site it
+      # published. With none (no run yet, or its artifact expired: the last deploy is over 30 days old, so no cached
       # page is that old), the live site is read instead. Any failure (the API, the download, a missing file) stops the
       # job here, and nothing is published (tools/deploy/keep-the-previous-deploys-files.ts).
       - name: Keep the previous deploy's files
@@ -127,7 +128,16 @@ jobs:
         run: |
           set -euo pipefail
           runs="repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&status=success&per_page=20"
-          run=$(gh api "$runs" --jq "[.workflow_runs[] | select(.id != $GITHUB_RUN_ID)][0].id // empty")
+          ids=$(gh api "$runs" --jq ".workflow_runs[] | select(.id != $GITHUB_RUN_ID) | .id")
+          run=""
+          for id in $ids; do
+            published=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" \
+              --jq '[.jobs[] | select(.name == "deploy" and .conclusion == "success")] | length')
+            if [ "$published" = 1 ]; then
+              run=$id
+              break
+            fi
+          done
           artifact=""
           if [ -n "$run" ]; then
             artifacts="repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?name=github-pages"
@@ -149,10 +159,12 @@ jobs:
           path: site/
           retention-days: 30
 
-  # Publishes the artifact the build job uploaded, once it succeeded, and only that.
+  # Publishes the artifact the build job uploaded, once it succeeded, and only that. The condition names
+  # !cancelled() and the build's result: without a status function GitHub adds success(), which reads every job
+  # before this one, so a skipped migrate-production (every merge without a migration) would skip the deploy too.
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: ${{ !cancelled() && needs.build.result == 'success' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
