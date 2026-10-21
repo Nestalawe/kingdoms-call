@@ -1,6 +1,12 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_CARRIER_BERTHS, KC_RIVAL_RACE, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  dispFloor,
+  itemUsableBy,
+  skillFameLabelM,
+  unitBaseStrength,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
 import {
   GUARD_POWER_COLORS_P,
@@ -8,7 +14,6 @@ import {
   itemBoundTag,
   itemSlotTag,
   itemTierTagP,
-  itemUsableByP,
   itemsForDisplayP,
 } from './items-and-heroes.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
@@ -16,7 +21,7 @@ import { refreshOrdersVisibility } from './layout.ts';
 import { turnDeadlineText } from './game-lists.ts';
 import { buildChronicle, loadPastReport, returnToCurrentReport } from './join-and-chronicle.ts';
 import { renderMastery, renderTitles } from './titles.ts';
-import { armyLabel, floorNumP, unitBaseStrengthP, unitEmoji } from './order-chances.ts';
+import { armyLabel, unitEmoji } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
 import { buildOrdersForm } from './orders-form.ts';
 import { effSkillP, itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.ts';
@@ -36,7 +41,6 @@ import {
   provLinkHtml,
   provinceGrandDesignHTML,
   reportColour,
-  skillFameLabel,
   spiedExtraP,
   terrorNoteP,
 } from './map-symbols.ts';
@@ -324,7 +328,7 @@ export function renderReportView(report) {
     ${chars
       .filter((c) => c.alive !== false)
       .map((c) => {
-        const hpPct = floorNumP((c.hp / c.maxHp) * 100) || 0;
+        const hpPct = dispFloor((c.hp / c.maxHp) * 100) || 0;
         // 2026-09-09e: was the raw trained level only — item, aura and Curse changes never showed, so
         // this card disagreed with both the orders column and the engine. Now the shared renderer.
         const skillRow = skillRowHTML(c, 'inline'); // match the orders column's inline style
@@ -348,7 +352,7 @@ export function renderReportView(report) {
           <span style="color:var(--forest)" title="1 province per phase used to move, +1 per province conquered"><strong>Move:</strong> ${effSpd} province${effSpd !== 1 ? 's' : ''}/turn</span>
           ${!c.isKing ? kcHtml`<span><strong>Pay:</strong> ${c.pay || 1}g/turn</span>` : ''}
           ${skillRow}
-          ${itemsForDisplayP(c).map((i) => kcHtml`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(i)}🔮 ${itemLoreTip(i, i.name)}${itemTierTagP(i)}${itemBoundTag(i, c)}${itemUsableByP(i, c) ? itemSlotTag(i, c) : ''}${i.desc ? kcHtml` <span style="color:var(--item-desc);font-weight:400">(${i.desc})</span>` : ''}</div>`)}
+          ${itemsForDisplayP(c).map((i) => kcHtml`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(i)}🔮 ${itemLoreTip(i, i.name)}${itemTierTagP(i)}${itemBoundTag(i, c)}${itemUsableBy(i, c) ? itemSlotTag(i, c) : ''}${i.desc ? kcHtml` <span style="color:var(--item-desc);font-weight:400">(${i.desc})</span>` : ''}</div>`)}
           ${(() => {
             const maj = c.titlesHeld || [],
               min = c.minorHeld || [];
@@ -382,7 +386,7 @@ export function renderReportView(report) {
               // base-strength boost the engine applies; a character's race is always humanoid, so
               // Creatures/ Monsters/skeletons never match. Shown before terrain/tactics, like
               // everything else here.
-              const rawBs = unitBaseStrengthP(a);
+              const rawBs = unitBaseStrength(a);
               const kingRaceMatch = !!(a.race && kingdom.race && a.race === kingdom.race);
               const leadRaceMatch = !!(a.race && a.race === c.race);
               // Racial animosity: Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin
@@ -574,7 +578,7 @@ export function renderReportView(report) {
       visDeadHeroes.map(
         (h) => kcHtml`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
       <strong>${h.name}</strong> <span style="color:#701010">(dead)</span>${h.race || h.alignment ? ` (${[h.race, h.alignment].filter(Boolean).join(', ')})` : ''} ${deadHeroRealmTagP(h, report)} when they fell — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
-      <span style="font-size:.78rem">${h.topSkill ? kcHtml`${skillFameLabel(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill] || h.topSkill.skill}</span>` : 'No notable skills'}</span><br>
+      <span style="font-size:.78rem">${h.topSkill ? kcHtml`${skillFameLabelM(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill] || h.topSkill.skill}</span>` : 'No notable skills'}</span><br>
       ${
         (h.servedOther !== undefined ? h.servedOther : h.player != null && !h.isOwn)
           ? kcHtml`<span style="font-size:.72rem;color:#701010">⛔ Sworn to another crown in life — Resurrect will not raise them for you. Only your own fallen and heroes who never served a rival can be brought back.</span>`
@@ -657,7 +661,7 @@ export function renderReportView(report) {
                   .map(([k, v]) => `${SKILL_LABELS[k] || k} ${v}`)
                   .join(', ')}`
               : s.topSkill
-                ? kcHtml`${skillFameLabel(s.topSkill.level)} ${topStr}`
+                ? kcHtml`${skillFameLabelM(s.topSkill.level)} ${topStr}`
                 : 'No known skills';
           return kcHtml`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
@@ -685,7 +689,7 @@ export function renderReportView(report) {
                   .map(([k, v]) => `${SKILL_LABELS[k] || k} ${v}`)
                   .join(', ')}`
               : s.topSkill
-                ? kcHtml`${skillFameLabel(s.topSkill.level)} ${topStr}`
+                ? kcHtml`${skillFameLabelM(s.topSkill.level)} ${topStr}`
                 : 'No known skills';
           return kcHtml`<div class="intel-entry" style="border-left-color:#8a6a2a">
           🛡 <strong style="color:${CHIEFTAIN_MARKER_COLOR}">${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
@@ -713,7 +717,7 @@ export function renderReportView(report) {
                   .map(([k, v]) => `${SKILL_LABELS[k] || k} ${v}`)
                   .join(', ')}`
               : s.topSkill
-                ? kcHtml`${skillFameLabel(s.topSkill.level)} ${topStr}`
+                ? kcHtml`${skillFameLabelM(s.topSkill.level)} ${topStr}`
                 : 'No known skills';
           return kcHtml`<div class="intel-entry" style="border-left-color:#7a1c1c">
           👁 <strong>${s.name}</strong> of ${s.kingdom}${s.race || s.alignment ? ` (${[s.race, s.alignment].filter(Boolean).join(', ')})` : ''} — ${s.locationName}<br>

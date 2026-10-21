@@ -1,6 +1,15 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_BASIC_EXPLORE, KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
+import {
+  actionSpellsAllowedPerSchoolEachTurn,
+  alignDistP,
+  ALL_SKILLS,
+  heroHireWage,
+  isLegendaryItem,
+  itemSlot,
+  itemUsableBy,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import {
   DIRECTIONS,
@@ -11,10 +20,7 @@ import {
   RUMOUR_COST_BY_POWER_P,
   SEASONS,
   gdHintFor,
-  isLegendaryItemP,
-  itemSlotP,
   itemTierTagP,
-  itemUsableByP,
   orderTargetCharsP,
   preOrderTagP,
   realmNameP,
@@ -24,11 +30,9 @@ import {
 } from './items-and-heroes.ts';
 import { spellSecondaryHtml } from './titles.ts';
 import {
-  ALL_SKILLS,
   SPELLS_BY_SCHOOL,
   SPELL_REQ_LEVEL,
   SPELL_TO_SCHOOL,
-  actionSpellLimit,
   armyLabel,
   castChanceNote,
   effMagicLvl,
@@ -52,10 +56,8 @@ import {
   MONSTER_ARMIES_UI,
   _isAutoGarrisonRecruit,
   _projRecruitUnits,
-  alignDistPP,
   capitalise,
   heroHireWageOfP,
-  heroHireWagePP,
   predictedItems,
   projectedGarrison,
 } from './skills-and-projections.ts';
@@ -1001,7 +1003,7 @@ export function buildTargetField(c, ph, saved) {
       // one select per slot (two for rings) listing the slot items this character will hold at this
       // phase; target = comma-separated chosen item names. Unlisted slot items are unequipped; a
       // slot left on '— none —' is auto-filled by the engine with the first item held for it.
-      const held = predictedItems(c.id, ph).filter((it) => it && itemSlotP(it) && itemUsableByP(it, c)); // bound items you can't use aren't offered
+      const held = predictedItems(c.id, ph).filter((it) => it && itemSlot(it) && itemUsableBy(it, c)); // bound items you can't use aren't offered
       // 2026-09-24 (Toby): a card whose sheet you cannot read carries `items:[]` — an ABSENCE of
       // information, not an empty pack. The old placeholder read it as fact and announced "Nothing to
       // wear or wield", which tells the player something definite about a pack they have no right to
@@ -1013,7 +1015,7 @@ export function buildTargetField(c, ph, saved) {
         .map((t) => t.trim())
         .filter(Boolean);
       const rows = ITEM_SLOT_ORDER_P.map((sl) => {
-        const opts = held.filter((it) => itemSlotP(it) === sl);
+        const opts = held.filter((it) => itemSlot(it) === sl);
         if (opts.length === 0) return '';
         const cap = ITEM_SLOT_CAP_P[sl];
         const pre = chosen.length
@@ -1022,7 +1024,7 @@ export function buildTargetField(c, ph, saved) {
         const sels = Array.from(
           { length: cap },
           (_, k) =>
-            kcHtml`<select data-slot="${sl}" onchange="updateEquipTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="font-size:.75rem;flex:1"><option value="">— none —</option>${opts.map((o) => kcHtml`<option value="${o.name}" ${pre[k] === o.name ? 'selected' : ''}>${o.name}${isLegendaryItemP(o) ? '✨ ' : ''}</option>`)}</select>`,
+            kcHtml`<select data-slot="${sl}" onchange="updateEquipTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="font-size:.75rem;flex:1"><option value="">— none —</option>${opts.map((o) => kcHtml`<option value="${o.name}" ${pre[k] === o.name ? 'selected' : ''}>${o.name}${isLegendaryItem(o) ? '✨ ' : ''}</option>`)}</select>`,
         );
         return kcHtml`<div style="display:flex;align-items:center;gap:6px;padding:2px 0"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);min-width:110px">${ITEM_SLOT_LABEL_P[sl]}</span>${sels}</div>`;
       });
@@ -1043,7 +1045,7 @@ export function buildTargetField(c, ph, saved) {
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c) ? `Whatever ${c.name} carries is hidden from you — you cannot order the use of an item you cannot see` : 'No usable (active) items — most items are passive'}" disabled>`;
       const opts = active.map(
         (it) =>
-          kcHtml`<option value="${it.id}" ${target == it.id ? 'selected' : ''}>${isLegendaryItemP(it) ? '✨ Legendary — ' : ITEM_TIER_NAME_P[it.tier || 1] + ' — '}${it.name} — ${it.desc}</option>`,
+          kcHtml`<option value="${it.id}" ${target == it.id ? 'selected' : ''}>${isLegendaryItem(it) ? '✨ Legendary — ' : ITEM_TIER_NAME_P[it.tier || 1] + ' — '}${it.name} — ${it.desc}</option>`,
       );
       // a spell item needs the spell's own target (province / character) — same field as Cast
       // Spell.
@@ -1329,7 +1331,7 @@ export function buildTargetField(c, ph, saved) {
               const currentLvl = effMagicLvl(c, school);
               const projLvl = _projLvl[school];
               const isPractising = practisingSchools.has(school) && currentLvl === 0;
-              const limit = actionSpellLimit(projLvl);
+              const limit = actionSpellsAllowedPerSchoolEachTurn(projLvl);
               const used = schoolCastCount[school] || 0;
               const atLimit = used >= limit;
               const lvlTxt =
@@ -1363,7 +1365,7 @@ export function buildTargetField(c, ph, saved) {
       const allAtLimit =
         knownOrPractisingSchools.length > 0 &&
         knownOrPractisingSchools.every(
-          ([school]) => (schoolCastCount[school] || 0) >= actionSpellLimit(_projLvl[school]),
+          ([school]) => (schoolCastCount[school] || 0) >= actionSpellsAllowedPerSchoolEachTurn(_projLvl[school]),
         );
 
       if (!spells.length)
@@ -1570,8 +1572,8 @@ export function buildTargetField(c, ph, saved) {
         const wage = heroHireWageOfP(h, report);
         if (wage == null)
           return kcHtml`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;
-        const d = alignDistPP(kAlign, h.alignment);
-        const _base = heroHireWagePP(kAlign, h.alignment),
+        const d = alignDistP(kAlign, h.alignment);
+        const _base = heroHireWage(kAlign, h.alignment),
           _prem = _base != null && wage > _base ? wage - _base : 0;
         const costNote =
           (d <= 1 ? '(kindred outlook' : `(${d} steps from ${kAlign}`) +

@@ -1,9 +1,10 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_TERRAIN_COLORS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { skillFameLabelM, topSkillOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import { GD_BY_ALIGNMENT, GUARD_POWER_COLORS_P, deadHeroRealmTagP } from './items-and-heroes.ts';
-import { ALL_SKILLS, armyLabel, unitEmoji } from './order-chances.ts';
+import { armyLabel, unitEmoji } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
 
 // ── TERRAIN COLORS ────
@@ -646,21 +647,8 @@ export function popupKnownChars(pd, deadHeroes) {
 // reputation as one phrase — "legendary for Tactical". Mirrors the GM engine's heroFameText(); the
 // level itself is never shown.
 export function heroFameTextP(h) {
-  let ts = (h && h.topSkill) || null;
-  if (!ts) {
-    const sk = Object.entries((h && h.skills) || {}).filter(([, v]) => v > 0);
-    if (sk.length) {
-      const mx = Math.max(...sk.map(([, v]) => v));
-      const tied = sk.filter(([, v]) => v === mx);
-      tied.sort((a, b) => ALL_SKILLS.indexOf(a[0]) - ALL_SKILLS.indexOf(b[0]));
-      ts = { skill: tied[0][0], level: tied[0][1] };
-    }
-  }
-  return ts ? `${skillFameLabel(ts.level)} ${SKILL_LABELS[ts.skill] || ts.skill}` : 'no notable skills';
-}
-export function skillFameLabel(level) {
-  const l = level || 0;
-  return l >= 7 ? 'has a heroic level of' : l >= 4 ? 'legendary for' : 'renowned for';
+  const ts = (h && h.topSkill) || topSkillOf(h);
+  return ts ? `${skillFameLabelM(ts.level)} ${SKILL_LABELS[ts.skill] || ts.skill}` : 'no notable skills';
 }
 // bottom-right race badges. Keys are formatRace() outputs. 2026-09-11: no outline — the dark ring
 // read as a black border at map scale. Fill + glyph only, so `stroke` is deliberately absent from

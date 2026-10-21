@@ -1,8 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
+import { dispFloor } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP } from './items-and-heroes.ts';
-import { SPELL_HINTS, floorNumP } from './order-chances.ts';
+import { SPELL_HINTS } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
 import { predictedLocation, provDirectionLabel } from './order-targets.ts';
 import { leadsArmiesP, reportColour } from './map-symbols.ts';
@@ -116,11 +117,11 @@ export function renderTitles(report) {
     return;
   }
   const nPlayers = (t.standings || []).length || 2;
-  const pct = floorNumP((t.myShare || 0) * 100),
-    thr = Math.ceil(floorNumP((t.threshold || 0) * 100 * 1e6) / 1e6); // a 41.6% share shows 41, never "42% (need 42%)"
+  const pct = dispFloor((t.myShare || 0) * 100),
+    thr = Math.ceil(dispFloor((t.threshold || 0) * 100 * 1e6) / 1e6); // a 41.6% share shows 41, never "42% (need 42%)"
   // the caller's OWN share and the personal floor (half the bar).
-  const ownPct = floorNumP((t.myOwnShare != null ? t.myOwnShare : t.myShare || 0) * 100),
-    minPct = Math.ceil(floorNumP((t.callerMin || 0) * 100 * 1e6) / 1e6);
+  const ownPct = dispFloor((t.myOwnShare != null ? t.myOwnShare : t.myShare || 0) * 100),
+    minPct = Math.ceil(dispFloor((t.callerMin || 0) * 100 * 1e6) / 1e6);
 
   // ── titles newly WON this turn (character or realm), with how + effect ──
   let gainsHtml = '';
@@ -254,7 +255,7 @@ export function renderTitles(report) {
 
   // ── how to Call the Reckoning (always shown while titles are public) ──
   const _minTurn = t.reckoningMinTurn || 10;
-  const _solo = Math.ceil(floorNumP((t.soloThreshold != null ? t.soloThreshold : t.threshold || 0) * 100 * 1e6) / 1e6);
+  const _solo = Math.ceil(dispFloor((t.soloThreshold != null ? t.soloThreshold : t.threshold || 0) * 100 * 1e6) / 1e6);
   const _step = Math.round((t.allyStep || 0) * 100);
   const _nAllies = Math.max(0, (t.blocSize || 1) - 1);
   const reckoningInfo = kcHtml`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#231e16;line-height:1.5">
@@ -331,11 +332,11 @@ export function renderReckoningOrders() {
   const w = document.getElementById('reckoning-wrap');
   if (!w) return;
   const t = (currentReport && currentReport.titles) || {};
-  const pct = floorNumP((t.myShare || 0) * 100),
-    thr = Math.ceil(floorNumP((t.threshold || 0) * 100 * 1e6) / 1e6); // a 41.6% share shows 41, never "42% (need 42%)"
+  const pct = dispFloor((t.myShare || 0) * 100),
+    thr = Math.ceil(dispFloor((t.threshold || 0) * 100 * 1e6) / 1e6); // a 41.6% share shows 41, never "42% (need 42%)"
   // the caller's OWN share and the personal floor (half the bar).
-  const ownPct = floorNumP((t.myOwnShare != null ? t.myOwnShare : t.myShare || 0) * 100),
-    minPct = Math.ceil(floorNumP((t.callerMin || 0) * 100 * 1e6) / 1e6);
+  const ownPct = dispFloor((t.myOwnShare != null ? t.myOwnShare : t.myShare || 0) * 100),
+    minPct = Math.ceil(dispFloor((t.callerMin || 0) * 100 * 1e6) / 1e6);
   if (t.gameOver) {
     w.innerHTML = kcHtml`<div style="color:#2f281c">The game is over — there is nothing left to call.</div>`;
     return;
@@ -363,7 +364,7 @@ export function renderReckoningOrders() {
     why = kcHtml`Your bloc commands <strong>${pct}%</strong> of the world's tax base — enough to call it — but the claim belongs to whoever lodges it, and your own realm holds only <strong>${ownPct}%</strong>. A claimant must personally hold <strong>${minPct}%</strong> (half the ${thr}% bar), so the greatest realm in your alliance must be the one to call it.`;
   else if (pct < thr) {
     const _na = Math.max(0, (t.blocSize || 1) - 1),
-      _so = Math.ceil(floorNumP((t.soloThreshold != null ? t.soloThreshold : t.threshold || 0) * 100 * 1e6) / 1e6);
+      _so = Math.ceil(dispFloor((t.soloThreshold != null ? t.soloThreshold : t.threshold || 0) * 100 * 1e6) / 1e6);
     why = kcHtml`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#2f281c">(${thr - pct} more percentage point${thr - pct !== 1 ? 's' : ''} to go)</span>.${_na > 0 ? kcHtml` <span style="color:#654c0c">Standing alone the bar would be ${_so}% — each of your ${_na} all${_na === 1 ? 'y' : 'ies'} raises it by ${Math.round((t.allyStep || 0) * 100)} points.</span>` : ''}`;
   } else why = kcHtml`Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%).`;
   w.innerHTML = kcHtml`<div style="color:#231e16;line-height:1.5">${why} The <strong>👑 Call the Reckoning</strong> button will appear here when you qualify.</div>`;

@@ -2,11 +2,11 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import {
   KC_GRAND_DESIGNS,
-  KC_ITEM_RACE_ALIAS,
   KC_ITEM_SLOT_CAP,
   KC_RUMOUR_COST_BY_POWER,
   KC_SEASONS,
 } from '../../content/kingdoms-call-data.ts';
+import { itemRaceOf, itemSlot, itemUsableBy } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import { _tintForDarkTooltip, reportColour } from './map-symbols.ts';
 
@@ -103,8 +103,8 @@ export function deadHeroRealmTagP(h, report, opts) {
 export function itemsForDisplayP(c) {
   const src = (c && c.items) || [];
   const rank = (it) => {
-    const sl = itemSlotP(it);
-    const equipped = !!sl && it && it.equipped !== false && itemUsableByP(it, c);
+    const sl = itemSlot(it);
+    const equipped = !!sl && it && it.equipped !== false && itemUsableBy(it, c);
     if (equipped) {
       const i = ITEM_SLOT_ORDER_P.indexOf(sl);
       return [0, i < 0 ? 99 : i];
@@ -116,66 +116,12 @@ export function itemsForDisplayP(c) {
     .sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.i - b.i) // stable within a slot group
     .map((x) => x.it);
 }
-export const ITEM_SLOT_OF_P = {
-  'Blade of Fury': 'weapon',
-  'Elven Longbow': 'weapon',
-  'Staff of the Wildwood': 'weapon',
-  'Sword of the First Emperor': 'weapon',
-  'Black Sceptre': 'weapon',
-  'Warbringer Gauntlets': 'armour',
-  'Gloves of the Nightcrawler': 'armour',
-  'Boots of the Wind': 'armour',
-  'Tower Shield of the Wall': 'shield',
-  'Doorward Pavise': 'shield',
-  'Shield of the Unbroken Line': 'shield',
-  'Anvil-Brand Shield': 'shield',
-  'Shield of the Mountain Hall': 'shield',
-  'Shield of the Innocent': 'shield',
-  'Aegis of the Hearth': 'shield',
-  'Kite Shield of the Marches': 'shield',
-  "Rider's Long Shield": 'shield',
-  'Shield of the Border Road': 'shield',
-  'Bronze Buckler': 'shield',
-  'Quickhand Buckler': 'shield',
-  'Targe of the Nimble': 'shield',
-  'Oaken Roundshield': 'shield',
-  'Heartwood Roundshield': 'shield',
-  'Shield of the First Rounds': 'shield',
-  'Mirror-Bright Shield': 'shield',
-  'Skyglass Shield': 'shield',
-  'Shield of Turned Spells': 'shield',
-  'Shield of the Ward-Saints': 'shield',
-  'Icon Shield': 'shield',
-  'Shield of the Painted Martyrs': 'shield',
-  'Dragonbone Shield': 'shield',
-  'Wyrmbone Shield': 'shield',
-  'Shield of the Unshaken Arm': 'shield',
-  "Traveller's Cloak": 'cloak',
-  Shadowcloak: 'cloak',
-  'Veil of Illusions': 'cloak',
-  'Cloak of Many Faces': 'cloak',
-  "Sage's Crown": 'helm',
-  'Crown of Command': 'helm',
-  'Imperial Regalia': 'helm',
-  'Ring of the Explorer': 'ring',
-  "Death's Finger Ring": 'ring',
-  "Siege Master's Ring": 'ring',
-  'Ring of Wealth': 'ring',
-  "Mind's Eye Amulet": 'amulet',
-  'Amulet of Fortitude': 'amulet',
-  'Iron Heart Talisman': 'amulet',
-  'Eagle-Eye Pendant': 'amulet',
-  "Legionnaire's Mark": 'amulet',
-};
 // FOUR item tiers, mirroring the GM engine - 1 Weak, 2 Moderate, 3 Powerful, 4 LEGENDARY. Since
 // 2026-09-24 the tier says what an item is FOR as well as how strong it is: Weak = field and office kit
 // that does nothing in a fight; Moderate = the first rung of combat kit; Powerful = the second. A lair
 // holds exactly one item, of its own guardian's tier, so the tier a player is shown is the danger
 // they beat for it. Only a legendary relic scores a point.
 export const ITEM_TIER_NAME_P = { 1: 'Weak', 2: 'Moderate', 3: 'Powerful', 4: 'Legendary' };
-export function isLegendaryItemP(it) {
-  return !!it && it.tier === 4;
-}
 // 2026-09-27 (Toby item 5): darkened for readability on parchment — the old tier pills (mid-green,
 // tan, #b8860b goldenrod) and the gold item name sat at ~2.3:1 against #f2e8d0 and were hard to
 // read. Every tier now clears 5:1, and the item name/description use --item-ink / --item-desc.
@@ -186,43 +132,22 @@ export function itemTierTagP(it) {
   const leg = n === 4;
   return kcHtml`<span style="color:${ITEM_TIER_COLOUR_P[n]};font-weight:${leg ? 700 : 600};font-size:.9em">${leg ? ' \u2728 Legendary' : ' \u00b7 ' + ITEM_TIER_NAME_P[n]}</span>`;
 }
-export function itemSlotP(it) {
-  if (!it) return null;
-  // A shield is a shield even when its power is a once-per-fight ward (Anvil-Brand Shield) -
-  // mirrors the GM engine, where the shield test runs before the combat-item test.
-  if (ITEM_SLOT_OF_P[it.name] === 'shield') return 'shield';
-  if (it.effect && it.effect.stat === 'combatUse') return 'combat'; // potions / scrolls / devices are COMBAT ITEMS and take a Combat Item slot (two per character) — mirrors GM itemSlot
-  if (it.effect && it.effect.stat === 'mithrilArmour') return 'armour'; // Mithril is worn in the armour slot
-  if (it.slot !== undefined) return it.slot || null;
-  return ITEM_SLOT_OF_P[it.name] || null;
-}
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded. Item 4:
 // race/alignment-bound items are inert in the wrong hands.
-export const _ITEM_RACE_ALIAS_P = { ...KC_ITEM_RACE_ALIAS }; // 2026-09-10 item 3: mirrors GM itemRaceOf()
-export function itemRaceOfP(it) {
-  const r = it && it.race;
-  return r ? _ITEM_RACE_ALIAS_P[r] || r : r;
-}
-export function itemUsableByP(it, c) {
-  if (!it) return false;
-  if (it.race && (!c || c.race !== itemRaceOfP(it))) return false;
-  if (it.alignment && (!c || c.alignment !== it.alignment)) return false;
-  return true;
-}
 export function itemBoundTag(it, c) {
   if (!it || (!it.race && !it.alignment)) return '';
-  const who = it.race ? `${itemRaceOfP(it)} characters` : `${it.alignment} characters`;
-  return itemUsableByP(it, c)
+  const who = it.race ? `${itemRaceOf(it)} characters` : `${it.alignment} characters`;
+  return itemUsableBy(it, c)
     ? ''
     : kcHtml` <span style="color:#7a1010;font-size:.72rem">[${who} only — unusable by this character]</span>`;
 }
 export function itemSlotTag(it, c) {
   // name the slot AND how many of that slot the character still has free.
-  const sl = itemSlotP(it);
+  const sl = itemSlot(it);
   if (!sl) return kcHtml` <span style="color:#2a2419;font-size:.72rem">[carried — needs no slot]</span>`;
   const cap = ITEM_SLOT_CAP_P[sl] || 1;
   const used = c
-    ? (c.items || []).filter((o) => o && itemSlotP(o) === sl && o.equipped !== false && itemUsableByP(o, c)).length
+    ? (c.items || []).filter((o) => o && itemSlot(o) === sl && o.equipped !== false && itemUsableBy(o, c)).length
     : it.equipped === false
       ? 0
       : 1;

@@ -47,7 +47,7 @@ import {
   toggleSection,
 } from './report.ts';
 import { renderReckoningOrders, renderTitles, setReckoningCall } from './titles.ts';
-import { rebuildTargetWrap, unitTypeOfP } from './order-chances.ts';
+import { rebuildTargetWrap } from './order-chances.ts';
 import { groupHeroesByLocation, moveHeroBlock, poSeaAnalysis, refreshAllMoveModeNotes } from './move-analysis.ts';
 import {
   addEncounterTactic,
@@ -106,6 +106,7 @@ import {
   toggleMsgGroupPicker,
   updateMsgComposer,
 } from './dispatches.ts';
+import { unitTypeOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
 // ── The player portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // The page's scripts are ES modules (P1-09d), so a top-level name belongs to its own file: an inline on…="…" handler, a
@@ -233,6 +234,6 @@ Object.assign(window, {
   sb, // ui/player/startup.ts
   setMsgChannel, // ui/player/dispatches.ts
   terrorNoteP, // ui/player/map-symbols.ts
-  unitTypeOfP, // ui/player/order-chances.ts
+  unitTypeOf, // engine/rules-on-plain-values/unit-types-and-base-strength.ts
   updateMsgComposer, // ui/player/dispatches.ts
 });

@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
+import { gameMetaOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { sb } from './startup.ts';
 import { fetchGameSlots } from './sign-in.ts';
 import { openReport } from './report.ts';
@@ -307,19 +308,10 @@ export function parseGameStateP(g) {
 // game, on every page load) just to read the turn mode and which realms are exempt from orders;
 // it now reads the summary and only falls back to the world for a row that has none.
 export const GAME_LITE_COLS_P = 'id,name,gm_user_id,status,turn,max_players,created_at,meta';
-export function gameMetaP(g) {
-  if (!g || g.meta == null) return null;
-  try {
-    const m = typeof g.meta === 'string' ? JSON.parse(g.meta) : g.meta;
-    return m && typeof m === 'object' && m.v ? m : null;
-  } catch (e) {
-    return null;
-  }
-}
 // ARCHIVED (2026-09-27, Toby item 1). The GM portal writes `archived` onto game_state and mirrors it
 // into meta; nothing is deleted, so an archived game still opens and still shows every past turn.
 export function gameArchivedP(g) {
-  const m = gameMetaP(g);
+  const m = gameMetaOf(g);
   if (m && m.archived !== undefined) return !!m.archived;
   return !!parseGameStateP(g).archived;
 }
@@ -339,7 +331,7 @@ export function realmExemptFromOrdersP(G, idx) {
   return !hasProv && !hasChar;
 }
 export function realmExemptInP(g, idx) {
-  const m = gameMetaP(g);
+  const m = gameMetaOf(g);
   if (m && Array.isArray(m.exempt)) return m.exempt.includes(idx);
   return realmExemptFromOrdersP(parseGameStateP(g), idx);
 }
@@ -359,7 +351,7 @@ export function ordersInTextP(g, slots) {
 // The GM chooses manual / automatic / automatic-with-deadline. Players are shown the deadline (in
 // their own local time), and the COUNT of realms whose orders are in — never which ones.
 export function turnModeOfGame(g) {
-  let gs = gameMetaP(g);
+  let gs = gameMetaOf(g);
   if (!gs) {
     try {
       gs = typeof g.game_state === 'string' ? JSON.parse(g.game_state) : g.game_state || {};

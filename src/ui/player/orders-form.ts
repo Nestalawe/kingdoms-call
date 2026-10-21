@@ -1,6 +1,10 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.ts';
+import {
+  combatSpellsAllowedPerSchoolEachFight,
+  itemUsableBy,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import {
   RUMOUR_COST_BY_POWER_P,
@@ -11,7 +15,6 @@ import {
   itemBoundTag,
   itemSlotTag,
   itemTierTagP,
-  itemUsableByP,
   itemsForDisplayP,
   renderConcede,
   renderDiscoveryChoices,
@@ -19,14 +22,7 @@ import {
 } from './items-and-heroes.ts';
 import { renderDiplomacy } from './report.ts';
 import { renderReckoningOrders } from './titles.ts';
-import {
-  SPELL_TO_SCHOOL,
-  armyLabel,
-  combatSpellLimit,
-  effMagicLvl,
-  refreshLaterCastSpells,
-  unitEmoji,
-} from './order-chances.ts';
+import { SPELL_TO_SCHOOL, armyLabel, effMagicLvl, refreshLaterCastSpells, unitEmoji } from './order-chances.ts';
 import {
   DUEL_STANCES,
   ENCOUNTER_TACTICS,
@@ -476,7 +472,7 @@ export function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum
             return kcHtml`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           });
         })()}
-        ${itemsForDisplayP(c).map((it) => kcHtml`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(it)}🔮 ${itemLoreTip(it, it.name)}${itemTierTagP(it)}${itemBoundTag(it, c)}${itemUsableByP(it, c) ? itemSlotTag(it, c) : ''}${it.desc ? kcHtml` <span style="color:var(--item-desc);font-weight:400">(${it.desc})</span>` : ''}</div>`)}
+        ${itemsForDisplayP(c).map((it) => kcHtml`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(it)}🔮 ${itemLoreTip(it, it.name)}${itemTierTagP(it)}${itemBoundTag(it, c)}${itemUsableBy(it, c) ? itemSlotTag(it, c) : ''}${it.desc ? kcHtml` <span style="color:var(--item-desc);font-weight:400">(${it.desc})</span>` : ''}</div>`)}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season, ph) => {
@@ -801,7 +797,7 @@ export function addEncounterTactic(charId, code) {
     const availSpells = _epUnknown
       ? Object.entries(ENCOUNTER_VALID).flatMap(([school, spells]) =>
           spells.map((s) => {
-            const limit = combatSpellLimit(1); // levels unseen → the base allowance of one per school
+            const limit = combatSpellsAllowedPerSchoolEachFight(1); // levels unseen → the base allowance of one per school
             const used = epSchoolCount[school] || 0;
             const isDuplicate = epSpellsUsed.has(s);
             const atSchoolLimit = used >= limit;
@@ -821,7 +817,7 @@ export function addEncounterTactic(charId, code) {
               const practisingThis = practisingSchoolsEP.has(school);
               const practising = practisingThis && lvl === 0;
               const effLvl = practisingThis ? Math.min(5, lvl + 1) : lvl;
-              const limit = combatSpellLimit(effLvl);
+              const limit = combatSpellsAllowedPerSchoolEachFight(effLvl);
               const used = epSchoolCount[school] || 0;
               const isDuplicate = epSpellsUsed.has(s);
               const atSchoolLimit = used >= limit;
@@ -943,7 +939,7 @@ export function confirmEPSpell(charId, spell, school, level, limitShown) {
   // must fire at used>=limit for it too, hence no "level>0" escape hatch. 2026-10-13 (item 16): the
   // limit is the one the picker showed, which counts a practice of this school this turn as a
   // success; the hero's current level alone refused a second spell the picker had offered.
-  const limit = limitShown != null && isFinite(limitShown) ? limitShown : combatSpellLimit(level);
+  const limit = limitShown != null && isFinite(limitShown) ? limitShown : combatSpellsAllowedPerSchoolEachFight(level);
   const used = current.filter((t) => t.startsWith('CA:') && SPELL_TO_SCHOOL[t.slice(3)] === school).length;
   if (used >= limit) {
     alert(

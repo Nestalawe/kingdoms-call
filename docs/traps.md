@@ -336,8 +336,13 @@ hooks by checking the rows they write.
 ## A rule written twice must change twice
 
 The most common root cause in this project's history is two copies of one rule disagreeing. The shared
-tables now have one source, but rules are still restated:
-- in the player portal's projections (forecasts, order validation, hints);
+tables now have one source, and so do the rules of a hero, an army, an item, a level or a number that the player
+portal uses (P1-11a): it calls the engine's own function, in `src/engine/rules-on-plain-values/`, through
+`src/shared/` ([ARCHITECTURE.md](ARCHITECTURE.md#kingdoms-call-datats-the-one-source-for-shared-rules)). Change such a
+rule there, once. Rules are still restated:
+- in the player portal's projections (forecasts, order validation, hints): the copies still left are the ones
+  `tests/lib/player-portal-copies.ts` checks (`beastCommandCountP`, `poSeaAnalysis`, `effMagicLvl`), and the forecasts
+  and order checks whose engine rule is written inline (P1-11b, P1-19);
 - at order time and again at resolution time in the engine;
 - in the turn-report forecast versus the end-of-turn collector;
 - in narrative strings, both rulebooks, join-screen blurbs and tooltips.

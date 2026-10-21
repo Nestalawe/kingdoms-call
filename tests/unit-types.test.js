@@ -45,7 +45,7 @@ const TYPES=['infantry','ranged','cavalry','flyer','naval'];
   const gmList=(/KC_SHARED_TABLE_NAMES=\[([^\]]*)\]/.exec(gm)||[])[1]||'', ppList=(/const need=\[([^\]]*)\]/.exec(pp)||[])[1]||'';
   ok(/'KC_UNIT_TYPE'/.test(gmList),"the GM portal's KC_SHARED_TABLE_NAMES includes 'KC_UNIT_TYPE' (the data-file guard)");
   ok(/'KC_UNIT_TYPE'/.test(ppList),"the player portal's required-table list includes 'KC_UNIT_TYPE' (the data-file guard)");
-  for(const [page,helper] of [['kingdoms-call-gm-portal.html','unitTypeOf'],['kingdoms-call-player-portal.html','unitTypeOfP']]){
+  for(const [page,helper] of [['kingdoms-call-gm-portal.html','unitTypeOf'],['kingdoms-call-player-portal.html','unitTypeOf']]){
     const errors=[];
     const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+page,
       setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});

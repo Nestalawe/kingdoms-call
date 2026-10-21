@@ -7,6 +7,7 @@ import {
   KC_TEMPERS,
   KC_UNIT_CLASS,
 } from '../../content/kingdoms-call-data.ts';
+import { getFlyCapability, isAirCarriable } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
 import { SKILL_COLUMNS } from './join-and-chronicle.ts';
 import { getOrderTarget } from './pre-orders.ts';
@@ -17,58 +18,22 @@ import { predictedLocation, projectedLedArmies } from './order-targets.ts';
 // ══ MOVE ANALYSIS (2026-09-26, Toby item 1) ═══════════════════════════════════════════════════
 // Before a Move order is submitted, tell the player what KIND of move it is — a land march, a
 // voyage, or a flight — and warn them when they are ordering a column into the sea that their
-// hulls and flyers cannot carry. Every set and every rule below mirrors the GM engine exactly
-// (AERIAL_TYPES / SEA_TYPES / CARRIER_TYPES / FLYING_TYPES, isAirCarriable, getFlyCapability,
-// getSeaCapability and seaLiftShortfall). If any of those change in the engine, change these too —
-// a warning that disagrees with the resolver is worse than no warning at all.
+// hulls and flyers cannot carry. Whether a unit can be lifted through the air and whether a whole
+// column can fly are the engine's own isAirCarriable and getFlyCapability (src/shared/). Every other
+// set and rule below mirrors the GM engine exactly (AERIAL_TYPES / SEA_TYPES / CARRIER_TYPES /
+// FLYING_TYPES, getSeaCapability and seaLiftShortfall). If any of those change in the engine, change
+// these too — a warning that disagrees with the resolver is worse than no warning at all.
 export const PO_SEA_TYPES = new Set(KC_UNIT_CLASS.sea);
 export const PO_CARRIER_TYPES = new Set(KC_UNIT_CLASS.carrier);
 export const PO_AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
 export const PO_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
-export const PO_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
-export const PO_CREATURE_TYPES = new Set(KC_UNIT_CLASS.creature);
-export const PO_MONSTER_TYPES = new Set(KC_UNIT_CLASS.monster);
 // Light foot take half a hull; everything else takes a whole one (engine: LIGHT_ARMIES).
 export const PO_LIGHT_TYPES = new Set([...KC_UNIT_CLASS.lightFoot, '__projected foot__']); // a unit the player has ordered raised or summoned earlier this turn — counted as light foot
 // The stand-in type for a unit an earlier order will produce whose TYPE cannot be known in advance
 // (a grave raised by Skeletal Armies or Harvest the Field). It belongs to no aerial, sea, creature
-// or monster set, so poAirCarriable treats it as humanoid foot and PO_LIGHT_TYPES prices it at half
+// or monster set, so isAirCarriable treats it as humanoid foot and PO_LIGHT_TYPES prices it at half
 // a hull — the commonest case by far for a raised or harvested unit.
 export const PO_PROJECTED_FOOT = '__projected foot__';
-// A humanoid flyer lifts ONE foot soldier. Horses, hulls, sea-beasts and walking creatures or
-// monsters are too heavy or unsuitable and can only go aboard ship.
-export function poAirCarriable(t) {
-  if (PO_AERIAL_TYPES.has(t) || PO_SEA_TYPES.has(t)) return false;
-  if (PO_CREATURE_TYPES.has(t) || PO_MONSTER_TYPES.has(t)) return false;
-  if (PO_CAVALRY_TYPES.has(t)) return false;
-  return true;
-}
-// Can the WHOLE column take to the air? Every foot soldier must be liftable and there must be a
-// humanoid flyer for each one; self-flying units ride for free.
-export function poFlyCapability(armies) {
-  const A = (armies || []).filter(Boolean);
-  if (!A.length) return false;
-  let carriers = 0,
-    carried = 0,
-    selfFly = false;
-  for (const a of A) {
-    if (PO_FLYING_TYPES.has(a.type)) {
-      carriers++;
-      selfFly = true;
-      continue;
-    }
-    if (PO_AERIAL_TYPES.has(a.type)) {
-      selfFly = true;
-      continue;
-    }
-    if (poAirCarriable(a.type)) {
-      carried++;
-      continue;
-    }
-    return false; // grounded — nothing can lift it
-  }
-  return selfFly && carriers >= carried;
-}
 // The engine's getSeaCapability, plus the figures the note needs to explain itself.
 // cap: 'all' (nothing to carry), 'sea' (hulls and flyers lift the lot), 'land' (cannot put to sea).
 export function poSeaAnalysis(armies, navalRaw) {
@@ -92,7 +57,7 @@ export function poSeaAnalysis(armies, navalRaw) {
     landCount: land.length,
     hullCap,
     navalL8,
-    lifted: poFlyCapability(A),
+    lifted: getFlyCapability(A),
     allAerial: A.length > 0 && A.every((a) => PO_AERIAL_TYPES.has(a.type)),
     allSea: A.length > 0 && A.every((a) => PO_SEA_TYPES.has(a.type)),
     total: A.length,
@@ -106,8 +71,8 @@ export function poSeaAnalysis(armies, navalRaw) {
     return out;
   } // the flyers carry the whole column
   const capOf = (a) => (PO_LIGHT_TYPES.has(a.type) ? 0.5 : 1);
-  const mustSail = land.filter((a) => !poAirCarriable(a.type)); // horses, siege, beasts — ship or nothing
-  const liftable = land.filter((a) => poAirCarriable(a.type));
+  const mustSail = land.filter((a) => !isAirCarriable(a)); // horses, siege, beasts — ship or nothing
+  const liftable = land.filter((a) => isAirCarriable(a));
   out.mustSail = mustSail.length;
   let room = hullCap - mustSail.reduce((s, a) => s + capOf(a), 0);
   if (room < 0) {

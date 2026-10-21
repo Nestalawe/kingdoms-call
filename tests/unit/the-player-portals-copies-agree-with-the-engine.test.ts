@@ -1,9 +1,10 @@
-// The player portal's copies of the engine's rules agree with the engine (plan P1-11a2; the pairs and the values in
-// tests/lib/player-portal-copies.ts). For each of the 16 copies P1-11a swaps for the engine's function: the swap (the
-// copy and the engine's function on what the portal is handed) and, where the report makes that value from the state,
-// the truth (the copy on the report's value, the engine's function on the state's). For three copies that stay until
-// P1-11b, the truth alone. And each engine function leaves its input as it was. P1-11a4 swaps the 16: their swap cases
-// go then, their truth cases stay as projection cases.
+// The player portal's copies of the engine's rules agree with the engine, and the report hands the portal what the
+// engine reads (plan P1-11a2, P1-11a4; the checks and the values in tests/lib/player-portal-copies.ts). P1-11a4 swapped
+// the 16 copies that agreed for the engine's own functions (the portal imports them through src/shared/), so their
+// swap cases went with them; for the 9 whose value the report makes from the state, the truth case stays as a
+// projection case: the engine's function on the report's value and on the state's, the same answer. For three copies
+// that stay until P1-11b, the truth: the copy on the report's value, the engine's function on the state's. And each
+// engine function leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -12,8 +13,9 @@ import {
   type Comparison,
   type Copies,
   effMagicLvlAgainstTheReport,
-  PAIRS,
   playerPortalCopies,
+  type ProjectionComparison,
+  PROJECTIONS,
   sameAnswer,
   samples,
   type Samples,
@@ -21,7 +23,6 @@ import {
 } from '../lib/player-portal-copies.ts';
 import {
   ALL_MAGIC_ITEMS_P,
-  KC_ALIGNMENTS,
   KC_QUALITY_TIERS,
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
@@ -29,72 +30,76 @@ import {
 
 let copies: Copies;
 let values: Samples;
-// Each pair's comparisons, made once: by the pair's name and the way ('swap' or 'truth').
-const made = new Map<string, Comparison[]>();
-const comparisons = (name: string, way: 'swap' | 'truth', make: (c: Copies, s: Samples) => Comparison[]) => {
-  const key = `${name} ${way}`;
-  const kept = made.get(key);
-  if (kept) return kept;
-  const list = make(copies, values);
-  made.set(key, list);
+// Each check's comparisons, made once: by its name.
+const made = new Map<string, Comparison[] | ProjectionComparison[]>();
+function once<T extends Comparison[] | ProjectionComparison[]>(name: string, make: () => T): T {
+  const kept = made.get(name);
+  if (kept) return kept as T;
+  const list = make();
+  made.set(name, list);
   return list;
-};
+}
+const truthOf = (pair: (typeof STAYING)[number]) => once(`${pair.copy} truth`, () => pair.truth(copies, values));
+const casesOf = (p: (typeof PROJECTIONS)[number]) => once(`${p.engine} projection`, () => p.cases(values));
 beforeAll(() => {
   copies = playerPortalCopies();
   values = samples();
 });
 
-/** The comparisons that differ, each in a line short enough to read (the value cut to 160 characters). */
+/** A value in a line short enough to read (cut to 160 characters). */
+const short = (x: unknown) =>
+  JSON.stringify(x, (_k, v: unknown) => (v === undefined ? '(undefined)' : v)).slice(0, 160);
+/** The comparisons that differ, each in a line. */
 function differences(list: Comparison[]): string[] {
-  const short = (x: unknown) =>
-    JSON.stringify(x, (_k, v: unknown) => (v === undefined ? '(undefined)' : v)).slice(0, 160);
   return list
     .filter((c) => !sameAnswer(c.copy, c.engine))
     .map((c) => `on ${short(c.on)}: the copy ${short(c.copy)}, the engine ${short(c.engine)}`);
 }
+/** The projection cases that differ, each in a line. */
+function projectionDifferences(list: ProjectionComparison[]): string[] {
+  return list
+    .filter((c) => !sameAnswer(c.fromTheReport, c.fromTheState))
+    .map(
+      (c) =>
+        `on ${short(c.on)}: on the report's value ${short(c.fromTheReport)}, on the state's ${short(c.fromTheState)}`,
+    );
+}
 
-test('the values reach every catalogue item, every unit type at every quality, every alignment pair and level', () => {
+test("the values reach every catalogue item and every unit type at every quality, each with the state's value", () => {
   const names = (list: unknown) =>
     new Set((Array.isArray(list) ? list : []).map((it: unknown) => (it as { name?: unknown }).name));
-  const itemNames = new Set(values.items.map((i) => i.report['name']));
+  const itemNames = new Set(values.items.filter((i) => i.state).map((i) => i.report['name']));
   const catalogue = [...names(ALL_MAGIC_ITEMS_P), ...names(LEGENDARY_ITEMS_P), 'Mithril Armour'];
   expect(catalogue.filter((n) => !itemNames.has(n))).toEqual([]);
-  const units = new Set(values.armies.map((a) => `${String(a.report['type'])} ${String(a.report['quality'])}`));
+  const units = new Set(
+    values.armies.filter((a) => a.state).map((a) => `${String(a.report['type'])} ${String(a.report['quality'])}`),
+  );
   const every = Object.keys(KC_UNIT_TYPE).flatMap((t) => KC_QUALITY_TIERS.map((q) => `${t} ${q}`));
   expect(every.filter((u) => !units.has(u))).toEqual([]);
-  expect(values.alignmentPairs).toHaveLength((KC_ALIGNMENTS.length + 2) ** 2);
-  expect(values.levels).toEqual(expect.arrayContaining([-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
   // the game's reports (scripted-05, one a turn until it ends) and the staged world's
   expect(values.reports).toBeGreaterThan(10);
   expect(values.heroes.filter((h) => h.state).length).toBeGreaterThan(500);
 });
 
-describe('the 16 copies P1-11a swaps for the engine’s function', () => {
-  test('there are 16', () => {
-    expect(PAIRS).toHaveLength(16);
+describe('the 9 rules the portal calls the engine for whose value the report makes from the state (P1-11a4)', () => {
+  test('there are 9', () => {
+    expect(PROJECTIONS).toHaveLength(9);
   });
-  describe.each(PAIRS.map((p) => [`${p.copy} and ${p.engine}`, p] as const))('%s', (_name, pair) => {
-    test(`swap: the same answer on ${pair.on}`, () => {
-      const list = comparisons(pair.copy, 'swap', pair.swap);
+  test.each(PROJECTIONS.map((p) => [`${p.engine} (for ${p.retiredCopy})`, p] as const))(
+    "%s: the engine's function on the report's value and on the state's: the same answer",
+    (_name, projection) => {
+      const list = casesOf(projection);
       expect(list.length).toBeGreaterThan(0);
-      expect(differences(list)).toEqual([]);
-    });
-    if (pair.truth) {
-      const truth = pair.truth;
-      test("truth: the copy on the report's value, the engine's function on the state's: the same answer", () => {
-        const list = comparisons(pair.copy, 'truth', truth);
-        expect(list.length).toBeGreaterThan(0);
-        expect(differences(list)).toEqual([]);
-      });
-    }
-  });
+      expect(projectionDifferences(list)).toEqual([]);
+    },
+  );
 });
 
 describe('three copies that stay until P1-11b (they read the report’s shape)', () => {
   test.each(STAYING.map((p) => [`${p.copy} and ${p.engine}`, p] as const))(
     "%s: the copy on the report's value, the engine's function on the state's: the same answer",
     (_name, pair) => {
-      const list = comparisons(pair.copy, 'truth', pair.truth);
+      const list = truthOf(pair);
       expect(list.length).toBeGreaterThan(0);
       expect(differences(list)).toEqual([]);
     },
@@ -114,13 +119,7 @@ describe('three copies that stay until P1-11b (they read the report’s shape)',
 });
 
 test('each engine function leaves its input as it was (the values are frozen: a write throws)', () => {
-  const changed = [
-    ...PAIRS.flatMap((pair) => [
-      ...comparisons(pair.copy, 'swap', pair.swap),
-      ...(pair.truth ? comparisons(pair.copy, 'truth', pair.truth) : []),
-    ]),
-    ...STAYING.flatMap((pair) => comparisons(pair.copy, 'truth', pair.truth)),
-  ]
+  const changed = [...PROJECTIONS.flatMap((p) => casesOf(p)), ...STAYING.flatMap((pair) => truthOf(pair))]
     .filter((c) => c.engineChangedItsInput)
     .map((c) => `on ${JSON.stringify(c.on).slice(0, 160)}`);
   expect(changed).toEqual([]);
