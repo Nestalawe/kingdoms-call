@@ -1,7 +1,8 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { defendSpentThisPhase } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isHiddenChar } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';
+import type { Character, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext, TurnOrder } from '../turn/context.ts';
 
 // ── THE ENCOUNTER AND DEFEND ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // Encounter Character sets a hero after a quarry he may hunt (never himself, a hero of the lord who holds him by a
@@ -14,7 +15,13 @@ import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break became
 // a return.
 // Encounter Character: the quarry checked, then the chase set and its first step taken.
-export function resolveEncounterCharacterOrder(turnContext, c, ph, target, prov) {
+export function resolveEncounterCharacterOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  target: string,
+  prov: Province,
+) {
   const { G, log } = turnContext;
   // Encounter Character no longer requires the quarry to be standing in the same province.
   // The hero sets out and CHASES the target wherever they go — one province per phase, a
@@ -94,7 +101,7 @@ export function resolveEncounterCharacterOrder(turnContext, c, ph, target, prov)
   return;
 }
 // Defend: the watch set over the province the hero stands in, or kept, and told once a phase.
-export function resolveDefendOrder(turnContext, c, o, ph, prov) {
+export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: TurnOrder, ph: number, prov: Province) {
   const { log } = turnContext;
   // A move that was cancelled by the invasion interlock is rewritten to a Defend order; the
   // interlock already logged a much better line, so don't tack a bland one on top of it.

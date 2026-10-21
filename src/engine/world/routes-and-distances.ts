@@ -1,15 +1,20 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { getNeighborsP } from './map-helpers.ts';
 import { relationBetween } from '../realms/relations-and-captures.ts';
 import { canEnterTerrain } from '../units/movement-pools.ts';
+import type { Character, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
 
 // ── ROUTES AND DISTANCES (plan P1-08i1: lifted out of resolveTurn) ────
 // How many provinces apart two provinces are (provDistance, kept for the turn in the context's _distCache), and the first
 // step of a passable route toward a province (stepToward, stepTowardPath; stepTowardPreferSafe takes a route over safe
 // ground when it is no longer, provSafePassageFor). They take the turn's context first (src/engine/turn/context.ts).
 // Breadth-first province distance (hex grid, wraps E/W like the rest of the map code).
-export function provDistance(turnContext, fromId, toId) {
+export function provDistance(
+  turnContext: TurnContext,
+  fromId: number | null | undefined,
+  toId: number | null | undefined,
+) {
   const { _distCache, G } = turnContext;
   if (fromId == null || toId == null) return Infinity;
   if (fromId === toId) return 0;
@@ -43,7 +48,7 @@ export function provDistance(turnContext, fromId, toId) {
 // the terrain the character's armies can actually cross. Returns null if no route. A province a
 // player's column can pass THROUGH without starting a fight or being turned back: their own land,
 // an ally's, or unowned ground with no live armed neutral guard.
-export function provSafePassageFor(turnContext, p, pi) {
+export function provSafePassageFor(turnContext: TurnContext, p: Province | null | undefined, pi: number | null) {
   const { G } = turnContext;
   if (!p) return false;
   if (p.owner === pi) return true;
@@ -59,7 +64,7 @@ export function provSafePassageFor(turnContext, p, pi) {
 // is only preferred when it is NO LONGER than it — an equal-length detour onto friendly ground,
 // never a longer one. If the only short road runs through a rival's province, the column takes
 // it.
-export function stepTowardPreferSafe(turnContext, c, toId) {
+export function stepTowardPreferSafe(turnContext: TurnContext, c: Character, toId: number | null | undefined) {
   const any = stepTowardPath(turnContext, c, toId);
   if (!any) return null;
   if (c && c.player != null) {
@@ -73,18 +78,29 @@ export function stepTowardPreferSafe(turnContext, c, toId) {
   }
   return any.first;
 }
-export function stepToward(turnContext, c, toId, extraFilter) {
+export function stepToward(
+  turnContext: TurnContext,
+  c: Character,
+  toId: number | null | undefined,
+  extraFilter?: (p: Province) => boolean,
+) {
   const r = stepTowardPath(turnContext, c, toId, extraFilter);
   return r ? r.first : null;
 }
 // BFS from the character's province toward `toId`. Returns {first, depth} — the first step of a
 // shortest passable path and how many steps that path takes — or null if no route exists.
-export function stepTowardPath(turnContext, c, toId, extraFilter) {
+export function stepTowardPath(
+  turnContext: TurnContext,
+  c: Character,
+  toId: number | null | undefined,
+  extraFilter?: (p: Province) => boolean,
+) {
   const { G, seaCap } = turnContext;
   const from = G.world.provinces[c.location];
   if (!from || toId == null || c.location === toId) return null;
   const sc = seaCap[c.id] || 'land';
-  const passable = (p) => !!p && canEnterTerrain(c, p.terrain, sc) && (!extraFilter || extraFilter(p));
+  const passable = (p: Province | null | undefined) =>
+    !!p && canEnterTerrain(c, p.terrain, sc) && (!extraFilter || extraFilter(p));
   // 2026-09-26 (Toby item 2): a column that leads ANY naval unit (fleet or sea-beast) cannot
   // march land→land — the move handler refuses it ("cannot march overland while leading naval
   // units"). The BFS used to ignore that, so a displaced admiral in a coastal province picked the
@@ -92,7 +108,7 @@ export function stepTowardPath(turnContext, c, toId, extraFilter) {
   // land→land edge is now closed to such a column: from land it must put out to an adjacent sea
   // province first, and it may land again only from the sea.
   const _naval = (c.armies || []).some((a) => a && SEA_TYPES.has(a.type));
-  const edgeOk = (a, b) => !_naval || a.terrain === 'sea' || b.terrain === 'sea';
+  const edgeOk = (a: Province, b: Province) => !_naval || a.terrain === 'sea' || b.terrain === 'sea';
   const seen = new Set([from.id]);
   // BFS storing the first step taken on each path
   let frontier = getNeighborsP(from, G.world.cols, G.world.rows, G.world.provinces)

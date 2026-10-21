@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── kcRng: the game's dice (P1-07) ────
 // Every random number the site's own code draws comes from kcRng(): dice, shuffles, bot choices, the world map,
 // id suffixes. Nothing calls Math.random (tests/static/dice-and-clock.test.ts). One generator per page: sfc32,
@@ -12,7 +11,7 @@
 //   kcRng.seed(n)   starts again from seed n (any number; read as an unsigned 32-bit integer, 0 as 1)
 //   kcRng.use(fn)   draws from fn from now on (a turn's dice, a test's fixed dice) and returns what it drew from before:
 //                   const was=kcRng.use(()=>0.5); try{ … } finally{ kcRng.use(was); }
-export function kcRngStream(seed) {
+export function kcRngStream(seed: number | undefined) {
   let s = Number(seed) >>> 0 || 1;
   const mix = () => {
     s = (s + 0x9e3779b9) >>> 0;
@@ -48,10 +47,10 @@ export const _kcRng = {
 export function kcRng() {
   return _kcRng.next();
 }
-kcRng.seed = function (seed) {
+kcRng.seed = function (seed: number) {
   _kcRng.next = kcRngStream(seed);
 };
-kcRng.use = function (fn) {
+kcRng.use = function (fn: () => number) {
   const was = _kcRng.next;
   _kcRng.next = fn;
   return was;

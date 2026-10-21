@@ -1,8 +1,9 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../../views/turn-report.ts';
 import { discSum } from '../discoveries.ts';
+import type { Army, Province } from '../../schemas/saved-game-state.ts';
+import type { NarrativeLine, TurnContext } from '../turn/context.ts';
 
 // ── EVIL TERROR (plan P1-08c: lifted out of resolveTurn) ────
 // Terror after an Evil victory: whether it grips a province for its realm (reignOfFearHere), its spread to the battle
@@ -14,13 +15,18 @@ import { discSum } from '../discoveries.ts';
 // (−10% strength per stack, at most 3 stacks: −30%; 2026-10-12, Toby item 21 — it was 5, −50%). Repeated terror
 // events stack up to that cap; a save already holding more is read as 3. (TERROR_PCT_PER_STACK and
 // TERROR_MAX_STACKS live at module level, beside buildTurnReport, which shows Evil realms the reading.)
-export function reignOfFearHere(prov, playerIdx) {
+export function reignOfFearHere(prov: Province | null | undefined, playerIdx: number | null | undefined) {
   return !!(prov && playerIdx != null && (prov._terrorStacks || 0) > 0 && prov._terrorisedBy === playerIdx);
 }
-export function spreadTerror(turnContext, battleProv, byPlayer, narrative) {
+export function spreadTerror(
+  turnContext: TurnContext,
+  battleProv: Province,
+  byPlayer: number,
+  narrative: NarrativeLine[] | null | undefined,
+) {
   const { G } = turnContext;
   const targets = [battleProv, ...getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)];
-  const seen = new Set();
+  const seen = new Set<number>();
   targets.forEach((tp) => {
     if (!tp || seen.has(tp.id)) return;
     seen.add(tp.id);
@@ -39,7 +45,11 @@ export function spreadTerror(turnContext, battleProv, byPlayer, narrative) {
   }
 }
 // Consume any lingering terror in a province at the start of a battle: returns true if applied.
-export function consumeTerror(prov, defenders, narrative) {
+export function consumeTerror(
+  prov: Province,
+  defenders: Army[] | null | undefined,
+  narrative: NarrativeLine[] | null | undefined,
+) {
   // Terror lingers until the NEXT battle fought here — same turn or later. It is safe to consume
   // same-turn because consumeTerror runs at battle START and spreadTerror at battle END, so a
   // battle can never consume the terror it itself created. (Previously gated to

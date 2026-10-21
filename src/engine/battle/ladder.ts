@@ -1,8 +1,8 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { BATTLE_LINE_MULTS, battleFacingStage, battleGridStage, battleLineTotal, flankLineMults } from './lines.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import type { Army } from '../../schemas/saved-game-state.ts';
 
 // ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
 // "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid
@@ -13,7 +13,7 @@ import { UNIT_BASE_STR, UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-
 // unit, then the terrain-width lines) → Whole force (fanaticism, discoveries, morale, defender…).
 // Rows come from ladderRow() (inside runTurn, beside armStr) so the ladder and the real total are
 // computed from the SAME figures. Module-level so every battle site can share it.
-export function ladderFm(v) {
+export function ladderFm(v: number) {
   let t = (+v).toFixed(3);
   while (t.endsWith('0') && !/\.\d$/.test(t)) t = t.slice(0, -1);
   return '×' + t;
@@ -25,18 +25,47 @@ export function ladderFm(v) {
 // (each matchup, 2026-10-11) = strength.
 // Rows must have been through finishSide (runTurn). A stage that changes nothing is left out, except
 // Whole force, which always prints so the reader sees it was checked.
-export function ladderLines(role, name, rows, width, flank, forceMods, final, opt) {
+/** A unit's row in a side's ladder: ladderRow makes it, finishSide adds the whole-force stages and the damage
+ *  (battle/terrain-and-unit-strength.ts). */
+export interface LadderRow {
+  a: Army;
+  base: number;
+  fly?: boolean | undefined;
+  /** The unit's own figure (every per-unit modifier), and each modifier named. */
+  _u?: number | null | undefined;
+  _tr?: { label: string; delta?: number | null | undefined }[] | undefined;
+  /** The command multipliers applied, and the figure after them. */
+  _cmd?: { label: string; key?: string | undefined; m: number }[] | undefined;
+  _cmdS?: number | null | undefined;
+  /** The figure after the whole force's multipliers, before and after the pre-battle damage, and that damage. */
+  _fPre?: number | null | undefined;
+  _fPost?: number | null | undefined;
+  _dmg?: number | undefined;
+}
+export function ladderLines(
+  role: string,
+  name: string,
+  rows: LadderRow[],
+  width: number,
+  flank: boolean,
+  forceMods: { m: number; label: string }[] | null | undefined,
+  final: number,
+  opt?: {
+    grid?: { total: number; W: number; face?: { total: number } | null | undefined } | null | undefined;
+    tact?: { mult: number; label: string } | null | undefined;
+  } | null,
+) {
   opt = opt || {};
   const nUnits = rows.length,
-    pl = (n, w) => `${n} ${w}${n !== 1 ? 's' : ''}`,
-    r0 = (v) => Math.round(v);
+    pl = (n: number, w: string) => `${n} ${w}${n !== 1 ? 's' : ''}`,
+    r0 = (v: number) => Math.round(v);
   let base = 0,
     unitSum = 0,
     cmdSum = 0,
     preSum = 0,
     postSum = 0;
-  const agg = new Map(),
-    cagg = new Map();
+  const agg = new Map<string, { label: string; n: number; d: number; delta: boolean }>(),
+    cagg = new Map<string, { label: string; key: string | undefined; n: number }>();
   rows.forEach((r) => {
     const a = r.a || {};
     base += (UNIT_BASE_STR[a.type] || 4) * (UNIT_Q_MULT[a.quality || 'Average'] || 2);
@@ -120,7 +149,7 @@ export const DRUID_MASTERY_PER_LVL = 0.2,
 // Undead's own zeal roll is 0%. Where several fervours apply the strongest one counts (max, never stacked).
 export const UNDEAD_SKEL_KING_FAN = 1.5,
   UNDEAD_SKEL_HERO_FAN = 1.3;
-export function aAn(w) {
+export function aAn(w: string | null | undefined) {
   return /^[aeiou]/i.test(String(w || '')) ? 'an' : 'a';
 } // "an annihilating battle"
 export const MISSILE_ARMIES_MASTER = new Set(KC_UNIT_CLASS.missile);
