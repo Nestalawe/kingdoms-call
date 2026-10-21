@@ -9,11 +9,11 @@
 //   3. The table agrees with the class lists: cavalry ↔ 'cavalry', sea ↔ 'naval', aerial ↔ 'flyer',
 //      missile ↔ 'ranged', garrison → 'infantry'. (Until the army roster of 2026-10-11 the Goblin Horde
 //      was the one exception: infantry that loosed spears in the archery step. The spears are retired.)
-//   4. Both portals demand KC_UNIT_TYPE from the data file (the stamp guard), and each has a helper that
+//   4. Each portal has a helper that
 //      answers 'infantry' for a type it has never heard of (old saves and test fixtures name such types).
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
-const {compactPage,scriptOf}=require('./lib/source.ts');
+const {scriptOf}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const TYPES=['infantry','ranged','cavalry','flyer','naval'];
 
@@ -40,11 +40,8 @@ const TYPES=['infantry','ranged','cavalry','flyer','naval'];
   ok(T['Goblin Horde']==='infantry'&&!(C.missile||[]).includes('Goblin Horde'),'Goblin Horde is plain infantry (its thrown spears were retired with the army roster, 2026-10-11)');
 
   // 4: the portals.
-  // the portals' code in one layout, by its syntax tree (until plan P1-09a, the built pages' text)
-  const gm=compactPage('kingdoms-call-gm-portal.html'), pp=compactPage('kingdoms-call-player-portal.html');
-  const gmList=(/KC_SHARED_TABLE_NAMES=\[([^\]]*)\]/.exec(gm)||[])[1]||'', ppList=(/const need=\[([^\]]*)\]/.exec(pp)||[])[1]||'';
-  ok(/'KC_UNIT_TYPE'/.test(gmList),"the GM portal's KC_SHARED_TABLE_NAMES includes 'KC_UNIT_TYPE' (the data-file guard)");
-  ok(/'KC_UNIT_TYPE'/.test(ppList),"the player portal's required-table list includes 'KC_UNIT_TYPE' (the data-file guard)");
+  // (Until P1-06c it also checked 'KC_UNIT_TYPE' is on both portals' data-file guard lists. The guards are gone: the data
+  // file is bundled into each page, and a table a page imports that is missing stops the build.)
   for(const [page,helper] of [['kingdoms-call-gm-portal.html','unitTypeOf'],['kingdoms-call-player-portal.html','unitTypeOf']]){
     const errors=[];
     const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+page,

@@ -5,6 +5,8 @@
 // - Writing the file refuses a database that isn't local.
 // - Started, it answers /kc-config.js with the dev file, never public/kc-config.js; and if the file changes to one
 //   that names another database while it runs, it answers with an error instead.
+// - Its pages' footers say "build dev" (P1-06c), with a kc-build meta of "dev" and no fingerprint, so a page it serves
+//   never finds a newer version of itself.
 // - The build never publishes public/dev/ (tests/static/pages-build.test.ts builds the site with the file there).
 // Level 1 (unit): the guard's functions, and the dev server started on this machine for a moment; no page runs.
 import fs from 'node:fs';
@@ -73,6 +75,23 @@ describe('the dev server', () => {
       const text = await refused.text();
       expect(text).toMatch(/^throw new Error\(".*not this machine's Supabase/);
       expect(text).not.toContain('supabaseKey');
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('its pages say "build dev", with no fingerprint', async () => {
+    const file = path.join(tmp, 'kc-config-build-line.js');
+    fs.writeFileSync(file, LOCAL);
+    const server = await startDevServer(file);
+    try {
+      const url = server.resolvedUrls?.local[0];
+      if (!url) throw new Error('the dev server has no address');
+      const page = await (await fetch(new URL('kingdoms-call-gm-portal.html', url))).text();
+      expect(page).toContain('Kingdoms Call — GM Portal · build dev</div>');
+      expect(page).toContain('<meta name="kc-build" content="dev">');
+      expect(page).not.toContain('kc-page-version');
+      expect(page).not.toContain('<!--kc-build-->');
     } finally {
       await server.close();
     }

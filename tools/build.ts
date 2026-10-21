@@ -17,6 +17,15 @@
 //   the code reads as written and a test can still reach one. Rolldown (Vite's bundler) still leaves out a function or
 //   constant that nothing reaches (it can't be turned off for a page: Vite treats a page as having no exports), writes
 //   each top-level const, let and class as a var, and lays the code out its own way.
+// After Vite, each page gets its version (P1-06c): the build line where its template has the marker <!--kc-build-->
+// (the footers of the four pages that use the database), `build <7-character commit> · <date and time, New Zealand>`,
+// and two metas, kc-build (the commit) and kc-page-version (the page's fingerprint: the first 12 hex digits of the
+// SHA-256 of its HTML before these are filled in; the HTML names its hashed files, so the fingerprint changes exactly
+// when the page or one of its files does). version.json, beside the pages, lists the commit, its time and every page's
+// fingerprint: open pages read it (src/ui/shared/a-newer-version-of-this-page.ts). The commit and its time are git's
+// (`git log -1` in the folder that holds src/), so the same commit always builds the same bytes; KC_BUILD_COMMIT and
+// KC_BUILD_TIME override them; with no git, "build unknown". The bundles never hold the commit, so their names change
+// only with their code.
 // Vite builds into a new temporary folder; then site/ gets only what changed, each file through a temporary file, and
 // loses what is no longer made. So a test reading site/ while another run builds it never sees half a file.
 //
@@ -25,6 +34,7 @@
 // build(out, src) does the same from another script and waits for it (it runs this file in a child process: Vite's
 // build is asynchronous); buildSite(out, src) is the asynchronous build itself.
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -101,6 +111,75 @@ function pageOptions(page: string, out: string, src: string, pub: string, first:
   };
 }
 
+/** The marker a template puts where its build line goes. */
+export const BUILD_LINE_MARKER = '<!--kc-build-->';
+/** The file the build writes beside the pages: the deploy's commit and every page's fingerprint. */
+export const VERSION_FILE = 'version.json';
+
+/** What a build is built from: the commit (a hex hash, "unknown" with no git, or "dev" on the dev server) and its
+ *  time (ISO), or null. */
+export interface BuildVersion {
+  commit: string;
+  time: string | null;
+}
+
+/** The commit `src` is built from and its time: git's in the folder that holds `src`, unless KC_BUILD_COMMIT or
+ *  KC_BUILD_TIME in `env` says otherwise. Throws on a KC_BUILD_COMMIT that isn't a hex hash or a KC_BUILD_TIME that
+ *  isn't a time. */
+export function buildVersionOf(src: string, env: NodeJS.ProcessEnv = process.env): BuildVersion {
+  const given = (name: string) => (env[name] === '' ? undefined : env[name]);
+  let commit = given('KC_BUILD_COMMIT');
+  let time = given('KC_BUILD_TIME');
+  if (commit !== undefined && !/^[0-9a-f]{7,40}$/.test(commit))
+    throw new Error(`KC_BUILD_COMMIT is ${commit}: a commit's hash (7 to 40 hex digits) was expected`);
+  if (time !== undefined && !Number.isFinite(Date.parse(time)))
+    throw new Error(`KC_BUILD_TIME is ${time}: a time (ISO 8601) was expected`);
+  if (commit === undefined || time === undefined) {
+    const git = spawnSync('git', ['log', '-1', '--format=%H%n%cI'], { cwd: path.dirname(src), encoding: 'utf8' });
+    const [hash, when] = git.status === 0 ? git.stdout.trim().split('\n') : [];
+    if (hash && /^[0-9a-f]{40}$/.test(hash) && when) {
+      commit ??= hash;
+      time ??= when;
+    }
+  }
+  return { commit: commit ?? 'unknown', time: time ?? null };
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const NEW_ZEALAND = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Pacific/Auckland',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** The footer's build line: "build 3f2a9c1 · 22 Oct 2026, 10:15" (New Zealand time), "build unknown", "build dev". */
+export function buildLine({ commit, time }: BuildVersion): string {
+  if (!/^[0-9a-f]{7,40}$/.test(commit)) return `build ${commit}`;
+  if (time === null) return `build ${commit.slice(0, 7)}`;
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    NEW_ZEALAND.formatToParts(new Date(time)).find((p) => p.type === type)?.value ?? '';
+  const when = `${String(Number(part('day')))} ${MONTHS[Number(part('month')) - 1] ?? ''} ${part('year')}, ${part('hour')}:${part('minute')}`;
+  return `build ${commit.slice(0, 7)} · ${when}`;
+}
+
+/** A page's fingerprint: the first 12 hex digits of the SHA-256 of its built HTML, before its version is filled in. */
+export const fingerprintOf = (html: string): string => createHash('sha256').update(html).digest('hex').slice(0, 12);
+
+/** `html` with its version filled in: the build line for the marker, and the metas kc-build and (given a fingerprint)
+ *  kc-page-version before </head>. */
+export function withVersion(html: string, version: BuildVersion, fingerprint: string | null): string {
+  const end = html.indexOf('</head>');
+  if (end < 0) throw new Error('a page with no </head> to put its version metas before');
+  const metas =
+    `<meta name="kc-build" content="${version.commit}">\n` +
+    (fingerprint === null ? '' : `<meta name="kc-page-version" content="${fingerprint}">\n`);
+  return (html.slice(0, end) + metas + html.slice(end)).replaceAll(BUILD_LINE_MARKER, buildLine(version));
+}
+
 export interface BuildResult {
   /** The files made. */
   files: number;
@@ -136,6 +215,20 @@ export async function buildSite(out = SITE, src = SRC, pub = PUBLIC): Promise<Bu
         ),
       ].sort();
     }
+    // Each page's version (P1-06c), then version.json beside the pages.
+    const version = buildVersionOf(src);
+    const fingerprints: Record<string, string> = {};
+    for (const page of pages) {
+      const file = path.join(temp, page);
+      const html = fs.readFileSync(file, 'utf8');
+      const fingerprint = fingerprintOf(html);
+      fingerprints[page] = fingerprint;
+      fs.writeFileSync(file, withVersion(html, version, fingerprint));
+    }
+    fs.writeFileSync(
+      path.join(temp, VERSION_FILE),
+      JSON.stringify({ commit: version.commit, time: version.time, pages: fingerprints }, null, 2) + '\n',
+    );
     // public/dev/ holds the dev server's config (tools/dev.ts), which points at a local database: never published.
     const made = filesUnder(temp).filter((f) => !f.startsWith('dev/'));
     const written: string[] = [];
@@ -159,11 +252,13 @@ export async function buildSite(out = SITE, src = SRC, pub = PUBLIC): Promise<Bu
   }
 }
 
-/** buildSite, waited for: it runs this file in a child process (`node tools/build.ts out --src src --public pub`).
- *  Throws with Vite's message if the build fails; passes Vite's warnings on if it doesn't. */
-export function build(out = SITE, src = SRC, pub = PUBLIC): BuildResult {
+/** buildSite, waited for: it runs this file in a child process (`node tools/build.ts out --src src --public pub`),
+ *  with `env` as its environment (KC_BUILD_COMMIT, KC_BUILD_TIME). Throws with Vite's message if the build fails;
+ *  passes Vite's warnings on if it doesn't. */
+export function build(out = SITE, src = SRC, pub = PUBLIC, env: NodeJS.ProcessEnv = process.env): BuildResult {
   const args = [import.meta.filename, out, '--src', src, '--public', pub, '--json'];
   const run = spawnSync(process.execPath, ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', ...args], {
+    env,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });

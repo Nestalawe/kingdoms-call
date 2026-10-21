@@ -46,7 +46,8 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(Array.isArray(snap.fallen)&&snap.fallen.some(c=>c.id===victim.id&&c.skills.melee===7),'a hero who fell this turn is in his realm\'s snapshot, with his skills');
   ok(!snap.characters.some(c=>c.id===victim.id),'…and not among the living');
   const WR=[];
-  vm.runInContext([sourceOf('db/game-meta.ts',['KC_TEL_V','_kcHasTel','_kcTelLastErr']),sourceOf('ui/gm/startup.ts',['KC_BUILD_STAMP']),
+  vm.runInContext([sourceOf('db/game-meta.ts',['KC_TEL_V','_kcHasTel','_kcTelLastErr']),"const KC_BUILD_STAMP='abc1234';", // the page reads it from its kc-build meta (P1-06c): no page here
+
     sourceOf('db/telemetry.ts',['telRankOrder','telBotDifficultyOf','telOutcomesFor','writeTurnTelemetry']),'_kcHasTel=true;'].join('\n'),sc.engine);
   sc.engine.sb={from:(t)=>{ const o={upsert(v){ WR.push({t,v}); return Promise.resolve({error:null}); }}; return o; }};
   await W.writeTurnTelemetry(gs,{id:'gs'},[{player_index:0,user_id:'u0'},{player_index:1,user_id:'u1'}],{pre:{},orders:{}},1);

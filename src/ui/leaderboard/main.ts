@@ -512,7 +512,7 @@ export function render() {
     .filter(Boolean)
     .sort()
     .slice(-1)[0];
-  $('foot').textContent = 'Kingdoms Call — Hall of Fame v2026.10.16-0735 · most recent game recorded ' + dstr(last);
+  $('foot').textContent = 'Kingdoms Call — Hall of Fame · most recent game recorded ' + dstr(last);
 }
 
 // GM-only. Answers, on the page, the question "why are the names wrong?" — which of the three
@@ -539,7 +539,7 @@ export function lbDiagnostics(G) {
   const warn = [];
   if (legacy.length)
     warn.push(kcHtml`<div class="msg-warning" style="margin:8px 0 0"><strong>${legacy.length} of ${G.length} games were recorded by an older build of the GM portal</strong>, which stored the realm name where the player's name belongs. Those games show no player until they are rebuilt.<br>
-    In the GM portal: check the footer reads <strong>v2026.09.27-1958 or later</strong> first — if it does not, hard-reload it (Ctrl/Cmd+Shift+R), because a cached copy will rebuild with the same fault. Then 📈 Stats → <strong>↻ Rebuild all</strong>.</div>`);
+    In the GM portal: check its footer shows <strong>a build from 27 September 2026 or later</strong> first — if it does not, hard-reload it (Ctrl/Cmd+Shift+R), because a cached copy will rebuild with the same fault. Then 📈 Stats → <strong>↻ Rebuild all</strong>.</div>`);
   if (!peopleN)
     warn.push(
       kcHtml`<div class="msg-warning" style="margin:8px 0 0"><strong>No player names could be read from the <code>profiles</code> table on this page</strong> — names stored with each game are being used instead. If you are signed out, sign in to the player or GM portal in this browser first. If you are signed in, the <code>profiles</code> table needs a SELECT policy covering this account.</div>`,

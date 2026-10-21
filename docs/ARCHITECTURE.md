@@ -133,7 +133,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
 - **`npm run dev`** (`tools/dev.ts`) serves the pages with Vite's dev server, against the local Supabase only: it serves
   `kc-config.js` from `public/dev/kc-config.js` (git-ignored, never published; `npm run dev -- config` writes it from
   `npx supabase status`), and refuses to start without one, or with one that names another database
-  (`tests/unit/dev-server.test.ts`).
+  (`tests/unit/dev-server.test.ts`). Its pages' footers say "build dev".
+- **Each page's version is filled in by the build** (P1-06c; [Versions](#versions)): the footer's build line and two
+  metas, after Vite, and `version.json` beside the pages.
 
 ## The layers and the module map
 
@@ -262,13 +264,14 @@ Built from `src/` and `public/` ([above](#the-build-src-becomes-site)).
 |---|---|---|
 | `index.html` | small | Landing page; links the player portal and both rulebooks. A stylesheet, no script of its own |
 | `kingdoms-call-gm-portal.html` | ~300 lines; its bundle ~58,600 lines, ~2.0 MB | GM UI, world generation, the whole turn engine (`resolveTurn`, and its shell `runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, "missing from the database" messages |
-| `kingdoms-call-player-portal.html` | ~450 lines; its bundle ~29,200 lines, ~990 KB | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Calls the engine's rules of a hero, an army, an item or a number through `src/shared/` (it loads no other engine file); still holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
+| `kingdoms-call-player-portal.html` | ~450 lines; its bundle ~10,800 lines, ~560 KB (since P1-06c: without the start-up guard, it holds only the tables it reads) | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Calls the engine's rules of a hero, an army, an item or a number through `src/shared/` (it loads no other engine file); still holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
 | `kingdoms-call-leaderboard.html` | ~120 lines; its bundle ~1,200 | Hall of Fame: leaderboard and achievement records over finished games |
 | `kingdoms-call-overlord.html` | ~110 lines; its bundle ~460 | The Overlord page (P0-32f): accounts (offer, withdraw and revoke GM; suspend, lift and delete: P0-32h), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose); their script opens and closes the table of contents |
 | `assets/<page>-<hash>.js`, `assets/<page>-<hash>.css` | | Each page's bundle and stylesheet, named by a hash of its content (P1-06b). The data file (`src/content/kingdoms-call-data.ts`), `kc-safe.ts` and `kc-db-guard.ts` are inside the bundles of the pages that use them, no longer files of their own. Older ones, which a cached page may still name, are kept for 24 hours after they stop being live ([above](#the-build-src-becomes-site)) |
 | `kc-config.js`, `kc-staging-footer.js` | small | Copied as they are from `public/`: which database this copy talks to (staging writes its own), and staging's footer |
 | `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
+| `version.json` | small | Written by the build: the commit and each page's fingerprint, which open pages read ([below](#versions)) |
 | `published-files.json` | small | Written by the deploy, not the build: every file of the site and when it stopped being live (`null` while it is). The next deploy reads it to know what to keep: never rename it |
 
 All pages sit in one folder and link each other relatively. Only `site/` is published, so URLs are the
@@ -319,7 +322,7 @@ Order inside each portal's page, and why it matters:
    each after the files it imports: `kc-safe.ts` first (the HTML helpers, [below](#how-a-page-builds-html)), then
    `kc-db-guard.ts` (`kcDbGuard`, the database version guard,
    [traps.md](traps.md#a-site-change-that-needs-a-database-change)), the data file (both portals), then the page's own
-   code. The start-up file checks the data file's tables (below), creates the Supabase client, then
+   code. The start-up file creates the Supabase client, then
    `kcDbGuard(sb, KC_DB_MIN)`: only if the database is at least `KC_DB_MIN` does it call `init()` (the leaderboard:
    `loadAll()`), which hides the spinner. Otherwise the guard raises "The game is being updated" through the
    boot-failure reporter, and nothing is read or written. In the GM portal, a signed-in account is then checked
@@ -390,13 +393,9 @@ reason; one that matches nothing is itself a finding. Mistakes to avoid: [traps.
 - **A few deliberate near-copies stay in the GM portal**, because the *order* is a tie-break priority
   (each is commented `NOT a copy`). Don't collapse them.
 
-**The stamp guard.** The data file declares `KC_DATA_STAMP`. Each portal declares the oldest data file it
-accepts (`KC_DATA_MIN` in the GM portal, `KC_DATA_MIN_P` in the player portal) and the full list of
-tables it needs (`KC_SHARED_TABLE_NAMES` in the GM portal; an inline list in the player portal). A
-missing table, a missing stamp or an older stamp stops the portal with a "data file out of date"
-message; the guard checks the tables on a namespace import of the data file (`KC_DATA_NS[n]`). Bundled into the page,
-the data can no longer be missing or stale, but the guard stays until P1-06 replaces the stamps. **When the data file
-changes, bump its stamps and both portals' minimums together** ([traps.md](traps.md#the-data-file-stamp-guard)).
+**No stamp, no guard** (since P1-06c). The data file is bundled into each page that uses it, so it can't be missing
+or older than the page, and a table a page imports that the data file lacks stops the build. Its stamps and the two
+portals' start-up guards are gone.
 
 ## The turn engine (GM portal)
 
@@ -441,9 +440,9 @@ changes, bump its stamps and both portals' minimums together** ([traps.md](traps
   has passed, and if so runs `runTurn`. A failed run parks that game for 15 minutes
   (`_autoFailUntil`, `AUTO_FAIL_COOLDOWN_MS`). This cooldown is per tab and in memory; the conditional
   save is what prevents a double resolution (a `localStorage` lease, `_autoLease`, also keeps two tabs in
-  one browser from trying at once). Before running a due turn, the watcher re-fetches the
-  page and the data file and reloads the tab once if either has a newer stamp, so the newest engine
-  resolves it (`refreshIfNewerBuild`).
+  one browser from trying at once). Before running a due turn, the watcher reads `version.json` afresh
+  and reloads the tab once (per game and turn) if it names another fingerprint for the GM page, first seen
+  at least 10 minutes before, so the newest engine resolves it (`refreshIfNewerBuild`, [Versions](#versions)).
 - **Bots** plan their orders inside `resolveTurn`, in the same tab, from the same state a human saw.
 - **Battle lines** (`battleGrid` and its helpers, module level beside the strength ladder). The front the
   ground allows is rolled once per battle (`rollBattleWidth`: plains and desert 6–8, forest and jungle 4–6,
@@ -769,15 +768,27 @@ all while the game's `block_eliminated_msgs` switch is on (P0-25, R-075). The pl
 realm's own turn report (`kingdom.conceded`, `kingdom.eliminated`) and the game's light row (`status`,
 `block_eliminated_msgs`); the database doesn't check it yet, because who is out lives in `game_state` (P2-04).
 
-## Version stamps
+## Versions
 
-Each page carries a New Zealand-time build stamp (`YYYY.MM.DD-HHMM`) in its footer. The GM portal also
-has it in `KC_BUILD_STAMP`, which telemetry rows record. The data file carries two stamp lines: the
-`// Data file v…` comment and `KC_DATA_STAMP`. Since the cutover, git history is the version record,
-but the stamps still drive the data-file guard and the GM tab's auto-reload, so keep bumping them, both
-copies each time. Since P1-09d the auto-reload's data-file half reads nothing (the data file isn't published: its
-request answers 404), so only a new GM portal stamp reloads the tab; P1-06 replaces both ([traps.md](traps.md#the-gm-portals-two-build-stamps),
-[traps.md](traps.md#the-data-file-stamp-guard)).
+Each page's version is in its HTML, filled in by `tools/build.ts` after Vite (P1-06c):
+- **The build line**, in the footer of the four pages that use the database (the GM portal, the player portal, the
+  Hall of Fame, the Overlord page), where the template has `<!--kc-build-->`: `build <7-character commit> · <date and
+  time, New Zealand>`, e.g. "Kingdoms Call — GM Portal · build 3f2a9c1 · 22 Oct 2026, 10:15". The commit is git's
+  (`git log -1` beside `src/`), its time the commit's, so the same commit always builds the same bytes;
+  `KC_BUILD_COMMIT` and `KC_BUILD_TIME` override them. With no git (a copy of `src/` elsewhere) it says "build
+  unknown"; `npm run dev`, "build dev". The two rulebooks keep their typed footers until Toby rules on them.
+- **Two metas**, on every page: `kc-build` (the commit) and `kc-page-version` (the page's fingerprint: the first 12 hex
+  digits of the SHA-256 of its HTML before the build line and the metas are filled in). The HTML names its hashed
+  files, so the fingerprint changes exactly when the page or one of its files does; the bundles never hold the commit.
+- **`version.json`**, beside the pages: `{ "commit", "time", "pages": { "<page>.html": "<fingerprint>", … } }`.
+- **Who reads them.** `KC_BUILD_STAMP` (`ui/gm/startup.ts`) and `runningBuildStamp()` (`ui/gm/auto-turn.ts`) are the
+  meta's commit, 7 characters: telemetry rows (`GM 3f2a9c1 tel3`), Hall of Fame records (`lb3`), the Stats export and
+  each report's `engineStamp` carry it. `src/ui/shared/a-newer-version-of-this-page.ts` compares this page's
+  fingerprint with the one `version.json` names for it: another one counts once this page has known of it for 10
+  minutes (GitHub's cache can hand out the old page for 10 minutes after a deploy). Started with the GM tab's
+  automatic-turn watcher, it reads `version.json` every 5 minutes and when the tab is shown again (at most once a
+  minute), never from the browser's cache; a failed read is no news. The GM tab's reload before a due turn asks it
+  ([above](#the-turn-engine-gm-portal)).
 
 ## Staging
 

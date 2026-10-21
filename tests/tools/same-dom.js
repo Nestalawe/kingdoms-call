@@ -8,7 +8,8 @@
 //   node tests/tools/same-dom.js /tmp/main/site site leaderboard     # one tour
 //
 // The DOM is compared as parsed, so text escaped differently but read the same (' or &#39;) counts as the same. Ignored:
-// script and style contents, build stamps (v2026.10.16-1200, with or without the v), and how a string passed to a handler is
+// script and style contents, build stamps (v2026.10.16-1200, with or without the v) and the footers' build lines that replaced
+// them (P1-06c: "· build 3f2a9c1 · 22 Oct 2026, 10:15", "· build unknown"), and how a string passed to a handler is
 // quoted (kcArg writes "O'Rourke" where the old code wrote 'O\'Rourke': each string in a handler is compared by its value).
 // Exits 1 if any screen differs.
 const path=require('path');
@@ -19,6 +20,9 @@ const {names}=require('../lib/hostile');
 const [before,after='site',...only]=process.argv.slice(2);
 if(!before){ console.log('usage: node tests/tools/same-dom.js <before-site> [<after-site>] [tour…]'); process.exit(2); }
 const STAMP=/v?\d{4}\.\d{2}\.\d{2}-\d{4}/g;
+// A footer's build line (tools/build.ts) reads as the stamp it replaced: "GM Portal · build 3f2a9c1 · …" as "GM Portal v<stamp>".
+const BUILD_LINE=/ · build (?:[0-9a-f]{7}(?: · \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2})?|unknown|dev)/g;
+const unstamped=text=>text.replace(BUILD_LINE,' v<stamp>').replace(STAMP,'v<stamp>');
 
 // A handler's code with every string written the same way (JSON), so only what it does is compared. Code that doesn't
 // parse is left as it is.
@@ -35,11 +39,11 @@ function sameQuotes(code){
 function lines(node,depth=0,out=[]){
   const pad='  '.repeat(depth);
   for(const c of node.childNodes){
-    if(c.nodeType===3){ if(c.data.trim()||c.data.includes(' ')) out.push(pad+JSON.stringify(c.data.replace(STAMP,'v<stamp>'))); continue; }
+    if(c.nodeType===3){ if(c.data.trim()||c.data.includes(' ')) out.push(pad+JSON.stringify(unstamped(c.data))); continue; }
     if(c.nodeType!==1) continue;
     const tag=c.tagName.toLowerCase();
     const attrs=[...c.attributes].map(a=>{
-      let v=a.value.replace(STAMP,'v<stamp>');
+      let v=unstamped(a.value);
       if(/^on/i.test(a.name)) v=sameQuotes(v);
       return `${a.name}=${JSON.stringify(v)}`;
     }).sort();

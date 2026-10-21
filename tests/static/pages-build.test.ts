@@ -19,13 +19,29 @@
 //   every file under src/engine/ and src/views/, each in the GM page's bundle, in the order the page's entry lists them,
 //   the dice and the clock first.
 // - The build writes only what changed and removes what it no longer makes.
+// - Each page's version (P1-06c): the four pages whose footer has the marker get the build line ("build <commit> ·
+//   <date and time, New Zealand>"); every page gets the metas kc-build and kc-page-version; version.json names every
+//   page with its fingerprint, the hash of the page before its version is filled in. A change to one page changes only
+//   its fingerprint (planted); another commit changes no bundle and no fingerprint; with no git, "build unknown". No
+//   hand-typed stamp is left in src/ (KC_DATA_STAMP, KC_DATA_MIN, the data file's "Data file v" line, a footer's
+//   "v2026.10.18-2300").
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import * as acorn from 'acorn';
 import ts from 'typescript';
 import { afterAll, describe, expect, test } from 'vitest';
-import { build, filesUnder, ROOT, type BuildResult } from '../../tools/build.ts';
+import {
+  build,
+  BUILD_LINE_MARKER,
+  buildLine,
+  filesUnder,
+  fingerprintOf,
+  ROOT,
+  VERSION_FILE,
+  type BuildResult,
+} from '../../tools/build.ts';
 import { DATA_FILE, engineEntryFiles, importsOf, pageEntries, pageFiles, pageNames } from '../../tools/pages.ts';
 
 const SRC = path.join(ROOT, 'src');
@@ -128,6 +144,7 @@ describe('every page builds', () => {
       ...scripted.flatMap((p) => assetsOf(SITE, p, 'js')),
       ...pages.flatMap((p) => assetsOf(SITE, p, 'css')),
       ...filesUnder(PUBLIC).filter((f) => !f.startsWith('dev/')),
+      VERSION_FILE,
     ].sort();
     expect(filesUnder(SITE)).toEqual(want);
     expect(built.files).toBe(want.length);
@@ -323,4 +340,136 @@ test('the build writes only what changed, and removes what it no longer makes', 
   expect(second.written).toEqual(['kc-staging-footer.js']);
   expect(second.removed).toEqual(['stale.html']);
   expect(build(out)).toMatchObject({ written: [], removed: [] });
+});
+
+describe("each page's version (P1-06c)", () => {
+  interface Published {
+    commit: string;
+    time: string | null;
+    pages: Record<string, string>;
+  }
+  const versionOf = (site: string) => JSON.parse(fs.readFileSync(path.join(site, VERSION_FILE), 'utf8')) as Published;
+  const html = (site: string, page: string) => fs.readFileSync(path.join(site, page), 'utf8');
+  const META = /<meta name="(kc-build|kc-page-version)" content="([^"]*)">\n/g;
+  const metasOf = (text: string): Record<string, string | undefined> =>
+    Object.fromEntries([...text.matchAll(META)].map((m): [string, string | undefined] => [m[1] ?? '', m[2]]));
+  const LINE = / · (build (?:[0-9a-f]{7} · \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}|unknown))</g;
+  const linesOf = (text: string) => [...text.matchAll(LINE)].map((m) => m[1]);
+  const marked = pages.filter((p) => fs.readFileSync(path.join(SRC, p), 'utf8').includes(BUILD_LINE_MARKER));
+  /** The page as it was before its version was filled in: the metas out, the marker back for the build line. */
+  const beforeItsVersion = (text: string) => text.replace(META, '').replace(LINE, ` · ${BUILD_LINE_MARKER}<`);
+
+  /** A build of a copy of src/ changed by `change`, run from the folder that holds the copy (docs/traps.md: Rolldown
+   *  names each module from the folder it runs in), with `env`. */
+  function buildOf(name: string, change: (src: string) => void, env: NodeJS.ProcessEnv = process.env): string {
+    const home = fs.mkdtempSync(path.join(tmp, `${name}-`));
+    const src = path.join(home, 'src');
+    fs.cpSync(SRC, src, { recursive: true });
+    change(src);
+    const out = path.join(home, 'site');
+    const run = spawnSync(
+      process.execPath,
+      ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', path.join(ROOT, 'tools', 'build.ts'), out, '--src', src],
+      { cwd: home, env, encoding: 'utf8' },
+    );
+    if (run.status !== 0) throw new Error(`the build of ${src} failed:\n${run.stderr}`);
+    return out;
+  }
+
+  test('the four pages that use the database have the marker in their footer, and no other page', () => {
+    expect(marked).toEqual([
+      'kingdoms-call-gm-portal.html',
+      'kingdoms-call-leaderboard.html',
+      'kingdoms-call-overlord.html',
+      'kingdoms-call-player-portal.html',
+    ]);
+  });
+
+  test.for(pages)('%s: its metas name the commit and its fingerprint, and its build line the commit', (page) => {
+    const v = versionOf(SITE);
+    const text = html(SITE, page);
+    expect(text).not.toContain(BUILD_LINE_MARKER);
+    expect(metasOf(text)).toEqual({ 'kc-build': v.commit, 'kc-page-version': v.pages[page] });
+    expect(linesOf(text)).toEqual(marked.includes(page) ? [buildLine(v)] : []);
+    expect(fingerprintOf(beforeItsVersion(text))).toBe(v.pages[page]);
+  });
+
+  test("version.json names every page with its fingerprint, and the commit this checkout's src/ is built from", () => {
+    const v = versionOf(SITE);
+    expect(Object.keys(v.pages)).toEqual(pages);
+    for (const f of Object.values(v.pages)) expect(f).toMatch(/^[0-9a-f]{12}$/);
+    const git = spawnSync('git', ['log', '-1', '--format=%H%n%cI'], { cwd: ROOT, encoding: 'utf8' });
+    expect(`${v.commit}\n${String(v.time)}`).toBe(git.stdout.trim());
+  });
+
+  test('the build line: the commit, then its date and time in New Zealand', () => {
+    expect(buildLine({ commit: '3f2a9c1' + '0'.repeat(33), time: '2026-10-21T21:15:00Z' })).toBe(
+      'build 3f2a9c1 · 22 Oct 2026, 10:15',
+    );
+    expect(buildLine({ commit: 'abcdef0123', time: '2026-09-02T11:05:00Z' })).toBe('build abcdef0 · 2 Sep 2026, 23:05');
+    expect(buildLine({ commit: 'unknown', time: null })).toBe('build unknown');
+    expect(buildLine({ commit: 'dev', time: null })).toBe('build dev');
+  });
+
+  test('with no git (a copy of src/ outside the checkout), the build says "build unknown"', BUILDS, () => {
+    const out = path.join(tmp, 'site-no-git');
+    build(
+      out,
+      srcCopy(() => undefined),
+    );
+    expect(versionOf(out)).toMatchObject({ commit: 'unknown', time: null });
+    for (const page of marked) expect(linesOf(html(out, page))).toEqual(['build unknown']);
+  });
+
+  test("another commit changes no bundle and no fingerprint: only the pages' metas and build lines", BUILDS, () => {
+    const commits = ['0123456789abcdef0123456789abcdef01234567', 'fedcba9876543210fedcba9876543210fedcba98'];
+    const [one, two] = commits.map((commit, i) => {
+      const out = path.join(tmp, `site-commit-${String(i)}`);
+      build(out, SRC, PUBLIC, { ...process.env, KC_BUILD_COMMIT: commit, KC_BUILD_TIME: '2026-10-21T21:15:00Z' });
+      return out;
+    }) as [string, string];
+    expect(filesUnder(two)).toEqual(filesUnder(one));
+    const differ = filesUnder(one).filter(
+      (f) => !fs.readFileSync(path.join(one, f)).equals(fs.readFileSync(path.join(two, f))),
+    );
+    expect(differ).toEqual([...pages, VERSION_FILE].sort());
+    expect(versionOf(two).pages).toEqual(versionOf(one).pages);
+    expect(versionOf(one).commit).toBe(commits[0]);
+    expect(linesOf(html(two, 'kingdoms-call-gm-portal.html'))).toEqual(['build fedcba9 · 22 Oct 2026, 10:15']);
+    for (const page of pages) expect(beforeItsVersion(html(two, page)), page).toBe(beforeItsVersion(html(one, page)));
+  });
+
+  test("a change to one page's code changes only that page's fingerprint (planted)", BUILDS, () => {
+    const before = buildOf('unchanged', () => undefined);
+    const after = buildOf('gm-changed', (src) => {
+      fs.appendFileSync(
+        path.join(src, 'ui', 'gm', 'startup.ts'),
+        '\n(globalThis as { aPlantedChange?: number }).aPlantedChange = 1;\n',
+      );
+    });
+    const [a, b] = [versionOf(before).pages, versionOf(after).pages];
+    expect(Object.keys(a).filter((page) => a[page] !== b[page])).toEqual(['kingdoms-call-gm-portal.html']);
+  });
+
+  test('a KC_BUILD_COMMIT that is not a commit stops the build', BUILDS, () => {
+    expect(() =>
+      build(path.join(tmp, 'site-bad-commit'), SRC, PUBLIC, { ...process.env, KC_BUILD_COMMIT: '<b>not a commit' }),
+    ).toThrow(/KC_BUILD_COMMIT/);
+  });
+
+  test('no hand-typed stamp is left in src/', () => {
+    const STAMPS = [
+      /\bKC_DATA_STAMP\b/,
+      /\bKC_DATA_MIN(?:_P)?\b/,
+      /\bKC_SHARED_TABLE_NAMES\b/,
+      /Data file v\d/,
+      /\bKC_BUILD_STAMP\s*=\s*['"`]\d/,
+      /(?:Portal|Hall of Fame|Overlord) v\d{4}\.\d{2}\.\d{2}-\d{4}/,
+    ];
+    const found = filesUnder(SRC).flatMap((f) => {
+      const text = fs.readFileSync(path.join(SRC, f), 'utf8');
+      return STAMPS.filter((re) => re.test(text)).map((re) => `${f}: ${re.source}`);
+    });
+    expect(found).toEqual([]);
+  });
 });

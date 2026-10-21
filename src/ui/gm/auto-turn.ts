@@ -5,6 +5,11 @@ import { sb } from './config.ts';
 import { gameArchived, gamesListCols } from '../../db/game-meta.ts';
 import { autoTurnReady, fmtDeadline, turnModeOf } from './turn-mode.ts';
 import { runTurn } from './turn-shell.ts';
+import {
+  checkForANewerVersion,
+  thisPagesBuild,
+  watchForANewerVersion,
+} from '../shared/a-newer-version-of-this-page.ts';
 
 // ── AUTO-TURN WATCHER ────
 // Polls this GM's active games once a minute and runs any whose mode condition is met. Two guards
@@ -46,67 +51,43 @@ export function setAutoTurnStatus(html) {
 // ── AUTO-REFRESH TO THE NEWEST UPLOADED BUILD ────
 // A GM tab left open for days keeps running the engine it loaded, however many newer builds have
 // been uploaded since. So the moment an automatic turn is DUE — and BEFORE it is resolved, so the
-// new engine is the one that resolves it — the watcher re-downloads this page and the data file
-// (cache:'reload' bypasses the browser cache and refreshes its copy), reads their version stamps,
-// and reloads the tab if either differs from what is running. After the reload the GM is still
+// new engine is the one that resolves it — the watcher asks whether a newer GM page is ready
+// (ui/shared/a-newer-version-of-this-page.ts, plan P1-06): version.json, read afresh, names another
+// fingerprint for this page, first seen at least 10 minutes ago (GitHub's cache can hand out the old
+// page for 10 minutes after a deploy). If so it reloads the tab. After the reload the GM is still
 // signed in (Supabase keeps the session), onSignedIn restarts the watcher, and its first tick runs
-// the turn on the new build. Same build → no reload, the turn simply runs.
+// the turn on the new build. No newer page → no reload, the turn simply runs.
 // LOOP GUARD: sessionStorage remembers "already reloaded for <game>:<turn>", so whatever a server
 // or CDN does with caching, one due turn can cause at most ONE reload. No sessionStorage, a file://
-// page, a failed download or an unreadable stamp → never reload; the turn runs on the current build.
-export const _KC_STAMP_RE = /GM Portal v(\d{4}\.\d{2}\.\d{2}-\d{4})/,
-  _KC_DATA_RE = /Data file v(\d{4}\.\d{2}\.\d{2}-\d{4})/;
-export let _kcDataStampAtLoad = null;
+// page or a failed download of version.json → never reload; the turn runs on the current build.
+// Which GM build is running: the 7-character commit of the page's kc-build meta (tools/build.ts).
 export function runningBuildStamp() {
-  const el = document.getElementById('kc-build-stamp');
-  const m = el && _KC_STAMP_RE.exec(el.textContent || '');
-  return m ? m[1] : null;
-}
-export async function _fetchBuildStamp(url, re, cacheMode) {
-  try {
-    const r = await fetch(url, { cache: cacheMode });
-    if (!r.ok) return null;
-    const m = re.exec(await r.text());
-    return m ? m[1] : null;
-  } catch (e) {
-    return null;
-  }
+  return thisPagesBuild();
 }
 // Returns true when the tab is reloading (the caller must stop and let the reload happen).
 export async function refreshIfNewerBuild(g) {
-  if (!/^https?:$/.test(location.protocol)) return false;
   const key = g.id + ':' + g.turn;
   try {
     if (sessionStorage.getItem('kc_autorefresh') === key) return false;
   } catch (e) {
     return false;
   }
-  const running = runningBuildStamp();
-  if (!running) return false;
-  const [htmlStamp, dataStamp] = await Promise.all([
-    _fetchBuildStamp(location.href.split('#')[0], _KC_STAMP_RE, 'reload'),
-    _fetchBuildStamp('kingdoms-call-data.js', _KC_DATA_RE, 'reload'),
-  ]);
-  const htmlNew = htmlStamp != null && htmlStamp !== running;
-  const dataNew = dataStamp != null && _kcDataStampAtLoad != null && dataStamp !== _kcDataStampAtLoad;
-  if (!htmlNew && !dataNew) return false;
+  const newer = await checkForANewerVersion();
+  if (!newer) return false;
   try {
     sessionStorage.setItem('kc_autorefresh', key);
   } catch (e) {
     return false;
   }
   setAutoTurnStatus(
-    kcHtml`<strong>⚙️ Auto-turn watcher</strong> · a newer build has been uploaded (${htmlNew ? 'portal v' + htmlStamp : 'data file v' + dataStamp}) — reloading this tab before running ${g.name || 'the game'} Turn ${g.turn}…`,
+    kcHtml`<strong>⚙️ Auto-turn watcher</strong> · a newer build of the GM portal is ready (build ${newer.commit.slice(0, 7)}) — reloading this tab before running ${g.name || 'the game'} Turn ${g.turn}…`,
   );
   setTimeout(() => location.reload(), 400);
   return true;
 }
 export function startAutoTurnWatcher() {
   if (_autoWatcherTimer) return;
-  if (/^https?:$/.test(location.protocol))
-    _fetchBuildStamp('kingdoms-call-data.js', _KC_DATA_RE, 'default').then((v) => {
-      _kcDataStampAtLoad = v;
-    });
+  watchForANewerVersion();
   _autoWatcherTimer = setInterval(autoTurnTick, AUTO_WATCH_MS);
   setTimeout(autoTurnTick, 3000);
 }

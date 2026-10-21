@@ -263,9 +263,12 @@ const gmPortal={
       ['the watcher: a failed game paused',tick],
       ['the watcher: a game that can\'t load',fail('game_players.select')+`runTurn({auto:true,game:{id:'G1',name:${lit(W.db.games[0].name)},turn:3},reason:${lit(W.reason)}})`],
       ['the watcher: reloading for a newer build',ok+"{ const st=window.setTimeout; window.setTimeout=(f,ms)=>ms===400?0:st(f,ms);"
-        // the page downloads itself and its data file: both answer with a newer build's stamps
-        +"const f=window.fetch; window.fetch=async()=>({ok:true,text:async()=>'GM Portal v2099.01.01-0000 · Data file v2099.01.01-0000'});"
-        +`refreshIfNewerBuild({id:'G1',turn:3,name:${lit(W.db.games[0].name)}}).then(()=>{ window.setTimeout=st; if(f) window.fetch=f; else delete window.fetch; }); }`],
+        // version.json names another GM page (P1-06c): the first check sees it, the second 10 minutes later reloads
+        +"const f=window.fetch, now=Date.now, page=location.pathname.split('/').pop()||'index.html';"
+        +"window.fetch=async()=>({ok:true,json:async()=>({commit:'0123456789abcdef0123456789abcdef01234567',time:null,pages:{[page]:'000000000000'}})});"
+        +`const g={id:'G1',turn:3,name:${lit(W.db.games[0].name)}};`
+        +"refreshIfNewerBuild(g).then(()=>{ const t=now(); Date.now=()=>t+600000; return refreshIfNewerBuild(g); })"
+        +".then(()=>{ window.setTimeout=st; Date.now=now; if(f) window.fetch=f; else delete window.fetch; }); }"],
       ['an active game, settings not saved',"openGame('G1').then(()=>{ "+fail('games.update')+'saveTurnMode();saveBotDiplomacy(); })'],
       ['an active game, archiving unreadable',ok+fail('games.select')+"setGameArchived('G1',true)"],
       ['an active game, archiving not saved',ok+fail('games.update')+"setGameArchived('G1',true)"],

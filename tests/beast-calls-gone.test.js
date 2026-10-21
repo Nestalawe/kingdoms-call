@@ -5,8 +5,8 @@
 //     spent, and each realm reads a plain line that the order is no more.
 //   • The player portal offers neither order (its order list, its alignment-order map and its display order), and no
 //     page or table still describes them: the rulebook's orders table and alignment sections, the intro, the player
-//     portal's realm texts, the data file (the two tier tables are gone, and so is Deep Roots' cheaper awakening),
-//     and the GM portal's shared-table list.
+//     portal's realm texts, and the data file (the two tier tables are gone, and so is Deep Roots' cheaper
+//     awakening). The portals' shared-table guard lists named them too until P1-06c removed the guards.
 // Level 2 (scenario): the order switch is nested inside runTurn; the words are level 0 and ride along here.
 const fs=require('fs');
 const {bootScenario, order, plan}=require('./lib/scenario'); const {sitePath}=require('./lib/boot');
@@ -53,7 +53,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // written and in one layout, from src/ (tests/lib/source.ts). Until plan P1-09a all were read as site/ text.
   const {compactOf,compactPage,pageSource,SRC}=require('./lib/source.ts');
   const read=f=>fs.readFileSync(sitePath(f),'utf8');
-  const ppCode=compactPage('kingdoms-call-player-portal.html'), pp=pageSource('kingdoms-call-player-portal.html'), gm=compactPage('kingdoms-call-gm-portal.html');
+  const ppCode=compactPage('kingdoms-call-player-portal.html'), pp=pageSource('kingdoms-call-player-portal.html');
   const rules=read('kingdoms-call-rules.html'), intro=read('kingdoms-call-rules-intro.html');
   const data=fs.readFileSync(require('path').join(SRC,'content','kingdoms-call-data.ts'),'utf8'), dataCode=compactOf('content/kingdoms-call-data.ts');
   const listOf=(src,re)=>(re.exec(src)||['',''])[1];
@@ -66,8 +66,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok(hits.length===0,`${page}: no text still offers Awaken the Wild or Call from the Pit${hits.length?' — '+hits.slice(0,2).join(' … '):''}`);
   }
   ok(!/KC_AWAKEN_TIERS|KC_PIT_TIERS/.test(data),'the data file no longer holds the two tier tables');
-  ok(!/'KC_AWAKEN_TIERS'|'KC_PIT_TIERS'/.test(listOf(gm,/const KC_SHARED_TABLE_NAMES=\[([^\]]*)\]/)),"the GM portal's shared-table guard no longer asks for them");
-  ok(!/'KC_AWAKEN_TIERS'|'KC_PIT_TIERS'/.test(listOf(ppCode,/const need=\[([^\]]*)\]/)),"…nor the player portal's");
+  // (Until P1-06c it also checked neither portal's data-file guard asked for them. The guards are gone with P1-06c.)
   ok(/\{id:'au05'/.test(dataCode)&&!/awakenCost/.test(dataCode),'Deep Roots stays, without the cheaper awakening');
 
   console.log(`\n${pass} pass, ${fail} fail`);
