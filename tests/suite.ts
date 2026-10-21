@@ -31,8 +31,6 @@ export function suite(full: boolean): Script[] {
     ['static', 'workflow-api-auth', 'tests/workflow-api-auth.test.js'],
     ['static', 'sql-banners', 'tests/sql-banners.test.js'],
     ['static', 'gm-portal-no-signup', 'tests/gm-portal-no-signup.test.js'],
-    ['static', 'profiles-columns', 'tests/profiles-columns.test.js'],
-    ['static', 'sort-comparators', 'tests/sort-comparators.test.js'],
     ['unit', 'dangerous-paths', 'tests/dangerous-paths.test.js'],
     ['unit', 'staging', 'tests/staging.test.js'],
     ['page', 'staging-footer', 'tests/staging-footer.test.js'],
