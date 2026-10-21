@@ -14,6 +14,8 @@
     "test:quarantine": "KC_QUARANTINE=1 vitest run --project quarantine",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "lint:arch": "depcruise src --ignore-known --output-type err",
+    "knip": "knip",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "tsx tools/check.ts",
