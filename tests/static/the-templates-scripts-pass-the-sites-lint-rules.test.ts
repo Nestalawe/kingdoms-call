@@ -3,10 +3,11 @@
 // handler attributes. This test hands each piece to ESLint's API as src/<template>/script-<n>.js or handler-<n>.js,
 // which eslint.config.js gives the block public/'s classic scripts get: ESLint's recommended rules, no Math.random
 // (the dice come from kcRng()), and the project's own rules (tools/eslint-rules/: no random or argument-less sort
-// comparator; the big tables and profiles read by named columns). A handler may call the names its page puts on
+// comparator; the big tables and profiles read by named columns; HTML built only through kcHtml). A handler may call the names its page puts on
 // window for its handlers, and its declared globals (src/ui/<page>/globals.ts; tests/static/page-globals.test.ts keeps
 // those exact), and `event`. ESLint's API doesn't read eslint-suppressions.json, so every piece must be clean: none
-// is suppressed. It took over the templates from tests/sort-comparators.test.js and tests/static/dice-and-clock.test.ts.
+// is suppressed. It took over the templates from tests/sort-comparators.test.js, tests/static/dice-and-clock.test.ts and
+// tests/html-lint.test.js.
 // Level 0 (static): it reads the templates and lints their text; nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -121,6 +122,7 @@ describe("the templates' scripts and handlers pass the site's lint rules", () =>
     for (const rule of [
       'kc/no-random-or-argument-less-sort-comparator',
       'kc/big-tables-and-profiles-are-read-by-named-columns',
+      'kc/html-is-built-only-through-kc-html',
       'no-restricted-properties',
       'no-restricted-syntax',
       'no-undef',
@@ -140,8 +142,8 @@ describe("the templates' scripts and handlers pass the site's lint rules", () =>
   });
 
   // The faults the retired tests found in a template (a random sort, a Math.random() in a handler, also in the HTML an
-  // inline script writes), and the rules' others, planted in a copy of the GM page's template: each is found, at its
-  // line.
+  // inline script writes, HTML built from a value not escaped), and the rules' others, planted in a copy of the GM
+  // page's template: each is found, at its line.
   test('a fault planted in a template is found', { timeout: 30_000 }, async () => {
     const template = 'kingdoms-call-gm-portal.html';
     const html = read(template);
@@ -154,6 +156,7 @@ describe("the templates' scripts and handlers pass the site's lint rules", () =>
       '<button onclick="notOnThePage()"></button>',
       '<button onclick="doSignIn()"></button>',
       `<script>document.body.insertAdjacentHTML('beforeend', '<b onclick="Math.random()"></b>');</script>`,
+      "<script>document.body.innerHTML = '<p>' + location.hash + '</p>'; document.title = `<b>${document.title}</b>`;</script>",
     ];
     const at = html.slice(0, end).split('\n').length;
     const copy = html.slice(0, end) + planted.join('\n') + '\n' + html.slice(end);
@@ -168,6 +171,10 @@ describe("the templates' scripts and handlers pass the site's lint rules", () =>
       '1 kc/no-random-or-argument-less-sort-comparator',
       '1 no-restricted-properties',
       '1 kc/big-tables-and-profiles-are-read-by-named-columns',
+      // the sink given markup joined to a value, the join, and the untagged template
+      '7 kc/html-is-built-only-through-kc-html',
+      '7 kc/html-is-built-only-through-kc-html',
+      '7 kc/html-is-built-only-through-kc-html',
       '2 no-restricted-properties',
       '3 no-restricted-syntax',
       '4 no-undef',

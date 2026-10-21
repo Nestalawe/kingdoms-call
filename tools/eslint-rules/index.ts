@@ -4,12 +4,14 @@
 // test in tests/unit/eslint-rule-<name>.test.ts.
 import type { ESLint } from 'eslint';
 import bigTablesAndProfilesAreReadByNamedColumns from './big-tables-and-profiles-are-read-by-named-columns.ts';
+import htmlIsBuiltOnlyThroughKcHtml from './html-is-built-only-through-kc-html.ts';
 import noRandomOrArgumentLessSortComparator from './no-random-or-argument-less-sort-comparator.ts';
 
 const plugin: ESLint.Plugin = {
   meta: { name: 'kc' },
   rules: {
     'big-tables-and-profiles-are-read-by-named-columns': bigTablesAndProfilesAreReadByNamedColumns,
+    'html-is-built-only-through-kc-html': htmlIsBuiltOnlyThroughKcHtml,
     'no-random-or-argument-less-sort-comparator': noRandomOrArgumentLessSortComparator,
   },
 };

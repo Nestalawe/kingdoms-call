@@ -24,8 +24,9 @@
 // (the client's global); the four pages' createClient calls are in the suppressions, for P1-17's access layer.
 //
 // The project's own rules (tools/eslint-rules/, the plugin kc; plan P1-13, Decision 8) are the incident rules that
-// replaced home-made static tests: no random or argument-less sort comparator, and the big tables and profiles read by
-// named columns. They run on src/ and on the classic scripts: public/'s two (copied as they are) and the templates'
+// replaced home-made static tests: no random or argument-less sort comparator, the big tables and profiles read by
+// named columns, and HTML built only through kcHtml (its reviewed exceptions in HTML_EXCEPTIONS, below). They run on
+// src/ and on the classic scripts: public/'s two (copied as they are) and the templates'
 // inline scripts and on…="…" handlers, which tests/static/the-templates-scripts-pass-the-sites-lint-rules.test.ts hands
 // to ESLint as src/<template>.html/<piece>.js, under the same block.
 //
@@ -159,9 +160,22 @@ const noMathRandom = {
     },
   ],
 };
+// The reviewed exceptions to kc/html-is-built-only-through-kc-html (P0-19), each with its reason: the finding of
+// `check` in `file` whose code holds `code` is let through, and one that matches nothing is itself a finding.
+// tools/ratchet.ts counts them (allowlistEntries), so the list only shrinks.
+const HTML_EXCEPTIONS = [
+  {
+    file: 'src/ui/player/map.ts',
+    check: 'concat',
+    code: "'(?<![A-Za-z\\u00C0-\\u024F])(' + names.join('|')",
+    reason:
+      "a RegExp's source, not HTML: '(?<!' is a lookbehind (the report's province names become map links as DOM nodes)",
+  },
+];
 // The project's own rules (above), each an error.
 const kcRules = {
   'kc/big-tables-and-profiles-are-read-by-named-columns': 'error',
+  'kc/html-is-built-only-through-kc-html': ['error', { exceptions: HTML_EXCEPTIONS }],
   'kc/no-random-or-argument-less-sort-comparator': 'error',
 };
 // The classic scripts (above): public/'s two, and the templates' scripts and handlers as the static test names them.

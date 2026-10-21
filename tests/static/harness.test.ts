@@ -17,6 +17,7 @@ import prettier from 'eslint-config-prettier';
 import playwright from 'eslint-plugin-playwright';
 import tseslint from 'typescript-eslint';
 import ts from 'typescript';
+import { z } from 'zod';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import archConfig from '../../.dependency-cruiser.mts';
@@ -270,8 +271,9 @@ describe('the lint rules', () => {
   );
 
   // A type assertion or a non-null assertion planted in an engine file and in a page's: each an error (P1-10a1). `as
-  // const` is no claim (it narrows a literal), so it stays.
-  test.for(['src/engine/turn/context.ts', 'src/ui/player/map.ts'])(
+  // const` is no claim (it narrows a literal), so it stays. (Not src/ui/player/map.ts, whose reviewed exception to the
+  // HTML rule would match nothing in the planted text.)
+  test.for(['src/engine/turn/context.ts', 'src/ui/player/report.ts'])(
     '%s: a planted `as` and `!` are errors, `as const` is not',
     async (file) => {
       const code = [
@@ -345,6 +347,7 @@ describe('the lint rules', () => {
   // project's own rules (tools/eslint-rules/) on the same files, each an error.
   const KC_RULES = [
     'kc/big-tables-and-profiles-are-read-by-named-columns',
+    'kc/html-is-built-only-through-kc-html',
     'kc/no-random-or-argument-less-sort-comparator',
   ];
   test("Math.random is refused everywhere but rng.ts, and the project's own rules run on src/ and public/", async () => {
@@ -364,6 +367,25 @@ describe('the lint rules', () => {
     }
     expect(wrong).toEqual([]);
     expect(await eslint.isPathIgnored(path.join(ROOT, 'public/vendor/supabase-js-2.117.3.min.js'))).toBe(true);
+  });
+
+  // kc/html-is-built-only-through-kc-html's reviewed exceptions (eslint.config.js's HTML_EXCEPTIONS; plan P1-13,
+  // Decision 8): the rule refuses one that matches nothing in its file, but only as it lints that file, so each must
+  // name a file of src/ or public/ that ESLint lints, with its reason.
+  test('each reviewed exception to the HTML rule names a file ESLint lints, with its reason', async () => {
+    const config = (await eslint.calculateConfigForFile(path.join(ROOT, 'src/ui/gm/start.ts'))) as Linter.Config;
+    const [, options] = z
+      .tuple([
+        z.literal(2),
+        z.object({ exceptions: z.array(z.object({ file: z.string(), reason: z.string().min(1) }).loose()) }),
+      ])
+      .parse(config.rules?.['kc/html-is-built-only-through-kc-html']);
+    expect(options.exceptions.length).toBeGreaterThan(0);
+    for (const { file } of options.exceptions) {
+      expect(fs.existsSync(path.join(ROOT, file)), file).toBe(true);
+      expect(await eslint.isPathIgnored(path.join(ROOT, file)), file).toBe(false);
+      expect(/^(src|public)\//.test(file), file).toBe(true);
+    }
   });
 
   // dice-and-clock's cases (the static test these rules replaced), planted as code ESLint lints in place: each red one

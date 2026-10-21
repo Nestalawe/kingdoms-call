@@ -156,9 +156,8 @@ some silently. Now no test reads a page's source by line:
   do nothing, and the test could pass without testing anything.
 - **A check that picks the site's files by their name must fail when it reads none.** When the files became `.ts`
   (P1-09e), `html-lint` and `sort-comparators`, which read every `src/**/*.js`, still passed reading only the templates:
-  `html-lint`'s stale allowlist entry gave it away. It now fails if a module of any page (`tools/pages.ts`'s
-  `pageModules`) isn't among the files it reads (`sort-comparators` became an ESLint rule, P1-13c, and
-  `tests/static/harness.test.ts` checks every file of `src/` gets it). A new check of `src/` reads the pages' modules,
+  `html-lint`'s stale allowlist entry gave it away. Both are ESLint rules now (P1-13c and P1-13d), and
+  `tests/static/harness.test.ts` checks every file of `src/` gets them. A new check of `src/` reads the pages' modules,
   or checks it does.
 
 ## A lifted helper takes the turn's context first
@@ -368,8 +367,8 @@ rulebooks.
 ## HTML is built only through `kcHtml`
 
 Every name, message and record on screen was typed by someone, so it goes into a page as text (P0-19,
-[ARCHITECTURE.md](ARCHITECTURE.md#how-a-page-builds-html)). `npm test`'s `html-lint` catches most mistakes; these
-ones it can't, or they cost time:
+[ARCHITECTURE.md](ARCHITECTURE.md#how-a-page-builds-html)). The lint rule `kc/html-is-built-only-through-kc-html`
+(P1-13d; it replaced `html-lint`) catches most mistakes as you write them; these ones it can't, or they cost time:
 
 - **Markup in a value is shown as text.** In ``kcHtml`<td>${won?'<span class="pill">won</span>':''}</td>` `` the pill
   comes out as `<span…` on screen. Make the markup `kcHtml` too: ``${won?kcHtml`<span class="pill">won</span>`:''}``.
@@ -377,20 +376,20 @@ ones it can't, or they cost time:
   player portal's `SKILL_INFO`: write those entries as ``kcHtml`…` ``), and for an entity written in data (`'Hosts &amp;
   armies'` now shows `&amp;`: write `&`). An attribute put in as a value breaks the same way: in
   ``kcHtml`<div${dim?' style="opacity:.8"':''}>` `` the quotes are escaped, so write ``${dim?kcHtml` style="opacity:.8"`:''}``.
-  `html-lint` can't see either mistake; `same-dom.js` (below) finds it on the screens a tour visits.
+  The lint rule can't see either mistake; `same-dom.js` (below) finds it on the screens a tour visits.
 - **Never join `kcHtml` with `+`, `+=` or `.join('')`.** Each makes a plain string, which the next `kcHtml` escapes,
   so the markup shows as text. Collect pieces in an array and put the array in: ``kcHtml`<ul>${rows}</ul>` ``.
-  `html-lint` sees this only when `kcHtml` is written in the line: `row(a)+row(b)`, where `row` returns `kcHtml`, and
+  The lint rule sees this only when `kcHtml` is written in the expression: `row(a)+row(b)`, where `row` returns `kcHtml`, and
   `.join(', ')` on a list of `kcHtml` pass it, and so do `.map(…).filter(Boolean).join('')`, `.flatMap(…).join('')`
   and `Array.from(…).join('')`. In the player portal, a list with a separator goes in as `kcJoinP(list, ', ')` (the
   separator is text; write ``kcHtml`<br>` `` for markup).
 - **A template with no markup of its own still needs `kcHtml` if a value in it is `kcHtml`.** In
   ``chanceLine(`Success: ${pct(n)}`)``, where `pct` returns `<strong>`, the untagged template makes a plain string and
-  the bold shows as text. Tag it: ``chanceLine(kcHtml`Success: ${pct(n)}`)``. `html-lint` only looks at templates
+  the bold shows as text. Tag it: ``chanceLine(kcHtml`Success: ${pct(n)}`)``. The lint rule only looks at templates
   with markup in them.
 - **A helper whose result goes straight into `innerHTML` returns `kcHtml` on every path**, even a line with no
   markup: `el.innerHTML=note(c)` reads a plain string as HTML, names and all. The orders' `exploreProjectionNote` is
-  one; `html-lint` sees the sink, not what the helper returns.
+  one; the lint rule sees the sink, not what the helper returns.
 - **Markup read back as a string.** Code that searches the markup it built (the Move field finds the option that
   opens selected with a regular expression) reads ``String(kcHtml`…`)``, which is the markup, escaped values and all.
 - **An empty list is still true.** `html||'Nothing yet'` worked while `html` was a string; once it's an array (or
@@ -413,8 +412,10 @@ ones it can't, or they cost time:
   context first if the slice calls the helpers (`scriptOf('ui/shared/kc-safe.ts')`, `tests/lib/source.ts`).
 - **Show it looks the same.** Converting a page must not change it for ordinary names: run
   `node tests/tools/same-dom.js <main's site>` and put its output in the pull request.
-- **An exception goes in `html-lint`'s `ALLOWED`** with a one-line reason, for Theo to review. The check is strict: no
-  page may build HTML outside `kcHtml` / `kcEsc`.
+- **An exception goes in `HTML_EXCEPTIONS` (`eslint.config.js`)** with a one-line reason, for Theo to review: the
+  file, the check and a piece of the code it refuses. The rule is strict: no page may build HTML outside `kcHtml` /
+  `kcEsc`, and an exception that matches nothing fails, so the list can't go stale. The ratchet counts the list
+  (`allowlistEntries`), so it only shrinks.
 - **A `?:` followed by `+` adds the tail to one branch only.** In `h.innerHTML=!ok?'Why not.':'Who reads it.'+' 12 left.'`
   the tail belongs to the second branch. Converting it to ``kcHtml`${!ok?…:…} 12 left.` `` adds it to both. Keep each branch
   whole: ``!ok?kcHtml`…`:kcHtml`… 12 left.` ``. `same-dom.js` finds it when a tour reaches both branches (it did, in the player
