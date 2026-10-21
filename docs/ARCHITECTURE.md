@@ -45,10 +45,12 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   under `src/` is in some page.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report, the
   statistics snapshots, what a realm can see), `db/` (the version guard, telemetry and the light `meta` rows),
-  `content/` (the data file), `ui/<page>/` (each page's styles, its entry and the rest of its code), `ui/shared/`
-  (`kc-safe.ts`), `rulebook/`. The templates are at the top of `src/`. The GM portal's code is 128 modules;
-  `src/engine/run-turn.ts` (the turn, `resolveTurn`, once ~13,000 lines, now ~240) was taken apart by P1-08, one area at
-  a time (below). The player portal's is 26.
+  `content/` (the data file), `shared/` (the player portal's one door to the engine: it re-exports the rules of
+  `engine/rules-on-plain-values/` the portal calls, and nothing else; [below](#kingdoms-call-datats-the-one-source-for-shared-rules)),
+  `ui/<page>/` (each page's styles, its entry and the rest of its code), `ui/shared/` (`kc-safe.ts`), `rulebook/`. The
+  templates are at the top of `src/`. The GM portal's code is 128 modules; `src/engine/run-turn.ts` (the turn,
+  `resolveTurn`, once ~13,000 lines, now ~240) was taken apart by P1-08, one area at a time (below). The player portal's
+  is 35: its own 23, the data file, `kc-safe.ts`, `kc-db-guard.ts`, `src/shared/`'s file and the folder's eight.
 - **TypeScript checks the site** (`tsconfig.json` includes `src/`, with the browser's types; one project until P1-10
   splits the engine's). The files that were JavaScript start with `// @ts-nocheck` and the reason (142 of 158 at the
   rename: strict TypeScript found errors in each); P1-10 and P1-16 type them, and the ratchet's `tsNocheck` only falls.
@@ -83,7 +85,7 @@ Built from `src/` and `public/` ([above](#the-build-src-becomes-site)).
 |---|---|---|
 | `index.html` | small | Landing page; links the player portal and both rulebooks. A stylesheet, no script of its own |
 | `kingdoms-call-gm-portal.html` | ~300 lines; its bundle ~58,600 lines, ~2.0 MB | GM UI, world generation, the whole turn engine (`resolveTurn`, and its shell `runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, "missing from the database" messages |
-| `kingdoms-call-player-portal.html` | ~450 lines; its bundle ~29,200 lines, ~990 KB | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
+| `kingdoms-call-player-portal.html` | ~450 lines; its bundle ~29,200 lines, ~990 KB | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Calls the engine's rules of a hero, an army, an item or a number through `src/shared/` (it loads no other engine file); still holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
 | `kingdoms-call-leaderboard.html` | ~120 lines; its bundle ~1,200 | Hall of Fame: leaderboard and achievement records over finished games |
 | `kingdoms-call-overlord.html` | ~110 lines; its bundle ~460 | The Overlord page (P0-32f): accounts (offer, withdraw and revoke GM; suspend, lift and delete: P0-32h), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose); their script opens and closes the table of contents |
@@ -196,6 +198,15 @@ builds HTML from data has a hostile-name test. Mistakes to avoid: [traps.md](tra
   (`new Set(KC_UNIT_CLASS.creature)`, `KC_SEASONS.slice()`, `{...KC_SKILL_LABELS}`), so no consumer can
   mutate another's. The editing rules are at the top of that block: change a rule there; append, never
   re-sort; plain data only; `KC_` names only.
+- **Shared rule functions** (P1-11a): a rule of a hero, an army, an item, a level or a number that both portals need
+  is written once, in `src/engine/rules-on-plain-values/` (its files import only the data file and each other), and the
+  player portal imports it by the engine's name through `src/shared/the-engines-rules-the-player-portal-shares.ts`,
+  which re-exports only from that folder: e.g. `dispFloor`, `unitBaseStrength`, `itemSlot`, `heroHireWage`,
+  `getFlyCapability`, the two casting limits. So the player page loads no other engine file and runs none of the
+  engine's set-up as it loads. `tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts`
+  refuses a portal file that imports an engine or a views file, or declares one of the retired copies (`floorNumP`, …)
+  or a name `src/shared/` hands it. The portal's copies still left (they read the report's shape: P1-11b) are the
+  ones `tests/lib/player-portal-copies.ts` checks.
 - **A few deliberate near-copies stay in the GM portal**, because the *order* is a tie-break priority
   (each is commented `NOT a copy`). Don't collapse them.
 
@@ -476,7 +487,9 @@ changes, bump its stamps and both portals' minimums together** ([traps.md](traps
   caller, in the engine, the views, the GM portal and `src/db/`, imports them there; the static test
   `rules-on-plain-values-import-only-the-content-and-each-other` refuses any other import in the folder. The move
   changed the order in which some engine files run as a page loads (a file runs where its first importer pulls it in),
-  but every table holds the same values once the page has loaded.
+  but every table holds the same values once the page has loaded. P1-11a4 swapped the player portal's 16 copies of
+  them for these functions, which it imports through `src/shared/`
+  ([above](#kingdoms-call-datats-the-one-source-for-shared-rules)).
   A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 
