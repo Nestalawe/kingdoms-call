@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
-// tests on the hand-written database stand-in, tests on the engine's vm loader, ESLint's warnings on the site's code,
-// the import rules' known violations and what knip finds unused) and fails if
+// tests on the hand-written database stand-in, tests on the engine's vm loader, ESLint's suppressed findings, the
+// import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import { z } from 'zod';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const BASELINE_FILE = path.join(ROOT, 'tests', 'ratchet.json');
@@ -82,24 +83,19 @@ export function allowlistLength(file: string, name: string): number {
   throw new Error(`${file}: no "const ${name} = [...]" found. The ratchet counts its entries: update ALLOWLISTS.`);
 }
 
-// The site's lint warnings (plan P1-09, Decision 15): what ESLint's recommended rules and typescript-eslint's strict
-// set found in src/ as it became TypeScript are warnings (eslint.config.js), counted here so they only fall. ESLint runs
-// in a child process (its API is asynchronous; this count isn't), with its own cache.
-export function eslintWarnings(): number {
-  const bin = path.join(ROOT, 'node_modules', '.bin', 'eslint');
-  const cache = path.join(ROOT, 'node_modules', '.cache', 'kc', 'eslint-ratchet');
-  const args = ['--format', 'json', '--cache', '--cache-location', cache, 'src'];
-  let out: string;
-  try {
-    out = execFileSync(bin, args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  } catch (e) {
-    // ESLint exits 1 when it finds an error: its report is still on stdout (the lint step fails on the error itself).
-    const stdout = (e as { stdout?: unknown }).stdout;
-    if (typeof stdout !== 'string' || !stdout.startsWith('[')) throw e;
-    out = stdout;
-  }
-  const results = JSON.parse(out) as { warningCount: number }[];
-  return results.reduce((n, r) => n + r.warningCount, 0);
+// ESLint's suppressed findings (plan P1-13, Decisions 4 and 13): every rule is an error (eslint.config.js), and what
+// the rules found when they came in is listed in ESLint's bulk suppressions, per file and rule with a count, which the
+// command line reads (a new finding fails; a suppressed one that no longer occurs fails until it is pruned). Counted
+// here, the sum of the counts, so the list only shrinks (the one rise allowed is plan P1-13's Decision 5: a file freed
+// from the type check's switch-off may add its own typed findings, listed in its PR).
+export const ESLINT_SUPPRESSIONS_FILE = 'eslint-suppressions.json';
+// ESLint's own format: file, then rule, then how many of that rule's findings the file may hold.
+const Suppressions = z.record(z.string(), z.record(z.string(), z.strictObject({ count: z.int().positive() })));
+export function eslintSuppressions(): number {
+  const list = Suppressions.parse(JSON.parse(fs.readFileSync(path.join(ROOT, ESLINT_SUPPRESSIONS_FILE), 'utf8')));
+  return Object.values(list)
+    .flatMap((rules) => Object.values(rules))
+    .reduce((n, entry) => n + entry.count, 0);
 }
 
 // The import rules' known violations (plan P1-13, Decision 4): what broke a rule of .dependency-cruiser.cjs when it came
@@ -115,7 +111,7 @@ export function knownArchitectureViolations(): number {
 
 // What knip finds (plan P1-13, Decision 4; knip.ts): unused files, exports, types and dependencies, and the rest of its
 // kinds. knip keeps no list of known findings, so their number is counted here and only falls. It runs in a child
-// process (as ESLint does above) and exits 1 when it finds anything: its report is still on stdout.
+// process (its API is asynchronous; this count isn't) and exits 1 when it finds anything: its report is still on stdout.
 export function unusedCode(root = ROOT): number {
   const bin = path.join(ROOT, 'node_modules', '.bin', 'knip');
   let out: string;
@@ -162,7 +158,7 @@ export function measure(): Counts {
     ).length,
     quarantinedTests: all.filter((f) => f.startsWith('tests/quarantine/') && /\.test\.[jt]s$/.test(f)).length,
     vmLoaderTests: vmLoaderTests(all),
-    eslintWarnings: eslintWarnings(),
+    eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),
   };

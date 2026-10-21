@@ -3,10 +3,12 @@
 // Vitest and in Playwright), the test runs' own checks, the Node pin, the Claude Code hooks and their stop limit, the
 // CI jobs and the required "ci" check, the build that every test job, the deploy and staging run first (P1-05), the
 // balance job and its engine paths, the nightly random-seed run and fast-check's seed, the dangerous paths, and the
-// ratchet, and the architecture rules (dependency-cruiser and knip, P1-13a). Every later step that adds a guarantee
-// adds its check here. Level 1 (static): it reads settings files and the counts, and runs nothing.
-import { execFileSync } from 'node:child_process';
+// ratchet, the architecture rules (dependency-cruiser and knip, P1-13a), and ESLint's bulk suppressions (P1-13b). It
+// runs ESLint on one file to show the suppressions hold (a few seconds). Every later step that adds a guarantee
+// adds its check here. Level 1 (static): it reads settings files and the counts, and runs no game code.
+import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { ESLint, type Linter } from 'eslint';
 import js from '@eslint/js';
@@ -30,6 +32,8 @@ import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
 import {
   BASELINE_FILE,
   compare,
+  ESLINT_SUPPRESSIONS_FILE,
+  eslintSuppressions,
   KNOWN_ARCHITECTURE_VIOLATIONS_FILE,
   measure,
   readBaseline,
@@ -120,11 +124,27 @@ describe('the lint rules', () => {
     const s = Array.isArray(v) ? v[0] : v;
     return s === 'error' || s === 2 ? 2 : s === 'warn' || s === 1 ? 1 : 0;
   };
-  // What the shared configs ask for: ESLint's recommended rules, then typescript-eslint's strictest type-checked set.
-  // Only eslint-config-prettier may switch one off (formatting is Prettier's).
-  const expected: Partial<Linter.RulesRecord> = {};
-  for (const c of [js.configs.recommended, ...tseslint.configs.strictTypeChecked]) Object.assign(expected, c.rules);
+  // What the shared configs ask for, each rule at error (no rule is at warn: plan P1-13, Decision 13): ESLint's
+  // recommended rules, then typescript-eslint's strictest type-checked set and its stylistic type-checked set. Only
+  // eslint-config-prettier may switch one off (formatting is Prettier's), and the one rule the two type-aware sets
+  // disagree on (Decision 6): non-nullable-type-assertion-style asks for `x!`, which no-non-null-assertion forbids.
+  const setsOf = (configs: Linter.Config[]): Partial<Linter.RulesRecord> => {
+    const rules: Partial<Linter.RulesRecord> = {};
+    for (const c of configs) Object.assign(rules, c.rules);
+    return rules;
+  };
+  const TYPED = [...tseslint.configs.strictTypeChecked, ...tseslint.configs.stylisticTypeChecked] as Linter.Config[];
+  const SITE = [js.configs.recommended, ...tseslint.configs.strict] as Linter.Config[];
+  const expected = setsOf([js.configs.recommended, ...TYPED]);
+  const typedExpected = setsOf(TYPED);
+  const siteExpected = setsOf(SITE);
+  const DISAGREE = '@typescript-eslint/non-nullable-type-assertion-style';
   const formatting = new Set(Object.keys(prettier.rules));
+  // The rules of a set that a file's config doesn't hold at error (a rule the set itself switches off left out).
+  const notAtError = (set: Partial<Linter.RulesRecord>, rules: Partial<Linter.RulesRecord>): string[] =>
+    Object.entries(set)
+      .filter(([rule, v]) => !formatting.has(rule) && level(v) > 0 && level(rules[rule]) < 2)
+      .map(([rule]) => rule);
 
   test.for([
     'tests/static/harness.test.ts',
@@ -135,15 +155,18 @@ describe('the lint rules', () => {
     'knip.ts',
     'tests/browser/x.spec.ts',
     'tests/browser/third-party-requests.spec.ts',
-  ])('%s gets the strict rules at full strength', async (file) => {
-    expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
-    const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
-    const weaker = Object.entries(expected)
-      .filter(([rule, v]) => !formatting.has(rule) && level(rules[rule]) < level(v))
-      .map(([rule]) => rule);
-    expect(weaker).toEqual([]);
-    expect(level(rules['@typescript-eslint/switch-exhaustiveness-check'])).toBe(2);
-  });
+    'tools/module-map.ts',
+  ])(
+    '%s gets the strict and stylistic type-aware rules, each an error, only the one they disagree on off',
+    async (file) => {
+      expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
+      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+      expect(notAtError(expected, rules)).toEqual([DISAGREE]);
+      expect(level(rules[DISAGREE])).toBe(0);
+      expect(level(rules['@typescript-eslint/no-non-null-assertion'])).toBe(2);
+      expect(level(rules['@typescript-eslint/switch-exhaustiveness-check'])).toBe(2);
+    },
+  );
 
   // The site's modules get no-undef (plan P1-08a for the engine; P1-09d for all of src/): a file that reads a name it
   // neither imports nor declares (a helper lifted out of resolveTurn that still reads its closure, a missing import)
@@ -162,37 +185,85 @@ describe('the lint rules', () => {
     expect(pagesOwn.filter(known)).toEqual(ENGINE_FILES.includes(file) ? [] : pagesOwn);
   });
 
-  // The site's own tier (plan P1-09, Decision 15, P1-09e): ESLint's recommended rules and typescript-eslint's strict
-  // set, none switched off and each at least a warning (tools/ratchet.ts counts the warnings: eslintWarnings), no-undef
-  // and ban-ts-comment errors (a file left unchecked only with its reason), no type assertion and no non-null assertion
-  // (P1-10a1, plan P1-10 Decision 2: claims the compiler takes on trust), and no type-aware rule until P1-10 (no
-  // project service: with it off, a type-aware rule would stop ESLint).
-  const siteExpected: Partial<Linter.RulesRecord> = {};
-  for (const c of [js.configs.recommended, ...tseslint.configs.strict]) Object.assign(siteExpected, c.rules);
+  // The site's own tier (plan P1-09, Decision 15, P1-09e; P1-13b): ESLint's recommended rules and typescript-eslint's
+  // strict set, each an error (what they found when they came in is in ESLint's suppressions), no-undef and
+  // ban-ts-comment errors (a file left unchecked only with its reason), no type assertion and no non-null assertion
+  // (P1-10a1, plan P1-10 Decision 2: claims the compiler takes on trust). A file TypeScript checks (its first line
+  // doesn't switch the check off) gets the type-aware sets too, each an error, the one they disagree on off (plan
+  // P1-13, Decisions 5 and 6); a file it skips gets no type-aware rule (no project service: with everything any, they
+  // would only find that). Every file of src/ is read, so a file freed from the switch-off gets them with no list kept.
   const NO_ASSERTIONS = '@typescript-eslint/consistent-type-assertions';
   const NO_NON_NULL = '@typescript-eslint/no-non-null-assertion';
-  test.for([...ENGINE_FILES, ...PAGE_FILES, 'src/globals.d.ts', 'src/schemas/saved-game-state.ts'])(
-    "%s gets the site's rules: none off, four errors, nothing type-aware",
-    async (file) => {
-      const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
-      const rules = config.rules ?? {};
-      // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js)
-      const allowedOff = file === 'src/globals.d.ts' ? ['no-var'] : [];
-      const off = Object.entries(siteExpected)
-        .filter(([rule, v]) => !formatting.has(rule) && level(v) > 0 && level(rules[rule]) === 0)
-        .map(([rule]) => rule);
-      expect(off).toEqual(allowedOff);
-      expect(level(rules['no-undef'])).toBe(2);
-      const ban = rules['@typescript-eslint/ban-ts-comment'];
-      expect(level(ban)).toBe(2);
-      expect(Array.isArray(ban) ? ban[1] : undefined).toEqual({ 'ts-nocheck': 'allow-with-description' });
-      const assertions = rules[NO_ASSERTIONS];
-      expect(level(assertions)).toBe(2);
-      expect(Array.isArray(assertions) ? assertions[1] : undefined).toEqual({ assertionStyle: 'never' });
-      expect(level(rules[NO_NON_NULL])).toBe(2);
-      const parserOptions = (config.languageOptions as { parserOptions?: Record<string, unknown> } | undefined)
-        ?.parserOptions;
-      expect(parserOptions?.['projectService'] ?? parserOptions?.['project'] ?? null).toBeNull();
+  const typeChecked = (file: string) => !new RegExp('^// @ts-' + 'nocheck\\b').test(read(file));
+  const srcFiles = filesUnder(path.join(ROOT, 'src'))
+    .filter((f) => f.endsWith('.ts'))
+    .map((f) => 'src/' + f);
+  test('src/ has files of both kinds: TypeScript checks some and skips others', () => {
+    for (const f of [
+      'src/engine/clock.ts',
+      'src/schemas/saved-game-state.ts',
+      'src/globals.d.ts',
+      'src/ui/gm/start.ts',
+    ])
+      expect(typeChecked(f), f).toBe(true);
+    // until P1-10b and P1-16 free the last of them
+    expect(srcFiles.filter((f) => !typeChecked(f)).length).toBeGreaterThan(0);
+  });
+  // A planted finding of a type-aware rule (a `||` that should be `??`: it needs the value's type) is an error in a file
+  // TypeScript checks, and isn't looked for in one it skips.
+  test.for([
+    ['src/engine/clock.ts', true],
+    ['src/engine/turn/context.ts', false],
+  ] as const)('%s: a planted type-aware finding is an error: %s', async ([file, isError]) => {
+    expect(typeChecked(file)).toBe(isError);
+    const code = read(file) + '\nexport const planted = (x: string | undefined) => x || "a";\n';
+    const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
+    const found = (result?.messages ?? []).filter((m) => m.ruleId === '@typescript-eslint/prefer-nullish-coalescing');
+    expect(found.map((m) => m.severity)).toEqual(isError ? [2] : []);
+  });
+  test(
+    "every file of src/ gets the site's rules, each an error, and the type-aware ones exactly when TypeScript checks it",
+    { timeout: 60_000 },
+    async () => {
+      const wrong: string[] = [];
+      for (const file of srcFiles) {
+        expect(await eslint.isPathIgnored(path.join(ROOT, file)), file).toBe(false);
+        const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
+        const rules = config.rules ?? {};
+        const checked = typeChecked(file);
+        // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js)
+        const allowedOff = [...(file === 'src/globals.d.ts' ? ['no-var'] : []), ...(checked ? [DISAGREE] : [])];
+        const off = notAtError({ ...siteExpected, ...(checked ? typedExpected : {}) }, rules).filter(
+          (rule) => rule !== NO_ASSERTIONS,
+        );
+        if (off.join() !== allowedOff.join()) wrong.push(`${file}: not errors: ${off.join(', ')}`);
+        if (level(rules['no-undef']) !== 2) wrong.push(`${file}: no-undef`);
+        const ban = rules['@typescript-eslint/ban-ts-comment'];
+        if (
+          level(ban) !== 2 ||
+          JSON.stringify(Array.isArray(ban) ? ban[1] : undefined) !== '{"ts-nocheck":"allow-with-description"}'
+        )
+          wrong.push(`${file}: ban-ts-comment`);
+        if (level(rules[NO_NON_NULL]) !== 2) wrong.push(`${file}: ${NO_NON_NULL}`);
+        // the type assertions kept are the test below's
+        const assertions = rules[NO_ASSERTIONS];
+        if (
+          level(assertions) === 2 &&
+          JSON.stringify(Array.isArray(assertions) ? assertions[1] : undefined) !== '{"assertionStyle":"never"}'
+        )
+          wrong.push(`${file}: ${NO_ASSERTIONS}`);
+        const parserOptions = (config.languageOptions as { parserOptions?: Record<string, unknown> } | undefined)
+          ?.parserOptions;
+        const typeAware = (parserOptions?.['projectService'] ?? parserOptions?.['project'] ?? null) !== null;
+        if (typeAware !== checked) wrong.push(`${file}: type-aware ${String(typeAware)}`);
+        // a file TypeScript skips gets no rule of the type-aware sets but the site's own (its four, above)
+        const typedOnly = Object.keys(typedExpected).filter(
+          (r) => !(r in siteExpected) && r !== NO_ASSERTIONS && level(typedExpected[r]) > 0,
+        );
+        if (!checked && typedOnly.some((r) => level(rules[r]) > 0))
+          wrong.push(`${file}: a type-aware set's rule is on`);
+      }
+      expect(wrong).toEqual([]);
     },
   );
 
@@ -267,7 +338,85 @@ describe('the lint rules', () => {
       .filter(([rule, v]) => level(rules[rule]) < level(v))
       .map(([rule]) => rule);
     expect(weaker).toEqual(allowedOff);
+    // and each at error, as every rule is (below)
+    expect(notAtError(playwright.configs['flat/recommended'].rules ?? {}, rules)).toEqual(allowedOff);
   });
+
+  // No rule is at warn (plan P1-13, Decision 13): a warning passes the lint run, so every finding is an error, held
+  // only in ESLint's suppressions. Read from every file ESLint lints.
+  test('no rule is at warn, in any file ESLint lints', { timeout: 60_000 }, async () => {
+    const linted = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT })
+      .toString()
+      .split('\0')
+      .filter((f) => /\.(ts|mts)$/.test(f) && fs.existsSync(path.join(ROOT, f)));
+    expect(linted.length).toBeGreaterThan(300);
+    const warned: string[] = [];
+    for (const file of linted) {
+      if (await eslint.isPathIgnored(path.join(ROOT, file))) continue;
+      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+      for (const [rule, v] of Object.entries(rules)) if (level(v) === 1) warned.push(`${file}: ${rule}`);
+    }
+    expect(warned).toEqual([]);
+  });
+});
+
+// ESLint's bulk suppressions (plan P1-13, Decisions 4 and 13): what the rules found when they came in, per file and
+// rule with a count, in the file ESLint's command line reads by default (npm run lint, npm run check, the edit hook)
+// and the ratchet counts (eslintSuppressions). Shown here on the smallest file the list names, with the list written
+// to a temporary file: a finding the list doesn't hold fails (exit 1), as a new one would; a list that holds more than
+// the file has fails too (exit 2), as a fixed finding left in it would, until `npx eslint --prune-suppressions`.
+describe("ESLint's suppressions", () => {
+  const list = JSON.parse(read(ESLINT_SUPPRESSIONS_FILE)) as Record<string, Record<string, { count: number }>>;
+
+  test('the list is the one ESLint reads by default, and the ratchet counts it', () => {
+    expect(ESLINT_SUPPRESSIONS_FILE).toBe('eslint-suppressions.json');
+    expect(pkg.scripts['lint']).toBe('eslint .');
+    const sum = Object.values(list)
+      .flatMap((rules) => Object.values(rules))
+      .reduce((n, e) => n + e.count, 0);
+    expect(eslintSuppressions()).toBe(sum);
+    expect(readBaseline()['eslintSuppressions']).toBeDefined();
+    // Nothing lints with another list, writes to it, or lets a stale entry through.
+    const weak = /--suppress|--prune-suppressions|--pass-on-unpruned-suppressions/;
+    for (const f of ['package.json', 'tools/check.ts', 'tools/hooks/after-edit.ts', '.github/workflows/ci.yml'])
+      expect(read(f), f).not.toMatch(weak);
+  });
+
+  test(
+    'a finding the list lacks fails, and so does an entry the file no longer holds',
+    { timeout: 60_000 },
+    async () => {
+      const [file = ''] = Object.keys(list).sort(
+        (a, b) => fs.statSync(path.join(ROOT, a)).size - fs.statSync(path.join(ROOT, b)).size || a.localeCompare(b),
+      );
+      const own = list[file] ?? {};
+      const [rule = ''] = Object.keys(own);
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-suppressions-'));
+      const exitOf = (name: string, suppressions: unknown) =>
+        new Promise<number>((resolve) => {
+          const at = path.join(dir, name);
+          fs.writeFileSync(at, JSON.stringify(suppressions));
+          const bin = path.join(ROOT, 'node_modules', '.bin', 'eslint');
+          execFile(bin, ['--suppressions-location', at, file], { cwd: ROOT }, (e) => {
+            resolve(e ? Number((e as { code?: unknown }).code) : 0);
+          });
+        });
+      const withoutRule = Object.fromEntries(Object.entries(own).filter(([r]) => r !== rule));
+      const [asListed, findingNotListed, oneMoreThanHeld] = await Promise.all([
+        exitOf('as-listed.json', { [file]: own }),
+        exitOf('finding-not-listed.json', { [file]: withoutRule }),
+        exitOf('one-more.json', { [file]: { ...own, [rule]: { count: (own[rule]?.count ?? 0) + 1 } } }),
+      ]);
+      fs.rmSync(dir, { recursive: true, force: true });
+      expect({ file, rule, asListed, findingNotListed, oneMoreThanHeld }).toEqual({
+        file,
+        rule,
+        asListed: 0,
+        findingNotListed: 1,
+        oneMoreThanHeld: 2,
+      });
+    },
+  );
 });
 
 describe('the test run', () => {
@@ -784,18 +933,19 @@ describe('the ratchet', () => {
     expect(path.relative(ROOT, BASELINE_FILE)).toBe('tests/ratchet.json');
   });
 
-  // measure() runs ESLint over src/ for eslintWarnings: a few seconds, more on a slow runner.
+  // measure() runs knip for unusedCode: a few seconds, more on a slow runner.
   test('no count is above its baseline', { timeout: 60_000 }, () => {
     const { rose } = compare(readBaseline(), measure());
     expect(rose, 'Lower what rose, or, if the rise is right, talk it through with Theo.').toEqual([]);
   });
 
-  // P1-09e: the site's lint warnings are counted, so they only fall; src/ has no JavaScript left but public/'s two
-  // classic scripts (copied as they are).
-  test("it counts the site's lint warnings and public/'s two scripts", { timeout: 60_000 }, () => {
+  // P1-09e: src/ has no JavaScript left but public/'s two classic scripts (copied as they are). P1-13b: ESLint's
+  // suppressions are counted from their file (above), so they only fall; its warnings no longer, since no rule warns.
+  test("it counts ESLint's suppressions and public/'s two scripts", { timeout: 60_000 }, () => {
     const now = measure();
-    expect(now['eslintWarnings']).toBeGreaterThan(0);
-    expect(readBaseline()['eslintWarnings']).toBeDefined();
+    expect(now['eslintSuppressions']).toBe(eslintSuppressions());
+    expect(now['eslintSuppressions']).toBeGreaterThan(0);
+    expect(now).not.toHaveProperty('eslintWarnings');
     expect(now['sourceJavascriptFiles']).toBe(2);
   });
 

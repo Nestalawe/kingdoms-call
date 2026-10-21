@@ -1,0 +1,1292 @@
+{
+  "playwright.config.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "src/db/game-meta.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    }
+  },
+  "src/db/telemetry.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/battle/battle-report-lines-and-force-markers.ts": {
+    "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 17
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 6
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 5
+    }
+  },
+  "src/engine/battle/battles-against-province-defenders.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "no-empty": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/battle/battles-between-heroes.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 14
+    },
+    "no-empty": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/battle/best-commander.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/engine/battle/blood-harvest-and-iron-throne.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/battle/evil-terror.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 8
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "@typescript-eslint/restrict-plus-operands": {
+      "count": 1
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 3
+    }
+  },
+  "src/engine/battle/fates.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/battle/hosts-gained-in-a-province.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/engine/battle/ladder.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-type-conversion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 14
+    },
+    "@typescript-eslint/restrict-plus-operands": {
+      "count": 2
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 21
+    }
+  },
+  "src/engine/battle/lines.ts": {
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/battle/pre-battle-duels.ts": {
+    "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 8
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 11
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 4
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 2
+    }
+  },
+  "src/engine/battle/raid-the-coast-and-landing-parties.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 2
+    }
+  },
+  "src/engine/battle/terrain-and-unit-strength.ts": {
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 1
+    }
+  },
+  "src/engine/bots/bot-realms-plan-the-turn-concessions-movement-muster-economy-actions-hygiene-the-reckoning-and-the-duel-forecast.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/bots/economy.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 4
+    }
+  },
+  "src/engine/bots/intel.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 6
+    },
+    "no-empty": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "src/engine/bots/missions.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/engine/bots/movement.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/engine/bots/phase-one.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/engine/bots/setup.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "no-empty": {
+      "count": 3
+    }
+  },
+  "src/engine/bots/specialists.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/bots/spellcraft.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-empty": {
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/engine/bots/war.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/dice-and-army-names.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 8
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 8
+    }
+  },
+  "src/engine/discoveries.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/espionage/what-a-spy-learns.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/graves.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/heroes/charms-and-neutrals.ts": {
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/heroes/hero-death-and-leaderless-hosts.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/items/equipment.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "src/engine/items/lair-items.ts": {
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/names.ts": {
+    "prefer-const": {
+      "count": 2
+    }
+  },
+  "src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/orders/encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    }
+  },
+  "src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-empty": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/orders/item-orders-equip-use-and-send-magic-items.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "no-constant-condition": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 2
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts": {
+    "prefer-const": {
+      "count": 3
+    }
+  },
+  "src/engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 2
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 6
+    }
+  },
+  "src/engine/personal-combat/helpers.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/personal-combat/lair-guardians-and-the-odds.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/engine/personal-combat/resolve-personal-combat.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/personal-combat/tactics-combat-items-and-actions.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/realms/relations-and-captures.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 5
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 4
+    }
+  },
+  "src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "src/engine/rules-on-plain-values/unit-types-and-base-strength.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    }
+  },
+  "src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "src/engine/run-turn.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "preserve-caught-error": {
+      "count": 1
+    }
+  },
+  "src/engine/titles/perks.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/titles/reckoning.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/engine/titles/title-holders-and-battle-merit.ts": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 4
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 7
+    },
+    "@typescript-eslint/restrict-plus-operands": {
+      "count": 2
+    }
+  },
+  "src/engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 1
+    }
+  },
+  "src/engine/turn/intrusion-warnings.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/turn/log-line-helpers.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/engine/turn/mercenary-ids-and-battle-records.ts": {
+    "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 9
+    },
+    "@typescript-eslint/no-unnecessary-type-conversion": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 7
+    },
+    "@typescript-eslint/restrict-plus-operands": {
+      "count": 2
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 2
+    }
+  },
+  "src/engine/turn/new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-final-reconcile.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/turn/phase-intents-and-dependency-ordering.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/turn/realm-reports-and-spy-stealth.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts": {
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/units/recruit-limits.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 2
+    }
+  },
+  "src/engine/units/sea-lift-stranding-and-retreats.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/engine/world/generate.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "prefer-const": {
+      "count": 5
+    }
+  },
+  "src/engine/world/routes-and-distances.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 10
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 7
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "@typescript-eslint/restrict-plus-operands": {
+      "count": 2
+    }
+  },
+  "src/globals.d.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/rulebook/toc.ts": {
+    "no-var": {
+      "count": 2
+    }
+  },
+  "src/ui/gm/auto-turn.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "src/ui/gm/config.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "src/ui/gm/game-detail.ts": {
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/ui/gm/game-list.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    },
+    "no-useless-assignment": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 2
+    }
+  },
+  "src/ui/gm/globals.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "src/ui/gm/hall-of-fame.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/ui/gm/start.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/ui/gm/startup.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/ui/gm/stats-tab.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/ui/gm/turn-log.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/ui/gm/turn-mode.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/ui/gm/turn-shell.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/ui/gm/turn-zero.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    },
+    "no-empty": {
+      "count": 2
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/ui/leaderboard/main.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    }
+  },
+  "src/ui/overlord/globals.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "src/ui/overlord/main.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/ui/player/dispatches.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 9
+    },
+    "no-empty": {
+      "count": 6
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/ui/player/game-lists.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 11
+    },
+    "no-empty": {
+      "count": 5
+    }
+  },
+  "src/ui/player/globals.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "src/ui/player/init.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "no-empty": {
+      "count": 3
+    }
+  },
+  "src/ui/player/join-and-chronicle.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 8
+    },
+    "no-empty": {
+      "count": 2
+    },
+    "prefer-const": {
+      "count": 5
+    }
+  },
+  "src/ui/player/layout.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 6
+    },
+    "no-empty": {
+      "count": 6
+    }
+  },
+  "src/ui/player/map-symbols.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/ui/player/map.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    },
+    "no-empty": {
+      "count": 3
+    }
+  },
+  "src/ui/player/move-analysis.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "no-empty": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/ui/player/order-targets.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 9
+    },
+    "no-empty": {
+      "count": 1
+    }
+  },
+  "src/ui/player/orders-form.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "no-useless-assignment": {
+      "count": 1
+    }
+  },
+  "src/ui/player/pre-orders.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 12
+    },
+    "no-empty": {
+      "count": 8
+    }
+  },
+  "src/ui/player/report.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "no-empty": {
+      "count": 3
+    },
+    "no-useless-assignment": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 3
+    }
+  },
+  "src/ui/player/sign-in.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "no-empty": {
+      "count": 3
+    }
+  },
+  "src/ui/player/startup.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/ui/player/titles.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 2
+    }
+  },
+  "src/views/turn-report.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "no-empty": {
+      "count": 1
+    },
+    "no-useless-assignment": {
+      "count": 1
+    },
+    "no-var": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 3
+    }
+  },
+  "src/views/visibility.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unnecessary-type-conversion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 5
+    }
+  },
+  "tests/browser/chromium-boot.spec.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 2
+    }
+  },
+  "tests/lib/before-the-first-phase-cases.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "tests/lib/cast-spell-order-cases.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tests/lib/engine.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/lib/page-globals.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-regexp-exec": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-string-starts-ends-with": {
+      "count": 3
+    }
+  },
+  "tests/lib/phase-stage-cases.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 2
+    }
+  },
+  "tests/lib/player-portal-copies.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "tests/lib/report-leaks.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/lib/set-up-and-order-merge-cases.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 7
+    }
+  },
+  "tests/lib/source.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tests/lib/the-bots-plan-cases.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 4
+    }
+  },
+  "tests/lib/titles-at-the-turns-end-cases.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tests/lib/war-order-cases.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 2
+    }
+  },
+  "tests/scenario/mercenary-ids.test.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tests/scenario/move-points.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/scenario/pursuit-one-battle.test.ts": {
+    "@typescript-eslint/prefer-string-starts-ends-with": {
+      "count": 1
+    }
+  },
+  "tests/scenario/research-and-practice-orders-in-a-whole-turn.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 4
+    }
+  },
+  "tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tests/unit/after-the-phases-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-find": {
+      "count": 1
+    }
+  },
+  "tests/unit/battle-tweaks.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-includes": {
+      "count": 6
+    }
+  },
+  "tests/unit/battles-between-heroes.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/unit/before-the-first-phase-called-directly.test.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "tests/unit/bot-diplomacy-called-directly.test.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 3
+    }
+  },
+  "tests/unit/cast-spell-order-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 2
+    }
+  },
+  "tests/unit/combat-properties.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 2
+    }
+  },
+  "tests/unit/diplomacy-and-victory-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 1
+    }
+  },
+  "tests/unit/encounter-seventy.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/unit/explore-and-search-orders-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 1
+    }
+  },
+  "tests/unit/fireball-burn.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/unit/flee-spoils-and-lair-odds.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/unit/guardian-holds-melee.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 2
+    }
+  },
+  "tests/unit/guardian-melee.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "tests/unit/guardian-perks.test.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tests/unit/hit-cap.test.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    }
+  },
+  "tests/unit/holy-symbol-unclean.test.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tests/unit/hp-gain-private.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 4
+    }
+  },
+  "tests/unit/hp-wound-gain.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/unit/item-and-army-orders-called-directly.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/unit/march-one-rate.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/unit/new-turn-succession-and-summons-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 3
+    }
+  },
+  "tests/unit/new-turn-war-academy-to-the-final-reconcile-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 1
+    }
+  },
+  "tests/unit/npc-parity.test.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 7
+    }
+  },
+  "tests/unit/phase-order-and-province-bookkeeping.test.ts": {
+    "@typescript-eslint/prefer-regexp-exec": {
+      "count": 1
+    }
+  },
+  "tests/unit/pre-battle-duels.test.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/unit/province-lookups-and-limits.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/unit/realm-reports.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 2
+    }
+  },
+  "tests/unit/recruit-hire-and-realm-works-orders-called-directly.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/unit/research-and-practice-orders-called-directly.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/unit/set-up-and-order-merge-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 3
+    }
+  },
+  "tests/unit/skill-rises-terror-and-graves.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 3
+    }
+  },
+  "tests/unit/stalled-battles-unit-gain-and-war-fronts.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 2
+    }
+  },
+  "tests/unit/terror-three-stacks.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    }
+  },
+  "tests/unit/the-saved-game-state-schemas-parse-every-state-of-a-matrix-game.test.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tests/unit/titles-at-the-turns-end-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 10
+    }
+  },
+  "tests/unit/war-orders-called-directly.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 14
+    }
+  },
+  "tests/unit/xp-fight-win.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/unit/xp-fled-fight.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "tests/unit/xp-naval-passenger.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 2
+    }
+  },
+  "tools/balance/report-run.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "tools/balance/scripted.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    }
+  },
+  "tools/balance/stats.ts": {
+    "@typescript-eslint/prefer-includes": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-string-starts-ends-with": {
+      "count": 1
+    }
+  },
+  "tools/ratchet.ts": {
+    "@typescript-eslint/prefer-string-starts-ends-with": {
+      "count": 1
+    }
+  },
+  "vitest.config.mts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  }
+}
