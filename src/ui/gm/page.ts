@@ -127,4 +127,5 @@ import '../../engine/titles/title-intel-for-each-holder-and-the-titles-won-and-l
 import '../../engine/run-turn.ts';
 import './turn-shell.ts';
 import './start.ts';
+import '../shared/the-reload-banner.ts';
 import './globals.ts';

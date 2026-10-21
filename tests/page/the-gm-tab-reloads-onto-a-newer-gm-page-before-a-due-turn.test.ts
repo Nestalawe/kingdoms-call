@@ -49,7 +49,9 @@ interface Tab {
   answer: (fingerprint: string) => () => Promise<Answer>;
   set: (next: () => Promise<Answer>) => void;
   at: (ms: number) => void;
-  /** Every fetch the page made, and every reload it scheduled. */
+  /** The fetches the page made as it loaded (its reload banner's first check, P1-06d), then every later one, and every
+   *  reload it scheduled. */
+  atLoad: string[];
   fetched: string[];
   reloads: string[];
   errors: string[];
@@ -92,6 +94,7 @@ async function bootTab(): Promise<Tab> {
   });
   const W = dom.window;
   await new Promise((r) => setTimeout(r, 900));
+  const atLoad = fetched.splice(0);
   const mine = String(W.eval('document.querySelector(\'meta[name="kc-page-version"]\').content'));
   const answer = (fingerprint: string) => () =>
     Promise.resolve({
@@ -113,6 +116,7 @@ async function bootTab(): Promise<Tab> {
     at: (ms) => {
       now = START + ms;
     },
+    atLoad,
     fetched,
     reloads,
     errors,
@@ -125,6 +129,7 @@ async function bootTab(): Promise<Tab> {
 test('the page knows its own fingerprint, the one version.json names for it', async () => {
   const t = await bootTab();
   expect(t.mine).toMatch(/^[0-9a-f]{12}$/);
+  expect(t.atLoad, 'the reload banner reads version.json once as the page loads').toEqual(['version.json no-store']);
   expect(t.W.eval('document.querySelector(\'meta[name="kc-build"]\').content')).toMatch(/^([0-9a-f]{40}|unknown)$/);
   expect(t.errors).toEqual([]);
   t.W.close();

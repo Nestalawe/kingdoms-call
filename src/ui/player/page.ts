@@ -25,4 +25,5 @@ import './map-symbols.ts';
 import './map.ts';
 import './dispatches.ts';
 import './start.ts';
+import '../shared/the-reload-banner.ts';
 import './globals.ts';
