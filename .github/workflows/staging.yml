@@ -33,8 +33,8 @@ concurrency:
 
 jobs:
   # site/ from src/ (P1-05), as deploy.yml builds it: Vite, installed from the lock file (P1-09d), without its packages'
-  # install scripts (the build needs none). It can only read, outside the staging environment, and hands site/ on as
-  # the artifact "site".
+  # install scripts (the build needs none), then keeps the files a page cached before this deploy still names (P1-06b).
+  # It can only read, outside the staging environment, and hands site/ on as the artifact "site".
   build:
     name: staging build
     if: contains(github.event.pull_request.labels.*.name, 'staging') && github.event.pull_request.head.repo.full_name == github.repository
@@ -55,6 +55,15 @@ jobs:
       - run: npm ci --ignore-scripts
 
       - run: npm run build
+
+      # The files a page cached before this deploy still names (P1-06b): the staging site as it is now, from a shallow
+      # clone of its repository, which is public (no key). Any failure stops the job here, and nothing is published
+      # (tools/deploy/keep-the-previous-deploys-files.ts).
+      - name: Keep the previous deploy's files
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --quiet https://github.com/Kingdoms-Call-Staging/kingdoms-call-staging.github.io.git "$RUNNER_TEMP/previous-site"
+          node tools/deploy/keep-the-previous-deploys-files.ts site/ --previous "$RUNNER_TEMP/previous-site"
 
       - uses: actions/upload-artifact@v7
         with:

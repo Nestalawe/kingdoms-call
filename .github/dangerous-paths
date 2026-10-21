@@ -57,7 +57,9 @@ tools/check.*
 tools/build.*
 tools/ratchet.*
 # The engine's loader (it bundles the engine for the tests, P1-09d), which files make each page (the build's checks
-# and the balance runner's read it), and the dev server (it must never reach the live database).
+# and the balance runner's read it), the dev server (it must never reach the live database), and what the deploy runs
+# beside the build (P1-06b: it decides which files are published).
 tests/lib/engine.ts
 tools/pages.*
 tools/dev.*
+tools/deploy/**

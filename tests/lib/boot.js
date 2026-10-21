@@ -2,7 +2,7 @@
 //
 //   SITE, sitePath(name)        where the deployable files live (site/, or $KC_SITE)
 //   readPage(nameOrPath)        page HTML ready for jsdom, which runs no module script and loads no stylesheet: its
-//                               bundle (assets/<page>.js, P1-09d) as a classic script at the end of the body, strict as
+//                               bundle (assets/<page>-<hash>.js, P1-09d, P1-06b) as a classic script at the end of the body, strict as
 //                               a module is; its stylesheet inline where its <link> was; its local classic scripts
 //                               (kc-config.js, kc-staging-footer.js) inlined; the supabase-js <script> removed
 //   pageFiles(nameOrPath)       the files readPage reads for that page: the page, then each file it inlines

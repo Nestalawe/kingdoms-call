@@ -3,13 +3,16 @@
 // build it first (tests/setup/global.ts, tools/balance/run.ts), so they never open stale pages.
 //
 // Every src/*.html is a page. Each is built on its own (P1-09's Decision 8), so its bundle stands alone: one script,
-// assets/<page>.js, with no import left (jsdom runs no module script, so tests/lib/boot.js inlines it as a classic
-// one), and one stylesheet, assets/<page>.css. public/ is copied as it is: kc-config.js (staging overwrites it),
+// assets/<page>-<hash>.js, with no import left (jsdom runs no module script, so tests/lib/boot.js inlines it as a
+// classic one), and one stylesheet, assets/<page>-<hash>.css. public/ is copied as it is: kc-config.js (staging overwrites it),
 // kc-staging-footer.js and vendor/. The options, in one place for the build and the dev server (tools/dev.ts):
 // - minify: false: a live error's stack keeps the code's names, and the size is what it was;
 // - target esnext and no module preload: the code is left as written, and nothing is added to the page;
-// - names without a hash (assets/<page>.js): a cached page asking for a file a later deploy deleted would not load.
-//   Hashed names come with P1-06, with the previous deploy's files kept;
+// - names with a hash of the file's content (assets/<page>-<hash>.js, P1-06b): a change gives the file a new name, an
+//   unchanged file keeps its own (and the browser its cached copy). A page cached before a deploy still names the old
+//   file, so the deploy keeps it (tools/deploy/keep-the-previous-deploys-files.ts, run by the build jobs). The bytes,
+//   and so the names, are the same on every build of the same src/ run from the folder that holds it: Rolldown names
+//   each module in a bundle (//#region src/…) from the folder it runs in;
 // - no constant written in where it is read (Rolldown's inlineConst, on by default): every constant keeps its name, so
 //   the code reads as written and a test can still reach one. Rolldown (Vite's bundler) still leaves out a function or
 //   constant that nothing reaches (it can't be turned off for a page: Vite treats a page as having no exports), writes
@@ -92,7 +95,7 @@ function pageOptions(page: string, out: string, src: string, pub: string, first:
       rolldownOptions: {
         ...KEEP_THE_CODE,
         input: { [page.replace(/\.html$/, '')]: path.join(src, page) },
-        output: { entryFileNames: 'assets/[name].js', assetFileNames: 'assets/[name][extname]' },
+        output: { entryFileNames: 'assets/[name]-[hash].js', assetFileNames: 'assets/[name]-[hash][extname]' },
       },
     },
   };

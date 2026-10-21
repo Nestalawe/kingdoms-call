@@ -2,7 +2,8 @@
 // is. It replaced P1-05's stitch and its two tests (static/build.test.ts, static/engine-files.test.ts). Level 0
 // (static): it builds the site into temporary folders (Vite, a few seconds) and reads what was made; nothing runs.
 // - Every page builds, and the site is exactly: each page, its bundle and its stylesheet (a page with no script has no
-//   bundle), and public/ as it is, but public/dev/ (the dev server's config), which is never published.
+//   bundle), each named by its page and a hash of its content (P1-06b), and public/ as it is, but public/dev/ (the dev
+//   server's config), which is never published. Two builds of the same src/ are byte-identical.
 // - Each bundle stands alone: it parses as a classic script, with no import or export left, so jsdom can run it
 //   (tests/lib/boot.js), and holds no stitch marker.
 // - Every file under src/ is in a page: in a bundle (Rolldown's own list of the bundle's modules), or a page's
@@ -98,7 +99,12 @@ function valueImportsOfTheSchemas(src: string): string[] {
 const SITE = path.join(tmp, 'site');
 const built = build(SITE);
 const pages = pageNames();
-const bundleOf = (page: string) => `assets/${page.replace(/\.html$/, '.js')}`;
+// Each page's bundle and stylesheet are named by the page and a hash of their content (P1-06b: assets/<page>-<hash>.js),
+// so a deploy never replaces a file a cached page still names (tools/deploy/keep-the-previous-deploys-files.ts).
+const HASHED = (page: string, ext: string) =>
+  new RegExp(`^assets/${page.replace(/\.html$/, '').replace(/[.-]/g, '\\$&')}-[A-Za-z0-9_-]{8}\\.${ext}$`);
+const assetsOf = (site: string, page: string, ext: string) => filesUnder(site).filter((f) => HASHED(page, ext).test(f));
+const bundleOf = (page: string) => assetsOf(SITE, page, 'js')[0] ?? `no bundle of ${page}`;
 
 describe('every page builds', () => {
   test('the pages are the seven published ones', () => {
@@ -113,15 +119,26 @@ describe('every page builds', () => {
     ]);
   });
 
-  test('the site is each page, its bundle and its stylesheet, and public/ as it is', () => {
+  test('the site is each page, its bundle and its stylesheet, each named by its page and a hash, and public/ as it is', () => {
+    const scripted = pages.filter((p) => pageEntries(p).modules.length);
+    for (const p of pages) expect(assetsOf(SITE, p, 'css'), p).toHaveLength(1);
+    for (const p of scripted) expect(assetsOf(SITE, p, 'js'), p).toHaveLength(1);
     const want = [
       ...pages,
-      ...pages.filter((p) => pageEntries(p).modules.length).map(bundleOf),
-      ...pages.map((p) => `assets/${p.replace(/\.html$/, '.css')}`),
+      ...scripted.flatMap((p) => assetsOf(SITE, p, 'js')),
+      ...pages.flatMap((p) => assetsOf(SITE, p, 'css')),
       ...filesUnder(PUBLIC).filter((f) => !f.startsWith('dev/')),
     ].sort();
     expect(filesUnder(SITE)).toEqual(want);
     expect(built.files).toBe(want.length);
+  });
+
+  test('two builds of the same src/ are byte-identical, names and all', BUILDS, () => {
+    const again = path.join(tmp, 'site-twice');
+    build(again);
+    expect(filesUnder(again)).toEqual(filesUnder(SITE));
+    for (const f of filesUnder(SITE))
+      expect(fs.readFileSync(path.join(again, f)).equals(fs.readFileSync(path.join(SITE, f))), f).toBe(true);
   });
 
   test('a page with no script of its own has no bundle: the landing page', () => {
