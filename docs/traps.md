@@ -16,6 +16,26 @@ rewritten from `src/` by every test run. An edit there is never committed, and t
 - `node tests/<name>.test.js` and a page opened in a browser read `site/` as last built: run `npm run build` first.
   `npm run dev` serves `src/` as it is, against the local Supabase ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)).
 
+## A deploy keeps the files a cached page names
+
+Since P1-06b each page's bundle and stylesheet are named by their content (`assets/<page>-<hash>.js`), so a change
+renames them. GitHub Pages replaces the whole site on each deploy, and its cache hands out a page for up to 10 minutes
+after it: a page cached before the deploy asks for its old bundle, which the new build doesn't have. The build jobs
+put the old files back ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)).
+
+- **Never publish `site/` without the keep step** (`tools/deploy/keep-the-previous-deploys-files.ts`, between
+  `npm run build` and the upload in both build jobs). Without it, every page cached before the deploy breaks for up to
+  10 minutes: its bundle answers 404, and the page stays on "Loading…". `tests/static/harness.test.ts` checks the
+  step is there, right after the build, and that it can't be skipped or fail quietly.
+- **Never rename `published-files.json`.** The next deploy reads it from the previous site to know which older files
+  to keep for 24 hours. Under another name, the next deploy keeps only what the previous pages name, and a page two
+  deploys old (deploys can come minutes apart) loses its files.
+- **A read of the live site in the 10 minutes after a deploy can be the previous deploy**, page or file, and a query
+  string doesn't help (the cache ignores it). A check by hand or a script that reads the live site waits 10 minutes.
+- **A test that compares two builds builds each from the folder that holds its `src/`.** Rolldown names each module
+  in a bundle (`//#region src/…`) from the folder it runs in, so a copy of `src/` built from elsewhere differs in every
+  bundle, and so in every name (`tests/unit/a-deploy-keeps-the-files-a-cached-page-still-names.test.ts`).
+
 ## A constant read at load time must live in a leaf module
 
 The site's code is ES modules (P1-09d): each file runs after the files it imports. That orders almost everything by
@@ -406,8 +426,7 @@ Every name, message and record on screen was typed by someone, so it goes into a
 - **`kcArg` keeps a value's type.** `onclick="f('${id}')"` passed a string; `onclick="f(${kcArg(id)})"` passes `id` as
   it is, so a numeric id now arrives as a number. Write `kcArg(String(id))` where the handler compares strings.
 - **`kc-safe.ts`'s four helpers are bundled into each page** (since P1-09d), so a page and its helpers are always the
-  same build. Until P1-06 hashes the file names, a browser can still pair a new page with its cached copy of the old
-  bundle for a few minutes after a deploy, as before.
+  same build; since P1-06b the bundle's name follows its content, so a page always gets its own bundle.
 - **A test that runs a slice of a page in `vm`** (the Hall of Fame record tests do) must load `kc-safe.ts` into its
   context first if the slice calls the helpers (`scriptOf('ui/shared/kc-safe.ts')`, `tests/lib/source.ts`).
 - **Show it looks the same.** Converting a page must not change it for ordinary names: run
