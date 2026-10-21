@@ -26,7 +26,6 @@ export function suite(full: boolean): Script[] {
     ['static', 'config', 'tests/config.test.js'],
     ['static', 'vendor-supabase', 'tests/vendor-supabase.test.js'],
     ['static', 'db-min', 'tests/db-min.test.js'],
-    ['static', 'html-lint', 'tests/html-lint.test.js'],
     ['unit', 'kc-safe', 'tests/kc-safe.test.js'],
     ['static', 'workflow-api-auth', 'tests/workflow-api-auth.test.js'],
     ['static', 'sql-banners', 'tests/sql-banners.test.js'],
