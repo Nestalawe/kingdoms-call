@@ -22,7 +22,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
-import * as acorn from 'acorn';
+import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { readBaseline } from '../../tools/balance/baseline.ts';
 import { TURN_COLUMNS, turnHashes } from '../../tools/balance/hash.ts';
@@ -107,15 +107,16 @@ function pureEngine(src?: string): Engine {
 function engineVariables(): string[] {
   const names: string[] = [];
   for (const file of engineEntryFiles()) {
-    const program = acorn.parse(fs.readFileSync(path.join(ROOT, 'src', file), 'utf8'), {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-    });
-    for (const statement of program.body) {
-      const s = statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
-      if (s?.type === 'VariableDeclaration')
-        for (const d of s.declarations) if (d.id.type === 'Identifier') names.push(d.id.name);
-    }
+    // TypeScript's parser, so a file with type annotations reads too (P1-11a1: the first engine file with type
+    // annotations); exported or not, a variable statement is the same node
+    const tree = ts.createSourceFile(
+      file,
+      fs.readFileSync(path.join(ROOT, 'src', file), 'utf8'),
+      ts.ScriptTarget.Latest,
+    );
+    for (const statement of tree.statements)
+      if (ts.isVariableStatement(statement))
+        for (const d of statement.declarationList.declarations) if (ts.isIdentifier(d.name)) names.push(d.name.text);
   }
   return names;
 }

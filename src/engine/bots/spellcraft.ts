@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../army-tables.ts';
 import { featDiscovered } from '../../views/visibility.ts';
 import {
@@ -37,7 +38,7 @@ import { _charTitleMerit, computeStandings } from '../titles/reckoning.ts';
 // time.) Offence first when an enemy is in reach, then buffs for a host about to fight, then
 // economy.
 export function botSchoolLimit(lvl) {
-  return lvl >= 4 ? 3 : lvl >= 3 ? 2 : 1;
+  return actionSpellsAllowedPerSchoolEachTurn(lvl);
 }
 export function botCastPlan(G, pi, c, prov, opts) {
   opts = opts || {};

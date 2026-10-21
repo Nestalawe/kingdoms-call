@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_QUALITY_UP, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
   CHARMED_NO_TURN_SPELLS,
   COMBAT_ONLY_TACTICS,
@@ -207,7 +208,7 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     const _school = spellDef.school;
     const _lvl = effStat(turnContext, c, _school);
     const _limit =
-      (_lvl >= 4 ? 3 : _lvl >= 3 ? 2 : 1) +
+      actionSpellsAllowedPerSchoolEachTurn(_lvl) +
       (charMinor(turnContext, c, 'warlock') && _BEST_SCHOOL(c) === skillLevel(c, _school) ? 1 : 0); // Warlock minor (Archmage +1-cast perk removed \u2014 now an intel line)
     const _divCath = gdActive(turnContext, c.player, 'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot
     // NORMALISE the saved action: the player portal writes "Cast Spell", the bots write
