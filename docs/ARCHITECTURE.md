@@ -450,7 +450,7 @@ changes, bump its stamps and both portals' minimums together** ([traps.md](traps
   page's main script, seeded once per page load from `crypto.getRandomValues`, or from the seed a test gives the page.
   Since P1-18d nothing in the engine or its views reads the clock: only the turn's shell does, through `kcClock()`
   (`src/engine/clock.ts`, `Date.now()` when called), to stamp when the turn ran; the screens read `Date` as before.
-  `dice-and-clock` keeps `Math.random` and `Date` out of the source, and `engine-purity` checks that a whole game
+  Lint keeps `Math.random` and `Date` out of the source (P1-13c, below), and `engine-purity` checks that a whole game
   reads neither ([traps.md](traps.md#dice-come-from-kcrng)). Each turn plays from its own seed (P1-18e): the shell
   (`runTurn`) draws a 32-bit integer from the page's dice, hands it to `resolveTurn`, and returns it (`{…, seed}`), for
   P2-01 to record. Since P1-08m the turn takes its seed: `resolveTurn` makes the dice of it (`kcRngStream(seed)`)
@@ -791,8 +791,8 @@ sets too, `strictTypeChecked` and `stylisticTypeChecked`, as the tests and tools
 doesn't, since with nothing checked every value is `any`. `eslint.config.js` reads which files are which from the
 files themselves, so a file freed from the switch-off meets the type-aware sets in that same PR. Only one rule of those
 sets is off: `non-nullable-type-assertion-style`, which asks for `x!` where `no-non-null-assertion` forbids it.
-**Every rule is an error; none warns** (P1-13b). What the rules found when they came in (809 findings: the 346 the
-site's tier found as the code became TypeScript, and what the type-aware sets found) is listed in
+**Every rule is an error; none warns** (P1-13b). What the rules found when they came in (830 findings: the 346 the
+site's tier found as the code became TypeScript, what the type-aware sets found, and P1-13c's 21 reads of the database) is listed in
 `eslint-suppressions.json`, ESLint's own bulk suppressions, per file and rule with a count. The command line reads it
 (`npm run lint`, `npm run check`, the edit hook): a new finding fails, and a listed one that no longer occurs fails too
 until it is taken out of the list (`npx eslint --prune-suppressions`,
@@ -805,6 +805,25 @@ the engine). The engine
 (`src/engine/`, `src/views/`, the data file) may read only JavaScript's own names and `console`; the rest of `src/` the
 browser's names too, `KC_CONFIG` and `supabase` (the page's classic scripts'), and its declared globals, which
 `eslint.config.js` works out from the files' `globalThis.<name> = …` lines.
+
+**The engine runs on plain data, and the dice come from one place** (P1-13c). `src/engine/`, `src/views/`,
+`src/content/`, `src/shared/` and `src/schemas/` may not read the page, the browser or a timer (`window`, `document`,
+`localStorage`, `sessionStorage`, `fetch`, `navigator`, `location`, `setTimeout`, `setInterval`, `globalThis`), the
+time (`Date`), the browser's random source (`crypto`) or the database (`supabase`, `sb`): ESLint's
+`no-restricted-globals`, which catches a read behind `typeof` too. Three files are the reviewed exceptions, one name
+each, which `tests/static/harness.test.ts` pins: `engine/bots/economy.ts` reads `window` (the bots' two test hooks),
+`engine/rng.ts` `crypto` (the dice's seed when no test gives one), `engine/clock.ts` `Date`. `Math.random` is refused
+in every file of `src/` but `engine/rng.ts`, and in the classic scripts, through `Math` (`no-restricted-properties`) or
+through any object's `Math`, as `window.Math.random` (`no-restricted-syntax`). Only `src/db/` may read `supabase`, the
+client's global; the four pages' `createClient` calls are in the suppressions, for P1-17's access layer.
+
+**The project's own rules** are ESLint rules in TypeScript (`tools/eslint-rules/`, the plugin `kc`, P1-13c), each with
+its RuleTester test in `tests/unit/`: `kc/no-random-or-argument-less-sort-comparator` ([traps.md](traps.md#a-sort-comparator-must-give-the-same-answer-every-time))
+and `kc/big-tables-and-profiles-are-read-by-named-columns` ([traps.md](traps.md#select-on-big-tables)). They run on
+`src/` and on the classic scripts: `public/`'s two, which ESLint lints as classic scripts with its recommended rules
+(`kc-config.js` declares `KC_CONFIG`, the global the others read), and the templates' inline scripts and `on…="…"`
+handlers, which ESLint's command line doesn't read: `tests/static/the-templates-scripts-pass-the-sites-lint-rules.test.ts`
+hands each to ESLint's API under the same block, a handler with its page's handler names.
 
 The harness runs itself (P1-01b). Claude Code hooks, committed in `.claude/settings.json`, check each edited file
 (`tools/hooks/after-edit.ts`: type check, ESLint, Prettier, about 1 s) and run `npm run check` before an agent may

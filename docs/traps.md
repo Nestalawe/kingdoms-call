@@ -89,6 +89,14 @@ down to ~1 KB after the fix).
 - Load the full world only when it's really needed (resolving a turn, opening one game), once.
 - Before adding a big column or a new poller, grep every `.select('*')` on that table. The poller is
   the multiplier.
+- Lint refuses every column of `games`, `game_players`, `turn_logs` or `profiles` (`*`, also inside an embedded
+  `games(*)`, or `.select()` with no list, as after an insert), and `profiles`' `email`
+  (`kc/big-tables-and-profiles-are-read-by-named-columns`, P1-13c). The 17 reads of every column that were there when
+  the rule came in are in `eslint-suppressions.json`, for P1-17's access layer to take out: `db/telemetry.ts` (games
+  with `game_players(*)`); the GM page's `game-detail.ts` (opening a game, `*, game_players(*)`), `game-list.ts`
+  (after creating a game), `turn-log.ts` (the turn log), `turn-shell.ts` (the turn's game and its realms, 2) and
+  `turn-zero.ts` (3); the player page's `game-lists.ts` (its slots, and two of `games`, 3),
+  `join-and-chronicle.ts` (after joining, the chronicle's two turn logs, a game: 4) and `report.ts` (the report).
 - The leaderboard reads `game_records` with `*`. Since Oct 2026 a row keeps every realm's best for each
   record, not just the game's: roughly 10–40 KB a row, growing with the number of realms. Fine for now;
   if it gets slow, give the list tabs a lighter select.
@@ -148,8 +156,10 @@ some silently. Now no test reads a page's source by line:
   do nothing, and the test could pass without testing anything.
 - **A check that picks the site's files by their name must fail when it reads none.** When the files became `.ts`
   (P1-09e), `html-lint` and `sort-comparators`, which read every `src/**/*.js`, still passed reading only the templates:
-  `html-lint`'s stale allowlist entry gave it away. Both now fail if a module of any page (`tools/pages.ts`'s
-  `pageModules`) isn't among the files they read. A new check of `src/` reads the pages' modules, or checks it does.
+  `html-lint`'s stale allowlist entry gave it away. It now fails if a module of any page (`tools/pages.ts`'s
+  `pageModules`) isn't among the files it reads (`sort-comparators` became an ESLint rule, P1-13c, and
+  `tests/static/harness.test.ts` checks every file of `src/` gets it). A new check of `src/` reads the pages' modules,
+  or checks it does.
 
 ## A lifted helper takes the turn's context first
 
@@ -428,8 +438,9 @@ turn and once for `buildReports()`, giving the dice in use back after each (P1-0
 turn's shell does, through `kcClock()` (`src/engine/clock.ts`, which reads `Date.now()` when called), to stamp when
 the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Math.random` that throw.
 
-- Don't write `Math.random` anywhere in `src/` (but `rng.ts` and `vendor/`), or `Date` in `src/engine/` or
-  `src/views/` (but `clock.ts`): `npm test`'s `dice-and-clock` fails. Pass the generator as `kcRng` (e.g.
+- Don't write `Math.random` anywhere in `src/` (but `rng.ts`) or in `public/`'s scripts, or `Date` in `src/engine/`,
+  `src/views/`, `src/content/`, `src/shared/` or `src/schemas/` (but `clock.ts`): lint refuses it, in your editor and
+  in `npm run lint` (P1-13c; `window.Math.random` too). Pass the generator as `kcRng` (e.g.
   `shuffleP(list, kcRng)`); a date is `kcClock.date()`. The page's own screens (deadlines, "x minutes ago") still read
   `Date`.
 - Adding, removing or moving one draw shifts every draw after it, so every balance game changes
@@ -654,7 +665,8 @@ because of two such sorts.
 - To shuffle, use `shuffleP(arr, rnd)` (Fisher-Yates; `rnd` defaults to `Math.random`).
 - To order randomly within ties, shuffle first, then sort by the real key alone: the sort is stable, so
   ties keep their shuffled order.
-- `npm test`'s `sort-comparators` check fails on a random or argument-less comparator.
+- Lint refuses a random or argument-less comparator (`kc/no-random-or-argument-less-sort-comparator`, P1-13c), in
+  `src/`, `public/`'s scripts and the templates' scripts.
 
 ## Retired discovery ids are never reused
 

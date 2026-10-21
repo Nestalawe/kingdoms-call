@@ -3,7 +3,8 @@
 // Vitest and in Playwright), the test runs' own checks, the Node pin, the Claude Code hooks and their stop limit, the
 // CI jobs and the required "ci" check, the build that every test job, the deploy and staging run first (P1-05), the
 // balance job and its engine paths, the nightly random-seed run and fast-check's seed, the dangerous paths, and the
-// ratchet, the architecture rules (dependency-cruiser and knip, P1-13a), and ESLint's bulk suppressions (P1-13b). It
+// ratchet, the architecture rules (dependency-cruiser and knip, P1-13a), ESLint's bulk suppressions (P1-13b), and the
+// engine's purity, the dice and the project's own lint rules (P1-13c). It
 // runs ESLint on one file to show the suppressions hold (a few seconds). Every later step that adds a guarantee
 // adds its check here. Level 1 (static): it reads settings files and the counts, and runs no game code.
 import { execFile, execFileSync } from 'node:child_process';
@@ -210,11 +211,12 @@ describe('the lint rules', () => {
     expect(srcFiles.filter((f) => !typeChecked(f)).length).toBeGreaterThan(0);
   });
   // A planted finding of a type-aware rule (a `||` that should be `??`: it needs the value's type) is an error in a file
-  // TypeScript checks, and isn't looked for in one it skips.
+  // TypeScript checks, and isn't looked for in one it skips. ESLint builds the checked file's program first: over 4 s
+  // on CI.
   test.for([
     ['src/engine/clock.ts', true],
     ['src/engine/turn/context.ts', false],
-  ] as const)('%s: a planted type-aware finding is an error: %s', async ([file, isError]) => {
+  ] as const)('%s: a planted type-aware finding is an error: %s', { timeout: 30_000 }, async ([file, isError]) => {
     expect(typeChecked(file)).toBe(isError);
     const code = read(file) + '\nexport const planted = (x: string | undefined) => x || "a";\n';
     const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
@@ -286,6 +288,165 @@ describe('the lint rules', () => {
     },
   );
 
+  // The engine's purity (plan P1-13, Decision 7): src/engine/, src/views/, src/content/, src/shared/ and src/schemas/
+  // may read none of these names, each refused by no-restricted-globals, but in the three reviewed exceptions, each one
+  // name of one file; the rest of src/ but src/db/ may not read supabase (the client's global: only src/db/ talks to
+  // the database, P1-17); src/db/ is free of it. Read from every file of src/, so a new folder or file can't slip by.
+  const PURE_FOLDERS = /^src\/(engine|views|content|shared|schemas)\//;
+  const NOT_IN_THE_ENGINE = [
+    'window',
+    'document',
+    'localStorage',
+    'sessionStorage',
+    'fetch',
+    'navigator',
+    'location',
+    'crypto',
+    'setTimeout',
+    'setInterval',
+    'globalThis',
+    'Date',
+    'supabase',
+    'sb',
+  ];
+  const PURITY_EXCEPTIONS: Record<string, string> = {
+    'src/engine/bots/economy.ts': 'window',
+    'src/engine/rng.ts': 'crypto',
+    'src/engine/clock.ts': 'Date',
+  };
+  const restrictedNames = (entry: Linter.RuleEntry | undefined): string[] =>
+    level(entry) === 2 && Array.isArray(entry)
+      ? entry.slice(1).map((o) => (typeof o === 'string' ? o : (o as { name: string }).name))
+      : [];
+  test(
+    'the engine reads no page, browser, timer, clock or database name, but the three reviewed exceptions',
+    { timeout: 60_000 },
+    async () => {
+      const wrong: string[] = [];
+      for (const file of srcFiles) {
+        const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+        const names = restrictedNames(rules['no-restricted-globals']);
+        const except = PURITY_EXCEPTIONS[file];
+        const expected = PURE_FOLDERS.test(file)
+          ? NOT_IN_THE_ENGINE.filter((n) => n !== except)
+          : file.startsWith('src/db/')
+            ? []
+            : ['supabase'];
+        if (names.join() !== expected.join()) wrong.push(`${file}: ${names.join(', ')}`);
+      }
+      expect(wrong).toEqual([]);
+      for (const file of Object.keys(PURITY_EXCEPTIONS)) expect(srcFiles, file).toContain(file);
+    },
+  );
+
+  // The dice come from kcRng() (P1-07; plan P1-13, Decision 7): Math.random, refused in every file of src/ but
+  // src/engine/rng.ts and in the classic scripts (public/'s two; the templates' are
+  // the-templates-scripts-pass-the-sites-lint-rules.test.ts's), through Math or through any object's Math. And the
+  // project's own rules (tools/eslint-rules/) on the same files, each an error.
+  const KC_RULES = [
+    'kc/big-tables-and-profiles-are-read-by-named-columns',
+    'kc/no-random-or-argument-less-sort-comparator',
+  ];
+  test("Math.random is refused everywhere but rng.ts, and the project's own rules run on src/ and public/", async () => {
+    const publicScripts = fs
+      .readdirSync(path.join(ROOT, 'public'))
+      .filter((f) => f.endsWith('.js'))
+      .map((f) => 'public/' + f);
+    expect(publicScripts).toEqual(['public/kc-config.js', 'public/kc-staging-footer.js']);
+    const wrong: string[] = [];
+    for (const file of [...srcFiles, ...publicScripts]) {
+      expect(await eslint.isPathIgnored(path.join(ROOT, file)), file).toBe(false);
+      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+      const dice = file !== 'src/engine/rng.ts';
+      if ((level(rules['no-restricted-properties']) === 2) !== dice) wrong.push(`${file}: no-restricted-properties`);
+      if ((level(rules['no-restricted-syntax']) === 2) !== dice) wrong.push(`${file}: no-restricted-syntax`);
+      for (const rule of KC_RULES) if (level(rules[rule]) !== 2) wrong.push(`${file}: ${rule}`);
+    }
+    expect(wrong).toEqual([]);
+    expect(await eslint.isPathIgnored(path.join(ROOT, 'public/vendor/supabase-js-2.117.3.min.js'))).toBe(true);
+  });
+
+  // dice-and-clock's cases (the static test these rules replaced), planted as code ESLint lints in place: each red one
+  // is still found, at its line, and the quiet ones (comments, strings, a property named Date, the dice and the clock
+  // themselves) are not.
+  const RESTRICTED = new Set(['no-restricted-globals', 'no-restricted-properties', 'no-restricted-syntax']);
+  const restrictedFindings = async (file: string, code: string): Promise<string[]> => {
+    const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
+    return (result?.messages ?? [])
+      .filter((m) => m.severity === 2 && RESTRICTED.has(m.ruleId ?? ''))
+      .map((m) => `${String(m.line)} ${m.ruleId ?? ''}`);
+  };
+  test.for([
+    ['src/engine/x.ts', 'export function f() {\n  return Math.random();\n}\n', ['2 no-restricted-properties']],
+    ['src/engine/x.ts', 'export const t =\n  new Date().toISOString();\n', ['2 no-restricted-globals']],
+    ['src/views/x.ts', 'export const id = `m_${String(Date.now())}`;\n', ['1 no-restricted-globals']],
+    [
+      'src/engine/x.ts',
+      "export const r = Math['random'];\nexport const g = window.Math.random;\n",
+      ['1 no-restricted-properties', '2 no-restricted-globals', '2 no-restricted-syntax'],
+    ],
+    [
+      'src/ui/gm/x.ts',
+      "export const g = window.Math.random;\nexport const h = globalThis.Math['random'];\n",
+      ['1 no-restricted-syntax', '2 no-restricted-syntax'],
+    ],
+    [
+      'src/engine/x.ts',
+      'export const shuffle = (a: unknown[], rnd = Math.random) => [a, rnd];\n',
+      ['1 no-restricted-properties'],
+    ],
+    [
+      'src/ui/gm/x.ts',
+      'export const tab = Math.random();\nexport const t = new Date();\n',
+      ['1 no-restricted-properties'],
+    ],
+    ['public/x.js', 'var tab = Math.random();\n', ['1 no-restricted-properties']],
+    [
+      'src/engine/x.ts',
+      [
+        '// dice = Math.random()*range, read at new Date()',
+        '/* Math.random */',
+        "export const s = 'Math.random and Date';",
+        'export const o = { Date: 1 };',
+        'export const d = o.Date;',
+        'export const r = kcRng(), t = kcClock();',
+        '',
+      ].join('\n'),
+      [],
+    ],
+    ['src/engine/rng.ts', 'export const r = Math.random();\n', []],
+    ['src/engine/clock.ts', 'export const t = Date.now();\n', []],
+  ] as const)('%s: planted %j finds %j', { timeout: 30_000 }, async ([file, code, expected]) => {
+    expect(await restrictedFindings(file, code)).toEqual(expected);
+  });
+  test('a Math.random() and a new Date() planted in the real run-turn.ts are found', { timeout: 30_000 }, async () => {
+    const file = 'src/engine/run-turn.ts';
+    const real = read(file);
+    const before = await restrictedFindings(file, real);
+    const planted = await restrictedFindings(file, real + '\nexport const _x = Math.random(), _t = new Date();\n');
+    const line = String(real.split('\n').length + 1);
+    expect(before).toEqual([]);
+    expect(planted).toEqual([`${line} no-restricted-properties`, `${line} no-restricted-globals`]);
+  });
+  // Each name the engine may not read, planted in an engine file: refused. In each exception's own file its one name
+  // passes and another is still refused (the test above pins each file's whole list).
+  test.for(NOT_IN_THE_ENGINE)('typeof %s planted in the engine is refused', async (name) => {
+    expect(await restrictedFindings('src/engine/x.ts', `export const planted = typeof ${name};\n`)).toEqual([
+      '1 no-restricted-globals',
+    ]);
+  });
+  // Two of the three are files TypeScript checks, so ESLint builds their program first: up to several seconds on CI.
+  test.for(Object.entries(PURITY_EXCEPTIONS))(
+    '%s may read %s, and nothing else the engine may not',
+    { timeout: 30_000 },
+    async ([file, except]) => {
+      expect(await restrictedFindings(file, `export const planted = typeof ${except};\n`)).toEqual([]);
+      expect(await restrictedFindings(file, 'export const planted = typeof document;\n')).toEqual([
+        '1 no-restricted-globals',
+      ]);
+    },
+  );
+
   // The type assertions src/ held when the rule came in (eslint.config.js's TYPE_ASSERTIONS_KEPT, written by P1-11a3):
   // only those files may hold one, one each, and the list only shrinks (P1-10b replaces each with a check).
   test('only the type assertions kept from before the rule are let through, one a file, and no more files', async () => {
@@ -348,7 +509,7 @@ describe('the lint rules', () => {
     const linted = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT })
       .toString()
       .split('\0')
-      .filter((f) => /\.(ts|mts)$/.test(f) && fs.existsSync(path.join(ROOT, f)));
+      .filter((f) => (/\.(ts|mts)$/.test(f) || /^public\/[^/]+\.js$/.test(f)) && fs.existsSync(path.join(ROOT, f)));
     expect(linted.length).toBeGreaterThan(300);
     const warned: string[] = [];
     for (const file of linted) {
@@ -886,6 +1047,10 @@ describe('dangerous paths', () => {
       '.dependency-cruiser-known-violations.json',
       'eslint-suppressions.json',
       'tools/eslint-rules/html-is-built-only-through-kc-html.ts',
+      'tools/eslint-rules/index.ts',
+      'tools/eslint-rules/package.json',
+      'tools/eslint-rules/no-random-or-argument-less-sort-comparator.ts',
+      'tools/eslint-rules/big-tables-and-profiles-are-read-by-named-columns.ts',
       'knip.json',
       'knip.ts',
       '.nvmrc',
