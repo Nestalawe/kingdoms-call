@@ -2,8 +2,10 @@
 # publish it to GitHub Pages (no Jekyll). Runs on a push to main, or by hand; the jobs that change anything refuse
 # any other branch, so a manual run from a branch only tests. Needs Settings → Pages → Source set to "GitHub Actions".
 #
-# The order (P0-17, P0-33): test → migrate production → deploy site. Staging isn't touched: each pull request
-# was tried there, on a database rebuilt for it, before it merged (staging.yml).
+# The order (P0-17, P0-33): test → migrate production → build site → deploy site. Staging isn't touched: each pull
+# request was tried there, on a database rebuilt for it, before it merged (staging.yml).
+# - "build" builds site/ and uploads it as the Pages artifact; it may only read. "deploy" publishes that artifact and
+#   does nothing else: no checkout, no install, no build (P1-06a; tests/static/harness.test.ts).
 # - "migrations" lists the migrations added since the commit that's live on the site, with their SQL, in its
 #   job summary. With none, the migrate job is skipped and the site deploys after the tests.
 # - "migrate-production" runs in the "production" environment: it waits for Toby's approval (Review
@@ -83,8 +85,10 @@ jobs:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           EXPECTED: ${{ needs.migrations.outputs.expected }}
 
-  # Runs after the tests, and after production is migrated whenever there was something to migrate.
-  deploy:
+  # Runs after the tests, and after production is migrated whenever there was something to migrate. It builds the
+  # site the tests ran on (ci.yml): Vite, installed from the lock file (P1-09d), without its packages' install scripts:
+  # the build needs none (tests/static/harness.test.ts). It can only read, and hands site/ on as the Pages artifact.
+  build:
     needs: [ci, migrations, migrate-production]
     if: >-
       !cancelled() && github.ref == 'refs/heads/main'
@@ -94,11 +98,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -109,9 +108,6 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      # The same build the tests ran on (ci.yml): Vite, installed from the lock file (P1-09d), without its packages'
-      # install scripts: the build needs none. Every job that holds a secret or a deploy token installs this way
-      # (tests/static/harness.test.ts).
       - run: npm ci --ignore-scripts
 
       - run: npm run build
@@ -120,5 +116,18 @@ jobs:
         with:
           path: site/
 
+  # Publishes the artifact the build job uploaded, once it succeeded, and only that.
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v5

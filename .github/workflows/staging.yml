@@ -1,6 +1,7 @@
 # Puts a pull request on the staging site (https://kingdoms-call-staging.github.io/), talking to the
 # staging database, when it carries the label "staging" (P0-13). New commits on a labelled PR go up too. The site
-# is built from src/ first (npm run build: Vite since P1-09d).
+# is built from src/ first (npm run build: Vite since P1-09d), in a job of its own that may only read ("build"); the
+# "staging" job downloads it and runs no npm and no build (P1-06a; tests/static/harness.test.ts).
 # One PR is on staging at a time: the newest one deployed. Its PR gets an "On staging" comment, and the
 # PR it replaced is told so. Merging changes nothing on staging.
 #
@@ -23,10 +24,7 @@ on:
   pull_request:
     types: [labeled, synchronize, reopened]
 
-permissions:
-  contents: read
-  pull-requests: write
-  checks: read
+permissions: {}
 
 # One deploy at a time, in order; never cut off a push that has started.
 concurrency:
@@ -34,14 +32,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  staging:
-    name: staging
+  # site/ from src/ (P1-05), as deploy.yml builds it: Vite, installed from the lock file (P1-09d), without its packages'
+  # install scripts (the build needs none). It can only read, outside the staging environment, and hands site/ on as
+  # the artifact "site".
+  build:
+    name: staging build
     if: contains(github.event.pull_request.labels.*.name, 'staging') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    environment:
-      name: staging
-      url: https://kingdoms-call-staging.github.io/
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -51,6 +51,40 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: site
+          path: site/
+          if-no-files-found: error
+          retention-days: 1
+
+  staging:
+    name: staging
+    needs: build
+    if: contains(github.event.pull_request.labels.*.name, 'staging') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: read
+    environment:
+      name: staging
+      url: https://kingdoms-call-staging.github.io/
+    steps:
+      # The workflow's scripts (.github/scripts/), the migrations and the seed; they need Node, not npm.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
 
       - name: Wait for CI to pass on this commit
         run: node .github/scripts/staging.js wait-ci
@@ -77,13 +111,12 @@ jobs:
           STAGING_SUPABASE_KEY: ${{ vars.STAGING_SUPABASE_KEY }}
           STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
 
-      # site/ from src/ (P1-05), as deploy.yml builds it (Vite, installed from the lock file: P1-09d, without its
-      # packages' install scripts, as in every job that holds a secret); then the staging config replaces its kc-config.js.
-      - name: Install the build's tools
-        run: npm ci --ignore-scripts
-
-      - name: Build the site
-        run: npm run build
+      # The site the build job built; then the staging config replaces its kc-config.js.
+      - name: Download the site the build job built
+        uses: actions/download-artifact@v8
+        with:
+          name: site
+          path: site/
 
       - name: Write the staging config
         run: node .github/scripts/staging.js config > site/kc-config.js
