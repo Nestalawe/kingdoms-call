@@ -2,7 +2,8 @@
 // serves src/ as tools/build.ts builds it (the same options), but for kc-config.js, which it takes from
 // public/dev/kc-config.js (git-ignored, never published: tools/build.ts leaves public/dev/ out). It refuses to start
 // without that file, or with one that names any database but this machine's, and it checks again on every request
-// for kc-config.js: so a dev server can never reach the live database.
+// for kc-config.js: so a dev server can never reach the live database. Its pages' footers say "build dev" (plan
+// P1-06c), with no fingerprint: a page served here never finds a newer version of itself (no version.json).
 //
 //   npm run dev               the dev server, at the address it prints
 //   npm run dev -- config     writes public/dev/kc-config.js from the local Supabase (npx supabase status: it must be
@@ -12,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { createServer, type InlineConfig, type ViteDevServer } from 'vite';
-import { ROOT, siteOptions } from './build.ts';
+import { ROOT, siteOptions, withVersion } from './build.ts';
 
 /** The dev server's config, served as /kc-config.js. */
 export const DEV_CONFIG = path.join(ROOT, 'public', 'dev', 'kc-config.js');
@@ -64,6 +65,10 @@ export function devServerOptions(config = DEV_CONFIG): InlineConfig {
   return {
     ...siteOptions(),
     plugins: [
+      {
+        name: 'kc-dev-build-line',
+        transformIndexHtml: (html) => withVersion(html, { commit: 'dev', time: null }, null),
+      },
       {
         name: 'kc-dev-config',
         configureServer(server) {

@@ -5,10 +5,6 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.15-1202
-// KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
-// cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-export const KC_DATA_STAMP = '2026.10.15-1202';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -14669,8 +14665,8 @@ export const SPELL_DEFS_P = {
 // own copy and nothing can mutate another's.
 //
 // RULES FOR EDITING:
-//  • Change a rule HERE, then bump KC_DATA_STAMP and KC_DATA_MIN in BOTH portals (their guards
-//    refuse a data file older than the build they were cut against).
+//  • Change a rule HERE. Each page's bundle holds this file (tools/build.ts), so it can't be older
+//    than the page, and nothing needs bumping.
 //  • ORDER MATTERS. Arrays are iterated (random picks, tie-breaks, dropdowns) and object keys are
 //    walked, so every list keeps the exact order it had in the engine. Append; never re-sort.
 //  • Plain data only — no Sets, no functions. The portals build their own lookups from these.
@@ -15064,14 +15060,3 @@ export const KC_GRAND_DESIGNS = {
 // Types only, read from the lists above (each `as const`, so its type is its names; the list itself is the same array).
 /** A unit's quality, worst to best. */
 export type Quality = (typeof KC_QUALITY_TIERS)[number];
-/** A hero's skill, in the standard order: the ten skills, then the five magic schools. */
-export type Skill = (typeof KC_SKILLS)[number];
-/** A school of magic. */
-export type MagicSchool = (typeof KC_MAGIC_SCHOOLS)[number];
-/** A realm's alignment. */
-export type Alignment = (typeof KC_ALIGNMENTS)[number];
-/** The four humanoid races a realm can be. Units and heroes have other races too (`Undead`, a beast's kind), so this is
- *  not every race the state holds. */
-export type HumanoidRace = (typeof KC_HUMANOID_RACES)[number];
-/** A province's terrain. */
-export type Terrain = keyof typeof KC_BASIC_EXPLORE;

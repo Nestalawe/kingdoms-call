@@ -114,7 +114,10 @@ describe('each helper gives the same answer on both layouts', () => {
       (o) => compactCode(statementsBetween('engine/world/generate.ts', 'generateNewGame', 'cellIdRC', 'cellDistRC', o)),
     ],
     ['statementsFollowing', (o) => statementsFollowing('kingdoms-call-gm-portal.html', /hauls out/, 4, o)],
-    ['initializersOf', (o) => initializersOf('ui/gm/startup.ts', 'KC_SHARED_TABLE_NAMES', o).map(compactCode)],
+    [
+      'initializersOf',
+      (o) => initializersOf('ui/player/items-and-heroes.ts', 'ACTION_DISPLAY_ORDER', o).map(compactCode),
+    ],
     ['entriesOf', (o) => entriesOf('ui/player/briefing-and-submit.ts', 'UNIT_ABILITIES', o)],
     ['callsTo', (o) => callsTo('engine/battle/battles-between-heroes.ts', 'trySkillGain', o)],
     [

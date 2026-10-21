@@ -22,7 +22,6 @@ export function suite(full: boolean): Script[] {
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
     ['static', 'docs', 'tests/docs.test.js'],
     ['static', 'rulings', 'tests/rulings.test.js'],
-    ['static', 'stamps', 'tests/stamps.test.js'],
     ['static', 'config', 'tests/config.test.js'],
     ['static', 'vendor-supabase', 'tests/vendor-supabase.test.js'],
     ['static', 'db-min', 'tests/db-min.test.js'],

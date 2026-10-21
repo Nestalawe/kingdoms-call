@@ -231,7 +231,7 @@ export function renderTitles(report) {
     const r = h.race || null;
     const raceLine = r
       ? titleRaceLine(r)
-      : kcHtml`<span style="color:#3a3224">Standing percentages are missing from this turn report — it was resolved by ${report && report.engineStamp ? kcHtml`<strong>GM Portal v${report.engineStamp}</strong>, which predates them` : 'a GM Portal build that predates them'}. They appear once a turn is resolved on GM Portal v2026.09.20-0153 or later.</span>`;
+      : kcHtml`<span style="color:#3a3224">Standing percentages are missing from this turn report — it was resolved by ${report && report.engineStamp ? kcHtml`<strong>the GM portal's build ${report.engineStamp}</strong>, which predates them` : 'a GM portal build that predates them'}. They appear once a turn is resolved by a GM portal build from 20 September 2026 or later.</span>`;
     const raceHtml = raceLine
       ? kcHtml`<div style="font-size:.74rem;margin:1px 0;color:${r && r.mine ? 'var(--forest)' : '#5a4a2a'}">📊 ${raceLine}</div>`
       : '';

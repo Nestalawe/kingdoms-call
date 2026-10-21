@@ -1,7 +1,7 @@
 // 2026-10-13 (Toby, Creatures and Monsters VI) — Island Back: the Great Turtles carry two units a hull. The decided
 // table's last ability, left out of the beast-abilities PR because it is a sea-lift rule, not a battle-line one.
 //   • the data file: the Great Turtles are a carrier (KC_UNIT_CLASS.carrier) and KC_CARRIER_BERTHS gives them two
-//     berths; the shared table is in both portals' guard lists;
+//     berths (both portals' guard lists named the table until P1-06c removed the guards);
 //   • the engine (getSeaCapability and seaLiftShortfall, top-level functions called directly in its bare vm): a
 //     turtle carries two heavy units or four light foot where a galleon carries one or two; a third heavy unit is a
 //     shortfall; a Whale Cohort still carries one;
@@ -10,12 +10,12 @@
 //     everyone aboard; with three Gilded Lances the move is blocked for want of a berth;
 //   • the words: the rulebook's Naval row, Sea-beasts row and turtle row, and the player portal's blurb, say so.
 // Level 2 (scenario) for the turn, played in the engine's bare vm (tests/lib/scenario-in-the-vm.ts); the rest is level
-// 0/1 in the same file. The guard lists and the blurb are read from src/ by their syntax tree (tests/lib/source.ts).
+// 0/1 in the same file. The blurb is read from src/ by their syntax tree (tests/lib/source.ts).
 // Until plan P1-09a the turn was played on the GM portal, a code-anchor hook at "  // 4. Run all 5 phases" handed the
 // two functions back, and the lists and the blurb were matched in the built pages' text.
 const fs=require('fs');
 const {scenarioInTheVm, order, plan}=require('./lib/scenario-in-the-vm.ts');
-const {initializersOf, entriesOf}=require('./lib/source.ts');
+const {entriesOf}=require('./lib/source.ts');
 const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
@@ -31,9 +31,8 @@ const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
   ok(W.eval("typeof KC_CARRIER_BERTHS!=='undefined'&&KC_CARRIER_BERTHS['Great Turtles']===2"),"KC_CARRIER_BERTHS gives the Great Turtles two berths (Island Back)");
   ok(W.eval("typeof KC_CARRIER_BERTHS==='undefined'||Object.keys(KC_CARRIER_BERTHS).every(t=>KC_UNIT_CLASS.carrier.includes(t))"),'every unit with a berth count is a carrier');
   const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8');
-  const listed=(file,name)=>initializersOf(file,name).some(v=>{ const list=new Function('return '+v)(); return Array.isArray(list)&&list.includes('KC_CARRIER_BERTHS'); });
-  ok(listed('ui/gm/startup.ts','KC_SHARED_TABLE_NAMES'),"KC_CARRIER_BERTHS is in the GM portal's KC_SHARED_TABLE_NAMES (the data-file guard)");
-  ok(listed('ui/player/startup.ts','need'),"KC_CARRIER_BERTHS is in the player portal's list of needed tables");
+  // (Until P1-06c it also checked KC_CARRIER_BERTHS is on both portals' data-file guard lists. The guards are gone: the
+  // data file is bundled into each page, and a table a page imports that is missing stops the build.)
 
   // ── The engine's lift ──
   const u=(type,n)=>Array.from({length:n||1},(_,i)=>({type,quality:'Average',unitName:`${type} ${i+1}`}));
