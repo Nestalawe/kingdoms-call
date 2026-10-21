@@ -1081,8 +1081,23 @@ describe('CI', () => {
     const deploy = workflow.jobs.get('deploy') ?? '';
     if (!/^ {4}needs: (?:build|\[(?:[\w-]+, )*build(?:, [\w-]+)*\])$/m.test(deploy))
       problems.push("deploy: doesn't need build");
-    if (!holdsOnlyWhen(conditionOf(deploy), ON_MAIN)) problems.push('deploy: not only on main');
-    if (STATUS_FUNCTION.test(conditionOf(deploy))) problems.push('deploy: runs even when a job it needs failed');
+    // The previous deploy is the newest run whose deploy job published: a run that succeeded with its deploy job
+    // skipped (#184 to #186) published nothing.
+    const keep = stepsOf(build).find((step) => step.includes(KEEP));
+    if (keep && !keep.includes('select(.name == "deploy" and .conclusion == "success")'))
+      problems.push('build: the keep step may take a run that published nothing as the previous deploy');
+    const deployCondition = conditionOf(deploy);
+    if (!holdsOnlyWhen(deployCondition, ON_MAIN)) problems.push('deploy: not only on main');
+    if (!holdsOnlyWhen(deployCondition, "needs.build.result == 'success'"))
+      problems.push('deploy: not only once the build succeeded');
+    // Without a status function GitHub adds success(), which reads every job before deploy, not only build: deploy is
+    // then skipped whenever migrate-production is (every merge without a migration; #184 to #186). always() would
+    // publish on a cancelled run. So !cancelled(), and no other.
+    if (
+      !holdsOnlyWhen(deployCondition, '!cancelled()') ||
+      STATUS_FUNCTION.test(deployCondition.replace('!cancelled()', ''))
+    )
+      problems.push('deploy: its status function is not !cancelled() alone');
     if (!/^ {4}environment:\n {6}name: github-pages$/m.test(deploy))
       problems.push('deploy: not in the github-pages environment');
     const steps = deploy.match(/^ {6}- /gm) ?? [];
@@ -1195,13 +1210,31 @@ describe('CI', () => {
       '$1        env:\n          KEY: ${{ secrets.STAGING_DEPLOY_KEY }}\n',
     );
     expect(stagingProblems(withASecret)).toEqual(['build: reads a secret']);
-    // The publishing job's main guard dropped, or let through by an "or".
+    // The publishing job's condition: its main guard dropped, or let through by an "or"; without the build's result;
+    // with no status function (as #184 to #186 had: skipped on every merge without a migration), or always().
     const deployIf = /^ {4}if: .*\n/m;
-    expect(deployProblems(inJob(deployText, 'deploy', deployIf, ''))).toEqual(['deploy: not only on main']);
-    const orAnyRun = `    if: ${ON_MAIN} || github.event_name == 'workflow_dispatch'\n`;
-    expect(deployProblems(inJob(deployText, 'deploy', deployIf, orAnyRun))).toEqual(['deploy: not only on main']);
-    expect(deployProblems(inJob(deployText, 'deploy', deployIf, `    if: always() && ${ON_MAIN}\n`))).toEqual([
-      'deploy: runs even when a job it needs failed',
+    const deployWhen = (condition: string) => inJob(deployText, 'deploy', deployIf, `    if: \${{ ${condition} }}\n`);
+    const BUILT = "needs.build.result == 'success'";
+    expect(deployProblems(deployWhen(`!cancelled() && ${BUILT}`))).toEqual(['deploy: not only on main']);
+    const orAnyRun = `!cancelled() && ${BUILT} && (${ON_MAIN} || github.event_name == 'workflow_dispatch')`;
+    expect(deployProblems(deployWhen(orAnyRun))).toEqual(['deploy: not only on main']);
+    expect(deployProblems(deployWhen(`!cancelled() && ${ON_MAIN}`))).toEqual([
+      'deploy: not only once the build succeeded',
+    ]);
+    expect(deployProblems(deployWhen(`${BUILT} && ${ON_MAIN}`))).toEqual([
+      'deploy: its status function is not !cancelled() alone',
+    ]);
+    expect(deployProblems(deployWhen(`always() && ${BUILT} && ${ON_MAIN}`))).toEqual([
+      'deploy: its status function is not !cancelled() alone',
+    ]);
+    expect(deployProblems(inJob(deployText, 'deploy', deployIf, `    if: ${ON_MAIN}\n`))).toEqual([
+      'deploy: not only once the build succeeded',
+      'deploy: its status function is not !cancelled() alone',
+    ]);
+    expect(deployProblems(inJob(deployText, 'deploy', deployIf, ''))).toEqual([
+      'deploy: not only on main',
+      'deploy: not only once the build succeeded',
+      'deploy: its status function is not !cancelled() alone',
     ]);
     expect(deployProblems(inJob(deployText, 'deploy', 'name: github-pages', 'name: production'))).toEqual([
       'deploy: not in the github-pages environment',
@@ -1241,6 +1274,12 @@ describe('CI', () => {
       inJob(text, 'build', /(--previous "\$RUNNER_TEMP\/previous-site")\n/, '$1 || true\n');
     expect(deployProblems(orTrue(deployText))).toEqual(['build: the keep step lets a failure through (||)']);
     expect(stagingProblems(orTrue(stagingText))).toEqual(['build: the keep step lets a failure through (||)']);
+    // The previous deploy taken as the newest successful run, as #185 had: a run whose deploy job was skipped counts.
+    const lookup = /^ {10}ids=\$\(gh api [\s\S]*?^ {10}done\n/m;
+    const newestSuccess = `          run=$(gh api "$runs" --jq "[.workflow_runs[] | select(.id != $GITHUB_RUN_ID)][0].id // empty")\n`;
+    expect(deployProblems(inJob(deployText, 'build', lookup, newestSuccess))).toEqual([
+      'build: the keep step may take a run that published nothing as the previous deploy',
+    ]);
     // The Pages artifact kept for the default day: the next deploy, a day later, would find no previous files.
     expect(deployProblems(inJob(deployText, 'build', 'retention-days: 30', 'retention-days: 1'))).toEqual([
       "build: doesn't upload site/ as the Pages artifact, kept 30 days",
