@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
-// tests on the hand-written database stand-in, tests on the engine's vm loader, ESLint's warnings on the site's code)
-// and fails if
+// tests on the hand-written database stand-in, tests on the engine's vm loader, ESLint's warnings on the site's code,
+// the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -102,6 +102,42 @@ export function eslintWarnings(): number {
   return results.reduce((n, r) => n + r.warningCount, 0);
 }
 
+// The import rules' known violations (plan P1-13, Decision 4): what broke a rule of .dependency-cruiser.cjs when it came
+// in, listed in this file and let through by npm run lint:arch (--ignore-known). Counted here, so the list only shrinks;
+// a finding fixed leaves it in the same PR (tests/static/the-architecture-rules-refuse-planted-imports-cycles-and-
+// unused-code.test.ts fails on an entry that no longer occurs).
+export const KNOWN_ARCHITECTURE_VIOLATIONS_FILE = '.dependency-cruiser-known-violations.json';
+export function knownArchitectureViolations(): number {
+  const list: unknown = JSON.parse(fs.readFileSync(path.join(ROOT, KNOWN_ARCHITECTURE_VIOLATIONS_FILE), 'utf8'));
+  if (!Array.isArray(list)) throw new Error(`${KNOWN_ARCHITECTURE_VIOLATIONS_FILE} is not a list of violations.`);
+  return list.length;
+}
+
+// What knip finds (plan P1-13, Decision 4; knip.ts): unused files, exports, types and dependencies, and the rest of its
+// kinds. knip keeps no list of known findings, so their number is counted here and only falls. It runs in a child
+// process (as ESLint does above) and exits 1 when it finds anything: its report is still on stdout.
+export function unusedCode(root = ROOT): number {
+  const bin = path.join(ROOT, 'node_modules', '.bin', 'knip');
+  let out: string;
+  try {
+    out = execFileSync(bin, ['--reporter', 'json', '--no-progress'], {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch (e) {
+    const stdout = (e as { stdout?: unknown }).stdout;
+    if (typeof stdout !== 'string' || !stdout.startsWith('{')) throw e;
+    out = stdout;
+  }
+  const report = JSON.parse(out) as { issues: Record<string, unknown>[] };
+  let n = 0;
+  for (const issue of report.issues) {
+    for (const found of Object.values(issue)) if (Array.isArray(found)) n += found.length;
+  }
+  return n;
+}
+
 export function measure(): Counts {
   const all = files();
   const code = all.filter((f) => CODE.test(f));
@@ -127,6 +163,8 @@ export function measure(): Counts {
     quarantinedTests: all.filter((f) => f.startsWith('tests/quarantine/') && /\.test\.[jt]s$/.test(f)).length,
     vmLoaderTests: vmLoaderTests(all),
     eslintWarnings: eslintWarnings(),
+    knownArchitectureViolations: knownArchitectureViolations(),
+    unusedCode: unusedCode(),
   };
 }
 
