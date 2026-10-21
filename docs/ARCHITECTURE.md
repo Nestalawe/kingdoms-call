@@ -75,6 +75,19 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   (`tests/lib/strict-schema.ts`), and `tests/unit/the-saved-game-state-schemas-parse-every-state-of-a-matrix-game.test.ts`
   parses a whole matrix game's states and orders. Nothing types the engine with them yet: most of its files still say
   `@ts-nocheck` (P1-10a3 and P1-10b).
+- **The content's and the engine's own types** (P1-10a2), types only, so no file the build makes changes with them:
+  - **In the data file:** `UnitType` (the keys of `KC_UNIT_TYPE`), `PrimalUnitType`, `ElementalUnitType` and
+    `HumanoidUnitType` (the rest); `Quality`, `Skill`, `MagicSchool`, `Alignment` and `HumanoidRace` (from its lists, each
+    `as const`) and `Terrain`. Its tables keyed by unit type end in `satisfies` on the part each covers, so a unit
+    left out of one fails to compile ([traps.md](traps.md#a-new-army-unit-is-a-dozen-tables);
+    `tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts`).
+  - **In the engine:** `TurnContext`, the turn's context (every field `resolveTurn` adds), and `LogLine`, a line of
+    the GM's log, in `engine/turn/context.ts`; `OrderKind`, the 48 kinds an order's action reads as, beside
+    `PHASE_ACTION_MAP` (`engine/turn/phase-intents-and-dependency-ordering.ts`). Both files keep `@ts-nocheck`, and
+    TypeScript checks nothing in a file with it, these types and the map's `satisfies` included: a file is checked
+    against them once it loses `@ts-nocheck` (P1-10a3, P1-10b).
+  - `tools/pages.ts` reads a module's imports that bring code, so an `import type` (of `src/schemas/`, say) adds no file
+    to a page.
 - **The engine is `engine/` and `views/`** (P1-18c): nothing in them reads the screen, the database or the page's other
   globals, and every name they read is imported from them or the data file: P1-18d moved the last exceptions, the
   turn's database and screen work and the reports' build stamp, into the turn's shell (`ui/gm/turn-shell.ts`).
@@ -325,7 +338,7 @@ changes, bump its stamps and both portals' minimums together** ([traps.md](traps
   test stands a top-level function in, in the engine's bare vm, or reads `src/` by its syntax tree
   ([traps.md](traps.md#string-anchor-harness-hooks)). A lifted helper that reads the turn's state takes **the
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
-  (`src/engine/turn/context.ts`) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
+  (`src/engine/turn/context.ts`, whose `TurnContext` is its type since P1-10a2) just after the save is parsed. It holds the state, `log` and the GM's log (`turnLog`),
   the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,
   `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, since P1-08i3 `_warFrontAtStart` and `_warFrontProvs`, since P1-08j1 `lightLandMoves` and `lightSeaMoves`, since P1-08k4 `diploDeclarations` and `reckoningCalls`, since P1-08k7 `staleOrderWarnings`, `safeStartRefused`, `discoveryChoicePicks` and `playerMessages`, and since P1-08l1 `_botEncounteredAtStart` (each joins by reference on the line after `resolveTurn` declares it; since P1-08k8 the movement pools, `lightLandMoves`, `lightSeaMoves`, `SEASONS`, `recruitedThisTurn`, `presenceByPhase`, `_intrusionAcc`, `_distCache`, `_warFrontAtStart` and `_warFrontProvs` are made, and joined, by the stage before the first phase that first needs them), and the values the turn changes as it goes (`_logCtx`,
   `_currentPhase`, `_afterPhases`, since P1-08c `_combatSkillProv`, `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`,
