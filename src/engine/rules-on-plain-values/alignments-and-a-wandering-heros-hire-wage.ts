@@ -9,7 +9,7 @@ export interface HeroOfSkills {
   readonly skills?: Readonly<Record<string, number | undefined>> | null | undefined;
 }
 
-export const ALIGNMENTS_P = KC_ALIGNMENTS.slice();
+export const ALIGNMENTS_P: string[] = KC_ALIGNMENTS.slice();
 // ── Alignment spectrum & hero hire economics ────
 // ALIGNMENTS_P doubles as the moral SPECTRUM: Divine(0) … Neutral(3) … Undead(6). A wandering
 // hero's wage is 2g base +1g per 2 steps of distance from the hiring KINGDOM's alignment — Neutral

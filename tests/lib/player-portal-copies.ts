@@ -72,7 +72,7 @@ export type Obj = Record<string, unknown>;
 const isObj = (x: unknown): x is Obj => typeof x === 'object' && x !== null && !Array.isArray(x);
 const objects = (x: unknown): Obj[] => (Array.isArray(x) ? x.filter(isObj) : []);
 const copyOf = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
-const SCHOOLS: string[] = KC_MAGIC_SCHOOLS;
+const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 
 // ── The copies ────
 

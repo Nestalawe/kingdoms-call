@@ -20,6 +20,60 @@ import { stepTowardPreferSafe } from '../world/routes-and-distances.ts';
 // intends to do this phase BEFORE anyone acts. buildPhaseIntents() produces that read-only table;
 // nothing in it mutates game state.
 
+// The kinds of order (plan P1-10a2): PHASE_ACTION_MAP's values, what an order's action reads as. A phase order's own
+// type is PhaseOrder (src/schemas/orders-a-realm-submits.ts), whose action is a spelling the form or a bot wrote. Every
+// kind is a case of processOrder's switch but forced_march, which is handled before it. The map's `satisfies` checks
+// nothing until this file loses its ts-nocheck line (P1-10b): then a value that is no kind fails to compile.
+export type OrderKind =
+  | 'move'
+  | 'explore'
+  | 'search'
+  | 'hunt_rumours'
+  | 'recruit'
+  | 'hire'
+  | 'release'
+  | 'leave_army'
+  | 'disband_army'
+  | 'pickup_army'
+  | 'give_item'
+  | 'cast_spell'
+  | 'spy'
+  | 'practice'
+  | 'research'
+  | 'defend'
+  | 'rest'
+  | 'consecrate'
+  | 'call_to_arms'
+  | 'broker'
+  | 'awaken_wild'
+  | 'call_pit'
+  | 'harvest_field'
+  | 'encounter'
+  | 'steal'
+  | 'use_item'
+  | 'equip_items'
+  | 'rite'
+  | 'sabotage'
+  | 'forced_march'
+  | 'grand_heist'
+  | 'awaken_grove'
+  | 'chart_unknown'
+  | 'discover_ruin'
+  | 'blockade'
+  | 'research_breakthrough'
+  | 'assassinate'
+  | 'vanish'
+  | 'challenge'
+  | 'rampage'
+  | 'rain_of_arrows'
+  | 'snipers_mark'
+  | 'feigned_retreat'
+  | 'grand_stratagem'
+  | 'lightning_advance'
+  | 'raid_coast'
+  | 'wild_calling'
+  | 'grand_design';
+
 // Canonical order-name → internal action-key map. Shared by processOrder and the phase pipeline
 // (buildPhaseIntents / phaseDependencies) so both always agree on what a character is doing.
 export const PHASE_ACTION_MAP = {
@@ -129,7 +183,7 @@ export const PHASE_ACTION_MAP = {
   wild_calling: 'wild_calling',
   'grand design': 'grand_design',
   grand_design: 'grand_design',
-};
+} satisfies Record<string, OrderKind>;
 
 // Resolve a move order's destination WITHOUT moving anybody.
 export function intendedDestination(turnContext, c, order) {

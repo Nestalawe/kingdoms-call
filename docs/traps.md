@@ -470,6 +470,15 @@ Add the unit to `tests/lib/roster-decided.js` first: `tests/roster.test.js` and 
 then list every table and sentence that is still missing it. Running games' capitals pick a new unit up on their next
 turn (`backfillHomeRosters`); other provinces keep the pool they were generated with.
 
+**The compiler now catches part of it** (P1-10a2). The data file's unit type is `UnitType`, the keys of `KC_UNIT_TYPE`.
+`KC_UNIT_BASE_STR` (every humanoid unit and elemental) and `ARMY_UNIT_NAMES` with `PRIMAL_UNIT_NAMES` (every unit type)
+end in `satisfies`, so a unit in `KC_UNIT_TYPE` that is missing from one fails `npm run typecheck` (TS1360). A unit
+that `PRIMAL_ARMY_DEFS_P`, `ARMY_UNIT_NAMES` or `KC_CARRIER_BERTHS` names but `KC_UNIT_TYPE` doesn't fails too
+(TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it. The
+engine's tables (`ARMY_COST_MASTER`, `UNIT_SHORT`, `TERRAIN_MODS`, `ARMY_RACE_OF_TYPE`, …) are still unchecked: their
+files keep `@ts-nocheck`, and a `satisfies` there checks nothing. Each gets its `satisfies` when its file loses
+`@ts-nocheck` (P1-10a3, P1-10b). The lists above are still the whole job.
+
 **A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.js`
 first (`tests/primal-roster.test.js` and `tests/primal-words.test.js` then list what is missing), then:
 `PRIMAL_ARMY_DEFS_P` (the one place a beast's cost, strength, move, sub-race and pre-battle strike are written:

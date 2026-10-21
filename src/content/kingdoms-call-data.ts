@@ -265,7 +265,7 @@ export const PRIMAL_ARMY_DEFS_P = {
     cat: 'Naval',
     desc: 'Island-backed turtles of the prosperous seas, the one Creature among the sea-beasts: they swim under their own power and, Island Back, carry two land units a hull where a fleet carries one. Shell Wall: immune to pre-battle volleys, as the Ironclads. Slow (speed 2); no special strike. Recruited where they live.',
   },
-};
+} satisfies Partial<Record<UnitType, unknown>>;
 
 // when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a skill — reachable only
 // through hard experience, never the practice ground), their own report congratulates them and
@@ -10333,7 +10333,7 @@ export const PRIMAL_UNIT_NAMES = {
     'the Mire Brood',
     'the Coil of the First Age',
   ],
-};
+} satisfies Partial<Record<PrimalUnitType, string[]>>;
 
 // Unique army unit name descriptors by race+type. Pools are sized generously to the largest-map
 // distribution (Huge 20×12, 10 players) so descriptive names rarely repeat; the fallback below
@@ -11871,7 +11871,7 @@ export const ARMY_UNIT_NAMES = {
     'the Silent Umbra',
     'the Nightmaw Unchained',
   ],
-};
+} satisfies Record<Exclude<UnitType, keyof typeof PRIMAL_UNIT_NAMES>, string[]>;
 
 export const TITLE_DEFS = [
   {
@@ -14838,6 +14838,27 @@ export const KC_UNIT_TYPE = {
   'Darkness Elemental': 'infantry',
 };
 
+// ── The unit types (plan P1-10a2) ────
+// Types only: they make no code, so the site's files are the same with them. Every unit type is a key of KC_UNIT_TYPE.
+// A table here keyed by unit type ends in `satisfies` on the part it covers, so that a unit left out of it, or a name
+// that is no unit type, fails to compile (docs/traps.md, "A new army unit is a dozen tables"):
+//   KC_UNIT_BASE_STR     every humanoid unit and every elemental (the primal units' strength is PRIMAL_ARMY_DEFS_P's)
+//   ARMY_UNIT_NAMES      every unit type PRIMAL_UNIT_NAMES doesn't name, and no other
+//   PRIMAL_UNIT_NAMES    primal units only
+//   PRIMAL_ARMY_DEFS_P, KC_CARRIER_BERTHS   unit types only (so KC_UNIT_TYPE must list every primal unit)
+// tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts compiles copies of this file, each with a
+// unit left out.
+// The engine's own tables keyed by unit type (UNIT_SHORT, ARMY_COST_MASTER, TERRAIN_MODS, ARMY_RACE_OF_TYPE) get theirs
+// when their files lose their ts-nocheck line: a `satisfies` checks nothing in a file with it (plan P1-10, Decision 6).
+export type UnitType = keyof typeof KC_UNIT_TYPE;
+/** The wild's units, a Druid's or a monster's: PRIMAL_ARMY_DEFS_P's. */
+export type PrimalUnitType = keyof typeof PRIMAL_ARMY_DEFS_P;
+/** The five elementals a mage summons. */
+export type ElementalUnitType =
+  'Air Elemental' | 'Fire Elemental' | 'Earth Elemental' | 'Water Elemental' | 'Darkness Elemental';
+/** The realms' own troops and fleets: every unit type that is neither primal nor an elemental. */
+export type HumanoidUnitType = Exclude<UnitType, PrimalUnitType | ElementalUnitType>;
+
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;
@@ -14931,12 +14952,18 @@ export const KC_UNIT_BASE_STR = Object.assign(
     'Stag Riders': 6,
     'Ironhoof Rams': 6,
     'Black Arrows': 4,
-  },
+  } satisfies Record<HumanoidUnitType, number>,
   Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t, d]) => [t, d.str])),
-  { 'Air Elemental': 10, 'Fire Elemental': 10, 'Earth Elemental': 11, 'Water Elemental': 10, 'Darkness Elemental': 11 },
+  {
+    'Air Elemental': 10,
+    'Fire Elemental': 10,
+    'Earth Elemental': 11,
+    'Water Elemental': 10,
+    'Darkness Elemental': 11,
+  } satisfies Record<ElementalUnitType, number>,
 );
 export const KC_UNIT_Q_MULT = { Green: 1, Average: 2, Veteran: 3, Crack: 4, Elite: 5 };
-export const KC_QUALITY_TIERS = ['Green', 'Average', 'Veteran', 'Crack', 'Elite'];
+export const KC_QUALITY_TIERS = ['Green', 'Average', 'Veteran', 'Crack', 'Elite'] as const;
 export const KC_QUALITY_UP = { Green: 'Average', Average: 'Veteran', Veteran: 'Crack', Crack: 'Elite', Elite: 'Elite' };
 export const KC_QUALITY_DOWN = { Elite: 'Crack', Crack: 'Veteran', Veteran: 'Average', Average: 'Green' };
 export const KC_SKILLS = [
@@ -14955,10 +14982,10 @@ export const KC_SKILLS = [
   'illusory',
   'elemental',
   'necromancy',
-];
+] as const;
 // The five magic schools in their standard order. Some code deliberately keeps its OWN order as a
 // tie-break priority (a bot preferring Elemental on a tie, say) — those lists are not copies of this.
-export const KC_MAGIC_SCHOOLS = ['white', 'psychic', 'illusory', 'elemental', 'necromancy'];
+export const KC_MAGIC_SCHOOLS = ['white', 'psychic', 'illusory', 'elemental', 'necromancy'] as const;
 export const KC_SKILL_LABELS = {
   melee: 'Melee',
   archery: 'Archery',
@@ -14990,7 +15017,7 @@ export const KC_RUMOUR_COST_BY_POWER = { Weak: 1, Moderate: 2, Powerful: 3, Lege
 // The Druidic and Evil summoning orders' two tier tables were removed with the orders on 2026-10-12 (Toby item 22).
 // Berths a carrier offers land units (a hull not listed offers one; light foot take half a berth). 2026-10-13 (Creatures
 // and Monsters VI): the Great Turtles' Island Back carries two.
-export const KC_CARRIER_BERTHS = { 'Great Turtles': 2 };
+export const KC_CARRIER_BERTHS = { 'Great Turtles': 2 } satisfies Partial<Record<UnitType, number>>;
 export const KC_BASIC_EXPLORE = { plain: 35, desert: 25, forest: 20, mountain: 20, jungle: 15, sea: 25 };
 export const KC_TERRAIN_COLORS = {
   plain: '#d1a63a',
@@ -15003,9 +15030,9 @@ export const KC_TERRAIN_COLORS = {
 export const KC_PHASE_NAMES = ['Spring', 'Early Summer', 'Late Summer', 'Fall', 'Early Winter', 'End of Turn'];
 export const KC_PHASE_COLORS = ['#2d6a2d', '#7a5a10', '#8a6010', '#6a3a10', '#1a3a6a', '#555'];
 export const KC_SEASONS = ['Spring', 'Early Summer', 'Late Summer', 'Fall', 'Early Winter'];
-export const KC_ALIGNMENTS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'];
+export const KC_ALIGNMENTS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'] as const;
 export const KC_TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
-export const KC_HUMANOID_RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'];
+export const KC_HUMANOID_RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'] as const;
 export const KC_RIVAL_RACE = { Elven: 'Dwarven', Dwarven: 'Elven', Human: 'Orcish', Orcish: 'Human' };
 export const KC_HEX_DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
 export const KC_GRAND_DESIGNS = {
@@ -15032,3 +15059,19 @@ export const KC_GRAND_DESIGNS = {
 
 // MASTERY_UNLOCKS (declared above) is ALSO read by both portals now: the player portal's own copy,
 // MASTERY_EFFECTS, had drifted from the engine on ten entries and was deleted (DEV_LOG §276).
+
+// ── The content's other unions (plan P1-10a2) ────
+// Types only, read from the lists above (each `as const`, so its type is its names; the list itself is the same array).
+/** A unit's quality, worst to best. */
+export type Quality = (typeof KC_QUALITY_TIERS)[number];
+/** A hero's skill, in the standard order: the ten skills, then the five magic schools. */
+export type Skill = (typeof KC_SKILLS)[number];
+/** A school of magic. */
+export type MagicSchool = (typeof KC_MAGIC_SCHOOLS)[number];
+/** A realm's alignment. */
+export type Alignment = (typeof KC_ALIGNMENTS)[number];
+/** The four humanoid races a realm can be. Units and heroes have other races too (`Undead`, a beast's kind), so this is
+ *  not every race the state holds. */
+export type HumanoidRace = (typeof KC_HUMANOID_RACES)[number];
+/** A province's terrain. */
+export type Terrain = keyof typeof KC_BASIC_EXPLORE;
