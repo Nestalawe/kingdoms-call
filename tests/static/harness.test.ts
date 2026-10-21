@@ -151,12 +151,15 @@ describe('the lint rules', () => {
 
   // The site's own tier (plan P1-09, Decision 15, P1-09e): ESLint's recommended rules and typescript-eslint's strict
   // set, none switched off and each at least a warning (tools/ratchet.ts counts the warnings: eslintWarnings), no-undef
-  // and ban-ts-comment errors (a file left unchecked only with its reason), and no type-aware rule until P1-10 (no
+  // and ban-ts-comment errors (a file left unchecked only with its reason), no type assertion and no non-null assertion
+  // (P1-10a1, plan P1-10 Decision 2: claims the compiler takes on trust), and no type-aware rule until P1-10 (no
   // project service: with it off, a type-aware rule would stop ESLint).
   const siteExpected: Partial<Linter.RulesRecord> = {};
   for (const c of [js.configs.recommended, ...tseslint.configs.strict]) Object.assign(siteExpected, c.rules);
-  test.for([...ENGINE_FILES, ...PAGE_FILES, 'src/globals.d.ts'])(
-    "%s gets the site's rules: none off, two errors, nothing type-aware",
+  const NO_ASSERTIONS = '@typescript-eslint/consistent-type-assertions';
+  const NO_NON_NULL = '@typescript-eslint/no-non-null-assertion';
+  test.for([...ENGINE_FILES, ...PAGE_FILES, 'src/globals.d.ts', 'src/schemas/saved-game-state.ts'])(
+    "%s gets the site's rules: none off, four errors, nothing type-aware",
     async (file) => {
       const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
       const rules = config.rules ?? {};
@@ -170,11 +173,65 @@ describe('the lint rules', () => {
       const ban = rules['@typescript-eslint/ban-ts-comment'];
       expect(level(ban)).toBe(2);
       expect(Array.isArray(ban) ? ban[1] : undefined).toEqual({ 'ts-nocheck': 'allow-with-description' });
+      const assertions = rules[NO_ASSERTIONS];
+      expect(level(assertions)).toBe(2);
+      expect(Array.isArray(assertions) ? assertions[1] : undefined).toEqual({ assertionStyle: 'never' });
+      expect(level(rules[NO_NON_NULL])).toBe(2);
       const parserOptions = (config.languageOptions as { parserOptions?: Record<string, unknown> } | undefined)
         ?.parserOptions;
       expect(parserOptions?.['projectService'] ?? parserOptions?.['project'] ?? null).toBeNull();
     },
   );
+
+  // A type assertion or a non-null assertion planted in an engine file and in a page's: each an error (P1-10a1). `as
+  // const` is no claim (it narrows a literal), so it stays.
+  test.for(['src/engine/turn/context.ts', 'src/ui/player/map.ts'])(
+    '%s: a planted `as` and `!` are errors, `as const` is not',
+    async (file) => {
+      const code = [
+        'export const n = (x: unknown) => x as number;',
+        'export const m = (x: number | undefined) => x!;',
+        "export const k = ['a'] as const;",
+        '',
+      ].join('\n');
+      const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
+      const errors = (result?.messages ?? [])
+        .filter((m) => m.severity === 2)
+        .map((m) => `${String(m.line)} ${m.ruleId ?? ''}`);
+      expect(errors).toEqual([`1 ${NO_ASSERTIONS}`, `2 ${NO_NON_NULL}`]);
+    },
+  );
+
+  // The type assertions src/ held when the rule came in (eslint.config.js's TYPE_ASSERTIONS_KEPT, written by P1-11a3):
+  // only those files may hold one, one each, and the list only shrinks (P1-10b replaces each with a check).
+  test('only the type assertions kept from before the rule are let through, one a file, and no more files', async () => {
+    const KEPT = [
+      'src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts',
+      'src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts',
+      'src/engine/rules-on-plain-values/unit-types-and-base-strength.ts',
+    ];
+    const assertionsIn = (file: string): number => {
+      const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+      let n = 0;
+      const visit = (node: ts.Node): void => {
+        if (
+          (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) &&
+          !(ts.isTypeReferenceNode(node.type) && node.type.getText(source) === 'const')
+        )
+          n++;
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+      return n;
+    };
+    const off: string[] = [];
+    for (const f of filesUnder(path.join(ROOT, 'src')).filter((x) => x.endsWith('.ts'))) {
+      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'src', f))) as Linter.Config).rules ?? {};
+      if (level(rules[NO_ASSERTIONS]) < 2) off.push('src/' + f);
+    }
+    expect(off.filter((f) => !KEPT.includes(f))).toEqual([]);
+    for (const f of off) expect(assertionsIn(f), f).toBe(1);
+  });
 
   test('a focused or skipped test is an error', async () => {
     const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'tests/static/x.test.ts'))) as Linter.Config)
