@@ -450,6 +450,29 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
   go back to the old stream. It showed in about 1 run in 20 of `rng`'s reseed test, and in 13 of 60,000 reseeds under
   stress; the property form showed none. P1-09 makes `rng` a module: keep the state in an object there too.
 
+## `@ts-nocheck` checks nothing in the file
+
+128 files of `src/` still start with a `// @ts-nocheck` line (the ratchet's `tsNocheck`): 94 on the engine's side,
+which P1-10b frees, and 34 in the UI, which P1-16 frees. TypeScript reports no error anywhere in such a file. A type,
+an annotation or a `satisfies` written there is a claim nobody checks: a wrong parameter type compiles, and so does a
+table with a key left out.
+
+- **A type is checked where a file without the line reads it.** `TurnContext` and `NarrativeLine`
+  (`engine/turn/context.ts`) live in a file that keeps the line; each freed file that reads them checks them. If a
+  freed file's code disagrees with one, correct the type, not the code (P1-10a3 did so for a log line's `targets`).
+- **A file with the line still gives its callers types.** Its parameters are `any`, but a value it builds keeps the
+  type TypeScript works out: `[]` is `never[]`, and `PC_RANGES[i]` is `string | undefined`. A freed caller meets them.
+  Only a `?` on a parameter its callers leave out, or a return type written from what the function does
+  (`activeItems(c): Item[]`), is added to such a file for a freed caller.
+- **To free a file:** delete the line, type its parameters and its empty arrays and maps, and run
+  `npm run typecheck`. If an error remains that only a changed statement, a `!` or an `as` would clear (lint refuses
+  the last two in `src/`), put the line back and leave the file as it was: P1-10b changes the statement, and the
+  balance matrix proves the game the same. The common ones: a list's or a table's element read twice, or with a key
+  that is a property (`G.players[c.player].name` after a check: only a plain variable as the key narrows),
+  `(x || {}).y`, `catch (e)` then `e.message`, `.filter(Boolean)`, and a literal table read by any string.
+- **Don't write the line's text in a comment:** the ratchet and `tests/static/harness.test.ts` count it anywhere in
+  a file of `src/`. Say "its ts-nocheck line" instead.
+
 ## A new army unit is a dozen tables
 
 A unit type is keyed by its name in tables spread over three files, and nothing throws when one is
@@ -476,8 +499,9 @@ end in `satisfies`, so a unit in `KC_UNIT_TYPE` that is missing from one fails `
 that `PRIMAL_ARMY_DEFS_P`, `ARMY_UNIT_NAMES` or `KC_CARRIER_BERTHS` names but `KC_UNIT_TYPE` doesn't fails too
 (TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it. The
 engine's tables (`ARMY_COST_MASTER`, `UNIT_SHORT`, `TERRAIN_MODS`, `ARMY_RACE_OF_TYPE`, …) are still unchecked: their
-files keep `@ts-nocheck`, and a `satisfies` there checks nothing. Each gets its `satisfies` when its file loses
-`@ts-nocheck` (P1-10a3, P1-10b). The lists above are still the whole job.
+files keep `@ts-nocheck`, and a `satisfies` there checks nothing
+([above](#ts-nocheck-checks-nothing-in-the-file)). Each gets its `satisfies` when its file loses `@ts-nocheck`
+(P1-10b: none of those files passes with annotations alone, P1-10a3). The lists above are still the whole job.
 
 **A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.js`
 first (`tests/primal-roster.test.js` and `tests/primal-words.test.js` then list what is missing), then:

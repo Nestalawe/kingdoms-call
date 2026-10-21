@@ -73,8 +73,11 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   types only (`import type`) until P1-15, so no page's bundle holds them or Zod; `pages-build` refuses a value import.
   Their objects are `z.object`, which drops a key it doesn't name; the tests parse strictly
   (`tests/lib/strict-schema.ts`), and `tests/unit/the-saved-game-state-schemas-parse-every-state-of-a-matrix-game.test.ts`
-  parses a whole matrix game's states and orders. Nothing types the engine with them yet: most of its files still say
-  `@ts-nocheck` (P1-10a3 and P1-10b).
+  parses a whole matrix game's states and orders. They type the 14 files of the engine's side that pass strict
+  TypeScript with annotations alone (P1-10a3: the dice, the routes, the ladder, the visibility rule, the battle report's
+  lines and more; the list is in P1-10a3's pull request). The other 94 of those 108 files still say `@ts-nocheck`:
+  each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
+  balance matrix proves ([traps.md](traps.md#ts-nocheck-checks-nothing-in-the-file)).
 - **The content's and the engine's own types** (P1-10a2), types only, so no file the build makes changes with them:
   - **In the data file:** `UnitType` (the keys of `KC_UNIT_TYPE`), `PrimalUnitType`, `ElementalUnitType` and
     `HumanoidUnitType` (the rest); `Quality`, `Skill`, `MagicSchool`, `Alignment` and `HumanoidRace` (from its lists, each
@@ -85,7 +88,12 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     the GM's log, in `engine/turn/context.ts`; `OrderKind`, the 48 kinds an order's action reads as, beside
     `PHASE_ACTION_MAP` (`engine/turn/phase-intents-and-dependency-ordering.ts`). Both files keep `@ts-nocheck`, and
     TypeScript checks nothing in a file with it, these types and the map's `satisfies` included: a file is checked
-    against them once it loses `@ts-nocheck` (P1-10a3, P1-10b).
+    against them once it loses `@ts-nocheck`. Since P1-10a3 the files freed of it are; where their reads disagreed with
+    `TurnContext`, the type was corrected (a line's `targets` may hold null: callers pass `[c.player]`). Beside them in
+    `context.ts`: `NarrativeLine` (a line of a battle's narrative, a string or a line for one realm alone) and
+    `TurnOrder` (a hero's order for a phase as the turn holds it). The freed files declare a few shapes of their own
+    (`LadderRow` in `battle/ladder.ts`, `SightContext` in `views/visibility.ts`), and the schemas' file names a
+    feature (`ProvinceFeature`) and the title keys (`MajorTitleKey`, `MinorTitleKey`).
   - `tools/pages.ts` reads a module's imports that bring code, so an `import type` (of `src/schemas/`, say) adds no file
     to a page.
 - **The engine is `engine/` and `views/`** (P1-18c): nothing in them reads the screen, the database or the page's other
