@@ -18,8 +18,9 @@ export const BASELINE_FILE = path.join(ROOT, 'tests', 'ratchet.json');
 
 export type Counts = Record<string, number>;
 
-// Lists of exceptions inside test files: each entry lets something through that the test would otherwise refuse.
-export const ALLOWLISTS = [{ file: 'tests/html-lint.test.js', name: 'ALLOWED' }];
+// Lists of reviewed exceptions: each entry lets something through that a check would otherwise refuse. The one today
+// is kc/html-is-built-only-through-kc-html's option, in eslint.config.js (plan P1-13, Decision 8).
+export const ALLOWLISTS = [{ file: 'eslint.config.js', name: 'HTML_EXCEPTIONS' }];
 
 const CODE = /\.(ts|mts|cts|js|mjs|cjs|html)$/;
 // Built from parts, so this file doesn't count itself.
