@@ -32,6 +32,10 @@ put the old files back ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-
   deploys old (deploys can come minutes apart) loses its files.
 - **A read of the live site in the 10 minutes after a deploy can be the previous deploy**, page or file, and a query
   string doesn't help (the cache ignores it). A check by hand or a script that reads the live site waits 10 minutes.
+- **Never rename `version.json`, and never type a version by hand.** The build writes each page's version into it
+  (P1-06c): the footer's build line, from the marker `<!--kc-build-->`, and the metas `kc-build` and
+  `kc-page-version`. Open pages read `version.json` to learn that their page has changed (the GM tab's reload before
+  a due turn). A page's fingerprint is its HTML before these are filled in, so another commit alone changes none.
 - **A test that compares two builds builds each from the folder that holds its `src/`.** Rolldown names each module
   in a bundle (`//#region src/…`) from the folder it runs in, so a copy of `src/` built from elsewhere differs in every
   bundle, and so in every name (`tests/unit/a-deploy-keeps-the-files-a-cached-page-still-names.test.ts`).
@@ -67,35 +71,6 @@ are erased, so no code runs in its order.
 
 `npm test`'s `boot-pages` (jsdom) and the browser spec `chromium-boot` (`npx playwright test`) catch a page that no
 longer boots.
-
-## The data-file stamp guard
-
-Both portals refuse to start on a data file older than the one they were cut against.
-
-- **When `kingdoms-call-data.ts` changes:** bump `KC_DATA_STAMP`, the `// Data file v…` comment above
-  it, `KC_DATA_MIN` (GM portal) and `KC_DATA_MIN_P` (player portal), in the same PR.
-- **When you add a shared table:** add its name to `KC_SHARED_TABLE_NAMES` (GM portal) and to the
-  player portal's inline list, or a stale file passes the guard and fails later with a bare
-  `ReferenceError`.
-- **The two stamp lines do different jobs.** The guard reads `KC_DATA_STAMP`. The GM tab's auto-reload
-  before a due turn (`refreshIfNewerBuild`) read the `// Data file v…` comment of the published data file; since
-  P1-09d the data is bundled into the page and that file isn't published, so the reload sees only the GM portal's
-  footer stamp (Parked for P1-06). `npm test`'s `stamps` check still fails if the two lines differ.
-- A portal-only change leaves `KC_DATA_MIN` alone.
-
-## The GM portal's two build stamps
-
-The GM portal carries its build stamp twice, and each copy has a different reader:
-- the footer (`GM Portal v…`, in `#kc-build-stamp`): the GM tab's auto-reload before a due turn
-  (`refreshIfNewerBuild`) compares the running footer with the first `GM Portal v…` in the freshly
-  fetched page;
-- `KC_BUILD_STAMP`: written into telemetry rows, the training export and Hall-of-Fame records.
-
-Bump both together. If only `KC_BUILD_STAMP` changes, a pinned GM tab doesn't reload onto the new
-engine. If only the footer changes, statistics are filed under the previous build. That has happened
-once: in Sept 2026 a whole build's telemetry claimed to be the build before it. Don't write
-`GM Portal v` followed by a stamp anywhere above the footer, or the auto-reload reads that instead.
-`npm test`'s `stamps` check fails on either mistake.
 
 ## `select('*')` on big tables
 
@@ -146,8 +121,8 @@ or written.
   `supabase/migrations/`: the migration must be merged, or the site branch stacked on its pull request.
 - Never lower `KC_DB_MIN` to get a page past the stop. It means the database is missing something the page
   relies on.
-- The GM tab's reload before a due turn (`refreshIfNewerBuild`) boots the page again, so the check runs
-  again before any turn.
+- The GM tab's reload before a due turn (`refreshIfNewerBuild`) boots a newer GM page when one is ready, so the
+  check runs again before that page's first turn.
 - Tests: every stand-in database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.js`).
   `bootJsdom(..., {dbVersion})` sets another answer (an older version, `null` for a missing function, or
   `'offline'`), as `tests/db-guard.test.js` does.
@@ -633,7 +608,7 @@ Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 
 bots' `botSignaturePre` case and their two lists of muster-like orders; the player portal's `ACTIONS`,
 `ALIGN_ACTIONS`, `ACTION_DISPLAY_ORDER`, the target widget `case`, the army projection and the gold ledger; the
 rulebook's orders table and alignment section, the intro's table and the player portal's three alignment
-texts; and, for a new shared table, `KC_SHARED_TABLE_NAMES` and the player portal's `need` list. Nothing
+texts. Nothing
 throws when one is missed: the order is simply refused, hidden or priced wrong. Copy Harvest the Field's
 occurrences (grep `harvest_field` and `Harvest the Field`) and mirror each. Removing one touches the same places;
 keep its `case` as a plain refusal, so an order a save still holds is answered rather than silently dropped.

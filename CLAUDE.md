@@ -105,7 +105,7 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   ([how](docs/rulings/README.md#adding-a-ruling)), and name the test that enforces it. Rulings go there only.
 - **Mirror rule changes everywhere a rule is restated** (engine, player-portal projections, rulebooks, blurbs): [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice).
   A function the player portal takes through `src/shared/` is written once; its copies still left are `tests/lib/player-portal-copies.ts`'s.
-- **Data file changes bump the stamps:** [traps.md](docs/traps.md#the-data-file-stamp-guard). **Dice come from `kcRng()`** and the engine's time from `kcClock()`: no `Math.random` or `Date` in the engine ([traps.md](docs/traps.md#dice-come-from-kcrng)).
+- **Dice come from `kcRng()`** and the engine's time from `kcClock()`: no `Math.random` or `Date` in the engine ([traps.md](docs/traps.md#dice-come-from-kcrng)).
 - **An engine change carries its balance report** (CI's comment). Unless it says "no change", the PR's top half has
   "What changes in play" (template): predict before the matrix runs, then write it from the report, with anything
   unpredicted under "Not expected". A reshape says "Expected: no meaningful change", and the report must agree.
