@@ -15,6 +15,7 @@ const config = {
     'tools/*.ts',
     'tools/balance/*.ts',
     'tools/github/*.ts',
+    'tools/deploy/*.ts',
     'tools/hooks/*.ts',
     'tests/*.test.js',
     'tests/tools/*.js',

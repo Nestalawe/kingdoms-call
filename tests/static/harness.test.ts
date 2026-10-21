@@ -1044,16 +1044,37 @@ describe('CI', () => {
     }
     return problems;
   }
+  // The build jobs keep the files a page cached before this deploy still names (P1-06b,
+  // tools/deploy/keep-the-previous-deploys-files.ts): a step right after the build and right before the upload, which
+  // can't be skipped and stops the job at its first failure, so a site without them is never handed on.
+  const KEEP = 'node tools/deploy/keep-the-previous-deploys-files.ts site/ --';
+  const stepsOf = (block: string): string[] => block.split(/^(?= {6}- )/m).slice(1);
+  function keepStepProblems(build: string, upload: RegExp): string[] {
+    const steps = stepsOf(build);
+    const keep = steps.findIndex((step) => step.includes(KEEP));
+    const step = steps[keep];
+    if (!step) return ["build: doesn't keep the previous deploy's files"];
+    const problems: string[] = [];
+    const built = steps.findIndex((s) => /^ {6}- run: npm run build\n/.test(s));
+    if (built < 0 || built + 1 !== keep || !upload.test(steps[keep + 1] ?? '')) {
+      problems.push("build: doesn't keep the previous deploy's files right after the build, then upload");
+    }
+    if (/^ {8}(?:if|continue-on-error):/m.test(step))
+      problems.push('build: the keep step may be skipped or fail quietly');
+    if (!/^ {8}run: \|\n {10}set -euo pipefail\n/m.test(step))
+      problems.push("build: the keep step doesn't stop at a failure");
+    if (step.includes('||')) problems.push('build: the keep step lets a failure through (||)');
+    return problems;
+  }
   function deployProblems(text: string): string[] {
     const workflow = readWorkflow(text);
     const problems = buildJobProblems(workflow, 'build');
     const build = workflow.jobs.get('build') ?? '';
-    if (
-      !/^ {6}- run: npm run build\n\n {6}- uses: actions\/upload-pages-artifact@v\d+\n {8}with:\n {10}path: site\/\n/m.test(
-        build,
-      )
-    ) {
-      problems.push("build: doesn't upload site/ as the Pages artifact right after the build");
+    const pagesArtifact = /^ {6}- uses: actions\/upload-pages-artifact@v\d+\n/;
+    problems.push(...keepStepProblems(build, pagesArtifact));
+    const upload = stepsOf(build).find((step) => pagesArtifact.test(step)) ?? '';
+    if (!/^ {8}with:\n {10}path: site\/\n {10}retention-days: 30\n/m.test(upload)) {
+      problems.push("build: doesn't upload site/ as the Pages artifact, kept 30 days");
     }
     if (!holdsOnlyWhen(conditionOf(build), "needs.ci.result == 'success'"))
       problems.push('build: not only once CI passed');
@@ -1080,6 +1101,7 @@ describe('CI', () => {
     const handOff =
       /^ {6}- (?:name: .*\n {8})?uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: site\n {10}path: site\/\n/m;
     if (!handOff.test(build)) problems.push("build: doesn't upload site/ as the artifact site");
+    problems.push(...keepStepProblems(build, /^ {6}- (?:name: .*\n {8})?uses: actions\/upload-artifact@v\d+\n/));
     const staging = workflow.jobs.get('staging') ?? '';
     if (!/^ {4}needs: build$/m.test(staging)) problems.push("staging: doesn't need build");
     const download = staging.search(
@@ -1187,6 +1209,42 @@ describe('CI', () => {
     // migrate-production's main guard dropped.
     const migrate = inJob(deployText, 'migrate-production', ` && ${ON_MAIN}`, '');
     expect(deployProblems(migrate)).toEqual(['migrate-production: not only on main']);
+  });
+
+  test('planted copies are caught: the keep step left out, moved, skippable or let fail, the artifact kept a day', () => {
+    const keepStep = /^ {6}- name: Keep the previous deploy's files\n(?: {8}.*\n)+\n/m;
+    // Left out.
+    expect(deployProblems(inJob(deployText, 'build', keepStep, ''))).toEqual([
+      "build: doesn't keep the previous deploy's files",
+    ]);
+    expect(stagingProblems(inJob(stagingText, 'build', keepStep, ''))).toEqual([
+      "build: doesn't keep the previous deploy's files",
+    ]);
+    // After the upload: the site handed on lacks the files.
+    const step = keepStep.exec(deployText)?.[0] ?? '';
+    const moved = inJob(inJob(deployText, 'build', keepStep, ''), 'build', /(retention-days: 30\n)/, `$1\n${step}`);
+    expect(deployProblems(moved)).toEqual([
+      "build: doesn't keep the previous deploy's files right after the build, then upload",
+    ]);
+    // Skippable, or allowed to fail.
+    const runLine = /^( {8}run: \|\n)/m;
+    expect(deployProblems(inJob(deployText, 'build', runLine, '        continue-on-error: true\n$1'))).toEqual([
+      'build: the keep step may be skipped or fail quietly',
+    ]);
+    expect(
+      stagingProblems(inJob(stagingText, 'build', runLine, "        if: github.event_name == 'push'\n$1")),
+    ).toEqual(['build: the keep step may be skipped or fail quietly']);
+    expect(stagingProblems(inJob(stagingText, 'build', / {10}set -euo pipefail\n/, ''))).toEqual([
+      "build: the keep step doesn't stop at a failure",
+    ]);
+    const orTrue = (text: string) =>
+      inJob(text, 'build', /(--previous "\$RUNNER_TEMP\/previous-site")\n/, '$1 || true\n');
+    expect(deployProblems(orTrue(deployText))).toEqual(['build: the keep step lets a failure through (||)']);
+    expect(stagingProblems(orTrue(stagingText))).toEqual(['build: the keep step lets a failure through (||)']);
+    // The Pages artifact kept for the default day: the next deploy, a day later, would find no previous files.
+    expect(deployProblems(inJob(deployText, 'build', 'retention-days: 30', 'retention-days: 1'))).toEqual([
+      "build: doesn't upload site/ as the Pages artifact, kept 30 days",
+    ]);
   });
 
   // Every install in the deploy's and staging's jobs (what they build is published), and in every job of any workflow
@@ -1311,6 +1369,7 @@ describe('dangerous paths', () => {
       'tools/build.ts',
       'tools/pages.ts',
       'tools/dev.ts',
+      'tools/deploy/keep-the-previous-deploys-files.ts',
       'tests/lib/engine.ts',
       '.github/workflows/ci.yml',
       '.github/workflows/balance-report.yml',

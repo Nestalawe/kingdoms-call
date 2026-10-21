@@ -7,7 +7,7 @@ Line numbers drift; search for the names given here.
 ## The shape in one paragraph
 
 A static site with no server of its own. Every published page is an HTML file and its one script and one stylesheet
-(`assets/<page>.js`, `assets/<page>.css`), built by Vite from the ES modules in `src/`
+(`assets/<page>-<hash>.js`, `assets/<page>-<hash>.css`), built by Vite from the ES modules in `src/`
 ([below](#the-build-src-becomes-site)). The pages talk straight to a Supabase Postgres database from the browser, using
 supabase-js and the project's public (anon) key. **The turn engine runs in the GM's browser tab**: the
 GM portal generates worlds, runs the bots, resolves turns and writes each realm's report. Players only
@@ -22,13 +22,15 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
 - **`npm run build`** (`tools/build.ts`, a few seconds) runs Vite once per page (P1-09's Decision 8). Every
   `src/*.html` is a page (`index.html`, both portals, the Hall of Fame, the Overlord page, both rulebooks). Vite
   follows each page's `<script type="module" src>` through every `import`, and writes one script holding the page's
-  code, with no `import` left (`assets/<page>.js`), and its stylesheet (`assets/<page>.css`). Built one page at a time,
+  code, with no `import` left (`assets/<page>-<hash>.js`), and its stylesheet (`assets/<page>-<hash>.css`). Built one page at a time,
   each bundle stands alone, which is what lets a test run it as a classic script in jsdom. `public/` is copied as it
   is: `kc-config.js`, `kc-staging-footer.js`, `vendor/`.
 - **The options**, in `tools/build.ts` (one place, for the build and for `npm run dev`): no minifying (a live error's
   stack keeps the code's names), `target: 'esnext'` and no module preload (the code is left as written, nothing is
-  added), relative paths (`base: './'`), and file names without a hash: a cached page asking for a file a later deploy
-  deleted would not load (P1-06 brings hashed names, with the previous deploy's files kept). Constants are not written
+  added), relative paths (`base: './'`), and names with a hash of the file's content (P1-06b): a change to a page's code
+  or stylesheet gives that file a new name, and an unchanged file keeps its own, so a browser keeps its cached copy.
+  Two builds of the same `src/` are byte-identical (`pages-build`), names and all, when run from the folder that holds
+  `src/`: Rolldown names each module in a bundle (`//#region src/…`) from the folder it runs in. Constants are not written
   in where they are read (Rolldown's `inlineConst` is off), so every constant keeps its name. Rolldown, Vite's bundler,
   still leaves out a function or constant nothing reaches, writes each top-level `const`, `let` and `class` as a `var`,
   and lays the code out its own way. It strips the types from the `.ts` files with the settings of `tsconfig.json`,
@@ -113,6 +115,20 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   `build` job may only read: no write permission, no environment, no secret. The job that publishes (`deploy`, with
   the Pages token; `staging`, with the staging secrets) downloads that artifact and runs no `npm` and no build; no job
   that can write, runs in an environment or reads a secret does (`tests/static/harness.test.ts` checks all of it).
+- **A deploy keeps the files a cached page names** (P1-06b; [traps.md](traps.md#a-deploy-keeps-the-files-a-cached-page-names)).
+  GitHub Pages replaces the whole site on each deploy, and its cache hands out a page for up to 10 minutes after it, so
+  a page cached before a deploy can ask for a bundle the new site has renamed. Between the build and the upload, each
+  `build` job runs `tools/deploy/keep-the-previous-deploys-files.ts` (plain Node, no install): it reads the previous
+  site and puts back every file that site's pages name (scripts, stylesheets, `vendor/`, and the `url()`s in their
+  stylesheets), and every file its `published-files.json` lists as live within the last 24 hours, that the new build
+  lacks. A file the new build makes is never overwritten. It then writes the new `published-files.json`. The deploy
+  reads the previous site from the newest successful Deploy run on `main`: its `github-pages` artifact, exactly what it
+  published (`actions: read`; kept 30 days). With no artifact (none yet, or expired: the last deploy is over 30 days
+  old), it reads the live site over HTTPS. Staging reads its previous site from a shallow clone of the staging
+  repository, which is public. Anything wrong (no previous site, a missing file, a failed request) stops the `build`
+  job, so nothing is published and the site stays as it was (`tests/unit/a-deploy-keeps-the-files-a-cached-page-still-names.test.ts`,
+  `tests/browser/a-page-opened-before-a-deploy-still-loads-its-files.spec.ts`). The site grows by about 1 to 3 MB a
+  deploy while the old files are kept.
   Run `npm run build` yourself before opening a page or running one test script on its own.
 - **`npm run dev`** (`tools/dev.ts`) serves the pages with Vite's dev server, against the local Supabase only: it serves
   `kc-config.js` from `public/dev/kc-config.js` (git-ignored, never published; `npm run dev -- config` writes it from
@@ -250,9 +266,10 @@ Built from `src/` and `public/` ([above](#the-build-src-becomes-site)).
 | `kingdoms-call-leaderboard.html` | ~120 lines; its bundle ~1,200 | Hall of Fame: leaderboard and achievement records over finished games |
 | `kingdoms-call-overlord.html` | ~110 lines; its bundle ~460 | The Overlord page (P0-32f): accounts (offer, withdraw and revoke GM; suspend, lift and delete: P0-32h), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose); their script opens and closes the table of contents |
-| `assets/<page>.js`, `assets/<page>.css` | | Each page's bundle and stylesheet. The data file (`src/content/kingdoms-call-data.ts`), `kc-safe.ts` and `kc-db-guard.ts` are inside the bundles of the pages that use them, no longer files of their own |
+| `assets/<page>-<hash>.js`, `assets/<page>-<hash>.css` | | Each page's bundle and stylesheet, named by a hash of its content (P1-06b). The data file (`src/content/kingdoms-call-data.ts`), `kc-safe.ts` and `kc-db-guard.ts` are inside the bundles of the pages that use them, no longer files of their own. Older ones, which a cached page may still name, are kept for 24 hours after they stop being live ([above](#the-build-src-becomes-site)) |
 | `kc-config.js`, `kc-staging-footer.js` | small | Copied as they are from `public/`: which database this copy talks to (staging writes its own), and staging's footer |
 | `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
+| `published-files.json` | small | Written by the deploy, not the build: every file of the site and when it stopped being live (`null` while it is). The next deploy reads it to know what to keep: never rename it |
 
 All pages sit in one folder and link each other relatively. Only `site/` is published, so URLs are the
 same as before the cutover and the build. No page loads a script from another site; the only outside requests are
@@ -297,7 +314,7 @@ Order inside each portal's page, and why it matters:
 4. **`kc-staging-footer.js`**, last in `<body>` (every page). On staging it adds "Staging · PR #N · abc1234" to the
    footer, plus "database <version>" on pages that use the database; on the live site, whose `kc-config.js` has no
    `deployed`, it does nothing.
-5. **The page's bundle** (`assets/<page>.js`). A module script runs once the whole page is parsed, after the classic
+5. **The page's bundle** (`assets/<page>-<hash>.js`). A module script runs once the whole page is parsed, after the classic
    scripts above, in strict mode, wherever its tag is (Vite puts it in `<head>`). Its files run in its entry's order,
    each after the files it imports: `kc-safe.ts` first (the HTML helpers, [below](#how-a-page-builds-html)), then
    `kc-db-guard.ts` (`kcDbGuard`, the database version guard,
