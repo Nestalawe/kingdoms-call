@@ -106,11 +106,14 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   no page reaches fails `pages-build`; an import of a file that isn't there stops the build.
 - **Who builds:** `npm test` and `npx playwright test` before any test (`tests/setup/global.ts`; not when `KC_SITE`
   names another copy), `npm run balance` (and the base branch's copy, with that branch's own build:
-  `tools/balance/sides.ts`), every CI job that tests, the deploy just before it publishes, and staging just before it
-  writes its own `kc-config.js`. The deploy and staging install the build's tools first (`npm ci --ignore-scripts`:
-  every job that holds a secret or a deploy token installs without the packages' install scripts, which the build
-  doesn't need; `tests/static/harness.test.ts` checks it). Run `npm run build` yourself before opening a page or
-  running one test script on its own.
+  `tools/balance/sides.ts`), every CI job that tests, and the deploy and staging, each in a `build` job of its own
+  (P1-06a). The deploy's `build` job runs just before the site is published, after production is migrated; staging's
+  runs while the staging job waits for CI. Each installs the build's tools first (`npm ci --ignore-scripts`: without
+  the packages' install scripts, which the build doesn't need), builds `site/`, and hands it on as an artifact. A
+  `build` job may only read: no write permission, no environment, no secret. The job that publishes (`deploy`, with
+  the Pages token; `staging`, with the staging secrets) downloads that artifact and runs no `npm` and no build; no job
+  that can write, runs in an environment or reads a secret does (`tests/static/harness.test.ts` checks all of it).
+  Run `npm run build` yourself before opening a page or running one test script on its own.
 - **`npm run dev`** (`tools/dev.ts`) serves the pages with Vite's dev server, against the local Supabase only: it serves
   `kc-config.js` from `public/dev/kc-config.js` (git-ignored, never published; `npm run dev -- config` writes it from
   `npx supabase status`), and refuses to start without one, or with one that names another database
@@ -765,8 +768,8 @@ A second copy of the site at <https://kingdoms-call-staging.github.io/>, with it
 no real players. A pull request labelled `staging` is tested; then the staging database is rebuilt for it
 (emptied, `main`'s migrations, the test accounts, the made-up games of `supabase/seeds/staging.sql`, then the
 pull request's own migrations and the seed again: `.github/scripts/migrations.js reset staging`); then the
-site is built and published there with a `kc-config.js` pointing at the staging database
-(`.github/workflows/staging.yml`). One pull request is on staging at a time, and its PR comment says so;
+site, built from the pull request by a job of its own that may only read, is published there with a `kc-config.js`
+pointing at the staging database (`.github/workflows/staging.yml`: its `build` job, then its `staging` job). One pull request is on staging at a time, and its PR comment says so;
 merging changes nothing there. That `kc-config.js` also carries `deployed: {pr, sha}`, so every page's
 footer says which pull request and commit is on staging, linking to the pull request.
 
