@@ -8,7 +8,8 @@
 //   page for up to 10 minutes after a deploy, so a reload sooner can bring the old page back.
 // - A failed or missing version.json (the dev server, file://, jsdom, a network error) is no news, silently.
 // - watchForANewerVersion() checks every 5 minutes, and when the tab is shown again (at most once a minute).
-// The GM tab's reload before a due turn asks here (ui/gm/auto-turn.ts, refreshIfNewerBuild); P1-06d's banner will too.
+// The GM tab's reload before a due turn asks here (ui/gm/auto-turn.ts, refreshIfNewerBuild), and so does the reload
+// banner of the four pages that read the database (ui/shared/the-reload-banner.ts, P1-06d).
 
 /** The file each deploy publishes beside the pages. */
 export const VERSION_FILE = 'version.json';
@@ -66,6 +67,36 @@ export function thisPagesName(): string {
   return last === '' ? 'index.html' : decodeURIComponent(last);
 }
 
+/** This page, as version.json names it: its file name, and its fingerprint (null when it has none). */
+export interface ThisPage {
+  readonly name: string;
+  readonly fingerprint: string | null;
+}
+
+/** What version.json says about this page: the fingerprint of a newer version of it (null when there is none), and
+ *  whether that version counts yet. */
+export interface NewsOfThisPage {
+  readonly newer: string | null;
+  readonly counts: boolean;
+}
+
+/** The decision, on plain values: version.json names a newer version of this page when the fingerprint it gives the
+ *  page differs from the page's own; it counts once `now` is at least 10 minutes after this page first saw that
+ *  fingerprint (`firstSeen`: when this page first saw each fingerprint; one not in it was never seen, so it doesn't
+ *  count yet). A page without a fingerprint (the dev server), or one version.json doesn't name, has no newer version. */
+export function whatVersionJsonSaysOf(
+  page: ThisPage,
+  published: PublishedVersion,
+  firstSeen: ReadonlyMap<string, number>,
+  now: number,
+): NewsOfThisPage {
+  const theirs = published.pages[page.name];
+  if (page.fingerprint === null || theirs === undefined || theirs === page.fingerprint)
+    return { newer: null, counts: false };
+  const seen = firstSeen.get(theirs);
+  return { newer: theirs, counts: seen !== undefined && now - seen >= COUNTS_AFTER_MS };
+}
+
 // When this page first saw each fingerprint version.json gave it.
 const firstSeen = new Map<string, number>();
 let lastCheckedAt = -Infinity;
@@ -73,22 +104,26 @@ let lastCheckedAt = -Infinity;
 /** The newer version of this page that `published` names, if it has counted for 10 minutes by `now`: the deploy's
  *  version.json, else null. Records when this page first saw it. */
 function newerVersionIn(published: PublishedVersion, now: number): PublishedVersion | null {
-  const mine = thisPagesFingerprint();
-  const theirs = published.pages[thisPagesName()];
-  if (mine === null || theirs === undefined || theirs === mine) return null;
-  const seen = firstSeen.get(theirs);
-  if (seen === undefined) {
-    firstSeen.set(theirs, now);
-    return null;
-  }
-  return now - seen >= COUNTS_AFTER_MS ? published : null;
+  const news = whatVersionJsonSaysOf(
+    { name: thisPagesName(), fingerprint: thisPagesFingerprint() },
+    published,
+    firstSeen,
+    now,
+  );
+  if (news.newer !== null && !firstSeen.has(news.newer)) firstSeen.set(news.newer, now);
+  return news.counts ? published : null;
 }
+
+/** Whether this page can read version.json at all: served over HTTP(S), in a browser that has fetch. Not on file://,
+ *  nor in jsdom, which has no fetch unless a test gives it one. */
+const versionJsonCanBeRead = (): boolean =>
+  typeof location !== 'undefined' && /^https?:$/.test(location.protocol) && typeof fetch === 'function';
 
 /** Reads version.json now (never from the browser's cache): the deploy's version.json when it names a newer version
  *  of this page that has counted for 10 minutes, else null (also when version.json can't be read). */
 export async function checkForANewerVersion(): Promise<PublishedVersion | null> {
   lastCheckedAt = Date.now();
-  if (!/^https?:$/.test(location.protocol) || typeof fetch !== 'function') return null;
+  if (!versionJsonCanBeRead()) return null;
   let published: PublishedVersion | null;
   try {
     const answer = await fetch(VERSION_FILE, { cache: 'no-store' });
@@ -100,15 +135,20 @@ export async function checkForANewerVersion(): Promise<PublishedVersion | null> 
 }
 
 let watching = false;
-/** Checks version.json now, then every 5 minutes, and when the tab is shown again (at most once a minute). Once per
- *  page: a second call does nothing. */
-export function watchForANewerVersion(): void {
-  if (watching) return;
+/** Checks version.json now, then every 5 minutes, and when the tab is shown again (at most once a minute), and calls
+ *  `whenANewerVersionCounts` with the deploy's version.json each time a check finds a newer version of this page that
+ *  counts. Once per page: a second call does nothing. Where version.json can't be read, it watches nothing. */
+export function watchForANewerVersion(whenANewerVersionCounts: (published: PublishedVersion) => void): void {
+  if (watching || !versionJsonCanBeRead()) return;
   watching = true;
-  void checkForANewerVersion();
-  setInterval(() => void checkForANewerVersion(), CHECK_EVERY_MS);
+  const check = async (): Promise<void> => {
+    const newer = await checkForANewerVersion();
+    if (newer !== null) whenANewerVersionCounts(newer);
+  };
+  void check();
+  setInterval(() => void check(), CHECK_EVERY_MS);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && Date.now() - lastCheckedAt >= CHECK_WHEN_SHOWN_AT_MOST_EVERY_MS)
-      void checkForANewerVersion();
+      void check();
   });
 }
