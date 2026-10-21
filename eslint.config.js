@@ -13,8 +13,21 @@
 // too, the page's own classic scripts' (KC_CONFIG from kc-config.js, supabase from supabase-js) and its declared
 // globals. ban-ts-comment: a file is left unchecked only with its reason. And no type assertion (`as`, but `as const`)
 // and no non-null assertion (`x!`), each a claim the compiler takes on trust (plan P1-10, Decision 2): a file passes
-// strict TypeScript with what it checks. The other JavaScript (tests' scripts, tools/legacy/, public/'s two scripts)
-// isn't linted yet: the tests' and tools' become TypeScript in Phase 1; public/'s are copied as they are.
+// strict TypeScript with what it checks. The other JavaScript (tests' scripts, tools/legacy/) isn't linted yet: it
+// becomes TypeScript in Phase 1.
+//
+// The engine runs on plain data (plan P1-13, Decision 7): src/engine/, src/views/, src/content/, src/shared/ and
+// src/schemas/ may read no page's, browser's or timer's name, nor the time (Date: the engine's clock is kcClock(),
+// src/engine/clock.ts), nor the database (supabase, sb). Three files are the reviewed exceptions, each with its
+// reason below. The dice come from kcRng() (src/engine/rng.ts) everywhere: Math.random is refused in all of src/ but
+// rng.ts, through Math or through window. or globalThis., and in the classic scripts. Only src/db/ may read supabase
+// (the client's global); the four pages' createClient calls are in the suppressions, for P1-17's access layer.
+//
+// The project's own rules (tools/eslint-rules/, the plugin kc; plan P1-13, Decision 8) are the incident rules that
+// replaced home-made static tests: no random or argument-less sort comparator, and the big tables and profiles read by
+// named columns. They run on src/ and on the classic scripts: public/'s two (copied as they are) and the templates'
+// inline scripts and on…="…" handlers, which tests/static/the-templates-scripts-pass-the-sites-lint-rules.test.ts hands
+// to ESLint as src/<template>.html/<piece>.js, under the same block.
 //
 // Every rule is an error (plan P1-13, Decisions 4 and 13): no rule is at warn. What the rules found when they came in
 // is in eslint-suppressions.json (ESLint's bulk suppressions, per file and rule, with a count), which the command line
@@ -32,6 +45,7 @@ const globals = require('globals');
 const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
+const kc = require('./tools/eslint-rules/index.ts').default;
 
 // A page's declared globals (plan P1-09b): the variables its files and its tests share, each declared once as
 // `globalThis.<name> = <value>;` at the top of the file that owns it and read and written by its bare name. Worked out
@@ -102,8 +116,59 @@ const TYPE_ASSERTIONS_KEPT = [
   'src/engine/rules-on-plain-values/unit-types-and-base-strength.ts',
 ];
 
+// The engine's purity (above): the names src/engine/, src/views/, src/content/, src/shared/ and src/schemas/ may not
+// read, each with what to do instead. `except` names the ones a reviewed exception reads.
+const PURE = [
+  'src/engine/**/*.ts',
+  'src/views/**/*.ts',
+  'src/content/**/*.ts',
+  'src/shared/**/*.ts',
+  'src/schemas/**/*.ts',
+];
+const PLAIN_DATA = 'The engine runs on plain data: no page, browser or timer here (CLAUDE.md, the guardrails).';
+const NOT_HERE = {
+  window: PLAIN_DATA,
+  document: PLAIN_DATA,
+  localStorage: PLAIN_DATA,
+  sessionStorage: PLAIN_DATA,
+  fetch: PLAIN_DATA,
+  navigator: PLAIN_DATA,
+  location: PLAIN_DATA,
+  crypto: 'Dice come from kcRng() (src/engine/rng.ts): docs/traps.md, "Dice come from kcRng()".',
+  setTimeout: PLAIN_DATA,
+  setInterval: PLAIN_DATA,
+  globalThis: PLAIN_DATA,
+  Date: 'The engine\'s time comes from kcClock() (src/engine/clock.ts): docs/traps.md, "Dice come from kcRng()".',
+  supabase: 'Only src/db/ talks to the database (plan P1-17).',
+  sb: 'Only src/db/ talks to the database (plan P1-17).',
+};
+const restrictedGlobals = (names) => ['error', ...names.map((name) => ({ name, message: NOT_HERE[name] }))];
+const pureGlobals = (except = []) => restrictedGlobals(Object.keys(NOT_HERE).filter((n) => !except.includes(n)));
+// Math.random, refused (above): as Math.random or Math['random'], and through any object's Math (window.Math.random,
+// globalThis.Math['random']).
+const DICE =
+  'Dice come from kcRng() (src/engine/rng.ts), so a seed replays the game: docs/traps.md, "Dice come from kcRng()".';
+const noMathRandom = {
+  'no-restricted-properties': ['error', { object: 'Math', property: 'random', message: DICE }],
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector:
+        "MemberExpression[object.type='MemberExpression']:matches([object.property.name='Math'], [object.property.value='Math']):matches([property.name='random'], [property.value='random'])",
+      message: DICE,
+    },
+  ],
+};
+// The project's own rules (above), each an error.
+const kcRules = {
+  'kc/big-tables-and-profiles-are-read-by-named-columns': 'error',
+  'kc/no-random-or-argument-less-sort-comparator': 'error',
+};
+// The classic scripts (above): public/'s two, and the templates' scripts and handlers as the static test names them.
+const CLASSIC = ['public/*.js', 'src/*.html/*.js'];
+
 module.exports = defineConfig(
-  globalIgnores(['**/*.js', '**/*.cjs', '**/*.mjs', 'site/']),
+  globalIgnores(['**/*.js', '!public/*.js', '!src/*.html/*.js', '**/*.cjs', '**/*.mjs', 'site/']),
   {
     files: SITE,
     ignores: ENGINE,
@@ -124,6 +189,25 @@ module.exports = defineConfig(
     rules: siteRules,
   },
   {
+    files: SITE,
+    plugins: { kc },
+    rules: kcRules,
+  },
+  {
+    files: SITE,
+    ignores: ['src/engine/rng.ts'],
+    rules: noMathRandom,
+  },
+  {
+    files: SITE,
+    ignores: [...PURE, 'src/db/**'],
+    rules: { 'no-restricted-globals': restrictedGlobals(['supabase']) },
+  },
+  {
+    files: PURE,
+    rules: { 'no-restricted-globals': pureGlobals() },
+  },
+  {
     // The files of src/ that TypeScript checks: the type-aware sets too, after which the site's own four again (the
     // stylistic set asks for `as` where the site allows no assertion at all).
     files: CHECKED,
@@ -132,15 +216,22 @@ module.exports = defineConfig(
     rules: { ...typedRules, ...siteRules },
   },
   {
-    // The names the engine reads from a page, each only when it's there: window for the bots' test hooks (__botDiag
-    // and __botHyg), behind typeof; and the dice's seed, KC_RNG_SEED (behind typeof), or without one the browser's
-    // crypto.
+    // The engine's three reviewed exceptions to its purity (plan P1-13, Decision 7; tests/static/harness.test.ts pins
+    // exactly these). The names it reads from a page, each only when it's there: window for the bots' test hooks
+    // (__botDiag and __botHyg), behind typeof; and the dice's seed, KC_RNG_SEED (behind typeof), or without one the
+    // browser's crypto. And the engine's clock, the one place it reads the time.
     files: ['src/engine/bots/economy.ts'],
     languageOptions: { globals: { window: 'readonly' } },
+    rules: { 'no-restricted-globals': pureGlobals(['window']) },
   },
   {
     files: ['src/engine/rng.ts'],
     languageOptions: { globals: { crypto: 'readonly', KC_RNG_SEED: 'readonly' } },
+    rules: { 'no-restricted-globals': pureGlobals(['crypto']) },
+  },
+  {
+    files: ['src/engine/clock.ts'],
+    rules: { 'no-restricted-globals': pureGlobals(['Date']) },
   },
   {
     files: TYPE_ASSERTIONS_KEPT,
@@ -151,6 +242,25 @@ module.exports = defineConfig(
     // declared globals are set, P1-09b) wouldn't be known.
     files: ['src/globals.d.ts'],
     rules: { 'no-var': 'off' },
+  },
+  {
+    // The classic scripts (above): ESLint's recommended rules, each an error, the dice and the project's own rules. A
+    // top-level name of a classic script is a global the page's other scripts read, so only an unused local counts.
+    files: CLASSIC,
+    extends: atError(js.configs.recommended),
+    plugins: { kc },
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'script',
+      globals: { ...globals.browser, KC_CONFIG: 'readonly', supabase: 'readonly' },
+    },
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+    rules: { 'no-unused-vars': ['error', { vars: 'local' }], ...noMathRandom, ...kcRules },
+  },
+  {
+    // It declares KC_CONFIG, the global the other scripts read.
+    files: ['public/kc-config.js'],
+    languageOptions: { globals: { KC_CONFIG: 'off' } },
   },
   {
     files: ['**/*.ts', '**/*.mts'],

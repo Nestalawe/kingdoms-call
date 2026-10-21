@@ -93,8 +93,9 @@ export const typecheck = () =>
     return { ok: r.code === 0, out: r.out };
   });
 
-// ESLint lints the TypeScript: src/ (the site's tier: eslint.config.js) and the tests' and tools'.
-const linted = (f: string) => isTs(f);
+// ESLint lints the TypeScript: src/ (the site's tier: eslint.config.js) and the tests' and tools'; and public/'s classic
+// scripts (plan P1-13, Decision 8).
+const linted = (f: string) => isTs(f) || /^public\/[^/]+\.js$/.test(f);
 
 export const lint = (files: string[]) =>
   step('lint', async () => {

@@ -13,6 +13,9 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 2
     },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 1
+    },
     "no-empty": {
       "count": 1
     }
@@ -681,9 +684,15 @@
   "src/ui/gm/config.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
+    },
+    "no-restricted-globals": {
+      "count": 1
     }
   },
   "src/ui/gm/game-detail.ts": {
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 1
+    },
     "no-useless-assignment": {
       "count": 1
     }
@@ -691,6 +700,9 @@
   "src/ui/gm/game-list.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 4
+    },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 1
     },
     "no-useless-assignment": {
       "count": 1
@@ -727,6 +739,9 @@
   "src/ui/gm/turn-log.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
+    },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 1
     }
   },
   "src/ui/gm/turn-mode.ts": {
@@ -738,6 +753,9 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 3
     },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 2
+    },
     "prefer-const": {
       "count": 1
     }
@@ -745,6 +763,9 @@
   "src/ui/gm/turn-zero.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 4
+    },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 3
     },
     "no-empty": {
       "count": 2
@@ -756,6 +777,9 @@
   "src/ui/leaderboard/main.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 5
+    },
+    "no-restricted-globals": {
+      "count": 1
     }
   },
   "src/ui/overlord/globals.ts": {
@@ -765,6 +789,9 @@
   },
   "src/ui/overlord/main.ts": {
     "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -782,6 +809,9 @@
   "src/ui/player/game-lists.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 11
+    },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 3
     },
     "no-empty": {
       "count": 5
@@ -806,6 +836,9 @@
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 8
+    },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 4
     },
     "no-empty": {
       "count": 2
@@ -883,6 +916,9 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 5
     },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 1
+    },
     "no-empty": {
       "count": 3
     },
@@ -903,6 +939,9 @@
   },
   "src/ui/player/startup.ts": {
     "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-restricted-globals": {
       "count": 1
     }
   },
