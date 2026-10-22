@@ -46,7 +46,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   balance runner; `tests/static/pages-build.test.ts` checks it names what Vite's build holds, and that every file
   under `src/` is in some page.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation; `engine/sight/`, the sight rules
-  the engine asks as it resolves and the report applies, P1-12b1), `views/` (every realm's turn report, and the lines each realm reads: `playerEvents`, P1-12b3), `db/` (the version guard, telemetry and the light `meta` rows),
+  the engine asks as it resolves and the report applies, P1-12b1), `views/` (every realm's turn report, the lines each realm reads: `playerEvents`, P1-12b3, and what it may see of the world: `playerView`, P1-12b4), `db/` (the version guard, telemetry and the light `meta` rows),
   `content/` (the data file), `shared/` (the player portal's one door to the engine: it re-exports the rules of
   `engine/rules-on-plain-values/` the portal calls, and nothing else; [below](#kingdoms-call-datats-the-one-source-for-shared-rules)),
   `schemas/` (the types of the world, from Zod schemas: below), `ui/<page>/` (each page's styles,
@@ -424,7 +424,15 @@ portals' start-up guards are gone.
   with the lines the realm reads, its battle markers and its province intelligence; `playerEvents(turnLog, G, realm,
   sight)` works out the lines: its own deeds, the lines sent to it or about its heroes, the world's announcements and
   what happened where it had eyes at the time, unmet realms left nameless, its spies' lingering sight and its
-  Clairvoyance feed. They write nothing and draw no dice ([traps.md](traps.md#views-never-write)).
+  Clairvoyance feed. `playerView(G, realm, itsLines)` (`views/what-each-realm-may-see-of-the-world.ts`, P1-12b4) is
+  what the realm may see of the world, with the sight rules applied in that one place: the realm itself, the map's
+  grid, and each province as it sees it (its own, a hero of its own there, spied, next to a spied one, next to its
+  land, once visited, next to one it holds or visited, remembered, or not at all), with only what that sight shows,
+  the features it knows and the heroes it sees there. The report's sections of the map and the provinces
+  (`worldMeta`, `ownedProvinces`, `provinceOrderData`, `knownFeatures`, `visitedProvinceIds`, the provinces' lines of
+  `intel`, `availableHeroesByProv`, the battle markers, `provinceCharIntel`, `provinceEvents`) read only the view; the
+  rest still read the world until P1-12b5. They write nothing and draw no dice
+  ([traps.md](traps.md#views-never-write)).
 - **`runTurn`**, the turn's shell (`src/ui/gm/turn-shell.ts`), loads the full world and every slot, checks the
   game is still on the turn the GM meant to run, then **clears the submitted orders in the database**
   (keeping a copy in memory) and stops if that fails. Only then does it draw the turn's seed and call `resolveTurn`.
