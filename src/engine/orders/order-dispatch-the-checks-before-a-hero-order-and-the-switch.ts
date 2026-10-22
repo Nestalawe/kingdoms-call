@@ -98,7 +98,7 @@ export function processOrder(turnContext, c, o, ph) {
     turnContext._logCtx = { charId: null, phase: null };
     return;
   }
-  turnContext._logCtx = { charId: c.id, phase: ph }; // all log() calls inside here will inherit this
+  turnContext._logCtx = { charId: c.id, phase: ph }; // every line emitted inside here inherits this
   const rawAction = (o.action || 'defend').toLowerCase().trim();
   let action = PHASE_ACTION_MAP[rawAction] || 'defend';
   let _fmSlip = false; // MARCH L7 Forced March: set below when a forced-march move should try to slip past battle

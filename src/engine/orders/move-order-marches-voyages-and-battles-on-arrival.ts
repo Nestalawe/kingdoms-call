@@ -957,7 +957,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       // of the battle block — before the defender's reinforce/rally form-up. Those lines are
       // therefore COLLECTED here (not logged inline) and spliced into battle.narrative right
       // after the move-in line, once combatVsChar has produced it. (Previously they were
-      // log()'d immediately, so they printed ABOVE the move-in line.)
+      // emitted immediately, so they printed ABOVE the move-in line.)
       const _defFormupLines = [];
       // Naval skill gives defenders unify bonus for sea battles
       if (defReinforcements.length > 0) {

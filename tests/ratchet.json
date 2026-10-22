@@ -10,7 +10,7 @@
     "quarantinedTests": 4,
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 82,
-    "eslintSuppressions": 827,
+    "eslintSuppressions": 826,
     "knownArchitectureViolations": 169,
     "unusedCode": 29
   }

@@ -847,7 +847,7 @@ export function battleFrontsMeet(g1, g2) {
   if (!an || !bn) return true;
   return an <= bn ? a0 >= b0 && a1 <= b1 : b0 >= a0 && b1 <= a1;
 }
-// log(my faced strength / theirs), both grids faced afresh.
+// The logarithm of (my faced strength / theirs), both grids faced afresh.
 export function battleLineRatio(gA, gD, terrain, meIsAtk) {
   battleFacing(gA, gD, terrain);
   const r = Math.log(Math.max(gA.face.total, 1e-9) / Math.max(gD.face.total, 1e-9));

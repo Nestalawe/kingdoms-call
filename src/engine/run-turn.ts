@@ -191,7 +191,7 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // once the phase loop has finished, EVERY remaining line of the turn is an end-of-turn line (Mass
     // Healing, couriers, wages, de-consecration, max-HP sync …). _logCtx and _currentPhase are both
     // null by then, and a null phase was being filed under SPRING in the character sections of both
-    // reports. This flag makes log() stamp phase 99 ("End of Turn") for anything emitted after the
+    // reports. This flag makes emit stamp phase 99 ("End of Turn") for anything emitted after the
     // pipeline, so no end-of-turn event can be reported a year early again.
     turnContext._afterPhases = false;
     // while a battle (or its carry-on series) is resolving, this holds the contested province's id so
@@ -276,7 +276,7 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     }
 
     turnContext._currentPhase = null; // the phase loop is over — any later gain belongs to END OF TURN
-    turnContext._afterPhases = true; // …and so does every later LOG LINE (see log() above)
+    turnContext._afterPhases = true; // …and so does every later LOG LINE (emit's fallback, above)
 
     afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames(turnContext);
 

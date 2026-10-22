@@ -441,7 +441,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       narrate(narrative, `  ${caster.name} casts ${spellName}.`);
   }
   // small skill-up chance — pass narrative so the "X rises to level N" line appears at the end of
-  // the encounter report, not log()'d ahead of it at the top of the phase.
+  // the encounter report, not emitted ahead of it at the top of the phase.
   if (caster.kind === 'character' && caster.ref) {
     // 2026-09-21 (found with Toby's "Illusory 3 … rises to level 1"): after the roll this used to
     // write the RAW trained level back into the fighter's school — `ref.skills[school]||…` — so a

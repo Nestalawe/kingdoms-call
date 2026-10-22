@@ -117,7 +117,7 @@ export function applySpySuccess(turnContext, c, sprov) {
       });
     }
     // this alert belongs ONLY to the pried-upon owner. Passing charId:null is not enough —
-    // log()'s `meta.charId ?? _logCtx.charId` would fall back to the PRYING character, and the
+    // emit's `hero ?? _logCtx.charId` would fall back to the PRYING character, and the
     // report filter (ownCharIds.has(e.charId)) would then surface it in the spy's OWN report.
     // Detach the character context for this one line so its charId truly resolves to null.
     const _savedCtxChar = turnContext._logCtx.charId;

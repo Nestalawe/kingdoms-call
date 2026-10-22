@@ -15,7 +15,6 @@ export interface TurnContext {
   freshPlayers: unknown[];
   expectedTurnToRun: number;
   turnLog: Record<string, unknown>[];
-  log(type: string, text: string, meta?: Record<string, unknown>): void;
   _logCtx: { charId: unknown; phase: unknown };
   _currentPhase: number | null;
   _afterPhases: boolean;
