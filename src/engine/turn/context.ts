@@ -10,27 +10,21 @@
 //   freshPlayers       the game's slot rows, as loaded
 //   expectedTurnToRun  the turn being run
 //   turnLog            the GM's log of the turn, which emit() fills (events-and-their-audiences.ts: the one door)
-//   log(type, text, meta)  files one line in turnLog, through emit
 // resolveTurn adds the rest as it reaches them: _mercIds, _tel, battleCommanders, fieldBattlePhase, _logCtx,
 // _currentPhase, _afterPhases, and more as each lifted area needs them (docs/ARCHITECTURE.md lists them). The lifted code keeps resolveTurn's two-space indent (plan P1-08's Decisions).
 // TurnContext, below the function, is the context's type (plan P1-10a2); LogLine, the type of a line of the log, is the
 // events file's.
 import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
-import { emit, eventOfALogCall, type LogLine } from './events-and-their-audiences.ts';
+import type { EventButItsWords, LogLine } from './events-and-their-audiences.ts';
 
 export function createTurnContext(G, freshPlayers, expectedTurnToRun) {
-  const turnContext = { G, freshPlayers, expectedTurnToRun, turnLog: [] };
-  // log(type, text, meta): files the event its arguments describe (events-and-their-audiences.ts, eventOfALogCall),
-  // through the one door, emit. P1-12a's rows convert its callers to emit, area by area; P1-12a4 deletes it.
-  const log = (type, text, meta = {}) => emit(turnContext, eventOfALogCall(type, text, meta));
-  turnContext.log = log;
-  return turnContext;
+  return { G, freshPlayers, expectedTurnToRun, turnLog: [] };
 }
 
 // ── THE CONTEXT'S TYPES (plan P1-10a2) ────
 // Types only: the build erases them, so the engine's files are the same with them. This file keeps its ts-nocheck
-// line (its function sets fields one by one), and TypeScript checks nothing in a file with it, these types included: a
+// line (its function's arguments are untyped), and TypeScript checks nothing in a file with it, these types included: a
 // file that loses its ts-nocheck line (P1-10a3, P1-10b) is where they are first checked against the code that reads
 // them. A key of a hero, a province or a realm here is a plain number (the brands are the saved state's, src/schemas/).
 
@@ -42,37 +36,6 @@ export interface TheGamesSlotRow {
   user_id?: string | null | undefined;
   orders?: unknown;
   turn_report?: unknown;
-}
-
-/** What a caller of log() may say about a line (each left out reads as log() says; eventOfALogCall maps it to an event). */
-export interface LogMeta {
-  /** The realm whose hero acts (null: nobody's). */
-  actor?: number | null | undefined;
-  /** The realms that always see the line (callers pass `[c.player]`, which is null for a hero who serves no realm). */
-  targets?: (number | null)[] | undefined;
-  provinceId?: number | null | undefined;
-  /** Everyone with a hero in the province, or owning it, sees it. */
-  public?: boolean | undefined;
-  spy?: boolean | undefined;
-  system?: boolean | undefined;
-  armyEstimate?: unknown;
-  /** The hero whose action it is (else the hero whose order is resolving). */
-  charId?: number | null | undefined;
-  /** More heroes the line is about: it is filed under whichever of them the reader owns. */
-  charIds?: number[] | null | undefined;
-  /** 0 to 4, or 99 for the end of the turn (else the phase resolving). */
-  phase?: number | null | undefined;
-  pinNotice?: boolean | undefined;
-  /** A province's own event (an earthquake, a flood, …), for the province reports. */
-  env?: boolean | undefined;
-  /** The battle the line belongs to (emitBattle numbers them). */
-  battleId?: number | null | undefined;
-  /** The line's place in a battle's report: 'k' key, 'd' detail, 't' tally, 's' an onlooker's summary. */
-  bTier?: string | null | undefined;
-  gameEnd?: boolean | undefined;
-  /** Passed by emitBattle on a battle's lines (and by emitNarrLine), but log() leaves both out of the line it files. */
-  battleDetail?: boolean | undefined;
-  summary?: boolean | undefined;
 }
 
 /** A hero's order for one phase as the turn holds it (G.turnOrders, by hero, then by phase): his realm's order, or one
@@ -113,7 +76,7 @@ export interface ElvenEscape {
   unit: { type: string; quality: string; race: string; unitName: string; strength?: number | undefined };
 }
 
-/** The turn's context: createTurnContext makes the first four fields and log; resolveTurn and the helpers it calls add
+/** The turn's context: createTurnContext makes the first four fields; resolveTurn and the helpers it calls add
  *  the rest as the turn reaches them (tests/lib/engine.ts's turnContext() makes them all, as resolveTurn does before
  *  the first phase). Keyed by a hero's id, a province's or a realm's index where the comment says "by". */
 export interface TurnContext {
@@ -125,8 +88,6 @@ export interface TurnContext {
   expectedTurnToRun: number;
   /** The GM's log of the turn, which emit() fills. */
   turnLog: LogLine[];
-  /** Files one line in turnLog, through emit (until P1-12a4). */
-  log: (type: string, text: string, meta?: LogMeta) => void;
   /** The hero whose order is resolving, and its phase (null between orders). */
   _logCtx: { charId: number | null; phase: number | null };
   /** The phase being resolved (null before and after the phases). */
@@ -166,9 +127,9 @@ export interface TurnContext {
   _battleSeq: number;
   /** While a duel against a local chieftain is fought: whether it has trained a skill yet. */
   _chieftainDuelGain: { used: boolean } | null;
-  /** Skill rises held back to the end of the phase: each line's text and meta (afterBattleIn: the province of the
+  /** Skill rises held back to the end of the phase: each line's text and place (afterBattleIn: the province of the
    *  battle it follows). */
-  _deferredSkillLogs: [string, LogMeta & { afterBattleIn?: number | undefined }][];
+  _deferredSkillLogs: [string, EventButItsWords & { afterBattleIn?: number | undefined }][];
   /** A simulated fight is running (the odds of a lair, a bot's forecast): no skill may rise. */
   _pcSimulating: boolean;
   _elvenEscapeQueue: ElvenEscape[];
@@ -197,7 +158,7 @@ export interface TurnContext {
   diploDeclarations: Record<number, Record<string, string>>;
   /** The realms that called the Reckoning this turn. */
   reckoningCalls: Set<number>;
-  /** Lines held until log() is ready: stale orders refused, a realm's concession. */
+  /** Lines held until the turn's log is ready: stale orders refused, a realm's concession. */
   staleOrderWarnings: string[];
   /** The realms whose declarations the Safe Start refused this turn. */
   safeStartRefused: number[];

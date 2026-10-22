@@ -66,10 +66,10 @@ export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hu
 export function botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning(
   turnContext,
 ) {
-  const { G, _botPlayerIdx, log, reckoningCalls } = turnContext;
+  const { G, _botPlayerIdx, reckoningCalls } = turnContext;
   // Phase 3 (pre) — item 2: any bot realm that has lost its last province concedes before it plans
   // a turn.
-  runBotConcessions(G, _botPlayerIdx, log);
+  runBotConcessions(G, _botPlayerIdx, turnContext);
   runBotMovement(G, _botPlayerIdx, {
     duelSim: (...a) => botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, ...a),
     terrainMult: (t, tr) => terrainMod(t, tr) * seaPenalty(t, tr),

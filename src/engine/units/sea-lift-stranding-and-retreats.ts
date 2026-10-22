@@ -16,6 +16,7 @@ import { perkTier } from '../titles/perks.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isFriendlyProvFor, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { canEnterTerrain, refreshMovePool } from './movement-pools.ts';
+import { emit, narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── SEA LIFT, STRANDING AND RETREATS (plan P1-08b: lifted out of resolveTurn) ────
 // Whether a column can put to sea (getSeaCapability, seaLiftShortfall), who is put ashore when the hulls can no longer
@@ -166,7 +167,7 @@ export function strandLabel(a) {
 }
 // Called after every order, at the top and end of every phase, and after wages (see the phase loop).
 export function settleStrandedAtSea(turnContext, ph, cause) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   (G.characters || []).forEach((c) => {
     if (!c || c.alive === false || c.player == null || !(c.armies || []).length) return;
     const prov = G.world.provinces[c.location];
@@ -177,21 +178,20 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
     c.armies = (c.armies || []).filter((a) => !out.includes(a));
     const owner = c._charmTempControl && c._charmOriginalPlayer != null ? c._charmOriginalPlayer : c.player; // a seized hero's troops stay his own lord's
     const why = cause || 'too few hulls left afloat to carry the whole column';
-    const meta = {
-      actor: owner,
-      targets: [owner],
-      charId: c.id,
+    const place = {
+      audience: { actor: owner, realms: [owner] },
+      hero: c.id,
       phase: ph != null ? ph : turnContext._currentPhase,
-      provinceId: prov.id,
+      province: prov.id,
     };
     const temps = out.filter((a) => a._temporary),
       units = out.filter((a) => !a._temporary);
     if (temps.length)
-      log(
-        'move',
-        `✨ ${c.name}'s ${temps.map(strandLabel).join(', ')} cannot be carried over open water — the binding fails and ${temps.length === 1 ? 'it dissolves' : 'they dissolve'}.`,
-        meta,
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `✨ ${c.name}'s ${temps.map(strandLabel).join(', ')} cannot be carried over open water — the binding fails and ${temps.length === 1 ? 'it dissolves' : 'they dissolve'}.`,
+        ...place,
+      });
     if (units.length) {
       const lbl = units.map(strandLabel).join(', '),
         are = units.length === 1 ? 'is' : 'are',
@@ -213,41 +213,41 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
               )[0];
       if (dest) {
         dest.garrisonArmies = (dest.garrisonArmies || []).concat(units);
-        log(
-          'move',
-          `⚓ ${c.name} has ${why}: ${lbl} ${are} put ashore at ${dest.name} and ${join} its garrison (the weakest go first).`,
-          meta,
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `⚓ ${c.name} has ${why}: ${lbl} ${are} put ashore at ${dest.name} and ${join} its garrison (the weakest go first).`,
+          ...place,
+        });
       } else if (prov.owner === owner) {
         prov.garrisonArmies = (prov.garrisonArmies || []).concat(units);
-        log(
-          'move',
-          `⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name} as its garrison (the weakest go first).`,
-          meta,
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name} as its garrison (the weakest go first).`,
+          ...place,
+        });
       } else if (prov.owner == null && !(prov.neutralDefenders || []).length) {
-        setProvinceOwner(turnContext, prov, owner, c, meta.phase);
+        setProvinceOwner(turnContext, prov, owner, c, place.phase);
         const _pl = G.players[owner];
         if (_pl) {
           _pl.provinces = _pl.provinces || [];
           if (!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id);
         }
         prov.garrisonArmies = (prov.garrisonArmies || []).concat(units);
-        log(
-          'move',
-          `⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name}, which they claim for ${_pl ? _pl.name : 'the realm'} as its garrison (the weakest go first).`,
-          meta,
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name}, which they claim for ${_pl ? _pl.name : 'the realm'} as its garrison (the weakest go first).`,
+          ...place,
+        });
       } else {
         const _whose =
           prov.owner != null
             ? `${(G.players[prov.owner] || {}).name || 'another realm'}'s waters`
             : 'waters its neutral defenders still hold';
-        log(
-          'move',
-          `⚓ ${c.name} has ${why}, no shore of the realm lies alongside and ${prov.name} is ${_whose}: ${lbl} ${are} lost at sea.`,
-          meta,
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `⚓ ${c.name} has ${why}, no shore of the realm lies alongside and ${prov.name} is ${_whose}: ${lbl} ${are} lost at sea.`,
+          ...place,
+        });
       }
     }
     refreshMovePool(turnContext, c); // shedding units can change the column's pace; points already spent are kept
@@ -339,7 +339,8 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, 
   const temps = units.filter((a) => a._temporary),
     real = units.filter((a) => !a._temporary);
   if (temps.length)
-    narrative.push(
+    narrate(
+      narrative,
       `— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} ${temps.length === 1 ? 'is' : 'are'} left behind ${why}; the binding fails and ${temps.length === 1 ? 'it dissolves' : 'they dissolve'}.`,
     );
   if (!real.length) return false;
@@ -365,7 +366,8 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, 
       if (prov.garrisonArmies.indexOf(a) < 0) prov.garrisonArmies.push(a);
     });
     prov._battleUnresolved = true;
-    narrative.push(
+    narrate(
+      narrative,
       `— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length === 1 ? 'is' : 'are'} left in ${prov.name} ${why} — ${real.length === 1 ? 'it holds' : 'they hold'} the ground and will fight again.`,
     );
     return true;
@@ -382,7 +384,8 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, 
       id: newMercId(turnContext),
     }),
   );
-  narrative.push(
+  narrate(
+    narrative,
     `— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length === 1 ? 'is' : 'are'} left behind ${why} on ground the realm does not hold — leaderless, ${real.length === 1 ? 'it scatters' : 'they scatter'} into the mercenary bands.`,
   );
   return false;
@@ -455,7 +458,8 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
     const taken = live.filter((a) => !ashore.includes(a));
     ch.armies = (ch.armies || []).filter((a) => !ashore.includes(a)); // dead/disbanded stay for the caller's own sweep
     move(dest);
-    narrative.push(
+    narrate(
+      narrative,
       `⛵ ${cName} puts to sea — the fleet stands off ${prov.name} and makes for ${dest.name}${taken.length ? ` with ${describeArmy(taken)}` : ' with the hulls alone'}.`,
     );
     if (ashore.length) {
@@ -464,12 +468,14 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
         const temps = ashore.filter((a) => a._temporary),
           real = ashore.filter((a) => !a._temporary);
         if (temps.length)
-          narrative.push(
+          narrate(
+            narrative,
             `— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} cannot be carried; the binding fails and ${temps.length === 1 ? 'it dissolves' : 'they dissolve'}.`,
           );
         if (real.length) {
           shore.garrisonArmies = (shore.garrisonArmies || []).concat(real);
-          narrative.push(
+          narrate(
+            narrative,
             `— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} cannot be carried and fall back overland to ${shore.name}, joining its garrison.`,
           );
         }
@@ -493,7 +499,8 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
     const dest = bestRetreat(turnContext, ch, landFriendly) || landFriendly[0];
     ch.armies = (ch.armies || []).filter((a) => !ships.includes(a));
     move(dest);
-    narrative.push(
+    narrate(
+      narrative,
       `${cName} retreats overland to ${dest.name} with ${describeArmy(goInland)} — there is no friendly water to sail to, so the ships are left behind.`,
     );
     stayed = _navalLeaveBehind(
@@ -512,7 +519,8 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
     // A fleet alone, with nowhere to sail: hulls cannot take to the road, so they stand and fight
     // on rather than being run down in a rout they could not have fled.
     prov._battleUnresolved = true;
-    narrative.push(
+    narrate(
+      narrative,
       `⚓ ${cName}'s ships have no friendly water to fall back to and cannot take to the road — they hold ${prov.name} and will fight again.`,
     );
     return 'stay';

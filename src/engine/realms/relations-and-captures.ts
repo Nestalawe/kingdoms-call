@@ -17,7 +17,7 @@ import { emit } from '../turn/events-and-their-audiences.ts';
 // notifies nobody. Filed with no hero (hero: 'none', as notifyProvinceOwner does) so the line never inherits the
 // conqueror's log context and never lands in a character section.
 export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, byChar, _ph) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const pl = G.players[prev];
   if (!pl) return;
   const list = consecratedIds(pl);
@@ -47,11 +47,14 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
       rose.push(`${a.unitName || armyUnitName(a.type)} (now ${a.quality})`);
     }
   });
-  log(
-    'combat',
-    `✨ ${byChar.name}'s column casts down the altars of ${prov.name} — the ground is holy no longer. ${rose.length ? `Flushed with the deed, ${rose.join(', ')} gain${rose.length === 1 ? 's' : ''} an experience level.` : _pct > 0 ? 'None of the troops is the better for it.' : 'The troops take no pride in the sacrilege.'}`,
-    { actor: newOwner, targets: [newOwner], provinceId: prov.id, charId: byChar.id, phase: _ph },
-  );
+  emit(turnContext, {
+    type: 'combat',
+    text: `✨ ${byChar.name}'s column casts down the altars of ${prov.name} — the ground is holy no longer. ${rose.length ? `Flushed with the deed, ${rose.join(', ')} gain${rose.length === 1 ? 's' : ''} an experience level.` : _pct > 0 ? 'None of the troops is the better for it.' : 'The troops take no pride in the sacrilege.'}`,
+    audience: { actor: newOwner, realms: [newOwner] },
+    province: prov.id,
+    hero: byChar.id,
+    phase: _ph,
+  });
 }
 export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
   const { _tel, G } = turnContext;
@@ -135,7 +138,7 @@ export function isFriendlyProvFor(turnContext, prov, pi) {
 // ── EVIL conquest doctrine (loot OR enslave) ── applied whenever an Evil character CONQUERS a
 // province by force. Now every conquest site calls this. Runs once per province per turn.
 export function applyEvilConquest(turnContext, cc, prov, pl) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   if (!cc || !prov || !pl) return;
   if (G.players[cc.player]?.alignment !== 'Evil') return;
   if (prov._evilConqTurn === G.turn) return;
@@ -152,18 +155,20 @@ export function applyEvilConquest(turnContext, cc, prov, pl) {
       unitName: armyUnitName(enType),
     });
     prov._enslavedUntil = G.turn + 3;
-    log(
-      'combat',
-      `⛓ Enslavement: ${cc.name} presses the beaten folk of ${prov.name} into service — a Green ${enType} joins the garrison in chains, but the province seethes (−1 tax for 3 turns).`,
-      { actor: cc.player, targets: [cc.player], provinceId: prov.id, public: true },
-    );
+    emit(turnContext, {
+      type: 'combat',
+      text: `⛓ Enslavement: ${cc.name} presses the beaten folk of ${prov.name} into service — a Green ${enType} joins the garrison in chains, but the province seethes (−1 tax for 3 turns).`,
+      audience: { actor: cc.player, realms: [cc.player], seen: 'battle' },
+      province: prov.id,
+    });
   } else {
     if (mode === 'enslave' && !humanoid)
-      log(
-        'combat',
-        `⛓ ${cc.name} would enslave ${prov.name}, but there are no humanoid folk here to press — the forces plunder instead.`,
-        { actor: cc.player, targets: [cc.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `⛓ ${cc.name} would enslave ${prov.name}, but there are no humanoid folk here to press — the forces plunder instead.`,
+        audience: { actor: cc.player, realms: [cc.player] },
+        province: prov.id,
+      });
     const loot = Math.floor(
       (prov.tax || 0) *
         (0.5 +
@@ -171,10 +176,11 @@ export function applyEvilConquest(turnContext, cc, prov, pl) {
     ); // + plunder discoveries
     if (loot > 0) {
       pl.gold = (pl.gold || 0) + loot;
-      log('combat', `⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${loot}g seized immediately!`, {
-        actor: cc.player,
-        targets: [cc.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'combat',
+        text: `⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${loot}g seized immediately!`,
+        audience: { actor: cc.player, realms: [cc.player] },
+        province: prov.id,
       });
     }
   }

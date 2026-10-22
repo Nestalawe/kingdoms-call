@@ -13,10 +13,11 @@
 // and a line about a hero a realm owns (hero, heroes) reaches that realm. An event with no grant is the GM's alone.
 //
 // Nothing stored changes in P1-12a and P1-12b (Decision 2): emit writes today's line forms, key for key and in the
-// same order: the 17 keys of log()'s lines; the 14 of the lines that were pushed straight into turnLog (form: 'bare',
-// with no battle fields); and notFor after them when an `except` is given. P1-12c changes the stored form once.
+// same order: the 17 keys of the lines the old `log` helper wrote; the 14 of the lines that were pushed straight
+// into turnLog (form: 'bare', with no battle fields); and notFor after them when an `except` is given. P1-12c changes
+// the stored form once.
 //
-// The fallbacks are log()'s (docs/traps.md, "A hero left out is the hero whose order is resolving"):
+// The fallbacks are the old `log` helper's (docs/traps.md, "A hero left out is the hero whose order is resolving"):
 //   hero   left out or null: the hero whose order is resolving (turnContext._logCtx.charId); 'none': no hero
 //   phase  left out or null: the phase of that order, else the phase resolving, else 99 once the phases are over;
 //          'none': no phase (the lines that were pushed straight into turnLog, which never had the 99)
@@ -25,7 +26,7 @@
 // takeBackLinesFrom; emitNarrLine writes it out with the fight's event, FightLine), a line to the hero or the province
 // owner it happened to (notifyTarget, notifyProvinceOwner), a private line with a public twin (logSplit), and the
 // placement of the skill rises held back to the end of the phase (writeDeferredSkillLines).
-import type { LogMeta, TurnContext } from './context.ts';
+import type { TurnContext } from './context.ts';
 
 /** Who may read a line (each left out grants nothing). */
 export interface LineAudience {
@@ -101,6 +102,11 @@ export type NarrativeLine =
  *  heroes and battle. emitNarrLine files each line of the fight's narrative with it. */
 export type FightLine = Omit<TurnEvent, 'text'>;
 
+/** An event but its type and text: who may read a line, where and when, whom it is about. A caller that files several
+ *  lines alike, or hands a helper the line's place (logSplit, reportHeroFall, the skill rises held back), builds it
+ *  once: emit(turnContext, { type, text, ...place }). */
+export type EventButItsWords = Omit<TurnEvent, 'type' | 'text'>;
+
 /** Files an event in the GM's log of the turn: the one way a line enters it. */
 export function emit(turnContext: TurnContext, event: TurnEvent): void {
   const { audience } = event;
@@ -137,33 +143,6 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
   if (audience.except !== undefined) line.notFor = audience.except;
   turnContext.turnLog.push(line);
   console.log(`[${event.type}] ${event.text}`);
-}
-
-/** The event a call of log(type, text, meta) files (log() is this and emit until P1-12a4 converts its last callers):
- *  each key of the meta as log() read it; its summary, battleDetail and gmOnly dropped, as log() dropped them. A public
- *  line is seen by the world with no province, by those in the battle if it is a battle's ('combat'), else by whoever
- *  is there, as buildReports reads it. */
-export function eventOfALogCall(type: string, text: string, meta: LogMeta): TurnEvent {
-  return {
-    type,
-    text,
-    audience: {
-      realms: meta.targets,
-      actor: meta.actor,
-      seen: meta.public ? (meta.provinceId == null ? 'world' : type === 'combat' ? 'battle' : 'there') : undefined,
-    },
-    province: meta.provinceId,
-    spy: meta.spy,
-    system: meta.system,
-    armyEstimate: meta.armyEstimate,
-    hero: meta.charId,
-    heroes: meta.charIds,
-    phase: meta.phase,
-    pinNotice: meta.pinNotice,
-    env: meta.env,
-    battle: { id: meta.battleId, tier: meta.bTier },
-    gameEnd: meta.gameEnd,
-  };
 }
 
 // ── A FIGHT'S NARRATIVE ────
@@ -279,17 +258,20 @@ export function logSplit(
   type: string,
   privText: string,
   pubText: string,
-  meta: LogMeta & { alsoNotFor?: (number | null)[] | undefined } = {},
+  place: EventButItsWords & { alsoNotFor?: (number | null)[] | undefined },
 ): void {
-  const actor = meta.actor ?? null;
-  emit(
-    turnContext,
-    eventOfALogCall(type, privText, {
-      ...meta,
-      public: false,
-      targets: meta.targets?.length ? meta.targets : [actor].filter((x) => x != null),
-    }),
-  );
+  const { alsoNotFor, ...line } = place;
+  const actor = line.audience.actor ?? null;
+  // The private half: told to the realms named, else to the actor's own; seen by nobody else.
+  emit(turnContext, {
+    ...line,
+    type,
+    text: privText,
+    audience: {
+      realms: line.audience.realms?.length ? line.audience.realms : [actor].filter((x) => x != null),
+      actor: line.audience.actor,
+    },
+  });
   // The public half: no hero (a real null, not the hero whose order is resolving), in the bare form.
   emit(turnContext, {
     type,
@@ -298,11 +280,11 @@ export function logSplit(
       actor: null,
       realms: [],
       seen: 'there',
-      except: [actor].concat(meta.alsoNotFor ?? []).filter((x) => x != null),
+      except: [actor].concat(alsoNotFor ?? []).filter((x) => x != null),
     },
-    province: meta.provinceId,
+    province: line.province,
     hero: 'none',
-    phase: meta.phase,
+    phase: line.phase,
     form: 'bare',
   });
 }
@@ -345,17 +327,15 @@ export function writeDeferredSkillLines(
   inPlace?: boolean,
 ): void {
   const { turnLog } = turnContext;
-  const blocks = new Map<string, { p: number; ph: number | null | undefined; ents: LogLine[] }>();
-  (list ?? []).forEach(([msg, meta]) => {
-    const m = { ...meta };
-    const p = m.afterBattleIn;
-    delete m.afterBattleIn;
-    emit(turnContext, eventOfALogCall('system', msg, m));
+  const blocks = new Map<string, { p: number; ph: TurnEvent['phase']; ents: LogLine[] }>();
+  (list ?? []).forEach(([msg, place]) => {
+    const { afterBattleIn: p, ...line } = place;
+    emit(turnContext, { ...line, type: 'system', text: msg });
     if (p == null || inPlace) return;
-    const k = String(p) + '|' + String(m.phase);
+    const k = String(p) + '|' + String(line.phase);
     let block = blocks.get(k);
     if (!block) {
-      block = { p, ph: m.phase, ents: [] };
+      block = { p, ph: line.phase, ents: [] };
       blocks.set(k, block);
     }
     const held = turnLog.pop();

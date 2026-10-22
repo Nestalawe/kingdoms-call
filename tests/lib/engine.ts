@@ -191,7 +191,7 @@ export function botWorld(
   return make(realms, JSON.stringify(size), JSON.stringify(opts));
 }
 
-/** Quiets the engine's console.log (log() echoes each line of the GM's log there) until the returned function is
+/** Quiets the engine's console.log (emit echoes each line of the GM's log there) until the returned function is
  *  called. */
 export function quietEngineLog(engine: vm.Context): () => void {
   const engineConsole = vm.runInContext('console', engine) as Console;

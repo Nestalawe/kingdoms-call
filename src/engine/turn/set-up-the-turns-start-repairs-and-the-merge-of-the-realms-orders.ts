@@ -7,7 +7,7 @@ import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 
 // ── THE SET-UP: THE TURN'S START REPAIRS AND THE MERGE OF THE REALMS' ORDERS (plan P1-08k7: two stages taken out of
 // the start of resolveTurn's own body; P1-08n: two lines of it before them) ──────────────────────────────────────────
-// Each once a turn and before any line is logged (log() isn't ready yet: what they have to tell is kept for later), in
+// Each once a turn and before any line is logged (the turn's log isn't ready yet: what they have to tell is kept for later), in
 // this order:
 //   1. as the save is read, before the turn's context is made: last turn's crossed swords cleared from the map (plan
 //      P1-08n). It takes the save (G), as the save's upgrades beside its call do, and a failure in it is a save that
@@ -159,7 +159,7 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
   const { freshPlayers, G, expectedTurnToRun } = turnContext;
   // Encounter plans persist across turns until the player changes them, so we do NOT wipe them here
   // — the new submissions below overwrite only the characters whose orders include a plan. Collect
-  // warnings about rejected stale orders (logged once log() is ready)
+  // warnings about rejected stale orders (logged once the turn's log is ready)
   const staleOrderWarnings = [];
   turnContext.staleOrderWarnings = staleOrderWarnings;
   // Diplomacy declarations submitted this turn, keyed by player index → { targetPlayerIndex: 'treat'|'enemy' }.
@@ -228,7 +228,7 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
           G.players[gp.player_index].concededTurn = expectedTurnToRun;
           staleOrderWarnings.push(
             `\u{1F3F3} ${G.players[gp.player_index].name} has CONCEDED the game. Its heroes lay down their ambitions and will only defend what they hold from now on.`,
-          ); // logged (public) once the log() helper exists
+          ); // logged (public) once the turn's log exists
         }
       }
       // CRITICAL: reject orders that were stamped for a different turn (stale submissions)
@@ -372,6 +372,6 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
       if (notItsOwn.length)
         staleOrderWarnings.push(
           `⚠ Set aside from ${realmName}'s orders: what it sent for heroes not in its service (${notItsOwn.join(', ')}).`,
-        ); // logged (to the GM alone) once the log() helper exists
+        ); // logged (to the GM alone) once the turn's log exists
     });
 }

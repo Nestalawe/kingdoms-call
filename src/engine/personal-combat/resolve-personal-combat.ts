@@ -465,7 +465,7 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
   }
   // Skill gains: the victor who landed blows improves the matching skill; a thief who stole
   // improves Thief. Pass the encounter narrative so these lines appear at the END of the
-  // encounter report (like battle-driven gains) instead of being log()'d mid-resolution — which
+  // encounter report (like battle-driven gains) instead of being emitted mid-resolution — which
   // landed them ABOVE the encounter report, i.e. at the top of the phase in the player Chronicle.
   // 2026-09-29 (Toby): melee/archery experience is now rolled per successful hit as it lands
   // (pcCombatXP) — the old single end-of-fight roll for the victor is retired.

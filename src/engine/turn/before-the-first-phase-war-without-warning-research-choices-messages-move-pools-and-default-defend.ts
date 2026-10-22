@@ -18,7 +18,7 @@ import { emit } from './events-and-their-audiences.ts';
 
 // ── BEFORE THE FIRST PHASE: WAR WITHOUT WARNING, RESEARCH CHOICES, MESSAGES, MOVE POOLS AND DEFAULT DEFEND (plan
 // P1-08k8: four stages taken out of resolveTurn's own body, before the phase loop) ──────────────────────────────────
-// Once the realms' orders are merged and log() is ready, four stages, in this order, each once a turn, with the bots'
+// Once the realms' orders are merged and the turn's log is ready, four stages, in this order, each once a turn, with the bots'
 // code (plan P1-08l) and the turn's start values between them in resolveTurn:
 //   1. the relations made ready, then last turn's research choices settled: each bot realm picks for itself, and each
 //      realm pursues the lead it picked (or one its scholars choose by the die) and forgets the other for good;
@@ -218,7 +218,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         // The addressee's copy must NOT name the sender as `actor`: the report filter shows a
         // player every entry where actor===them, so the sender was being handed the
         // incoming-dispatch line as well as their own sent-confirmation — reading their own words
-        // as though addressed to them. charId is nulled for the same reason (log() falls back to
+        // as though addressed to them. charId is nulled for the same reason (emit falls back to
         // _logCtx.charId when it is null).
         const _savedDispatchChar = turnContext._logCtx.charId;
         turnContext._logCtx.charId = null;

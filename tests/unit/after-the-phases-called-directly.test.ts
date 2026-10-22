@@ -148,7 +148,9 @@ const everything = () => {
   const coward = spared(at(b, {}, { at: away }), b.G.turn);
   const fallenAlone = at(b, {}, { at: ring1(b, 2) });
   Object.assign(fallenAlone, { alive: false, hp: 0 });
-  tc(b)['_deferredSkillLogs'] = [['📈 A rise told late.', { actor: 0, targets: [0], charId: h.id, phase: 4 }]];
+  tc(b)['_deferredSkillLogs'] = [
+    ['📈 A rise told late.', { audience: { actor: 0, realms: [0] }, hero: h.id, phase: 4 }],
+  ];
   return { b, h, fallen, coward, away };
 };
 
@@ -259,7 +261,10 @@ describe('After the phases: what it calls', () => {
     const h = at(b);
     const calls = standIn(b, ['resolveAllPendingSkillGains', 'writeDeferredSkillLines'], () => after(b), {
       resolveAllPendingSkillGains: () => {
-        (tc(b)['_deferredSkillLogs'] as unknown[]).push(['📈 Risen.', { actor: 0, targets: [0], charId: h.id }]);
+        (tc(b)['_deferredSkillLogs'] as unknown[]).push([
+          '📈 Risen.',
+          { audience: { actor: 0, realms: [0] }, hero: h.id },
+        ]);
       },
     });
     expect(calls.map((c) => c.fn)).toEqual(['resolveAllPendingSkillGains', 'writeDeferredSkillLines']);
@@ -354,8 +359,8 @@ describe('After the phases: what only a direct call can stage', () => {
     const b = fresh();
     const h = at(b);
     tc(b)['_deferredSkillLogs'] = [
-      ['📈 First rise.', { actor: 0, targets: [0], charId: h.id, phase: 3 }],
-      ['📈 Second rise.', { actor: 0, targets: [0], charId: h.id }],
+      ['📈 First rise.', { audience: { actor: 0, realms: [0] }, hero: h.id, phase: 3 }],
+      ['📈 Second rise.', { audience: { actor: 0, realms: [0] }, hero: h.id }],
     ];
     after(b);
     const ls = b.lines().filter((l) => l.text.startsWith('📈 '));

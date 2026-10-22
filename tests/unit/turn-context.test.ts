@@ -1,6 +1,6 @@
 // The turn's context and the helpers lifted out of resolveTurn with it (plan P1-08a), called directly in the bare vm
 // (tests/lib/engine.ts).
-// - createTurnContext holds the turn's state, slot rows and turn, and an empty log; log() files a line under the hero
+// - createTurnContext holds the turn's state, slot rows and turn, and an empty log; emit files a line under the hero
 //   and the phase the context names as it is when the line is written, not as it was when the context was made. It
 //   is a plain object: a value nothing has set reads as undefined, as resolveTurn's code expects, and never throws.
 // - The title lookups the balance matrix never runs (charHoldsTitle, playerHoldsTitle: nothing calls them today), and
@@ -15,7 +15,7 @@ import { describe, expect, test } from 'vitest';
 import { engineFn, loadEngine, turnContext, type TurnContext } from '../lib/engine.ts';
 
 const engine = loadEngine({ seed: 1 });
-// log() echoes each line to the console: quiet it while a test writes lines.
+// emit echoes each line to the console: quiet it while a test writes lines.
 const quiet = () => {
   const engineConsole = vm.runInContext('console', engine) as Console;
   const was = engineConsole.log;
@@ -42,18 +42,19 @@ describe('createTurnContext', () => {
     expect(tc['notSetYet']).toBeUndefined();
   });
 
-  test('log() files a line under the hero and the phase the context names when it is written', () => {
+  test('emit files a line under the hero and the phase the context names when it is written', () => {
     const tc = turnContext(engine, { turn: 1, players: [] });
     const restore = quiet();
-    const line = (meta?: Record<string, unknown>) => {
-      tc.log('combat', 'a line', meta);
+    const emit = engineFn(engine, 'emit') as (tc: TurnContext, event: Record<string, unknown>) => void;
+    const line = (place?: Record<string, unknown>) => {
+      emit(tc, { type: 'combat', text: 'a line', audience: {}, ...place });
       return tc.turnLog[tc.turnLog.length - 1];
     };
     try {
       expect(line()).toMatchObject({ type: 'combat', text: 'a line', charId: null, phase: null, public: false });
       tc._logCtx = { charId: 7, phase: 2 };
       expect(line()).toMatchObject({ charId: 7, phase: 2 });
-      expect(line({ charId: 9, phase: 4 })).toMatchObject({ charId: 9, phase: 4 });
+      expect(line({ hero: 9, phase: 4 })).toMatchObject({ charId: 9, phase: 4 });
       tc._logCtx = { charId: null, phase: null };
       tc._currentPhase = 3;
       expect(line()).toMatchObject({ charId: null, phase: 3 });

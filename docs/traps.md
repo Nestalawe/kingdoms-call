@@ -320,26 +320,33 @@ finished text), where and when (`province`, `phase`), whom it is about (`hero`, 
 (`audience`: `realms` told, the `actor`, `seen` by the `'world'`, by whoever is `'there'` or by those in the `'battle'`,
 and `except` the realms that never read it). A line pushed past it chooses its own audience, the way the leaks the report
 check finds were made.
-- The lint rule `kc/narrative-lines-go-through-emit` refuses any write to `turnLog` outside the events file, in all of
-  `src/engine` and `src/views`. In the folders converted so far (`eslint.config.js`'s `LINES_THROUGH_EMIT`: `turn/` and
-  `src/views/` since P1-12a2, `battle/` and `personal-combat/` since P1-12a3; P1-12a4 all) it refuses `log(…)` (but
-  `console.log` and `Math.log`) and a narrative written by hand too: add a fight's line with `narrate(narrative,
-  text)`, or `narrateTo(narrative, realm, heroId, text)` for one realm alone (it files under that realm's hero, and
+- The lint rule `kc/narrative-lines-go-through-emit` refuses, in all of `src/engine` and `src/views` but the events file
+  (since P1-12a4; folder by folder from P1-12a2), any write to `turnLog`, a `log(…)` call (but `console.log` and
+  `Math.log`; there is no `log()` helper any more) and a narrative written by hand: add a fight's line with
+  `narrate(narrative, text)`, or `narrateTo(narrative, realm, heroId, text)` for one realm alone (it files under that realm's hero, and
   nobody else in the fight reads it). Lines already written move with `narrateAll` (a duel's narrative into a
   battle's, each line as it is), `narrateAt` (lines for everyone put in before a line) and `takeBackLinesFrom` (a blow
   that never landed). `emitBattle` and `emitNarrLine` write a fight's narrative out with the fight's event
   (`FightLine`: the event but its text), each line in order: a `narrateTo` line to its realm alone, the rest to the
   fight's audience.
-- **A hero left out is the hero whose order is resolving.** `emit` keeps `log()`'s fallbacks: a `hero` left out or
+- **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
+  `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
+  (the event without its type and text: `{ audience, province, hero, phase, … }`), and files it with
+  `emit(turnContext, { type, text, ...place })`. Build it as the event's own fields, never as the old `log()` meta
+  (`targets`, `provinceId`, `charId`, `public`). A line seen by those there but with no province is seen by the world
+  (`seen: 'world'`), as the report reads it: where the province may be missing, say so
+  (`seen: prov ? 'there' : 'world'`).
+- **A hero left out is the hero whose order is resolving.** `emit` keeps the old `log()`'s fallbacks: a `hero` left out or
   `null` is `turnContext._logCtx.charId`, so a line written while Aldric's order resolves is filed under Aldric even
   when it is about the province's owner, and reaches Aldric's realm. For no hero, say `hero: 'none'` (the lines that
   were pushed straight into `turnLog` do: a capture's, `notifyProvinceOwner`'s, `logSplit`'s public half). The same for
   `phase`: left out or `null` is the phase of that order, else the phase resolving, else 99 once the phases are over;
   `phase: 'none'` is no phase. P1-12c decides what a missing hero means for good.
-- Nothing stored changes until P1-12c: `emit` writes today's line forms, key for key and in the same order (`log()`'s
-  17 keys; `form: 'bare'`, the 14 of the lines once pushed directly; `notFor` last when `except` is given). The balance
+- Nothing stored changes until P1-12c: `emit` writes today's line forms, key for key and in the same order (the old
+  `log()`'s 17 keys; `form: 'bare'`, the 14 of the lines once pushed directly; `notFor` last when `except` is given). The balance
   matrix hashes the stored log (`writes`), and every realm's report is compared line for line (`npm run balance`).
-  `tests/unit/emit-writes-the-lines-log-wrote.test.ts` checks the rest against copies of the old code.
+  `tests/unit/emit-writes-the-lines-log-wrote.test.ts` checks the forms (its oracle against copies of the old code ran
+  from P1-12a2 to P1-12a4, until every caller was converted).
 
 ## Nothing is on `window` but `globals.ts`
 

@@ -65,6 +65,7 @@ import { botAtWar, botCoastalFleetType, botNavalEnemyCoast } from './economy.ts'
 import { botDuelRating, botPathAny, botPathLenAny } from './spellcraft.ts';
 import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
 import { DISC_BY_ID } from '../discoveries.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ══ INFILTRATOR — conjure a host behind the enemy line ════
 // A caster with Necromancy or Elemental magic takes provinces by himself, with no army at all. He
@@ -1501,7 +1502,7 @@ export function botOrphanHostOrders(G, pi, c, pre) {
 // stops being waited on
 // (realmExemptFromOrders) and it no longer counts toward the last-realm-standing victory test.
 // MUST run before the bot movement/economy/action passes so a conceding realm never writes orders.
-export function runBotConcessions(G, botIdxSet, logFn) {
+export function runBotConcessions(G, botIdxSet, turnContext) {
   if (!botIdxSet || !botIdxSet.size || !G || !G.world) return;
   if (!(G.world.provinces || []).length) return; // world not built — never concede on a blank state
   if ((G.turn || 0) < 1) return;
@@ -1514,12 +1515,13 @@ export function runBotConcessions(G, botIdxSet, logFn) {
     if ((G.world.provinces || []).some((pv) => pv && pv.owner === pi)) return;
     p.conceded = true;
     p.concededTurn = G.turn;
-    if (typeof logFn === 'function')
-      logFn(
-        'system',
-        `\u{1F3F3} ${p.name} holds no province in all the world — the realm CONCEDES the game. Its heroes lay down their ambitions and will only defend what they have from here on.`,
-        { actor: null, targets: [], system: true, public: true },
-      );
+    if (turnContext)
+      emit(turnContext, {
+        type: 'system',
+        text: `\u{1F3F3} ${p.name} holds no province in all the world — the realm CONCEDES the game. Its heroes lay down their ambitions and will only defend what they have from here on.`,
+        audience: { actor: null, realms: [], seen: 'world' },
+        system: true,
+      });
   });
 }
 

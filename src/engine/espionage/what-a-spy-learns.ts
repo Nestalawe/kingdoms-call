@@ -9,6 +9,7 @@ import { TM } from '../titles/perks.ts';
 import { DISC_BY_ID, discBlockedIds, discEligible } from '../discoveries.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── WHAT A SPY LEARNS (plan P1-08c: lifted out of resolveTurn) ────
 // Everything a successful spy learns about a province, for the Spy order and the Neutral Broker's paid intelligence
@@ -21,7 +22,7 @@ import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-an
 // Everything a SUCCESSFUL spy learns about a province — shared by the Spy action and the Neutral
 // Broker's paid remote intelligence (identical effect by design).
 export function applySpySuccess(turnContext, c, sprov) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   trySkillGain(turnContext, c, 'spy', SKILLGAIN_STD); // Spy: successful espionage
   const actingP = G.players[c.player];
   if (actingP) {
@@ -32,11 +33,13 @@ export function applySpySuccess(turnContext, c, sprov) {
     // hero's skills. Those take a Spy on the hero.
   }
   const defs = (sprov.neutralDefenders || []).map((d) => `${d.quality} ${d.type}`).join(', ') || 'none';
-  log(
-    'explore',
-    `${c.name} spies on ${sprov.name}: controlled by ${sprov.owner !== null ? G.players[sprov.owner].name : 'no-one'}, tax ${sprov.tax}g, defenders: ${defs}.`,
-    { actor: c.player, targets: [c.player], spy: true, provinceId: sprov.id },
-  );
+  emit(turnContext, {
+    type: 'explore',
+    text: `${c.name} spies on ${sprov.name}: controlled by ${sprov.owner !== null ? G.players[sprov.owner].name : 'no-one'}, tax ${sprov.tax}g, defenders: ${defs}.`,
+    audience: { actor: c.player, realms: [c.player] },
+    spy: true,
+    province: sprov.id,
+  });
   // ── spying a KING's HOME (founding capital) reveals realm-wide secrets — total tax income, how
   // many heroes the crown commands, and a Spy-scaled chance to lift ONE Sage discovery
   // (the target keeps theirs; the spy gains it as if researched). Fires for the regular Spy order
@@ -53,11 +56,12 @@ export function applySpySuccess(turnContext, c, sprov) {
       const _kp = G.players[_homeKing];
       const _kIncome = botTaxIncome(G, _homeKing);
       const _kHeroes = (G.characters || []).filter((x) => x && x.alive && x.player === _homeKing && !x.isKing).length;
-      log(
-        'spy',
-        `[Intelligence] Home-capital intelligence on ${_kp.name}: the crown draws ~${_kIncome}g in tax income each turn and commands ${_kHeroes} hero${_kHeroes === 1 ? '' : 'es'} beyond the king.`,
-        { actor: c.player, targets: [c.player], provinceId: sprov.id },
-      );
+      emit(turnContext, {
+        type: 'spy',
+        text: `[Intelligence] Home-capital intelligence on ${_kp.name}: the crown draws ~${_kIncome}g in tax income each turn and commands ${_kHeroes} hero${_kHeroes === 1 ? '' : 'es'} beyond the king.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: sprov.id,
+      });
       const _spyLvl = effStat(turnContext, c, 'spy');
       const _stealPct = Math.max(5, Math.min(95, 10 + _spyLvl * 10));
       const _mine = new Set((G.players[c.player]?.discoveries || []).map((d) => d.id));
@@ -67,11 +71,12 @@ export function applySpySuccess(turnContext, c, sprov) {
       ); // a spy cannot carry off a race/alignment secret the realm cannot use
       if (_stealable.length > 0) {
         const _sr = d100();
-        log(
-          'spy',
-          `[Intelligence] 📊 Discovery theft — ${c.name} (Spy ${_spyLvl}) rifling ${_kp.name}'s archives: ${fmtRoll(_stealPct, _sr)}`,
-          { actor: c.player, targets: [c.player], provinceId: sprov.id },
-        );
+        emit(turnContext, {
+          type: 'spy',
+          text: `[Intelligence] 📊 Discovery theft — ${c.name} (Spy ${_spyLvl}) rifling ${_kp.name}'s archives: ${fmtRoll(_stealPct, _sr)}`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: sprov.id,
+        });
         if (_sr <= _stealPct) {
           const _disc = _stealable[Math.floor(kcRng() * _stealable.length)];
           if (!G.players[c.player].discoveries) G.players[c.player].discoveries = [];
@@ -85,11 +90,12 @@ export function applySpySuccess(turnContext, c, sprov) {
           try {
             TM(c).discoveries += 1;
           } catch (_e) {}
-          log(
-            'spy',
-            `[Intelligence] 🗝 ${c.name} copies the secret of "${_disc.name}" from ${_kp.name}'s archives — your scholars now hold it as their own.`,
-            { actor: c.player, targets: [c.player], provinceId: sprov.id },
-          );
+          emit(turnContext, {
+            type: 'spy',
+            text: `[Intelligence] 🗝 ${c.name} copies the secret of "${_disc.name}" from ${_kp.name}'s archives — your scholars now hold it as their own.`,
+            audience: { actor: c.player, realms: [c.player] },
+            province: sprov.id,
+          });
         }
       }
     }
@@ -111,16 +117,17 @@ export function applySpySuccess(turnContext, c, sprov) {
       });
     }
     // this alert belongs ONLY to the pried-upon owner. Passing charId:null is not enough —
-    // log()'s `meta.charId ?? _logCtx.charId` would fall back to the PRYING character, and the
+    // emit's `hero ?? _logCtx.charId` would fall back to the PRYING character, and the
     // report filter (ownCharIds.has(e.charId)) would then surface it in the spy's OWN report.
     // Detach the character context for this one line so its charId truly resolves to null.
     const _savedCtxChar = turnContext._logCtx.charId;
     turnContext._logCtx.charId = null;
-    log(
-      'spy',
-      `[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,
-      { actor: null, targets: [sprov.owner], provinceId: sprov.id },
-    );
+    emit(turnContext, {
+      type: 'spy',
+      text: `[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,
+      audience: { actor: null, realms: [sprov.owner] },
+      province: sprov.id,
+    });
     turnContext._logCtx.charId = _savedCtxChar;
   }
   c.merits = (c.merits || 0) + 1;

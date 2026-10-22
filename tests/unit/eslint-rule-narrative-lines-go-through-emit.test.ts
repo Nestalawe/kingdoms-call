@@ -1,10 +1,9 @@
 // kc/narrative-lines-go-through-emit (tools/eslint-rules/; plan P1-12, Decision 6): every line of the turn enters the
 // GM's log through emit. Refused: a write to turnLog (a mutating call on it, an assignment to it or inside it, delete,
-// ++), everywhere it runs; and, where its option onlyWritesToTheGmLog isn't set, a log() call (but console's and
-// Math's), a push, unshift or splice on a fight's narrative, and an object literal with an onlyPlayer key. Allowed:
-// emit, narrate, narrateTo, narrateAll, narrateAt, takeBackLinesFrom, reading the log and narratives, console.log,
-// Math.log. Each refusal is red on its planted line. Where the rule runs (the engine and the views but the events file;
-// in full in the folders P1-12a's rows have converted) is eslint.config.js's; tests/static/harness.test.ts checks it
+// ++), a log() call (but console's and Math's), a push, unshift or splice on a fight's narrative, and an object literal
+// with an onlyPlayer key. Allowed: emit, narrate, narrateTo, narrateAll, narrateAt, takeBackLinesFrom, reading the log
+// and narratives, console.log, Math.log. Each refusal is red on its planted line. Where the rule runs (all of the engine
+// and the views but the events file, since P1-12a4) is eslint.config.js's; tests/static/harness.test.ts checks it
 // refuses a planted line there and nowhere else.
 // Level 1 (unit): ESLint's RuleTester runs the rule's code on snippets, which a static test, running nothing, can't.
 import { RuleTester } from 'eslint';
@@ -20,7 +19,6 @@ const turnLog = [{ messageId: 'turnLog' }];
 const log = [{ messageId: 'log' }];
 const narrative = [{ messageId: 'narrative' }];
 const onlyPlayer = [{ messageId: 'onlyPlayer' }];
-const gmLogOnly = [{ onlyWritesToTheGmLog: true }];
 
 tester.run('kc/narrative-lines-go-through-emit', rule, {
   valid: [
@@ -52,22 +50,16 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
     // Math's log, a logarithm
     'const r = Math.log(Math.max(a, 1e-9) / Math.max(b, 1e-9));',
     'const small = Math.abs(S) < globalThis.Math.log(1.15);',
-    // where only writes to the GM's log are refused (the folders not yet converted)
-    { code: "log('system', text, { actor: pi });", options: gmLogOnly },
-    { code: "turnContext.log('system', text);", options: gmLogOnly },
-    { code: 'narrative.push(line);', options: gmLogOnly },
-    { code: 'const l = { text, onlyPlayer: c.player, charId: c.id };', options: gmLogOnly },
     {
       code: 'emit(turnContext, { type: "move", text: t as string, audience: {} });',
       languageOptions: { parser: tseslint.parser },
     },
   ],
   invalid: [
-    // a write to the GM's log, wherever the rule runs
+    // a write to the GM's log
     { code: 'turnLog.push(line);', errors: turnLog },
     { code: 'turnContext.turnLog.push(line);', errors: turnLog },
-    { code: 'turnLog.push(line);', options: gmLogOnly, errors: turnLog },
-    { code: 'const held = turnLog.pop();', options: gmLogOnly, errors: turnLog },
+    { code: 'const held = turnLog.pop();', errors: turnLog },
     { code: 'turnLog.splice(at + 1, 0, ...ents);', errors: turnLog },
     { code: 'turnLog.unshift(line);', errors: turnLog },
     { code: 'turnLog.shift();', errors: turnLog },
