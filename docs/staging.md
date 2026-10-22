@@ -33,7 +33,8 @@ pages before and after the change). If Toby finds a problem on staging, that's a
    Every page's footer on staging then says **"Staging · PR #N · abc1234"**: check it names this pull request.
    The GM portal, the player portal, the Hall of Fame and the Overlord page also show their build line, e.g.
    "build 3f2a9c1 · 22 Oct 2026, 10:15". On staging it names the commit actually built, GitHub's merge of the pull
-   request into its base, so its seven letters and digits differ from the staging line's.
+   request into its base, so its seven letters and digits differ from the staging line's. The "On staging" comment
+   names both: the pull request's commit (the staging line) and the commit built (the build line).
 3. Open the staging site, sign in with a test account (below), and follow the pull request's **"What to try
    on staging"** checklist.
 4. Works → talk it through if needed, then merge. Doesn't → say what went wrong on the pull request; new

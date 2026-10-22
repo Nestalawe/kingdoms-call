@@ -169,9 +169,12 @@ jobs:
           echo "previous=$prev" >> "$GITHUB_OUTPUT"
           rm -f ~/.ssh/staging_key
 
+      # The comment names the pull request's last commit (the staging line in each footer) and the commit the build job
+      # built, GitHub's test merge of it into its base (github.sha: the build line in each footer).
       - name: Comment on the pull requests
         run: node .github/scripts/staging.js comment "${{ steps.publish.outputs.previous }}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_SHA: ${{ github.event.pull_request.head.sha }}
+          BUILT_SHA: ${{ github.sha }}

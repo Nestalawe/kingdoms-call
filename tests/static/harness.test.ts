@@ -1199,6 +1199,49 @@ describe('CI', () => {
     expect(stagingProblems(stagingText)).toEqual([]);
   });
 
+  // Staging runs on pull_request, so its build job checks out GitHub's test merge of the pull request into its base
+  // (github.sha), not the pull request's last commit: the footers' build line names the merge. The "On staging"
+  // comment names both (#187's said only the head, while the build line said the merge).
+  function stagingCommentProblems(text: string): string[] {
+    const workflow = readWorkflow(text);
+    const problems: string[] = [];
+    if (/^ {10}ref:/m.test(workflow.jobs.get('build') ?? '')) problems.push('build: checks out another commit');
+    const comment = stepsOf(workflow.jobs.get('staging') ?? '').find((s) => s.includes('staging.js comment')) ?? '';
+    if (!comment) return [...problems, 'staging: no "On staging" comment'];
+    if (!/^ {10}BUILT_SHA: \$\{\{ github\.sha \}\}$/m.test(comment))
+      problems.push('staging: the comment is not told the commit the build job built');
+    if (!/^ {10}PR_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}$/m.test(comment))
+      problems.push("staging: the comment is not told the pull request's last commit");
+    return problems;
+  }
+  test('the "On staging" comment is told the commit staging built and the pull request\'s last commit', () => {
+    expect(stagingCommentProblems(stagingText)).toEqual([]);
+    const comment = /^( {6}- name: Comment on the pull requests\n(?: {8}.*\n)+)/m;
+    const withoutBuilt = inJob(stagingText, 'staging', /^ {10}BUILT_SHA: .*\n/m, '');
+    expect(stagingCommentProblems(withoutBuilt)).toEqual([
+      'staging: the comment is not told the commit the build job built',
+    ]);
+    const headAsBuilt = inJob(
+      stagingText,
+      'staging',
+      /^( {10}BUILT_SHA: ).*$/m,
+      '$1${{ github.event.pull_request.head.sha }}',
+    );
+    expect(stagingCommentProblems(headAsBuilt)).toEqual([
+      'staging: the comment is not told the commit the build job built',
+    ]);
+    expect(stagingCommentProblems(inJob(stagingText, 'staging', comment, ''))).toEqual([
+      'staging: no "On staging" comment',
+    ]);
+    const buildsHead = inJob(
+      stagingText,
+      'build',
+      /^( {10}persist-credentials: false\n)/m,
+      '$1          ref: ${{ github.event.pull_request.head.sha }}\n',
+    );
+    expect(stagingCommentProblems(buildsHead)).toEqual(['build: checks out another commit']);
+  });
+
   test('no job that can publish, runs in an environment or reads a secret runs npm, npx or the build, in any workflow', () => {
     const checked: string[] = [];
     for (const { f, text } of workflows) {

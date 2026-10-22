@@ -1,8 +1,9 @@
 // The staging deploy's logic (P0-13), run by .github/workflows/staging.yml.
 //   node .github/scripts/staging.js config            writes the staging kc-config.js to stdout, saying which
 //                                                     pull request and commit it is (PR_NUMBER, PR_SHA)
-//   node .github/scripts/staging.js comment <prev>    posts "on staging" on this PR, and marks the PR that
-//                                                     was on staging before (<prev>, may be empty) as replaced
+//   node .github/scripts/staging.js comment <prev>    posts "on staging" on this PR (naming its last commit,
+//                                                     PR_SHA, and the commit built, BUILT_SHA), and marks the PR
+//                                                     that was on staging before (<prev>, may be empty) as replaced
 // configFile(), onStagingBody() and replacedBody() are pure, and signUpTestAccounts() takes its fetch as an
 // argument; all are unit-tested in tests/staging.test.js. migrations.js (`reset staging`) signs the test
 // accounts up after rebuilding the staging database.
@@ -35,9 +36,15 @@ const KC_CONFIG=Object.freeze({
 `;
 }
 
-function onStagingBody({pr,sha,site=SITE}){
-  return `${MARKER}\n🧪 **On staging:** this pull request (commit \`${String(sha).slice(0,7)}\`) is live on ${site}, `
-    +`talking to the staging database (no real players), rebuilt for it: \`main\`'s migrations, then this pull `
+// sha: the pull request's last commit, which each page's staging line names ("Staging · PR #21 · abcdef1"). built:
+// the commit the build job built, GitHub's test merge of the pull request into its base (staging.yml runs on
+// pull_request), which the build line of the GM portal, the player portal, the Hall of Fame and the Overlord page names.
+function onStagingBody({pr,sha,built,site=SITE}){
+  const short=c=>`\`${String(c).slice(0,7)}\``;
+  return `${MARKER}\n🧪 **On staging:** this pull request (commit ${short(sha)}) is live on ${site}, `
+    +`built as GitHub's merge of it into its base branch, commit ${short(built)}: each page's staging line names `
+    +`${short(sha)}, and the build line names ${short(built)}. It talks `
+    +`to the staging database (no real players), rebuilt for it: \`main\`'s migrations, then this pull `
     +`request's own, with made-up games and the test accounts. Only one pull request is on staging at a time; `
     +`this comment changes if another one replaces it (and staging's games and accounts start afresh).`;
 }
@@ -144,9 +151,10 @@ async function main(){
     return;
   }
   if(cmd==='comment'){
-    const {GITHUB_TOKEN:token,GITHUB_REPOSITORY:repo,PR_NUMBER:pr,PR_SHA:sha}=process.env;
+    const {GITHUB_TOKEN:token,GITHUB_REPOSITORY:repo,PR_NUMBER:pr,PR_SHA:sha,BUILT_SHA:built}=process.env;
+    for(const [name,c] of [['PR_SHA',sha],['BUILT_SHA',built]]) if(!/^[0-9a-f]{40}$/.test(String(c||''))) throw new Error(`comment needs ${name}, a full commit id`);
     const root=`${process.env.GITHUB_API_URL||'https://api.github.com'}/repos/${repo}`;
-    await upsert(root,token,pr,onStagingBody({pr,sha}));
+    await upsert(root,token,pr,onStagingBody({pr,sha,built}));
     if(prev&&String(prev)!==String(pr)) await upsert(root,token,prev,replacedBody({by:pr}));
     return;
   }
