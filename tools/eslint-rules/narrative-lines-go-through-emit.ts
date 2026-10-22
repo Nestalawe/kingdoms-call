@@ -5,11 +5,12 @@
 // - a write to turnLog: a call of push, pop, shift, unshift, splice, sort, reverse, fill or copyWithin on it, an
 //   assignment to it or to anything inside it, `delete` or `++` there (turnLog, or X.turnLog);
 // and, unless the option `onlyWritesToTheGmLog` is set (the folders P1-12a's rows haven't converted yet):
-// - a call of log(…) or X.log(…), but console's: emit(turnContext, event) files a line;
+// - a call of log(…) or X.log(…), but console's and Math's: emit(turnContext, event) files a line;
 // - push, unshift or splice on a fight's narrative (narrative, narr or X.narrative): narrate(narrative, text), or
-//   narrateTo(narrative, realm, heroId, text) for one realm alone;
+//   narrateTo(narrative, realm, heroId, text) for one realm alone (and, for lines already written, narrateAll,
+//   narrateAt and takeBackLinesFrom);
 // - an object literal with an onlyPlayer key: narrateTo makes it.
-// Reading a narrative, emit, narrate and narrateTo are allowed.
+// Reading a narrative, emit and the events file's narrative helpers are allowed.
 import type { Rule } from 'eslint';
 
 // The syntax tree's types, as ESLint's own types give them (ESTree's).
@@ -41,9 +42,12 @@ function isNarrative(node: Expression): boolean {
   return memberName(node) === 'narrative';
 }
 
-/** Whether a node is console or X.console. */
-const isConsole = (node: Expression): boolean =>
-  (node.type === 'Identifier' && node.name === 'console') || memberName(node) === 'console';
+/** Whether a node is console or X.console (whose log echoes a line, writing none), or Math or X.Math (whose log is a
+ *  logarithm). */
+const isConsoleOrMath = (node: Expression): boolean =>
+  (node.type === 'Identifier' && (node.name === 'console' || node.name === 'Math')) ||
+  memberName(node) === 'console' ||
+  memberName(node) === 'Math';
 
 const rule: Rule.RuleModule = {
   meta: {
@@ -90,7 +94,7 @@ const rule: Rule.RuleModule = {
           if (onlyWritesToTheGmLog) return;
           if (NARRATIVE_WRITES.has(name) && isNarrative(callee.object))
             context.report({ node, messageId: 'narrative' });
-          else if (name === 'log' && !isConsole(callee.object)) context.report({ node, messageId: 'log' });
+          else if (name === 'log' && !isConsoleOrMath(callee.object)) context.report({ node, messageId: 'log' });
           return;
         }
         if (!onlyWritesToTheGmLog && callee.type === 'Identifier' && callee.name === 'log')

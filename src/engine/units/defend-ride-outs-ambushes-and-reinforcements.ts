@@ -629,11 +629,11 @@ export function runDefendAmbush(turnContext, ph) {
       G,
     );
     enc.narrative.forEach((line) =>
-      emitNarrLine(turnContext, 'combat', line, {
-        actor: c.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        charIds: _duelChars,
+      emitNarrLine(turnContext, line, {
+        type: 'combat',
+        audience: { actor: c.player, realms: targetsPi },
+        province: prov.id,
+        heroes: _duelChars,
       }),
     );
     c.hp = Math.max(1, enc.atkHp);

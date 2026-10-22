@@ -5,6 +5,7 @@ import { discSum } from '../discoveries.ts';
 import type { Army, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import { narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── EVIL TERROR (plan P1-08c: lifted out of resolveTurn) ────
 // Terror after an Evil victory: whether it grips a province for its realm (reignOfFearHere), its spread to the battle
@@ -40,7 +41,8 @@ export function spreadTerror(
     const adjNames = getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)
       .map((n) => n && n.name)
       .filter(Boolean);
-    narrative.push(
+    narrate(
+      narrative,
       `💀 Terror radiates from ${battleProv.name}${adjNames.length ? ` into the surrounding lands (${adjNames.join(', ')})` : ''} — any army that next defends there fights demoralised (−${dispFloor((TERROR_PCT_PER_STACK + discSum(turnContext, byPlayer, 'terror', 'pct')) * 100)}% per terror, stacking).`,
     );
   }
@@ -73,7 +75,8 @@ export function consumeTerror(
     d._terrorMult = Math.max(0, 1 - frac);
   }); // 2026-09-24: a modifier (armStr), not pre-battle damage
   if (narrative)
-    narrative.push(
+    narrate(
+      narrative,
       `💀 Terror lingers in ${prov.name} — defenders fight at −${dispFloor(frac * 100)}% strength (${stacks} terror stack${stacks !== 1 ? 's' : ''} from earlier Evil victories nearby).`,
     );
   delete prov._terrorStacks;

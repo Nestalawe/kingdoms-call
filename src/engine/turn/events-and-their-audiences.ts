@@ -21,9 +21,10 @@
 //   phase  left out or null: the phase of that order, else the phase resolving, else 99 once the phases are over;
 //          'none': no phase (the lines that were pushed straight into turnLog, which never had the 99)
 //
-// It also holds the helpers that write lines: a fight's narrative (narrate, narrateTo, emitNarrLine), a line to the hero
-// or the province owner it happened to (notifyTarget, notifyProvinceOwner), a private line with a public twin
-// (logSplit), and the placement of the skill rises held back to the end of the phase (writeDeferredSkillLines).
+// It also holds the helpers that write lines: a fight's narrative (narrate, narrateTo, narrateAll, narrateAt,
+// takeBackLinesFrom; emitNarrLine writes it out with the fight's event, FightLine), a line to the hero or the province
+// owner it happened to (notifyTarget, notifyProvinceOwner), a private line with a public twin (logSplit), and the
+// placement of the skill rises held back to the end of the phase (writeDeferredSkillLines).
 import type { LogMeta, TurnContext } from './context.ts';
 
 /** Who may read a line (each left out grants nothing). */
@@ -96,6 +97,10 @@ export interface LogLine {
 export type NarrativeLine =
   string | { text: string; onlyPlayer?: number | null | undefined; charId?: number | null | undefined };
 
+/** What every line of a fight is, but its text: its type, its audience (those who fought in it), its province, phase,
+ *  heroes and battle. emitNarrLine files each line of the fight's narrative with it. */
+export type FightLine = Omit<TurnEvent, 'text'>;
+
 /** Files an event in the GM's log of the turn: the one way a line enters it. */
 export function emit(turnContext: TurnContext, event: TurnEvent): void {
   const { audience } = event;
@@ -165,7 +170,8 @@ export function eventOfALogCall(type: string, text: string, meta: LogMeta): Turn
 // A battle's or a duel's narrative is an ordered list of lines (it is spliced, searched and counted by index), written
 // out in order once the fight is over (emitBattle, emitNarrLine). narrate adds a line for everyone in the fight;
 // narrateTo a line for one realm alone (a hero's skill rising, his hit points: what the man across the field must not
-// learn), filed under that realm's hero.
+// learn), filed under that realm's hero. Lines already written move only through narrateAll, narrateAt and
+// takeBackLinesFrom, each line as it is, so a line for one realm stays that realm's.
 
 /** Adds a line for everyone in the fight. */
 export function narrate(narrative: NarrativeLine[], text: string): void {
@@ -182,6 +188,23 @@ export function narrateTo(
   narrative.push({ text, onlyPlayer: realm, charId: heroId });
 }
 
+/** Adds lines already written for a fight, each as it is (for everyone, or for one realm alone): a duel's narrative
+ *  inside a battle's, a battle's grid and ladder rows. */
+export function narrateAll(narrative: NarrativeLine[], lines: readonly NarrativeLine[]): void {
+  narrative.push(...lines);
+}
+
+/** Adds lines for everyone in the fight before the line at `index` (a host's forming-up before "Battle for …", a plea
+ *  before the blow it begged against). */
+export function narrateAt(narrative: NarrativeLine[], index: number, texts: readonly string[]): void {
+  narrative.splice(index, 0, ...texts);
+}
+
+/** Takes the lines from `index` on out of a fight's narrative (a killing blow that never landed), and returns them. */
+export function takeBackLinesFrom(narrative: NarrativeLine[], index: number): NarrativeLine[] {
+  return narrative.splice(index);
+}
+
 // ── PRIVATE LINES INSIDE A SHARED NARRATIVE ────
 // A battle or duel narrative is written once and then shown to EVERY participant — that is the
 // whole point of a blow-by-blow. But a handful of lines in it belong to one realm alone: a hero's
@@ -189,41 +212,30 @@ export function narrateTo(
 // follows. An enemy commander has no way of knowing that the man across the field just got better
 // at archery, and reading it told them his exact skill level for free.
 //
-// So a narrative array may now hold OBJECTS as well as strings:
+// So a narrative array may now hold OBJECTS as well as strings (narrateTo makes them):
 // { text:'…', onlyPlayer:<realm index>, charId:<that realm's character> }
-// Every consumer of a narrative array routes each entry through emitNarrLine(), which logs a
-// private entry to that realm alone (targets:[owner], public:false, no charIds spill) and an
-// ordinary shared entry for everything else. Because it is logged in sequence with the rest of
-// the narrative, the owner still reads it exactly where it happened in the fight. narrText() is
-// for the rare consumer that needs the raw string (splice-point searches, etc.).
-export function emitNarrLine(
-  turnContext: TurnContext,
-  type: string,
-  line: NarrativeLine,
-  meta: LogMeta | null | undefined,
-): void {
-  const m = meta ?? {};
+// Every consumer of a narrative array routes each entry through emitNarrLine(), which files a
+// private entry to that realm alone (told to it alone, seen by nobody else, no heroes spill) and
+// every other line with the fight's own event (FightLine: its audience, province, phase, heroes,
+// battle). Because it is filed in sequence with the rest of the narrative, the owner still reads
+// it exactly where it happened in the fight. narrText() is for the rare consumer that needs the
+// raw string (splice-point searches, etc.).
+export function emitNarrLine(turnContext: TurnContext, line: NarrativeLine, fight: FightLine): void {
   if (typeof line === 'object') {
     if (line.onlyPlayer == null) {
-      emit(turnContext, eventOfALogCall(type, line.text, m));
+      emit(turnContext, { ...fight, text: line.text });
       return;
     }
-    emit(
-      turnContext,
-      eventOfALogCall(type, line.text, {
-        ...m,
-        actor: null,
-        public: false,
-        summary: false,
-        battleDetail: false,
-        targets: [line.onlyPlayer],
-        charIds: null,
-        charId: line.charId ?? m.charId,
-      }),
-    );
+    emit(turnContext, {
+      ...fight,
+      text: line.text,
+      audience: { realms: [line.onlyPlayer], actor: null },
+      heroes: null,
+      hero: line.charId ?? fight.hero,
+    });
     return;
   }
-  emit(turnContext, eventOfALogCall(type, line, m));
+  emit(turnContext, { ...fight, text: line });
 }
 
 // ── TARGET NOTIFICATIONS ────

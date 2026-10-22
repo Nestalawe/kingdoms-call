@@ -4,8 +4,10 @@
 //   meta and any state of the turn's context (the hero and phase of the order resolving, the phase resolving, the
 //   phases over or not), log() (now eventOfALogCall and emit) writes the line the old log() wrote, key for key and in
 //   the same order; so do logSplit (its public twin in the bare form, with notFor), notifyProvinceOwner (the bare form,
-//   no hero, no End of Turn's 99) and writeDeferredSkillLines (each held line placed after its battle). Kept until
-//   P1-12a4 deletes log(), then its oracle half goes with the copies.
+//   no hero, no End of Turn's 99) and writeDeferredSkillLines (each held line placed after its battle); and (P1-12a3)
+//   emitNarrLine, handed the fight's event where it was handed a log() meta, and emitBattle (each line of a battle
+//   numbered, with its tier, the losses tally where the casualties begin, the summary last). Kept until P1-12a4
+//   deletes log(), then its oracle half goes with the copies.
 // - emit's own forms: a 'bare' line has no battle fields; `except` adds notFor last; hero 'none' and phase 'none' are a
 //   real null where log()'s fallbacks would have filled one in; narrate and narrateTo add a line for everyone in the
 //   fight, or one for one realm alone that emitNarrLine files to that realm under its hero.
@@ -15,22 +17,29 @@
 // matrix and every realm's report reach only the inputs their games make; the oracle reaches any.
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { emitBattle } from '../../src/engine/battle/battle-report-lines-and-force-markers.ts';
+import type { Province } from '../../src/schemas/saved-game-state.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import {
   emit,
   emitNarrLine,
+  eventOfALogCall,
   logSplit,
   narrate,
   narrateTo,
   notifyProvinceOwner,
   writeDeferredSkillLines,
+  type FightLine,
   type NarrativeLine,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import {
+  oldEmitBattle,
+  oldEmitNarrLine,
   oldLog,
   oldLogSplit,
   oldNotifyProvinceOwner,
   oldWriteDeferredSkillLines,
+  type OldBattle,
   type OldContext,
 } from '../lib/how-lines-were-written-before-emit.ts';
 
@@ -57,6 +66,7 @@ function newContext(state: ContextState, lines: Record<string, unknown>[] = []):
   tc._logCtx = { charId: state.charId, phase: state.phase };
   tc._currentPhase = state.currentPhase;
   tc._afterPhases = state.afterPhases;
+  tc._battleSeq = 0;
   tc.turnLog.push(...(structuredClone(lines) as unknown as TurnContext['turnLog']));
   return tc;
 }
@@ -65,6 +75,7 @@ function newContext(state: ContextState, lines: Record<string, unknown>[] = []):
 function oldContext(state: ContextState, lines: Record<string, unknown>[] = []): OldContext {
   return {
     turnLog: structuredClone(lines),
+    _battleSeq: 0,
     _logCtx: { charId: state.charId, phase: state.phase },
     _currentPhase: state.currentPhase,
     _afterPhases: state.afterPhases,
@@ -198,6 +209,113 @@ describe('the oracle: emit writes the lines the old code wrote, for any input', 
   });
 });
 
+describe("the oracle: a fight's narrative is written out as before, for any input", () => {
+  /** A line of a fight's narrative: for everyone, or (an object) for one realm alone, under its hero or not. */
+  const narrativeLine = (text: fc.Arbitrary<string>): fc.Arbitrary<NarrativeLine> =>
+    fc.oneof(
+      text,
+      fc.record({ text }),
+      fc.record(
+        {
+          text,
+          onlyPlayer: fc.oneof(fc.integer({ min: 0, max: 5 }), fc.constant(null)),
+          charId: orNothing(fc.integer({ min: 0, max: 30 })),
+        },
+        { requiredKeys: ['text', 'onlyPlayer'] },
+      ),
+    );
+
+  test("emitNarrLine(line, fight): handed the fight's event where it was handed a log() meta", () => {
+    fc.assert(
+      fc.property(
+        contextState,
+        lineType,
+        narrativeLine(fc.string()),
+        fc.option(meta, { nil: undefined }),
+        (state, type, line, m) => {
+          const now = newContext(state);
+          const before = oldContext(state);
+          const fight: FightLine = eventOfALogCall(type, '', (m ?? {}) as Parameters<typeof eventOfALogCall>[2]);
+          emitNarrLine(now, line, fight);
+          oldEmitNarrLine(before, type, line, m);
+          expect(withKeys(now.turnLog)).toStrictEqual(withKeys(before.turnLog));
+        },
+      ),
+      { numRuns: 2000 },
+    );
+  });
+
+  test('emitBattle: every line numbered, with its tier and its audience; the losses tally; the summary', () => {
+    // Lines from a battle's own vocabulary, so the tiers, the casualty sections and the tally all turn up.
+    const battleText = fc.constantFrom(
+      '⚔ — Battle for Wendmeadow —',
+      '⚑FORCE⚑{"role":"attacker","armies":[{"type":"Swordsmen","unitName":"the Red Hand"}]}',
+      '⚑FORCE⚑{"role":"defender","armies":[{"type":"Archers"}]}',
+      "⚔ **Aldric's forces** (attacker):",
+      "🛡 **Mora's forces** (defender):",
+      "— Aldric's the Red Hand (Swordsmen) are cut down.",
+      "— Mora's Archers lost heart in defeat, reduced to Green.",
+      '— None left to fight: every defending unit was lost before the lines closed.',
+      '  Fortune of battle favours the bold.',
+      '  a volley falls short',
+      '📊 **Battle stats:**',
+      "📊 Mora's forces are completely destroyed — they retreat alone.",
+      '🏹 Archers loose first.',
+      'The hosts close.',
+      '',
+    );
+    const realmOrNothing = fc.oneof(fc.integer({ min: 0, max: 5 }), fc.constant(null), fc.constant(undefined));
+    const battle: fc.Arbitrary<OldBattle> = fc.record({
+      battle: fc.oneof(
+        fc.record(
+          {
+            narrative: fc.array(narrativeLine(battleText), { maxLength: 12 }),
+            summaryText: fc.option(battleText, { nil: undefined }),
+          },
+          { requiredKeys: [] },
+        ),
+        fc.constant(null),
+        fc.constant(undefined),
+      ),
+      prov: fc.oneof(fc.record({ id: fc.integer({ min: 0, max: 40 }) }), fc.constant(null), fc.constant(undefined)),
+      ph: fc.oneof(fc.integer({ min: 0, max: 4 }), fc.constant(null), fc.constant(undefined)),
+      participants: fc.oneof(fc.array(realmOrNothing, { maxLength: 3 }), fc.constant(null), fc.constant(undefined)),
+      opts: fc.oneof(
+        fc.record(
+          {
+            actor: realmOrNothing,
+            charId: orNothing(fc.integer({ min: 0, max: 30 })),
+            charIds: orNothing(fc.array(fc.integer({ min: 0, max: 30 }), { maxLength: 3 })),
+            summaryText: fc.option(battleText, { nil: undefined }),
+          },
+          { requiredKeys: [] },
+        ),
+        fc.constant(null),
+        fc.constant(undefined),
+      ),
+    });
+    fc.assert(
+      fc.property(contextState, fc.array(battle, { minLength: 1, maxLength: 2 }), (state, battles) => {
+        const now = newContext(state);
+        const before = oldContext(state);
+        for (const b of structuredClone(battles))
+          emitBattle(
+            now,
+            b.battle as Parameters<typeof emitBattle>[1],
+            b.prov as Province | null | undefined,
+            b.ph,
+            b.participants,
+            b.opts,
+          );
+        for (const b of structuredClone(battles)) oldEmitBattle(before, b);
+        expect(withKeys(now.turnLog)).toStrictEqual(withKeys(before.turnLog));
+        expect(now._battleSeq).toBe(before._battleSeq);
+      }),
+      { numRuns: 1000 },
+    );
+  });
+});
+
 describe("emit's forms", () => {
   const state: ContextState = { charId: 7, phase: 2, currentPhase: 2, afterPhases: false };
   const FULL = [
@@ -264,16 +382,14 @@ describe("emit's forms", () => {
     ]);
     const tc = newContext(state);
     const fight = {
-      actor: 0,
-      targets: [0, 1],
-      provinceId: 5,
-      public: true,
-      charIds: [11, 12],
-      battleId: 1,
-      bTier: 'd',
+      type: 'combat',
+      audience: { actor: 0, realms: [0, 1], seen: 'battle' as const },
+      province: 5,
+      heroes: [11, 12],
+      battle: { id: 1, tier: 'd' },
     };
     narrative.forEach((line) => {
-      emitNarrLine(tc, 'combat', line, fight);
+      emitNarrLine(tc, line, fight);
     });
     expect(tc.turnLog[0]).toMatchObject({ targets: [0, 1], actor: 0, public: true, charIds: [11, 12] });
     expect(tc.turnLog[1]).toMatchObject({ targets: [1], actor: null, public: false, charIds: null, charId: 12 });

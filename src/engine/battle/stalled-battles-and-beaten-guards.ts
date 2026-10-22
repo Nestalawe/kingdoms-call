@@ -22,6 +22,7 @@ import { emitBattle } from './battle-report-lines-and-force-markers.ts';
 import { combatVsNPC } from './battles-against-province-defenders.ts';
 import { combatVsChar } from './battles-between-heroes.ts';
 import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── STALLED BATTLES AND A BEATEN GUARD'S SURVIVORS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where a battle was left unresolved (the loser could not retreat) is fought over again at the start of
@@ -88,7 +89,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
 }
 
 export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
-  const { G, log, seaMovePoints, movePoints, SEASONS } = turnContext;
+  const { G, seaMovePoints, movePoints, SEASONS } = turnContext;
   (G.world.provinces || []).forEach((prov) => {
     if (onlyProvId != null && (!prov || prov.id !== onlyProvId)) return; // resolveWarFronts settles one province
     turnContext._combatSkillProv = null; // reset before each province; combatVs* re-sets it to this prov
@@ -149,18 +150,14 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       !guard && prov.owner === null && prov._leaderlessDefenders && (prov.neutralDefenders || []).length > 0;
     if ((guard || _leaderless) && prov.owner === null) {
       const attacker = [...playerForces].sort(_rankForce)[0];
-      log(
-        'combat',
-        `⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} presses the attack on ${guard ? guard.name.replace(' (wandering)', '') : 'the leaderless garrison'}.`,
-        {
-          charId: _ctxCharId,
-          phase: ph,
-          actor: attacker.player,
-          targets: [attacker.player],
-          provinceId: prov.id,
-          public: true,
-        },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} presses the attack on ${guard ? guard.name.replace(' (wandering)', '') : 'the leaderless garrison'}.`,
+        audience: { actor: attacker.player, realms: [attacker.player], seen: 'battle' },
+        hero: _ctxCharId,
+        phase: ph,
+        province: prov.id,
+      });
       // 2026-10-08 (Toby item 6): pressing on against neutral defenders spends a movement point when
       // one is left, exactly as a carry-on battle against another realm does (below); with none
       // left it is fought anyway.
@@ -212,13 +209,13 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           prov,
           _survPool,
           (line) =>
-            log('combat', line, {
-              charId: _ctxCharId,
+            emit(turnContext, {
+              type: 'combat',
+              text: line,
+              audience: { actor: attacker.player, realms: [], seen: 'battle' },
+              hero: _ctxCharId,
               phase: ph,
-              actor: attacker.player,
-              targets: [],
-              provinceId: prov.id,
-              public: true,
+              province: prov.id,
             }),
           attacker.name,
         );
@@ -228,13 +225,16 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           prov.neutralDefenders = [...surv];
           prov.npcArmies = surv.length; // keep intel display in sync with survivors
           if (!liveGuard) prov._leaderlessDefenders = true;
-          log(
-            'combat',
-            liveGuard
+          emit(turnContext, {
+            type: 'combat',
+            text: liveGuard
               ? `💢 ${guard.name.replace(' (wandering)', '')} still holds with survivors — ${prov.name} remains contested and will be fought over again next phase!`
               : `💢 Commanderless but unbroken, ${surv.length} surviving unit${surv.length !== 1 ? 's' : ''} still contest ${prov.name} — the fight resumes next phase!`,
-            { charId: _ctxCharId, phase: ph, actor: attacker.player, targets: [], provinceId: prov.id, public: true },
-          );
+            audience: { actor: attacker.player, realms: [], seen: 'battle' },
+            hero: _ctxCharId,
+            phase: ph,
+            province: prov.id,
+          });
         } else {
           if (liveGuard) {
             guard._isNeutralGuard = false;
@@ -252,13 +252,13 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             applyEvilConquest(turnContext, attacker, prov, pl);
           } // Evil doctrine now fires on this capture path too
           if (attacker.alive !== false) attacker.merits = (attacker.merits || 0) + (prov.tax || 0); // 2026-09-21: no personal merit for a fallen commander
-          log('combat', `${forceLabel(attacker)} finally overcomes the defenders and claims ${prov.name}!`, {
-            charId: _ctxCharId,
+          emit(turnContext, {
+            type: 'combat',
+            text: `${forceLabel(attacker)} finally overcomes the defenders and claims ${prov.name}!`,
+            audience: { actor: attacker.player, realms: [], seen: 'battle' },
+            hero: _ctxCharId,
             phase: ph,
-            actor: attacker.player,
-            targets: [],
-            provinceId: prov.id,
-            public: true,
+            province: prov.id,
           });
         }
       } else {
@@ -278,12 +278,13 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             forceLabel(attacker),
           );
           _nrLines.forEach((l) =>
-            log('combat', l, {
-              charId: _ctxCharId,
+            emit(turnContext, {
+              type: 'combat',
+              text: l,
+              audience: { actor: attacker.player, realms: [attacker.player] },
+              hero: _ctxCharId,
               phase: ph,
-              actor: attacker.player,
-              targets: [attacker.player],
-              provinceId: prov.id,
+              province: prov.id,
             }),
           );
           if (_nrRes) {
@@ -299,37 +300,36 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             if (!dest.characters.includes(attacker.id)) dest.characters.push(attacker.id);
             attacker.location = dest.id;
             attacker.locationName = dest.name;
-            log('combat', `${forceLabel(attacker)} breaks off and retreats to ${dest.name}.`, {
-              charId: _ctxCharId,
+            emit(turnContext, {
+              type: 'combat',
+              text: `${forceLabel(attacker)} breaks off and retreats to ${dest.name}.`,
+              audience: { actor: attacker.player, realms: [attacker.player] },
+              hero: _ctxCharId,
               phase: ph,
-              actor: attacker.player,
-              targets: [attacker.player],
-              provinceId: dest.id,
+              province: dest.id,
             });
           } else {
             prov._battleUnresolved = true;
             {
               const _st = seaTrapLine(forceLabel(attacker), attacker, prov, attacker.armies);
               if (_st)
-                log('combat', _st, {
-                  charId: _ctxCharId,
+                emit(turnContext, {
+                  type: 'combat',
+                  text: _st,
+                  audience: { actor: attacker.player, realms: [attacker.player] },
+                  hero: _ctxCharId,
                   phase: ph,
-                  actor: attacker.player,
-                  targets: [attacker.player],
-                  provinceId: prov.id,
+                  province: prov.id,
                 });
             }
-            log(
-              'combat',
-              `${forceLabel(attacker)} is pinned in ${prov.name} with no way out — the struggle continues next phase.`,
-              {
-                charId: _ctxCharId,
-                phase: ph,
-                actor: attacker.player,
-                targets: [attacker.player],
-                provinceId: prov.id,
-              },
-            );
+            emit(turnContext, {
+              type: 'combat',
+              text: `${forceLabel(attacker)} is pinned in ${prov.name} with no way out — the struggle continues next phase.`,
+              audience: { actor: attacker.player, realms: [attacker.player] },
+              hero: _ctxCharId,
+              phase: ph,
+              province: prov.id,
+            });
           }
         }
       }
@@ -396,18 +396,14 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         !areEnemies(turnContext, attacker.player, defender.player)
       ) {
         delete prov._battleUnresolved;
-        log(
-          'combat',
-          `The contest for ${prov.name} lapses — ${G.players[attacker.player]?.name || 'one side'} and ${G.players[defender.player]?.name || 'the other'} are no longer at war, and the two hosts stand down.`,
-          {
-            charId: _ctxCharId,
-            phase: ph,
-            actor: attacker.player,
-            targets: [attacker.player, defender.player],
-            provinceId: prov.id,
-            public: true,
-          },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `The contest for ${prov.name} lapses — ${G.players[attacker.player]?.name || 'one side'} and ${G.players[defender.player]?.name || 'the other'} are no longer at war, and the two hosts stand down.`,
+          audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
+          hero: _ctxCharId,
+          phase: ph,
+          province: prov.id,
+        });
         return;
       }
       // AK [7.6] once read: "If the attackers still have a movement point for each army, they
@@ -423,20 +419,16 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       const atkSea = prov.terrain === 'sea';
       const atkPool = atkSea ? seaMovePoints : movePoints;
       if ((atkPool[attacker.id] ?? 0) > 0) atkPool[attacker.id] = Math.max(0, (atkPool[attacker.id] ?? 0) - 1);
-      log(
-        'combat',
-        freshWar
+      emit(turnContext, {
+        type: 'combat',
+        text: freshWar
           ? `⚔ War has come to ${prov.name}: ${forceLabel(attacker)}${realmTag(turnContext, attacker.player)} and ${forceLabel(defender)}${realmTag(turnContext, defender.player)} have stood on the same ground since the season opened, and with ${SEASONS[ph]}'s orders done they fall upon each other.`
           : `⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} and ${forceLabel(defender)} clash again.`,
-        {
-          charId: _ctxCharId,
-          phase: ph,
-          actor: attacker.player,
-          targets: [attacker.player, defender.player],
-          provinceId: prov.id,
-          public: true,
-        },
-      );
+        audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
+        hero: _ctxCharId,
+        phase: ph,
+        province: prov.id,
+      });
       const atkCopy = { ...attacker, armies: [...(attacker.armies || [])] };
       const defCopy = { ...defender, armies: [...(defender.armies || [])] };
       atkCopy._attackedFrom = attacker._attackedFrom;
@@ -477,11 +469,19 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       const _navalBlockSB = navalHeldIn(prov, winner.player);
       if (!enemyStillHere && _navalBlockSB.length > 0) {
         prov._battleUnresolved = true;
-        log(
-          'combat',
-          navalHoldLine(turnContext, prov, _navalBlockSB, (G.players[winner.player] || {}).name || forceLabel(winner)),
-          { charId: _ctxCharId, phase: ph, actor: winner.player, targets: [], provinceId: prov.id, public: true },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: navalHoldLine(
+            turnContext,
+            prov,
+            _navalBlockSB,
+            (G.players[winner.player] || {}).name || forceLabel(winner),
+          ),
+          audience: { actor: winner.player, realms: [], seen: 'battle' },
+          hero: _ctxCharId,
+          phase: ph,
+          province: prov.id,
+        });
       } else if (!enemyStillHere && prov.owner !== winner.player) {
         G.players.forEach((p, pi) => {
           if (pi !== winner.player) {
@@ -493,13 +493,13 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         const wp = G.players[winner.player];
         if (wp && !wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
         if (wp) applyEvilConquest(turnContext, winner, prov, wp); // Evil doctrine on stand-off capture (was skipped)
-        log('combat', `${forceLabel(winner)} secures ${prov.name}!`, {
-          charId: _ctxCharId,
+        emit(turnContext, {
+          type: 'combat',
+          text: `${forceLabel(winner)} secures ${prov.name}!`,
+          audience: { actor: winner.player, realms: [], seen: 'battle' },
+          hero: _ctxCharId,
           phase: ph,
-          actor: winner.player,
-          targets: [],
-          provinceId: prov.id,
-          public: true,
+          province: prov.id,
         });
       }
       // Safety net: the flag was cleared at the top of this function and combatVsChar only re-sets
@@ -551,13 +551,13 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       prov.npcArmies = 0;
       const lp = G.players[lone.player];
       if (lp && !lp.provinces.includes(prov.id)) lp.provinces.push(prov.id);
-      log('combat', `${forceLabel(lone)} holds ${prov.name} unopposed and secures it.`, {
-        charId: _ctxCharId,
+      emit(turnContext, {
+        type: 'combat',
+        text: `${forceLabel(lone)} holds ${prov.name} unopposed and secures it.`,
+        audience: { actor: lone.player, realms: [], seen: 'battle' },
+        hero: _ctxCharId,
         phase: ph,
-        actor: lone.player,
-        targets: [],
-        provinceId: prov.id,
-        public: true,
+        province: prov.id,
       });
     }
   });

@@ -15,6 +15,7 @@ import { pcSpeedOf } from './speed-encounter-plans-and-combatants.ts';
 import { pcHitChance, pcMeleeDamage, pcPerkWord, pcRoundStart, pcTakeHit } from './to-hit-wounds-stuns-and-courage.ts';
 import { pcAttemptFlee } from './melee-flight-and-archery.ts';
 import { pcAct } from './tactics-combat-items-and-actions.ts';
+import { narrateAll, narrateAt, takeBackLinesFrom, narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── PERSONAL COMBAT: THE FIGHT (plan P1-08e: lifted out of resolveTurn) ────
 // resolvePersonalCombat runs a whole personal fight between two combatants, round by round. It takes the turn's
@@ -70,19 +71,21 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
     [B, A],
   ]) {
     if (me.kind === 'monster' && (me.perks || []).length)
-      me.perks.forEach((p) => narrative.push(`  🜏 ${me.name} — ${p.name}: ${p.desc}.`));
+      me.perks.forEach((p) => narrate(narrative, `  🜏 ${me.name} — ${p.name}: ${p.desc}.`));
     else if (me.kind === 'monster' && me.passiveName)
-      narrative.push(`  🜏 ${me.name} — ${me.passiveName}: ${me.passiveDesc}.`);
+      narrate(narrative, `  🜏 ${me.name} — ${me.passiveName}: ${me.passiveDesc}.`);
     if (me.aura > 0) {
       foe.status.auraPenalty = (foe.status.auraPenalty || 0) + me.aura;
     }
   }
   if (A.druidBeastWard)
-    narrative.push(
+    narrate(
+      narrative,
       `  🍃 ${A.name} has hunted this kind before — the beast's blows will land at half force (Druid ${A.druidBeastWard}).`,
     );
   if (B.druidBeastWard)
-    narrative.push(
+    narrate(
+      narrative,
       `  🍃 ${B.name} has hunted this kind before — the beast's blows will land at half force (Druid ${B.druidBeastWard}).`,
     );
   // Initiative: speed first, then raw martial skill; ties broken at random.
@@ -90,13 +93,13 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
   const initB = pcSpeedOf(B) * 10 + (B.melee || 0) + (B.archery || 0) + kcRng();
   const first = initA >= initB ? A : B,
     second = first === A ? B : A;
-  narrative.push(`  ${first.name} has the initiative. The fight opens at spell range.`);
+  narrate(narrative, `  ${first.name} has the initiative. The fight opens at spell range.`);
 
   // One "mirror round": the victim fights their phantom (an even duel) while the caster
   // concentrates. Shared by the round-start mirror branch and the same-round hook below.
   const _mirrorExchange = () => {
     const { caster, victim, phantasm } = state.mirror;
-    narrative.push(`  🪞 ${victim.name} fights their own mirror image while ${caster.name} concentrates.`);
+    narrate(narrative, `  🪞 ${victim.name} fights their own mirror image while ${caster.name} concentrates.`);
     // the VICTIM fights the phantom with their own Encounter Plan too
     // (spells, arrows, tactics), not a bare sword-swing — "the two mirror images fight it out" on
     // equal terms. The victim's plan pointer, spell limits and status are their real ones (to
@@ -107,10 +110,12 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       const _vstate = { fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null };
       pcAct(turnContext, victim, phantasm, narrative, _vstate);
       if (_vstate.fledBy)
-        narrative.push(
+        narrate(
+          narrative,
           `    …but there is no escaping one's own reflection — the phantom is on ${victim.name} again at once.`,
         );
-      if (_vstate.mirror) narrative.push(`    …but an illusion cast upon an illusion finds no purchase, and fades.`);
+      if (_vstate.mirror)
+        narrate(narrative, `    …but an illusion cast upon an illusion finds no purchase, and fades.`);
     }
     // the phantom fights back exactly as the mirrored character would — it runs THEIR Encounter
     // Plan (from the start), so a spell-caster's reflection hurls the same spells, an archer's
@@ -123,14 +128,14 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       pcAct(turnContext, phantasm, victim, narrative, _mstate);
     }
     if (phantasm.hp <= 0) {
-      narrative.push(`  🪞 ${victim.name} shatters the phantom — the illusion ends.`);
+      narrate(narrative, `  🪞 ${victim.name} shatters the phantom — the illusion ends.`);
       state.mirror = null;
     } else if (state.mirror && --state.mirror.life <= 0) {
-      narrative.push(`  🪞 The phantom of ${victim.name} thins to nothing of its own accord.`);
+      narrate(narrative, `  🪞 The phantom of ${victim.name} thins to nothing of its own accord.`);
       state.mirror = null;
     }
     if (victim.hp <= 0) {
-      narrative.push(`  ${victim.name} is struck down by their own mirror image!`);
+      narrate(narrative, `  ${victim.name} is struck down by their own mirror image!`);
       state.mirror = null;
     }
   };
@@ -179,7 +184,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       ]) {
         if (me.burn > 0 && me.hp > 0 && foe.hp > 0) {
           foe.hp -= me.burn;
-          narrative.push(
+          narrate(
+            narrative,
             `  🜏 ${pcPerkWord(me, 'burn', 'The aura')} sears ${foe.name} for ${me.burn}. (HP ${Math.max(0, Math.round(foe.hp))})`,
           );
         }
@@ -203,7 +209,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       if (caster && caster.ref && hasItemBase(caster.ref, 'Mirror Shard')) disbelief *= 0.5; // Mirror Shard: harder to disbelieve
       disbelief = Math.max(2, Math.min(90, disbelief));
       if (kcRng() * 100 < disbelief) {
-        narrative.push(
+        narrate(
+          narrative,
           `  ✨ ${victim.name} sees through the illusion (${disbelief.toFixed(0)}% disbelief) — the phantom dissolves and the real fight resumes.`,
         );
         state.mirror = null;
@@ -241,10 +248,11 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
         const hit = pcHitChance(turnContext, actor, foe);
         if (kcRng() * 100 < hit) {
           const dmg = pcMeleeDamage(actor, foe);
-          narrative.push(`  ⚔ ${actor.name} takes a free strike at ${foe.name}!`);
+          narrate(narrative, `  ⚔ ${actor.name} takes a free strike at ${foe.name}!`);
           const dealt = pcTakeHit(turnContext, foe, dmg, narrative, actor.name, 'free strike');
           if (dealt)
-            narrative.push(
+            narrate(
+              narrative,
               `  ${actor.name}'s free strike lands for ${dealt} damage! (${foe.name} HP ${Math.max(0, Math.round(foe.hp))})`,
             );
         }
@@ -255,12 +263,12 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       if (foe.hp <= 0 && foe._rebirth) {
         foe._rebirth = false;
         foe.hp = Math.max(5, Math.round(foe.maxHp * 0.4));
-        narrative.push(`  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`);
+        narrate(narrative, `  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`);
       }
       if (actor.hp <= 0 && actor._rebirth) {
         actor._rebirth = false;
         actor.hp = Math.max(5, Math.round(actor.maxHp * 0.4));
-        narrative.push(`  🔥 ${actor.name} bursts into ash — then blazes back to life! (HP ${actor.hp})`);
+        narrate(narrative, `  🔥 ${actor.name} bursts into ash — then blazes back to life! (HP ${actor.hp})`);
       }
       if (state.fledBy || state.parley || state.stoleBy || foe.hp <= 0 || actor.hp <= 0) break;
     }
@@ -275,7 +283,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       cbt._secondWindUsed = true;
       const back = Math.max(1, Math.round((cbt.maxHp || 20) * tt.secondWind));
       cbt.hp = Math.min(cbt.maxHp || 20, cbt.hp + back);
-      narrative.push(
+      narrate(
+        narrative,
         `  💪 ${cbt.name} (${cbt.temper}) finds their second wind and fights on — ${back} HP recovered. (HP ${dispFloor(cbt.hp)})`,
       );
     }
@@ -391,11 +400,12 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
                     ]);
         if (_blow) {
           // the killing blow never landed: drop its lines, keep the owner's private skill markers
-          const tail = narrative.splice(at);
+          const tail = takeBackLinesFrom(narrative, at);
           const kept = tail.filter((x) => typeof x !== 'string' || /^\s*(📈|🎉|💰)/.test(x));
-          narrative.push(plea, spared, ...kept);
+          narrateAll(narrative, [plea, spared, ...kept]);
         } else {
-          narrative.push(plea, spared);
+          narrate(narrative, plea);
+          narrate(narrative, spared);
         }
         // Consequences of a spared coward (design update): they are broken for the rest of the
         // turn
@@ -410,10 +420,10 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
             applyItemMaxHp(cbt.ref, _lost);
             foe.ref.items = foe.ref.items || [];
             foe.ref.items.push(_lost);
-            narrative.push(`  🎒 ${cbt.name} surrenders ${_lost.name} to ${foe.name} as the price of mercy.`);
+            narrate(narrative, `  🎒 ${cbt.name} surrenders ${_lost.name} to ${foe.name} as the price of mercy.`);
             {
               const _gn = gainedItemNote(foe.ref, [_lost]);
-              if (_gn) narrative.push('  ' + _gn);
+              if (_gn) narrate(narrative, '  ' + _gn);
             } // item 10
           }
         }
@@ -428,9 +438,12 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
                   `  There is no pity in ${foeWho} today.${_blow ? _falls : ''}`,
                 ]);
         if (_blow) {
-          narrative.splice(at, 0, plea, refused);
+          narrateAt(narrative, at, [plea, refused]);
           _mercyShift.push([at, 2]);
-        } else narrative.push(plea, refused);
+        } else {
+          narrate(narrative, plea);
+          narrate(narrative, refused);
+        }
       }
     }
   }

@@ -3,6 +3,7 @@ import { kcRng } from '../rng.ts';
 import { BLOOD_HARVEST_PER_UNIT } from '../items/tiers-and-hoards.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { discSum, gdActive } from '../discoveries.ts';
+import { narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── BLOOD HARVEST AND THE IRON THRONE (plan P1-08c: lifted out of resolveTurn) ────
 // What a victory gives back: a Pagan victor's gold from the fallen, and an Evil realm's fallen foes rising as its
@@ -14,7 +15,8 @@ export function bloodHarvest(turnContext, winner, destroyed, narrative) {
   const _pl = G.players[winner.player];
   const _take = destroyed * (BLOOD_HARVEST_PER_UNIT + discSum(turnContext, winner.player, 'bloodHarvest', 'gold')); // + ap09 Skull Tithe
   _pl.gold = (_pl.gold || 0) + _take;
-  narrative.push(
+  narrate(
+    narrative,
     `\u{1FA78} Blood Harvest — the old gods claim their due from ${destroyed} fallen enemy unit${destroyed !== 1 ? 's' : ''}: +${_take}g in offerings.`,
   );
 }
@@ -48,7 +50,8 @@ export function ironThroneRaise(turnContext, winnerChar, deadUnits, narrative) {
     }
   });
   if (_r > 0 && narrative)
-    narrative.push(
+    narrate(
+      narrative,
       `\u{1F480} Iron Throne of Skulls — ${_r} of the enemy's fallen claw their way up to serve as your skeletons.`,
     );
 }

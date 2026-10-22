@@ -8,6 +8,7 @@ import { perkTier } from '../titles/perks.ts';
 import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.ts';
 import { pcCharCombatant } from './speed-encounter-plans-and-combatants.ts';
 import { resolvePersonalCombat } from './resolve-personal-combat.ts';
+import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── PERSONAL COMBAT: DUELS AND CHARACTER ENCOUNTERS (plan P1-08f: lifted out of resolveTurn) ────
 // The magic items a fighter brings to bear (magicItemsLine), the item a character may drop when they break off a fight
@@ -59,7 +60,8 @@ export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
   if (!pool.length) return null;
   const roll = d100(),
     chance = Math.round(DUEL_FLEE_DROP * 100);
-  narrative.push(
+  narrate(
+    narrative,
     `  ${runner.name} scrambles clear — ${chance}% chance of dropping something in the rout [roll ${roll}${roll <= chance ? ' ✓' : ' ✗'}]`,
   );
   if (roll > chance) return null;
@@ -73,20 +75,21 @@ export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
   stayer.items = (stayer.items || []).concat([it]);
   if (stayerCbt.ref !== stayer && Array.isArray(stayerCbt.ref.items))
     stayerCbt.ref.items = stayerCbt.ref.items.concat([it]);
-  narrative.push(
+  narrate(
+    narrative,
     `  💎 In the rout ${runner.name} drops ${it.name}${isLegendaryItem(it) ? ' (Legendary)' : ''} — ${stayer.name} claims it.`,
   );
   {
     const _gn = gainedItemNote(stayer, [it]);
-    if (_gn) narrative.push('  ' + _gn);
+    if (_gn) narrate(narrative, '  ' + _gn);
   } // item 10
   return it;
 }
 export function resolveDuel(turnContext, atk, def, narrative) {
   const _ia = magicItemsLine(atk),
     _ib = magicItemsLine(def); // item 5
-  if (_ia) narrative.push(_ia);
-  if (_ib) narrative.push(_ib);
+  if (_ia) narrate(narrative, _ia);
+  if (_ib) narrate(narrative, _ib);
   const A = pcCharCombatant(turnContext, atk),
     B = pcCharCombatant(turnContext, def);
   turnContext._duelFoes = new Map([
@@ -99,11 +102,11 @@ export function resolveDuel(turnContext, atk, def, narrative) {
   } finally {
     turnContext._duelFoes = null;
   } // a duel's field held is a win (preBattleDuel awards it)
-  narrative.push(...res.narrative);
+  narrateAll(narrative, res.narrative);
   if (res.fledBy) {
     const runner = res.fledBy.ref,
       stayer = runner === atk ? def : atk;
-    narrative.push(`${runner.name} breaks off the duel and slips away — ${stayer.name} holds the field.`);
+    narrate(narrative, `${runner.name} breaks off the duel and slips away — ${stayer.name} holds the field.`);
     duelFleeItemDrop(turnContext, res.fledBy, res.fledBy === A ? B : A, narrative); // flee spoils
     // Nobody is slain, but breaking off IS losing the duel — the caller demoralises their force.
     return { fled: runner, heldField: stayer };
@@ -118,7 +121,8 @@ export function resolveDuel(turnContext, atk, def, narrative) {
 // alternation to duels and monster encounters. The only difference is who is on the other side.
 export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics, prov, effStat, rng, G) {
   const narrative = [];
-  narrative.push(
+  narrate(
+    narrative,
     `${atk.name} (${atk.race}, ${atk.temper}) meets ${def.name} (${def.race}, ${def.player !== null ? G.players[def.player]?.name : 'wandering'}) in a personal encounter.`,
   );
   pushBattlecry(narrative, atk, def.name);
@@ -130,17 +134,19 @@ export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics,
   if (Array.isArray(defTactics) && defTactics.length) B.tactics = defTactics.slice();
 
   const res = resolvePersonalCombat(turnContext, A, B, { maxRounds: 20 });
-  narrative.push(...res.narrative);
+  narrateAll(narrative, res.narrative);
 
   // A successful Steal in a character encounter is a pickpocketing of the victim's treasury.
   // THIEF L8: a master thief's own purse cannot be picked.
   const _pickProof = (x) => perkTier(x, 'thief') >= 3;
   if (res.stoleBy === A && def.player !== null && atk.player !== null && _pickProof(def)) {
-    narrative.push(
+    narrate(
+      narrative,
       `${atk.name} goes for ${def.name}'s purse and comes away with nothing — a master thief keeps their own coin far better hidden.`,
     );
   } else if (res.stoleBy === B && atk.player !== null && def.player !== null && _pickProof(atk)) {
-    narrative.push(
+    narrate(
+      narrative,
       `${def.name} goes for ${atk.name}'s purse and comes away with nothing — a master thief keeps their own coin far better hidden.`,
     );
   } else if (res.stoleBy === A && def.player !== null && atk.player !== null) {
@@ -149,19 +155,19 @@ export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics,
     if (stolen > 0) {
       G.players[def.player].gold -= stolen;
       G.players[atk.player].gold = (G.players[atk.player].gold || 0) + stolen;
-      narrative.push(`${atk.name} lifts ${stolen}g from ${def.name}'s purse and is gone.`);
-    } else narrative.push(`${atk.name} finds ${def.name}'s purse empty.`);
+      narrate(narrative, `${atk.name} lifts ${stolen}g from ${def.name}'s purse and is gone.`);
+    } else narrate(narrative, `${atk.name} finds ${def.name}'s purse empty.`);
   } else if (res.stoleBy === B && atk.player !== null && def.player !== null) {
     const purse = G.players[atk.player]?.gold || 0;
     const stolen = Math.min(purse, rng(1, 5));
     if (stolen > 0) {
       G.players[atk.player].gold -= stolen;
       G.players[def.player].gold = (G.players[def.player].gold || 0) + stolen;
-      narrative.push(`${def.name} lifts ${stolen}g from ${atk.name}'s purse and is gone.`);
+      narrate(narrative, `${def.name} lifts ${stolen}g from ${atk.name}'s purse and is gone.`);
     }
   }
   if (res.fledBy) {
-    narrative.push(`${res.fledBy.name} breaks away and escapes the encounter.`);
+    narrate(narrative, `${res.fledBy.name} breaks away and escapes the encounter.`);
     duelFleeItemDrop(turnContext, res.fledBy, res.fledBy === A ? B : A, narrative);
   } // flee spoils
 
@@ -172,11 +178,11 @@ export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics,
   let atkKilled = false,
     defKilled = false;
   if (atkHp <= 0) {
-    narrative.push(`${atk.name} is overwhelmed!`);
+    narrate(narrative, `${atk.name} is overwhelmed!`);
     atkKilled = atk.isKing ? false : kcRng() < 0.3;
   }
   if (defHp <= 0) {
-    narrative.push(`${def.name} is overcome!`);
+    narrate(narrative, `${def.name} is overcome!`);
     defKilled = !def.isKing && def.player !== null && kcRng() < 0.3;
   }
 

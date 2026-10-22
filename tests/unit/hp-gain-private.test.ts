@@ -59,7 +59,12 @@ test("two rivals both harden; each realm reads only its own hero's rise, and the
   ).toBe(true);
   const from = L.length;
   res.narrative.forEach((line) =>
-    call('emitNarrLine', 'combat', line, { actor: 0, targets: [0, 1], provinceId: 0, charIds: [a.id, b.id] }),
+    call('emitNarrLine', line, {
+      type: 'combat',
+      audience: { actor: 0, realms: [0, 1] },
+      province: 0,
+      heroes: [a.id, b.id],
+    }),
   );
   const lines = hardLines(from);
   const la = lines.find((e) => String(e.text).includes('Aldmar'));

@@ -8,6 +8,7 @@ import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
 import type { LogMeta, TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import { narrate, narrateTo } from '../turn/events-and-their-audiences.ts';
 
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
 // The single combat between the two commanders before an army battle, and the morale each host carries into the battle
@@ -41,7 +42,7 @@ export function preBattleDuel(
   const demoralise = (who: Character, why: string) => {
     if (who === atk) atkMorale = DUEL_MORALE_PENALTY;
     else defMorale = DUEL_MORALE_PENALTY;
-    narrative.push(`\u{1F4C9} ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
+    narrate(narrative, `\u{1F4C9} ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
   };
   ensureEncounterPlan(turnContext, atk);
   ensureEncounterPlan(turnContext, def); // NPC commanders fall back on Temper
@@ -67,13 +68,13 @@ export function preBattleDuel(
   const challenger = atkStance === 'challenge' ? atk : def;
   const challenged = challenger === atk ? def : atk;
   const challengedStance = challenged === atk ? atkStance : defStance;
-  narrative.push(`— ${challenger.name} rides out and challenges ${challenged.name} to single combat. —`);
+  narrate(narrative, `— ${challenger.name} rides out and challenges ${challenged.name} to single combat. —`);
   if (challengedStance === 'refuse') {
-    narrative.push(`${challenged.name} will not answer the call, and the watching ranks see it.`);
+    narrate(narrative, `${challenged.name} will not answer the call, and the watching ranks see it.`);
     demoralise(challenged, `their commander refused the challenge`);
     return { atkMorale, defMorale };
   }
-  narrative.push(`\u2694 — Personal duel: ${challenger.name} vs ${challenged.name} —`);
+  narrate(narrative, `\u2694 — Personal duel: ${challenger.name} vs ${challenged.name} —`);
   pushBattlecry(narrative, challenger, challenged.name);
   pushBattlecry(narrative, challenged, challenger.name);
   const duelResult = resolveDuel(turnContext, challenger, challenged, narrative);
@@ -89,7 +90,7 @@ export function preBattleDuel(
     // SECRET: the unkillable wanderer is beaten but escapes the killing blow — he lives, so
     // his host is NOT left leaderless; being driven from the field still shakes his troops.
     if (_escapesTheEnd(realLoser)) {
-      narrative.push(_garrethEscapeLine(realLoser));
+      narrate(narrative, _garrethEscapeLine(realLoser));
       // this path left him at 0 HP (every other escape path clamps it), so his NEXT encounter
       // ended before round 1 on the hp<=0 check and printed the escape line without a fight.
       const _gHp = Math.max(1, realLoser.maxHp ? Math.round(realLoser.maxHp / 2) : 1);
@@ -117,12 +118,16 @@ export function preBattleDuel(
     } = { keepArmies: true, lines: [] };
     const _duelDied = handleHeroDeath(turnContext, realLoser, realWinner, _dOpts);
     const _saved = _duelDied === false && _dOpts.outcome === 'surgery';
-    narrative.push(
+    narrate(
+      narrative,
       _saved
         ? `\u{1FA79} ${loser.name} falls in the duel — at death's door, but not slain.`
         : `\u{1F480} ${loser.name} is slain in the duel!`,
     );
-    _dOpts.lines.forEach((l) => narrative.push(l.priv != null ? { text: l.text, onlyPlayer: l.priv } : l.text));
+    _dOpts.lines.forEach((l) => {
+      if (l.priv != null) narrateTo(narrative, l.priv, undefined, l.text);
+      else narrate(narrative, l.text);
+    });
     demoralise(loser, `their commander fell in single combat`);
     if (_duelDied === false) {
       // saved (Battlefield Surgery) — the REAL record lives; keep the copy in step with it so no
@@ -149,7 +154,10 @@ export function preBattleDuel(
     demoralise(duelResult.fled, `their commander broke off the duel`);
     if (duelResult.heldField) awardWinHp(turnContext, duelResult.heldField, narrative, 'duel'); // holding the field in a pre-battle duel is a win
   } else {
-    narrative.push(`The duel ends inconclusively — both commanders live to fight on, and neither host loses heart.`);
+    narrate(
+      narrative,
+      `The duel ends inconclusively — both commanders live to fight on, and neither host loses heart.`,
+    );
   }
   return { atkMorale, defMorale, atkSlain, defSlain };
 }

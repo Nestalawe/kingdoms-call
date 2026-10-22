@@ -3,7 +3,7 @@ import { recordBattleGraves } from '../graves.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { describeArmy } from '../dice-and-army-names.ts';
 import { narrText, realmTag } from '../turn/log-line-helpers.ts';
-import { notifyProvinceOwner, notifyTarget } from '../turn/events-and-their-audiences.ts';
+import { narrateAt, emit, notifyProvinceOwner, notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areAllied, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
@@ -27,7 +27,7 @@ import { erodeGuardSurvivors } from './stalled-battles-and-beaten-guards.ts';
 // phase: enemy OR neutral armies present → a battle is fought; none present → the character takes
 // control. Enemy and neutral armies are treated the same. Returns true if a battle was fought.
 export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
-  const { log, G } = turnContext;
+  const { G } = turnContext;
   if (!c || !prov || c.player == null) return false;
   if (prov.owner === c.player) return false; // already ours — nothing to contest
   if ((c.armies || []).length === 0) return false; // no force present to fight or hold
@@ -55,11 +55,12 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
   if (turnContext._tier0Open && defendAnswerUnitGain(turnContext, c, prov, ph, true).length > 0) {
     if (!turnContext._unitGainQueue.some((q) => q.c === c && q.prov === prov))
       turnContext._unitGainQueue.push({ c, prov });
-    log(
-      'system',
-      `${c.name}'s new host is still forming up in ${prov.name} — whether the province can be taken will be settled before the season's marches begin.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}'s new host is still forming up in ${prov.name} — whether the province can be taken will be settled before the season's marches begin.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return false;
   }
   const player = G.players[c.player];
@@ -113,13 +114,14 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
 
   if (!hasDefenders) {
     claim();
-    log(
-      'combat',
-      c._warFront
+    emit(turnContext, {
+      type: 'combat',
+      text: c._warFront
         ? `No one stands to defend ${prov.name} — ${c.name} takes control of it for ${player.name}!`
         : `With fresh troops now at their back, ${c.name} takes control of ${prov.name} for ${player.name}!`,
-      { actor: c.player, targets: [], provinceId: prov.id, public: true },
-    );
+      audience: { actor: c.player, realms: [], seen: 'battle' },
+      province: prov.id,
+    });
     return false;
   }
 
@@ -180,7 +182,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         const _bi = battle.narrative.findIndex(
           (l) => typeof narrText(l) === 'string' && String(narrText(l)).includes('Battle for '),
         );
-        battle.narrative.splice(_bi >= 0 ? _bi : 0, 0, ..._form);
+        narrateAt(battle.narrative, _bi >= 0 ? _bi : 0, _form);
       }
     }
     emitBattle(turnContext, battle, prov, ph, targets, {
@@ -243,11 +245,12 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         if (_garSurv.length > 0) {
           _defFellBackTo.garrisonArmies = (_defFellBackTo.garrisonArmies || []).concat(_garSurv);
           prov.garrisonArmies = _navalHeldUG.slice(); // stranded hulls cannot take to the road
-          log(
-            'combat',
-            `The standing troops of ${prov.name} fall back to ${_defFellBackTo.name} with ${enemyChar.name} rather than be left to the enemy.`,
-            { actor: enemyChar.player, targets, provinceId: _defFellBackTo.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `The standing troops of ${prov.name} fall back to ${_defFellBackTo.name} with ${enemyChar.name} rather than be left to the enemy.`,
+            audience: { actor: enemyChar.player, realms: targets, seen: 'battle' },
+            province: _defFellBackTo.id,
+          });
         }
       }
     }
@@ -268,11 +271,12 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       enemyChar.armies = (enemyChar.armies || []).concat(_join);
       prov.garrisonArmies = [];
       if (typeof refreshMovePool === 'function') refreshMovePool(turnContext, enemyChar);
-      log(
-        'combat',
-        `🛡 The standing troops of ${prov.name} fall in with ${enemyChar.name} and fight on at their side as the battle continues.`,
-        { actor: enemyChar.player, targets, provinceId: prov.id, public: true },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `🛡 The standing troops of ${prov.name} fall in with ${enemyChar.name} and fight on at their side as the battle continues.`,
+        audience: { actor: enemyChar.player, realms: targets, seen: 'battle' },
+        province: prov.id,
+      });
     }
   } else if (neutralGuard) {
     // Fight the guard's OWN armies, then sync survivors back to him — the same swap the move case
@@ -320,16 +324,12 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       // fighting. Announce the overrun and grave only those not already recorded.
       const _overrun = garrison.filter((a) => !a._died);
       if (_overrun.length > 0) {
-        log(
-          'combat',
-          `🛡 The garrison of ${prov.name} is overwhelmed as the province falls — ${_overrun.map((a) => (a.unitName ? a.unitName + ' (' + a.type + ', ' + a.quality + ')' : a.quality + ' ' + a.type)).join(', ')} ${_overrun.length === 1 ? 'is' : 'are'} cut down defending the walls.`,
-          {
-            actor: c.player,
-            targets: [c.player, prov.owner].filter((x) => x != null),
-            provinceId: prov.id,
-            public: true,
-          },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `🛡 The garrison of ${prov.name} is overwhelmed as the province falls — ${_overrun.map((a) => (a.unitName ? a.unitName + ' (' + a.type + ', ' + a.quality + ')' : a.quality + ' ' + a.type)).join(', ')} ${_overrun.length === 1 ? 'is' : 'are'} cut down defending the walls.`,
+          audience: { actor: c.player, realms: [c.player, prov.owner].filter((x) => x != null), seen: 'battle' },
+          province: prov.id,
+        });
         _overrun.forEach((a) => recordBattleGraves(turnContext, prov, [a]));
       }
       prov.garrisonArmies = [];
@@ -348,7 +348,13 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         neutralGuard,
         prov,
         neutralGuard.armies || [],
-        (line) => log('combat', line, { actor: c.player, targets, provinceId: prov.id }),
+        (line) =>
+          emit(turnContext, {
+            type: 'combat',
+            text: line,
+            audience: { actor: c.player, realms: targets },
+            province: prov.id,
+          }),
         c.name,
       );
     } else if ((neutralGuard && !neutralGuard.alive) || llDefs.length > 0) {
@@ -358,7 +364,13 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         null,
         prov,
         prov.neutralDefenders || [],
-        (line) => log('combat', line, { actor: c.player, targets, provinceId: prov.id }),
+        (line) =>
+          emit(turnContext, {
+            type: 'combat',
+            text: line,
+            audience: { actor: c.player, realms: targets },
+            province: prov.id,
+          }),
         c.name,
       );
       prov.neutralDefenders = _surv;
@@ -380,50 +392,55 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
     const _navalBlockUG = navalHeldIn(prov, c.player);
     if (guardLeft > 0) {
       prov._battleUnresolved = true;
-      log(
-        'combat',
-        `⚔ ${c.alive === false ? `${c.name}'s leaderless host` : c.name} has the better of the fighting in ${prov.name}, but ${neutralGuard.name.replace(' (wandering)', '')} still holds the field with ${guardLeft} unit${guardLeft !== 1 ? 's' : ''} — the province is not yet taken.`,
-        { actor: c.player, targets, provinceId: prov.id, public: true },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `⚔ ${c.alive === false ? `${c.name}'s leaderless host` : c.name} has the better of the fighting in ${prov.name}, but ${neutralGuard.name.replace(' (wandering)', '')} still holds the field with ${guardLeft} unit${guardLeft !== 1 ? 's' : ''} — the province is not yet taken.`,
+        audience: { actor: c.player, realms: targets, seen: 'battle' },
+        province: prov.id,
+      });
     } else if (llLeft > 0) {
       prov._battleUnresolved = true;
-      log(
-        'combat',
-        `⚔ ${c.alive === false ? `${c.name}'s leaderless host` : c.name} has the better of the fighting in ${prov.name}, but ${llLeft} leaderless defending unit${llLeft !== 1 ? 's' : ''} still hold the field — the province is not yet taken.`,
-        { actor: c.player, targets, provinceId: prov.id, public: true },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `⚔ ${c.alive === false ? `${c.name}'s leaderless host` : c.name} has the better of the fighting in ${prov.name}, but ${llLeft} leaderless defending unit${llLeft !== 1 ? 's' : ''} still hold the field — the province is not yet taken.`,
+        audience: { actor: c.player, realms: targets, seen: 'battle' },
+        province: prov.id,
+      });
     } else if (_hostileLeft) {
       prov._battleUnresolved = true;
-      log(
-        'combat',
-        `⚔ ${c.alive === false ? `${c.name}'s leaderless host` : c.name} has the better of the fighting in ${prov.name}, but enemy forces still hold their ground — the province is not yet taken.`,
-        { actor: c.player, targets, provinceId: prov.id, public: true },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `⚔ ${c.alive === false ? `${c.name}'s leaderless host` : c.name} has the better of the fighting in ${prov.name}, but enemy forces still hold their ground — the province is not yet taken.`,
+        audience: { actor: c.player, realms: targets, seen: 'battle' },
+        province: prov.id,
+      });
     } else if (_navalBlockUG.length > 0) {
       prov._battleUnresolved = true;
-      log('combat', navalHoldLine(turnContext, prov, _navalBlockUG, player.name), {
-        actor: c.player,
-        targets,
-        provinceId: prov.id,
-        public: true,
+      emit(turnContext, {
+        type: 'combat',
+        text: navalHoldLine(turnContext, prov, _navalBlockUG, player.name),
+        audience: { actor: c.player, realms: targets, seen: 'battle' },
+        province: prov.id,
       });
     } else if (_garrisonUnfought && (prov.garrisonArmies || []).length > 0) {
       // a third party's column was beaten, but the owner's garrison never fought — the walls still stand
-      log(
-        'combat',
-        `⚔ ${c.alive === false ? `${c.name}'s leaderless host` : c.name} has the better of the fighting in ${prov.name}, but its garrison still ${prov.terrain === 'sea' ? 'holds these waters' : 'mans the walls'} — the province is not yet taken.`,
-        { actor: c.player, targets, provinceId: prov.id, public: true },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `⚔ ${c.alive === false ? `${c.name}'s leaderless host` : c.name} has the better of the fighting in ${prov.name}, but its garrison still ${prov.terrain === 'sea' ? 'holds these waters' : 'mans the walls'} — the province is not yet taken.`,
+        audience: { actor: c.player, realms: targets, seen: 'battle' },
+        province: prov.id,
+      });
     } else {
       claim();
       // 2026-09-21: the commander can have fallen in this battle's pre-battle duel while his
       // leaderless host fought on and won — name the host, not the corpse (same idiom as the
       // move case's PvP branch and resolveStalledBattles' forceLabel).
-      log(
-        'combat',
-        `${c.alive === false ? `${c.name}'s leaderless host` : c.name} overcomes the defenders and claims ${prov.name} for ${player.name}!`,
-        { actor: c.player, targets, provinceId: prov.id, public: true },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `${c.alive === false ? `${c.name}'s leaderless host` : c.name} overcomes the defenders and claims ${prov.name} for ${player.name}!`,
+        audience: { actor: c.player, realms: targets, seen: 'battle' },
+        province: prov.id,
+      });
     }
   }
   clearNavalHold(prov); // within-phase marker only — see navalHeldIn

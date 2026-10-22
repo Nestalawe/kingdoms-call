@@ -16,6 +16,7 @@ import {
 import { d100, fmtRoll, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { discDuelVs, discSum } from '../discoveries.ts';
+import { narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS AND COURAGE (plan P1-08e: lifted out of resolveTurn) ────
 // The melee to-hit and damage, how a ward or a guardian's passive is named, the one door every stun lands through,
@@ -159,7 +160,8 @@ export function pcStunTurned(target, narrative, what) {
       ? pcPerkWord(target, 'stunWard', 'its nature')
       : (target.arm && target.arm.names && target.arm.names.join(', ')) || 'their armour';
   if (narrative)
-    narrative.push(
+    narrate(
+      narrative,
       `  ${pcWardIcon(target)} ${target.name} cannot be held (${_why}${w < 100 ? `, ${w}%` : ''}) — ${what || 'the daze'} finds no hold.`,
     );
   return true;
@@ -219,7 +221,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   // Mirror images soak a hit first.
   if (target.status && target.status.mirrorImages > 0) {
     target.status.mirrorImages--;
-    narrative.push(
+    narrate(
+      narrative,
       `  ${srcName}'s ${kind} strikes a Mirror Image of ${target.name}! (${target.status.mirrorImages} image${target.status.mirrorImages !== 1 ? 's' : ''} left)`,
     );
     return 0;
@@ -231,30 +234,32 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     _chan = PC_CHANNEL[kind] || 'spell';
   if (_arm && _arm.firstHit && !target._armFirstHitUsed) {
     target._armFirstHitUsed = true;
-    narrative.push(
+    narrate(
+      narrative,
       `  🛡 The first ${_chan === 'spell' ? 'harm' : _chan === 'archery' ? 'arrow' : 'blow'} to reach ${target.name} is drunk by their armour — no damage. (${_arm.names.join(', ')})`,
     );
     return 0;
   }
   if (_arm && _arm.block > 0 && (_chan === 'melee' || _chan === 'archery') && d100() <= _arm.block) {
-    narrative.push(
+    narrate(
+      narrative,
       `  🛡 ${target.name}'s shield takes the ${_chan === 'archery' ? 'arrow' : 'blow'} square on — blocked outright. (${_arm.block}%)`,
     );
     return 0;
   }
   if (_arm && _arm.arrowBlock > 0 && _chan === 'archery' && d100() <= _arm.arrowBlock) {
-    narrative.push(`  🛡 The arrow glances off ${target.name}'s shield. (${_arm.arrowBlock}%)`);
+    narrate(narrative, `  🛡 The arrow glances off ${target.name}'s shield. (${_arm.arrowBlock}%)`);
     return 0;
   }
   if (_arm && _arm.spellBlock > 0 && _chan === 'spell' && d100() <= _arm.spellBlock) {
-    narrative.push(`  🛡 ${target.name}'s shield turns the ${kind} away harmlessly. (${_arm.spellBlock}%)`);
+    narrate(narrative, `  🛡 ${target.name}'s shield turns the ${kind} away harmlessly. (${_arm.spellBlock}%)`);
     return 0;
   }
   if (_arm && _arm.roundWard > 0 && (target._roundWardLeft || 0) > 0 && d > 0) {
     const _rw = Math.min(target._roundWardLeft, d);
     target._roundWardLeft -= _rw;
     d -= _rw;
-    narrative.push(`  🛡 The ward on ${target.name}'s shield soaks ${_rw}.`);
+    narrate(narrative, `  🛡 The ward on ${target.name}'s shield soaks ${_rw}.`);
     if (d <= 0) return 0;
   }
   // Mithril Armour turns aside 2 points of any MELEE or ARROW blow that lands
@@ -264,7 +269,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     const _b = d;
     d = Math.max(1, d - (target.mithrilDR || 2));
     if (d < _b)
-      narrative.push(
+      narrate(
+        narrative,
         `  🛡 ${target.name}'s Mithril Armour turns aside ${_b - d} of the ${PC_CHANNEL[kind] === 'archery' ? 'arrow' : 'blow'}.`,
       );
   }
@@ -290,9 +296,13 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
       const _wb = d;
       d = Math.max(1, Math.round(d * PC_WEAK_MULT));
       const _wword = _chan === 'spell' ? 'spell' : _chan === 'archery' ? 'arrow' : 'blow';
-      narrative.push(`  💥 The ${_wword} finds ${target.name}'s weakness — ${target.weak.name}: ${_wb} becomes ${d}.`);
+      narrate(
+        narrative,
+        `  💥 The ${_wword} finds ${target.name}'s weakness — ${target.weak.name}: ${_wb} becomes ${d}.`,
+      );
       if (_wsrc && _wsrc.player != null && pcLearnWeakness(G, _wsrc.player, target.name))
-        narrative.push(
+        narrate(
+          narrative,
           `  📖 ${_wsrc.name} sees it plainly now: ${target.weak.desc}. Your realm will remember this of every ${target.name}.`,
         );
     }
@@ -305,7 +315,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     const _bw = d;
     d = Math.max(1, Math.round(d / 2));
     if (d < _bw)
-      narrative.push(
+      narrate(
+        narrative,
         `  🍃 ${target.name} reads the beast's every move — ${_bw - d} of the ${PC_CHANNEL[kind] === 'archery' ? 'strike' : 'blow'} turned aside (Druid ${target.druidBeastWard}).`,
       );
   }
@@ -319,14 +330,15 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     const _tb = d;
     d = Math.max(1, d - _tSoak);
     if (d < _tb)
-      narrative.push(`  ${target.name} rolls with the blow and takes ${_tb - d} less. (${target.temper} guard)`);
+      narrate(narrative, `  ${target.name} rolls with the blow and takes ${_tb - d} less. (${target.temper} guard)`);
   }
   const _soakPct = temperOf(target.temper).hitSoakPct || 0;
   if (_soakPct > 0 && (PC_CHANNEL[kind] === 'melee' || PC_CHANNEL[kind] === 'archery')) {
     const _before = d;
     d = Math.max(1, Math.round(d * (1 - _soakPct)));
     if (d < _before)
-      narrative.push(
+      narrate(
+        narrative,
         `  ${target.name} takes the ${kind} on raw fury and shrugs off ${_before - d} of it. (Rage −${dispFloor(_soakPct * 100)}%)`,
       );
   }
@@ -334,7 +346,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     const soak = Math.min(target.status.absorb, d);
     target.status.absorb -= soak;
     d -= soak;
-    narrative.push(`  A ward around ${target.name} drinks ${soak} of the blow.`);
+    narrate(narrative, `  A ward around ${target.name} drinks ${soak} of the blow.`);
     if (d <= 0) return 0;
   }
   // MELEE L6 (Parry): a master swordsman turns part of a melee blow aside — 50% chance to shave
@@ -343,7 +355,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     const _cut = rng(1, Math.max(1, Math.floor((target.meleeRaw || 0) / 2)));
     const _b = d;
     d = Math.max(1, d - _cut);
-    if (d < _b) narrative.push(`  ⚔ ${target.name} parries, turning aside ${_b - d} of the blow. (Parry)`);
+    if (d < _b) narrate(narrative, `  ⚔ ${target.name} parries, turning aside ${_b - d} of the blow. (Parry)`);
   }
   // ELEMENTAL L6 (Elemental Armour): a ward of the elements bleeds 1-3 off EVERY attack that
   // lands.
@@ -352,7 +364,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     const _b2 = d;
     d = Math.max(1, d - _cut2);
     if (d < _b2)
-      narrative.push(`  🜂 ${target.name}'s Elemental Armour absorbs ${_b2 - d} of the ${kind}. (Elemental Armour)`);
+      narrate(narrative, `  🜂 ${target.name}'s Elemental Armour absorbs ${_b2 - d} of the ${kind}. (Elemental Armour)`);
   }
   // ── ARMOUR ── worn wards, applied last: flat reductions by channel / by the striker's nature,
   // a percentage off spells, a percentage off everything while badly hurt, then the hard cap.
@@ -371,7 +383,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
       d = Math.max(1, Math.round(d * (1 - (_arm.openGuardPct || 50) / 100)));
     }
     if (d < _b3)
-      narrative.push(
+      narrate(
+        narrative,
         `  ${pcWardIcon(target)} ${pcWardWord(target, 'armour', _chan === 'melee' ? 'meleeDR' : _chan === 'archery' ? 'arrowDR' : 'spellPct')} turns aside ${_b3 - d} of the ${_chan === 'spell' ? 'harm' : _chan === 'archery' ? 'arrow' : 'blow'}.${target.kind === 'monster' ? '' : ` (${_arm.names.join(', ')})`}`,
       );
   }
@@ -382,7 +395,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   if (d > 0) {
     const _floor = Math.max(1, Math.ceil(dmg * PC_DMG_FLOOR_FRACTION));
     if (d < _floor) {
-      narrative.push(
+      narrate(
+        narrative,
         `  ${target.name} turns aside all they can, but the ${_chan === 'spell' ? 'harm' : _chan === 'archery' ? 'arrow' : 'blow'} still lands for ${_floor}. (no ward may take a hit below half)`,
       );
       d = _floor;
@@ -394,7 +408,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     const _capAt = Math.max(1, Math.round(((target.maxHp || 20) * _arm.cap) / 100));
     if (d > _capAt) {
       d = _capAt;
-      narrative.push(
+      narrate(
+        narrative,
         `  ${pcWardIcon(target)} ${pcWardWord(target, 'armour', 'cap')} will not let any single hit bite deeper than ${_capAt}.`,
       );
     }
@@ -433,7 +448,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     target._armSecondWindUsed = true;
     const _back = Math.max(1, Math.round(((target.maxHp || 20) * _arm.secondWind) / 100));
     target.hp = Math.min(target.maxHp || 20, target.hp + _back);
-    narrative.push(
+    narrate(
+      narrative,
       `  ${pcWardIcon(target)} ${target.name} will not go down — ${target.kind === 'monster' ? pcPerkWord(target, 'secondWind', 'its nature') : "their armour's blessing"} restores ${_back} HP. (HP ${dispFloor(target.hp)})`,
     );
   }
@@ -447,13 +463,15 @@ export function pcRoundStart(cbt, narrative) {
     if (cbt.arm.roundWard > 0) cbt._roundWardLeft = cbt.arm.roundWard; // Shield of the Ward-Saints: a fresh ward each round
     if (pcStunWard(cbt) >= 100 && cbt.status.stun > 0) {
       cbt.status.stun = 0;
-      narrative.push(
+      narrate(
+        narrative,
         `  ${pcWardIcon(cbt)} ${cbt.kind === 'monster' ? `${cbt.name} cannot be held (${pcPerkWord(cbt, 'stunWard', 'its nature')})` : `${cbt.name}'s shield arm never wavers`} — the daze is ignored.`,
       );
     }
     if ((cbt.arm.dotImmune || (cbt.arm.dotWard || 0) >= 100) && (cbt.status.dot || []).length) {
       cbt.status.dot = [];
-      narrative.push(
+      narrate(
+        narrative,
         `  ${pcWardIcon(cbt)} ${pcWardWord(cbt, 'armour', 'dotWard')} sloughs off every burn, poison and bleeding.`,
       );
     }
@@ -465,12 +483,13 @@ export function pcRoundStart(cbt, narrative) {
       if (_rg > 0) {
         const h = Math.min(_rg, (cbt.maxHp || 20) - cbt.hp);
         cbt.hp += h;
-        narrative.push(
+        narrate(
+          narrative,
           `  ${pcWardIcon(cbt)} ${pcWardWord(cbt, 'armour', 'regen')} knits flesh for ${h}${_sm < 1 ? ' — the flesh is slower to close now' : ''}. (HP ${dispFloor(cbt.hp)})`,
         );
       } else if (cbt.kind === 'monster' && !cbt._sustainSpent) {
         cbt._sustainSpent = true;
-        narrative.push(`  🜏 ${cbt.name} has nothing left to knit with — its wounds stay open.`);
+        narrate(narrative, `  🜏 ${cbt.name} has nothing left to knit with — its wounds stay open.`);
       }
     }
     if (cbt.arm.resist) {
@@ -478,7 +497,7 @@ export function pcRoundStart(cbt, narrative) {
         cbt.status.hitPenalty = Math.max(0, cbt.status.hitPenalty - pcPenaltyFade(cbt.status.hitPenalty)); // Steadfast Harness: a second helping of the same fade
       if (cbt.status.stun > 0 && kcRng() < 0.5) {
         cbt.status.stun = 0;
-        narrative.push(`  🛡 ${cbt.name} shrugs off the daze — their armour holds them steady.`);
+        narrate(narrative, `  🛡 ${cbt.name} shrugs off the daze — their armour holds them steady.`);
       }
     }
   }
@@ -490,7 +509,8 @@ export function pcRoundStart(cbt, narrative) {
       const _t = _dw > 0 ? Math.round(d.dmg * (1 - _dw / 100)) : d.dmg;
       cbt.hp -= _t;
       d.rounds--;
-      narrative.push(
+      narrate(
+        narrative,
         `  ${d.label || 'Lingering harm'} afflicts ${cbt.name} for ${_t} damage${_dw > 0 ? ` (${pcWardWord(cbt, 'hide', 'dotWard')} turns ${_dw}% of it)` : ''}. (HP ${Math.max(0, Math.round(cbt.hp))})`,
       );
     }
@@ -502,7 +522,8 @@ export function pcRoundStart(cbt, narrative) {
     cbt.hp += h;
     cbt.status.hot.rounds--;
     if (h > 0)
-      narrative.push(
+      narrate(
+        narrative,
         `  ${cbt.status.hot.label || 'Regeneration'} knits ${cbt.name} for ${h}. (HP ${dispFloor(cbt.hp)})`,
       );
   }
@@ -523,7 +544,10 @@ export function pcRoundStart(cbt, narrative) {
         cbt.status.silenceRounds = 0;
         cbt.status.meleeHalvedRounds = 0;
         cbt.status._swShrugPct = 0;
-        narrative.push(`  ⛓ ${cbt.name} tears free of the Spiritwrack binding! (${fmtRoll(_pct, _r)} to shrug it off)`);
+        narrate(
+          narrative,
+          `  ⛓ ${cbt.name} tears free of the Spiritwrack binding! (${fmtRoll(_pct, _r)} to shrug it off)`,
+        );
       }
     } else cbt.status._swShrugPct = 0;
   }
