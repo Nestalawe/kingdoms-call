@@ -15,6 +15,7 @@ import { ESLint, type Linter } from 'eslint';
 import { describe, expect, test } from 'vitest';
 import { ROOT } from '../../tools/build.ts';
 import { declaredGlobals, globalsLists, SCRIPT_PAGE_NAMES } from '../lib/page-globals.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const SRC = path.join(ROOT, 'src');
 const TEMPLATES = fs
@@ -137,14 +138,18 @@ describe("the templates' scripts and handlers pass the site's lint rules", () =>
     }
   });
 
-  test.for(TEMPLATES)('%s: every inline script and handler passes', { timeout: 30_000 }, async (template) => {
-    expect(await findingsIn(template, read(template))).toEqual([]);
-  });
+  test.for(TEMPLATES)(
+    '%s: every inline script and handler passes',
+    timeLimitForTheWork({ toolRuns: 1 }),
+    async (template) => {
+      expect(await findingsIn(template, read(template))).toEqual([]);
+    },
+  );
 
   // The faults the retired tests found in a template (a random sort, a Math.random() in a handler, also in the HTML an
   // inline script writes, HTML built from a value not escaped), and the rules' others, planted in a copy of the GM
   // page's template: each is found, at its line.
-  test('a fault planted in a template is found', { timeout: 30_000 }, async () => {
+  test('a fault planted in a template is found', timeLimitForTheWork({ toolRuns: 1 }), async () => {
     const template = 'kingdoms-call-gm-portal.html';
     const html = read(template);
     const end = html.lastIndexOf('</body>');

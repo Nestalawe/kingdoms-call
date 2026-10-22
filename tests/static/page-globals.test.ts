@@ -32,6 +32,7 @@ import {
   type PageReach,
   type ScriptPage,
 } from '../lib/page-globals.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 /** Evaluating calls whose code isn't a string, a template, a function or a constant of their file, and why each is
  *  safe to leave unread. */
@@ -102,9 +103,13 @@ function problemsOf(
 const reach = namesTestsReachOnPages();
 
 describe.each(SCRIPT_PAGE_NAMES)('%s', (page) => {
-  test('its globals.ts lists exactly what its handlers and its tests reach, and every variable they reach is a declared global', () => {
-    expect(problemsOf(page, reach.pages[page])).toEqual([]);
-  });
+  test(
+    'its globals.ts lists exactly what its handlers and its tests reach, and every variable they reach is a declared global',
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    () => {
+      expect(problemsOf(page, reach.pages[page])).toEqual([]);
+    },
+  );
 
   test('the lists are not empty', () => {
     const lists = globalsLists(page);
@@ -117,14 +122,18 @@ test('every evaluating call in the tests has code that is read, but the known on
   expect(reach.unread).toEqual(UNREAD_ON_PURPOSE);
 });
 
-test('the declared globals are on the two portals and the Hall of Fame, as many as found', () => {
-  const declared = (page: ScriptPage) =>
-    sorted([...pageDeclarations(page)].filter(([, d]) => d.kind === 'global').map(([n]) => n));
-  expect(declared('kingdoms-call-gm-portal.html')).toContain('currentGame');
-  expect(declared('kingdoms-call-player-portal.html')).toContain('currentReport');
-  expect(declared('kingdoms-call-leaderboard.html')).toEqual(['GAMES']);
-  expect(declared('kingdoms-call-overlord.html')).toEqual([]);
-});
+test(
+  'the declared globals are on the two portals and the Hall of Fame, as many as found',
+  timeLimitForTheWork({ everyFileReads: 1 }),
+  () => {
+    const declared = (page: ScriptPage) =>
+      sorted([...pageDeclarations(page)].filter(([, d]) => d.kind === 'global').map(([n]) => n));
+    expect(declared('kingdoms-call-gm-portal.html')).toContain('currentGame');
+    expect(declared('kingdoms-call-player-portal.html')).toContain('currentReport');
+    expect(declared('kingdoms-call-leaderboard.html')).toEqual(['GAMES']);
+    expect(declared('kingdoms-call-overlord.html')).toEqual([]);
+  },
+);
 
 describe('a fault planted in a copy of src/ is seen', () => {
   const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-page-globals-'));
@@ -149,19 +158,19 @@ describe('a fault planted in a copy of src/ is seen', () => {
   };
   const drop = (name: string) => (text: string) => text.replace(new RegExp(`^  ${name}, //.*\\n`, 'm'), '');
 
-  test('a handler name taken off the first list', () => {
+  test('a handler name taken off the first list', timeLimitForTheWork({ everyFileReads: 1 }), () => {
     expect(plantedProblems(GM, 'ui/gm/globals.ts', drop('runTurn0'))).toEqual([
       "missing from the handlers' list: runTurn0",
     ]);
   });
 
-  test('a name a test reaches taken off the second list', () => {
+  test('a name a test reaches taken off the second list', timeLimitForTheWork({ everyFileReads: 1 }), () => {
     expect(plantedProblems(PLAYER, 'ui/player/globals.ts', drop('buildOrdersForm'))).toEqual([
       "missing from the tests' list: buildOrdersForm",
     ]);
   });
 
-  test('a name nothing needs put on a list', () => {
+  test('a name nothing needs put on a list', timeLimitForTheWork({ everyFileReads: 1 }), () => {
     expect(
       plantedProblems(GM, 'ui/gm/globals.ts', (t) =>
         t.replace('  runTurn0, //', '  resolveTurn, // engine/run-turn.ts\n  runTurn0, //'),
@@ -169,7 +178,7 @@ describe('a fault planted in a copy of src/ is seen', () => {
     ).toEqual(["on the handlers' list, but nothing there needs it: resolveTurn"]);
   });
 
-  test('a name listed with the wrong file', () => {
+  test('a name listed with the wrong file', timeLimitForTheWork({ everyFileReads: 1 }), () => {
     expect(
       plantedProblems(GM, 'ui/gm/globals.ts', (t) =>
         t.replace('  runTurn0, // ui/gm/turn-zero.ts', '  runTurn0, // ui/gm/start.ts'),
@@ -177,7 +186,7 @@ describe('a fault planted in a copy of src/ is seen', () => {
     ).toEqual(['listed as from ui/gm/start.ts, but declared in ui/gm/turn-zero.ts: runTurn0']);
   });
 
-  test('a declared global put back as a let', () => {
+  test('a declared global put back as a let', timeLimitForTheWork({ everyFileReads: 1 }), () => {
     const problems = plantedProblems(GM, 'ui/gm/config.ts', (t) =>
       t.replace('globalThis.currentGame = null;', 'let currentGame = null;'),
     );
@@ -187,14 +196,14 @@ describe('a fault planted in a copy of src/ is seen', () => {
     );
   });
 
-  test('a variable put on a list', () => {
+  test('a variable put on a list', timeLimitForTheWork({ everyFileReads: 1 }), () => {
     const problems = plantedProblems(PLAYER, 'ui/player/globals.ts', (t) =>
       t.replace('  buildOrdersForm, //', '  _deskRightView, // ui/player/layout.ts\n  buildOrdersForm, //'),
     );
     expect(problems).toContain('listed, but a let (its copy would go stale): _deskRightView');
   });
 
-  test('globals.ts not the last file the entry imports', () => {
+  test('globals.ts not the last file the entry imports', timeLimitForTheWork({ everyFileReads: 1 }), () => {
     const main = importsOf(entryOf(GM));
     const moved = [...main.slice(0, -2), globalsFileOf(GM), ...main.slice(-2, -1)];
     expect(problemsOf(GM, reach.pages[GM], undefined, moved)).toEqual([

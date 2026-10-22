@@ -6,11 +6,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { ARCHITECTURE_FILE, blockIn, mapBlock, moduleMap, REWRITE_COMMAND } from '../../tools/module-map.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 
 describe('the module map in docs/ARCHITECTURE.md', () => {
-  test('is the one dependency-cruiser draws from the imports today', () => {
+  test('is the one dependency-cruiser draws from the imports today', timeLimitForTheWork({ toolRuns: 1 }), () => {
     const block = blockIn(fs.readFileSync(path.join(ROOT, ARCHITECTURE_FILE), 'utf8'));
     expect(block, `${ARCHITECTURE_FILE} has no module map block`).not.toBeNull();
     expect(block, `The module map is out of date. Rewrite it with:  ${REWRITE_COMMAND}`).toBe(mapBlock(moduleMap()));
@@ -18,7 +19,7 @@ describe('the module map in docs/ARCHITECTURE.md', () => {
 
   test(
     'shows a folder of src/ and an import between folders, and changes when an import does',
-    { timeout: 60_000 },
+    timeLimitForTheWork({ toolRuns: 2, everyFileReads: 1 }),
     () => {
       const map = moduleMap();
       expect(map).toMatch(/^flowchart LR\n/);

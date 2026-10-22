@@ -15,6 +15,7 @@ import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 import { filesUnder, ROOT } from '../../tools/build.ts';
 import { pageModules } from '../../tools/pages.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const SRC = path.join(ROOT, 'src');
 const SHARED = 'shared/';
@@ -137,15 +138,19 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     expect(reaching).toEqual([]);
   });
 
-  test('no file of the portal declares a retired copy, or a name src/shared/ hands it', () => {
-    const refused = new Set([...RETIRED, ...namesSharedExports()]);
-    const copies = files.flatMap((file) =>
-      namesDeclaredIn(file)
-        .filter((name) => refused.has(name))
-        .map((name) => `${file} declares ${name}`),
-    );
-    expect(copies).toEqual([]);
-  });
+  test(
+    'no file of the portal declares a retired copy, or a name src/shared/ hands it',
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    () => {
+      const refused = new Set([...RETIRED, ...namesSharedExports()]);
+      const copies = files.flatMap((file) =>
+        namesDeclaredIn(file)
+          .filter((name) => refused.has(name))
+          .map((name) => `${file} declares ${name}`),
+      );
+      expect(copies).toEqual([]);
+    },
+  );
 
   test('the player page loads no engine file outside the folder, and no views file', () => {
     const modules = pageModules(PLAYER_PAGE);

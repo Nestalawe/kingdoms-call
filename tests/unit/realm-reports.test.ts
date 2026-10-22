@@ -10,6 +10,7 @@
 import fc from 'fast-check';
 import { afterAll, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
@@ -44,6 +45,12 @@ type Entry = {
   phase: number | null;
 };
 
+// fast-check's run count for every property (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. The test's time
+// limit is 50 ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s. A log takes 1 ms to read
+// on a laptop and took 6.2 ms on the nightly run (1,000 in 6.2 s, timing out at 5 s: tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
+const LIMIT = timeLimitForPropertyRuns(RUNS, 50);
+
 const realm = fc.integer({ min: 0, max: REALMS - 1 });
 const realms = fc.uniqueArray(realm, { maxLength: REALMS });
 const owned = G.players.flatMap((p) => p.provinces ?? []);
@@ -65,7 +72,7 @@ const entry = fc.record(
   { requiredKeys: ['type', 'actor', 'targets', 'public', 'provinceId', 'charId', 'phase'] },
 );
 
-test("each realm's report shows exactly the lines the visibility rule allows, in the log's order", () => {
+test("each realm's report shows exactly the lines the visibility rule allows, in the log's order", LIMIT, () => {
   fc.assert(
     fc.property(fc.array(entry, { maxLength: 30 }), (drawn) => {
       const log: Entry[] = drawn.map((e, i) => ({ ...e, text: `[line ${String(i)}]`, charIds: null }));
@@ -94,6 +101,7 @@ test("each realm's report shows exactly the lines the visibility rule allows, in
       }
     }),
     {
+      numRuns: RUNS,
       examples: [
         [
           [

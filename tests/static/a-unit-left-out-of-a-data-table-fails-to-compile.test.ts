@@ -17,6 +17,7 @@ import ts from 'typescript';
 import { afterAll, expect, test } from 'vitest';
 import { ROOT } from '../../tools/build.ts';
 import { DATA_FILE } from '../../tools/pages.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const DATA = fs.readFileSync(path.join(ROOT, 'src', DATA_FILE), 'utf8');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-unit-tables-'));
@@ -88,7 +89,7 @@ function errorsIn(copies: Record<string, string>): Record<string, string[]> {
 
 test(
   'the data file compiles as it is, and each planted copy fails in the tables that must list the unit',
-  { timeout: 60_000 },
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
   () => {
     expect(errorsIn(PLANTS)).toEqual({
       'as it is': [],

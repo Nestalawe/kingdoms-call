@@ -8,6 +8,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 import { filesUnder, ROOT } from '../../tools/build.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const SRC = path.join(ROOT, 'src');
 const DTS = 'globals.d.ts';
@@ -56,16 +57,24 @@ function differences(src: string, text: string): string[] {
 const text = fs.readFileSync(path.join(SRC, DTS), 'utf8');
 
 describe('src/globals.d.ts', () => {
-  test('declares exactly the declared globals of the code, and the three names the page gives', () => {
-    expect(declaredInTheCode(SRC).length).toBeGreaterThan(40);
-    expect(differences(SRC, text)).toEqual([]);
-  });
+  test(
+    'declares exactly the declared globals of the code, and the three names the page gives',
+    timeLimitForTheWork({ everyFileReads: 2 }),
+    () => {
+      expect(declaredInTheCode(SRC).length).toBeGreaterThan(40);
+      expect(differences(SRC, text)).toEqual([]);
+    },
+  );
 
-  test('a declared global missing from it, or one too many, is found (planted)', () => {
-    const without = text.replace(/^declare var currentGame: PageState;\n/m, '');
-    expect(without).not.toBe(text);
-    expect(differences(SRC, without)).toEqual([`currentGame: a declared global, not declared in ${DTS}`]);
-    const extra = text + 'declare var _goneLongAgo: PageState;\n';
-    expect(differences(SRC, extra)).toEqual([`_goneLongAgo: declared in ${DTS}, but no file declares it`]);
-  });
+  test(
+    'a declared global missing from it, or one too many, is found (planted)',
+    timeLimitForTheWork({ everyFileReads: 2 }),
+    () => {
+      const without = text.replace(/^declare var currentGame: PageState;\n/m, '');
+      expect(without).not.toBe(text);
+      expect(differences(SRC, without)).toEqual([`currentGame: a declared global, not declared in ${DTS}`]);
+      const extra = text + 'declare var _goneLongAgo: PageState;\n';
+      expect(differences(SRC, extra)).toEqual([`_goneLongAgo: declared in ${DTS}, but no file declares it`]);
+    },
+  );
 });

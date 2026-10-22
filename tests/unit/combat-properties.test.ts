@@ -10,11 +10,16 @@ import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import type { KcRng } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant, type Guardian } from '../lib/personal-combat.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 const { call, value, base, MON } = personalCombatEngine();
 /** An input takes well under a millisecond: many more than the default, so a fault in a narrow path (one ward, one
  *  size of hit) is still met. */
 const RUNS = process.env['KC_FULL'] === '1' ? 20_000 : 2_000;
+/** Each property's time limit, from its run count: 2.5 ms an input, so npm test's 2,000 keep Vitest's 5 s and KC_FULL's
+ *  20,000 get 50 s. The slowest property, a whole fight, takes 0.07 ms an input on a laptop and took 0.48 ms on the
+ *  nightly run (20,000 in 9.6 s, timing out at 5 s: tests/lib/time-limits.ts). */
+const LIMIT = timeLimitForPropertyRuns(RUNS, 2.5);
 
 const TEMPERS = value('TEMPERS_P') as string[];
 const ITEMS = value('[...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P]') as Record<string, unknown>[];
@@ -95,7 +100,7 @@ test("the engine's tables were read", () => {
   expect(MON.length).toBeGreaterThan(20);
 });
 
-test('a blow or an arrow never does negative damage', () => {
+test('a blow or an arrow never does negative damage', LIMIT, () => {
   fc.assert(
     fc.property(fighterArb, fighterArb, seedArb, (a, b, seed) => {
       reseed(seed);
@@ -117,7 +122,7 @@ const wardsArb = fc.record({
   roundWard: fc.integer({ min: 0, max: 3 }),
 });
 
-test('a hit taken is never negative, and takes exactly what it says from HP', () => {
+test('a hit taken is never negative, and takes exactly what it says from HP', LIMIT, () => {
   fc.assert(
     fc.property(
       fighterArb,
@@ -144,7 +149,7 @@ test('a hit taken is never negative, and takes exactly what it says from HP', ()
   );
 });
 
-test('after any personal fight, a hero has from 0 HP to their maximum', () => {
+test('after any personal fight, a hero has from 0 HP to their maximum', LIMIT, () => {
   fc.assert(
     fc.property(heroArb, fighterArb, seedArb, (h, foe, seed) => {
       reseed(seed);
