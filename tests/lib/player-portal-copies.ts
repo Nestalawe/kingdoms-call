@@ -148,8 +148,10 @@ export function scripted05(): { state: Obj; report: Obj }[] {
       Math.floor(kcRng() * 2 ** 32) || 1,
     ) as {
       state: string;
+      spyStealthAndInvisibilityStampedForTheReports: () => void;
       buildReports: () => { reports: { gp: Obj; report: Obj }[] };
     };
+    result.spyStealthAndInvisibilityStampedForTheReports();
     const ours = result.buildReports().reports.find((r) => r.gp['player_index'] === SCRIPTED_REALM);
     if (!ours) throw new Error(`turn ${String(turn)}: no report for the scripted realm`);
     state = result.state;

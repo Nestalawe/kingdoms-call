@@ -32,10 +32,11 @@ import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 
 export function lastTurnsBattleAndDuelSwordsClearedFromTheMap(G) {
   // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
-  // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
+  // duel swords) were deleted at the very end of runTurn — but only AFTER game_state had been
   // saved, so the saved state still carried them and the next turn loaded last turn's fights,
   // reporting them a second time (the "duel icon that won't go away"). Clear them here, at the
-  // top of the turn, whatever the save held.
+  // top of the turn, whatever the save held. (Since P1-12b2 this is the only place they are
+  // cleared: the reports write nothing to the world.)
   ((G.world && G.world.provinces) || []).forEach((p) => {
     if (p) {
       delete p._hadBattleThisTurn;

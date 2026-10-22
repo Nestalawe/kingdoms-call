@@ -7,18 +7,16 @@ import { hasDisc } from '../discoveries.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { emit } from './events-and-their-audiences.ts';
 
-// ── EVERY REALM'S REPORT, BUILT AFTER THE SAVE (plan P1-08d: lifted out of resolveTurn) ────
-// buildReports rolls each hero's Spy stealth once, then builds each realm's report from the turn's log: what that
-// realm saw (its own deeds, lines sent to it, and public events where it had eyes at the time), its battle markers,
-// its province intelligence, its spies' lingering sight, unmet realms left nameless, and its Clairvoyance feed.
-// resolveTurn hands it to the shell wrapped with the turn's context ({state, log, buildReports}); the shell calls it
-// once the turn is saved. It takes the turn's context first (src/engine/turn/context.ts) and reads the values
-// resolveTurn joins to it: _reports (built once a turn), presenceByPhase, clairWatch, battleCommanders and _tel.
-export function buildReports(turnContext) {
-  const { _reports, freshPlayers, G, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;
-  if (_reports.built) throw new Error('buildReports() runs once a turn');
-  _reports.built = true;
-  const activePlayers = freshPlayers.filter((p) => p.user_id);
+// ── THE SPY STEALTH, ROLLED AFTER THE SAVE (plan P1-12b2: out of buildReports) ────
+// spyStealthAndInvisibilityStampedForTheReports rolls each hero's Spy stealth once and carries an Invisibility cast
+// this turn into the reports' turn: the two writes to the world the reports used to make themselves. resolveTurn
+// hands it to the shell beside buildReports, wrapped with the turn's context and lent the turn's dice; the shell calls
+// it once the turn is saved, just before buildReports, so its rolls come where they always did: after the turn's,
+// before the reports. Its line goes to the end of the GM's log, as before.
+export function spyStealthAndInvisibilityStampedForTheReports(turnContext) {
+  const { _reports, G } = turnContext;
+  if (_reports.stealthRolled) throw new Error('the Spy stealth is rolled once a turn');
+  _reports.stealthRolled = true;
   // ── Spy stealth — rolled ONCE per character before any report is built, so every player's
   // report reads the same result. 5% per Spy level (capped at level 5 → 25% max). A character who
   // passes is stamped _unspottedTurn and is dropped from other players' PASSIVE sightings (map
@@ -52,6 +50,23 @@ export function buildReports(turnContext) {
       });
     }
   });
+}
+
+// ── EVERY REALM'S REPORT, BUILT AFTER THE SAVE (plan P1-08d: lifted out of resolveTurn) ────
+// buildReports builds each realm's report from the turn's log: what that realm saw (its own deeds, lines sent to it,
+// and public events where it had eyes at the time), its battle markers, its province intelligence, its spies'
+// lingering sight, unmet realms left nameless, and its Clairvoyance feed. It writes nothing to the world or the log
+// (P1-12b2; tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts): the Spy stealth above is
+// rolled first. resolveTurn hands it to the shell wrapped with the turn's context ({state, log, …, buildReports});
+// the shell calls it once the turn is saved and the stealth rolled. It takes the turn's context first
+// (src/engine/turn/context.ts) and reads the values resolveTurn joins to it: _reports (the stealth rolled; built once
+// a turn), presenceByPhase, clairWatch, battleCommanders and _tel.
+export function buildReports(turnContext) {
+  const { _reports, freshPlayers, G, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;
+  if (_reports.built) throw new Error('buildReports() runs once a turn');
+  if (!_reports.stealthRolled) throw new Error('the Spy stealth is rolled before buildReports()');
+  _reports.built = true;
+  const activePlayers = freshPlayers.filter((p) => p.user_id);
   const reports = [];
   for (const gp of activePlayers) {
     const report = buildTurnReport(G, gp.player_index);
@@ -446,12 +461,7 @@ export function buildReports(turnContext) {
       }));
     reports.push({ gp, report });
   }
-
-  // Clear per-turn battle flags now that every player's report (and its hadBattle markers) is
-  // built.
-  G.world.provinces.forEach((p) => {
-    delete p._hadBattleThisTurn;
-    delete p._combatPlayersThisTurn;
-  });
+  // The battle flags (_hadBattleThisTurn, _combatPlayersThisTurn) stay on the working copy: the world was saved before
+  // the reports, and the next turn's start clears them (lastTurnsBattleAndDuelSwordsClearedFromTheMap).
   return { reports, tel: { gs: G, collected: _tel } };
 }

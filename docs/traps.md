@@ -348,6 +348,28 @@ check finds were made.
   `tests/unit/emit-writes-the-lines-log-wrote.test.ts` checks the forms (its oracle against copies of the old code ran
   from P1-12a2 to P1-12a4, until every caller was converted).
 
+## Views never write
+
+Building the reports reads the world and the GM's log, and writes to neither (P1-12b2, P1-12's Decision 9). Every
+realm's report is built from the same working copy, after the save, one realm after another: a write made while one
+realm's report is built changes what the next realm's report reads, and the save never holds it, so nothing shows it
+but the reports.
+- A rule that changes the world belongs to the engine, before the reports: the Spy-stealth rolls and the Invisibility
+  re-stamp are `spyStealthAndInvisibilityStampedForTheReports` (`src/engine/turn/realm-reports-and-spy-stealth.ts`), an
+  engine step `resolveTurn` hands the shell beside `buildReports`. The shell calls it after the save and before the
+  reports, on the turn's dice; `buildReports` refuses to run before it. A harness that plays a turn calls both, in that
+  order.
+- A per-turn mark is cleared at the next turn's start, not after the reports: the battle flags (`_hadBattleThisTurn`,
+  `_combatPlayersThisTurn`) stay on the working copy, and `lastTurnsBattleAndDuelSwordsClearedFromTheMap` clears them
+  as the next turn reads the save.
+- A helper the report calls must not write either, even the same value back: `normaliseEquipment` writes only a flag
+  that changes, so `activeItems` and every helper that reads items through it are reads at report time, when every
+  hero's items are already in order.
+- `tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts` plays a whole game of the matrix with
+  every report built on a world and a log that refuse every write (each write noted, then thrown), and compares every
+  report with the matrix's. A new write in a report, or in anything it calls, turns it red. `_MAXHP_PLAYERS`, a global
+  the turn keeps, is not the world: it is P1-10's.
+
 ## Nothing is on `window` but `globals.ts`
 
 The site's code is ES modules (P1-09d): a module's top-level names are its own, so an inline `on…="…"` handler, a
@@ -400,7 +422,8 @@ or let the watcher retry the turn: that combination once made live games resolve
 
 - `_turnCommitted` marks that the save succeeded. Any code added after the save must respect it.
 - **The reports are built after the save, never inside `resolveTurn`** (P1-18d). `resolveTurn` returns
-  `buildReports`, and the shell calls it only once `_turnCommitted` is set. A report built before the save would
+  `buildReports` (and, since P1-12b2, the Spy-stealth step before it: [Views never write](#views-never-write)), and the
+  shell calls them only once `_turnCommitted` is set. A report built before the save would
   make every report bug a failed turn: the orders put back and the turn tried again after every cooldown, for as
   long as the tab stayed open. `turn-shell`'s post-save guard plants a throw in `buildTurnReport` and checks that
   the turn stays saved.
@@ -512,7 +535,8 @@ Every random number the GM portal's own code draws comes from `kcRng()` (`src/en
 generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.js`) or, on the
 live site, from `crypto.getRandomValues`. Each turn rolls its own dice (P1-18e): the turn's shell draws a seed from
 the page's dice and hands it to `resolveTurn`, which lends itself `kcRngStream(seed)` with `kcRng.use`, once for the
-turn and once for `buildReports()`, giving the dice in use back after each (P1-08m). Nothing in the engine or its views reads the time (P1-18d): only the
+turn, once for the Spy-stealth step and once for `buildReports()` (which draws none since P1-12b2), giving the dice in
+use back after each (P1-08m). Nothing in the engine or its views reads the time (P1-18d): only the
 turn's shell does, through `kcClock()` (`src/engine/clock.ts`, which reads `Date.now()` when called), to stamp when
 the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Math.random` that throw.
 
@@ -534,8 +558,9 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
   (`turn-shell`'s same-result test), or hand it the seed (`the-turns-own-dice-from-its-seed`). Given a seed, a turn
   draws nothing from the dice in use: a test's fixed dice don't reach it.
 - Never lend the dice across an `await`. Another turn (the watcher's, or the GM's button on another game) can run in
-  the gap and would draw from them, and the page could be handed the wrong dice back. `resolveTurn` lends them twice,
-  for itself and for `buildReports()`, two synchronous calls, and gives them back in a `finally`.
+  the gap and would draw from them, and the page could be handed the wrong dice back. `resolveTurn` lends them three
+  times, for itself, for the Spy-stealth step and for `buildReports()`, three synchronous calls, and gives them back in
+  a `finally`.
 - Code a test cuts out of the page and runs on its own needs a `kcRng` or `kcClock` of its own (`home-placement`,
   `leaderboard-records`).
 - Keep the generator in an object's property (`_kcRng.next`), not in a top-level `let`. With a `let`, V8 (Node 24.22)

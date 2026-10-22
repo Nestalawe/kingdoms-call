@@ -14,7 +14,7 @@ import { snapshotHeldItems } from './titles/perks.ts';
 import { telRealmSnapshot } from './turn/log-line-helpers.ts';
 import { createTurnContext } from './turn/context.ts';
 import { syncAllMaxHp } from './heroes/experience-skill-rises-and-earned-hp.ts';
-import { buildReports } from './turn/realm-reports-and-spy-stealth.ts';
+import { buildReports, spyStealthAndInvisibilityStampedForTheReports } from './turn/realm-reports-and-spy-stealth.ts';
 import { buildPhaseIntents } from './turn/phase-intents-and-dependency-ordering.ts';
 import {
   everyRealmStampedBotOrHumanFromTheBotSlotRows,
@@ -57,17 +57,22 @@ import {
 //   expectedTurnToRun the turn being run (the games row's turn, which the save checks)
 //   seed              the turn's seed, a 32-bit integer (kcRngStream reads 0 as 1); none (the tests' turns): the dice
 //                     in use (kcRng, src/engine/rng.ts), as a test fixes them
-// Returns {state, log, buildReports}:
+// Returns {state, log, spyStealthAndInvisibilityStampedForTheReports, buildReports}:
 //   state             the world after the turn, as JSON: what the shell saves (with its two turn-mode stamps added)
-//   log               the GM's log of the turn (turnLog); buildReports adds the Spy-stealth lines to it
-//   buildReports()    builds every realm's report on the working copy, once, after the save: {reports, tel}, where
-//                     reports is [{gp, report}] (gp: the slot row it is for) and tel what telemetry reads
+//   log               the GM's log of the turn (turnLog); the Spy-stealth step adds its lines to it
+//   spyStealthAndInvisibilityStampedForTheReports()
+//                     rolls each hero's Spy stealth and carries this turn's Invisibility into the reports' turn, on the
+//                     working copy, once, after the save and before the reports (P1-12b2)
+//   buildReports()    builds every realm's report on the working copy, once, after the stealth step, writing nothing to
+//                     it: {reports, tel}, where reports is [{gp, report}] (gp: the slot row it is for) and tel what
+//                     telemetry reads
 // The body keeps runTurn's two-space indent and names, so the code anchors in tests/README.md still match.
 export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
   // ── THE TURN'S DICE (P1-08m, 2026-10-20) ── given a seed, the turn plays on dice of its own: kcRngStream(seed), made
-  // once, lent (kcRng.use) for the turn and again for buildReports(), whose Spy-stealth rolls carry on from the turn's.
-  // The dice in use before are given back after each, also when it throws, so nothing else the page runs between the
-  // two (the save, another game's turn, the watcher) draws from the turn's. With no seed, nothing is lent.
+  // once, lent (kcRng.use) for the turn and again for the Spy-stealth step, whose rolls carry on from the turn's, and
+  // for buildReports(). The dice in use before are given back after each, also when it throws, so nothing else the
+  // page runs between them (the save, another game's turn, the watcher) draws from the turn's. With no seed, nothing is
+  // lent.
   const turnDice = seed == null ? null : kcRngStream(seed);
   const onTheTurnsDice = (fn) => {
     if (!turnDice) return fn();
@@ -294,14 +299,16 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // ── THE REPORTS, BUILT AFTER THE SAVE (P1-18d, 2026-10-18) ────
     // The shell calls buildReports() only once the turn is saved (_turnCommitted), so a report that fails costs reports,
     // never the turn (docs/traps.md, "Post-commit work in runTurn"). The reports are built on the working copy, as they
-    // always were: the Spy-stealth rolls in buildReports (engine/turn/realm-reports-and-spy-stealth.ts) change it, and the
-    // reports read it with the turn's log and helpers.
-    const _reports = { built: false };
+    // always were, and write nothing to it (P1-12b2): the Spy-stealth rolls and the Invisibility re-stamp, which change
+    // it, are a step of their own (engine/turn/realm-reports-and-spy-stealth.ts) that the shell calls first.
+    const _reports = { stealthRolled: false, built: false };
     turnContext._reports = _reports;
 
     return {
       state: JSON.stringify(G),
       log: turnLog,
+      spyStealthAndInvisibilityStampedForTheReports: () =>
+        onTheTurnsDice(() => spyStealthAndInvisibilityStampedForTheReports(turnContext)),
       buildReports: (...a) => onTheTurnsDice(() => buildReports(turnContext, ...a)),
     };
   });

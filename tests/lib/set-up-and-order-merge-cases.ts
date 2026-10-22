@@ -168,7 +168,12 @@ export const playCase = (b: Board, c: SetUpCase, s: Staged): Outcome => {
     state: string,
     rows: unknown,
     turn: number,
-  ) => { state: string; log: Line[]; buildReports: () => { tel: { collected: { orders: Record<string, Raw> } } } };
+  ) => {
+    state: string;
+    log: Line[];
+    spyStealthAndInvisibilityStampedForTheReports: () => void;
+    buildReports: () => { tel: { collected: { orders: Record<string, Raw> } } };
+  };
   const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
   try {
     const turn = b.G.turn;
@@ -176,6 +181,7 @@ export const playCase = (b: Board, c: SetUpCase, s: Staged): Outcome => {
     const state = JSON.stringify(b.G);
     const [result, record] = withCaseDice(b.engine, c.dice ?? LANDS, () => {
       const r = resolveTurn(state, inVm(rows), turn);
+      r.spyStealthAndInvisibilityStampedForTheReports();
       return [r, JSON.parse(JSON.stringify(r.buildReports().tel.collected.orders)) as Record<string, Raw>] as const;
     });
     return {

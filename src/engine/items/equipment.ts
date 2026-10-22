@@ -484,12 +484,16 @@ export function migrateItemTiers(gs) {
   });
 }
 
+// Puts a hero's items in order: an item he can't use comes off, and each slot holds as many as it may (those he wears
+// first, then the first others he carries). It writes only a flag that changes (P1-12b2), so on a hero whose items
+// are already in order it is only a read: the reports read items through it (activeItems), and building them writes
+// nothing to the world.
 export function normaliseEquipment(c) {
   if (!c || !Array.isArray(c.items)) return;
   const count = {};
   c.items.forEach((it) => {
     if (it && !itemUsableBy(it, c)) {
-      if (itemSlot(it)) it.equipped = false;
+      if (itemSlot(it) && it.equipped !== false) it.equipped = false;
       return;
     }
     const sl = itemSlot(it);
@@ -509,7 +513,7 @@ export function normaliseEquipment(c) {
     if ((count[sl] || 0) < ITEM_SLOT_CAP[sl]) {
       it.equipped = true;
       count[sl] = (count[sl] || 0) + 1;
-    } else it.equipped = false;
+    } else if (it.equipped !== false) it.equipped = false;
   });
 }
 // 2026-10-13 (Toby, item 10): every time a hero gains an item, the report says whether they put

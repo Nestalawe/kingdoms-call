@@ -30,7 +30,8 @@ export const THE_FIELDS_RESOLVE_TURN_ADDS = `tc._logCtx={charId:null,phase:null}
       tc.SEASONS=KC_SEASONS.slice(); tc.recruitedThisTurn={}; tc._intrusionAcc=new Map();
       tc._combatSkillProv=null; tc._duelFoes=null; tc._battleSeq=0; tc._chieftainDuelGain=null;
       tc._deferredSkillLogs=[]; tc._pcSimulating=false; tc._elvenEscapeQueue=[];
-      tc.clairWatch={}; tc.presenceByPhase=[]; tc._reports={built:false}; tc.enteredThisPhase={}; tc._distCache=new Map();
+      tc.clairWatch={}; tc.presenceByPhase=[]; tc._reports={stealthRolled:false,built:false};
+      tc.enteredThisPhase={}; tc._distCache=new Map();
       tc._tier0Open=false; tc._unitGainQueue=[]; tc._warFrontAtStart=new Map(); tc._warFrontProvs=new Set();
       tc.lightLandMoves={}; tc.lightSeaMoves={}; tc.diploDeclarations={}; tc.reckoningCalls=new Set();
       tc.staleOrderWarnings=[]; tc.safeStartRefused=[]; tc.discoveryChoicePicks={}; tc.playerMessages={};
