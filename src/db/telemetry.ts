@@ -7,7 +7,7 @@ import { writeGameRecord } from '../ui/gm/hall-of-fame.ts';
 import { isBotRow } from '../engine/bots/setup.ts';
 import { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { computeStandings } from '../engine/titles/reckoning.ts';
-import { telRealmSnapshot } from '../views/turn-report.ts';
+import { telRealmSnapshot } from '../engine/turn/log-line-helpers.ts';
 
 // Final standings order: score, then tax base, then treasury (the Reckoning tie-break).
 export function telRankOrder(gs) {

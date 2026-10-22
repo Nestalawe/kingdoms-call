@@ -11,7 +11,7 @@ import { isBotRow } from './bots/setup.ts';
 import { botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim } from './bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts';
 import { botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning } from './bots/bot-realms-plan-the-turn-concessions-movement-muster-economy-actions-hygiene-the-reckoning-and-the-duel-forecast.ts';
 import { snapshotHeldItems } from './titles/perks.ts';
-import { telRealmSnapshot } from '../views/turn-report.ts';
+import { telRealmSnapshot } from './turn/log-line-helpers.ts';
 import { createTurnContext } from './turn/context.ts';
 import { syncAllMaxHp } from './heroes/experience-skill-rises-and-earned-hp.ts';
 import { buildReports } from './turn/realm-reports-and-spy-stealth.ts';

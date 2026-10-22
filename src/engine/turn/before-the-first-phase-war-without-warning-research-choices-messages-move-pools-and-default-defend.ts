@@ -9,7 +9,7 @@ import { grantMithrilToDwarves } from '../personal-combat/helpers.ts';
 import { botResearchPick } from '../bots/missions.ts';
 import { TITLES_PUBLIC_FROM_TURN, TITLE_PERKS_ENABLED } from '../titles/perks.ts';
 import { computeMinorTitles, computeStandings } from '../titles/reckoning.ts';
-import { telOrdersFor } from '../../views/turn-report.ts';
+import { telOrdersFor } from './log-line-helpers.ts';
 import { DISC_BY_ID, gdActive } from '../discoveries.ts';
 import { relKeyOf } from '../realms/relations-and-captures.ts';
 import { setMovePool } from '../units/movement-pools.ts';

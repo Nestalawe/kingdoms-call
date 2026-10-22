@@ -3,7 +3,7 @@ import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../army-tables.ts';
-import { featDiscovered } from '../../views/visibility.ts';
+import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import {
   BOT_HEX_DIRS,
   botBelief,

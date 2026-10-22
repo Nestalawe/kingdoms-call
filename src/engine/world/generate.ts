@@ -43,7 +43,7 @@ import {
   RITUAL_SITE_NAMES,
 } from '../items/tiers-and-hoards.ts';
 import { ensureAllLairHoards } from '../items/lair-items.ts';
-import { discoverFeat } from '../../views/visibility.ts';
+import { discoverFeat } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { GUARDIAN_TABLE_VER, computeMaxHp, maxHpPlayers } from '../heroes/skills-and-hp.ts';
 import { grantMithrilToDwarves } from '../personal-combat/helpers.ts';
 import { bestNeutralMix, neutralDefCount, rP, resyncNeutralDefenders } from '../units/drill-and-spoils.ts';

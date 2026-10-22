@@ -5,7 +5,11 @@ import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-s
 import { TAMED_FLYER_TYPES_D, druIdPenaltyMult } from '../world/tables.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { consecratedIds } from '../heroes/fame-and-consecration.ts';
-import { enemyCharVisibleTo, featDiscovered, nearSpiedProvIds } from '../../views/visibility.ts';
+import {
+  enemyCharVisibleTo,
+  featDiscovered,
+  nearSpiedProvIds,
+} from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { BOT_AERIAL_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL } from './war.ts';
 import { botTurnCache } from './strategy.ts';
 import { botSkillsFor } from './missions.ts';

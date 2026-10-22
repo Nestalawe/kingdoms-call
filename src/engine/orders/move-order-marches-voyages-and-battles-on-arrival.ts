@@ -10,7 +10,7 @@ import {
   isAirCarriable,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { senseGravesUnderfoot } from '../graves.ts';
-import { discoverFeat, featDiscovered } from '../../views/visibility.ts';
+import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { activeItems } from '../items/equipment.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { d100, describeArmy } from '../dice-and-army-names.ts';

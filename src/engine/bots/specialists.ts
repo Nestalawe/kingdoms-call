@@ -2,7 +2,7 @@
 import { kcRng } from '../rng.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS, STEAL_TIER_PEN } from '../army-tables.ts';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.ts';
-import { featDiscovered } from '../../views/visibility.ts';
+import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import {
   BOT_DEF_BONUS,
   BOT_HEX_DIRS,

@@ -6,7 +6,7 @@ import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wanderin
 import { wildHuntPrice } from '../items/tiers-and-hoards.ts';
 import { consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { itemSlot, itemUsableBy } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
-import { featDiscovered } from '../../views/visibility.ts';
+import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { ITEM_SLOT_CAP, activeItems, itemPowerScore } from '../items/equipment.ts';
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { RUMOUR_COST_BY_POWER, isMithril } from '../personal-combat/helpers.ts';

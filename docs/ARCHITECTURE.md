@@ -45,8 +45,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   known are listed in a baseline ([below](#the-layers-and-the-module-map)). Which files make a page is read the same way by `tools/pages.ts`, for the tests and the
   balance runner; `tests/static/pages-build.test.ts` checks it names what Vite's build holds, and that every file
   under `src/` is in some page.
-- **Folders say what most of a file is**: `engine/` (rules, bots, world generation), `views/` (the turn report, the
-  statistics snapshots, what a realm can see), `db/` (the version guard, telemetry and the light `meta` rows),
+- **Folders say what most of a file is**: `engine/` (rules, bots, world generation; `engine/sight/`, the sight rules
+  the engine asks as it resolves and the report applies, P1-12b1), `views/` (the turn report), `db/` (the version guard, telemetry and the light `meta` rows),
   `content/` (the data file), `shared/` (the player portal's one door to the engine: it re-exports the rules of
   `engine/rules-on-plain-values/` the portal calls, and nothing else; [below](#kingdoms-call-datats-the-one-source-for-shared-rules)),
   `schemas/` (the types of the world, from Zod schemas: below), `ui/<page>/` (each page's styles,
@@ -94,8 +94,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     `TurnContext`, the type was corrected (a line's `targets` may hold null: callers pass `[c.player]`). Beside them in
     `context.ts`: `NarrativeLine` (a line of a battle's narrative, a string or a line for one realm alone) and
     `TurnOrder` (a hero's order for a phase as the turn holds it). The freed files declare a few shapes of their own
-    (`LadderRow` in `battle/ladder.ts`, `SightContext` in `views/visibility.ts`), and the schemas' file names a
-    feature (`ProvinceFeature`) and the title keys (`MajorTitleKey`, `MinorTitleKey`).
+    (`LadderRow` in `battle/ladder.ts`, `SightContext` in
+    `sight/heroes-in-sight-features-discovered-and-army-size-bands.ts`), and the schemas' file names a feature
+    (`ProvinceFeature`) and the title keys (`MajorTitleKey`, `MinorTitleKey`).
   - `tools/pages.ts` reads a module's imports that bring code, so an `import type` (of `src/schemas/`, say) adds no file
     to a page.
 - **The engine is `engine/` and `views/`** (P1-18c): nothing in them reads the screen, the database or the page's other
@@ -156,9 +157,10 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   Overlord page reach it only through `shared/` and `views/`.
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
-**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (169 findings)
-and let through (`--ignore-known`): the engine's 15 imports of `views/` (P1-12 moves what the engine asks of
-visibility and the report), `db/`'s 14 imports outside itself (P1-17's access layer), and the 140 findings of the eight
+**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (155 findings)
+and let through (`--ignore-known`): the engine's one import of `views/` (`buildTurnReport`, which P1-12b3 moves into
+the turn's shell; P1-12b1 moved the sight rules, the Terror constants and the telemetry's snapshots into the engine),
+`db/`'s 14 imports outside itself (P1-17's access layer), and the 140 findings of the eight
 import cycles (P1-13e breaks them, one a pull request): six in the engine (11, 9, 2, 2, 2 and 2 files), the GM page's
 (10 files, both of `db/` among them) and the player page's (18). The ratchet counts the list
 (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no longer
@@ -227,7 +229,6 @@ src_db_-->src_ui_gm_
 src_db_-->src_ui_shared_
 src_db_-->src_content_
 src_db_-->src_engine_
-src_db_-->src_views_
 src_engine_-->src_content_
 src_engine_-->src_engine_rules_on_plain_values_
 src_engine_-->src_schemas_
@@ -248,9 +249,8 @@ src_ui_player_-->src_ui_shared_
 src_ui_player_-->src_shared_
 src_ui_player_-->src_content_
 src_ui_player_-->src_db_
-src_views_-->src_engine_
-src_views_-->src_schemas_
 src_views_-->src_content_
+src_views_-->src_engine_
 src_views_-->src_engine_rules_on_plain_values_
 ```
 
