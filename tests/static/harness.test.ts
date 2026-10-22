@@ -379,6 +379,57 @@ describe('the lint rules', () => {
     },
   );
 
+  // kc/narrative-lines-go-through-emit (plan P1-12, Decision 6): every line of the turn enters the GM's log through emit,
+  // in the events file. It runs on every file of the engine and the views but the events file: in full in the folders
+  // P1-12a's rows have converted (eslint.config.js's LINES_THROUGH_EMIT: turn/ and the views), elsewhere refusing only a
+  // write to the GM's log; and nowhere else. A planted line of each kind is refused exactly there.
+  const EVENTS_FILE = 'src/engine/turn/events-and-their-audiences.ts';
+  const LINES_THROUGH_EMIT = /^src\/(engine\/turn|views)\//;
+  test(
+    "the rule that lines go through emit runs in the engine and the views, in full where they're converted",
+    timeLimitForTheWork({ toolRuns: 1 }),
+    async () => {
+      const wrong: string[] = [];
+      for (const file of srcFiles) {
+        const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+        const entry = rules['kc/narrative-lines-go-through-emit'];
+        const options: unknown = Array.isArray(entry) ? entry[1] : undefined;
+        const runs = /^src\/(engine|views)\//.test(file) && file !== EVENTS_FILE;
+        const expected = !runs ? 'off' : LINES_THROUGH_EMIT.test(file) ? 'in full' : 'the GM log only';
+        const found =
+          level(entry) !== 2
+            ? 'off'
+            : typeof options === 'object' && options !== null && 'onlyWritesToTheGmLog' in options
+              ? options.onlyWritesToTheGmLog === true
+                ? 'the GM log only'
+                : 'in full'
+              : 'in full';
+        if (found !== expected) wrong.push(`${file}: ${found}, not ${expected}`);
+      }
+      expect(wrong).toEqual([]);
+      const planted = [
+        'export function planted(turnContext: any, narrative: any, log: any) {',
+        '  turnContext.turnLog.push(1);',
+        "  log('system', 'a line');",
+        "  narrative.push('a line');",
+        "  return { text: 'a line', onlyPlayer: 1 };",
+        '}',
+      ].join('\n');
+      const refused = async (file: string) => {
+        const [result] = await eslint.lintText(planted, { filePath: path.join(ROOT, file) });
+        return (result?.messages ?? [])
+          .filter((m) => m.ruleId === 'kc/narrative-lines-go-through-emit')
+          .map((m) => m.line);
+      };
+      expect(await refused('src/engine/turn/planted-here.ts')).toEqual([2, 3, 4, 5]);
+      expect(await refused('src/views/planted-here.ts')).toEqual([2, 3, 4, 5]);
+      expect(await refused('src/engine/battle/planted-here.ts')).toEqual([2]);
+      expect(await refused('src/engine/planted-here.ts')).toEqual([2]);
+      expect(await refused(EVENTS_FILE)).toEqual([]);
+      expect(await refused('src/ui/gm/planted-here.ts')).toEqual([]);
+    },
+  );
+
   // kc/html-is-built-only-through-kc-html's reviewed exceptions (eslint.config.js's HTML_EXCEPTIONS; plan P1-13,
   // Decision 8): the rule refuses one that matches nothing in its file, but only as it lints that file, so each must
   // name a file of src/ or public/ that ESLint lints, with its reason.

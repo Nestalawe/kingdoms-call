@@ -178,6 +178,13 @@ const kcRules = {
   'kc/html-is-built-only-through-kc-html': ['error', { exceptions: HTML_EXCEPTIONS }],
   'kc/no-random-or-argument-less-sort-comparator': 'error',
 };
+// kc/narrative-lines-go-through-emit (plan P1-12, Decision 6): every line of the turn enters the GM's log through emit,
+// in the events file, the one door. In the engine and the views, nothing else writes to turnLog; in the folders whose
+// lines P1-12a's rows have converted (this list grows each row: P1-12a3 adds battle/ and personal-combat/; P1-12a4
+// covers all of src/engine and src/views, and the list goes), no log() call and no narrative written but through
+// narrate and narrateTo either.
+const EVENTS_FILE = 'src/engine/turn/events-and-their-audiences.ts';
+const LINES_THROUGH_EMIT = ['src/engine/turn/**/*.ts', 'src/views/**/*.ts'];
 // A retry, retries or repeats written in a test file's options (below): refused.
 const RETRY_KEY = '/^(retry|retries|repeats)$/';
 const RETRY_REFUSED =
@@ -211,6 +218,17 @@ module.exports = defineConfig(
     files: SITE,
     plugins: { kc },
     rules: kcRules,
+  },
+  {
+    files: ['src/engine/**/*.ts', 'src/views/**/*.ts'],
+    ignores: [EVENTS_FILE],
+    rules: { 'kc/narrative-lines-go-through-emit': ['error', { onlyWritesToTheGmLog: true }] },
+  },
+  {
+    // (Its options given again: a severity alone keeps the options of the block before.)
+    files: LINES_THROUGH_EMIT,
+    ignores: [EVENTS_FILE],
+    rules: { 'kc/narrative-lines-go-through-emit': ['error', { onlyWritesToTheGmLog: false }] },
   },
   {
     files: SITE,
