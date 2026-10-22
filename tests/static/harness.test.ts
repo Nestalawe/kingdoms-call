@@ -826,6 +826,48 @@ describe('CI', () => {
     expect(ci).toMatch(/^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, labeled, unlabeled\]\n/m);
   });
 
+  // One run per pull request (#181 had two on one commit, from `opened` and `labeled`, and `gh pr checks` showed only
+  // one): a new event on a pull request cancels its run still going. deploy.yml calls this workflow before it
+  // publishes; that run has no pull request, so its group is its own run's id, which no other run shares: it is never
+  // cancelled, never queued behind another run and never replaced while it waits. Deploy's own group ("pages") orders
+  // the deploys. No job sets a group of its own, which would apply inside Deploy's run too.
+  const ONE_RUN_PER_PULL_REQUEST =
+    "${{ github.event_name == 'pull_request' && format('ci-pull-request-{0}', github.event.pull_request.number) || format('ci-run-{0}', github.run_id) }}";
+  function concurrencyProblems(text: string): string[] {
+    const [head = '', body = ''] = text.replace(/^\s*#.*$/gm, '').split(/^jobs:\n/m);
+    const problems: string[] = [];
+    const block = /^concurrency:\n((?: {2}.+\n)+)/m.exec(head)?.[1];
+    if (block === undefined) problems.push('no concurrency group: each event on a pull request starts another run');
+    const group = /^ {2}group: (.+)$/m.exec(block ?? '')?.[1];
+    if (block !== undefined && group !== ONE_RUN_PER_PULL_REQUEST) {
+      problems.push(`the group is not the pull request's number, or a run's own id: ${String(group)}`);
+    }
+    const cancel = /^ {2}cancel-in-progress: (.+)$/m.exec(block ?? '')?.[1];
+    if (block !== undefined && cancel !== "${{ github.event_name == 'pull_request' }}") {
+      problems.push(`cancel-in-progress is not for pull requests alone: ${String(cancel)}`);
+    }
+    if (/^ {4}concurrency:/m.test(body)) problems.push('a job sets a concurrency group of its own');
+    return problems;
+  }
+  test("a pull request has one CI run at a time, and deploy.yml's run is never cancelled", () => {
+    expect(concurrencyProblems(ci)).toEqual([]);
+    // Planted copies: without the group; cancelling every run (Deploy's too); one group for every run on a branch (two
+    // deploys in a row would share it, and the second would replace the first while it waits); a job's own group.
+    const without = ci.replace(/^concurrency:\n(?: {2}.+\n)+/m, '');
+    expect(without).not.toBe(ci);
+    expect(concurrencyProblems(without)).toEqual([
+      'no concurrency group: each event on a pull request starts another run',
+    ]);
+    const always = ci.replace(/^( {2}cancel-in-progress: ).+$/m, '$1true');
+    expect(concurrencyProblems(always)).toEqual(['cancel-in-progress is not for pull requests alone: true']);
+    const perBranch = ci.replace(/^( {2}group: ).+$/m, '$1ci-${{ github.ref }}');
+    expect(concurrencyProblems(perBranch)).toEqual([
+      "the group is not the pull request's number, or a run's own id: ci-${{ github.ref }}",
+    ]);
+    const perJob = ci.replace(/^( {2}static:\n)/m, '$1    concurrency: static\n');
+    expect(concurrencyProblems(perJob)).toEqual(['a job sets a concurrency group of its own']);
+  });
+
   test('the balance job decides first, in plain Node, and plays the matrix only when an engine path changed', () => {
     const job = jobs.get('balance') ?? '';
     expect(runs('balance')).toEqual([

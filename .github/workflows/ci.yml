@@ -22,6 +22,15 @@ on:
 permissions:
   contents: read
 
+# One run per pull request: a new event on it (a push, a label added or removed) cancels its run still going, so a pull
+# request opened with a label gets one run, not two side by side. A cancelled run's "ci" job still runs and fails (it
+# needs every job to pass), and the newer run's "ci" comes after it. deploy.yml calls this workflow with no pull
+# request: its group is then its own run's id, which no other run shares, so it is never cancelled, never waits behind
+# another run and is never replaced while it waits (Deploy's own group, "pages", keeps the deploys in order).
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('ci-pull-request-{0}', github.event.pull_request.number) || format('ci-run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   static:
     name: static checks
