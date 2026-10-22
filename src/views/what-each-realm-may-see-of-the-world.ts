@@ -82,7 +82,7 @@ export interface HeroAsSeen {
   /** The name and colour of the realm he serves, as his banner shows them (undefined: he serves none). */
   realmName: AsItIs<string>;
   realmColor: AsItIs<string>;
-  /** How many units he leads: for a hero of its own (and in the known breach, every hero). */
+  /** How many units he leads: for a hero of its own (and in P1-23's entry 4's list). */
   armyCount: number | null;
   /** The rough size of his force at a glance (armySizeBand): for anyone else's hero. */
   armyBand: string | null;
@@ -226,8 +226,8 @@ export interface ProvinceAsSeen {
   /** KNOWN BREACH, P1-23's entry 2 (KNOWN_BREACHES' "an unmet realm"): a province it once visited and doesn't hold
    *  names the realm that holds it now, met or not. */
   knownBreachTheOwnersNameThoughItMayBeUnmet?: AsItIs<string>;
-  /** KNOWN BREACH, P1-23's entry 4 (KNOWN_BREACHES' "an unseen hero", ownedProvinces): in its own provinces, every
-   *  living hero there, the sight rule skipped, each with the number of units he leads. */
+  /** KNOWN BREACH, P1-23's entry 4 (its KNOWN_BREACHES entry, ownedProvinces): in its own provinces, the heroes there
+   *  as that list has always had them, each with the number of units he leads. */
   knownBreachEveryHeroThereSeenOrNot?: HeroAsSeen[];
 }
 

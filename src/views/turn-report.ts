@@ -1440,7 +1440,7 @@ function ownedProvincesOf(view) {
           }
         : null, // Wonder of the age
       explored: p.explored || 0,
-      // KNOWN BREACH (P1-23's entry 4): every hero here, the sight rule skipped.
+      // KNOWN BREACH (P1-23's entry 4): the heroes here as this list has always had them.
       characters: p.knownBreachEveryHeroThereSeenOrNot
         .map((c) => {
           // A fallen character is shown ONLY by the ☠ marker (from visibleDeadHeroes), never as a

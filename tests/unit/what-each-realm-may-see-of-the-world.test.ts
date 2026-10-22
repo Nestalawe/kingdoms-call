@@ -7,7 +7,7 @@
 //   spied (the garrison's units, not their race); next to a spied one (the map's glance, not the hiring list's); next
 //   to its own land (who holds it, the capital's crown); remembered; watched by Clairvoyance; unseen (its place only);
 // - the features it knows; what its lines of the turn show (spied by its lines, battles witnessed, province events);
-//   an Evil realm's Terror; the heroes of its own provinces, seen or not (the other known breach); Illusory Terrain;
+//   an Evil realm's Terror; the heroes of its own provinces as P1-23's entry 4 keeps them; Illusory Terrain;
 // - and it writes nothing to the world.
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
 // refactor-only: P1-12b4 adds the function (the base has none), and each case is red on a sight fault planted in it.
@@ -314,7 +314,7 @@ describe('what realm 0 sees of each province, by the sight rule that shows it', 
     expect('name' in province(noTurn, 12)).toBe(false);
   });
 
-  test('its own provinces list every hero there, seen or not (the known breach); the map shows only those it sees', () => {
+  test('its own provinces: the heroes there as P1-23’s entry 4 keeps them, and the map’s by the sight rule', () => {
     const p = province(view, 7);
     expect(ids(p.knownBreachEveryHeroThereSeenOrNot)).toEqual([0, 4]);
     expect(p.knownBreachEveryHeroThereSeenOrNot?.find((h) => h.id === 4)).toMatchObject({ armyCount: 0 });
