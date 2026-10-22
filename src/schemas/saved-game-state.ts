@@ -415,6 +415,11 @@ export const ProvinceSchema = z.object({
   // the realm of the hero who threw the Blockade (null for a hero who serves none; the matrix's states hold a number)
   _blockadeBy: z.number().nullable().optional(),
   _richSurveyed: z.boolean().optional(),
+  // Fields the matrix's states don't hold, written by the code (P1-12b4: read by the realm's view)
+  // the Wonder of the age raised here (the Grand Design order): its realm, its name, its alignment, the turn it rose
+  grandDesign: z
+    .object({ owner: RealmIndexSchema, name: z.string(), alignment: z.string(), builtTurn: z.number() })
+    .optional(),
 });
 export type Province = z.infer<typeof ProvinceSchema>;
 /** A province's feature: a lair, a ruin, a ritual site. */

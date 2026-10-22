@@ -249,6 +249,7 @@ src_ui_player_-->src_db_
 src_views_-->src_engine_
 src_views_-->src_content_
 src_views_-->src_engine_rules_on_plain_values_
+src_views_-->src_schemas_
 ```
 
 <!-- End of the module map. -->

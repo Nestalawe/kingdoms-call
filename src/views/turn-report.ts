@@ -18,29 +18,22 @@ import {
   skillFameLabelM,
   topSkillOf,
 } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
-import { garrisonMoveRate, marchSpeedBonus, navalSpeedBonus } from '../engine/units/movement.ts';
+import { marchSpeedBonus, navalSpeedBonus } from '../engine/units/movement.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
 } from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import {
-  gdActiveFor,
-  homeFounderOf,
-  homeProvinceIdFor,
-  mapCentreColFor,
-  neutralTradeGold,
-} from '../engine/grand-design.ts';
+import { gdActiveFor, neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
 import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { ABILITIES_P } from '../engine/battle/fortune.ts';
-import { itemLore, monsterCatLabel, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
+import { itemLore, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
 import { graveIntelFor } from '../engine/graves.ts';
-import { isConsecrated, provinceConsecrated } from '../engine/heroes/fame-and-consecration.ts';
+import { isConsecrated } from '../engine/heroes/fame-and-consecration.ts';
 import {
   armySizeBand,
   encounterUntargetableReason,
   enemyCharVisibleTo,
-  featDiscovered,
   nearSpiedProvIds,
 } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
@@ -81,6 +74,7 @@ import {
   taxRecordsGold,
 } from '../engine/discoveries.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../engine/battle/evil-terror.ts';
+import { playerView } from './what-each-realm-may-see-of-the-world.ts';
 
 // ── EVIL TERROR: the reading (2026-10-12, Toby items 21 and 23) ── The constants (−10% a stack, at most three stacks)
 // are the engine's (src/engine/battle/evil-terror.ts, plan P1-12b1), so the engine (spreadTerror, consumeTerror) and the
@@ -92,7 +86,7 @@ export function terrorReadingOf(p, viewer) {
   const per = typeof p._terrorPct === 'number' && p._terrorPct > 0 ? p._terrorPct : TERROR_PCT_PER_STACK;
   return { pct: Math.round(per * n * 100), stacks: n, byYou: p._terrorisedBy === viewer };
 }
-export function buildTurnReport(gameState, playerIndex) {
+export function buildTurnReport(gameState, playerIndex, view = playerView(gameState, playerIndex)) {
   const player = gameState.players[playerIndex];
   const chars = gameState.characters.filter((c) => c.player === playerIndex && (c.alive || c.killedThisTurn));
   // honour the player's own arrangement of their heroes (set from the orders column and kept on the
@@ -124,139 +118,8 @@ export function buildTurnReport(gameState, playerIndex) {
     }
   }
   const ownedProvIds = new Set(player.provinces || []);
-  const visitedProvIds = new Set(
-    gameState.world.provinces.filter((p) => (p.visitedBy || []).includes(playerIndex)).map((p) => p.id),
-  );
 
-  // Build neighbour sets for visibility — adjacent to visited/owned
-  const { cols, rows, provinces } = gameState.world;
-  const adjacentProvIds = new Set();
-  const offsets_even = [
-    [-1, -1],
-    [-1, 0],
-    [0, -1],
-    [0, 1],
-    [1, -1],
-    [1, 0],
-  ];
-  const offsets_odd = [
-    [-1, 0],
-    [-1, 1],
-    [0, -1],
-    [0, 1],
-    [1, 0],
-    [1, 1],
-  ];
-  provinces.forEach((p) => {
-    if (!visitedProvIds.has(p.id) && !ownedProvIds.has(p.id)) return;
-    const offsets = p.row % 2 === 0 ? offsets_even : offsets_odd;
-    offsets.forEach(([dr, dc]) => {
-      const nr = p.row + dr;
-      if (nr < 0 || nr >= rows) return;
-      const nc = (((p.col + dc) % cols) + cols) % cols;
-      const nid = nr * cols + nc;
-      if (!visitedProvIds.has(nid) && !ownedProvIds.has(nid)) adjacentProvIds.add(nid);
-    });
-  });
-
-  const ownedProvinces = gameState.world.provinces
-    .filter((p) => ownedProvIds.has(p.id))
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      terrain: p.terrain,
-      tax: p.tax,
-      race: p.race,
-      population: p.population,
-      owner: p.owner, // the Steal form needs to know whose garrison stands here (paymaster target)
-      // Only show features that have been discovered based on exploration threshold At 100% explored
-      // all features visible; threshold = 100/totalFeatures per feature
-      features: (() => {
-        const total = (p.features || []).length;
-        const explored = (p.exploredBy && p.exploredBy[playerIndex]) || 0;
-        return (p.features || [])
-          .map((f, idx) => {
-            const threshold = total > 0 ? Math.ceil(100 / total) * (idx + 1) : 100;
-            const known = featDiscovered(f, playerIndex);
-            // a ritual site in your OWN province is always visible — you hold the ground and know your
-            // own standing stones. Other features still follow the explore-threshold reveal.
-            const canSee = known || explored >= threshold || !!f.ritualSite;
-            if (!canSee) return null;
-            return {
-              name: f.name,
-              discovered: canSee,
-              cleared: f.cleared,
-              ritualSite: !!f.ritualSite,
-              monsterPower: (f.monster && f.monster.power) || f.tier || '',
-              monsterCat: monsterCatLabel(f.monster),
-              treasure: known ? f.treasure : null,
-            };
-          })
-          .filter(Boolean);
-      })(),
-      neutralDefenders: (() => {
-        // Get armies from the neutral guard hero if one exists, otherwise fall back to province array
-        const ng = gameState.characters.find(
-          (c) => c.alive && c.player === null && c._isNeutralGuard && c.location === p.id,
-        );
-        const defs = ng ? ng.armies || [] : p.neutralDefenders || [];
-        return defs.map((d) => ({ type: d.type, quality: d.quality, unitName: d.unitName || '' }));
-      })(),
-      neutralGuard: (() => {
-        const ng = gameState.characters.find(
-          (c) => c.alive && c.player === null && c._isNeutralGuard && c.location === p.id,
-        );
-        return ng ? { id: ng.id, name: ng.name, race: ng.race, skills: ng.skills } : null;
-      })(),
-      armyTypes: p.armyTypes,
-      // Unled (garrisoned) armies the player keeps in this province — recruited directly to the
-      // garrison, or left behind here by one of their characters.
-      garrisonArmies: (p.garrisonArmies || []).map((a) => ({
-        type: a.type,
-        quality: a.quality,
-        unitName: a.unitName || '',
-        race: a.race || null,
-        skeletal: !!a._isSkeletal,
-        wildHunt: a._wildHuntUntilTurn != null,
-        wildHuntUntil: a._wildHuntUntilTurn != null ? a._wildHuntUntilTurn : null,
-        // 2026-09-23 (item 7): an unled unit's own pace — base speed plus the realm's Road / `move`
-        // discoveries for a speed-1/2 land unit (no commander, so no March, Naval or title bonus).
-        ...garrisonMoveRate(a, gameState.players[playerIndex]),
-      })),
-      grandDesign: p.grandDesign
-        ? {
-            name: p.grandDesign.name,
-            ownerName: (gameState.players[p.grandDesign.owner] || {}).name || null,
-            active: gdActiveFor(gameState, p.grandDesign.owner),
-          }
-        : null, // Wonder of the age
-      explored: (p.exploredBy && p.exploredBy[playerIndex]) || 0,
-      characters: (p.characters || [])
-        .map((cid) => {
-          const c = gameState.characters[cid];
-          // A fallen character is shown ONLY by the ☠ marker (from visibleDeadHeroes), never as a
-          // living character circle. This owned-province list omitted the c.alive filter that
-          // liveChars() applies, so a corpse lying in your own province drew a second, colourless
-          // (grey) character icon on top of its skull. Filter the dead out here to match liveChars().
-          // 2026-09-09: carry the SAME fields as the worldMeta liveChars() list (owner name/colour,
-          // wanderer/chieftain flags, army count). The portal now keeps the worldMeta list; this is
-          // belt-and-braces.
-          if (!(c && c.alive)) return null;
-          const _own = c.player === playerIndex;
-          return {
-            id: c.id,
-            name: c.name,
-            isOwn: _own,
-            isKing: c.isKing,
-            isWanderer: c.player === null,
-            isNeutralGuard: !!c._isNeutralGuard,
-            ownerName: c.player != null && !_own ? gameState.players[c.player]?.name || null : null,
-            armyCount: (c.armies || []).length,
-            ownerColor: c.player !== null ? gameState.players[c.player]?.color : null,
-          };
-        })
-        .filter(Boolean),
-    }));
+  const ownedProvinces = ownedProvincesOf(view);
 
   const ARMY_SPEED_P = ARMY_SPEED_MASTER; // alias → master table at top of script
 
@@ -711,58 +574,10 @@ export function buildTurnReport(gameState, playerIndex) {
     }));
 
   // Province-level intelligence (visited non-owned)
-  gameState.world.provinces
-    .filter((p) => visitedProvIds.has(p.id) && !ownedProvIds.has(p.id))
-    .forEach((p) => {
-      if (p.owner !== null && p.owner !== playerIndex)
-        intel.push(`${p.name} (${p.terrain}): controlled by ${gameState.players[p.owner]?.name || 'unknown realm'}.`);
-      const guardNPC = gameState.characters.find(
-        (c) => c.alive && c.player === null && c._isNeutralGuard && c.location === p.id,
-      );
-      const guardArmies = guardNPC ? guardNPC.armies || [] : p.neutralDefenders || [];
-      if (guardArmies.length > 0) {
-        const guardLabel = guardNPC ? `${guardNPC.name} leads: ` : '';
-        if (spiedThisTurn.has(p.id)) {
-          // Spied this turn → full force composition revealed.
-          intel.push(
-            `${p.name}: ${guardLabel}${guardArmies.length} neutral defender${guardArmies.length > 1 ? 's' : ''} — ${guardArmies.map((d) => (d.unitName ? `${d.unitName} (${d.type}, ${d.quality})` : `${d.quality} ${d.type}`)).join(', ')}. 🔍`,
-          );
-        } else {
-          // Not spied → only the count is known; composition is hidden until spied.
-          intel.push(
-            `${p.name}: ${guardLabel}${guardArmies.length} neutral defender${guardArmies.length > 1 ? 's' : ''} (composition unknown — Spy this province to reveal).`,
-          );
-        }
-      }
-    });
+  intel.push(...linesOfTheProvincesIntelligence(view));
 
   // Known features across all visited/owned provinces
-  const knownFeatures = [];
-  // A discovered feature under one of your OWN characters must appear even when the province is
-  // neither owned nor previously-visited (e.g. a Pagan hero standing on a discovered ritual site in
-  // unowned land) — otherwise the site shows on the map but not in the report or order forms.
-  const _kfOcc = new Set(
-    gameState.characters.filter((c) => c.alive && c.player === playerIndex).map((c) => c.location),
-  );
-  gameState.world.provinces
-    .filter((p) => visitedProvIds.has(p.id) || ownedProvIds.has(p.id) || _kfOcc.has(p.id))
-    .forEach((p) => {
-      const _rum = ((gameState.players || [])[playerIndex] || {})._lairRumours || {};
-      (p.features || []).forEach((f, _fi) => {
-        if (!(featDiscovered(f, playerIndex) || (ownedProvIds.has(p.id) && !!f.ritualSite))) return;
-        knownFeatures.push({
-          province: p.name,
-          name: f.name,
-          cleared: f.cleared,
-          rumour: (!f.cleared && _rum[lairRumourKey(p.id, _fi)]) || null, // hoard learned by Hunting Rumours
-          ritualSite: !!f.ritualSite,
-          monster: f.ritualSite ? '' : f.monster?.name || 'unknown guardian',
-          monsterCat: f.ritualSite ? '' : monsterCatLabel(f.monster),
-          monsterPower: (f.monster && f.monster.power) || f.tier || '',
-          isOwned: ownedProvIds.has(p.id),
-        });
-      });
-    });
+  const knownFeatures = knownFeaturesOf(view);
 
   // Provinces visible to this player: owned OR containing one of their characters
   // (declared here — used by dead-hero, mercenary, and hero-sighting intel below)
@@ -1000,340 +815,7 @@ export function buildTurnReport(gameState, playerIndex) {
   // Also add intel text entries for the chronicle
   heroSightings.forEach((s) => intel.push(s.text));
 
-  // ── tiered map visibility (last-seen fog of war) ──
-  const mem = (player && player._provMemory) || {};
-  // Provinces adjacent to a province this player OWNS. Their core info and CURRENT ownership are
-  // always visible — you watch your own borders continuously all turn.
-  const ownedAdjacentIds = new Set();
-  provinces.forEach((p) => {
-    if (!ownedProvIds.has(p.id)) return;
-    const offs = p.row % 2 === 0 ? offsets_even : offsets_odd;
-    offs.forEach(([dr, dc]) => {
-      const nr = p.row + dr;
-      if (nr < 0 || nr >= rows) return;
-      const nc = (((p.col + dc) % cols) + cols) % cols;
-      const nid = nr * cols + nc;
-      if (!ownedProvIds.has(nid)) ownedAdjacentIds.add(nid);
-    });
-  });
-
-  // the character this realm watches with Clairvoyance is drawn wherever they end the turn —
-  // including border and remembered hexes (which otherwise never show characters) and a never-seen
-  // hex.
-  const _clairId = player && player._clairCharThisTurn != null ? player._clairCharThisTurn : null;
-  const _clairChar =
-    _clairId != null
-      ? (gameState.characters || []).find((x) => x && x.id === _clairId && x.alive && x.player !== playerIndex)
-      : null;
-  const _clairLoc = _clairChar ? _clairChar.location : null;
-  // World meta — full hex grid with visibility-appropriate data for map rendering
-  const worldMeta = {
-    cols,
-    rows,
-    centreCol: mapCentreColFor(gameState, playerIndex),
-    provinces: provinces.map((p) => {
-      // Compute neighbour IDs for the map renderer
-      const offsets = p.row % 2 === 0 ? offsets_even : offsets_odd;
-      const neighbors = offsets
-        .map(([dr, dc]) => {
-          const nr = p.row + dr;
-          if (nr < 0 || nr >= rows) return null;
-          const nc = (((p.col + dc) % cols) + cols) % cols;
-          return nr * cols + nc;
-        })
-        .filter((n) => n !== null);
-
-      const isOwned = ownedProvIds.has(p.id);
-      // a spied province is drawn at the LIVE tier — full current info and line-of-sight
-      // characters. liveChars() still filters every non-own character through enemyCharVisibleTo,
-      // which already treats a deliberate Spy as piercing stealth, so this changes WHICH HEXES draw
-      // characters, never WHO is visible within one.
-      const isLive = !isOwned && (ownCharLocs.has(p.id) || spiedThisTurn.has(p.id)); // character here now, or spied this turn
-      const isBorder = !isOwned && !isLive && ownedAdjacentIds.has(p.id); // adjacent to your own land
-      const memo = mem[p.id];
-      // Illusory Terrain: enemies of the caster see a false terrain until they enter or it fades.
-      const _apparentTerrain =
-        p._illusoryTerrain && p._illusoryTerrain.caster !== playerIndex ? p._illusoryTerrain.fake : p.terrain;
-      const explored = (p.exploredBy && p.exploredBy[playerIndex]) || 0;
-      // does THIS player lead an army here right now? Computed straight from character locations
-      // (c.location), so the field-banner never depends on prov.characters staying in sync — a king
-      // or hero leading troops always flies a flag wherever they actually stand.
-      const _ownArmyHere = (gameState.characters || []).some(
-        (c) => c && c.alive && c.player === playerIndex && c.location === p.id && (c.armies || []).length > 0,
-      );
-      // Live-visible characters here: own characters always; enemy/neutral only where this player
-      // currently has a character present. Enemy units/characters are NEVER shown as "last seen" —
-      // only when visible at the end of the turn (line of sight).
-      const liveChars = () =>
-        (p.characters || [])
-          .map((cid) => {
-            const c = gameState.characters[cid];
-            if (!c || !c.alive) return null;
-            const isOwn = c.player === playerIndex;
-            // The only thing that still hides them is moving in UNSEEN (below).
-            const coLoc = ownCharLocs.has(p.id),
-              ownHere = ownedProvIds.has(p.id);
-            // Line of sight: a non-own character is visible only where you have a character
-            // (co-location) or you OWN the province (your garrison/subjects report anyone in your
-            // land). Items 1 & 12: the map, the hero lists and the Encounter target list all use the
-            // ONE rule in enemyCharVisibleTo (line of sight, Invisibility, Spy pierce, Spy-contest in
-            // owned land, flat unspotted cloak elsewhere).
-            if (
-              !isOwn &&
-              !enemyCharVisibleTo(gameState, playerIndex, c, { ownedProvIds, ownCharLocs, spiedThisTurn, nearSpied })
-            )
-              return null;
-            void coLoc;
-            void ownHere;
-            return {
-              id: c.id,
-              name: c.name,
-              isOwn,
-              isKing: c.isKing,
-              isWanderer: c.player === null,
-              // A neutral character is either the sworn guardian of this province ("local chieftain")
-              // or a masterless hero passing through ("wandering"). The portal needs the distinction to
-              // label them correctly — they are otherwise indistinguishable client-side.
-              isNeutralGuard: !!c._isNeutralGuard,
-              ownerName: c.player != null && !isOwn ? gameState.players[c.player]?.name || null : null,
-              // 2026-10-15 (Toby, D1): your own hero's exact count; anyone else's rough size only
-              ...(isOwn ? { armyCount: (c.armies || []).length } : { armyBand: armySizeBand((c.armies || []).length) }),
-              ownerColor: c.player !== null ? gameState.players[c.player]?.color : null,
-            };
-          })
-          .filter(Boolean);
-      const _clairCharsHere = () =>
-        _clairChar && p.id === _clairLoc
-          ? [
-              {
-                id: _clairChar.id,
-                name: _clairChar.name,
-                isOwn: false,
-                isKing: _clairChar.isKing,
-                isWanderer: _clairChar.player === null,
-                isNeutralGuard: !!_clairChar._isNeutralGuard,
-                ownerName: _clairChar.player != null ? gameState.players[_clairChar.player]?.name || null : null,
-                armyBand: armySizeBand((_clairChar.armies || []).length),
-                ownerColor: _clairChar.player !== null ? gameState.players[_clairChar.player]?.color : null,
-                clairvoyant: true,
-              },
-            ]
-          : [];
-
-      if (isOwned) {
-        // Full live info — your own province.
-        return {
-          id: p.id,
-          row: p.row,
-          col: p.col,
-          name: p.name,
-          terrain: p.terrain,
-          tier: 'owned',
-          isHomeCapitalOfOwner: p.owner != null && homeProvinceIdFor(gameState, p.owner) === p.id, // Grand Heist needs to know a capital when it sees one
-          tax: p.tax,
-          wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
-          ownArmyHere: _ownArmyHere,
-          consecrated: isConsecrated(gameState.players[playerIndex], p.id), // DIVINE — Consecrate: mark the realm's holy ground so the player can confirm it is active
-          hadBattle: !!p._hadBattleThisTurn,
-          hadCombat: (p._combatPlayersThisTurn || []).includes(playerIndex),
-          battleUnresolved: !!p._battleUnresolved /* item 14 */,
-          race: p.race,
-          owner: p.owner,
-          ownerName: p.owner !== null ? gameState.players[p.owner]?.name : null,
-          ownerColor: p.owner !== null ? gameState.players[p.owner]?.color : null,
-          armyTypes: p.armyTypes,
-          neighbors,
-          explored,
-          features: (p.features || [])
-            .filter((f) => featDiscovered(f, playerIndex))
-            .map((f) => ({
-              name: f.name,
-              cleared: !!f.cleared,
-              ritualSite: !!f.ritualSite,
-              power: (f.monster && f.monster.power) || '',
-            })),
-          grandDesign: p.grandDesign
-            ? {
-                name: p.grandDesign.name,
-                ownerName: (gameState.players[p.grandDesign.owner] || {}).name || null,
-                active: gdActiveFor(gameState, p.grandDesign.owner),
-              }
-            : null, // a Wonder of the age is visible to anyone who can see the province
-          characters: liveChars(),
-          ownArmyHere: _ownArmyHere,
-        };
-      } else if (isLive) {
-        // You have a character standing here right now — full current info + line-of-sight
-        // characters.
-        return {
-          id: p.id,
-          row: p.row,
-          col: p.col,
-          name: p.name,
-          terrain: _apparentTerrain,
-          tier: 'live',
-          race: p.race,
-          isHomeCapitalOfOwner: p.owner != null && homeProvinceIdFor(gameState, p.owner) === p.id, // Grand Heist eligibility
-          wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
-          consecrated: provinceConsecrated(gameState, p), // holy ground is visible to anyone who can see the province
-          owner: p.owner,
-          ownerName: p.owner !== null ? gameState.players[p.owner]?.name : null,
-          ownerColor: p.owner !== null ? gameState.players[p.owner]?.color : null,
-          armyTypes: p.armyTypes,
-          neighbors,
-          explored,
-          hadBattle: !!p._hadBattleThisTurn,
-          hadCombat: (p._combatPlayersThisTurn || []).includes(playerIndex),
-          battleUnresolved: !!p._battleUnresolved /* item 14 */,
-          features: (p.features || [])
-            .filter((f) => featDiscovered(f, playerIndex))
-            .map((f) => ({
-              name: f.name,
-              cleared: !!f.cleared,
-              ritualSite: !!f.ritualSite,
-              power: (f.monster && f.monster.power) || '',
-            })),
-          grandDesign: p.grandDesign
-            ? {
-                name: p.grandDesign.name,
-                ownerName: (gameState.players[p.grandDesign.owner] || {}).name || null,
-                active: gdActiveFor(gameState, p.grandDesign.owner),
-              }
-            : null, // a Wonder of the age is visible to anyone who can see the province
-          characters: liveChars(),
-          ownArmyHere: _ownArmyHere,
-          // a character standing here sees the standing garrison, whoever owns it — the map pop-up
-          // reports how many units are garrisoned (type and quality only).
-          garrisonArmies: (p.garrisonArmies || []).map((a) => ({
-            type: a.type,
-            quality: a.quality,
-            unitName: a.unitName || '',
-          })),
-        };
-      } else if (isBorder) {
-        // Adjacent to your land: current core info + CURRENT ownership. No enemy units/characters.
-        return {
-          id: p.id,
-          row: p.row,
-          col: p.col,
-          name: p.name,
-          terrain: _apparentTerrain,
-          tier: 'border',
-          race: p.race,
-          isHomeCapitalOfOwner: p.owner != null && homeProvinceIdFor(gameState, p.owner) === p.id, // crown marker
-          wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
-          consecrated: provinceConsecrated(gameState, p), // holy ground is visible to anyone who can see the province
-          owner: p.owner,
-          ownerName: p.owner !== null ? gameState.players[p.owner]?.name : null,
-          ownerColor: p.owner !== null ? gameState.players[p.owner]?.color : null,
-          armyTypes: p.armyTypes,
-          neighbors,
-          explored,
-          hadBattle: !!p._hadBattleThisTurn,
-          hadCombat: (p._combatPlayersThisTurn || []).includes(playerIndex),
-          battleUnresolved: !!p._battleUnresolved /* item 14 */,
-          features: (p.features || [])
-            .filter((f) => featDiscovered(f, playerIndex))
-            .map((f) => ({
-              name: f.name,
-              cleared: !!f.cleared,
-              ritualSite: !!f.ritualSite,
-              power: (f.monster && f.monster.power) || '',
-            })),
-          grandDesign: p.grandDesign
-            ? {
-                name: p.grandDesign.name,
-                ownerName: (gameState.players[p.grandDesign.owner] || {}).name || null,
-                active: gdActiveFor(gameState, p.grandDesign.owner),
-              }
-            : null, // a Wonder of the age is visible to anyone who can see the province
-          characters: nearSpied.has(p.id) ? liveChars() : _clairCharsHere(),
-          ownArmyHere: _ownArmyHere, // D2: next to a spied province
-        };
-      } else if (memo) {
-        // Remembered: frozen at the last phase one of your characters could see it. Core info and
-        // ownership are as last observed (may be out of date); no live units/characters shown.
-        return {
-          id: p.id,
-          row: p.row,
-          col: p.col,
-          name: memo.name,
-          terrain: memo.terrain,
-          tier: 'remembered',
-          race: memo.race,
-          wealth: memo.tax >= 7 ? 'Rich' : memo.tax >= 4 ? 'Prosperous' : 'Poor',
-          owner: memo.owner,
-          ownerName: memo.ownerName ?? null,
-          ownerColor: memo.ownerColor ?? null,
-          armyTypes: memo.armyTypes || [],
-          neighbors,
-          explored,
-          seenTurn: memo.turn,
-          isHomeCapitalOfOwner: !!memo.isHomeCapitalOfOwner, // crown marker, as it stood when last observed
-          // hadCombat is NOT sent on the remembered tier. All three sword markers — red (battle),
-          // orange (battle still raging) and purple (personal combat) — now share exactly one
-          // visibility rule: owned, live or border.
-          features: memo.features || [],
-          characters: nearSpied.has(p.id) ? liveChars() : _clairCharsHere(),
-          ownArmyHere: _ownArmyHere, // D2: next to a spied province
-        };
-      } else {
-        // Unknown — just the grid position so we can draw an empty hex.
-        // 2026-10-15 (D2): next to a spied province, the characters there are seen as if a hero stood
-        // there, so the hex is drawn as the Clairvoyant's is, with the ground as it now stands.
-        const _nearChars = nearSpied.has(p.id) ? liveChars() : [];
-        if (_nearChars.length) {
-          return {
-            id: p.id,
-            row: p.row,
-            col: p.col,
-            name: p.name,
-            terrain: _apparentTerrain,
-            tier: 'remembered',
-            race: p.race,
-            wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
-            owner: p.owner,
-            ownerName: p.owner !== null ? gameState.players[p.owner]?.name : null,
-            ownerColor: p.owner !== null ? gameState.players[p.owner]?.color : null,
-            armyTypes: p.armyTypes || [],
-            neighbors,
-            explored,
-            seenTurn: gameState.turn,
-            isHomeCapitalOfOwner: p.owner != null && homeProvinceIdFor(gameState, p.owner) === p.id,
-            features: [],
-            characters: _nearChars,
-            ownArmyHere: _ownArmyHere,
-          };
-        }
-        if (_clairChar && p.id === _clairLoc) {
-          // Never seen by this realm, but the Clairvoyant sees through the watched character's
-          // eyes.
-          return {
-            id: p.id,
-            row: p.row,
-            col: p.col,
-            name: p.name,
-            terrain: _apparentTerrain,
-            tier: 'remembered',
-            race: p.race,
-            wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
-            owner: p.owner,
-            ownerName: p.owner !== null ? gameState.players[p.owner]?.name : null,
-            ownerColor: p.owner !== null ? gameState.players[p.owner]?.color : null,
-            armyTypes: p.armyTypes || [],
-            neighbors,
-            explored,
-            seenTurn: gameState.turn,
-            isHomeCapitalOfOwner: p.owner != null && homeProvinceIdFor(gameState, p.owner) === p.id, // crown marker
-            features: [],
-            characters: _clairCharsHere(),
-            ownArmyHere: _ownArmyHere,
-          };
-        }
-        return { id: p.id, row: p.row, col: p.col, terrain: null, tier: 'unknown', neighbors };
-      }
-    }),
-  };
+  const worldMeta = worldMetaOf(view);
 
   // Tax Income forecast — mirror the end-of-turn tax-collection engine so the player sees an
   // accurate projection of what they'll actually collect. We include every PERSISTENT modifier the
@@ -1471,138 +953,9 @@ export function buildTurnReport(gameState, playerIndex) {
     .flatMap((p) => p.garrisonArmies || []);
   // Build structured data for order dropdowns availableHeroes: per province, wandering heroes
   // visible to this player
-  const availableHeroesByProv = {};
-  gameState.world.provinces.forEach((p) => {
-    // use the SAME visibility rule as the map / Wandering Heroes sightings — a province you OWN or
-    // where one of your characters stands right now, and never a hero who moved unspotted /
-    // invisible this turn.
-    const provHeroes = gameState.characters.filter(
-      (c) =>
-        c.player === null &&
-        c.alive &&
-        c.location === p.id &&
-        !c._isNeutralGuard &&
-        !c._justDefeated &&
-        enemyCharVisibleTo(gameState, playerIndex, c, {
-          ownedProvIds,
-          ownCharLocs: playerCharLocations,
-          spiedThisTurn,
-        }), // Items 1 & 12: one rule
-    );
-    if (provHeroes.length > 0) {
-      availableHeroesByProv[p.id] = provHeroes.map((h) => ({
-        id: h.id,
-        name: h.name,
-        race: h.race,
-        alignment: h.alignment,
-        temper: h.temper,
-        topSkill: topSkill(h),
-        pay: h.pay || 1, // 2026-09-24 (Toby item 8): fame only — the full skill list no longer ships, so the order form cannot leak it
-        // 2026-10-08 (Toby item 12): what hiring this hero will actually cost THIS realm — alignment
-        // distance AND the skill premium, with sd31's waiver — the same figure the Wandering Heroes
-        // report quotes and the hire charges. null: will not serve this crown. The order form used to
-        // work the price out from alignment alone, so it quoted less than the report for any hero
-        // who had grown while wandering.
-        hireWage: heroHireWage(
-          player?.alignment || 'Neutral',
-          h.alignment,
-          (player?.discoveries || []).some((d) => d && d.id === 'sd31'),
-          h,
-        ),
-        locationId: p.id,
-        locationName: p.name,
-      }));
-    }
-  });
+  const availableHeroesByProv = availableHeroesByProvOf(view);
 
-  // provinceOrderData: per-province data needed for order dropdowns
-  const provinceOrderData = {};
-  // also expose provinces ADJACENT to owned/visited ones — the map already shows these neighbours
-  // and their recruitable units, so a player may queue a conditional recruit that only fires if
-  // they capture the province this turn. canRecruit stays false until owned.
-  gameState.world.provinces
-    .filter(
-      (p) =>
-        ownedProvIds.has(p.id) ||
-        visitedProvIds.has(p.id) ||
-        adjacentProvIds.has(p.id) ||
-        playerCharLocations.has(p.id),
-    )
-    .forEach((p) => {
-      const ARMY_COST_OD = ARMY_COST_MASTER; // alias → master table at top of script
-      const isOwned = ownedProvIds.has(p.id);
-      const isVisited = visitedProvIds.has(p.id);
-      const isAdjacent = adjacentProvIds.has(p.id);
-      const isHome = isOwned && homeFounderOf(gameState, p.id) === playerIndex; // 2026-09-24 (Toby item 10): the FOUNDER's own capital, still held — a captured rival seat is not 'home'
-      provinceOrderData[p.id] = {
-        name: p.name,
-        terrain: p.terrain,
-        race: p.race,
-        tax: p.tax,
-        isOwned,
-        isVisited,
-        isAdjacent,
-        isHome,
-        // the Explore order note reads pd.explored, but this builder never emitted it — so the orders
-        // section always showed "0% mapped" while the map pop-up
-        // (worldMeta, which DOES carry it) showed the true figure. Same per-player source as the map:
-        // exploredBy[playerIndex], never the legacy shared p.explored (that holds whichever player
-        // explored the province most recently, so it leaks/misreports across realms).
-        explored: (p.exploredBy && p.exploredBy[playerIndex]) || 0,
-        // Rite of the Wild Hunt: resolve the type the ENGINE will bind (first primal type in the
-        // province's pool) and its price — the cost of ONE beast — so the player's order form
-        // displays exactly what will be charged instead of re-deriving it and drifting.
-        wildHuntType: (p.armyTypes || []).find((t) => PRIMAL_ARMY_DEFS_P[t]) || null,
-        wildHuntCost: (() => {
-          const t = (p.armyTypes || []).find((x) => PRIMAL_ARMY_DEFS_P[x]);
-          return t ? wildHuntPrice(t) : null;
-        })(),
-        canRecruit: isOwned,
-        // Primal sea beasts are only offered where they can actually be summoned: at sea.
-        armyTypes: (p.armyTypes || [])
-          .filter((at) => !(PRIMAL_SEA_NAMES.has(at) && p.terrain !== 'sea'))
-          .map((at) => ({
-            type: at,
-            cost: realmRecruitCost((gameState.players || [])[playerIndex], at, ARMY_COST_OD[at] || 2), // realm discounts shown in the preview
-            maxPerTurn: twoATurn(at) || isHome ? 2 : 1, // the same gate as getRecruitLimit (garrisons, fleets, Goblin Hordes; two of anything at the founder's capital)
-          })),
-        features: (() => {
-          const total = (p.features || []).length;
-          const exploredHere = (p.exploredBy && p.exploredBy[playerIndex]) || 0;
-          return (p.features || [])
-            .map((f, idx) => ({ f, idx }))
-            .filter(({ f, idx }) => {
-              if (f.cleared) return false;
-              const threshold = total > 0 ? Math.ceil(100 / total) * (idx + 1) : 100;
-              return featDiscovered(f, playerIndex) || exploredHere >= threshold || (isOwned && !!f.ritualSite);
-            })
-            .map(({ f, idx }) => ({
-              name: f.name,
-              idx,
-              ritualSite: !!f.ritualSite,
-              monsterPower: (f.monster && f.monster.power) || f.tier || '',
-              monster: (f.monster && f.monster.name) || '',
-              monsterCat: monsterCatLabel(f.monster),
-            }));
-        })(),
-        availableHeroes: availableHeroesByProv[p.id] || [],
-        // don't leak an ADJACENT enemy province's garrison composition — only owned/visited provinces
-        // (which already exposed it) carry garrison detail; adjacent-only entries exist purely to
-        // surface recruitable unit TYPES for a conditional recruit.
-        garrisonArmies:
-          isOwned || isVisited
-            ? (p.garrisonArmies || []).map((a) => ({
-                type: a.type,
-                quality: a.quality,
-                unitName: a.unitName || '',
-                race: a.race || null,
-                skeletal: !!a._isSkeletal,
-                wildHunt: a._wildHuntUntilTurn != null,
-                wildHuntUntil: a._wildHuntUntilTurn != null ? a._wildHuntUntilTurn : null,
-              }))
-            : [],
-      };
-    });
+  const provinceOrderData = provinceOrderDataOf(view, availableHeroesByProv);
 
   const _druidHalfWageR = new Set();
   playerCharsForWages.forEach((ch) => {
@@ -1666,31 +1019,7 @@ export function buildTurnReport(gameState, playerIndex) {
       orcSpoilsG = lw.orcSpoilsG || 0;
     }
   }
-  // EVIL sees the Terror (2026-10-12, Toby item 23): every province of the map that Terror grips carries its
-  // reading, the realm's own provinces in the report's list too, and a province it has visited but does not hold
-  // gets an intel line. No other crown is told.
-  if ((player && player.alignment) === 'Evil') {
-    const _tr = (id) => terrorReadingOf(gameState.world.provinces[id], playerIndex);
-    (worldMeta.provinces || []).forEach((r) => {
-      if (!r) return;
-      const t = _tr(r.id);
-      if (t) r.terror = t;
-    });
-    (ownedProvinces || []).forEach((r) => {
-      if (!r) return;
-      const t = _tr(r.id);
-      if (t) r.terror = t;
-    });
-    gameState.world.provinces
-      .filter((p) => p && visitedProvIds.has(p.id) && !ownedProvIds.has(p.id))
-      .forEach((p) => {
-        const t = _tr(p.id);
-        if (t)
-          intel.push(
-            `${p.name}: 💀 Terror ${t.pct}% (${t.stacks} stack${t.stacks !== 1 ? 's' : ''}${t.byYou ? ', your own' : ''}) — its next defenders fight at −${t.pct}%.`,
-          );
-      });
-  }
+  theTerrorAnEvilRealmSees(view, worldMeta, ownedProvinces, intel);
   return {
     playerIndex,
     playerName: player.name,
@@ -1823,7 +1152,7 @@ export function buildTurnReport(gameState, playerIndex) {
         neutral: c.player == null,
         guard: !!(c.player == null && c._isNeutralGuard),
       })), // guard → chieftain-brown tint
-    visitedProvinceIds: [...visitedProvIds],
+    visitedProvinceIds: view.provinces.filter((p) => p.seen.visited).map((p) => p.id),
     worldMeta,
     availableHeroesByProv,
     provinceOrderData,
@@ -2036,4 +1365,607 @@ export function buildTurnReport(gameState, playerIndex) {
     })(),
     lastTurnLog: [{ type: 'system', text: `Turn ${gameState.turn} begins. ${player.name} stands ready.` }],
   };
+}
+
+// ── THE MAP AND THE PROVINCES (plan P1-12b4: P1-12's Decision 11, part 1) ────
+// The report's sections of the map and the provinces, each built only from what the realm may see of the world: its
+// view (playerView, src/views/what-each-realm-may-see-of-the-world.ts), never the world itself. Each statement is as
+// it was in buildTurnReport, reading the view's province (and the realm, view.me) where it read the world; the sight
+// rules and the engine's helpers that read the whole world are the view's. view.realm is the realm reading.
+
+// The realm's own provinces, in full (with the heroes in them: P1-23's entry 4).
+function ownedProvincesOf(view) {
+  const playerIndex = view.realm;
+  return view.provinces
+    .filter((p) => p.seen.owned)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      terrain: p.terrain,
+      tax: p.tax,
+      race: p.race,
+      population: p.population,
+      owner: p.owner, // the Steal form needs to know whose garrison stands here (paymaster target)
+      // Only show features that have been discovered based on exploration threshold At 100% explored
+      // all features visible; threshold = 100/totalFeatures per feature
+      features: (() => {
+        return p.features
+          .map((f) => {
+            const known = f.discovered;
+            // a ritual site in your OWN province is always visible — you hold the ground and know your
+            // own standing stones. Other features still follow the explore-threshold reveal.
+            const canSee = known || f.revealedByExploring || !!f.ritualSite;
+            if (!canSee) return null;
+            return {
+              name: f.name,
+              discovered: canSee,
+              cleared: f.cleared,
+              ritualSite: !!f.ritualSite,
+              monsterPower: f.monsterPower || f.tier || '',
+              monsterCat: f.monsterCat,
+              treasure: known ? f.treasure : null,
+            };
+          })
+          .filter(Boolean);
+      })(),
+      neutralDefenders: (() => {
+        // Get armies from the neutral guard hero if one exists, otherwise fall back to province array
+        const defs = p.neutralGuard.armies;
+        return defs.map((d) => ({ type: d.type, quality: d.quality, unitName: d.unitName || '' }));
+      })(),
+      neutralGuard: (() => {
+        const ng = p.neutralGuard.leader;
+        return ng ? { id: ng.id, name: ng.name, race: ng.race, skills: ng.skills } : null;
+      })(),
+      armyTypes: p.armyTypes,
+      // Unled (garrisoned) armies the player keeps in this province — recruited directly to the
+      // garrison, or left behind here by one of their characters.
+      garrisonArmies: p.garrison.map((a) => ({
+        type: a.type,
+        quality: a.quality,
+        unitName: a.unitName || '',
+        race: a.race || null,
+        skeletal: !!a._isSkeletal,
+        wildHunt: a._wildHuntUntilTurn != null,
+        wildHuntUntil: a._wildHuntUntilTurn != null ? a._wildHuntUntilTurn : null,
+        // 2026-09-23 (item 7): an unled unit's own pace — base speed plus the realm's Road / `move`
+        // discoveries for a speed-1/2 land unit (no commander, so no March, Naval or title bonus).
+        ...a.movement,
+      })),
+      grandDesign: p.grandDesign
+        ? {
+            name: p.grandDesign.name,
+            ownerName: p.grandDesign.ownerRealmName || null,
+            active: p.grandDesign.active,
+          }
+        : null, // Wonder of the age
+      explored: p.explored || 0,
+      // KNOWN BREACH (P1-23's entry 4): every hero here, the sight rule skipped.
+      characters: p.knownBreachEveryHeroThereSeenOrNot
+        .map((c) => {
+          // A fallen character is shown ONLY by the ☠ marker (from visibleDeadHeroes), never as a
+          // living character circle. This owned-province list omitted the c.alive filter that
+          // liveChars() applies, so a corpse lying in your own province drew a second, colourless
+          // (grey) character icon on top of its skull. Filter the dead out here to match liveChars().
+          // 2026-09-09: carry the SAME fields as the worldMeta liveChars() list (owner name/colour,
+          // wanderer/chieftain flags, army count). The portal now keeps the worldMeta list; this is
+          // belt-and-braces.
+          // (the view's list holds the living only: the dead are shown by the ☠ marker alone, as before)
+          const _own = c.player === playerIndex;
+          return {
+            id: c.id,
+            name: c.name,
+            isOwn: _own,
+            isKing: c.isKing,
+            isWanderer: c.player === null,
+            isNeutralGuard: c.isNeutralGuard,
+            ownerName: c.player != null && !_own ? c.realmName || null : null,
+            armyCount: c.armyCount,
+            ownerColor: c.player !== null ? c.realmColor : null,
+          };
+        })
+        .filter(Boolean),
+    }));
+}
+
+// The province-level lines of the realm's intelligence: each province it has visited and doesn't hold.
+function linesOfTheProvincesIntelligence(view) {
+  const playerIndex = view.realm;
+  const intel = [];
+  view.provinces
+    .filter((p) => p.seen.visited && !p.seen.owned)
+    .forEach((p) => {
+      if (p.owner !== null && p.owner !== playerIndex)
+        // KNOWN BREACH (P1-23's entry 2): the realm that holds it is named, met or not.
+        intel.push(
+          `${p.name} (${p.terrain}): controlled by ${p.knownBreachTheOwnersNameThoughItMayBeUnmet || 'unknown realm'}.`,
+        );
+      const guardNPC = p.neutralGuard.leader;
+      const guardArmyCount = p.neutralGuard.armyCount;
+      if (guardArmyCount > 0) {
+        const guardLabel = guardNPC ? `${guardNPC.name} leads: ` : '';
+        if (p.seen.spied) {
+          // Spied this turn → full force composition revealed.
+          const guardArmies = p.neutralGuard.armies;
+          intel.push(
+            `${p.name}: ${guardLabel}${guardArmies.length} neutral defender${guardArmies.length > 1 ? 's' : ''} — ${guardArmies.map((d) => (d.unitName ? `${d.unitName} (${d.type}, ${d.quality})` : `${d.quality} ${d.type}`)).join(', ')}. 🔍`,
+          );
+        } else {
+          // Not spied → only the count is known; composition is hidden until spied.
+          intel.push(
+            `${p.name}: ${guardLabel}${guardArmyCount} neutral defender${guardArmyCount > 1 ? 's' : ''} (composition unknown — Spy this province to reveal).`,
+          );
+        }
+      }
+    });
+  return intel;
+}
+
+// Known features across all visited and owned provinces, and those a hero of its own stands in.
+function knownFeaturesOf(view) {
+  const knownFeatures = [];
+  // A discovered feature under one of your OWN characters must appear even when the province is
+  // neither owned nor previously-visited (e.g. a Pagan hero standing on a discovered ritual site in
+  // unowned land) — otherwise the site shows on the map but not in the report or order forms.
+  view.provinces
+    .filter((p) => p.seen.visited || p.seen.owned || p.seen.heroThere)
+    .forEach((p) => {
+      const _rum = (view.me || {})._lairRumours || {};
+      p.features.forEach((f) => {
+        const _fi = f.index;
+        if (!(f.discovered || (p.seen.owned && !!f.ritualSite))) return;
+        knownFeatures.push({
+          province: p.name,
+          name: f.name,
+          cleared: f.cleared,
+          rumour: (!f.cleared && _rum[lairRumourKey(p.id, _fi)]) || null, // hoard learned by Hunting Rumours
+          ritualSite: !!f.ritualSite,
+          monster: f.ritualSite ? '' : f.monsterName || 'unknown guardian',
+          monsterCat: f.ritualSite ? '' : f.monsterCat,
+          monsterPower: f.monsterPower || f.tier || '',
+          isOwned: p.seen.owned,
+        });
+      });
+    });
+  return knownFeatures;
+}
+
+// World meta: the map, every hex of the grid with what this realm sees of it (owned, live, border, remembered,
+// unknown).
+function worldMetaOf(view) {
+  const playerIndex = view.realm;
+  // ── tiered map visibility (last-seen fog of war) ──
+  // the character this realm watches with Clairvoyance is drawn wherever they end the turn —
+  // including border and remembered hexes (which otherwise never show characters) and a never-seen
+  // hex.
+  const _clairChar = view.watchedByClairvoyance ? view.watchedByClairvoyance.hero : null;
+  const { cols, rows } = view.map;
+  // World meta — full hex grid with visibility-appropriate data for map rendering
+  return {
+    cols,
+    rows,
+    centreCol: view.map.centreCol,
+    provinces: view.provinces.map((p) => {
+      // neighbour IDs for the map renderer (the view's: the hex grid, wrapping east to west)
+      const neighbors = p.neighbours;
+
+      const isOwned = p.seen.owned;
+      // a spied province is drawn at the LIVE tier — full current info and line-of-sight
+      // characters. liveChars() still filters every non-own character through enemyCharVisibleTo,
+      // which already treats a deliberate Spy as piercing stealth, so this changes WHICH HEXES draw
+      // characters, never WHO is visible within one.
+      const isLive = !isOwned && (p.seen.heroThere || p.seen.spied); // character here now, or spied this turn
+      const isBorder = !isOwned && !isLive && p.seen.nextToOwned; // adjacent to your own land
+      const memo = p.remembered;
+      // Illusory Terrain: enemies of the caster see a false terrain until they enter or it fades.
+      const _apparentTerrain = p.terrainAsItLooks;
+      const explored = p.explored || 0;
+      // does THIS player lead an army here right now? Computed straight from character locations
+      // (c.location), so the field-banner never depends on prov.characters staying in sync — a king
+      // or hero leading troops always flies a flag wherever they actually stand.
+      const _ownArmyHere = p.ownArmyHere;
+      // Live-visible characters here: own characters always; enemy/neutral only where this player
+      // currently has a character present. Enemy units/characters are NEVER shown as "last seen" —
+      // only when visible at the end of the turn (line of sight).
+      // Line of sight: a non-own character is visible only where you have a character (co-location) or
+      // you OWN the province (your garrison/subjects report anyone in your land). Items 1 & 12: the map,
+      // the hero lists and the Encounter target list all use the ONE rule in enemyCharVisibleTo (line of
+      // sight, Invisibility, Spy pierce, Spy-contest in owned land, flat unspotted cloak elsewhere): the
+      // view applies it (heroesOnTheMap).
+      const liveChars = () =>
+        p.heroesOnTheMap
+          .map((c) => {
+            const isOwn = c.player === playerIndex;
+            return {
+              id: c.id,
+              name: c.name,
+              isOwn,
+              isKing: c.isKing,
+              isWanderer: c.player === null,
+              // A neutral character is either the sworn guardian of this province ("local chieftain")
+              // or a masterless hero passing through ("wandering"). The portal needs the distinction to
+              // label them correctly — they are otherwise indistinguishable client-side.
+              isNeutralGuard: c.isNeutralGuard,
+              ownerName: c.player != null && !isOwn ? c.realmName || null : null,
+              // 2026-10-15 (Toby, D1): your own hero's exact count; anyone else's rough size only
+              ...(isOwn ? { armyCount: c.armyCount } : { armyBand: c.armyBand }),
+              ownerColor: c.player !== null ? c.realmColor : null,
+            };
+          })
+          .filter(Boolean);
+      const _clairCharsHere = () =>
+        _clairChar && p.seen.watchedHeroThere
+          ? [
+              {
+                id: _clairChar.id,
+                name: _clairChar.name,
+                isOwn: false,
+                isKing: _clairChar.isKing,
+                isWanderer: _clairChar.player === null,
+                isNeutralGuard: _clairChar.isNeutralGuard,
+                ownerName: _clairChar.player != null ? _clairChar.realmName || null : null,
+                armyBand: _clairChar.armyBand,
+                ownerColor: _clairChar.player !== null ? _clairChar.realmColor : null,
+                clairvoyant: true,
+              },
+            ]
+          : [];
+
+      if (isOwned) {
+        // Full live info — your own province.
+        return {
+          id: p.id,
+          row: p.row,
+          col: p.col,
+          name: p.name,
+          terrain: p.terrain,
+          tier: 'owned',
+          isHomeCapitalOfOwner: p.isHomeCapitalOfOwner, // Grand Heist needs to know a capital when it sees one
+          tax: p.tax,
+          wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
+          ownArmyHere: _ownArmyHere,
+          consecrated: isConsecrated(view.me, p.id), // DIVINE — Consecrate: mark the realm's holy ground so the player can confirm it is active
+          hadBattle: !!p.hadBattleThisTurn,
+          hadCombat: p.thisRealmFoughtHere,
+          battleUnresolved: !!p.battleUnresolved /* item 14 */,
+          race: p.race,
+          owner: p.owner,
+          ownerName: p.owner !== null ? p.ownerRealmName : null,
+          ownerColor: p.owner !== null ? p.ownerRealmColor : null,
+          armyTypes: p.armyTypes,
+          neighbors,
+          explored,
+          features: p.features
+            .filter((f) => f.discovered)
+            .map((f) => ({
+              name: f.name,
+              cleared: !!f.cleared,
+              ritualSite: !!f.ritualSite,
+              power: f.monsterPower || '',
+            })),
+          grandDesign: p.grandDesign
+            ? {
+                name: p.grandDesign.name,
+                ownerName: p.grandDesign.ownerRealmName || null,
+                active: p.grandDesign.active,
+              }
+            : null, // a Wonder of the age is visible to anyone who can see the province
+          characters: liveChars(),
+          ownArmyHere: _ownArmyHere,
+        };
+      } else if (isLive) {
+        // You have a character standing here right now — full current info + line-of-sight
+        // characters.
+        return {
+          id: p.id,
+          row: p.row,
+          col: p.col,
+          name: p.name,
+          terrain: _apparentTerrain,
+          tier: 'live',
+          race: p.race,
+          isHomeCapitalOfOwner: p.isHomeCapitalOfOwner, // Grand Heist eligibility
+          wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
+          consecrated: p.consecrated, // holy ground is visible to anyone who can see the province
+          owner: p.owner,
+          ownerName: p.owner !== null ? p.ownerRealmName : null,
+          ownerColor: p.owner !== null ? p.ownerRealmColor : null,
+          armyTypes: p.armyTypes,
+          neighbors,
+          explored,
+          hadBattle: !!p.hadBattleThisTurn,
+          hadCombat: p.thisRealmFoughtHere,
+          battleUnresolved: !!p.battleUnresolved /* item 14 */,
+          features: p.features
+            .filter((f) => f.discovered)
+            .map((f) => ({
+              name: f.name,
+              cleared: !!f.cleared,
+              ritualSite: !!f.ritualSite,
+              power: f.monsterPower || '',
+            })),
+          grandDesign: p.grandDesign
+            ? {
+                name: p.grandDesign.name,
+                ownerName: p.grandDesign.ownerRealmName || null,
+                active: p.grandDesign.active,
+              }
+            : null, // a Wonder of the age is visible to anyone who can see the province
+          characters: liveChars(),
+          ownArmyHere: _ownArmyHere,
+          // a character standing here sees the standing garrison, whoever owns it — the map pop-up
+          // reports how many units are garrisoned (type and quality only).
+          garrisonArmies: p.garrison.map((a) => ({
+            type: a.type,
+            quality: a.quality,
+            unitName: a.unitName || '',
+          })),
+        };
+      } else if (isBorder) {
+        // Adjacent to your land: current core info + CURRENT ownership. No enemy units/characters.
+        return {
+          id: p.id,
+          row: p.row,
+          col: p.col,
+          name: p.name,
+          terrain: _apparentTerrain,
+          tier: 'border',
+          race: p.race,
+          isHomeCapitalOfOwner: p.isHomeCapitalOfOwner, // crown marker
+          wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
+          consecrated: p.consecrated, // holy ground is visible to anyone who can see the province
+          owner: p.owner,
+          ownerName: p.owner !== null ? p.ownerRealmName : null,
+          ownerColor: p.owner !== null ? p.ownerRealmColor : null,
+          armyTypes: p.armyTypes,
+          neighbors,
+          explored,
+          hadBattle: !!p.hadBattleThisTurn,
+          hadCombat: p.thisRealmFoughtHere,
+          battleUnresolved: !!p.battleUnresolved /* item 14 */,
+          features: p.features
+            .filter((f) => f.discovered)
+            .map((f) => ({
+              name: f.name,
+              cleared: !!f.cleared,
+              ritualSite: !!f.ritualSite,
+              power: f.monsterPower || '',
+            })),
+          grandDesign: p.grandDesign
+            ? {
+                name: p.grandDesign.name,
+                ownerName: p.grandDesign.ownerRealmName || null,
+                active: p.grandDesign.active,
+              }
+            : null, // a Wonder of the age is visible to anyone who can see the province
+          characters: p.seen.nextToSpied ? liveChars() : _clairCharsHere(),
+          ownArmyHere: _ownArmyHere, // D2: next to a spied province
+        };
+      } else if (memo) {
+        // Remembered: frozen at the last phase one of your characters could see it. Core info and
+        // ownership are as last observed (may be out of date); no live units/characters shown.
+        return {
+          id: p.id,
+          row: p.row,
+          col: p.col,
+          name: memo.name,
+          terrain: memo.terrain,
+          tier: 'remembered',
+          race: memo.race,
+          wealth: memo.tax >= 7 ? 'Rich' : memo.tax >= 4 ? 'Prosperous' : 'Poor',
+          owner: memo.owner,
+          ownerName: memo.ownerName ?? null,
+          ownerColor: memo.ownerColor ?? null,
+          armyTypes: memo.armyTypes || [],
+          neighbors,
+          explored,
+          seenTurn: memo.turn,
+          isHomeCapitalOfOwner: !!memo.isHomeCapitalOfOwner, // crown marker, as it stood when last observed
+          // hadCombat is NOT sent on the remembered tier. All three sword markers — red (battle),
+          // orange (battle still raging) and purple (personal combat) — now share exactly one
+          // visibility rule: owned, live or border.
+          features: memo.features || [],
+          characters: p.seen.nextToSpied ? liveChars() : _clairCharsHere(),
+          ownArmyHere: _ownArmyHere, // D2: next to a spied province
+        };
+      } else {
+        // Unknown — just the grid position so we can draw an empty hex.
+        // 2026-10-15 (D2): next to a spied province, the characters there are seen as if a hero stood
+        // there, so the hex is drawn as the Clairvoyant's is, with the ground as it now stands.
+        const _nearChars = p.seen.nextToSpied ? liveChars() : [];
+        if (_nearChars.length) {
+          return {
+            id: p.id,
+            row: p.row,
+            col: p.col,
+            name: p.name,
+            terrain: _apparentTerrain,
+            tier: 'remembered',
+            race: p.race,
+            wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
+            owner: p.owner,
+            ownerName: p.owner !== null ? p.ownerRealmName : null,
+            ownerColor: p.owner !== null ? p.ownerRealmColor : null,
+            armyTypes: p.armyTypes || [],
+            neighbors,
+            explored,
+            seenTurn: view.turn,
+            isHomeCapitalOfOwner: p.isHomeCapitalOfOwner,
+            features: [],
+            characters: _nearChars,
+            ownArmyHere: _ownArmyHere,
+          };
+        }
+        if (_clairChar && p.seen.watchedHeroThere) {
+          // Never seen by this realm, but the Clairvoyant sees through the watched character's
+          // eyes.
+          return {
+            id: p.id,
+            row: p.row,
+            col: p.col,
+            name: p.name,
+            terrain: _apparentTerrain,
+            tier: 'remembered',
+            race: p.race,
+            wealth: p.tax >= 7 ? 'Rich' : p.tax >= 4 ? 'Prosperous' : 'Poor',
+            owner: p.owner,
+            ownerName: p.owner !== null ? p.ownerRealmName : null,
+            ownerColor: p.owner !== null ? p.ownerRealmColor : null,
+            armyTypes: p.armyTypes || [],
+            neighbors,
+            explored,
+            seenTurn: view.turn,
+            isHomeCapitalOfOwner: p.isHomeCapitalOfOwner, // crown marker
+            features: [],
+            characters: _clairCharsHere(),
+            ownArmyHere: _ownArmyHere,
+          };
+        }
+        return { id: p.id, row: p.row, col: p.col, terrain: null, tier: 'unknown', neighbors };
+      }
+    }),
+  };
+}
+
+function availableHeroesByProvOf(view) {
+  // Build structured data for order dropdowns availableHeroes: per province, wandering heroes
+  // visible to this player
+  const availableHeroesByProv = {};
+  view.provinces.forEach((p) => {
+    // use the SAME visibility rule as the map / Wandering Heroes sightings — a province you OWN or
+    // where one of your characters stands right now, and never a hero who moved unspotted /
+    // invisible this turn (Items 1 & 12: one rule, which the view applies: wanderersItCouldHire).
+    const provHeroes = p.wanderersItCouldHire;
+    if (provHeroes.length > 0) {
+      availableHeroesByProv[p.id] = provHeroes.map((h) => ({
+        id: h.id,
+        name: h.name,
+        race: h.race,
+        alignment: h.alignment,
+        temper: h.temper,
+        topSkill: h.topSkill,
+        pay: h.pay || 1, // 2026-09-24 (Toby item 8): fame only — the full skill list no longer ships, so the order form cannot leak it
+        // 2026-10-08 (Toby item 12): what hiring this hero will actually cost THIS realm — alignment
+        // distance AND the skill premium, with sd31's waiver — the same figure the Wandering Heroes
+        // report quotes and the hire charges. null: will not serve this crown. The order form used to
+        // work the price out from alignment alone, so it quoted less than the report for any hero
+        // who had grown while wandering.
+        hireWage: h.hireWage,
+        locationId: p.id,
+        locationName: p.name,
+      }));
+    }
+  });
+  return availableHeroesByProv;
+}
+
+// provinceOrderData: per-province data needed for order dropdowns
+function provinceOrderDataOf(view, availableHeroesByProv) {
+  const provinceOrderData = {};
+  // also expose provinces ADJACENT to owned/visited ones — the map already shows these neighbours
+  // and their recruitable units, so a player may queue a conditional recruit that only fires if
+  // they capture the province this turn. canRecruit stays false until owned.
+  view.provinces
+    .filter((p) => p.seen.owned || p.seen.visited || p.seen.nextToOwnedOrVisited || p.seen.heroThere)
+    .forEach((p) => {
+      const ARMY_COST_OD = ARMY_COST_MASTER; // alias → master table at top of script
+      const isOwned = p.seen.owned;
+      const isVisited = p.seen.visited;
+      const isAdjacent = p.seen.nextToOwnedOrVisited;
+      const isHome = isOwned && p.foundedByThisRealm; // 2026-09-24 (Toby item 10): the FOUNDER's own capital, still held — a captured rival seat is not 'home'
+      provinceOrderData[p.id] = {
+        name: p.name,
+        terrain: p.terrain,
+        race: p.race,
+        tax: p.tax,
+        isOwned,
+        isVisited,
+        isAdjacent,
+        isHome,
+        // the Explore order note reads pd.explored, but this builder never emitted it — so the orders
+        // section always showed "0% mapped" while the map pop-up
+        // (worldMeta, which DOES carry it) showed the true figure. Same per-player source as the map:
+        // exploredBy[playerIndex], never the legacy shared p.explored (that holds whichever player
+        // explored the province most recently, so it leaks/misreports across realms).
+        explored: p.explored || 0,
+        // Rite of the Wild Hunt: resolve the type the ENGINE will bind (first primal type in the
+        // province's pool) and its price — the cost of ONE beast — so the player's order form
+        // displays exactly what will be charged instead of re-deriving it and drifting.
+        wildHuntType: (p.armyTypes || []).find((t) => PRIMAL_ARMY_DEFS_P[t]) || null,
+        wildHuntCost: (() => {
+          const t = (p.armyTypes || []).find((x) => PRIMAL_ARMY_DEFS_P[x]);
+          return t ? wildHuntPrice(t) : null;
+        })(),
+        canRecruit: isOwned,
+        // Primal sea beasts are only offered where they can actually be summoned: at sea.
+        armyTypes: (p.armyTypes || [])
+          .filter((at) => !(PRIMAL_SEA_NAMES.has(at) && p.terrain !== 'sea'))
+          .map((at) => ({
+            type: at,
+            cost: realmRecruitCost(view.me, at, ARMY_COST_OD[at] || 2), // realm discounts shown in the preview
+            maxPerTurn: twoATurn(at) || isHome ? 2 : 1, // the same gate as getRecruitLimit (garrisons, fleets, Goblin Hordes; two of anything at the founder's capital)
+          })),
+        features: (() => {
+          return p.features
+            .filter((f) => {
+              if (f.cleared) return false;
+              return f.discovered || f.revealedByExploring || (isOwned && !!f.ritualSite);
+            })
+            .map((f) => ({
+              name: f.name,
+              idx: f.index,
+              ritualSite: !!f.ritualSite,
+              monsterPower: f.monsterPower || f.tier || '',
+              monster: f.monsterName || '',
+              monsterCat: f.monsterCat,
+            }));
+        })(),
+        availableHeroes: availableHeroesByProv[p.id] || [],
+        // don't leak an ADJACENT enemy province's garrison composition — only owned/visited provinces
+        // (which already exposed it) carry garrison detail; adjacent-only entries exist purely to
+        // surface recruitable unit TYPES for a conditional recruit.
+        garrisonArmies:
+          isOwned || isVisited
+            ? p.garrison.map((a) => ({
+                type: a.type,
+                quality: a.quality,
+                unitName: a.unitName || '',
+                race: a.race || null,
+                skeletal: !!a._isSkeletal,
+                wildHunt: a._wildHuntUntilTurn != null,
+                wildHuntUntil: a._wildHuntUntilTurn != null ? a._wildHuntUntilTurn : null,
+              }))
+            : [],
+      };
+    });
+  return provinceOrderData;
+}
+
+function theTerrorAnEvilRealmSees(view, worldMeta, ownedProvinces, intel) {
+  const playerIndex = view.realm;
+  // EVIL sees the Terror (2026-10-12, Toby item 23): every province of the map that Terror grips carries its
+  // reading, the realm's own provinces in the report's list too, and a province it has visited but does not hold
+  // gets an intel line. No other crown is told.
+  if ((view.me && view.me.alignment) === 'Evil') {
+    const _tr = (id) => terrorReadingOf(view.provinces[id]?.terror, playerIndex);
+    (worldMeta.provinces || []).forEach((r) => {
+      if (!r) return;
+      const t = _tr(r.id);
+      if (t) r.terror = t;
+    });
+    (ownedProvinces || []).forEach((r) => {
+      if (!r) return;
+      const t = _tr(r.id);
+      if (t) r.terror = t;
+    });
+    view.provinces
+      .filter((p) => p && p.seen.visited && !p.seen.owned)
+      .forEach((p) => {
+        const t = _tr(p.id);
+        if (t)
+          intel.push(
+            `${p.name}: 💀 Terror ${t.pct}% (${t.stacks} stack${t.stacks !== 1 ? 's' : ''}${t.byYou ? ', your own' : ''}) — its next defenders fight at −${t.pct}%.`,
+          );
+      });
+  }
 }

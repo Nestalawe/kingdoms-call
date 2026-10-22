@@ -7,14 +7,15 @@
 //     hero sightings;
 //   • popupKnownChars (player portal, module level): the map popup writes the rough size for another realm's
 //     hero, the exact count for your own;
-//   • source (level 0): the province character intel (in buildReports) and the intrusion alerts use the one sight
-//     rule and the rough size: read from src/ by their syntax tree, in one layout whatever the files' (tests/lib/
-//     source.ts; until plan P1-09a the built pages' text was matched).
+//   • source (level 0): the province character intel (built in buildReports from the realm's view, playerView, which
+//     chooses its heroes: plan P1-12b4) and the intrusion alerts use the one sight rule and the rough size: read from
+//     src/ by their syntax tree, in one layout whatever the files' (tests/lib/source.ts; until plan P1-09a the built
+//     pages' text was matched).
 // Level 1 (unit): both functions are module level and take a staged world or record, so no turn needs to run;
 // the report-time Spy roll is staged by stamping its result (_unspottedTurn) on the characters.
 const fs=require('fs');
 const {bootScenario}=require('./lib/scenario'); const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
-const {compactCode,compactPage,statementsBetween}=require('./lib/source.ts');
+const {compactDeclaration,compactPage}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 
 (async()=>{
@@ -98,11 +99,13 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok(/Their Hero of Red Realm \(a modest band\)/.test(t),`…and another realm's hero's rough size: "${t}"`);
   }
 
-  // ── Source: the two readers nested inside runTurn ──
+  // ── Source: the province character intel and the intrusion alerts ──
   const gm=compactPage('kingdoms-call-gm-portal.html');
-  const pci=compactCode(statementsBetween('views/every-realms-report-and-the-lines-each-realm-reads.ts','buildReports','ownCharLocsPi','report.provinceCharIntel=provinceCharIntel;'));
-  ok(pci.length>0&&/enemyCharVisibleTo\(/.test(pci),'the province character intel uses the one sight rule (enemyCharVisibleTo)');
-  ok((pci.match(/armyCount:/g)||[]).length===1&&/c\.player===pi\?\{armyCount:armies\.length\}:\{armyBand:armySizeBand\(armies\.length\)\}/.test(pci),'…and sends the exact army count for your own heroes only, the rough size for anyone else');
+  // since P1-12b4 the realm's view (playerView) chooses the heroes and their army's size, and the section copies them
+  const view=compactDeclaration('views/what-each-realm-may-see-of-the-world.ts','playerView');
+  const pci=compactDeclaration('views/every-realms-report-and-the-lines-each-realm-reads.ts','provinceCharIntelOf');
+  ok(/heroesInItsProvinceIntelligence=[^;]*\.filter\(c=>c\.player===realm\|\|enemyCharVisibleTo\(state,realm,c,provinceIntelligenceSight\)\)/.test(view)&&/const visible=p\.heroesInItsProvinceIntelligence;/.test(pci),'the province character intel uses the one sight rule (enemyCharVisibleTo)');
+  ok((pci.match(/armyCount:/g)||[]).length===1&&/c\.player===pi\?\{armyCount:c\.armyCount\}:\{armyBand:c\.armyBand\}/.test(pci)&&/armyCount:own\|\|how==='everyHero'\?armies\.length:null,armyBand:own\|\|how==='everyHero'\?null:armySizeBand\(armies\.length\)/.test(view),'…and sends the exact army count for your own heroes only, the rough size for anyone else');
   ok(!/describeEnemyForce/.test(gm),'the intrusion alerts no longer read the force by the watcher\'s Spy');
   ok(/armySizeBand\(\(ac\.armies\|\|\[\]\)\.length\)/.test(gm),'…they give its rough size');
 

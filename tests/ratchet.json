@@ -12,6 +12,6 @@
     "vmLoaderTests": 82,
     "eslintSuppressions": 826,
     "knownArchitectureViolations": 154,
-    "unusedCode": 29
+    "unusedCode": 28
   }
 }
