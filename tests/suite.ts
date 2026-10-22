@@ -111,11 +111,9 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'duel-skill-rise', 'tests/duel-skill-rise.test.js'],
     ['simulation', 'skill-names-capitalised', 'tests/skill-names-capitalised.test.js'],
     ['scenario', 'item-equip-note', 'tests/item-equip-note.test.js'],
-    ['simulation', 'crown-wild-near', 'tests/crown-wild-near.test.js', full ? ['12'] : ['4']],
     ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
     ['static', 'research-persevere', 'tests/research-persevere.test.js'],
-    ['scenario', 'surgery-lines', 'tests/surgery-lines.test.js'],
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
     ['scenario', 'xp-lair-thief', 'tests/xp-lair-thief.test.js'], // batch 2026-10-14
     ['scenario', 'xp-small-chances', 'tests/xp-small-chances.test.js'], // batch 2026-10-14

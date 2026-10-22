@@ -155,9 +155,12 @@ some silently. Now no test reads a page's source by line:
   in one canonical layout for a regular expression (`compactOf`, `compactPage`, `compactDeclaration`). The answers
   are the same however the file is laid out (`tests/unit/the-source-read-by-its-syntax-tree.test.ts` checks every
   file as written and after Prettier). A comment is read as written (`pageSource`).
-- **A test that must change a function's behaviour stands it in where it runs:** in the engine's bare vm
-  (`tests/lib/engine.ts`; a whole turn there with `tests/lib/scenario-in-the-vm.ts`), where a top-level function can be
-  replaced from outside (`W.trySkillGain = …`). On a booted page it can't be, once the page's files are modules: a
+- **A test that must change a function's behaviour stands it in where it runs:** on the engine's modules, with
+  `vi.spyOn` on the module that exports it (plan P1-14a; it reaches calls from other files only:
+  [below](#a-stand-in-on-a-module-reaches-calls-from-other-files-only)), or, for the tests still on the engine's bare
+  vm (`tests/lib/engine.ts`; a whole turn there with `tests/lib/scenario-in-the-vm.ts`), there, where a top-level
+  function can be replaced from outside (`W.trySkillGain = …`). On a booted page it can't be, once the page's files are
+  modules: a
   test that needs a page to fail where nothing outside can make it fail boots a page built from a planted copy of
   `src/` (`plantedSite`, with `plantAtStart` or `plantBefore`, found by the syntax tree too).
 - Don't add a test that matches a line, an indent or a quote style of the site's code, or that writes to a page's
@@ -168,6 +171,36 @@ some silently. Now no test reads a page's source by line:
   `html-lint`'s stale allowlist entry gave it away. Both are ESLint rules now (P1-13c and P1-13d), and
   `tests/static/harness.test.ts` checks every file of `src/` gets them. A new check of `src/` reads the pages' modules,
   or checks it does.
+
+## A test on the engine's modules loads the whole engine first
+
+A test that imports the engine's functions from their modules (plan P1-14a) imports
+[tests/lib/the-whole-engine.ts](../tests/lib/the-whole-engine.ts) first. Some files change other files' values as they
+load: `engine/items/equipment.ts` re-tiers two of the content's tables (`ALL_MAGIC_ITEMS_P` and `LEGENDARY_ITEMS_P`).
+A test that imports only the data file, or only the files one function reaches (`world/generate.ts` reaches 44 of the
+116 files of `src/engine/` and `src/views/`), reads those tables as they were before, which neither the GM page nor
+the engine's bundle ever does. `tests/unit/engine-loads.test.ts` checks that, with the whole engine loaded, every
+export of the modules holds what the bundle holds.
+
+The modules also keep state between calls (the name pools, `_usedHeroNames` and the like): a world depends on the
+worlds made before it in the same process. A test whose outcome depends on the dice gives itself fresh modules:
+`vi.resetModules()`, then `await import(…)` of the whole engine and of what it calls, then `kcRng.seed(…)`
+([tests/lib/a-staged-turn-on-the-engines-modules.ts](../tests/lib/a-staged-turn-on-the-engines-modules.ts) does). Then
+`-t "<name>"` repeats it. A file of tests on tables and pure functions imports statically: Vitest gives each file
+fresh modules.
+
+## A stand-in on a module reaches calls from other files only
+
+`vi.spyOn(module, 'name')` on the module that exports a function replaces it for the calls other files make, since
+Vitest reads an imported name from the exporting module each time. A call inside the function's own file goes straight
+to the real one. Found in P1-14's scoping: a spy on `d100` saw 10,362 calls in eight bot turns and changed the game when
+it answered 1, but `pctRoll`, in `d100`'s own file, kept calling the real `d100`. In the engine's vm a stand-in
+(`W.d100 = …`) reaches every caller, so a test moved off the vm can lose its stand-in without a sound.
+
+- Show the stand-in is reached: a test that stands one in has a check that fails when it isn't (its planted fault
+  turns it red).
+- A function called inside its own file is staged around (the state, or the dice with `kcRng.use`), not stood in.
+- `restoreMocks` (`vitest.config.mts`) puts every spy back after each test.
 
 ## A lifted helper takes the turn's context first
 
