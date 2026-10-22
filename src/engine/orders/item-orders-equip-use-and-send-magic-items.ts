@@ -5,7 +5,7 @@ import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { applyItemMaxHp, isMithril } from '../personal-combat/helpers.ts';
 import { isCharmedNow, isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
-import { notifyTarget } from '../turn/events-and-their-audiences.ts';
+import { emit, notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 
 // ── THE ITEM ORDERS (plan P1-08j5: the fifth family taken out of processOrder in resolveTurn) ──
@@ -18,7 +18,6 @@ import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises
 // a return.
 // Equip Items: the items named are worn or wielded, the rest taken off, a slot's limit kept (the first named wins); a slot left with room is filled again with the first item held.
 export function resolveEquipItemsOrder(turnContext, c, target) {
-  const { log } = turnContext;
   // choose which slot items are worn/wielded. target = comma-separated item names (or ids) to
   // equip. Every slot item NOT named is unequipped; slot caps are enforced (first named
   // wins), and normaliseEquipment then fills any slot left empty with the first item held.
@@ -28,7 +27,11 @@ export function resolveEquipItemsOrder(turnContext, c, target) {
     .filter(Boolean);
   const slotItems = (c.items || []).filter((it) => it && itemSlot(it));
   if (slotItems.length === 0) {
-    log('system', `${c.name} carries nothing that can be worn or wielded.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} carries nothing that can be worn or wielded.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   slotItems.forEach((it) => {
@@ -53,36 +56,45 @@ export function resolveEquipItemsOrder(turnContext, c, target) {
   const worn = (c.items || [])
     .filter((it) => it && itemSlot(it) && it.equipped)
     .map((it) => `${it.name} [${itemSlot(it)}]`);
-  log(
-    'system',
-    `\u{1F6E1} ${c.name} arms and dresses for the season — now wearing: ${worn.join(', ') || 'nothing'}.${refused.length ? ` Could not also wear ${refused.join(', ')} (slot already filled).` : ''}`,
-    { actor: c.player, targets: [c.player] },
-  );
+  emit(turnContext, {
+    type: 'system',
+    text: `\u{1F6E1} ${c.name} arms and dresses for the season — now wearing: ${worn.join(', ') || 'nothing'}.${refused.length ? ` Could not also wear ${refused.join(', ')} (slot already filled).` : ''}`,
+    audience: { actor: c.player, realms: [c.player] },
+  });
   return;
 }
 // Use Item: an active magic item invoked (the Philosopher's Stone); a passive one needs no using.
 export function resolveUseItemOrder(turnContext, c, target, prov) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   // Trigger an ACTIVE magic item (one that must be invoked, not a passive bonus).
   // 2026-09-24 (Toby): not while charmed. An enchanted mind fights with what it carries — its
   // passive magic works as ever — but will not be made to spend a treasure on a stranger's
   // errand. Refused here as well as hidden on the form, since `target` is matched by NAME and a
   // crafted order would otherwise let a charmer probe the pack by reading the result.
   if (isCharmedNow(G, c)) {
-    log(
-      'system',
-      `${c.name} will not spend what they carry at another's bidding — a mind held by enchantment keeps its treasures to itself.`,
-      { actor: c.player, targets: [c.player], charId: c.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} will not spend what they carry at another's bidding — a mind held by enchantment keeps its treasures to itself.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: c.id,
+    });
     return;
   }
   const it = (c.items || []).find((x) => String(x.id) === String(target) || x.name === target);
   if (!it) {
-    log('system', `${c.name}: no such item to use.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: no such item to use.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   if (it._spent) {
-    log('system', `The ${it.name} has already been used.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `The ${it.name} has already been used.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   const st = it.effect?.stat;
@@ -128,11 +140,11 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
     // A once-per-game treasure is not spent on nothing: if there is not a single unit it
     // could raise, the Stone stays unused and the player is told why.
     if (n === 0) {
-      log(
-        'system',
-        `${c.name} raises the ${it.name}, but there is nothing for it to work on — ${total === 0 ? 'your realm has no armies in the field or in garrison' : 'every unit you command is already Elite'}. The Stone is NOT spent, and may be invoked another turn.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} raises the ${it.name}, but there is nothing for it to work on — ${total === 0 ? 'your realm has no armies in the field or in garrison' : 'every unit you command is already Elite'}. The Stone is NOT spent, and may be invoked another turn.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     // ── CONSUMED ── the Stone is not merely spent, it is GONE: the working destroys it.
@@ -159,11 +171,11 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       });
     });
     if (_purged > 0)
-      log(
-        'system',
-        `(GM note: ${_purged} undiscovered ${_stoneName}${_purged !== 1 ? 's were' : ' was'} struck from the world's lair hoards — the artefact is destroyed.)`,
-        { actor: null, targets: [], gmOnly: true },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `(GM note: ${_purged} undiscovered ${_stoneName}${_purged !== 1 ? 's were' : ' was'} struck from the world's lair hoards — the artefact is destroyed.)`,
+        audience: { actor: null, realms: [] },
+      });
     G._destroyedItems = (G._destroyedItems || []).concat([
       { name: _stoneName, turn: G.turn, by: c.name, player: c.player },
     ]);
@@ -171,34 +183,37 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       (_, i) => (i === 0 ? led : garr) > 0,
     );
     // The owner's own account — what it did for them, and what it cost.
-    log(
-      'explore',
-      `✨ ${c.name} invokes the ${_stoneName} — a wave of power sweeps the realm and ${n} army unit${n !== 1 ? 's' : ''} advance one quality tier (${_parts.join(', ')}${already > 0 ? `; ${already} already Elite and unchanged` : ''}). The Stone crumbles to grey dust in ${c.name}'s hands: its work is done, and there is not another in the world.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id, charId: c.id },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} invokes the ${_stoneName} — a wave of power sweeps the realm and ${n} army unit${n !== 1 ? 's' : ''} advance one quality tier (${_parts.join(', ')}${already > 0 ? `; ${already} already Elite and unchanged` : ''}). The Stone crumbles to grey dust in ${c.name}'s hands: its work is done, and there is not another in the world.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+      hero: c.id,
+    });
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_COMMON); // 2026-09-21: using a magic item may teach Sage
     // ...and the whole world sees the sky change. Every realm is told, by name — an artefact
     // of this order leaving the world is news, and its loss is a fact all players should
     // know.
     (G.players || []).forEach((_pl, _pi) => {
       if (_pl == null) return;
-      log(
-        'system',
-        `🌍 A light passes over the world: somewhere in ${prov.name}, ${_pi === c.player ? `your own ${c.name}` : `${G.players[c.player]?.name || 'a distant realm'}`} has worked the ${_stoneName} and burned it out. Every soldier of that realm stands a little taller tonight — and the Stone itself is gone from the world for good. No lair will yield another.`,
-        { actor: null, targets: [_pi], public: true },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `🌍 A light passes over the world: somewhere in ${prov.name}, ${_pi === c.player ? `your own ${c.name}` : `${G.players[c.player]?.name || 'a distant realm'}`} has worked the ${_stoneName} and burned it out. Every soldier of that realm stands a little taller tonight — and the Stone itself is gone from the world for good. No lair will yield another.`,
+        audience: { actor: null, realms: [_pi], seen: 'world' },
+      });
     });
   } else {
-    log('system', `The ${it.name} is a passive item and does not need to be used — its power is always active.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'system',
+      text: `The ${it.name} is a passive item and does not need to be used — its power is always active.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
   }
   return;
 }
 // Send Item (once Give Item): items handed to one of the realm's own living heroes, at once in the same province or by courier by the turn's end.
 export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   // SEND ITEM (was Give Item). A character can hand over MORE THAN ONE
   // item at once (comma-separated indices, or "all"; splice high→low so indices stay aligned) to
   // ANY of the player's own living characters, wherever they stand:
@@ -214,43 +229,55 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
   // checks live here rather than only on the order form, so a stale draft or a hand-crafted
   // submission cannot walk past them. The hero's own gear is untouched throughout.
   if (isCharmedNow(G, c)) {
-    log(
-      'item',
-      `${c.name} will part with nothing — a mind held by enchantment guards its own possessions, whatever it is bidden.`,
-      { actor: c.player, targets: [c.player], charId: c.id },
-    );
+    emit(turnContext, {
+      type: 'item',
+      text: `${c.name} will part with nothing — a mind held by enchantment guards its own possessions, whatever it is bidden.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: c.id,
+    });
     return;
   }
   const recip = orderCharRef(G, extra); // a plain id, or a pre-order hero's synthetic id
   if (!recip) {
-    log('item', `${c.name}: cannot send item — no such recipient.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'item',
+      text: `${c.name}: cannot send item — no such recipient.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   if (isCharmedNow(G, recip)) {
-    log(
-      'item',
-      `${c.name} keeps the items — ${recip.name} is held by a Charm, and an enchanted mind is trusted with nothing. Send them on once the hero serves you of their own will.`,
-      { actor: c.player, targets: [c.player], charId: c.id },
-    );
+    emit(turnContext, {
+      type: 'item',
+      text: `${c.name} keeps the items — ${recip.name} is held by a Charm, and an enchanted mind is trusted with nothing. Send them on once the hero serves you of their own will.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: c.id,
+    });
     return;
   }
   if (isPreOrderRef(extra) && (recip.player !== c.player || !recip.alive || recip._charmTempControl)) {
-    log(
-      'item',
-      `${c.name} keeps the items — ${recip.name} is not in your service${recip.alive ? '' : ' (they have fallen)'}: the hire, raising or charm did not land (or has not happened yet), so nothing is sent.`,
-      { actor: c.player, targets: [c.player], charId: c.id },
-    );
+    emit(turnContext, {
+      type: 'item',
+      text: `${c.name} keeps the items — ${recip.name} is not in your service${recip.alive ? '' : ' (they have fallen)'}: the hire, raising or charm did not land (or has not happened yet), so nothing is sent.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: c.id,
+    });
     return;
   }
   if (recip.player !== c.player || !recip.alive) {
-    log('item', `${c.name}: items can only be sent to one of your own living characters.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'item',
+      text: `${c.name}: items can only be sent to one of your own living characters.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
     return;
   }
   if (recip.id === c.id) {
-    log('item', `${c.name}: cannot send items to themselves.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'item',
+      text: `${c.name}: cannot send items to themselves.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   const _held = c.items || [];
@@ -289,13 +316,18 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
   // A granted Mithril suit is forged to its wearer and cannot be sent on.
   if (uniq.some((i) => isMithril(_held[i]))) {
     uniq = uniq.filter((i) => !isMithril(_held[i]));
-    log('item', `${c.name}: Mithril Armour is forged to its wearer and cannot be sent — it stays in their pack.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'item',
+      text: `${c.name}: Mithril Armour is forged to its wearer and cannot be sent — it stays in their pack.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
   }
   if (uniq.length === 0) {
-    log('item', `${c.name}: cannot send item.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'item',
+      text: `${c.name}: cannot send item.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   const given = [];
@@ -312,10 +344,11 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       recip.items.push(item);
       applyItemMaxHp(recip, item); /* item 6 */
     });
-    log('hire', `${c.name} hands ${_names} to ${recip.name}.`, {
-      actor: c.player,
-      targets: [c.player],
-      charId: c.id,
+    emit(turnContext, {
+      type: 'hire',
+      text: `${c.name} hands ${_names} to ${recip.name}.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: c.id,
       phase: ph,
     });
     // tell the recipient, in their own section.
@@ -329,11 +362,13 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
     G._itemDeliveries = G._itemDeliveries || [];
     G._itemDeliveries.push({ toId: recip.id, items: given, fromName: c.name });
     const _rProv = G.world.provinces[recip.location];
-    log(
-      'hire',
-      `${c.name} dispatches ${_names} by courier to ${recip.name} in ${_rProv ? _rProv.name : 'a distant province'} — it will arrive by turn's end.`,
-      { actor: c.player, targets: [c.player], charId: c.id, phase: ph },
-    );
+    emit(turnContext, {
+      type: 'hire',
+      text: `${c.name} dispatches ${_names} by courier to ${recip.name} in ${_rProv ? _rProv.name : 'a distant province'} — it will arrive by turn's end.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: c.id,
+      phase: ph,
+    });
     // the recipient's send-phase "a courier is on the way" notice was removed — it duplicated
     // the end-of-turn delivery line (see the COURIER DELIVERIES flush), which already tells
     // the recipient the parcel arrived and is ready to use next turn. The sender still gets

@@ -4,6 +4,7 @@ import { kcRng } from '../rng.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { _isHumanoidRace } from '../discoveries.ts';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── PLAGUE AND THE BLESS WARD (plan P1-08b: lifted out of resolveTurn) ────
 // The Plague's toll on a province's humanoid troops and its spread to the neighbours, and the Bless ward that may turn
@@ -17,26 +18,26 @@ export const _PLAGUE_QDOWN = { ...KC_QUALITY_DOWN };
 // level 5. Returns true (and logs) when the ward turns the spell aside, so the caller skips the
 // effect. Rolls per incoming spell.
 export function blessWardNegates(turnContext, prov, caster, spellName) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   if (!prov || prov._blessWardTurn !== G.turn) return false;
   if (prov._blessWardBy == null || (caster && prov._blessWardBy === caster.player)) return false; // your own ward never blocks your own spell
   if (kcRng() * 100 >= (prov._blessWardPct || 0)) return false;
   const _who = caster ? caster.name : 'a hostile mage';
-  log(
-    'combat',
-    `✨ A blessing lies over ${prov.name} — ${_who}'s ${spellName} washes over the sacred ground and does no harm.`,
-    {
+  emit(turnContext, {
+    type: 'combat',
+    text: `✨ A blessing lies over ${prov.name} — ${_who}'s ${spellName} washes over the sacred ground and does no harm.`,
+    audience: {
       actor: caster ? caster.player : null,
-      targets: prov._blessWardBy != null ? [prov._blessWardBy] : [],
-      provinceId: prov.id,
-      public: true,
-      env: true,
+      realms: prov._blessWardBy != null ? [prov._blessWardBy] : [],
+      seen: 'battle',
     },
-  );
+    province: prov.id,
+    env: true,
+  });
   return true;
 }
 export function applyPlague(turnContext, prov, level, ph) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const chance = 0.1 + 0.05 * (level || 0);
   // Build the pool WITH provenance so affected units can be reported to the right player: units
   // LED by a present character (→ that character's Chronicle), the owner's unled GARRISON
@@ -82,16 +83,20 @@ export function applyPlague(turnContext, prov, level, ph) {
   hitByCtx.forEach((rec) => {
     const names = rec.units.map((u) => `${u.unitName || u.type} (now ${u.quality})`).join(', ');
     const where = rec.garrison ? `the garrison of ${prov.name}` : `your troops in ${prov.name}`;
-    const meta = { actor: null, targets: [rec.owner], provinceId: prov.id };
-    if (rec.charId != null) meta.charId = rec.charId;
-    if (ph != null) meta.phase = ph;
-    log('combat', `☠ Plague sickens ${where}: ${names} lose an experience level.`, meta);
+    const place = { audience: { actor: null, realms: [rec.owner] }, province: prov.id };
+    if (rec.charId != null) place.hero = rec.charId;
+    if (ph != null) place.phase = ph;
+    emit(turnContext, {
+      type: 'combat',
+      text: `☠ Plague sickens ${where}: ${names} lose an experience level.`,
+      ...place,
+    });
   });
   return { tested, affected };
 }
 // Each phase, an active plague spreads to adjacent provinces (15% each) and can spread further.
 export function spreadPlagues(turnContext, ph) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const sources = (G.world.provinces || []).filter((p) => p && p._plaguedTurn === G.turn);
   sources.forEach((p) => {
     getNeighborsP(p, G.world.cols, G.world.rows, G.world.provinces).forEach((nb) => {
@@ -108,17 +113,17 @@ export function spreadPlagues(turnContext, ph) {
         nb._plagueLevel = p._plagueLevel || 0;
         nb._plagueCaster = p._plagueCaster;
         const res = applyPlague(turnContext, nb, nb._plagueLevel, ph);
-        log(
-          'combat',
-          `☠ The plague spreads into ${nb.name} — ${res.affected} of ${res.tested} humanoid unit${res.tested !== 1 ? 's' : ''} sicken.`,
-          {
+        emit(turnContext, {
+          type: 'combat',
+          text: `☠ The plague spreads into ${nb.name} — ${res.affected} of ${res.tested} humanoid unit${res.tested !== 1 ? 's' : ''} sicken.`,
+          audience: {
             actor: null,
-            targets: (nb.owner != null ? [nb.owner] : []).concat(p._plagueCaster != null ? [p._plagueCaster] : []),
-            provinceId: nb.id,
-            public: true,
-            env: true,
+            realms: (nb.owner != null ? [nb.owner] : []).concat(p._plagueCaster != null ? [p._plagueCaster] : []),
+            seen: 'battle',
           },
-        );
+          province: nb.id,
+          env: true,
+        });
       }
     });
   });

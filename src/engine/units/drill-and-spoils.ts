@@ -3,6 +3,7 @@ import { kcRng } from '../rng.ts';
 import { SEA_TYPES_GEN } from '../world/tables.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { botBattleForce } from '../bots/intel.ts';
+import { narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── ORC WAR-SPOILS ── Flag the Orcish units of an Orcish realm that just won a battle as part of
 // an ATTACKING force. The wage pass at end of turn halves that turn's upkeep for any unit stamped
@@ -19,7 +20,8 @@ export function markOrcAttackWin(ch, gs, battle) {
     }
   });
   if (n > 0 && battle && Array.isArray(battle.narrative))
-    battle.narrative.push(
+    narrate(
+      battle.narrative,
       `🪓 **Orcish war-spoils**: ${n} Orcish unit${n !== 1 ? 's' : ''} of ${ch.name.replace(' (wandering)', '')}'s host plunder${n === 1 ? 's' : ''} the field — their wages are halved this turn.`,
     );
   return n;

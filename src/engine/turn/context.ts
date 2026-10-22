@@ -17,7 +17,7 @@
 // events file's.
 import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
-import { emit, eventOfALogCall, type LogLine } from './events-and-their-audiences.ts';
+import { emit, eventOfALogCall, type EventButItsWords, type LogLine } from './events-and-their-audiences.ts';
 
 export function createTurnContext(G, freshPlayers, expectedTurnToRun) {
   const turnContext = { G, freshPlayers, expectedTurnToRun, turnLog: [] };
@@ -166,9 +166,9 @@ export interface TurnContext {
   _battleSeq: number;
   /** While a duel against a local chieftain is fought: whether it has trained a skill yet. */
   _chieftainDuelGain: { used: boolean } | null;
-  /** Skill rises held back to the end of the phase: each line's text and meta (afterBattleIn: the province of the
+  /** Skill rises held back to the end of the phase: each line's text and place (afterBattleIn: the province of the
    *  battle it follows). */
-  _deferredSkillLogs: [string, LogMeta & { afterBattleIn?: number | undefined }][];
+  _deferredSkillLogs: [string, EventButItsWords & { afterBattleIn?: number | undefined }][];
   /** A simulated fight is running (the odds of a lair, a bot's forecast): no skill may rise. */
   _pcSimulating: boolean;
   _elvenEscapeQueue: ElvenEscape[];

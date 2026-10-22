@@ -2,6 +2,7 @@
 import { KC_HEX_DIRS, KC_QUALITY_DOWN } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
+import { narrate } from '../turn/events-and-their-audiences.ts';
 
 export function getNeighborsP(prov, cols, rows, provinces) {
   const { row, col } = prov;
@@ -52,7 +53,8 @@ export function applyWraithTouch(friendly, enemy, narr) {
   const was = v.quality;
   v.quality = _WRAITH_DOWN[v.quality] || v.quality;
   if (narr)
-    narr.push(
+    narrate(
+      narr,
       `  \u2620 Wraith's Touch withers ${v.unitName || v.type} \u2014 permanently reduced from ${was} to ${v.quality}.`,
     );
 }

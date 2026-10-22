@@ -89,7 +89,7 @@ export interface PassCall {
   /** The bot realms it was handed, in order; and whether they were the context's own set. */
   bots: number[];
   botsShared: boolean;
-  /** What it was handed third: 'the log' (the context's), 'the calls' (the context's Reckoning calls), 'hooks' (the
+  /** What it was handed third: 'the context' (the turn's, whose GM's log it writes), 'the calls' (the context's Reckoning calls), 'hooks' (the
    *  movement pass's: see `hooks`), a word, or 'nothing'. */
   third: unknown;
   /** How many things it was handed. */
@@ -165,7 +165,7 @@ const recorder = (): Recorder => ({
 const third = (r: Recorder, v: unknown): unknown => {
   const tc = must(r.tc, 'the context');
   if (v === undefined) return 'nothing';
-  if (v === tc['log']) return 'the log';
+  if (v === tc) return 'the context';
   if (v === tc['reckoningCalls']) return 'the calls';
   if (typeof v === 'string') return v;
   if (v && typeof v === 'object' && 'duelSim' in v) return 'hooks';
@@ -479,12 +479,12 @@ export const ORDER_CASES: BotsPlanCase[] = [
     check: (o) => ({ got: { bots: o.passes.map((p) => p.bots) }, want: { bots: PLAN_ORDER.map(() => [0, 1, 2]) } }),
   },
   {
-    name: 'what each pass is handed beside the world and the bots: the log, the hooks, “muster”, nothing, nothing, “order”, nothing, the realms’ calls',
+    name: 'what each pass is handed beside the world and the bots: the context, the hooks, “muster”, nothing, nothing, “order”, nothing, the realms’ calls',
     stage: () => ({ bots: [1] }),
     check: (o) => ({
       got: { third: o.passes.map((p) => p.third), count: o.passes.map((p) => p.count) },
       want: {
-        third: ['the log', 'hooks', 'muster', 'nothing', 'nothing', 'order', 'nothing', 'the calls'],
+        third: ['the context', 'hooks', 'muster', 'nothing', 'nothing', 'order', 'nothing', 'the calls'],
         count: [3, 3, 3, 2, 2, 3, 2, 3],
       },
     }),

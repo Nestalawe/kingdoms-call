@@ -213,7 +213,6 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // _combatSkillProv (which is per-skill) this cap is TOTAL: one advance per duel, whatever the
     // skill.
     turnContext._chieftainDuelGain = null;
-    const { log } = turnContext;
 
     relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(turnContext);
     botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(turnContext);

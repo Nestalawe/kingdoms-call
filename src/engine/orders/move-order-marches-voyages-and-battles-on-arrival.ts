@@ -18,7 +18,7 @@ import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
 import { TM, creditMapped, perkTier } from '../titles/perks.ts';
 import { discSum } from '../discoveries.ts';
 import { narrText } from '../turn/log-line-helpers.ts';
-import { notifyTarget } from '../turn/events-and-their-audiences.ts';
+import { emit, narrateAt, notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
@@ -54,7 +54,7 @@ import { erodeGuardSurvivors } from '../battle/stalled-battles-and-beaten-guards
 // first (src/engine/turn/context.ts) and the values processOrder worked out before it. The body keeps
 // processOrder's indent (plan P1-08's Decisions); a case-level break became a return.
 export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, player) {
-  const { movePoints, seaMovePoints, log, G, seaCap, lightSeaMoves, lightLandMoves } = turnContext;
+  const { movePoints, seaMovePoints, G, seaCap, lightSeaMoves, lightLandMoves } = turnContext;
   // Safety net: if this owned hero never had a move pool computed (both pools undefined) —
   // e.g. a hero hired in a previous turn whose start-of-turn init was somehow missed —
   // compute it now so they aren't wrongly told they have no movement left. We only do this
@@ -72,7 +72,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
   const mp = movePoints[c.id] ?? 0;
   const smpAvail = seaMovePoints[c.id] ?? 0;
   if (mp <= 0 && smpAvail <= 0) {
-    log('move', `${c.name} has no movement points remaining this turn.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name} has no movement points remaining this turn.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   // discovery ("…notices the Lost City!") lines are captured here and flushed at the END of
@@ -84,11 +88,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     const dir = target.slice(4);
     toProv = neighborInDir(turnContext, prov, dir);
     if (!toProv) {
-      log(
-        'move',
-        `${c.name} marches ${dir} to the edge of the world, but the impassable icy wastelands bar the way — no army can cross them to the far north or south.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} marches ${dir} to the edge of the world, but the impassable icy wastelands bar the way — no army can cross them to the far north or south.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
   } else if (target.startsWith('prov:')) {
@@ -103,13 +107,18 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     const _wantId = parseInt(target.slice(5));
     const _want = isNaN(_wantId) ? null : G.world.provinces[_wantId];
     if (!_want) {
-      log('move', `${c.name}: invalid move target.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name}: invalid move target.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     if (_want.id === prov.id) {
-      log('move', `${c.name} is already in ${_want.name} — the move order is moot.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} is already in ${_want.name} — the move order is moot.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
@@ -122,26 +131,31 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       seaCap[c.id] = getSeaCapability(c.armies || [], c); // stepToward reads the cache — make it current
       const _step = stepTowardPreferSafe(turnContext, c, _want.id);
       if (!_step) {
-        log(
-          'move',
-          `${c.name} intended to march to ${_want.name}, but from ${prov.name} no passable route leads there this phase — the column holds.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} intended to march to ${_want.name}, but from ${prov.name} no passable route leads there this phase — the column holds.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
         return;
       }
       toProv = _step;
-      log(
-        'move',
-        `${c.name} intended to march to ${_want.name}, but after being displaced it no longer lies adjacent — the column turns toward it by way of ${toProv.name}.`,
-        { actor: c.player, targets: [c.player], provinceId: toProv.id },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} intended to march to ${_want.name}, but after being displaced it no longer lies adjacent — the column turns toward it by way of ${toProv.name}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: toProv.id,
+      });
     }
   } else {
     const id = parseInt(target);
     if (!isNaN(id)) toProv = G.world.provinces[id];
   }
   if (!toProv) {
-    log('move', `${c.name}: invalid move target.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name}: invalid move target.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   // NAVAL L9 Raid the Coast — a fleet-led raider launching FROM the sea INTO a coastal land
@@ -165,11 +179,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     (c.armies || []).length > 0 &&
     relationBetween(turnContext, c.player, toProv.owner) === 'neutral'
   ) {
-    log(
-      'move',
-      `${c.name}'s column is turned back at the border of ${toProv.name} — ${player.name} and ${G.players[toProv.owner]?.name || 'that realm'} are at peace. Neither may march an army across the other's frontier without a treaty of alliance or a declaration of war.`,
-      { actor: c.player, targets: [c.player], provinceId: toProv.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name}'s column is turned back at the border of ${toProv.name} — ${player.name} and ${G.players[toProv.owner]?.name || 'that realm'} are at peace. Neither may march an army across the other's frontier without a treaty of alliance or a declaration of war.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: toProv.id,
+    });
     return;
   }
   // Recompute sea capability from the LIVE force here rather than trusting the turn-start
@@ -209,11 +224,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     toProv._blockadeBy !== c.player &&
     areEnemies(turnContext, c.player, toProv._blockadeBy)
   ) {
-    log(
-      'move',
-      `${c.name} finds the waters of ${toProv.name} sealed by an enemy blockade — the crossing is barred this turn.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name} finds the waters of ${toProv.name} sealed by an enemy blockade — the crossing is barred this turn.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
 
@@ -226,11 +242,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       // shortage of shipping — is why the column is turned back. Say so plainly so the player
       // understands the ground itself is underwater this turn.
       if (toProv._flood) {
-        log(
-          'move',
-          `${c.name} is turned back at ${toProv.name}: the province has been FLOODED and acts as open sea this turn. Land armies cannot wade across — only fleets (or flying units) may pass until the waters recede at turn's end.`,
-          { actor: c.player, targets: [c.player], provinceId: prov.id },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} is turned back at ${toProv.name}: the province has been FLOODED and acts as open sea this turn. Land armies cannot wade across — only fleets (or flying units) may pass until the waters recede at turn's end.`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
+        });
         return;
       }
       const armies = c.armies || [];
@@ -264,7 +281,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             : '') +
           ` (Light foot take half a hull each; cavalry, heavy foot, siege and beasts take a full hull; a humanoid flyer lifts one foot soldier.) Move blocked.`;
       }
-      log('move', seaBlockReason, { actor: c.player, targets: [c.player] });
+      emit(turnContext, { type: 'move', text: seaBlockReason, audience: { actor: c.player, realms: [c.player] } });
       return;
     }
     // Use sea move pool
@@ -273,31 +290,33 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       // when the water is a FLOOD spell's doing, say so — "no sea points" alone reads as a
       // shipping problem when the real cause is that the ground is underwater this turn.
       if (toProv._flood)
-        log(
-          'move',
-          `${c.name} cannot enter ${toProv.name}: the province has been FLOODED and lies under open sea this turn, and ${c.name} has no sea movement to cross water. Only fleets or flyers may enter until the waters recede at turn's end.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} cannot enter ${toProv.name}: the province has been FLOODED and lies under open sea this turn, and ${c.name} has no sea movement to cross water. Only fleets or flyers may enter until the waters recede at turn's end.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
       else if (prov._flood)
-        log(
-          'move',
-          `${c.name} is stranded in ${prov.name}: a FLOOD has turned the province to open sea this turn, and ${c.name} has no sea movement to sail out of it. The column must wait for the waters to recede at turn's end.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} is stranded in ${prov.name}: a FLOOD has turned the province to open sea this turn, and ${c.name} has no sea movement to sail out of it. The column must wait for the waters to recede at turn's end.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
       else
-        log('move', `${c.name} has no sea movement points remaining this turn.`, {
-          actor: c.player,
-          targets: [c.player],
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} has no sea movement points remaining this turn.`,
+          audience: { actor: c.player, realms: [c.player] },
         });
       return;
     }
     if ((c.armies || []).length === 0) lightSeaMoves[c.id] = (lightSeaMoves[c.id] || 0) + 1; // free-passage sea leg — don't charge a later fleet for it
     seaMovePoints[c.id] = smp - 1;
     const navalLvl = effStat(turnContext, c, 'naval');
-    log('move', `${c.name} moves across sea to ${toProv.name}.`, {
-      actor: c.player,
-      targets: [c.player],
-      provinceId: toProv.id,
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name} moves across sea to ${toProv.name}.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: toProv.id,
     });
   } else if (coastalLanding) {
     // Moving from sea province to land: coastal landing, costs 1 sea MP
@@ -306,15 +325,16 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       // a land column caught by a FLOOD is "at sea" without a ship — name the flood, not a
       // shortage of sea points, as the reason it cannot walk out.
       if (prov._flood)
-        log(
-          'move',
-          `${c.name} is stranded in ${prov.name}: a FLOOD has turned the province to open sea this turn, and a land column cannot wade out to ${toProv.name}. The waters recede at turn's end — ${c.name} may move again next turn.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} is stranded in ${prov.name}: a FLOOD has turned the province to open sea this turn, and a land column cannot wade out to ${toProv.name}. The waters recede at turn's end — ${c.name} may move again next turn.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
       else
-        log('move', `${c.name} has no sea movement points remaining to make a coastal landing in ${toProv.name}.`, {
-          actor: c.player,
-          targets: [c.player],
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} has no sea movement points remaining to make a coastal landing in ${toProv.name}.`,
+          audience: { actor: c.player, realms: [c.player] },
         });
       return;
     }
@@ -331,16 +351,18 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     // remove, so the ability is a bonus for landing rather than a waiver — see DEV_LOG.)
     if ((c.armies || []).some((a) => a && a.type === 'Orcish Longships')) {
       c._amphibiousAssault = true;
-      log(
-        'move',
-        `${c.name}'s longships drive onto the shingle at ${toProv.name} — the reavers are over the side before the keels stop moving.`,
-        { actor: c.player, targets: [c.player], provinceId: toProv.id },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name}'s longships drive onto the shingle at ${toProv.name} — the reavers are over the side before the keels stop moving.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: toProv.id,
+      });
     } else {
-      log('move', `${c.name} makes a coastal landing in ${toProv.name}.`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: toProv.id,
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} makes a coastal landing in ${toProv.name}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: toProv.id,
       });
     }
   } else {
@@ -354,11 +376,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     // the fleet, sail to an adjacent sea province (land→sea).
     const _navalAboard = (c.armies || []).filter((a) => a && SEA_TYPES.has(a.type));
     if (_navalAboard.length > 0) {
-      log(
-        'move',
-        `${c.name} cannot march overland while leading naval units (${_navalAboard.map((a) => a.type).join(', ')}) — ships and sea-beasts cannot cross land. Leave them behind to march, or sail to an adjacent sea province.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} cannot march overland while leading naval units (${_navalAboard.map((a) => a.type).join(', ')}) — ships and sea-beasts cannot cross land. Leave them behind to march, or sail to an adjacent sea province.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     if (!canEnterTerrain(c, toProv.terrain, sc)) {
@@ -366,21 +388,26 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       if (armies.length > 0 && armies.every((a) => SEA_TYPES.has(a.type))) {
         // Naval-only force sitting on land: its only legal move is to an adjacent SEA
         // province.
-        log(
-          'move',
-          `${c.name} leads only naval armies (${armies.map((a) => a.type).join(', ')}) and cannot march overland — from a land province a fleet can only sail to an adjacent sea province.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} leads only naval armies (${armies.map((a) => a.type).join(', ')}) and cannot march overland — from a land province a fleet can only sail to an adjacent sea province.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
         return;
       }
-      log('move', `${c.name} cannot enter ${toProv.name} (${toProv.terrain}).`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} cannot enter ${toProv.name} (${toProv.terrain}).`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (mp <= 0) {
-      log('move', `${c.name} has no land movement points left this turn.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} has no land movement points left this turn.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     if ((c.armies || []).length === 0) lightLandMoves[c.id] = (lightLandMoves[c.id] || 0) + 1; // free-passage land leg — don't charge a later army for it
@@ -414,11 +441,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
   // a necromancer reads the ground the moment they set foot on it — every province of the
   // march, not just the one they stop in. Feeds the report's Graveyards Known.
   senseGravesUnderfoot(G, c, toProv, (pv) =>
-    log(
-      'explore',
-      `💀 ${c.name} crosses into ${pv.name} and the dead stir underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,
-      { actor: c.player, targets: [c.player], provinceId: pv.id },
-    ),
+    emit(turnContext, {
+      type: 'explore',
+      text: `💀 ${c.name} crosses into ${pv.name} and the dead stir underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: pv.id,
+    }),
   );
   if (!toProv.visitedBy) toProv.visitedBy = [];
   if (!toProv.visitedBy.includes(c.player)) toProv.visitedBy.push(c.player);
@@ -509,7 +537,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       if (toProv.features.some((f) => f._hidden && f._hiddenBy !== c.player && !featDiscovered(f, c.player))) {
         _discoveryLines.push([
           `🌫 Something clouds ${c.name}'s search of ${toProv.name} — a veiling illusion conceals lairs hidden here, blocking any discovery.`,
-          { actor: c.player, targets: [c.player], provinceId: toProv.id },
+          { audience: { actor: c.player, realms: [c.player] }, province: toProv.id },
         ]);
       }
       // Item: report a spotted-on-entry lair in the SAME style as an Explore discovery, and
@@ -535,14 +563,14 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         const f = _spotted[0];
         _discoveryLines.push([
           `Moving into ${toProv.name}, ${c.name} discovers the ${f.name}! ${_featTail(f)}`,
-          { actor: c.player, targets: [c.player], provinceId: toProv.id },
+          { audience: { actor: c.player, realms: [c.player] }, province: toProv.id },
         ]);
       } else if (_spotted.length > 1) {
         const frags = _spotted.map(_featFrag);
         const list = frags.slice(0, -1).join(', ') + ' and ' + frags[frags.length - 1];
         _discoveryLines.push([
           `Moving into ${toProv.name}, ${c.name} discovers ${list}.`,
-          { actor: c.player, targets: [c.player], provinceId: toProv.id },
+          { audience: { actor: c.player, realms: [c.player] }, province: toProv.id },
         ]);
       }
     }
@@ -583,11 +611,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       const unifyRoll = d100();
       if (unifyRoll <= unifyChancePct) {
         friendlyReinforcements.push(ally);
-        log(
-          'combat',
-          `📊 Contingent unify: ${ally.name} joins ${c.name}'s assault on ${toProv.name}! (March ${marchLvl}: ${unifyChancePct}% chance, roll ${unifyRoll} ✓)`,
-          { actor: c.player, targets: [c.player], provinceId: toProv.id },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `📊 Contingent unify: ${ally.name} joins ${c.name}'s assault on ${toProv.name}! (March ${marchLvl}: ${unifyChancePct}% chance, roll ${unifyRoll} ✓)`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: toProv.id,
+        });
         // Move ally into province and mark as having used their move this phase
         prov.characters = (prov.characters || []).filter((id) => id !== ally.id);
         toProv.characters = toProv.characters || [];
@@ -598,11 +627,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         if (!G.turnOrders[ally.id]) G.turnOrders[ally.id] = [];
         G.turnOrders[ally.id][ph] = { ...G.turnOrders[ally.id][ph], _unifiedWith: c.id };
       } else {
-        log(
-          'combat',
-          `${ally.name} cannot link up with ${c.name} in time — they will attack ${toProv.name} separately. (March ${marchLvl}: ${unifyChancePct}% chance, roll ${unifyRoll} ✗)`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `${ally.name} cannot link up with ${c.name} in time — they will attack ${toProv.name} separately. (March ${marchLvl}: ${unifyChancePct}% chance, roll ${unifyRoll} ✗)`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
       }
     });
 
@@ -620,17 +649,18 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     }; // Reaver Crews (2026-09-23e) and Raid the Coast (2026-09-23f) stay with the landed troops whoever commands
     if (friendlyReinforcements.length > 0) {
       if (_aPick.changed)
-        log('combat', commandHandoverLine(_aLead, c, toProv.name), {
-          actor: c.player,
-          targets: [c.player],
-          provinceId: toProv.id,
-          public: true,
+        emit(turnContext, {
+          type: 'combat',
+          text: commandHandoverLine(_aLead, c, toProv.name),
+          audience: { actor: c.player, realms: [c.player], seen: 'battle' },
+          province: toProv.id,
         });
-      log(
-        'combat',
-        `${_aLead.name} leads a combined force of ${combinedArmies.length} units into battle, reinforced by ${_aPick.others.map((a) => a.name).join(', ')}.`,
-        { actor: c.player, targets: [c.player], provinceId: toProv.id },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `${_aLead.name} leads a combined force of ${combinedArmies.length} units into battle, reinforced by ${_aPick.others.map((a) => a.name).join(', ')}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: toProv.id,
+      });
     }
 
     // Give province the neutral guard's armies as defenders for this battle
@@ -638,11 +668,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     toProv.neutralDefenders = [...(neutralGuard.armies || [])];
     if (_fmSlip && kcRng() < 0.5) {
       toProv._battleUnresolved = true;
-      log(
-        'move',
-        `⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,
-        { actor: c.player, targets: [c.player], provinceId: toProv.id, public: true },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,
+        audience: { actor: c.player, realms: [c.player], seen: 'there' },
+        province: toProv.id,
+      });
       return;
     } // MARCH L7 slip
     const battle = combatVsNPC(turnContext, battleAttacker, toProv, neutralGuard);
@@ -710,7 +741,13 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         _guardSlainInDuel ? null : neutralGuard,
         toProv,
         neutralGuard.armies || [],
-        (line) => log('combat', line, { actor: c.player, targets: [], provinceId: toProv.id }),
+        (line) =>
+          emit(turnContext, {
+            type: 'combat',
+            text: line,
+            audience: { actor: c.player, realms: [] },
+            province: toProv.id,
+          }),
         c.name,
       );
       neutralGuard.armies = defSurvivors;
@@ -723,11 +760,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         toProv._leaderlessDefenders = defSurvivors.length > 0;
         if (defSurvivors.length > 0) {
           toProv._battleUnresolved = true;
-          log(
-            'combat',
-            `💢 Though their commander lies dead, ${defSurvivors.length} surviving unit${defSurvivors.length !== 1 ? 's' : ''} of the garrison refuse to yield ${toProv.name} — the leaderless remnant will contest it again in the next action phase!`,
-            { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `💢 Though their commander lies dead, ${defSurvivors.length} surviving unit${defSurvivors.length !== 1 ? 's' : ''} of the garrison refuse to yield ${toProv.name} — the leaderless remnant will contest it again in the next action phase!`,
+            audience: { actor: c.player, realms: [], seen: 'battle' },
+            province: toProv.id,
+          });
         }
       } else
         // If survivors remain, guard rallies — they will fight again next phase (they stay in
@@ -735,16 +773,18 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         if (defSurvivors.length > 0) {
           neutralGuard._isNeutralGuard = true; // stays as guard — will trigger another battle next phase
           toProv._battleUnresolved = true; // co-located forces will fight again at the start of next phase
-          log(
-            'combat',
-            `💢 ${neutralGuard.name.replace(' (wandering)', '')} rallies ${defSurvivors.length} surviving unit${defSurvivors.length !== 1 ? 's' : ''} — they will contest ${toProv.name} again in the next action phase!`,
-            { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-          );
-          log(
-            'combat',
-            `⚔ The battle for ${toProv.name} is not over — ${neutralGuard.name.replace(' (wandering)', '')} rallies and will fight again!`,
-            { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `💢 ${neutralGuard.name.replace(' (wandering)', '')} rallies ${defSurvivors.length} surviving unit${defSurvivors.length !== 1 ? 's' : ''} — they will contest ${toProv.name} again in the next action phase!`,
+            audience: { actor: c.player, realms: [], seen: 'battle' },
+            province: toProv.id,
+          });
+          emit(turnContext, {
+            type: 'combat',
+            text: `⚔ The battle for ${toProv.name} is not over — ${neutralGuard.name.replace(' (wandering)', '')} rallies and will fight again!`,
+            audience: { actor: c.player, realms: [], seen: 'battle' },
+            province: toProv.id,
+          });
         } else {
           neutralGuard._isNeutralGuard = false;
           neutralGuard._justDefeated = true;
@@ -766,17 +806,19 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
               if (!fleeDest.characters.includes(neutralGuard.id)) fleeDest.characters.push(neutralGuard.id);
               neutralGuard.location = fleeDest.id;
               neutralGuard.locationName = fleeDest.name;
-              log(
-                'combat',
-                `💀 ${neutralGuard.name.replace(' (wandering)', '')} has been defeated — all forces destroyed, they flee bitterly to ${fleeDest.name}.`,
-                { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-              );
+              emit(turnContext, {
+                type: 'combat',
+                text: `💀 ${neutralGuard.name.replace(' (wandering)', '')} has been defeated — all forces destroyed, they flee bitterly to ${fleeDest.name}.`,
+                audience: { actor: c.player, realms: [], seen: 'battle' },
+                province: toProv.id,
+              });
             } else {
-              log(
-                'combat',
-                `💀 ${neutralGuard.name.replace(' (wandering)', '')} has been defeated — all forces destroyed, they retreat into the wilderness.`,
-                { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-              );
+              emit(turnContext, {
+                type: 'combat',
+                text: `💀 ${neutralGuard.name.replace(' (wandering)', '')} has been defeated — all forces destroyed, they retreat into the wilderness.`,
+                audience: { actor: c.player, realms: [], seen: 'battle' },
+                province: toProv.id,
+              });
             }
           }
         }
@@ -788,11 +830,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         if (c.alive !== false) c.merits = (c.merits || 0) + toProv.tax; // 2026-09-21: a commander slain in the pre-battle duel earns no personal merit
         applyEvilConquest(turnContext, c, toProv, player); // Evil doctrine: loot or enslave
         toProv._hadBattleThisTurn = true;
-        log(
-          'combat',
-          `${c.alive === false ? `${c.name}'s leaderless host` : c.name} claims ${toProv.name} for ${player.name}!${c.alive === false ? '' : ` (+${toProv.tax} merit)`}`,
-          { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `${c.alive === false ? `${c.name}'s leaderless host` : c.name} claims ${toProv.name} for ${player.name}!${c.alive === false ? '' : ` (+${toProv.tax} merit)`}`,
+          audience: { actor: c.player, realms: [], seen: 'battle' },
+          province: toProv.id,
+        });
         if (!player.provinces.includes(toProv.id)) player.provinces.push(toProv.id);
       } // end if(defSurvivors.length===0)
     } else {
@@ -805,11 +848,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         toProv.npcArmies = toProv.neutralDefenders.length;
         toProv._leaderlessDefenders = toProv.neutralDefenders.length > 0;
         if (toProv._leaderlessDefenders)
-          log(
-            'combat',
-            `🛡 Their commander fell, but the garrison of ${toProv.name} held — the leaderless defenders keep the province.`,
-            { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `🛡 Their commander fell, but the garrison of ${toProv.name} held — the leaderless defenders keep the province.`,
+            audience: { actor: c.player, realms: [], seen: 'battle' },
+            province: toProv.id,
+          });
       }
       toProv.characters = toProv.characters.filter((id) => id !== c.id);
       prov.characters.push(c.id);
@@ -848,11 +892,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             return a;
           }),
         );
-        log(
-          'combat',
-          `⚑ With no commander to lead them, the leaderless troops in ${toProv.name} form up with the garrison to hold the ground.`,
-          { actor: toProv.owner, targets: [toProv.owner], provinceId: toProv.id, public: true },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `⚑ With no commander to lead them, the leaderless troops in ${toProv.name} form up with the garrison to hold the ground.`,
+          audience: { actor: toProv.owner, realms: [toProv.owner], seen: 'battle' },
+          province: toProv.id,
+        });
       }
     }
     if (defChar) {
@@ -878,11 +923,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         const roll = d100();
         if (roll <= unifyPct) {
           pvpReinforcements.push(ally);
-          log(
-            'combat',
-            `📊 ${ally.name} unifies with ${c.name} for the assault on ${toProv.name}! (${unifyPct}% → roll ${roll} ✓)`,
-            { actor: c.player, targets: [c.player], provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `📊 ${ally.name} unifies with ${c.name} for the assault on ${toProv.name}! (${unifyPct}% → roll ${roll} ✓)`,
+            audience: { actor: c.player, realms: [c.player], seen: 'battle' },
+            province: toProv.id,
+          });
           prov.characters = (prov.characters || []).filter((id) => id !== ally.id);
           if (!toProv.characters.includes(ally.id)) toProv.characters.push(ally.id);
           ally.location = toProv.id;
@@ -890,9 +936,10 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           if (!G.turnOrders[ally.id]) G.turnOrders[ally.id] = [];
           G.turnOrders[ally.id][ph] = { ...G.turnOrders[ally.id][ph], _unifiedWith: c.id };
         } else {
-          log('combat', `${ally.name} misses the timing — will attack ${toProv.name} separately this phase.`, {
-            actor: c.player,
-            targets: [c.player],
+          emit(turnContext, {
+            type: 'combat',
+            text: `${ally.name} misses the timing — will attack ${toProv.name} separately this phase.`,
+            audience: { actor: c.player, realms: [c.player] },
           });
         }
       });
@@ -971,11 +1018,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       const _atkParty = [c, ...pvpReinforcements],
         _defParty = [defChar, ...defReinforcements];
       if (_aP.changed)
-        log('combat', commandHandoverLine(_atkLead, c, toProv.name), {
-          actor: c.player,
-          targets: [c.player],
-          provinceId: toProv.id,
-          public: true,
+        emit(turnContext, {
+          type: 'combat',
+          text: commandHandoverLine(_atkLead, c, toProv.name),
+          audience: { actor: c.player, realms: [c.player], seen: 'battle' },
+          province: toProv.id,
         });
       if (_dP.changed) _defFormupLines.push(commandHandoverLine(_defLead, defChar, toProv.name));
       const combinedAtk = { ..._atkLead, armies: _atkPooled, ...landingPartyFlags(turnContext, _atkParty, toProv) }; // Reaver Crews (2026-09-23e) and Raid the Coast (2026-09-23f) stay with the landed troops whoever commands
@@ -986,11 +1033,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       } // ILLUSORY L9 VEIL: a veiled attacker slips in unseen; a wholly-veiled defence cannot be found — no battle, no contest flagged (it triggers when the veil parts, via the re-trigger scan).
       if (_fmSlip && kcRng() < 0.5) {
         toProv._battleUnresolved = true;
-        log(
-          'move',
-          `⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,
-          { actor: c.player, targets: [c.player], provinceId: toProv.id, public: true },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,
+          audience: { actor: c.player, realms: [c.player], seen: 'there' },
+          province: toProv.id,
+        });
         return;
       } // MARCH L7 slip
       const battle = combatVsChar(turnContext, combinedAtk, combinedDef, toProv);
@@ -1007,7 +1055,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         let _mi = battle.narrative.findIndex(
           (l) => typeof narrText(l) === 'string' && String(narrText(l)).includes('a battle is initiated'),
         );
-        battle.narrative.splice(_mi >= 0 ? _mi + 1 : 0, 0, ..._defFormupLines);
+        narrateAt(battle.narrative, _mi >= 0 ? _mi + 1 : 0, _defFormupLines);
       }
       // charIds names EVERY commander who fought — attacker + his reinforcements, defender +
       // his. Without it the DEFENDING player's copy of the battle inherited the attacker's
@@ -1128,11 +1176,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             // forced retreat/fall-back does NOT consume move points.
           });
           if (defReinforcements.length > 0) {
-            log(
-              'combat',
-              `${defReinforcements.map((d) => d.name).join(', ')} fall back to ${_defFellBackTo.name} alongside ${defChar.name}.`,
-              { actor: defChar.player, targets, provinceId: _defFellBackTo.id, public: true },
-            );
+            emit(turnContext, {
+              type: 'combat',
+              text: `${defReinforcements.map((d) => d.name).join(', ')} fall back to ${_defFellBackTo.name} alongside ${defChar.name}.`,
+              audience: { actor: defChar.player, realms: targets, seen: 'battle' },
+              province: _defFellBackTo.id,
+            });
           }
           // The rallied garrison retreats WITH the hero — it garrisons the province he falls
           // back to, since it has no commander of its own to lead it elsewhere. Any surviving
@@ -1149,11 +1198,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           if (_fallenBack.length > 0) {
             _defFellBackTo.garrisonArmies = (_defFellBackTo.garrisonArmies || []).concat(_fallenBack);
             toProv.garrisonArmies = _navalHeld.slice(); // the stranded hulls do not march inland
-            log(
-              'combat',
-              `The standing troops of ${toProv.name} fall back to ${_defFellBackTo.name} with ${defChar.name} rather than be left to the enemy.`,
-              { actor: defChar.player, targets, provinceId: _defFellBackTo.id, public: true },
-            );
+            emit(turnContext, {
+              type: 'combat',
+              text: `The standing troops of ${toProv.name} fall back to ${_defFellBackTo.name} with ${defChar.name} rather than be left to the enemy.`,
+              audience: { actor: defChar.player, realms: targets, seen: 'battle' },
+              province: _defFellBackTo.id,
+            });
           }
         }
       } else {
@@ -1191,17 +1241,18 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         _payWinPoint();
         if (_hostileLeft || _navalBlock.length > 0) {
           toProv._battleUnresolved = true;
-          log(
-            'combat',
-            `${c.alive === false ? `${c.name}'s leaderless host` : c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,
-            { actor: c.player, targets, provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `${c.alive === false ? `${c.name}'s leaderless host` : c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,
+            audience: { actor: c.player, realms: targets, seen: 'battle' },
+            province: toProv.id,
+          });
           if (!_hostileLeft && _navalBlock.length > 0)
-            log('combat', navalHoldLine(turnContext, toProv, _navalBlock, player.name), {
-              actor: c.player,
-              targets,
-              provinceId: toProv.id,
-              public: true,
+            emit(turnContext, {
+              type: 'combat',
+              text: navalHoldLine(turnContext, toProv, _navalBlock, player.name),
+              audience: { actor: c.player, realms: targets, seen: 'battle' },
+              province: toProv.id,
             });
         } else {
           G.players.forEach((p, pi) => {
@@ -1212,11 +1263,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           });
           setProvinceOwner(turnContext, toProv, c.player, c, ph);
           if (!player.provinces.includes(toProv.id)) player.provinces.push(toProv.id);
-          log(
-            'combat',
-            `${c.alive ? c.name : `${c.name}'s leaderless host`} claims ${toProv.name} for ${player.name}!`,
-            { actor: c.player, targets, provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `${c.alive ? c.name : `${c.name}'s leaderless host`} claims ${toProv.name} for ${player.name}!`,
+            audience: { actor: c.player, realms: targets, seen: 'battle' },
+            province: toProv.id,
+          });
           applyEvilConquest(turnContext, c, toProv, player);
         }
       } else {
@@ -1271,11 +1323,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         defChar.armies = (defChar.armies || []).concat(_join);
         toProv.garrisonArmies = [];
         if (typeof refreshMovePool === 'function') refreshMovePool(turnContext, defChar); // added units may change his pace
-        log(
-          'combat',
-          `🛡 The standing troops of ${toProv.name} fall in with ${defChar.name} and fight on at their side as the battle continues.`,
-          { actor: defChar.player, targets, provinceId: toProv.id, public: true },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `🛡 The standing troops of ${toProv.name} fall in with ${defChar.name} and fight on at their side as the battle continues.`,
+          audience: { actor: defChar.player, realms: targets, seen: 'battle' },
+          province: toProv.id,
+        });
       }
       // The stranded-hull tag has done its work for this phase: the claim decision is made and
       // the hulls are wherever they belong. From here they are ordinary units again (a pending
@@ -1306,11 +1359,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         // No commander: no Tactical, no duel, no battle magic on the defending side.
         if (_fmSlip && kcRng() < 0.5) {
           toProv._battleUnresolved = true;
-          log(
-            'move',
-            `⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,
-            { actor: c.player, targets: [c.player], provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'move',
+            text: `⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,
+            audience: { actor: c.player, realms: [c.player], seen: 'there' },
+            province: toProv.id,
+          });
           return;
         } // MARCH L7 slip
         const garBattle = combatVsNPC(turnContext, c, toProv, null);
@@ -1348,16 +1402,16 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
               const _dest = _garrRetreat[0];
               _dest.garrisonArmies = (_dest.garrisonArmies || []).concat(garSurvivors);
               toProv.garrisonArmies = [];
-              log(
-                'combat',
-                `The garrison of ${toProv.name} is broken and falls back to ${_dest.name} rather than be overrun.`,
-                {
+              emit(turnContext, {
+                type: 'combat',
+                text: `The garrison of ${toProv.name} is broken and falls back to ${_dest.name} rather than be overrun.`,
+                audience: {
                   actor: c.player,
-                  targets: [c.player, toProv.owner].filter((x) => x !== null),
-                  provinceId: _dest.id,
-                  public: true,
+                  realms: [c.player, toProv.owner].filter((x) => x !== null),
+                  seen: 'battle',
                 },
-              );
+                province: _dest.id,
+              });
               G.players.forEach((p, pi) => {
                 if (pi !== c.player) {
                   const i = p.provinces.indexOf(toProv.id);
@@ -1366,26 +1420,26 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
               });
               setProvinceOwner(turnContext, toProv, c.player, c, ph);
               if (!player.provinces.includes(toProv.id)) player.provinces.push(toProv.id);
-              log('combat', `${c.name} takes ${toProv.name} as its garrison withdraws!`, {
-                actor: c.player,
-                targets: [],
-                provinceId: toProv.id,
-                public: true,
+              emit(turnContext, {
+                type: 'combat',
+                text: `${c.name} takes ${toProv.name} as its garrison withdraws!`,
+                audience: { actor: c.player, realms: [], seen: 'battle' },
+                province: toProv.id,
               });
               applyEvilConquest(turnContext, c, toProv, player);
             } else {
               // Beaten but not broken — the province is still held and still contested.
               toProv._battleUnresolved = true;
-              log(
-                'combat',
-                `💢 The garrison of ${toProv.name} is driven back but not broken — ${garSurvivors.length} unit${garSurvivors.length !== 1 ? 's' : ''} still hold the ground, and the fight resumes next phase.`,
-                {
+              emit(turnContext, {
+                type: 'combat',
+                text: `💢 The garrison of ${toProv.name} is driven back but not broken — ${garSurvivors.length} unit${garSurvivors.length !== 1 ? 's' : ''} still hold the ground, and the fight resumes next phase.`,
+                audience: {
                   actor: c.player,
-                  targets: [c.player, toProv.owner].filter((x) => x !== null),
-                  provinceId: toProv.id,
-                  public: true,
+                  realms: [c.player, toProv.owner].filter((x) => x !== null),
+                  seen: 'battle',
                 },
-              );
+                province: toProv.id,
+              });
             }
           } else {
             G.players.forEach((p, pi) => {
@@ -1396,11 +1450,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             });
             setProvinceOwner(turnContext, toProv, c.player, c, ph);
             if (!player.provinces.includes(toProv.id)) player.provinces.push(toProv.id);
-            log('combat', `${c.name} breaks through the last of the garrison and seizes ${toProv.name}!`, {
-              actor: c.player,
-              targets: [],
-              provinceId: toProv.id,
-              public: true,
+            emit(turnContext, {
+              type: 'combat',
+              text: `${c.name} breaks through the last of the garrison and seizes ${toProv.name}!`,
+              audience: { actor: c.player, realms: [], seen: 'battle' },
+              province: toProv.id,
             });
             applyEvilConquest(turnContext, c, toProv, player);
           }
@@ -1410,18 +1464,14 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           // movement) or deliberately LEFT HIM STANDING because he was trapped. Follow that
           // decision instead of overriding it, exactly as the PvP branch does.
           const _stoodGround = c.location === toProv.id;
-          log(
-            'combat',
-            _stoodGround
+          emit(turnContext, {
+            type: 'combat',
+            text: _stoodGround
               ? `The garrison of ${toProv.name} throws ${c.name} back, but there is no ${toProv.terrain === 'sea' ? 'open water to escape by' : 'road out'} — leaderless troops can hold ${toProv.terrain === 'sea' ? 'their waters' : 'walls'}, and the struggle goes on.`
               : `The garrison of ${toProv.name} repels ${c.name}'s attack — leaderless troops can hold ${toProv.terrain === 'sea' ? 'their waters' : 'walls'}!`,
-            {
-              actor: c.player,
-              targets: [c.player, toProv.owner].filter((x) => x !== null),
-              provinceId: toProv.id,
-              public: true,
-            },
-          );
+            audience: { actor: c.player, realms: [c.player, toProv.owner].filter((x) => x !== null), seen: 'battle' },
+            province: toProv.id,
+          });
           if (_stoodGround) toProv._battleUnresolved = true;
           // rule: never zero remaining move points on a move-in/battle — the move already
           // cost its point; the rest of the turn’s budget stays.
@@ -1438,16 +1488,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         setProvinceOwner(turnContext, toProv, c.player, c, ph);
         if (!player.provinces.includes(toProv.id)) player.provinces.push(toProv.id);
         // 2026-10-08 (Toby item 6): no battle, so no second point — the step in was the cost.
-        log(
-          'move',
-          `${c.name} seizes the undefended province of ${toProv.name}${_prevOwnerName ? ` from ${_prevOwnerName}` : ''} for ${player.name}!`,
-          {
-            actor: c.player,
-            targets: _prevOwnerIdx != null ? [_prevOwnerIdx] : [],
-            provinceId: toProv.id,
-            public: true,
-          },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} seizes the undefended province of ${toProv.name}${_prevOwnerName ? ` from ${_prevOwnerName}` : ''} for ${player.name}!`,
+          audience: { actor: c.player, realms: _prevOwnerIdx != null ? [_prevOwnerIdx] : [], seen: 'there' },
+          province: toProv.id,
+        });
         applyEvilConquest(turnContext, c, toProv, player);
       }
     }
@@ -1466,11 +1512,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       c._attackedFrom = prov.id;
       if (_fmSlip && kcRng() < 0.5) {
         toProv._battleUnresolved = true;
-        log(
-          'move',
-          `⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,
-          { actor: c.player, targets: [c.player], provinceId: toProv.id, public: true },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,
+          audience: { actor: c.player, realms: [c.player], seen: 'there' },
+          province: toProv.id,
+        });
         return;
       } // MARCH L7 slip
       const llBattle = combatVsNPC(turnContext, c, toProv, null);
@@ -1493,7 +1540,13 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           null,
           toProv,
           toProv.neutralDefenders || [],
-          (line) => log('combat', line, { actor: c.player, targets: [], provinceId: toProv.id }),
+          (line) =>
+            emit(turnContext, {
+              type: 'combat',
+              text: line,
+              audience: { actor: c.player, realms: [] },
+              province: toProv.id,
+            }),
           c.name,
         );
         toProv.neutralDefenders = llSurv;
@@ -1501,22 +1554,24 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         toProv._leaderlessDefenders = llSurv.length > 0;
         if (llSurv.length > 0) {
           toProv._battleUnresolved = true;
-          log(
-            'combat',
-            `💢 The leaderless garrison of ${toProv.name} refuses to yield — ${llSurv.length} unit${llSurv.length !== 1 ? 's' : ''} still contest the province!`,
-            { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `💢 The leaderless garrison of ${toProv.name} refuses to yield — ${llSurv.length} unit${llSurv.length !== 1 ? 's' : ''} still contest the province!`,
+            audience: { actor: c.player, realms: [], seen: 'battle' },
+            province: toProv.id,
+          });
         } else {
           setProvinceOwner(turnContext, toProv, c.player, c, ph);
           delete toProv._leaderlessDefenders;
           player.merits += toProv.tax;
           c.merits = (c.merits || 0) + toProv.tax;
           if (!player.provinces.includes(toProv.id)) player.provinces.push(toProv.id);
-          log(
-            'combat',
-            `${c.name} overcomes the last of the leaderless defenders and claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit)`,
-            { actor: c.player, targets: [], provinceId: toProv.id, public: true },
-          );
+          emit(turnContext, {
+            type: 'combat',
+            text: `${c.name} overcomes the last of the leaderless defenders and claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit)`,
+            audience: { actor: c.player, realms: [], seen: 'battle' },
+            province: toProv.id,
+          });
           applyEvilConquest(turnContext, c, toProv, player);
         }
       } else {
@@ -1527,11 +1582,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         c.location = prov.id;
         // rule: never zero remaining move points on a move-in/battle — the move already cost
         // its point; the rest of the turn’s budget stays.
-        log('combat', `Even without a commander, the garrison of ${toProv.name} throws ${c.name} back!`, {
-          actor: c.player,
-          targets: [],
-          provinceId: toProv.id,
-          public: true,
+        emit(turnContext, {
+          type: 'combat',
+          text: `Even without a commander, the garrison of ${toProv.name} throws ${c.name} back!`,
+          audience: { actor: c.player, realms: [], seen: 'battle' },
+          province: toProv.id,
         });
       }
       _moveLineLogged = true;
@@ -1547,19 +1602,20 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         if (!player.provinces.includes(toProv.id)) player.provinces.push(toProv.id);
         if (!toProv.visitedBy.includes(c.player)) toProv.visitedBy.push(c.player);
         // (Exploration for this move already applied above at move-in — no extra bump here.)
-        log('move', `${c.name} claims ${toProv.name} for ${player.name}!`, {
-          actor: c.player,
-          targets: [c.player],
-          provinceId: toProv.id,
-          public: true,
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} claims ${toProv.name} for ${player.name}!`,
+          audience: { actor: c.player, realms: [c.player], seen: 'there' },
+          province: toProv.id,
         });
         _moveLineLogged = true;
       } else {
-        log(
-          'move',
-          `${c.name} ventures into ${toProv.name} to explore — without armies at their back, they can only observe, not conquer.${_moveExplNote}`,
-          { actor: c.player, targets: [c.player], provinceId: toProv.id },
-        );
+        emit(turnContext, {
+          type: 'move',
+          text: `${c.name} ventures into ${toProv.name} to explore — without armies at their back, they can only observe, not conquer.${_moveExplNote}`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: toProv.id,
+        });
         _moveLineLogged = true;
       }
     }
@@ -1567,11 +1623,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     // was logged. Sea moves ("moves across sea to…"), coastal landings, and claim/venture
     // lines already describe the move, so skip the redundant generic line in those cases.
     if (!coastalLanding && !enteringSea && !_moveLineLogged) {
-      log('move', `${c.name} moves to ${toProv.name}.${_moveExplNote}`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: toProv.id,
-        public: false,
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} moves to ${toProv.name}.${_moveExplNote}`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: toProv.id,
       });
     }
   }
@@ -1584,21 +1640,21 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         G.players[_raidPriorOwner].gold = Math.max(0, (G.players[_raidPriorOwner].gold || 0) - _loot);
       const _pl = G.players[c.player];
       if (_pl) _pl.gold = (_pl.gold || 0) + _loot;
-      log(
-        'move',
-        `💰 ${c.name}'s coastal raid sacks ${toProv.name} — ${_loot}g plundered${_raidPriorOwner != null ? ` from ${G.players[_raidPriorOwner]?.name || 'the enemy'}` : ''}.`,
-        {
+      emit(turnContext, {
+        type: 'move',
+        text: `💰 ${c.name}'s coastal raid sacks ${toProv.name} — ${_loot}g plundered${_raidPriorOwner != null ? ` from ${G.players[_raidPriorOwner]?.name || 'the enemy'}` : ''}.`,
+        audience: {
           actor: c.player,
-          targets: [c.player].concat(_raidPriorOwner != null ? [_raidPriorOwner] : []),
-          provinceId: toProv.id,
-          public: true,
+          realms: [c.player].concat(_raidPriorOwner != null ? [_raidPriorOwner] : []),
+          seen: 'there',
         },
-      );
+        province: toProv.id,
+      });
     }
   }
   // a commander slain in the battle this march led to reports nothing more this turn — the
   // "notices the Lost City" lines they earned on arrival are dropped rather than trailing
   // their own death (the exploration itself was already credited to the realm).
-  if (c.alive) _discoveryLines.forEach(([msg, meta]) => log('explore', msg, meta));
+  if (c.alive) _discoveryLines.forEach(([msg, place]) => emit(turnContext, { type: 'explore', text: msg, ...place }));
   return;
 }

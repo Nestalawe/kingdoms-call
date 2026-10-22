@@ -11,7 +11,7 @@ import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-r
 import { markProvinceCombat } from '../bots/intel.ts';
 import { TM, noteEspionage, perkTier, skillLevel } from '../titles/perks.ts';
 import { discParam, discSum, hasDisc } from '../discoveries.ts';
-import { emitNarrLine } from '../turn/events-and-their-audiences.ts';
+import { emit, emitNarrLine } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, isVanished, oddsNote, statNote } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -43,24 +43,27 @@ import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 // the victim lets the thief go and merely raises the alarm. A Vanished thief (Thief 9) is never
 // brought to bay at all.
 export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const targetsPi = [thief.player, victim.player].filter((x) => x != null);
   if (thief._vanishTurn === G.turn) {
-    log('system', `${victim.name} raises the alarm, but ${thief.name} has already melted into the shadows. (Vanish)`, {
-      actor: thief.player,
-      targets: targetsPi,
-      provinceId: prov.id,
-      charIds: [thief.id, victim.id],
+    emit(turnContext, {
+      type: 'system',
+      text: `${victim.name} raises the alarm, but ${thief.name} has already melted into the shadows. (Vanish)`,
+      audience: { actor: thief.player, realms: targetsPi },
+      province: prov.id,
+      heroes: [thief.id, victim.id],
     });
     return;
   }
   ensureEncounterPlan(turnContext, victim);
   if (duelStanceOf(victim) === 'refuse') {
-    log(
-      'system',
-      `${victim.name} catches ${thief.name} ${what}, but wants no part in a brawl — the thief is driven off empty-handed.`,
-      { actor: thief.player, targets: targetsPi, provinceId: prov.id, public: false, charIds: [thief.id, victim.id] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${victim.name} catches ${thief.name} ${what}, but wants no part in a brawl — the thief is driven off empty-handed.`,
+      audience: { actor: thief.player, realms: targetsPi },
+      province: prov.id,
+      heroes: [thief.id, victim.id],
+    });
     return;
   }
   const COMBAT_ONLY = COMBAT_ONLY_TACTICS;
@@ -74,12 +77,12 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
   const defPlan = filterPlan(victim.encounterPlan);
   if (!defPlan.length) defPlan.push('ME');
   const _duelChars = [thief.id, victim.id];
-  log('combat', `⚔ ${victim.name} catches ${thief.name} ${what} — blades are drawn!`, {
-    actor: thief.player,
-    targets: targetsPi,
-    provinceId: prov.id,
-    public: true,
-    charIds: _duelChars,
+  emit(turnContext, {
+    type: 'combat',
+    text: `⚔ ${victim.name} catches ${thief.name} ${what} — blades are drawn!`,
+    audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+    province: prov.id,
+    heroes: _duelChars,
   });
   markProvinceCombat(prov, [thief.player, victim.player]); // purple swords: a personal combat, not a field battle
   const enc = resolveCharVsChar(
@@ -106,20 +109,18 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
   if (enc.atkKilled || enc.atkHp <= 0) {
     if (_escapesTheEnd(thief)) {
       if (thief.hp != null && thief.hp <= 0) thief.hp = 1;
-      log('combat', _garrethEscapeLine(thief), {
-        actor: thief.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
-        charIds: _duelChars,
+      emit(turnContext, {
+        type: 'combat',
+        text: _garrethEscapeLine(thief),
+        audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
+        heroes: _duelChars,
       });
     } else {
       reportHeroFall(turnContext, thief, victim, `${thief.name} is cut down — a thief's end.`, {
-        actor: thief.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
-        charIds: _duelChars,
+        audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
+        heroes: _duelChars,
       });
       awardKillXP(turnContext, victim, thief);
     }
@@ -127,20 +128,18 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
   if (enc.defKilled || enc.defHp <= 0) {
     if (_escapesTheEnd(victim)) {
       if (victim.hp != null && victim.hp <= 0) victim.hp = 1;
-      log('combat', _garrethEscapeLine(victim), {
-        actor: thief.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
-        charIds: _duelChars,
+      emit(turnContext, {
+        type: 'combat',
+        text: _garrethEscapeLine(victim),
+        audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
+        heroes: _duelChars,
       });
     } else {
       reportHeroFall(turnContext, victim, thief, `${victim.name} is slain by the cornered thief!`, {
-        actor: thief.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
-        charIds: _duelChars,
+        audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
+        heroes: _duelChars,
       });
       awardKillXP(turnContext, thief, victim);
     }
@@ -178,7 +177,7 @@ export function liftRandomItem(turnContext, thief, victim) {
 }
 // Spy: the province he stands in (what it holds, and the realm's secrets if it is a capital), or a hero beside him (every skill, item and company); a hero spied on may catch the spy.
 export function resolveSpyOrder(turnContext, c, target, prov) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const hasCrystalOrb = activeItems(c).some((it) => it.effect?.stat === 'oracle');
   // sd21 Forgery Arts: +15% spy success chance
   const targetProvForSpy = G.world.provinces[parseInt(target)];
@@ -206,19 +205,21 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
     const _tid = String(target).slice(5);
     const _tgt = (G.characters || []).find((x) => x && String(x.id) === _tid && x.alive);
     if (!_tgt || _tgt.location !== c.location || _tgt.player === c.player) {
-      log(
-        'system',
-        `${c.name} looks for ${_tgt ? _tgt.name : 'their quarry'} in ${prov.name}, but they are not to be found here — the spying comes to nothing.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} looks for ${_tgt ? _tgt.name : 'their quarry'} in ${prov.name}, but they are not to be found here — the spying comes to nothing.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       return;
     }
     if (activeItems(_tgt).some((it) => it && it.effect && it.effect.stat === 'hidden')) {
-      log(
-        'system',
-        `${c.name} shadows ${_tgt.name} through ${prov.name}, but can never quite fix on a face — nothing is learned. (Cloak of Many Faces)`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} shadows ${_tgt.name} through ${prov.name}, but can never quite fix on a face — nothing is learned. (Cloak of Many Faces)`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       return;
     }
     const _mySpy = effStat(turnContext, c, 'spy'),
@@ -240,11 +241,12 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
     ); // + spyChar discoveries (optionally scoped to where it happens)
     const _roll = d100();
     const _ok = _auto || _roll <= _chance;
-    log(
-      'system',
-      `📊 Spy on ${_tgt.name} — ${c.name} (Spy ${_mySpy}) in ${prov.name}: ${_auto ? `automatic success (${hasCrystalOrb ? 'Crystal Orb' : 'Master Spy'})` : fmtRoll(_chance, _roll)}`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `📊 Spy on ${_tgt.name} — ${c.name} (Spy ${_mySpy}) in ${prov.name}: ${_auto ? `automatic success (${hasCrystalOrb ? 'Crystal Orb' : 'Master Spy'})` : fmtRoll(_chance, _roll)}`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     if (_ok) {
       TM(c).spyActions = (TM(c).spyActions || 0) + 1; // TITLE MERIT: Spymaster
       noteEspionage(G, c, prov.id, 'read one of your heroes');
@@ -274,16 +276,19 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
           .join(', ') || 'no skills to speak of';
       const _it = (_tgt.items || []).map((it) => it.name).join(', ') || 'no magic items';
       const _ar = (_tgt.armies || []).length ? describeArmy(_tgt.armies) : 'no armies';
-      log(
-        'spy',
-        `[Intelligence] 🔍 ${c.name}'s report on ${_tgt.name}${_tgt.player != null ? ` of ${G.players[_tgt.player]?.name}` : ''} (${_tgt.race || '?'}, ${_tgt.alignment || '?'}${_tgt.isKing ? ', king' : ''}): skills — ${_sk}. Items — ${_it}. Leads — ${_ar}.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id, spy: true },
-      );
+      emit(turnContext, {
+        type: 'spy',
+        text: `[Intelligence] 🔍 ${c.name}'s report on ${_tgt.name}${_tgt.player != null ? ` of ${G.players[_tgt.player]?.name}` : ''} (${_tgt.race || '?'}, ${_tgt.alignment || '?'}${_tgt.isKing ? ', king' : ''}): skills — ${_sk}. Items — ${_it}. Leads — ${_ar}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+        spy: true,
+      });
     } else {
-      log('system', `${c.name} watches ${_tgt.name} closely in ${prov.name}, but learns nothing of use.`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} watches ${_tgt.name} closely in ${prov.name}, but learns nothing of use.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
       });
       trySkillGain(turnContext, c, 'spy', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
     }
@@ -298,25 +303,29 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
         _catch += discSum(turnContext, _tgt.player, 'catchSpy', 'pct', (e) => _spyScope(e, _tgt.player)); // catchSpy discoveries (sd63 Informer Rewards)
       _catch = Math.max(5, Math.min(95, _catch));
       const _cr = d100();
-      log(
-        'system',
-        `📊 Detection — ${_tgt.name}${statNote(turnContext, c.player, _tgt, 'spy')} noticing ${c.name}${_tgRealmLand ? ' in their own land' : _myLand ? ' in your land' : ''}: ${oddsNote(turnContext, c.player, _tgt, _catch, _cr)}`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `📊 Detection — ${_tgt.name}${statNote(turnContext, c.player, _tgt, 'spy')} noticing ${c.name}${_tgRealmLand ? ' in their own land' : _myLand ? ' in your land' : ''}: ${oddsNote(turnContext, c.player, _tgt, _catch, _cr)}`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       if (_cr <= _catch) {
         if (_tgt.player != null)
-          log(
-            'system',
-            `[Intelligence] ${c.name}${c.player != null ? ` (${G.players[c.player]?.name})` : ''} was caught spying on ${_tgt.name} in ${prov.name}.`,
-            { actor: c.player, targets: [_tgt.player], provinceId: prov.id, charId: _tgt.id },
-          );
+          emit(turnContext, {
+            type: 'system',
+            text: `[Intelligence] ${c.name}${c.player != null ? ` (${G.players[c.player]?.name})` : ''} was caught spying on ${_tgt.name} in ${prov.name}.`,
+            audience: { actor: c.player, realms: [_tgt.player] },
+            province: prov.id,
+            hero: _tgt.id,
+          });
         thiefCaughtScuffle(turnContext, prov, c, _tgt, 'spying on them');
       }
     } else
-      log('system', `${c.name} slips away unseen. (The Shadow)`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} slips away unseen. (The Shadow)`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
       });
     return;
   }
@@ -332,40 +341,42 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
   const _autoSpy = hasCrystalOrb || masterSpy;
   const _spyRoll = d100();
   const success = _autoSpy || _spyRoll <= _spyChance;
-  log(
-    'system',
-    `📊 Spy — ${c.name} (Spy ${effStat(turnContext, c, 'spy')}) in ${prov.name}: ${_autoSpy ? `automatic success (${hasCrystalOrb ? 'Crystal Orb' : 'Master Spy'})` : fmtRoll(_spyChance, _spyRoll)}`,
-    { actor: c.player, targets: [c.player], provinceId: prov.id },
-  );
+  emit(turnContext, {
+    type: 'system',
+    text: `📊 Spy — ${c.name} (Spy ${effStat(turnContext, c, 'spy')}) in ${prov.name}: ${_autoSpy ? `automatic success (${hasCrystalOrb ? 'Crystal Orb' : 'Master Spy'})` : fmtRoll(_spyChance, _spyRoll)}`,
+    audience: { actor: c.player, realms: [c.player] },
+    province: prov.id,
+  });
   // sd23 Disguise Techniques: 50% HARDER to be discovered — the counter-intelligence alert
   // that would otherwise always fire is turned aside half the time.
   if (success && !c._spyDisguised && hasDisc(turnContext, c.player, 'sd23')) {
     const _dgRoll = d100();
     const _dgPct = Math.round(discParam('sd23', 'pct', 0.5) * 100);
     if (_dgRoll <= _dgPct) c._spyDisguised = true;
-    log(
-      'system',
-      `📊 Disguise Techniques — ${c.name} works under a false face in ${prov.name}: ${fmtRoll(_dgPct, _dgRoll)} — ${c._spyDisguised ? 'the disguise holds; no alarm is raised.' : 'the disguise slips; the province\u2019s watch will report the intrusion.'}`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `📊 Disguise Techniques — ${c.name} works under a false face in ${prov.name}: ${fmtRoll(_dgPct, _dgRoll)} — ${c._spyDisguised ? 'the disguise holds; no alarm is raised.' : 'the disguise slips; the province\u2019s watch will report the intrusion.'}`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
   }
   if (success) {
     TM(c).spyActions = (TM(c).spyActions || 0) + 1; // TITLE MERIT: Spymaster
     noteEspionage(G, c, prov.id, 'spied out the province');
     applySpySuccess(turnContext, c, prov);
   } else {
-    log(
-      'system',
-      `${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     trySkillGain(turnContext, c, 'spy', SKILLGAIN_COMMON);
   } // batch item 11: a failed attempt is a small chance to learn
   return;
 }
 // Steal: a magic item (or, failing one, gold) from a hero beside him, or the pay of a rival's garrison; a thief who fails may be caught.
 export function resolveStealOrder(turnContext, c, target, prov, player) {
-  const { log, G } = turnContext;
+  const { G } = turnContext;
   // ── STEAL ── Needs Thief 1+. Targets: a character in the province (magic item, or 5% of
   // their realm's treasury — the player chooses via `extra`, defaulting to an item when one
   // is carried), or the province GARRISON paymaster (target 'garrison': 1g per garrison unit
@@ -375,9 +386,10 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
   // a duel unless the victim's duel stance is REFUSE (thiefCaughtScuffle above).
   const thiefLevel = effStat(turnContext, c, 'thief');
   if (thiefLevel < 1) {
-    log('system', `${c.name} has no Thief skill — light fingers take training.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} has no Thief skill — light fingers take training.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
     return;
   }
@@ -393,21 +405,23 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
     // (e) The garrison paymaster: 1g per unit standing garrison here, from the province's owner.
     const _gN = (prov.garrisonArmies || []).length;
     if (prov.owner == null || prov.owner === c.player || _gN === 0) {
-      log(
-        'system',
-        `${c.name} finds no enemy paymaster to rob in ${prov.name} — it needs a rival's garrison standing here.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} finds no enemy paymaster to rob in ${prov.name} — it needs a rival's garrison standing here.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       return;
     }
     const ownerP = G.players[prov.owner];
     const chance = Math.floor(stealBase / 2);
     const roll = d100();
-    log(
-      'system',
-      `📊 Steal — ${c.name} (Thief ${thiefLevel}) goes for the garrison paymaster of ${prov.name} (${_gN} unit${_gN !== 1 ? 's' : ''}, guarded — halved): ${fmtRoll(chance, roll)}`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `📊 Steal — ${c.name} (Thief ${thiefLevel}) goes for the garrison paymaster of ${prov.name} (${_gN} unit${_gN !== 1 ? 's' : ''}, guarded — halved): ${fmtRoll(chance, roll)}`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     if (roll <= chance) {
       noteEspionage(G, c, prov.id, 'robbed the garrison paymaster');
       const take = Math.min(ownerP.gold || 0, _gN);
@@ -416,36 +430,41 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
         player.gold = (player.gold || 0) + take;
         c.merits = (c.merits || 0) + 1;
       }
-      log('hire', `💰 ${c.name} lifts ${take}g from the garrison paymaster's strongbox in ${prov.name}.`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'hire',
+        text: `💰 ${c.name} lifts ${take}g from the garrison paymaster's strongbox in ${prov.name}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
       });
       if (take > 0)
-        log(
-          'system',
-          `[Intelligence] The garrison paymaster of ${prov.name} was robbed of ${take}g — ${c.name} (${G.players[c.player]?.name}) is suspected.`,
-          { actor: c.player, targets: [prov.owner], provinceId: prov.id },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `[Intelligence] The garrison paymaster of ${prov.name} was robbed of ${take}g — ${c.name} (${G.players[c.player]?.name}) is suspected.`,
+          audience: { actor: c.player, realms: [prov.owner] },
+          province: prov.id,
+        });
       trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
     } else if (kcRng() * 100 >= escapeChance) {
       const dmg = rng(1, 4);
       c.hp = Math.max(1, c.hp - dmg);
-      log(
-        'combat',
-        `${c.name} is caught by the garrison guards of ${prov.name} and beaten back — ${dmg} damage taken.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
-      log(
-        'system',
-        `[Intelligence] ${c.name} (${G.players[c.player]?.name}) was caught trying to rob the garrison paymaster of ${prov.name}.`,
-        { actor: c.player, targets: [prov.owner], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `${c.name} is caught by the garrison guards of ${prov.name} and beaten back — ${dmg} damage taken.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
+      emit(turnContext, {
+        type: 'system',
+        text: `[Intelligence] ${c.name} (${G.players[c.player]?.name}) was caught trying to rob the garrison paymaster of ${prov.name}.`,
+        audience: { actor: c.player, realms: [prov.owner] },
+        province: prov.id,
+      });
     } else
-      log('system', `${c.name}'s attempt on the paymaster of ${prov.name} fails, but the thief slips away unnoticed.`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s attempt on the paymaster of ${prov.name} fails, but the thief slips away unnoticed.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
       });
     if (roll > chance) trySkillGain(turnContext, c, 'thief', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
     return;
@@ -453,21 +472,27 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
   const targetId = parseInt(target);
   const victim = G.characters.find((ch) => ch.alive && ch.id === targetId && ch.location === c.location);
   if (!victim) {
-    log('system', `${c.name} finds no suitable target to steal from in ${prov.name}.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} finds no suitable target to steal from in ${prov.name}.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
     return;
   }
   if (victim.player === c.player) {
-    log('system', `${c.name} will not rob a comrade.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} will not rob a comrade.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   if (isVanished(turnContext, victim)) {
-    log('system', `${c.name} reaches for ${victim.name}'s purse and closes on nothing — the man has vanished.`, {
-      actor: c.player,
-      targets: [c.player],
-      provinceId: prov.id,
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} reaches for ${victim.name}'s purse and closes on nothing — the man has vanished.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
     });
     return;
   }
@@ -478,10 +503,11 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
   const hasItems = transferableItems(victim.items || []).length > 0;
   const wantGold = !hasItems;
   if (wantGold && victim.player == null) {
-    log('system', `${c.name} finds ${victim.name} carries no purse worth the risk and no magic to lift.`, {
-      actor: c.player,
-      targets: [c.player],
-      provinceId: prov.id,
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} finds ${victim.name} carries no purse worth the risk and no magic to lift.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
     });
     return;
   }
@@ -489,65 +515,73 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
   let stealChance = stealBase;
   if (leadsArmies) stealChance = Math.floor(stealChance / 2);
   const stealRoll = d100();
-  log(
-    'system',
-    `📊 Steal — ${c.name} (Thief ${thiefLevel}) targets ${victim.name} (${wantGold ? 'gold' : 'a magic item'}): ${fmtRoll(stealChance, stealRoll)}${leadsArmies ? ' (halved — target leads armies)' : ''}`,
-    { actor: c.player, targets: [c.player], provinceId: prov.id },
-  );
+  emit(turnContext, {
+    type: 'system',
+    text: `📊 Steal — ${c.name} (Thief ${thiefLevel}) targets ${victim.name} (${wantGold ? 'gold' : 'a magic item'}): ${fmtRoll(stealChance, stealRoll)}${leadsArmies ? ' (halved — target leads armies)' : ''}`,
+    audience: { actor: c.player, realms: [c.player] },
+    province: prov.id,
+  });
   if (stealRoll <= stealChance) {
     noteEspionage(G, c, prov.id, wantGold ? 'picked a hero\u2019s purse' : 'lifted a magic item from a hero');
     if (wantGold) {
       const purse = G.players[victim.player]?.gold || 0;
       const take = Math.min(purse, Math.max(1, Math.floor(purse * 0.05)));
       if (purse <= 0) {
-        log('system', `${c.name} picks ${victim.name}'s purse — and finds it empty.`, {
-          actor: c.player,
-          targets: [c.player],
-          provinceId: prov.id,
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name} picks ${victim.name}'s purse — and finds it empty.`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
         });
       } else {
         G.players[victim.player].gold -= take;
         player.gold = (player.gold || 0) + take;
         c.merits = (c.merits || 0) + 1;
-        log(
-          'hire',
-          `💰 ${c.name} deftly lifts ${take}g from ${victim.name}'s strongbox (5% of the realm's treasury).`,
-          { actor: c.player, targets: [c.player], provinceId: prov.id },
-        );
-        log(
-          'system',
-          `[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen ${take}g from ${victim.name}!`,
-          { actor: c.player, targets: [victim.player], provinceId: prov.id, charId: victim.id },
-        );
+        emit(turnContext, {
+          type: 'hire',
+          text: `💰 ${c.name} deftly lifts ${take}g from ${victim.name}'s strongbox (5% of the realm's treasury).`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
+        });
+        emit(turnContext, {
+          type: 'system',
+          text: `[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen ${take}g from ${victim.name}!`,
+          audience: { actor: c.player, realms: [victim.player] },
+          province: prov.id,
+          hero: victim.id,
+        });
       }
     } else {
       const stolen = liftRandomItem(turnContext, c, victim);
       if (stolen && stolen.guarded) {
-        log(
-          'system',
-          `${c.name}'s fingers find nothing — ${victim.name} keeps every trinket sewn tight; a master thief cannot be robbed of their own.`,
-          { actor: c.player, targets: [c.player], provinceId: prov.id },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name}'s fingers find nothing — ${victim.name} keeps every trinket sewn tight; a master thief cannot be robbed of their own.`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
+        });
       } else {
         c.merits = (c.merits || 0) + 2;
-        log('hire', `${c.name} deftly lifts the ${stolen.name} from ${victim.name}!`, {
-          actor: c.player,
-          targets: [c.player],
-          provinceId: prov.id,
-          public: false,
+        emit(turnContext, {
+          type: 'hire',
+          text: `${c.name} deftly lifts the ${stolen.name} from ${victim.name}!`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
         });
-        log('hire', gainedItemNote(c, [stolen]), {
-          actor: c.player,
-          targets: [c.player],
-          provinceId: prov.id,
-          public: false,
+        emit(turnContext, {
+          type: 'hire',
+          text: gainedItemNote(c, [stolen]),
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
         }); // item 10
         if (victim.player !== null)
-          log(
-            'system',
-            `[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen the ${stolen.name} from ${victim.name}!`,
-            { actor: c.player, targets: [victim.player], provinceId: prov.id, charId: victim.id },
-          );
+          emit(turnContext, {
+            type: 'system',
+            text: `[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen the ${stolen.name} from ${victim.name}!`,
+            audience: { actor: c.player, realms: [victim.player] },
+            province: prov.id,
+            hero: victim.id,
+          });
       }
     }
     trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
@@ -556,9 +590,10 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
     if (caught)
       thiefCaughtScuffle(turnContext, prov, c, victim, `with a hand in their ${wantGold ? 'strongbox' : 'pack'}`);
     else
-      log('system', `${c.name}'s theft attempt on ${victim.name} fails but the thief slips away undetected.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s theft attempt on ${victim.name} fails but the thief slips away undetected.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
     trySkillGain(turnContext, c, 'thief', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
   }
@@ -566,25 +601,30 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
 }
 // Sabotage (Spy 7): an enemy province yields no tax this turn, and one company of its garrison is put to the torch.
 export function resolveSabotageOrder(turnContext, c, target) {
-  const { log, G } = turnContext;
+  const { G } = turnContext;
   if (skillLevel(c, 'spy') < 7) {
-    log('system', `${c.name} lacks the Spy mastery (7) to attempt Sabotage.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} lacks the Spy mastery (7) to attempt Sabotage.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   const tp = G.world.provinces[parseInt(target)];
   if (!tp || tp.owner == null || tp.owner === c.player) {
-    log('system', `${c.name}: Sabotage needs a valid enemy province you have seen.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: Sabotage needs a valid enemy province you have seen.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
     return;
   }
   if (!areEnemies(turnContext, c.player, tp.owner)) {
-    log(
-      'system',
-      `${c.name}: you are not at war with the owner of ${tp.name} — Sabotage would be an act of war. Declare war first.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: you are not at war with the owner of ${tp.name} — Sabotage would be an act of war. Declare war first.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   tp._sabotagedForTurn = G.turn;
@@ -593,10 +633,11 @@ export function resolveSabotageOrder(turnContext, c, target) {
     const u = tp.garrisonArmies.splice(Math.floor(kcRng() * tp.garrisonArmies.length), 1)[0];
     disbanded = u ? ` A ${u.quality || ''} ${u.type} of its garrison is put to the torch.` : '';
   }
-  log('spy', `🕵 ${c.name}'s agents sabotage ${tp.name} — its coffers yield nothing this turn.${disbanded}`, {
-    actor: c.player,
-    targets: [c.player, tp.owner].filter((x) => x != null),
-    provinceId: tp.id,
+  emit(turnContext, {
+    type: 'spy',
+    text: `🕵 ${c.name}'s agents sabotage ${tp.name} — its coffers yield nothing this turn.${disbanded}`,
+    audience: { actor: c.player, realms: [c.player, tp.owner].filter((x) => x != null) },
+    province: tp.id,
   });
   TM(c).spyActions = (TM(c).spyActions || 0) + 1; // TITLE MERIT: Spymaster
   noteEspionage(G, c, tp.id, 'worked sabotage');
@@ -605,7 +646,7 @@ export function resolveSabotageOrder(turnContext, c, target) {
 }
 // Grand Heist (Thief 7): a quarter of an enemy's treasury from the vaults of its capital or rich country he stands in, and a parcel cut from its couriers.
 export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
-  const { log, G } = turnContext;
+  const { G } = turnContext;
   // ── GRAND HEIST ────
   // The TARGET is the PROVINCE the thief is standing in, not any one hero — the job is
   // breaking into a realm's vaults, and the realm robbed is whoever holds the ground.
@@ -622,42 +663,49 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
   // If a hero of the robbed realm is standing here they run the thief down (a duel, unless
   // their stance is Refuse); otherwise the garrison guards beat him off.
   if (skillLevel(c, 'thief') < 7) {
-    log('system', `${c.name} lacks the Thief mastery (7) for a Grand Heist.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} lacks the Thief mastery (7) for a Grand Heist.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   if (c._grandHeistTurn === G.turn) {
-    log(
-      'system',
-      `${c.name} has already attempted a Grand Heist this turn — one great job a season is all the nerves will bear.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} has already attempted a Grand Heist this turn — one great job a season is all the nerves will bear.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   const vp = prov.owner;
   if (vp == null || vp === c.player) {
-    log(
-      'system',
-      `${c.name} looks for vaults to crack in ${prov.name}, but no rival crown holds this ground — a Grand Heist is staged in an enemy's own country.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} looks for vaults to crack in ${prov.name}, but no rival crown holds this ground — a Grand Heist is staged in an enemy's own country.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
   if (!areEnemies(turnContext, c.player, vp)) {
-    log(
-      'system',
-      `${c.name}: you are not at war with ${G.players[vp]?.name || 'this realm'} — a Grand Heist would be an act of war. Declare war first.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: you are not at war with ${G.players[vp]?.name || 'this realm'} — a Grand Heist would be an act of war. Declare war first.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
   const _ghHome = homeProvinceIdFor(G, vp) === prov.id;
   const _ghRich = (prov.tax || 0) >= GRAND_HEIST_RICH_TAX;
   if (!_ghHome && !_ghRich) {
-    log(
-      'system',
-      `${c.name} casts an eye over ${prov.name} and finds nothing worth the risk — a Grand Heist is staged in an enemy's home capital or in rich country (tax ${GRAND_HEIST_RICH_TAX}+; this province: ${prov.tax || 0}).`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} casts an eye over ${prov.name} and finds nothing worth the risk — a Grand Heist is staged in an enemy's home capital or in rich country (tax ${GRAND_HEIST_RICH_TAX}+; this province: ${prov.tax || 0}).`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
   c._grandHeistTurn = G.turn; // the attempt is spent, win or lose
@@ -668,11 +716,12 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
   let _hChance = Math.min(95, 60 + 5 * (_hLvl - 5));
   if (_ghGuarded) _hChance = Math.floor(_hChance / 2);
   const _hRoll = d100();
-  log(
-    'system',
-    `📊 Grand Heist — ${c.name} (Thief ${_hLvl}) cracks the vaults of ${_ghHome ? 'the enemy capital of ' : 'the rich province of '}${prov.name} (${G.players[vp]?.name || 'an enemy realm'}): ${fmtRoll(_hChance, _hRoll)}${_ghGuarded ? ' (halved — the vaults are guarded)' : ''}`,
-    { actor: c.player, targets: [c.player], provinceId: prov.id },
-  );
+  emit(turnContext, {
+    type: 'system',
+    text: `📊 Grand Heist — ${c.name} (Thief ${_hLvl}) cracks the vaults of ${_ghHome ? 'the enemy capital of ' : 'the rich province of '}${prov.name} (${G.players[vp]?.name || 'an enemy realm'}): ${fmtRoll(_hChance, _hRoll)}${_ghGuarded ? ' (halved — the vaults are guarded)' : ''}`,
+    audience: { actor: c.player, realms: [c.player] },
+    province: prov.id,
+  });
   if (_hRoll <= _hChance) {
     noteEspionage(G, c, prov.id, 'cracked the vaults');
     const purse = G.players[vp]?.gold || 0;
@@ -701,37 +750,49 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       _heistItem = _it;
       parts.push(`the ${_it.name} cut from a courier's satchel on the road`);
       const _dest = (G.characters || []).find((ch) => ch && ch.id === _p.toId); // the parcel's intended recipient
-      log(
-        'system',
-        `📦 A courier of ${G.players[vp]?.name} is waylaid on the road — ${_it.name}${_p.fromName ? `, sent by ${_p.fromName}` : ''}${_dest ? ` and bound for ${_dest.name}` : ''}, never arrives.`,
-        { actor: null, targets: [vp], provinceId: prov.id, charId: _dest ? _dest.id : null, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `📦 A courier of ${G.players[vp]?.name} is waylaid on the road — ${_it.name}${_p.fromName ? `, sent by ${_p.fromName}` : ''}${_dest ? ` and bound for ${_dest.name}` : ''}, never arrives.`,
+        audience: { actor: null, realms: [vp] },
+        province: prov.id,
+        hero: _dest ? _dest.id : null,
+        phase: ph,
+      });
     } else parts.push(`though no courier of theirs was on the road to waylay`);
     c.merits = (c.merits || 0) + 2;
     const msg = parts.join(' — and ');
-    log(
-      'hire',
-      `💰 ${c.name} pulls off a Grand Heist in ${prov.name}${msg ? ` — ${msg}!` : ', but finds little worth taking.'}`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'hire',
+      text: `💰 ${c.name} pulls off a Grand Heist in ${prov.name}${msg ? ` — ${msg}!` : ', but finds little worth taking.'}`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     if (_heistItem) {
       const _gn = gainedItemNote(c, [_heistItem]);
-      if (_gn) log('hire', _gn, { actor: c.player, targets: [c.player], provinceId: prov.id });
+      if (_gn)
+        emit(turnContext, {
+          type: 'hire',
+          text: _gn,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
+        });
     } // item 10
-    log(
-      'system',
-      `[Intelligence] ${c.name} (${G.players[c.player]?.name}) staged a Grand Heist in ${prov.name}${msg ? `: ${msg}` : ''}.`,
-      { actor: c.player, targets: [vp], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `[Intelligence] ${c.name} (${G.players[c.player]?.name}) staged a Grand Heist in ${prov.name}${msg ? `: ${msg}` : ''}.`,
+      audience: { actor: c.player, realms: [vp] },
+      province: prov.id,
+    });
     trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
   } else {
     trySkillGain(turnContext, c, 'thief', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
     const caught = kcRng() * 100 >= Math.min(95, _hLvl * 20);
     if (!caught) {
-      log('system', `${c.name}'s Grand Heist in ${prov.name} comes to nothing, but the thief slips away undetected.`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Grand Heist in ${prov.name} comes to nothing, but the thief slips away undetected.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
       });
       return;
     }
@@ -741,51 +802,59 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
     else {
       const dmg = rng(1, 4);
       c.hp = Math.max(1, c.hp - dmg);
-      log(
-        'combat',
-        `${c.name} is caught at the vaults of ${prov.name} and beaten back by the guards — ${dmg} damage taken.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
-      log(
-        'system',
-        `[Intelligence] A thief — ${c.name} (${G.players[c.player]?.name}) — was driven off the vaults of ${prov.name}.`,
-        { actor: c.player, targets: [vp], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `${c.name} is caught at the vaults of ${prov.name} and beaten back by the guards — ${dmg} damage taken.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
+      emit(turnContext, {
+        type: 'system',
+        text: `[Intelligence] A thief — ${c.name} (${G.players[c.player]?.name}) — was driven off the vaults of ${prov.name}.`,
+        audience: { actor: c.player, realms: [vp] },
+        province: prov.id,
+      });
     }
   }
   return;
 }
 // Assassinate (Spy 9): a knife in the dark for an enemy hero beside him.
 export function resolveAssassinateOrder(turnContext, c, target, prov) {
-  const { log, G } = turnContext;
+  const { G } = turnContext;
   if (skillLevel(c, 'spy') < 9) {
-    log('system', `${c.name} lacks the Spy mastery (9) to Assassinate.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} lacks the Spy mastery (9) to Assassinate.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   const victim = G.characters.find(
     (ch) => ch.alive && ch.id === parseInt(target) && ch.location === c.location && ch.player !== c.player,
   );
   if (!victim) {
-    log('system', `${c.name} finds no enemy hero to assassinate in ${prov.name} this phase.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} finds no enemy hero to assassinate in ${prov.name} this phase.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
     return;
   }
   if (isVanished(turnContext, victim)) {
-    log(
-      'spy',
-      `${c.name} stalks ${victim.name} through ${prov.name} and never once catches sight of them — the mark has vanished.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'spy',
+      text: `${c.name} stalks ${victim.name} through ${prov.name} and never once catches sight of them — the mark has vanished.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
   if (victim.player != null && !areEnemies(turnContext, c.player, victim.player)) {
-    log(
-      'system',
-      `${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   const chance = Math.min(80, 25 + skillLevel(c, 'spy') * 6) - (victim.isKing ? 25 : 0);
@@ -796,29 +865,28 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
   // they would certainly notice a knife in the dark — but never the assassin's skill or the
   // numbers behind it. (Before 2026-09-26 both realms got the full line, handing the victim
   // the attacker's Spy level for free.)
-  log(
-    'spy',
-    `📊 Assassination — ${c.name} (Spy ${skillLevel(c, 'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll <= chance ? ' ✓' : ' ✗'})${victim.isKing ? ' (king — heavily guarded)' : ''}`,
-    { actor: c.player, charIds: [c.id, victim.id].filter((v) => v != null), targets: [c.player], provinceId: prov.id },
-  );
+  emit(turnContext, {
+    type: 'spy',
+    text: `📊 Assassination — ${c.name} (Spy ${skillLevel(c, 'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll <= chance ? ' ✓' : ' ✗'})${victim.isKing ? ' (king — heavily guarded)' : ''}`,
+    audience: { actor: c.player, realms: [c.player] },
+    heroes: [c.id, victim.id].filter((v) => v != null),
+    province: prov.id,
+  });
   if (victim.player != null && victim.player !== c.player)
-    log(
-      'spy',
-      `🗡 An attempt is made on ${victim.name}'s life${victim.isKing ? ' — the royal guard close ranks' : ''}.`,
-      {
-        actor: victim.player,
-        charIds: [victim.id].filter((v) => v != null),
-        targets: [victim.player],
-        provinceId: prov.id,
-      },
-    );
+    emit(turnContext, {
+      type: 'spy',
+      text: `🗡 An attempt is made on ${victim.name}'s life${victim.isKing ? ' — the royal guard close ranks' : ''}.`,
+      audience: { actor: victim.player, realms: [victim.player] },
+      heroes: [victim.id].filter((v) => v != null),
+      province: prov.id,
+    });
   if (roll <= chance) {
     if (_escapesTheEnd(victim)) {
-      log('combat', _garrethEscapeLine(victim), {
-        actor: c.player,
-        targets: [c.player].filter((x) => x != null),
-        provinceId: prov.id,
-        public: true,
+      emit(turnContext, {
+        type: 'combat',
+        text: _garrethEscapeLine(victim),
+        audience: { actor: c.player, realms: [c.player].filter((x) => x != null), seen: 'battle' },
+        province: prov.id,
       });
     } else {
       reportHeroFall(
@@ -827,10 +895,8 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
         c,
         `🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,
         {
-          actor: c.player,
-          targets: [c.player, victim.player].filter((x) => x != null),
-          provinceId: prov.id,
-          public: true,
+          audience: { actor: c.player, realms: [c.player, victim.player].filter((x) => x != null), seen: 'battle' },
+          province: prov.id,
         },
       );
       awardKillXP(turnContext, c, victim);
@@ -839,11 +905,12 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       noteEspionage(G, c, prov.id, 'put a blade in one of your heroes');
     }
   } else {
-    log('spy', `${c.name}'s attempt on ${victim.name} fails — the mark slips the knife.`, {
-      actor: c.player,
-      charIds: [c.id, victim.id].filter((v) => v != null),
-      targets: [c.player, victim.player].filter((x) => x != null),
-      provinceId: prov.id,
+    emit(turnContext, {
+      type: 'spy',
+      text: `${c.name}'s attempt on ${victim.name} fails — the mark slips the knife.`,
+      audience: { actor: c.player, realms: [c.player, victim.player].filter((x) => x != null) },
+      heroes: [c.id, victim.id].filter((v) => v != null),
+      province: prov.id,
     });
   }
   trySkillGain(turnContext, c, 'spy', SKILLGAIN_STD);
@@ -851,17 +918,22 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
 }
 // Vanish (Thief 9): for the rest of the turn nothing can bring him to bay or harm him.
 export function resolveVanishOrder(turnContext, c, prov) {
-  const { log, G } = turnContext;
+  const { G } = turnContext;
   if (skillLevel(c, 'thief') < 9) {
-    log('system', `${c.name} lacks the Thief mastery (9) to Vanish.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} lacks the Thief mastery (9) to Vanish.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   c._vanishTurn = G.turn;
-  log(
-    'move',
-    `🌫 ${c.name} melts into the shadows — for the rest of the turn nothing can bring them to bay and nothing can harm them: no pursuit, Encounter or ambush, no hostile spell, no blade, no assassin's knife.`,
-    { actor: c.player, targets: [c.player], provinceId: prov.id },
-  );
+  emit(turnContext, {
+    type: 'move',
+    text: `🌫 ${c.name} melts into the shadows — for the rest of the turn nothing can bring them to bay and nothing can harm them: no pursuit, Encounter or ambush, no hostile spell, no blade, no assassin's knife.`,
+    audience: { actor: c.player, realms: [c.player] },
+    province: prov.id,
+  });
   trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
   return;
 }

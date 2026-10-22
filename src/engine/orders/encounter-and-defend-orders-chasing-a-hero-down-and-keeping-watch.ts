@@ -3,6 +3,7 @@ import { isHiddenChar } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext, TurnOrder } from '../turn/context.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── THE ENCOUNTER AND DEFEND ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // Encounter Character sets a hero after a quarry he may hunt (never himself, a hero of the lord who holds him by a
@@ -22,7 +23,7 @@ export function resolveEncounterCharacterOrder(
   target: string,
   prov: Province,
 ) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   // Encounter Character no longer requires the quarry to be standing in the same province.
   // The hero sets out and CHASES the target wherever they go — one province per phase, a
   // movement point each — and forces the meeting once he catches them. Targeting/visibility
@@ -32,18 +33,20 @@ export function resolveEncounterCharacterOrder(
   const targetId = parseInt(target);
   const quarry = (G.characters || []).find((x) => x.alive && x.id === targetId);
   if (!quarry) {
-    log('system', `${c.name} casts about for a quarry to hunt down but finds no trail to follow.`, {
-      actor: c.player,
-      targets: [c.player],
-      provinceId: prov.id,
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} casts about for a quarry to hunt down but finds no trail to follow.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
     });
     return;
   }
   if (quarry.id === c.id) {
-    log('system', `${c.name} cannot set out to encounter themself.`, {
-      actor: c.player,
-      targets: [c.player],
-      provinceId: prov.id,
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} cannot set out to encounter themself.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
     });
     return;
   }
@@ -51,29 +54,32 @@ export function resolveEncounterCharacterOrder(
   // against a character of the original owner. Any other realm's heroes are fair game as
   // usual.
   if (c._charmTempControl && c._charmOriginalPlayer != null && quarry.player === c._charmOriginalPlayer) {
-    log(
-      'system',
-      `${c.name} will not hunt ${quarry.name} — the Charm bends their will, but not so far as to turn them on their own lord's people.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} will not hunt ${quarry.name} — the Charm bends their will, but not so far as to turn them on their own lord's people.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
   // only a king may run down an enemy king. A common hero can never force a meeting with a
   // rival monarch — a king answers only to another crown. (Once caught, a king is no harder
   // to run down than any hero: pursuitCatchChance treats them the same.)
   if (quarry.isKing && !c.isKing && quarry.player !== c.player) {
-    log(
-      'system',
-      `${c.name} sets out after ${quarry.name}, but a rival king does not answer to a common hero — only a king may run down another king. The chase is abandoned.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} sets out after ${quarry.name}, but a rival king does not answer to a common hero — only a king may run down another king. The chase is abandoned.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
   if (quarry.player !== c.player && isHiddenChar(turnContext, quarry)) {
-    log('system', `${c.name} sets out after ${quarry.name}, but they are cloaked and leave no trail to follow.`, {
-      actor: c.player,
-      targets: [c.player],
-      provinceId: prov.id,
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} sets out after ${quarry.name}, but they are cloaked and leave no trail to follow.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
     });
     return;
   }
@@ -83,37 +89,39 @@ export function resolveEncounterCharacterOrder(
   }
   // THIEF L9 Vanish: no Encounter can be forced on someone who has melted into the shadows.
   if (quarry._vanishTurn === G.turn && quarry.player !== c.player) {
-    log(
-      'move',
-      `${c.name} sets out after ${quarry.name}, but there is no trail to follow — the quarry has vanished into the shadows.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name} sets out after ${quarry.name}, but there is no trail to follow — the quarry has vanished into the shadows.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
   c._pursuit = { targetId: quarry.id, active: true, setPhase: ph };
   delete c._defend; // a chase cancels a standing Defend (AK [3.15])
-  log('move', `${c.name} sets out to run down ${quarry.name} and will not turn aside until the matter is settled.`, {
-    actor: c.player,
-    targets: [c.player],
-    provinceId: prov.id,
+  emit(turnContext, {
+    type: 'move',
+    text: `${c.name} sets out to run down ${quarry.name} and will not turn aside until the matter is settled.`,
+    audience: { actor: c.player, realms: [c.player] },
+    province: prov.id,
   });
   advancePursuit(turnContext, c, ph);
   return;
 }
 // Defend: the watch set over the province the hero stands in, or kept, and told once a phase.
 export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: TurnOrder, ph: number, prov: Province) {
-  const { log } = turnContext;
   // A move that was cancelled by the invasion interlock is rewritten to a Defend order; the
   // interlock already logged a much better line, so don't tack a bland one on top of it.
   if (o._pinned) return;
   // item 15: this phase's Defend order has already been answered in battle (the watch was on
   // from the top of the phase) — it does not set the watch again.
   if (defendSpentThisPhase(turnContext, c, ph)) {
-    log(
-      'move',
-      `🛡 ${c.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `🛡 ${c.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
     return;
   }
   // Defend needs no target — it always guards the province the character stands in. The watch
@@ -136,31 +144,36 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
     // who set a watch in Early Summer and held it through Fall and Early Winter showed only
     // the phases before it — Sorrek the Kinless's Chronicle stopped at Late Summer. One short
     // line per phase keeps every season accounted for.
-    log(
-      'move',
-      (c.armies || []).length === 0
-        ? `🛡 ${c.name} still lies in wait about ${prov.name}.`
-        : `🛡 ${c.name} keeps the watch in ${prov.name}.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text:
+        (c.armies || []).length === 0
+          ? `🛡 ${c.name} still lies in wait about ${prov.name}.`
+          : `🛡 ${c.name} keeps the watch in ${prov.name}.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
   } else if ((c.armies || []).length === 0) {
-    log(
-      'move',
-      `${c.name} melts into the country around ${prov.name} and lies in wait — with no column at their back they cannot bar a road, but they will try to ambush any enemy who ventures into these lands (their Spy craft decides whether they can spring the trap).`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name} melts into the country around ${prov.name} and lies in wait — with no column at their back they cannot bar a road, but they will try to ambush any enemy who ventures into these lands (their Spy craft decides whether they can spring the trap).`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
   } else if (centreProv.id === prov.id) {
-    log(
-      'move',
-      `${c.name} makes camp in ${prov.name} and sets a watch — their column will answer any incursion into the lands about them for the rest of the year.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name} makes camp in ${prov.name} and sets a watch — their column will answer any incursion into the lands about them for the rest of the year.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
   } else {
-    log(
-      'move',
-      `${c.name} sets a watch from ${prov.name} over the country around ${centreProv.name} — their column will ride to meet any incursion there for the rest of the year.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name} sets a watch from ${prov.name} over the country around ${centreProv.name} — their column will ride to meet any incursion there for the rest of the year.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
   }
   return;
 }

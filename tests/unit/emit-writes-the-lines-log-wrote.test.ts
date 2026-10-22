@@ -29,6 +29,7 @@ import {
   narrateTo,
   notifyProvinceOwner,
   writeDeferredSkillLines,
+  type EventButItsWords,
   type FightLine,
   type NarrativeLine,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
@@ -84,6 +85,13 @@ function oldContext(state: ContextState, lines: Record<string, unknown>[] = []):
 
 /** A log's lines, each with its keys in order: two logs are the same if these are strictly equal. */
 const withKeys = (lines: readonly object[]) => lines.map((l) => [l, Object.keys(l)]);
+
+/** The place of a line (the event but its type and text) a log() meta made: what P1-12a4's callers of logSplit and of
+ *  the held-back skill rises now hand over, each key mapped as log() mapped it. */
+function placeOf(type: string, m: Parameters<typeof eventOfALogCall>[2]): EventButItsWords {
+  const { type: _type, text: _text, ...place } = eventOfALogCall(type, '', m);
+  return place;
+}
 
 const realm = fc.oneof(fc.integer({ min: -1, max: 5 }), fc.constant(null));
 const orNothing = <T>(a: fc.Arbitrary<T>) => fc.oneof(a, fc.constant(undefined), fc.constant(null));
@@ -141,9 +149,16 @@ describe('the oracle: emit writes the lines the old code wrote, for any input', 
     fc.assert(
       fc.property(contextState, lineType, meta, alsoNotFor, (state, type, m, also) => {
         const withAlso = also === undefined ? m : { ...m, alsoNotFor: also };
+        const place = placeOf(type, m as Parameters<typeof eventOfALogCall>[2]);
         const now = newContext(state);
         const before = oldContext(state);
-        logSplit(now, type, 'yours', 'theirs', withAlso as Parameters<typeof logSplit>[4]);
+        logSplit(
+          now,
+          type,
+          'yours',
+          'theirs',
+          (also === undefined ? place : { ...place, alsoNotFor: also }) as Parameters<typeof logSplit>[4],
+        );
         oldLogSplit(before, type, 'yours', 'theirs', withAlso);
         expect(withKeys(now.turnLog)).toStrictEqual(withKeys(before.turnLog));
       }),
@@ -200,7 +215,16 @@ describe('the oracle: emit writes the lines the old code wrote, for any input', 
       fc.property(contextState, logged, held, fc.boolean(), (state, lines, list, inPlace) => {
         const now = newContext(state, lines);
         const before = oldContext(state, lines);
-        writeDeferredSkillLines(now, structuredClone(list), inPlace);
+        const places = structuredClone(list).map(
+          ([text, m]): [string, EventButItsWords & { afterBattleIn?: number }] => {
+            const { afterBattleIn, ...rest } = m;
+            return [
+              text,
+              afterBattleIn === undefined ? placeOf('system', rest) : { ...placeOf('system', rest), afterBattleIn },
+            ];
+          },
+        );
+        writeDeferredSkillLines(now, places, inPlace);
         oldWriteDeferredSkillLines(before, structuredClone(list), inPlace);
         expect(withKeys(now.turnLog)).toStrictEqual(withKeys(before.turnLog));
       }),

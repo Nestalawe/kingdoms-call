@@ -8,7 +8,7 @@ import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-r
 import { discSum, hasDisc } from '../discoveries.ts';
 import { recalcHeroPay, skillInPlayNote } from './effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
-import { writeDeferredSkillLines } from '../turn/events-and-their-audiences.ts';
+import { narrateTo, emit, writeDeferredSkillLines } from '../turn/events-and-their-audiences.ts';
 
 // ── EXPERIENCE, SKILL RISES AND EARNED HP (plan P1-08c: lifted out of resolveTurn) ────
 // A hero's chance to raise a skill by using it (trySkillGain, and rollNavalVoyage for a voyage), the one rise a phase
@@ -35,10 +35,10 @@ export function flushDeferredSkillLogsFor(turnContext, charId) {
     if (_pc && _pc._sgPending) resolvePendingSkillGain(turnContext, _pc);
   } // 2026-09-26b: a falling hero's phase rise is settled first
   if (charId == null || !turnContext._deferredSkillLogs.length) return;
-  const mine = turnContext._deferredSkillLogs.filter(([, meta]) => meta && meta.charId === charId);
+  const mine = turnContext._deferredSkillLogs.filter(([, place]) => place && place.hero === charId);
   if (!mine.length) return;
   turnContext._deferredSkillLogs = turnContext._deferredSkillLogs.filter(
-    ([, meta]) => !(meta && meta.charId === charId),
+    ([, place]) => !(place && place.hero === charId),
   );
   writeDeferredSkillLines(turnContext, mine, true);
 }
@@ -149,7 +149,7 @@ export function rollNavalVoyage(turnContext, c, base) {
   trySkillGain(turnContext, c, 'naval', base);
 }
 export function resolvePendingSkillGain(turnContext, real) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const P = real && real._sgPending;
   if (!P) return;
   real._sgPending = null;
@@ -212,15 +212,17 @@ export function resolvePendingSkillGain(turnContext, real) {
   // A NEUTRAL's rise is nobody's private news (actor/targets would both be null, which no realm
   // reads): it is logged like the idle progression sweep, as a system line with no targets.
   if (real.player == null) {
-    log(
-      'system',
-      `📜 ${String(real.name || '').replace(/\s*\(wandering\)/i, '')} learns from the fighting — ${SKILL_LABELS[skill] || skill} rises to ${lvl + 1}.`,
-      { targets: [], provinceId: e.prov != null ? e.prov : real.location, system: true },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `📜 ${String(real.name || '').replace(/\s*\(wandering\)/i, '')} learns from the fighting — ${SKILL_LABELS[skill] || skill} rises to ${lvl + 1}.`,
+      audience: { realms: [] },
+      province: e.prov != null ? e.prov : real.location,
+      system: true,
+    });
   } else {
     turnContext._deferredSkillLogs.push([
       line,
-      { actor: real.player, targets: [real.player], charId: _skCharId, phase: _skPhase, ..._after },
+      { audience: { actor: real.player, realms: [real.player] }, hero: _skCharId, phase: _skPhase, ..._after },
     ]);
     // crossing a mastery threshold (6/7/8/9) earns a congratulation that spells out the new
     // level's benefits — the passive that deepens, and any new mastery order or spell now
@@ -231,7 +233,7 @@ export function resolvePendingSkillGain(turnContext, real) {
       const _mline = `🎉 ${real.name} attains mastery of ${SKILL_LABELS[skill] || skill} — level ${_newLvl}!${_mu ? ' ' + _mu : ''}`;
       turnContext._deferredSkillLogs.push([
         _mline,
-        { actor: real.player, targets: [real.player], charId: _skCharId, phase: _skPhase, ..._after },
+        { audience: { actor: real.player, realms: [real.player] }, hero: _skCharId, phase: _skPhase, ..._after },
       ]);
     }
   }
@@ -241,7 +243,7 @@ export function resolvePendingSkillGain(turnContext, real) {
     const wline = `💰 ${real.name}'s growing renown raises their wage to ${_payAfter}g/turn (was ${_payBefore}g/turn).`;
     turnContext._deferredSkillLogs.push([
       wline,
-      { actor: real.player, targets: [real.player], charId: _skCharId, phase: _skPhase, ..._after },
+      { audience: { actor: real.player, realms: [real.player] }, hero: _skCharId, phase: _skPhase, ..._after },
     ]);
   }
 }
@@ -279,7 +281,7 @@ export function awardWinHp(turnContext, ch, narrative, why) {
 // or for a hero who was wounded in it (resolvePersonalCombat). The roll sets the amount; a winner
 // gains the roll +1.
 export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   if (!ch || ch.alive === false) return null;
   const real = (ch.id != null && (G.characters || []).find((r) => r && r.id === ch.id)) || ch;
   if (real.alive === false) return null;
@@ -323,14 +325,15 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
   if (!line) {
     /* nothing gained — nothing to say */
   } else if (Array.isArray(narrative)) {
-    if (real.player != null) narrative.push({ text: line, onlyPlayer: real.player, charId: real.id });
+    if (real.player != null) narrateTo(narrative, real.player, real.id, line);
   } else {
     const prov = real.location != null ? G.world.provinces[real.location] : null;
-    log('combat', line, {
-      actor: real.player != null ? real.player : -1,
-      targets: real.player != null ? [real.player] : [],
-      charId: real.id,
-      provinceId: prov ? prov.id : undefined,
+    emit(turnContext, {
+      type: 'combat',
+      text: line,
+      audience: { actor: real.player != null ? real.player : -1, realms: real.player != null ? [real.player] : [] },
+      hero: real.id,
+      province: prov ? prov.id : undefined,
     });
   }
   return r;
@@ -340,7 +343,7 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
 // discovery, a title…) the current HP rises by the same amount at once — syncMaxHp already heals
 // into new headroom, so the rule is: resync everyone after EVERY phase, not just at turn end.
 export function syncAllMaxHp(turnContext) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   (G.characters || []).forEach((ch) => {
     if (!ch || !ch.alive) return;
     const d = syncMaxHp(ch, G.players);
@@ -349,19 +352,18 @@ export function syncAllMaxHp(turnContext) {
     const tgt =
       ch.player != null
         ? {
-            actor: ch.player,
-            targets: [ch.player],
-            charId: ch.id,
-            provinceId: prov ? prov.id : undefined,
-            public: true,
+            audience: { actor: ch.player, realms: [ch.player], seen: prov ? 'there' : 'world' },
+            hero: ch.id,
+            province: prov ? prov.id : undefined,
           }
-        : { actor: -1, targets: [] };
-    log(
-      'system',
-      d > 0
-        ? `💪 ${ch.name}'s maximum HP rises by ${d} to ${ch.maxHp} (current HP ${dispFloor(ch.hp)}).`
-        : `${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`,
-      tgt,
-    );
+        : { audience: { actor: -1, realms: [] } };
+    emit(turnContext, {
+      type: 'system',
+      text:
+        d > 0
+          ? `💪 ${ch.name}'s maximum HP rises by ${d} to ${ch.maxHp} (current HP ${dispFloor(ch.hp)}).`
+          : `${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`,
+      ...tgt,
+    });
   });
 }

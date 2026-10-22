@@ -5,7 +5,7 @@ import { d100, fmtRoll, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
-import { emitNarrLine } from '../turn/events-and-their-audiences.ts';
+import { emit, emitNarrLine } from '../turn/events-and-their-audiences.ts';
 import { completeDefendWatches } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
@@ -59,7 +59,7 @@ export function inDefendZone(turnContext, c, P) {
 }
 
 export function runDefendReactions(turnContext, ph, intents) {
-  const { G, movePoints, seaMovePoints, seaMoveActive, log, seaCap } = turnContext;
+  const { G, movePoints, seaMovePoints, seaMoveActive, seaCap } = turnContext;
   // Runs at the DEFEND STEP — after the phase's non-moving orders, before any march — so an
   // invader who was killed, stripped of his column or thrown out of his province by one of those
   // orders is no longer a threat to ride out against.
@@ -88,22 +88,28 @@ export function runDefendReactions(turnContext, ph, intents) {
     // he can move by sea (a fleet, or an all-flying force). A land host on drowned ground stays
     // put; the Defend order must not let it march out over water it cannot cross.
     if (here.terrain === 'sea' && !(seaMoveActive[c.id] && (seaMovePoints[c.id] ?? 0) > 0)) {
-      log(
-        'move',
-        `${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,
-        { actor: c.player, targets: [c.player], provinceId: here.id, public: false, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: here.id,
+        hero: c.id,
+        phase: ph,
+      });
       return;
     }
 
     // If his OWN province is under attack he stays and holds it — splitting a single stack
     // between two fronts isn't representable, so the garrison of the spot he stands on wins.
     if (threat.has(c.location)) {
-      log(
-        'move',
-        `${c.name} holds ${here.name} rather than march to its neighbours — the enemy is already at this gate.`,
-        { actor: c.player, targets: [c.player], provinceId: here.id, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} holds ${here.name} rather than march to its neighbours — the enemy is already at this gate.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: here.id,
+        hero: c.id,
+        phase: ph,
+      });
       c._defendReactedPhase = ph; // holding his own gate IS his reaction — he will not also ride out to a host raised next door this phase
       return;
     }
@@ -121,11 +127,14 @@ export function runDefendReactions(turnContext, ph, intents) {
     });
     if (!cands.length) return;
     if (defendBattleLocked(turnContext, c, here)) {
-      log(
-        'move',
-        `${c.name} is still locked in the unresolved battle for ${here.name} and cannot ride out to ${cands[0].prov.name} — the fight here must be seen through first.`,
-        { actor: c.player, targets: [c.player], provinceId: here.id, public: false, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} is still locked in the unresolved battle for ${here.name} and cannot ride out to ${cands[0].prov.name} — the fight here must be seen through first.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: here.id,
+        hero: c.id,
+        phase: ph,
+      });
       return;
     }
 
@@ -161,11 +170,14 @@ export function runDefendReactions(turnContext, ph, intents) {
     c._defendReactedPhase = ph;
     c._attackedFrom = here.id;
     c._defendRideOut = { ph, provId: P.id, fromId: here.id, names: target.names.slice() }; // reconciled at the end of the phase
-    log(
-      'move',
-      `🛡 ${c.name} is standing watch — word reaches them that ${target.names.join(' and ')} ${target.names.length > 1 ? 'are' : 'is'} crossing into ${P.name}. They break camp at once and march to meet the threat.`,
-      { actor: c.player, targets: [c.player], provinceId: P.id, public: true, charId: c.id, phase: ph },
-    ); // 2026-09-09 item 1: runs OUTSIDE any order context, so file it explicitly
+    emit(turnContext, {
+      type: 'move',
+      text: `🛡 ${c.name} is standing watch — word reaches them that ${target.names.join(' and ')} ${target.names.length > 1 ? 'are' : 'is'} crossing into ${P.name}. They break camp at once and march to meet the threat.`,
+      audience: { actor: c.player, realms: [c.player], seen: 'there' },
+      province: P.id,
+      hero: c.id,
+      phase: ph,
+    }); // 2026-09-09 item 1: runs OUTSIDE any order context, so file it explicitly
     // Reacting is a march: the same skill gain a normal move would give (a sea crossing trains Naval).
     if (_bySea) rollNavalVoyage(turnContext, c, SKILLGAIN_COMMON);
     else trySkillGain(turnContext, c, 'march', SKILLGAIN_COMMON);
@@ -180,7 +192,7 @@ export function runDefendReactions(turnContext, ph, intents) {
 // threat" line followed by silence. battleCommanders is keyed prov@phase and records both sides
 // of every PvP battle, so it is the authoritative "did a battle happen here with him in it" test.
 export function reconcileDefendRideOuts(turnContext, ph) {
-  const { G, battleCommanders, log } = turnContext;
+  const { G, battleCommanders } = turnContext;
   (G.characters || []).forEach((c) => {
     const r = c._defendRideOut;
     if (!r) return;
@@ -209,17 +221,23 @@ export function reconcileDefendRideOuts(turnContext, ph) {
         !isVeiled(turnContext, e),
     );
     if (c.location === P.id && !enemyHere) {
-      log(
-        'move',
-        `🛡 ${c.name} reaches ${P.name} in battle order, but ${r.names.join(' and ')} never crossed the border — no battle is fought, and they hold ${P.name} for the rest of the season.`,
-        { actor: c.player, targets: [c.player], provinceId: P.id, public: false, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `🛡 ${c.name} reaches ${P.name} in battle order, but ${r.names.join(' and ')} never crossed the border — no battle is fought, and they hold ${P.name} for the rest of the season.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: P.id,
+        hero: c.id,
+        phase: ph,
+      });
     } else if (c.location === P.id && enemyHere) {
-      log(
-        'move',
-        `🛡 ${c.name} stands in ${P.name} facing an enemy column, but no battle was joined this season — the contest will be settled next phase.`,
-        { actor: c.player, targets: [c.player], provinceId: P.id, public: false, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `🛡 ${c.name} stands in ${P.name} facing an enemy column, but no battle was joined this season — the contest will be settled next phase.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: P.id,
+        hero: c.id,
+        phase: ph,
+      });
     }
   });
 }
@@ -252,7 +270,7 @@ export function defendBattleLocked(turnContext, c, here) {
 // as the ATTACKER. runDefendMaterializedReactions remains as the end-of-phase safety net.
 // Returns the generals who rode in.
 export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
-  const { G, seaCap, seaMoveActive, seaMovePoints, movePoints, log } = turnContext;
+  const { G, seaCap, seaMoveActive, seaMovePoints, movePoints } = turnContext;
   const riders = [];
   if (!raiser || !prov || prov.owner == null || prov.owner === raiser.player) return riders;
   if (!areEnemies(turnContext, raiser.player, prov.owner)) return riders;
@@ -291,11 +309,14 @@ export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
     d._defendReactedPhase = ph;
     if (!prov.visitedBy) prov.visitedBy = [];
     if (!prov.visitedBy.includes(d.player)) prov.visitedBy.push(d.player);
-    log(
-      'move',
-      `🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(turnContext, raiser.player)} ${raiser._warFront ? 'is turning the host camped inside ' + prov.name + ' on the province' : 'is gathering a host inside ' + prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
-      { actor: d.player, targets: [d.player], provinceId: prov.id, public: true, charId: d.id, phase: ph },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(turnContext, raiser.player)} ${raiser._warFront ? 'is turning the host camped inside ' + prov.name + ' on the province' : 'is gathering a host inside ' + prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
+      audience: { actor: d.player, realms: [d.player], seen: 'there' },
+      province: prov.id,
+      hero: d.id,
+      phase: ph,
+    });
     if (bySea) rollNavalVoyage(turnContext, d, SKILLGAIN_STD);
     else trySkillGain(turnContext, d, 'march', SKILLGAIN_COMMON);
     riders.push(d);
@@ -312,7 +333,7 @@ export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
 // defender who already reacted this phase, or who has no move left, holds. Mirrors the both-armed
 // pursuit battle so casualties, routs and conquest all resolve through the one combat path.
 export function runDefendMaterializedReactions(turnContext, ph) {
-  const { G, movePoints, seaMovePoints, seaMoveActive, log, seaCap } = turnContext;
+  const { G, movePoints, seaMovePoints, seaMoveActive, seaCap } = turnContext;
   (G.characters || []).forEach((c) => {
     if (!c.alive || c.player == null || !c._defend || !c._defend.active) return;
     if ((c.armies || []).length === 0) return; // only generals ride out
@@ -322,11 +343,14 @@ export function runDefendMaterializedReactions(turnContext, ph) {
     if (!here) return;
     // a defender flooded into a sea province cannot ride out unless he can move by sea.
     if (here.terrain === 'sea' && !(seaMoveActive[c.id] && (seaMovePoints[c.id] ?? 0) > 0)) {
-      log(
-        'move',
-        `${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,
-        { actor: c.player, targets: [c.player], provinceId: here.id, public: false, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: here.id,
+        hero: c.id,
+        phase: ph,
+      });
       return;
     }
     const sc = seaCap[c.id] || 'land';
@@ -384,19 +408,25 @@ export function runDefendMaterializedReactions(turnContext, ph) {
       c._attackedFrom = here.id;
       if (!prov.visitedBy) prov.visitedBy = [];
       if (!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
-      log(
-        'move',
-        `🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. They break camp and march to meet it.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id, public: true, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. They break camp and march to meet it.`,
+        audience: { actor: c.player, realms: [c.player], seen: 'there' },
+        province: prov.id,
+        hero: c.id,
+        phase: ph,
+      });
       if (toSea) rollNavalVoyage(turnContext, c, SKILLGAIN_COMMON);
       else trySkillGain(turnContext, c, 'march', SKILLGAIN_COMMON);
     } else {
-      log(
-        'move',
-        `🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — they form their line to give battle.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id, public: true, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — they form their line to give battle.`,
+        audience: { actor: c.player, realms: [c.player], seen: 'there' },
+        province: prov.id,
+        hero: c.id,
+        phase: ph,
+      });
     }
     c._defendReactedPhase = ph;
     // Force the battle: c attacks the heaviest enemy force here; the rest unify behind it (as in
@@ -415,20 +445,20 @@ export function runDefendMaterializedReactions(turnContext, ph) {
     const _hP = pickBattleCommander(turnContext, quarry, defReinf, _hPooled, prov, false); // best defender commands
     const combinedDef = { ..._hP.leader, armies: _hPooled };
     const targetsPi = [c.player, quarry.player].filter((x) => x != null);
-    log('combat', `⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`, {
-      actor: c.player,
-      targets: targetsPi,
-      provinceId: prov.id,
-      public: true,
-      charIds: [c.id, quarry.id, ...defReinf.map((d) => d.id)],
+    emit(turnContext, {
+      type: 'combat',
+      text: `⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`,
+      audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+      province: prov.id,
+      heroes: [c.id, quarry.id, ...defReinf.map((d) => d.id)],
       phase: ph,
     });
     if (_hP.changed)
-      log('combat', commandHandoverLine(_hP.leader, quarry, prov.name), {
-        actor: quarry.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
+      emit(turnContext, {
+        type: 'combat',
+        text: commandHandoverLine(_hP.leader, quarry, prov.name),
+        audience: { actor: quarry.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
       });
     const battle = combatVsChar(turnContext, combinedAtk, combinedDef, prov);
     syncLeaderCopy(turnContext, _hP.leader, combinedDef);
@@ -499,11 +529,12 @@ export function runDefendMaterializedReactions(turnContext, ph) {
         if (wp && !wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
         if (wp) applyEvilConquest(turnContext, c, prov, wp); // Evil doctrine on this capture path (was skipped)
         delete prov._takenByUnitGain;
-        log(
-          'combat',
-          `${c.name} drives the interlopers out and secures ${prov.name} for ${wp ? wp.name : 'their realm'}!`,
-          { actor: c.player, targets: [], provinceId: prov.id, public: true },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `${c.name} drives the interlopers out and secures ${prov.name} for ${wp ? wp.name : 'their realm'}!`,
+          audience: { actor: c.player, realms: [], seen: 'battle' },
+          province: prov.id,
+        });
       }
     }
     turnContext._combatSkillProv = null; // this reaction's battle series is closed
@@ -519,7 +550,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
 // alone). Runs after every order and after the armed Defend reactions, so all of this phase's
 // movers are already in place.
 export function runDefendAmbush(turnContext, ph) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   (G.characters || []).forEach((c) => {
     if (!c.alive || c.player == null || !c._defend || !c._defend.active) return;
     if ((c.armies || []).length > 0) return; // ONLY lone characters ambush (armed ones ride out above)
@@ -569,17 +600,19 @@ export function runDefendAmbush(turnContext, ph) {
     if (guarded) chance = Math.floor(chance / 2);
     const roll = d100();
     const targetsPi = [c.player, quarry.player].filter((x) => x != null);
-    log(
-      'system',
-      `📊 Ambush — ${c.name} (Spy ${spy}) lies in wait for ${quarry.name}${guarded ? ' (guarded — halved)' : ''}: ${fmtRoll(chance, roll)}`,
-      { actor: c.player, targets: [c.player], provinceId: quarryProv.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `📊 Ambush — ${c.name} (Spy ${spy}) lies in wait for ${quarry.name}${guarded ? ' (guarded — halved)' : ''}: ${fmtRoll(chance, roll)}`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: quarryProv.id,
+    });
     if (roll > chance) {
-      log(
-        'move',
-        `${c.name} watches ${quarry.name} pass through ${quarryProv.name} but cannot find the opening to strike.`,
-        { actor: c.player, targets: [c.player], provinceId: quarryProv.id },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${c.name} watches ${quarry.name} pass through ${quarryProv.name} but cannot find the opening to strike.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: quarryProv.id,
+      });
       c._defendReactedPhase = ph; // the attempt spends his watch for this phase
       return;
     }
@@ -609,12 +642,12 @@ export function runDefendAmbush(turnContext, ph) {
     const defPlan = filterPlan(quarry.encounterPlan);
     if (!defPlan.length) defPlan.push('ME');
     const _duelChars = [c.id, quarry.id];
-    log('combat', `⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`, {
-      actor: c.player,
-      targets: targetsPi,
-      provinceId: prov.id,
-      public: prov.owner !== null,
-      charIds: _duelChars,
+    emit(turnContext, {
+      type: 'combat',
+      text: `⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`,
+      audience: { actor: c.player, realms: targetsPi, seen: prov.owner !== null ? 'battle' : undefined },
+      province: prov.id,
+      heroes: _duelChars,
     });
     markProvinceCombat(prov, [c.player, quarry.player]); // purple swords: a personal combat, not a field battle
     const enc = resolveCharVsChar(
@@ -641,20 +674,18 @@ export function runDefendAmbush(turnContext, ph) {
     if (enc.atkKilled || enc.atkHp <= 0) {
       if (_escapesTheEnd(c)) {
         if (c.hp != null && c.hp <= 0) c.hp = 1;
-        log('combat', _garrethEscapeLine(c), {
-          actor: c.player,
-          targets: targetsPi,
-          provinceId: prov.id,
-          public: true,
-          charIds: _duelChars,
+        emit(turnContext, {
+          type: 'combat',
+          text: _garrethEscapeLine(c),
+          audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          province: prov.id,
+          heroes: _duelChars,
         });
       } else {
         reportHeroFall(turnContext, c, quarry, `${c.name} is cut down in the ambush they laid!`, {
-          actor: c.player,
-          targets: targetsPi,
-          provinceId: prov.id,
-          public: true,
-          charIds: _duelChars,
+          audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          province: prov.id,
+          heroes: _duelChars,
         });
         awardKillXP(turnContext, quarry, c);
       }
@@ -662,20 +693,18 @@ export function runDefendAmbush(turnContext, ph) {
     if (enc.defKilled || enc.defHp <= 0) {
       if (_escapesTheEnd(quarry)) {
         if (quarry.hp != null && quarry.hp <= 0) quarry.hp = 1;
-        log('combat', _garrethEscapeLine(quarry), {
-          actor: c.player,
-          targets: targetsPi,
-          provinceId: prov.id,
-          public: true,
-          charIds: _duelChars,
+        emit(turnContext, {
+          type: 'combat',
+          text: _garrethEscapeLine(quarry),
+          audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          province: prov.id,
+          heroes: _duelChars,
         });
       } else {
         reportHeroFall(turnContext, quarry, c, `${quarry.name} is struck down in the ambush!`, {
-          actor: c.player,
-          targets: targetsPi,
-          provinceId: prov.id,
-          public: true,
-          charIds: _duelChars,
+          audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          province: prov.id,
+          heroes: _duelChars,
         });
         awardKillXP(turnContext, c, quarry);
       }
@@ -698,7 +727,7 @@ export function runDefendAmbush(turnContext, ph) {
 // per province, after every order in the phase) is NOT implemented — see DEV_LOG "flagged /
 // open".
 export function runReinforcementArrivals(turnContext, ph, intents) {
-  const { seaCap, G, seaMovePoints, movePoints, log } = turnContext;
+  const { seaCap, G, seaMovePoints, movePoints } = turnContext;
   const invasions = [...intents.values()].filter((...a) => isHostileInvasion(turnContext, ...a));
   if (!invasions.length) return;
   const cmp = phaseInitCompare(turnContext, ph);
@@ -735,10 +764,11 @@ export function runReinforcementArrivals(turnContext, ph, intents) {
     else rollNavalVoyage(turnContext, it.c, SKILLGAIN_STD);
     it.cancelled = true;
     it.cancelReason = 'reinforced';
-    log(
-      'move',
-      `${it.c.name} force-marches into ${P.name} ahead of the enemy — their troops are in the line before the first banners appear over the ridge.`,
-      { actor: it.player, targets: [it.player], provinceId: P.id },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `${it.c.name} force-marches into ${P.name} ahead of the enemy — their troops are in the line before the first banners appear over the ridge.`,
+      audience: { actor: it.player, realms: [it.player] },
+      province: P.id,
+    });
   });
 }

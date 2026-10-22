@@ -129,11 +129,11 @@ describe('What the plan hands the passes', () => {
     expect(calls.map((c) => c.fn)).toEqual(PLAN_ORDER);
     expect(calls.every((c) => c.args[0] === tc['G'] && c.args[1] === tc['_botPlayerIdx'])).toBe(true);
   });
-  test('the concessions are handed the GM’s log itself, and the Reckoning the realms’ calls themselves', () => {
+  test('the concessions are handed the turn’s context itself (whose GM’s log they write), and the Reckoning the realms’ calls themselves', () => {
     const { tc } = fresh(() => ({ bots: [1] }));
     const [calls] = standIn(PASSES, () => plan(tc), QUIET);
     const third = (f: string) => calls.find((c) => c.fn === f)?.args[2];
-    expect(third('runBotConcessions')).toBe(tc['log']);
+    expect(third('runBotConcessions')).toBe(tc);
     expect(third('runBotReckoning')).toBe(tc['reckoningCalls']);
   });
   test('a pass that writes to what it is handed writes to the turn’s own: the log’s lines and a call added are the turn’s', () => {
@@ -141,8 +141,13 @@ describe('What the plan hands the passes', () => {
     const lines = (tc['turnLog'] as unknown[]).length;
     standIn(PASSES, () => plan(tc), {
       ...QUIET,
-      runBotConcessions: (_G: unknown, _set: unknown, log: unknown) => {
-        (log as Fn)('system', 'a line', { actor: null, targets: [], system: true });
+      runBotConcessions: (_G: unknown, _set: unknown, turnContext: unknown) => {
+        (engineFn(engine, 'emit') as Fn)(turnContext, {
+          type: 'system',
+          text: 'a line',
+          audience: { actor: null, realms: [] },
+          system: true,
+        });
       },
       runBotReckoning: (_G: unknown, _set: unknown, calls: unknown) => (calls as Set<number>).add(2),
     });

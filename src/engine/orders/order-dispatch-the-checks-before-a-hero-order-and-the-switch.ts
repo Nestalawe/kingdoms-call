@@ -70,6 +70,7 @@ import {
   resolveRampageOrder,
   resolveSnipersMarkOrder,
 } from './war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── ONE HERO'S ORDER, CHECKED AND HANDED TO ITS ORDER'S FUNCTION (plan P1-08j9: lifted out of resolveTurn) ────
 // processOrder carries out one hero's order for one phase: resolveTurn's phase loop calls it for each hero in turn.
@@ -82,16 +83,18 @@ import {
 // (src/engine/turn/context.ts).
 // Process one order
 export function processOrder(turnContext, c, o, ph) {
-  const { log, G, _botPlayerIdx } = turnContext;
+  const { G, _botPlayerIdx } = turnContext;
   if (!c || !c.alive || !o) return;
   // If this hero was unified into another's battle this phase, their own order is superseded
   if (o._unifiedWith != null) {
     // filed under the hero himself (2026-10-09, Toby item 1): with no charId it fell into Realm Events
-    log(
-      'move',
-      `${c.name}'s order superseded — they unified with ${G.characters.find((x) => x.id === o._unifiedWith)?.name || 'another hero'}'s forces this phase.`,
-      { actor: c.player, targets: [c.player], charId: c.id, phase: ph },
-    );
+    emit(turnContext, {
+      type: 'move',
+      text: `${c.name}'s order superseded — they unified with ${G.characters.find((x) => x.id === o._unifiedWith)?.name || 'another hero'}'s forces this phase.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: c.id,
+      phase: ph,
+    });
     turnContext._logCtx = { charId: null, phase: null };
     return;
   }
@@ -143,10 +146,11 @@ export function processOrder(turnContext, c, o, ph) {
     c.player != null &&
     (c.hp != null ? c.hp : c.maxHp || 20) < (c.maxHp || 20) * o._botMinHp
   ) {
-    log('explore', `${c.name} is too badly hurt to face another guardian this season and rests instead.`, {
-      actor: c.player,
-      targets: [c.player],
-      provinceId: c.location,
+    emit(turnContext, {
+      type: 'explore',
+      text: `${c.name} is too badly hurt to face another guardian this season and rests instead.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: c.location,
     });
     action = 'rest';
   }
@@ -165,11 +169,12 @@ export function processOrder(turnContext, c, o, ph) {
         (o._botIfRumourLow && _r.band >= o._botIfRumourLow && _hpR >= (o._botIfRumourLowHp || 0.95)))
     );
     if (!_ok) {
-      log(
-        'explore',
-        `${c.name} weighs what the taverns said of the ${_f ? _f.name : 'lair'} and leaves it for another day.`,
-        { actor: c.player, targets: [c.player], provinceId: c.location },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `${c.name} weighs what the taverns said of the ${_f ? _f.name : 'lair'} and leaves it for another day.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: c.location,
+      });
       action = 'rest';
     }
   }
@@ -181,11 +186,12 @@ export function processOrder(turnContext, c, o, ph) {
   // written for; standing anywhere else, the searcher does not go in.
   if (action === 'search' && o.prov != null && o.prov !== '' && String(o.prov) !== String(c.location)) {
     const _pw = G.world.provinces[parseInt(o.prov)];
-    log(
-      'explore',
-      `${c.name} never reaches the lair they set out for${_pw ? ` in ${_pw.name}` : ''}, and will not go blind into another — the search is abandoned and they rest instead.`,
-      { actor: c.player, targets: [c.player], provinceId: c.location },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `${c.name} never reaches the lair they set out for${_pw ? ` in ${_pw.name}` : ''}, and will not go blind into another — the search is abandoned and they rest instead.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: c.location,
+    });
     action = 'rest';
   }
   const target = o.target || '';
@@ -227,11 +233,15 @@ export function processOrder(turnContext, c, o, ph) {
       ) ||
       (prov.owner !== c.player && (prov.neutralDefenders || []).length > 0);
     if (_foeHere) {
-      log(
-        'combat',
-        `${c.name} is still locked in the unresolved battle for ${prov.name} and cannot march away — the enemy is on the field and the fight must be seen through before the column can move on.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id, charId: c.id, phase: ph, pinNotice: true },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `${c.name} is still locked in the unresolved battle for ${prov.name} and cannot march away — the enemy is on the field and the fight must be seen through before the column can move on.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+        hero: c.id,
+        phase: ph,
+        pinNotice: true,
+      });
       turnContext._logCtx = { charId: null, phase: null };
       return;
     }
@@ -253,11 +263,11 @@ export function processOrder(turnContext, c, o, ph) {
             ? 'spend their own mastery for a crown that merely holds their mind'
             : null;
     if (_why) {
-      log(
-        'system',
-        `${c.name} is held by an enchantment, not an oath — they will not ${_why}. The order comes to nothing.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} is held by an enchantment, not an oath — they will not ${_why}. The order comes to nothing.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       turnContext._logCtx = { charId: null, phase: null };
       return;
     }
@@ -267,11 +277,11 @@ export function processOrder(turnContext, c, o, ph) {
   if (MASTERY_ORDER_KEYS.has(action)) {
     c._masteryOrderUsed = c._masteryOrderUsed || {};
     if (c._masteryOrderUsed[action] === G.turn) {
-      log(
-        'system',
-        `${c.name} has already used their ${MASTERY_ORDER_LABEL[action] || action} mastery this turn \u2014 it may be commanded but once per turn.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} has already used their ${MASTERY_ORDER_LABEL[action] || action} mastery this turn \u2014 it may be commanded but once per turn.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       turnContext._logCtx = { charId: null, phase: null };
       return;
     }
@@ -283,9 +293,10 @@ export function processOrder(turnContext, c, o, ph) {
   // slip locally.
   if (action === 'forced_march') {
     if (skillLevel(c, 'march') < 7) {
-      log('system', `${c.name} lacks the March mastery (7) for a Forced March.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} lacks the March mastery (7) for a Forced March.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       turnContext._logCtx = { charId: null, phase: null };
       return;

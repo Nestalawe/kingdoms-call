@@ -30,7 +30,7 @@ import { castChanceFor } from '../chances-and-lair-grades.ts';
 import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 import { applyPendingSynthPlan, discSum, gdActive, hasDisc } from '../discoveries.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
-import { emitNarrLine, logSplit, notifyProvinceOwner, notifyTarget } from '../turn/events-and-their-audiences.ts';
+import { emit, emitNarrLine, logSplit, notifyProvinceOwner, notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import {
   effStat,
@@ -71,15 +71,16 @@ import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.
 // is no encounter at all — one of them wants no part of it and the other cannot force it.
 export const CHARM_BACKLASH_PCT = 50;
 export function charmBacklash(turnContext, prov, caster, t, why) {
-  const { log, G } = turnContext;
+  const { G } = turnContext;
   if (!t || t.alive === false || t.location !== caster.location) return;
   const targetsPi = [caster.player, t.player].filter((x) => x != null);
   const roll = d100();
-  log(
-    'system',
-    `📊 Charm backlash — ${t.name} may turn on ${caster.name} (${why}): ${fmtRoll(CHARM_BACKLASH_PCT, roll)}`,
-    { actor: caster.player, targets: [caster.player], provinceId: prov.id },
-  );
+  emit(turnContext, {
+    type: 'system',
+    text: `📊 Charm backlash — ${t.name} may turn on ${caster.name} (${why}): ${fmtRoll(CHARM_BACKLASH_PCT, roll)}`,
+    audience: { actor: caster.player, realms: [caster.player] },
+    province: prov.id,
+  });
   if (roll > CHARM_BACKLASH_PCT) return;
   ensureEncounterPlan(turnContext, caster);
   ensureEncounterPlan(turnContext, t);
@@ -91,11 +92,13 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
   };
   if (leadsFlee(caster) || leadsFlee(t)) {
     const who = leadsFlee(caster) ? caster : t;
-    log(
-      'system',
-      `${t.name} rounds on ${caster.name} as the enchantment fails — but ${who.name} is already slipping away, and there is no encounter.`,
-      { actor: caster.player, targets: targetsPi, provinceId: prov.id, charIds: [caster.id, t.id] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${t.name} rounds on ${caster.name} as the enchantment fails — but ${who.name} is already slipping away, and there is no encounter.`,
+      audience: { actor: caster.player, realms: targetsPi },
+      province: prov.id,
+      heroes: [caster.id, t.id],
+    });
     return;
   }
   const COMBAT_ONLY = COMBAT_ONLY_TACTICS;
@@ -108,11 +111,13 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
   const defPlan = filterPlan(caster.encounterPlan);
   if (!defPlan.length) defPlan.push('ME');
   const _duelChars = [t.id, caster.id];
-  log(
-    'combat',
-    `⚔ ${t.name} feels the enchantment clawing at their mind and rounds on ${caster.name} — blades are drawn!`,
-    { actor: caster.player, targets: targetsPi, provinceId: prov.id, public: true, charIds: _duelChars },
-  );
+  emit(turnContext, {
+    type: 'combat',
+    text: `⚔ ${t.name} feels the enchantment clawing at their mind and rounds on ${caster.name} — blades are drawn!`,
+    audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
+    province: prov.id,
+    heroes: _duelChars,
+  });
   markProvinceCombat(prov, [caster.player, t.player]);
   const enc = resolveCharVsChar(
     turnContext,
@@ -138,20 +143,18 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
   if (enc.atkKilled || enc.atkHp <= 0) {
     if (_escapesTheEnd(t)) {
       if (t.hp != null && t.hp <= 0) t.hp = 1;
-      log('combat', _garrethEscapeLine(t), {
-        actor: caster.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
-        charIds: _duelChars,
+      emit(turnContext, {
+        type: 'combat',
+        text: _garrethEscapeLine(t),
+        audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
+        heroes: _duelChars,
       });
     } else {
       reportHeroFall(turnContext, t, caster, `${t.name} is cut down by the enchanter they turned on.`, {
-        actor: caster.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
-        charIds: _duelChars,
+        audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
+        heroes: _duelChars,
       });
       awardKillXP(turnContext, caster, t);
     }
@@ -159,20 +162,18 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
   if (enc.defKilled || enc.defHp <= 0) {
     if (_escapesTheEnd(caster)) {
       if (caster.hp != null && caster.hp <= 0) caster.hp = 1;
-      log('combat', _garrethEscapeLine(caster), {
-        actor: caster.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
-        charIds: _duelChars,
+      emit(turnContext, {
+        type: 'combat',
+        text: _garrethEscapeLine(caster),
+        audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
+        heroes: _duelChars,
       });
     } else {
       reportHeroFall(turnContext, caster, t, `${caster.name} is slain — the failed Charm was their last spell.`, {
-        actor: caster.player,
-        targets: targetsPi,
-        provinceId: prov.id,
-        public: true,
-        charIds: _duelChars,
+        audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
+        province: prov.id,
+        heroes: _duelChars,
       });
       awardKillXP(turnContext, t, caster);
     }
@@ -180,16 +181,24 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
 }
 // Cast Spell: the casting limits, the cast chance and its roll, then the spell, school by school (a spell item's Use Item arrives here as a cast).
 export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov, player, _itemCast) {
-  const { log, G, _tel, clairWatch } = turnContext;
+  const { G, _tel, clairWatch } = turnContext;
   // target = spell name, extra = target province id or character id (if needed)
   const spellName = _itemCast ? _itemCast.spell : target;
   const spellDef = SPELL_DEFS_P[spellName];
   if (!spellDef) {
-    log('system', `${c.name}: unknown spell "${spellName}".`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: unknown spell "${spellName}".`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   if (!spellDef.phase) {
-    log('system', `${c.name}: ${spellName} cannot be used as a phase order.`, { actor: c.player, targets: [c.player] });
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: ${spellName} cannot be used as a phase order.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   // a seized ENEMY hero will not turn hostile magic on their own lord's characters (the same
@@ -198,11 +207,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
   if (c._charmTempControl && c._charmOriginalPlayer != null && CHARMED_NO_TURN_SPELLS.has(spellName)) {
     const _lordChar = G.characters.find((ch) => ch.alive && ch.id === (parseInt(extra) || -1));
     if (_lordChar && _lordChar.player === c._charmOriginalPlayer) {
-      log(
-        'system',
-        `${c.name} lets the ${spellName} die on their lips — the Charm bends their will, but not so far as to turn them on their own lord's people.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} lets the ${spellName} die on their lips — the Charm bends their will, but not so far as to turn them on their own lord's people.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       o._castNotWorked = true;
       return;
     }
@@ -230,11 +240,11 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     }).length;
     if (_castsSoFar >= _limit && _lvl > 0 && !(spellName === 'Bless Province' && _divCath)) {
       o._castNotWorked = true; // 2026-10-13 (item 16): a blocked cast is never worked, so it spends no slot either
-      log(
-        'system',
-        `${c.name}: ${SKILL_LABELS[_school] || _school} level ${_lvl} casting limit (${_castsSoFar}/${_limit} per turn). ${spellName} blocked.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: ${SKILL_LABELS[_school] || _school} level ${_lvl} casting limit (${_castsSoFar}/${_limit} per turn). ${spellName} blocked.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
   }
@@ -249,29 +259,29 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     // practice succeeds, so a cast refused here spends no casting slot — a later practice that
     // does succeed still opens the later casts the form promised.
     o._castNotWorked = true;
-    log(
-      'system',
-      `${c.name} attempts to cast ${spellName} but lacks the required ${SKILL_LABELS[school] || school} skill — the practice order earlier this turn did not result in a skill gain. The spell fails.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} attempts to cast ${spellName} but lacks the required ${SKILL_LABELS[school] || school} skill — the practice order earlier this turn did not result in a skill gain. The spell fails.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   // L7/L9 mastery spells require the RAW school level (past-5 comes from experience only).
   if (_itemCast && spellDef.reqLevel) {
-    log(
-      'system',
-      `${c.name}: the ${_itemCast.item} can no longer work ${spellName} — such mastery must be earned, not carried. The item lies inert.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: the ${_itemCast.item} can no longer work ${spellName} — such mastery must be earned, not carried. The item lies inert.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   } // Item 6
   if (!_itemCast && spellDef.reqLevel && skillLevel(c, school) < spellDef.reqLevel) {
     o._castNotWorked = true; // never worked: no casting slot spent (item 16)
-    log(
-      'system',
-      `${c.name} cannot yet wield ${spellName} — it demands ${SKILL_LABELS[school] || school} level ${spellDef.reqLevel}, and they have reached only ${skillLevel(c, school)}.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} cannot yet wield ${spellName} — it demands ${SKILL_LABELS[school] || school} level ${spellDef.reqLevel}, and they have reached only ${skillLevel(c, school)}.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
 
@@ -282,11 +292,11 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     c._masterySpellUsed = c._masterySpellUsed || {};
     if (c._masterySpellUsed[spellName] === G.turn) {
       o._castNotWorked = true; // never worked: no casting slot spent (item 16)
-      log(
-        'system',
-        `${c.name} has already invoked ${spellName} this turn \u2014 such mastery may be worked but once per turn.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} has already invoked ${spellName} this turn \u2014 such mastery may be worked but once per turn.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     c._masterySpellUsed[spellName] = G.turn;
@@ -316,11 +326,14 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       const _tp = G.world.provinces[_t.location];
       const _own = _t.player === c.player;
       o._castNotWorked = true; // costs no casting slot for the rest of the turn
-      log(
-        'system',
-        `${c.name} looks for ${_t.name} to work ${spellName} upon, and finds them gone — ${_own ? 'they had already marched' : 'they had already moved'} on to ${_tp ? _tp.name : 'another province'} before the spell could be shaped. It is never worked, and costs ${c.name} nothing.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id, charId: c.id, phase: ph },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} looks for ${_t.name} to work ${spellName} upon, and finds them gone — ${_own ? 'they had already marched' : 'they had already moved'} on to ${_tp ? _tp.name : 'another province'} before the spell could be shaped. It is never worked, and costs ${c.name} nothing.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+        hero: c.id,
+        phase: ph,
+      });
       return;
     }
   }
@@ -339,26 +352,29 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     });
   } catch (_te) {}
   if (_itemCast) {
-    log('system', `🔮 ${c.name} invokes the ${_itemCast.item} to work ${spellName}.`, {
-      actor: c.player,
-      targets: [c.player],
-      provinceId: prov.id,
+    emit(turnContext, {
+      type: 'system',
+      text: `🔮 ${c.name} invokes the ${_itemCast.item} to work ${spellName}.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
     });
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_COMMON);
   } // 2026-09-21: using a magic item may teach Sage (small chance)
-  log(
-    'system',
-    `📊 ${c.name} casts ${spellName} (${SKILL_LABELS[school] || school} ${spellLevel}${(() => {
+  emit(turnContext, {
+    type: 'system',
+    text: `📊 ${c.name} casts ${spellName} (${SKILL_LABELS[school] || school} ${spellLevel}${(() => {
       const _tr = skillLevel(c, school);
       return _tr < spellLevel ? ` — ${_tr} trained, +${spellLevel - _tr} from ${_itemCast ? 'the item' : 'items'}` : '';
     })()}): ${castChance}% chance [roll ${castRoll}${castRoll <= castChance ? ' ✓' : ' ✗'}]`,
-    { actor: c.player, targets: [c.player], provinceId: prov.id },
-  );
+    audience: { actor: c.player, realms: [c.player] },
+    province: prov.id,
+  });
 
   if (castRoll > castChance) {
-    log('system', `${c.name}'s ${spellName} fizzles — the spell dissipates without effect.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}'s ${spellName} fizzles — the spell dissipates without effect.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
     if (!_itemCast) trySkillGain(turnContext, c, school, SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn (an item's cast teaches nothing when it fails)
     // a fizzled Charm may bring its intended victim down on the caster.
@@ -383,21 +399,21 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
   // THIEF L9 Vanish: a vanished character cannot be reached by ANY hostile spell for the rest
   // of the turn.
   if (targetChar && targetChar.player !== c.player && isVanished(turnContext, targetChar)) {
-    log(
-      'system',
-      `${c.name}'s ${spellName} gropes after ${targetChar.name} and finds only shadow — they have vanished, and nothing may touch them this season.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}'s ${spellName} gropes after ${targetChar.name} and finds only shadow — they have vanished, and nothing may touch them this season.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   // ILLUSORY L9 Veil: a veiled character (and the host they lead) cannot be reached by ANY
   // hostile spell while the veil holds.
   if (targetChar && targetChar.player !== c.player && isVeiled(turnContext, targetChar)) {
-    log(
-      'system',
-      `${c.name}'s ${spellName} cannot reach ${targetChar.name} — they and their host are veiled from all hostile magic.`,
-      { actor: c.player, targets: [c.player] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}'s ${spellName} cannot reach ${targetChar.name} — they and their host are veiled from all hostile magic.`,
+      audience: { actor: c.player, realms: [c.player] },
+    });
     return;
   }
   // Cloak of Many Faces: shields the wearer from hostile Psychic Blast / Curse.
@@ -407,9 +423,10 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     isHiddenChar(turnContext, targetChar) &&
     (spellName === 'Psychic Blast' || spellName === 'Curse')
   ) {
-    log('system', `${c.name}'s ${spellName} cannot find ${targetChar.name} — they are cloaked from hostile magic.`, {
-      actor: c.player,
-      targets: [c.player],
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}'s ${spellName} cannot find ${targetChar.name} — they are cloaked from hostile magic.`,
+      audience: { actor: c.player, realms: [c.player] },
     });
     return;
   }
@@ -442,64 +459,71 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
           .filter((g) => g.location === c.location && _graveKnown(g))
           .sort((a, b) => b.killedOnTurn - a.killedOnTurn)[0];
     if (!grave) {
-      log(
-        'system',
-        `${c.name} casts Resurrect, but no fallen hero you know of lies in ${prov.name} — perhaps another raised them first.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} casts Resurrect, but no fallen hero you know of lies in ${prov.name} — perhaps another raised them first.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     // MONARCH grave: only the realm that the king ruled may recall him, and only the MOST
     // RECENTLY fallen monarch of that line — earlier kings have passed beyond recall.
     if (grave._monarch) {
       if (grave.player !== c.player) {
-        log(
-          'system',
-          `${c.name}: the fallen crown of ${grave.name} answers only to its own realm — no rival's prayer will restore it.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name}: the fallen crown of ${grave.name} answers only to its own realm — no rival's prayer will restore it.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
         return;
       }
       if (G.players[c.player]?._resurrectableMonarchId !== grave.id) {
-        log(
-          'system',
-          `${c.name}: the spirit of ${grave.name} has passed beyond recall — only your most recently fallen monarch may be restored.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name}: the spirit of ${grave.name} has passed beyond recall — only your most recently fallen monarch may be restored.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
         return;
       }
     } else if (grave.isKing) {
-      log('system', `${c.name}: ${grave.name} was a king — kings cannot be resurrected.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: ${grave.name} was a king — kings cannot be resurrected.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     } else if (graveServedOther(grave, c.player)) {
       // 2026-09-23 (Toby): a hero who ever served ANOTHER realm cannot be raised into yours.
-      log(
-        'system',
-        `${c.name}: ${grave.name} once swore to another crown — that oath holds even in death, and the spirit will not answer.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: ${grave.name} once swore to another crown — that oath holds even in death, and the spirit will not answer.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     if (G._resurrectedThisTurn.includes(grave.id)) {
-      log('system', `${c.name}: ${grave.name} has already been raised this turn.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: ${grave.name} has already been raised this turn.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     const deadHero = G.characters.find((ch) => ch.id === grave.id);
     if (!deadHero) {
-      log('system', `${c.name}: the spirit of ${grave.name} cannot be found.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: the spirit of ${grave.name} cannot be found.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (!grave._monarch && deadHero.isKing) {
-      log('system', `${c.name}: kings cannot be resurrected.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: kings cannot be resurrected.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     // Revive — at full health, WITHOUT any possessions carried in life.
@@ -523,15 +547,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         curMonarch.isKing = false;
         curMonarch._isHeir = false;
         curMonarch._pendingSkillAllocation = 0;
-        log(
-          'system',
-          `👑 ${curMonarch.name} steps down from the throne as ${deadHero.name} is restored to life — the former regent now serves the realm as a hero.`,
-          {
-            actor: grave.player,
-            targets: [grave.player],
-            provinceId: prov.id,
-          } /* 2026-09-27 (Toby item 6): realm-private — never public */,
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `👑 ${curMonarch.name} steps down from the throne as ${deadHero.name} is restored to life — the former regent now serves the realm as a hero.`,
+          audience: { actor: grave.player, realms: [grave.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
+          province: prov.id,
+        });
       }
       deadHero.isKing = true;
       deadHero._isHeir = false;
@@ -547,25 +568,19 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     G._resurrectedThisTurn.push(grave.id);
     const wasEnemy = grave.player != null && grave.player !== c.player;
     if (grave._monarch) {
-      log(
-        'explore',
-        `✨👑 ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health and reclaims the throne of ${player.name}! The rightful king walks again, stripped of all possessions but restored in spirit and skill.`,
-        {
-          actor: c.player,
-          targets: [c.player],
-          provinceId: prov.id,
-        } /* 2026-09-27 (Toby item 6): realm-private — never public */,
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `✨👑 ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health and reclaims the throne of ${player.name}! The rightful king walks again, stripped of all possessions but restored in spirit and skill.`,
+        audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
+        province: prov.id,
+      });
     } else {
-      log(
-        'explore',
-        `✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, stripped of all possessions, and now serves ${player.name}!${wasEnemy ? ' The fallen foe is bound to a new master.' : ''}`,
-        {
-          actor: c.player,
-          targets: [c.player],
-          provinceId: prov.id,
-        } /* 2026-09-27 (Toby item 6): realm-private — never public */,
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, stripped of all possessions, and now serves ${player.name}!${wasEnemy ? ' The fallen foe is bound to a new master.' : ''}`,
+        audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
+        province: prov.id,
+      });
     }
     // The raise succeeded — now, and only now, honour any orders this player pre-wrote for
     // this hero. Matched on caster AND hero so a rival's pre-orders for the same corpse are
@@ -591,11 +606,11 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         });
         G.turnOrders[deadHero.id] = slots;
         if (applied > 0)
-          log(
-            'system',
-            `${deadHero.name} takes up the orders ${player.name} laid down for them — ${applied} phase${applied !== 1 ? 's' : ''} of this turn remain to be acted on.`,
-            { actor: c.player, targets: [c.player] },
-          );
+          emit(turnContext, {
+            type: 'system',
+            text: `${deadHero.name} takes up the orders ${player.name} laid down for them — ${applied} phase${applied !== 1 ? 's' : ''} of this turn remain to be acted on.`,
+            audience: { actor: c.player, realms: [c.player] },
+          });
       }
       // Step 3 of order ingestion only defaults LIVING characters to Defend, and this hero
       // was a corpse when it ran. Fill the rest of the turn in now so they behave like anyone
@@ -620,9 +635,10 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Part Sea can only target a province you are in or next to.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Part Sea can only target a province you are in or next to.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
@@ -633,11 +649,13 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       delete targetProv._flooded; // cancel any Flood on this province
       targetProv._partSea = { orig: targetProv.terrain, turn: G.turn, blockFleetsFromPhase: ph + 1 };
       targetProv.terrain = 'plains';
-      log(
-        'explore',
-        `✨ ${c.name} raises their hands and the waters of ${targetProv.name} draw back — the seabed lies bare as dry plains for the rest of the turn. Land armies may cross freely, but no fleet can enter or leave from the next phase onward.`,
-        { actor: c.player, targets: [c.player], provinceId: targetProv.id, public: true, env: true },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `✨ ${c.name} raises their hands and the waters of ${targetProv.name} draw back — the seabed lies bare as dry plains for the rest of the turn. Land armies may cross freely, but no fleet can enter or leave from the next phase onward.`,
+        audience: { actor: c.player, realms: [c.player], seen: 'there' },
+        province: targetProv.id,
+        env: true,
+      });
       notifyProvinceOwner(
         turnContext,
         targetProv,
@@ -650,11 +668,13 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       // no sea to part; clear any lingering flood marker and note it. The cast is spent but
       // harmless.
       delete targetProv._flooded;
-      log(
-        'explore',
-        `✨ ${c.name} calls the waters back from ${targetProv.name}, but the ground already lies dry — the spell finds no sea to part.`,
-        { actor: c.player, targets: [c.player], provinceId: targetProv.id, public: false, env: true },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `✨ ${c.name} calls the waters back from ${targetProv.name}, but the ground already lies dry — the spell finds no sea to part.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: targetProv.id,
+        env: true,
+      });
     }
   } else if (fn === 'white_holy_symbol') {
     // ACTION FORM (Toby 2026-09-19): the Holy Symbol raised over the caster's own province lays
@@ -666,11 +686,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     const _dead = (_hsProv.battleGraves || []).length;
     TM(c).holyCasts += 1; // TITLE MERIT: Hierophant
     if (_dead === 0) {
-      log(
-        'explore',
-        `✝ ${c.name} raises the Holy Symbol over ${_hsProv.name}, but no battlefield dead lie unquiet here — there is nothing to cleanse.`,
-        { actor: c.player, targets: [c.player], provinceId: _hsProv.id },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `✝ ${c.name} raises the Holy Symbol over ${_hsProv.name}, but no battlefield dead lie unquiet here — there is nothing to cleanse.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: _hsProv.id,
+      });
     } else {
       _hsProv.battleGraves = [];
       logSplit(
@@ -678,7 +699,7 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         'explore',
         `✝ ${c.name} raises the Holy Symbol over ${_hsProv.name} and the graves of its battlefield dead are cleansed — every fallen unit buried there is laid to rest, beyond the reach of any necromancer.`,
         `✝ ${c.name}${realmTag(turnContext, c.player)} raises a Holy Symbol over the battlefields of ${_hsProv.name}, and the dead buried there are laid to rest — the graves are cleansed and can no longer be raised.`,
-        { actor: c.player, provinceId: _hsProv.id, charId: c.id, phase: ph },
+        { audience: { actor: c.player }, province: _hsProv.id, hero: c.id, phase: ph },
       );
     }
     noteGraveIntel(G.players[c.player], _hsProv.id, G.turn, []); // the caster's realm now knows the ground is clean
@@ -690,18 +711,19 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Bless Province can only target a province you are in or adjacent to.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Bless Province can only target a province you are in or adjacent to.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetProv._blessedTurn === G.turn) {
-      log(
-        'system',
-        `${c.name}: ${targetProv.name} is already blessed this turn — a second Bless has no further effect (they do not stack).`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: ${targetProv.name} is already blessed this turn — a second Bless has no further effect (they do not stack).`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     targetProv._blessedTurn = G.turn;
@@ -728,29 +750,40 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         : _divineKingdom
           ? ' (Divine blessing)'
           : '');
-    log(
-      'explore',
-      `✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding ${_blessPct} at collection this turn. The sacred ground is warded — a ${targetProv._blessWardPct}% chance to turn aside any enemy Flood, Earthquake, Plague or Part Sea cast here this turn.`,
-      { actor: c.player, targets: [c.player], provinceId: targetProv.id, public: false, env: true },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding ${_blessPct} at collection this turn. The sacred ground is warded — a ${targetProv._blessWardPct}% chance to turn aside any enemy Flood, Earthquake, Plague or Part Sea cast here this turn.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: targetProv.id,
+      env: true,
+    });
   }
 
   // ── PSYCHIC ──
   else if (fn === 'psychic_charm') {
     const t = targetChar;
     if (!t || t.location !== c.location) {
-      log('system', `Charm: no valid target hero stands in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Charm: no valid target hero stands in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (t.player === c.player) {
-      log('system', `Charm cannot be used on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Charm cannot be used on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     if (t.isKing) {
-      log('system', `Charm cannot sway a king.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Charm cannot sway a king.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     // A mind that has been swayed shuts against the next enchanter: a hero charmed on one
@@ -759,11 +792,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     // and is cleared lazily once it has passed.
     if (t._charmImmuneTurn != null && t._charmImmuneTurn < G.turn) delete t._charmImmuneTurn;
     if (t._charmImmuneTurn === G.turn) {
-      log(
-        'system',
-        `${c.name}'s Charm slides off ${t.name} — a mind so lately swayed is closed to enchantment for a season.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Charm slides off ${t.name} — a mind so lately swayed is closed to enchantment for a season.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       charmBacklash(turnContext, prov, c, t, 'closed to enchantment this season');
       return;
     }
@@ -772,23 +806,26 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     // _charmImmuneTurn does). Rolled here, after the cast itself has succeeded.
     if ((t._charmResist || 0) > 0) {
       const _rr = d100();
-      log(
-        'system',
-        `📊 ${t.name} resists the Charm (${t._charmResist}% — swayed ${Math.round(t._charmResist / 30)} time${t._charmResist === 30 ? '' : 's'} before): ${fmtRoll(t._charmResist, _rr)}`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `📊 ${t.name} resists the Charm (${t._charmResist}% — swayed ${Math.round(t._charmResist / 30)} time${t._charmResist === 30 ? '' : 's'} before): ${fmtRoll(t._charmResist, _rr)}`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       if (_rr <= t._charmResist) {
-        log(
-          'system',
-          `${c.name}'s Charm breaks against ${t.name}'s will — a mind that has been swayed before knows the feel of it, and shuts.`,
-          { actor: c.player, targets: [c.player], provinceId: prov.id },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name}'s Charm breaks against ${t.name}'s will — a mind that has been swayed before knows the feel of it, and shuts.`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
+        });
         if (t.player != null)
-          log('system', `${t.name} feels an enchantment reach for their mind — and throws it off.`, {
-            actor: t.player,
-            targets: [t.player],
-            charId: t.id,
-            provinceId: prov.id,
+          emit(turnContext, {
+            type: 'system',
+            text: `${t.name} feels an enchantment reach for their mind — and throws it off.`,
+            audience: { actor: t.player, realms: [t.player] },
+            hero: t.id,
+            province: prov.id,
           });
         charmBacklash(turnContext, prov, c, t, 'the Charm was resisted');
         return;
@@ -801,28 +838,31 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         (k) => `${SKILL_LABELS[k] || k} ${skillLevel(hero, k)}`,
       );
       const its = (hero.items || []).filter(Boolean);
-      log(
-        'system',
-        `🔍 ${c.name} reads ${hero.name}'s mind as the Charm takes hold — Skills: ${sk.length ? sk.join(', ') : 'none'}. Magic items: ${its.length ? itemNameList(its, true) : 'none'}.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `🔍 ${c.name} reads ${hero.name}'s mind as the Charm takes hold — Skills: ${sk.length ? sk.join(', ') : 'none'}. Magic items: ${its.length ? itemNameList(its, true) : 'none'}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
     };
     // Charm cannot reach the dead. (targetChar is already alive-filtered at resolution, so a
     // hero who fell earlier this turn never arrives here — this makes the rule explicit and
     // guards any future path that might resolve a target without the alive check.)
     if (t.alive === false) {
-      log('system', `${c.name}'s Charm reaches for ${t.name}, but there is no living mind left to sway.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Charm reaches for ${t.name}, but there is no living mind left to sway.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     // Charm sways only a LONE hero — one leading no armies (wandering OR enemy alike). A hero
     // at the head of a column is beyond a single enchanter's reach.
     if ((t.armies || []).length > 0) {
-      log('system', `${c.name}'s Charm cannot grip ${t.name} — a hero leading troops is beyond its reach.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Charm cannot grip ${t.name} — a hero leading troops is beyond its reach.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
@@ -855,11 +895,11 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       // hero released from service this turn cannot be charmed straight back by the same
       // realm.
       if (t._releasedTurn === G.turn && t._releasedBy === c.player) {
-        log(
-          'system',
-          `${c.name}'s Charm finds ${t.name} unmoved — a hero only just dismissed will not be drawn back the same season.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name}'s Charm finds ${t.name} unmoved — a hero only just dismissed will not be drawn back the same season.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
         return;
       }
       // The Divine/Undead gulf binds even magic: no charm sways a soul across distance 6.
@@ -870,11 +910,11 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         t,
       );
       if (_chWage == null) {
-        log(
-          'system',
-          `${c.name}'s Charm washes over ${t.name} and finds nothing to grip — ${t.alignment} souls cannot be swayed to a ${G.players[c.player]?.alignment} crown.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name}'s Charm washes over ${t.name} and finds nothing to grip — ${t.alignment} souls cannot be swayed to a ${G.players[c.player]?.alignment} crown.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
         return;
       }
       t.pay = _chWage;
@@ -888,19 +928,20 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       if (typeof setMovePool === 'function') setMovePool(turnContext, t);
       t._charmImmuneTurn = G.turn + 1; // closed to any further Charm for the whole of next turn
       t._charmResist = Math.min(95, (t._charmResist || 0) + 30); // +30% resistance to every later Charm, cumulative (capped 95%)
-      log(
-        'hire',
-        `✨ ${c.name}'s Charm sways ${t.name} — the wandering hero joins ${player.name} at no cost (you must still pay their upkeep).`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'hire',
+        text: `✨ ${c.name}'s Charm sways ${t.name} — the wandering hero joins ${player.name} at no cost (you must still pay their upkeep).`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       _charmIntel(t); // 2026-09-18
       const applied = _applyCharmOrders(t);
       if (applied > 0)
-        log(
-          'system',
-          `${t.name} takes up the orders ${player.name} laid down for them — ${applied} phase${applied !== 1 ? 's' : ''} of this turn remain to be acted on.`,
-          { actor: c.player, targets: [c.player] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `${t.name} takes up the orders ${player.name} laid down for them — ${applied} phase${applied !== 1 ? 's' : ''} of this turn remain to be acted on.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
     } else {
       // Enemy hero leading no armies — command seized for the REST OF THE TURN. Implemented
       // as a temporary player-swap: they act on YOUR orders and fight under your banner from
@@ -923,21 +964,23 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       delete t._defendReactedPhase; // drop any watch/chase set under their old lord
       if (typeof setMovePool === 'function') setMovePool(turnContext, t);
       const applied = _applyCharmOrders(t);
-      log(
-        'hire',
-        `✨ ${c.name}'s Charm grips ${t.name} — they fall under ${player.name}'s command until the season turns, when they return to their own lord (who still pays their wages).${applied > 0 ? ` ${applied} phase${applied !== 1 ? 's' : ''} of orders await them.` : ''}`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'hire',
+        text: `✨ ${c.name}'s Charm grips ${t.name} — they fall under ${player.name}'s command until the season turns, when they return to their own lord (who still pays their wages).${applied > 0 ? ` ${applied} phase${applied !== 1 ? 's' : ''} of orders await them.` : ''}`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       _charmIntel(t); // 2026-09-18
       // file this under the CHARMED HERO (charId) — without it the entry inherited the
       // caster's charId from _logCtx, and the report's own-character rule handed the victim's
       // warning to the caster. After the ph-4 revert the hero belongs to _origOwner again, so
       // it lands in THEIR section only.
-      log('system', `⚠ ${t.name} is ensorcelled by an enemy Charm and slips your command until the season turns.`, {
-        actor: _origOwner,
-        targets: [_origOwner],
-        charId: t.id,
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'system',
+        text: `⚠ ${t.name} is ensorcelled by an enemy Charm and slips your command until the season turns.`,
+        audience: { actor: _origOwner, realms: [_origOwner] },
+        hero: t.id,
+        province: prov.id,
       });
     }
   } else if (fn === 'psychic_oratory') {
@@ -946,22 +989,24 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     // A NAMED ally who is not here is caught above (free refusal). What is left is a named
     // ally of another realm, or no target at all — self. Never silently swap a named target.
     if (targetChar && targetChar.player !== c.player) {
-      log(
-        'system',
-        `${c.name}'s Oratory can only stir their own realm's troops — ${targetChar.name} serves another crown.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Oratory can only stir their own realm's troops — ${targetChar.name} serves another crown.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       return;
     }
     const oratoryTarget =
       targetChar && targetChar.player === c.player && targetChar.location === c.location ? targetChar : c;
     const _oTiers = perkTier(c, 'psychic') >= 1 ? 2 : 1; // PSYCHIC L6 (Words of Awe): +2 quality tiers instead of +1
     oratoryTarget._oratoryBoost = _oTiers; // read by armStr: +N effective quality tiers (not cumulative)
-    log(
-      'explore',
-      `✨ ${c.name}'s stirring Oratory lifts ${oratoryTarget === c ? 'their own' : oratoryTarget.name + "'s"} troops — every army travelling with ${oratoryTarget === c ? c.name : oratoryTarget.name} fights ${_oTiers > 1 ? 'two quality levels' : 'one quality level'} higher this turn.`,
-      { actor: c.player, targets: [c.player], provinceId: c.location },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name}'s stirring Oratory lifts ${oratoryTarget === c ? 'their own' : oratoryTarget.name + "'s"} troops — every army travelling with ${oratoryTarget === c ? c.name : oratoryTarget.name} fights ${_oTiers > 1 ? 'two quality levels' : 'one quality level'} higher this turn.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: c.location,
+    });
   } else if (fn === 'psychic_clairvoyance') {
     if (!targetChar) {
       // The intended target may have died (targetChar only resolves living characters). If
@@ -971,27 +1016,31 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         const grave = (G.heroGraveyard || []).find((g) => g.id === extraId);
         const bodyLoc = grave && grave.location != null ? grave.location : deadT.location;
         const bp = bodyLoc != null ? G.world.provinces[bodyLoc] : null;
-        log(
-          'explore',
-          `✨ ${c.name} casts Clairvoyance upon ${deadT.name}, but reaches only silence — ${deadT.name} is dead. Their body lies in ${bp ? bp.name : 'parts unknown'}.`,
-          { actor: c.player, targets: [c.player], spy: true, provinceId: bodyLoc },
-        );
+        emit(turnContext, {
+          type: 'explore',
+          text: `✨ ${c.name} casts Clairvoyance upon ${deadT.name}, but reaches only silence — ${deadT.name} is dead. Their body lies in ${bp ? bp.name : 'parts unknown'}.`,
+          audience: { actor: c.player, realms: [c.player] },
+          spy: true,
+          province: bodyLoc,
+        });
         return;
       }
-      log('system', `Clairvoyance: choose a character you have seen to watch.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Clairvoyance: choose a character you have seen to watch.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     // Clairvoyance reaches a mind bound to a crown — it cannot be turned on a neutral or
     // wandering hero (a hero guarding a neutral province, or one roaming unaligned).
     if (targetChar.player == null) {
-      log(
-        'system',
-        `${c.name}'s Clairvoyance finds no thread to follow — ${targetChar.name} serves no crown, and the spell cannot fix upon a wandering or neutral mind.`,
-        { actor: c.player, targets: [c.player], provinceId: c.location },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Clairvoyance finds no thread to follow — ${targetChar.name} serves no crown, and the spell cannot fix upon a wandering or neutral mind.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: c.location,
+      });
       return;
     }
     // Only one Clairvoyance at a time — a new casting replaces the old.
@@ -1024,21 +1073,28 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         };
       }
     }
-    log(
-      'explore',
-      `✨ ${c.name} opens their mind's eye upon ${targetChar.name} — all that befalls them is known to you for the rest of the turn. They are currently in ${tp ? tp.name : 'parts unknown'}.`,
-      { actor: c.player, targets: [c.player], spy: true, provinceId: targetChar.location },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} opens their mind's eye upon ${targetChar.name} — all that befalls them is known to you for the rest of the turn. They are currently in ${tp ? tp.name : 'parts unknown'}.`,
+      audience: { actor: c.player, realms: [c.player] },
+      spy: true,
+      province: targetChar.location,
+    });
   } else if (fn === 'psychic_blast') {
     if (!targetChar || targetChar.location !== c.location) {
-      log('system', `Psychic Blast: no valid target hero in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Psychic Blast: no valid target hero in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetChar.player === c.player) {
-      log('system', `Psychic Blast cannot be turned on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Psychic Blast cannot be turned on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     // The target loses 2 skill levels, each drawn from a random owned skill (the two picks
@@ -1052,28 +1108,21 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       _pbDrops.push(SKILL_LABELS[sk] || sk);
     }
     if (_pbDrops.length === 0) {
-      log(
-        'combat',
-        `✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,
-        {
-          actor: c.player,
-          charIds: [c.id, targetChar.id].filter((v) => v != null),
-          targets: [c.player, targetChar.player].filter((x) => x != null),
-          provinceId: prov.id,
-        },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,
+        audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
+        heroes: [c.id, targetChar.id].filter((v) => v != null),
+        province: prov.id,
+      });
       return;
     }
-    log(
-      'combat',
-      `✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s mind buckles, losing ${_pbDrops.join(' and ')}!`,
-      {
-        actor: c.player,
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
-        public: true,
-      },
-    );
+    emit(turnContext, {
+      type: 'combat',
+      text: `✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s mind buckles, losing ${_pbDrops.join(' and ')}!`,
+      audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
+      province: prov.id,
+    });
     notifyTarget(
       turnContext,
       targetChar,
@@ -1088,31 +1137,39 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       recalcHeroPay(targetChar);
       const _pbPay1 = targetChar.pay || 0;
       if (targetChar.player != null && _pbPay1 !== _pbPay0)
-        log(
-          'system',
-          `💰 ${targetChar.name}'s lost skill lowers their wage to ${_pbPay1}g/turn (was ${_pbPay0}g/turn).`,
-          { actor: targetChar.player, targets: [targetChar.player], charId: targetChar.id, phase: ph },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `💰 ${targetChar.name}'s lost skill lowers their wage to ${_pbPay1}g/turn (was ${_pbPay0}g/turn).`,
+          audience: { actor: targetChar.player, realms: [targetChar.player] },
+          hero: targetChar.id,
+          phase: ph,
+        });
     }
   } else if (fn === 'psychic_storm') {
     if (!targetChar || targetChar.location !== c.location) {
-      log('system', `Telekinetic Storm: no valid target hero in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Telekinetic Storm: no valid target hero in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetChar.player === c.player) {
-      log('system', `Telekinetic Storm cannot be turned on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Telekinetic Storm cannot be turned on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     const armies = targetChar.armies || [];
     if (armies.length === 0) {
-      log('combat', `✨ Telekinetic Storm buffets ${targetChar.name}, but they lead no armies to scatter.`, {
-        actor: c.player,
-        charIds: [c.id, targetChar.id].filter((v) => v != null),
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'combat',
+        text: `✨ Telekinetic Storm buffets ${targetChar.name}, but they lead no armies to scatter.`,
+        audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
+        heroes: [c.id, targetChar.id].filter((v) => v != null),
+        province: prov.id,
       });
       return;
     }
@@ -1143,16 +1200,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       _lines.push(`${a.unitName || a.type} ${_q0}→${a.quality}`);
     });
     targetChar.armies = armies.filter((a) => !a._disbanded);
-    log(
-      'combat',
-      `✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n !== 1 ? 's' : ''} caught: ${destroyed} shattered outright, ${demoted} permanently reduced one experience level. (${_lines.join('; ')})`,
-      {
-        actor: c.player,
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
-        public: true,
-      },
-    );
+    emit(turnContext, {
+      type: 'combat',
+      text: `✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n !== 1 ? 's' : ''} caught: ${destroyed} shattered outright, ${demoted} permanently reduced one experience level. (${_lines.join('; ')})`,
+      audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
+      province: prov.id,
+    });
     notifyTarget(
       turnContext,
       targetChar,
@@ -1171,9 +1224,10 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Illusory Terrain must target a province you are in or adjacent to.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Illusory Terrain must target a province you are in or adjacent to.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
@@ -1186,11 +1240,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       fake = kcRng() < 0.5 ? 'sea' : LANDS.filter((t) => t !== targetProv.terrain)[Math.floor(kcRng() * 3)];
     }
     targetProv._illusoryTerrain = { caster: c.player, fake, appliedTurn: G.turn };
-    log(
-      'explore',
-      `✨ ${c.name} cloaks ${targetProv.name} in shifting illusion — to enemy eyes the ground blurs and rearranges into ever-changing, confusing terrain. Any enemy who gives battle here is disoriented, each of their units fighting as though caught in the worst possible ground for its kind (at least −15% strength).`,
-      { actor: c.player, targets: [c.player], provinceId: targetProv.id },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} cloaks ${targetProv.name} in shifting illusion — to enemy eyes the ground blurs and rearranges into ever-changing, confusing terrain. Any enemy who gives battle here is disoriented, each of their units fighting as though caught in the worst possible ground for its kind (at least −15% strength).`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: targetProv.id,
+    });
   } else if (fn === 'illusory_phantasmal') {
     // Target: the caster themselves, or any friendly hero in the SAME province. No longer
     // requires the target to be leading armies at cast time — the buff sits on the character
@@ -1198,20 +1253,21 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     // recruit armies in a later phase this turn.
     const t = targetChar && targetChar.player === c.player ? targetChar : c;
     if (t.id !== c.id && t.location !== c.location) {
-      log('system', `${c.name}: Phantasmal Armies must target yourself or an allied hero in your province.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Phantasmal Armies must target yourself or an allied hero in your province.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     const _realForce = (t.armies || []).filter((a) => a && !a._phantom);
     const _elig = _realForce.filter((a) => !CREATURE_ARMIES.has(a.type) && !MONSTER_ARMIES.has(a.type));
     if (_elig.length === 0) {
-      log(
-        'system',
-        `${c.name}: ${t === c ? 'you have' : t.name + ' has'} no humanoid armies for Phantasmal Armies to duplicate.`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: ${t === c ? 'you have' : t.name + ' has'} no humanoid armies for Phantasmal Armies to duplicate.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     const _n = Math.min(_elig.length, Math.max(1, Math.floor(0.1 * Math.min(spellLevel, 5) * _realForce.length))); // 10% of the host per level, capped at level 5 (was 15%)
@@ -1228,15 +1284,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
           _phantomOf: orig._phTag,
         });
       }); // random selection
-    log(
-      'explore',
-      `✨ ${c.name} conjures phantasmal duplicates of ${_n} of ${t === c ? 'their' : t.name + "'s"} humanoid ${_n === 1 ? 'army' : 'armies'} — spectral doubles that march and fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,
-      {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: t.location,
-      } /* 2026-09-27 (Toby item 6): realm-private — never public */,
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} conjures phantasmal duplicates of ${_n} of ${t === c ? 'their' : t.name + "'s"} humanoid ${_n === 1 ? 'army' : 'armies'} — spectral doubles that march and fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,
+      audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
+      province: t.location,
+    });
   } else if (fn === 'illusory_hide_feature') {
     const casterProv = G.world.provinces[c.location];
     const adjIds = new Set(
@@ -1245,17 +1298,19 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Hide Lairs must target a province you are in or adjacent to.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Hide Lairs must target a province you are in or adjacent to.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     const toHide = (targetProv.features || []).filter((f) => !f._hidden);
     if (toHide.length === 0) {
-      log('system', `${c.name}: there are no lairs left to hide in ${targetProv.name}.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: there are no lairs left to hide in ${targetProv.name}.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
@@ -1263,11 +1318,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       f._hidden = true;
       f._hiddenBy = c.player;
     });
-    log(
-      'explore',
-      `✨ ${c.name} veils ${targetProv.name} in confounding illusion — every lair within (${toHide.length}) vanishes from all other explorers' sight, and none can be freshly discovered here until the glamour fades.`,
-      { actor: c.player, targets: [c.player], provinceId: targetProv.id },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} veils ${targetProv.name} in confounding illusion — every lair within (${toHide.length}) vanishes from all other explorers' sight, and none can be freshly discovered here until the glamour fades.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: targetProv.id,
+    });
   }
 
   // ── ELEMENTAL ──
@@ -1280,25 +1336,26 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Earthquake must target your province or one adjacent.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Earthquake must target your province or one adjacent.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (blessWardNegates(turnContext, targetProv, c, 'Earthquake')) return;
     targetProv._earthquakeNoTax = G.turn;
-    log(
-      'combat',
-      `✨ ${c.name} rends the earth beneath ${targetProv.name} — its fields and roads are ruined, and it will yield no tax at the end of this turn.`,
-      {
+    emit(turnContext, {
+      type: 'combat',
+      text: `✨ ${c.name} rends the earth beneath ${targetProv.name} — its fields and roads are ruined, and it will yield no tax at the end of this turn.`,
+      audience: {
         actor: c.player,
-        targets: targetProv.owner != null && targetProv.owner !== c.player ? [targetProv.owner] : [],
-        provinceId: targetProv.id,
-        public: true,
-        env: true,
+        realms: targetProv.owner != null && targetProv.owner !== c.player ? [targetProv.owner] : [],
+        seen: 'battle',
       },
-    );
+      province: targetProv.id,
+      env: true,
+    });
     notifyProvinceOwner(
       turnContext,
       targetProv,
@@ -1314,14 +1371,19 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Flood must target a land province you are in or adjacent to.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Flood must target a land province you are in or adjacent to.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetProv.terrain === 'sea') {
-      log('system', `${c.name}: Flood can only be cast on a land province.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Flood can only be cast on a land province.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     // Cancel Part Sea if present, then submerge the province for the rest of the turn.
@@ -1331,17 +1393,17 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     }
     targetProv._flood = { orig: targetProv.terrain, turn: G.turn };
     targetProv.terrain = 'sea';
-    log(
-      'combat',
-      `✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets and flyers may pass.`,
-      {
+    emit(turnContext, {
+      type: 'combat',
+      text: `✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets and flyers may pass.`,
+      audience: {
         actor: c.player,
-        targets: targetProv.owner != null && targetProv.owner !== c.player ? [targetProv.owner] : [],
-        provinceId: targetProv.id,
-        public: true,
-        env: true,
+        realms: targetProv.owner != null && targetProv.owner !== c.player ? [targetProv.owner] : [],
+        seen: 'battle',
       },
-    );
+      province: targetProv.id,
+      env: true,
+    });
     notifyProvinceOwner(
       turnContext,
       targetProv,
@@ -1351,7 +1413,11 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     );
   } else if (fn === 'elemental_summon') {
     if (c._elementalSummonedThisTurn) {
-      log('system', `${c.name} has already summoned an elemental this turn.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} has already summoned an elemental this turn.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     const ELEMENTALS = [
@@ -1378,7 +1444,7 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       'explore',
       `✨ ${c.name} tears open a rift in ${prov.name} and ${pick.unitName} — a ${pick.type} — surges forth to fight under your command! It will dissolve at the end of the turn.`,
       `✨ ${c.name}${realmTag(turnContext, c.player)} tears open a rift in ${prov.name} — ${pick.unitName}, a ${pick.type}, surges forth to fight under their banner.`,
-      { actor: c.player, provinceId: prov.id },
+      { audience: { actor: c.player }, province: prov.id },
     );
     resolveUnitGainInProvince(turnContext, c, prov, ph);
   }
@@ -1399,11 +1465,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       const graves = prov.battleGraves || [];
       if (graves.length === 0) {
         noteGraveIntel(G.players[c.player], prov.id, G.turn, []); // seen bare — forget any stale record
-        log(
-          'explore',
-          `✨ ${c.name}'s Control Undead searches ${prov.name} for the dead — but no fallen army units lie here to sense.`,
-          { actor: c.player, targets: [c.player], provinceId: prov.id },
-        );
+        emit(turnContext, {
+          type: 'explore',
+          text: `✨ ${c.name}'s Control Undead searches ${prov.name} for the dead — but no fallen army units lie here to sense.`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
+        });
       } else {
         const counts = {};
         graves.forEach((g) => {
@@ -1414,11 +1481,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
           .map(([k, nn]) => `${nn}× ${k}`)
           .join(', ');
         noteGraveIntel(G.players[c.player], prov.id, G.turn, graves); // the fuller reading is kept in Graveyards known
-        log(
-          'explore',
-          `💀 ${c.name}'s Control Undead senses the dead of ${prov.name}: ${list}. (${graves.length} grave${graves.length !== 1 ? 's' : ''} that could be raised as skeletal servants.)`,
-          { actor: c.player, targets: [c.player], provinceId: prov.id },
-        );
+        emit(turnContext, {
+          type: 'explore',
+          text: `💀 ${c.name}'s Control Undead senses the dead of ${prov.name}: ${list}. (${graves.length} grave${graves.length !== 1 ? 's' : ''} that could be raised as skeletal servants.)`,
+          audience: { actor: c.player, realms: [c.player] },
+          province: prov.id,
+        });
       }
       // THE SPELL REACHES PAST THE PROVINCE LINE. The caster also feels which of the
       // SURROUNDING provinces hold battlefield dead. That is all it gives: existence, never
@@ -1441,30 +1509,37 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
           } else noteGraveIntel(_pl, nb.id, G.turn, []);
         });
         if (_withDead.length > 0)
-          log(
-            'explore',
-            `💀 ${c.name}'s sending spreads out from ${prov.name} and the dead answer from beyond its borders — battlefield graves lie in ${_withDead.sort().join(', ')}. How many, and what they hold, only a caster standing on that ground could say.`,
-            { actor: c.player, targets: [c.player], provinceId: prov.id },
-          );
+          emit(turnContext, {
+            type: 'explore',
+            text: `💀 ${c.name}'s sending spreads out from ${prov.name} and the dead answer from beyond its borders — battlefield graves lie in ${_withDead.sort().join(', ')}. How many, and what they hold, only a caster standing on that ground could say.`,
+            audience: { actor: c.player, realms: [c.player] },
+            province: prov.id,
+          });
         else if (_nbrs.length > 0)
-          log(
-            'explore',
-            `✨ ${c.name}'s sending spreads out from ${prov.name}, but the lands around it are quiet — no battlefield dead lie in any neighbouring province.`,
-            { actor: c.player, targets: [c.player], provinceId: prov.id },
-          );
+          emit(turnContext, {
+            type: 'explore',
+            text: `✨ ${c.name}'s sending spreads out from ${prov.name}, but the lands around it are quiet — no battlefield dead lie in any neighbouring province.`,
+            audience: { actor: c.player, realms: [c.player] },
+            province: prov.id,
+          });
       }
       trySkillGain(turnContext, c, school, SKILLGAIN_STD);
       return;
     }
     if (!targetChar || targetChar.location !== c.location) {
-      log('system', `Control Undead: no valid target hero stands in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Control Undead: no valid target hero stands in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetChar.player === c.player) {
-      log('system', `Control Undead cannot be turned on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Control Undead cannot be turned on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     const undeadIdxs = (targetChar.armies || [])
@@ -1473,10 +1548,11 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         (x) => x.a._isSkeletal || x.a.race === 'Undead' || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type || ''),
       );
     if (undeadIdxs.length === 0) {
-      log('system', `${c.name}'s Control Undead finds no undead among ${targetChar.name}'s forces.`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Control Undead finds no undead among ${targetChar.name}'s forces.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
       });
       return;
     }
@@ -1489,7 +1565,7 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       'hire',
       `✨ ${c.name}'s Control Undead wrests the ${seized.unitName || seized.type} from ${targetChar.name} in ${prov.name} — it now marches under your banner!`,
       `✨ ${c.name}${realmTag(turnContext, c.player)}'s Control Undead wrests the ${seized.unitName || seized.type} from ${targetChar.name}${realmTag(turnContext, targetChar.player)} in ${prov.name} — it now marches under ${c.name}'s banner.`,
-      { actor: c.player, provinceId: prov.id, alsoNotFor: [targetChar.player] },
+      { audience: { actor: c.player }, province: prov.id, alsoNotFor: [targetChar.player] },
     );
     notifyTarget(
       turnContext,
@@ -1503,11 +1579,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     // Skeletal Armies: raise destroyed armies from this province's battlefield graves
     const graves = prov.battleGraves || [];
     if (graves.length === 0) {
-      log(
-        'explore',
-        `${c.name} calls out to the fallen in ${prov.name}, but there are no battlefield dead here to answer. Seek a province where armies have previously perished.`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `${c.name} calls out to the fallen in ${prov.name}, but there are no battlefield dead here to answer. Seek a province where armies have previously perished.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
       return;
     }
     // Units raised per cast scale with the caster's Necromancy (benefit scale, items count):
@@ -1527,32 +1604,42 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       };
       c.armies = c.armies || [];
       c.armies.push(skel);
-      log(
-        'explore',
-        `💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name} to serve! (Upkeep 1g/turn.)`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id, public: true },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name} to serve! (Upkeep 1g/turn.)`,
+        audience: { actor: c.player, realms: [c.player], seen: 'there' },
+        province: prov.id,
+      });
     }
     // the caster has just gained a unit here — if this is a neutral/enemy province, that
     // force must fight any defenders this phase, or take control if the land is undefended.
     resolveUnitGainInProvince(turnContext, c, prov, ph);
   } else if (fn === 'necromancy_curse') {
     if (!targetChar || targetChar.location !== c.location) {
-      log('system', `Curse: no valid target hero in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Curse: no valid target hero in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetChar.player === c.player) {
-      log('system', `Curse cannot be turned on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Curse cannot be turned on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     // EVERY skill the target has is halved (rounded down) for the rest of the turn — was the
     // single highest skill. A second Curse the same turn halves what is left again.
     const _cursed = Object.entries(targetChar.skills || {}).filter(([, v]) => v > 0);
     if (!_cursed.length) {
-      log('system', `${targetChar.name} has no skills to curse.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `${targetChar.name} has no skills to curse.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     targetChar._curses = targetChar._curses || {};
@@ -1562,16 +1649,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       targetChar._curses[sk] = (targetChar._curses[sk] || 0) + reduce;
       return `${SKILL_LABELS[sk] || sk} ${cur}→${Math.floor(cur / 2)}`;
     });
-    log(
-      'combat',
-      `✨ ${c.name}'s Curse settles over ${targetChar.name} — every skill is halved for the rest of the turn (${_parts.join(', ')})!`,
-      {
-        actor: c.player,
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
-        public: true,
-      },
-    );
+    emit(turnContext, {
+      type: 'combat',
+      text: `✨ ${c.name}'s Curse settles over ${targetChar.name} — every skill is halved for the rest of the turn (${_parts.join(', ')})!`,
+      audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
+      province: prov.id,
+    });
     notifyTarget(
       turnContext,
       targetChar,
@@ -1590,18 +1673,19 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Plague must target your province or one adjacent.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Plague must target your province or one adjacent.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetProv._plaguedTurn === G.turn) {
-      log(
-        'system',
-        `${targetProv.name} is already stricken with plague this turn — a second casting adds nothing (not cumulative).`,
-        { actor: c.player, targets: [c.player] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `${targetProv.name} is already stricken with plague this turn — a second casting adds nothing (not cumulative).`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     if (blessWardNegates(turnContext, targetProv, c, 'Plague')) return;
@@ -1609,17 +1693,17 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     targetProv._plagueLevel = spellLevelEff;
     targetProv._plagueCaster = c.player;
     const res = applyPlague(turnContext, targetProv, spellLevelEff, ph);
-    log(
-      'combat',
-      `☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested !== 1 ? 's' : ''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,
-      {
+    emit(turnContext, {
+      type: 'combat',
+      text: `☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested !== 1 ? 's' : ''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,
+      audience: {
         actor: c.player,
-        targets: targetProv.owner != null && targetProv.owner !== c.player ? [targetProv.owner] : [],
-        provinceId: targetProv.id,
-        public: true,
-        env: true,
+        realms: targetProv.owner != null && targetProv.owner !== c.player ? [targetProv.owner] : [],
+        seen: 'battle',
       },
-    );
+      province: targetProv.id,
+      env: true,
+    });
     notifyProvinceOwner(
       turnContext,
       targetProv,
@@ -1639,19 +1723,21 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Sanctuary must ward your province or one adjacent.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Sanctuary must ward your province or one adjacent.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     targetProv._sanctuaryTurn = G.turn;
     targetProv._sanctuaryBy = c.player;
-    log(
-      'explore',
-      `✨ ${c.name} raises a Sanctuary over ${targetProv.name} — hostile armies that give battle here fight at −25% strength this turn.`,
-      { actor: c.player, targets: [c.player], provinceId: targetProv.id, public: true },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} raises a Sanctuary over ${targetProv.name} — hostile armies that give battle here fight at −25% strength this turn.`,
+      audience: { actor: c.player, realms: [c.player], seen: 'there' },
+      province: targetProv.id,
+    });
     notifyProvinceOwner(
       turnContext,
       targetProv,
@@ -1661,14 +1747,19 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     ); // the owner is told
   } else if (fn === 'white_judgment') {
     if (!targetChar || targetChar.location !== c.location) {
-      log('system', `Divine Judgment: no valid enemy hero in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Divine Judgment: no valid enemy hero in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetChar.player === c.player) {
-      log('system', `Divine Judgment cannot be turned on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Divine Judgment cannot be turned on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     const dmg = 10 + spellLevelEff * 3;
@@ -1679,16 +1770,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       .slice(0, kills)
       .sort((a, b) => b - a);
     idxs.forEach((i) => src.splice(i, 1));
-    log(
-      'combat',
-      `⚡ ${c.name} calls down Divine Judgment on ${targetChar.name} — ${dmg} holy damage${kills > 0 ? `, and ${kills} of their unit${kills !== 1 ? 's' : ''} are smitten to ash` : ''}!`,
-      {
-        actor: c.player,
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
-        public: true,
-      },
-    );
+    emit(turnContext, {
+      type: 'combat',
+      text: `⚡ ${c.name} calls down Divine Judgment on ${targetChar.name} — ${dmg} holy damage${kills > 0 ? `, and ${kills} of their unit${kills !== 1 ? 's' : ''} are smitten to ash` : ''}!`,
+      audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
+      province: prov.id,
+    });
     notifyTarget(
       turnContext,
       targetChar,
@@ -1700,27 +1787,28 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
   // PSYCHIC
   else if (fn === 'psychic_massconfusion') {
     if (!targetChar || targetChar.location !== c.location) {
-      log('system', `Mass Confusion: no valid enemy hero in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Mass Confusion: no valid enemy hero in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetChar.player === c.player) {
-      log('system', `Mass Confusion cannot be turned on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Mass Confusion cannot be turned on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     targetChar._massConfusedTurn = G.turn;
-    log(
-      'combat',
-      `✨ ${c.name} sows Mass Confusion through ${targetChar.name}'s ranks — their commander's Tactical genius deserts them in their next battle this turn.`,
-      {
-        actor: c.player,
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
-        public: true,
-      },
-    );
+    emit(turnContext, {
+      type: 'combat',
+      text: `✨ ${c.name} sows Mass Confusion through ${targetChar.name}'s ranks — their commander's Tactical genius deserts them in their next battle this turn.`,
+      audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
+      province: prov.id,
+    });
     notifyTarget(
       turnContext,
       targetChar,
@@ -1730,23 +1818,29 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     );
   } else if (fn === 'psychic_dominate') {
     if (!targetChar || targetChar.location !== c.location) {
-      log('system', `Dominate: no valid enemy hero in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Dominate: no valid enemy hero in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetChar.player === c.player) {
-      log('system', `Dominate cannot be turned on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Dominate cannot be turned on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     const src = targetChar.armies || [];
     if (src.length === 0) {
-      log('combat', `✨ ${c.name}'s Dominate grips ${targetChar.name}, but they lead no troops to turn.`, {
-        actor: c.player,
-        charIds: [c.id, targetChar.id].filter((v) => v != null),
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'combat',
+        text: `✨ ${c.name}'s Dominate grips ${targetChar.name}, but they lead no troops to turn.`,
+        audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
+        heroes: [c.id, targetChar.id].filter((v) => v != null),
+        province: prov.id,
       });
       return;
     }
@@ -1761,7 +1855,7 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       'hire',
       `✨ ${c.name} Dominates ${targetChar.name} in ${prov.name} — ${seized.length} of their unit${seized.length !== 1 ? 's' : ''} turn coat and march under your banner!`,
       `✨ ${c.name}${realmTag(turnContext, c.player)} Dominates ${targetChar.name}${realmTag(turnContext, targetChar.player)} in ${prov.name} — ${seized.length} of their unit${seized.length !== 1 ? 's' : ''} turn coat and march under ${c.name}'s banner.`,
-      { actor: c.player, provinceId: prov.id, alsoNotFor: [targetChar.player] },
+      { audience: { actor: c.player }, province: prov.id, alsoNotFor: [targetChar.player] },
     );
     notifyTarget(
       turnContext,
@@ -1777,9 +1871,10 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     const _realForceH = (c.armies || []).filter((a) => a && !a._phantom);
     const _eligH = _realForceH.filter((a) => CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type));
     if (_eligH.length === 0) {
-      log('system', `${c.name}: you lead no monsters or creatures for Phantom Host to duplicate.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: you lead no monsters or creatures for Phantom Host to duplicate.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
@@ -1797,15 +1892,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
           _phantomOf: orig._phTag,
         });
       }); // random selection
-    log(
-      'explore',
-      `✨ ${c.name} conjures a Phantom Host — spectral doubles of ${_nH} of their ${_nH === 1 ? 'beast' : 'beasts'} that fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,
-      {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
-      } /* 2026-09-27 (Toby item 6): realm-private — never public */,
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} conjures a Phantom Host — spectral doubles of ${_nH} of their ${_nH === 1 ? 'beast' : 'beasts'} that fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,
+      audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
+      province: prov.id,
+    });
   } else if (fn === 'illusory_invisibility') {
     // Invisibility as an ACTION spell — self only. 80% to slip from all enemy sight for the
     // rest of this turn (report sightings, spy reports, Encounter targeting and the map all
@@ -1814,61 +1906,67 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     if (_ivRoll <= 80) {
       c._invisTurn = G.turn;
       c._unspottedTurn = G.turn;
-      log(
-        'explore',
-        `✨ ${c.name} weaves Invisibility about themself — no enemy eye will find them for the rest of this turn. ${fmtRoll(80, _ivRoll)}`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `✨ ${c.name} weaves Invisibility about themself — no enemy eye will find them for the rest of this turn. ${fmtRoll(80, _ivRoll)}`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
     } else
-      log(
-        'explore',
-        `✨ ${c.name}'s Invisibility shimmers and fails to hold — they remain in plain sight. ${fmtRoll(80, _ivRoll)}`,
-        { actor: c.player, targets: [c.player], provinceId: prov.id },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `✨ ${c.name}'s Invisibility shimmers and fails to hold — they remain in plain sight. ${fmtRoll(80, _ivRoll)}`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+      });
   } else if (fn === 'illusory_veil') {
     c._veilTurn = G.turn;
     c._veilCastPhase = ph; // ILLUSORY L9 Veil: active THIS phase and the next (two phases)
-    log(
-      'explore',
-      `✨ ${c.name} draws a Veil of illusion over their host — for this phase and the next, they and the armies they lead vanish from all enemy sight, cannot be touched by hostile magic, and cannot be brought to battle. The illusion parts as the phase after next begins.`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} draws a Veil of illusion over their host — for this phase and the next, they and the armies they lead vanish from all enemy sight, cannot be touched by hostile magic, and cannot be brought to battle. The illusion parts as the phase after next begins.`,
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
   }
   // ELEMENTAL
   else if (fn === 'elemental_chainlightning') {
     if (!targetChar || targetChar.location !== c.location) {
-      log('system', `Chain Lightning: no valid enemy hero in ${prov.name} this phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `Chain Lightning: no valid enemy hero in ${prov.name} this phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
     if (targetChar.player === c.player) {
-      log('system', `Chain Lightning cannot be turned on your own heroes.`, { actor: c.player, targets: [c.player] });
+      emit(turnContext, {
+        type: 'system',
+        text: `Chain Lightning cannot be turned on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+      });
       return;
     }
     const src = targetChar.armies || [];
     if (src.length === 0) {
-      log('combat', `✨ Chain Lightning crackles around ${targetChar.name}, but they lead no troops to strike.`, {
-        actor: c.player,
-        charIds: [c.id, targetChar.id].filter((v) => v != null),
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'combat',
+        text: `✨ Chain Lightning crackles around ${targetChar.name}, but they lead no troops to strike.`,
+        audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
+        heroes: [c.id, targetChar.id].filter((v) => v != null),
+        province: prov.id,
       });
       return;
     }
     const pool = Math.floor(src.length * 0.3);
     if (pool <= 0) {
-      log(
-        'combat',
-        `⚡ ${c.name}'s Chain Lightning crackles around ${targetChar.name}'s handful of troops but earths out without a kill.`,
-        {
-          actor: c.player,
-          charIds: [c.id, targetChar.id].filter((v) => v != null),
-          targets: [c.player, targetChar.player].filter((x) => x != null),
-          provinceId: prov.id,
-        },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `⚡ ${c.name}'s Chain Lightning crackles around ${targetChar.name}'s handful of troops but earths out without a kill.`,
+        audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
+        heroes: [c.id, targetChar.id].filter((v) => v != null),
+        province: prov.id,
+      });
       return;
     }
     const idxs = shuffleP(src.map((_, i) => i))
@@ -1881,16 +1979,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         killed++;
       }
     });
-    log(
-      'combat',
-      `⚡ ${c.name}'s Chain Lightning arcs through ${targetChar.name}'s ranks — of ${pool} unit${pool !== 1 ? 's' : ''} caught in the arc, ${killed} ${killed === 1 ? 'is' : 'are'} blasted apart!`,
-      {
-        actor: c.player,
-        targets: [c.player, targetChar.player].filter((x) => x != null),
-        provinceId: prov.id,
-        public: true,
-      },
-    );
+    emit(turnContext, {
+      type: 'combat',
+      text: `⚡ ${c.name}'s Chain Lightning arcs through ${targetChar.name}'s ranks — of ${pool} unit${pool !== 1 ? 's' : ''} caught in the arc, ${killed} ${killed === 1 ? 'is' : 'are'} blasted apart!`,
+      audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
+      province: prov.id,
+    });
     notifyTarget(
       turnContext,
       targetChar,
@@ -1906,9 +2000,10 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         .filter((x) => x != null),
     );
     if (targetProv.id !== c.location && !adjIds.has(targetProv.id)) {
-      log('system', `${c.name}: Cataclysm must target your province or one adjacent.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: Cataclysm must target your province or one adjacent.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
       return;
     }
@@ -1931,11 +2026,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
         if (ch.player != null) _ccVictims.add(ch.player);
       });
     if (targetProv.owner != null && targetProv.owner !== c.player) _ccVictims.add(targetProv.owner);
-    log(
-      'combat',
-      `☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed !== 1 ? 's' : ''} destroyed, and the land is left permanently barren (tax base reduced to 0 for good).`,
-      { actor: c.player, targets: [..._ccVictims], provinceId: targetProv.id, public: true },
-    );
+    emit(turnContext, {
+      type: 'combat',
+      text: `☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed !== 1 ? 's' : ''} destroyed, and the land is left permanently barren (tax base reduced to 0 for good).`,
+      audience: { actor: c.player, realms: [..._ccVictims], seen: 'battle' },
+      province: targetProv.id,
+    });
     notifyProvinceOwner(
       turnContext,
       targetProv,
@@ -1948,10 +2044,11 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
   else if (fn === 'necromancy_wraiths') {
     const graves = prov.battleGraves || [];
     if (graves.length === 0) {
-      log('explore', `${c.name}'s call for Wraiths finds no battlefield dead in ${prov.name} to answer.`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'explore',
+        text: `${c.name}'s call for Wraiths finds no battlefield dead in ${prov.name} to answer.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
       });
       return;
     }
@@ -1980,16 +2077,17 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       'explore',
       `💀 ${c.name} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead at your side! (Upkeep 1g/turn.)`,
       `💀 ${c.name}${realmTag(turnContext, c.player)} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead now march at their side.`,
-      { actor: c.player, provinceId: prov.id },
+      { audience: { actor: c.player }, province: prov.id },
     );
     resolveUnitGainInProvince(turnContext, c, prov, ph);
   } else if (fn === 'necromancy_dominion') {
     const graves = prov.battleGraves || [];
     if (graves.length === 0) {
-      log('explore', `${c.name}'s Death's Dominion finds no fallen army in ${prov.name} to raise.`, {
-        actor: c.player,
-        targets: [c.player],
-        provinceId: prov.id,
+      emit(turnContext, {
+        type: 'explore',
+        text: `${c.name}'s Death's Dominion finds no fallen army in ${prov.name} to raise.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
       });
       return;
     }
@@ -2015,11 +2113,12 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       });
       raised++;
     }
-    log(
-      'explore',
-      `💀 ${c.name} unleashes Death's Dominion over ${prov.name} — ${raised} skeletal unit${raised !== 1 ? 's' : ''} claw up from the graves to serve!`,
-      { actor: c.player, targets: [c.player], provinceId: prov.id, public: true },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `💀 ${c.name} unleashes Death's Dominion over ${prov.name} — ${raised} skeletal unit${raised !== 1 ? 's' : ''} claw up from the graves to serve!`,
+      audience: { actor: c.player, realms: [c.player], seen: 'there' },
+      province: prov.id,
+    });
     resolveUnitGainInProvince(turnContext, c, prov, ph);
   }
 

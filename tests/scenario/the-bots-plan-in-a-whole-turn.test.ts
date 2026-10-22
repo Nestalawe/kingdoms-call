@@ -1,5 +1,5 @@
 // The bots' plan in a whole turn (plan P1-08l2, lifted out of resolveTurn): the eight passes in which the bot realms
-// decide their turn, in order, with what each is handed (the turn's world, the bot realms, the log, the muster's and
+// decide their turn, in order, with what each is handed (the turn's world, the bot realms, the context, the muster's and
 // the Spring orders' words, the realms' Reckoning calls), the movement pass's two hooks (the duel forecast for its
 // hunters and each company's strength on each terrain), the forecast as the movement pass is handed it, what the passes
 // do in game terms (a landless bot concedes, a bot's heroes are given orders, a dominant bot king calls the Reckoning),

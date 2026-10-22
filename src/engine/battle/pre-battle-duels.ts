@@ -6,8 +6,8 @@ import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-enco
 import { resolveDuel } from '../personal-combat/duels-and-character-encounters.ts';
 import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
-import type { LogMeta, TurnContext } from '../turn/context.ts';
-import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { EventButItsWords, NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import { narrate, narrateTo } from '../turn/events-and-their-audiences.ts';
 
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
@@ -113,7 +113,7 @@ export function preBattleDuel(
     // was logged at once, so it came before the whole battle report.
     const _dOpts: {
       keepArmies: boolean;
-      lines: { type: string; text: string; meta?: LogMeta; priv?: number | null }[];
+      lines: { type: string; text: string; place?: EventButItsWords; priv?: number | null }[];
       outcome?: string;
     } = { keepArmies: true, lines: [] };
     const _duelDied = handleHeroDeath(turnContext, realLoser, realWinner, _dOpts);

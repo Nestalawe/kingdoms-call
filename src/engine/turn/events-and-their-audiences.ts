@@ -101,6 +101,11 @@ export type NarrativeLine =
  *  heroes and battle. emitNarrLine files each line of the fight's narrative with it. */
 export type FightLine = Omit<TurnEvent, 'text'>;
 
+/** An event but its type and text: who may read a line, where and when, whom it is about. A caller that files several
+ *  lines alike, or hands a helper the line's place (logSplit, reportHeroFall, the skill rises held back), builds it
+ *  once: emit(turnContext, { type, text, ...place }). */
+export type EventButItsWords = Omit<TurnEvent, 'type' | 'text'>;
+
 /** Files an event in the GM's log of the turn: the one way a line enters it. */
 export function emit(turnContext: TurnContext, event: TurnEvent): void {
   const { audience } = event;
@@ -279,17 +284,20 @@ export function logSplit(
   type: string,
   privText: string,
   pubText: string,
-  meta: LogMeta & { alsoNotFor?: (number | null)[] | undefined } = {},
+  place: EventButItsWords & { alsoNotFor?: (number | null)[] | undefined },
 ): void {
-  const actor = meta.actor ?? null;
-  emit(
-    turnContext,
-    eventOfALogCall(type, privText, {
-      ...meta,
-      public: false,
-      targets: meta.targets?.length ? meta.targets : [actor].filter((x) => x != null),
-    }),
-  );
+  const { alsoNotFor, ...line } = place;
+  const actor = line.audience.actor ?? null;
+  // The private half: told to the realms named, else to the actor's own; seen by nobody else.
+  emit(turnContext, {
+    ...line,
+    type,
+    text: privText,
+    audience: {
+      realms: line.audience.realms?.length ? line.audience.realms : [actor].filter((x) => x != null),
+      actor: line.audience.actor,
+    },
+  });
   // The public half: no hero (a real null, not the hero whose order is resolving), in the bare form.
   emit(turnContext, {
     type,
@@ -298,11 +306,11 @@ export function logSplit(
       actor: null,
       realms: [],
       seen: 'there',
-      except: [actor].concat(meta.alsoNotFor ?? []).filter((x) => x != null),
+      except: [actor].concat(alsoNotFor ?? []).filter((x) => x != null),
     },
-    province: meta.provinceId,
+    province: line.province,
     hero: 'none',
-    phase: meta.phase,
+    phase: line.phase,
     form: 'bare',
   });
 }
@@ -345,17 +353,15 @@ export function writeDeferredSkillLines(
   inPlace?: boolean,
 ): void {
   const { turnLog } = turnContext;
-  const blocks = new Map<string, { p: number; ph: number | null | undefined; ents: LogLine[] }>();
-  (list ?? []).forEach(([msg, meta]) => {
-    const m = { ...meta };
-    const p = m.afterBattleIn;
-    delete m.afterBattleIn;
-    emit(turnContext, eventOfALogCall('system', msg, m));
+  const blocks = new Map<string, { p: number; ph: TurnEvent['phase']; ents: LogLine[] }>();
+  (list ?? []).forEach(([msg, place]) => {
+    const { afterBattleIn: p, ...line } = place;
+    emit(turnContext, { ...line, type: 'system', text: msg });
     if (p == null || inPlace) return;
-    const k = String(p) + '|' + String(m.phase);
+    const k = String(p) + '|' + String(line.phase);
     let block = blocks.get(k);
     if (!block) {
-      block = { p, ph: m.phase, ents: [] };
+      block = { p, ph: line.phase, ents: [] };
       blocks.set(k, block);
     }
     const held = turnLog.pop();
