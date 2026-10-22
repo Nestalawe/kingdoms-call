@@ -22,7 +22,8 @@
     "ratchet": "tsx tools/ratchet.ts",
     "balance": "tsx tools/balance/run.ts",
     "balance:update": "tsx tools/balance/run.ts --update",
-    "balance:report": "tsx tools/balance/report-run.ts"
+    "balance:report": "tsx tools/balance/report-run.ts",
+    "mutants": "tsx tools/mutants/run.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

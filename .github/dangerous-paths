@@ -26,7 +26,8 @@ package-lock.json
 
 # The test harness: the Claude Code hooks and settings, the tool settings, the Node pin, the test run's own
 # checks, the ratchet, the harness's self-test (P1-01b), the balance matrix's code (P1-02) and the script that
-# posts its report (P1-03a), and the build that makes the site every test opens (P1-05). Loosening any of
+# posts its report (P1-03a), the build that makes the site every test opens (P1-05), and the mutant scorer, which
+# measures the tests (P1-21a). Loosening any of
 # them should be seen. The balance baselines (tests/balance/baseline/) aren't listed: CI's balance job checks
 # them, so a pull request that changes play isn't flagged for its data.
 .claude/**
@@ -51,6 +52,7 @@ tests/ratchet.json
 tests/static/harness.test.ts
 tests/balance/*.ts
 tools/balance/**
+tools/mutants/**
 tools/github/**
 tools/hooks/**
 tools/check.*

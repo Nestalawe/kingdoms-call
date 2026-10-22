@@ -1581,6 +1581,38 @@ describe('the nightly run', () => {
   });
 });
 
+// The mutant scorer (tools/mutants/run.ts, P1-21a) measures the tests, so a change to it is talked through with Theo;
+// and its run is local only: no workflow runs it (it stops when CI is set, too).
+describe('the mutant scorer', () => {
+  const scorerFiles = ['tools/mutants/run.ts', 'tools/mutants/a-helper-added-later.ts'];
+  const undangerous = (listText: string) =>
+    scorerFiles.filter((f) => !dangerous.isDangerous(f, dangerous.parsePaths(listText) as string[]));
+  const workflowsThatScoreMutants = (texts: { f: string; text: string }[]) =>
+    texts.filter(({ text }) => /\bnpm run(?:-script)? mutants\b|\btools\/mutants\b/.test(text)).map(({ f }) => f);
+
+  test('it is a dangerous path (planted: its line gone from the list)', () => {
+    const list = read('.github/dangerous-paths');
+    expect(undangerous(list)).toEqual([]);
+    const without = list.replace(/^tools\/mutants\/\*\*\n/m, '');
+    expect(without).not.toBe(list);
+    expect(undangerous(without)).toEqual(scorerFiles);
+  });
+
+  test('no workflow runs it (planted: a step running npm run mutants, one naming tools/mutants)', () => {
+    const workflows = fs
+      .readdirSync(path.join(ROOT, '.github', 'workflows'))
+      .filter((f) => f.endsWith('.yml'))
+      .map((f) => ({ f, text: read(`.github/workflows/${f}`) }));
+    expect(workflows.map(({ f }) => f)).toContain('nightly.yml');
+    expect(workflowsThatScoreMutants(workflows)).toEqual([]);
+    const nightly = read('.github/workflows/nightly.yml');
+    const step = (run: string) => nightly.replace(/^( +)- run: npm run test:full.*$/m, `$&\n$1- run: ${run}`);
+    expect(step('npm run mutants -- /tmp/mutants')).not.toBe(nightly);
+    for (const run of ['npm run mutants -- /tmp/mutants', 'npx tsx tools/mutants/run.ts /tmp/mutants'])
+      expect(workflowsThatScoreMutants([{ f: 'nightly.yml', text: step(run) }]), run).toEqual(['nightly.yml']);
+  });
+});
+
 describe('dangerous paths', () => {
   test('every harness file gets the warning', () => {
     const globs = dangerous.parsePaths(read('.github/dangerous-paths')) as string[];
