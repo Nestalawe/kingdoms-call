@@ -38,7 +38,8 @@ export const ENGINE_PATHS: readonly string[] = [
   'tsconfig.json',
   // Which files make the GM page: the runner checks each is an engine path (run.ts's pageSources).
   'tools/pages.ts',
-  // The matrix itself, its baselines, the named scenarios, and the test helpers they boot the page with.
+  // The matrix itself, its baselines, the named scenarios, the test helpers they boot the page with, and those that
+  // load the engine in its vm for every realm's report (P1-12a1).
   'tools/balance/**',
   'tests/balance/**',
   'tests/lib/boot.js',
@@ -46,6 +47,10 @@ export const ENGINE_PATHS: readonly string[] = [
   'tests/lib/scenario.js',
   'tests/lib/invariants.ts',
   'tests/lib/report-leaks.ts',
+  'tests/lib/engine.ts',
+  'tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts',
+  'tests/lib/scenario-in-the-vm.ts',
+  'tests/lib/matrix-game.ts',
   // The tools it runs on: a jsdom or Node bump can change the games, so a Dependabot PR plays them (Theo, 2026-10-16).
   'package-lock.json',
   '.nvmrc',

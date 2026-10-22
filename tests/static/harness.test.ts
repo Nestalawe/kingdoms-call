@@ -1013,7 +1013,8 @@ describe('CI', () => {
   // The plan's list (P1-02, Decisions; P1-05; P1-09's Decision 17): the files the GM portal's page is built from (its
   // template, stylesheet and modules: tools/pages.ts), the other pages' templates (src/*.html), what is copied as it is
   // (public/), the build and its page list, the balance code and its baselines, the test helpers the balance code
-  // imports, and the tools it runs on (the locked packages, the Node pin).
+  // imports, and those they import in turn (P1-12a1: the every-realm half loads the engine through tests/lib/), and the
+  // tools it runs on (the locked packages, the Node pin).
   test(
     'the engine paths are the ones the plan lists, and the runner uses the same list',
     timeLimitForTheWork({ everyFileReads: 1 }),
@@ -1030,12 +1031,21 @@ describe('CI', () => {
         [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates])].sort(),
       );
       const dir = path.join(ROOT, 'tools', 'balance');
-      const helpers = fs
+      const direct = fs
         .readdirSync(dir)
         .flatMap((f) => [
           ...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '\.\.\/\.\.\/(tests\/lib\/[^']+)'/g),
         ])
         .map((m) => m[1] ?? '');
+      // and what those import from tests/lib/ in turn (`from './x.ts'`, `require('./x')`), to the end
+      const helpers = new Set(direct);
+      for (const helper of helpers)
+        for (const m of read(helper).matchAll(/(?: from |require\()'\.\/([^']+)'/g)) {
+          const name = path.posix.join('tests/lib', m[1] ?? '');
+          const file = [name, name + '.js', name + '.ts'].find((f) => fs.existsSync(path.join(ROOT, f)));
+          if (file) helpers.add(file);
+        }
+      expect(helpers).toContain('tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts');
       expect(ENGINE_PATHS.filter((g) => !g.startsWith('src/') || g === 'src/*.html').sort()).toEqual(
         [
           ...new Set([
