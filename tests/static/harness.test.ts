@@ -379,12 +379,13 @@ describe('the lint rules', () => {
     },
   );
 
-  // kc/narrative-lines-go-through-emit (plan P1-12, Decision 6): every line of the turn enters the GM's log through emit,
-  // in the events file. It runs on every file of the engine and the views but the events file: in full in the folders
-  // P1-12a's rows have converted (eslint.config.js's LINES_THROUGH_EMIT: turn/ and the views), elsewhere refusing only a
-  // write to the GM's log; and nowhere else. A planted line of each kind is refused exactly there.
+  // kc/narrative-lines-go-through-emit (plan P1-12, Decision 6): every line of the turn enters the GM's log through
+  // emit, in the events file. It runs on every file of the engine and the views but the events file: in full in the
+  // folders P1-12a's rows have converted (eslint.config.js's LINES_THROUGH_EMIT: turn/, the views, battle/ and
+  // personal-combat/), elsewhere refusing only a write to the GM's log; and nowhere else. A planted line of each kind is
+  // refused exactly there.
   const EVENTS_FILE = 'src/engine/turn/events-and-their-audiences.ts';
-  const LINES_THROUGH_EMIT = /^src\/(engine\/turn|views)\//;
+  const LINES_THROUGH_EMIT = /^src\/(engine\/(turn|battle|personal-combat)|views)\//;
   test(
     "the rule that lines go through emit runs in the engine and the views, in full where they're converted",
     timeLimitForTheWork({ toolRuns: 1 }),
@@ -423,7 +424,9 @@ describe('the lint rules', () => {
       };
       expect(await refused('src/engine/turn/planted-here.ts')).toEqual([2, 3, 4, 5]);
       expect(await refused('src/views/planted-here.ts')).toEqual([2, 3, 4, 5]);
-      expect(await refused('src/engine/battle/planted-here.ts')).toEqual([2]);
+      expect(await refused('src/engine/battle/planted-here.ts')).toEqual([2, 3, 4, 5]);
+      expect(await refused('src/engine/personal-combat/planted-here.ts')).toEqual([2, 3, 4, 5]);
+      expect(await refused('src/engine/orders/planted-here.ts')).toEqual([2]);
       expect(await refused('src/engine/planted-here.ts')).toEqual([2]);
       expect(await refused(EVENTS_FILE)).toEqual([]);
       expect(await refused('src/ui/gm/planted-here.ts')).toEqual([]);
