@@ -1,8 +1,9 @@
 // The staging deploy's logic (P0-13), run by .github/workflows/staging.yml.
 //   node .github/scripts/staging.js config            writes the staging kc-config.js to stdout, saying which
 //                                                     pull request and commit it is (PR_NUMBER, PR_SHA)
-//   node .github/scripts/staging.js comment <prev>    posts "on staging" on this PR, and marks the PR that
-//                                                     was on staging before (<prev>, may be empty) as replaced
+//   node .github/scripts/staging.js comment <prev>    posts "on staging" on this PR (naming its last commit,
+//                                                     PR_SHA, and the commit built, BUILT_SHA), and marks the PR
+//                                                     that was on staging before (<prev>, may be empty) as replaced
 // configFile(), onStagingBody() and replacedBody() are pure, and signUpTestAccounts() takes its fetch as an
 // argument; all are unit-tested in tests/staging.test.js. migrations.js (`reset staging`) signs the test
 // accounts up after rebuilding the staging database.
@@ -35,9 +36,15 @@ const KC_CONFIG=Object.freeze({
 `;
 }
 
-function onStagingBody({pr,sha,site=SITE}){
-  return `${MARKER}\n🧪 **On staging:** this pull request (commit \`${String(sha).slice(0,7)}\`) is live on ${site}, `
-    +`talking to the staging database (no real players), rebuilt for it: \`main\`'s migrations, then this pull `
+// sha: the pull request's last commit, which each page's staging line names ("Staging · PR #21 · abcdef1"). built:
+// the commit the build job built, GitHub's test merge of the pull request into its base (staging.yml runs on
+// pull_request), which the build line of the GM portal, the player portal, the Hall of Fame and the Overlord page names.
+function onStagingBody({pr,sha,built,site=SITE}){
+  const short=c=>`\`${String(c).slice(0,7)}\``;
+  return `${MARKER}\n🧪 **On staging:** this pull request (commit ${short(sha)}) is live on ${site}, `
+    +`built as GitHub's merge of it into its base branch, commit ${short(built)}: each page's staging line names `
+    +`${short(sha)}, and the build line names ${short(built)}. It talks `
+    +`to the staging database (no real players), rebuilt for it: \`main\`'s migrations, then this pull `
     +`request's own, with made-up games and the test accounts. Only one pull request is on staging at a time; `
     +`this comment changes if another one replaces it (and staging's games and accounts start afresh).`;
 }
@@ -97,9 +104,9 @@ async function upsert(root,token,number,body){
 
 // ── Staging publishes only a commit CI has passed ──────────────────────────────────────────────
 // The staging job doesn't run the tests itself (CI's ci and db jobs already run them on the same commit, at the
-// same time); it waits for their verdict. ciVerdict reads the commit's check runs: 'wait' until both have
-// started and finished, 'go' when they passed (a skipped job counts as passed), 'fail' otherwise. The newest
-// run of each job decides, so a re-run counts.
+// same time); it waits for their verdict. ciVerdict reads the jobs of CI's newest run on the commit
+// (newestRunsJobs): 'wait' until both have started and finished, 'go' when they passed (a skipped job counts as
+// passed), 'fail' otherwise. The newest of each job decides, so a re-run counts.
 const CI_JOBS=['ci','db'];
 function ciVerdict(checkRuns){
   const latest={};
@@ -110,6 +117,18 @@ function ciVerdict(checkRuns){
   const bad=CI_JOBS.find(n=>latest[n]&&!['success','skipped','neutral'].includes(latest[n].conclusion));
   if(bad) return {state:'fail',why:`CI's ${bad} job ended "${latest[bad].conclusion}" on this commit, so nothing goes on staging`};
   return {state:'go',why:'CI passed on this commit'};
+}
+// The jobs of CI's newest run on the commit (the highest run id), or none before CI has started. CI keeps one run
+// per pull request (ci.yml's concurrency group): a new event on the pull request, such as a label added (the
+// "staging" label too), cancels the run still going, whose ci job then fails. Read across every run on the commit,
+// that failed ci would be the newest job named ci until the newer run's own ci starts, minutes later, and staging
+// would stop on it; so only the newest run counts. A re-run keeps its run's id: jobsOf gives its newest attempt's jobs.
+/** @typedef {{id:number,name:string,status:string,conclusion:string|null}} Job */
+/** @param {{runs:Array<{id:number}>|undefined,jobsOf:(id:number)=>Promise<Job[]>}} arg @returns {Promise<Job[]>} */
+async function newestRunsJobs({runs,jobsOf}){
+  let newest=null;
+  for(const r of runs||[]) if(r&&(!newest||r.id>newest.id)) newest=r;
+  return newest?jobsOf(newest.id):[];
 }
 // Polls ciVerdict until CI has passed (returns), failed (throws), or the time limit runs out (throws).
 async function waitForCi({fetchRuns,sleep=ms=>new Promise(r=>setTimeout(r,ms)),now=Date.now,timeoutMs=20*60*1000,everyMs=15000,log=console.log}){
@@ -132,9 +151,10 @@ async function main(){
     return;
   }
   if(cmd==='comment'){
-    const {GITHUB_TOKEN:token,GITHUB_REPOSITORY:repo,PR_NUMBER:pr,PR_SHA:sha}=process.env;
+    const {GITHUB_TOKEN:token,GITHUB_REPOSITORY:repo,PR_NUMBER:pr,PR_SHA:sha,BUILT_SHA:built}=process.env;
+    for(const [name,c] of [['PR_SHA',sha],['BUILT_SHA',built]]) if(!/^[0-9a-f]{40}$/.test(String(c||''))) throw new Error(`comment needs ${name}, a full commit id`);
     const root=`${process.env.GITHUB_API_URL||'https://api.github.com'}/repos/${repo}`;
-    await upsert(root,token,pr,onStagingBody({pr,sha}));
+    await upsert(root,token,pr,onStagingBody({pr,sha,built}));
     if(prev&&String(prev)!==String(pr)) await upsert(root,token,prev,replacedBody({by:pr}));
     return;
   }
@@ -142,7 +162,10 @@ async function main(){
     const {GITHUB_TOKEN:token,GITHUB_REPOSITORY:repo,PR_SHA:sha}=process.env;
     if(!/^[0-9a-f]{40}$/.test(String(sha||''))) throw new Error('wait-ci needs PR_SHA, the commit\'s full hash');
     const root=`${process.env.GITHUB_API_URL||'https://api.github.com'}/repos/${repo}`;
-    await waitForCi({fetchRuns:async()=>(await api(`${root}/commits/${sha}/check-runs?per_page=100`,token)).check_runs});
+    await waitForCi({fetchRuns:async()=>newestRunsJobs({
+      runs:(await api(`${root}/actions/workflows/ci.yml/runs?head_sha=${sha}&event=pull_request&per_page=100`,token)).workflow_runs,
+      jobsOf:async id=>(await api(`${root}/actions/runs/${id}/jobs?per_page=100`,token)).jobs,
+    })});
     return;
   }
   throw new Error('usage: staging.js config | comment <previous-pr> | wait-ci');
@@ -150,4 +173,4 @@ async function main(){
 
 if(require.main===module) main().catch(e=>{ console.error(`::error title=staging::${e.message}`); process.exitCode=1; });
 
-module.exports={MARKER,SITE,LIVE_REF,TEST_ACCOUNTS,stagingRef,configFile,onStagingBody,replacedBody,signUpTestAccounts,ciVerdict,waitForCi};
+module.exports={MARKER,SITE,LIVE_REF,TEST_ACCOUNTS,stagingRef,configFile,onStagingBody,replacedBody,signUpTestAccounts,ciVerdict,newestRunsJobs,waitForCi};

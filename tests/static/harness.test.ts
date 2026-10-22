@@ -826,6 +826,48 @@ describe('CI', () => {
     expect(ci).toMatch(/^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, labeled, unlabeled\]\n/m);
   });
 
+  // One run per pull request (#181 had two on one commit, from `opened` and `labeled`, and `gh pr checks` showed only
+  // one): a new event on a pull request cancels its run still going. deploy.yml calls this workflow before it
+  // publishes; that run has no pull request, so its group is its own run's id, which no other run shares: it is never
+  // cancelled, never queued behind another run and never replaced while it waits. Deploy's own group ("pages") orders
+  // the deploys. No job sets a group of its own, which would apply inside Deploy's run too.
+  const ONE_RUN_PER_PULL_REQUEST =
+    "${{ github.event_name == 'pull_request' && format('ci-pull-request-{0}', github.event.pull_request.number) || format('ci-run-{0}', github.run_id) }}";
+  function concurrencyProblems(text: string): string[] {
+    const [head = '', body = ''] = text.replace(/^\s*#.*$/gm, '').split(/^jobs:\n/m);
+    const problems: string[] = [];
+    const block = /^concurrency:\n((?: {2}.+\n)+)/m.exec(head)?.[1];
+    if (block === undefined) problems.push('no concurrency group: each event on a pull request starts another run');
+    const group = /^ {2}group: (.+)$/m.exec(block ?? '')?.[1];
+    if (block !== undefined && group !== ONE_RUN_PER_PULL_REQUEST) {
+      problems.push(`the group is not the pull request's number, or a run's own id: ${String(group)}`);
+    }
+    const cancel = /^ {2}cancel-in-progress: (.+)$/m.exec(block ?? '')?.[1];
+    if (block !== undefined && cancel !== "${{ github.event_name == 'pull_request' }}") {
+      problems.push(`cancel-in-progress is not for pull requests alone: ${String(cancel)}`);
+    }
+    if (/^ {4}concurrency:/m.test(body)) problems.push('a job sets a concurrency group of its own');
+    return problems;
+  }
+  test("a pull request has one CI run at a time, and deploy.yml's run is never cancelled", () => {
+    expect(concurrencyProblems(ci)).toEqual([]);
+    // Planted copies: without the group; cancelling every run (Deploy's too); one group for every run on a branch (two
+    // deploys in a row would share it, and the second would replace the first while it waits); a job's own group.
+    const without = ci.replace(/^concurrency:\n(?: {2}.+\n)+/m, '');
+    expect(without).not.toBe(ci);
+    expect(concurrencyProblems(without)).toEqual([
+      'no concurrency group: each event on a pull request starts another run',
+    ]);
+    const always = ci.replace(/^( {2}cancel-in-progress: ).+$/m, '$1true');
+    expect(concurrencyProblems(always)).toEqual(['cancel-in-progress is not for pull requests alone: true']);
+    const perBranch = ci.replace(/^( {2}group: ).+$/m, '$1ci-${{ github.ref }}');
+    expect(concurrencyProblems(perBranch)).toEqual([
+      "the group is not the pull request's number, or a run's own id: ci-${{ github.ref }}",
+    ]);
+    const perJob = ci.replace(/^( {2}static:\n)/m, '$1    concurrency: static\n');
+    expect(concurrencyProblems(perJob)).toEqual(['a job sets a concurrency group of its own']);
+  });
+
   test('the balance job decides first, in plain Node, and plays the matrix only when an engine path changed', () => {
     const job = jobs.get('balance') ?? '';
     expect(runs('balance')).toEqual([
@@ -865,14 +907,15 @@ describe('CI', () => {
       /^on:\n {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]\n {2}pull_request:\n {4}types: \[edited\]\n/m,
     );
     expect(wf).toMatch(/^permissions: \{\}$/m);
-    // Checkouts: the default branch (no ref) or the pull request's base commit, only the script and the Node pin.
+    // Checkouts: the default branch (no ref) or the pull request's base commit, only the script, its package.json (which
+    // says it is a module) and the Node pin.
     expect([...wf.matchAll(/^ +ref: (.+)$/gm)].map((m) => m[1])).toEqual(['${{ github.event.pull_request.base.sha }}']);
     const sparse = [...wf.matchAll(/sparse-checkout: \|\n((?: {12}.+\n)+)/g)].map((m) =>
       (m[1] ?? '').trim().split(/\s+/),
     );
     expect(sparse).toEqual([
-      ['.nvmrc', 'tools/github/balance-comment.ts'],
-      ['.nvmrc', 'tools/github/balance-comment.ts'],
+      ['.nvmrc', 'tools/github/balance-comment.ts', 'tools/github/package.json'],
+      ['.nvmrc', 'tools/github/balance-comment.ts', 'tools/github/package.json'],
     ]);
     expect(wf.match(/uses: actions\/checkout@/g)).toHaveLength(2);
     // What it runs: the artifact lookup, the base check, and the script. Nothing installed, nothing built.
@@ -1157,6 +1200,98 @@ describe('CI', () => {
     expect(stagingProblems(stagingText)).toEqual([]);
   });
 
+  // Staging runs on pull_request, so its build job checks out GitHub's test merge of the pull request into its base
+  // (github.sha), not the pull request's last commit: the footers' build line names the merge. The "On staging"
+  // comment names both (#187's said only the head, while the build line said the merge).
+  function stagingCommentProblems(text: string): string[] {
+    const workflow = readWorkflow(text);
+    const problems: string[] = [];
+    if (/^ {10}ref:/m.test(workflow.jobs.get('build') ?? '')) problems.push('build: checks out another commit');
+    const comment = stepsOf(workflow.jobs.get('staging') ?? '').find((s) => s.includes('staging.js comment')) ?? '';
+    if (!comment) return [...problems, 'staging: no "On staging" comment'];
+    if (!/^ {10}BUILT_SHA: \$\{\{ github\.sha \}\}$/m.test(comment))
+      problems.push('staging: the comment is not told the commit the build job built');
+    if (!/^ {10}PR_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}$/m.test(comment))
+      problems.push("staging: the comment is not told the pull request's last commit");
+    return problems;
+  }
+  test('the "On staging" comment is told the commit staging built and the pull request\'s last commit', () => {
+    expect(stagingCommentProblems(stagingText)).toEqual([]);
+    const comment = /^( {6}- name: Comment on the pull requests\n(?: {8}.*\n)+)/m;
+    const withoutBuilt = inJob(stagingText, 'staging', /^ {10}BUILT_SHA: .*\n/m, '');
+    expect(stagingCommentProblems(withoutBuilt)).toEqual([
+      'staging: the comment is not told the commit the build job built',
+    ]);
+    const headAsBuilt = inJob(
+      stagingText,
+      'staging',
+      /^( {10}BUILT_SHA: ).*$/m,
+      '$1${{ github.event.pull_request.head.sha }}',
+    );
+    expect(stagingCommentProblems(headAsBuilt)).toEqual([
+      'staging: the comment is not told the commit the build job built',
+    ]);
+    expect(stagingCommentProblems(inJob(stagingText, 'staging', comment, ''))).toEqual([
+      'staging: no "On staging" comment',
+    ]);
+    const buildsHead = inJob(
+      stagingText,
+      'build',
+      /^( {10}persist-credentials: false\n)/m,
+      '$1          ref: ${{ github.event.pull_request.head.sha }}\n',
+    );
+    expect(stagingCommentProblems(buildsHead)).toEqual(['build: checks out another commit']);
+  });
+
+  // Each TypeScript script a workflow runs with Node says it is a module: its name ends .mts, or the package.json nearest
+  // its folder says "type": "module". Otherwise Node parses it as CommonJS first, fails, parses it again as a module and
+  // prints MODULE_TYPELESS_PACKAGE_JSON (the deploy's keep step did on every deploy, #187, #188). The repository's own
+  // package.json has no type: its .js test scripts are CommonJS.
+  function moduleTypeOf(dir: string, files: (f: string) => string | undefined): string | undefined {
+    for (let d = dir; ; d = path.posix.dirname(d)) {
+      const text = files(d === '.' ? 'package.json' : `${d}/package.json`);
+      if (text !== undefined) return (JSON.parse(text) as { type?: string }).type;
+      if (d === '.') return undefined;
+    }
+  }
+  const repositoryFile = (f: string) => (fs.existsSync(path.join(ROOT, f)) ? read(f) : undefined);
+  // A workflow that checks out only some files (sparse-checkout, balance-report.yml) sees only those.
+  function typelessScripts(texts: { f: string; text: string }[], files = repositoryFile): string[] {
+    return texts.flatMap(({ f, text }) => {
+      const sparse = [...text.matchAll(/sparse-checkout: \|\n((?: {12}.+\n)+)/g)].map((m) =>
+        (m[1] ?? '').trim().split(/\s+/),
+      );
+      const seen = (g: string) => (sparse.every((list) => list.includes(g)) ? files(g) : undefined);
+      return [...new Set([...text.matchAll(/\bnode ((?:[\w.-]+\/)*[\w.-]+\.ts)\b/g)].map((m) => m[1] ?? ''))]
+        .filter((script) => moduleTypeOf(path.posix.dirname(script), seen) !== 'module')
+        .map((script) => `${f}: ${script}`);
+    });
+  }
+  test('each TypeScript script a workflow runs with Node says it is a module', () => {
+    const scripts = workflows.flatMap(({ text }) => [...text.matchAll(/\bnode ([\w./-]+\.m?ts)\b/g)].map((m) => m[1]));
+    expect(scripts).toContain('tools/deploy/keep-the-previous-deploys-files.ts');
+    expect(typelessScripts(workflows)).toEqual([]);
+    // Planted: the keep step's script in a folder whose nearest package.json has no type (the repository's); the
+    // folder's package.json gone; and renamed .mts, which needs none.
+    const keepIn = (dir: string) => deployText.replace(/node tools\/deploy\//g, `node ${dir}`);
+    expect(typelessScripts([{ f: 'deploy.yml', text: keepIn('tools/') }])).toEqual([
+      'deploy.yml: tools/keep-the-previous-deploys-files.ts',
+    ]);
+    const withoutIt = (f: string) => (f === 'tools/deploy/package.json' ? undefined : repositoryFile(f));
+    expect(typelessScripts([{ f: 'deploy.yml', text: deployText }], withoutIt)).toEqual([
+      'deploy.yml: tools/deploy/keep-the-previous-deploys-files.ts',
+    ]);
+    const renamed = keepIn('tools/').replace(/keep-the-previous-deploys-files\.ts/g, 'keep.mts');
+    expect(typelessScripts([{ f: 'deploy.yml', text: renamed }])).toEqual([]);
+    // The balance report's sparse checkout without the script's package.json: Node never sees it.
+    const report = read('.github/workflows/balance-report.yml');
+    const notCheckedOut = report.replace(/^ {12}tools\/github\/package\.json\n/gm, '');
+    expect(notCheckedOut).not.toBe(report);
+    expect(typelessScripts([{ f: 'balance-report.yml', text: notCheckedOut }])).toEqual([
+      'balance-report.yml: tools/github/balance-comment.ts',
+    ]);
+  });
+
   test('no job that can publish, runs in an environment or reads a secret runs npm, npx or the build, in any workflow', () => {
     const checked: string[] = [];
     for (const { f, text } of workflows) {
@@ -1400,7 +1535,9 @@ describe('dangerous paths', () => {
       'tools/balance/run.ts',
       'tools/balance/engine-paths.ts',
       'tools/balance/report.ts',
+      'tools/balance/package.json',
       'tools/github/balance-comment.ts',
+      'tools/github/package.json',
       'tools/hooks/after-edit.ts',
       'tools/hooks/before-stop.ts',
       'tools/check.ts',
@@ -1409,6 +1546,7 @@ describe('dangerous paths', () => {
       'tools/pages.ts',
       'tools/dev.ts',
       'tools/deploy/keep-the-previous-deploys-files.ts',
+      'tools/deploy/package.json',
       'tests/lib/engine.ts',
       '.github/workflows/ci.yml',
       '.github/workflows/balance-report.yml',

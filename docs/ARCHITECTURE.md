@@ -908,5 +908,9 @@ CI runs it all on every pull request, in jobs side by side so the fastest failur
 unit and scenario tests, the simulations, the page tests, the browser specs, the balance matrix, and `db` (the access-rule tests and
 `supabase db lint`, which checks the database's functions). The job named `ci` passes only when every job but `db`
 passed; `ci` and `db` are the checks `main` requires. `deploy.yml` runs the same workflow before it publishes.
+A pull request has one CI run at a time: a push, or a label added or removed, cancels its run still going (the
+workflow's `concurrency` group, keyed on the pull request's number), so read the newest run on the head commit. A
+cancelled run's `ci` job fails, and staging's wait for CI reads the newest run alone. Deploy's call has a group of
+its own, its run's id, so it is never cancelled.
 Every night `.github/workflows/nightly.yml` (P1-04d) runs `npm run test:full` (the fuzz, the invariants, the leak check
 and the property tests at full size) with a random seed it prints; a red night blocks nothing.
