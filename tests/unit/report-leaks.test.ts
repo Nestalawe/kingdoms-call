@@ -111,6 +111,12 @@ describe('each planted leak breaks its check, and only that one', () => {
     ],
     [
       "another realm's private line",
+      'in province events, a part of the report beside the chronicle (P1-12a1)',
+      (_, r) => (of(r, 1)['provinceEvents'] = [{ text: HARDENED, phase: 2, provinceId: 0 }]),
+      /^realm 1 reads a hit-point rise of realm 0's Aldo the Bold at provinceEvents\[0\]: "💪 Aldo the Bold is hardened/,
+    ],
+    [
+      "another realm's private line",
       'a line naming no hero, read by two realms',
       (_, r) => {
         line(r, 0, '📯 Call to Arms! The folk of Fenwick answer their king.');
@@ -317,6 +323,21 @@ describe('the known breaches of the leak checks', () => {
     expect(leaks(turn((_, r) => line(r, 1, 'Coldmere (marsh): controlled by Coldharbour.')))).toEqual([
       'an unmet realm',
     ]);
+  });
+
+  // P1-12a1 (P1-12's Decision 13): the check reads every part of a report; a spy's lingering sight shows the realm
+  // another realm's private lines, let through until P1-23.
+  test("another realm's private line in spy activity is let through; in the chronicle, or naming no hero, it is not", () => {
+    const spied = (text: string) => (_: Turn, r: RealmReport[]) =>
+      (of(r, 1)['spyActivity'] = [{ provId: 0, provName: 'Fenwick', sincePhase: 1, lines: [{ phase: 2, text }] }]);
+    const privateLines = LEAK_CHECKS.find((c) => c.name === "another realm's private line")?.check;
+    expect(privateLines?.(turn(spied(HARDENED)))).toEqual([
+      `realm 1 reads a hit-point rise of realm 0's Aldo the Bold at spyActivity[0].lines[0]: "${HARDENED}"`,
+    ]);
+    expect(leaks(turn(spied(HARDENED)))).toEqual([]);
+    expect(leaks(turn((_, r) => line(r, 1, HARDENED)))).toEqual(["another realm's private line"]);
+    const call = '📯 Call to Arms! The folk of Fenwick answer their king.';
+    expect(leaks(turn((t, r) => (line(r, 0, call), spied(call)(t, r))))).toEqual(["another realm's private line"]);
   });
 
   test("an invisible hero in the list of the realm's own provinces is let through; on the map he is not", () => {

@@ -291,6 +291,11 @@ export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string
     line: /^realm \d+ sees [^"]+ \(id \d+, invisible from phase \d\) at ownedProvinces\[\d+\]\.characters\[\d+\]$/,
     why: "The list of the heroes in a realm's own provinces skips the sight rule (buildTurnReport's ownedProvinces)",
   },
+  {
+    check: "another realm's private line",
+    line: /^realm \d+ reads [A-Za-z -]+ of realm \d+(?:, \d+)*'s [^"]+ at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
+    why: "Another realm's private line in the report's spy activity section: waits for P1-23",
+  },
 ];
 const known = (check: string, line: string) => KNOWN_BREACHES.some((k) => k.check === check && k.line.test(line));
 

@@ -131,15 +131,15 @@ function heroesByName(t: Turn): Map<string, Character> {
   return hero;
 }
 
-/** No realm reads another realm's private line in its chronicle: a PRIVATE_LINES line naming a hero is read only by
- *  the realms he served this turn, and one naming none by one realm only. A name two heroes share isn't checked.
- *  Clairvoyance's lines are let through (CLAIRVOYANCE). */
+/** No realm reads another realm's private line in any of its report's lines (LINES: the chronicle, province events and
+ *  spy activity): a PRIVATE_LINES line naming a hero is read only by the realms he served this turn, and one naming none
+ *  by one realm only. A name two heroes share isn't checked. Clairvoyance's lines are let through (CLAIRVOYANCE). */
 function privateLines(t: Turn): string[] {
   const byName = heroesByName(t);
   const readers = new Map<string, Set<number>>();
   const out: string[] = [];
   for (const r of t.reports ?? [])
-    for (const { at, value } of select(r.report, 'lastTurnLog[]')) {
+    for (const { at, value } of LINES.flatMap((path) => select(r.report, path))) {
       const text = textOf(value);
       if (typeof text !== 'string' || text.startsWith(CLAIRVOYANCE)) continue;
       for (const p of PRIVATE_LINES) {
