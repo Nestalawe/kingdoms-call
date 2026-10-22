@@ -19,7 +19,8 @@
 // fresh one the turn uses, so a stand-in set on it reaches the turn.
 //
 // The turn is the shell's: resolveTurn on the saved world (JSON) and the slot rows, with a seed drawn from the engine's
-// dice as the shell draws it from the page's (src/ui/gm/turn-shell.ts), then the Spy-stealth step and buildReports().
+// dice as the shell draws it from the page's (src/ui/gm/turn-shell.ts), then the Spy-stealth step, and the views'
+// buildReports on what the turn hands over for the reports (whatTheReportsRead).
 // Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living character not given orders
 // Rests all turn. The console is quiet (its log and its warnings) while the engine makes the world and plays the turn.
 import { vi } from 'vitest';
@@ -63,10 +64,12 @@ interface Resolved {
   state: string;
   log: Line[];
   spyStealthAndInvisibilityStampedForTheReports(): void;
-  buildReports(): {
-    reports: { gp: { player_index: number }; report: Record<string, unknown> }[];
-    tel: { gs: unknown; collected: Record<string, unknown> };
-  };
+  whatTheReportsRead(): unknown;
+}
+/** What the views' buildReports returns. */
+interface Built {
+  reports: { gp: { player_index: number }; report: Record<string, unknown> }[];
+  tel: { gs: unknown; collected: Record<string, unknown> };
 }
 
 /** A copy, as a page's writes are JSON. */
@@ -92,7 +95,7 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
   const { BOT_SKILL_BUILD, generateBotSetups } = await import('../../src/engine/bots/setup.ts');
   const { generateNewGame } = await import('../../src/engine/world/generate.ts');
   const { resolveTurn } = await import('../../src/engine/run-turn.ts');
-  const reportsModule = await import('../../src/engine/turn/realm-reports-and-spy-stealth.ts');
+  const reportsModule = await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
   kcRng.seed(seed);
 
   const rest = (): Order[] => [0, 1, 2, 3, 4].map(() => ({ action: 'rest', target: '', extra: '', desc: '' }));
@@ -175,7 +178,8 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
   }
 
   /** Plays one turn of the saved world `state` on the slot rows `rows`, as the shell does (src/ui/gm/turn-shell.ts):
-   *  a seed drawn from the engine's dice, resolveTurn, then the Spy-stealth step and buildReports. Returns the world
+   *  a seed drawn from the engine's dice, resolveTurn, then the Spy-stealth step and the views' buildReports on what the
+   *  turn hands over for the reports. Returns the world
    *  after the turn, the GM's log, each report by its realm, and the turn's statistics. */
   function play(state: World | string, rows: unknown[]) {
     const json = typeof state === 'string' ? state : JSON.stringify(state);
@@ -183,9 +187,10 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
     // the shell's seed: one number from the dice, as a 32-bit integer (0 read as 1)
     const turnSeed = Math.floor(kcRng() * 2 ** 32) || 1;
     const resolved = quietly(() => resolveTurn(json, plain(rows), turnNumber, turnSeed) as Resolved);
-    const built = quietly(() => {
+    const built: Built = quietly(() => {
       resolved.spyStealthAndInvisibilityStampedForTheReports();
-      return resolved.buildReports();
+      // through the module, so a stand-in set on it (reportEveryRealm, a test's vi.spyOn) is the one called
+      return reportsModule.buildReports(resolved.whatTheReportsRead());
     });
     const log = plain(resolved.log);
     const reports: Record<number, Record<string, unknown>> = {};
@@ -205,16 +210,16 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
   }
 
   /** From now on every realm gets a report each turn, bots' too: the engine builds reports only for the realms people
-   *  play (slot rows with a user_id), so an all-bot game writes none. buildReports (src/engine/turn/realm-reports-and-
-   *  spy-stealth.ts) is stood in on its module, for resolveTurn's call from run-turn.ts, to see every row as played,
-   *  on copies of the rows; the shell writes each report by the row's id and player_index, which the copies keep. */
+   *  play (slot rows with a user_id), so an all-bot game writes none. buildReports (src/views/every-realms-report-and-
+   *  the-lines-each-realm-reads.ts) is stood in on its module, for play's call, to see every row as played, on copies
+   *  of the rows; the shell writes each report by the row's id and player_index, which the copies keep. */
   function reportEveryRealm() {
     const buildFor = reportsModule.buildReports;
     vi.spyOn(reportsModule, 'buildReports').mockImplementation(
-      (turnContext: { freshPlayers: { user_id?: unknown }[] }) =>
+      (whatTheReportsRead: { freshPlayers: { user_id?: unknown }[] }) =>
         buildFor({
-          ...turnContext,
-          freshPlayers: turnContext.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),
+          ...whatTheReportsRead,
+          freshPlayers: whatTheReportsRead.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),
         }),
     );
   }

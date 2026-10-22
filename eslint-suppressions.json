@@ -618,11 +618,6 @@
       "count": 1
     }
   },
-  "src/engine/turn/realm-reports-and-spy-stealth.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts": {
     "prefer-const": {
       "count": 1
@@ -957,6 +952,11 @@
     },
     "no-useless-assignment": {
       "count": 2
+    }
+  },
+  "src/views/every-realms-report-and-the-lines-each-realm-reads.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
     }
   },
   "src/views/turn-report.ts": {

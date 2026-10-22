@@ -599,11 +599,14 @@ test('the page plays the turn the engine plays from the seed the shell returns',
     state: string;
     log: unknown;
     spyStealthAndInvisibilityStampedForTheReports(): void;
-    buildReports(): { reports: { gp: Row; report: unknown }[] };
+    whatTheReportsRead(): unknown;
+  };
+  const buildReports = vm.runInContext('buildReports', engine) as (whatTheReportsRead: unknown) => {
+    reports: { gp: Row; report: unknown }[];
   };
   const resolved = resolveTurn(world, slotRows(engine, world, 1), 1);
   resolved.spyStealthAndInvisibilityStampedForTheReports();
-  const { reports } = resolved.buildReports();
+  const { reports } = buildReports(resolved.whatTheReportsRead());
   const alone = engineOutput(
     resolved.state,
     resolved.log,

@@ -1,6 +1,6 @@
-// The engine is pure (plan P1-18d): resolveTurn, and what it hands the shell for after the save (the Spy-stealth step
-// and the reports, buildReports; P1-12b2 made the stealth a step of its own), run in a bare Node vm, loaded the one
-// way (tests/lib/engine.ts). The test plays a whole game of the balance matrix there
+// The engine is pure (plan P1-18d): resolveTurn, and what it hands the shell for after the save (the Spy-stealth step,
+// P1-12b2's, and what the reports read, P1-12b3's), and the reports (the views' buildReports, in the same bundle), run
+// in a bare Node vm, loaded the one way (tests/lib/engine.ts). The test plays a whole game of the balance matrix there
 // (scripted-05: realm 0 is a player's, on the matrix's scripted orders, and the other three are bots), from world
 // generation to the end, each turn's state the next turn's input and every turn building its reports, as the shell
 // plays it on the page (src/ui/gm/turn-shell.ts: each turn's seed drawn from the dice, the time of the run stamped).
@@ -59,7 +59,7 @@ interface Resolved {
   state: string;
   log: unknown[];
   spyStealthAndInvisibilityStampedForTheReports(): void;
-  buildReports(): { reports: { gp: { player_index?: unknown }; report: Report }[]; tel: unknown };
+  whatTheReportsRead(): unknown;
 }
 
 interface Engine {
@@ -69,6 +69,11 @@ interface Engine {
   /** What it said on console.warn and console.error. */
   said: string[];
   resolveTurn(state: string, rows: unknown, turn: number, seed?: number): Resolved;
+  /** The views' buildReports (src/views/every-realms-report-and-the-lines-each-realm-reads.ts), as the shell calls it. */
+  buildReports(whatTheReportsRead: unknown): {
+    reports: { gp: { player_index?: unknown }; report: Report }[];
+    tel: unknown;
+  };
 }
 
 /** The hash columns the engine writes, and so the ones compared with the baseline: all but the shell's statistics rows
@@ -91,7 +96,8 @@ function pureEngine(src?: string): Engine {
   const said: string[] = [];
   (vm.runInContext(TRIPWIRES, engine) as (r: string[], s: string[]) => void)(reaches, said);
   const resolveTurn = vm.runInContext('resolveTurn', engine) as Engine['resolveTurn'];
-  return { engine, reaches, said, resolveTurn };
+  const buildReports = vm.runInContext('buildReports', engine) as Engine['buildReports'];
+  return { engine, reaches, said, resolveTurn, buildReports };
 }
 
 /** Every top-level variable the data file and the engine declare. (Its functions are code: the only ones that carry
@@ -161,10 +167,10 @@ describe('a whole game, played in the bare vm', () => {
       if ((JSON.parse(state) as { gameOver?: unknown }).gameOver) break;
       const resolved = e.resolveTurn(state, slotRows(e.engine, state, turn), turn, shellSeed(e.engine));
       resolved.spyStealthAndInvisibilityStampedForTheReports();
-      const { reports } = resolved.buildReports();
+      const { reports } = e.buildReports(resolved.whatTheReportsRead());
       if (turn === 1) {
         try {
-          resolved.buildReports();
+          e.buildReports(resolved.whatTheReportsRead());
         } catch (err) {
           played.secondCall = String((err as { message?: unknown }).message); // the vm's own Error, not this realm's
         }
@@ -231,10 +237,15 @@ describe('a fault planted in a copy of src/ turns it red', () => {
   fs.cpSync(path.join(ROOT, 'src'), copy, { recursive: true });
   // Where each fault goes, found by the syntax tree (tests/lib/source.ts, plan P1-09a: until then by an exact line): in
   // resolveTurn, just before the five phases (the statement that takes the turn's log from its context), and at the
-  // start of the reports (buildReports, lifted out of resolveTurn in P1-08d: the statement that lists the played realms).
+  // start of the reports (buildReports, lifted out of resolveTurn in P1-08d and into the views in P1-12b3: the statement
+  // that lists the played realms).
   const AT = {
     resolution: { file: 'engine/run-turn.ts', fn: 'resolveTurn', before: 'turnLog' },
-    reports: { file: 'engine/turn/realm-reports-and-spy-stealth.ts', fn: 'buildReports', before: 'activePlayers' },
+    reports: {
+      file: 'views/every-realms-report-and-the-lines-each-realm-reads.ts',
+      fn: 'buildReports',
+      before: 'activePlayers',
+    },
   };
   const originals = Object.fromEntries(
     Object.values(AT).map(({ file }) => [file, fs.readFileSync(path.join(copy, file), 'utf8')]),
@@ -272,7 +283,7 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     const e = planted(AT.reports, line);
     const resolved = e.resolveTurn(world, slotRows(e.engine, world, 1), 1);
     resolved.spyStealthAndInvisibilityStampedForTheReports();
-    expect(() => resolved.buildReports()).toThrow(error);
+    expect(() => e.buildReports(resolved.whatTheReportsRead())).toThrow(error);
     expect(new Set(e.reaches)).toEqual(new Set([reach]));
   });
 
@@ -287,7 +298,7 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     const [was, had] = [snapshot(), new Set(globals())];
     const resolved = e.resolveTurn(world, slotRows(e.engine, world, 1), 1);
     resolved.spyStealthAndInvisibilityStampedForTheReports();
-    resolved.buildReports();
+    e.buildReports(resolved.whatTheReportsRead());
     const now = snapshot();
     expect(Object.keys(now).filter((n) => now[n] !== was[n] && !RESEEDED.includes(n))).toEqual(['SKILL_LABELS']);
     expect(globals().filter((n) => !had.has(n))).toEqual(['kcPlanted']);

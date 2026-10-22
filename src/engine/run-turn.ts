@@ -6,15 +6,16 @@ import { seedUsedHeroNames } from './names.ts';
 import { ensureAllLairHoards } from './items/lair-items.ts';
 import { migrateItemTiers } from './items/equipment.ts';
 import { migrateMaxHpV2, retireDiscoveries } from './heroes/skills-and-hp.ts';
-import { seedUsedArmyNames } from './dice-and-army-names.ts';
+import { d100, seedUsedArmyNames } from './dice-and-army-names.ts';
 import { isBotRow } from './bots/setup.ts';
 import { botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim } from './bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts';
 import { botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning } from './bots/bot-realms-plan-the-turn-concessions-movement-muster-economy-actions-hygiene-the-reckoning-and-the-duel-forecast.ts';
-import { snapshotHeldItems } from './titles/perks.ts';
+import { perkTier, snapshotHeldItems } from './titles/perks.ts';
 import { telRealmSnapshot } from './turn/log-line-helpers.ts';
 import { createTurnContext } from './turn/context.ts';
 import { syncAllMaxHp } from './heroes/experience-skill-rises-and-earned-hp.ts';
-import { buildReports, spyStealthAndInvisibilityStampedForTheReports } from './turn/realm-reports-and-spy-stealth.ts';
+import { effStat } from './heroes/effective-skills-and-hidden-heroes.ts';
+import { emit } from './turn/events-and-their-audiences.ts';
 import { buildPhaseIntents } from './turn/phase-intents-and-dependency-ordering.ts';
 import {
   everyRealmStampedBotOrHumanFromTheBotSlotRows,
@@ -57,22 +58,23 @@ import {
 //   expectedTurnToRun the turn being run (the games row's turn, which the save checks)
 //   seed              the turn's seed, a 32-bit integer (kcRngStream reads 0 as 1); none (the tests' turns): the dice
 //                     in use (kcRng, src/engine/rng.ts), as a test fixes them
-// Returns {state, log, spyStealthAndInvisibilityStampedForTheReports, buildReports}:
+// Returns {state, log, spyStealthAndInvisibilityStampedForTheReports, whatTheReportsRead}:
 //   state             the world after the turn, as JSON: what the shell saves (with its two turn-mode stamps added)
 //   log               the GM's log of the turn (turnLog); the Spy-stealth step adds its lines to it
 //   spyStealthAndInvisibilityStampedForTheReports()
 //                     rolls each hero's Spy stealth and carries this turn's Invisibility into the reports' turn, on the
 //                     working copy, once, after the save and before the reports (P1-12b2)
-//   buildReports()    builds every realm's report on the working copy, once, after the stealth step, writing nothing to
-//                     it: {reports, tel}, where reports is [{gp, report}] (gp: the slot row it is for) and tel what
-//                     telemetry reads
+//   whatTheReportsRead()
+//                     what the views build every realm's report from (buildReports, src/views/every-realms-report-and-
+//                     the-lines-each-realm-reads.ts), once, after the stealth step (P1-12b3: the engine imports no
+//                     view): the slot rows, the working copy, the turn's log, its sight and the telemetry's collectors
 // The body keeps runTurn's two-space indent and names, so the code anchors in tests/README.md still match.
 export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
   // ── THE TURN'S DICE (P1-08m, 2026-10-20) ── given a seed, the turn plays on dice of its own: kcRngStream(seed), made
-  // once, lent (kcRng.use) for the turn and again for the Spy-stealth step, whose rolls carry on from the turn's, and
-  // for buildReports(). The dice in use before are given back after each, also when it throws, so nothing else the
-  // page runs between them (the save, another game's turn, the watcher) draws from the turn's. With no seed, nothing is
-  // lent.
+  // once, lent (kcRng.use) for the turn and again for the Spy-stealth step, whose rolls carry on from the turn's. The
+  // dice in use before are given back after each, also when it throws, so nothing else the page runs between them (the
+  // save, another game's turn, the watcher) draws from the turn's. With no seed, nothing is lent. The reports draw no
+  // dice (P1-12b2), and since P1-12b3 they are the views', which the shell calls: they are lent none.
   const turnDice = seed == null ? null : kcRngStream(seed);
   const onTheTurnsDice = (fn) => {
     if (!turnDice) return fn();
@@ -297,10 +299,11 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy(turnContext);
     titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn(turnContext);
     // ── THE REPORTS, BUILT AFTER THE SAVE (P1-18d, 2026-10-18) ────
-    // The shell calls buildReports() only once the turn is saved (_turnCommitted), so a report that fails costs reports,
-    // never the turn (docs/traps.md, "Post-commit work in runTurn"). The reports are built on the working copy, as they
-    // always were, and write nothing to it (P1-12b2): the Spy-stealth rolls and the Invisibility re-stamp, which change
-    // it, are a step of their own (engine/turn/realm-reports-and-spy-stealth.ts) that the shell calls first.
+    // The shell has the reports built only once the turn is saved (_turnCommitted), so a report that fails costs
+    // reports, never the turn (docs/traps.md, "Post-commit work in runTurn"). The reports are built on the working copy,
+    // as they always were, and write nothing to it (P1-12b2): the Spy-stealth rolls and the Invisibility re-stamp, which
+    // change it, are a step of their own (below) that the shell calls first. The views build them (P1-12b3), from what
+    // whatTheReportsRead (below) hands the shell.
     const _reports = { stealthRolled: false, built: false };
     turnContext._reports = _reports;
 
@@ -309,7 +312,68 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
       log: turnLog,
       spyStealthAndInvisibilityStampedForTheReports: () =>
         onTheTurnsDice(() => spyStealthAndInvisibilityStampedForTheReports(turnContext)),
-      buildReports: (...a) => onTheTurnsDice(() => buildReports(turnContext, ...a)),
+      whatTheReportsRead: () => whatTheReportsRead(turnContext),
     };
   });
+}
+
+// ── THE SPY STEALTH, ROLLED AFTER THE SAVE (plan P1-12b2: out of buildReports; P1-12b3: here from its own file) ────
+// spyStealthAndInvisibilityStampedForTheReports rolls each hero's Spy stealth once and carries an Invisibility cast
+// this turn into the reports' turn: the two writes to the world the reports used to make themselves. resolveTurn
+// hands it to the shell beside whatTheReportsRead, wrapped with the turn's context and lent the turn's dice; the shell
+// calls it once the turn is saved, just before the reports, so its rolls come where they always did: after the
+// turn's, before the reports. Its line goes to the end of the GM's log, as before.
+export function spyStealthAndInvisibilityStampedForTheReports(turnContext) {
+  const { _reports, G } = turnContext;
+  if (_reports.stealthRolled) throw new Error('the Spy stealth is rolled once a turn');
+  _reports.stealthRolled = true;
+  // ── Spy stealth — rolled ONCE per character before any report is built, so every player's
+  // report reads the same result. 5% per Spy level (capped at level 5 → 25% max). A character who
+  // passes is stamped _unspottedTurn and is dropped from other players' PASSIVE sightings (map
+  // markers, hero-sighting lists, presence-based province intel). A deliberate Spy still finds
+  // them.
+  (G.characters || []).forEach((c) => {
+    if (!c || !c.alive) return;
+    // an Invisibility cast this turn was stamped BEFORE the turn counter advanced (§7); re-stamp it
+    // to the report's turn so every report-time visibility check (which compares against
+    // gameState.turn, like _unspottedTurn) still treats the caster as unseen. Spies do not pierce
+    // it.
+    if (c._invisTurn === G.turn - 1) {
+      c._invisTurn = G.turn;
+      c._unspottedTurn = G.turn;
+    }
+    const _lvl = Math.min(5, effStat(turnContext, c, 'spy'));
+    const _shimmer = perkTier(c, 'illusory') >= 1; // ILLUSORY L6 (Shimmer)
+    if (_lvl <= 0 && !_shimmer) return;
+    // Spy grants a small chance to slip away unseen (5%/level). Shimmer makes this character HALF
+    // as likely to be seen at all, so the odds of passing unnoticed rise sharply.
+    let _seenPct = 100 - _lvl * 5;
+    if (_shimmer) _seenPct = _seenPct * 0.5;
+    if (d100() > _seenPct) {
+      c._unspottedTurn = G.turn;
+      emit(turnContext, {
+        type: 'system',
+        text: `[Intelligence] 🕶 ${c.name} moved unseen this turn — ${_shimmer ? 'the Shimmer of illusory magic blurred them from watching eyes' : 'Spy ' + _lvl + ' kept them out of enemy sightings'}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: c.id,
+        phase: 0,
+      });
+    }
+  });
+}
+
+// ── WHAT THE REPORTS READ, HANDED TO THE SHELL (plan P1-12b3: P1-12's Decision 10) ────
+// The reports are built in src/views (buildReports, src/views/every-realms-report-and-the-lines-each-realm-reads.ts),
+// which the engine doesn't import: the shell calls them with what this hands over, once the turn is saved and the Spy
+// stealth rolled (it refuses before, and a second time, as buildReports did when it was the engine's): the slot rows;
+// the world after the turn (G, the working copy, with the stealth's stamps); the turn's log (its events, as the GM's
+// log stores them); the turn's sight, recorded as it was resolved (presenceByPhase: whose heroes stood where in each
+// phase; battleCommanders: who fought in each battle; clairWatch: whom each realm watches by Clairvoyance, and from
+// which phase); and the telemetry's collectors (_tel).
+export function whatTheReportsRead(turnContext) {
+  const { _reports, freshPlayers, G, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;
+  if (_reports.built) throw new Error('buildReports() runs once a turn');
+  if (!_reports.stealthRolled) throw new Error('the Spy stealth is rolled before buildReports()');
+  _reports.built = true;
+  return { freshPlayers, G, turnLog, sight: { presenceByPhase, battleCommanders, clairWatch }, _tel };
 }

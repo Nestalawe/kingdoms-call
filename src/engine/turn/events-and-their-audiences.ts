@@ -4,7 +4,8 @@
 // hero, its heroes, its battle), and who may read it (its audience). Nothing else writes to turnLog: the lint rule
 // kc/narrative-lines-go-through-emit refuses a write anywhere but here (docs/traps.md, "A line goes through emit").
 //
-// The audience, as buildReports reads the line today (src/engine/turn/realm-reports-and-spy-stealth.ts):
+// The audience, as the reports read the line today (playerEvents, src/views/every-realms-report-and-the-lines-each-
+// realm-reads.ts):
 //   realms   these realms are told (a wage bill, a spell that hit them)
 //   actor    the realm whose deed it is
 //   seen     'world': every realm (a public line with no province); 'there': whoever has eyes in the province at that

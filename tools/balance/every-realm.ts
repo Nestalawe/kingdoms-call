@@ -3,8 +3,9 @@
 // in the engine's bare vm (tests/lib/engine.ts) instead of on the page, with a report for every realm every turn, bots'
 // too, and each realm's report is hashed, play and words apart (hash.ts), against its own committed baseline,
 // tests/balance/baseline/reports.json (both sets). The leak checks (tests/lib/report-leaks.ts) run on every realm's
-// report after every turn: a breach fails the run, as on the page, but the game plays on, so a fault shows in every
-// game it reaches.
+// report after every turn, the audience check among them (P1-12b3: every line a realm reads comes from an event whose
+// audience admits it; the turn's events are recorded as they are emitted, scenarioInTheVm's recordTheEvents): a breach
+// fails the run, as on the page, but the game plays on, so a fault shows in every game it reaches.
 //
 // It is the matrix's own game: the set-up, the seed, the scripted realm on its scripted orders, and the shell's work
 // around each turn (tests/lib/matrix-game.ts, as tests/unit/engine-purity.test.ts plays scripted-05). The bots' reports
@@ -32,6 +33,7 @@ export function playEveryRealm(spec: GameSpec, src?: string): ReportsResult {
   const t0 = performance.now();
   const sc = scenarioInTheVm({ seed: spec.seed, ...(src ? { src } : {}) });
   sc.reportEveryRealm();
+  sc.recordTheEvents();
   for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) sc.W.eval('kcRng()');
   let state = newWorldOf(sc.engine, spec);
   const turns: string[] = [];
@@ -56,6 +58,7 @@ export function playEveryRealm(spec: GameSpec, src?: string): ReportsResult {
       telemetry: [],
       players: [],
       reports: each,
+      ...(played.perception ? { perception: played.perception } : {}),
     });
     if (breaches.length) leaks.push(describeBreaches(`turn ${String(t)}`, breaches));
     turns.push(

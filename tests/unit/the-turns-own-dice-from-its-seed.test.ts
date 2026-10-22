@@ -1,7 +1,9 @@
 // The turn's seed, passed in (plan P1-08m): resolveTurn(state, rows, turn, seed) makes the dice of its seed
 // (kcRngStream(seed), src/engine/rng.ts) once, lends them for the turn and again for the Spy-stealth step (P1-12b2: it
-// was part of buildReports() until then), whose rolls carry on from the turn's, and for buildReports(), and gives back
-// the dice in use before after each, also when it throws. With no seed
+// was part of buildReports() until then), whose rolls carry on from the turn's, and gives back the dice in use before
+// after each, also when it throws. The reports draw no dice (P1-12b2); since P1-12b3 they are the views' (buildReports,
+// on what the turn hands over for them), lent none, so they would draw from the dice in use: they draw none. With no
+// seed
 // (every other test's turn), the turn plays on the dice in use, as a test fixes them. Until P1-08m the shell
 // (src/ui/gm/turn-shell.ts) lent the dice itself, around both calls (P1-18e); these tests hold what it did.
 // One turn of the balance matrix's scripted-05 (lib/matrix-game.ts), with every hero a Spy 5 so that the Spy-stealth
@@ -12,7 +14,7 @@
 //   stealth draws from the turn's dice where the turn stopped, whatever the page draws between the two.
 // - The dice in use come back after the turn, after the stealth, after the reports, and after a turn, a stealth step
 //   or reports that throw.
-// - With no seed, the turn and its stealth draw from the dice in use; with one, never.
+// - With no seed, the turn and its stealth draw from the dice in use; with one, never; the reports, never.
 // Level 1 (unit): resolveTurn in the bare vm (lib/engine.ts). The shell's call of it is the page's: its test is in
 // tests/page/turn-shell.test.ts.
 import vm from 'node:vm';
@@ -45,8 +47,15 @@ interface Resolved {
   state: string;
   log: unknown[];
   spyStealthAndInvisibilityStampedForTheReports(): void;
-  buildReports(): { reports: { gp: { player_index: unknown }; report: unknown }[]; tel: unknown };
+  whatTheReportsRead(): unknown;
 }
+/** What the views' buildReports returns. */
+interface Built {
+  reports: { gp: { player_index: unknown }; report: unknown }[];
+  tel: unknown;
+}
+/** The views' buildReports on `e`, as the shell calls it. */
+const buildReportsOn = (e: vm.Context) => engineFn(e, 'buildReports') as (whatTheReportsRead: unknown) => Built;
 
 /** resolveTurn on `e`: as every other test calls it (no seed), or with one. */
 function resolve(e: vm.Context, seed?: number, state = WORLD): Resolved {
@@ -63,9 +72,9 @@ interface Played {
 }
 
 /** A turn's Spy stealth and reports, as the shell has them made after the save. */
-function afterTheSave(r: Resolved) {
+function afterTheSave(e: vm.Context, r: Resolved): Built {
   r.spyStealthAndInvisibilityStampedForTheReports();
-  return r.buildReports();
+  return buildReportsOn(e)(r.whatTheReportsRead());
 }
 
 /** A turn and its reports, as JSON, with `between()` run after the turn and before the stealth and the reports (the
@@ -73,7 +82,7 @@ function afterTheSave(r: Resolved) {
 function play(e: vm.Context, seed?: number, between = () => undefined as unknown): Played {
   const r = resolve(e, seed);
   between();
-  const { reports, tel } = afterTheSave(r);
+  const { reports, tel } = afterTheSave(e, r);
   return {
     state: r.state,
     log: JSON.stringify(r.log),
@@ -148,12 +157,12 @@ describe('the same seed plays the same turn', () => {
     expect(play(engineOn(55), high + 2 ** 32).state === play(lent).state, 'at 2^31 and over').toBe(true);
   });
 
-  test('it hands back the world, the log, the Spy-stealth step and the reports, in that order', () => {
+  test('it hands back the world, the log, the Spy-stealth step and what the reports read, in that order', () => {
     expect(Object.keys(resolve(engineOn(55), TURN_SEED))).toEqual([
       'state',
       'log',
       'spyStealthAndInvisibilityStampedForTheReports',
-      'buildReports',
+      'whatTheReportsRead',
     ]);
   });
 });
@@ -175,7 +184,7 @@ describe('the dice the shell lent the turn and its reports until P1-08m', () => 
     const r = lend(turnDice.dice, () => resolve(e));
     const turnDrew = turnDice.n;
     for (let i = 0; i < 5; i++) draw(e);
-    const { reports, tel } = lend(turnDice.dice, () => afterTheSave(r));
+    const { reports, tel } = lend(turnDice.dice, () => afterTheSave(e, r));
     return {
       played: {
         state: r.state,
@@ -220,7 +229,7 @@ describe('the dice in use come back', () => {
     expect(draw(e), 'after the turn').toBe(page());
     r.spyStealthAndInvisibilityStampedForTheReports();
     expect(draw(e), 'after the stealth').toBe(page());
-    r.buildReports();
+    buildReportsOn(e)(r.whatTheReportsRead());
     expect(draw(e), 'after the reports').toBe(page());
   });
 
@@ -273,10 +282,10 @@ describe('the dice in use come back', () => {
     expect(draw(e), 'after the turn').toBe(page());
     r.spyStealthAndInvisibilityStampedForTheReports();
     standIn(e, 'buildTurnReport', "()=>{ throw new Error('a report fails'); }", () => {
-      expect(() => r.buildReports()).toThrow('a report fails');
+      expect(() => buildReportsOn(e)(r.whatTheReportsRead())).toThrow('a report fails');
     });
     expect(draw(e), 'after the reports that threw').toBe(page());
-    expect(() => r.buildReports()).toThrow('buildReports() runs once a turn');
+    expect(() => buildReportsOn(e)(r.whatTheReportsRead())).toThrow('buildReports() runs once a turn');
     expect(draw(e), 'after the second call').toBe(page());
   });
 });
@@ -292,7 +301,7 @@ describe('with no seed, the turn plays on the dice in use', () => {
     r.spyStealthAndInvisibilityStampedForTheReports();
     expect(dice.drawn() - turnDrew, 'the stealth drew from them').toBeGreaterThan(40);
     expect(dice.stillInUse(), 'still in use after the stealth').toBe(true);
-    r.buildReports();
+    buildReportsOn(e)(r.whatTheReportsRead());
     expect(dice.stillInUse(), 'still in use after the reports').toBe(true);
   });
 
@@ -300,7 +309,7 @@ describe('with no seed, the turn plays on the dice in use', () => {
     const e = engineOn(1);
     const dice = countedDice(e, 9);
     const resolveTurn = engineFn(e, 'resolveTurn') as (...a: unknown[]) => Resolved;
-    afterTheSave(resolveTurn(WORLD, slotRows(e, WORLD, 1), 1, null));
+    afterTheSave(e, resolveTurn(WORLD, slotRows(e, WORLD, 1), 1, null));
     expect(dice.drawn()).toBeGreaterThan(140);
   });
 
@@ -313,7 +322,7 @@ describe('with no seed, the turn plays on the dice in use', () => {
     r.spyStealthAndInvisibilityStampedForTheReports();
     expect(dice.drawn(), 'the stealth').toBe(0);
     expect(dice.stillInUse(), 'still in use after the stealth').toBe(true);
-    r.buildReports();
+    buildReportsOn(e)(r.whatTheReportsRead());
     expect(dice.drawn(), 'the reports').toBe(0);
     expect(dice.stillInUse(), 'still in use after the reports').toBe(true);
   });
@@ -338,12 +347,12 @@ describe('Properties of the turn’s dice', () => {
           const a = resolve(one, seed);
           expect(draw(one), 'after the turn').toBe(page());
           const b = resolve(two, seed);
-          afterTheSave(a);
+          afterTheSave(one, a);
           expect(draw(one), 'after the stealth and the reports').toBe(page());
-          afterTheSave(b);
+          afterTheSave(two, b);
           pin(three, seed);
           const c = resolve(three);
-          afterTheSave(c);
+          afterTheSave(three, c);
           expect(a.state === b.state, 'the same world').toBe(true);
           expect(JSON.stringify(a.log) === JSON.stringify(b.log), 'the same log').toBe(true);
           expect(a.state === c.state, "the world on the seed's dice").toBe(true);

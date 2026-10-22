@@ -82,7 +82,7 @@ import '../../engine/magic/pre-battle-spell-choice.ts';
 import '../../engine/battle/blood-harvest-and-iron-throne.ts';
 import '../../engine/battle/raid-the-coast-and-landing-parties.ts';
 import '../../engine/espionage/what-a-spy-learns.ts';
-import '../../engine/turn/realm-reports-and-spy-stealth.ts';
+import '../../views/every-realms-report-and-the-lines-each-realm-reads.ts';
 import '../../engine/personal-combat/speed-encounter-plans-and-combatants.ts';
 import '../../engine/personal-combat/to-hit-wounds-stuns-and-courage.ts';
 import '../../engine/personal-combat/combat-spells-and-guardian-abilities.ts';
