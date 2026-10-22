@@ -3,7 +3,7 @@
 // them are wards against magic: a ward against one school makes that school's spells less likely to
 // take hold. Checked on the table (MONSTERS_P and the migration are module level) and in the engine
 // (pcMonsterCombatant, pcCastCombatSpell, pcRoundStart and resolvePersonalCombat).
-// Level 1 (unit): every function called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): every function called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
 import { expect, test } from 'vitest';
 import {
@@ -14,7 +14,7 @@ import {
   type Guardian,
 } from '../lib/personal-combat.ts';
 
-const { call, base, MON, pinned } = personalCombatEngine();
+const { call, base, MON, pinned } = await personalCombatEngine();
 type Fx = Record<string, unknown> & { ward?: string; pct?: number; amt?: number; school?: string };
 // The decided table: a perk's value at Weak / Moderate / Powerful / Legendary (cap: a lower ceiling is stronger).
 const DECIDED: Record<string, number[]> = {

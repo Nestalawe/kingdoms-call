@@ -2,15 +2,16 @@
 // combat (was 2–4), counted to level 5: 1–3 at level 1 … 5–15 at level 5 and above. The dice are
 // pinned (every roll its lowest, then every roll its highest; the cast roll always succeeds), so the
 // test reads the exact range. The data file, the rulebook and the player portal's spell note say the same.
-// Level 1 (unit): pcCastCombatSpell called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): pcCastCombatSpell called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal). The pages are read as
 // built.
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 import { entriesOf, fileDeclaring, pageText, stringsOf } from '../lib/source.ts';
 
-const { engine, call, base, pinned } = personalCombatEngine();
+const { call, base, pinned } = await personalCombatEngine();
+const dice = await import('../../src/engine/dice-and-army-names.ts');
 let nextId = 0;
 const mk = (skills: Record<string, number>) => {
   const c = call('pcCharCombatant', {
@@ -24,9 +25,8 @@ const mk = (skills: Record<string, number>) => {
   c.hp = c.maxHp = 999;
   return c;
 };
-const realD100: unknown = engine['d100'];
 const bolt = (lvl: number, r: number) => {
-  engine['d100'] = () => 1;
+  const d100 = vi.spyOn(dice, 'd100').mockReturnValue(1);
   try {
     return pinned(r, () => {
       const caster = mk({ elemental: lvl });
@@ -36,7 +36,7 @@ const bolt = (lvl: number, r: number) => {
       return before - target.hp;
     });
   } finally {
-    engine['d100'] = realD100;
+    d100.mockRestore();
   }
 };
 

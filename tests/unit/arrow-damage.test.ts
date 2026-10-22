@@ -1,7 +1,7 @@
 // 2026-10-14 (item 20) — an arrow does 1–3 damage plus ⌈Archery ÷ 2⌉ (the base was 2–5), for a hero
 // and a guardian alike. The dice are pinned (lowest, then highest), so the test reads the exact range.
 // The rulebook (twice) and the Archery hover text say 1–3.
-// Level 1 (unit): pcArrowDamage called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): pcArrowDamage called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal). The pages are read as
 // built.
 import { expect, test } from 'vitest';
@@ -9,7 +9,7 @@ import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 import { pageText } from '../lib/source.ts';
 
-const { call, base, MON, pinned } = personalCombatEngine();
+const { call, base, MON, pinned } = await personalCombatEngine();
 const range = (c: Combatant) => [
   pinned(0, () => call('pcArrowDamage', c)),
   pinned(0.999999, () => call('pcArrowDamage', c)),

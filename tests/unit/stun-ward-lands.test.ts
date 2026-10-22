@@ -4,13 +4,14 @@
 // stun riding on a blow (Thunder Stone, a dazing special) took hold after the round-start check and
 // cost one more. Every stun source is checked: Psychic Blast, Control Undead, a stunning special,
 // a stun item and a stun riding on an item's blow.
-// Level 1 (unit): the functions called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): the functions called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 
-const { call, value, base, MON, pinned } = personalCombatEngine();
-const ITEMS = value('ALL_MAGIC_ITEMS_P') as { name: string }[];
+const { call, base, MON, pinned } = await personalCombatEngine();
+const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const ITEMS = ALL_MAGIC_ITEMS_P as { name: string }[];
 const item = (n: string) => ITEMS.find((i) => i.name === n);
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
 const hero = (sk?: Record<string, number>) => {

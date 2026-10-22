@@ -2,7 +2,7 @@
 // race, temper and level against every guardian of the table (each built as a lair fight builds it, pcBuildGuardian)
 // and against each other, with every kind of Encounter Plan. No fight may throw, and no line of a fight's narrative may
 // show NaN or undefined. The dice are the engine's, seeded from KC_SEED.
-// Level 1 (unit): pcCharCombatant, pcBuildGuardian and resolvePersonalCombat called directly in the bare vm
+// Level 1 (unit): pcCharCombatant, pcBuildGuardian and resolvePersonalCombat called directly on the engine's modules
 // (tests/lib/personal-combat.ts). Plan P1-08f: these were the personal-combat halves of fuzz-wages-combat and
 // fuzz-advance-masking, which took the functions from the "  // 4. Run all 5 phases" hook after whole turns on the GM
 // portal (pcBuildGuardian was nested inside resolveTurn); their whole-turn halves stay in those scripts.
@@ -17,7 +17,7 @@ import {
 
 /** Fights in each test (the scripts' own sizes: 4,000, and 20,000 in npm run test:full). */
 const FIGHTS = process.env['KC_FULL'] === '1' ? 20_000 : 4_000;
-const { call, MON } = personalCombatEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const { call, MON } = await personalCombatEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 
 const RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'];
 const TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];

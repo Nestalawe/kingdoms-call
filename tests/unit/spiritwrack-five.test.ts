@@ -2,7 +2,7 @@
 // silenced for 1 round + 1 per two levels, so 3 rounds at most (White 4 and up), and one round longer against a
 // guardian weak to White (4 at most). Before, it read the caster's full level, so White 6+ reached 4 (5 against a
 // weak guardian). Supersedes R-053's "at most 4 (5)".
-// Level 1 (unit): pcCastCombatSpell called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): pcCastCombatSpell called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal); the cast is pinned to
 // succeed. The rulebook, the player portal and the data file are read as built.
 import { expect, test } from 'vitest';
@@ -10,7 +10,7 @@ import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 import { entriesOf, fileDeclaring, stringsOf } from '../lib/source.ts';
 
-const { call, base, MON, pinned } = personalCombatEngine();
+const { call, base, MON, pinned } = await personalCombatEngine();
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
 const hero = (white: number) => {
   const h = call('pcCharCombatant', {

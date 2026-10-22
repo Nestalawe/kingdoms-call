@@ -6,10 +6,10 @@
     "eslintDisable": 0,
     "stubDbTests": 66,
     "allowlistEntries": 1,
-    "javascriptFiles": 137,
+    "javascriptFiles": 131,
     "quarantinedTests": 4,
     "sourceJavascriptFiles": 2,
-    "vmLoaderTests": 108,
+    "vmLoaderTests": 82,
     "eslintSuppressions": 827,
     "knownArchitectureViolations": 169,
     "unusedCode": 29

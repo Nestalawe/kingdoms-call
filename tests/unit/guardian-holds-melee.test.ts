@@ -2,12 +2,12 @@
 // Its plan still carries Fire actions; once the fight is at sword's length a Fire action is simply a
 // blow (no break-away roll, so no round lost to a failed one). At bow range it still shoots, and a
 // hero who chooses Fire in a melee still tries to break away, as before.
-// Level 1 (unit): pcAct called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a script that
+// Level 1 (unit): pcAct called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a script that
 // took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant, type Guardian } from '../lib/personal-combat.ts';
 
-const { call, base, MON, pinned } = personalCombatEngine();
+const { call, base, MON, pinned } = await personalCombatEngine();
 const st = (range: string) => ({ fledBy: null, parley: false, stoleBy: null, range, mirror: null, feature: null });
 const hero = (t: string[]) => {
   const h = call('pcCharCombatant', {
