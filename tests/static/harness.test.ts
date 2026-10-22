@@ -380,31 +380,23 @@ describe('the lint rules', () => {
   );
 
   // kc/narrative-lines-go-through-emit (plan P1-12, Decision 6): every line of the turn enters the GM's log through
-  // emit, in the events file. It runs on every file of the engine and the views but the events file: in full in the
-  // folders P1-12a's rows have converted (eslint.config.js's LINES_THROUGH_EMIT: turn/, the views, battle/ and
-  // personal-combat/), elsewhere refusing only a write to the GM's log; and nowhere else. A planted line of each kind is
-  // refused exactly there.
+  // emit, in the events file. It runs, in full and with no options, on every file of the engine and the views but the
+  // events file (since P1-12a4; before, only in the folders P1-12a's rows had converted), and nowhere else. A planted
+  // line of each kind is refused exactly there.
   const EVENTS_FILE = 'src/engine/turn/events-and-their-audiences.ts';
-  const LINES_THROUGH_EMIT = /^src\/(engine\/(turn|battle|personal-combat)|views)\//;
   test(
-    "the rule that lines go through emit runs in the engine and the views, in full where they're converted",
+    'the rule that lines go through emit runs, in full, in all of the engine and the views but the events file',
     timeLimitForTheWork({ toolRuns: 1 }),
     async () => {
       const wrong: string[] = [];
       for (const file of srcFiles) {
         const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
         const entry = rules['kc/narrative-lines-go-through-emit'];
-        const options: unknown = Array.isArray(entry) ? entry[1] : undefined;
+        const options: unknown[] = Array.isArray(entry) ? entry.slice(1) : [];
         const runs = /^src\/(engine|views)\//.test(file) && file !== EVENTS_FILE;
-        const expected = !runs ? 'off' : LINES_THROUGH_EMIT.test(file) ? 'in full' : 'the GM log only';
+        const expected = runs ? 'in full' : 'off';
         const found =
-          level(entry) !== 2
-            ? 'off'
-            : typeof options === 'object' && options !== null && 'onlyWritesToTheGmLog' in options
-              ? options.onlyWritesToTheGmLog === true
-                ? 'the GM log only'
-                : 'in full'
-              : 'in full';
+          level(entry) !== 2 ? 'off' : options.length ? `with options ${JSON.stringify(options)}` : 'in full';
         if (found !== expected) wrong.push(`${file}: ${found}, not ${expected}`);
       }
       expect(wrong).toEqual([]);
@@ -426,8 +418,9 @@ describe('the lint rules', () => {
       expect(await refused('src/views/planted-here.ts')).toEqual([2, 3, 4, 5]);
       expect(await refused('src/engine/battle/planted-here.ts')).toEqual([2, 3, 4, 5]);
       expect(await refused('src/engine/personal-combat/planted-here.ts')).toEqual([2, 3, 4, 5]);
-      expect(await refused('src/engine/orders/planted-here.ts')).toEqual([2]);
-      expect(await refused('src/engine/planted-here.ts')).toEqual([2]);
+      expect(await refused('src/engine/orders/planted-here.ts')).toEqual([2, 3, 4, 5]);
+      expect(await refused('src/engine/heroes/planted-here.ts')).toEqual([2, 3, 4, 5]);
+      expect(await refused('src/engine/planted-here.ts')).toEqual([2, 3, 4, 5]);
       expect(await refused(EVENTS_FILE)).toEqual([]);
       expect(await refused('src/ui/gm/planted-here.ts')).toEqual([]);
     },

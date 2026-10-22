@@ -4,7 +4,6 @@
 // were made. Refused, everywhere but the events file (eslint.config.js lists where the rule runs):
 // - a write to turnLog: a call of push, pop, shift, unshift, splice, sort, reverse, fill or copyWithin on it, an
 //   assignment to it or to anything inside it, `delete` or `++` there (turnLog, or X.turnLog);
-// and, unless the option `onlyWritesToTheGmLog` is set (the folders P1-12a's rows haven't converted yet):
 // - a call of log(…) or X.log(…), but console's and Math's: emit(turnContext, event) files a line;
 // - push, unshift or splice on a fight's narrative (narrative, narr or X.narrative): narrate(narrative, text), or
 //   narrateTo(narrative, realm, heroId, text) for one realm alone (and, for lines already written, narrateAll,
@@ -58,8 +57,8 @@ const rule: Rule.RuleModule = {
         "A line enters the GM's log only through emit (src/engine/turn/events-and-their-audiences.ts), which writes it " +
         'in its stored form with its audience: docs/traps.md, "A line goes through emit".',
       log:
-        'File the line with emit(turnContext, event), whose audience says who may read it (log() goes in plan ' +
-        'P1-12a4): docs/traps.md, "A line goes through emit".',
+        'File the line with emit(turnContext, event), whose audience says who may read it: docs/traps.md, "A line ' +
+        'goes through emit".',
       narrative:
         "Add to a fight's narrative with narrate(narrative, text), or narrateTo(narrative, realm, heroId, text) for one " +
         'realm alone (src/engine/turn/events-and-their-audiences.ts).',
@@ -67,21 +66,9 @@ const rule: Rule.RuleModule = {
         'A line of a narrative for one realm alone is narrateTo(narrative, realm, heroId, text), not an object with ' +
         'onlyPlayer.',
     },
-    schema: [
-      {
-        type: 'object',
-        properties: { onlyWritesToTheGmLog: { type: 'boolean' } },
-        additionalProperties: false,
-      },
-    ],
+    schema: [],
   },
   create(context) {
-    const options: unknown = context.options[0];
-    const onlyWritesToTheGmLog =
-      typeof options === 'object' &&
-      options !== null &&
-      'onlyWritesToTheGmLog' in options &&
-      options.onlyWritesToTheGmLog === true;
     return {
       CallExpression(node) {
         const { callee } = node;
@@ -91,14 +78,12 @@ const rule: Rule.RuleModule = {
             context.report({ node, messageId: 'turnLog' });
             return;
           }
-          if (onlyWritesToTheGmLog) return;
           if (NARRATIVE_WRITES.has(name) && isNarrative(callee.object))
             context.report({ node, messageId: 'narrative' });
           else if (name === 'log' && !isConsoleOrMath(callee.object)) context.report({ node, messageId: 'log' });
           return;
         }
-        if (!onlyWritesToTheGmLog && callee.type === 'Identifier' && callee.name === 'log')
-          context.report({ node, messageId: 'log' });
+        if (callee.type === 'Identifier' && callee.name === 'log') context.report({ node, messageId: 'log' });
       },
       AssignmentExpression(node) {
         if (isInTurnLog(node.left)) context.report({ node, messageId: 'turnLog' });
@@ -110,7 +95,7 @@ const rule: Rule.RuleModule = {
         if (node.operator === 'delete' && isInTurnLog(node.argument)) context.report({ node, messageId: 'turnLog' });
       },
       Property(node) {
-        if (onlyWritesToTheGmLog || node.parent.type !== 'ObjectExpression' || node.computed) return;
+        if (node.parent.type !== 'ObjectExpression' || node.computed) return;
         const { key } = node;
         const keyName = key.type === 'Identifier' ? key.name : key.type === 'Literal' ? key.value : null;
         if (keyName === 'onlyPlayer') context.report({ node, messageId: 'onlyPlayer' });
