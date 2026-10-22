@@ -44,7 +44,7 @@ npm test                                    # Vitest: every test, by level, side
 npx playwright test                         # the browser specs (tests/browser/) in Chromium, about 20 s; not part of npm test
 npm run check                               # the quick check of what you changed, about 20 s (parts: typecheck, lint, lint:arch: the layers and no import cycle, format:check, ratchet)
 npm run dev                                 # Vite's dev server of src/, against the local Supabase only (npm run dev -- config writes its kc-config.js)
-npm run balance                             # the balance matrix: 60 seeded games against tests/balance/baseline/ (about 20 s; CI plays it when an engine path changes); balance:update rewrites it; "-- battle" (or lair, encounter) plays a named scenario on main's site and here (about 1 min)
+npm run balance                             # the balance matrix: 60 seeded games against tests/balance/baseline/, then every realm's report in them (about 40 s; CI plays it when an engine path changes); balance:update rewrites it; "-- battle" (or lair, encounter) plays a named scenario on main's site and here (about 1 min)
 npm run test:full                           # bigger fuzz and property runs, as the nightly run does (npm run test:quarantine: the quarantined harnesses, expected to fail)
 npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
 KC_SEED=123 KC_JOBS=1 npm test              # another seed, one test at a time; the footer says how to repeat a failure

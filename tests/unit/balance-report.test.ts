@@ -1,12 +1,13 @@
 // The balance report (tools/balance/report.ts, labels.ts; P1-03a): the class of change, where two runs first differ,
-// the verdict, and every statistic's plain-words label; the class for a change in the database writes alone (P1-02c). Made-up games with a known answer. Level 1 (unit): pure
+// the verdict, and every statistic's plain-words label; the class for a change in the database writes alone (P1-02c);
+// the line on every realm's report (P1-12a1). Made-up games with a known answer. Level 1 (unit): pure
 // functions on small data; playing real games (the matrix, in CI) can't stage a reshape or a slice-only change on
 // demand.
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
-import { formatBaseline, parseBaseline, type KeptGame } from '../../tools/balance/baseline.ts';
+import { formatBaseline, parseBaseline, type KeptGame, type ReportsGame } from '../../tools/balance/baseline.ts';
 import { TURN_COLUMNS, type TurnColumn } from '../../tools/balance/hash.ts';
 import { BASE_LABELS, labelOf } from '../../tools/balance/labels.ts';
 import type { LogEntry } from '../../tools/balance/play.ts';
@@ -15,6 +16,7 @@ import {
   buildReport,
   CHANGE_CLASSES,
   classify,
+  compareEveryRealm,
   compareGames,
   firstDifference,
   gamesToReplay,
@@ -269,6 +271,49 @@ describe('the comment', () => {
     const md = renderReport(buildReport({ base: BASE, head: BASE }));
     expect(md).toContain('**No change: all 60 games played out exactly as before.**');
     expect(md).not.toContain('###');
+  });
+});
+
+// P1-12a1: every realm's report, the branch's run against the base's committed reports.json, in one line under the
+// verdict (P1-12's Decision 1).
+describe("every realm's report", () => {
+  const reports = (id: string, turns = ['0:a/b 1:c/d 2:e/f', '0:g/h 1:i/j 2:k/l']): ReportsGame => ({
+    id,
+    turns,
+    sections: { lastTurnLog: ['l', 'w'] },
+  });
+  const games = IDS.map((id) => reports(id));
+  const line = (head: ReportsGame[] | null, base: ReportsGame[] | null = games) =>
+    renderReport(buildReport({ base: BASE, head: BASE, everyRealm: compareEveryRealm(base, head) }))
+      .split('\n')
+      .filter((l) => l.startsWith("**Every realm's report:**") || l.startsWith('- **'))
+      .join('\n');
+
+  test('identical: one line, with the number of reports', () => {
+    expect(line(structuredClone(games))).toBe("**Every realm's report:** identical (360 reports in 60 games).");
+  });
+
+  test('where it differs: the games, each with its first turn, realms and sections', () => {
+    const head = games.map((g, i) =>
+      i === 4 || i === 50
+        ? {
+            ...reports(g.id, ['0:a/b 1:c/d 2:e/f', '0:g/h 1:i/j 2:k/X']),
+            sections: { lastTurnLog: ['l', 'W'] as [string, string] },
+          }
+        : g,
+    );
+    expect(line(head)).toBe(
+      "**Every realm's report:** differs in 2 of 60 games (360 reports in 60 games):\n" +
+        '- **bots-04**: from turn 2; realm 2; report sections: lastTurnLog (words)\n' +
+        '- **scripted-02**: from turn 2; realm 2; report sections: lastTurnLog (words)',
+    );
+  });
+
+  test('a base with no baseline of them, and a run that did not play them', () => {
+    expect(line(games, null)).toBe(
+      "**Every realm's report:** 360 reports in 60 games; the base branch has no baseline of them yet, so they weren't compared.",
+    );
+    expect(line(null)).toBe("**Every realm's report:** not played in this run.");
   });
 });
 

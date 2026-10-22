@@ -888,7 +888,11 @@ noise of a second seed set. One of the hashes is of every write the turn sends t
 `undefined`, HP in range, unique ids, items matching the ledger of found items, armies on the map, the dead taking no
 actions, `orders_submitted` cleared), as `turn-fuzz` does, and the **report-leak check** on the scripted realm's report
 (`tests/lib/report-leaks.ts`, P1-04c: another realm's private line, an unmet realm, a hero under Invisibility); a breach
-fails the game. It isn't part of `npm test`: about 20 s on 14 cores ([tests/README.md](../tests/README.md#the-balance-matrix)).
+fails the game. Its second half, **every realm's report** (`tools/balance/every-realm.ts`, P1-12a1), plays the same
+games in the engine's `vm` with a report for every realm every turn, bots' too, runs the leak checks on each, and
+compares each report, hashed, with its own baseline (`tests/balance/baseline/reports.json`, both sets), so a change in
+perception shows in every realm, not only the scripted one. It isn't part of `npm test`: about 40 s on 14 cores
+([tests/README.md](../tests/README.md#the-balance-matrix)).
 CI's `balance` job (P1-02b) plays it when a pull request or a merge changes an engine path
 (`tools/balance/engine-paths.ts`: the files in `src/` that the GM portal's page is built from, the pages' templates,
 `public/`, the build itself and its page list, the balance code and baselines, the test helpers it boots the page with, and `package-lock.json` and `.nvmrc`, since a jsdom or Node

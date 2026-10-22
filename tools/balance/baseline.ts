@@ -3,6 +3,8 @@
 //   An engine change is compared with it; `npm run balance:update` rewrites it in the PR that changes play.
 // - noise.json: set B (other seeds), its statistics only. Set A against set B is what chance alone does: the noise rule
 //   must call it "no meaningful change" (tests/unit/balance-noise.test.ts).
+// - reports.json: every realm's report (every-realm.ts, P1-12a1), sets A and B: each game's reports per turn and realm,
+//   and its report sections over the game.
 // Statistics are kept as one list of names and, per game, one [sum, count] per name (null where the game lacks it),
 // to keep the files small. A file names its hash columns: one from before a column was added (P1-02c's `writes`) is
 // read with that column NOT_KEPT, which no comparison counts as a difference.
@@ -143,4 +145,128 @@ export function totalCases(games: { cases?: Cases }[]): Cases {
     for (const k of Object.keys(t) as (keyof Cases)[]) t[k] += g.cases[k];
   }
   return t;
+}
+
+// Every realm's report (reports.json).
+
+export const REPORTS_FILE = path.join(BASELINE_DIR, 'reports.json');
+
+/** A game's every-realm hashes, as kept in the baseline. */
+export interface ReportsGame {
+  id: string;
+  /** One line per turn played: each realm's report, in realm order, as `realm:play/words`. */
+  turns: string[];
+  /** Each report section's hashes over the game, every realm's in turn and realm order: [play, words]. */
+  sections: Record<string, [string, string]>;
+}
+
+/** A game played with every realm's report: its kept hashes, and what run.ts checks beside them. */
+export interface ReportsResult extends ReportsGame {
+  /** Each turn's saved state, hashed as the matrix's `state` column (hash.ts's playHash). */
+  states: string[];
+  /** The reports built. */
+  reports: number;
+  /** What the leak checks found, one entry per turn that broke one (describeBreaches). */
+  leaks: string[];
+  ms: number;
+}
+
+const REPORTS_ABOUT =
+  "Every realm's report, every turn, in the balance matrix's games played in the engine's vm (tools/balance/every-realm.ts, npm run balance): sets A and B. Rewrite with npm run balance:update in the PR that changes a report.";
+
+/** The baseline file's text: one game per line, so a change shows game by game. */
+export function formatReports(sets: Partial<Record<SeedSet, ReportsGame[]>>): string {
+  const lines = (games: ReportsGame[]) =>
+    games.map((g) => '      ' + JSON.stringify({ id: g.id, turns: g.turns, sections: g.sections })).join(',\n');
+  const kept = (['A', 'B'] as const).flatMap((set) => {
+    const games = sets[set];
+    return games ? [`    "${set}": [\n${lines(games)}\n    ]`] : [];
+  });
+  return `{\n  "about": ${JSON.stringify(REPORTS_ABOUT)},\n  "sets": {\n${kept.join(',\n')}\n  }\n}\n`;
+}
+
+export function parseReports(text: string): Partial<Record<SeedSet, ReportsGame[]>> {
+  return (JSON.parse(text) as { sets: Partial<Record<SeedSet, ReportsGame[]>> }).sets;
+}
+
+/** The committed baseline's games of `set` ([] if it has none). */
+export const readReports = (set: SeedSet, file = REPORTS_FILE): ReportsGame[] =>
+  fs.existsSync(file) ? (parseReports(fs.readFileSync(file, 'utf8'))[set] ?? []) : [];
+
+/** Writes `games` as `set`'s, keeping the other set as it is. */
+export function writeReports(set: SeedSet, games: ReportsGame[], file = REPORTS_FILE): void {
+  const sets = fs.existsSync(file) ? parseReports(fs.readFileSync(file, 'utf8')) : {};
+  sets[set] = games.map((g) => ({ id: g.id, turns: g.turns, sections: g.sections }));
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, formatReports(sets));
+}
+
+/** How one game's reports differ between two runs. */
+export interface ReportsDiff {
+  id: string;
+  /** The first turn where a report differs (1 is the first turn played), or null if every turn both played matches. */
+  firstTurn: number | null;
+  /** The realms whose report differs at that turn. */
+  realms: number[];
+  /** The two runs played a different number of turns. */
+  turns: [number, number] | null;
+  /** The report sections that differ over the game: `name`, or `name (words)` when only its words do. */
+  sections: string[];
+}
+
+const realmOf = (entry: string) => Number(entry.split(':')[0]);
+
+export function diffReportsGame(a: ReportsGame, b: ReportsGame): ReportsDiff | null {
+  let firstTurn: number | null = null;
+  let realms: number[] = [];
+  for (let t = 0; t < Math.min(a.turns.length, b.turns.length) && firstTurn == null; t++) {
+    const x = a.turns[t]?.split(' ') ?? [];
+    const y = b.turns[t]?.split(' ') ?? [];
+    if (x.join() === y.join()) continue;
+    firstTurn = t + 1;
+    const all = [...new Set([...x, ...y].map(realmOf))].sort((p, q) => p - q);
+    realms = all.filter((r) => x.find((e) => realmOf(e) === r) !== y.find((e) => realmOf(e) === r));
+  }
+  const turns: [number, number] | null = a.turns.length === b.turns.length ? null : [a.turns.length, b.turns.length];
+  if (turns) firstTurn ??= Math.min(a.turns.length, b.turns.length) + 1;
+  const names = [...new Set([...Object.keys(a.sections), ...Object.keys(b.sections)])].sort();
+  const sections = names.flatMap((k) => {
+    const [p, w] = a.sections[k] ?? ['-', '-'];
+    const [q, v] = b.sections[k] ?? ['-', '-'];
+    if (p === q && w === v) return [];
+    return [p === q ? `${k} (words)` : k];
+  });
+  if (firstTurn == null && !sections.length) return null;
+  return { id: a.id, firstTurn, realms, turns, sections };
+}
+
+/** One game's difference in a line: "from turn 7, realm 2; 30 turns → 29; report sections: lastTurnLog (words)". */
+export function describeReportsDiff(d: ReportsDiff): string {
+  return [
+    d.firstTurn != null ? `from turn ${String(d.firstTurn)}` : '',
+    d.realms.length ? `realm${d.realms.length > 1 ? 's' : ''} ${d.realms.join(', ')}` : '',
+    d.turns ? `${String(d.turns[0])} turns → ${String(d.turns[1])}` : '',
+    d.sections.length > 6
+      ? `${String(d.sections.length)} report sections`
+      : d.sections.length
+        ? `report sections: ${d.sections.join(', ')}`
+        : '',
+  ]
+    .filter(Boolean)
+    .join('; ');
+}
+
+/** The reports in a run's games. */
+export const reportsIn = (games: ReportsGame[]): number =>
+  games.reduce((n, g) => n + g.turns.reduce((m, line) => m + (line ? line.split(' ').length : 0), 0), 0);
+
+/** `head`'s games against `base`'s, game by game: the games that differ, or are missing from `base`. */
+export function compareReports(base: ReportsGame[], head: ReportsGame[]): ReportsDiff[] {
+  const byId = new Map(base.map((g) => [g.id, g]));
+  return head.flatMap((g) => {
+    const b = byId.get(g.id);
+    if (!b) return [{ id: g.id, firstTurn: 1, realms: [], turns: null, sections: ['not in the baseline'] }];
+    const d = diffReportsGame(b, g);
+    return d ? [d] : [];
+  });
 }

@@ -26,11 +26,11 @@ import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { readBaseline } from '../../tools/balance/baseline.ts';
 import { TURN_COLUMNS, turnHashes } from '../../tools/balance/hash.ts';
-import { MAX_TURNS, SCRIPTED_REALM, START } from '../../tools/balance/matrix.ts';
+import { MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { ROOT } from '../../tools/build.ts';
 import { engineEntryFiles } from '../../tools/pages.ts';
 import { loadEngine } from '../lib/engine.ts';
-import { GAME, newWorld, slotRows } from '../lib/matrix-game.ts';
+import { GAME, newWorld, PAGE_DRAWS_AS_IT_LOADS, slotRows, stampedAsTheShellSaves } from '../lib/matrix-game.ts';
 import { plantBefore } from '../lib/source.ts';
 
 /** The caches a turn seeds afresh at its start, so they carry nothing from one turn to the next. */
@@ -69,11 +69,6 @@ interface Engine {
   resolveTurn(state: string, rows: unknown, turn: number, seed?: number): Resolved;
 }
 
-/** How many numbers the GM page draws from its dice as it loads, before the matrix makes its world: one, its tab's id
- *  (`_tabId`, src/ui/gm/auto-turn.ts). The page and the engine start from the same seed, so the world is the matrix's
- *  only once the engine's dice have moved on as far. */
-const PAGE_DRAWS_AS_IT_LOADS = 1;
-
 /** The hash columns the engine writes, and so the ones compared with the baseline: all but the shell's statistics rows
  *  and database writes. */
 const ENGINE_COLUMNS = TURN_COLUMNS.filter((c) => c !== 'telemetry' && c !== 'writes');
@@ -83,14 +78,9 @@ const engineColumnsOf = (hashes: string) => {
 };
 
 /** The shell's work around each turn that the matrix's hashes see (src/ui/gm/turn-shell.ts): the turn's seed, the
- *  page's next number as a 32-bit integer (0 read as 1); and the run's time stamped in the world's turn mode. Any time
- *  will do: the hashes read every time as the same. */
+ *  page's next number as a 32-bit integer (0 read as 1); and the run's time stamped in the world's turn mode
+ *  (stampedAsTheShellSaves). */
 const shellSeed = (engine: vm.Context) => vm.runInContext('Math.floor(kcRng()*2**32)||1', engine) as number;
-function stampedAsTheShellSaves(state: string): string {
-  const world = JSON.parse(state) as { turnMode?: Record<string, unknown> };
-  if (world.turnMode) world.turnMode['turnRanAt'] = START;
-  return JSON.stringify(world);
-}
 
 /** The engine, loaded the one way (from `src`, by default this checkout's src/), with the tripwires set. */
 function pureEngine(src?: string): Engine {

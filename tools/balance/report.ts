@@ -18,7 +18,15 @@
 //   confined to one slice (battles between realms) still shows in the verdict.
 // The pure functions are here, tested in tests/unit/balance-report.test.ts; report-run.ts plays the replays and
 // writes the files.
-import { columnsNotKept, diffGame, type KeptGame } from './baseline.ts';
+import {
+  columnsNotKept,
+  compareReports,
+  describeReportsDiff,
+  diffGame,
+  reportsIn,
+  type KeptGame,
+  type ReportsGame,
+} from './baseline.ts';
 import { WORD_COLUMNS, type TurnColumn } from './hash.ts';
 import { label } from './labels.ts';
 import { compareRuns, meaningfulChanges, type Change, type Verdict } from './paired.ts';
@@ -287,6 +295,24 @@ export interface Report {
   writes: { id: string; firstTurn: number | null }[];
   /** Hash columns the base's baseline doesn't have, so not compared (it's from before they were added). */
   notCompared: TurnColumn[];
+  /** Every realm's report (every-realm.ts): the branch's, against the base's committed reports.json. */
+  everyRealm: EveryRealm;
+}
+
+/** Every realm's report, as the report tells it: not played; played, with no baseline on the base to compare with; or
+ *  compared, with the games that differ. */
+export type EveryRealm =
+  | { played: false }
+  | { played: true; reports: number; games: number; compared: false }
+  | { played: true; reports: number; games: number; compared: true; differ: { id: string; line: string }[] };
+
+/** The branch's every-realm games (null: not played) against the base's (null: it has none). */
+export function compareEveryRealm(base: ReportsGame[] | null, head: ReportsGame[] | null): EveryRealm {
+  if (!head) return { played: false };
+  const played = { played: true as const, reports: reportsIn(head), games: head.length };
+  if (!base?.length) return { ...played, compared: false };
+  const differ = compareReports(base, head).map((d) => ({ id: d.id, line: describeReportsDiff(d) }));
+  return { ...played, compared: true, differ };
 }
 
 const moved = (c: Change) => c.verdict === 'clear change' || c.verdict === 'possible change';
@@ -329,6 +355,7 @@ export function buildReport(input: {
   firstDiffs?: FirstDiff[];
   replayNotes?: string[];
   baselineStale?: boolean;
+  everyRealm?: EveryRealm;
 }): Report {
   const { base, head } = input;
   const changes = compareGames(base, head);
@@ -406,6 +433,7 @@ export function buildReport(input: {
     baselineStale: input.baselineStale ?? false,
     writes: changes.filter((c) => c.writes).map((c) => ({ id: c.id, firstTurn: c.firstTurn })),
     notCompared: columnsNotKept(base),
+    everyRealm: input.everyRealm ?? { played: false },
   };
 }
 
@@ -469,9 +497,40 @@ function writesList(games: Report['writes']): string[] {
   return out;
 }
 
+const count = (n: number) => n.toLocaleString('en-GB');
+
+/** Every realm's report in one line, and the games that differ. */
+function everyRealmLines(e: EveryRealm): string[] {
+  if (!e.played) return ["**Every realm's report:** not played in this run.", ''];
+  const reports = `${count(e.reports)} reports in ${String(e.games)} games`;
+  if (!e.compared)
+    return [
+      `**Every realm's report:** ${reports}; the base branch has no baseline of them yet, so they weren't compared.`,
+      '',
+    ];
+  if (!e.differ.length) return [`**Every realm's report:** identical (${reports}).`, ''];
+  const item = (d: { id: string; line: string }) => `- **${d.id}**: ${d.line}`;
+  const out = [
+    `**Every realm's report:** differs in ${String(e.differ.length)} of ${String(e.games)} games (${reports}):`,
+    '',
+    ...e.differ.slice(0, SHOWN).map(item),
+  ];
+  if (e.differ.length > SHOWN)
+    out.push(
+      '',
+      `<details><summary>Show all ${String(e.differ.length)}</summary>`,
+      '',
+      ...e.differ.slice(SHOWN).map(item),
+      '',
+      '</details>',
+    );
+  out.push('');
+  return out;
+}
+
 /** The comment's text (without its marker: the posting workflow adds that). */
 export function renderReport(r: Report): string {
-  const out = ['## Balance report', '', `**${r.verdict}**`, ''];
+  const out = ['## Balance report', '', `**${r.verdict}**`, '', ...everyRealmLines(r.everyRealm)];
   if (r.baselineStale) {
     out.push(
       "⚠️ These games differ from this pull request's committed baseline, so CI's balance job fails: if the change " +
