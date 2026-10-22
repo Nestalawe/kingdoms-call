@@ -49,7 +49,7 @@ npm run test:full                           # bigger fuzz and property runs, as 
 npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
 KC_SEED=123 KC_JOBS=1 npm test              # another seed, one test at a time; the footer says how to repeat a failure
 node tests/<name>.test.js                   # one test script on its own (after npm run build): unseeded, its own default sizes
-KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs); npx playwright test too
+KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs); npx playwright test too. Tests on the engine's modules read src/: their proof is a planted copy of the branch
 npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
 ```
 
