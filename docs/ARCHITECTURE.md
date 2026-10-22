@@ -46,7 +46,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   balance runner; `tests/static/pages-build.test.ts` checks it names what Vite's build holds, and that every file
   under `src/` is in some page.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation; `engine/sight/`, the sight rules
-  the engine asks as it resolves and the report applies, P1-12b1), `views/` (the turn report), `db/` (the version guard, telemetry and the light `meta` rows),
+  the engine asks as it resolves and the report applies, P1-12b1), `views/` (every realm's turn report, and the lines each realm reads: `playerEvents`, P1-12b3), `db/` (the version guard, telemetry and the light `meta` rows),
   `content/` (the data file), `shared/` (the player portal's one door to the engine: it re-exports the rules of
   `engine/rules-on-plain-values/` the portal calls, and nothing else; [below](#kingdoms-call-datats-the-one-source-for-shared-rules)),
   `schemas/` (the types of the world, from Zod schemas: below), `ui/<page>/` (each page's styles,
@@ -157,10 +157,8 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   Overlord page reach it only through `shared/` and `views/`.
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
-**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (155 findings)
-and let through (`--ignore-known`): the engine's one import of `views/` (`buildTurnReport`, which P1-12b3 moves into
-the turn's shell; P1-12b1 moved the sight rules, the Terror constants and the telemetry's snapshots into the engine),
-`db/`'s 14 imports outside itself (P1-17's access layer), and the 140 findings of the eight
+**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (154 findings)
+and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), and the 140 findings of the eight
 import cycles (P1-13e breaks them, one a pull request): six in the engine (11, 9, 2, 2, 2 and 2 files), the GM page's
 (10 files, both of `db/` among them) and the player page's (18). The ratchet counts the list
 (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no longer
@@ -412,12 +410,20 @@ portals' start-up guards are gone.
   orders, runs the bot passes, defaults missing orders to Defend, and resolves the five phases (look for
   `// 4. Run all 5 phases`) and the end of the turn. It is synchronous and reads no database, no screen and
   no clock; its dice are the seed's (below), or, given no seed, the dice in use (as a test fixes them). It returns
-  `{state, log, spyStealthAndInvisibilityStampedForTheReports, buildReports}`: the world to save, as JSON; the GM's
-  log; the Spy-stealth step, which rolls each hero's Spy stealth and carries this turn's Invisibility into the reports'
-  turn, on the working copy, once (P1-12b2); and `buildReports()`, which builds every realm's report on the working
-  copy, once, after the stealth step, and writes nothing to it ([traps.md](traps.md#views-never-write)). Both are
-  called only after the save, on the turn's dice. `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
+  `{state, log, spyStealthAndInvisibilityStampedForTheReports, whatTheReportsRead}`: the world to save, as JSON; the
+  GM's log; the Spy-stealth step, which rolls each hero's Spy stealth and carries this turn's Invisibility into the
+  reports' turn, on the working copy, once, on the turn's dice (P1-12b2); and `whatTheReportsRead()`, which hands over,
+  once, after the stealth step, what the reports are built from: the slot rows, the working copy, the turn's log, the
+  turn's sight (whose heroes stood where in each phase, who fought in each battle, whom each realm watches by
+  Clairvoyance) and the telemetry's collectors (P1-12b3). Both are called only after the save. The engine imports no
+  view: the reports are the views' (below). `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
   with no page.
+- **Every realm's report** is built in `src/views/every-realms-report-and-the-lines-each-realm-reads.ts` (P1-12b3):
+  `buildReports(whatTheReportsRead)` builds, for each played slot, `buildTurnReport`'s report (`views/turn-report.ts`)
+  with the lines the realm reads, its battle markers and its province intelligence; `playerEvents(turnLog, G, realm,
+  sight)` works out the lines: its own deeds, the lines sent to it or about its heroes, the world's announcements and
+  what happened where it had eyes at the time, unmet realms left nameless, its spies' lingering sight and its
+  Clairvoyance feed. They write nothing and draw no dice ([traps.md](traps.md#views-never-write)).
 - **`runTurn`**, the turn's shell (`src/ui/gm/turn-shell.ts`), loads the full world and every slot, checks the
   game is still on the turn the GM meant to run, then **clears the submitted orders in the database**
   (keeping a copy in memory) and stops if that fails. Only then does it draw the turn's seed and call `resolveTurn`.
@@ -426,7 +432,8 @@ portals' start-up guards are gone.
      (`turnRanAt`, and in deadline mode `nextDeadlineAt`): if another tab already resolved this turn, nothing
      is written and `_saveConflict` is set;
   2. sets `_turnCommitted=true` on the line after that save succeeds;
-  3. calls the Spy-stealth step, then `buildReports()`, and writes each realm's report, stamped with the build that
+  3. calls the Spy-stealth step, then the views' `buildReports(resolved.whatTheReportsRead())`, and writes each realm's
+     report, stamped with the build that
      wrote it (`engineStamp`), and its `turn_logs` snapshot, then the GM's log (with the stealth step's lines at its
      end), then telemetry.
 
@@ -479,7 +486,7 @@ portals' start-up guards are gone.
   (`runTurn`) draws a 32-bit integer from the page's dice, hands it to `resolveTurn`, and returns it (`{…, seed}`), for
   P2-01 to record. Since P1-08m the turn takes its seed: `resolveTurn` makes the dice of it (`kcRngStream(seed)`)
   once, lends them to itself (`kcRng.use`) and again to the Spy-stealth step, whose rolls carry on from the turn's, and
-  to `buildReports()` (which draws none since P1-12b2), and gives back the dice in use before after each, also when it throws, so they are never lent across the
+  gives back the dice in use before after each, also when it throws, so they are never lent across the
   shell's `await`s (P1-18e had the shell lend them; `tests/unit/the-turns-own-dice-from-its-seed.test.ts`). A mercenary
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
@@ -516,9 +523,9 @@ portals' start-up guards are gone.
   (`engine/battle/raid-the-coast-and-landing-parties.ts`), what a spy learns (`engine/espionage/what-a-spy-learns.ts`),
   graves and fallen heroes (`engine/graves.ts`), and `noteBattleLoss`
   (`engine/turn/mercenary-ids-and-battle-records.ts`). P1-08d: every realm's report and the Spy-stealth rolls
-  (`buildReports`, `engine/turn/realm-reports-and-spy-stealth.ts`; since P1-12b2 the rolls are a step of their own in
-  that file, `spyStealthAndInvisibilityStampedForTheReports`), which `resolveTurn` hands the shell wrapped with the
-  turn's context. P1-08e: personal combat, the `pc*` family up to `resolvePersonalCombat`, in six files under
+  (`buildReports`, then in `engine/turn/realm-reports-and-spy-stealth.ts`; since P1-12b2 the rolls are a step of their
+  own, `spyStealthAndInvisibilityStampedForTheReports`, in `run-turn.ts` since P1-12b3, when the reports moved into
+  `src/views/every-realms-report-and-the-lines-each-realm-reads.ts`). P1-08e: personal combat, the `pc*` family up to `resolvePersonalCombat`, in six files under
   `engine/personal-combat/` (speed, encounter plans and combatants; to-hit, wounds, stuns and courage; combat spells and
   guardian abilities; melee, flight and archery; tactics, combat items and each action; the fight), beside `helpers.ts`;
   tests take them through `tests/lib/personal-combat.ts` (from their modules, imported directly, since P1-14b). P1-08f: duels and character encounters (`resolveDuel`,
