@@ -1,7 +1,9 @@
 // npm run balance:report -- --base REF --head FILE: the balance report (report.ts) of this branch's games against the
 // base branch's. Run by CI's balance job on a pull request, after npm run balance (which wrote FILE with --out); the
 // job uploads the report and a separate workflow posts it as the pull request's comment (balance-report.yml).
-// - The base's games are its committed baseline (git show REF:tests/balance/baseline/matrix.json): never played.
+// - The base's games are its committed baseline (git show REF:tests/balance/baseline/matrix.json): never played. Every
+//   realm's report likewise: the branch's run (every-realm.json, written beside FILE by npm run balance) against the
+//   base's committed reports.json, set A (P1-12a1).
 // - Where the changed games first differ: up to 12 of them are replayed on both sides, each only up to the first turn
 //   that differs, keeping that turn's GM log. The base's side plays a copy of the base's site (git archive, built if
 //   it has src/: sides.ts, withSiteAt; through KC_SITE); this side plays this site, built from src/ (or KC_SITE's). A replay that doesn't match its own baseline is left
@@ -13,12 +15,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { BASELINE_FILE, diffGame, parseBaseline, type KeptGame } from './baseline.ts';
+import { BASELINE_FILE, diffGame, parseBaseline, parseReports, type KeptGame, type ReportsGame } from './baseline.ts';
 import { matrix } from './matrix.ts';
 import type { GameResult } from './play.ts';
 import {
   buildReport,
   classify,
+  compareEveryRealm,
   compareGames,
   firstDifference,
   gamesToReplay,
@@ -114,7 +117,17 @@ async function main(): Promise<number> {
     );
   }
 
-  const report = buildReport({ base, head, firstDiffs, replayNotes, baselineStale });
+  // Every realm's report: the branch's run, if npm run balance played it, against the base's baseline, if it has one.
+  const headRun = path.join(path.dirname(values.head), 'every-realm.json');
+  const headReports = fs.existsSync(headRun) ? (parseReports(fs.readFileSync(headRun, 'utf8')).A ?? null) : null;
+  // (A base from before P1-12a1 has none.)
+  const REPORTS = 'tests/balance/baseline/reports.json';
+  const baseReports: ReportsGame[] | null = git('ls-tree', '--name-only', values.base, REPORTS).trim()
+    ? (parseReports(git('show', `${values.base}:${REPORTS}`)).A ?? null)
+    : null;
+  const everyRealm = compareEveryRealm(baseReports, headReports);
+
+  const report = buildReport({ base, head, firstDiffs, replayNotes, baselineStale, everyRealm });
   const markdown = renderReport(report);
   fs.mkdirSync(values.out, { recursive: true });
   fs.writeFileSync(path.join(values.out, 'report.md'), markdown);
