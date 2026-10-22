@@ -322,8 +322,9 @@ function filesOf(root: string, patchFile: string): string[] | null {
   return files;
 }
 
+/** A table cell: its backslashes and bars escaped, so it stays one cell. */
 function cell(s: string): string {
-  return s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  return s.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 
 /** The table printed at the end, in Markdown. */

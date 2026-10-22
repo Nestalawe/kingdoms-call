@@ -7,7 +7,7 @@
 // - It stops, scoring nothing, on a red control run, on a folder git would commit, on a dirty tree, and with CI set.
 // - --only scores the patches named; results.json and each stage's log are written; the worktrees are gone (a killed
 //   run's too) and the repository's worktree list and status are as before; node_modules is copied without .cache, and
-//   the stages run without KC_SEED.
+//   the stages run without KC_SEED; the table keeps a header's backslashes and bars inside their cell.
 // - The time limit, at function level: a stage that never ends is stopped, with what it started, and reads "timed
 //   out", against a limit about forty times what an ordinary stage takes here (a Node process: about 50 ms); what a
 //   command leaves running when it ends is stopped with it.
@@ -23,6 +23,7 @@ import {
   runStage,
   scoreMutants,
   STAGES,
+  table,
   WORKTREE_PREFIX,
   type PatchResult,
   type StageResult,
@@ -329,6 +330,23 @@ test('--only scores the patches named, from a folder the repository ignores', SC
   const results = JSON.parse(fs.readFileSync(path.join(folder, 'results.json'), 'utf8')) as { patches: PatchResult[] };
   expect(results.patches.map((p) => [p.patch, p.result])).toEqual([['04-survives.patch', 'survived']]);
   expect(fs.readdirSync(path.join(folder, 'logs')).sort()).toEqual(['04-survives', 'control']);
+});
+
+test("the table keeps a header's backslashes and bars inside their cell", () => {
+  const patch: PatchResult = {
+    patch: 'a.patch',
+    area: 'a | b',
+    imitates: 'a \\| c\\',
+    result: 'survived',
+    why: '',
+    redStages: [],
+    failedTests: [],
+    stages: [],
+  };
+  const row = table('abc', [patch]).split('\n').at(-1) ?? '';
+  expect(row).toBe('| a.patch | a \\| b | a \\\\\\| c\\\\ | survived | – | – |');
+  // Only the seven bars that bound the six cells are unescaped (not preceded by an odd number of backslashes).
+  expect(row.match(/(?<!\\)(?:\\\\)*\|/g)).toHaveLength(7);
 });
 
 describe("a stage's time limit", () => {
