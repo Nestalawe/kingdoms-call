@@ -137,8 +137,8 @@ export interface TurnContext {
   clairWatch: Record<number, { charId: number; fromPhase: number }>;
   /** The realms with a hero in each province at the start of each phase: by phase, then a Map by province. */
   presenceByPhase: Map<number, Set<number>>[];
-  /** Whether buildReports has run. */
-  _reports: { built: boolean };
+  /** Whether the Spy-stealth step has run (it comes first, P1-12b2), and whether buildReports has. */
+  _reports: { stealthRolled: boolean; built: boolean };
   /** The provinces each realm's heroes entered this phase, by realm. */
   enteredThisPhase: Record<number, Set<number>>;
   /** Distances between provinces, by `<from>:<to>`. */

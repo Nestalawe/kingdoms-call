@@ -77,7 +77,8 @@ test("each realm's report shows exactly the lines the visibility rule allows, in
     fc.property(fc.array(entry, { maxLength: 30 }), (drawn) => {
       const log: Entry[] = drawn.map((e, i) => ({ ...e, text: `[line ${String(i)}]`, charIds: null }));
       tc.turnLog = log.map((e) => ({ ...e }));
-      tc['_reports'] = { built: false };
+      // The Spy stealth is a step of its own (P1-12b2), not rolled here.
+      tc['_reports'] = { stealthRolled: true, built: false };
       const { reports } = buildReports(tc);
       expect(reports.map((r) => r.gp.player_index)).toEqual([0, 1, 2]);
       for (const { gp, report } of reports) {

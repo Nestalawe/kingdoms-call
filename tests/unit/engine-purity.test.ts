@@ -1,5 +1,6 @@
-// The engine is pure (plan P1-18d): resolveTurn, and the reports it builds after the save (buildReports), run in a bare
-// Node vm, loaded the one way (tests/lib/engine.ts). The test plays a whole game of the balance matrix there
+// The engine is pure (plan P1-18d): resolveTurn, and what it hands the shell for after the save (the Spy-stealth step
+// and the reports, buildReports; P1-12b2 made the stealth a step of its own), run in a bare Node vm, loaded the one
+// way (tests/lib/engine.ts). The test plays a whole game of the balance matrix there
 // (scripted-05: realm 0 is a player's, on the matrix's scripted orders, and the other three are bots), from world
 // generation to the end, each turn's state the next turn's input and every turn building its reports, as the shell
 // plays it on the page (src/ui/gm/turn-shell.ts: each turn's seed drawn from the dice, the time of the run stamped).
@@ -57,6 +58,7 @@ interface Report {
 interface Resolved {
   state: string;
   log: unknown[];
+  spyStealthAndInvisibilityStampedForTheReports(): void;
   buildReports(): { reports: { gp: { player_index?: unknown }; report: Report }[]; tel: unknown };
 }
 
@@ -158,6 +160,7 @@ describe('a whole game, played in the bare vm', () => {
     for (let turn = 1; turn <= MAX_TURNS; turn++) {
       if ((JSON.parse(state) as { gameOver?: unknown }).gameOver) break;
       const resolved = e.resolveTurn(state, slotRows(e.engine, state, turn), turn, shellSeed(e.engine));
+      resolved.spyStealthAndInvisibilityStampedForTheReports();
       const { reports } = resolved.buildReports();
       if (turn === 1) {
         try {
@@ -268,6 +271,7 @@ describe('a fault planted in a copy of src/ turns it red', () => {
   test.each(FAULTS)('planted %s in the reports', (reach, line, error) => {
     const e = planted(AT.reports, line);
     const resolved = e.resolveTurn(world, slotRows(e.engine, world, 1), 1);
+    resolved.spyStealthAndInvisibilityStampedForTheReports();
     expect(() => resolved.buildReports()).toThrow(error);
     expect(new Set(e.reaches)).toEqual(new Set([reach]));
   });
@@ -281,7 +285,9 @@ describe('a fault planted in a copy of src/ turns it red', () => {
     const snapshot = snapshotOf(e, engineVariables());
     const globals = vm.runInContext('()=>Object.getOwnPropertyNames(globalThis)', e.engine) as () => string[];
     const [was, had] = [snapshot(), new Set(globals())];
-    e.resolveTurn(world, slotRows(e.engine, world, 1), 1).buildReports();
+    const resolved = e.resolveTurn(world, slotRows(e.engine, world, 1), 1);
+    resolved.spyStealthAndInvisibilityStampedForTheReports();
+    resolved.buildReports();
     const now = snapshot();
     expect(Object.keys(now).filter((n) => now[n] !== was[n] && !RESEEDED.includes(n))).toEqual(['SKILL_LABELS']);
     expect(globals().filter((n) => !had.has(n))).toEqual(['kcPlanted']);

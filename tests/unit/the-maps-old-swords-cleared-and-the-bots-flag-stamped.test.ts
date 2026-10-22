@@ -61,9 +61,11 @@ interface Played {
 function play(state: string): Played {
   const resolveTurn = engineFn(engine, 'resolveTurn') as (...a: unknown[]) => {
     state: string;
+    spyStealthAndInvisibilityStampedForTheReports(): void;
     buildReports(): { reports: { gp: { player_index: unknown }; report: unknown }[] };
   };
   const r = resolveTurn(state, slotRows(engine, WORLD, 1), 1, TURN_SEED);
+  r.spyStealthAndInvisibilityStampedForTheReports();
   const { reports } = r.buildReports();
   return { state: r.state, reports: JSON.stringify(reports.map(({ gp, report }) => [gp.player_index, report])) };
 }

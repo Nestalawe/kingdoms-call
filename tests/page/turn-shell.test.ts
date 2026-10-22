@@ -595,8 +595,14 @@ test('the page plays the turn the engine plays from the seed the shell returns',
     state: string,
     rows: unknown,
     turn: number,
-  ) => { state: string; log: unknown; buildReports(): { reports: { gp: Row; report: unknown }[] } };
+  ) => {
+    state: string;
+    log: unknown;
+    spyStealthAndInvisibilityStampedForTheReports(): void;
+    buildReports(): { reports: { gp: Row; report: unknown }[] };
+  };
   const resolved = resolveTurn(world, slotRows(engine, world, 1), 1);
+  resolved.spyStealthAndInvisibilityStampedForTheReports();
   const { reports } = resolved.buildReports();
   const alone = engineOutput(
     resolved.state,

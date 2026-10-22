@@ -13,10 +13,10 @@
 //   sc.reportEveryRealm()  from now on, a report for every realm, bots' too
 //
 // The turn is the shell's: resolveTurn on the saved world (JSON) and the slot rows, with a seed drawn from the
-// engine's dice as the shell draws it from the page's (src/ui/gm/turn-shell.ts), then buildReports(). Every realm is
-// human-held (so no bot plans for it) unless listed in `bots`; every living character not given orders Rests all turn. The
-// engine's console is quiet (its log and its warnings, as the page's are in scenario.js) while it makes the world and
-// plays the turn.
+// engine's dice as the shell draws it from the page's (src/ui/gm/turn-shell.ts), then the Spy-stealth step and
+// buildReports(). Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living character
+// not given orders Rests all turn. The engine's console is quiet (its log and its warnings, as the page's are in
+// scenario.js) while it makes the world and plays the turn.
 // W is the engine's global scope: `W.getNeighborsP(…)` calls a top-level function, `W.name = f` stands one in for the
 // calls made inside the engine (until it is put back), and `W.eval(code)` runs code there.
 import vm from 'node:vm';
@@ -65,6 +65,7 @@ export interface TurnOptions<St = World, X = unknown> {
 interface Resolved {
   state: string;
   log: Line[];
+  spyStealthAndInvisibilityStampedForTheReports(): void;
   buildReports(): {
     reports: { gp: { player_index: number }; report: Record<string, unknown> }[];
     tel: { gs: unknown; collected: Record<string, unknown> };
@@ -185,8 +186,8 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
   }
 
   /** Plays one turn of the saved world `state` on the slot rows `rows`, as the shell does (src/ui/gm/turn-shell.ts):
-   *  a seed drawn from the engine's dice, resolveTurn, then buildReports. Returns the world after the turn, the GM's
-   *  log, each report by its realm, and the turn's statistics. */
+   *  a seed drawn from the engine's dice, resolveTurn, then the Spy-stealth step and buildReports. Returns the world
+   *  after the turn, the GM's log, each report by its realm, and the turn's statistics. */
   function play(state: World | string, rows: unknown[]) {
     const json = typeof state === 'string' ? state : JSON.stringify(state);
     const turn = (JSON.parse(json) as World).turn;
@@ -194,7 +195,10 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
     const seed = Math.floor((run('kcRng()') as number) * 2 ** 32) || 1;
     const rowsInVm = (run('(j)=>JSON.parse(j)') as (j: string) => unknown)(JSON.stringify(rows));
     const resolved = quietly(() => call('resolveTurn', json, rowsInVm, turn, seed) as Resolved);
-    const built = quietly(() => resolved.buildReports());
+    const built = quietly(() => {
+      resolved.spyStealthAndInvisibilityStampedForTheReports();
+      return resolved.buildReports();
+    });
     const log = plain(resolved.log);
     const reports: Record<number, Record<string, unknown>> = {};
     for (const { gp, report } of built.reports) reports[gp.player_index] = plain(report);
