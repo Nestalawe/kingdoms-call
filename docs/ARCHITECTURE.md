@@ -902,6 +902,18 @@ posts it as one comment with the default branch's `tools/github/balance-comment.
 ("how often do these archers beat those guards in the hills?"): a scene staged in `tests/balance/scenarios/` through
 `tests/lib/scenario.js`, played 400 times on a copy of `main`'s site and on the branch, paired by seed and judged by
 the same noise rule, labels and words as the report. Run by hand, not in CI.
+**The mutant scorer** (`npm run mutants -- <folder>`, `tools/mutants/run.ts`, P1-21a) measures the tests themselves:
+"if the code were wrong, would we notice?". A mutant is a small fault in `src/`, written as a patch by a mutation
+session (the plan's protocol), with an `Area:` and an `Imitates:` line (the real bug it imitates) before the diff. The
+scorer first runs every stage on the checkout's `HEAD` with no patch (the control run; the tree must be clean, and any
+red stops it), then each patch, one at a time, in a throwaway git worktree in the system's temporary folder with
+`node_modules` copied in without its caches: `npm run build` (red means the patch is broken), then the compiler, lint
+(with the import rules), `npm test` and the balance matrix. A mutant is **caught** when any of the four goes red or runs
+past five times its control time (at least a minute), **survived** when all four are green, and **broken** (the
+mutator's mistake, never "survived") when it has no header, changes a file outside `src/`, doesn't apply or doesn't
+build. It prints a table and writes `results.json` and each stage's log beside the patches. About 2.3 minutes a mutant.
+Local only, never in CI: it stops when `CI` is set, and `harness` checks no workflow runs it. The patches say where the
+tests are weak, so they never enter this repository: the scorer refuses a folder git would commit.
 
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
 (`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet, the static tests), the

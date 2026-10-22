@@ -17,6 +17,7 @@ const config = {
     'tools/github/*.ts',
     'tools/deploy/*.ts',
     'tools/hooks/*.ts',
+    'tools/mutants/*.ts',
     'tests/*.test.js',
     'tests/tools/*.js',
     'tests/lib/*.{js,ts}',
