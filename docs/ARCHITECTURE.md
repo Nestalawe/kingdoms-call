@@ -413,8 +413,11 @@ portals' start-up guards are gone.
   orders, runs the bot passes, defaults missing orders to Defend, and resolves the five phases (look for
   `// 4. Run all 5 phases`) and the end of the turn. It is synchronous and reads no database, no screen and
   no clock; its dice are the seed's (below), or, given no seed, the dice in use (as a test fixes them). It returns
-  `{state, log, buildReports}`: the world to save, as JSON; the GM's log; and `buildReports()`, which builds every
-  realm's report on the working copy, once, on the turn's dice, and is called only after the save. `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
+  `{state, log, spyStealthAndInvisibilityStampedForTheReports, buildReports}`: the world to save, as JSON; the GM's
+  log; the Spy-stealth step, which rolls each hero's Spy stealth and carries this turn's Invisibility into the reports'
+  turn, on the working copy, once (P1-12b2); and `buildReports()`, which builds every realm's report on the working
+  copy, once, after the stealth step, and writes nothing to it ([traps.md](traps.md#views-never-write)). Both are
+  called only after the save, on the turn's dice. `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
   with no page.
 - **`runTurn`**, the turn's shell (`src/ui/gm/turn-shell.ts`), loads the full world and every slot, checks the
   game is still on the turn the GM meant to run, then **clears the submitted orders in the database**
@@ -424,8 +427,9 @@ portals' start-up guards are gone.
      (`turnRanAt`, and in deadline mode `nextDeadlineAt`): if another tab already resolved this turn, nothing
      is written and `_saveConflict` is set;
   2. sets `_turnCommitted=true` on the line after that save succeeds;
-  3. calls `buildReports()` and writes each realm's report, stamped with the build that wrote it
-     (`engineStamp`), and its `turn_logs` snapshot, then the GM's log, then telemetry.
+  3. calls the Spy-stealth step, then `buildReports()`, and writes each realm's report, stamped with the build that
+     wrote it (`engineStamp`), and its `turn_logs` snapshot, then the GM's log (with the stealth step's lines at its
+     end), then telemetry.
 
   Steps 2–3 are **post-commit**: a failure there must never restore orders or retry the turn
   ([traps.md](traps.md#post-commit-work-in-runturn)). Everything from the load to the save is in one `try`
@@ -475,8 +479,8 @@ portals' start-up guards are gone.
   reads neither ([traps.md](traps.md#dice-come-from-kcrng)). Each turn plays from its own seed (P1-18e): the shell
   (`runTurn`) draws a 32-bit integer from the page's dice, hands it to `resolveTurn`, and returns it (`{…, seed}`), for
   P2-01 to record. Since P1-08m the turn takes its seed: `resolveTurn` makes the dice of it (`kcRngStream(seed)`)
-  once, lends them to itself (`kcRng.use`) and again to `buildReports()`, whose Spy-stealth rolls carry on from the
-  turn's, and gives back the dice in use before after each, also when it throws, so they are never lent across the
+  once, lends them to itself (`kcRng.use`) and again to the Spy-stealth step, whose rolls carry on from the turn's, and
+  to `buildReports()` (which draws none since P1-12b2), and gives back the dice in use before after each, also when it throws, so they are never lent across the
   shell's `await`s (P1-18e had the shell lend them; `tests/unit/the-turns-own-dice-from-its-seed.test.ts`). A mercenary
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
   with no dice or clock in it (P1-18b).
@@ -513,7 +517,8 @@ portals' start-up guards are gone.
   (`engine/battle/raid-the-coast-and-landing-parties.ts`), what a spy learns (`engine/espionage/what-a-spy-learns.ts`),
   graves and fallen heroes (`engine/graves.ts`), and `noteBattleLoss`
   (`engine/turn/mercenary-ids-and-battle-records.ts`). P1-08d: every realm's report and the Spy-stealth rolls
-  (`buildReports`, `engine/turn/realm-reports-and-spy-stealth.ts`), which `resolveTurn` hands the shell wrapped with the
+  (`buildReports`, `engine/turn/realm-reports-and-spy-stealth.ts`; since P1-12b2 the rolls are a step of their own in
+  that file, `spyStealthAndInvisibilityStampedForTheReports`), which `resolveTurn` hands the shell wrapped with the
   turn's context. P1-08e: personal combat, the `pc*` family up to `resolvePersonalCombat`, in six files under
   `engine/personal-combat/` (speed, encounter plans and combatants; to-hit, wounds, stuns and courage; combat spells and
   guardian abilities; melee, flight and archery; tactics, combat items and each action; the fight), beside `helpers.ts`;
