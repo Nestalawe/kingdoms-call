@@ -5,13 +5,15 @@
 // was fixed but left in the list is found, and the command docs/ARCHITECTURE.md gives takes it out. knip (npm run knip,
 // knip.ts) finds a planted unused file, export and dependency, and the ratchet's count (unusedCode) rises by each.
 // Level 0 (static): the two tools read the sources of temporary copies (node_modules linked) and nothing runs; each
-// test takes a few seconds (knip about 1.5 s a run), so each has a minute.
+// test takes a few seconds (knip about 1.5 s a run), so each has a time limit sized to its runs and copies
+// (tests/lib/time-limits.ts).
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, test } from 'vitest';
 import { KNOWN_ARCHITECTURE_VIOLATIONS_FILE, unusedCode } from '../../tools/ratchet.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const DEPCRUISE = path.join(ROOT, 'node_modules', '.bin', 'depcruise');
@@ -81,7 +83,7 @@ const knownList = (dir: string): unknown[] =>
   JSON.parse(fs.readFileSync(path.join(dir, KNOWN_ARCHITECTURE_VIOLATIONS_FILE), 'utf8')) as unknown[];
 
 describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () => {
-  test('passes on this tree, and finds every known violation still there', { timeout: 60_000 }, () => {
+  test('passes on this tree, and finds every known violation still there', timeLimitForTheWork({ toolRuns: 2 }), () => {
     expect(lintArch(ROOT)).toBe(0);
     const now = cruise(ROOT);
     expect(now.found).toEqual([]);
@@ -207,7 +209,7 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
 
   test(
     'refuses one planted import for each rule, a runtime cycle among them, and lets type-only imports through',
-    { timeout: 60_000 },
+    timeLimitForTheWork({ toolRuns: 2, everyFileReads: 1 }),
     () => {
       const dir = copyOfTheRepository();
       for (const { file, code } of PLANTED) {
@@ -233,7 +235,7 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
 
   test(
     'finds a known violation that was fixed but left in the list, and the shrink-only command takes it out',
-    { timeout: 60_000 },
+    timeLimitForTheWork({ toolRuns: 3, everyFileReads: 1 }),
     () => {
       const dir = copyOfTheRepository();
       const file = 'src/engine/world/generate.ts';
@@ -268,24 +270,29 @@ describe('knip: unused files, exports and dependencies (npm run knip), counted b
     );
   }
 
-  test('finds a planted unused file, export and dependency, and unusedCode rises by three', { timeout: 60_000 }, () => {
-    const before = knip(ROOT);
-    expect(unusedCode(ROOT)).toBe(before.length);
-    const dir = copyOfTheRepository();
-    plant(dir, 'src/engine/planted-file-nothing-imports.ts', 'export const planted = 1;\n');
-    const clock = fs.readFileSync(path.join(dir, 'src/engine/clock.ts'), 'utf8');
-    plant(dir, 'src/engine/clock.ts', clock + '\nexport function plantedNothingCalls(): number {\n  return 1;\n}\n');
-    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')) as {
-      devDependencies: Record<string, string>;
-    };
-    pkg.devDependencies['left-pad'] = '1.3.0';
-    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
-    const after = knip(dir);
-    expect(after.filter((f) => !before.includes(f)).sort()).toEqual([
-      'devDependencies package.json left-pad',
-      'exports src/engine/clock.ts plantedNothingCalls',
-      'files src/engine/planted-file-nothing-imports.ts src/engine/planted-file-nothing-imports.ts',
-    ]);
-    expect(unusedCode(dir)).toBe(unusedCode(ROOT) + 3);
-  });
+  // knip five times (unusedCode runs it too) and a copy of the repository
+  test(
+    'finds a planted unused file, export and dependency, and unusedCode rises by three',
+    timeLimitForTheWork({ toolRuns: 5, everyFileReads: 1 }),
+    () => {
+      const before = knip(ROOT);
+      expect(unusedCode(ROOT)).toBe(before.length);
+      const dir = copyOfTheRepository();
+      plant(dir, 'src/engine/planted-file-nothing-imports.ts', 'export const planted = 1;\n');
+      const clock = fs.readFileSync(path.join(dir, 'src/engine/clock.ts'), 'utf8');
+      plant(dir, 'src/engine/clock.ts', clock + '\nexport function plantedNothingCalls(): number {\n  return 1;\n}\n');
+      const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')) as {
+        devDependencies: Record<string, string>;
+      };
+      pkg.devDependencies['left-pad'] = '1.3.0';
+      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+      const after = knip(dir);
+      expect(after.filter((f) => !before.includes(f)).sort()).toEqual([
+        'devDependencies package.json left-pad',
+        'exports src/engine/clock.ts plantedNothingCalls',
+        'files src/engine/planted-file-nothing-imports.ts src/engine/planted-file-nothing-imports.ts',
+      ]);
+      expect(unusedCode(dir)).toBe(unusedCode(ROOT) + 3);
+    },
+  );
 });

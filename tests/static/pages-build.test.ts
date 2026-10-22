@@ -44,14 +44,14 @@ import {
   type BuildResult,
 } from '../../tools/build.ts';
 import { DATA_FILE, engineEntryFiles, importsOf, pageEntries, pageFiles, pageNames } from '../../tools/pages.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const SRC = path.join(ROOT, 'src');
 const PUBLIC = path.join(ROOT, 'public');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-pages-build-'));
-// A test that builds the site again (each build is Vite's, one per page) takes about a second here and up to 6 s on
-// CI's runners when the static tests run side by side, past Vitest's default of 5 s: its time limit is sized to the
-// work.
-const BUILDS = { timeout: 30_000 };
+// A test that builds the site again (each build is Vite's, one per page), copies src/ or reads every file of a page by
+// its syntax tree takes about a second here and up to 6 s on CI's runners when the static tests run side by side, past
+// Vitest's default of 5 s: its time limit is sized to the work (tests/lib/time-limits.ts).
 afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
@@ -151,7 +151,7 @@ describe('every page builds', () => {
     expect(built.files).toBe(want.length);
   });
 
-  test('two builds of the same src/ are byte-identical, names and all', BUILDS, () => {
+  test('two builds of the same src/ are byte-identical, names and all', timeLimitForTheWork({ siteBuilds: 1 }), () => {
     const again = path.join(tmp, 'site-twice');
     build(again);
     expect(filesUnder(again)).toEqual(filesUnder(SITE));
@@ -165,6 +165,7 @@ describe('every page builds', () => {
 
   test.for(pages.filter((p) => pageEntries(p).modules.length))(
     '%s: its bundle stands alone, a classic script with no import or export, and the page loads it',
+    timeLimitForTheWork({ everyFileReads: 1 }),
     (page) => {
       const code = fs.readFileSync(path.join(SITE, bundleOf(page)), 'utf8');
       const program = acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module' });
@@ -182,60 +183,72 @@ describe('every file under src/ is in a page', () => {
     expect(unreached(SRC, built)).toEqual([]);
   });
 
-  test('a file nothing imports is found (planted)', () => {
+  test('a file nothing imports is found (planted)', timeLimitForTheWork({ siteBuilds: 1, everyFileReads: 1 }), () => {
     const copy = srcCopy((d) => {
       fs.writeFileSync(path.join(d, 'engine', 'forgotten.ts'), 'export const forgotten = 1;\n');
     });
     expect(unreached(copy, build(path.join(tmp, 'site-forgotten'), copy))).toEqual(['engine/forgotten.ts']);
   });
 
-  test('a file a module imports that is missing stops the build (planted)', () => {
-    const copy = srcCopy((d) => {
-      fs.rmSync(path.join(d, 'engine', 'graves.ts'));
-    });
-    expect(() => build(path.join(tmp, 'site-missing'), copy)).toThrow(/graves\.ts/);
-  });
+  test(
+    'a file a module imports that is missing stops the build (planted)',
+    timeLimitForTheWork({ siteBuilds: 1, everyFileReads: 1 }),
+    () => {
+      const copy = srcCopy((d) => {
+        fs.rmSync(path.join(d, 'engine', 'graves.ts'));
+      });
+      expect(() => build(path.join(tmp, 'site-missing'), copy)).toThrow(/graves\.ts/);
+    },
+  );
 
-  test('src/schemas/ is in no bundle, and src/ imports it as types only', () => {
-    expect(filesUnder(path.join(SRC, SCHEMAS))).toEqual(
-      expect.arrayContaining([
-        'ids-of-provinces-heroes-and-realms.ts',
-        'orders-a-realm-submits.ts',
-        'saved-game-state.ts',
-      ]),
-    );
-    expect(Object.values(built.modules).flat().filter(isTypesOnly)).toEqual([]);
-    expect(valueImportsOfTheSchemas(SRC)).toEqual([]);
-  });
-
-  test('a value import of src/schemas/ is refused, in each of its forms (planted)', () => {
-    const copy = srcCopy((d) => {
-      fs.writeFileSync(
-        path.join(d, 'engine', 'reads-a-schema.ts'),
-        [
-          "import { GameStateSchema } from '../schemas/saved-game-state.ts';",
-          "import { type Realm } from '../schemas/saved-game-state.ts';",
-          "import '../schemas/orders-a-realm-submits.ts';",
-          "export { ProvinceIdSchema } from '../schemas/ids-of-provinces-heroes-and-realms.ts';",
-          "export const later = () => import('../schemas/saved-game-state.ts');",
-          'export const schema = GameStateSchema;',
-          'export type R = Realm;',
-          '',
-        ].join('\n'),
+  test(
+    'src/schemas/ is in no bundle, and src/ imports it as types only',
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    () => {
+      expect(filesUnder(path.join(SRC, SCHEMAS))).toEqual(
+        expect.arrayContaining([
+          'ids-of-provinces-heroes-and-realms.ts',
+          'orders-a-realm-submits.ts',
+          'saved-game-state.ts',
+        ]),
       );
-    });
-    expect(valueImportsOfTheSchemas(copy)).toEqual([
-      "engine/reads-a-schema.ts: import { GameStateSchema } from '../schemas/saved-game-state.ts';",
-      "engine/reads-a-schema.ts: import { type Realm } from '../schemas/saved-game-state.ts';",
-      "engine/reads-a-schema.ts: import '../schemas/orders-a-realm-submits.ts';",
-      "engine/reads-a-schema.ts: export { ProvinceIdSchema } from '../schemas/ids-of-provinces-heroes-and-realms.ts';",
-      "engine/reads-a-schema.ts: import('../schemas/saved-game-state.ts')",
-    ]);
-  });
+      expect(Object.values(built.modules).flat().filter(isTypesOnly)).toEqual([]);
+      expect(valueImportsOfTheSchemas(SRC)).toEqual([]);
+    },
+  );
+
+  test(
+    'a value import of src/schemas/ is refused, in each of its forms (planted)',
+    timeLimitForTheWork({ everyFileReads: 2 }),
+    () => {
+      const copy = srcCopy((d) => {
+        fs.writeFileSync(
+          path.join(d, 'engine', 'reads-a-schema.ts'),
+          [
+            "import { GameStateSchema } from '../schemas/saved-game-state.ts';",
+            "import { type Realm } from '../schemas/saved-game-state.ts';",
+            "import '../schemas/orders-a-realm-submits.ts';",
+            "export { ProvinceIdSchema } from '../schemas/ids-of-provinces-heroes-and-realms.ts';",
+            "export const later = () => import('../schemas/saved-game-state.ts');",
+            'export const schema = GameStateSchema;',
+            'export type R = Realm;',
+            '',
+          ].join('\n'),
+        );
+      });
+      expect(valueImportsOfTheSchemas(copy)).toEqual([
+        "engine/reads-a-schema.ts: import { GameStateSchema } from '../schemas/saved-game-state.ts';",
+        "engine/reads-a-schema.ts: import { type Realm } from '../schemas/saved-game-state.ts';",
+        "engine/reads-a-schema.ts: import '../schemas/orders-a-realm-submits.ts';",
+        "engine/reads-a-schema.ts: export { ProvinceIdSchema } from '../schemas/ids-of-provinces-heroes-and-realms.ts';",
+        "engine/reads-a-schema.ts: import('../schemas/saved-game-state.ts')",
+      ]);
+    },
+  );
 
   test(
     "a type-only import of src/schemas/ from a page's module leaves every bundle without it (planted)",
-    BUILDS,
+    timeLimitForTheWork({ siteBuilds: 1, everyFileReads: 3 }),
     () => {
       const copy = srcCopy((d) => {
         const file = path.join(d, 'engine', 'rng.ts');
@@ -260,43 +273,51 @@ describe('every file under src/ is in a page', () => {
     },
   );
 
-  test("tools/pages.ts's importsOf reads the imports that bring code, and not a type-only one (planted)", () => {
-    const copy = srcCopy((d) => {
-      fs.writeFileSync(
-        path.join(d, 'engine', 'imports-in-every-form.ts'),
-        [
-          "import type { GameState } from '../schemas/saved-game-state.ts';",
-          "export type { Realm } from '../schemas/saved-game-state.ts';",
-          "import { kcRng } from './rng.ts';",
-          "import { type kcClock } from './clock.ts';",
-          "import './graves.ts';",
-          "export * from './discoveries.ts';",
-          "export { KC_UNIT_TYPE } from '../content/kingdoms-call-data.ts';",
-          "export const later = () => import('./world/map-helpers.ts');",
-          'export const roll = (g: GameState) => (g ? kcRng() : 0);',
-          '',
-        ].join('\n'),
-      );
-    });
-    expect(importsOf('engine/imports-in-every-form.ts', copy)).toEqual([
-      'engine/rng.ts',
-      'engine/clock.ts',
-      'engine/graves.ts',
-      'engine/discoveries.ts',
-      'content/kingdoms-call-data.ts',
-      'engine/world/map-helpers.ts',
-    ]);
-  });
+  test(
+    "tools/pages.ts's importsOf reads the imports that bring code, and not a type-only one (planted)",
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    () => {
+      const copy = srcCopy((d) => {
+        fs.writeFileSync(
+          path.join(d, 'engine', 'imports-in-every-form.ts'),
+          [
+            "import type { GameState } from '../schemas/saved-game-state.ts';",
+            "export type { Realm } from '../schemas/saved-game-state.ts';",
+            "import { kcRng } from './rng.ts';",
+            "import { type kcClock } from './clock.ts';",
+            "import './graves.ts';",
+            "export * from './discoveries.ts';",
+            "export { KC_UNIT_TYPE } from '../content/kingdoms-call-data.ts';",
+            "export const later = () => import('./world/map-helpers.ts');",
+            'export const roll = (g: GameState) => (g ? kcRng() : 0);',
+            '',
+          ].join('\n'),
+        );
+      });
+      expect(importsOf('engine/imports-in-every-form.ts', copy)).toEqual([
+        'engine/rng.ts',
+        'engine/clock.ts',
+        'engine/graves.ts',
+        'engine/discoveries.ts',
+        'content/kingdoms-call-data.ts',
+        'engine/world/map-helpers.ts',
+      ]);
+    },
+  );
 
-  test.for(pages)("%s: tools/pages.ts names the files Rolldown's bundle holds", (page) => {
-    const theirs = built.modules[page] ?? [];
-    const ours = pageFiles(page);
-    expect(theirs.filter((f) => !ours.includes(f))).toEqual([]);
-    const leftOut = ours.filter((f) => !theirs.includes(f) && !pageEntries(page).styles.includes(f) && f !== page);
-    const scriptless = !pageEntries(page).modules.length;
-    expect(leftOut).toEqual([]);
-    expect(scriptless ? theirs : []).toEqual([]);
-  });
+  test.for(pages)(
+    "%s: tools/pages.ts names the files Rolldown's bundle holds",
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    (page) => {
+      const theirs = built.modules[page] ?? [];
+      const ours = pageFiles(page);
+      expect(theirs.filter((f) => !ours.includes(f))).toEqual([]);
+      const leftOut = ours.filter((f) => !theirs.includes(f) && !pageEntries(page).styles.includes(f) && f !== page);
+      const scriptless = !pageEntries(page).modules.length;
+      expect(leftOut).toEqual([]);
+      expect(scriptless ? theirs : []).toEqual([]);
+    },
+  );
 });
 
 describe("the engine's files", () => {
@@ -318,7 +339,7 @@ describe("the engine's files", () => {
   });
 });
 
-test("public/dev/ (the dev server's config) is never published", BUILDS, () => {
+test("public/dev/ (the dev server's config) is never published", timeLimitForTheWork({ siteBuilds: 1 }), () => {
   const pub = path.join(tmp, 'public');
   fs.cpSync(PUBLIC, pub, { recursive: true });
   fs.mkdirSync(path.join(pub, 'dev'), { recursive: true });
@@ -329,19 +350,23 @@ test("public/dev/ (the dev server's config) is never published", BUILDS, () => {
   expect(filesUnder(out)).toContain('kc-config.js');
 });
 
-test('the build writes only what changed, and removes what it no longer makes', BUILDS, () => {
-  const out = path.join(tmp, 'site-again');
-  const first = build(out);
-  expect(first.written).toHaveLength(first.files);
-  for (const f of filesUnder(SITE))
-    expect(fs.readFileSync(path.join(out, f)).equals(fs.readFileSync(path.join(SITE, f))), f).toBe(true);
-  fs.writeFileSync(path.join(out, 'stale.html'), 'old');
-  fs.writeFileSync(path.join(out, 'kc-staging-footer.js'), 'changed by hand');
-  const second = build(out);
-  expect(second.written).toEqual(['kc-staging-footer.js']);
-  expect(second.removed).toEqual(['stale.html']);
-  expect(build(out)).toMatchObject({ written: [], removed: [] });
-});
+test(
+  'the build writes only what changed, and removes what it no longer makes',
+  timeLimitForTheWork({ siteBuilds: 3 }),
+  () => {
+    const out = path.join(tmp, 'site-again');
+    const first = build(out);
+    expect(first.written).toHaveLength(first.files);
+    for (const f of filesUnder(SITE))
+      expect(fs.readFileSync(path.join(out, f)).equals(fs.readFileSync(path.join(SITE, f))), f).toBe(true);
+    fs.writeFileSync(path.join(out, 'stale.html'), 'old');
+    fs.writeFileSync(path.join(out, 'kc-staging-footer.js'), 'changed by hand');
+    const second = build(out);
+    expect(second.written).toEqual(['kc-staging-footer.js']);
+    expect(second.removed).toEqual(['stale.html']);
+    expect(build(out)).toMatchObject({ written: [], removed: [] });
+  },
+);
 
 describe("each page's version (P1-06c)", () => {
   interface Published {
@@ -412,47 +437,59 @@ describe("each page's version (P1-06c)", () => {
     expect(buildLine({ commit: 'dev', time: null })).toBe('build dev');
   });
 
-  test('with no git (a copy of src/ outside the checkout), the build says "build unknown"', BUILDS, () => {
-    const out = path.join(tmp, 'site-no-git');
-    build(
-      out,
-      srcCopy(() => undefined),
-    );
-    expect(versionOf(out)).toMatchObject({ commit: 'unknown', time: null });
-    for (const page of marked) expect(linesOf(html(out, page))).toEqual(['build unknown']);
-  });
-
-  test("another commit changes no bundle and no fingerprint: only the pages' metas and build lines", BUILDS, () => {
-    const commits = ['0123456789abcdef0123456789abcdef01234567', 'fedcba9876543210fedcba9876543210fedcba98'];
-    const [one, two] = commits.map((commit, i) => {
-      const out = path.join(tmp, `site-commit-${String(i)}`);
-      build(out, SRC, PUBLIC, { ...process.env, KC_BUILD_COMMIT: commit, KC_BUILD_TIME: '2026-10-21T21:15:00Z' });
-      return out;
-    }) as [string, string];
-    expect(filesUnder(two)).toEqual(filesUnder(one));
-    const differ = filesUnder(one).filter(
-      (f) => !fs.readFileSync(path.join(one, f)).equals(fs.readFileSync(path.join(two, f))),
-    );
-    expect(differ).toEqual([...pages, VERSION_FILE].sort());
-    expect(versionOf(two).pages).toEqual(versionOf(one).pages);
-    expect(versionOf(one).commit).toBe(commits[0]);
-    expect(linesOf(html(two, 'kingdoms-call-gm-portal.html'))).toEqual(['build fedcba9 · 22 Oct 2026, 10:15']);
-    for (const page of pages) expect(beforeItsVersion(html(two, page)), page).toBe(beforeItsVersion(html(one, page)));
-  });
-
-  test("a change to one page's code changes only that page's fingerprint (planted)", BUILDS, () => {
-    const before = buildOf('unchanged', () => undefined);
-    const after = buildOf('gm-changed', (src) => {
-      fs.appendFileSync(
-        path.join(src, 'ui', 'gm', 'startup.ts'),
-        '\n(globalThis as { aPlantedChange?: number }).aPlantedChange = 1;\n',
+  test(
+    'with no git (a copy of src/ outside the checkout), the build says "build unknown"',
+    timeLimitForTheWork({ siteBuilds: 1, everyFileReads: 1 }),
+    () => {
+      const out = path.join(tmp, 'site-no-git');
+      build(
+        out,
+        srcCopy(() => undefined),
       );
-    });
-    const [a, b] = [versionOf(before).pages, versionOf(after).pages];
-    expect(Object.keys(a).filter((page) => a[page] !== b[page])).toEqual(['kingdoms-call-gm-portal.html']);
-  });
+      expect(versionOf(out)).toMatchObject({ commit: 'unknown', time: null });
+      for (const page of marked) expect(linesOf(html(out, page))).toEqual(['build unknown']);
+    },
+  );
 
-  test('a KC_BUILD_COMMIT that is not a commit stops the build', BUILDS, () => {
+  test(
+    "another commit changes no bundle and no fingerprint: only the pages' metas and build lines",
+    timeLimitForTheWork({ siteBuilds: 2 }),
+    () => {
+      const commits = ['0123456789abcdef0123456789abcdef01234567', 'fedcba9876543210fedcba9876543210fedcba98'];
+      const [one, two] = commits.map((commit, i) => {
+        const out = path.join(tmp, `site-commit-${String(i)}`);
+        build(out, SRC, PUBLIC, { ...process.env, KC_BUILD_COMMIT: commit, KC_BUILD_TIME: '2026-10-21T21:15:00Z' });
+        return out;
+      }) as [string, string];
+      expect(filesUnder(two)).toEqual(filesUnder(one));
+      const differ = filesUnder(one).filter(
+        (f) => !fs.readFileSync(path.join(one, f)).equals(fs.readFileSync(path.join(two, f))),
+      );
+      expect(differ).toEqual([...pages, VERSION_FILE].sort());
+      expect(versionOf(two).pages).toEqual(versionOf(one).pages);
+      expect(versionOf(one).commit).toBe(commits[0]);
+      expect(linesOf(html(two, 'kingdoms-call-gm-portal.html'))).toEqual(['build fedcba9 · 22 Oct 2026, 10:15']);
+      for (const page of pages) expect(beforeItsVersion(html(two, page)), page).toBe(beforeItsVersion(html(one, page)));
+    },
+  );
+
+  test(
+    "a change to one page's code changes only that page's fingerprint (planted)",
+    timeLimitForTheWork({ siteBuilds: 2, everyFileReads: 2 }),
+    () => {
+      const before = buildOf('unchanged', () => undefined);
+      const after = buildOf('gm-changed', (src) => {
+        fs.appendFileSync(
+          path.join(src, 'ui', 'gm', 'startup.ts'),
+          '\n(globalThis as { aPlantedChange?: number }).aPlantedChange = 1;\n',
+        );
+      });
+      const [a, b] = [versionOf(before).pages, versionOf(after).pages];
+      expect(Object.keys(a).filter((page) => a[page] !== b[page])).toEqual(['kingdoms-call-gm-portal.html']);
+    },
+  );
+
+  test('a KC_BUILD_COMMIT that is not a commit stops the build', timeLimitForTheWork({ siteBuilds: 1 }), () => {
     expect(() =>
       build(path.join(tmp, 'site-bad-commit'), SRC, PUBLIC, { ...process.env, KC_BUILD_COMMIT: '<b>not a commit' }),
     ).toThrow(/KC_BUILD_COMMIT/);

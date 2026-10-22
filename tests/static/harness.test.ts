@@ -42,6 +42,7 @@ import {
   readBaseline,
 } from '../../tools/ratchet.ts';
 import { LEVELS } from '../suite.ts';
+import { ALLOWANCE_MS, timeLimitForPropertyRuns, timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const read = (f: string) => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -218,16 +219,20 @@ describe('the lint rules', () => {
   test.for([
     ['src/engine/clock.ts', true],
     ['src/engine/turn/context.ts', false],
-  ] as const)('%s: a planted type-aware finding is an error: %s', { timeout: 30_000 }, async ([file, isError]) => {
-    expect(typeChecked(file)).toBe(isError);
-    const code = read(file) + '\nexport const planted = (x: string | undefined) => x || "a";\n';
-    const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
-    const found = (result?.messages ?? []).filter((m) => m.ruleId === '@typescript-eslint/prefer-nullish-coalescing');
-    expect(found.map((m) => m.severity)).toEqual(isError ? [2] : []);
-  });
+  ] as const)(
+    '%s: a planted type-aware finding is an error: %s',
+    timeLimitForTheWork({ typeScriptPrograms: 1 }),
+    async ([file, isError]) => {
+      expect(typeChecked(file)).toBe(isError);
+      const code = read(file) + '\nexport const planted = (x: string | undefined) => x || "a";\n';
+      const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
+      const found = (result?.messages ?? []).filter((m) => m.ruleId === '@typescript-eslint/prefer-nullish-coalescing');
+      expect(found.map((m) => m.severity)).toEqual(isError ? [2] : []);
+    },
+  );
   test(
     "every file of src/ gets the site's rules, each an error, and the type-aware ones exactly when TypeScript checks it",
-    { timeout: 60_000 },
+    timeLimitForTheWork({ toolRuns: 1 }),
     async () => {
       const wrong: string[] = [];
       for (const file of srcFiles) {
@@ -323,7 +328,7 @@ describe('the lint rules', () => {
       : [];
   test(
     'the engine reads no page, browser, timer, clock or database name, but the three reviewed exceptions',
-    { timeout: 60_000 },
+    timeLimitForTheWork({ toolRuns: 1 }),
     async () => {
       const wrong: string[] = [];
       for (const file of srcFiles) {
@@ -351,24 +356,28 @@ describe('the lint rules', () => {
     'kc/html-is-built-only-through-kc-html',
     'kc/no-random-or-argument-less-sort-comparator',
   ];
-  test("Math.random is refused everywhere but rng.ts, and the project's own rules run on src/ and public/", async () => {
-    const publicScripts = fs
-      .readdirSync(path.join(ROOT, 'public'))
-      .filter((f) => f.endsWith('.js'))
-      .map((f) => 'public/' + f);
-    expect(publicScripts).toEqual(['public/kc-config.js', 'public/kc-staging-footer.js']);
-    const wrong: string[] = [];
-    for (const file of [...srcFiles, ...publicScripts]) {
-      expect(await eslint.isPathIgnored(path.join(ROOT, file)), file).toBe(false);
-      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
-      const dice = file !== 'src/engine/rng.ts';
-      if ((level(rules['no-restricted-properties']) === 2) !== dice) wrong.push(`${file}: no-restricted-properties`);
-      if ((level(rules['no-restricted-syntax']) === 2) !== dice) wrong.push(`${file}: no-restricted-syntax`);
-      for (const rule of KC_RULES) if (level(rules[rule]) !== 2) wrong.push(`${file}: ${rule}`);
-    }
-    expect(wrong).toEqual([]);
-    expect(await eslint.isPathIgnored(path.join(ROOT, 'public/vendor/supabase-js-2.117.3.min.js'))).toBe(true);
-  });
+  test(
+    "Math.random is refused everywhere but rng.ts, and the project's own rules run on src/ and public/",
+    timeLimitForTheWork({ toolRuns: 1 }),
+    async () => {
+      const publicScripts = fs
+        .readdirSync(path.join(ROOT, 'public'))
+        .filter((f) => f.endsWith('.js'))
+        .map((f) => 'public/' + f);
+      expect(publicScripts).toEqual(['public/kc-config.js', 'public/kc-staging-footer.js']);
+      const wrong: string[] = [];
+      for (const file of [...srcFiles, ...publicScripts]) {
+        expect(await eslint.isPathIgnored(path.join(ROOT, file)), file).toBe(false);
+        const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+        const dice = file !== 'src/engine/rng.ts';
+        if ((level(rules['no-restricted-properties']) === 2) !== dice) wrong.push(`${file}: no-restricted-properties`);
+        if ((level(rules['no-restricted-syntax']) === 2) !== dice) wrong.push(`${file}: no-restricted-syntax`);
+        for (const rule of KC_RULES) if (level(rules[rule]) !== 2) wrong.push(`${file}: ${rule}`);
+      }
+      expect(wrong).toEqual([]);
+      expect(await eslint.isPathIgnored(path.join(ROOT, 'public/vendor/supabase-js-2.117.3.min.js'))).toBe(true);
+    },
+  );
 
   // kc/html-is-built-only-through-kc-html's reviewed exceptions (eslint.config.js's HTML_EXCEPTIONS; plan P1-13,
   // Decision 8): the rule refuses one that matches nothing in its file, but only as it lints that file, so each must
@@ -439,10 +448,14 @@ describe('the lint rules', () => {
     ],
     ['src/engine/rng.ts', 'export const r = Math.random();\n', []],
     ['src/engine/clock.ts', 'export const t = Date.now();\n', []],
-  ] as const)('%s: planted %j finds %j', { timeout: 30_000 }, async ([file, code, expected]) => {
-    expect(await restrictedFindings(file, code)).toEqual(expected);
-  });
-  test('a Math.random() and a new Date() planted in the real run-turn.ts are found', { timeout: 30_000 }, async () => {
+  ] as const)(
+    '%s: planted %j finds %j',
+    timeLimitForTheWork({ typeScriptPrograms: 1 }),
+    async ([file, code, expected]) => {
+      expect(await restrictedFindings(file, code)).toEqual(expected);
+    },
+  );
+  test('a Math.random() and a new Date() planted in the real run-turn.ts are found', async () => {
     const file = 'src/engine/run-turn.ts';
     const real = read(file);
     const before = await restrictedFindings(file, real);
@@ -461,7 +474,7 @@ describe('the lint rules', () => {
   // Two of the three are files TypeScript checks, so ESLint builds their program first: up to several seconds on CI.
   test.for(Object.entries(PURITY_EXCEPTIONS))(
     '%s may read %s, and nothing else the engine may not',
-    { timeout: 30_000 },
+    timeLimitForTheWork({ typeScriptPrograms: 2 }),
     async ([file, except]) => {
       expect(await restrictedFindings(file, `export const planted = typeof ${except};\n`)).toEqual([]);
       expect(await restrictedFindings(file, 'export const planted = typeof document;\n')).toEqual([
@@ -472,34 +485,38 @@ describe('the lint rules', () => {
 
   // The type assertions src/ held when the rule came in (eslint.config.js's TYPE_ASSERTIONS_KEPT, written by P1-11a3):
   // only those files may hold one, one each, and the list only shrinks (P1-10b replaces each with a check).
-  test('only the type assertions kept from before the rule are let through, one a file, and no more files', async () => {
-    const KEPT = [
-      'src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts',
-      'src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts',
-      'src/engine/rules-on-plain-values/unit-types-and-base-strength.ts',
-    ];
-    const assertionsIn = (file: string): number => {
-      const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
-      let n = 0;
-      const visit = (node: ts.Node): void => {
-        if (
-          (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) &&
-          !(ts.isTypeReferenceNode(node.type) && node.type.getText(source) === 'const')
-        )
-          n++;
-        ts.forEachChild(node, visit);
+  test(
+    'only the type assertions kept from before the rule are let through, one a file, and no more files',
+    timeLimitForTheWork({ toolRuns: 1 }),
+    async () => {
+      const KEPT = [
+        'src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts',
+        'src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts',
+        'src/engine/rules-on-plain-values/unit-types-and-base-strength.ts',
+      ];
+      const assertionsIn = (file: string): number => {
+        const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+        let n = 0;
+        const visit = (node: ts.Node): void => {
+          if (
+            (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) &&
+            !(ts.isTypeReferenceNode(node.type) && node.type.getText(source) === 'const')
+          )
+            n++;
+          ts.forEachChild(node, visit);
+        };
+        visit(source);
+        return n;
       };
-      visit(source);
-      return n;
-    };
-    const off: string[] = [];
-    for (const f of filesUnder(path.join(ROOT, 'src')).filter((x) => x.endsWith('.ts'))) {
-      const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'src', f))) as Linter.Config).rules ?? {};
-      if (level(rules[NO_ASSERTIONS]) < 2) off.push('src/' + f);
-    }
-    expect(off.filter((f) => !KEPT.includes(f))).toEqual([]);
-    for (const f of off) expect(assertionsIn(f), f).toBe(1);
-  });
+      const off: string[] = [];
+      for (const f of filesUnder(path.join(ROOT, 'src')).filter((x) => x.endsWith('.ts'))) {
+        const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'src', f))) as Linter.Config).rules ?? {};
+        if (level(rules[NO_ASSERTIONS]) < 2) off.push('src/' + f);
+      }
+      expect(off.filter((f) => !KEPT.includes(f))).toEqual([]);
+      for (const f of off) expect(assertionsIn(f), f).toBe(1);
+    },
+  );
 
   test('a focused or skipped test is an error', async () => {
     const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'tests/static/x.test.ts'))) as Linter.Config)
@@ -507,6 +524,43 @@ describe('the lint rules', () => {
     expect(level(rules?.['vitest/no-focused-tests'])).toBe(2);
     expect(level(rules?.['vitest/no-disabled-tests'])).toBe(2);
   });
+
+  // A test's time limit (tests/lib/time-limits.ts) can't be loosened into a retry or a repeat: one written in a test's
+  // options, a describe's, a helper's or a spec's, by name or by assignment, is an error in every test file; a limit
+  // alone and the setup file that reads a test's retry to fail it are not. ESLint builds the tests' program first.
+  const retryFindings = async (file: string, code: string): Promise<string[]> => {
+    const real = read(file);
+    const line = real.split('\n').length;
+    const [result] = await eslint.lintText(`${real}\n${code}\n`, { filePath: path.join(ROOT, file) });
+    return (result?.messages ?? [])
+      .filter((m) => m.severity === 2 && m.ruleId === 'no-restricted-syntax')
+      .map((m) => `${m.line === line + 1 ? 'the planted line' : String(m.line)}: ${m.message.split(':')[0] ?? ''}`);
+  };
+  const REFUSED = ['the planted line: A test passes the first time or fails'];
+  test.for([
+    ['tests/unit/combat-properties.test.ts', "test('planted', { ...LIMIT, retry: 2 }, () => undefined);", REFUSED],
+    ['tests/unit/combat-properties.test.ts', "test('planted', { repeats: 3 }, () => undefined);", REFUSED],
+    ['tests/unit/combat-properties.test.ts', "describe('planted', { 'retry': 1 }, () => undefined);", REFUSED],
+    [
+      'tests/lib/time-limits.ts',
+      'export const planted = () => ({ ...timeLimitForTheWork({ siteBuilds: 1 }), retry: 3 });',
+      REFUSED,
+    ],
+    ['tests/lib/time-limits.ts', 'export const planted = (o: { retry?: number }) => (o.retry = 3);', REFUSED],
+    ['tests/browser/dispatches-badge.spec.ts', 'test.describe.configure({ retries: 2 });', REFUSED],
+    [
+      'tests/unit/combat-properties.test.ts',
+      "test('planted', timeLimitForPropertyRuns(RUNS, 2.5), () => undefined);",
+      [],
+    ],
+    ['tests/setup/each.ts', '', []],
+  ] as const)(
+    '%s: planted %j finds %j',
+    timeLimitForTheWork({ typeScriptPrograms: 1 }),
+    async ([file, code, expected]) => {
+      expect(await retryFindings(file, code)).toEqual(expected);
+    },
+  );
 
   // Playwright's recommended rules at full strength in every spec, and a focused or skipped spec, or a fixed wait, an
   // error. One spec may wait for the network to go quiet: that is its check (eslint.config.js).
@@ -528,7 +582,7 @@ describe('the lint rules', () => {
 
   // No rule is at warn (plan P1-13, Decision 13): a warning passes the lint run, so every finding is an error, held
   // only in ESLint's suppressions. Read from every file ESLint lints.
-  test('no rule is at warn, in any file ESLint lints', { timeout: 60_000 }, async () => {
+  test('no rule is at warn, in any file ESLint lints', timeLimitForTheWork({ toolRuns: 1 }), async () => {
     const linted = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT })
       .toString()
       .split('\0')
@@ -568,7 +622,7 @@ describe("ESLint's suppressions", () => {
 
   test(
     'a finding the list lacks fails, and so does an entry the file no longer holds',
-    { timeout: 60_000 },
+    timeLimitForTheWork({ toolRuns: 3 }),
     async () => {
       const [file = ''] = Object.keys(list).sort(
         (a, b) => fs.statSync(path.join(ROOT, a)).size - fs.statSync(path.join(ROOT, b)).size || a.localeCompare(b),
@@ -655,6 +709,28 @@ describe('the test run', () => {
     ]) {
       expect(each, piece).toContain(piece);
     }
+  });
+
+  // A test that builds the site, builds a TypeScript program, runs a tool or reads every file of src/ gets a time limit
+  // sized to that work, and a property test one sized to its run count (tests/lib/time-limits.ts): only a limit, the
+  // sum of the work's allowances. The static tests take every limit from it, none typed in as a number.
+  test("a test's time limit is sized to its work, and is only a limit", () => {
+    const three = timeLimitForTheWork({ siteBuilds: 3 });
+    expect(Object.keys(three)).toEqual(['timeout']);
+    expect(three.timeout).toBe(3 * ALLOWANCE_MS.siteBuilds);
+    expect(timeLimitForTheWork({ toolRuns: 2, everyFileReads: 1 }).timeout).toBe(
+      2 * ALLOWANCE_MS.toolRuns + ALLOWANCE_MS.everyFileReads,
+    );
+    expect(() => timeLimitForTheWork({})).toThrow(/names the work/);
+    // npm test's 2,000 runs keep Vitest's 5 s; KC_FULL's ten times the runs get ten times the time
+    expect(timeLimitForPropertyRuns(2_000, 2.5).timeout).toBe(5_000);
+    expect(timeLimitForPropertyRuns(20_000, 2.5).timeout).toBe(50_000);
+    expect(Object.keys(timeLimitForPropertyRuns(100, 50))).toEqual(['timeout']);
+    const typedIn = /\btimeout\s*:|\},\s*[\d_]+\s*\)/;
+    for (const f of fs.readdirSync(path.join(ROOT, 'tests', 'static')))
+      expect(read(`tests/static/${f}`), f).not.toMatch(typedIn);
+    for (const f of ['tests/unit/combat-properties.test.ts', 'tests/unit/realm-reports.test.ts'])
+      expect(read(f), f).toMatch(/timeLimitForPropertyRuns\(RUNS, [\d.]+\)/);
   });
 });
 
@@ -938,46 +1014,50 @@ describe('CI', () => {
   // template, stylesheet and modules: tools/pages.ts), the other pages' templates (src/*.html), what is copied as it is
   // (public/), the build and its page list, the balance code and its baselines, the test helpers the balance code
   // imports, and the tools it runs on (the locked packages, the Node pin).
-  test('the engine paths are the ones the plan lists, and the runner uses the same list', () => {
-    const page = pageSources();
-    expect(page).toContain('src/content/kingdoms-call-data.ts');
-    expect(page).toContain('src/engine/run-turn.ts');
-    expect(page.filter((f) => !isEnginePath(f))).toEqual([]);
-    // Under src/, the engine paths are exactly the page's sources and the pages' templates: no other page's code plays
-    // the matrix.
-    const src = filesUnder(path.join(ROOT, 'src')).map((f) => 'src/' + f);
-    const templates = pageNames().map((p) => 'src/' + p);
-    expect(src.filter(isEnginePath).sort()).toEqual(
-      [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates])].sort(),
-    );
-    const dir = path.join(ROOT, 'tools', 'balance');
-    const helpers = fs
-      .readdirSync(dir)
-      .flatMap((f) => [
-        ...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '\.\.\/\.\.\/(tests\/lib\/[^']+)'/g),
-      ])
-      .map((m) => m[1] ?? '');
-    expect(ENGINE_PATHS.filter((g) => !g.startsWith('src/') || g === 'src/*.html').sort()).toEqual(
-      [
-        ...new Set([
-          'src/*.html',
-          'public/**',
-          'tools/build.ts',
-          'tsconfig.json',
-          'tools/pages.ts',
-          'tools/balance/**',
-          'tests/balance/**',
-          ...helpers,
-          'package-lock.json',
-          '.nvmrc',
-        ]),
-      ].sort(),
-    );
-    const runner = read('tools/balance/run.ts');
-    expect(runner).toMatch(/^import \{[^}]*\bisEnginePath\b[^}]*\} from '\.\/engine-paths\.ts';$/m);
-    expect(runner).toContain('pageFiles(');
-    expect(runner).toMatch(/^ {2}buildSite\(\);$/m);
-  });
+  test(
+    'the engine paths are the ones the plan lists, and the runner uses the same list',
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    () => {
+      const page = pageSources();
+      expect(page).toContain('src/content/kingdoms-call-data.ts');
+      expect(page).toContain('src/engine/run-turn.ts');
+      expect(page.filter((f) => !isEnginePath(f))).toEqual([]);
+      // Under src/, the engine paths are exactly the page's sources and the pages' templates: no other page's code plays
+      // the matrix.
+      const src = filesUnder(path.join(ROOT, 'src')).map((f) => 'src/' + f);
+      const templates = pageNames().map((p) => 'src/' + p);
+      expect(src.filter(isEnginePath).sort()).toEqual(
+        [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates])].sort(),
+      );
+      const dir = path.join(ROOT, 'tools', 'balance');
+      const helpers = fs
+        .readdirSync(dir)
+        .flatMap((f) => [
+          ...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '\.\.\/\.\.\/(tests\/lib\/[^']+)'/g),
+        ])
+        .map((m) => m[1] ?? '');
+      expect(ENGINE_PATHS.filter((g) => !g.startsWith('src/') || g === 'src/*.html').sort()).toEqual(
+        [
+          ...new Set([
+            'src/*.html',
+            'public/**',
+            'tools/build.ts',
+            'tsconfig.json',
+            'tools/pages.ts',
+            'tools/balance/**',
+            'tests/balance/**',
+            ...helpers,
+            'package-lock.json',
+            '.nvmrc',
+          ]),
+        ].sort(),
+      );
+      const runner = read('tools/balance/run.ts');
+      expect(runner).toMatch(/^import \{[^}]*\bisEnginePath\b[^}]*\} from '\.\/engine-paths\.ts';$/m);
+      expect(runner).toContain('pageFiles(');
+      expect(runner).toMatch(/^ {2}buildSite\(\);$/m);
+    },
+  );
 
   test('no job lets a failure through, retries or repeats', () => {
     for (const weak of ['continue-on-error', '|| true', '--retries', '--retry', '--repeat-each', '--bail', '--pass']) {
@@ -1571,14 +1651,14 @@ describe('the ratchet', () => {
   });
 
   // measure() runs knip for unusedCode: a few seconds, more on a slow runner.
-  test('no count is above its baseline', { timeout: 60_000 }, () => {
+  test('no count is above its baseline', timeLimitForTheWork({ toolRuns: 1 }), () => {
     const { rose } = compare(readBaseline(), measure());
     expect(rose, 'Lower what rose, or, if the rise is right, talk it through with Theo.').toEqual([]);
   });
 
   // P1-09e: src/ has no JavaScript left but public/'s two classic scripts (copied as they are). P1-13b: ESLint's
   // suppressions are counted from their file (above), so they only fall; its warnings no longer, since no rule warns.
-  test("it counts ESLint's suppressions and public/'s two scripts", { timeout: 60_000 }, () => {
+  test("it counts ESLint's suppressions and public/'s two scripts", timeLimitForTheWork({ toolRuns: 1 }), () => {
     const now = measure();
     expect(now['eslintSuppressions']).toBe(eslintSuppressions());
     expect(now['eslintSuppressions']).toBeGreaterThan(0);
@@ -1589,13 +1669,17 @@ describe('the ratchet', () => {
   // P1-13a: the import rules' known violations and knip's findings are counted, so they only fall (plan P1-13,
   // Decision 4). The known violations are the entries of dependency-cruiser's own list, the one npm run lint:arch lets
   // through.
-  test("it counts the import rules' known violations and what knip finds unused", { timeout: 60_000 }, () => {
-    const now = measure();
-    const known = JSON.parse(read(KNOWN_ARCHITECTURE_VIOLATIONS_FILE)) as unknown[];
-    expect(now['knownArchitectureViolations']).toBe(known.length);
-    expect(now['unusedCode']).toBeGreaterThan(0);
-    for (const key of ['knownArchitectureViolations', 'unusedCode']) expect(readBaseline()[key], key).toBeDefined();
-  });
+  test(
+    "it counts the import rules' known violations and what knip finds unused",
+    timeLimitForTheWork({ toolRuns: 1 }),
+    () => {
+      const now = measure();
+      const known = JSON.parse(read(KNOWN_ARCHITECTURE_VIOLATIONS_FILE)) as unknown[];
+      expect(now['knownArchitectureViolations']).toBe(known.length);
+      expect(now['unusedCode']).toBeGreaterThan(0);
+      for (const key of ['knownArchitectureViolations', 'unusedCode']) expect(readBaseline()[key], key).toBeDefined();
+    },
+  );
 });
 
 // The architecture rules (plan P1-13a, Decisions 2 to 4): dependency-cruiser's layers and no cycle, every rule an error,

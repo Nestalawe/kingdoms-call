@@ -178,6 +178,11 @@ const kcRules = {
   'kc/html-is-built-only-through-kc-html': ['error', { exceptions: HTML_EXCEPTIONS }],
   'kc/no-random-or-argument-less-sort-comparator': 'error',
 };
+// A retry, retries or repeats written in a test file's options (below): refused.
+const RETRY_KEY = '/^(retry|retries|repeats)$/';
+const RETRY_REFUSED =
+  'A test passes the first time or fails: no retry or repeat. A test that needs more time gets a limit sized to its ' +
+  'work (tests/lib/time-limits.ts); one whose outcome depends on luck is restructured (tests/README.md).';
 // The classic scripts (above): public/'s two, and the templates' scripts and handlers as the static test names them.
 const CLASSIC = ['public/*.js', 'src/*.html/*.js'];
 
@@ -305,6 +310,22 @@ module.exports = defineConfig(
       'playwright/no-skipped-test': 'error',
       // Playwright's set turns this off for fixtures written ({}); the specs don't need it.
       'no-empty-pattern': 'error',
+    },
+  },
+  {
+    // A test's time limit is sized to its work (tests/lib/time-limits.ts), and is never loosened into a retry or a
+    // repeat: a test passes the first time or fails (tests/README.md). tests/setup/each.ts fails a Vitest test set to
+    // retry or repeat, and playwright.config.ts holds Playwright's retries at 0; this refuses one written in a test's, a
+    // describe's or a helper's options, in any test file.
+    files: ['tests/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: `:matches(Property, PropertyDefinition, AssignmentExpression > MemberExpression.left):matches([key.name=${RETRY_KEY}], [key.value=${RETRY_KEY}], [property.name=${RETRY_KEY}], [property.value=${RETRY_KEY}])`,
+          message: RETRY_REFUSED,
+        },
+      ],
     },
   },
   {
