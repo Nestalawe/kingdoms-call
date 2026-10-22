@@ -322,9 +322,14 @@ and `except` the realms that never read it). A line pushed past it chooses its o
 check finds were made.
 - The lint rule `kc/narrative-lines-go-through-emit` refuses any write to `turnLog` outside the events file, in all of
   `src/engine` and `src/views`. In the folders converted so far (`eslint.config.js`'s `LINES_THROUGH_EMIT`: `turn/` and
-  `src/views/` since P1-12a2; P1-12a3 adds `battle/` and `personal-combat/`; P1-12a4 all) it refuses `log(…)` and a
-  narrative written by hand too: add a fight's line with `narrate(narrative, text)`, or `narrateTo(narrative, realm,
-  heroId, text)` for one realm alone (it files under that realm's hero, and nobody else in the fight reads it).
+  `src/views/` since P1-12a2, `battle/` and `personal-combat/` since P1-12a3; P1-12a4 all) it refuses `log(…)` (but
+  `console.log` and `Math.log`) and a narrative written by hand too: add a fight's line with `narrate(narrative,
+  text)`, or `narrateTo(narrative, realm, heroId, text)` for one realm alone (it files under that realm's hero, and
+  nobody else in the fight reads it). Lines already written move with `narrateAll` (a duel's narrative into a
+  battle's, each line as it is), `narrateAt` (lines for everyone put in before a line) and `takeBackLinesFrom` (a blow
+  that never landed). `emitBattle` and `emitNarrLine` write a fight's narrative out with the fight's event
+  (`FightLine`: the event but its text), each line in order: a `narrateTo` line to its realm alone, the rest to the
+  fight's audience.
 - **A hero left out is the hero whose order is resolving.** `emit` keeps `log()`'s fallbacks: a `hero` left out or
   `null` is `turnContext._logCtx.charId`, so a line written while Aldric's order resolves is filed under Aldric even
   when it is about the province's owner, and reaches Aldric's realm. For no hero, say `hero: 'none'` (the lines that
