@@ -126,11 +126,11 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
     G,
   );
   enc.narrative.forEach((line) =>
-    emitNarrLine(turnContext, 'combat', line, {
-      actor: caster.player,
-      targets: targetsPi,
-      provinceId: prov.id,
-      charIds: _duelChars,
+    emitNarrLine(turnContext, line, {
+      type: 'combat',
+      audience: { actor: caster.player, realms: targetsPi },
+      province: prov.id,
+      heroes: _duelChars,
     }),
   );
   if (t.player !== null) t.hp = Math.max(1, enc.atkHp);

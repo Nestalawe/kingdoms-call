@@ -3,13 +3,13 @@ import { druIdPenaltyMult, getDruidLevel } from '../world/tables.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { dragonTamed } from '../discoveries.ts';
 import { narrText } from '../turn/log-line-helpers.ts';
-import { emitNarrLine } from '../turn/events-and-their-audiences.ts';
+import { emit, emitNarrLine, narrate } from '../turn/events-and-their-audiences.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
 import type { Quality } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
-import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { FightLine, NarrativeLine } from '../turn/events-and-their-audiences.ts';
 
 // ── BATTLE REPORT LINES AND FORCE MARKERS (plan P1-08c: lifted out of resolveTurn) ────
 // The lines a battle report is built from: a force's header row (forceMarker), a unit's quality in words, a hero's
@@ -90,16 +90,16 @@ export function battlecryOf(ch: Character | null | undefined) {
 export function pushBattlecry(narrative: NarrativeLine[], ch: Character, foeName: string) {
   const cry = battlecryOf(ch);
   if (!cry) return;
-  narrative.push(`📣 ${ch.name} cries out to ${foeName}: “${cry}”`);
+  narrate(narrative, `📣 ${ch.name} cries out to ${foeName}: “${cry}”`);
 }
 
 // ── BATTLE-REPORT AUDIENCE ────
 // Full blow-by-blow goes ONLY to the battle's participants (the player(s) whose commanders
-// fought). A one-line result summary additionally goes to onlookers — players who had a
-// (non-fighting) character in the province. Everyone else sees nothing. This is enforced by the
-// report filter using the flags set here: detail lines carry battleDetail:true and target the
-// participants; the summary line carries summary:true. (Participants are also in `targets`, so
-// they always get the detail.)
+// fought): emitBattle files every line with the fight's audience (told to the participants, seen
+// 'battle'). The one-line result summary (tier 's') was meant for onlookers too — players who had
+// a (non-fighting) character in the province — but the line never carried the summary flag the
+// report filter looks for, so today it reaches the participants alone, like the rest (plan P1-12,
+// Decision 3: kept as it is until Toby answers the onlookers' question).
 // Druid shortfall for one side — ONE line naming every under-led unit (2026-09-23d; was one line a
 // unit). Same test both paths used: a unit short of its Druid requirement whose penalty actually
 // bites (skeletal / exempt / tamed units return 1.0 and are left out). Inside runTurn because
@@ -156,17 +156,23 @@ export function emitBattle(
     summaryText?: string | undefined;
   } | null,
 ) {
-  const { log } = turnContext;
   opts = opts || {};
   const parts = (participants || []).filter((x) => x != null);
-  const base = {
-    provinceId: prov && prov.id,
+  // Every line of the battle, told to those who fought in it (and to the realm whose battle it is), in its province
+  // and at its phase. A battle with no province would be read by the world, as buildReports reads a public line with
+  // none (no battle has none today).
+  const provinceId = prov && prov.id;
+  const fight: FightLine = {
+    type: 'combat',
+    audience: {
+      realms: parts,
+      actor: opts.actor != null ? opts.actor : null,
+      seen: provinceId == null ? 'world' : 'battle',
+    },
+    province: provinceId,
     phase: ph != null ? ph : undefined,
-    public: true,
-    actor: opts.actor != null ? opts.actor : null,
-    charId: opts.charId !== undefined ? opts.charId : null,
-    charIds: opts.charIds || null,
-    targets: parts,
+    hero: opts.charId !== undefined ? opts.charId : null,
+    heroes: opts.charIds || null,
   };
   // 2026-09-23d (Toby item 1): every line is tagged with this battle's id and its tier, and a
   // losses tally is added (short view only) where the casualty sections begin — see
@@ -184,17 +190,12 @@ export function emitBattle(
   let _tallyDone = false;
   _lines.forEach((line, i) => {
     if (_tally && !_tallyDone && i === _tiers.casIdx) {
-      log('combat', _tally, { ...base, battleDetail: true, battleId: _bid, bTier: 't' });
+      emit(turnContext, { ...fight, text: _tally, battle: { id: _bid, tier: 't' } });
       _tallyDone = true;
     }
-    emitNarrLine(turnContext, 'combat', line, {
-      ...base,
-      battleDetail: true,
-      battleId: _bid,
-      bTier: _tiers.t[i] || 'k',
-    });
+    emitNarrLine(turnContext, line, { ...fight, battle: { id: _bid, tier: _tiers.t[i] || 'k' } });
   });
-  if (_tally && !_tallyDone) log('combat', _tally, { ...base, battleDetail: true, battleId: _bid, bTier: 't' });
+  if (_tally && !_tallyDone) emit(turnContext, { ...fight, text: _tally, battle: { id: _bid, tier: 't' } });
   const sTxt = opts.summaryText || (battle && battle.summaryText);
-  if (sTxt) log('combat', sTxt, { ...base, summary: true, battleId: _bid, bTier: 's' });
+  if (sTxt) emit(turnContext, { ...fight, text: sTxt, battle: { id: _bid, tier: 's' } });
 }

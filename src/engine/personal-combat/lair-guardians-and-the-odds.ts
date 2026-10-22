@@ -16,6 +16,7 @@ import {
 } from './speed-encounter-plans-and-combatants.ts';
 import { resolvePersonalCombat } from './resolve-personal-combat.ts';
 import { DUEL_FLEE_DROP } from './duels-and-character-encounters.ts';
+import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── PERSONAL COMBAT: LAIR GUARDIANS AND THE ODDS (plan P1-08f: lifted out of resolveTurn) ────
 // What a guardian's nature makes it weak or strong against (monsterTraits), the guardian as a combatant
@@ -120,7 +121,8 @@ export function pcBuildGuardian(turnContext, feature, m, narrative) {
         if (e.pc) pcApplyFx(mon, e.pc, it.name); // a guardian wearing a new rider item feels it too
         if ((_ITEM_ALT_BASE[it.name] || it.name) === 'Warbringer Gauntlets') mon.gauntlets = true;
       });
-      narrative.push(
+      narrate(
+        narrative,
         `The ${m.name} has turned the hoard's magic to its own use — it bears ${_wield.map((x) => x.name).join(', ')}.`,
       );
     }
@@ -238,7 +240,7 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
     default: 'approaches',
   };
   const entryVerb = featureDescs[feature.name] || featureDescs.default;
-  narrative.push(`${c.name} ${entryVerb} the ${feature.name} in ${prov.name}.`);
+  narrate(narrative, `${c.name} ${entryVerb} the ${feature.name} in ${prov.name}.`);
   const monsterPower = m.power || '';
   const powerDesc = monsterPower ? ` (${monsterPower})` : '';
   // Describe the creature by its FULL stature, not its current (possibly wounded) health, so the
@@ -248,7 +250,8 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
   const monHpDesc =
     { Weak: 'a dangerous', Moderate: 'a formidable', Powerful: 'a fearsome', Legendary: 'a legendary' }[m.power] ||
     'a formidable'; // by tier (the old HP thresholds predate the rescale)
-  narrative.push(
+  narrate(
+    narrative,
     `Within lurks ${monHpDesc} ${m.name}${monsterCatLabel(m) ? ` — ${monsterCatLabel(m).toLowerCase()}` : ''}${powerDesc}, blocking the path to the treasure.`,
   );
   if (monHp < monFullHp) {
@@ -259,7 +262,8 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
         : frac <= 0.5
           ? 'badly wounded, favouring one side'
           : 'nursing fresh wounds';
-    narrative.push(
+    narrate(
+      narrative,
       `It is already ${woundDesc} — someone has been here before ${c.name} this year. (${monHp}/${monFullHp} HP)`,
     );
   }
@@ -274,27 +278,31 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
   // that has no guardian in it.
   hero._vsGuardian = true;
   const mon = pcBuildGuardian(turnContext, feature, m, narrative);
-  narrative.push(
+  narrate(
+    narrative,
     `The ${m.name} is ${mon.speedName}-moving${mon.speedName === 'fast' ? ' (it closes two ranges at a stride)' : ''}${pcHasRanged(mon) ? ', and fights at range as well as close' : ''}. Its plan: ${mon.tactics.slice(0, 6).join(', ')}…`,
   );
 
   const res = resolvePersonalCombat(turnContext, hero, mon, { maxRounds: 20, feature });
-  narrative.push(...res.narrative);
+  narrateAll(narrative, res.narrative);
 
   // ── Outcome ──
   let won = false,
     fled = false;
   if (res.parley) {
     won = true;
-    narrative.push(`After tense negotiations, the ${m.name} agrees to step aside and allow passage to the treasure.`);
+    narrate(
+      narrative,
+      `After tense negotiations, the ${m.name} agrees to step aside and allow passage to the treasure.`,
+    );
   } else if (res.stoleBy === hero) {
     // Escaped with the loot: the hero withdraws safely but the creature still holds the site.
     fled = true;
     m._treasureStolen = true;
-    narrative.push(`${c.name} slips away with the prize — the ${m.name} never even notices.`);
+    narrate(narrative, `${c.name} slips away with the prize — the ${m.name} never even notices.`);
   } else if (res.fledBy === hero) {
     fled = true;
-    narrative.push(`${c.name} turns and flees from the ${m.name}, escaping into the surrounding terrain!`);
+    narrate(narrative, `${c.name} turns and flees from the ${m.name}, escaping into the surrounding terrain!`);
     // a character who flees a lair guardian has the same DUEL_FLEE_DROP chance of dropping one
     // magic item in the scramble as when fleeing a duel. Anything dropped joins the lair's
     // hoardItems — it is treasure for whoever finally clears the lair, and the guardian wields it
@@ -305,7 +313,8 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
       if (_pool.length) {
         const _roll = d100(),
           _chance = Math.round(DUEL_FLEE_DROP * 100);
-        narrative.push(
+        narrate(
+          narrative,
           `  ${c.name} scrambles clear — ${_chance}% chance of dropping something in the rout [roll ${_roll}${_roll <= _chance ? ' ✓' : ' ✗'}]`,
         );
         if (_roll <= _chance) {
@@ -316,7 +325,8 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
           delete _it.equipped;
           ensureLairHoard(feature, G);
           feature.hoardItems = (feature.hoardItems || []).concat([_it]);
-          narrative.push(
+          narrate(
+            narrative,
             `  💎 In the rout ${c.name} drops ${_it.name}${isLegendaryItem(_it) ? ' (Legendary)' : ''} — it lies among the ${m.name}'s hoard now${guardianCanUseItem(m, _it) ? ', and the beast will turn it against the next intruder' : ''}.`,
           );
         }
@@ -324,11 +334,11 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
     }
   } else if (res.winner === hero) {
     won = true;
-    narrative.push(`With a final ${rng(0, 1) ? 'decisive blow' : 'burst of effort'}, the ${m.name} is defeated!`);
+    narrate(narrative, `With a final ${rng(0, 1) ? 'decisive blow' : 'burst of effort'}, the ${m.name} is defeated!`);
   } else if (res.winner === mon) {
-    narrative.push(`${c.name} falls to their knees, overwhelmed by the ${m.name}!`);
+    narrate(narrative, `${c.name} falls to their knees, overwhelmed by the ${m.name}!`);
   } else {
-    narrative.push(`Neither ${c.name} nor the ${m.name} can gain the upper hand. ${c.name} withdraws to recover.`);
+    narrate(narrative, `Neither ${c.name} nor the ${m.name} can gain the upper hand. ${c.name} withdraws to recover.`);
   }
 
   // ── 2026-09-10: the guardian heals to FULL at the end of every combat. Wounds no longer carry
@@ -337,7 +347,8 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
     if (m._hpFull == null) m._hpFull = m.hp || 10;
     m.hp = m._hpFull;
     if (res.bHp != null && res.bHp < mon.maxHp - (mon._hpItemBonus || 0))
-      narrative.push(
+      narrate(
+        narrative,
         `The ${m.name} draws back into its lair; by the time anyone dares it again, its wounds will have closed.`,
       );
   }

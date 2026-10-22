@@ -6,6 +6,7 @@ import { armyTotalStr } from './best-commander.ts';
 import { settleRalliedGarrisons } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { resolveStalledBattles } from './stalled-battles-and-beaten-guards.ts';
 import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── WAR FRONTS AND ENEMY STAND-OFFS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where the armed hosts of two warring realms stand together is flagged as a battle waiting to happen
@@ -86,7 +87,7 @@ export function warFrontThreats(turnContext) {
 }
 
 export function resolveWarFronts(turnContext, ph) {
-  const { _warFrontAtStart, _warFrontProvs, G, log, SEASONS } = turnContext;
+  const { _warFrontAtStart, _warFrontProvs, G, SEASONS } = turnContext;
   if (!_warFrontAtStart.size) return;
   _warFrontProvs.forEach((pid) => {
     const prov = G.world.provinces[pid];
@@ -101,18 +102,14 @@ export function resolveWarFronts(turnContext, ph) {
       const ownerNm = prov.owner != null && G.players[prov.owner] ? G.players[prov.owner].name : null;
       turnContext._combatSkillProv = null;
       turnContext._logCtx = { charId: c.id, phase: ph };
-      log(
-        'combat',
-        `⚔ War stands between ${G.players[c.player]?.name || 'their realm'} and ${ownerNm || 'the realm whose host shares the ground'}, and ${c.name}${realmTag(turnContext, c.player)} has held ${c.armies.length} unit${c.armies.length !== 1 ? 's' : ''} in ${prov.name} since the season opened. With ${SEASONS[ph]}'s orders done, the host turns on the province${ownerNm ? ` of ${ownerNm}` : ''}.`,
-        {
-          actor: c.player,
-          targets: [c.player, prov.owner].filter((x) => x != null),
-          provinceId: prov.id,
-          public: true,
-          charId: c.id,
-          phase: ph,
-        },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `⚔ War stands between ${G.players[c.player]?.name || 'their realm'} and ${ownerNm || 'the realm whose host shares the ground'}, and ${c.name}${realmTag(turnContext, c.player)} has held ${c.armies.length} unit${c.armies.length !== 1 ? 's' : ''} in ${prov.name} since the season opened. With ${SEASONS[ph]}'s orders done, the host turns on the province${ownerNm ? ` of ${ownerNm}` : ''}.`,
+        audience: { actor: c.player, realms: [c.player, prov.owner].filter((x) => x != null), seen: 'battle' },
+        province: prov.id,
+        hero: c.id,
+        phase: ph,
+      });
       c._warFront = true;
       try {
         resolveUnitGainInProvince(turnContext, c, prov, ph);

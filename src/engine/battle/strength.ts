@@ -4,6 +4,7 @@ import { MISSILE_ARMIES_MASTER } from './ladder.ts';
 import { ORC_FOOT_TYPES } from '../units/movement.ts';
 import { FLYING_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── Force-composition strength multipliers (applied inside armStr) ──
 export function unitAbilityMult(army, ctx, terrain) {
@@ -179,7 +180,7 @@ export function applyFlakScreen(myForce, enemyForce, myName, narr) {
     engaged++;
   });
   if (engaged) {
-    narr.push(`🌀 ${myName}'s Gnomish Gyrocopters climb to meet the enemy's flyers — ${engaged} engaged.`);
-    lines.forEach((l) => narr.push(l));
+    narrate(narr, `🌀 ${myName}'s Gnomish Gyrocopters climb to meet the enemy's flyers — ${engaged} engaged.`);
+    lines.forEach((l) => narrate(narr, l));
   }
 }

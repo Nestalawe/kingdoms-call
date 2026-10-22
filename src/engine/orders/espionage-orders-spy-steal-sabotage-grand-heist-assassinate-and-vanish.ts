@@ -94,11 +94,11 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
     G,
   );
   enc.narrative.forEach((line) =>
-    emitNarrLine(turnContext, 'combat', line, {
-      actor: thief.player,
-      targets: targetsPi,
-      provinceId: prov.id,
-      charIds: _duelChars,
+    emitNarrLine(turnContext, line, {
+      type: 'combat',
+      audience: { actor: thief.player, realms: targetsPi },
+      province: prov.id,
+      heroes: _duelChars,
     }),
   );
   thief.hp = Math.max(1, enc.atkHp);

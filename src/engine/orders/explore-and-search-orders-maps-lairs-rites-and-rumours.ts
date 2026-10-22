@@ -547,7 +547,11 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     });
   } catch (_te) {}
   encounter.narrative.forEach((line) => {
-    emitNarrLine(turnContext, 'explore', line, { actor: c.player, targets: [c.player], provinceId: prov.id });
+    emitNarrLine(turnContext, line, {
+      type: 'explore',
+      audience: { actor: c.player, realms: [c.player] },
+      province: prov.id,
+    });
   });
 
   // Hero killed by monster?

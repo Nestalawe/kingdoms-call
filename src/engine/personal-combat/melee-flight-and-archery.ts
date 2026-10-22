@@ -20,6 +20,7 @@ import {
   pcWardIcon,
   pcWardWord,
 } from './to-hit-wounds-stuns-and-courage.ts';
+import { narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── PERSONAL COMBAT: MELEE, FLIGHT AND ARCHERY (plan P1-08e: lifted out of resolveTurn) ────
 // Experience from a hit, the riposte, a melee blow, flight and the free strike a failed flight gives, closing in, and
@@ -66,14 +67,15 @@ export function pcTryCounter(turnContext, hero, foe, narrative, chan) {
     // "Dracolich's shot flies wide." — reading as if the armour had stopped a missed arrow — and
     // only then did the counterattack appear. Now: announce → armour → damage, the same order as
     // an ordinary strike ("attacks … ✓" → armour → "strikes … for N").
-    narrative.push(`  ↩ ${hero.name} seizes the opening and counterattacks! (${_src})`);
+    narrate(narrative, `  ↩ ${hero.name} seizes the opening and counterattacks! (${_src})`);
     const dealt = pcTakeHit(turnContext, foe, dmg, narrative, hero.name, 'counterattack');
     if (dealt)
-      narrative.push(
+      narrate(
+        narrative,
         `  ↩ The counterstroke strikes ${foe.name} for ${dealt} damage! (${foe.name} HP ${Math.max(0, Math.round(foe.hp))})`,
       );
   } else {
-    narrative.push(`  ↩ ${hero.name} lunges to counterattack, but ${foe.name} recovers in time. (${_src})`);
+    narrate(narrative, `  ↩ ${hero.name} lunges to counterattack, but ${foe.name} recovers in time. (${_src})`);
   }
 }
 export function pcMeleeStrike(turnContext, actor, foe, narrative) {
@@ -81,7 +83,7 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
   // fail.
   if (actor.status && actor.status.nextAttackFails > 0) {
     actor.status.nextAttackFails--;
-    narrative.push(`  ${actor.name} is still reeling from a crippling wound — the attack fails. (Trueshot)`);
+    narrate(narrative, `  ${actor.name} is still reeling from a crippling wound — the attack fails. (Trueshot)`);
     return;
   }
   const hit = pcHitChance(turnContext, actor, foe);
@@ -90,7 +92,8 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
   // succeeds.
   const hitI = dispFloor(hit),
     roll = d100();
-  narrative.push(
+  narrate(
+    narrative,
     `  ${actor.name} attacks (${pcSkillLabel(actor, 'melee')}, ${hitI}% to hit [roll ${roll}]${roll <= hitI ? ' ✓' : ' ✗'})`,
   );
   if (roll <= hitI) {
@@ -99,7 +102,8 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
     const dmg = pcMeleeDamage(actor, foe);
     const dealt = pcTakeHit(turnContext, foe, dmg, narrative, actor.name, 'blow');
     if (dealt)
-      narrative.push(
+      narrate(
+        narrative,
         `  ${actor.name} strikes ${foe.name} for ${dealt} damage! (HP ${Math.max(0, Math.round(foe.hp))})`,
       );
     // guardian passive (Undying Thirst, Sanguine Feeding…) 2026-09-15: the thirst fades with the
@@ -110,7 +114,8 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
         _dr = Math.min(Math.round(dealt * actor.drain * _sm), (actor.maxHp || 20) - actor.hp);
       if (_dr > 0) {
         actor.hp += _dr;
-        narrative.push(
+        narrate(
+          narrative,
           `  ${actor.name} drinks the wound — +${_dr} HP${_sm < 1 ? ' (the thirst is running dry)' : ''}. (${pcPerkWord(actor, 'drain', 'Drain')}, HP ${dispFloor(actor.hp)})`,
         );
       }
@@ -118,19 +123,21 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
     // Brimstone-style shields bite back at whoever lands a blow.
     if (dealt && foe.status.reflect > 0) {
       actor.hp -= foe.status.reflect;
-      narrative.push(
+      narrate(
+        narrative,
         `  ${foe.name}'s shield lashes back for ${foe.status.reflect} damage. (${actor.name} HP ${Math.max(0, Math.round(actor.hp))})`,
       );
     }
     if (dealt && foe.arm && foe.arm.thorns > 0) {
       // Thornwood Cuirass
       actor.hp -= foe.arm.thorns;
-      narrative.push(
+      narrate(
+        narrative,
         `  ${pcWardIcon(foe)} ${foe.kind === 'monster' ? pcWardWord(foe, 'hide', 'thorns') : `${foe.name}'s thorned armour`} bites ${actor.name} for ${foe.arm.thorns}. (${actor.name} HP ${Math.max(0, Math.round(actor.hp))})`,
       );
     }
   } else {
-    narrative.push(`  ${actor.name}'s blow is turned aside.`);
+    narrate(narrative, `  ${actor.name}'s blow is turned aside.`);
     pcTryCounter(turnContext, foe, actor, narrative, 'melee');
   }
 }
@@ -158,17 +165,18 @@ export function pcFreeStrike(turnContext, actor, foe, narrative) {
   // running).
   if (!actor || !foe || actor.hp <= 0 || foe.hp <= 0) return;
   if (actor.status && actor.status.stun > 0) {
-    narrative.push(`  …but ${actor.name} is too dazed to punish it.`);
+    narrate(narrative, `  …but ${actor.name} is too dazed to punish it.`);
     return;
   }
   if (actor.status && actor.status.nextAttackFails > 0) {
     actor.status.nextAttackFails--;
-    narrative.push(`  …but ${actor.name} is still reeling and the chance is lost. (Trueshot)`);
+    narrate(narrative, `  …but ${actor.name} is still reeling and the chance is lost. (Trueshot)`);
     return;
   }
   const hitI = dispFloor(pcHitChance(turnContext, actor, foe)),
     roll = d100();
-  narrative.push(
+  narrate(
+    narrative,
     `  ⚔ ${actor.name} takes a free strike at ${foe.name}'s back (${pcSkillLabel(actor, 'melee')}, ${hitI}% to hit [roll ${roll}]${roll <= hitI ? ' ✓' : ' ✗'})`,
   );
   if (roll <= hitI) {
@@ -176,15 +184,16 @@ export function pcFreeStrike(turnContext, actor, foe, narrative) {
     pcCombatXP(turnContext, actor, 'melee', narrative);
     const dealt = pcTakeHit(turnContext, foe, pcMeleeDamage(actor, foe), narrative, actor.name, 'free strike');
     if (dealt)
-      narrative.push(
+      narrate(
+        narrative,
         `  ${actor.name} lands it for ${dealt} damage! (${foe.name} HP ${Math.max(0, Math.round(foe.hp))})`,
       );
     if (foe.hp <= 0 && foe._rebirth) {
       foe._rebirth = false;
       foe.hp = Math.max(5, Math.round(foe.maxHp * 0.4));
-      narrative.push(`  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`);
+      narrate(narrative, `  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`);
     }
-  } else narrative.push(`  The free strike misses.`);
+  } else narrate(narrative, `  The free strike misses.`);
 }
 export function pcAttemptFlee(turnContext, actor, foe, narrative, state, how) {
   if (actor.neverFlees) return false;
@@ -195,13 +204,13 @@ export function pcAttemptFlee(turnContext, actor, foe, narrative, state, how) {
     how === 'temper'
       ? `${actor.name} (${actor.temper}) loses the stomach for the fight and tries to break off`
       : `${actor.name} attempts to flee`;
-  narrative.push(`  🏃 ${lead} (${chance}% [roll ${roll}]${roll <= chance ? ' ✓' : ' ✗'})`);
+  narrate(narrative, `  🏃 ${lead} (${chance}% [roll ${roll}]${roll <= chance ? ' ✓' : ' ✗'})`);
   if (roll <= chance) {
     state.fledBy = actor;
-    narrative.push(`  ${actor.name} escapes the fight!`);
+    narrate(narrative, `  ${actor.name} escapes the fight!`);
     return true;
   }
-  narrative.push(`  ${actor.name} fails to get clear.`);
+  narrate(narrative, `  ${actor.name} fails to get clear.`);
   pcFreeStrike(turnContext, foe, actor, narrative);
   return false;
 }
@@ -212,7 +221,8 @@ export function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
     const _steps = actor.kind === 'monster' && pcSpeedOf(actor) >= 3 ? 2 : 1;
     const _from = state.range;
     state.range = pcRangeStep(state.range, +_steps);
-    narrative.push(
+    narrate(
+      narrative,
       `  ${actor.name} ${_steps > 1 ? 'surges forward' : 'advances'} — the combatants close to ${state.range} range.`,
     );
     // PARTING SHOT — an archer at bow range looses one arrow as the foe comes on into melee. Only
@@ -230,7 +240,7 @@ export function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
       !(foe.status && foe.status.silenceRounds > 0) &&
       foe.hp > 0
     ) {
-      narrative.push(`  🏹 ${foe.name} looses an arrow as ${actor.name} comes on. (parting shot)`);
+      narrate(narrative, `  🏹 ${foe.name} looses an arrow as ${actor.name} comes on. (parting shot)`);
       pcFireOne(turnContext, foe, actor, narrative);
       if (actor.hp <= 0) return;
     }
@@ -250,7 +260,7 @@ export function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
       return;
     }
     if (state.range === 'bow' && pcHasRanged(actor) && !(actor.status && actor.status.silenceRounds > 0)) {
-      narrative.push(`  ${actor.name} draws as they come and looses a snap shot.`);
+      narrate(narrative, `  ${actor.name} draws as they come and looses a snap shot.`);
       pcFireOne(turnContext, actor, foe, narrative);
     }
     return;
@@ -290,12 +300,13 @@ export function pcFireShot(turnContext, actor, foe, narrative) {
   // ARCHERY L8 (Trueshot) aftermath: a crippled foe's whole volley goes to nothing.
   if (actor.status && actor.status.nextAttackFails > 0) {
     actor.status.nextAttackFails--;
-    narrative.push(`  ${actor.name} is still reeling from a crippling wound — the shot fails. (Trueshot)`);
+    narrate(narrative, `  ${actor.name} is still reeling from a crippling wound — the shot fails. (Trueshot)`);
     return;
   }
   const volley = pcVolleySize(actor);
   if (volley > 1)
-    narrative.push(
+    narrate(
+      narrative,
       `  ${actor.name} draws and looses a volley of ${volley} arrows (${pcSkillLabel(actor, 'archery')}).`,
     );
   for (let v = 0; v < volley && foe.hp > 0; v++) pcFireOne(turnContext, actor, foe, narrative);
@@ -321,7 +332,8 @@ export function pcArrowHitChance(turnContext, actor, foe) {
 export function pcFireOne(turnContext, actor, foe, narrative) {
   const hit = pcArrowHitChance(turnContext, actor, foe),
     roll = d100();
-  narrative.push(
+  narrate(
+    narrative,
     `  ${actor.name} shoots (${pcSkillLabel(actor, 'archery')}, ${hit}% to hit [roll ${roll}]${roll <= hit ? ' ✓' : ' ✗'})`,
   );
   if (roll <= hit) {
@@ -330,14 +342,16 @@ export function pcFireOne(turnContext, actor, foe, narrative) {
     const d = pcArrowDamage(actor);
     const dealt = pcTakeHit(turnContext, foe, d, narrative, actor.name, 'arrow');
     if (dealt)
-      narrative.push(
+      narrate(
+        narrative,
         `  ${actor.name}'s shot hits ${foe.name} for ${dealt} damage. (HP ${Math.max(0, Math.round(foe.hp))})`,
       );
     // ARCHERY L6 (Impalement): 50% chance a hit lodges, bleeding the foe 1-3 each round — capped
     // at three rounds.
     if (dealt && actor.perkImpale && foe.hp > 0 && kcRng() < 0.5) {
       const _imp = pcPushDot(foe, rng(1, 3), PC_MAX_LINGER_ROUNDS, `${actor.name}'s impaling arrow`);
-      narrative.push(
+      narrate(
+        narrative,
         `  🩸 ${actor.name}'s arrow impales ${foe.name} — it will bleed ${_imp.dmg} a round for ${_imp.rounds} rounds. (Impalement)`,
       );
     }
@@ -345,12 +359,13 @@ export function pcFireOne(turnContext, actor, foe, narrative) {
     // automatically fails.
     if (dealt && actor.perkTrueshot && foe.hp > 0 && kcRng() < 0.5) {
       foe.status.nextAttackFails = (foe.status.nextAttackFails || 0) + 1;
-      narrative.push(
+      narrate(
+        narrative,
         `  🎯 ${actor.name}'s shot strikes a vital point — ${foe.name}'s next attack will fail. (Trueshot)`,
       );
     }
   } else {
-    narrative.push(`  ${actor.name}'s shot flies wide.`);
+    narrate(narrative, `  ${actor.name}'s shot flies wide.`);
     pcTryCounter(turnContext, foe, actor, narrative, 'archery');
   }
 }

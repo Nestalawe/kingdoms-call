@@ -125,6 +125,7 @@ import {
   WIN_VERBS,
 } from './battles-against-province-defenders.ts';
 import { preBattleDuel } from './pre-battle-duels.ts';
+import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── BATTLES BETWEEN TWO HEROES' HOSTS (plan P1-08h: lifted out of resolveTurn) ────
 // The army battle between two commanders' hosts in one province (combatVsChar): the duel before it
@@ -170,7 +171,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
     (def.armies || []).forEach((a) => {
       if (a) a._laNoTerrain = true;
     });
-    narrative.push(
+    narrate(
+      narrative,
       `⚡ ${atk.name}'s Lightning Advance catches ${def.name} completely unready — no terrain advantage, no pre-battle magic and no answering volley.`,
     );
   }
@@ -240,21 +242,22 @@ export function combatVsChar(turnContext, atk, def, prov) {
       ? `${G.players[prov.owner].name}`
       : `${G.players[def.player]?.name || def.name}`;
   if (!atk._resumeBattle)
-    narrative.push(
+    narrate(
+      narrative,
       `➡️ ${atk.name} (${G.players[atk.player]?.name}) moves into ${prov.name}, held by ${_pvpHeldBy} — a battle is initiated.`,
     );
-  narrative.push(`⚔ **Battle for ${prov.name}**`);
+  narrate(narrative, `⚔ **Battle for ${prov.name}**`);
   {
     const _ia = magicItemsLine(atk),
       _id = magicItemsLine(def);
-    if (_ia) narrative.push(_ia);
-    if (_id) narrative.push(_id);
+    if (_ia) narrate(narrative, _ia);
+    if (_id) narrate(narrative, _id);
   } // item 5
   {
     const _kA = kinNarrative(atkArmies, atk, G.players[atk.player]?.race || null, `${atk.name}'s host`);
-    if (_kA) narrative.push(_kA); // item 7
+    if (_kA) narrate(narrative, _kA); // item 7
     const _kD = kinNarrative(defArmies, def, G.players[def.player]?.race || null, `${def.name}'s host`);
-    if (_kD) narrative.push(_kD);
+    if (_kD) narrate(narrative, _kD);
   }
   // each side's army strength on the ground: every per-unit modifier (terrain, kinship, Dwarven
   // Bulwark, unit abilities, Druid bond…) — before Tactical, battle lines, force-wide multipliers
@@ -301,7 +304,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
         0,
       ),
     );
-    narrative.push(
+    narrate(
+      narrative,
       forceMarker(
         turnContext,
         `${atk.name} (${G.players[atk.player]?.name})`,
@@ -311,7 +315,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
         `attacks ${prov.name}${atkTact > 0 ? ` under Tactical ${atkTact} command` : ''} — army strength ${_aS}, with`,
       ),
     );
-    narrative.push(
+    narrate(
+      narrative,
       forceMarker(
         turnContext,
         `${def.name} (${G.players[def.player]?.name})`,
@@ -330,7 +335,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
     [_fearDef, def, def.name, defArmies],
   ]) {
     if (_f && G.players[_h.player]?.alignment === 'Evil' && _ar.some((a) => a && MONSTER_ARMIES.has(a.type)))
-      narrative.push(
+      narrate(
+        narrative,
         `💀 Reign of Fear — ${prov.name} still cowers under ${_hn}'s Terror, and the monsters of the host fight at ×${REIGN_OF_FEAR_MULT}.`,
       );
   }
@@ -355,7 +361,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // Druid or spellcraft for this battle. Their surviving armies are dispersed AFTER the battle
   // (garrison / retreat / mercenaries) by the end-of-phase fallen-commander sweep.
   if (atkCmdrSlain) {
-    narrative.push(
+    narrate(
+      narrative,
       `⚑ With ${atk.name} cut down before the lines were joined, the senior captain of the host takes command — the attack goes in regardless, though without their fallen leader's guiding hand.`,
     );
     atkTact = 0;
@@ -364,7 +371,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
     atk._tacticalNegated = true;
   }
   if (defCmdrSlain) {
-    narrative.push(
+    narrate(
+      narrative,
       `⚑ With ${def.name} slain before their army, a steady-handed veteran steps into command — the defence holds its ground, leaderless but unbowed.`,
     );
     defTact = 0;
@@ -390,7 +398,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const atkHomeP = _founderP != null && atk.player === _founderP && prov.owner !== _founderP;
   const atkHomeBonusP = atkHomeP ? 1.5 : 1;
   if (atkHomeP)
-    narrative.push(
+    narrate(
+      narrative,
       `🏠 ${atkName} fights to win back ${prov.name}, the realm's own capital — home ground lends the assault ×1.5 strength.`,
     );
   let defBonus = 1.25 * (isHome ? 1.2 : 1);
@@ -406,7 +415,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
     );
     if (_sg > 0) {
       defBonus = Math.max(1, defBonus - _sg);
-      narrative.push(
+      narrate(
+        narrative,
         `  🏰 ${atkName}'s siegecraft wears down the defenders' fortifications (province bonus −${_sg.toFixed(2)}).`,
       );
     }
@@ -414,7 +424,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // GOOD — Righteous Defence: +10% when a Good player defends a province they own.
   if (prov.owner === def.player && G.players[def.player]?.alignment === 'Good') {
     defBonus *= 1.1;
-    narrative.push(`✝ Righteous Defence — ${defName}'s host defends ground held justly (+10% defence).`);
+    narrate(narrative, `✝ Righteous Defence — ${defName}'s host defends ground held justly (+10% defence).`);
   }
   {
     const _dOwnP =
@@ -432,7 +442,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
         : 0;
     if (_dOwnP > 0) {
       defBonus *= 1 + _dOwnP;
-      narrative.push(`  🛡 ${defName}'s realm holds its own ground the harder (+${dispFloor(_dOwnP * 100)}% defence).`);
+      narrate(
+        narrative,
+        `  🛡 ${defName}'s realm holds its own ground the harder (+${dispFloor(_dOwnP * 100)}% defence).`,
+      );
     }
   } // defOwn discoveries
   if (
@@ -441,13 +454,13 @@ export function combatVsChar(turnContext, atk, def, prov) {
     activeItems(def).some((it) => it.effect && it.effect.stat === 'homeDefBonus')
   ) {
     defBonus *= 1.25;
-    narrative.push(`  🛡 ${defName}'s Banner of the Realm rallies the home defense (+25%).`);
+    narrate(narrative, `  🛡 ${defName}'s Banner of the Realm rallies the home defense (+25%).`);
   }
   if (activeItems(atk).some((it) => it.effect && it.effect.stat === 'siegeBonus')) {
     defBonus = 1 + (defBonus - 1) * 0.5;
-    narrative.push(`  🏰 ${atkName}'s siege mastery halves the defenders' fortifications.`);
+    narrate(narrative, `  🏰 ${atkName}'s siege mastery halves the defenders' fortifications.`);
   }
-  if (isHome) narrative.push(`The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
+  if (isHome) narrate(narrative, `The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
   // (2026-09-23d: "📊 X leads the defense: Tactical N" retired — the deployment line and the ladder both name it.)
 
   // Fanaticism
@@ -502,31 +515,38 @@ export function combatVsChar(turnContext, atk, def, prov) {
   );
   const _pct = (m) => Math.round((m - 1) * 100);
   if (atkSkelFanatic)
-    narrative.push(
+    narrate(
+      narrative,
       `${atkName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${_pct(UNDEAD_SKEL_KING_FAN)}% strength)`,
     );
   if (defSkelFanatic)
-    narrative.push(
+    narrate(
+      narrative,
       `${defName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${_pct(UNDEAD_SKEL_KING_FAN)}% strength)`,
     );
-  if (atkEvilMonster && !atkFanatic) narrative.push(`${atkName}'s monsters are driven to savage fury! (+25% strength)`);
-  if (defEvilMonster && !defFanatic) narrative.push(`${defName}'s monsters are driven to savage fury! (+25% strength)`);
+  if (atkEvilMonster && !atkFanatic)
+    narrate(narrative, `${atkName}'s monsters are driven to savage fury! (+25% strength)`);
+  if (defEvilMonster && !defFanatic)
+    narrate(narrative, `${defName}'s monsters are driven to savage fury! (+25% strength)`);
   if (atkSkelHero)
-    narrative.push(
+    narrate(
+      narrative,
       `${atkName}'s skeletal legions know no fear (+${_pct(UNDEAD_SKEL_HERO_FAN)}% strength — undying fanaticism).`,
     );
   if (defSkelHero)
-    narrative.push(
+    narrate(
+      narrative,
       `${defName}'s skeletal legions know no fear (+${_pct(UNDEAD_SKEL_HERO_FAN)}% strength — undying fanaticism).`,
     );
   if (atkFanatic && !atkSkelFanatic && !atkSkelHero)
-    narrative.push(`${atkName}'s forces fight with fanatical zeal! (+30% attacking strength)`);
+    narrate(narrative, `${atkName}'s forces fight with fanatical zeal! (+30% attacking strength)`);
   if (defFanatic && !defSkelFanatic && !defSkelHero && _consecratedHere)
-    narrative.push(
+    narrate(
+      narrative,
       `✨ On the consecrated ground of ${prov.name}, ${defName}'s defenders fight before the altars of their gods with fanatical zeal! (+30% defending strength)`,
     );
   else if (defFanatic && !defSkelFanatic && !defSkelHero)
-    narrative.push(`${defName}'s forces fight with fanatical zeal! (+30% defending strength)`);
+    narrate(narrative, `${defName}'s forces fight with fanatical zeal! (+30% defending strength)`);
 
   // Terrain sets the front-line width — how many units fight in the front row (the rest form a
   // reduced-effect reserve). This is the ONE source of truth for the front width, used by BOTH
@@ -630,11 +650,12 @@ export function combatVsChar(turnContext, atk, def, prov) {
     ); // cast discoveries · 2026-09-11: base 30
     const castRoll = d100();
     telSpell(turnContext, caster, spellName, school, spellLvl, castChance, castRoll, 'battle');
-    narr.push(
+    narrate(
+      narr,
       `✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${SKILL_LABELS[school] || school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll <= castChance ? ' ✓' : ' ✗'}]`,
     );
     if (castRoll > castChance) {
-      narr.push(`  Spell fizzles.`);
+      narrate(narr, `  Spell fizzles.`);
       return;
     }
     // no school gain from pre-battle magic — see resolveBattle's cast.
@@ -649,7 +670,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
           const cut = Math.max(1, Math.round(unitBaseStrength(d) * 0.5));
           d._tempStrReduction = (d._tempStrReduction || 0) + cut;
         });
-        narr.push(
+        narrate(
+          narr,
           `  🔥 Fireball halves the enemy's ${_fbHits.length > 1 ? 'two strongest units' : 'strongest unit'}, ${_fbHits.map((d) => d.unitName || d.type).join(' and ')}.`,
         );
       }
@@ -658,18 +680,20 @@ export function combatVsChar(turnContext, atk, def, prov) {
         if (effStat(turnContext, enemyCmdr, 'tactical') > 0 && !isPvPSea) {
           enemyCmdr._tacticalHalved = true;
           enemyCmdr._tacticalMult = 0.5;
-          narr.push(
+          narrate(
+            narr,
             `  🌀 Telekinetic Storm scatters ${enemyCmdr.name}'s formations — their Tactical command is cut to half effectiveness this battle.`,
           );
         } else {
           enemyCmdr._tacticalHalved = true;
-          narr.push(`  🌀 Telekinetic Storm rages, but ${enemyCmdr.name} has no tactical command to disrupt here.`);
+          narrate(narr, `  🌀 Telekinetic Storm rages, but ${enemyCmdr.name} has no tactical command to disrupt here.`);
         }
       }
     } else if (spellName === 'Psychic Blast') {
       if (enemyCmdr) {
         enemyCmdr._druidNegated = true;
-        narr.push(
+        narrate(
+          narr,
           `  🧠 Psychic Blast severs ${enemyCmdr.name}'s bond with their beasts — their Druid skill is negated this battle.`,
         );
       }
@@ -680,11 +704,12 @@ export function combatVsChar(turnContext, atk, def, prov) {
         .forEach((d) => {
           d._tempStrReduction = (d._tempStrReduction || 0) + Math.max(1, Math.round(unitBaseStrength(d) * 0.2));
         });
-      narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n !== 1 ? 's' : ''} lose 20% strength.`);
+      narrate(narr, `  ⚡ Lightning Bolt: ${n} enemy unit${n !== 1 ? 's' : ''} lose 20% strength.`);
     } else if (spellName === 'Curse') {
       if (enemyCmdr) {
         enemyCmdr._curseHalveStat = bestCurseSkill(turnContext, enemyCmdr);
-        narr.push(
+        narrate(
+          narr,
           `  ☠ Curse withers ${enemyCmdr.name}'s ${curseSkillLabel(enemyCmdr._curseHalveStat)} — halved for this battle.`,
         );
       }
@@ -705,8 +730,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
           rc.armies = rc.armies || [];
           rc.armies.push(unit);
         }
-        narr.push(`  ☠ Control Undead turns the ${unit.unitName || unit.type} to ${caster.name}'s side!`);
-      } else narr.push(`  ☠ Control Undead finds no enemy undead to turn.`);
+        narrate(narr, `  ☠ Control Undead turns the ${unit.unitName || unit.type} to ${caster.name}'s side!`);
+      } else narrate(narr, `  ☠ Control Undead finds no enemy undead to turn.`);
     } else if (spellName === 'Holy Symbol') {
       const ud = targets.filter(
         (d) => d._isSkeletal || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(d.type || ''),
@@ -715,16 +740,16 @@ export function combatVsChar(turnContext, atk, def, prov) {
         ud.forEach((d) => {
           d._tempStrReduction = (d._tempStrReduction || 0) + Math.ceil(unitBaseStrength(d) * 0.25);
         });
-        narr.push(`  ✝ Holy Symbol: ${ud.length} enemy undead unit${ud.length !== 1 ? 's' : ''} at 75% str.`);
-      } else narr.push(`  ✝ Holy Symbol: no enemy undead to smite.`);
+        narrate(narr, `  ✝ Holy Symbol: ${ud.length} enemy undead unit${ud.length !== 1 ? 's' : ''} at 75% str.`);
+      } else narrate(narr, `  ✝ Holy Symbol: no enemy undead to smite.`);
     } else if (spellName === 'Spiritwrack') {
       const md = targets.filter((d) => MISSILE_A.has(d.type));
       if (md.length > 0) {
         md.forEach((d) => {
           d._tempStrReduction = (d._tempStrReduction || 0) + Math.ceil(unitBaseStrength(d) * 0.5);
         });
-        narr.push(`  Spiritwrack: ${md.length} enemy missile unit${md.length !== 1 ? 's' : ''} at half str.`);
-      } else narr.push(`  Spiritwrack: enemy fields no missile troops.`);
+        narrate(narr, `  Spiritwrack: ${md.length} enemy missile unit${md.length !== 1 ? 's' : ''} at half str.`);
+      } else narrate(narr, `  Spiritwrack: enemy fields no missile troops.`);
     }
   }
   if (!atkCmdrSlain) applyPreBattleMagic(atk, defArmies, narrative, def);
@@ -742,22 +767,23 @@ export function combatVsChar(turnContext, atk, def, prov) {
       const _pvpStrikeChance = primalStrikeChance(druLvl, heroChar._druidNegated ? null : heroChar, a.type);
       const _pvpHit = kcRng() * 100 < _pvpStrikeChance;
       if (!_pvpHit && _isPrimalP)
-        narr.push(
+        narrate(
+          narr,
           `〰 ${a.unitName || a.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${_pvpStrikeChance}% chance${druLvl > 0 ? `, Druid ${druLvl}` : ', no commanding Druid'}).`,
         );
       if (_pvpHit) {
-        narr.push(`✨ ${a.unitName || a.type} — **${sp.name}**: "${sp.flavour}"`);
+        narrate(narr, `✨ ${a.unitName || a.type} — **${sp.name}**: "${sp.flavour}"`);
         if (sp.target === 'all') {
           const dmg = rng(sp.dmg[0], sp.dmg[1]);
           enemyArmies.forEach((d) => {
             d._tempStrReduction = (d._tempStrReduction || 0) + dmg;
           });
-          narr.push(`  Hits all ${enemyArmies.length} enemy units: −${dmg} str.`);
+          narrate(narr, `  Hits all ${enemyArmies.length} enemy units: −${dmg} str.`);
         } else {
           const d = enemyArmies[Math.floor(kcRng() * enemyArmies.length)];
           const dmg = rng(sp.dmg[0], sp.dmg[1]);
           d._tempStrReduction = (d._tempStrReduction || 0) + dmg;
-          narr.push(`  Hits ${d.unitName || d.type}: −${dmg} str.`);
+          narrate(narr, `  Hits ${d.unitName || d.type}: −${dmg} str.`);
         }
       }
     });
@@ -774,10 +800,11 @@ export function combatVsChar(turnContext, atk, def, prov) {
     // Eagle Riders fly with the shooters (Eyes of the Forest).
     {
       const _eyes = eyesOfTheForestLine(enemyArmies, pvpTerrain, myForce, heroChar.name);
-      if (_eyes) narr.push(_eyes);
+      if (_eyes) narrate(narr, _eyes);
     }
     if (archeryBlockedBy(enemyArmies, pvpTerrain, myForce)) {
-      narr.push(
+      narrate(
+        narr,
         `🌲 ${heroChar.name}'s archers can find no target — Forest Wardens hold the thickets and the volley never comes.`,
       );
       return;
@@ -789,7 +816,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
     const _manyQ = hasItemBase(heroChar, 'Quiver of Many Arrows');
     const volleys = (hasQ ? 2 : 1) + (_manyQ ? 1 : 0);
     const _prepared = myMissile.some((a) => abilityVolleys(a, isAtk) > 1); // HUMAN — Prepared Ground: defending Longbows loose twice
-    narr.push(
+    narrate(
+      narr,
       `🏹 ${heroChar.name}'s archery: ${myMissile.length} unit${myMissile.length !== 1 ? 's' : ''}${hasQ ? ' (double volleys)' : ''}${_manyQ ? ' (+1 shot)' : ''}${_prepared ? ' (Prepared Ground: the Longbows loose twice)' : ''}`,
     );
     myMissile.forEach((a) => {
@@ -800,14 +828,20 @@ export function combatVsChar(turnContext, atk, def, prov) {
         const dmgMult = missileDamageMult(a, myForce, pvpTerrain, t, isAtk);
         const hit = applyMissileHit(t, archLvl, a, { dmgMult });
         if (hit.immune)
-          narr.push(
+          narrate(
+            narr,
             `  ${a.unitName || a.type} → ${t.unitName || t.type}: shot glances off the ${hit.why || 'armoured hull'}.`,
           );
         else if (hit.dmg > 0)
-          narr.push(
+          narrate(
+            narr,
             `  ${a.unitName || a.type} → ${t.unitName || t.type}: −${hit.dmg} str${hit.isFly ? ' (×2 vs flying!)' : ''}${hit.thickHide ? ' (Thick Hide: half)' : ''}${dmgMult > 1 ? ` (${a.type} ability ×${dmgMult.toFixed(2)})` : ''}${hit.capped ? ' (softened to the limit)' : ''}.`,
           );
-        else narr.push(`  ${a.unitName || a.type} → ${t.unitName || t.type}: already softened as far as arrows allow.`);
+        else
+          narrate(
+            narr,
+            `  ${a.unitName || a.type} → ${t.unitName || t.type}: already softened as far as arrows allow.`,
+          );
       }
     });
   }
@@ -828,7 +862,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
       if (kcRng() >= 0.25) return;
       const t = hulls[Math.floor(kcRng() * hulls.length)];
       t._died = true;
-      narr.push(
+      narrate(
+        narr,
         `🌊 A ${myName} whale cohort breaches beneath the ${t.unitName || t.type} and rolls her over — she goes down with all hands before a shot is fired.`,
       );
     });
@@ -861,7 +896,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
     const _ta = terrainNoteList(atkArmies, pvpTerrain),
       _td = terrainNoteList(defArmies, pvpTerrain); // 2026-09-23d: per side, one format
     if (_ta || _td)
-      narrative.push(
+      narrate(
+        narrative,
         `📊 Terrain (${pvpTerrain}): ${[_ta ? `${atkName} — ${_ta}` : null, _td ? `${defName} — ${_td}` : null].filter(Boolean).join('; ')}`,
       );
   }
@@ -874,14 +910,15 @@ export function combatVsChar(turnContext, atk, def, prov) {
     const _airA = isAirborneAtSea(atkArmies),
       _airD = isAirborneAtSea(defArmies);
     if (_airA || _airD)
-      narrative.push(
+      narrate(
+        narrative,
         `⚠ ${_airA && _airD ? 'Both hosts are' : (_airA ? atkName : defName) + "'s host is"} airborne over open water: land units carried by flyers fight at ×${SEA_AIRBORNE_LAND_PENALTY}, and the flyers carrying them at ×${SEA_AIRBORNE_FLYER_PENALTY}.`,
       );
     if (
       (atkArmies.some((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type)) && !_airA) ||
       (defArmies.some((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type)) && !_airD)
     )
-      narrative.push(`⚠ Land units fighting at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
+      narrate(narrative, `⚠ Land units fighting at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
   }
 
   // Battle lines for PvP — front-line width (pvpFront) is declared above as the single source of
@@ -921,26 +958,28 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // 2026-09-23d: one line per side (was one per unit).
   {
     const _dl = druidShortfallLine(turnContext, atkName, atk, atkArmies, atkAlign2);
-    if (_dl) narrative.push(_dl);
+    if (_dl) narrate(narrative, _dl);
     const _dd = druidShortfallLine(turnContext, defName, def, defArmies, defAlign2);
-    if (_dd) narrative.push(_dd);
+    if (_dd) narrate(narrative, _dd);
   }
 
   // Discovery bonus
   const atkDiscBonus = 1 + discoveryArmyBonus(atk.player);
   const defDiscBonus = 1 + discoveryArmyBonus(def.player);
   if (atkDiscBonus > 1)
-    narrative.push(`${atkName}'s realm discoveries: +${((atkDiscBonus - 1) * 100).toFixed(0)}% army str.`);
+    narrate(narrative, `${atkName}'s realm discoveries: +${((atkDiscBonus - 1) * 100).toFixed(0)}% army str.`);
   if (defDiscBonus > 1)
-    narrative.push(`${defName}'s realm discoveries: +${((defDiscBonus - 1) * 100).toFixed(0)}% army str.`);
+    narrate(narrative, `${defName}'s realm discoveries: +${((defDiscBonus - 1) * 100).toFixed(0)}% army str.`);
 
   // (Illusory Terrain is applied per-unit above, folded into each side's strength.)
   if (_atkIllActiveP)
-    narrative.push(
+    narrate(
+      narrative,
       `  🌫 The ever-shifting illusory ground of ${prov.name} throws ${atkName}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`,
     );
   if (_defIllActiveP)
-    narrative.push(
+    narrate(
+      narrative,
       `  🌫 The ever-shifting illusory ground of ${prov.name} throws ${defName}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`,
     );
   // WHITE L7 — Sanctuary: enemies of the warding caster fight at −25% in the warded province this
@@ -949,33 +988,37 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const atkSanct = _sanctBy != null && atk.player !== _sanctBy ? 0.75 : 1;
   const defSanct = _sanctBy != null && def.player !== _sanctBy ? 0.75 : 1;
   if (atkSanct < 1)
-    narrative.push(`  ✨ The sanctuary wards of ${prov.name} sap ${atkName}'s attackers (−25% strength).`);
+    narrate(narrative, `  ✨ The sanctuary wards of ${prov.name} sap ${atkName}'s attackers (−25% strength).`);
   if (defSanct < 1)
-    narrative.push(`  ✨ The sanctuary wards of ${prov.name} sap ${defName}'s attackers (−25% strength).`);
+    narrate(narrative, `  ✨ The sanctuary wards of ${prov.name} sap ${defName}'s attackers (−25% strength).`);
   // ── L7/L9 MASTERY ORDER battle modifiers (turn-stamped flags set in the action phase) ──
   let atkOrd = 1,
     defOrd = 1;
   if (atk._grandStratagemTurn === G.turn) {
     atkOrd *= 1.2;
-    narrative.push(`  📜 ${atkName} unfolds a Grand Stratagem — the attack lands at +20% strength.`);
+    narrate(narrative, `  📜 ${atkName} unfolds a Grand Stratagem — the attack lands at +20% strength.`);
   }
   if (def._grandStratagemTurn === G.turn) {
     defOrd *= 1.2;
-    narrative.push(`  📜 ${defName} unfolds a Grand Stratagem — the defence holds at +20% strength.`);
+    narrate(narrative, `  📜 ${defName} unfolds a Grand Stratagem — the defence holds at +20% strength.`);
   }
   if (def._feignedRetreatTurn === G.turn) {
     defOrd *= 1.25;
-    narrative.push(`  🏳 ${defName}'s Feigned Retreat springs shut — the counter-attack strikes at +25% strength.`);
+    narrate(narrative, `  🏳 ${defName}'s Feigned Retreat springs shut — the counter-attack strikes at +25% strength.`);
   }
   if (raidLandedHere(turnContext, atk, prov)) {
     atkOrd *= 1.25;
-    narrative.push(`  ⚓ ${atkName} storms ashore in a Raid the Coast — the amphibious assault hits at +25% strength.`);
+    narrate(
+      narrative,
+      `  ⚓ ${atkName} storms ashore in a Raid the Coast — the amphibious assault hits at +25% strength.`,
+    );
   } // 2026-09-23e: only a coast attacked from the sea
   // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
   // consecrated province).
   const _consecPenalty = _consecratedHere && (atkAlign === 'Undead' || atkAlign === 'Evil') ? 0.85 : 1;
   if (_consecPenalty < 1)
-    narrative.push(
+    narrate(
+      narrative,
       `✨ The ground of ${prov.name} is consecrated — ${atkName}'s ${atkAlign.toLowerCase()} host falters on hallowed earth (−15% strength).`,
     );
   // Post-multiplier base strengths — every battle-level multiplier folded in, BEFORE the dice.
@@ -1043,13 +1086,13 @@ export function combatVsChar(turnContext, atk, def, prov) {
     _facedD = battleFacedClauses(_dep.gD, String(atk.name || atkName || '').replace(' (wandering)', '')); // the commanders' plain names, not "X's leaderless host"
   const atkBaseStr = _gA.grid.face.total,
     defBaseStr = _gD.grid.face.total;
-  narrative.push(battleWidthLine(pvpTerrain, pvpFront));
-  narrative.push(battleScoutLine(_dep, atkName, defName, _explA, _explD));
+  narrate(narrative, battleWidthLine(pvpTerrain, pvpFront));
+  narrate(narrative, battleScoutLine(_dep, atkName, defName, _explA, _explD));
   {
     const _mv = battleMovesLine(_dep, atkName, defName);
-    if (_mv) narrative.push(_mv);
+    if (_mv) narrate(narrative, _mv);
   }
-  narrative.push(...battleGridLines(defName, _gD.grid, true), ...battleGridLines(atkName, _gA.grid, false));
+  narrateAll(narrative, [...battleGridLines(defName, _gD.grid, true), ...battleGridLines(atkName, _gA.grid, false)]);
   // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
   // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
   // Item 9: fortune of battle — one swing, applied as a pair of luck multipliers (see
@@ -1072,9 +1115,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // terrain, the Druid creature bond, arrows) and listed Tactical as army-wide though flyers and
   // fleets never get it. The Whole-force list below MUST mirror atkBaseStr / defBaseStr above —
   // the harness asserts lineTotal × Π(m) === baseStr for both sides.
-  narrative.push(`📊 **Battle stats:**`);
-  narrative.push(
-    ...ladderLines('Attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {
+  narrate(narrative, `📊 **Battle stats:**`);
+  narrateAll(
+    narrative,
+    ladderLines('Attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {
       grid: _gA.grid,
       tact:
         pvpIsLand && atkTactBonus > 1
@@ -1085,8 +1129,9 @@ export function combatVsChar(turnContext, atk, def, prov) {
           : null,
     }),
   );
-  narrative.push(
-    ...ladderLines('Defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {
+  narrateAll(
+    narrative,
+    ladderLines('Defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {
       grid: _gD.grid,
       tact:
         pvpIsLand && defTactBonus > 1
@@ -1097,7 +1142,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
           : null,
     }),
   );
-  narrative.push(`  ${fortuneNarrative(atkName, defName, atkBaseStr, defBaseStr, _fortP)}`);
+  narrate(narrative, `  ${fortuneNarrative(atkName, defName, atkBaseStr, defBaseStr, _fortP)}`);
 
   const won = atkStr >= defStr;
   // ORC — Raiders' Muster (2026-10-11, Toby): an orcish province that sees an orc win this turn gains a
@@ -1118,7 +1163,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const isNarrowPvP = _bandPvP.max <= 0.1;
   const isDecisivePvP = _bandPvP.max > 0.3;
   const severity = _bandPvP.label;
-  narrative.push(
+  narrate(
+    narrative,
     `📊 Outcome: **${won ? atk.name : def.name} wins** — ${severity} (margin ${(margRatioPvP * 100).toFixed(0)}% of combined strength after fortune)`,
   );
   // Evil: a decisive victory by an Evil commander terrorises the battle province and all adjacent
@@ -1156,19 +1202,23 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const _rideAtk = rideThemDownBonus(atkArmies, pvpTerrain, atk);
   const _rideDef = rideThemDownBonus(defArmies, pvpTerrain, def);
   if (_rideAtk > 0 && !OPEN_COUNTRY.has(pvpTerrain))
-    narrative.push(
+    narrate(
+      narrative,
       `📯 ${atkName}'s War-Horn of the Plains sounds — the Free Lances ride the broken enemy down even in ${pvpTerrain} country.`,
     );
   if (_rideDef > 0 && !OPEN_COUNTRY.has(pvpTerrain))
-    narrative.push(
+    narrate(
+      narrative,
       `📯 ${defName}'s War-Horn of the Plains sounds — the Free Lances ride the broken enemy down even in ${pvpTerrain} country.`,
     );
   if (_rideAtk === 0 && countType(atkArmies, 'Free Lances') > 0)
-    narrative.push(
+    narrate(
+      narrative,
       `🐎 ${atkName}'s Free Lances find no room to ride in ${pvpTerrain} country — the broken enemy scatters into cover.`,
     );
   if (_rideDef === 0 && countType(defArmies, 'Free Lances') > 0)
-    narrative.push(
+    narrate(
+      narrative,
       `🐎 ${defName}'s Free Lances find no room to ride in ${pvpTerrain} country — the broken enemy scatters into cover.`,
     );
   // HUMAN — Cut the Line: a corsair-heavy victor leaves no line of retreat by sea.
@@ -1199,13 +1249,15 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const _huntPct = (mant, shark) => (mant ? RUN_THEM_DOWN_PCT : 0) + (shark ? RUN_THEM_DOWN_PCT : 0);
   const _huntLines = (mant, shark, sf, winner, loser, narr) => {
     if (mant)
-      narr.push(
+      narrate(
+        narr,
         sf
           ? `🛡 ${loser}'s Dwarven Guard lock shields as they give ground — ${winner}'s Manticore Pride find no broken backs to hunt.`
           : `🦂 ${winner}'s Manticore Pride hunt the broken companies down before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT * 100)}% losses to ${loser}).`,
       );
     if (shark)
-      narr.push(
+      narrate(
+        narr,
         sf
           ? `🛡 ${loser}'s Dwarven Guard lock shields as they give ground — ${winner}'s Shark Shoals find nothing in the water.`
           : `🦈 Feeding Frenzy — ${winner}'s Shark Shoals tear into ${loser}'s beaten crews as they founder (+${dispFloor(RUN_THEM_DOWN_PCT * 100)}% losses to ${loser}).`,
@@ -1216,7 +1268,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     (force || []).forEach((a) => {
       if (kcRng() < 0.15) {
         a._died = true;
-        narr.push(`— ${ownedUnitName(name, a)} are cut down with no escape!`);
+        narrate(narr, `— ${ownedUnitName(name, a)} are cut down with no escape!`);
       }
     });
   };
@@ -1312,16 +1364,17 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const survLine = (force, n0) => {
     const f = (force || []).filter(Boolean),
       got = narrative.length - n0;
-    if (got < f.length) narrative.push(`— ${got > 0 ? 'All other' : 'All'} forces survive the engagement.`);
-    else if (!f.length && got === 0) narrative.push(`— No units were left on the field to count.`);
+    if (got < f.length) narrate(narrative, `— ${got > 0 ? 'All other' : 'All'} forces survive the engagement.`);
+    else if (!f.length && got === 0) narrate(narrative, `— No units were left on the field to count.`);
   };
   if (won) {
     const _winVerb = pick(WIN_VERBS),
       _headIdx = narrative.length;
-    narrative.push(
+    narrate(
+      narrative,
       `After ${aAn(severity)} ${severity} battle, ${atkName}'s forces ${_winVerb} ${defName}'s army and seize ${prov.name}!`,
     );
-    narrative.push(`⚔ **${atkName}'s forces** (attacker):`); // Winning attacker
+    narrate(narrative, `⚔ **${atkName}'s forces** (attacker):`); // Winning attacker
     const _cas0 = narrative.length;
     rollUnitFates(atkArmies, {
       owner: atkName,
@@ -1331,21 +1384,24 @@ export function combatVsChar(turnContext, atk, def, prov) {
         winDeathPvP * atkSteelMultOf(a) +
         xpChancePvP(winXPPvP * atkMilMultOf(a), a.quality) * humanXPMult(a, atk.player, G),
       faced: _facedA,
-      say: (l) => narrative.push(l),
+      say: (l) => narrate(narrative, l),
     });
     survLine(atkArmies, _cas0);
-    narrative.push(`🛡 **${defName}'s forces** (defender):`);
+    narrate(narrative, `🛡 **${defName}'s forces** (defender):`);
     const _rideAtkEff = _sfDef ? 0 : _rideAtk + (_wargAtk ? RUN_THEM_DOWN_PCT : 0) + _huntPct(_mantAtk, _sharkAtk);
     if (_rideAtk > 0 && _sfDef)
-      narrative.push(
+      narrate(
+        narrative,
         `🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Free Lances find no broken backs to ride down.`,
       );
     else if (_rideAtk > 0)
-      narrative.push(
+      narrate(
+        narrative,
         `🐎 ${atkName}'s Free Lances ride down the broken companies (+${dispFloor(_rideAtk * 100)}% losses to ${defName}).`,
       );
     if (_wargAtk)
-      narrative.push(
+      narrate(
+        narrative,
         _sfDef
           ? `🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Warg Riders find no broken backs to run down.`
           : `🐺 ${atkName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT * 100)}% losses to ${defName}).`,
@@ -1362,7 +1418,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
         loseDemotePvP + xpChancePvP(loseXPPvP * defMilMultOf(a), a.quality) * humanXPMult(a, def.player, G),
       shieldFort: _sfDef,
       faced: _facedD,
-      say: (l) => narrative.push(l),
+      say: (l) => narrate(narrative, l),
     });
     survLine(defArmies, _cas1);
     recordBattleGraves(
@@ -1394,7 +1450,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     if (_cutAtk && defFriendlyAdj.length > 0) {
       const overland = defFriendlyAdj.filter((p2) => p2.terrain !== 'sea');
       if (overland.length < defFriendlyAdj.length) {
-        narrative.push(`⛵ ${atkName}'s corsairs close the sea lanes — ${defName} cannot slip away by water.`);
+        narrate(narrative, `⛵ ${atkName}'s corsairs close the sea lanes — ${defName} cannot slip away by water.`);
         defFriendlyAdj = overland;
       }
     }
@@ -1419,24 +1475,26 @@ export function combatVsChar(turnContext, atk, def, prov) {
     } else if (defFriendlyAdj.length === 0) {
       {
         const _st = seaTrapLine(defName, def, prov, def.armies);
-        if (_st) narrative.push(_st);
+        if (_st) narrate(narrative, _st);
       }
       if (_dmDef) {
         // UNDEAD — Deathless March: the dead do not panic. A trapped all-skeletal force takes no
         // flight casualties; it simply stands among the living's fear, contesting the ground.
-        narrative.push(
+        narrate(
+          narrative,
           `💀 Deathless March — ${defName}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${prov.name}.`,
         );
         prov._battleUnresolved = true;
         _heldField = true;
       } else if (_sfDef && def.armies.length > 0) {
-        narrative.push(
+        narrate(
+          narrative,
           `🛡 Shield Fort — with no road out, ${defName}'s Dwarven Guard lock shields where they stand. None are cut down in flight, and ${prov.name} remains contested.`,
         );
         prov._battleUnresolved = true;
         _heldField = true;
       } else {
-        narrative.push(`${defName} has nowhere to retreat — their forces take additional casualties!`);
+        narrate(narrative, `${defName} has nowhere to retreat — their forces take additional casualties!`);
         _noEscapeRoll(def.armies, def.name, narrative);
         def.armies = def.armies.filter((a) => !a._died && !a._disbanded);
         if (def.armies.length > 0) prov._battleUnresolved = true;
@@ -1444,7 +1502,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
       }
     } else if (_defStays) {
       // still the stronger host — the defender refuses to yield and fights on.
-      narrative.push(
+      narrate(
+        narrative,
         `${defName}'s forces are pushed back but not broken — still the stronger host (${n0(_stayLo)} vs ${n0(_stayWi)} on the same footing, before fortune), they hold their ground in ${prov.name} and re-form to fight on rather than retreat.`,
       );
       prov._battleUnresolved = true;
@@ -1455,10 +1514,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
       // survivors are dispersed after the battle by disperseDeadCharArmies (which logs where they
       // go), so we say nothing about a retreat here.
       if ((def.armies || []).length === 0)
-        narrative.push(`📊 ${defName}'s force is destroyed to the last — commander and column both.`);
+        narrate(narrative, `📊 ${defName}'s force is destroyed to the last — commander and column both.`);
     } else {
       if (_sfDef && def.armies.length > 0)
-        narrative.push(`🛡 Shield Fort — ${defName}'s Dwarven Guard withdraw in good order behind locked shields.`);
+        narrate(narrative, `🛡 Shield Fort — ${defName}'s Dwarven Guard withdraw in good order behind locked shields.`);
       const defFromProv = G.world.provinces[def._attackedFrom];
       // never retreat INTO the contested province (stale _attackedFrom guard).
       const defRetreatTo =
@@ -1469,10 +1528,11 @@ export function combatVsChar(turnContext, atk, def, prov) {
               def,
               defFriendlyAdj.filter((p2) => p2.id !== prov.id),
             ) || defFriendlyAdj[0]; // adjacent only; with a choice, the most valuable ground wins
-      narrative.push(`${defName} retreats to ${defRetreatTo.name}.`);
+      narrate(narrative, `${defName} retreats to ${defRetreatTo.name}.`);
       const defSurvivors2 = def.armies || [];
-      if (defSurvivors2.length > 0) narrative.push(`📊 ${defName}'s surviving forces: ${describeArmy(defSurvivors2)}.`);
-      else narrative.push(`📊 ${defName}'s forces are completely destroyed — they retreat alone.`);
+      if (defSurvivors2.length > 0)
+        narrate(narrative, `📊 ${defName}'s surviving forces: ${describeArmy(defSurvivors2)}.`);
+      else narrate(narrative, `📊 ${defName}'s forces are completely destroyed — they retreat alone.`);
       prov.characters = (prov.characters || []).filter((id) => id !== def.id);
       defRetreatTo.characters = defRetreatTo.characters || [];
       if (!defRetreatTo.characters.includes(def.id)) defRetreatTo.characters.push(def.id);
@@ -1483,21 +1543,25 @@ export function combatVsChar(turnContext, atk, def, prov) {
         `After ${aAn(severity)} ${severity} battle, ${atkName}'s forces ${_winVerb} ${defName}'s army — but ${defName}'s survivors do not yield ${prov.name}.`;
   } else {
     const _headIdx = narrative.length;
-    narrative.push(
+    narrate(
+      narrative,
       `${atkName}'s assault is repelled! After ${aAn(severity)} ${severity} engagement, ${defName} drives the attackers from ${prov.name}.`,
     );
-    narrative.push(`⚔ **${atkName}'s forces** (attacker):`); // Losing attacker
+    narrate(narrative, `⚔ **${atkName}'s forces** (attacker):`); // Losing attacker
     const _rideDefEff = _sfAtk ? 0 : _rideDef + (_wargDef ? RUN_THEM_DOWN_PCT : 0) + _huntPct(_mantDef, _sharkDef);
     if (_rideDef > 0 && _sfAtk)
-      narrative.push(
+      narrate(
+        narrative,
         `🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Free Lances find no broken backs to ride down.`,
       );
     else if (_rideDef > 0)
-      narrative.push(
+      narrate(
+        narrative,
         `🐎 ${defName}'s Free Lances ride down the broken companies (+${dispFloor(_rideDef * 100)}% losses to ${atkName}).`,
       );
     if (_wargDef)
-      narrative.push(
+      narrate(
+        narrative,
         _sfAtk
           ? `🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Warg Riders find no broken backs to run down.`
           : `🐺 ${defName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT * 100)}% losses to ${atkName}).`,
@@ -1514,10 +1578,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
         loseDemotePvP + xpChancePvP(loseXPPvP * atkMilMultOf(a), a.quality) * humanXPMult(a, atk.player, G),
       shieldFort: _sfAtk,
       faced: _facedA,
-      say: (l) => narrative.push(l),
+      say: (l) => narrate(narrative, l),
     });
     survLine(atkArmies, _cas2);
-    narrative.push(`🛡 **${defName}'s forces** (defender):`);
+    narrate(narrative, `🛡 **${defName}'s forces** (defender):`);
     // Winning defender — small death chance, good XP chance
     const _cas3 = narrative.length;
     rollUnitFates(defArmies, {
@@ -1529,7 +1593,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
         winDeathPvP * defSteelMultOf(a) +
         xpChancePvP(winXPPvP * defMilMultOf(a), a.quality) * humanXPMult(a, def.player, G),
       faced: _facedD,
-      say: (l) => narrative.push(l),
+      say: (l) => narrate(narrative, l),
     });
     survLine(defArmies, _cas3);
     recordBattleGraves(
@@ -1561,7 +1625,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     if (_cutDef && atkFriendlyAdj.length > 0) {
       const overland = atkFriendlyAdj.filter((p2) => p2.terrain !== 'sea');
       if (overland.length < atkFriendlyAdj.length) {
-        narrative.push(`⛵ ${defName}'s corsairs close the sea lanes — ${atkName} cannot slip away by water.`);
+        narrate(narrative, `⛵ ${defName}'s corsairs close the sea lanes — ${atkName} cannot slip away by water.`);
         atkFriendlyAdj = overland;
       }
     }
@@ -1583,22 +1647,25 @@ export function combatVsChar(turnContext, atk, def, prov) {
     } else if (atkFriendlyAdj.length === 0) {
       {
         const _st = seaTrapLine(atkName, atk, prov, atk.armies);
-        if (_st) narrative.push(_st);
+        if (_st) narrate(narrative, _st);
       }
       if (_dmAtk) {
-        narrative.push(
+        narrate(
+          narrative,
           `💀 Deathless March — ${atkName}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${prov.name}.`,
         );
         prov._battleUnresolved = true;
         _heldField = true;
       } else if (_sfAtk && atk.armies.length > 0) {
-        narrative.push(
+        narrate(
+          narrative,
           `🛡 Shield Fort — with no road out, ${atkName}'s Dwarven Guard lock shields where they stand. None are cut down in flight, and ${prov.name} remains contested.`,
         );
         prov._battleUnresolved = true;
         _heldField = true;
       } else {
-        narrative.push(
+        narrate(
+          narrative,
           `${atkName} has nowhere to retreat — their forces take additional casualties, ${prov.terrain === 'sea' ? 'hemmed in on open water' : 'cut down against the walls'} with no escape!`,
         );
         _noEscapeRoll(atk.armies, atk.name, narrative);
@@ -1608,7 +1675,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
       }
     } else if (_atkStays) {
       // still the stronger host — the attacker refuses to break off and fights on.
-      narrative.push(
+      narrate(
+        narrative,
         `${atkName}'s assault is thrown back but their host is still the stronger (${n0(_stayLo)} vs ${n0(_stayWi)} on the same footing, before fortune) — they hold the field in ${prov.name} and re-form to press the attack again rather than retreat.`,
       );
       prov._battleUnresolved = true;
@@ -1617,10 +1685,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
       // commander already slain — a corpse does not retreat; a force wiped to the last has
       // nothing to fall back with. Leaderless survivors are dispersed after the battle.
       if ((atk.armies || []).length === 0)
-        narrative.push(`📊 ${atkName}'s force is destroyed to the last — commander and column both.`);
+        narrate(narrative, `📊 ${atkName}'s force is destroyed to the last — commander and column both.`);
     } else {
       if (_sfAtk && atk.armies.length > 0)
-        narrative.push(`🛡 Shield Fort — ${atkName}'s Dwarven Guard withdraw in good order behind locked shields.`);
+        narrate(narrative, `🛡 Shield Fort — ${atkName}'s Dwarven Guard withdraw in good order behind locked shields.`);
       const fromProv = G.world.provinces[atk._attackedFrom];
       // never retreat INTO the contested province (stale _attackedFrom guard).
       const retreatTo =
@@ -1631,11 +1699,12 @@ export function combatVsChar(turnContext, atk, def, prov) {
               atk,
               atkFriendlyAdj.filter((p2) => p2.id !== prov.id),
             ) || atkFriendlyAdj[0]; // adjacent only; with a choice, the most valuable ground wins
-      narrative.push(`${atkName} retreats to ${retreatTo.name}.`);
+      narrate(narrative, `${atkName} retreats to ${retreatTo.name}.`);
       // Summarise surviving attacker armies
       const atkSurvivors = atk.armies || [];
-      if (atkSurvivors.length > 0) narrative.push(`📊 ${atkName}'s surviving forces: ${describeArmy(atkSurvivors)}.`);
-      else narrative.push(`📊 ${atkName}'s forces are completely destroyed — they retreat alone.`);
+      if (atkSurvivors.length > 0)
+        narrate(narrative, `📊 ${atkName}'s surviving forces: ${describeArmy(atkSurvivors)}.`);
+      else narrate(narrative, `📊 ${atkName}'s forces are completely destroyed — they retreat alone.`);
       prov.characters = (prov.characters || []).filter((id) => id !== atk.id);
       retreatTo.characters = retreatTo.characters || [];
       if (!retreatTo.characters.includes(atk.id)) retreatTo.characters.push(atk.id);
