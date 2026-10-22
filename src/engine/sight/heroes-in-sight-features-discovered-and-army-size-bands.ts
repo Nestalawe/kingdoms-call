@@ -1,7 +1,12 @@
-import { relOfReport, spotEnemyInOwnedProvince } from '../engine/heroes/fame-and-consecration.ts';
-import { activeItems } from '../engine/items/equipment.ts';
-import { getNeighborsP } from '../engine/world/map-helpers.ts';
-import type { Character, GameState, ProvinceFeature } from '../schemas/saved-game-state.ts';
+// ── THE SIGHT RULES (plan P1-12b1: moved from src/views/visibility.ts) ────
+// Who sees another realm's hero where he stands, the provinces next to a spied one, a host's size at a glance, why a
+// seen hero can't be encountered, and which realm knows a province's feature. Pure: the engine asks them as it resolves
+// (the bots, Move, Explore, world generation, a spy's findings, the warnings, the report's filter), and perception in
+// src/views applies them. The engine may not import src/views, so they live here, in one copy.
+import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
+import { activeItems } from '../items/equipment.ts';
+import { getNeighborsP } from '../world/map-helpers.ts';
+import type { Character, GameState, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 
 // ── Items 1 & 12: ONE visibility rule for non-own characters ────
 // (the map's Spy-contest vs the list's flat cloak). Every consumer now calls this.

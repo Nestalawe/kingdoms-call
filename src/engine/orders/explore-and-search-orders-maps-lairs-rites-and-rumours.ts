@@ -21,7 +21,7 @@ import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-
 import { recordBattleGraves, recordDeadHeroSighting } from '../graves.ts';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.ts';
 import { itemNameList } from '../heroes/fame-and-consecration.ts';
-import { discoverFeat, featDiscovered } from '../../views/visibility.ts';
+import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { gainedItemNote, hasItemBase } from '../items/equipment.ts';
 import { RUMOUR_COST_BY_POWER, applyItemMaxHp, noteLairRumour, pcLearnWeakness } from '../personal-combat/helpers.ts';
 import { armyUnitName, d100, fmtRoll, rng } from '../dice-and-army-names.ts';

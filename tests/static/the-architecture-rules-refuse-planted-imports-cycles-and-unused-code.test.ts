@@ -238,8 +238,8 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
     timeLimitForTheWork({ toolRuns: 3, everyFileReads: 1 }),
     () => {
       const dir = copyOfTheRepository();
-      const file = 'src/engine/world/generate.ts';
-      const line = "import { discoverFeat } from '../../views/visibility.ts';\n";
+      const file = 'src/db/telemetry.ts';
+      const line = "import { TITLE_DEFS } from '../content/kingdoms-call-data.ts';\n";
       const text = fs.readFileSync(path.join(dir, file), 'utf8');
       expect(text).toContain(line);
       plant(dir, file, text.replace(line, ''));

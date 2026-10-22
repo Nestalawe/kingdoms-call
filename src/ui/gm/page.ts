@@ -28,7 +28,7 @@ import '../../engine/items/tiers-and-hoards.ts';
 import '../../engine/graves.ts';
 import '../../engine/items/lair-items.ts';
 import '../../engine/heroes/fame-and-consecration.ts';
-import '../../views/visibility.ts';
+import '../../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import '../../engine/items/equipment.ts';
 import '../../engine/heroes/skills-and-hp.ts';
 import '../../engine/personal-combat/helpers.ts';

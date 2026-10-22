@@ -23,7 +23,6 @@ import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
 } from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { unitBaseStrength } from '../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import {
   gdActiveFor,
   homeFounderOf,
@@ -36,20 +35,15 @@ import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-w
 import { ABILITIES_P } from '../engine/battle/fortune.ts';
 import { itemLore, monsterCatLabel, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
 import { graveIntelFor } from '../engine/graves.ts';
-import {
-  consecratedIds,
-  isConsecrated,
-  provinceConsecrated,
-  relOfReport,
-} from '../engine/heroes/fame-and-consecration.ts';
+import { isConsecrated, provinceConsecrated } from '../engine/heroes/fame-and-consecration.ts';
 import {
   armySizeBand,
   encounterUntargetableReason,
   enemyCharVisibleTo,
   featDiscovered,
   nearSpiedProvIds,
-} from './visibility.ts';
-import { LEGENDARY_NAMES_P, activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
+} from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
+import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
 import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { effSkillOf, skillBonusBreakdown } from '../engine/heroes/skills-and-hp.ts';
 import { lairRumourKey } from '../engine/personal-combat/helpers.ts';
@@ -86,13 +80,12 @@ import {
   taxBonusCap,
   taxRecordsGold,
 } from '../engine/discoveries.ts';
+import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../engine/battle/evil-terror.ts';
 
-// ── EVIL TERROR: the constants and the reading (2026-10-12, Toby items 21 and 23) ── −10% a stack (more where
-// Reign of Terror set the province's own share), at most three stacks. Module level so the engine (spreadTerror,
-// consumeTerror) and the report (an Evil realm sees each province's Terror on the map and in its report) read the
-// same figures. terrorReadingOf(p, viewer) → {pct, stacks, byYou} or null when no Terror grips the province.
-export const TERROR_PCT_PER_STACK = 0.1,
-  TERROR_MAX_STACKS = 3;
+// ── EVIL TERROR: the reading (2026-10-12, Toby items 21 and 23) ── The constants (−10% a stack, at most three stacks)
+// are the engine's (src/engine/battle/evil-terror.ts, plan P1-12b1), so the engine (spreadTerror, consumeTerror) and the
+// report (an Evil realm sees each province's Terror on the map and in its report) read the same figures.
+// terrorReadingOf(p, viewer) → {pct, stacks, byYou} or null when no Terror grips the province.
 export function terrorReadingOf(p, viewer) {
   const n = Math.min(TERROR_MAX_STACKS, (p && p._terrorStacks) | 0);
   if (!(n > 0) || p._terrorTurn === undefined) return null;
@@ -2043,160 +2036,4 @@ export function buildTurnReport(gameState, playerIndex) {
     })(),
     lastTurnLog: [{ type: 'system', text: `Turn ${gameState.turn} begins. ${player.name} stands ready.` }],
   };
-}
-
-// ── SNAPSHOT of one realm's situation, from a parsed game state. Module level: uses only module-level
-// helpers (unitBaseStrength, relOfReport, consecratedIds), so buildGameResultRows can call it on any
-// loaded state, not just inside runTurn.
-export function telRealmSnapshot(gs, pi) {
-  const pl = ((gs && gs.players) || [])[pi];
-  if (!pl) return null;
-  const provs = (gs.world && gs.world.provinces) || [];
-  const owned = provs.filter((p) => p && p.owner === pi);
-  const chars = (gs.characters || []).filter((c) => c && c.player === pi && c.alive);
-  const king = chars.find((c) => c.isKing) || null;
-  const unitRec = (a) => ({ t: a.type, q: a.quality || 'Average', ...(a._isSkeletal ? { sk: 1 } : {}) });
-  let ledUnits = 0,
-    ledStr = 0,
-    garUnits = 0,
-    garStr = 0;
-  const characters = chars.map((c) => {
-    const units = (c.armies || []).filter((a) => a && !a._phantom);
-    units.forEach((a) => {
-      ledUnits++;
-      ledStr += unitBaseStrength(a);
-    });
-    const pv = c.location != null ? provs[c.location] : null;
-    const skills = {};
-    Object.entries(c.skills || {}).forEach(([k, v]) => {
-      if (v > 0) skills[k] = v;
-    });
-    return {
-      id: c.id,
-      name: c.name,
-      king: !!c.isKing,
-      loc: c.location,
-      terrain: pv ? pv.terrain : null,
-      home: !!(pv && pv.owner === pi),
-      hp: c.hp,
-      maxHp: c.maxHp,
-      skills,
-      units: units.map(unitRec),
-      items: (c.items || []).map((it) => it && it.name).filter(Boolean),
-    };
-  });
-  owned.forEach((p) =>
-    (p.garrisonArmies || []).forEach((a) => {
-      if (a) {
-        garUnits++;
-        garStr += unitBaseStrength(a);
-      }
-    }),
-  );
-  // heroes who fell THIS turn, as they were at death (the Hall of Fame counts their peaks; no totals
-  // above include them). Units and items are what death left on them, usually nothing.
-  const fallen = (gs.characters || [])
-    .filter((c) => c && c.player === pi && !c.alive && c.killedThisTurn)
-    .map((c) => {
-      const skills = {};
-      Object.entries(c.skills || {}).forEach(([k, v]) => {
-        if (v > 0) skills[k] = v;
-      });
-      return {
-        id: c.id,
-        name: c.name,
-        king: !!c.isKing,
-        fell: 1,
-        hp: 0,
-        maxHp: c.maxHp,
-        skills,
-        units: (c.armies || []).filter((a) => a && !a._phantom).map(unitRec),
-        items: (c.items || []).map((it) => it && it.name).filter(Boolean),
-      };
-    });
-  const tax = owned.reduce((s, p) => s + (p.tax || 0), 0);
-  const worldTax = provs.reduce((s, p) => s + ((p && p.tax) || 0), 0);
-  const rel = { enemies: [], allies: [] };
-  (gs.players || []).forEach((o, oi) => {
-    if (oi === pi || !o) return;
-    const r = relOfReport(gs, pi, oi);
-    if (r === 'enemy') rel.enemies.push(oi);
-    else if (r === 'allied') rel.allies.push(oi);
-  });
-  const explored = provs.filter((p) => p && Array.isArray(p.visitedBy) && p.visitedBy.includes(pi)).length;
-  const legNames = typeof LEGENDARY_NAMES_P !== 'undefined' ? LEGENDARY_NAMES_P : new Set();
-  let items = 0,
-    relics = 0;
-  chars.forEach((c) =>
-    (c.items || []).forEach((it) => {
-      if (!it) return;
-      items++;
-      if (legNames.has(it.name)) relics++;
-    }),
-  );
-  return {
-    gold: Math.round(pl.gold || 0),
-    provinces: owned.length,
-    land: owned.filter((p) => p.terrain !== 'sea').length,
-    sea: owned.filter((p) => p.terrain === 'sea').length,
-    tax,
-    taxShare: worldTax > 0 ? Math.round((1000 * tax) / worldTax) / 10 : 0,
-    chars: chars.length,
-    heroes: chars.length - (king ? 1 : 0),
-    kingAlive: !!king,
-    kingHp: king ? king.hp : null,
-    ledUnits,
-    ledStr: Math.round(ledStr),
-    garUnits,
-    garStr: Math.round(garStr),
-    units: ledUnits + garUnits,
-    str: Math.round(ledStr + garStr),
-    items,
-    relics,
-    discoveries: (pl.discoveries || []).length,
-    consecrated: consecratedIds(pl).length,
-    explored,
-    conceded: !!pl.conceded,
-    eliminated: !!pl._eliminated,
-    rel,
-    characters,
-    ...(fallen.length ? { fallen } : {}),
-  };
-}
-// The orders a realm gave this turn, as resolved by runTurn's ingestion (humans' submitted orders,
-// bots' planned ones, Defend for anything missing). One entry per living character, five phases each.
-export function telOrdersFor(gs, pi, extras) {
-  const chars = (gs.characters || []).filter((c) => c && c.player === pi && c.alive);
-  const byChar = {};
-  chars.forEach((c) => {
-    const slots = (gs.turnOrders || {})[c.id] || [];
-    byChar[c.id] = {
-      name: c.name,
-      king: !!c.isKing,
-      ph: [0, 1, 2, 3, 4].map((i) => {
-        const o = slots[i];
-        if (!o) return { a: 'defend' };
-        const r = { a: String(o.action || 'defend').toLowerCase() };
-        if (o.target != null && o.target !== '') r.t = String(o.target).slice(0, 80);
-        if (o.extra != null && o.extra !== '') r.x = String(o.extra).slice(0, 80);
-        if (o.desc) r.d = String(o.desc).slice(0, 140);
-        if (o._pinned) r.pinned = 1;
-        if (o._unifiedWith != null) r.unified = o._unifiedWith;
-        return r;
-      }),
-    };
-  });
-  const out = { chars: byChar };
-  if (extras) {
-    Object.entries(extras).forEach(([k, v]) => {
-      if (
-        v !== undefined &&
-        v !== null &&
-        !(Array.isArray(v) && !v.length) &&
-        !(typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)
-      )
-        out[k] = v;
-    });
-  }
-  return out;
 }

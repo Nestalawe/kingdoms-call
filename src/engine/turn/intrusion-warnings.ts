@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
-import { armySizeBand } from '../../views/visibility.ts';
+import { armySizeBand } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { emit } from './events-and-their-audiences.ts';
 
 // ── INTRUSION WARNINGS (plan P1-08b: lifted out of resolveTurn) ────

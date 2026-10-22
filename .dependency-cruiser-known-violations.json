@@ -5882,6 +5882,20 @@
   {
     "type": "dependency",
     "from": "src/db/telemetry.ts",
+    "to": "src/engine/turn/log-line-helpers.ts",
+    "unresolvedTo": "../engine/turn/log-line-helpers.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-database-code-imports-only-itself-and-the-schemas"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/db/telemetry.ts",
     "to": "src/ui/gm/config.ts",
     "unresolvedTo": "../ui/gm/config.ts",
     "dependencyTypes": [
@@ -5923,219 +5937,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/views/turn-report.ts",
-    "unresolvedTo": "../views/turn-report.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/battle/evil-terror.ts",
-    "to": "src/views/turn-report.ts",
-    "unresolvedTo": "../../views/turn-report.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/bots/intel.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/bots/missions.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/bots/specialists.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/bots/spellcraft.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/espionage/what-a-spy-learns.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/run-turn.ts",
-    "to": "src/views/turn-report.ts",
-    "unresolvedTo": "../views/turn-report.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts",
-    "to": "src/views/turn-report.ts",
-    "unresolvedTo": "../../views/turn-report.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/turn/intrusion-warnings.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/engine/turn/realm-reports-and-spy-stealth.ts",
     "to": "src/views/turn-report.ts",
     "unresolvedTo": "../../views/turn-report.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/turn/realm-reports-and-spy-stealth.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/world/generate.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/world/province-bookkeeping-and-rallied-garrisons.ts",
-    "to": "src/views/visibility.ts",
-    "unresolvedTo": "../../views/visibility.ts",
     "dependencyTypes": [
       "local",
       "import"

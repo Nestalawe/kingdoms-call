@@ -501,6 +501,23 @@
       "count": 1
     }
   },
+  "src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unnecessary-type-conversion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 5
+    }
+  },
   "src/engine/titles/perks.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -957,23 +974,6 @@
     },
     "prefer-const": {
       "count": 3
-    }
-  },
-  "src/views/visibility.ts": {
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 5
-    },
-    "@typescript-eslint/no-unnecessary-type-conversion": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 2
-    },
-    "@typescript-eslint/prefer-optional-chain": {
-      "count": 5
     }
   },
   "tests/browser/chromium-boot.spec.ts": {
