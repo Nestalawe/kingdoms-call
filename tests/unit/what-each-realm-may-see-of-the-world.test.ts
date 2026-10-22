@@ -8,9 +8,16 @@
 //   to its own land (who holds it, the capital's crown); remembered; watched by Clairvoyance; unseen (its place only);
 // - the features it knows; what its lines of the turn show (spied by its lines, battles witnessed, province events);
 //   an Evil realm's Terror; the heroes of its own provinces as P1-23's entry 4 keeps them; Illusory Terrain;
-// - and it writes nothing to the world.
+// - and it writes nothing to the world;
+// - (P1-12b5) its own heroes, alive or fallen this turn, and where they stand named; the heroes it sees (the map's
+//   sight rule, a wanderer's public facts, why a hero can't be encountered) and those beside its own (the hiring list's
+//   sight, the Charm card); the heroes it has ever seen still alive in a realm's service; the dead it knows of; the
+//   mercenaries where it sees; the realms (named once met, its diplomacy only with those it has encountered, every
+//   realm named once the game is over); the titles (hidden before turn 5, then worked out from the whole world; last
+//   turn's minor titles of its own heroes only, and the bonuses they give); its books; the portal's lookup tables.
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
-// refactor-only: P1-12b4 adds the function (the base has none), and each case is red on a sight fault planted in it.
+// refactor-only: P1-12b4 adds the function (the base has none), and P1-12b5 its second part; each case is red on a
+// sight fault planted in it.
 import { describe, expect, test } from 'vitest';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import {
@@ -53,8 +60,11 @@ const hero = (id: number, player: number | null, location: number, extra: Record
  *  1 beside him; it once visited 3 (realm 1's); its hero stands in 16 (Illusory Terrain cast by realm 1 there) beside
  *  realm 1's hero leading three units, an Invisible one and a wanderer; it spied 21 (realm 1's); a wanderer stands in
  *  22, next to it; it remembers 10; it watches realm 1's hero in 19 by Clairvoyance. Realm 1 (Varn, Evil) holds 3, 8
- *  (its capital, next to realm 0's land) and 21; a Terror grips 5; battles were fought in 18 and 23. */
-function world() {
+ *  (its capital, next to realm 0's land) and 21; a Terror grips 5; battles were fought in 18 and 23.
+ *  (P1-12b5) Realm 0's hero fell this turn in 23, another long ago; realm 1's cloaked hero stands in 2; realm 0 owns 2
+ *  by the province's record only; five graves, four mercenaries; realm 0 is at war with realm 1, which it hasn't met
+ *  (`encountered`: it has); last turn's Swift is realm 0's hero 1, its Sea-Wolf realm 1's hero 2. */
+function world({ turn = TURN, encountered = [] as number[], gameOver = false } = {}) {
   const provinces = Array.from({ length: COLS * ROWS }, (_, id) => ({
     id,
     row: Math.floor(id / COLS),
@@ -88,9 +98,13 @@ function world() {
     hero(3, 1, 16, { _invisTurn: TURN }), // realm 1's hero under Invisibility
     hero(4, 1, 7, { _invisTurn: TURN }), // realm 1's Invisible hero in realm 0's capital
     hero(5, null, 22, { alignment: 'Good' }), // a wanderer next to the spied province
-    hero(6, null, 16, { alignment: 'Good', skills: { melee: 2, archery: 4 } }), // a wanderer beside realm 0's hero
+    // a wanderer beside realm 0's hero, charmed last turn
+    hero(6, null, 16, { alignment: 'Good', skills: { melee: 2, archery: 4 }, _charmImmuneTurn: turn }),
     hero(7, 1, 19), // realm 1's hero, watched by realm 0's Clairvoyance
     hero(8, 1, 14, { armies: [army(), army()] }), // realm 1's hero in a province realm 0 spied by its lines
+    hero(9, 0, 23, { alive: false, killedThisTurn: true }), // realm 0's hero, fallen this turn where it doesn't see
+    hero(10, 0, 0, { alive: false }), // realm 0's hero, fallen long ago
+    hero(11, 1, 2, { items: [{ name: 'Veil', slot: 'cloak', effect: { stat: 'hidden', bonus: 1 }, equipped: true }] }),
   ];
   for (const c of characters) at(c.location).characters.push(c.id);
   Object.assign(at(7), { owner: 0, garrisonArmies: [army()] });
@@ -113,6 +127,8 @@ function world() {
   Object.assign(at(5), { _terrorStacks: 2, _terrorTurn: TURN, _terrorisedBy: 1 });
   Object.assign(at(18), { _hadBattleThisTurn: true });
   Object.assign(at(23), { _hadBattleThisTurn: true });
+  Object.assign(at(7), { _enslavedUntil: TURN + 2, _earthquakeTax: 1 });
+  Object.assign(at(2), { owner: 0, tax: 3, garrisonArmies: [army('Hill Archers')] }); // its own by the record, not its list
   const memory = {
     turn: 2,
     phase: 3,
@@ -135,12 +151,16 @@ function world() {
       alignment: 'Good',
       provinces: [7],
       homeProvinceId: 7,
-      _encountered: [],
       consecratedProvIds: [],
       _spiedProvincesThisTurn: [21],
       _provMemory: { '10': memory },
       _clairCharThisTurn: 7,
       discoveries: [],
+      _encountered: encountered,
+      // it has seen realm 1's hero 2 (alive), its hero 10 (fallen) and the wanderer 5 (serving no realm)
+      seenCharIntel: { '2': { id: 2 }, '10': { id: 10 }, '5': { id: 5 } },
+      knownDeadHeroIds: [23],
+      seenDeadHeroIds: [24],
     },
     {
       id: 1,
@@ -154,7 +174,40 @@ function world() {
       discoveries: [],
     },
   ];
-  const state = { turn: TURN, world: { cols: COLS, rows: ROWS, provinces }, players, characters, relations: {} };
+  const grave = (id: number, player: number | null, location: number) => ({
+    id,
+    name: `Grave ${String(id)}`,
+    player,
+    race: 'Human',
+    alignment: 'Neutral',
+    temper: 'Brave',
+    skills: { melee: 4 },
+    isKing: false,
+    killedOnTurn: 2,
+    location,
+    served: player == null ? [] : [player],
+    _releasedBy: null,
+  });
+  const heroGraveyard = [
+    grave(20, 0, 0), // its own, where it doesn't see
+    grave(21, 1, 21), // realm 1's, in the province it spied
+    grave(22, 1, 3), // realm 1's, in one it once visited: not seen now
+    grave(23, 1, 0), // realm 1's, which it has known of
+    grave(24, null, 0), // a wanderer's, whose fall it saw this turn
+  ];
+  const merc = (id: string, location: number) => ({ ...army(), id, location, isSea: false });
+  const mercenaries = [merc('m1', 7), merc('m2', 21), merc('m3', 22), merc('m4', 3)];
+  const state = {
+    turn,
+    world: { cols: COLS, rows: ROWS, provinces },
+    players,
+    characters,
+    relations: { '0-1': 'war' },
+    heroGraveyard,
+    mercenaries,
+    _minorHolders: { swift: { charId: 1, playerIndex: 0 }, seawolf: { charId: 2, playerIndex: 1 } },
+    ...(gameOver ? { gameOver: { winner: 1, standings: [] } } : {}),
+  };
   // made by hand with the fields the view reads, not a whole saved state
   return { state: state as unknown as GameState, memory };
 }
@@ -167,7 +220,8 @@ const itsLines: WhatItsLinesShow = {
   provincesItStoodOnAtSomePhase: new Set([16]),
   provinceEvents: [{ provinceId: 12 }],
 };
-const viewOf = (realm = 0): PlayerView => playerView(world().state, realm, itsLines);
+const viewOf = (realm = 0, options: Parameters<typeof world>[0] = {}): PlayerView =>
+  playerView(world(options).state, realm, itsLines);
 const province = (view: PlayerView, id: number): ProvinceAsSeen => {
   const p = view.provinces[id];
   if (!p) throw new Error(`no province ${String(id)} in the view`);
@@ -330,6 +384,161 @@ describe('what realm 0 sees of each province, by the sight rule that shows it', 
   test('an Evil realm sees the Terror that grips every province; no other realm does', () => {
     expect(province(viewOf(1), 5).terror).toMatchObject({ _terrorStacks: 2, _terrorTurn: TURN, _terrorisedBy: 1 });
     expect(province(view, 5).terror).toBeUndefined();
+  });
+});
+
+describe('what realm 0 sees of the heroes and the realms (P1-12b5)', () => {
+  const view = viewOf();
+
+  test('its own heroes, whole: alive, or fallen this turn (and where he fell named), not one fallen long ago', () => {
+    expect(ids(view.ownHeroes)).toEqual([0, 1, 9]);
+    // whole: the world's own record of him, every field
+    const { state } = world();
+    const own = playerView(state, 0, itsLines).ownHeroes;
+    expect(own[0]).toBe(state.characters[0]);
+    expect(view.ownHeroes[2]).toMatchObject({ alive: false, killedThisTurn: true, location: 23 });
+    const fell = province(view, 23);
+    expect(Object.values(fell.seen).some(Boolean)).toBe(false);
+    expect(fell.name).toBe('Province 23');
+  });
+
+  test('the heroes it sees, by the map’s sight rule: a wanderer’s public facts, why a realm’s hero can’t be encountered', () => {
+    // 3 and 4 are under Invisibility, 8 stands where only its lines spied, 11 where it doesn't see
+    expect(ids(view.heroesItSees)).toEqual([2, 5, 6, 7]);
+    const [theirs, wanderer] = view.heroesItSees;
+    expect(theirs).toMatchObject({
+      realmName: 'Varn',
+      leadsArmies: true,
+      armyBand: 'a modest band',
+      untargetable: null,
+    });
+    for (const key of ['race', 'alignment', 'temper', 'topSkill', 'hireWage'])
+      expect(key in (theirs ?? {}), key).toBe(false);
+    expect(wanderer).toMatchObject({
+      race: 'Human',
+      alignment: 'Good',
+      temper: 'Brave',
+      topSkill: { skill: 'melee', level: 3 },
+    });
+    expect(wanderer?.hireWage).toEqual(expect.any(Number));
+    expect('untargetable' in (wanderer ?? {})).toBe(false);
+    expect('skills' in (wanderer ?? {})).toBe(false); // the sightings never send a wanderer's whole skills
+  });
+
+  test('the heroes beside its own: the hiring list’s sight (not the next-door glance), the Charm card of an unarmed wanderer', () => {
+    // 5 stands next to the spied province, not beside its hero
+    expect(ids(view.heroesBesideItsOwn)).toEqual([2, 6]);
+    const [theirs, wanderer] = view.heroesBesideItsOwn;
+    expect(theirs).toMatchObject({ charmImmune: false, leadsArmies: true });
+    for (const key of ['race', 'skills', 'hp']) expect(key in (theirs ?? {}), key).toBe(false);
+    expect(wanderer).toMatchObject({ charmImmune: true, race: 'Human', skills: { melee: 2, archery: 4 }, pay: 2 });
+    // a wanderer leading units: no Charm card (his race and alignment still public)
+    const { state } = world();
+    Object.assign(state.characters[6] ?? {}, { armies: [army()] });
+    const armed = playerView(state, 0, itsLines).heroesBesideItsOwn[1];
+    expect(armed).toMatchObject({ id: 6, race: 'Human', leadsArmies: true });
+    for (const key of ['skills', 'temper', 'hp', 'pay']) expect(key in (armed ?? {}), key).toBe(false);
+  });
+
+  test('the heroes it has ever seen, alive and serving a realm now (the Clairvoyance list)', () => {
+    expect([...view.heroesItHasSeenAliveAndServingARealm]).toEqual([2]);
+  });
+
+  test('the dead it knows of: its own, one it has known of, one whose fall it saw, one lying where it sees now', () => {
+    expect(ids(view.theDeadItKnowsOf)).toEqual([20, 21, 23, 24]);
+    expect(view.theDeadItKnowsOf[0]).toMatchObject({
+      locationName: 'Province 0',
+      servedOther: false,
+      skills: { melee: 4 },
+    });
+    expect(view.theDeadItKnowsOf[1]).toMatchObject({ locationName: 'Province 21', servedOther: true });
+  });
+
+  test('the mercenaries where it sees now: its own land and the province it spied, not next to it or once visited', () => {
+    expect(view.mercenariesItSees.map((m) => m.id)).toEqual(['m1', 'm2']);
+    expect(view.mercenariesItSees[1]).toEqual({
+      id: 'm2',
+      type: 'Shieldwall Levies',
+      quality: 'Average',
+      unitName: 'Old Guard',
+      race: 'Human',
+      location: 21,
+      isSea: false,
+    });
+  });
+
+  test('the realms: named once met, its diplomacy only with one it has encountered, every realm named once the game is over', () => {
+    expect(view.realms).toEqual([
+      { index: 0, met: true, name: 'Esterhold', color: '#a00' },
+      { index: 1, met: false, name: null, color: null },
+    ]);
+    expect(viewOf(0, { encountered: [1] }).realms[1]).toEqual({
+      index: 1,
+      met: true,
+      name: 'Varn',
+      color: '#00a',
+      alignment: 'Evil',
+      conceded: undefined,
+      concededTurn: undefined,
+      eliminated: undefined,
+      relation: 'war',
+    });
+    const over = viewOf(0, { gameOver: true });
+    expect(over.realms[1]).toEqual({ index: 1, met: true, name: 'Varn', color: '#00a' });
+    expect(over.gameOver).toMatchObject({ winner: 1 });
+    expect(view.gameOver).toBeNull();
+  });
+
+  test('the titles: hidden before turn 5, then worked out from the whole world, with the names of the heroes holding them', () => {
+    expect(view.titles).toMatchObject({ public: false, holders: null, standings: null, minor: null, race: null });
+    expect(view.titles.heroNames.size).toBe(0);
+    expect(view.titles.eligibility).toMatchObject({ ok: false });
+    const shown = viewOf(0, { turn: 5 }).titles;
+    expect(shown.public).toBe(true);
+    expect(shown.holders).toMatchObject({ throne: { playerIndex: 1 } }); // the most tax: realm 1's
+    expect(shown.standings).toMatchObject([{ index: 0 }, { index: 1 }]);
+    expect(shown.heroNames.size).toBeGreaterThan(0);
+    for (const [id, name] of shown.heroNames) expect(name).toBe(`Hero ${String(id)}`);
+    expect(viewOf(0, { gameOver: true }).titles.public).toBe(true);
+  });
+
+  test('last turn’s minor titles: its own heroes’ only, and the bonus each gives them before the titles are public', () => {
+    expect(view.titles.lastTurnsMinorHoldersOfItsHeroes).toEqual({ swift: { charId: 1, playerIndex: 0 } });
+    expect(view.extraSkillBonusesOfItsHeroes['1']).toEqual({
+      march: [expect.objectContaining({ label: 'The Swift' })],
+    });
+    expect(view.extraSkillBonusesOfItsHeroes['0']).toEqual({});
+  });
+
+  test('its books: the tax and the units of the provinces whose record names it their owner, its own provinces’ burdens', () => {
+    expect(view.books).toMatchObject({
+      baseTax: 8, // 7 and 2
+      discoveryTaxGoldOfEachOfItsProvinces: [0],
+      wonderBlesses: { Good: false, Druidic: false },
+      provincesItHoldsByTheirRecord: 2,
+    });
+    expect(view.books.unitsGarrisonedInTheProvincesItHolds.map((a) => a.type)).toEqual([
+      'Hill Archers',
+      'Shieldwall Levies',
+    ]);
+    expect(province(view, 7)).toMatchObject({ _enslavedUntil: TURN + 2, _earthquakeTax: 1 });
+    expect('_enslavedUntil' in province(view, 3)).toBe(false);
+  });
+
+  test('the portal’s lookup tables: every realm, and every named hero alive or fallen this turn but the cloaked', () => {
+    expect(view.lookupTables.realms).toEqual([
+      { name: 'Esterhold', color: '#a00' },
+      { name: 'Varn', color: '#00a' },
+    ]);
+    expect(view.lookupTables.heroes.map((h) => h.name)).toEqual(
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((id) => `Hero ${String(id)}`),
+    );
+    expect(view.lookupTables.heroes[2]).toEqual({
+      name: 'Hero 2',
+      player: 1,
+      realmColor: '#00a',
+      isNeutralGuard: undefined,
+    });
   });
 });
 

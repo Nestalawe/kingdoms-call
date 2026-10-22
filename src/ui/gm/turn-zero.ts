@@ -12,6 +12,7 @@ import { runningBuildStamp } from './auto-turn.ts';
 import { botConfigFor, generateBotSetups, isBotRow } from '../../engine/bots/setup.ts';
 import { generateNewGame, normSeaPct } from '../../engine/world/generate.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
+import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
 
 // ── TURN 0 — FULL INLINE MAP GENERATION ────
 // Embeds the core map/character generation from kingdoms-call-gm.html so the GM portal is fully
@@ -268,7 +269,7 @@ export async function commitTurn0() {
     // lets the GM inspect a bot's starting position).
     let reportErrors = [];
     for (const sp of setupPlayers) {
-      const report = buildTurnReport(gameState, sp.id);
+      const report = buildTurnReport(playerView(gameState, sp.id)); // what the realm sees of the new world; no turn's lines yet
       report.engineStamp = typeof runningBuildStamp === 'function' ? runningBuildStamp() : null; // which GM build wrote it
       const { error: rErr } = await sb
         .from('game_players')

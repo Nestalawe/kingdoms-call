@@ -122,6 +122,7 @@ import { generateNewGame } from '../../engine/world/generate.ts';
 import { getNeighborsP, hexDistP } from '../../engine/world/map-helpers.ts';
 import { castChanceFor, guardCastChance, primalStrikeChance } from '../../engine/chances-and-lair-grades.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
+import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
 import { runTurn } from './turn-shell.ts';
 
 // ── The GM portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
@@ -242,6 +243,7 @@ Object.assign(window, {
   neutralDefBand, // engine/units/drill-and-spoils.ts
   ownedUnitName, // engine/army-tables.ts
   pickLairNameP, // engine/names.ts
+  playerView, // views/what-each-realm-may-see-of-the-world.ts
   PRIMAL_ARMY_DEFS_P, // content/kingdoms-call-data.ts
   primalStrikeChance, // engine/chances-and-lair-grades.ts
   probeGameMeta, // db/game-meta.ts

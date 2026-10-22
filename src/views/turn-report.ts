@@ -23,37 +23,19 @@ import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
 } from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { gdActiveFor, neutralTradeGold } from '../engine/grand-design.ts';
+import { neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
-import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { ABILITIES_P } from '../engine/battle/fortune.ts';
 import { itemLore, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
-import { graveIntelFor } from '../engine/graves.ts';
 import { isConsecrated } from '../engine/heroes/fame-and-consecration.ts';
-import {
-  armySizeBand,
-  encounterUntargetableReason,
-  enemyCharVisibleTo,
-  nearSpiedProvIds,
-} from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
 import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { effSkillOf, skillBonusBreakdown } from '../engine/heroes/skills-and-hp.ts';
 import { lairRumourKey } from '../engine/personal-combat/helpers.ts';
 import { dispFloor } from '../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN, itemAcquiredThisTurn, perkTier } from '../engine/titles/perks.ts';
-import { graveServedOther } from '../engine/heroes/charms-and-neutrals.ts';
 import { MAGIC_L8_SCHOOLS, castChanceFor } from '../engine/chances-and-lair-grades.ts';
-import {
-  MINOR_TITLES,
-  _TITLE_LABEL,
-  computeMinorTitles,
-  computeStandings,
-  extraSkillBonuses,
-  reckoningBlocShare,
-  reckoningCallEligibility,
-  titleRaceFor,
-} from '../engine/titles/reckoning.ts';
+import { MINOR_TITLES, _TITLE_LABEL } from '../engine/titles/reckoning.ts';
 import {
   DISC_BY_ID,
   RESEARCH_HIDDEN_CATS,
@@ -64,17 +46,14 @@ import {
   discExploreMult,
   discHeroWage,
   discSumOf,
-  discTaxAdd,
   discUnitIs,
   discUnitMatch,
   discUpkeepWage,
-  realmBaseTax,
   realmRecruitCost,
   taxBonusCap,
   taxRecordsGold,
 } from '../engine/discoveries.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../engine/battle/evil-terror.ts';
-import { playerView } from './what-each-realm-may-see-of-the-world.ts';
 
 // ── EVIL TERROR: the reading (2026-10-12, Toby items 21 and 23) ── The constants (−10% a stack, at most three stacks)
 // are the engine's (src/engine/battle/evil-terror.ts, plan P1-12b1), so the engine (spreadTerror, consumeTerror) and the
@@ -86,9 +65,10 @@ export function terrorReadingOf(p, viewer) {
   const per = typeof p._terrorPct === 'number' && p._terrorPct > 0 ? p._terrorPct : TERROR_PCT_PER_STACK;
   return { pct: Math.round(per * n * 100), stacks: n, byYou: p._terrorisedBy === viewer };
 }
-export function buildTurnReport(gameState, playerIndex, view = playerView(gameState, playerIndex)) {
-  const player = gameState.players[playerIndex];
-  const chars = gameState.characters.filter((c) => c.player === playerIndex && (c.alive || c.killedThisTurn));
+export function buildTurnReport(view, itsLines = null) {
+  const playerIndex = view.realm;
+  const player = view.me;
+  const chars = view.ownHeroes.slice(); // a copy: sorted below (the view's own heroes: alive, or fallen this turn)
   // honour the player's own arrangement of their heroes (set from the orders column and kept on the
   // realm). Array.sort is stable, so heroes the arrangement does not name — newly hired, raised or
   // crowned — fall in after the named ones in engine order. This drives both the report's character
@@ -104,27 +84,22 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       );
     }
   }
-  // ── TITLES: per-character holdings (Items 1 & 2). Computed once; public from turn 5. ──
-  const _titlesPublic = (gameState.turn || 1) >= TITLES_PUBLIC_FROM_TURN || !!gameState.gameOver;
+  // ── TITLES: per-character holdings (Items 1 & 2). Computed once (the view's); public from turn 5. ──
+  const _titlesPublic = view.titles.public;
   let _stdT = { titles: {} },
     _minT = {};
   if (_titlesPublic) {
-    try {
-      _stdT = computeStandings(gameState);
-      _minT = computeMinorTitles(gameState);
-    } catch (e) {
-      _stdT = { titles: {} };
-      _minT = {};
-    }
+    _stdT = { titles: view.titles.holders };
+    _minT = view.titles.minor;
   }
-  const ownedProvIds = new Set(player.provinces || []);
+  const ownedProvIds = view.sight.owned;
 
   const ownedProvinces = ownedProvincesOf(view);
 
   const ARMY_SPEED_P = ARMY_SPEED_MASTER; // alias → master table at top of script
 
   const charReports = chars.map((c) => {
-    const prov = gameState.world.provinces[c.location];
+    const prov = view.provinces[c.location];
     const armies = (c.armies || []).map((a) => ({
       type: a.type,
       quality: a.quality,
@@ -140,9 +115,10 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     // 2026-09-09e: these were read RAW, so an item granting March or Naval was left out of the
     // speed the player was shown while the engine moved them at the higher rate. Same stack as
     // setMovePool.
-    const marchLvl = effSkillOf(c, 'march', gameState.characters || []);
-    const navalLvl = effSkillOf(c, 'naval', gameState.characters || []);
-    const _repPl = c.player != null ? gameState.players[c.player] || null : null;
+    // (the Crown of Command's bearer is one of the realm's own heroes beside him: its own heroes are enough to find him)
+    const marchLvl = effSkillOf(c, 'march', view.ownHeroes);
+    const navalLvl = effSkillOf(c, 'naval', view.ownHeroes);
+    const _repPl = c.player != null ? player || null : null;
     function repSpd(a) {
       const base = a.speed || 3;
       const SEA_T = new Set(KC_UNIT_CLASS.sea);
@@ -237,7 +213,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     // COLUMN still moves at its slowest unit (and a lifted column at its flyers' pace) — that figure
     // is the header's "Land: N/turn".
     {
-      const _mh = gameState._minorHolders || {};
+      const _mh = view.titles.lastTurnsMinorHoldersOfItsHeroes;
       const _swift = !!(_mh.swift && _mh.swift.charId === c.id),
         _seawolf = !!(_mh.seawolf && _mh.seawolf.charId === c.id);
       armies.forEach((a) => {
@@ -271,7 +247,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       skillEff: (() => {
         const out = {};
         ABILITIES_P.forEach((k) => {
-          const b = skillBonusBreakdown(c, k, gameState.characters || []);
+          const b = skillBonusBreakdown(c, k, view.ownHeroes);
           if (b.base > 0 || b.total > 0)
             out[k] = {
               base: b.base,
@@ -291,7 +267,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       castChance: (() => {
         const out = {};
         MAGIC_L8_SCHOOLS.forEach((sc) => {
-          const r = castChanceFor(c, sc, gameState.players[c.player], { chars: gameState.characters || [] });
+          const r = castChanceFor(c, sc, player, { chars: view.ownHeroes });
           if (r.level > 0)
             out[sc] = {
               level: r.level,
@@ -310,9 +286,9 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       // enemy realm's counter-espionage, a guarded vault, a mentor practising alongside — the note
       // in the portal says so rather than pretending the figure is final.
       orderChance: (() => {
-        const pl = gameState.players[c.player] || {};
+        const pl = player || {};
         const has = (id) => (pl.discoveries || []).some((d) => d && d.id === id);
-        const eff = (k) => effSkillOf(c, k, gameState.characters || []);
+        const eff = (k) => effSkillOf(c, k, view.ownHeroes);
         const raw = (k) => Math.max(0, Math.min(9, (c.skills || {})[k] || 0));
         const items = activeItems(c);
         const out = {};
@@ -339,7 +315,8 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
             chance:
               eff('sage') * per +
               (pl.alignment === 'Neutral' ? eff('sage') * 5 : 0) +
-              (((_minT && _minT.loreseeker) || (gameState._minorHolders || {}).loreseeker || {}).charId === c.id
+              (((_minT && _minT.loreseeker) || view.titles.lastTurnsMinorHoldersOfItsHeroes.loreseeker || {}).charId ===
+              c.id
                 ? per
                 : 0) +
               discSumOf(pl, 'research', 'pct', (e) => !e.field),
@@ -384,24 +361,12 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       // bites. Single source: extraSkillBonuses at module level. This replaces the old hand-rolled
       // list, which knew only the four personal-combat titles and so left The Strategist's +1
       // Tactical, The Swift, The Sea-Wolf and The Loreseeker invisible.
-      skillExtra: (() => {
-        // Prefer this report's freshly-computed holders; fall back to the set the last turn
-        // resolved with, so a character sees their own perk even before titles become public.
-        const mh = {};
-        MINOR_TITLES.forEach((t) => {
-          const h = (_minT && _minT[t.key]) || (gameState._minorHolders || {})[t.key];
-          if (h) mh[t.key] = h;
-        });
-        return extraSkillBonuses(c, gameState, mh);
-      })(),
+      // Prefer this report's freshly-computed holders; fall back to the set the last turn
+      // resolved with, so a character sees their own perk even before titles become public (the view works them out).
+      skillExtra: view.extraSkillBonusesOfItsHeroes[c.id],
       // Kept as-is for any cached older player portal: the personal-combat subset only, same shape.
       combatSkillBonus: (() => {
-        const mh = {};
-        MINOR_TITLES.forEach((t) => {
-          const h = (_minT && _minT[t.key]) || (gameState._minorHolders || {})[t.key];
-          if (h) mh[t.key] = h;
-        });
-        const all = extraSkillBonuses(c, gameState, mh),
+        const all = view.extraSkillBonusesOfItsHeroes[c.id],
           out = {};
         Object.keys(all).forEach((sk) => {
           const only = all[sk].filter((x) => x.scope === 'combat');
@@ -448,53 +413,38 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
   });
 
   // Enemy/wandering characters visible to this player (in same province as one of our chars)
-  const ownCharLocs = new Set(
-    gameState.characters.filter((c) => c.alive && c.player === playerIndex).map((c) => c.location),
-  );
   // 2026-10-15 (Toby, D1): the one sight rule decides who is listed (Invisibility and the wanderers'
   // cloak hide them here too), and another realm's hero gives away only name, realm and the rough size
   // of their army (leadsArmies says whether there is one, for Charm and Telekinetic Storm). A wandering
-  // hero's race, alignment and the rest stay public, as the Hire list shows them.
-  const _vcCtx = {
-    ownedProvIds: new Set(player.provinces || []),
-    ownCharLocs,
-    spiedThisTurn: new Set(player._spiedProvincesThisTurn || []),
-  };
-  const visibleChars = gameState.characters
-    .filter(
-      (c) =>
-        c.alive &&
-        c.player !== playerIndex &&
-        ownCharLocs.has(c.location) &&
-        enemyCharVisibleTo(gameState, playerIndex, c, _vcCtx),
-    )
-    .map((c) => ({
-      id: c.id,
-      name: c.name,
-      locationId: c.location,
-      locationName: gameState.world.provinces[c.location]?.name || '?',
-      isKing: c.isKing,
-      ...(c.player == null ? { race: c.race, alignment: c.alignment } : {}),
-      leadsArmies: (c.armies || []).length > 0,
-      armyBand: armySizeBand((c.armies || []).length),
-      player: c.player,
-      isWandering: c.player === null,
-      // Wandering heroes are unowned and public (like a hireable hero), so it is safe to surface
-      // their full detail — the player portal needs it to build a Charm order card if this hero is
-      // charmed into their service. Owned enemy heroes get NONE of this (no intel leak).
-      // Charm-eligible heroes (unowned OR enemy) leading NO armies are surfaced in full so the player
-      // portal can build a Charm order card for them. They're standing unarmed in a province where
-      // you have a character — close enough for your hero to take their measure. A hero leading
-      // troops isn't charmable, so gets none of this (no intel leak on a fielded commander). A hero
-      // charmed last turn is closed to Charm for the whole of this one — surfaced so the order form
-      // can grey them out rather than let the player spend a cast on a mind that cannot be swayed.
-      charmImmune: c._charmImmuneTurn === (gameState.turn || 1),
-      // an ENEMY hero's skills are never sent — a charmer must not learn them. A wandering hero's are
-      // public (the Hire list shows them), so they still travel.
-      ...(c.player == null && !c.isKing && (c.armies || []).length === 0
-        ? { skills: { ...(c.skills || {}) }, temper: c.temper || null, hp: c.hp, maxHp: c.maxHp, pay: c.pay }
-        : {}),
-    }));
+  // hero's race, alignment and the rest stay public, as the Hire list shows them. (The view applies the rule:
+  // heroesBesideItsOwn.)
+  const visibleChars = view.heroesBesideItsOwn.map((c) => ({
+    id: c.id,
+    name: c.name,
+    locationId: c.location,
+    locationName: view.provinces[c.location]?.name || '?',
+    isKing: c.isKing,
+    ...(c.player == null ? { race: c.race, alignment: c.alignment } : {}),
+    leadsArmies: c.leadsArmies,
+    armyBand: c.armyBand,
+    player: c.player,
+    isWandering: c.player === null,
+    // Wandering heroes are unowned and public (like a hireable hero), so it is safe to surface
+    // their full detail — the player portal needs it to build a Charm order card if this hero is
+    // charmed into their service. Owned enemy heroes get NONE of this (no intel leak).
+    // Charm-eligible heroes (unowned OR enemy) leading NO armies are surfaced in full so the player
+    // portal can build a Charm order card for them. They're standing unarmed in a province where
+    // you have a character — close enough for your hero to take their measure. A hero leading
+    // troops isn't charmable, so gets none of this (no intel leak on a fielded commander). A hero
+    // charmed last turn is closed to Charm for the whole of this one — surfaced so the order form
+    // can grey them out rather than let the player spend a cast on a mind that cannot be swayed.
+    charmImmune: c.charmImmune,
+    // an ENEMY hero's skills are never sent — a charmer must not learn them. A wandering hero's are
+    // public (the Hire list shows them), so they still travel.
+    ...(c.player == null && !c.isKing && !c.leadsArmies
+      ? { skills: { ...(c.skills || {}) }, temper: c.temper || null, hp: c.hp, maxHp: c.maxHp, pay: c.pay }
+      : {}),
+  }));
 
   // ── Persistent "ever seen" character intel (Clairvoyance targeting) ── AK: Clairvoyance may
   // target "any character the player has seen at any point in the game". The engine records
@@ -511,7 +461,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
         alignment: v.alignment,
         player: v.player,
         isWandering: v.isWandering,
-        lastSeenTurn: gameState.turn,
+        lastSeenTurn: view.turn,
         lastLocId: v.locationId,
         lastLocName: v.locationName,
       };
@@ -520,8 +470,8 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     // them. Task 7(b): neutral/wandering heroes (player==null) cannot be Clairvoyance targets —
     // drop them.
     return Object.values(rec).filter((x) => {
-      const live = gameState.characters.find((ch) => ch.id === x.id);
-      return live && live.alive && live.player != null; // dead handled by the spell's dead-target report; neutrals excluded
+      // alive and serving a realm now (the view says which): dead handled by the spell's dead-target report; neutrals excluded
+      return view.heroesItHasSeenAliveAndServingARealm.has(x.id);
     });
   })();
 
@@ -542,8 +492,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
   // set of provinces this player spied THIS turn. Details of armies the player does NOT control
   // (neutral guards / enemy forces) are only revealed for provinces they actually spied, making Spy
   // the sole way to learn enemy/neutral force composition.
-  const spiedThisTurn = new Set(player._spiedProvincesThisTurn || []);
-  const nearSpied = nearSpiedProvIds(gameState, spiedThisTurn); // D2: seen as if a hero stood there
+  const spiedThisTurn = view.sight.spied;
 
   // enemy characters a hero may set out to Encounter. Visibility follows the intel rules — an enemy
   // is targetable if they stand in a province you OWN, a province where you have a character
@@ -553,24 +502,18 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
   // quarry wherever they go, so the list need only reflect where they were last seen. Items 1 & 12:
   // the list is exactly the characters the MAP shows (one shared rule, enemyCharVisibleTo). A
   // visible character who still cannot be hunted (Cloak of Many Faces) is carried with
-  // `untargetable` so the order form can show WHY instead of silently dropping them.
-  const _visCtx = { ownedProvIds, ownCharLocs, spiedThisTurn, nearSpied }; // D2: the map's rule, next-to-spied included
-  const encounterTargets = gameState.characters
-    .filter(
-      (c) =>
-        c.alive &&
-        c.player !== null &&
-        c.player !== playerIndex &&
-        enemyCharVisibleTo(gameState, playerIndex, c, _visCtx),
-    )
+  // `untargetable` so the order form can show WHY instead of silently dropping them. (D2: the map's rule, next-to-spied
+  // included, which the view applies: heroesItSees.)
+  const encounterTargets = view.heroesItSees
+    .filter((c) => c.player !== null)
     .map((c) => ({
       id: c.id,
       name: c.name,
       isKing: !!c.isKing,
       locationId: c.location,
-      locationName: gameState.world.provinces[c.location]?.name || '?',
-      leadsArmy: (c.armies || []).length > 0,
-      untargetable: encounterUntargetableReason(c),
+      locationName: view.provinces[c.location]?.name || '?',
+      leadsArmy: c.leadsArmies,
+      untargetable: c.untargetable,
     }));
 
   // Province-level intelligence (visited non-owned)
@@ -581,9 +524,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
 
   // Provinces visible to this player: owned OR containing one of their characters
   // (declared here — used by dead-hero, mercenary, and hero-sighting intel below)
-  const playerCharLocations = new Set(
-    gameState.characters.filter((c) => c.player === playerIndex && c.alive).map((c) => c.location),
-  );
+  const playerCharLocations = view.sight.heroThere;
   // a province you SPIED this turn counts as seen at END OF TURN, exactly as if you had a character
   // standing in it — your agent is still there when the season closes and reports what he finds.
   // Without this a successful Spy revealed force composition in the intel text but the hex itself
@@ -596,9 +537,10 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
   // - Own dead heroes always visible
   // - Others only if: this player saw them die this turn (seenDeadHeroIds)
   // OR had a spy/explore in that province this turn
-  const seenThisTurn = new Set(gameState.players[playerIndex]?.seenDeadHeroIds || []);
-  const knownEver = new Set(gameState.players[playerIndex]?.knownDeadHeroIds || []);
-  const visibleDeadHeroes = (gameState.heroGraveyard || [])
+  // (the view holds the fallen it knows of: its own, witnessed, ever known, or lying where it sees now)
+  const seenThisTurn = new Set(view.me?.seenDeadHeroIds || []);
+  const knownEver = new Set(view.me?.knownDeadHeroIds || []);
+  const visibleDeadHeroes = view.theDeadItKnowsOf
     .filter((g) => {
       if (g.player === playerIndex) return true; // always see own dead heroes
       if (seenThisTurn.has(g.id)) return true; // witnessed the fall this turn
@@ -615,7 +557,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       race: g.race || null,
       alignment: g.alignment || null,
       topSkill: topSkill(g), // the fallen keep their fame
-      locationName: gameState.world.provinces[g.location]?.name || 'unknown',
+      locationName: g.locationName || 'unknown',
       locationId: g.location,
       isOwn: g.player === playerIndex,
       isKing: !!g.isKing,
@@ -623,7 +565,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       // whether that puts them beyond this realm's Resurrect. `player` was already on the graveyard
       // record and on the Resurrect dropdown's own list; it simply never reached the map tooltip or the
       // Fallen Heroes card, so a player could not tell whose body they were looking at.
-      servedOther: graveServedOther(g, playerIndex),
+      servedOther: g.servedOther,
       inVisibleProv: visibleProvIds.has(g.location),
     }));
   // Dead heroes this player knows of (for Resurrect targeting). 2026-09-12: the list and the MAP
@@ -634,7 +576,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
   // province you own or stand in) PLUS every grave you have ever known of, since the engine
   // (`_graveKnown`) still lets you march back to it.
   const _mapVisibleIds = new Set(visibleDeadHeroes.map((g) => g.id));
-  const knownDeadHeroes = (gameState.heroGraveyard || [])
+  const knownDeadHeroes = view.theDeadItKnowsOf
     .filter(
       (g) =>
         g &&
@@ -653,14 +595,14 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
         if (g.player !== playerIndex) {
           raisable = false;
           whyNot = 'a fallen crown answers only to its own realm';
-        } else if ((gameState.players[playerIndex] || {})._resurrectableMonarchId !== g.id) {
+        } else if ((view.me || {})._resurrectableMonarchId !== g.id) {
           raisable = false;
           whyNot = 'passed beyond recall — only your most recently fallen monarch may be restored';
         }
       } else if (g.isKing) {
         raisable = false;
         whyNot = 'kings cannot be resurrected';
-      } else if (graveServedOther(g, playerIndex)) {
+      } else if (g.servedOther) {
         raisable = false;
         whyNot = 'once served another realm — only heroes who never served a rival crown may be raised';
       }
@@ -673,7 +615,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
         alignment: g.alignment || 'Neutral',
         temper: g.temper || 'Brave',
         locationId: locId,
-        locationName: gameState.world.provinces[locId]?.name || 'unknown',
+        locationName: g.locationName || 'unknown',
         isMonarch: g._monarch === true,
         isKing: !!g.isKing,
         raisable,
@@ -683,11 +625,11 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       };
     });
 
-  // Mercenary sightings — visible if in owned province or where player has a character
+  // Mercenary sightings — visible if in owned province or where player has a character (the view's: where it sees now)
   const mercIntel = [];
-  (gameState.mercenaries || []).forEach((merc) => {
+  view.mercenariesItSees.forEach((merc) => {
     if (!visibleProvIds.has(merc.location)) return;
-    const p2 = gameState.world.provinces[merc.location];
+    const p2 = view.provinces[merc.location];
     mercIntel.push({
       id: merc.id,
       type: merc.type,
@@ -723,94 +665,77 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       .join(', ');
   // a co-located enemy/neutral hero gives away only a ROUGH idea of how many armies they lead (a
   // glance across the field, not a muster roll). Spying still reveals exact units.
-  const _armyBand = (n) => 'leads ' + armySizeBand(n);
-  gameState.characters
-    .filter((c) => c.alive && c.player !== playerIndex)
-    .forEach((c) => {
-      const inOwned = ownedProvIds.has(c.location);
-      // Items 1 & 12: same rule as the map and the Encounter list (enemyCharVisibleTo).
-      if (
-        !enemyCharVisibleTo(gameState, playerIndex, c, {
-          ownedProvIds,
-          ownCharLocs: playerCharLocations,
-          spiedThisTurn,
-          nearSpied,
-        })
-      )
-        return;
-      const prov = gameState.world.provinces[c.location];
-      if (!prov) return;
-      const ts = topSkill(c);
-      const topStr = ts ? `${skillFameLabel(ts.level)} ${SKILL_LABELS[ts.skill] || ts.skill}` : 'no notable skills';
-      // If this hero has been spied, we know their FULL skill list (as of the spy).
-      const spyRec = spiedHeroSkills[c.id];
-      const spiedSkills = spyRec ? spyRec.skills : null;
-      const spiedSkillStr = spiedSkills ? fmtSkills(spiedSkills) : null;
-      const skillDisplay = spiedSkillStr ? `known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}` : topStr;
-      // The sighting text puts this straight after a full stop, so give it a capital.
-      const skillSentence = skillDisplay.charAt(0).toUpperCase() + skillDisplay.slice(1);
-      if (c.player === null) {
-        // Wandering/neutral hero. the hire cost is the alignment-distance wage for THIS realm (2g
-        // base +1g per two steps of alignment distance) — the same figure the hire order actually
-        // charges — NOT the hero's stale internal `pay` field (which is a spawn artefact and always
-        // reads ~1g). A null wage means the Divine<->Undead gulf: they will not serve this crown (the
-        // sd31 waiver, if the realm holds it, is applied at the real hire). Guards keep their beast
-        // label; a defeated guard now wandering (player===null, not a guard) shows a proper race (see
-        // runTurn normaliser).
-        const _wWage = c._isNeutralGuard
-          ? null
-          : heroHireWage(
-              player?.alignment || 'Neutral',
-              c.alignment,
-              (player?.discoveries || []).some((d) => d && d.id === 'sd31'),
-              c,
-            ); // 2026-10-08 item 12: sd31 waives the gulf, exactly as the hire does
-        const _wHireTxt = c._isNeutralGuard
-          ? ''
-          : _wWage != null
-            ? ` Available to hire for ${_wWage}g/turn.`
-            : ' Will not serve your crown — the alignment gulf is too wide.';
-        heroSightings.push({
-          type: c._isNeutralGuard ? 'neutral_guard' : 'wandering',
-          name: c.name,
-          race: c.race,
-          alignment: c.alignment,
-          temper: c.temper,
-          locationName: prov.name,
-          locationId: c.location,
-          topSkill: ts,
-          pay: _wWage,
-          armyBand: _armyBand((c.armies || []).length),
-          spiedSkills: spiedSkills || null,
-          spiedTurn: spyRec ? spyRec.turn : null,
-          spiedItems: (spyRec && spyRec.items) || null,
-          spiedArmies: (spyRec && spyRec.armies) || null,
-          inOwnedProvince: inOwned,
-          text: `Wandering hero ${c.name} (${c.race}, ${c.alignment}) is in ${prov.name}. ${skillSentence}.${_wHireTxt}`,
-        });
-      } else {
-        // Another realm's hero. 2026-10-15 (Toby, D1): without a Spy you learn only the name, the
-        // realm and the rough size of the army they lead, wherever they stand (your own land too): no
-        // race, alignment or renown. What a Spy has read (spiedSkills) is still shown.
-        const enemyKingdom = gameState.players[c.player]?.name || 'unknown realm';
-        const _band = _armyBand((c.armies || []).length);
-        heroSightings.push({
-          type: 'enemy',
-          name: c.name,
-          kingdom: enemyKingdom,
-          kingdomColor: gameState.players[c.player]?.color || null,
-          locationName: prov.name,
-          locationId: c.location,
-          armyBand: _band,
-          spiedSkills: spiedSkills || null,
-          spiedTurn: spyRec ? spyRec.turn : null,
-          spiedItems: (spyRec && spyRec.items) || null,
-          spiedArmies: (spyRec && spyRec.armies) || null,
-          inOwnedProvince: inOwned,
-          text: `${c.name} of ${enemyKingdom} is in ${inOwned ? 'your province of ' : ''}${prov.name}, and ${_band}.${spiedSkillStr ? ` Known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}.` : ''}`,
-        });
-      }
-    });
+  // (the view gives the rough size: armySizeBand)
+  const _armyBand = (band) => 'leads ' + band;
+  // Items 1 & 12: same rule as the map and the Encounter list (enemyCharVisibleTo), which the view applies: heroesItSees.
+  view.heroesItSees.forEach((c) => {
+    const inOwned = ownedProvIds.has(c.location);
+    const prov = view.provinces[c.location];
+    if (!prov) return;
+    const ts = c.player === null ? c.topSkill : undefined; // (a wandering hero's fame: the view's)
+    const topStr = ts ? `${skillFameLabel(ts.level)} ${SKILL_LABELS[ts.skill] || ts.skill}` : 'no notable skills';
+    // If this hero has been spied, we know their FULL skill list (as of the spy).
+    const spyRec = spiedHeroSkills[c.id];
+    const spiedSkills = spyRec ? spyRec.skills : null;
+    const spiedSkillStr = spiedSkills ? fmtSkills(spiedSkills) : null;
+    const skillDisplay = spiedSkillStr ? `known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}` : topStr;
+    // The sighting text puts this straight after a full stop, so give it a capital.
+    const skillSentence = skillDisplay.charAt(0).toUpperCase() + skillDisplay.slice(1);
+    if (c.player === null) {
+      // Wandering/neutral hero. the hire cost is the alignment-distance wage for THIS realm (2g
+      // base +1g per two steps of alignment distance) — the same figure the hire order actually
+      // charges — NOT the hero's stale internal `pay` field (which is a spawn artefact and always
+      // reads ~1g). A null wage means the Divine<->Undead gulf: they will not serve this crown (the
+      // sd31 waiver, if the realm holds it, is applied at the real hire). Guards keep their beast
+      // label; a defeated guard now wandering (player===null, not a guard) shows a proper race (see
+      // runTurn normaliser).
+      const _wWage = c.isNeutralGuard ? null : c.hireWage; // 2026-10-08 item 12: sd31 waives the gulf, exactly as the hire does (the view's heroHireWage)
+      const _wHireTxt = c.isNeutralGuard
+        ? ''
+        : _wWage != null
+          ? ` Available to hire for ${_wWage}g/turn.`
+          : ' Will not serve your crown — the alignment gulf is too wide.';
+      heroSightings.push({
+        type: c.isNeutralGuard ? 'neutral_guard' : 'wandering',
+        name: c.name,
+        race: c.race,
+        alignment: c.alignment,
+        temper: c.temper,
+        locationName: prov.name,
+        locationId: c.location,
+        topSkill: ts,
+        pay: _wWage,
+        armyBand: _armyBand(c.armyBand),
+        spiedSkills: spiedSkills || null,
+        spiedTurn: spyRec ? spyRec.turn : null,
+        spiedItems: (spyRec && spyRec.items) || null,
+        spiedArmies: (spyRec && spyRec.armies) || null,
+        inOwnedProvince: inOwned,
+        text: `Wandering hero ${c.name} (${c.race}, ${c.alignment}) is in ${prov.name}. ${skillSentence}.${_wHireTxt}`,
+      });
+    } else {
+      // Another realm's hero. 2026-10-15 (Toby, D1): without a Spy you learn only the name, the
+      // realm and the rough size of the army they lead, wherever they stand (your own land too): no
+      // race, alignment or renown. What a Spy has read (spiedSkills) is still shown.
+      const enemyKingdom = c.realmName || 'unknown realm';
+      const _band = _armyBand(c.armyBand);
+      heroSightings.push({
+        type: 'enemy',
+        name: c.name,
+        kingdom: enemyKingdom,
+        kingdomColor: c.realmColor || null,
+        locationName: prov.name,
+        locationId: c.location,
+        armyBand: _band,
+        spiedSkills: spiedSkills || null,
+        spiedTurn: spyRec ? spyRec.turn : null,
+        spiedItems: (spyRec && spyRec.items) || null,
+        spiedArmies: (spyRec && spyRec.armies) || null,
+        inOwnedProvince: inOwned,
+        text: `${c.name} of ${enemyKingdom} is in ${inOwned ? 'your province of ' : ''}${prov.name}, and ${_band}.${spiedSkillStr ? ` Known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}.` : ''}`,
+      });
+    }
+  });
 
   // Also add intel text entries for the chronicle
   heroSightings.forEach((s) => intel.push(s.text));
@@ -843,14 +768,14 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
   // too. All of those are persistent, so they belong in the forecast; the deliberate omissions are
   // still only the SAME-TURN transients (Bless, Consecrate, Earthquake no-tax, Sabotage). Keep this
   // loop and the end-of-turn collector in step.
-  const _taxAccR = new Map(); // per-effect gold paid so far (capped `tax` discoveries)
   // the 5%-of-base ceiling every tax-gold source shares. Base = the bare province tax of the land
   // held now, before any bonus or penalty — computed up front so the loop below can cap as it goes.
-  const _baseTaxR = realmBaseTax(gameState, playerIndex),
+  // (the base and each province's discovery gold are worked out from the world: the view's books)
+  const _baseTaxR = view.books.baseTax,
     _taxCapR = taxBonusCap(_baseTaxR);
-  const _nextTurn = gameState.turn || 0; // reports are built AFTER the turn counter advances, so gameState.turn is already the turn whose end-of-turn collection this forecasts
-  const provTaxIncome = (player.provinces || []).reduce((s, pid) => {
-    const pv = gameState.world.provinces[pid];
+  const _nextTurn = view.turn || 0; // reports are built AFTER the turn counter advances, so the turn is already the turn whose end-of-turn collection this forecasts
+  const provTaxIncome = (player.provinces || []).reduce((s, pid, _i) => {
+    const pv = view.provinces[pid];
     if (!pv) return s;
     let t = pv.tax || 0;
     _rawTaxBase += t; // the bare province tax, before any bonus or penalty
@@ -873,17 +798,17 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     // every province-tax discovery (Advanced Agriculture, Mining, Aqueducts … heritage & creed) now
     // runs through discTaxAdd, capped exactly as the collector caps it.
     {
-      const _dt = discTaxAdd(player, pv, gameState, playerIndex, _taxAccR, _taxCapR);
+      const _dt = view.books.discoveryTaxGoldOfEachOfItsProvinces[_i];
       t += _dt;
       _sdCreed += _dt;
     }
-    if (gdActiveFor(gameState, playerIndex, 'Good') && (pv.garrisonArmies || []).length > 0) {
+    if (view.books.wonderBlesses.Good && (pv.garrison || []).length > 0) {
       t += 2;
       _sdGrand += 2;
     } // GRAND DESIGN — Good: +2 tax per garrisoned province (only while the Wonder's province is held)
     return s + t;
   }, 0);
-  const _pChars = (gameState.characters || []).filter((c) => c.player === playerIndex && c.alive);
+  const _pChars = view.ownHeroes.filter((c) => c.player === playerIndex && c.alive);
   const _itemStat = (st) =>
     _pChars.reduce(
       (s, c) => s + activeItems(c).reduce((a, it) => a + (it.effect && it.effect.stat === st ? it.effect.bonus : 0), 0),
@@ -892,7 +817,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
   // item tax gold (Ring of Wealth & co, Merchant's Ledger) — together capped at 5% of base tax
   const _taxBonusRaw = _pChars.reduce((s, c) => s + (c.taxBonus || 0), 0) + _itemStat('taxBonus');
   const ledgers = _pChars.some((c) => activeItems(c).some((it) => it.effect && it.effect.stat === 'taxPerProv'));
-  const _perProvRaw = ledgers ? (gameState.world.provinces || []).filter((pv) => pv.owner === playerIndex).length : 0; // Merchant's Ledger
+  const _perProvRaw = ledgers ? view.books.provincesItHoldsByTheirRecord : 0; // Merchant's Ledger
   const _itemTaxR = capItemTaxGold(_taxBonusRaw, _perProvRaw, _taxCapR);
   const taxBonus = _itemTaxR.taxBonus,
     perProvBonus = _itemTaxR.perProvBonus;
@@ -916,14 +841,14 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     _hostLeaderChar = null;
   try {
     if (!_titlesPublic) throw 'titles-hidden'; // Item: title perks (incl. their tax gold) take effect only once Titles are revealed at turn 5 — matching the gated end-of-turn collection.
-    const _std = computeStandings(gameState).titles || {};
-    const _min = computeMinorTitles(gameState) || {};
+    const _std = view.titles.holders || {};
+    const _min = view.titles.minor || {};
     const _holdsTitle = (key) => !!(_std[key] && _std[key].playerIndex === playerIndex);
     const _charHasMinor = (key) => !!(_min[key] && _pChars.some((c) => c.id === _min[key].charId));
     if (_charHasMinor('cutpurse')) cutpurseG = 2;
     if (_charHasMinor('champion')) championG = 2;
     if (_charHasMinor('castellan')) {
-      const _owned = (gameState.world.provinces || []).filter((pv) => pv.owner === playerIndex).length;
+      const _owned = view.books.provincesItHoldsByTheirRecord;
       castellanG = Math.floor(_owned / 5);
     }
     if (_charHasMinor('hostleader')) _hostLeaderChar = _pChars.find((c) => c.id === _min.hostleader.charId) || null; // wage forecast mirror
@@ -946,11 +871,9 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
   // rawTaxBase + bonuses − reductions === taxIncome (asserted by the tax ledger test).
   const sageDiscG = _sdAgri + _sdMining + _sdAqueduct + _sdCreed + _sdRecords + interestBonus;
   const ARMY_COST_TR = ARMY_COST_MASTER; // alias → master table at top of script
-  const playerCharsForWages = gameState.characters.filter((c) => c.player === playerIndex && c.alive);
+  const playerCharsForWages = view.ownHeroes.filter((c) => c.player === playerIndex && c.alive);
   const allArmiesForWages = playerCharsForWages.flatMap((c) => c.armies || []);
-  const garrisonArmiesForWages = gameState.world.provinces
-    .filter((p) => p.owner === playerIndex)
-    .flatMap((p) => p.garrisonArmies || []);
+  const garrisonArmiesForWages = view.books.unitsGarrisonedInTheProvincesItHolds;
   // Build structured data for order dropdowns availableHeroes: per province, wandering heroes
   // visible to this player
   const availableHeroesByProv = availableHeroesByProvOf(view);
@@ -959,7 +882,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
 
   const _druidHalfWageR = new Set();
   playerCharsForWages.forEach((ch) => {
-    if (perkTier(ch, 'druid') > 0 || gdActiveFor(gameState, playerIndex, 'Druidic'))
+    if (perkTier(ch, 'druid') > 0 || view.books.wonderBlesses.Druidic)
       (ch.armies || []).forEach((a) => {
         if (CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a);
       });
@@ -1009,7 +932,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     orcSpoilsG = 0;
   {
     const lw = player._lastWages;
-    if (lw && lw.turn === (gameState.turn || 1) - 1) {
+    if (lw && lw.turn === (view.turn || 1) - 1) {
       if (lw.armyWages !== armyWages) nextArmyWages = armyWages;
       if (lw.heroWages !== heroWages) nextHeroWages = heroWages;
       armyWages = lw.armyWages;
@@ -1020,10 +943,10 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     }
   }
   theTerrorAnEvilRealmSees(view, worldMeta, ownedProvinces, intel);
-  return {
+  const report = {
     playerIndex,
     playerName: player.name,
-    turnNumber: gameState.turn,
+    turnNumber: view.turn,
     kingdom: {
       conceded: !!player.conceded,
       eliminated: !!player._eliminated,
@@ -1109,7 +1032,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     })(),
     // Dead heroes — from persistent graveyard (any turn) for Resurrect targeting Any dead hero
     // visible to this player can be resurrected — except (2026-09-23) a body that ever served another realm (graveServedOther)
-    deadHeroes: (gameState.heroGraveyard || [])
+    deadHeroes: view.theDeadItKnowsOf
       .filter((g) => g.player === playerIndex || (visibleProvIds.has(g.location) && !g._monarch))
       .map((g) => {
         const locId = g.location;
@@ -1133,25 +1056,18 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     // limited to living (or just-fallen) NON-cloaked characters — a Cloak of Many Faces stays
     // anonymous, so nothing hidden leaks — and the portal only visibly tints names that actually
     // appear in the rendered text.
-    allKingdoms: (gameState.players || []).map((p, i) => ({
+    // (the view's lookup tables: every realm, and every named hero alive or fallen this turn but the cloaked, until P2-06)
+    allKingdoms: view.lookupTables.realms.map((p, i) => ({
       index: i,
       name: (p && p.name) || 'Realm ' + (i + 1),
       color: (p && p.color) || null,
     })),
-    nameColors: (gameState.characters || [])
-      .filter(
-        (c) =>
-          c &&
-          c.name &&
-          (c.alive || c.killedThisTurn) &&
-          !activeItems(c).some((it) => it && it.effect && it.effect.stat === 'hidden'),
-      )
-      .map((c) => ({
-        name: c.name,
-        color: c.player != null ? gameState.players[c.player]?.color || null : null,
-        neutral: c.player == null,
-        guard: !!(c.player == null && c._isNeutralGuard),
-      })), // guard → chieftain-brown tint
+    nameColors: view.lookupTables.heroes.map((c) => ({
+      name: c.name,
+      color: c.player != null ? c.realmColor || null : null,
+      neutral: c.player == null,
+      guard: !!(c.player == null && c.isNeutralGuard),
+    })), // guard → chieftain-brown tint
     visitedProvinceIds: view.provinces.filter((p) => p.seen.visited).map((p) => p.id),
     worldMeta,
     availableHeroesByProv,
@@ -1166,7 +1082,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     knownDeadHeroes,
     // every province this realm knows holds battlefield graves, with the turn it was learned.
     // Deliberately stale-tolerant — the graves may since have been raised.
-    graveIntel: graveIntelFor(gameState, gameState.players[playerIndex]),
+    graveIntel: view.graveIntel,
     // guardian weaknesses this realm has learned — by scouting one, or by watching one bite. Keyed
     // by guardian NAME, so the lesson applies to every lair holding that kind.
     knownGuardianWeaknesses: (() => {
@@ -1180,31 +1096,30 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     // ── DIPLOMACY (KC alliance system) ── realms this player has encountered, with the current
     // relation. The portal renders Treat / Declare War controls against this list (king-only).
     diplomacy: (() => {
-      const rels = gameState.relations || {};
+      // (the relation between the two: the view's, for each realm it has encountered)
       const relOf = (o) => {
         if (o === playerIndex) return 'self';
-        const k = playerIndex < o ? playerIndex + '-' + o : o + '-' + playerIndex;
-        return rels[k] || 'neutral';
+        return view.realms[o]?.relation || 'neutral';
       };
       const enc = player._encountered || [];
       return {
-        alliancesAllowed: (gameState.players || []).length > 3,
-        safeStartUntil: gameState.safeStart ? SAFE_START_TURN : null,
+        alliancesAllowed: view.realms.length > 3,
+        safeStartUntil: view.safeStart ? SAFE_START_TURN : null,
         known: enc
-          .filter((o) => o !== playerIndex && gameState.players[o])
+          .filter((o) => o !== playerIndex && view.realms[o])
           .map((o) => ({
             index: o,
-            name: gameState.players[o]?.name || 'Realm ' + (o + 1),
-            color: gameState.players[o]?.color || null,
-            alignment: gameState.players[o]?.alignment || null,
+            name: view.realms[o]?.name || 'Realm ' + (o + 1),
+            color: view.realms[o]?.color || null,
+            alignment: view.realms[o]?.alignment || null,
             // 2026-09-27 (Toby item 7): a realm that has quit the game is no longer a party anyone can
             // treat with. The portal shows the state and withdraws every diplomacy control against it.
-            conceded: !!gameState.players[o]?.conceded,
+            conceded: !!view.realms[o]?.conceded,
             // 2026-10-08 (Toby item 3c): 'peace' / 'alliance' when this realm sent us an overture last
             // turn (see 6d in runTurn), so the card can show it beside the realm's name.
             offeredUs: ((player._overturesIn || []).find((x) => x && x.from === o) || {}).kind || null,
-            concededTurn: gameState.players[o]?.concededTurn || null,
-            eliminated: !!gameState.players[o]?._eliminated,
+            concededTurn: view.realms[o]?.concededTurn || null,
+            eliminated: !!view.realms[o]?.eliminated,
             relation: relOf(o),
           })),
       };
@@ -1212,15 +1127,16 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
     // ── VICTORY & TITLES ── standings board (public from turn 5), Reckoning status, and whether
     // this player may Call the Reckoning right now.
     titles: (() => {
-      const turn = gameState.turn || 1;
-      const st = computeStandings(gameState);
-      const myShare = reckoningBlocShare(gameState, playerIndex);
-      const _elig = reckoningCallEligibility(gameState, playerIndex); // bloc bar + caller's own floor
-      const kingAlive = (gameState.characters || []).some((c) => c.alive && c.isKing && c.player === playerIndex);
-      const rk = gameState.reckoning || null,
-        over = gameState.gameOver || null;
+      const turn = view.turn || 1;
+      // (the standings, worked out from the whole world: the view's)
+      const st = { standings: view.titles.standings, titles: view.titles.holders };
+      const myShare = view.titles.blocShare;
+      const _elig = view.titles.eligibility; // bloc bar + caller's own floor
+      const kingAlive = view.ownHeroes.some((c) => c.alive && c.isKing && c.player === playerIndex);
+      const rk = view.reckoning || null,
+        over = view.gameOver || null;
       const isPublic = turn >= TITLES_PUBLIC_FROM_TURN || !!over;
-      const _race = isPublic ? titleRaceFor(gameState, st, playerIndex) : {}; // this realm's best contender per title, as percentages only
+      const _race = isPublic ? view.titles.race : {}; // this realm's best contender per title, as percentages only
       // ── UNMET REALMS STAY NAMELESS (2026-09-27, Toby item 3) ────────────────────────────────────
       // The Titles & Victory card listed every realm in the world by name — standings board, title
       // holders, minor titles, a title lost to a rival, the Reckoning claimant — which handed a
@@ -1237,15 +1153,16 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
       const _metPi = (pi) => pi == null || _reveal || _metSet.has(pi);
       const UNMET_REALM = 'An unknown realm',
         UNMET_CHAR = 'an unknown champion';
+      // (the view holds a realm's name and colour once met: _metPi asks the same of the same lists)
       const _realmNm = (pi) =>
-        pi == null ? null : _metPi(pi) ? gameState.players[pi]?.name || 'Realm ' + (pi + 1) : UNMET_REALM;
-      const _realmCol = (pi) => (pi != null && _metPi(pi) ? gameState.players[pi]?.color || null : null);
+        pi == null ? null : _metPi(pi) ? view.realms[pi]?.name || 'Realm ' + (pi + 1) : UNMET_REALM;
+      const _realmCol = (pi) => (pi != null && _metPi(pi) ? view.realms[pi]?.color || null : null);
       const _charNm = (pi, nm) => (!nm ? null : _metPi(pi) ? nm : UNMET_CHAR);
       return {
         publicFromTurn: TITLES_PUBLIC_FROM_TURN,
         public: isPublic,
-        gains: (gameState._titleGainsByPlayer || {})[playerIndex] || [], // titles this player won this turn
-        losses: ((gameState._titleLossesByPlayer || {})[playerIndex] || []).map((l) =>
+        gains: view.titles.gains, // titles this player won this turn
+        losses: view.titles.losses.map((l) =>
           l && l.newHolderIndex != null && !_metPi(l.newHolderIndex)
             ? { ...l, newHolderName: UNMET_REALM, newCharName: l.newCharName ? UNMET_CHAR : null }
             : l,
@@ -1274,7 +1191,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
         gameOver: over
           ? {
               winner: over.winner,
-              winnerName: over.winner != null ? gameState.players[over.winner]?.name || null : null,
+              winnerName: over.winner != null ? view.realms[over.winner]?.name || null : null,
               byElimination: !!over.byElimination,
               byConcession: !!over.byConcession,
               byReckoning: !!over.byReckoning,
@@ -1297,7 +1214,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
           ? Object.fromEntries(
               TITLE_DEFS.map((t) => {
                 const h = st.titles[t.key];
-                const hc = h.charId != null ? (gameState.characters || []).find((c) => c.id === h.charId) : null;
+                const hcName = h.charId != null ? view.titles.heroNames.get(h.charId) : null; // (the view's)
                 return [
                   t.key,
                   {
@@ -1305,7 +1222,7 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
                     prize: t.prize,
                     holderIndex: h.playerIndex,
                     holderName: _realmNm(h.playerIndex),
-                    charName: _charNm(h.playerIndex, hc ? hc.name : null),
+                    charName: _charNm(h.playerIndex, hcName),
                     unmet: h.playerIndex != null && !_metPi(h.playerIndex),
                     kingdomLevel: !!t.kingdomLevel,
                     req: t.req,
@@ -1319,18 +1236,17 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
           : null,
         minor: isPublic
           ? (() => {
-              const mh = computeMinorTitles(gameState);
-              const chById = (id) => (gameState.characters || []).find((c) => c.id === id);
+              const mh = view.titles.minor;
               const all = MINOR_TITLES.map((t) => {
                 const h = mh[t.key];
-                const holder = h ? chById(h.charId) : null;
+                const holderName = h ? view.titles.heroNames.get(h.charId) : null; // (the view's)
                 const _pi = h ? h.playerIndex : null;
                 return {
                   key: t.key,
                   name: t.name,
                   perk: t.perk,
                   req: t.req,
-                  holderName: _charNm(_pi, holder ? holder.name : null),
+                  holderName: _charNm(_pi, holderName),
                   kingdomName: _realmNm(_pi),
                   unmet: _pi != null && !_metPi(_pi),
                   holderIndex: _pi,
@@ -1363,8 +1279,10 @@ export function buildTurnReport(gameState, playerIndex, view = playerView(gameSt
         brokerSpy: 2,
       };
     })(),
-    lastTurnLog: [{ type: 'system', text: `Turn ${gameState.turn} begins. ${player.name} stands ready.` }],
+    lastTurnLog: [{ type: 'system', text: `Turn ${view.turn} begins. ${player.name} stands ready.` }],
   };
+  if (itsLines) withWhatItsLinesShow(report, view, itsLines);
+  return report;
 }
 
 // ── THE MAP AND THE PROVINCES (plan P1-12b4: P1-12's Decision 11, part 1) ────
@@ -1968,4 +1886,83 @@ function theTerrorAnEvilRealmSees(view, worldMeta, ownedProvinces, intel) {
           );
       });
   }
+}
+
+// ── WHAT THE REALM'S LINES SHOW (plan P1-12b5: out of buildReports) ────
+// A report built after a turn (buildReports, src/views/every-realms-report-and-the-lines-each-realm-reads.ts) gets the
+// realm's lines of the turn (playerEvents' result) beside its view: its battle markers, its province intelligence, its
+// spy activity, its chronicle and its province events, each named from the view. A report built with no turn (Turn 0,
+// the tests' staged worlds) has none of these.
+function withWhatItsLinesShow(report, view, itsLines) {
+  const { lastTurnLog, provinceEvents: provinceEventsItReads, spyActivity } = itsLines;
+  // The map's battle markers: a battle this realm witnessed (the view says which, from its lines).
+  (report.worldMeta?.provinces || []).forEach((pv) => {
+    if (!pv) return;
+    const _seenHere = view.provinces[pv.id];
+    const _witnessed = !!_seenHere?.seen.witnessedABattle;
+    const realBattle = !!_seenHere?.hadBattleThisTurn;
+    pv.hadBattle = realBattle && _witnessed;
+    // the ORANGE ongoing-battle marker (battleUnresolved) was set unconditionally in
+    // buildTurnReport and never visibility-gated, so a carry-on fight anywhere on the map lit up
+    // for every player. Restrict it to a battle this player can actually witness, exactly like
+    // the crossed-swords marker above.
+    if (pv.battleUnresolved) pv.battleUnresolved = _witnessed;
+  });
+
+  report.provinceCharIntel = provinceCharIntelOf(view);
+
+  report.spyActivity = spyActivity;
+  report.lastTurnLog = lastTurnLog;
+  // each province event with its province's name, as the realm's view has it
+  report.provinceEvents = provinceEventsItReads.map((e) => ({
+    ...e,
+    provName: e.provinceId != null && view.provinces[e.provinceId] ? view.provinces[e.provinceId].name : null,
+  }));
+}
+
+// ── Province character intel (Intelligence → Province Reports) ── (plan P1-12b4: out of buildReports, reading only the
+// realm's view, src/views/what-each-realm-may-see-of-the-world.ts; P1-12b5: here, with the rest of the report)
+// For each province the player has visibility into (a character present at end of turn, or a
+// Spy action there this turn), list the characters they can see (own / neutral / enemy) with
+// the NUMBER of army units each leads. Actual unit types/qualities are only revealed for a
+// province this player SPIED this turn (own characters' armies are always known).
+function provinceCharIntelOf(view) {
+  const pi = view.realm;
+  const provinceCharIntel = [];
+  view.provinces.forEach((p) => {
+    const spied = p.seen.spiedByItsLines;
+    const hasPresence = p.seen.heroThere;
+    if (!hasPresence && !spied) return; // no line of sight and not spied → no intel
+    // 2026-10-15 (D1): the one sight rule, as the map and the hero sightings use it (Invisibility,
+    // a Spy piercing stealth, another realm's hero always seen beside yours, the wanderers' cloak):
+    // the view applies it (heroesInItsProvinceIntelligence).
+    const visible = p.heroesInItsProvinceIntelligence;
+    if (visible.length === 0) return;
+    // Only surface as an intel entry if there is a non-own character present, or the player spied
+    // it.
+    if (!visible.some((c) => c.player !== pi) && !spied) return;
+    const _spiedSkillsPi = (view.me && view.me._spiedHeroSkills) || {};
+    const characters = visible.map((c) => {
+      const category = c.player === pi ? 'own' : c.player === null ? 'neutral' : 'enemy';
+      // for a non-own hero we've spied (now or previously), attach their known skills.
+      const spyRec = c.player !== pi ? _spiedSkillsPi[c.id] : null;
+      return {
+        name: c.name,
+        isKing: !!c.isKing,
+        category,
+        isNeutralGuard: c.isNeutralGuard,
+        kingdom: c.player != null && c.player !== pi ? c.realmName || 'an enemy realm' : null,
+        color: c.player != null ? c.realmColor : null,
+        ...(c.player === pi ? { armyCount: c.armyCount } : { armyBand: c.armyBand }), // D1: rough size for anyone not yours
+        // the units themselves: a hero of its own, or one in a province it spied (the view holds them only then)
+        armies: c.armies
+          ? c.armies.map((a) => ({ type: a.type, quality: a.quality, unitName: a.unitName || '' }))
+          : null,
+        spiedSkills: spyRec ? spyRec.skills : null,
+        spiedTurn: spyRec ? spyRec.turn : null,
+      };
+    });
+    provinceCharIntel.push({ provId: p.id, provName: p.name, spied, characters });
+  });
+  return provinceCharIntel;
 }

@@ -34,7 +34,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(H2&&count(H2.armies,'Orc Berserkers')===1,`…and one Orc Berserkers company (got ${H2&&count(H2.armies,'Orc Berserkers')})`);
   ok(/entirely blocked: Goblin Horde \(already recruited this turn\)/.test(txt),'phase 2: a third Goblin Horde in the same province is refused — the cap is for the turn');
   // The order form's figure, as the player portal receives it.
-  let od=null; try{ od=W.buildTurnReport(r.S2,0).provinceOrderData[A.id]; }catch(e){ ok(false,'buildTurnReport runs on the saved world: '+e.message); }
+  let od=null; try{ od=W.buildTurnReport(W.playerView(r.S2,0)).provinceOrderData[A.id]; }catch(e){ ok(false,'buildTurnReport runs on the saved world: '+e.message); }
   const maxOf=t=>{ const e=od&&(od.armyTypes||[]).find(x=>x.type===t); return e?e.maxPerTurn:null; };
   ok(maxOf('Goblin Horde')===2,`the order form offers two Goblin Hordes a turn there (maxPerTurn ${maxOf('Goblin Horde')})`);
   ok(maxOf('Orc Berserkers')===1,`…one Orc Berserkers company (maxPerTurn ${maxOf('Orc Berserkers')})`);

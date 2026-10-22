@@ -29,7 +29,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const stamp=(p,n,by,pct)=>{ p._terrorStacks=n; p._terrorTurn=S.turn; p._terrorisedBy=by; if(pct!=null) p._terrorPct=pct; };
   stamp(near,2,0); stamp(mine,5,0); stamp(far,1,0,0.25);
   near.visitedBy=[...(near.visitedBy||[]),0];
-  const rep=W.buildTurnReport(S,0), good=W.buildTurnReport(S,1);
+  const rep=W.buildTurnReport(W.playerView(S,0)), good=W.buildTurnReport(W.playerView(S,1));
   const wm=id=>((rep.worldMeta||{}).provinces||[]).find(r=>r&&r.id===id);
   ok(wm(near.id)&&wm(near.id).terror&&wm(near.id).terror.pct===20&&wm(near.id).terror.stacks===2,`the map's record of ${near.name} carries Terror 20%, 2 stacks (got ${JSON.stringify(wm(near.id)&&wm(near.id).terror)})`);
   ok(wm(mine.id)&&wm(mine.id).terror&&wm(mine.id).terror.pct===30&&wm(mine.id).terror.stacks===3,`a save holding five stacks reads as three, 30% (got ${JSON.stringify(wm(mine.id)&&wm(mine.id).terror)})`);
