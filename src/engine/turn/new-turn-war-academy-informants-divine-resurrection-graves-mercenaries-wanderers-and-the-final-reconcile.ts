@@ -4,6 +4,7 @@ import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
 import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
+import { emit } from './events-and-their-audiences.ts';
 
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
 // Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts:
@@ -27,7 +28,7 @@ import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-r
 export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile(
   turnContext,
 ) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   // 7d. sd08 War Academy: promote one random army in each player's home province
   G.players.forEach((p, pi) => {
     if (!hasDisc(turnContext, pi, 'sd08')) return;
@@ -48,17 +49,18 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         const idx = tiers.indexOf(army.quality);
         army.quality = tiers[idx + 1];
         _waPromoted++;
-        log(
-          'system',
-          `War Academy: ${army.unitName ? army.unitName + ' (' + army.type + ')' : 'a ' + army.type} in ${homeProv.name} trains to ${army.quality}!`,
-          { actor: pi, targets: [pi] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `War Academy: ${army.unitName ? army.unitName + ' (' + army.type + ')' : 'a ' + army.type} in ${homeProv.name} trains to ${army.quality}!`,
+          audience: { actor: pi, realms: [pi] },
+        });
       }
     });
     if (_waPromoted === 0)
-      log('system', `War Academy: the drills in ${homeProv.name} produced no promotions this turn.`, {
-        actor: pi,
-        targets: [pi],
+      emit(turnContext, {
+        type: 'system',
+        text: `War Academy: the drills in ${homeProv.name} produced no promotions this turn.`,
+        audience: { actor: pi, realms: [pi] },
       });
   });
 
@@ -74,10 +76,11 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       if (_rg <= 0) return;
       const h = Math.min(_rg, mx - c.hp);
       c.hp += h;
-      log('system', `🌿 ${c.name}'s wounds knit in the physick gardens: +${h} HP (${c.hp}/${mx}).`, {
-        actor: pi,
-        targets: [pi],
-        charId: c.id,
+      emit(turnContext, {
+        type: 'system',
+        text: `🌿 ${c.name}'s wounds knit in the physick gardens: +${h} HP (${c.hp}/${mx}).`,
+        audience: { actor: pi, realms: [pi] },
+        hero: c.id,
         phase: 99,
       });
     });
@@ -99,20 +102,20 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       (c) => c.alive && c.player !== null && c.player !== pi && !c.isKing && !_seen.has(c.location),
     );
     if (enemyChars.length === 0) {
-      log(
-        'system',
-        `[Intelligence] Your informants surface nothing new — every enemy captain they could name is already within your sight.`,
-        { actor: pi, targets: [pi] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `[Intelligence] Your informants surface nothing new — every enemy captain they could name is already within your sight.`,
+        audience: { actor: pi, realms: [pi] },
+      });
       return;
     }
     const target = enemyChars[Math.floor(kcRng() * enemyChars.length)];
     const tProv = G.world.provinces[target.location];
-    log(
-      'system',
-      `[Intelligence] Informant Network reports: ${target.name} of ${G.players[target.player]?.name} \u2014 unseen by your own eyes \u2014 was last in ${tProv?.name || 'unknown'}.`,
-      { actor: pi, targets: [pi] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `[Intelligence] Informant Network reports: ${target.name} of ${G.players[target.player]?.name} \u2014 unseen by your own eyes \u2014 was last in ${tProv?.name || 'unknown'}.`,
+      audience: { actor: pi, realms: [pi] },
+    });
   });
   // `return`s — so it only ever fired for a player who ALSO held sd22 and had an unseen enemy. It is
   // now its own pass. The line is filed (no charId) so it lands in the player's Realm Events.
@@ -120,11 +123,12 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (!hasDisc(turnContext, pi, 'sd39')) return;
     const _unseen = (G.world.provinces || []).filter((pv) => ((pv.exploredBy && pv.exploredBy[pi]) || 0) < 100);
     if (_unseen.length === 0) {
-      log(
-        'explore',
-        `\ud83d\udd2d Arcane Observatory: your astronomers find no uncharted province left to study \u2014 the whole known world is already mapped in full.`,
-        { actor: pi, targets: [pi], phase: 99 },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `\ud83d\udd2d Arcane Observatory: your astronomers find no uncharted province left to study \u2014 the whole known world is already mapped in full.`,
+        audience: { actor: pi, realms: [pi] },
+        phase: 99,
+      });
       return;
     }
     const _pk = _unseen[Math.floor(kcRng() * _unseen.length)];
@@ -132,11 +136,13 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     _pk.exploredBy[pi] = 100;
     _pk.explored = 100;
     if (!Array.isArray(_pk.visitedBy)) _pk.visitedBy = [];
-    log(
-      'explore',
-      `\ud83d\udd2d Arcane Observatory: your astronomers chart **${_pk.name}** (${_pk.terrain || 'unknown terrain'}) in full from afar \u2014 the province is now 100% explored.`,
-      { actor: pi, targets: [pi], provinceId: _pk.id, phase: 99 },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `\ud83d\udd2d Arcane Observatory: your astronomers chart **${_pk.name}** (${_pk.terrain || 'unknown terrain'}) in full from afar \u2014 the province is now 100% explored.`,
+      audience: { actor: pi, realms: [pi] },
+      province: _pk.id,
+      phase: 99,
+    });
   });
 
   // 7d. Divine realm resurrection — a fallen hero spends one full turn in death, then returns. This
@@ -167,11 +173,11 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       if (!homeProv) {
         grave._divineLost = true;
         if (_wasKing) delete hero._divineReturn;
-        log(
-          'explore',
-          `✨ ${hero.name} does not return. The divine restore the fallen only upon consecrated ground, and the realm holds none — the grace is lost. (The body remains where it lies; a Resurrect spell may yet reach it.)`,
-          { actor: grave.player, targets: [grave.player] },
-        );
+        emit(turnContext, {
+          type: 'explore',
+          text: `✨ ${hero.name} does not return. The divine restore the fallen only upon consecrated ground, and the realm holds none — the grace is lost. (The body remains where it lies; a Resurrect spell may yet reach it.)`,
+          audience: { actor: grave.player, realms: [grave.player] },
+        });
         return;
       }
       if (_wasKing) {
@@ -195,15 +201,15 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       G.heroGraveyard = G.heroGraveyard.filter((g) => g.id !== grave.id);
       // Log to turn report
       const turnLog = G.turnLog || [];
-      log(
-        'explore',
-        `✨ **Divine Resurrection**: ${hero.name}${_wasKing ? ', your monarch,' : ''} returns to life by the grace of the divine! They appear in ${homeProv.name}, the nearest consecrated ground, with ${hero.hp} HP — no armies or items, but their spirit and skills endure. The miracle spends the province's consecration: ${homeProv.name} is holy ground no longer, and the crown may sanctify new ground in its place.${_wasKing ? ' The crown is worn once more.' : ''}`,
-        {
+      emit(turnContext, {
+        type: 'explore',
+        text: `✨ **Divine Resurrection**: ${hero.name}${_wasKing ? ', your monarch,' : ''} returns to life by the grace of the divine! They appear in ${homeProv.name}, the nearest consecrated ground, with ${hero.hp} HP — no armies or items, but their spirit and skills endure. The miracle spends the province's consecration: ${homeProv.name} is holy ground no longer, and the crown may sanctify new ground in its place.${_wasKing ? ' The crown is worn once more.' : ''}`,
+        audience: {
           actor: grave.player,
-          targets: [grave.player],
-          provinceId: homeProv.id,
+          realms: [grave.player],
         } /* 2026-09-27 (Toby item 6): realm-private — never public */,
-      );
+        province: homeProv.id,
+      });
     });
 
   // 7e. Battlefield grave pool decay — ~10% of remaining graves rot each turn, halved to 5% in
@@ -240,11 +246,11 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     G.mercenaries = G.mercenaries.filter((merc) => {
       // 25% chance to retire (remove from game)
       if (kcRng() < 0.25) {
-        log(
-          'system',
-          `The mercenary band ${merc.unitName || merc.type} in ${G.world.provinces[merc.location]?.name || 'unknown'} has retired and dispersed.`,
-          { actor: null, targets: [] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `The mercenary band ${merc.unitName || merc.type} in ${G.world.provinces[merc.location]?.name || 'unknown'} has retired and dispersed.`,
+          audience: { actor: null, realms: [] },
+        });
         return false; // remove
       }
       // 100% chance to move to a random valid neighbouring province
@@ -284,19 +290,19 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // hadBattle map-marker derivation can still read which provinces saw fighting this turn.)
   // 2026-09-12: report the turn-start ' (wandering)' name repair here, where `log` exists.
   if (G._nameRepairs > 0) {
-    log(
-      'system',
-      `[Integrity] ${G._nameRepairs} hero${G._nameRepairs !== 1 ? 'es' : ''} in a realm's service still bore the \u201c(wandering)\u201d tag \u2014 the name has been corrected.`,
-      { actor: null, targets: [] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `[Integrity] ${G._nameRepairs} hero${G._nameRepairs !== 1 ? 'es' : ''} in a realm's service still bore the \u201c(wandering)\u201d tag \u2014 the name has been corrected.`,
+      audience: { actor: null, realms: [] },
+    });
   }
   G._nameRepairs = 0;
   if (G._retiredDiscoveries > 0) {
-    log(
-      'system',
-      `[Integrity] ${G._retiredDiscoveries} retired Sage discover${G._retiredDiscoveries !== 1 ? 'ies were' : 'y was'} removed from realm records.`,
-      { actor: null, targets: [] },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `[Integrity] ${G._retiredDiscoveries} retired Sage discover${G._retiredDiscoveries !== 1 ? 'ies were' : 'y was'} removed from realm records.`,
+      audience: { actor: null, realms: [] },
+    });
   }
   delete G._retiredDiscoveries;
   // graveyard sweep — a grave whose character record is ALIVE is a doppelganger (dead in the
@@ -309,11 +315,11 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (_ghosts.length) {
       G.heroGraveyard = G.heroGraveyard.filter((g) => !_ghosts.includes(g));
       _ghosts.forEach((g) => {
-        log(
-          'system',
-          `[Integrity] ${g.name} was listed in the graveyard while alive — the stale grave has been removed.`,
-          { actor: null, targets: [] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `[Integrity] ${g.name} was listed in the graveyard while alive — the stale grave has been removed.`,
+          audience: { actor: null, realms: [] },
+        });
         (G.players || []).forEach((p) => {
           if (p && p._resurrectableMonarchId === g.id) p._resurrectableMonarchId = null;
         });

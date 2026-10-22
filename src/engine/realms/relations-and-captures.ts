@@ -4,6 +4,7 @@ import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { discSum } from '../discoveries.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── RELATIONS AND CAPTURES (plan P1-08a: lifted out of resolveTurn) ────
 // Who is at war or allied with whom (G.relations, keyed "minIdx-maxIdx": see "DIPLOMACY" in resolveTurn), and what
@@ -13,31 +14,24 @@ import { discSum } from '../discoveries.ts';
 // Every path that hands a province to a new realm goes through here. When the ground was another
 // player's, that player gets a line in their REALM EVENTS for the phase — who took it (hero and
 // realm) and how many units the conqueror was leading. A capture from neutral/unowned ground
-// notifies nobody. Written straight to turnLog with charId:null (as notifyProvinceOwner does) so
-// the line never inherits the conqueror's log context and never lands in a character section.
+// notifies nobody. Filed with no hero (hero: 'none', as notifyProvinceOwner does) so the line never inherits the
+// conqueror's log context and never lands in a character section.
 export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, byChar, _ph) {
-  const { G, turnLog, log } = turnContext;
+  const { G, log } = turnContext;
   const pl = G.players[prev];
   if (!pl) return;
   const list = consecratedIds(pl);
   const at = list.indexOf(prov.id);
   if (at < 0) return;
   list.splice(at, 1);
-  turnLog.push({
+  emit(turnContext, {
     type: 'system',
     text: `✨ The consecration of ${prov.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
-    actor: null,
-    targets: [prev],
-    provinceId: prov.id,
-    public: false,
-    spy: false,
-    system: false,
-    armyEstimate: null,
-    charId: null,
-    charIds: null,
-    phase: _ph,
-    pinNotice: false,
-    env: false,
+    audience: { actor: null, realms: [prev] },
+    province: prov.id,
+    hero: 'none',
+    phase: _ph ?? 'none',
+    form: 'bare',
   });
   if (!byChar || newOwner == null) return;
   const units = (byChar.armies || []).filter((a) => a && !a._died && !a._disbanded && !a._phantom);
@@ -60,7 +54,7 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
   );
 }
 export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
-  const { _tel, G, turnLog } = turnContext;
+  const { _tel, G } = turnContext;
   if (!prov) return;
   const prev = prov.owner;
   prov.owner = newOwner;
@@ -100,21 +94,14 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
   // type 'system', NOT 'combat': the report re-files combat lines under the viewer's commander
   // who fought in that province that phase (battleCommanders), which would pull this out of Realm
   // Events.
-  turnLog.push({
+  emit(turnContext, {
     type: 'system',
     text,
-    actor: null,
-    targets: [prev],
-    provinceId: prov.id,
-    public: false,
-    spy: false,
-    system: false,
-    armyEstimate: null,
-    charId: null,
-    charIds: null,
-    phase: _ph,
-    pinNotice: false,
-    env: false,
+    audience: { actor: null, realms: [prev] },
+    province: prov.id,
+    hero: 'none',
+    phase: _ph ?? 'none',
+    form: 'bare',
   });
 }
 

@@ -4,6 +4,7 @@ import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { totalInit } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { stepTowardPreferSafe } from '../world/routes-and-distances.ts';
+import { emit } from './events-and-their-audiences.ts';
 
 // ── THE PHASE PIPELINE: INTENTS, DEPENDENCY ORDERING, MOVEMENT INTERLOCKS (plan P1-08i1: lifted out of resolveTurn) ────
 // Before anyone acts in a phase: what every acting character intends to do (buildPhaseIntents), the order they act in
@@ -427,7 +428,7 @@ export function orderPhaseActors(turnContext, ph, intents) {
 // defender is pinned whenever an armed enemy is due to arrive in his province BEFORE he leaves.
 // "Before he leaves" is decided by initiative, so a fast general still gets clear in time.
 export function applyMoveInterlocks(turnContext, ph, intents) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const list = [...intents.values()];
   const invasions = list.filter((...a) => isHostileInvasion(turnContext, ...a));
   if (!invasions.length) return;
@@ -454,17 +455,19 @@ export function applyMoveInterlocks(turnContext, ph, intents) {
     if (swapPartner) {
       // Head-on: both were marching into each other's territory. The slower column is caught
       // still forming up and has to turn and fight on its own ground.
-      log(
-        'move',
-        `${def.c.name} breaks camp for ${dest.name}, but ${swapPartner.c.name}'s banners are already cresting the hills toward ${home ? home.name : 'the province'} — there is no time to march past one another. ${def.c.name} turns their column about and stands to defend.`,
-        { actor: def.player, targets: [def.player], provinceId: def.fromId },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${def.c.name} breaks camp for ${dest.name}, but ${swapPartner.c.name}'s banners are already cresting the hills toward ${home ? home.name : 'the province'} — there is no time to march past one another. ${def.c.name} turns their column about and stands to defend.`,
+        audience: { actor: def.player, realms: [def.player] },
+        province: def.fromId,
+      });
     } else {
-      log(
-        'move',
-        `${def.c.name} is under orders to march on ${dest.name}, but an enemy force enters ${home ? home.name : 'the province'} before the column can clear the gates. ${def.c.name} stays to defend.`,
-        { actor: def.player, targets: [def.player], provinceId: def.fromId },
-      );
+      emit(turnContext, {
+        type: 'move',
+        text: `${def.c.name} is under orders to march on ${dest.name}, but an enemy force enters ${home ? home.name : 'the province'} before the column can clear the gates. ${def.c.name} stays to defend.`,
+        audience: { actor: def.player, realms: [def.player] },
+        province: def.fromId,
+      });
     }
   });
 }

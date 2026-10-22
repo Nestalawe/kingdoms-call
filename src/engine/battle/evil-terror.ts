@@ -3,7 +3,8 @@ import { getNeighborsP } from '../world/map-helpers.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../../views/turn-report.ts';
 import { discSum } from '../discoveries.ts';
 import type { Army, Province } from '../../schemas/saved-game-state.ts';
-import type { NarrativeLine, TurnContext } from '../turn/context.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 
 // ── EVIL TERROR (plan P1-08c: lifted out of resolveTurn) ────
 // Terror after an Evil victory: whether it grips a province for its realm (reignOfFearHere), its spread to the battle

@@ -3,7 +3,7 @@ import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { beastCommandCount, beastCommandRoom, beastCommandWords } from '../world/tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';
-import { notifyTarget } from '../turn/log-line-helpers.ts';
+import { notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isOpenSea, seaLiftShortfall, strandLabel } from '../units/sea-lift-stranding-and-retreats.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';

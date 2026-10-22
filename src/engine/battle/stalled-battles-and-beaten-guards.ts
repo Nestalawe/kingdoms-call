@@ -44,7 +44,7 @@ export const GUARD_FLIGHT_CHANCE = 0.35;
 // tier; the rest fight on unbowed.
 export const GUARD_DEMOTE_CHANCE = 0.5;
 // victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
-export function erodeGuardSurvivors(turnContext, guard, prov, survivors, emit, victor) {
+export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASurvivingUnitsFate, victor) {
   const { G } = turnContext;
   const kept = [];
   const _vh = victor ? `${String(victor).replace(' (wandering)', '')}'s host` : null;
@@ -61,7 +61,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, emit, v
         isSea: SEA_TYPES.has(a.type),
         id: newMercId(turnContext),
       });
-      emit(
+      tellASurvivingUnitsFate(
         `— ${unitRef(gname, a)} break ranks and flee${_vh ? ` before ${_vh}` : ''} — they now roam as mercenaries near ${prov.name}.`,
       ); // unified unit naming
       return;
@@ -70,16 +70,18 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, emit, v
     if (kcRng() < GUARD_DEMOTE_CHANCE) {
       const _q0 = a.quality;
       if (demoteOrDisband(a)) {
-        emit(disbandLine(gname, a));
+        tellASurvivingUnitsFate(disbandLine(gname, a));
         return;
       }
-      emit(
+      tellASurvivingUnitsFate(
         `— ${unitRef(gname, { ...a, quality: _q0 })} lost heart in defeat, reduced to ${a.quality} — ${_vh ? `beaten by ${_vh}, ` : ''}they rally around ${gname}.`,
       );
       kept.push(a);
       return;
     }
-    emit(`— ${unitRef(gname, a)} hold their ground unbroken${_vh ? ` against ${_vh}` : ''} and rally around ${gname}.`);
+    tellASurvivingUnitsFate(
+      `— ${unitRef(gname, a)} hold their ground unbroken${_vh ? ` against ${_vh}` : ''} and rally around ${gname}.`,
+    );
     kept.push(a);
   });
   return kept;

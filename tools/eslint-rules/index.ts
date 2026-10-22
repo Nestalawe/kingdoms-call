@@ -5,6 +5,7 @@
 import type { ESLint } from 'eslint';
 import bigTablesAndProfilesAreReadByNamedColumns from './big-tables-and-profiles-are-read-by-named-columns.ts';
 import htmlIsBuiltOnlyThroughKcHtml from './html-is-built-only-through-kc-html.ts';
+import narrativeLinesGoThroughEmit from './narrative-lines-go-through-emit.ts';
 import noRandomOrArgumentLessSortComparator from './no-random-or-argument-less-sort-comparator.ts';
 
 const plugin: ESLint.Plugin = {
@@ -12,6 +13,7 @@ const plugin: ESLint.Plugin = {
   rules: {
     'big-tables-and-profiles-are-read-by-named-columns': bigTablesAndProfilesAreReadByNamedColumns,
     'html-is-built-only-through-kc-html': htmlIsBuiltOnlyThroughKcHtml,
+    'narrative-lines-go-through-emit': narrativeLinesGoThroughEmit,
     'no-random-or-argument-less-sort-comparator': noRandomOrArgumentLessSortComparator,
   },
 };

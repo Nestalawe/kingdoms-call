@@ -27,7 +27,7 @@ import {
   isGarrisonUnitType,
   realmRecruitCost,
 } from '../discoveries.ts';
-import { notifyTarget } from '../turn/log-line-helpers.ts';
+import { notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';

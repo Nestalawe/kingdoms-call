@@ -3,7 +3,9 @@
 // stood in a field battle, and the Defend watches a battle fulfils. Each takes the turn's context first
 // (src/engine/turn/context.ts).
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
-import type { NarrativeLine, TurnContext } from './context.ts';
+import type { TurnContext } from './context.ts';
+import type { NarrativeLine } from './events-and-their-audiences.ts';
+import { emit, narrate } from './events-and-their-audiences.ts';
 export const newMercId = (turnContext: TurnContext) =>
   `merc_t${turnContext.expectedTurnToRun}_${++turnContext._mercIds.n}`;
 
@@ -56,7 +58,7 @@ export function completeDefendWatches(
   ids: number[] | null | undefined,
   narrative: NarrativeLine[] | null | undefined,
 ) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const ph = turnContext._currentPhase;
   (ids || []).forEach((id) => {
     const real = (G.characters || []).find((x) => x && x.id === id);
@@ -66,13 +68,14 @@ export function completeDefendWatches(
     real._defendSpent = { turn: G.turn, ph };
     if (wasOn && real.alive !== false) {
       const msg = `🛡 ${real.name}'s Defend order is fulfilled — the threat has been met in battle, and they keep no further watch unless ordered to Defend again.`;
-      if (narrative) narrative.push(msg);
+      if (narrative) narrate(narrative, msg);
       else
-        log('move', msg, {
-          actor: real.player,
-          targets: [real.player],
-          charId: real.id,
-          provinceId: real.location ?? null,
+        emit(turnContext, {
+          type: 'move',
+          text: msg,
+          audience: { actor: real.player, realms: [real.player] },
+          hero: real.id,
+          province: real.location ?? null,
         });
     }
   });
@@ -87,17 +90,18 @@ export function noteBattleLoss(
   charId: number,
   narrative: NarrativeLine[] | null | undefined,
 ) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   const real = (G.characters || []).find((x) => x && x.id === charId);
   if (!real || !real._defend || !real._defend.active) return;
   real._defend.active = false;
   const msg = `${real.name}'s defensive watch is broken by this defeat — they will hold no further ground this turn.`;
-  if (narrative) narrative.push(msg);
+  if (narrative) narrate(narrative, msg);
   else
-    log('move', msg, {
-      actor: real.player,
-      targets: [real.player],
-      charId: real.id,
-      provinceId: real.location ?? null,
+    emit(turnContext, {
+      type: 'move',
+      text: msg,
+      audience: { actor: real.player, realms: [real.player] },
+      hero: real.id,
+      province: real.location ?? null,
     }); // file under the beaten general, not whoever's order was resolving
 }

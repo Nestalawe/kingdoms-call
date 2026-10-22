@@ -101,8 +101,8 @@ export function takeBestGrave(prov) {
 // province per character per turn (tracked on `c._gravesSensedTurn` / `c._gravesSensedIds`), so a
 // column that marches back and forth does not spam the Chronicle — and a province read on the way
 // through is already in `_graveIntel`, so it shows up in the report's Graveyards Known either way.
-// `emit` is the log function to use (the callers differ in phase/context), or null for silent.
-export function senseGravesUnderfoot(state, c, pv, emit) {
+// `tellGravesSensed` is the log function to use (the callers differ in phase/context), or null for silent.
+export function senseGravesUnderfoot(state, c, pv, tellGravesSensed) {
   if (!c || !c.alive || c.player == null || !pv) return false;
   // SCOPE TRAP: runTurn declares its own effStat() helper, which is invisible to
   // this module-level function — calling it threw ReferenceError and aborted EVERY turn. Go straight
@@ -123,7 +123,7 @@ export function senseGravesUnderfoot(state, c, pv, emit) {
     return false;
   } // bare ground is knowledge too
   noteGraveIntel(pl, pv.id, state.turn, null); // existence only — Control Undead buys the roll of the dead
-  if (typeof emit === 'function') emit(pv);
+  if (typeof tellGravesSensed === 'function') tellGravesSensed(pv);
   return true;
 }
 // The realm's graveyard lore, shaped for the player report ("Graveyards known").

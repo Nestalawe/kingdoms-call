@@ -11,7 +11,7 @@ import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-r
 import { markProvinceCombat } from '../bots/intel.ts';
 import { TM, noteEspionage, perkTier, skillLevel } from '../titles/perks.ts';
 import { discParam, discSum, hasDisc } from '../discoveries.ts';
-import { emitNarrLine } from '../turn/log-line-helpers.ts';
+import { emitNarrLine } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, isVanished, oddsNote, statNote } from '../heroes/effective-skills-and-hidden-heroes.ts';

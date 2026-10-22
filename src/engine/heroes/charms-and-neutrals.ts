@@ -5,7 +5,7 @@ import { ALL_SKILLS } from '../rules-on-plain-values/skills-in-order-and-a-heros
 
 // ── NEUTRAL HERO PROGRESSION (2026-09-17 (late), Toby item 1) ── see the end-of-turn call in
 // runTurn.
-// Pure function of the game state plus an optional rng/emit, so the harness can fuzz it directly.
+// Pure function of the game state plus an optional rng and line-teller, so the harness can fuzz it directly.
 // Returns the list of {id, skill, from, to, teacher} gains applied this call.
 // ── SERVICE HISTORY (2026-09-23, Toby item 2) ── Every realm a hero has ever served, kept on the
 // character (c._servedRealms) and copied onto their grave. Resurrect refuses a body that ever
@@ -98,7 +98,7 @@ export function _neutralAdjIds(gs, p) {
 // • Self-study is no longer a flat random pick among their skills: 75% it deepens whichever skill
 //   they are already best at (a random one of them if several tie), 25% it goes to a different
 //   skill of theirs chosen at random. Falls back to the other branch when one has nothing legal.
-export function progressNeutralHeroes(gs, emit, rng) {
+export function progressNeutralHeroes(gs, tellANeutralHerosLesson, rng) {
   rng = rng || kcRng;
   const turn = (gs && gs.turn) || 0;
   if (turn < NEUTRAL_PROG_FROM_TURN) return [];
@@ -168,13 +168,13 @@ export function progressNeutralHeroes(gs, emit, rng) {
       to = from + 1;
     c.skills[skill] = to;
     gains.push({ id: c.id, skill, from, to, teacher: teacher ? teacher.id : null, nearby });
-    if (emit) {
+    if (tellANeutralHerosLesson) {
       const pv = gs.world && gs.world.provinces ? gs.world.provinces[c.location] : null;
       const nm = String(c.name || '').replace(/\s*\(wandering\)/i, '');
       const lbl = (typeof SKILL_LABELS !== 'undefined' && SKILL_LABELS[skill]) || skill;
       const tn = teacher ? String(teacher.name || '').replace(/\s*\(wandering\)/i, '') : '';
       const tpv = teacher && provs[teacher.location] ? provs[teacher.location] : null;
-      emit(
+      tellANeutralHerosLesson(
         teacher
           ? nearby
             ? `📜 ${nm}${pv ? ` in ${pv.name}` : ''} rides out to ${tn}${tpv ? ` in ${tpv.name}` : ''} to learn — ${lbl} rises to ${to}.`

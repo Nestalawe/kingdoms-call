@@ -30,7 +30,7 @@ import { botLairRating } from '../bots/missions.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM, creditMapped, perkTier, skillLevel } from '../titles/perks.ts';
 import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
-import { emitNarrLine } from '../turn/log-line-helpers.ts';
+import { emitNarrLine } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';

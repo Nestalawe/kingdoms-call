@@ -5,7 +5,7 @@ import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { applyItemMaxHp, isMithril } from '../personal-combat/helpers.ts';
 import { isCharmedNow, isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
-import { notifyTarget } from '../turn/log-line-helpers.ts';
+import { notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 
 // ── THE ITEM ORDERS (plan P1-08j5: the fifth family taken out of processOrder in resolveTurn) ──

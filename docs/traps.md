@@ -312,6 +312,30 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
   `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`, P1-08i3 for `_tier0Open`, `_unitGainQueue`, `_warFrontAtStart` and `_warFrontProvs`. P1-08k4 and P1-08k7 for the merge's six collectors. P1-08k8 added no join and no `let` (the values it makes were joined before; their join lines moved with them), so it didn't rerun it. P1-08l1 reran it for `_botEncounteredAtStart`; P1-08l2 added none (the merge's six collectors moved into the merge with their join lines, still joined before anything reads them), so it didn't. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
   does: a test of a lifted helper that reads one it doesn't set gets `undefined`, not the turn's value.
 
+## A line goes through `emit`
+
+Every line of the turn enters the GM's log (`turnContext.turnLog`) through `emit(turnContext, event)`, in
+`src/engine/turn/events-and-their-audiences.ts` (P1-12a2). The event says what happened (its type and, until P1-12c, its
+finished text), where and when (`province`, `phase`), whom it is about (`hero`, `heroes`, `battle`), and who may read it
+(`audience`: `realms` told, the `actor`, `seen` by the `'world'`, by whoever is `'there'` or by those in the `'battle'`,
+and `except` the realms that never read it). A line pushed past it chooses its own audience, the way the leaks the report
+check finds were made.
+- The lint rule `kc/narrative-lines-go-through-emit` refuses any write to `turnLog` outside the events file, in all of
+  `src/engine` and `src/views`. In the folders converted so far (`eslint.config.js`'s `LINES_THROUGH_EMIT`: `turn/` and
+  `src/views/` since P1-12a2; P1-12a3 adds `battle/` and `personal-combat/`; P1-12a4 all) it refuses `log(…)` and a
+  narrative written by hand too: add a fight's line with `narrate(narrative, text)`, or `narrateTo(narrative, realm,
+  heroId, text)` for one realm alone (it files under that realm's hero, and nobody else in the fight reads it).
+- **A hero left out is the hero whose order is resolving.** `emit` keeps `log()`'s fallbacks: a `hero` left out or
+  `null` is `turnContext._logCtx.charId`, so a line written while Aldric's order resolves is filed under Aldric even
+  when it is about the province's owner, and reaches Aldric's realm. For no hero, say `hero: 'none'` (the lines that
+  were pushed straight into `turnLog` do: a capture's, `notifyProvinceOwner`'s, `logSplit`'s public half). The same for
+  `phase`: left out or `null` is the phase of that order, else the phase resolving, else 99 once the phases are over;
+  `phase: 'none'` is no phase. P1-12c decides what a missing hero means for good.
+- Nothing stored changes until P1-12c: `emit` writes today's line forms, key for key and in the same order (`log()`'s
+  17 keys; `form: 'bare'`, the 14 of the lines once pushed directly; `notFor` last when `except` is given). The balance
+  matrix hashes the stored log (`writes`), and every realm's report is compared line for line (`npm run balance`).
+  `tests/unit/emit-writes-the-lines-log-wrote.test.ts` checks the rest against copies of the old code.
+
 ## Nothing is on `window` but `globals.ts`
 
 The site's code is ES modules (P1-09d): a module's top-level names are its own, so an inline `on…="…"` handler, a

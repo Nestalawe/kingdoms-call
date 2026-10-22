@@ -10,11 +10,8 @@ import { progressNeutralHeroes } from '../heroes/charms-and-neutrals.ts';
 import { MASS_HEALING_PCT, healFeatureMonsters } from '../chances-and-lair-grades.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { flushIntrusionNotifications } from './intrusion-warnings.ts';
-import {
-  resolveAllPendingSkillGains,
-  syncAllMaxHp,
-  writeDeferredSkillLines,
-} from '../heroes/experience-skill-rises-and-earned-hp.ts';
+import { resolveAllPendingSkillGains, syncAllMaxHp } from '../heroes/experience-skill-rises-and-earned-hp.ts';
+import { emit, writeDeferredSkillLines } from './events-and-their-audiences.ts';
 import { abandonHostOnFlight, disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.ts';
@@ -36,7 +33,7 @@ import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.ts
 // The body keeps resolveTurn's indent (plan P1-08's Decisions).
 
 export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames(turnContext) {
-  const { G, log, _elvenEscapeQueue } = turnContext;
+  const { G, _elvenEscapeQueue } = turnContext;
   // A stand-off struck in the final phase is still a stand-off: flag it now so the state that is
   // SAVED (and every player's map) shows the province as contested, and the fight is joined at the
   // first sweep of next turn rather than being invisible for a whole season.
@@ -90,11 +87,12 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       const pi = +k,
         lines = _crumbled[k];
       const total = lines.length;
-      log(
-        'hire',
-        `\u{1F480} The dead will not stand alone. ${lines.join('; ')}. ${total === 1 ? 'It crumbles' : 'They crumble'} to dust — a skeletal host holds together only while a character of at least Necromancy 1 leads it.`,
-        { actor: pi, targets: [pi], system: true },
-      );
+      emit(turnContext, {
+        type: 'hire',
+        text: `\u{1F480} The dead will not stand alone. ${lines.join('; ')}. ${total === 1 ? 'It crumbles' : 'They crumble'} to dust — a skeletal host holds together only while a character of at least Necromancy 1 leads it.`,
+        audience: { actor: pi, realms: [pi] },
+        system: true,
+      });
     });
   }
 
@@ -112,11 +110,12 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
     const pv = G.world.provinces[c.location];
     if (!pv) return;
     senseGravesUnderfoot(G, c, pv, (p2) =>
-      log(
-        'explore',
-        `💀 ${c.name} feels the dead of ${p2.name} stirring underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,
-        { actor: c.player, targets: [c.player], provinceId: p2.id },
-      ),
+      emit(turnContext, {
+        type: 'explore',
+        text: `💀 ${c.name} feels the dead of ${p2.name} stirring underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,
+        audience: { actor: c.player, realms: [c.player] },
+        province: p2.id,
+      }),
     );
   });
 
@@ -133,7 +132,13 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // in progressNeutralHeroes (module scope) so the harness can drive it directly.
   // 2026-09-23 (Toby): 25% a turn (was 50%), and never past level 5 by this route (NEUTRAL_PROG_CAP).
   progressNeutralHeroes(G, (txt, pv) =>
-    log('system', txt, { targets: [], provinceId: pv ? pv.id : null, system: true }),
+    emit(turnContext, {
+      type: 'system',
+      text: txt,
+      audience: { realms: [] },
+      province: pv ? pv.id : null,
+      system: true,
+    }),
   );
 
   // ── DE-CONSECRATION ── A consecrated province that has passed out of the Divine king's hands
@@ -153,11 +158,13 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         .forEach((pid) => {
           const pv = G.world.provinces[pid];
           if (pv)
-            log(
-              'system',
-              `✨ The consecration of ${pv.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
-              { actor: pi, targets: [pi], provinceId: pid, public: true, env: true },
-            );
+            emit(turnContext, {
+              type: 'system',
+              text: `✨ The consecration of ${pv.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
+              audience: { actor: pi, realms: [pi], seen: 'there' },
+              province: pid,
+              env: true,
+            });
         });
       pl.consecratedProvIds = kept;
     }
@@ -180,11 +187,12 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       const nm = (d.items || []).map((it) => it.name).join(', ');
       if (!dest) {
         if (nm)
-          log(
-            'hire',
-            `📦 A courier bearing ${nm}${d.fromName ? ` from ${d.fromName}` : ''} finds no one left to receive it — the parcel is lost.`,
-            { actor: null, targets: [], phase: 99 },
-          );
+          emit(turnContext, {
+            type: 'hire',
+            text: `📦 A courier bearing ${nm}${d.fromName ? ` from ${d.fromName}` : ''} finds no one left to receive it — the parcel is lost.`,
+            audience: { actor: null, realms: [] },
+            phase: 99,
+          });
         return;
       }
       dest.items = dest.items || [];
@@ -192,14 +200,23 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         dest.items.push(item);
         applyItemMaxHp(dest, item); /* item 6 */
       });
-      log(
-        'hire',
-        `📦 A courier reaches ${dest.name} with ${nm}${d.fromName ? ` from ${d.fromName}` : ''} — delivered as the season closes, ready to use next turn.`,
-        { actor: dest.player, targets: [dest.player], charId: dest.id, phase: 99 },
-      );
+      emit(turnContext, {
+        type: 'hire',
+        text: `📦 A courier reaches ${dest.name} with ${nm}${d.fromName ? ` from ${d.fromName}` : ''} — delivered as the season closes, ready to use next turn.`,
+        audience: { actor: dest.player, realms: [dest.player] },
+        hero: dest.id,
+        phase: 99,
+      });
       {
         const _gn = gainedItemNote(dest, d.items);
-        if (_gn) log('hire', _gn, { actor: dest.player, targets: [dest.player], charId: dest.id, phase: 99 });
+        if (_gn)
+          emit(turnContext, {
+            type: 'hire',
+            text: _gn,
+            audience: { actor: dest.player, realms: [dest.player] },
+            hero: dest.id,
+            phase: 99,
+          });
       } // item 10
     });
     G._itemDeliveries = [];
@@ -221,20 +238,23 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       const destId = monarchRestProvId(G, pi);
       const dest = destId != null ? G.world.provinces[destId] : null;
       if (!dest) {
-        log(
-          'combat',
-          `🍃 ${units.length} Elven unit${units.length !== 1 ? 's' : ''} broke free of battle and made for home — but ${G.players[pi]?.name || 'the realm'} holds no land left to return to, and they scatter into the wild, lost.`,
-          { actor: null, targets: [pi], phase: 99 },
-        );
+        emit(turnContext, {
+          type: 'combat',
+          text: `🍃 ${units.length} Elven unit${units.length !== 1 ? 's' : ''} broke free of battle and made for home — but ${G.players[pi]?.name || 'the realm'} holds no land left to return to, and they scatter into the wild, lost.`,
+          audience: { actor: null, realms: [pi] },
+          phase: 99,
+        });
         return;
       }
       dest.garrisonArmies = dest.garrisonArmies || [];
       units.forEach((u) => dest.garrisonArmies.push(u));
-      log(
-        'combat',
-        `🍃 ${units.map((u) => u.unitName || u.type).join(', ')} (${units.length} unit${units.length !== 1 ? 's' : ''}) slipped away from battle and have found their way home to ${dest.name}, rejoining the garrison there.`,
-        { actor: pi, targets: [pi], provinceId: dest.id, phase: 99, public: false },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `🍃 ${units.map((u) => u.unitName || u.type).join(', ')} (${units.length} unit${units.length !== 1 ? 's' : ''}) slipped away from battle and have found their way home to ${dest.name}, rejoining the garrison there.`,
+        audience: { actor: pi, realms: [pi] },
+        province: dest.id,
+        phase: 99,
+      });
     });
     _elvenEscapeQueue.length = 0;
   }
@@ -286,11 +306,13 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
           const _before = t.hp == null ? max : t.hp;
           t.hp = Math.min(max, _before + Math.max(1, Math.ceil(max * MASS_HEALING_PCT)));
           _mhDone.add(t.id);
-          log(
-            'system',
-            `✨ ${healer.name}'s Mass Healing washes over ${t.id === healer.id ? 'them' : t.name} — ${t.id === healer.id ? 'their' : t.name + "'s"} wounds close (+${t.hp - _before} HP → ${t.hp}/${max}${t.hp >= max ? ', fully restored' : ''}).`,
-            { actor: t.player, targets: [t.player], charId: t.id, provinceId: t.location },
-          );
+          emit(turnContext, {
+            type: 'system',
+            text: `✨ ${healer.name}'s Mass Healing washes over ${t.id === healer.id ? 'them' : t.name} — ${t.id === healer.id ? 'their' : t.name + "'s"} wounds close (+${t.hp - _before} HP → ${t.hp}/${max}${t.hp >= max ? ', fully restored' : ''}).`,
+            audience: { actor: t.player, realms: [t.player] },
+            hero: t.id,
+            province: t.location,
+          });
         } else {
           _mhDone.add(t.id);
         }
@@ -307,11 +329,12 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
     // one-time note for saves migrated to the earned-HP pool
     const ch = (G.characters || []).find((c) => c && c.id === r.charId);
     if (!ch) return;
-    log(
-      'system',
-      `📜 A new reckoning of vigour: ${ch.name}'s maximum HP is now earned in battle rather than set by skill — ${r.old} becomes ${r.nu}. Victories over lair guardians and enemy commanders will raise it from here.`,
-      { actor: r.player, targets: [r.player], charId: ch.id, public: true },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `📜 A new reckoning of vigour: ${ch.name}'s maximum HP is now earned in battle rather than set by skill — ${r.old} becomes ${r.nu}. Victories over lair guardians and enemy commanders will raise it from here.`,
+      audience: { actor: r.player, realms: [r.player], seen: 'world' },
+      hero: ch.id,
+    });
   });
   delete G._maxHpMigration;
   syncAllMaxHp(turnContext); // end-of-turn pass (also run after every phase — see the phase loop)
@@ -333,11 +356,13 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
     if (dest != null && dest !== c.location) {
       abandonHostOnFlight(turnContext, c); // the host stays on the field he ran from — see the note above
       c.location = dest;
-      log(
-        'system',
-        `🏳 ${c.name}, spared on the field, makes their way back to ${G.world.provinces[dest]?.name || 'safety'}.`,
-        { actor: c.player, targets: [c.player], charId: c.id, provinceId: dest },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `🏳 ${c.name}, spared on the field, makes their way back to ${G.world.provinces[dest]?.name || 'safety'}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: c.id,
+        province: dest,
+      });
     }
   });
   reconcileProvinceCharacters(turnContext); // rebuild province.characters after any mercy relocations

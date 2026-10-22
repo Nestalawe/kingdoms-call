@@ -14,6 +14,7 @@ import { DISC_BY_ID, gdActive } from '../discoveries.ts';
 import { relKeyOf } from '../realms/relations-and-captures.ts';
 import { setMovePool } from '../units/movement-pools.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
+import { emit } from './events-and-their-audiences.ts';
 
 // ── BEFORE THE FIRST PHASE: WAR WITHOUT WARNING, RESEARCH CHOICES, MESSAGES, MOVE POOLS AND DEFAULT DEFEND (plan
 // P1-08k8: four stages taken out of resolveTurn's own body, before the phase loop) ──────────────────────────────────
@@ -38,7 +39,7 @@ import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
 // moved as they were.
 
 export function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(turnContext) {
-  const { G, _botPlayerIdx, discoveryChoicePicks, log } = turnContext;
+  const { G, _botPlayerIdx, discoveryChoicePicks } = turnContext;
   // ── DIPLOMACY (KC alliance system) ────
   // Relations live in G.relations, keyed "minIdx-maxIdx" → 'enemy' | 'allied'. A pair with no
   // entry is NEUTRAL (the default). These helpers are the single source of truth consulted by the
@@ -83,18 +84,20 @@ export function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPi
         if (!pl.forgottenDiscoveries.includes(id)) pl.forgottenDiscoveries.push(id);
       });
       const lostNames = lost.map((id) => (DISC_BY_ID[id] && DISC_BY_ID[id].name) || id).join(', ');
-      log(
-        'explore',
-        `💡 ${opts.includes(want) ? `${pl.name} pursues` : `No choice was sent, so ${pl.name}'s scholars choose for themselves and pursue`} **${d.name}** (${d.category}), found by ${p.charName || 'a scholar'} last turn. ${d.desc}${lostNames ? ` The other lead — ${lostNames} — is set aside and forgotten for good.` : ''}`,
-        { actor: pi, targets: [pi], charId: null, phase: 0 },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `💡 ${opts.includes(want) ? `${pl.name} pursues` : `No choice was sent, so ${pl.name}'s scholars choose for themselves and pursue`} **${d.name}** (${d.category}), found by ${p.charName || 'a scholar'} last turn. ${d.desc}${lostNames ? ` The other lead — ${lostNames} — is set aside and forgotten for good.` : ''}`,
+        audience: { actor: pi, realms: [pi] },
+        hero: null,
+        phase: 0,
+      });
     });
     pl.pendingDiscoveryChoices = still;
   });
 }
 
 export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(turnContext) {
-  const { G, diploDeclarations, log, safeStartRefused, staleOrderWarnings, freshPlayers, playerMessages } = turnContext;
+  const { G, diploDeclarations, safeStartRefused, staleOrderWarnings, freshPlayers, playerMessages } = turnContext;
   {
     const _npW = (G.players || []).length;
     for (let a = 0; a < _npW; a++) {
@@ -109,11 +112,12 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         G.relations[key] = 'enemy';
         const na = pa.name || 'Realm ' + (a + 1),
           nb = G.players[b]?.name || 'Realm ' + (b + 1);
-        log(
-          'system',
-          `⚔ ${na} declares war on ${nb} and marches without warning — ${pa.alignment === 'Undead' ? 'the dead keep no truce' : 'the wicked keep no faith'}. War stands between the two realms from this very season.`,
-          { actor: null, targets: [a, b], system: true },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `⚔ ${na} declares war on ${nb} and marches without warning — ${pa.alignment === 'Undead' ? 'the dead keep no truce' : 'the wicked keep no faith'}. War stands between the two realms from this very season.`,
+          audience: { actor: null, realms: [a, b] },
+          system: true,
+        });
       }
     }
   }
@@ -143,15 +147,21 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
 
   // Flush any stale-order warnings collected during the merge phase
   safeStartRefused.forEach((pi) =>
-    log(
-      'system',
-      `🕊 Safe Start: no Treat or declaration of war may be made before the orders for Turn ${SAFE_START_TURN}. Your diplomacy this turn was set aside — relations are unchanged.`,
-      { actor: null, targets: [pi], system: true },
-    ),
+    emit(turnContext, {
+      type: 'system',
+      text: `🕊 Safe Start: no Treat or declaration of war may be made before the orders for Turn ${SAFE_START_TURN}. Your diplomacy this turn was set aside — relations are unchanged.`,
+      audience: { actor: null, realms: [pi] },
+      system: true,
+    }),
   );
   if (staleOrderWarnings.length > 0) {
     staleOrderWarnings.forEach((w) =>
-      log('system', w, { actor: -1, targets: [], system: true, public: w.startsWith('\u{1F3F3}') }),
+      emit(turnContext, {
+        type: 'system',
+        text: w,
+        audience: { actor: -1, realms: [], seen: w.startsWith('\u{1F3F3}') ? 'world' : undefined },
+        system: true,
+      }),
     );
   }
 
@@ -163,11 +173,12 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
     G._gmRemovedRealms.forEach((idx) => {
       const _pl = (G.players || [])[idx];
       if (!_pl) return;
-      log(
-        'system',
-        `\u{1F3F3} ${_pl.name} has withdrawn from the game and CONCEDES. Its heroes lay down their ambitions and will only defend what they hold from now on.`,
-        { actor: -1, targets: [], system: true, public: true },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `\u{1F3F3} ${_pl.name} has withdrawn from the game and CONCEDES. Its heroes lay down their ambitions and will only defend what they hold from now on.`,
+        audience: { actor: -1, realms: [], seen: 'world' },
+        system: true,
+      });
     });
     delete G._gmRemovedRealms;
   }
@@ -212,20 +223,20 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         const _savedDispatchChar = turnContext._logCtx.charId;
         turnContext._logCtx.charId = null;
         rcpts.forEach((rpi) => {
-          log('message', `📨 Dispatch from ${senderName}: “${text}”`, {
-            actor: null,
-            targets: [rpi],
+          emit(turnContext, {
+            type: 'message',
+            text: `📨 Dispatch from ${senderName}: “${text}”`,
+            audience: { actor: null, realms: [rpi] },
             phase: 99,
-            public: false,
           });
         });
         turnContext._logCtx.charId = _savedDispatchChar;
         // Sender's own copy (confirmation of what they sent, and to whom).
-        log('message', `📨 You sent to ${rcptNames.join(', ')}: “${text}”`, {
-          actor: senderPi,
-          targets: [senderPi],
+        emit(turnContext, {
+          type: 'message',
+          text: `📨 You sent to ${rcptNames.join(', ')}: “${text}”`,
+          audience: { actor: senderPi, realms: [senderPi] },
           phase: 99,
-          public: false,
         });
       });
     });
@@ -233,7 +244,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
 }
 
 export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan(turnContext) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   // Army-type classification tables (PRIMAL_ARMY_DEFS_P, ARMY_SPEED_R, FLYING_TYPES, AERIAL_TYPES,
   // CREATURE_ARMIES, MONSTER_ARMIES, CARRIER_TYPES, PRIMAL_SEA_TYPES, SEA_TYPES) moved to module
   // top level — see the banner near MISSILE_ARMIES_MASTER.
@@ -350,11 +361,11 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
   if (!G._lairNamesV3) {
     const _rn = renameLairsThematicP(G);
     if (_rn > 0)
-      log(
-        'system',
-        `\u{1F5FA} The chronicles are corrected: ${_rn} lair${_rn !== 1 ? 's are' : ' is'} now recorded under a name befitting what dwells there.`,
-        { actor: null, targets: [] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `\u{1F5FA} The chronicles are corrected: ${_rn} lair${_rn !== 1 ? 's are' : ' is'} now recorded under a name befitting what dwells there.`,
+        audience: { actor: null, realms: [] },
+      });
   }
   // EVERY GUARDIAN IS 5 HP FRAILER. The table was re-statted, but a live world keeps its own copy
   // of each guardian on the feature (and `_hpFull`, the undamaged total a guardian is restored to
@@ -375,11 +386,11 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
     );
     G._guardianHpV2 = true;
     if (_gh > 0)
-      log(
-        'system',
-        `\u{1F489} The world's guardians are re-measured: ${_gh} lair-keeper${_gh !== 1 ? 's'.concat(' are') : ' is'} 5 hit points frailer than before.`,
-        { actor: null, targets: [] },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `\u{1F489} The world's guardians are re-measured: ${_gh} lair-keeper${_gh !== 1 ? 's'.concat(' are') : ' is'} 5 hit points frailer than before.`,
+        audience: { actor: null, realms: [] },
+      });
   }
 
   // ── RETIRED DISCOVERIES ── the Library (sd30) was removed from the game on 2026-09-09. Strike it
