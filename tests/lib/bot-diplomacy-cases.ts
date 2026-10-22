@@ -1,7 +1,7 @@
 // The bots' diplomacy (plan P1-08l1, lifted out of resolveTurn): each bot realm writes its declarations for the turn
 // into the realms' declarations, as a human realm's arrive with its orders: a Treat or war on each rival it had met when
-// the turn began. First a human realm's war on a bot is remembered for good (the grudge, on the bot's own record). Then,
-// for each bot, in order: Safe Start (nothing); a conceded bot, or one with neither king nor land (nothing); for each
+// the turn began. First a human realm's war on a bot it has met is remembered for good (the grudge, on the bot's own
+// record). Then, for each bot, in order: Safe Start (nothing); a conceded bot, or one with neither king nor land (nothing); for each
 // rival, one that has conceded or has neither king nor land is passed over; under the Aggressive setting, war on every
 // human realm; when a rival's king holds a claim to the throne, war on the claimant and a Treat to everyone else (but a
 // bot allied to the claimant and of his creed keeps faith); a grudge bends only when the human is five times the bot's
@@ -384,6 +384,25 @@ export const GRUDGE_CASES: BotDiplomacyCase[] = [
       got: { early: declared(o.early, 1), late: declared(o.late, 1) },
       want: { early: { 0: 'treat' }, late: { 0: 'treat' } },
     }),
+  },
+  {
+    name: 'a grudge is recorded only from a war the realm may declare: on a bot it has met',
+    stage: (b) => {
+      unmet(b, 2, 1);
+      return { bots: [1], sends: { 2: { diplomacy: { 1: 'enemy' } } } };
+    },
+    check: (o) => ({
+      got: { early: o.grudgesEarly[1], after: grudgesAfter(o, 1), relation: inTurn(o, relationAfter(o, 1, 2)) },
+      want: { early: null, after: null, relation: inTurn(o, 'neutral') },
+    }),
+  },
+  {
+    name: 'a war on a bot the realm has met is remembered though the bot has not met it',
+    stage: (b) => {
+      unmet(b, 1, 2);
+      return { bots: [1], sends: { 2: { diplomacy: { 1: 'enemy' } } } };
+    },
+    check: (o) => ({ got: { grudges: grudgesAfter(o, 1) }, want: { grudges: [2] } }),
   },
   {
     name: 'under Safe Start no grudge is recorded (the war is set aside before it is read)',

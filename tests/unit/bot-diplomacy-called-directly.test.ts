@@ -8,7 +8,7 @@
 // no creed and a claim, a game with no turn counter. Properties (fast-check): only bots' declarations are written, each
 // a Treat or a war, never toward itself, a realm not met when the turn began, a realm that has conceded or has neither
 // king nor land; never war on a foe or a Treat to an ally; a Treat to a realm held in a grudge only under a truce; every
-// human realm's war on a bot remembered once, after the grudges held; under Safe Start nothing at all.
+// human realm's war on a bot it has met remembered once, after the grudges held; under Safe Start nothing at all.
 // Level 1: one function, called with the context resolveTurn hands it.
 import vm from 'node:vm';
 import fc from 'fast-check';
@@ -561,7 +561,7 @@ describe('Properties', () => {
       { seed: SEED, numRuns: 400 },
     );
   });
-  test('every human realm’s war on a bot is remembered once, after the grudges it already held; nothing else', () => {
+  test('every human realm’s war on a bot it has met is remembered once, after the grudges it already held; nothing else', () => {
     fc.assert(
       fc.property(worldSpec, (w) => {
         const r = playWorld(w);
@@ -570,7 +570,12 @@ describe('Properties', () => {
           const was = r.grudgesBefore[pi] as number[] | null;
           const fresh_ =
             !locked && r.s.bots.includes(pi)
-              ? [0, 1, 2].filter((h) => !r.s.bots.includes(h) && (r.before[String(h)] ?? {})[String(pi)] === 'enemy')
+              ? [0, 1, 2].filter(
+                  (h) =>
+                    !r.s.bots.includes(h) &&
+                    (r.before[String(h)] ?? {})[String(pi)] === 'enemy' &&
+                    must(w.realms[h], 'realm').met.includes(pi),
+                )
               : [];
           const all = [...(was ?? []), ...fresh_.filter((h) => !(was ?? []).includes(h))];
           return was || all.length ? all : null;
