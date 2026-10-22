@@ -1,7 +1,7 @@
 // 2026-10-15 (Toby, D4) — Psychic Blast's stun in personal combat is 1 round + 1 per two Psychic levels, doubled
 // against a guardian weak to Psychic magic, and the Dreamstone's extra round is added AFTER the doubling (before,
 // it was doubled too: 8 rounds at Psychic 5 against a weak guardian, where the books implied 7).
-// Level 1 (unit): pcCastCombatSpell called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): pcCastCombatSpell called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal); the cast is pinned to
 // succeed. The rulebook and the player portal are read as built.
 import { expect, test } from 'vitest';
@@ -9,8 +9,9 @@ import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 import { pageText } from '../lib/source.ts';
 
-const { call, value, base, MON, pinned } = personalCombatEngine();
-const ITEMS = value('ALL_MAGIC_ITEMS_P') as { name: string }[];
+const { call, base, MON, pinned } = await personalCombatEngine();
+const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const ITEMS = ALL_MAGIC_ITEMS_P as { name: string }[];
 const stone = ITEMS.find((i) => i.name === 'Dreamstone');
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
 const hero = (withStone: boolean) => {

@@ -5,13 +5,13 @@
 //   • Every roll gains (Toby, 2026-10-09): the roll only sets the amount — even a battle-hardened
 //     hero past 50 maximum HP gains 1 (2 for a win).
 //   • Nobody rolls twice for one fight, and forecasts (simulated fights) never roll.
-// Level 1 (unit): resolvePersonalCombat, pcCharCombatant and awardWinHp called directly in the bare vm
+// Level 1 (unit): resolvePersonalCombat, pcCharCombatant and awardWinHp called directly on the engine's modules
 // (tests/lib/personal-combat.ts), the fights staged on the turn's world (plan P1-08e: this was a script that took them
 // from the "  // 4. Run all 5 phases" hook after a turn on the GM portal).
 import { expect, test } from 'vitest';
 import { personalCombatEngine, type Character, type Combatant, type FightResult } from '../lib/personal-combat.ts';
 
-const { call, turnContext } = personalCombatEngine();
+const { call, turnContext } = await personalCombatEngine();
 const G = turnContext.G as { characters: Character[] };
 let nextId = 9300;
 type Hero = Character & { hp: number; maxHp: number; hpEarned: number };

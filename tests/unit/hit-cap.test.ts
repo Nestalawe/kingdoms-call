@@ -2,12 +2,12 @@
 // maximum HP: a guardian's blow on a hero, a hero's blow on a guardian, and a hero's blow on another
 // hero in a duel. (Before: only a guardian's blow on a hero was capped, at a third.) A tighter cap a
 // combatant already carries (a Legendary's 20% body cap, a cap ward) still wins.
-// Level 1 (unit): pcTakeHit called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): pcTakeHit called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // scenario-level script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal).
 import { expect, test } from 'vitest';
 import { personalCombatEngine, type Character, type Combatant, type Guardian } from '../lib/personal-combat.ts';
 
-const { call, MON, turnContext } = personalCombatEngine({ realms: 3, opts: { seaPct: 30 } });
+const { call, MON, turnContext } = await personalCombatEngine({ realms: 3, opts: { seaPct: 30 } });
 const ch = (turnContext.G['characters'] as Character[]).find((c) => c.alive);
 if (!ch) throw new Error('the world has no living character');
 

@@ -2,13 +2,13 @@
 // Elemental (counted to 5: 12% at Elemental 1, 20% at 5), for three rounds; it was 3% + 1% a level.
 // A guardian's spell resistance now cuts the burn as it cuts any spell's harm (a 40% ward: 20% → 12%);
 // a weakness to Elemental doubles it, as before.
-// Level 1 (unit): pcCastCombatSpell called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): pcCastCombatSpell called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the cast pinned to
 // succeed.
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 
-const { call, base, MON, pinned } = personalCombatEngine();
+const { call, base, MON, pinned } = await personalCombatEngine();
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
 const plainM = MON.find((m) => m.name === 'Owlbear');
 if (!plainM) throw new Error('no Owlbear in the guardian table');

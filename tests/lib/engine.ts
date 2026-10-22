@@ -25,8 +25,10 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { KEEP_THE_CODE, ROOT } from '../../tools/build.ts';
 import { DATA_FILE, engineEntryFiles } from '../../tools/pages.ts';
+import { THE_FIELDS_RESOLVE_TURN_ADDS, type TurnContext } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
 export { DATA_FILE };
+export type { TurnContext };
 
 export interface EngineOptions {
   /** The dice's seed (an unsigned 32-bit integer; 0 reads as 1), as KC_RNG_SEED is a page's. */
@@ -152,19 +154,6 @@ export function engineFn(engine: vm.Context, name: string): (...args: never[]) =
   return fn as (...args: never[]) => unknown;
 }
 
-/** A turn's context (src/engine/turn/context.ts), as resolveTurn holds it while a turn runs. */
-export interface TurnContext {
-  G: Record<string, unknown>;
-  freshPlayers: unknown[];
-  expectedTurnToRun: number;
-  turnLog: Record<string, unknown>[];
-  log(type: string, text: string, meta?: Record<string, unknown>): void;
-  _logCtx: { charId: unknown; phase: unknown };
-  _currentPhase: number | null;
-  _afterPhases: boolean;
-  [name: string]: unknown;
-}
-
 /** A turn's context on a world made inside the vm (plan P1-08a): the state is parsed there, so its objects and arrays are
  *  the engine's own, as a turn's are (P1-18d). It starts as resolveTurn's does before the first phase: no hero's line,
  *  no phase, the phases not over, and what resolveTurn adds to the context (P1-08a…P1-08e) made empty, as
@@ -179,20 +168,7 @@ export function turnContext(
 ): TurnContext {
   const make = vm.runInContext(
     `(state,players,turn)=>{ const tc=createTurnContext(JSON.parse(state),JSON.parse(players),turn);
-      tc._logCtx={charId:null,phase:null}; tc._currentPhase=null; tc._afterPhases=false;
-      tc._mercIds={n:0};
-      tc._tel={pre:{}, orders:{}, battles:[], encounters:[], captures:[], deaths:[], spells:[], hires:[], recruits:[]};
-      tc.battleCommanders={}; tc.fieldBattlePhase={};
-      tc.movePoints={}; tc.seaMovePoints={}; tc.seaMoveActive={}; tc.seaCap={}; tc.moveMax={}; tc.seaMoveMax={};
-      tc.SEASONS=KC_SEASONS.slice(); tc.recruitedThisTurn={}; tc._intrusionAcc=new Map();
-      tc._combatSkillProv=null; tc._duelFoes=null; tc._battleSeq=0; tc._chieftainDuelGain=null;
-      tc._deferredSkillLogs=[]; tc._pcSimulating=false; tc._elvenEscapeQueue=[];
-      tc.clairWatch={}; tc.presenceByPhase=[]; tc._reports={built:false}; tc.enteredThisPhase={}; tc._distCache=new Map();
-      tc._tier0Open=false; tc._unitGainQueue=[]; tc._warFrontAtStart=new Map(); tc._warFrontProvs=new Set();
-      tc.lightLandMoves={}; tc.lightSeaMoves={}; tc.diploDeclarations={}; tc.reckoningCalls=new Set();
-      tc.staleOrderWarnings=[]; tc.safeStartRefused=[]; tc.discoveryChoicePicks={}; tc.playerMessages={};
-      tc._botPlayerIdx=new Set(tc.freshPlayers.filter(isBotRow).map(p=>p.player_index));
-      tc._botEncounteredAtStart={};
+      ${THE_FIELDS_RESOLVE_TURN_ADDS}
       return tc; }`,
     engine,
   ) as (state: string, players: string, turn: number) => TurnContext;

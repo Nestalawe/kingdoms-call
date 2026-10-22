@@ -6,18 +6,21 @@
 //     higher rate never reads worse;
 //   • the Hunting Rumours sandbox (simulateLairOdds): the background fights write nothing to the world, the hero, the
 //     lair or the GM's log, and the odds are a whole percentage of the fights won.
-// Level 1 (unit): each function called directly in the bare vm (tests/lib/personal-combat.ts), on a world the engine
-// makes there. The matrix runs all three; these say what holds for any input, not only the matrix's games.
+// Level 1 (unit): each function called directly on the engine's modules (tests/lib/personal-combat.ts), on a world the engine
+// makes. The matrix runs all three; these say what holds for any input, not only the matrix's games.
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Character } from '../lib/personal-combat.ts';
 
-const { call, value, pinned, turnContext, MON } = personalCombatEngine();
+const { call, pinned, turnContext, MON } = await personalCombatEngine();
+const { ALL_MAGIC_ITEMS_P, LEGENDARY_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const { MITHRIL_ARMOUR } = await import('../../src/engine/heroes/fame-and-consecration.ts');
+const { RUMOUR_ODDS_BANDS } = await import('../../src/engine/personal-combat/lair-guardians-and-the-odds.ts');
 const G = turnContext.G as { characters: Character[]; players: Record<string, unknown>[] };
 
 type Item = { name: string; tier?: unknown; effect?: { stat?: string }; [key: string]: unknown };
 /** The game's item tables and Mithril (a relic the Dwarves are granted), one of each name and tier. */
-const ITEMS = (value('[...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P, MITHRIL_ARMOUR]') as Item[]).filter(
+const ITEMS = ([...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P, MITHRIL_ARMOUR] as Item[]).filter(
   (it, i, all) => all.findIndex((x) => x.name === it.name && x.tier === it.tier) === i,
 );
 const MITHRIL = ITEMS.findIndex((it) => it.effect?.stat === 'mithrilArmour');
@@ -56,7 +59,7 @@ test('flee spoils: no item is made or lost, at most one changes hands, Mithril n
 });
 
 test('the Hunting Rumours reading: one band for every kill rate, and a higher rate never reads worse', () => {
-  const BANDS = value('RUMOUR_ODDS_BANDS') as unknown[];
+  const BANDS = RUMOUR_ODDS_BANDS as unknown[];
   const band = (pct: number) => BANDS.indexOf(call('rumourOddsBand', pct));
   fc.assert(
     fc.property(fc.integer({ min: 0, max: 100 }), fc.integer({ min: 0, max: 100 }), (a, b) => {

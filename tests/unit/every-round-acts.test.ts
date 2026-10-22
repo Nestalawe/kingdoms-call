@@ -3,12 +3,12 @@
 // spell, or reached the school's limit), makes an ordinary attack instead; so does anyone bound by
 // Spiritwrack who reaches for a special, a spell or a bow (at half strength, as Spiritwrack says).
 // Stuns still cost the round.
-// Level 1 (unit): pcAct called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a script that
+// Level 1 (unit): pcAct called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a script that
 // took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 
-const { call, base, MON, pinned } = personalCombatEngine();
+const { call, base, MON, pinned } = await personalCombatEngine();
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
 const hero = (tactics: string[], skills?: Record<string, number>) => {
   const h = call('pcCharCombatant', {

@@ -2,11 +2,10 @@
 // standard rate, on top of the rolls for each blow, arrow or spell that landed. Staged with the foe
 // already at 0 HP, so the hero wins without landing anything: the only Melee roll is the win's. The
 // loser rolls no win roll.
-// Level 1 (unit): resolvePersonalCombat called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it
+// Level 1 (unit): resolvePersonalCombat called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it
 // was a script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal); every experience
-// roll is recorded by a wrapper around the top-level trySkillGain.
-import vm from 'node:vm';
-import { expect, test } from 'vitest';
+// roll is recorded by a stand-in for trySkillGain on its module.
+import { expect, test, vi } from 'vitest';
 import {
   clone,
   personalCombatEngine,
@@ -15,23 +14,26 @@ import {
   type FightResult,
 } from '../lib/personal-combat.ts';
 
-const { engine, call, MON, turnContext } = personalCombatEngine();
+const { call, MON, turnContext } = await personalCombatEngine();
+const experience = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
 type Roll = { id: unknown; skill: string; base: unknown; mult: unknown };
-// every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
-vm.runInContext(
-  `{ const tryOne=trySkillGain;
-     trySkillGain=function(turnContext, char, skill, base, narr, mult){
-       if(globalThis.__xp) globalThis.__xp.push({id:char&&char.id,skill,base,mult});
-       return tryOne.apply(this, arguments); }; }`,
-  engine,
-);
+// every experience roll, recorded as it starts by a stand-in for trySkillGain on its module (plan P1-14b; until then a
+// wrapper around it in the bare vm), which calls the real one: the calls from personal combat's files reach it
 const recording = (fn: () => void): Roll[] => {
   const rolls: Roll[] = [];
-  engine['__xp'] = rolls;
+  const tryOne = experience.trySkillGain;
+  const spy = vi
+    .spyOn(experience, 'trySkillGain')
+    .mockImplementation(
+      (turnContext, char: { id?: unknown } | null, skill: string, base: unknown, narr, mult: unknown) => {
+        rolls.push({ id: char?.id, skill, base, mult });
+        tryOne(turnContext, char, skill, base, narr, mult);
+      },
+    );
   try {
     fn();
   } finally {
-    engine['__xp'] = undefined;
+    spy.mockRestore();
   }
   return rolls;
 };

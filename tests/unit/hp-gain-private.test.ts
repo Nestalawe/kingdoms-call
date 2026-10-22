@@ -6,14 +6,14 @@
 //     realm.
 //   • A neutral hero's rise is shown to no realm.
 //   • With no narrative (a lair cleared alone) the line is still the hero's own realm's news.
-// Level 1 (unit): the fight engine, the HP award and the narrative emitters called directly in the bare vm
+// Level 1 (unit): the fight engine, the HP award and the narrative emitters called directly on the engine's modules
 // (tests/lib/personal-combat.ts), with the turn's own log, which is what each realm's report is cut from (an entry's
 // targets and its public flag). Plan P1-08e: this was a script that took them from the "  // 4. Run all 5 phases" hook
 // after a turn on the GM portal.
 import { expect, test } from 'vitest';
 import { personalCombatEngine, type Character, type Combatant, type FightResult } from '../lib/personal-combat.ts';
 
-const { call, turnContext } = personalCombatEngine();
+const { call, turnContext } = await personalCombatEngine();
 const G = turnContext.G as { characters: Character[]; world: { provinces: unknown[] } };
 const L = turnContext.turnLog as { text: unknown; public?: boolean; actor?: unknown; targets?: unknown[] }[];
 let nextId = 9400;

@@ -4,13 +4,13 @@
 //       it was ⌈Melee ÷ 2⌉, as a hero's blow still is). Heroes keep 1–3 + ⌈Melee ÷ 2⌉.
 //   (B) "hero −1 melee for next round" (Grave Chill, Earthshake, Chilling Touch, Hex of Weakness,
 //       Withering Touch) really lowers the hero's Melee — to-hit and damage — for the next round only.
-// Level 1 (unit): the combat functions called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it
+// Level 1 (unit): the combat functions called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it
 // was a scenario-level script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal).
 // Each blow is sampled 600 times from the seeded dice, as before.
 import { expect, test } from 'vitest';
 import { personalCombatEngine, type Character, type Combatant } from '../lib/personal-combat.ts';
 
-const { call, MON, turnContext } = personalCombatEngine({ realms: 3, opts: { seaPct: 30 } });
+const { call, MON, turnContext } = await personalCombatEngine({ realms: 3, opts: { seaPct: 30 } });
 const BASE: Record<string, [number, number]> = { Weak: [1, 3], Moderate: [2, 5], Powerful: [3, 7], Legendary: [4, 9] };
 const dummy = () => ({ kind: 'character', name: 'Dummy', hp: 999, maxHp: 999, status: {}, temper: 'None' });
 const blow = (c: Combatant) => call('pcMeleeDamage', c, dummy()) as number;

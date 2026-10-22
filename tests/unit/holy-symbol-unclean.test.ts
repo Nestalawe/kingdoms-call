@@ -3,13 +3,13 @@
 // Before, the Dust Devil (an elemental) was doubled because its name holds "Devil", and the Chaos
 // Knight (a fiend) was not. Checked on the to-hit penalty at White 5 (−40% plain, −60% unclean) for
 // every guardian not weak to White Magic (a weakness doubles the effect on top).
-// Level 1 (unit): pcCastCombatSpell called directly in the bare vm (tests/lib/personal-combat.ts; plan P1-08e: it was a
+// Level 1 (unit): pcCastCombatSpell called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the cast pinned to
 // succeed.
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant, type Guardian } from '../lib/personal-combat.ts';
 
-const { call, base, MON, pinned } = personalCombatEngine();
+const { call, base, MON, pinned } = await personalCombatEngine();
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
 const pen = (m: Guardian) => {
   const h = call('pcCharCombatant', {

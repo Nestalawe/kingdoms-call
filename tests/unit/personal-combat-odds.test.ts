@@ -6,17 +6,19 @@
 //   bonuses and wards on them: a melee blow lands from 5% to 80%, and never above 80% less the defender's guard
 //   (pcHitChance); an arrow from 5% to 80% (pcArrowHitChance); a flight from 5% to 95% (pcFleeChance); a change of
 //   range from 10% to 90% (pcMoveCheck). Each is a whole number.
-// Level 1 (unit): each function is called in the bare vm (tests/lib/personal-combat.ts) on combatants built there.
+// Level 1 (unit): each function is called on the engine's modules (tests/lib/personal-combat.ts) on combatants built by them.
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 
-const { call, value, base, MON } = personalCombatEngine();
-const TEMPERS = value('TEMPERS_P') as string[];
-const HIT_MIN = value('PC_HIT_MIN') as number;
-const HIT_MAX = value('PC_HIT_MAX') as number;
+const { call, base, MON } = await personalCombatEngine();
+const { TEMPERS_P, temperOf } = await import('../../src/engine/world/tables.ts');
+const { PC_HIT_MIN, PC_HIT_MAX } = await import('../../src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts');
+const TEMPERS = TEMPERS_P;
+const HIT_MIN = PC_HIT_MIN as number;
+const HIT_MAX = PC_HIT_MAX as number;
 const guardOf = (temper: unknown) =>
-  Math.max(0, (value('temperOf') as (t: unknown) => { defence?: number })(temper).defence ?? 0);
+  Math.max(0, (temperOf as (t: unknown) => { defence?: number })(temper).defence ?? 0);
 
 /** A combatant as pcCourageChance reads it: raw skills, White Magic, temper; a guardian's stature on its `ref`. */
 const foe = (melee: number, temper: string, white = 0, archery = 0) => ({

@@ -517,7 +517,7 @@ portals' start-up guards are gone.
   turn's context. P1-08e: personal combat, the `pc*` family up to `resolvePersonalCombat`, in six files under
   `engine/personal-combat/` (speed, encounter plans and combatants; to-hit, wounds, stuns and courage; combat spells and
   guardian abilities; melee, flight and archery; tactics, combat items and each action; the fight), beside `helpers.ts`;
-  tests take them through `tests/lib/personal-combat.ts`. P1-08f: duels and character encounters (`resolveDuel`,
+  tests take them through `tests/lib/personal-combat.ts` (from their modules, imported directly, since P1-14b). P1-08f: duels and character encounters (`resolveDuel`,
   `resolveCharVsChar`, the flee spoils, `engine/personal-combat/duels-and-character-encounters.ts`), lair guardians and
   the Hunting Rumours odds (`resolveEncounter`, `pcBuildGuardian`, `simulateLairOdds`,
   `engine/personal-combat/lair-guardians-and-the-odds.ts`), and hero death and leaderless hosts (`handleHeroDeath`,
