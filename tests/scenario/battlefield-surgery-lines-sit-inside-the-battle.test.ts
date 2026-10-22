@@ -219,5 +219,10 @@ describe("Battlefield Surgery's lines sit inside the battle", () => {
       expect(reportLines(reports[realm]).length, `realm ${String(realm)}'s report has lines`).toBeGreaterThan(0);
       expect(reportLines(reports[realm]), `realm ${String(realm)} doesn't read it`).not.toContain(line);
     }
+    // No other realm fights in this battle, so the reports can't show the line left shared with the battle's other
+    // side: the line itself says it is the hero's realm's alone (as the old script checked), until a case with another
+    // realm in the battle replaces this.
+    expect(L[tooLate]?.['targets'], "…its line is for the hero's realm alone").toEqual([0]);
+    expect(L[tooLate]?.['public'], '…and not public').toBeFalsy();
   });
 });
