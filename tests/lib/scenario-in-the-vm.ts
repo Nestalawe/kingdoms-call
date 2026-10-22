@@ -11,16 +11,19 @@
 //   r.text(charId?)  every log line (or one character's lines) as one string, for matching
 //   sc.play(state, rows)  one turn of a saved world on slot rows of the test's own (an all-bot game, say)
 //   sc.reportEveryRealm()  from now on, a report for every realm, bots' too
+//   sc.recordTheEvents()   from now on, r.perception: what perception read besides the world (the turn's events with
+//                          their audiences, and its sight), for the leak check's audience check (lib/report-leaks.ts)
 //
 // The turn is the shell's: resolveTurn on the saved world (JSON) and the slot rows, with a seed drawn from the
-// engine's dice as the shell draws it from the page's (src/ui/gm/turn-shell.ts), then the Spy-stealth step and
-// buildReports(). Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living character
+// engine's dice as the shell draws it from the page's (src/ui/gm/turn-shell.ts), then the Spy-stealth step, and the
+// views' buildReports on what the turn hands over for the reports (whatTheReportsRead). Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living character
 // not given orders Rests all turn. The engine's console is quiet (its log and its warnings, as the page's are in
 // scenario.js) while it makes the world and plays the turn.
 // W is the engine's global scope: `W.getNeighborsP(…)` calls a top-level function, `W.name = f` stands one in for the
 // calls made inside the engine (until it is put back), and `W.eval(code)` runs code there.
 import vm from 'node:vm';
 import { loadEngine, quietEngineLog } from './engine.ts';
+import type { EventAsEmitted, Perception } from './report-leaks.ts';
 
 export interface Order {
   action: string;
@@ -66,10 +69,12 @@ interface Resolved {
   state: string;
   log: Line[];
   spyStealthAndInvisibilityStampedForTheReports(): void;
-  buildReports(): {
-    reports: { gp: { player_index: number }; report: Record<string, unknown> }[];
-    tel: { gs: unknown; collected: Record<string, unknown> };
-  };
+  whatTheReportsRead(): { sight: { presenceByPhase: unknown; clairWatch: unknown } };
+}
+/** What the views' buildReports returns. */
+interface Built {
+  reports: { gp: { player_index: number }; report: Record<string, unknown> }[];
+  tel: { gs: unknown; collected: Record<string, unknown> };
 }
 
 /** A copy made outside the vm: the engine's objects become this realm's, as a page's writes are JSON. */
@@ -186,18 +191,21 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
   }
 
   /** Plays one turn of the saved world `state` on the slot rows `rows`, as the shell does (src/ui/gm/turn-shell.ts):
-   *  a seed drawn from the engine's dice, resolveTurn, then the Spy-stealth step and buildReports. Returns the world
-   *  after the turn, the GM's log, each report by its realm, and the turn's statistics. */
+   *  a seed drawn from the engine's dice, resolveTurn, then the Spy-stealth step and the views' buildReports on what
+   *  the turn hands over for the reports. Returns the world after the turn, the GM's log, each report by its realm, the
+   *  turn's statistics, and (after recordTheEvents) what perception read. */
   function play(state: World | string, rows: unknown[]) {
     const json = typeof state === 'string' ? state : JSON.stringify(state);
     const turn = (JSON.parse(json) as World).turn;
     // the shell's seed: one number from the dice, as a 32-bit integer (0 read as 1)
     const seed = Math.floor((run('kcRng()') as number) * 2 ** 32) || 1;
     const rowsInVm = (run('(j)=>JSON.parse(j)') as (j: string) => unknown)(JSON.stringify(rows));
+    if (recording) run('__kcEventsOfTheTurn.length = 0;');
     const resolved = quietly(() => call('resolveTurn', json, rowsInVm, turn, seed) as Resolved);
-    const built = quietly(() => {
+    const { built, forTheReports } = quietly(() => {
       resolved.spyStealthAndInvisibilityStampedForTheReports();
-      return resolved.buildReports();
+      const handedOver = resolved.whatTheReportsRead();
+      return { built: call('buildReports', handedOver) as Built, forTheReports: handedOver };
     });
     const log = plain(resolved.log);
     const reports: Record<number, Record<string, unknown>> = {};
@@ -207,6 +215,7 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
       log,
       reports,
       collected: plain(built.tel.collected),
+      ...(recording ? { perception: perceptionOf(forTheReports, log.length) } : {}),
       seed,
       text: (charId?: unknown) =>
         log
@@ -223,10 +232,44 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
    *  the booted GM portal, until plan P1-09a.) */
   function reportEveryRealm() {
     run(
-      "{ const buildFor=buildReports; buildReports=function(turnContext, ...rest){ return buildFor({...turnContext, freshPlayers:turnContext.freshPlayers.map(p=>({...p, user_id:p.user_id||'every-realm'}))}, ...rest); }; }",
+      "{ const buildFor=buildReports; buildReports=function(whatTheReportsRead, ...rest){ return buildFor({...whatTheReportsRead, freshPlayers:whatTheReportsRead.freshPlayers.map(p=>({...p, user_id:p.user_id||'every-realm'}))}, ...rest); }; }",
     );
   }
-  return { engine, W, world, turn, play, reportEveryRealm, rest, errs: [] as string[] };
+
+  /** From now on each turn's events are recorded as they are emitted (emit, src/engine/turn/events-and-their-
+   *  audiences.ts, stood in, in the vm, to note each event after it has filed its line), with the phase and the hero
+   *  its line was filed under (emit's fallbacks worked out); and play returns them with the turn's sight as
+   *  r.perception. */
+  let recording = false;
+  function recordTheEvents() {
+    if (recording) return;
+    recording = true;
+    run(`{ globalThis.__kcEventsOfTheTurn = []; const emitFor = emit;
+      emit = function (turnContext, event) {
+        emitFor(turnContext, event);
+        const line = turnContext.turnLog[turnContext.turnLog.length - 1];
+        __kcEventsOfTheTurn.push({ type: event.type, text: event.text, audience: { ...event.audience },
+          province: event.province ?? null, phase: line.phase, hero: line.charId, heroes: event.heroes ?? null,
+          spy: !!event.spy });
+      }; }`);
+  }
+  /** The turn's recorded events (as many as its log has lines, or it throws: a line that didn't come through emit) and
+   *  its sight, from what it handed over for the reports, as plain values. */
+  function perceptionOf(forTheReports: ReturnType<Resolved['whatTheReportsRead']>, lines: number): Perception {
+    const events = JSON.parse(run('JSON.stringify(__kcEventsOfTheTurn)') as string) as EventAsEmitted[];
+    if (events.length !== lines)
+      throw new Error(`recorded ${String(events.length)} events, but the GM's log has ${String(lines)} lines`);
+    const presence = JSON.parse(
+      (
+        run(`(byPhase) => { const out = [];
+          byPhase.forEach((m, phase) => { if (m) m.forEach((who, province) => { out.push({ phase, province, realms: [...who] }); }); });
+          return JSON.stringify(out); }`) as (byPhase: unknown) => string
+      )(forTheReports.sight.presenceByPhase),
+    ) as Perception['presence'];
+    const clairvoyance = plain(forTheReports.sight.clairWatch) as Perception['clairvoyance'];
+    return { events, presence, clairvoyance };
+  }
+  return { engine, W, world, turn, play, reportEveryRealm, recordTheEvents, rest, errs: [] as string[] };
 }
 
 /** One phase's order: `order('move', 12)`. */

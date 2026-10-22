@@ -100,7 +100,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 
   // ── Source: the two readers nested inside runTurn ──
   const gm=compactPage('kingdoms-call-gm-portal.html');
-  const pci=compactCode(statementsBetween('engine/turn/realm-reports-and-spy-stealth.ts','buildReports','ownCharLocsPi','report.provinceCharIntel=provinceCharIntel;'));
+  const pci=compactCode(statementsBetween('views/every-realms-report-and-the-lines-each-realm-reads.ts','buildReports','ownCharLocsPi','report.provinceCharIntel=provinceCharIntel;'));
   ok(pci.length>0&&/enemyCharVisibleTo\(/.test(pci),'the province character intel uses the one sight rule (enemyCharVisibleTo)');
   ok((pci.match(/armyCount:/g)||[]).length===1&&/c\.player===pi\?\{armyCount:armies\.length\}:\{armyBand:armySizeBand\(armies\.length\)\}/.test(pci),'…and sends the exact army count for your own heroes only, the rough size for anyone else');
   ok(!/describeEnemyForce/.test(gm),'the intrusion alerts no longer read the force by the watcher\'s Spy');

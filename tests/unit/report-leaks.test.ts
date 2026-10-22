@@ -1,10 +1,12 @@
 // The report-leak check (tests/lib/report-leaks.ts, P1-04c) on a small made-up turn: it passes, each planted leak
-// breaks exactly the check meant to catch it, saying what leaked, and what the rules allow passes. Level 1 (unit): pure
+// breaks exactly the check meant to catch it, saying what leaked, and what the rules allow passes. The audience check
+// (P1-12b3, P1-12's Decision 12) on a made-up turn of its own, with the events it was emitted from and its sight: each
+// line read that no event admits is a breach, and what the audience model admits passes. Level 1 (unit): pure
 // functions on made-up values; turn-fuzz, report-privacy and the balance matrix run the same checks over whole games
-// (level 3).
+// (level 3; the audience check where the turn's events are recorded: the matrix's every-realm half).
 import { describe, expect, test } from 'vitest';
 import { checkLeaks, checkTurn, type SavedState, type Turn } from '../lib/invariants.ts';
-import { LEAK_CHECKS, type RealmReport } from '../lib/report-leaks.ts';
+import { LEAK_CHECKS, type EventAsEmitted, type Perception, type RealmReport } from '../lib/report-leaks.ts';
 
 // Three realms. Ashmark (0) and Brightvale (1) have met; neither has met Coldharbour (2), whose hero Corin cast
 // Invisibility in phase 1 of the turn just played (turn 7: the state after it is turn 8). Ashmark and Brightvale have
@@ -93,7 +95,12 @@ test('the made-up turn passes every leak check and every invariant', () => {
 });
 
 test('every leak check has a planted leak below', () => {
-  expect(LEAK_CHECKS.map((c) => c.name)).toEqual(["another realm's private line", 'an unmet realm', 'an unseen hero']);
+  expect(LEAK_CHECKS.map((c) => c.name)).toEqual([
+    "another realm's private line",
+    'an unmet realm',
+    'an unseen hero',
+    'a line its audience does not admit',
+  ]);
 });
 
 test('checkTurn runs the leak checks after the invariants', () => {
@@ -372,5 +379,307 @@ describe('the known breaches of the leak checks', () => {
     expect(checkLeaks(turn(both)).flatMap((b) => b.what)).toEqual([
       'realm 0 reads of Corin the Grey (id 12, invisible from phase 1) in phase 2 at lastTurnLog[6]: "Aldo the Bold glimpses Corin the Grey."',
     ]);
+  });
+});
+
+// ── THE AUDIENCE CHECK (P1-12b3) ────
+// The same three realms (Ashmark 0 and Brightvale 1 have met; neither has met Coldharbour 2), each owning one province:
+// Ashmark Wexby (0), Brightvale Fenwick (1), Coldharbour Coldmere (2). Nobody is invisible. Aldo (Ashmark) moves to
+// Fenwick in phase 1 and stands there through phase 2; he spies on Coldmere in phase 1. Brightvale watches Dorn
+// (Coldharbour) by Clairvoyance from phase 2. Each report holds exactly the lines the audience model admits.
+const ev = (
+  text: string,
+  phase: number | null,
+  audience: EventAsEmitted['audience'],
+  place: {
+    province?: number | null;
+    hero?: number | null;
+    heroes?: number[] | null;
+    spy?: boolean;
+    type?: string;
+  } = {},
+): EventAsEmitted => ({
+  type: place.type ?? 'system',
+  text,
+  audience,
+  province: place.province ?? null,
+  phase,
+  hero: place.hero ?? null,
+  heroes: place.heroes ?? null,
+  spy: place.spy ?? false,
+});
+const MOVES = 'Aldo the Bold moves to Fenwick.';
+const RESTS = 'Bera the Wise rests.';
+const STRANGER = 'A stranger is seen near Fenwick.';
+const SCOUT = 'Your scout spots a stranger near Fenwick.';
+const SPIES = 'Aldo the Bold spies on Coldmere.';
+const STORM = 'A storm lashes Fenwick.';
+const BATTLE = '⚔ The battle for Fenwick: Aldo the Bold against Bera the Wise.';
+const MUSTERS = 'Dorn the Red musters in Fenwick.';
+const MARCHES = 'Dorn the Red marches out of Coldmere.';
+const CLASH = '⚔ Dorn the Red clashes with raiders in Coldmere.';
+const WARD = '✨ Dorn the Red weaves a ward about himself.';
+const RIDES = 'Dorn the Red rides to Fenwick.';
+const CLAIMS = 'Coldharbour claims Coldmere.';
+const PRICE = "📜 The crown's price falls.";
+const SCRY = '🔮 Clairvoyance — ';
+const STANDS = '🔮 Clairvoyance — as the turn ends, Dorn the Red stands in Coldmere. They are marked on your map.';
+
+function perceived(edit: (t: Turn, r: RealmReport[], p: Perception) => void = () => undefined): Turn {
+  const s = (): SavedState => {
+    const x = state();
+    delete char(x, 12)._invisTurn;
+    (x.players ?? []).forEach((p, i) => (p.provinces = [i]));
+    return x;
+  };
+  const p: Perception = {
+    events: [
+      ev(RESTS, 0, { actor: 1, realms: [1] }, { hero: 11, province: 1 }),
+      ev(MOVES, 1, { actor: 0, realms: [0] }, { hero: 10, province: 1 }),
+      ev(STRANGER, 1, { seen: 'there', except: [1] }, { province: 1 }),
+      ev(SCOUT, 1, { realms: [1] }, { province: 1 }),
+      ev(SPIES, 1, { actor: 0, realms: [0] }, { hero: 10, province: 2, spy: true }),
+      ev(RIDES, 1, { actor: 2, realms: [2] }, { hero: 13, province: 1 }),
+      ev(STORM, 2, { seen: 'there' }, { province: 1 }),
+      ev(BATTLE, 2, { realms: [0, 1], seen: 'battle' }, { province: 1, hero: 10, heroes: [10, 11], type: 'combat' }),
+      ev(HARDENED.replace('Aldo the Bold', 'Bera the Wise'), 2, { realms: [1] }, { hero: 11, province: 1 }),
+      ev(MUSTERS, 3, { actor: 2, seen: 'there' }, { hero: 13, province: 1 }),
+      ev(MARCHES, 3, { actor: 2, seen: 'there' }, { hero: 13, province: 2 }),
+      ev(CLASH, 3, { realms: [2], seen: 'battle' }, { hero: 13, province: 2, type: 'combat' }),
+      ev(WARD, 3, { actor: 2, realms: [2] }, { hero: 13, province: 2 }),
+      ev(CLAIMS, 3, { seen: 'world' }),
+      ev(PRICE, 99, { seen: 'world' }),
+    ],
+    presence: [
+      { phase: 0, province: 1, realms: [1] },
+      { phase: 1, province: 1, realms: [0, 1] },
+      { phase: 2, province: 1, realms: [0, 1] },
+      { phase: 3, province: 1, realms: [1] },
+    ],
+    clairvoyance: { 1: { charId: 13, fromPhase: 2 } },
+  };
+  const reports: RealmReport[] = [
+    {
+      realm: 0,
+      report: {
+        lastTurnLog: [
+          { text: MOVES, phase: 1 },
+          { text: STRANGER, phase: 1 },
+          { text: SPIES, phase: 1 },
+          { text: STORM, phase: 2 },
+          { text: BATTLE, phase: 2 },
+          { text: MARCHES, phase: 3 },
+          { text: 'An unknown realm claims Coldmere.', phase: 3 },
+          { text: PRICE, phase: 99 },
+        ],
+        provinceEvents: [{ text: STORM, phase: 2, provinceId: 1 }],
+        spyActivity: [
+          {
+            provId: 2,
+            provName: 'Coldmere',
+            sincePhase: 2,
+            lines: [
+              { phase: 3, text: MARCHES },
+              { phase: 3, text: CLASH },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      realm: 1,
+      report: {
+        lastTurnLog: [
+          { text: RESTS, phase: 0 },
+          { text: SCOUT, phase: 1 },
+          { text: STORM, phase: 2 },
+          { text: BATTLE, phase: 2 },
+          { text: HARDENED.replace('Aldo the Bold', 'Bera the Wise'), phase: 2 },
+          { text: MUSTERS, phase: 3 },
+          { text: 'An unknown realm claims Coldmere.', phase: 3 },
+          { text: SCRY + MARCHES, phase: 3 },
+          { text: PRICE, phase: 99 },
+          { text: STANDS, phase: null },
+        ],
+      },
+    },
+  ];
+  const t: Turn = { before: s(), after: s(), gmLog: [], telemetry: [], players: [], reports, perception: p };
+  edit(t, reports, p);
+  return t;
+}
+/** Adds a line to a part (lastTurnLog, provinceEvents) of realm `realm`'s report. */
+const read = (r: RealmReport[], realm: number, text: string, phase: number | null, part = 'lastTurnLog') => {
+  const report = of(r, realm);
+  report[part] = [...((report[part] as unknown[] | undefined) ?? []), { text, phase }];
+};
+/** Adds a line to realm `realm`'s spy activity in `province`. */
+const spied = (r: RealmReport[], realm: number, province: number, text: string, phase: number) =>
+  (of(r, realm)['spyActivity'] = [{ provId: province, sincePhase: 2, lines: [{ phase, text }] }]);
+const audienceCheck = LEAK_CHECKS.find((c) => c.name === 'a line its audience does not admit')?.check;
+
+describe('the audience check: every line a realm reads comes from an event whose audience admits it', () => {
+  test('the made-up turn passes every leak check', () => {
+    expect(checkLeaks(perceived())).toEqual([]);
+  });
+
+  test('without the turn’s events (a harness that records none), it checks nothing', () => {
+    expect(
+      audienceCheck?.(
+        perceived((t, r) => {
+          delete t.perception;
+          read(r, 0, 'Aldo the Bold finds a dragon.', 2);
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each<[string, (t: Turn, r: RealmReport[], p: Perception) => void, string]>([
+    [
+      "another realm's private line (told to it alone)",
+      (_, r) => {
+        read(r, 0, SCOUT, 1);
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
+    ],
+    [
+      'a line seen there, where it had no eyes that phase (a province it once stood in)',
+      (_, r) => {
+        read(r, 0, MUSTERS, 3);
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
+    ],
+    [
+      'the public half of a pair, by the realm it excepts',
+      (_, r) => {
+        read(r, 1, STRANGER, 1);
+      },
+      'realm 1 reads a line its audience does not admit at lastTurnLog[10]',
+    ],
+    [
+      'a battle it did not fight in (seen in the battle grants no onlooker)',
+      (_, r, p) => {
+        const battle = p.events.find((e) => e.text === BATTLE);
+        if (battle) Object.assign(battle, { audience: { realms: [1], seen: 'battle' }, hero: 11, heroes: [11] });
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[4]',
+    ],
+    [
+      'a line no event of the turn wrote',
+      (_, r) => {
+        read(r, 0, 'Aldo the Bold finds a dragon.', 2);
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
+    ],
+    [
+      'a line of the turn, in another phase than its own',
+      (_, r) => {
+        read(r, 0, RESTS, 1);
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
+    ],
+    [
+      'a province event it may not read',
+      (_, r) => {
+        read(r, 0, WARD, 3, 'provinceEvents');
+      },
+      'realm 0 reads a line its audience does not admit at provinceEvents[1]',
+    ],
+    [
+      "a world line made nameless, from an event that wasn't the world's",
+      (_, r, p) => {
+        const claim = p.events.find((e) => e.text === CLAIMS);
+        if (claim) claim.audience = { realms: [2] };
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[6]',
+    ],
+    [
+      'a Clairvoyance line from before the watch began',
+      (_, r) => {
+        read(r, 1, SCRY + RIDES, 1);
+      },
+      'realm 1 reads a line its audience does not admit at lastTurnLog[10]',
+    ],
+    [
+      'a Clairvoyance line about another hero than the one it watches',
+      (_, r) => {
+        read(r, 1, SCRY + MOVES, 3);
+      },
+      'realm 1 reads a line its audience does not admit at lastTurnLog[10]',
+    ],
+    [
+      'a Clairvoyance line with no watch',
+      (_, r) => {
+        read(r, 0, SCRY + MARCHES, 3);
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
+    ],
+    [
+      "a spy's feed with a line of a province it didn't spy",
+      (_, r) => spied(r, 0, 1, MUSTERS, 3),
+      'realm 0 reads a line its audience does not admit at spyActivity[0].lines[0]',
+    ],
+    [
+      "a spy's feed with a line from the phase its spy came, or before",
+      (_, r, p) => {
+        const sharpens = 'Dorn the Red sharpens his blade in Coldmere.';
+        p.events.push(ev(sharpens, 1, { actor: 2, realms: [2] }, { hero: 13, province: 2 }));
+        spied(r, 0, 2, sharpens, 1);
+      },
+      'realm 0 reads a line its audience does not admit at spyActivity[0].lines[0]',
+    ],
+  ])('%s', (_what, plant, at) => {
+    const breaches = checkLeaks(perceived(plant));
+    expect(breaches.map((b) => b.check)).toEqual(['a line its audience does not admit']);
+    expect(breaches[0]?.what[0]).toMatch(new RegExp(`^${at.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: "`));
+  });
+
+  test('what the model admits: told, its own deed, its hero, the world, eyes there, a spy’s lingering sight, Clairvoyance', () => {
+    // Each line of the made-up turn is one of these; the turn passes (above). The spy's lingering sight lets a line of
+    // the spied province seen in a battle through, which no other grant gives the realm.
+    expect(audienceCheck?.(perceived())).toEqual([]);
+    expect(
+      audienceCheck?.(
+        perceived((_, __, p) => {
+          const clash = p.events.find((e) => e.text === CLASH);
+          if (clash) clash.province = 1;
+        }),
+      ),
+    ).toEqual([`realm 0 reads a line its audience does not admit at spyActivity[0].lines[1]: "${CLASH}"`]);
+  });
+
+  test("an unmet realm's name, read as “an unknown realm”, matches its event; another wording does not", () => {
+    expect(
+      audienceCheck?.(
+        perceived((_, r) => {
+          read(r, 1, 'An unknown realm claims Coldmere.', 3);
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      audienceCheck?.(
+        perceived((_, r) => {
+          read(r, 1, 'An unknown realm seizes Coldmere.', 3);
+        }),
+      ),
+    ).toEqual([
+      'realm 1 reads a line its audience does not admit at lastTurnLog[10]: "An unknown realm seizes Coldmere."',
+    ]);
+  });
+
+  // P1-12b3 (P1-12's Decision 12): the spy feed's entry lets another realm's private line in spy activity through.
+  test("another realm's private line in a spy's feed is let through; in the chronicle it is not", () => {
+    const feed = perceived((_, r) => spied(r, 0, 2, WARD, 3));
+    expect(audienceCheck?.(feed)).toEqual([
+      `realm 0 reads, through its spy, a line its audience keeps from it at spyActivity[0].lines[0]: "${WARD}"`,
+    ]);
+    expect(leaks(feed)).toEqual([]);
+    expect(
+      leaks(
+        perceived((_, r) => {
+          read(r, 0, WARD, 3);
+        }),
+      ),
+    ).toEqual(['a line its audience does not admit']);
   });
 });

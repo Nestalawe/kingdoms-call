@@ -1,12 +1,14 @@
-// buildReports, lifted out of resolveTurn in plan P1-08d, called directly in the bare vm (tests/lib/engine.ts). The
-// balance matrix runs it every turn; this test pins the rule at its heart on its own.
-// - Property (fast-check): from any turn's log, each realm's report shows exactly the lines the rule allows, in the
-//   log's order. A line written for everyone but some realms (notFor) never reaches them. Otherwise a realm reads a
+// playerEvents (src/views/every-realms-report-and-the-lines-each-realm-reads.ts, plan P1-12b3: the lines a realm reads,
+// taken out of buildReports, which P1-08d lifted out of resolveTurn), called directly in the bare vm
+// (tests/lib/engine.ts). The balance matrix runs it every turn, for every realm; this test pins the rule at its heart
+// on its own.
+// - Property (fast-check): from any turn's log, each realm reads exactly the lines the rule allows, in the log's
+//   order. A line written for everyone but some realms (notFor) never reaches them. Otherwise a realm reads a
 //   line sent to it, one its own realm did, one about its own hero (filed under that hero), and a public line with no
 //   province (the world is told) or in one of its own provinces. Nothing else: no other realm's private business, and
 //   no public line from a province it has no eyes on (no hero stood there and no spy saw it, as on this context).
-// Level 1 (unit): the function is called on a context made in the test; nothing else of the turn runs. The property
-// describes the game as it is; a fault planted in a copy of the function turns it red (the PR shows it).
+// Level 1 (unit): the function is called on a world and a turn's sight made in the test; nothing else of the turn runs.
+// The property describes the game as it is; a fault planted in a copy of the function turns it red (the PR shows it).
 import fc from 'fast-check';
 import { afterAll, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
@@ -27,8 +29,17 @@ const G = tc.G as {
   players: { provinces?: number[] }[];
   characters: { id: number; player: number | null }[];
 };
-const buildReports = engineFn(engine, 'buildReports') as (t: TurnContext) => {
-  reports: { gp: { player_index: number }; report: { lastTurnLog: Line[] } }[];
+const playerEvents = engineFn(engine, 'playerEvents') as (
+  events: Entry[],
+  state: TurnContext['G'],
+  realm: number,
+  sight: { presenceByPhase: unknown; battleCommanders: unknown; clairWatch: unknown },
+) => { lastTurnLog: Line[] };
+/** The turn's sight, as the context starts it: nobody has stood anywhere in a phase, fought or watched yet. */
+const sight = {
+  presenceByPhase: tc['presenceByPhase'],
+  battleCommanders: tc['battleCommanders'],
+  clairWatch: tc['clairWatch'],
 };
 
 type Line = { text: string; charId: unknown; phase: unknown };
@@ -72,17 +83,17 @@ const entry = fc.record(
   { requiredKeys: ['type', 'actor', 'targets', 'public', 'provinceId', 'charId', 'phase'] },
 );
 
-test("each realm's report shows exactly the lines the visibility rule allows, in the log's order", LIMIT, () => {
+test('each realm reads exactly the lines the visibility rule allows, in the log’s order', LIMIT, () => {
   fc.assert(
     fc.property(fc.array(entry, { maxLength: 30 }), (drawn) => {
       const log: Entry[] = drawn.map((e, i) => ({ ...e, text: `[line ${String(i)}]`, charIds: null }));
-      tc.turnLog = log.map((e) => ({ ...e }));
-      // The Spy stealth is a step of its own (P1-12b2), not rolled here.
-      tc['_reports'] = { stealthRolled: true, built: false };
-      const { reports } = buildReports(tc);
-      expect(reports.map((r) => r.gp.player_index)).toEqual([0, 1, 2]);
-      for (const { gp, report } of reports) {
-        const pi = gp.player_index;
+      for (const { player_index: pi } of freshPlayers) {
+        const read = playerEvents(
+          log.map((e) => ({ ...e })),
+          tc.G,
+          pi,
+          sight,
+        );
         const ownHeroes = new Set(G.characters.filter((c) => c.player === pi).map((c) => c.id));
         const ownProvinces = new Set(G.players[pi]?.provinces ?? []);
         const ownHero = (e: Entry) => e.charId != null && ownHeroes.has(e.charId);
@@ -95,7 +106,7 @@ test("each realm's report shows exactly the lines the visibility rule allows, in
         const expected = log
           .filter(shown)
           .map((e) => ({ text: e.text, charId: ownHero(e) ? e.charId : null, phase: e.phase }));
-        const seen = report.lastTurnLog
+        const seen = read.lastTurnLog
           .filter((l) => l.text.startsWith('[line '))
           .map((l) => ({ text: l.text, charId: l.charId, phase: l.phase }));
         expect(seen).toEqual(expected);

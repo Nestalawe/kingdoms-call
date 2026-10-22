@@ -3,17 +3,20 @@
 // an engine step of their own (spyStealthAndInvisibilityStampedForTheReports, src/engine/turn/realm-reports-and-spy-
 // stealth.ts) that the shell calls after the save, before the reports. The battle flags are no longer cleared after
 // the reports (the next turn's start clears them), and a hero's items are read without a write (normaliseEquipment
-// writes only a flag that changes, and at report time none does).
+// writes only a flag that changes, and at report time none does). Since P1-12b3 the reports are the views' (buildReports,
+// src/views/every-realms-report-and-the-lines-each-realm-reads.ts), built from what the turn hands over for them
+// (whatTheReportsRead), and are lent none of the turn's dice: they draw none.
 // A whole game of the balance matrix (bots-32, set A: battles, worn items, heroes moving unseen, Invisibility,
 // Clairvoyance and spies' lingering sight all reach its reports) is played on the engine's modules, imported directly
 // (lib/a-staged-turn-on-the-engines-modules.ts), with a report for every realm every turn, as
 // tools/balance/every-realm.ts plays it in the vm, but with buildReports handed a world and a GM's log that refuse
 // every write: a write (set, delete or define, on any object reached from them) is noted, then throws, so a write a
-// `try` swallows is still seen.
+// `try` swallows is still seen; and with dice that count each draw.
 // - No write, in any turn; and every report hashes as tests/balance/baseline/reports.json holds it, so the guard
 //   changed nothing the reports show, and it is the matrix's own game.
+// - No draw from the dice, in any turn.
 // - The game reaches what the old writes were about, so the test can't pass by not getting there.
-// - buildReports refuses to run before the Spy stealth is rolled.
+// - The reports can't be built before the Spy stealth is rolled.
 // Red on the base of P1-12b2 (the reports rolled the stealth, cleared the battle flags and normalised the items), and on
 // copies of src/ with each of the three writes put back (the PR shows them).
 // Level 1 (unit): the engine alone, over a whole game; the writes are made deep inside the report's helpers, which
@@ -69,13 +72,15 @@ interface TurnContext {
 }
 interface Resolved {
   spyStealthAndInvisibilityStampedForTheReports(): void;
-  buildReports(): unknown;
+  whatTheReportsRead(): TurnContext;
 }
 
 describe(`a whole game (${GAME_ID}), every report built on a world that refuses every write`, () => {
   const played = {
     turns: [] as string[],
     writes: [] as string[],
+    /** Numbers drawn from the dice while the reports were built. */
+    draws: 0,
     error: '',
     /** What the game reaches, over every turn and every realm's report. */
     reached: {
@@ -86,7 +91,7 @@ describe(`a whole game (${GAME_ID}), every report built on a world that refuses 
       clairvoyance: 0,
       spied: 0,
     },
-    /** What buildReports said when called before the Spy stealth, and after it. */
+    /** What the turn said when the reports were asked for before the Spy stealth, and after it. */
     beforeTheStealth: '',
     afterTheStealth: '',
   };
@@ -97,17 +102,26 @@ describe(`a whole game (${GAME_ID}), every report built on a world that refuses 
     const { kcRng } = await import('../../src/engine/rng.ts');
     const { generateNewGame } = await import('../../src/engine/world/generate.ts');
     const { resolveTurn } = await import('../../src/engine/run-turn.ts');
-    const reportsModule = await import('../../src/engine/turn/realm-reports-and-spy-stealth.ts');
-    // Every realm's report (as the harness's reportEveryRealm), each built on the guarded world and log.
+    const reportsModule = await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
+    // Every realm's report (as the harness's reportEveryRealm), each built on the guarded world and log, and on dice that
+    // count each draw (the ones in use, given back after).
     const build = reportsModule.buildReports;
-    vi.spyOn(reportsModule, 'buildReports').mockImplementation((turnContext: TurnContext) =>
-      build({
-        ...turnContext,
-        freshPlayers: turnContext.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),
-        G: refusingEveryWrite(turnContext.G, 'G', (w) => played.writes.push(w)),
-        turnLog: refusingEveryWrite(turnContext.turnLog, 'log', (w) => played.writes.push(w)),
-      }),
-    );
+    vi.spyOn(reportsModule, 'buildReports').mockImplementation((whatTheReportsRead: TurnContext) => {
+      const was = kcRng.use(() => {
+        played.draws += 1;
+        return was();
+      });
+      try {
+        return build({
+          ...whatTheReportsRead,
+          freshPlayers: whatTheReportsRead.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),
+          G: refusingEveryWrite(whatTheReportsRead.G, 'G', (w) => played.writes.push(w)),
+          turnLog: refusingEveryWrite(whatTheReportsRead.turnLog, 'log', (w) => played.writes.push(w)),
+        });
+      } finally {
+        kcRng.use(was);
+      }
+    });
     // The matrix's world (tests/lib/matrix-game.ts's newWorldOf, on the modules): the page's draw as it loads first.
     for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) kcRng();
     const world = generateNewGame(setupsOf(spec), MAP_SIZES[spec.realms], 0, { seaPct: spec.seaPct }) as Record<
@@ -159,13 +173,13 @@ describe(`a whole game (${GAME_ID}), every report built on a world that refuses 
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const resolved = resolveTurn(first, JSON.parse(slotRowsJsonOf(spec, first, 1)), 1, null) as Resolved;
     try {
-      resolved.buildReports();
+      build(resolved.whatTheReportsRead());
     } catch (err) {
       played.beforeTheStealth = String((err as { message?: unknown }).message);
     }
     try {
       resolved.spyStealthAndInvisibilityStampedForTheReports();
-      played.afterTheStealth = typeof resolved.buildReports();
+      played.afterTheStealth = typeof build(resolved.whatTheReportsRead());
     } catch (err) {
       played.afterTheStealth = String((err as { message?: unknown }).message);
     }
@@ -177,6 +191,10 @@ describe(`a whole game (${GAME_ID}), every report built on a world that refuses 
   test('the reports write nothing to the world or the GM’s log, in any turn', () => {
     expect([...new Set(played.writes)]).toEqual([]);
     expect(played.error).toBe('');
+  });
+
+  test('the reports draw no dice, in any turn', () => {
+    expect(played.draws).toBe(0);
   });
 
   test('every report is the one the balance matrix keeps: the guard changed nothing', () => {
@@ -195,7 +213,7 @@ describe(`a whole game (${GAME_ID}), every report built on a world that refuses 
     expect(r.spied, "a spy's lingering sight").toBeGreaterThan(0);
   });
 
-  test('buildReports refuses to run before the Spy stealth is rolled', () => {
+  test('the reports cannot be built before the Spy stealth is rolled', () => {
     expect(played.beforeTheStealth).toBe('the Spy stealth is rolled before buildReports()');
     expect(played.afterTheStealth).toBe('object');
   });

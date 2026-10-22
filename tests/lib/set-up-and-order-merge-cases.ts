@@ -172,7 +172,10 @@ export const playCase = (b: Board, c: SetUpCase, s: Staged): Outcome => {
     state: string;
     log: Line[];
     spyStealthAndInvisibilityStampedForTheReports: () => void;
-    buildReports: () => { tel: { collected: { orders: Record<string, Raw> } } };
+    whatTheReportsRead: () => unknown;
+  };
+  const buildReports = engineFn(b.engine, 'buildReports') as (whatTheReportsRead: unknown) => {
+    tel: { collected: { orders: Record<string, Raw> } };
   };
   const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
   try {
@@ -182,7 +185,10 @@ export const playCase = (b: Board, c: SetUpCase, s: Staged): Outcome => {
     const [result, record] = withCaseDice(b.engine, c.dice ?? LANDS, () => {
       const r = resolveTurn(state, inVm(rows), turn);
       r.spyStealthAndInvisibilityStampedForTheReports();
-      return [r, JSON.parse(JSON.stringify(r.buildReports().tel.collected.orders)) as Record<string, Raw>] as const;
+      return [
+        r,
+        JSON.parse(JSON.stringify(buildReports(r.whatTheReportsRead()).tel.collected.orders)) as Record<string, Raw>,
+      ] as const;
     });
     return {
       world: JSON.parse(result.state) as World,

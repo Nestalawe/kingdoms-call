@@ -60,6 +60,7 @@ import {
 import { beastCommandCount } from '../../src/engine/world/tables.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { resolveTurn } from '../../src/engine/run-turn.ts';
+import { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
 import { kcRng } from '../../src/engine/rng.ts';
 import { buildTurnReport } from '../../src/views/turn-report.ts';
 import * as theRulesTheSharedDoorHandsThePortal from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
@@ -149,10 +150,11 @@ export function scripted05(): { state: Obj; report: Obj }[] {
     ) as {
       state: string;
       spyStealthAndInvisibilityStampedForTheReports: () => void;
-      buildReports: () => { reports: { gp: Obj; report: Obj }[] };
+      whatTheReportsRead: () => unknown;
     };
     result.spyStealthAndInvisibilityStampedForTheReports();
-    const ours = result.buildReports().reports.find((r) => r.gp['player_index'] === SCRIPTED_REALM);
+    const { reports } = buildReports(result.whatTheReportsRead()) as { reports: { gp: Obj; report: Obj }[] };
+    const ours = reports.find((r) => r.gp['player_index'] === SCRIPTED_REALM);
     if (!ours) throw new Error(`turn ${String(turn)}: no report for the scripted realm`);
     state = result.state;
     turns.push({ state: JSON.parse(state) as Obj, report: ours.report });

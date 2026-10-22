@@ -7,7 +7,7 @@
 //
 // Test code until P1-18's turn shell runs these checks; then it moves into src/. The balance code imports it, so it
 // is an engine path (tools/balance/engine-paths.ts): a change to it plays the matrix.
-import { LEAK_CHECKS, type RealmReport } from './report-leaks.ts';
+import { LEAK_CHECKS, type Perception, type RealmReport } from './report-leaks.ts';
 
 /** An item, held by a character or in a lair's hoard. */
 export interface Item {
@@ -44,6 +44,8 @@ export interface Realm {
   _encountered?: unknown[];
   /** The character it watches by Clairvoyance this turn. */
   _clairCharThisTurn?: unknown;
+  /** The provinces it owns. */
+  provinces?: unknown[];
 }
 /** The saved game_state, as far as the checks read it. */
 export interface SavedState {
@@ -89,6 +91,8 @@ export interface Turn {
   players: PlayerRow[];
   /** The realms' reports the turn wrote (none in an all-bot game). */
   reports?: RealmReport[];
+  /** What perception read besides the world, where the harness records it (scenarioInTheVm's recordTheEvents). */
+  perception?: Perception;
 }
 export interface Breach {
   check: string;
@@ -294,6 +298,11 @@ export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string
   {
     check: "another realm's private line",
     line: /^realm \d+ reads [A-Za-z -]+ of realm \d+(?:, \d+)*'s [^"]+ at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
+    why: "Another realm's private line in the report's spy activity section: waits for P1-23",
+  },
+  {
+    check: 'a line its audience does not admit',
+    line: /^realm \d+ reads, through its spy, a line its audience keeps from it at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
     why: "Another realm's private line in the report's spy activity section: waits for P1-23",
   },
 ];

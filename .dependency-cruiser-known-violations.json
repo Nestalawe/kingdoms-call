@@ -5934,19 +5934,5 @@
       "severity": "error",
       "name": "the-database-code-imports-only-itself-and-the-schemas"
     }
-  },
-  {
-    "type": "dependency",
-    "from": "src/engine/turn/realm-reports-and-spy-stealth.ts",
-    "to": "src/views/turn-report.ts",
-    "unresolvedTo": "../../views/turn-report.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-engine-imports-only-the-engine-and-the-content"
-    }
   }
 ]

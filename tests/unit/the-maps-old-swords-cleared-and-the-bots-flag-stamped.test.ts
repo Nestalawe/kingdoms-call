@@ -62,11 +62,14 @@ function play(state: string): Played {
   const resolveTurn = engineFn(engine, 'resolveTurn') as (...a: unknown[]) => {
     state: string;
     spyStealthAndInvisibilityStampedForTheReports(): void;
-    buildReports(): { reports: { gp: { player_index: unknown }; report: unknown }[] };
+    whatTheReportsRead(): unknown;
+  };
+  const buildReports = engineFn(engine, 'buildReports') as (whatTheReportsRead: unknown) => {
+    reports: { gp: { player_index: unknown }; report: unknown }[];
   };
   const r = resolveTurn(state, slotRows(engine, WORLD, 1), 1, TURN_SEED);
   r.spyStealthAndInvisibilityStampedForTheReports();
-  const { reports } = r.buildReports();
+  const { reports } = buildReports(r.whatTheReportsRead());
   return { state: r.state, reports: JSON.stringify(reports.map(({ gp, report }) => [gp.player_index, report])) };
 }
 const CLEAN = play(WORLD);
