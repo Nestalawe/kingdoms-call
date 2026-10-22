@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-15, Toby
 - **Status:** Confirmed
 - **Source:** PR #89 item 8 (decision D6 on a player's rulebook review)
-- **Enforced by:** [`mastery-hints-words`](../../tests/mastery-hints-words.test.js)
+- **Enforced by:** [`the-rulebooks-hint-at-mastery-but-never-name-a-perk`](../../tests/static/the-rulebooks-hint-at-mastery-but-never-name-a-perk.test.ts)
 
 Builds on R-005. The rulebooks may say, vaguely, that mastery holds more (for example, that Explorer finds can
 raise a province's tax, or that deep Druid mastery makes beasts cheaper), but they never name a level 6–9 perk,

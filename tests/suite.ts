@@ -35,9 +35,6 @@ export function suite(full: boolean): Script[] {
     ['unit', 'migrations', 'tests/migrations.test.js'],
     ['static', 'landing-footer', 'tests/landing-footer.test.js'],
     ['static', 'flyers-soldiers-words', 'tests/flyers-soldiers-words.test.js'],
-    ['static', 'unit-type-words', 'tests/unit-type-words.test.js'],
-    ['static', 'volley-thirty-words', 'tests/volley-thirty-words.test.js'],
-    ['static', 'battle-lines-words', 'tests/battle-lines-words.test.js'],
     ['static', 'roster-words', 'tests/roster-words.test.js'],
     ['static', 'abilities-words', 'tests/abilities-words.test.js'],
     ['static', 'primal-words', 'tests/primal-words.test.js'],
@@ -117,14 +114,11 @@ export function suite(full: boolean): Script[] {
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
     ['scenario', 'xp-lair-thief', 'tests/xp-lair-thief.test.js'], // batch 2026-10-14
     ['scenario', 'xp-small-chances', 'tests/xp-small-chances.test.js'], // batch 2026-10-14
-    ['static', 'spell-words', 'tests/spell-words.test.js'], // batch 2026-10-14
     ['static', 'lair-readiness-words', 'tests/lair-readiness-words.test.js'], // batch 2026-10-14
     ['static', 'rulebook-review-words', 'tests/rulebook-review-words.test.js'], // batch 2026-10-15
-    ['static', 'game-text-review-words', 'tests/game-text-review-words.test.js'], // batch 2026-10-15
     ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
     ['unit', 'sight-shared-province', 'tests/sight-shared-province.test.js'], // batch 2026-10-15
     ['scenario', 'spy-reveals', 'tests/spy-reveals.test.js'], // batch 2026-10-15
-    ['static', 'mastery-hints-words', 'tests/mastery-hints-words.test.js'], // batch 2026-10-15
     ['unit', 'guard-cast-chance', 'tests/guard-cast-chance.test.js'], // batch 2026-10-15
     ['scenario', 'hierophant-no-consecrate', 'tests/hierophant-no-consecrate.test.js'], // batch 2026-10-15
     ['scenario', 'intrusion-invisible', 'tests/intrusion-invisible.test.js'], // batch 2026-10-15
