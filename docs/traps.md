@@ -361,7 +361,8 @@ but the reports.
   dice; `whatTheReportsRead` refuses to hand anything over before it, or twice. The reports are the views'
   (`buildReports` and `playerEvents`, `src/views/every-realms-report-and-the-lines-each-realm-reads.ts`, P1-12b3), which
   the engine doesn't import: the shell calls them with what the turn hands over. A harness that plays a turn calls the
-  three, in that order.
+  three, in that order. Since P1-12b5 only perception reads the world (`playerEvents` and `playerView`); the report
+  itself (`buildTurnReport`) reads only what those two give it.
 - The reports draw no dice either: since P1-12b3 they are lent none, so a draw there would come from the page's dice
   and shift the next turn's seed (the frozen-world test below counts the draws).
 - A per-turn mark is cleared at the next turn's start, not after the reports: the battle flags (`_hadBattleThisTurn`,
