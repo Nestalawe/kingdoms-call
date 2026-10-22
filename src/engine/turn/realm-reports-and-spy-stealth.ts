@@ -5,6 +5,7 @@ import { perkTier } from '../titles/perks.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
 import { hasDisc } from '../discoveries.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import { emit } from './events-and-their-audiences.ts';
 
 // ── EVERY REALM'S REPORT, BUILT AFTER THE SAVE (plan P1-08d: lifted out of resolveTurn) ────
 // buildReports rolls each hero's Spy stealth once, then builds each realm's report from the turn's log: what that
@@ -14,7 +15,7 @@ import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 // once the turn is saved. It takes the turn's context first (src/engine/turn/context.ts) and reads the values
 // resolveTurn joins to it: _reports (built once a turn), presenceByPhase, clairWatch, battleCommanders and _tel.
 export function buildReports(turnContext) {
-  const { _reports, freshPlayers, G, log, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;
+  const { _reports, freshPlayers, G, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;
   if (_reports.built) throw new Error('buildReports() runs once a turn');
   _reports.built = true;
   const activePlayers = freshPlayers.filter((p) => p.user_id);
@@ -42,11 +43,13 @@ export function buildReports(turnContext) {
     if (_shimmer) _seenPct = _seenPct * 0.5;
     if (d100() > _seenPct) {
       c._unspottedTurn = G.turn;
-      log(
-        'system',
-        `[Intelligence] 🕶 ${c.name} moved unseen this turn — ${_shimmer ? 'the Shimmer of illusory magic blurred them from watching eyes' : 'Spy ' + _lvl + ' kept them out of enemy sightings'}.`,
-        { actor: c.player, targets: [c.player], charId: c.id, phase: 0 },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `[Intelligence] 🕶 ${c.name} moved unseen this turn — ${_shimmer ? 'the Shimmer of illusory magic blurred them from watching eyes' : 'Spy ' + _lvl + ' kept them out of enemy sightings'}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: c.id,
+        phase: 0,
+      });
     }
   });
   const reports = [];

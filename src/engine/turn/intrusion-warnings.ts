@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { armySizeBand } from '../../views/visibility.ts';
+import { emit } from './events-and-their-audiences.ts';
 
 // ── INTRUSION WARNINGS (plan P1-08b: lifted out of resolveTurn) ────
 // After each phase, the warnings a realm gets of enemy heroes in its land or beside its own heroes. It takes the turn's
@@ -75,7 +76,7 @@ export function generateIntrusionNotifications(turnContext, ph) {
 }
 
 export function flushIntrusionNotifications(turnContext) {
-  const { SEASONS, _intrusionAcc, log } = turnContext;
+  const { SEASONS, _intrusionAcc } = turnContext;
   const fmtPhases = (phs) => {
     const s = [...phs].sort((a, b) => a - b);
     if (s.length === 1) return SEASONS[s[0]];
@@ -93,17 +94,19 @@ export function flushIntrusionNotifications(turnContext) {
         : `Their strength shifted — most recently (${SEASONS[lastPh]}) leading ${rec.forceByPhase[lastPh]}.`;
     const phaseStr = fmtPhases(s);
     if (rec.branch === 'own') {
-      log(
-        'combat',
-        `[Intelligence] ${rec.acName} of ${rec.actingName} was spotted in your province of ${rec.provName} during ${phaseStr}. ${forceStr}`,
-        { actor: null, targets: [rec.targetPi], provinceId: rec.provId, public: false },
-      );
+      emit(turnContext, {
+        type: 'combat',
+        text: `[Intelligence] ${rec.acName} of ${rec.actingName} was spotted in your province of ${rec.provName} during ${phaseStr}. ${forceStr}`,
+        audience: { actor: null, realms: [rec.targetPi] },
+        province: rec.provId,
+      });
     } else {
-      log(
-        'system',
-        `[Intelligence] A hero of ${rec.actingName} (${rec.acName}) shared ${rec.provName} with your forces during ${phaseStr}. ${forceStr}`,
-        { actor: null, targets: [rec.targetPi], provinceId: rec.provId, public: false },
-      );
+      emit(turnContext, {
+        type: 'system',
+        text: `[Intelligence] A hero of ${rec.actingName} (${rec.acName}) shared ${rec.provName} with your forces during ${phaseStr}. ${forceStr}`,
+        audience: { actor: null, realms: [rec.targetPi] },
+        province: rec.provId,
+      });
     }
   });
 }

@@ -5,6 +5,7 @@ import { TEMPERS_P } from '../world/tables.ts';
 import { nextHeroName } from '../names.ts';
 import { ownedConsecratedProvs } from '../heroes/fame-and-consecration.ts';
 import { discBlockedIds, discEligible, gdActive } from '../discoveries.ts';
+import { emit } from './events-and-their-audiences.ts';
 
 // ── THE NEW TURN, FIRST PART (plan P1-08k5a: one stage taken out of resolveTurn's own body) ─────────────────────────
 // Once the turn's diplomacy and victory are settled (diplomacy-resolution-and-victory-….js), the turn counter moves on
@@ -23,7 +24,7 @@ import { discBlockedIds, discEligible, gdActive } from '../discoveries.ts';
 // body keeps resolveTurn's indent (plan P1-08's Decisions).
 
 export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns(turnContext) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   // 7. Advance turn counter
   G.turn = (G.turn || 1) + 1;
 
@@ -37,11 +38,11 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       .forEach((k) => {
         if (ownedConsecratedProvs(G, pi).length > 0) return;
         delete k._divineReturn;
-        log(
-          'system',
-          `✨ The realm's last consecrated ground is gone, and with it the way back for ${k.name}: the divine cannot restore a monarch where no holy ground remains. An heir takes the crown.`,
-          { actor: pi, targets: [pi] },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `✨ The realm's last consecrated ground is gone, and with it the way back for ${k.name}: the divine cannot restore a monarch where no holy ground remains. An heir takes the crown.`,
+          audience: { actor: pi, realms: [pi] },
+        });
       });
   });
 
@@ -80,9 +81,10 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       if (!p._eliminated) {
         p._eliminated = true;
         p._eliminatedTurn = G.turn;
-        log('system', `⚠ ${p.name}'s king has fallen and no lands remain — their dynasty is extinguished.`, {
-          actor: pi,
-          targets: [pi],
+        emit(turnContext, {
+          type: 'system',
+          text: `⚠ ${p.name}'s king has fallen and no lands remain — their dynasty is extinguished.`,
+          audience: { actor: pi, realms: [pi] },
         });
       }
       return;
@@ -134,11 +136,12 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     G.characters.push(heir);
     heirProv.characters = heirProv.characters || [];
     if (!heirProv.characters.includes(heir.id)) heirProv.characters.push(heir.id);
-    log(
-      'system',
-      `👑 With the old king fallen, ${heir.name} is crowned in ${heirProv.name}. Name them, choose their Temper and allocate their 4 remaining skill points before submitting orders.`,
-      { actor: pi, targets: [pi], provinceId: heirProv.id },
-    );
+    emit(turnContext, {
+      type: 'system',
+      text: `👑 With the old king fallen, ${heir.name} is crowned in ${heirProv.name}. Name them, choose their Temper and allocate their 4 remaining skill points before submitting orders.`,
+      audience: { actor: pi, realms: [pi] },
+      province: heirProv.id,
+    });
     // NOT public. This line is an instruction to one player — name your heir, set their temper,
     // spend their points — and it carried `public:true`, which for an entry with a provinceId means
     // "anyone who can see that province sees it". The coronation happens in the realm's wealthiest
@@ -169,11 +172,12 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       const _gone = c.armies.filter((a) => a._temporary);
       c.armies = c.armies.filter((a) => !a._temporary);
       const _names = _gone.map((a) => `${a.unitName || a.type}${a.unitName ? ` (${a.type})` : ''}`).join(', ');
-      log(
-        'explore',
-        `\u2728 As the season turns, ${_names} ${_gone.length === 1 ? 'is' : 'are'} released from ${_gone.length === 1 ? 'its' : 'their'} bonds and ${_gone.length === 1 ? 'returns' : 'return'} to the Elemental Realm, leaving ${c.name}'s host.`,
-        { actor: c.player, targets: [c.player].filter((x) => x !== null), provinceId: c.location },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `\u2728 As the season turns, ${_names} ${_gone.length === 1 ? 'is' : 'are'} released from ${_gone.length === 1 ? 'its' : 'their'} bonds and ${_gone.length === 1 ? 'returns' : 'return'} to the Elemental Realm, leaving ${c.name}'s host.`,
+        audience: { actor: c.player, realms: [c.player].filter((x) => x !== null) },
+        province: c.location,
+      });
     }
     // PAGAN: Wild Hunt bindings outlast elementals by WILD_HUNT_TURNS full turns, then break.
     // G.turn has ALREADY been advanced (step 7 above) by the time this sweep runs, so the old `>=`
@@ -183,11 +187,12 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       const _wild = c.armies.filter((a) => a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn);
       c.armies = c.armies.filter((a) => !(a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn));
       const _wnames = _wild.map((a) => `${a.unitName || a.type} (${a.type})`).join(', ');
-      log(
-        'explore',
-        `\u{1F43E} The Wild Hunt is done — ${_wnames} slip the binding and melt back into the wilds, leaving ${c.name}'s host.`,
-        { actor: c.player, targets: [c.player].filter((x) => x !== null), provinceId: c.location },
-      );
+      emit(turnContext, {
+        type: 'explore',
+        text: `\u{1F43E} The Wild Hunt is done — ${_wnames} slip the binding and melt back into the wilds, leaving ${c.name}'s host.`,
+        audience: { actor: c.player, realms: [c.player].filter((x) => x !== null) },
+        province: c.location,
+      });
     }
     // Clear one-turn spell flags
     delete c._partSeaThisPhase;
@@ -302,18 +307,19 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       (d) => !_known.has(d.id) && !_blkGL.has(String(d.id)) && discEligible(d, pl),
     ); // race/alignment eligibility; never a forgotten or awaiting-choice discovery
     if (_avail.length === 0) {
-      log('system', `\ud83d\udcda Grand Library: your scholars have already unlocked every known discovery.`, {
-        actor: pi,
-        targets: [pi],
+      emit(turnContext, {
+        type: 'system',
+        text: `\ud83d\udcda Grand Library: your scholars have already unlocked every known discovery.`,
+        audience: { actor: pi, realms: [pi] },
       });
       return;
     }
     const _d = _avail[Math.floor(kcRng() * _avail.length)];
     pl.discoveries.push({ id: _d.id, name: _d.name, category: _d.category, desc: _d.desc, turnDiscovered: G.turn });
-    log(
-      'explore',
-      `\ud83d\udcda Grand Library: this turn your scholars uncover \u2014 **${_d.name}** (${_d.category}). ${_d.desc}`,
-      { actor: pi, targets: [pi] },
-    );
+    emit(turnContext, {
+      type: 'explore',
+      text: `\ud83d\udcda Grand Library: this turn your scholars uncover \u2014 **${_d.name}** (${_d.category}). ${_d.desc}`,
+      audience: { actor: pi, realms: [pi] },
+    });
   });
 }

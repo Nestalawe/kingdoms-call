@@ -2,7 +2,8 @@
 import { recordBattleGraves } from '../graves.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { describeArmy } from '../dice-and-army-names.ts';
-import { narrText, notifyProvinceOwner, notifyTarget, realmTag } from '../turn/log-line-helpers.ts';
+import { narrText, realmTag } from '../turn/log-line-helpers.ts';
+import { notifyProvinceOwner, notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areAllied, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';

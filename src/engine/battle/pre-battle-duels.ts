@@ -6,7 +6,8 @@ import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-enco
 import { resolveDuel } from '../personal-combat/duels-and-character-encounters.ts';
 import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
-import type { LogMeta, NarrativeLine, TurnContext } from '../turn/context.ts';
+import type { LogMeta, TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
 // The single combat between the two commanders before an army battle, and the morale each host carries into the battle

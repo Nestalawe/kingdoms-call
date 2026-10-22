@@ -5,10 +5,8 @@ import { defendSpentThisPhase } from './mercenary-ids-and-battle-records.ts';
 import { settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { generateIntrusionNotifications } from './intrusion-warnings.ts';
 import { spreadPlagues } from '../magic/plague-and-bless-ward.ts';
-import {
-  resolveAllPendingSkillGains,
-  writeDeferredSkillLines,
-} from '../heroes/experience-skill-rises-and-earned-hp.ts';
+import { resolveAllPendingSkillGains } from '../heroes/experience-skill-rises-and-earned-hp.ts';
+import { emit, writeDeferredSkillLines } from './events-and-their-audiences.ts';
 import { disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { applyMoveInterlocks, normaliseAction, orderPhaseActors } from './phase-intents-and-dependency-ordering.ts';
 import {
@@ -47,8 +45,8 @@ import { processOrder } from '../orders/order-dispatch-the-checks-before-a-hero-
 // intents, where every hero stood as the phase began. The bodies keep the loop's indent (plan P1-08's Decisions).
 
 export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
-  const { log, SEASONS, G, presenceByPhase, _warFrontProvs } = turnContext;
-  log('system', `— ${SEASONS[ph]} —`);
+  const { SEASONS, G, presenceByPhase, _warFrontProvs } = turnContext;
+  emit(turnContext, { type: 'system', text: `— ${SEASONS[ph]} —`, audience: {} });
   // sd29 Herbal Lore: a character who took wounds in the PREVIOUS phase has them dressed at the
   // start of this one, recovering 40% of the damage that fight cost them
   // (rounded, never less than 1). `_hpAtPhaseStart` is the HP snapshot taken here each phase; it
@@ -71,17 +69,14 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
         c.hp = c.hp + _heal;
         // filed under the CHARACTER for THIS phase. It is the first line of the phase, before any
         // order resolves.
-        log(
-          'system',
-          `🌿 Herbal Lore: ${c.name}'s wounds from the previous season are dressed with healing herbs — 40% of the ${_dmg} damage taken is mended. +${_heal} HP (${c.hp}/${c.maxHp || 20}).`,
-          {
-            actor: c.player,
-            targets: [c.player],
-            charId: c.id,
-            phase: ph,
-            provinceId: c.location != null ? c.location : undefined,
-          },
-        );
+        emit(turnContext, {
+          type: 'system',
+          text: `🌿 Herbal Lore: ${c.name}'s wounds from the previous season are dressed with healing herbs — 40% of the ${_dmg} damage taken is mended. +${_heal} HP (${c.hp}/${c.maxHp || 20}).`,
+          audience: { actor: c.player, realms: [c.player] },
+          hero: c.id,
+          phase: ph,
+          province: c.location != null ? c.location : undefined,
+        });
       }
     }
     c._hpAtPhaseStart = c.alive && c.hp != null ? c.hp : null;
@@ -131,16 +126,17 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   // Heroes hired this phase can't act yet, but should still be told so.
   (G.characters || []).forEach((c) => {
     if (c.player !== null && c.alive && c.hiredInPhase === ph) {
-      log('hire', `${c.name} was hired this phase and will be ready to act from the next phase.`, {
-        actor: c.player,
-        targets: [c.player],
+      emit(turnContext, {
+        type: 'hire',
+        text: `${c.name} was hired this phase and will be ready to act from the next phase.`,
+        audience: { actor: c.player, realms: [c.player] },
       });
     }
   });
 }
 
 export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   // ── STAGE 1b: battle-lock pin (AK: you are stuck in a province until its battle is decided) ──
   // resolveStalledBattles(ph) has just re-fought every contested province. Any province that is
   // STILL flagged _battleUnresolved has an unresolved battle whose outcome pins the forces in it:
@@ -162,21 +158,17 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
     if (!_stillContested && !_foughtFollowUp) return;
     it.cancelled = true;
     it.cancelReason = 'battleLocked';
-    log(
-      'combat',
-      _stillContested
+    emit(turnContext, {
+      type: 'combat',
+      text: _stillContested
         ? `${it.c.name} is still locked in the unresolved battle for ${here.name} and cannot march away — the fight must be seen through before they can move on.`
         : `${it.c.name} has already fought a battle this phase and cannot march on to start another — one battle per phase.`,
-      {
-        actor: it.player,
-        targets: [it.player],
-        provinceId: it.fromId,
-        public: false,
-        charId: it.id,
-        phase: ph,
-        pinNotice: true,
-      },
-    );
+      audience: { actor: it.player, realms: [it.player] },
+      province: it.fromId,
+      hero: it.id,
+      phase: ph,
+      pinNotice: true,
+    });
   });
 
   // ── STAGE 2a: movement interlocks — pin generals whose province is invaded before they leave
@@ -230,7 +222,7 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
 }
 
 export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph, intents) {
-  const { G, log } = turnContext;
+  const { G } = turnContext;
   // ── STAGE 3: resolve orders, in initiative order adjusted for AK's [3.0] exceptions ──
   const sorted = orderPhaseActors(turnContext, ph, intents);
   // ── THE DEFEND STEP ── sits between the two order tiers. Every non-relocating order (casting,
@@ -294,10 +286,11 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph,
     if (o && c.alive === false) {
       if (c.killedThisTurn && !c._fallenOrderNoted) {
         c._fallenOrderNoted = true;
-        log('system', `${c.name} has fallen — their remaining orders for this turn go unanswered.`, {
-          actor: c.player,
-          targets: [c.player],
-          charId: c.id,
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name} has fallen — their remaining orders for this turn go unanswered.`,
+          audience: { actor: c.player, realms: [c.player] },
+          hero: c.id,
           phase: ph,
         });
       }

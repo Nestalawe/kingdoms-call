@@ -9,49 +9,21 @@
 //   G                  the game's state, parsed: the working copy the turn changes
 //   freshPlayers       the game's slot rows, as loaded
 //   expectedTurnToRun  the turn being run
-//   turnLog            the GM's log of the turn, which log() fills
-//   log(type, text, meta)  files one line in turnLog
+//   turnLog            the GM's log of the turn, which emit() fills (events-and-their-audiences.ts: the one door)
+//   log(type, text, meta)  files one line in turnLog, through emit
 // resolveTurn adds the rest as it reaches them: _mercIds, _tel, battleCommanders, fieldBattlePhase, _logCtx,
 // _currentPhase, _afterPhases, and more as each lifted area needs them (docs/ARCHITECTURE.md lists them). The lifted code keeps resolveTurn's two-space indent (plan P1-08's Decisions).
-// TurnContext, below the function, is the context's type (plan P1-10a2), and LogLine the type of a line of the log.
+// TurnContext, below the function, is the context's type (plan P1-10a2); LogLine, the type of a line of the log, is the
+// events file's.
 import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+import { emit, eventOfALogCall, type LogLine } from './events-and-their-audiences.ts';
 
 export function createTurnContext(G, freshPlayers, expectedTurnToRun) {
   const turnContext = { G, freshPlayers, expectedTurnToRun, turnLog: [] };
-  const log = (type, text, meta = {}) => {
-    const { turnLog } = turnContext;
-    turnLog.push({
-      type,
-      text,
-      actor: meta.actor ?? null,
-      targets: meta.targets || [],
-      provinceId: meta.provinceId ?? null,
-      public: meta.public ?? false,
-      spy: meta.spy ?? false,
-      system: meta.system ?? false,
-      armyEstimate: meta.armyEstimate ?? null,
-      charId: meta.charId ?? turnContext._logCtx.charId, // which character's action this is
-      charIds: meta.charIds || null, // extra characters this entry pertains to — the
-      // report files it into WHICHEVER of the viewer's own
-      // characters it names (e.g. a duel shows in BOTH
-      // combatants' sections, each for its own owner).
-      // 2026-09-23 (Toby item 10): a line logged DURING a phase but outside any character's order
-      // (the lone-defender ambush, Defend ride-outs, end-of-phase sweeps) had no phase at all, and
-      // the player's Chronicle files an unphased line under SPRING. Perrin the Halved, ambushed and
-      // killed at the end of LATE SUMMER, therefore read as struck down in Spring and then marching
-      // on through both summers. _currentPhase is the phase being resolved, so it is the fallback.
-      phase:
-        meta.phase ?? turnContext._logCtx.phase ?? turnContext._currentPhase ?? (turnContext._afterPhases ? 99 : null), // which phase (0–4, or 99 = End of Turn)
-      pinNotice: meta.pinNotice ?? false, // hoist to the top of the char's phase report
-      env: meta.env ?? false, // environmental province event (earthquake,
-      // flood, plague, blessing, part-sea …) → Province Reports
-      battleId: meta.battleId ?? null, // 2026-09-23d: which battle this line belongs to (emitBattle)
-      bTier: meta.bTier ?? null, // 'k' key · 'd' detail · 't' tally · 's' onlooker summary
-      gameEnd: meta.gameEnd ?? false, // 2026-09-28 (Toby item 6): end-of-game announcement / standings → top of the player report
-    });
-    console.log(`[${type}] ${text}`);
-  };
+  // log(type, text, meta): files the event its arguments describe (events-and-their-audiences.ts, eventOfALogCall),
+  // through the one door, emit. P1-12a's rows convert its callers to emit, area by area; P1-12a4 deletes it.
+  const log = (type, text, meta = {}) => emit(turnContext, eventOfALogCall(type, text, meta));
   turnContext.log = log;
   return turnContext;
 }
@@ -72,7 +44,7 @@ export interface TheGamesSlotRow {
   turn_report?: unknown;
 }
 
-/** What a caller of log() may say about a line (each left out reads as log() says). */
+/** What a caller of log() may say about a line (each left out reads as log() says; eventOfALogCall maps it to an event). */
 export interface LogMeta {
   /** The realm whose hero acts (null: nobody's). */
   actor?: number | null | undefined;
@@ -102,33 +74,6 @@ export interface LogMeta {
   battleDetail?: boolean | undefined;
   summary?: boolean | undefined;
 }
-
-/** A line of the GM's log (turnLog): its type ('system', 'combat', 'move', …), its text, and every field of LogMeta,
- *  filled in. */
-export interface LogLine {
-  type: string;
-  text: string;
-  actor: number | null;
-  targets: (number | null)[];
-  provinceId: number | null;
-  public: boolean;
-  spy: boolean;
-  system: boolean;
-  armyEstimate: unknown;
-  charId: number | null;
-  charIds: number[] | null;
-  phase: number | null;
-  pinNotice: boolean;
-  env: boolean;
-  battleId: number | null;
-  bTier: string | null;
-  gameEnd: boolean;
-}
-
-/** A line of a battle's or a duel's narrative: shown to everyone there, or (an object with onlyPlayer) to one realm
- *  alone (turn/log-line-helpers.ts, emitNarrLine). */
-export type NarrativeLine =
-  string | { text: string; onlyPlayer?: number | null | undefined; charId?: number | null | undefined };
 
 /** A hero's order for one phase as the turn holds it (G.turnOrders, by hero, then by phase): his realm's order, or one
  *  the engine writes (a march the invasion interlock cancelled becomes a Defend, `_pinned`). */
@@ -178,9 +123,9 @@ export interface TurnContext {
   freshPlayers: TheGamesSlotRow[];
   /** The turn being run (G.turn moves on during the turn). */
   expectedTurnToRun: number;
-  /** The GM's log of the turn, which log() fills. */
+  /** The GM's log of the turn, which emit() fills. */
   turnLog: LogLine[];
-  /** Files one line in turnLog. */
+  /** Files one line in turnLog, through emit (until P1-12a4). */
   log: (type: string, text: string, meta?: LogMeta) => void;
   /** The hero whose order is resolving, and its phase (null between orders). */
   _logCtx: { charId: number | null; phase: number | null };

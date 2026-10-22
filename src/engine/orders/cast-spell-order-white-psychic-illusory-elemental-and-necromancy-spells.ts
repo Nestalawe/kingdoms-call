@@ -29,7 +29,8 @@ import { graveServedOther, isPreOrderRef, orderCharRef } from '../heroes/charms-
 import { castChanceFor } from '../chances-and-lair-grades.ts';
 import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 import { applyPendingSynthPlan, discSum, gdActive, hasDisc } from '../discoveries.ts';
-import { emitNarrLine, logSplit, notifyProvinceOwner, notifyTarget, realmTag } from '../turn/log-line-helpers.ts';
+import { realmTag } from '../turn/log-line-helpers.ts';
+import { emitNarrLine, logSplit, notifyProvinceOwner, notifyTarget } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import {
   effStat,

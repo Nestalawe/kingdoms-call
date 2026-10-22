@@ -8,11 +8,13 @@ import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-r
 import { discSum, hasDisc } from '../discoveries.ts';
 import { recalcHeroPay, skillInPlayNote } from './effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
+import { writeDeferredSkillLines } from '../turn/events-and-their-audiences.ts';
 
 // ── EXPERIENCE, SKILL RISES AND EARNED HP (plan P1-08c: lifted out of resolveTurn) ────
 // A hero's chance to raise a skill by using it (trySkillGain, and rollNavalVoyage for a voyage), the one rise a phase
 // drawn from the candidates (resolvePendingSkillGain), the rise lines held back until the end of the phase
-// (writeDeferredSkillLines, flushDeferredSkillLogsFor), and the maximum-HP roll after a fight (awardKillXP, awardWinHp,
+// (flushDeferredSkillLogsFor; writeDeferredSkillLines, which places them in the GM's log, is in
+// turn/events-and-their-audiences.ts), and the maximum-HP roll after a fight (awardKillXP, awardWinHp,
 // awardHpRoll), and every hero's current HP kept in step with his maximum after each phase (syncAllMaxHp, plan
 // P1-08i3, below). Each takes the turn's context first (src/engine/turn/context.ts). The reassigned values they read,
 // _deferredSkillLogs, _pcSimulating, _combatSkillProv, _chieftainDuelGain and _duelFoes, are read and written as
@@ -24,42 +26,8 @@ import { refreshMovePool } from '../units/movement-pools.ts';
 export const SKILLGAIN_STD = 0.1,
   SKILLGAIN_COMMON = 0.04;
 
-// a character who dies later in the phase must not have a skill rise reported AFTER the fight
-// that killed them ("📈 … March rises to level 1" trailing a duel death). The rise was real —
-// earned on the march that carried them INTO the battle — so at the moment of death every
-// deferred line of theirs is written out at once, i.e. before the battle narrative is emitted,
-// exactly where the march sits in the sequence of events.
-// Write out deferred skill lines. 2026-10-13 (item 6, Toby): a line earned in a battle
-// (meta.afterBattleIn = that province) is placed straight after the last line of the most recent
-// battle report there in the same phase, rather than after everything else the phase brought —
-// the lines of one rise stay together and in order. With `inPlace` (a hero falling, whose battle
-// is not yet written) every line is simply logged where it stands.
-export function writeDeferredSkillLines(turnContext, list, inPlace) {
-  const { log, turnLog } = turnContext;
-  const blocks = new Map();
-  (list || []).forEach(([msg, meta]) => {
-    const m = { ...(meta || {}) };
-    const p = m.afterBattleIn;
-    delete m.afterBattleIn;
-    log('system', msg, m);
-    if (p == null || inPlace) return;
-    const k = p + '|' + m.phase;
-    if (!blocks.has(k)) blocks.set(k, { p, ph: m.phase, ents: [] });
-    blocks.get(k).ents.push(turnLog.pop());
-  });
-  blocks.forEach(({ p, ph, ents }) => {
-    let at = -1;
-    for (let i = turnLog.length - 1; i >= 0; i--) {
-      const x = turnLog[i];
-      if (x && x.battleId != null && x.provinceId === p && x.phase === ph) {
-        at = i;
-        break;
-      }
-    }
-    if (at < 0) turnLog.push(...ents);
-    else turnLog.splice(at + 1, 0, ...ents);
-  });
-}
+// The skill rises held back to the end of the phase are written out by writeDeferredSkillLines
+// (src/engine/turn/events-and-their-audiences.ts: it places them in the GM's log).
 export function flushDeferredSkillLogsFor(turnContext, charId) {
   const { G } = turnContext;
   if (charId != null) {

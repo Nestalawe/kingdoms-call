@@ -2,12 +2,14 @@ import { battleLineTiers, battleTallyLine } from './fates.ts';
 import { druIdPenaltyMult, getDruidLevel } from '../world/tables.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { dragonTamed } from '../discoveries.ts';
-import { emitNarrLine, narrText } from '../turn/log-line-helpers.ts';
+import { narrText } from '../turn/log-line-helpers.ts';
+import { emitNarrLine } from '../turn/events-and-their-audiences.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
 import type { Quality } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
-import type { NarrativeLine, TurnContext } from '../turn/context.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 
 // ── BATTLE REPORT LINES AND FORCE MARKERS (plan P1-08c: lifted out of resolveTurn) ────
 // The lines a battle report is built from: a force's header row (forceMarker), a unit's quality in words, a hero's
