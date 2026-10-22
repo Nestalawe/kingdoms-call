@@ -46,11 +46,12 @@ test('the staging config never carries the live database',()=>{
   assert.throws(()=>configFile({url:'https://yymsnsrpggpgmzgcfrys.supabase.co',key:KEY,deployed:DEPLOYED}),/live/);
 });
 
-test('the "on staging" comment links the site, names the commit and carries the marker',()=>{
-  const body=onStagingBody({pr:21,sha:'abcdef1234567',site:'https://kingdoms-call-staging.github.io/'});
+test('the "on staging" comment links the site, names the commits and carries the marker',()=>{
+  const body=onStagingBody({pr:21,sha:'abcdef1234567',built:'1234567abcdef',site:'https://kingdoms-call-staging.github.io/'});
   assert.ok(body.startsWith(MARKER));
   assert.match(body,/https:\/\/kingdoms-call-staging\.github\.io\//);
   assert.match(body,/abcdef1/);
+  assert.match(body,/1234567/);
   assert.match(body,/staging database/);
   assert.match(body,/rebuilt for it/);
   assert.match(body,/test accounts/);
