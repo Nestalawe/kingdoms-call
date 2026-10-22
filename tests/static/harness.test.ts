@@ -907,14 +907,15 @@ describe('CI', () => {
       /^on:\n {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]\n {2}pull_request:\n {4}types: \[edited\]\n/m,
     );
     expect(wf).toMatch(/^permissions: \{\}$/m);
-    // Checkouts: the default branch (no ref) or the pull request's base commit, only the script and the Node pin.
+    // Checkouts: the default branch (no ref) or the pull request's base commit, only the script, its package.json (which
+    // says it is a module) and the Node pin.
     expect([...wf.matchAll(/^ +ref: (.+)$/gm)].map((m) => m[1])).toEqual(['${{ github.event.pull_request.base.sha }}']);
     const sparse = [...wf.matchAll(/sparse-checkout: \|\n((?: {12}.+\n)+)/g)].map((m) =>
       (m[1] ?? '').trim().split(/\s+/),
     );
     expect(sparse).toEqual([
-      ['.nvmrc', 'tools/github/balance-comment.ts'],
-      ['.nvmrc', 'tools/github/balance-comment.ts'],
+      ['.nvmrc', 'tools/github/balance-comment.ts', 'tools/github/package.json'],
+      ['.nvmrc', 'tools/github/balance-comment.ts', 'tools/github/package.json'],
     ]);
     expect(wf.match(/uses: actions\/checkout@/g)).toHaveLength(2);
     // What it runs: the artifact lookup, the base check, and the script. Nothing installed, nothing built.
@@ -1242,6 +1243,55 @@ describe('CI', () => {
     expect(stagingCommentProblems(buildsHead)).toEqual(['build: checks out another commit']);
   });
 
+  // Each TypeScript script a workflow runs with Node says it is a module: its name ends .mts, or the package.json nearest
+  // its folder says "type": "module". Otherwise Node parses it as CommonJS first, fails, parses it again as a module and
+  // prints MODULE_TYPELESS_PACKAGE_JSON (the deploy's keep step did on every deploy, #187, #188). The repository's own
+  // package.json has no type: its .js test scripts are CommonJS.
+  function moduleTypeOf(dir: string, files: (f: string) => string | undefined): string | undefined {
+    for (let d = dir; ; d = path.posix.dirname(d)) {
+      const text = files(d === '.' ? 'package.json' : `${d}/package.json`);
+      if (text !== undefined) return (JSON.parse(text) as { type?: string }).type;
+      if (d === '.') return undefined;
+    }
+  }
+  const repositoryFile = (f: string) => (fs.existsSync(path.join(ROOT, f)) ? read(f) : undefined);
+  // A workflow that checks out only some files (sparse-checkout, balance-report.yml) sees only those.
+  function typelessScripts(texts: { f: string; text: string }[], files = repositoryFile): string[] {
+    return texts.flatMap(({ f, text }) => {
+      const sparse = [...text.matchAll(/sparse-checkout: \|\n((?: {12}.+\n)+)/g)].map((m) =>
+        (m[1] ?? '').trim().split(/\s+/),
+      );
+      const seen = (g: string) => (sparse.every((list) => list.includes(g)) ? files(g) : undefined);
+      return [...new Set([...text.matchAll(/\bnode ((?:[\w.-]+\/)*[\w.-]+\.ts)\b/g)].map((m) => m[1] ?? ''))]
+        .filter((script) => moduleTypeOf(path.posix.dirname(script), seen) !== 'module')
+        .map((script) => `${f}: ${script}`);
+    });
+  }
+  test('each TypeScript script a workflow runs with Node says it is a module', () => {
+    const scripts = workflows.flatMap(({ text }) => [...text.matchAll(/\bnode ([\w./-]+\.m?ts)\b/g)].map((m) => m[1]));
+    expect(scripts).toContain('tools/deploy/keep-the-previous-deploys-files.ts');
+    expect(typelessScripts(workflows)).toEqual([]);
+    // Planted: the keep step's script in a folder whose nearest package.json has no type (the repository's); the
+    // folder's package.json gone; and renamed .mts, which needs none.
+    const keepIn = (dir: string) => deployText.replace(/node tools\/deploy\//g, `node ${dir}`);
+    expect(typelessScripts([{ f: 'deploy.yml', text: keepIn('tools/') }])).toEqual([
+      'deploy.yml: tools/keep-the-previous-deploys-files.ts',
+    ]);
+    const withoutIt = (f: string) => (f === 'tools/deploy/package.json' ? undefined : repositoryFile(f));
+    expect(typelessScripts([{ f: 'deploy.yml', text: deployText }], withoutIt)).toEqual([
+      'deploy.yml: tools/deploy/keep-the-previous-deploys-files.ts',
+    ]);
+    const renamed = keepIn('tools/').replace(/keep-the-previous-deploys-files\.ts/g, 'keep.mts');
+    expect(typelessScripts([{ f: 'deploy.yml', text: renamed }])).toEqual([]);
+    // The balance report's sparse checkout without the script's package.json: Node never sees it.
+    const report = read('.github/workflows/balance-report.yml');
+    const notCheckedOut = report.replace(/^ {12}tools\/github\/package\.json\n/gm, '');
+    expect(notCheckedOut).not.toBe(report);
+    expect(typelessScripts([{ f: 'balance-report.yml', text: notCheckedOut }])).toEqual([
+      'balance-report.yml: tools/github/balance-comment.ts',
+    ]);
+  });
+
   test('no job that can publish, runs in an environment or reads a secret runs npm, npx or the build, in any workflow', () => {
     const checked: string[] = [];
     for (const { f, text } of workflows) {
@@ -1485,7 +1535,9 @@ describe('dangerous paths', () => {
       'tools/balance/run.ts',
       'tools/balance/engine-paths.ts',
       'tools/balance/report.ts',
+      'tools/balance/package.json',
       'tools/github/balance-comment.ts',
+      'tools/github/package.json',
       'tools/hooks/after-edit.ts',
       'tools/hooks/before-stop.ts',
       'tools/check.ts',
@@ -1494,6 +1546,7 @@ describe('dangerous paths', () => {
       'tools/pages.ts',
       'tools/dev.ts',
       'tools/deploy/keep-the-previous-deploys-files.ts',
+      'tools/deploy/package.json',
       'tests/lib/engine.ts',
       '.github/workflows/ci.yml',
       '.github/workflows/balance-report.yml',

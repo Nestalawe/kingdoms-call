@@ -41,6 +41,7 @@ jobs:
           sparse-checkout: |
             .nvmrc
             tools/github/balance-comment.ts
+            tools/github/package.json
           sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v7
@@ -94,6 +95,7 @@ jobs:
           sparse-checkout: |
             .nvmrc
             tools/github/balance-comment.ts
+            tools/github/package.json
           sparse-checkout-cone-mode: false
 
       # The pull request that adds this warning has nothing on its base branch to run yet.
