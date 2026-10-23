@@ -281,11 +281,6 @@ export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string
     why: "A wanderer who died earlier in the turn can still be hired: the hire order checks that he serves no realm and stands in the province, not that he is alive (the GM portal's hire case)",
   },
   {
-    check: 'an unmet realm',
-    line: /^realm \d+ hasn't met realm \d+, but its report names it at intel\[\d+\]: "[^"():]+ \([a-z ]+\): controlled by [^",.:;]+\."$/,
-    why: "A province the realm once visited names its owner now, met or not (buildTurnReport's province intelligence; R-046)",
-  },
-  {
     check: 'an unseen hero',
     line: /^realm \d+ reads of [^"]+ \(id \d+, invisible from phase \d\) in phase \d+, in a line of its own order, at lastTurnLog\[\d+\]: "[^"]*"(?: \(and \d+ more lines like it that phase\))?$/,
     why: "Enemy orders and reactions still reach a hero after he turns invisible (the Defend ambush, Encounter and Pursue, a chase under way, Spy on a hero, Steal, Curse: they check cloaks and Vanish, not Invisibility), and the acting realm's report tells it so",

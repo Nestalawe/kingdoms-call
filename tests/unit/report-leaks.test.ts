@@ -275,6 +275,12 @@ describe('what each leak check allows', () => {
     expect(leaks(turn((_, r) => owned(r)))).toEqual(['an unmet realm']);
   });
 
+  test("a province's owner in the intelligence: an unmet realm is “an unknown realm”, never its name (R-046)", () => {
+    const intel = (text: string) => turn((_, r) => (of(r, 1)['intel'] = [text]));
+    expect(leaks(intel('Coldmere (marsh): controlled by an unknown realm.'))).toEqual([]);
+    expect(leaks(intel('Coldmere (marsh): controlled by Coldharbour.'))).toEqual(['an unmet realm']);
+  });
+
   test('every name once the game is over; a name inside a longer one; a name a met realm shares', () => {
     const named = (r: RealmReport[]) => line(r, 0, 'Coldharbour claims Coldmere.', 3);
     expect(leaks(turn((t, r) => ((t.after.gameOver = { winner: 0 }), named(r))))).toEqual([]);
@@ -322,16 +328,6 @@ describe('what each leak check allows', () => {
 });
 
 describe('the known breaches of the leak checks', () => {
-  test("a visited province naming its unmet owner in the realm's intelligence is let through, and nothing else like it", () => {
-    const intel = (text: string) => turn((_, r) => (of(r, 1)['intel'] = [text]));
-    expect(leaks(intel('Coldmere (marsh): controlled by Coldharbour.'))).toEqual([]);
-    expect(leaks(intel('Coldharbour holds Coldmere.'))).toEqual(['an unmet realm']);
-    expect(leaks(intel('Coldmere (marsh): controlled by Coldharbour, who march on you.'))).toEqual(['an unmet realm']);
-    expect(leaks(turn((_, r) => line(r, 1, 'Coldmere (marsh): controlled by Coldharbour.')))).toEqual([
-      'an unmet realm',
-    ]);
-  });
-
   // P1-12a1 (P1-12's Decision 13): the check reads every part of a report; a spy's lingering sight shows the realm
   // another realm's private lines, let through until P1-23.
   test("another realm's private line in spy activity is let through; in the chronicle, or naming no hero, it is not", () => {

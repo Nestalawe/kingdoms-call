@@ -1394,10 +1394,8 @@ function linesOfTheProvincesIntelligence(view) {
     .filter((p) => p.seen.visited && !p.seen.owned)
     .forEach((p) => {
       if (p.owner !== null && p.owner !== playerIndex)
-        // KNOWN BREACH (P1-23's entry 2): the realm that holds it is named, met or not.
-        intel.push(
-          `${p.name} (${p.terrain}): controlled by ${p.knownBreachTheOwnersNameThoughItMayBeUnmet || 'unknown realm'}.`,
-        );
+        // The realm that holds it is named once this realm has met it (R-046).
+        intel.push(`${p.name} (${p.terrain}): controlled by ${p.theOwnersNameOnceItHasMetThem || 'an unknown realm'}.`);
       const guardNPC = p.neutralGuard.leader;
       const guardArmyCount = p.neutralGuard.armyCount;
       if (guardArmyCount > 0) {
