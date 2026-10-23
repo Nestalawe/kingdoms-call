@@ -17,7 +17,7 @@ function report() {
   played ??= (async () => {
     const sc = await bootScenario({ seed: (Number(process.env['KC_SEED']) >>> 0) + 0x10000 });
     const res = await sc.turn({ realms: 2, cols: 8, rows: 7 });
-    return sc.W.buildTurnReport(res.S2, 0);
+    return sc.W.buildTurnReport(sc.W.playerView(res.S2, 0));
   })();
   return played;
 }

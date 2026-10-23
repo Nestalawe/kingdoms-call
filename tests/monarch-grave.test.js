@@ -30,7 +30,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   S.world.provinces[home].owner=1;
   S.players[0].provinces=[other.id]; S.players[1].provinces=[...(S.players[1].provinces||[]),home];
 
-  const rep=W.buildTurnReport(S,0);
+  const rep=W.buildTurnReport(W.playerView(S,0));
   const onMap=(rep.visibleDeadHeroes||rep.deadHeroesVisible||[]).find(g=>g.id===king.id)
            ||(Object.values(rep).find(v=>Array.isArray(v)&&v.some(x=>x&&x.id===king.id&&'inVisibleProv' in x))||[]).find(x=>x.id===king.id);
   const listed=(rep.knownDeadHeroes||[]).find(g=>g.id===king.id);

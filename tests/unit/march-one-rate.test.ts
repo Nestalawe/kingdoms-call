@@ -70,7 +70,7 @@ test("the turn report (what the orders form shows): each unit's move rate at Mar
     `(world)=>{ const S=JSON.parse(world); const king=S.characters.find(c=>c.alive&&c.player===0&&c.isKing);
       king.skills.march=5; king.items=[];
       king.armies=[{type:'Free Lances',quality:'Average',unitName:'the Test Lances'},{type:'Thunderbirds',quality:'Average',unitName:'the Test Wing'}];
-      const kr=buildTurnReport(S,0).characters.find(c=>c.id===king.id);
+      const kr=buildTurnReport(playerView(S,0)).characters.find(c=>c.id===king.id);
       const rate=t=>((kr&&kr.armies||[]).find(x=>x.type===t)||{}).moveRate;
       return [rate('Free Lances'), rate('Thunderbirds')]; }`,
     engine,

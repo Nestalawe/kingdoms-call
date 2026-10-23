@@ -35,7 +35,7 @@ const dom=bootJsdom(html,{supabase:{createClient:()=>sbStub()},
         (r.lastTurnLog||[]).forEach(l=>{ if(typeof l.text!=='string'){ return; } if(/unknown realm/.test(l.text)) masked++; if(/NaN|undefined/.test(l.text)) { badLine++; if(badLine<3) console.log('BAD LOG LINE',l.text.slice(0,200)); } }); });
       // ── unmet-realm leak check on every realm's titles payload ──
       for(let pi=0;pi<(S2.players||[]).length;pi++){
-        let rep; try{ rep=W.buildTurnReport(S2,pi); }catch(e){ crashes++; console.log('buildTurnReport threw',e.stack.split('\n').slice(0,3).join(' | ')); continue; }
+        let rep; try{ rep=W.buildTurnReport(W.playerView(S2,pi)); }catch(e){ crashes++; console.log('buildTurnReport threw',e.stack.split('\n').slice(0,3).join(' | ')); continue; }
         const T=rep&&rep.titles; if(!T||!T.public||T.gameOver) continue;
         const met=new Set([pi,...((S2.players[pi]._encountered)||[])]);
         const unmetNames=(S2.players||[]).map((p,i)=>met.has(i)?null:p.name).filter(Boolean);

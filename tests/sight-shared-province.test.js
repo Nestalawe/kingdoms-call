@@ -35,7 +35,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   moveTo(mine,wild); moveTo(theirs,wild); theirs.armies=army(4); theirs._unspottedTurn=T;
   const wander={...JSON.parse(JSON.stringify(theirs)),id:S.characters.length,player:null,name:'Wanderer Test',armies:[],_unspottedTurn:T,isKing:false};
   S.characters.push(wander); wild.characters.push(wander.id);
-  let rep=W.buildTurnReport(S,0);
+  let rep=W.buildTurnReport(W.playerView(S,0));
   const chars=id=>(((rep.worldMeta||{}).provinces||[]).find(r=>r&&r.id===id)||{}).characters||[];
   const seen=chars(wild.id).find(c=>c.id===theirs.id);
   ok(!!seen,'another realm\'s hero sharing a province with yours is on your map, though their Spy rolled to hide');
@@ -63,13 +63,13 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   }
   ok(!(rep.visibleChars||[]).some(x=>x.id===wander.id),'a wandering hero who rolled to slip by is not in the target list');
   // a lone hero of another realm (no troops): still nothing but name and realm
-  theirs.armies=[]; rep=W.buildTurnReport(S,0);
+  theirs.armies=[]; rep=W.buildTurnReport(W.playerView(S,0));
   const lone=(rep.visibleChars||[]).find(x=>x.id===theirs.id);
   ok(lone&&lone.leadsArmies===false&&!('hp' in lone)&&!('temper' in lone),`a lone hero of another realm is listed as leading no troops, with no hit points or temper (got ${JSON.stringify(lone)})`);
   theirs.armies=army(4);
 
   // ── Invisibility still hides them ──
-  theirs._invisTurn=T; rep=W.buildTurnReport(S,0);
+  theirs._invisTurn=T; rep=W.buildTurnReport(W.playerView(S,0));
   ok(!chars(wild.id).some(c=>c.id===theirs.id)&&!(rep.heroSightings||[]).some(s=>s.name===theirs.name),'a hero under Invisibility is not seen, even beside your hero');
   ok(!(rep.visibleChars||[]).some(x=>x.id===theirs.id),'…nor in the target list');
   delete theirs._invisTurn;
@@ -79,7 +79,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   S.characters.filter(c=>c.alive&&c.player===0).forEach(c=>moveTo(c,wild));
   const land=home0;
   moveTo(theirs,land); theirs._unspottedTurn=null; theirs.armies=army(1);
-  rep=W.buildTurnReport(S,0);
+  rep=W.buildTurnReport(W.playerView(S,0));
   const intruder=(rep.heroSightings||[]).find(s=>s.name===theirs.name);
   ok(!!intruder,'an intruder leading troops in your land is seen');
   ok(intruder&&!intruder.race&&!intruder.alignment&&!intruder.topSkill&&intruder.armyBand==='leads a small escort (a few units)',`…described only by name, realm and rough size (got ${intruder&&intruder.text})`);
@@ -103,7 +103,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const gm=compactPage('kingdoms-call-gm-portal.html');
   // since P1-12b4 the realm's view (playerView) chooses the heroes and their army's size, and the section copies them
   const view=compactDeclaration('views/what-each-realm-may-see-of-the-world.ts','playerView');
-  const pci=compactDeclaration('views/every-realms-report-and-the-lines-each-realm-reads.ts','provinceCharIntelOf');
+  const pci=compactDeclaration('views/turn-report.ts','provinceCharIntelOf'); // (P1-12b5: with the rest of the report)
   ok(/heroesInItsProvinceIntelligence=[^;]*\.filter\(c=>c\.player===realm\|\|enemyCharVisibleTo\(state,realm,c,provinceIntelligenceSight\)\)/.test(view)&&/const visible=p\.heroesInItsProvinceIntelligence;/.test(pci),'the province character intel uses the one sight rule (enemyCharVisibleTo)');
   ok((pci.match(/armyCount:/g)||[]).length===1&&/c\.player===pi\?\{armyCount:c\.armyCount\}:\{armyBand:c\.armyBand\}/.test(pci)&&/armyCount:own\|\|how==='everyHero'\?armies\.length:null,armyBand:own\|\|how==='everyHero'\?null:armySizeBand\(armies\.length\)/.test(view),'…and sends the exact army count for your own heroes only, the rough size for anyone else');
   ok(!/describeEnemyForce/.test(gm),'the intrusion alerts no longer read the force by the watcher\'s Spy');

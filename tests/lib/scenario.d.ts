@@ -42,7 +42,10 @@ export interface TurnOptions<S, X> {
 
 /** The GM portal's window: its functions (e.g. buildTurnReport) as the turn left them. */
 export interface ScenarioWindow {
-  buildTurnReport(S: unknown, playerIndex: number): Record<string, unknown> | null;
+  /** A realm's report from its view (playerView) and, after a turn, the lines it reads (playerEvents). */
+  buildTurnReport(view: unknown, itsLines?: unknown): Record<string, unknown> | null;
+  /** What realm `playerIndex` may see of the world S. */
+  playerView(S: unknown, playerIndex: number): unknown;
   getNeighborsP(p: unknown, cols: number, rows: number, provinces: unknown[]): unknown[];
   /** A character's skill with every bonus counted, as the rolls use it. */
   effSkillOf(c: unknown, stat: string, chars: unknown[]): number;

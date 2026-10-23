@@ -63,6 +63,8 @@ import { resolveTurn } from '../../src/engine/run-turn.ts';
 import { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
 import { kcRng } from '../../src/engine/rng.ts';
 import { buildTurnReport } from '../../src/views/turn-report.ts';
+import { playerView } from '../../src/views/what-each-realm-may-see-of-the-world.ts';
+import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import * as theRulesTheSharedDoorHandsThePortal from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { GAME, SETUPS, slotRowsJson } from './matrix-game.ts';
@@ -272,7 +274,8 @@ export function stagedWorld(): { state: Obj; report: Obj } {
   hero({ location: third, skills: Object.fromEntries(SCHOOLS.map((school) => [school, 2])) });
   g['characters'] = characters;
   const state = copyOf(g);
-  const report: Obj = buildTurnReport(g, 0);
+  // (a staged world, made with the fields the report reads: a saved state's type by assertion, as the view's unit cases)
+  const report: Obj = buildTurnReport(playerView(g as unknown as GameState, 0));
   return { state, report };
 }
 

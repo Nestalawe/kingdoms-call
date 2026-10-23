@@ -369,84 +369,13 @@ export function buildReports(whatTheReportsRead) {
     // Build a per-player chronicle using the structured log metadata
     const pi = gp.player_index;
     const itsLines = playerEvents(turnLog, G, pi, sight);
-    // What the realm may see of the world (playerView), its lines of the turn (itsLines) beside it: the report's
-    // sections of the map and the provinces read only this.
+    // What the realm may see of the world (playerView), its lines of the turn (itsLines) beside it: the report reads
+    // only these two.
     const view = playerView(G, pi, itsLines);
-    const report = buildTurnReport(G, gp.player_index, view);
-    const { lastTurnLog, provinceEvents: provinceEventsItReads, spyActivity } = itsLines;
-    // The map's battle markers: a battle this realm witnessed (the view says which, from its lines).
-    (report.worldMeta?.provinces || []).forEach((pv) => {
-      if (!pv) return;
-      const _seenHere = view.provinces[pv.id];
-      const _witnessed = !!_seenHere?.seen.witnessedABattle;
-      const realBattle = !!_seenHere?.hadBattleThisTurn;
-      pv.hadBattle = realBattle && _witnessed;
-      // the ORANGE ongoing-battle marker (battleUnresolved) was set unconditionally in
-      // buildTurnReport and never visibility-gated, so a carry-on fight anywhere on the map lit up
-      // for every player. Restrict it to a battle this player can actually witness, exactly like
-      // the crossed-swords marker above.
-      if (pv.battleUnresolved) pv.battleUnresolved = _witnessed;
-    });
-
-    report.provinceCharIntel = provinceCharIntelOf(view);
-
-    report.spyActivity = spyActivity;
-    report.lastTurnLog = lastTurnLog;
-    // each province event with its province's name, as the realm's view has it
-    report.provinceEvents = provinceEventsItReads.map((e) => ({
-      ...e,
-      provName: e.provinceId != null && view.provinces[e.provinceId] ? view.provinces[e.provinceId].name : null,
-    }));
+    const report = buildTurnReport(view, itsLines);
     reports.push({ gp, report });
   }
   // The battle flags (_hadBattleThisTurn, _combatPlayersThisTurn) stay on the working copy: the world was saved before
   // the reports, and the next turn's start clears them (lastTurnsBattleAndDuelSwordsClearedFromTheMap).
   return { reports, tel: { gs: G, collected: _tel } };
-}
-
-// ── Province character intel (Intelligence → Province Reports) ── (plan P1-12b4: out of buildReports, reading only the
-// realm's view, src/views/what-each-realm-may-see-of-the-world.ts)
-// For each province the player has visibility into (a character present at end of turn, or a
-// Spy action there this turn), list the characters they can see (own / neutral / enemy) with
-// the NUMBER of army units each leads. Actual unit types/qualities are only revealed for a
-// province this player SPIED this turn (own characters' armies are always known).
-function provinceCharIntelOf(view) {
-  const pi = view.realm;
-  const provinceCharIntel = [];
-  view.provinces.forEach((p) => {
-    const spied = p.seen.spiedByItsLines;
-    const hasPresence = p.seen.heroThere;
-    if (!hasPresence && !spied) return; // no line of sight and not spied → no intel
-    // 2026-10-15 (D1): the one sight rule, as the map and the hero sightings use it (Invisibility,
-    // a Spy piercing stealth, another realm's hero always seen beside yours, the wanderers' cloak):
-    // the view applies it (heroesInItsProvinceIntelligence).
-    const visible = p.heroesInItsProvinceIntelligence;
-    if (visible.length === 0) return;
-    // Only surface as an intel entry if there is a non-own character present, or the player spied
-    // it.
-    if (!visible.some((c) => c.player !== pi) && !spied) return;
-    const _spiedSkillsPi = (view.me && view.me._spiedHeroSkills) || {};
-    const characters = visible.map((c) => {
-      const category = c.player === pi ? 'own' : c.player === null ? 'neutral' : 'enemy';
-      // for a non-own hero we've spied (now or previously), attach their known skills.
-      const spyRec = c.player !== pi ? _spiedSkillsPi[c.id] : null;
-      return {
-        name: c.name,
-        isKing: !!c.isKing,
-        category,
-        isNeutralGuard: c.isNeutralGuard,
-        kingdom: c.player != null && c.player !== pi ? c.realmName || 'an enemy realm' : null,
-        color: c.player != null ? c.realmColor : null,
-        ...(c.player === pi ? { armyCount: c.armyCount } : { armyBand: c.armyBand }), // D1: rough size for anyone not yours
-        // the units themselves: a hero of its own, or one in a province it spied (the view holds them only then)
-        armies: c.armies
-          ? c.armies.map((a) => ({ type: a.type, quality: a.quality, unitName: a.unitName || '' }))
-          : null,
-        spiedSkills: spyRec ? spyRec.skills : null,
-        spiedTurn: spyRec ? spyRec.turn : null,
-      };
-    });
-    provinceCharIntel.push({ provId: p.id, provName: p.name, spied, characters });
-  });
-  return provinceCharIntel;
 }

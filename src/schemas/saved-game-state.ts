@@ -420,6 +420,10 @@ export const ProvinceSchema = z.object({
   grandDesign: z
     .object({ owner: RealmIndexSchema, name: z.string(), alignment: z.string(), builtTurn: z.number() })
     .optional(),
+  // (P1-12b5: read by the realm's view, for its tax forecast) the last turn of an Enslave's resentment (−1 tax)
+  _enslavedUntil: z.number().optional(),
+  // (P1-12b5) the tax an earthquake still takes from the province
+  _earthquakeTax: z.number().optional(),
 });
 export type Province = z.infer<typeof ProvinceSchema>;
 /** A province's feature: a lair, a ruin, a ritual site. */
@@ -688,6 +692,9 @@ export const GameStateSchema = z.object({
   }),
   botDifficulty: z.string(),
   botDiplomacy: z.string(),
+  // (P1-12b5: read by the realm's view, for its diplomacy) Safe Start: no diplomacy before turn SAFE_START_TURN; the
+  // matrix's games don't set it
+  safeStart: z.boolean().optional(),
   _nameRepairs: z.number().optional(),
   _titleHolders: z
     .object({

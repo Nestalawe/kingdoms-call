@@ -20,20 +20,35 @@
 //
 // It writes nothing and draws no dice (tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts).
 // The cases of each sight rule: tests/unit/what-each-realm-may-see-of-the-world.test.ts.
+import { discTaxAdd, realmBaseTax, taxBonusCap } from '../engine/discoveries.ts';
 import { gdActiveFor, homeFounderOf, homeProvinceIdFor, mapCentreColFor } from '../engine/grand-design.ts';
+import { graveIntelFor } from '../engine/graves.ts';
+import { graveServedOther } from '../engine/heroes/charms-and-neutrals.ts';
 import { provinceConsecrated } from '../engine/heroes/fame-and-consecration.ts';
+import { activeItems } from '../engine/items/equipment.ts';
 import { monsterCatLabel } from '../engine/items/tiers-and-hoards.ts';
+import { TITLES_PUBLIC_FROM_TURN } from '../engine/titles/perks.ts';
+import {
+  MINOR_TITLES,
+  computeMinorTitles,
+  computeStandings,
+  extraSkillBonuses,
+  reckoningBlocShare,
+  reckoningCallEligibility,
+  titleRaceFor,
+} from '../engine/titles/reckoning.ts';
 import { topSkillOf } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
   armySizeBand,
+  encounterUntargetableReason,
   enemyCharVisibleTo,
   featDiscovered,
   nearSpiedProvIds,
 } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import type { SightContext } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { garrisonMoveRate } from '../engine/units/movement.ts';
-import type { Army, Character, GameState, Province, Realm } from '../schemas/saved-game-state.ts';
+import type { Army, Character, GameState, Grave, Province, Realm } from '../schemas/saved-game-state.ts';
 
 /** A record as a saved state may hold it: any field missing or null (an older save). */
 type AsSaved<T> = { readonly [K in keyof T]?: T[K] | null | undefined };
@@ -88,6 +103,80 @@ export interface HeroAsSeen {
   armyBand: string | null;
   /** The units he leads: in the province intelligence only, for a hero of its own or one in a province it spied. */
   armies?: ArmyAsSeen[] | null;
+}
+
+/** Another realm's hero, or one who serves no realm, as this realm sees him where he stands (P1-12b5): in the list of
+ *  the heroes it sees (the map's sight rule: the hero sightings and the Encounter list) or of those beside its own heroes
+ *  (the sight rule as that list has always asked it: no Spy's next-door glance; the Charm order's list). */
+export interface OtherHeroAsSeen {
+  id: AsItIs<number>;
+  name: AsItIs<string>;
+  isKing: AsItIs<boolean>;
+  location: number;
+  /** The realm he serves (null: none). */
+  player: AsItIs<number>;
+  isNeutralGuard: boolean;
+  /** The name and colour of the realm he serves, as his banner shows them (undefined: he serves none). */
+  realmName: AsItIs<string>;
+  realmColor: AsItIs<string>;
+  /** Whether he leads units, and their rough number at a glance (armySizeBand): never the exact count. */
+  leadsArmies: boolean;
+  armyBand: string;
+  /** A hero who serves no realm: his race and alignment (public, as the Hire list shows them). */
+  race?: AsItIs<string>;
+  alignment?: AsItIs<string>;
+  /** In the list of the heroes it sees, a hero who serves no realm: his temper, his fame (his best skill, topSkillOf)
+   *  and what hiring him costs this realm (heroHireWage; null: he won't serve it, or he guards the province). */
+  temper?: AsItIs<string>;
+  topSkill?: { skill: string; level: number } | null;
+  hireWage?: number | null;
+  /** In the list of the heroes it sees, a hero of a realm: why he can't be encountered (encounterUntargetableReason),
+   *  or null. */
+  untargetable?: unknown;
+  /** Beside its own: charmed last turn, so closed to Charm this turn. */
+  charmImmune?: boolean;
+  /** Beside its own, an unarmed hero who serves no realm and isn't a king: his skills, hit points and pay (the Charm
+   *  order's card). */
+  skills?: AsItIs<Character['skills']>;
+  hp?: AsItIs<number>;
+  maxHp?: AsItIs<number>;
+  pay?: AsItIs<number>;
+}
+
+/** A fallen hero this realm knows of (P1-12b5): its own, one whose fall it saw this turn, one it has ever known of, or
+ *  one whose body lies where it sees now (its own land, a hero of its own there, spied). As the graveyard records him,
+ *  with the name of the province he lies in and whether he ever served another realm (graveServedOther). */
+export interface GraveAsKnown {
+  id: AsItIs<number>;
+  name: AsItIs<string>;
+  player: AsItIs<number>;
+  killedOnTurn: AsItIs<number>;
+  race: AsItIs<string>;
+  alignment: AsItIs<string>;
+  temper: AsItIs<string>;
+  skills: AsItIs<Grave['skills']>;
+  isKing: AsItIs<boolean>;
+  _monarch: AsItIs<boolean>;
+  location: AsItIs<number>;
+  locationName: AsItIs<string>;
+  servedOther: unknown;
+}
+
+/** Another realm as this realm knows it (P1-12b5). */
+export interface RealmAsSeen {
+  index: number;
+  /** It has met the realm: itself, a realm it has encountered, or every realm once the game is over. */
+  met: boolean;
+  /** Its name and colour, once met (null before). */
+  name: AsItIs<string>;
+  color: AsItIs<string>;
+  /** What its diplomacy card shows of a realm it has encountered (not itself): its alignment, whether it has conceded
+   *  (and when) or been eliminated, and the relation between the two (undefined: none recorded, neutral). */
+  alignment?: AsItIs<string>;
+  conceded?: AsItIs<boolean>;
+  concededTurn?: AsItIs<number>;
+  eliminated?: AsItIs<boolean>;
+  relation?: AsItIs<string>;
 }
 
 /** A wandering hero this realm could hire, where it sees him (the hiring list's sight: no Spy's next-door glance). */
@@ -205,6 +294,10 @@ export interface ProvinceAsSeen {
   /** Its population, and whether it is the capital this realm founded: its own provinces. */
   population?: AsItIs<number>;
   foundedByThisRealm?: boolean;
+  /** The last turn of an Enslave's resentment and the tax an earthquake still takes: its own provinces (the tax
+   *  forecast). */
+  _enslavedUntil?: AsItIs<number>;
+  _earthquakeTax?: AsItIs<number>;
   /** The units garrisoned here: its own, visited, or a hero of its own there or spied (race, skeleton and the Wild
    *  Hunt's term for its own and visited ones only). */
   garrison?: ArmyAsSeen[];
@@ -231,15 +324,15 @@ export interface ProvinceAsSeen {
   knownBreachEveryHeroThereSeenOrNot?: HeroAsSeen[];
 }
 
-/** What one realm may see of the world (part 1: the map and the provinces). */
+/** What one realm may see of the world: the map and the provinces (P1-12b4), its heroes and the others it sees, the
+ *  dead, the mercenaries, the realms, the titles and its books (P1-12b5). */
 export interface PlayerView {
   realm: number;
   turn: number;
   /** The realm itself, whole, with its memory (provinces remembered, rumours, spied skills, discoveries). */
   me: Realm;
   map: { cols: number; rows: number; centreCol: unknown };
-  /** The province sets each sight rule gives (for the sections P1-12b5 moves: the hero lists, the dead, the
-   *  mercenaries). */
+  /** The province sets each sight rule gives (the hero lists, the dead and the mercenaries read them). */
   sight: {
     owned: ReadonlySet<number>;
     visited: ReadonlySet<number>;
@@ -250,6 +343,87 @@ export interface PlayerView {
   /** The hero it watches by Clairvoyance (alive, another realm's), and where he ends the turn. */
   watchedByClairvoyance: { hero: HeroAsSeen; location: number } | null;
   provinces: ProvinceAsSeen[];
+  /** Its own heroes, whole: alive, or fallen this turn (so the report shows a fallen hero's own section), in the
+   *  world's order. */
+  ownHeroes: Character[];
+  /** The bonuses each of them gets where he uses a skill, by his id (extraSkillBonuses: the minor titles he holds, the
+   *  realm's Veteran Training), as the report has always worked them out: from this turn's minor titles once the
+   *  titles are public, else last turn's. */
+  extraSkillBonusesOfItsHeroes: Partial<Record<string, unknown>>;
+  /** The heroes it sees, by the map's sight rule, in the world's order: the hero sightings and the Encounter list. */
+  heroesItSees: OtherHeroAsSeen[];
+  /** The heroes standing beside its own, by the sight rule as that list has always asked it, in the world's order. */
+  heroesBesideItsOwn: OtherHeroAsSeen[];
+  /** Of the heroes it has ever seen (its memory, and those beside its own now), the ids of those alive and serving a
+   *  realm now (the Clairvoyance list keeps only those). */
+  heroesItHasSeenAliveAndServingARealm: ReadonlySet<unknown>;
+  /** The fallen heroes it knows of, in the graveyard's order. */
+  theDeadItKnowsOf: GraveAsKnown[];
+  /** The mercenaries where it sees now (its own land, a hero of its own there, spied), in their order. */
+  mercenariesItSees: {
+    id: AsItIs<string>;
+    type: AsItIs<string>;
+    quality: AsItIs<string>;
+    unitName: AsItIs<string>;
+    race: AsItIs<string>;
+    location: AsItIs<number>;
+    isSea: AsItIs<boolean>;
+  }[];
+  /** The graveyards it knows of, as graveIntelFor shapes them (with their provinces' names). */
+  graveIntel: unknown;
+  /** Every realm of the game, by index, as this realm knows it. */
+  realms: RealmAsSeen[];
+  /** Safe Start: no diplomacy before turn SAFE_START_TURN. */
+  safeStart: boolean;
+  /** The titles, worked out from the whole world (computeStandings, computeMinorTitles), as the report reads them. Who
+   *  holds each title, the standings, the minor titles, and this realm's place in each race: from turn
+   *  TITLES_PUBLIC_FROM_TURN, or once the game is over (null before). Always: its share of the world's tax for the
+   *  Reckoning and whether it may call it, and the titles it won and lost this turn. The names of the realms and heroes
+   *  these hold are as the world has them: the report writes "An unknown realm" for one it hasn't met (the Titles card). */
+  titles: {
+    public: boolean;
+    holders: unknown;
+    standings: unknown;
+    minor: unknown;
+    race: unknown;
+    blocShare: unknown;
+    eligibility: unknown;
+    gains: unknown;
+    losses: unknown;
+    /** The name of each hero holding a title or a minor title, by his id (public titles only). */
+    heroNames: ReadonlyMap<unknown, AsItIs<string>>;
+    /** Last turn's minor titles held by its own heroes (the minor-title perks the report shows before the titles are
+     *  public, and the Swift and the Sea-Wolf's march). */
+    lastTurnsMinorHoldersOfItsHeroes: Partial<Record<string, unknown>>;
+  };
+  /** The Reckoning called (who called it, who stands with him, when it was called and when it resolves), or null. */
+  reckoning: {
+    by: AsItIs<number>;
+    bloc: AsItIs<number[]>;
+    calledTurn: AsItIs<number>;
+    resolveAtTurn: AsItIs<number>;
+  } | null;
+  /** The game's end, as the world records it (public: every realm is named then), or null. */
+  gameOver: GameState['gameOver'] | null;
+  /** Its books: what its tax forecast and its wages need of the world. The bare tax of the provinces whose record names
+   *  it their owner (realmBaseTax), the discoveries' tax gold of each of its provinces in its list's order (discTaxAdd,
+   *  capped as the collector caps it; null where the province is missing), whether its Wonder blesses it (Good: tax;
+   *  Druidic: wages), and the provinces whose record names it their owner (how many; their garrisons' units, which it
+   *  pays). */
+  books: {
+    baseTax: unknown;
+    discoveryTaxGoldOfEachOfItsProvinces: unknown[];
+    wonderBlesses: { Good: boolean; Druidic: boolean };
+    provincesItHoldsByTheirRecord: number;
+    unitsGarrisonedInTheProvincesItHolds: Army[];
+  };
+  /** The tables the player portal colours names with (report-leaks' LOOKUP_TABLES): every realm's name and colour, and
+   *  every hero alive or fallen this turn with a name and no cloak, with his realm's colour. Not trimmed to what the
+   *  realm knows until P2-06 (Theo, 2026-10-17). */
+  lookupTables: {
+    realms: { name: AsItIs<string>; color: AsItIs<string> }[];
+    heroes: { name: string; player: AsItIs<number>; realmColor: AsItIs<string>; isNeutralGuard: AsItIs<boolean> }[];
+  };
 }
 
 // The hex grid's neighbours (an even row's and an odd row's), wrapping east to west, as the map draws them.
@@ -361,6 +535,182 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
         : {}),
     };
   };
+  // ── Its heroes, and the other heroes it sees (P1-12b5) ──
+  const ownHeroes = characters.filter((c) => c.player === realm && (c.alive || c.killedThisTurn));
+  // where its heroes stand, or fell this turn (the report names the province with each)
+  const placesOfItsHeroes = new Set<number>(ownHeroes.map((c) => c.location));
+  const otherHeroAsSeen = (c: Character, list: 'itSees' | 'besideItsOwn'): OtherHeroAsSeen => {
+    const h = asSaved(c);
+    const armies = h.armies ?? [];
+    const realmOf = h.player != null ? asSaved(state.players[h.player]) : undefined;
+    return {
+      id: h.id,
+      name: h.name,
+      isKing: h.isKing,
+      location: c.location,
+      player: h.player,
+      isNeutralGuard: !!h._isNeutralGuard,
+      realmName: realmOf?.name,
+      realmColor: realmOf?.color,
+      leadsArmies: armies.length > 0,
+      armyBand: armySizeBand(armies.length),
+      // the hero sightings: a hero who serves no realm (player null) and one who serves a realm (any other)
+      ...(list === 'itSees' && h.player === null
+        ? {
+            race: h.race,
+            alignment: h.alignment,
+            temper: h.temper,
+            topSkill: topSkillOf(skillsOf(c)),
+            hireWage: h._isNeutralGuard ? null : heroHireWage(me.alignment || 'Neutral', c.alignment, sd31, c),
+          }
+        : {}),
+      ...(list === 'itSees' && h.player !== null ? { untargetable: encounterUntargetableReason(c) } : {}),
+      // the list beside its own heroes: a hero who serves no realm (player null or missing)
+      ...(list === 'besideItsOwn' && h.player == null ? { race: h.race, alignment: h.alignment } : {}),
+      ...(list === 'besideItsOwn' ? { charmImmune: h._charmImmuneTurn === (state.turn || 1) } : {}),
+      ...(list === 'besideItsOwn' && h.player == null && !h.isKing && armies.length === 0
+        ? { skills: h.skills, temper: h.temper, hp: h.hp, maxHp: h.maxHp, pay: h.pay }
+        : {}),
+    };
+  };
+  // the map's sight rule (the hero sightings and the Encounter list); the list beside its own heroes asks it as it has
+  // always asked it (the hiring list's sight)
+  const heroesItSees = characters
+    .filter((c) => c.alive && c.player !== realm && enemyCharVisibleTo(state, realm, c, mapSight))
+    .map((c) => otherHeroAsSeen(c, 'itSees'));
+  const heroesBesideItsOwn = characters
+    .filter(
+      (c) =>
+        c.alive &&
+        c.player !== realm &&
+        ownCharLocs.has(c.location) &&
+        enemyCharVisibleTo(state, realm, c, hiringSight),
+    )
+    .map((c) => otherHeroAsSeen(c, 'besideItsOwn'));
+  // of the heroes it has ever seen, those alive and serving a realm now
+  const heroesItHasSeen = new Set<unknown>([
+    ...Object.values(player.seenCharIntel ?? {}).map((x) => x.id),
+    ...heroesBesideItsOwn.map((x) => x.id),
+  ]);
+  const heroesItHasSeenAliveAndServingARealm = new Set<unknown>(
+    [...heroesItHasSeen].filter((id) => {
+      const live = characters.find((ch) => ch.id === id);
+      return !!live && live.alive && live.player != null;
+    }),
+  );
+
+  // ── The dead it knows of, and the mercenaries where it sees now (P1-12b5) ──
+  const world = asSaved(state);
+  const seenDeadThisTurn = new Set<unknown>(player.seenDeadHeroIds ?? []);
+  const deadKnownEver = new Set<unknown>(player.knownDeadHeroIds ?? []);
+  const inSightNow = new Set<unknown>([...ownedProvIds, ...ownCharLocs, ...spiedThisTurn]);
+  const theDeadItKnowsOf: GraveAsKnown[] = (world.heroGraveyard ?? [])
+    .filter((g) => {
+      const r = asSaved(g);
+      return (
+        r.player === realm ||
+        deadKnownEver.has(r.id) ||
+        seenDeadThisTurn.has(r.id) ||
+        (r.location != null && inSightNow.has(r.location))
+      );
+    })
+    .map((g) => {
+      const r = asSaved(g);
+      const servedOther: unknown = graveServedOther(g, realm);
+      return {
+        id: r.id,
+        name: r.name,
+        player: r.player,
+        killedOnTurn: r.killedOnTurn,
+        race: r.race,
+        alignment: r.alignment,
+        temper: r.temper,
+        skills: r.skills,
+        isKing: r.isKing,
+        _monarch: r._monarch,
+        location: r.location,
+        locationName: r.location != null ? asSaved(provinces[r.location])?.name : undefined,
+        servedOther,
+      };
+    });
+  const mercenariesItSees = (world.mercenaries ?? [])
+    .filter((m) => inSightNow.has(m.location))
+    .map((m) => {
+      const r = asSaved(m);
+      return {
+        id: r.id,
+        type: r.type,
+        quality: r.quality,
+        unitName: r.unitName,
+        race: r.race,
+        location: r.location,
+        isSea: r.isSea,
+      };
+    });
+
+  // ── The realms, as it knows them (P1-12b5) ──
+  const encountered = player._encountered ?? [];
+  const metRealms = new Set<unknown>([realm, ...encountered]);
+  const realmsAsSaved: readonly AsItIs<Realm>[] = state.players;
+  const realms: RealmAsSeen[] = realmsAsSaved.map((p, i) => {
+    const met = metRealms.has(i) || !!world.gameOver;
+    const relationKey = realm < i ? `${String(realm)}-${String(i)}` : `${String(i)}-${String(realm)}`;
+    return {
+      index: i,
+      met,
+      name: met ? p?.name : null,
+      color: met ? p?.color : null,
+      ...(i !== realm && encountered.includes(i)
+        ? {
+            alignment: p?.alignment,
+            conceded: p?.conceded,
+            concededTurn: p?.concededTurn,
+            eliminated: p?._eliminated,
+            relation: world.relations?.[relationKey],
+          }
+        : {}),
+    };
+  });
+
+  // ── The titles, worked out from the whole world as the report always has (P1-12b5) ──
+  const titlesPublic = (state.turn || 1) >= TITLES_PUBLIC_FROM_TURN || !!world.gameOver;
+  const standingsNow = computeStandings(state); // worked out whether public or not, as the Titles card always has
+  const minorNow: Partial<Record<string, unknown>> = titlesPublic ? computeMinorTitles(state) : {};
+  const lastTurnsMinor: Partial<Record<string, unknown>> = world._minorHolders ?? {};
+  const charIdOf = (h: unknown): unknown =>
+    typeof h === 'object' && h !== null && 'charId' in h ? h.charId : undefined;
+  const idsOfItsHeroes = new Set<unknown>(ownHeroes.map((c) => c.id));
+  // the minor titles whose perks count for its heroes: this turn's once public, else last turn's
+  const minorTitlesThatCount: Partial<Record<string, unknown>> = {};
+  MINOR_TITLES.forEach((t) => {
+    // (the report's `||`: the same here, a holder being a record or nothing)
+    const h = minorNow[t.key] ?? lastTurnsMinor[t.key];
+    if (h) minorTitlesThatCount[t.key] = h;
+  });
+  const extraSkillBonusesOfItsHeroes: Partial<Record<string, unknown>> = {};
+  ownHeroes.forEach((c) => {
+    extraSkillBonusesOfItsHeroes[String(c.id)] = extraSkillBonuses(c, state, minorTitlesThatCount);
+  });
+  const heroNames = new Map<unknown, AsItIs<string>>();
+  if (titlesPublic) {
+    const holders: Partial<Record<string, unknown>> = standingsNow.titles;
+    [...Object.values(holders), ...Object.values(minorNow)].forEach((h) => {
+      const id = charIdOf(h);
+      if (id != null) heroNames.set(id, characters.find((c) => c.id === id)?.name);
+    });
+  }
+  const rk = world.reckoning;
+
+  // ── Its books (P1-12b5): what its tax forecast and wages need of the world ──
+  const baseTax: unknown = realmBaseTax(state, realm);
+  const discoveryTaxAccounts = new Map<unknown, unknown>();
+  const discoveryTaxCap: unknown = taxBonusCap(baseTax);
+  const discoveryTaxGoldOfEachOfItsProvinces = (player.provinces ?? []).map((pid) => {
+    const pv = provinces[pid];
+    return pv ? discTaxAdd(me, pv, state, realm, discoveryTaxAccounts, discoveryTaxCap) : null;
+  });
+  const provincesItHoldsByTheirRecord = provinces.filter((p) => p.owner === realm);
+
   const armyAsSeen = (a: Army, whole: boolean, ownGarrison: boolean): ArmyAsSeen => {
     const s = asSaved(a);
     return {
@@ -478,7 +828,8 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
       seen.aProvinceEventItReadsHappenedHere ||
       wanderersItCouldHire.length > 0 ||
       (heroesOnTheMap ?? []).length > 0 ||
-      (heroesInItsProvinceIntelligence ?? []).length > 0;
+      (heroesInItsProvinceIntelligence ?? []).length > 0 ||
+      placesOfItsHeroes.has(p.id);
 
     // the neutral guard: a local chieftain leading the province's defenders, else the defenders it keeps
     const guard =
@@ -530,7 +881,14 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
           }
         : {}),
       ...(onTheMapNow || seen.witnessedABattle ? { hadBattleThisTurn: q._hadBattleThisTurn } : {}),
-      ...(owned ? { population: q.population, foundedByThisRealm: homeFounderOf(state, p.id) === realm } : {}),
+      ...(owned
+        ? {
+            population: q.population,
+            foundedByThisRealm: homeFounderOf(state, p.id) === realm,
+            _enslavedUntil: q._enslavedUntil,
+            _earthquakeTax: q._earthquakeTax,
+          }
+        : {}),
       ...(owned || visited || heroThere || spied
         ? { garrison: (q.garrisonArmies ?? []).map((a) => armyAsSeen(a, owned || visited, owned)) }
         : {}),
@@ -585,5 +943,57 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     },
     watchedByClairvoyance: clairChar ? { hero: heroAsSeen(clairChar, 'map'), location: clairChar.location } : null,
     provinces: provinces.map(provinceAsSeen),
+    ownHeroes,
+    extraSkillBonusesOfItsHeroes,
+    heroesItSees,
+    heroesBesideItsOwn,
+    heroesItHasSeenAliveAndServingARealm,
+    theDeadItKnowsOf,
+    mercenariesItSees,
+    graveIntel: graveIntelFor(state, me),
+    realms,
+    safeStart: !!world.safeStart,
+    titles: {
+      public: titlesPublic,
+      holders: titlesPublic ? standingsNow.titles : null,
+      standings: titlesPublic ? standingsNow.standings : null,
+      minor: titlesPublic ? minorNow : null,
+      race: titlesPublic ? titleRaceFor(state, standingsNow, realm) : null,
+      blocShare: reckoningBlocShare(state, realm),
+      eligibility: reckoningCallEligibility(state, realm),
+      gains: world._titleGainsByPlayer?.[String(realm)] ?? [],
+      losses: world._titleLossesByPlayer?.[String(realm)] ?? [],
+      heroNames,
+      lastTurnsMinorHoldersOfItsHeroes: Object.fromEntries(
+        Object.entries(lastTurnsMinor).filter(([, h]) => idsOfItsHeroes.has(charIdOf(h))),
+      ),
+    },
+    reckoning: rk ? { by: rk.by, bloc: rk.bloc, calledTurn: rk.calledTurn, resolveAtTurn: rk.resolveAtTurn } : null,
+    gameOver: world.gameOver ?? null,
+    books: {
+      baseTax,
+      discoveryTaxGoldOfEachOfItsProvinces,
+      wonderBlesses: { Good: gdActiveFor(state, realm, 'Good'), Druidic: gdActiveFor(state, realm, 'Druidic') },
+      provincesItHoldsByTheirRecord: provincesItHoldsByTheirRecord.length,
+      unitsGarrisonedInTheProvincesItHolds: provincesItHoldsByTheirRecord.flatMap(
+        (p) => asSaved(p).garrisonArmies ?? [],
+      ),
+    },
+    lookupTables: {
+      realms: realmsAsSaved.map((p) => ({ name: p?.name, color: p?.color })),
+      heroes: characters
+        .filter(
+          (c) =>
+            !!c.name &&
+            (c.alive || c.killedThisTurn) &&
+            !activeItems(c).some((it) => asSaved(it).effect?.stat === 'hidden'),
+        )
+        .map((c) => ({
+          name: c.name,
+          player: asSaved(c).player,
+          realmColor: c.player != null ? realmsAsSaved[c.player]?.color : undefined,
+          isNeutralGuard: asSaved(c)._isNeutralGuard,
+        })),
+    },
   };
 }
