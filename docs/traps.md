@@ -340,7 +340,9 @@ check finds were made.
 - **A hero left out is the hero whose order is resolving.** `emit` keeps the old `log()`'s fallbacks: a `hero` left out or
   `null` is `turnContext._logCtx.charId`, so a line written while Aldric's order resolves is filed under Aldric even
   when it is about the province's owner, and reaches Aldric's realm. For no hero, say `hero: 'none'` (the lines that
-  were pushed straight into `turnLog` do: a capture's, `notifyProvinceOwner`'s, `logSplit`'s public half). The same for
+  were pushed straight into `turnLog` do: a capture's, `notifyProvinceOwner`'s, `logSplit`'s public half). A line for
+  the GM alone (an audience that grants no realm) says `hero: 'none'` too, so it reaches no realm (the Philosopher's
+  Stone's note on the hoards; `tests/scenario/a-line-for-the-gm-alone-reaches-no-realm.test.ts`). The same for
   `phase`: left out or `null` is the phase of that order, else the phase resolving, else 99 once the phases are over;
   `phase: 'none'` is no phase. P1-12c decides what a missing hero means for good.
 - Nothing stored changes until P1-12c: `emit` writes today's line forms, key for key and in the same order (the old
