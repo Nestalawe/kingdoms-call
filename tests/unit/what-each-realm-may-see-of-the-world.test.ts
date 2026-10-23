@@ -2,7 +2,7 @@
 // realm may see of the world, the province sections of its report read only this. One case for each sight rule the
 // view applies, on a small world made here, so each rule is pinned on its own (the balance matrix's every-realm half
 // checks the report built from the view, whole games, every realm):
-// - its own provinces, whole; a province it once visited (as it is now, its owner named met or not: the known breach);
+// - its own provinces, whole; a province it once visited (as it is now, its owner named only once met: R-046);
 //   the ring next to those (the order forms' facts); a hero of its own there (the sight rule: Invisibility hides);
 //   spied (the garrison's units, not their race); next to a spied one (the map's glance, not the hiring list's); next
 //   to its own land (who holds it, the capital's crown); remembered; watched by Clairvoyance; unseen (its place only);
@@ -26,6 +26,7 @@ import {
   type ProvinceAsSeen,
   type WhatItsLinesShow,
 } from '../../src/views/what-each-realm-may-see-of-the-world.ts';
+import { buildTurnReport } from '../../src/views/turn-report.ts';
 
 const TURN = 4;
 const COLS = 6;
@@ -242,16 +243,40 @@ describe('what realm 0 sees of each province, by the sight rule that shows it', 
     expect(p.neutralGuard).toEqual({ leader: null, armyCount: 0, armies: [] });
   });
 
-  test('a province it once visited: as it is now, its owner named whether met or not (the known breach), its guard counted', () => {
+  test('a province it once visited: as it is now, its guard counted', () => {
     const p = province(view, 3);
     expect(p.seen).toMatchObject({ visited: true, owned: false, spied: false });
     expect(p).toMatchObject({ name: 'Province 3', terrain: 'plain', owner: 1 });
-    expect(p.knownBreachTheOwnersNameThoughItMayBeUnmet).toBe('Varn');
     expect('ownerRealmName' in p).toBe(false); // the map doesn't show it now
     expect(p.garrison).toEqual([expect.objectContaining({ race: 'Human' })]);
     // not spied: how many defend it, not who
     expect(p.neutralGuard).toEqual({ leader: null, armyCount: 2, armies: null });
-    expect(province(view, 7).knownBreachTheOwnersNameThoughItMayBeUnmet).toBeUndefined();
+    expect('theOwnersNameOnceItHasMetThem' in province(view, 7)).toBe(false);
+  });
+
+  test('a province it once visited, held by a realm it has not met: nothing in it names that realm (R-046)', () => {
+    const p = province(view, 3);
+    expect(view.realms[1]?.met).toBe(false);
+    expect(p.theOwnersNameOnceItHasMetThem).toBeNull();
+    expect(JSON.stringify(p)).not.toContain('Varn');
+  });
+
+  test('a province it once visited, held by a realm it has met, or once the game is over: the owner is named', () => {
+    expect(province(viewOf(0, { encountered: [1] }), 3).theOwnersNameOnceItHasMetThem).toBe('Varn');
+    expect(province(viewOf(0, { gameOver: true }), 3).theOwnersNameOnceItHasMetThem).toBe('Varn');
+  });
+
+  test('its report: a province it once visited is held by “an unknown realm” until it meets the owner (R-046)', () => {
+    const intel = (v: PlayerView): unknown[] => buildTurnReport(v).intel;
+    expect(intel(view)).toContain('Province 3 (plain): controlled by an unknown realm.');
+    // its lines of that province (its heroes see realm 1's elsewhere, which names that realm: R-046's meeting)
+    expect(
+      intel(view)
+        .filter((line) => String(line).startsWith('Province 3'))
+        .join(' '),
+    ).not.toContain('Varn');
+    expect(intel(viewOf(0, { encountered: [1] }))).toContain('Province 3 (plain): controlled by Varn.');
+    expect(intel(viewOf(0, { gameOver: true }))).toContain('Province 3 (plain): controlled by Varn.');
   });
 
   test('next to one it owns or visited: what its order forms list, not who holds it or its garrison', () => {
