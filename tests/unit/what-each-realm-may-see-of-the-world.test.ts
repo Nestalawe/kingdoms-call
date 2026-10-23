@@ -7,7 +7,7 @@
 //   spied (the garrison's units, not their race); next to a spied one (the map's glance, not the hiring list's); next
 //   to its own land (who holds it, the capital's crown); remembered; watched by Clairvoyance; unseen (its place only);
 // - the features it knows; what its lines of the turn show (spied by its lines, battles witnessed, province events);
-//   an Evil realm's Terror; the heroes of its own provinces as P1-23's entry 4 keeps them; Illusory Terrain;
+//   an Evil realm's Terror; the heroes of its own provinces (those it sees there, as its map does); Illusory Terrain;
 // - and it writes nothing to the world;
 // - (P1-12b5) its own heroes, alive or fallen this turn, and where they stand named; the heroes it sees (the map's
 //   sight rule, a wanderer's public facts, why a hero can't be encountered) and those beside its own (the hiring list's
@@ -393,12 +393,32 @@ describe('what realm 0 sees of each province, by the sight rule that shows it', 
     expect('name' in province(noTurn, 12)).toBe(false);
   });
 
-  test('its own provinces: the heroes there as P1-23’s entry 4 keeps them, and the map’s by the sight rule', () => {
+  test('its own provinces list the heroes it sees there, as its map does: not one under Invisibility', () => {
     const p = province(view, 7);
-    expect(ids(p.knownBreachEveryHeroThereSeenOrNot)).toEqual([0, 4]);
-    expect(p.knownBreachEveryHeroThereSeenOrNot?.find((h) => h.id === 4)).toMatchObject({ armyCount: 0 });
     expect(ids(p.heroesOnTheMap)).toEqual([0]);
-    expect('knownBreachEveryHeroThereSeenOrNot' in province(view, 3)).toBe(false);
+    expect(ids(p.heroesItSeesInItsOwnProvince)).toEqual([0]);
+    expect(p.heroesItSeesInItsOwnProvince?.[0]).toMatchObject({ armyCount: 1 }); // its king, and the units he leads
+    expect('heroesItSeesInItsOwnProvince' in province(view, 3)).toBe(false);
+  });
+
+  test('its own provinces list a hero it sees there, and not a wanderer slipping by unspotted', () => {
+    const { state } = world();
+    const realm1sHero = state.characters[4];
+    if (!realm1sHero) throw new Error('no hero 4');
+    delete realm1sHero._invisTurn; // realm 1's hero in its capital, seen beside its king
+    state.characters.push({ ...hero(12, null, 7), _unspottedTurn: TURN } as unknown as (typeof state.characters)[0]);
+    state.world.provinces[7]?.characters.push(12);
+    const p = province(playerView(state, 0, itsLines), 7);
+    expect(ids(p.heroesOnTheMap)).toEqual([0, 4]);
+    expect(ids(p.heroesItSeesInItsOwnProvince)).toEqual([0, 4]);
+  });
+
+  test('its report: its own provinces list only the heroes it sees there', () => {
+    const heroesOfItsCapital = (v: PlayerView): unknown[] =>
+      (buildTurnReport(v).ownedProvinces as { id: number; characters: { id: unknown }[] }[])
+        .filter((p) => p.id === 7)
+        .flatMap((p) => p.characters.map((c) => c.id));
+    expect(heroesOfItsCapital(view)).toEqual([0]);
   });
 
   test('Illusory Terrain cast by another realm fools its map, not its order forms (as the report has it)', () => {
