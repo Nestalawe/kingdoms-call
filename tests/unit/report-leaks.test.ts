@@ -271,7 +271,7 @@ describe('what each leak check allows', () => {
     ).toEqual([]);
   });
 
-  test('a realm seen through its hero is met; the parked list of its own provinces does not meet it', () => {
+  test('a realm seen through its hero is met; the list of its own provinces (the map’s again) does not meet it', () => {
     const seen = (r: RealmReport[]) =>
       (of(r, 1)['heroSightings'] = [{ type: 'enemy', name: 'Dorn the Red', kingdom: 'Coldharbour' }]);
     expect(leaks(turn((_, r) => seen(r)))).toEqual([]);
