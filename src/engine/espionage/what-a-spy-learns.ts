@@ -4,12 +4,12 @@ import { homeProvinceIdFor } from '../grand-design.ts';
 import { recordDeadHeroSighting } from '../graves.ts';
 import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { d100, fmtRoll } from '../dice-and-army-names.ts';
-import { botTaxIncome } from '../bots/economy.ts';
 import { TM } from '../titles/perks.ts';
 import { DISC_BY_ID, discBlockedIds, discEligible } from '../discoveries.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { emit } from '../turn/events-and-their-audiences.ts';
+import { botTaxIncome } from '../bots/strategy.ts';
 
 // ── WHAT A SPY LEARNS (plan P1-08c: lifted out of resolveTurn) ────
 // Everything a successful spy learns about a province, for the Spy order and the Neutral Broker's paid intelligence

@@ -1,35 +1,22 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_RIVAL_RACE, KC_UNIT_CLASS, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
-import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
-import { UNIT_BASE_STR } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
-import { druIdPenaltyMult } from '../world/tables.ts';
-import { TAMED_FLYER_TYPES_D } from '../titles/perks.ts';
+import { KC_UNIT_CLASS, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { SKILL_LABELS } from '../army-tables.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE } from '../units/drill-and-spoils.ts';
-import {
-  BOT_CARRIER_TYPES,
-  BOT_HEX_DIRS,
-  BOT_MONSTER_ARMIES,
-  BOT_SEA_ALL,
-  botBelievedOwner,
-  botHasDisc,
-  botNeighbourProv,
-  botRaceTerrainMult,
-  botRelationRaw,
-  botSeesChar,
-} from './intel.ts';
+import { BOT_HEX_DIRS, BOT_SEA_ALL, botNeighbourProv } from './intel.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
 import {
   botFieldRecruitTokens,
   botGarrisonOrder,
   botHireOrder,
   botLedger,
+  botPracticeSkill,
   botRecruitOrder,
   botRoles,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
-import { BOT_SPECIALIST_ROLES, botNearbyThreat, botPathLen, botPracticeFallback } from './specialists.ts';
+import { BOT_SPECIALIST_ROLES, botNearbyThreat, botPracticeFallback } from './specialists.ts';
 import { botIsTeach, botOrderLocs, botPickupOrder } from './missions.ts';
 import { skillLevel } from '../titles/perks.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
@@ -45,152 +32,8 @@ import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 // above ARMY_COST_MASTER). So recruitment is gated on BOTH an upfront gold reserve AND an upkeep
 // cap (total wages kept ≤ 90% of the bot's tax income). This ties army size to economic base — a
 // bot recruits more only as it expands — and prevents a wage spiral that would bankrupt it.
-export const BOT_NAVAL_TYPES = new Set(KC_UNIT_CLASS.sea);
-export function botRecruitableTypes(prov, G, cmdr) {
-  // rank by the strength the intended COMMANDER gets out of the unit (Druid shortfall applied, race
-  // = the province's race as the engine assigns it), not the raw table value — a Druid-0 king
-  // buying Cave Trolls at −60% was throwing gold away.
-  const effOf = (t) => {
-    const base = UNIT_BASE_STR[t] || 4;
-    if (!G || !cmdr) return base;
-    const align = (cmdr.player != null ? ((G.players || [])[cmdr.player] || {}).alignment : null) || 'Neutral';
-    const tamed = cmdr.player != null && botHasDisc(G, cmdr.player, 'sd40');
-    let m = 1;
-    try {
-      m = druIdPenaltyMult(cmdr, { type: t, race: prov.race || 'Human' }, align, tamed && TAMED_FLYER_TYPES_D.has(t));
-    } catch (e) {
-      m = 1;
-    }
-    // Sept 2026: kinship / grudge for THIS commander, and the unconditional fervour an Evil (Monster) realm
-    // gets from the unit — an Orc lord buying human levies at −20% was paying full price. (The Druidic
-    // ×1.25, Wild Ferocity, was retired 2026-10-13.)
-    m *= botRaceTerrainMult(G, cmdr, { type: t, race: prov.race || 'Human' }, null, false, cmdr.player);
-    if (align === 'Evil' && BOT_MONSTER_ARMIES.has(t)) m *= 1.25;
-    return base * m;
-  };
-  // Sept 2026 (Toby): a general raises troops of his own blood and the king's (+20% kinship each) and never
-  // troops of the grudge race (Elf↔Dwarf, Human↔Orc: −20% under him) while any other muster is possible — a
-  // grudge-race province yields nothing to that commander; the feeder pipeline brings him kin instead.
-  if (G && cmdr) {
-    const RIV = { ...KC_RIVAL_RACE };
-    const pr = prov.race || 'Human';
-    if (cmdr.race && RIV[pr] === cmdr.race && !String(pr).startsWith('Primal')) {
-      const pi2 = cmdr.player;
-      const near = (G.world.provinces || []).some(
-        (x) =>
-          x &&
-          x.owner === pi2 &&
-          x.id !== prov.id &&
-          x.terrain !== 'sea' &&
-          (x.armyTypes || []).some((t) => t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) &&
-          RIV[x.race || 'Human'] !== cmdr.race &&
-          (botPathLen(G, pi2, prov, x.id, false) || 99) <= 2,
-      );
-      if (near) return [];
-    }
-  } // "when possible": only while kin can be raised within two hops
-  const all = (prov.armyTypes || [])
-    .filter((t) => t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) // land field units only (v1)
-    .sort((a, b) => effOf(b) - effOf(a)); // strongest FOR THIS COMMANDER first (kinship already in effOf)
-  // Sept 2026 (bot strategy): a speed-1 unit (Mountain Guns, Stone Giants…) pins the whole host to
-  // one hop a turn, which costs far more conquest than its strength buys. Skip them when anything
-  // else exists.
-  if (cmdr && cmdr._botRole === 'defender') return all; // a posted defender never marches: Mountain Guns are welcome
-  const mobile = all.filter((t) => (ARMY_SPEED_MASTER[t] || 3) >= 2);
-  return mobile.length ? mobile : all;
-}
-export function botUpkeep(G, pi) {
-  let w = 0;
-  (G.characters || []).forEach((c) => {
-    if (c && c.alive && c.player === pi)
-      (c.armies || []).forEach((a) => {
-        if (a._temporary || a._wildHuntUntilTurn != null) return;
-        w += a._isSkeletal ? 1 : ARMY_COST_MASTER[a.type] || 2;
-      });
-  });
-  // Sept 2026: garrison units draw wages too (the engine bills them alongside field armies) — the
-  // solvency guard must see them now that bots garrison every province.
-  (G.world.provinces || []).forEach((p) => {
-    if (p && p.owner === pi)
-      (p.garrisonArmies || []).forEach((a) => {
-        if (a._temporary || a._wildHuntUntilTurn != null) return;
-        w += a._isSkeletal ? 1 : ARMY_COST_MASTER[a.type] || 2;
-      });
-  });
-  (G.characters || []).forEach((c) => {
-    if (c && c.alive && c.player === pi && !c.isKing) w += c.pay || 0;
-  }); // hero wages are real wages too
-  return w;
-}
-export function botTaxIncome(G, pi) {
-  let inc = 0;
-  (G.world.provinces || []).forEach((p) => {
-    if (p && p.owner === pi) inc += p.tax || 0;
-  });
-  return inc;
-}
-// ── ECONOMY helpers for the 2026-08 batch ────
-// is this bot AT WAR (any at-war relation with a live player)? At-war bots spend their treasury
-// down and raise their sustainable army ceiling to build for the fight.
-export function botAtWar(G, pi) {
-  return (G.players || []).some(
-    (p, j) =>
-      j !== pi &&
-      p &&
-      (G.characters || []).some((c) => c && c.alive && c.isKing && c.player === j) &&
-      botRelationRaw(G, pi, j) === 'enemy',
-  );
-}
-// the biggest army stack (unit count) any at-war enemy is currently leading. Used to decide when to
-// go to a war footing and roughly how big an army to build toward.
-export function botMaxEnemyStack(G, pi) {
-  // the biggest host this realm has EYES ON, not the biggest in the world.
-  let mx = 0;
-  (G.characters || []).forEach((c) => {
-    if (
-      c &&
-      c.alive &&
-      c.player != null &&
-      c.player !== pi &&
-      botRelationRaw(G, pi, c.player) === 'enemy' &&
-      botSeesChar(G, pi, c)
-    ) {
-      const n = (c.armies || []).length;
-      if (n > mx) mx = n;
-    }
-  });
-  return mx;
-}
-// a CARRIER fleet type this province can raise (for sea conquest / troop transport), else null.
-export function botCoastalFleetType(prov) {
-  return (prov.armyTypes || []).find((t) => BOT_CARRIER_TYPES.has(t)) || null;
-}
-// Sept 2026: an at-war ENEMY coast one sea-hop from this province (the only naval reason worth a
-// fleet while land remains to conquer).
-export function botNavalEnemyCoast(G, prov, pi) {
-  for (let i = 0; i < 6; i++) {
-    const N = botNeighbourProv(G, prov, i);
-    if (!N || N.terrain !== 'sea') continue;
-    for (let j = 0; j < 6; j++) {
-      const K = botNeighbourProv(G, N, j);
-      const ko = botBelievedOwner(G, pi, K);
-      if (K && K.terrain !== 'sea' && ko != null && ko !== pi && botRelationRaw(G, pi, ko) === 'enemy') return true;
-    }
-  } // believed owner, not the true one
-  return false;
-}
-// how many fleet hulls the bot already leads across its whole roster (so it stops over-building
-// ships).
-export function botFleetHullCount(G, pi) {
-  let h = 0;
-  (G.characters || []).forEach((c) => {
-    if (c && c.alive && c.player === pi)
-      (c.armies || []).forEach((a) => {
-        if (a && BOT_CARRIER_TYPES.has(a.type)) h++;
-      });
-  });
-  return h;
-}
+// The economy's helpers (BOT_NAVAL_TYPES, botRecruitableTypes, botUpkeep, botTaxIncome, botAtWar, botMaxEnemyStack and
+// the fleet helpers) and botPracticeSkill (Phase 3c) are in bots/strategy.ts.
 export function runBotEconomy(G, botIdxSet) {
   if (!botIdxSet || !botIdxSet.size || !G.world) return;
   G.turnOrders = G.turnOrders || {};
@@ -480,38 +323,6 @@ export function runBotEconomy(G, botIdxSet) {
   });
 }
 
-// ══ BOT PLAYERS — Phase 3c: character actions (Practice / Rest / Explore) ═════ Runs AFTER
-// movement (3a) and economy (3b): any bot character STILL idle — no move, no recruit — is given
-// something useful instead of a bare Defend. All three actions are self-contained and zero-risk
-// (a character that is attacked still fights, whatever its order), so this is purely additive.
-// • wounded (hp < 60% max) → Rest (heal)
-// • otherwise, a skill to raise → Practice it (permanent growth toward the drill cap of 5)
-// • otherwise, province unmapped → Explore (reveal fog / find feature sites)
-// • otherwise → leave to the default-to-Defend pass
-// STAGED (not wired here): Search (fights a feature's guardian monster — a hero can DIE; needs a
-// monster-strength gate like the guard gate, so it belongs with Phase 4 combat assessment) and
-// action-phase spells / battle magic (school knowledge, per-turn limits, fizzle, and summon-before-
-// battle timing that ties into Phase 4 — deferred to a dedicated spell pass).
-export function botPracticeSkill(c) {
-  const sk = c.skills || {};
-  // Prefer the highest skill still below the drill cap (push a strength toward its level-5 perks).
-  let best = null,
-    bestLvl = -1;
-  for (const k of Object.keys(sk)) {
-    const v = sk[k] || 0;
-    if (v < 5 && v > bestLvl) {
-      best = k;
-      bestLvl = v;
-    }
-  }
-  if (best != null) return best;
-  // No trainable existing skill — train a core combat/command skill from scratch, if any is
-  // unmaxed.
-  for (const k of ['melee', 'tactical', 'march']) {
-    if ((sk[k] || 0) < 5) return k;
-  }
-  return null; // everything relevant already at the drill cap
-}
 // ══ BOT ORDER HYGIENE (2026-09-29, Toby) ════
 // The last bot pass of the turn, after every planner has written its orders. A 30-game audit found 8.6% of bot
 // orders could not have worked when they were given: Practice on a skill already at the drill cap of 5 (240 a

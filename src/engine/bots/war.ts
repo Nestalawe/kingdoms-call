@@ -5,17 +5,13 @@ import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-
 import {
   BOT_AERIAL_TYPES,
   BOT_CARRIER_TYPES,
-  BOT_DEF_BONUS,
   BOT_MONSTER_ARMIES,
   BOT_SEA_ALL,
-  BOT_TUNING,
   botAlignOf,
   botBattleForce,
   botBelief,
   botBelievedOwner,
-  botEffForce,
   botForceStrength,
-  botGuessDefence,
   botKnownFeatures,
   botKnows,
   botMarginFor,
@@ -31,6 +27,7 @@ import {
 import { botFillOrders } from './specialists.ts';
 import { botEnemyIntel } from './missions.ts';
 import { botCanBeatGuardian, botPathLenAny } from './spellcraft.ts';
+import { BOT_CAVALRY_TYPES, BOT_CREATURE_ARMIES, BOT_FLYING_TYPES, botDefenceNeed, botIsValuable } from './strategy.ts';
 
 // ══ WAR ASSESSMENT (2026-09-29, Toby) ══════════════════════════════════════════════════════════════
 // A bot no longer declares war the moment it meets a crown two or more steps away on the alignment
@@ -331,64 +328,6 @@ export function botWarAssess(G, pi, j, opts) {
   }
   return { decision, why, ratio, thr, prize, expanding, opp, losingElsewhere, wins, losses };
 }
-// Defending strength of an ENEMY PLAYER's province (Phase 4): the owner's characters standing there
-// (their armies) plus any standing garrison. An undefended enemy province reads 0 → walked in freely.
-// `viewerPi` is the realm doing the looking. Without sight of the province it gets the wealth-band
-// guess, never the true garrison.
-export function botEnemyDefence(G, prov, ownerPi, viewerPi) {
-  if (!prov) return 0;
-  if (viewerPi != null && !botSees(G, viewerPi, prov.id))
-    return botGuessDefence(G, viewerPi, prov, prov.terrain) / BOT_DEF_BONUS;
-  let s = 0;
-  const pool =
-    viewerPi != null
-      ? botVisibleCharsIn(G, viewerPi, prov)
-      : (prov.characters || []).map((id) => (G.characters || []).find((x) => x && x.id === id)).filter(Boolean);
-  pool.forEach((c) => {
-    if (c && c.alive && c.player === ownerPi) s += botEffForce(G, c);
-  });
-  (prov.garrisonArmies || []).forEach((a) => {
-    s += unitBaseStrength(a);
-  });
-  return s;
-}
-// A province worth defending: the bot's home capital, or Rich land (tax ≥ 7). Marginal frontier
-// provinces are not worth freezing a field army over — they can be lost and retaken.
-export function botIsValuable(G, prov, pi) {
-  if (!prov) return false;
-  const home = (G.players[pi] || {}).homeProvinceId;
-  return prov.id === home || (prov.tax || 0) >= BOT_TUNING.valuableTax;
-}
-// How under-defended an owned province is RIGHT NOW: (strongest at-war enemy force adjacent to it)
-// minus (its own defenders + garrison). >0 means an enemy on its border could take it as it stands
-// — a candidate to reinforce. 0 means adequately held (or unthreatened).
-export function botDefenceNeed(G, prov, pi) {
-  if (!prov || prov.owner !== pi) return 0;
-  let threat = 0;
-  for (let i = 0; i < 6; i++) {
-    const N = botNeighbourProv(G, prov, i);
-    if (!N) continue;
-    // a massing enemy is only a known threat if the realm can SEE it. A hex merely bordering our
-    // land shows terrain and ownership, never the host standing on it — so an army gathering in
-    // unseen country now falls on the bot unannounced, as it would on a player.
-    let s = 0;
-    botVisibleCharsIn(G, pi, N).forEach((e) => {
-      if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy')
-        s += botForceStrength(e.armies);
-    });
-    if (s > threat) threat = s;
-  }
-  if (threat <= 0) return 0;
-  let def = 0;
-  (prov.characters || []).forEach((id) => {
-    const f = (G.characters || []).find((x) => x && x.id === id);
-    if (f && f.alive && f.player === pi) def += botForceStrength(f.armies);
-  });
-  (prov.garrisonArmies || []).forEach((a) => {
-    def += unitBaseStrength(a);
-  });
-  return Math.max(0, threat - def);
-}
 // Phase 4b — CONCENTRATED ASSAULT planning. A strong enemy province no single character can crack
 // is left alone by the solo attack logic. Here we gang up: if ≥2 of a bot's FREE characters are
 // each adjacent to the same at-war enemy province, none can win alone, but their COMBINED force
@@ -489,12 +428,10 @@ export function botPlanAssaults(G, pi, chars, assigned) {
 // passes (which live at module scope, above runTurn) can reason about fleets. Kept in sync with the
 // in-engine sets around the FLYING_TYPES/CARRIER_TYPES block.
 // The carrier, primal-sea, aerial and all-sea sets, and BOT_MONSTER_ARMIES, are in bots/intel.ts.
+// BOT_FLYING_TYPES, BOT_CREATURE_ARMIES and BOT_CAVALRY_TYPES are in bots/strategy.ts.
 export const BOT_LIGHT_ARMIES = new Set(KC_UNIT_CLASS.lightFoot); // mirrors LIGHT_ARMIES in getSeaCapability
 // 'all' (empty / only flyers-or-sea), 'sea' (fleets carry every land unit aboard), or 'land' (not
 // enough hulls to put to sea). Mirrors getSeaCapability exactly.
-export const BOT_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
-export const BOT_CREATURE_ARMIES = new Set(KC_UNIT_CLASS.creature);
-export const BOT_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
 // bot mirror of getFlyCapability — can the humanoid flyers lift every foot soldier so the whole
 // column flies (and crosses sea without a fleet)?
 export function botCanFly(armies) {
@@ -562,23 +499,6 @@ export function botIsLoadedFleet(armies) {
     armies.some((a) => a && BOT_CARRIER_TYPES.has(a.type)) &&
     armies.some((a) => a && !BOT_AERIAL_TYPES.has(a.type) && !BOT_SEA_ALL.has(a.type))
   );
-}
-// only the enemy characters this realm can actually see. On ground it cannot see into, the answer
-// is honestly empty — the bot then judges the province on its wealth-band guess alone.
-export function botEnemyChars(G, prov, pi) {
-  let force = 0,
-    value = 0,
-    hasKing = false,
-    units = 0;
-  botVisibleCharsIn(G, pi, prov).forEach((e) => {
-    if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy') {
-      force += botEffForce(G, e);
-      value += e.isKing ? 50 : 15;
-      if (e.isKing) hasKing = true;
-      units += (e.armies || []).length;
-    }
-  });
-  return { force, value, hasKing, units };
 }
 // seek out a beatable, uncleared lair in our OWN adjacent land (safe to enter) so heroes actively
 // go clear hoards rather than only searching lairs they happen to stand on.

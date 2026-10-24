@@ -34,21 +34,21 @@ import {
   botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
+import { botCanFly, botSeaCap } from './war.ts';
 import {
   BOT_CAVALRY_TYPES,
   BOT_CREATURE_ARMIES,
   BOT_FLYING_TYPES,
-  botCanFly,
+  botAtWar,
+  botCoastalFleetType,
   botEnemyChars,
-  botSeaCap,
-} from './war.ts';
-import {
   botFleetOnly,
   botGarrisonTarget,
   botHeroCap,
   botHireBias,
   botHomeId,
   botIsLeader,
+  botNavalEnemyCoast,
   botSpend,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
@@ -63,7 +63,6 @@ import {
   botPathLen,
   botSpyTarget,
 } from './specialists.ts';
-import { botAtWar, botCoastalFleetType, botNavalEnemyCoast } from './economy.ts';
 import { botDuelRating, botPathAny, botPathLenAny } from './spellcraft.ts';
 import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
 import { DISC_BY_ID } from '../discoveries.ts';

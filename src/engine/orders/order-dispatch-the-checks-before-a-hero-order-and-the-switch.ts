@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, MASTERY_ORDER_LABEL, SKILL_LABELS } from '../army-tables.ts';
-import { botDrillUseful, botPracticeSkill } from '../bots/economy.ts';
+import { botDrillUseful } from '../bots/economy.ts';
 import { provOf } from '../world/map-helpers.ts';
 import { skillLevel } from '../titles/perks.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
@@ -71,6 +71,7 @@ import {
   resolveSnipersMarkOrder,
 } from './war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts';
 import { emit } from '../turn/events-and-their-audiences.ts';
+import { botPracticeSkill } from '../bots/strategy.ts';
 
 // ── ONE HERO'S ORDER, CHECKED AND HANDED TO ITS ORDER'S FUNCTION (plan P1-08j9: lifted out of resolveTurn) ────
 // processOrder carries out one hero's order for one phase: resolveTurn's phase loop calls it for each hero in turn.

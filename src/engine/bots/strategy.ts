@@ -1,20 +1,42 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
+import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { TAMED_FLYER_TYPES_D } from '../titles/perks.ts';
+import { druIdPenaltyMult } from '../world/tables.ts';
+import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
+import { graveServedOther } from '../heroes/charms-and-neutrals.ts';
+import { UNIT_BASE_STR, unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import {
   BOT_AERIAL_TYPES,
   BOT_CARRIER_TYPES,
+  BOT_DEF_BONUS,
+  BOT_MONSTER_ARMIES,
   BOT_SEA_ALL,
+  BOT_TUNING,
+  botBelievedOwner,
+  botEffForce,
+  botForceStrength,
+  botGuessDefence,
+  botHasDisc,
   botNeighbourProv,
+  botRaceTerrainMult,
   botRelationRaw,
+  botSees,
   botSeesChar,
   botTuning,
   botTurnCache,
+  botVisibleCharsIn,
 } from './intel.ts';
-import { BOT_FLYING_TYPES } from './war.ts';
-import { botFrontierTarget, botHasMetPlayers, botIsEdge, botLandCount, botMagicScore } from './specialists.ts';
+import {
+  botFrontierTarget,
+  botHasMetPlayers,
+  botIsEdge,
+  botLandCount,
+  botMagicScore,
+  botPathLen,
+} from './specialists.ts';
 import {
   BOT_RUMOUR_FUND_PER_SLAYER,
   botFlyerPorts,
@@ -23,18 +45,6 @@ import {
   botSeaWorthTaking,
   botUpdateIntel,
 } from './missions.ts';
-import {
-  BOT_NAVAL_TYPES,
-  botAtWar,
-  botCoastalFleetType,
-  botFleetHullCount,
-  botMaxEnemyStack,
-  botNavalEnemyCoast,
-  botRecruitableTypes,
-  botTaxIncome,
-  botUpkeep,
-} from './economy.ts';
-import { BOT_P1, botInContact } from './phase-one.ts';
 
 // ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ════
 // Design (BOT_PLAYERS_DESIGN §8, v2.4): ONE big field army under the bot's BEST GENERAL is both its
@@ -700,6 +710,330 @@ export function botHireOrder(G, pi, c, L) {
   botSpend(L, wage);
   L.hired.add(hh.id);
   return { action: 'hire', target: String(hh.id), extra: '', desc: 'Hire ' + hh.name };
+}
+// ══ SHARED BY THE BOTS' PASSES ════
+// Helpers that several of the bots' passes read, kept in this file, which the passes' files import.
+// ── The war pass's judgments (bots/war.ts): a province's defence, what is worth holding, the enemies in sight ──
+// Defending strength of an ENEMY PLAYER's province (Phase 4): the owner's characters standing there
+// (their armies) plus any standing garrison. An undefended enemy province reads 0 → walked in freely.
+// `viewerPi` is the realm doing the looking. Without sight of the province it gets the wealth-band
+// guess, never the true garrison.
+export function botEnemyDefence(G, prov, ownerPi, viewerPi) {
+  if (!prov) return 0;
+  if (viewerPi != null && !botSees(G, viewerPi, prov.id))
+    return botGuessDefence(G, viewerPi, prov, prov.terrain) / BOT_DEF_BONUS;
+  let s = 0;
+  const pool =
+    viewerPi != null
+      ? botVisibleCharsIn(G, viewerPi, prov)
+      : (prov.characters || []).map((id) => (G.characters || []).find((x) => x && x.id === id)).filter(Boolean);
+  pool.forEach((c) => {
+    if (c && c.alive && c.player === ownerPi) s += botEffForce(G, c);
+  });
+  (prov.garrisonArmies || []).forEach((a) => {
+    s += unitBaseStrength(a);
+  });
+  return s;
+}
+// A province worth defending: the bot's home capital, or Rich land (tax ≥ 7). Marginal frontier
+// provinces are not worth freezing a field army over — they can be lost and retaken.
+export function botIsValuable(G, prov, pi) {
+  if (!prov) return false;
+  const home = (G.players[pi] || {}).homeProvinceId;
+  return prov.id === home || (prov.tax || 0) >= BOT_TUNING.valuableTax;
+}
+// How under-defended an owned province is RIGHT NOW: (strongest at-war enemy force adjacent to it)
+// minus (its own defenders + garrison). >0 means an enemy on its border could take it as it stands
+// — a candidate to reinforce. 0 means adequately held (or unthreatened).
+export function botDefenceNeed(G, prov, pi) {
+  if (!prov || prov.owner !== pi) return 0;
+  let threat = 0;
+  for (let i = 0; i < 6; i++) {
+    const N = botNeighbourProv(G, prov, i);
+    if (!N) continue;
+    // a massing enemy is only a known threat if the realm can SEE it. A hex merely bordering our
+    // land shows terrain and ownership, never the host standing on it — so an army gathering in
+    // unseen country now falls on the bot unannounced, as it would on a player.
+    let s = 0;
+    botVisibleCharsIn(G, pi, N).forEach((e) => {
+      if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy')
+        s += botForceStrength(e.armies);
+    });
+    if (s > threat) threat = s;
+  }
+  if (threat <= 0) return 0;
+  let def = 0;
+  (prov.characters || []).forEach((id) => {
+    const f = (G.characters || []).find((x) => x && x.id === id);
+    if (f && f.alive && f.player === pi) def += botForceStrength(f.armies);
+  });
+  (prov.garrisonArmies || []).forEach((a) => {
+    def += unitBaseStrength(a);
+  });
+  return Math.max(0, threat - def);
+}
+// The flying, creature and cavalry unit-type sets (bots/intel.ts has the rest).
+export const BOT_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
+export const BOT_CREATURE_ARMIES = new Set(KC_UNIT_CLASS.creature);
+export const BOT_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
+// only the enemy characters this realm can actually see. On ground it cannot see into, the answer
+// is honestly empty — the bot then judges the province on its wealth-band guess alone.
+export function botEnemyChars(G, prov, pi) {
+  let force = 0,
+    value = 0,
+    hasKing = false,
+    units = 0;
+  botVisibleCharsIn(G, pi, prov).forEach((e) => {
+    if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy') {
+      force += botEffForce(G, e);
+      value += e.isKing ? 50 : 15;
+      if (e.isKing) hasKing = true;
+      units += (e.armies || []).length;
+    }
+  });
+  return { force, value, hasKing, units };
+}
+// ── Raise the fallen: the bodies this realm may raise (bots/movement.ts says the rule) ──
+export function botRaiseTargets(G, pi) {
+  const p = (G.players || [])[pi] || {};
+  const known = new Set(p.knownDeadHeroIds || []);
+  return (G.heroGraveyard || [])
+    .filter((g) => {
+      if (!g) return false;
+      if (g._monarch) return g.player === pi && p._resurrectableMonarchId === g.id;
+      return (
+        !g.isKing &&
+        g.player === pi &&
+        known.has(g.id) &&
+        !graveServedOther(g, pi) &&
+        !(G.characters || []).some((c) => c && c.id === g.id && c.alive)
+      );
+    })
+    .map((g) => ({
+      g,
+      loc: g.location,
+      val: (g._monarch ? 100 : 0) + Object.values(g.skills || {}).reduce((a, b) => a + (b || 0), 0),
+    }))
+    .filter((x) => x.loc != null)
+    .sort((a, b) => b.val - a.val);
+}
+// ── Spellcraft: the engine's per-school cap on casts each turn (bots/spellcraft.ts) ──
+export function botSchoolLimit(lvl) {
+  return actionSpellsAllowedPerSchoolEachTurn(lvl);
+}
+// ── The phase-one pass's tuning, and whether a host is in contact (bots/phase-one.ts says the pass) ──
+export const BOT_P1 = {
+  retreatRatio: 0.75,
+  fleeRatio: 0.5,
+  levyCap: 1.2,
+  levyWages: 8,
+  chestPerHost: 10,
+  chestShare: 0.5,
+  strike: new Set(['Flood', 'Plague', 'Curse', 'Psychic Blast', 'Telekinetic Storm', 'Charm']),
+  guard: new Set(['Illusory Terrain', 'Oratory', 'Phantasmal Armies']),
+  gainSpell: new Set(['Elemental Summon', 'Skeletal Armies']),
+  reloc: new Set(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']),
+};
+export function botEnemyHostsIn(G, pi, X) {
+  return X
+    ? botVisibleCharsIn(G, pi, X).filter(
+        (e) =>
+          e.player != null && e.player !== pi && (e.armies || []).length && botRelationRaw(G, pi, e.player) === 'enemy',
+      )
+    : [];
+}
+// A host in CONTACT: battle running here, a visible at-war host here or next door, or standing on enemy ground.
+export function botInContact(G, pi, c) {
+  if (!c || !(c.armies || []).length) return false;
+  const P = G.world.provinces[c.location];
+  if (!P) return false;
+  if (P._battleUnresolved || botEnemyHostsIn(G, pi, P).length) return true;
+  if (P.owner != null && P.owner !== pi && botRelationRaw(G, pi, P.owner) === 'enemy') return true;
+  for (let i = 0; i < 6; i++) {
+    const N = botNeighbourProv(G, P, i);
+    if (N && botEnemyHostsIn(G, pi, N).length) return true;
+  }
+  return false;
+}
+// ── The economy pass's helpers: what a province can raise, wages and taxes (bots/economy.ts says the pass) ──
+export const BOT_NAVAL_TYPES = new Set(KC_UNIT_CLASS.sea);
+export function botRecruitableTypes(prov, G, cmdr) {
+  // rank by the strength the intended COMMANDER gets out of the unit (Druid shortfall applied, race
+  // = the province's race as the engine assigns it), not the raw table value — a Druid-0 king
+  // buying Cave Trolls at −60% was throwing gold away.
+  const effOf = (t) => {
+    const base = UNIT_BASE_STR[t] || 4;
+    if (!G || !cmdr) return base;
+    const align = (cmdr.player != null ? ((G.players || [])[cmdr.player] || {}).alignment : null) || 'Neutral';
+    const tamed = cmdr.player != null && botHasDisc(G, cmdr.player, 'sd40');
+    let m = 1;
+    try {
+      m = druIdPenaltyMult(cmdr, { type: t, race: prov.race || 'Human' }, align, tamed && TAMED_FLYER_TYPES_D.has(t));
+    } catch (e) {
+      m = 1;
+    }
+    // Sept 2026: kinship / grudge for THIS commander, and the unconditional fervour an Evil (Monster) realm
+    // gets from the unit — an Orc lord buying human levies at −20% was paying full price. (The Druidic
+    // ×1.25, Wild Ferocity, was retired 2026-10-13.)
+    m *= botRaceTerrainMult(G, cmdr, { type: t, race: prov.race || 'Human' }, null, false, cmdr.player);
+    if (align === 'Evil' && BOT_MONSTER_ARMIES.has(t)) m *= 1.25;
+    return base * m;
+  };
+  // Sept 2026 (Toby): a general raises troops of his own blood and the king's (+20% kinship each) and never
+  // troops of the grudge race (Elf↔Dwarf, Human↔Orc: −20% under him) while any other muster is possible — a
+  // grudge-race province yields nothing to that commander; the feeder pipeline brings him kin instead.
+  if (G && cmdr) {
+    const RIV = { ...KC_RIVAL_RACE };
+    const pr = prov.race || 'Human';
+    if (cmdr.race && RIV[pr] === cmdr.race && !String(pr).startsWith('Primal')) {
+      const pi2 = cmdr.player;
+      const near = (G.world.provinces || []).some(
+        (x) =>
+          x &&
+          x.owner === pi2 &&
+          x.id !== prov.id &&
+          x.terrain !== 'sea' &&
+          (x.armyTypes || []).some((t) => t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) &&
+          RIV[x.race || 'Human'] !== cmdr.race &&
+          (botPathLen(G, pi2, prov, x.id, false) || 99) <= 2,
+      );
+      if (near) return [];
+    }
+  } // "when possible": only while kin can be raised within two hops
+  const all = (prov.armyTypes || [])
+    .filter((t) => t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) // land field units only (v1)
+    .sort((a, b) => effOf(b) - effOf(a)); // strongest FOR THIS COMMANDER first (kinship already in effOf)
+  // Sept 2026 (bot strategy): a speed-1 unit (Mountain Guns, Stone Giants…) pins the whole host to
+  // one hop a turn, which costs far more conquest than its strength buys. Skip them when anything
+  // else exists.
+  if (cmdr && cmdr._botRole === 'defender') return all; // a posted defender never marches: Mountain Guns are welcome
+  const mobile = all.filter((t) => (ARMY_SPEED_MASTER[t] || 3) >= 2);
+  return mobile.length ? mobile : all;
+}
+export function botUpkeep(G, pi) {
+  let w = 0;
+  (G.characters || []).forEach((c) => {
+    if (c && c.alive && c.player === pi)
+      (c.armies || []).forEach((a) => {
+        if (a._temporary || a._wildHuntUntilTurn != null) return;
+        w += a._isSkeletal ? 1 : ARMY_COST_MASTER[a.type] || 2;
+      });
+  });
+  // Sept 2026: garrison units draw wages too (the engine bills them alongside field armies) — the
+  // solvency guard must see them now that bots garrison every province.
+  (G.world.provinces || []).forEach((p) => {
+    if (p && p.owner === pi)
+      (p.garrisonArmies || []).forEach((a) => {
+        if (a._temporary || a._wildHuntUntilTurn != null) return;
+        w += a._isSkeletal ? 1 : ARMY_COST_MASTER[a.type] || 2;
+      });
+  });
+  (G.characters || []).forEach((c) => {
+    if (c && c.alive && c.player === pi && !c.isKing) w += c.pay || 0;
+  }); // hero wages are real wages too
+  return w;
+}
+export function botTaxIncome(G, pi) {
+  let inc = 0;
+  (G.world.provinces || []).forEach((p) => {
+    if (p && p.owner === pi) inc += p.tax || 0;
+  });
+  return inc;
+}
+// ── ECONOMY helpers for the 2026-08 batch ────
+// is this bot AT WAR (any at-war relation with a live player)? At-war bots spend their treasury
+// down and raise their sustainable army ceiling to build for the fight.
+export function botAtWar(G, pi) {
+  return (G.players || []).some(
+    (p, j) =>
+      j !== pi &&
+      p &&
+      (G.characters || []).some((c) => c && c.alive && c.isKing && c.player === j) &&
+      botRelationRaw(G, pi, j) === 'enemy',
+  );
+}
+// the biggest army stack (unit count) any at-war enemy is currently leading. Used to decide when to
+// go to a war footing and roughly how big an army to build toward.
+export function botMaxEnemyStack(G, pi) {
+  // the biggest host this realm has EYES ON, not the biggest in the world.
+  let mx = 0;
+  (G.characters || []).forEach((c) => {
+    if (
+      c &&
+      c.alive &&
+      c.player != null &&
+      c.player !== pi &&
+      botRelationRaw(G, pi, c.player) === 'enemy' &&
+      botSeesChar(G, pi, c)
+    ) {
+      const n = (c.armies || []).length;
+      if (n > mx) mx = n;
+    }
+  });
+  return mx;
+}
+// a CARRIER fleet type this province can raise (for sea conquest / troop transport), else null.
+export function botCoastalFleetType(prov) {
+  return (prov.armyTypes || []).find((t) => BOT_CARRIER_TYPES.has(t)) || null;
+}
+// Sept 2026: an at-war ENEMY coast one sea-hop from this province (the only naval reason worth a
+// fleet while land remains to conquer).
+export function botNavalEnemyCoast(G, prov, pi) {
+  for (let i = 0; i < 6; i++) {
+    const N = botNeighbourProv(G, prov, i);
+    if (!N || N.terrain !== 'sea') continue;
+    for (let j = 0; j < 6; j++) {
+      const K = botNeighbourProv(G, N, j);
+      const ko = botBelievedOwner(G, pi, K);
+      if (K && K.terrain !== 'sea' && ko != null && ko !== pi && botRelationRaw(G, pi, ko) === 'enemy') return true;
+    }
+  } // believed owner, not the true one
+  return false;
+}
+// how many fleet hulls the bot already leads across its whole roster (so it stops over-building
+// ships).
+export function botFleetHullCount(G, pi) {
+  let h = 0;
+  (G.characters || []).forEach((c) => {
+    if (c && c.alive && c.player === pi)
+      (c.armies || []).forEach((a) => {
+        if (a && BOT_CARRIER_TYPES.has(a.type)) h++;
+      });
+  });
+  return h;
+}
+
+// ══ BOT PLAYERS — Phase 3c: character actions (Practice / Rest / Explore) ═════ Runs AFTER
+// movement (3a) and economy (3b): any bot character STILL idle — no move, no recruit — is given
+// something useful instead of a bare Defend. All three actions are self-contained and zero-risk
+// (a character that is attacked still fights, whatever its order), so this is purely additive.
+// • wounded (hp < 60% max) → Rest (heal)
+// • otherwise, a skill to raise → Practice it (permanent growth toward the drill cap of 5)
+// • otherwise, province unmapped → Explore (reveal fog / find feature sites)
+// • otherwise → leave to the default-to-Defend pass
+// STAGED (not wired here): Search (fights a feature's guardian monster — a hero can DIE; needs a
+// monster-strength gate like the guard gate, so it belongs with Phase 4 combat assessment) and
+// action-phase spells / battle magic (school knowledge, per-turn limits, fizzle, and summon-before-
+// battle timing that ties into Phase 4 — deferred to a dedicated spell pass).
+export function botPracticeSkill(c) {
+  const sk = c.skills || {};
+  // Prefer the highest skill still below the drill cap (push a strength toward its level-5 perks).
+  let best = null,
+    bestLvl = -1;
+  for (const k of Object.keys(sk)) {
+    const v = sk[k] || 0;
+    if (v < 5 && v > bestLvl) {
+      best = k;
+      bestLvl = v;
+    }
+  }
+  if (best != null) return best;
+  // No trainable existing skill — train a core combat/command skill from scratch, if any is
+  // unmaxed.
+  for (const k of ['melee', 'tactical', 'march']) {
+    if ((sk[k] || 0) < 5) return k;
+  }
+  return null; // everything relevant already at the drill cap
 }
 // ══ BOT HERO ROLES (Sept 2026, Toby: "put heroes to use") ════
 // Before this every unarmed bot hero fell through seek-wanderer → companion → (at war) hunter/raider →
