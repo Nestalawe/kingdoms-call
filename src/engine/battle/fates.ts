@@ -55,12 +55,12 @@ export function rollUnitFates(force, o) {
       // hide knits in flight, not in the press of the win. o.regen overrides the chance (the tests feed the dice).
       if (a.type === 'Cave Trolls' && !o.won && rng() < (o.regen != null ? o.regen : TROLL_REGEN_CHANCE)) {
         r.survived++;
-        say(`— ${head(a)} are cut down — and rise again, the Regenerating Hide knitting flesh as they stagger clear.`);
+        say({ kind: 'a unit is cut down and rises again by its regenerating hide', unitReference: head(a) });
         return;
       }
       a._died = true;
       r.died++;
-      say(`— ${head(a)} ${diedVerb}${dust(a)}`);
+      say({ kind: 'a unit dies in the battle', unitReference: head(a), diedVerb, wordsIfSkeletal: dust(a) });
       return;
     }
     if (a._isSkeletal) {
@@ -73,7 +73,12 @@ export function rollUnitFates(force, o) {
         a.quality = tiers[idx + 1];
         r.promoted++;
         if (o.notable) a._notable = true;
-        say(`— ${head(a, q0)} ${promoteVerb} ${a.quality}!`);
+        say({
+          kind: 'a unit is promoted after the battle',
+          unitReferenceAtItsOldQuality: head(a, q0),
+          promoteVerb,
+          unitQuality: a.quality,
+        });
       } else r.survived++;
       return;
     }
@@ -81,12 +86,10 @@ export function rollUnitFates(force, o) {
     if (roll2 < o.demoteAt(a)) {
       if (o.shieldFort) {
         r.held++;
-        say(`— ${head(a)} fall back behind the shield wall in good order.`);
+        say({ kind: 'a unit falls back behind the shield wall in good order', unitReference: head(a) });
       } else if (knightly && (a.type === 'Shieldwall Levies' || a.type === 'Men-at-Arms')) {
         r.held++;
-        say(
-          `— ${head(a)} keep their nerve under the Knightly Example of the Gilded Lances and lose nothing in defeat.`,
-        );
+        say({ kind: 'a unit keeps its nerve under the knightly example', unitReference: head(a) });
       } else {
         const q0 = a.quality;
         if (demoteOrDisband(a)) {
@@ -95,7 +98,11 @@ export function rollUnitFates(force, o) {
         } else {
           r.demoted++;
           if (o.notable) a._notable = true;
-          say(`— ${head(a, q0)} lost heart in defeat, reduced to ${a.quality}.`);
+          say({
+            kind: 'a unit loses heart in defeat and is reduced a tier',
+            unitReferenceAtItsOldQuality: head(a, q0),
+            unitQuality: a.quality,
+          });
         }
       }
     } else if (roll2 < o.promoteTo(a) && idx >= 0 && idx < 4) {
@@ -103,7 +110,11 @@ export function rollUnitFates(force, o) {
       a.quality = tiers[idx + 1];
       r.promoted++;
       if (o.notable) a._notable = true;
-      say(`— Despite defeat, ${head(a, q0)} improved to ${a.quality}!`);
+      say({
+        kind: 'a unit improves a tier despite defeat',
+        unitReferenceAtItsOldQuality: head(a, q0),
+        unitQuality: a.quality,
+      });
     } else r.survived++;
   });
   return r;

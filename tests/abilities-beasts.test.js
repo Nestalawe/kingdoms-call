@@ -25,6 +25,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
 
 {
   const engine=loadEngine({seed:1}); const ev=expr=>vm.runInContext(expr,engine);
+  const wordsOf=l=>l==null||typeof l==='string'?l:ev('theWordsOf')(l); // a line's words: its words, or a fact's (the views write them, P1-12c6)
   const HIT=engineFn(engine,'applyMissileHit');
   const G=ev('battleGrid'), F=ev('battleFacing'), UAM=ev('unitAbilityMult'), FATES=ev('rollUnitFates');
   const BASE={'Shieldwall Levies':8,'Yeoman Longbows':8,'Free Lances':10,'Gilded Lances':12,'Orc Berserkers':12,'Noble Griffons':12,'Eagle Riders':12,
@@ -130,7 +131,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     const feed=vals=>{ let i=0; return ()=>vals[Math.min(i++,vals.length-1)]; };
     const force=[mk(),mk()];
     // troll 1: dies on the first roll (0 < dieAt 1), regenerates on 0.1 (< 0.30); troll 2: dies, fails to regenerate on 0.5
-    const res=FATES(force,{owner:'Test',won:false,dieAt:()=>1,demoteAt:()=>0,promoteTo:()=>0,rng:feed([0,0.1,0,0.5]),say:s=>said.push(s)});
+    const res=FATES(force,{owner:'Test',won:false,dieAt:()=>1,demoteAt:()=>0,promoteTo:()=>0,rng:feed([0,0.1,0,0.5]),say:s=>said.push(wordsOf(s))});
     ok(!force[0]._died&&force[1]._died===true&&res.died===1&&res.survived===1,`one troll regenerates and one is destroyed (died ${res.died}, survived ${res.survived})`);
     ok(said.filter(s=>/Regenerating Hide/.test(s)).length===1,`one line names the Regenerating Hide — ${said.join(' / ')}`);
     const won=[mk()]; FATES(won,{owner:'Test',won:true,dieAt:()=>1,promoteTo:()=>0,rng:feed([0,0.1])});

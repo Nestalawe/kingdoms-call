@@ -19,6 +19,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,1200));
   const w=dom.window; const ev=expr=>w.eval(expr);
+  const wordsOf=l=>l==null||typeof l==='string'?l:ev('theWordsOf')(l); // a line's words: its words, or a fact's (the views write them, P1-12c6)
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   for(const f of ['battleFacedClauses','rollUnitFates','disbandLine','battleTallyLine','battleGrid','battleFacing']) ok(ev(`typeof ${f}`)==='function',`${f}() is declared at module level`);
   if(fail){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
@@ -75,7 +76,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // ── the fate lines carry the clause ──
   const dice=seq=>{ let i=0; return ()=>{ if(i>=seq.length) throw new Error('more dice than planned'); return seq[i++]; }; };
   const unit=(type,quality,name,extra)=>Object.assign({type,quality,unitName:name},extra||{});
-  const run=(force,o,seq,faced)=>{ const lines=[]; fates(force,Object.assign({rng:dice(seq),say:l=>lines.push(l),faced},o)); return lines; };
+  const run=(force,o,seq,faced)=>{ const lines=[]; fates(force,Object.assign({rng:dice(seq),say:l=>lines.push(wordsOf(l)),faced},o)); return lines; };
   let f=[unit('Shieldwall Levies','Average','Levy A1'),unit('Yeoman Longbows','Average','Bow A1'),unit('Eagle Riders','Veteran','the Sky Host')];
   let faced=new w.Map([[f[0],"facing Gorbash's Levy B1"],[f[1],"shooting Gorbash's Levy B2 over the line"],[f[2],'fighting from the air']]);
   let lines=run(f,{owner:'Aldric',won:true,dieAt:()=>0.10,promoteTo:()=>0.40},[0.05,0.30,0.30],faced);

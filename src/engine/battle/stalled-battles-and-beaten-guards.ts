@@ -18,7 +18,7 @@ import { emitBattle } from './battle-report-lines-and-force-markers.ts';
 import { combatVsNPC } from './battles-against-province-defenders.ts';
 import { combatVsChar } from './battles-between-heroes.ts';
 import { erodeGuardSurvivors, resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, theWordsOrTheFactOfALine } from '../turn/events-and-their-audiences.ts';
 
 // ── STALLED BATTLES AND A BEATEN GUARD'S SURVIVORS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where a battle was left unresolved (the loser could not retreat) is fought over again at the start of
@@ -95,7 +95,12 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       const attacker = [...playerForces].sort(_rankForce)[0];
       emit(turnContext, {
         type: 'combat',
-        text: `⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} presses the attack on ${guard ? guard.name.replace(' (wandering)', '') : 'the leaderless garrison'}.`,
+        fact: {
+          kind: "an unfinished battle against a province's defenders resumes",
+          provName: prov.name,
+          attackersHostName: forceLabel(attacker),
+          defendersName: guard ? guard.name.replace(' (wandering)', '') : 'the leaderless garrison',
+        },
         audience: { actor: attacker.player, realms: [attacker.player], seen: 'battle' },
         hero: _ctxCharId,
         phase: ph,
@@ -154,7 +159,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           (line) =>
             emit(turnContext, {
               type: 'combat',
-              text: line,
+              ...theWordsOrTheFactOfALine(line),
               audience: { actor: attacker.player, realms: [], seen: 'battle' },
               hero: _ctxCharId,
               phase: ph,
@@ -170,9 +175,18 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           if (!liveGuard) prov._leaderlessDefenders = true;
           emit(turnContext, {
             type: 'combat',
-            text: liveGuard
-              ? `💢 ${guard.name.replace(' (wandering)', '')} still holds with survivors — ${prov.name} remains contested and will be fought over again next phase!`
-              : `💢 Commanderless but unbroken, ${surv.length} surviving unit${surv.length !== 1 ? 's' : ''} still contest ${prov.name} — the fight resumes next phase!`,
+            fact: liveGuard
+              ? {
+                  kind: 'the guard still holds a contested province with survivors',
+                  guardName: guard.name.replace(' (wandering)', ''),
+                  provName: prov.name,
+                }
+              : {
+                  kind: 'commanderless survivors still contest a province',
+                  survivingUnitCount: surv.length,
+                  survivingUnitsPlural: surv.length !== 1 ? 's' : '',
+                  provName: prov.name,
+                },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
             hero: _ctxCharId,
             phase: ph,
@@ -197,7 +211,11 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           if (attacker.alive !== false) attacker.merits = (attacker.merits || 0) + (prov.tax || 0); // 2026-09-21: no personal merit for a fallen commander
           emit(turnContext, {
             type: 'combat',
-            text: `${forceLabel(attacker)} finally overcomes the defenders and claims ${prov.name}!`,
+            fact: {
+              kind: 'the attacker finally overcomes the defenders and claims a province',
+              attackersHostName: forceLabel(attacker),
+              provName: prov.name,
+            },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
             hero: _ctxCharId,
             phase: ph,
@@ -245,7 +263,11 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             attacker.locationName = dest.name;
             emit(turnContext, {
               type: 'combat',
-              text: `${forceLabel(attacker)} breaks off and retreats to ${dest.name}.`,
+              fact: {
+                kind: 'the attacker breaks off a stalled battle and retreats',
+                attackersHostName: forceLabel(attacker),
+                retreatToName: dest.name,
+              },
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
               phase: ph,
@@ -267,7 +289,11 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             }
             emit(turnContext, {
               type: 'combat',
-              text: `${forceLabel(attacker)} is pinned in ${prov.name} with no way out — the struggle continues next phase.`,
+              fact: {
+                kind: 'the attacker is pinned in a province with no way out',
+                attackersHostName: forceLabel(attacker),
+                provName: prov.name,
+              },
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
               phase: ph,
@@ -341,7 +367,12 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         delete prov._battleUnresolved;
         emit(turnContext, {
           type: 'combat',
-          text: `The contest for ${prov.name} lapses — ${G.players[attacker.player]?.name || 'one side'} and ${G.players[defender.player]?.name || 'the other'} are no longer at war, and the two hosts stand down.`,
+          fact: {
+            kind: 'a contest for a province lapses as the realms are no longer at war',
+            provName: prov.name,
+            attackersRealmName: G.players[attacker.player]?.name || 'one side',
+            defendersRealmName: G.players[defender.player]?.name || 'the other',
+          },
           audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
           hero: _ctxCharId,
           phase: ph,
@@ -364,9 +395,22 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       if ((atkPool[attacker.id] ?? 0) > 0) atkPool[attacker.id] = Math.max(0, (atkPool[attacker.id] ?? 0) - 1);
       emit(turnContext, {
         type: 'combat',
-        text: freshWar
-          ? `⚔ War has come to ${prov.name}: ${forceLabel(attacker)}${realmTag(turnContext, attacker.player)} and ${forceLabel(defender)}${realmTag(turnContext, defender.player)} have stood on the same ground since the season opened, and with ${SEASONS[ph]}'s orders done they fall upon each other.`
-          : `⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} and ${forceLabel(defender)} clash again.`,
+        fact: freshWar
+          ? {
+              kind: "war comes to a province two realms' hosts share",
+              provName: prov.name,
+              attackersHostName: forceLabel(attacker),
+              attackersRealmTag: realmTag(turnContext, attacker.player),
+              defendersHostName: forceLabel(defender),
+              defendersRealmTag: realmTag(turnContext, defender.player),
+              seasonName: SEASONS[ph],
+            }
+          : {
+              kind: 'an unfinished battle between two hosts resumes',
+              provName: prov.name,
+              attackersHostName: forceLabel(attacker),
+              defendersHostName: forceLabel(defender),
+            },
         audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
         hero: _ctxCharId,
         phase: ph,
@@ -438,7 +482,11 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         if (wp) applyEvilConquest(turnContext, winner, prov, wp); // Evil doctrine on stand-off capture (was skipped)
         emit(turnContext, {
           type: 'combat',
-          text: `${forceLabel(winner)} secures ${prov.name}!`,
+          fact: {
+            kind: 'the winner of a stalled battle secures a province',
+            winnersHostName: forceLabel(winner),
+            provName: prov.name,
+          },
           audience: { actor: winner.player, realms: [], seen: 'battle' },
           hero: _ctxCharId,
           phase: ph,
@@ -496,7 +544,11 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       if (lp && !lp.provinces.includes(prov.id)) lp.provinces.push(prov.id);
       emit(turnContext, {
         type: 'combat',
-        text: `${forceLabel(lone)} holds ${prov.name} unopposed and secures it.`,
+        fact: {
+          kind: 'a host holds a province unopposed and secures it',
+          hostName: forceLabel(lone),
+          provName: prov.name,
+        },
         audience: { actor: lone.player, realms: [], seen: 'battle' },
         hero: _ctxCharId,
         phase: ph,

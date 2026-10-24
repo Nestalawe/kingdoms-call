@@ -44,6 +44,9 @@ import {
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
+/** A line's words: its words, or a fact's, which the views write (theWordsOf, src/views/prose/, P1-12c6). */
+const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const wordsOf = (line: unknown): string => (typeof line === 'string' ? line : theWordsOf(line));
 const WORLD = botWorld(engine, 3, { cols: 12, rows: 8 }, { seaPct: 20 });
 const PH = 2;
 const erodeGuardSurvivors = engineFn(engine, 'erodeGuardSurvivors') as (
@@ -51,7 +54,7 @@ const erodeGuardSurvivors = engineFn(engine, 'erodeGuardSurvivors') as (
   guard: { name: string } | null,
   prov: Province,
   survivors: Unit[],
-  emit: (l: string) => void,
+  emit: (l: unknown) => void,
   victor?: string,
 ) => Unit[];
 const resolveStalledBattles = engineFn(engine, 'resolveStalledBattles') as (
@@ -98,7 +101,7 @@ describe('a beaten guard’s survivors (erodeGuardSurvivors)', () => {
       units('Goblin Horde', 'Green', ['Gob S1']),
     );
     const kept = withDice(engine, dice, () =>
-      erodeGuardSurvivors(b.tc, { name: 'Ulric (wandering)' }, b.X, surv, (l) => lines.push(l), victor),
+      erodeGuardSurvivors(b.tc, { name: 'Ulric (wandering)' }, b.X, surv, (l) => lines.push(wordsOf(l)), victor),
     );
     return { b, lines, kept };
   };
@@ -151,7 +154,7 @@ describe('a beaten guard’s survivors (erodeGuardSurvivors)', () => {
         });
         const lines: string[] = [];
         const kept = withDice(engine, dice.length ? dice : [0.5], () =>
-          erodeGuardSurvivors(b.tc, { name: 'Ulric' }, b.X, surv, (l) => lines.push(l), 'Aldric'),
+          erodeGuardSurvivors(b.tc, { name: 'Ulric' }, b.X, surv, (l) => lines.push(wordsOf(l)), 'Aldric'),
         );
         const fate = ss.map((s, i) =>
           s.flee < 0.35

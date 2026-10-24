@@ -204,10 +204,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // Items 6 & 11: the "moves into … a battle is initiated" line is ALWAYS the first line of a
   // battle report — before terror, flak or any other pre-battle note.
   if (!c._resumeBattle)
-    narrate(
-      narrative,
-      `➡️ ${c.name}${c.player != null ? ` (${G.players[c.player]?.name})` : ''} moves into ${prov.name}, held by ${_npcHeldBy} — a battle is initiated.`,
-    ); // same opener as PvP
+    narrate(narrative, {
+      kind: 'the attacker moves into a province held by its defenders and a battle is initiated',
+      cName: c.name,
+      wordsOfTheAttackersRealm: c.player != null ? ` (${G.players[c.player]?.name})` : '',
+      provName: prov.name,
+      heldByName: _npcHeldBy,
+    }); // same opener as PvP
   // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders
   // (stacking). Reign of Fear is read first: the attacker's Monsters fight ×1.5 on ground its Terror grips.
   const _fearAtk = reignOfFearHere(prov, c.player);
@@ -217,11 +220,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     (c.player != null ? G.players[c.player]?.alignment : null) === 'Evil' &&
     armies.some((a) => a && MONSTER_ARMIES.has(a.type))
   )
-    narrate(
-      narrative,
-      `💀 Reign of Fear — ${prov.name} still cowers under ${c.name}'s Terror, and the monsters of the host fight at ×${REIGN_OF_FEAR_MULT}.`,
-    );
-  narrate(narrative, `⚔ **Battle for ${prov.name}**`);
+    narrate(narrative, {
+      kind: 'the province still cowers under a reign of fear',
+      provName: prov.name,
+      terrorHeroName: c.name,
+      reignOfFearMultiplier: REIGN_OF_FEAR_MULT,
+    });
+  narrate(narrative, { kind: 'the battle for a province begins', provName: prov.name });
   {
     const _ic = magicItemsLine(c);
     if (_ic) narrate(narrative, _ic);
@@ -334,15 +339,15 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const atkCmdrSlain = !!_npcDuel.atkSlain || c.alive === false,
     defCmdrSlain = !!_npcDuel.defSlain;
   if (defCmdrSlain)
-    narrate(
-      narrative,
-      `⚑ With ${neutralGuardHero.name.replace(' (wandering)', '')} slain before the host, a battle-worn sergeant of the garrison takes up the fallen banner — the defenders close ranks and fight on, leaderless but unbowed.`,
-    );
+    narrate(narrative, {
+      kind: 'the guard is slain before his host, and a sergeant of the garrison takes up the banner',
+      guardName: neutralGuardHero.name.replace(' (wandering)', ''),
+    });
   if (atkCmdrSlain)
-    narrate(
-      narrative,
-      `⚑ With ${c.name} cut down before the lines were even joined, the eldest captain of the host takes command — the attack goes in regardless, though without their fallen leader's guiding hand.`,
-    );
+    narrate(narrative, {
+      kind: 'the attacker is cut down before the lines join, and the eldest captain takes command',
+      cName: c.name,
+    });
   // below the duel, an attacker slain in single combat is spoken of as the stand-in who took
   // command, not the fallen leader — the setup lines and the death notice above keep the name.
   const cName = atkCmdrSlain ? `${c.name}'s leaderless host` : c.name; // slain → the host acts, not the dead commander
@@ -364,7 +369,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // (flyers take Tactical since 2026-09-23c), so the two disagreed.
   void LAND_TYPES_TACT;
   if (tactSkill > 0 && !isLandBattle)
-    narrate(narrative, `📊 ${cName}'s Tactical command does not apply in sea terrain.`);
+    narrate(narrative, { kind: "the attacker's Tactical command does not apply at sea", cName });
   const effectiveTactBonus = isLandBattle ? tactBonus : 1;
 
   // Terrain and defender bonus sd03 Siege Engines: attacker with this discovery reduces defender
@@ -380,24 +385,22 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     );
     if (_sg > 0) {
       defBonus = Math.max(1, defBonus - _sg);
-      narrate(
-        narrative,
-        `  🏰 ${cName}'s siegecraft wears down the defenders' fortifications (province bonus −${_sg.toFixed(2)}).`,
-      );
+      narrate(narrative, {
+        kind: "the attacker's siegecraft wears down the defenders' fortifications",
+        atkName: cName,
+        siegecraftReduction: _sg.toFixed(2),
+      });
     }
   } // rd09 / ro10
   // GOOD — Righteous Defence: a Good realm's own soil is defended with quiet, unshakable
   // conviction (+10% to the defence of any province the Good player OWNS).
   if (prov.owner != null && prov.owner !== c.player && G.players[prov.owner]?.alignment === 'Good') {
     defBonus *= 1.1;
-    narrate(
-      narrative,
-      `✝ Righteous Defence — the defenders of ${prov.name} stand on ground they hold justly (+10% defence).`,
-    );
+    narrate(narrative, { kind: 'the defenders of a province defend ground held justly', provName: prov.name });
   }
   if (activeItems(c).some((it) => it.effect && it.effect.stat === 'siegeBonus')) {
     defBonus = 1 + (defBonus - 1) * 0.5;
-    narrate(narrative, `  🏰 ${cName}'s siege mastery halves the defenders' fortifications.`);
+    narrate(narrative, { kind: "the attacker's siege mastery halves the defenders' fortifications", atkName: cName });
   }
   // (The Wyverns' cut to a neutral defence's bonus, Dread's stand-in here, was retired with the unit
   // abilities, 2026-10-11: Terror From Above bears on the strongest front unit, in battleFaceSide.)
@@ -407,12 +410,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const _founderN = homeFounderOf(G, prov.id);
   const isHome = _founderN != null && prov.owner === _founderN;
   const atkHome = _founderN != null && c.player === _founderN && prov.owner !== _founderN;
-  if (isHome) narrate(narrative, `The defenders fight on home soil, gaining an additional ×1.2 bonus.`);
+  if (isHome) narrate(narrative, { kind: 'the defenders fight on home soil' });
   if (atkHome)
-    narrate(
-      narrative,
-      `🏠 ${cName} fights to win back ${prov.name}, the realm's own capital — home ground lends the assault ×1.5 strength.`,
-    );
+    narrate(narrative, {
+      kind: "the attacker fights to win back his realm's capital",
+      atkName: cName,
+      provName: prov.name,
+    });
   {
     const _dOwn =
       prov.owner != null && prov.owner !== c.player
@@ -429,10 +433,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         : 0;
     if (_dOwn > 0) {
       defBonus *= 1 + _dOwn;
-      narrate(
-        narrative,
-        `  🛡 ${G.players[prov.owner]?.name}'s realm holds its own ground the harder (+${dispFloor(_dOwn * 100)}% defence).`,
-      );
+      narrate(narrative, {
+        kind: "the defender's realm holds its own ground the harder",
+        defName: G.players[prov.owner]?.name,
+        ownGroundDefencePct: dispFloor(_dOwn * 100),
+      });
     }
   } // defOwn discoveries
   const homeBonus = isHome ? 1.2 : 1;
@@ -477,10 +482,16 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       ); // cast discoveries · 2026-09-11: base 30
       const castRoll = d100();
       telSpell(turnContext, c, spellName, school, spellLvl, castChance, castRoll, 'battle');
-      narrate(
-        narrative,
-        `✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${SKILL_LABELS[school] || school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll <= castChance ? ' ✓' : ' ✗'}]`,
-      );
+      narrate(narrative, {
+        kind: 'the attacker casts a spell before the battle against the defenders',
+        cName,
+        spellName,
+        schoolLabel: SKILL_LABELS[school] || school,
+        spellLevel: spellLvl,
+        castChance,
+        castRoll,
+        castMark: castRoll <= castChance ? ' ✓' : ' ✗',
+      });
       if (castRoll <= castChance) {
         // pre-battle magic no longer trains the school. Casting into a battle is not the same
         // test as casting in a duel, and it was the cheapest experience in the game — one order,
@@ -497,34 +508,31 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
               const cut = Math.max(1, Math.round(unitBaseStrength(d) * 0.5));
               d._tempStrReduction = (d._tempStrReduction || 0) + cut;
             });
-            narrate(
-              narrative,
-              `  🔥 Fireball engulfs the enemy's ${_fbHits.length > 1 ? 'two strongest units' : 'strongest unit'}, ${_fbHits.map((d) => d.unitName || d.type).join(' and ')} — halved this battle.`,
-            );
+            narrate(narrative, {
+              kind: "a fireball engulfs the defenders' strongest units",
+              fireballTargetsWords: _fbHits.length > 1 ? 'two strongest units' : 'strongest unit',
+              fireballHitUnitNames: _fbHits.map((d) => d.unitName || d.type).join(' and '),
+            });
           }
         } else if (spellName === 'Telekinetic Storm') {
           // Negate the enemy commander's Tactical bonus for this battle.
           if (defHero) {
             defHero._tacticalHalved = true;
             defHero._tacticalMult = 0.5;
-            narrate(
-              narrative,
-              `  🌀 Telekinetic Storm scatters ${defHero.name}'s formations — their Tactical command is cut to half effectiveness this battle.`,
-            );
-          } else
-            narrate(
-              narrative,
-              `  🌀 Telekinetic Storm rages, but these leaderless defenders have no tactical command to unmake.`,
-            );
+            narrate(narrative, {
+              kind: "a telekinetic storm scatters the enemy commander's formations",
+              enemyCommanderName: defHero.name,
+            });
+          } else narrate(narrative, { kind: 'a telekinetic storm finds no command among leaderless defenders' });
         } else if (spellName === 'Psychic Blast') {
           // Negate the enemy commander's Druid skill for this battle.
           if (defHero) {
             defHero._druidNegated = true;
-            narrate(
-              narrative,
-              `  🧠 Psychic Blast severs ${defHero.name}'s bond with their beasts — their Druid skill is negated this battle.`,
-            );
-          } else narrate(narrative, `  🧠 Psychic Blast reaches out, but these defenders have no commander to unmake.`);
+            narrate(narrative, {
+              kind: "a psychic blast severs the enemy commander's bond with his beasts",
+              enemyCommanderName: defHero.name,
+            });
+          } else narrate(narrative, { kind: 'a psychic blast finds no commander among the defenders' });
         } else if (spellName === 'Lightning Bolt') {
           // A number of enemy armies equal to the caster's level lose 20% of their base strength
           // for the battle.
@@ -533,20 +541,22 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
           picks.forEach((d) => {
             d._tempStrReduction = (d._tempStrReduction || 0) + Math.max(1, Math.round(unitBaseStrength(d) * 0.2));
           });
-          narrate(
-            narrative,
-            `  ⚡ Lightning Bolt sears ${n} enemy unit${n !== 1 ? 's' : ''} — each loses 20% of its strength this battle.`,
-          );
+          narrate(narrative, {
+            kind: 'a lightning bolt sears the defending units',
+            unitCount: n,
+            unitsPlural: n !== 1 ? 's' : '',
+          });
         } else if (spellName === 'Curse') {
           // Halve the enemy commander's best combat-affecting skill (Tactical or Druid) for the
           // battle.
           if (defHero) {
             defHero._curseHalveStat = bestCurseSkill(turnContext, defHero);
-            narrate(
-              narrative,
-              `  ☠ Curse withers ${defHero.name}'s ${curseSkillLabel(defHero._curseHalveStat)} — halved for this battle.`,
-            );
-          } else narrate(narrative, `  ☠ Curse seeks a commander to wither, but these defenders are leaderless.`);
+            narrate(narrative, {
+              kind: "a curse withers the enemy commander's skill",
+              enemyCommanderName: defHero.name,
+              cursedSkillLabel: curseSkillLabel(defHero._curseHalveStat),
+            });
+          } else narrate(narrative, { kind: 'a curse finds no commander among leaderless defenders' });
         } else if (spellName === 'Control Undead') {
           // One random enemy undead unit defects to the caster's side.
           const ui = defenders
@@ -566,11 +576,12 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
               rc.armies = rc.armies || [];
               rc.armies.push(unit);
             }
-            narrate(
-              narrative,
-              `  ☠ Control Undead turns the ${unit.unitName || unit.type} — it defects to ${cName}'s side!`,
-            );
-          } else narrate(narrative, `  ☠ Control Undead reaches out, but the enemy fields no undead to turn.`);
+            narrate(narrative, {
+              kind: "control undead turns a defending undead unit to the attacker's side",
+              turnedUnitName: unit.unitName || unit.type,
+              cName,
+            });
+          } else narrate(narrative, { kind: 'control undead finds no undead among the defenders' });
         } else if (spellName === 'Holy Symbol') {
           // All enemy UNDEAD units fight at 75% base strength.
           const undeadDefs = defenders.filter(
@@ -580,11 +591,12 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
             undeadDefs.forEach((d) => {
               d._tempStrReduction = (d._tempStrReduction || 0) + Math.ceil(unitBaseStrength(d) * 0.25);
             });
-            narrate(
-              narrative,
-              `  ✝ Holy Symbol sears the enemy undead — ${undeadDefs.length} undead unit${undeadDefs.length !== 1 ? 's' : ''} fight at 75% strength.`,
-            );
-          } else narrate(narrative, `  ✝ Holy Symbol blazes, but no undead stand among the defenders.`);
+            narrate(narrative, {
+              kind: 'a holy symbol sears the defending undead',
+              undeadUnitCount: undeadDefs.length,
+              undeadUnitsPlural: undeadDefs.length !== 1 ? 's' : '',
+            });
+          } else narrate(narrative, { kind: 'a holy symbol finds no undead among the defenders' });
         } else if (spellName === 'Spiritwrack') {
           // All enemy MISSILE units fight at half base strength.
           const missileDefs = defenders.filter((d) => MISSILE_ARMIES.has(d.type));
@@ -592,16 +604,17 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
             missileDefs.forEach((d) => {
               d._tempStrReduction = (d._tempStrReduction || 0) + Math.ceil(unitBaseStrength(d) * 0.5);
             });
-            narrate(
-              narrative,
-              `  Spiritwrack unstrings the enemy's bows — ${missileDefs.length} missile unit${missileDefs.length !== 1 ? 's' : ''} fight at half strength.`,
-            );
-          } else narrate(narrative, `  Spiritwrack howls, but the enemy fields no missile troops.`);
+            narrate(narrative, {
+              kind: "spiritwrack halves the defenders' missile units",
+              missileUnitCount: missileDefs.length,
+              missileUnitsPlural: missileDefs.length !== 1 ? 's' : '',
+            });
+          } else narrate(narrative, { kind: 'spiritwrack finds no missile troops among the defenders' });
         }
         // NOTE: the magic-school skill-up is handled ONCE by trySkillGain(c, school, …, narrative)
         // above.
       } else {
-        narrate(narrative, `  The spell fizzles — no pre-battle magical effect.`);
+        narrate(narrative, { kind: "the attacker's spell before the battle fizzles" });
       }
     }
   }
@@ -622,24 +635,42 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     const armySpellChance = primalStrikeChance(druIdLvlMag, atkCmdrSlain ? null : c, atk.type);
     const armySpellRoll = d100();
     if (armySpellRoll > armySpellChance && _isPrimalStrikeA) {
-      narrate(
-        narrative,
-        `〰 ${atk.unitName || atk.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${druIdLvlMag > 0 ? `, Druid ${druIdLvlMag}` : ', no commanding Druid'}).`,
-      );
+      narrate(narrative, {
+        kind: "a unit's power gathers but never strikes",
+        unitName: atk.unitName || atk.type,
+        powerName: sp.name,
+        strikeChancePct: armySpellChance,
+        druidWords: druIdLvlMag > 0 ? `, Druid ${druIdLvlMag}` : ', no commanding Druid',
+      });
     }
     if (armySpellRoll <= armySpellChance) {
-      narrate(narrative, `✨ ${atk.unitName || atk.type} — **${sp.name}**: "${sp.flavour}"`);
+      narrate(narrative, {
+        kind: 'a unit uses its power in battle',
+        unitName: atk.unitName || atk.type,
+        powerName: sp.name,
+        powerFlavour: sp.flavour,
+      });
       if (sp.target === 'all') {
         const dmg = rng(sp.dmg[0], sp.dmg[1]);
         defenders.forEach((d) => {
           d._tempStrReduction = (d._tempStrReduction || 0) + dmg;
         });
-        narrate(narrative, `  ${sp.name} hits all ${defenders.length} defending units: −${dmg} strength each.`);
+        narrate(narrative, {
+          kind: "a unit's power hits every defending unit",
+          powerName: sp.name,
+          unitCount: defenders.length,
+          damage: dmg,
+        });
       } else {
         const d = defenders[Math.floor(kcRng() * defenders.length)];
         const dmg = rng(sp.dmg[0], sp.dmg[1]);
         d._tempStrReduction = (d._tempStrReduction || 0) + dmg;
-        narrate(narrative, `  ${sp.name} hits ${d.unitName || d.type}: −${dmg} strength this battle.`);
+        narrate(narrative, {
+          kind: "a unit's power hits one unit of the other side",
+          powerName: sp.name,
+          struckUnitName: d.unitName || d.type,
+          damage: dmg,
+        });
       }
     }
   });
@@ -679,10 +710,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       if (kcRng() >= 0.25) return;
       const t = hulls[Math.floor(kcRng() * hulls.length)];
       t._sunk = true;
-      narrate(
-        narrative,
-        `🌊 A whale cohort breaches beneath the ${t.unitName || t.type} and rolls her over — she goes down before a shot is fired.`,
-      );
+      narrate(narrative, {
+        kind: 'a whale cohort sinks a defending ship before a shot is fired',
+        targetUnitName: t.unitName || t.type,
+      });
     });
     if (defenders.some((a) => a._sunk)) {
       const lost = defenders.filter((a) => a._sunk);
@@ -699,15 +730,15 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   } // ELF — Eyes of the Forest
   const missileAtk = archeryBlockedBy(defenders, prov.terrain, armies) ? [] : abilityMissileUnits(armies, prov.terrain);
   if (archeryBlockedBy(defenders, prov.terrain, armies) && armies.some((a) => MISSILE_ARMIES.has(a.type)))
-    narrate(
-      narrative,
-      `🌲 ${cName}'s archers can find no target — Forest Wardens hold the thickets and the volley never comes.`,
-    );
+    narrate(narrative, { kind: "the hero's archers find no target among the forest wardens", heroName: cName });
   if (missileAtk.length > 0 && defenders.length > 0) {
-    narrate(
-      narrative,
-      `🏹 **Pre-battle Archery Phase** — ${missileAtk.length} ranged unit${missileAtk.length !== 1 ? 's' : ''}${hasQuiver ? ' (Quiver of the Hawk: double volleys)' : ''}${_manyArrows ? ' (Quiver of Many Arrows: +1 shot)' : ''}`,
-    );
+    narrate(narrative, {
+      kind: "the attacker's archery volley begins",
+      missileUnitCount: missileAtk.length,
+      missileUnitsPlural: missileAtk.length !== 1 ? 's' : '',
+      wordsIfDoubleVolleys: hasQuiver ? ' (Quiver of the Hawk: double volleys)' : '',
+      wordsIfOneMoreShot: _manyArrows ? ' (Quiver of Many Arrows: +1 shot)' : '',
+    });
     const volleys = (hasQuiver ? 2 : 1) + (_manyArrows ? 1 : 0);
     let totalArrowDmg = 0;
     missileAtk.forEach((atk) => {
@@ -721,26 +752,36 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         const hit = applyMissileHit(target, archSkillAtk, atk, { dmgMult });
         totalArrowDmg += hit.dmg;
         if (hit.immune)
-          narrate(
-            narrative,
-            `  ${atk.unitName || atk.type} fires at ${target.unitName || target.type}, but the shot glances off the ${hit.why || 'armoured hull'}.`,
-          );
+          narrate(narrative, {
+            kind: 'a unit fires at its target and the shot glances off',
+            shooterName: atk.unitName || atk.type,
+            targetUnitName: target.unitName || target.type,
+            whyTheShotGlances: hit.why || 'armoured hull',
+          });
         else if (hit.dmg > 0)
-          narrate(
-            narrative,
-            `  ${atk.unitName || atk.type} fires at ${target.unitName || target.type}: −${hit.dmg} strength${hit.isFly ? ' (×2 vs flying!)' : ''}${hit.thickHide ? ' (Thick Hide: half)' : ''}${dmgMult > 1 ? ` (${atk.type} ability ×${dmgMult.toFixed(2)})` : ''}${hit.capped ? ' (softened to the limit)' : ''}.`,
-          );
+          narrate(narrative, {
+            kind: 'a unit fires at its target and weakens it',
+            shooterName: atk.unitName || atk.type,
+            targetUnitName: target.unitName || target.type,
+            damage: hit.dmg,
+            wordsIfFlying: hit.isFly ? ' (×2 vs flying!)' : '',
+            wordsIfThickHide: hit.thickHide ? ' (Thick Hide: half)' : '',
+            wordsIfAbilityMultiplier: dmgMult > 1 ? ` (${atk.type} ability ×${dmgMult.toFixed(2)})` : '',
+            wordsIfSoftenedToTheLimit: hit.capped ? ' (softened to the limit)' : '',
+          });
         else
-          narrate(
-            narrative,
-            `  ${atk.unitName || atk.type} fires at ${target.unitName || target.type}, but they are already softened as much as arrows can manage.`,
-          );
+          narrate(narrative, {
+            kind: "an attacking unit's target is already softened as far as arrows allow",
+            shooterName: atk.unitName || atk.type,
+            targetUnitName: target.unitName || target.type,
+          });
       }
     });
-    narrate(
-      narrative,
-      `📊 Archery phase total: −${totalArrowDmg} strength spread across defenders (each unit softened by at most ${dispFloor(MISSILE_CAP_FRACTION * 100)}%).`,
-    );
+    narrate(narrative, {
+      kind: "the attacker's archery volley's total",
+      totalDamage: totalArrowDmg,
+      arrowSofteningCapPct: dispFloor(MISSILE_CAP_FRACTION * 100),
+    });
   }
 
   // ════
@@ -788,20 +829,27 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         const castChance = guardCastChance(defHero, school, G.characters); // D7: the same odds as a player's hero
         const castRoll = d100();
         telSpell(turnContext, defHero, defSpellName, school, defSpellLvl, castChance, castRoll, 'battle');
-        narrate(
-          narrative,
-          `✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${SKILL_LABELS[school] || school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll <= castChance ? '✓' : '✗'}]`,
-        );
+        narrate(narrative, {
+          kind: 'the defender casts a spell before the battle',
+          casterName: defHero.name,
+          spellName: defSpellName,
+          schoolLabel: SKILL_LABELS[school] || school,
+          spellLevel: defSpellLvl,
+          castChance,
+          castRoll,
+          castMark: castRoll <= castChance ? '✓' : '✗',
+        });
         if (castRoll <= castChance) {
           // no school gain from pre-battle magic — see the attacker's cast above.
           if (defSpellName === 'Fireball') {
             const tgt = armies.reduce((b, x) => (unitBaseStrength(x) > unitBaseStrength(b) ? x : b));
             const cut = Math.max(1, Math.round(unitBaseStrength(tgt) * 0.5));
             tgt._tempStrReduction = (tgt._tempStrReduction || 0) + cut;
-            narrate(
-              narrative,
-              `  🔥 Fireball halves the attackers' strongest unit, ${tgt.unitName || tgt.type} (−${cut}).`,
-            );
+            narrate(narrative, {
+              kind: "a fireball halves the attackers' strongest unit",
+              targetUnitName: tgt.unitName || tgt.type,
+              strengthLost: cut,
+            });
           } else if (defSpellName === 'Lightning Bolt') {
             const n = Math.min(armies.length, Math.max(1, defSpellLvl));
             shuffleP(armies)
@@ -809,34 +857,36 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
               .forEach((a) => {
                 a._tempStrReduction = (a._tempStrReduction || 0) + Math.max(1, Math.round(unitBaseStrength(a) * 0.2));
               });
-            narrate(
-              narrative,
-              `  ⚡ Lightning Bolt sears ${n} attacking unit${n !== 1 ? 's' : ''} — each loses 20% of its strength.`,
-            );
+            narrate(narrative, {
+              kind: 'a lightning bolt sears the attacking units',
+              unitCount: n,
+              unitsPlural: n !== 1 ? 's' : '',
+            });
           } else if (defSpellName === 'Psychic Blast') {
             if (c) {
               c._druidNegated = true;
-              narrate(
-                narrative,
-                `  🧠 Psychic Blast severs ${cName}'s bond with their beasts — their Druid skill is negated this battle.`,
-              );
+              narrate(narrative, {
+                kind: "a psychic blast severs the enemy commander's bond with his beasts",
+                enemyCommanderName: cName,
+              });
             }
           } else if (defSpellName === 'Telekinetic Storm') {
             if (c) {
               c._tacticalHalved = true;
               c._tacticalMult = 0.5;
-              narrate(
-                narrative,
-                `  🌀 Telekinetic Storm scatters ${cName}'s formations — their Tactical command is cut to half effectiveness this battle.`,
-              );
+              narrate(narrative, {
+                kind: "a telekinetic storm scatters the enemy commander's formations",
+                enemyCommanderName: cName,
+              });
             }
           } else if (defSpellName === 'Curse') {
             if (c) {
               c._curseHalveStat = bestCurseSkill(turnContext, c);
-              narrate(
-                narrative,
-                `  ☠ Curse withers ${cName}'s ${curseSkillLabel(c._curseHalveStat)} — halved for this battle.`,
-              );
+              narrate(narrative, {
+                kind: "a curse withers the enemy commander's skill",
+                enemyCommanderName: cName,
+                cursedSkillLabel: curseSkillLabel(c._curseHalveStat),
+              });
             }
           } else if (defSpellName === 'Control Undead') {
             const ui = armies
@@ -857,11 +907,12 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
                 rc.armies = rc.armies || [];
                 rc.armies.push(unit);
               }
-              narrate(
-                narrative,
-                `  ☠ Control Undead turns the ${unit.unitName || unit.type} to ${defHero.name}'s side!`,
-              );
-            } else narrate(narrative, `  ☠ Control Undead finds no undead among the attackers.`);
+              narrate(narrative, {
+                kind: "control undead turns an enemy undead unit to the caster's side",
+                turnedUnitName: unit.unitName || unit.type,
+                casterName: defHero.name,
+              });
+            } else narrate(narrative, { kind: 'control undead finds no undead among the attackers' });
           } else if (defSpellName === 'Holy Symbol') {
             const undeadAtk = armies.filter(
               (a) => a._isSkeletal || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(a.type || ''),
@@ -870,25 +921,27 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
               undeadAtk.forEach((a) => {
                 a._tempStrReduction = (a._tempStrReduction || 0) + Math.ceil(unitBaseStrength(a) * 0.25);
               });
-              narrate(
-                narrative,
-                `  ✝ Holy Symbol sears the attacking undead — ${undeadAtk.length} unit${undeadAtk.length !== 1 ? 's' : ''} at 75% strength.`,
-              );
-            } else narrate(narrative, `  ✝ Holy Symbol blazes, but no undead assail this province.`);
+              narrate(narrative, {
+                kind: 'a holy symbol sears the attacking undead',
+                undeadUnitCount: undeadAtk.length,
+                undeadUnitsPlural: undeadAtk.length !== 1 ? 's' : '',
+              });
+            } else narrate(narrative, { kind: 'a holy symbol finds no undead among the attackers' });
           } else if (defSpellName === 'Spiritwrack') {
             const missileAtkU = armies.filter((a) => MISSILE_ARMIES.has(a.type));
             if (missileAtkU.length > 0) {
               missileAtkU.forEach((a) => {
                 a._tempStrReduction = (a._tempStrReduction || 0) + Math.ceil(unitBaseStrength(a) * 0.5);
               });
-              narrate(
-                narrative,
-                `  Spiritwrack unstrings the attackers' bows — ${missileAtkU.length} missile unit${missileAtkU.length !== 1 ? 's' : ''} at half strength.`,
-              );
-            } else narrate(narrative, `  Spiritwrack howls, but the attackers field no missile troops.`);
+              narrate(narrative, {
+                kind: "spiritwrack halves the attackers' missile units",
+                missileUnitCount: missileAtkU.length,
+                missileUnitsPlural: missileAtkU.length !== 1 ? 's' : '',
+              });
+            } else narrate(narrative, { kind: 'spiritwrack finds no missile troops among the attackers' });
           }
         } else {
-          narrate(narrative, `  The spell fizzles — no defensive magical effect.`);
+          narrate(narrative, { kind: "the defender's spell before the battle fizzles" });
         }
       }
     }
@@ -902,10 +955,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     (defenders || []).forEach((d) => {
       if (d) d._laNoTerrain = true;
     });
-    narrate(
-      narrative,
-      `⚡ ${c.name}'s Lightning Advance catches the defenders completely unready — they fight with no terrain advantage, no pre-battle magic and no answering volley.`,
-    );
+    narrate(narrative, { kind: "the attacker's lightning advance catches the defenders unready", cName: c.name });
   }
   applyFlakScreen(_cLA ? [] : defenders, armies, (defHero && defHero.name) || 'The defenders', narrative);
   // ELF — Ambush, the other direction (2026-09-27, Toby): only the ATTACKER's volley was gated here,
@@ -919,18 +969,17 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   } // ELF — Eyes of the Forest
   const _defArchBlocked = !_cLA && archeryBlockedBy(armies, prov.terrain, defenders);
   if (_defArchBlocked && defenders.some((a) => MISSILE_ARMIES.has(a.type)))
-    narrate(
-      narrative,
-      `🌲 The defenders' archers can find no target — ${cName}'s Forest Wardens hold the thickets and the answering volley never comes.`,
-    );
+    narrate(narrative, { kind: "the defenders' archers find no target among the attacker's forest wardens", cName });
   const missileDef = _cLA || _defArchBlocked ? [] : abilityMissileUnits(defenders, prov.terrain);
   if (missileDef.length > 0 && armies.length > 0) {
     const defArchSkill = defHero ? effStat(turnContext, defHero, 'archery') : 0; // a leaderless garrison shoots at Archery 0
     const _prepared = missileDef.some((d) => abilityVolleys(d, false) > 1); // HUMAN — Prepared Ground: defending Longbows loose twice
-    narrate(
-      narrative,
-      `🏹 **Defender Archery Phase** — ${missileDef.length} ranged unit${missileDef.length !== 1 ? 's' : ''}${_prepared ? ' (Prepared Ground: the Longbows loose twice)' : ''}`,
-    );
+    narrate(narrative, {
+      kind: "the defenders' archery volley begins",
+      missileUnitCount: missileDef.length,
+      missileUnitsPlural: missileDef.length !== 1 ? 's' : '',
+      wordsIfPreparedGround: _prepared ? ' (Prepared Ground: the Longbows loose twice)' : '',
+    });
     let totalDefArrow = 0;
     missileDef.forEach((def) => {
       for (let v = 0; v < abilityVolleys(def, false); v++) {
@@ -942,26 +991,36 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         const hit = applyMissileHit(target, defArchSkill, def, { dmgMult });
         totalDefArrow += hit.dmg;
         if (hit.immune)
-          narrate(
-            narrative,
-            `  ${def.unitName || def.type} fires at ${target.unitName || target.type}, but the shot glances off the ${hit.why || 'armoured hull'}.`,
-          );
+          narrate(narrative, {
+            kind: 'a unit fires at its target and the shot glances off',
+            shooterName: def.unitName || def.type,
+            targetUnitName: target.unitName || target.type,
+            whyTheShotGlances: hit.why || 'armoured hull',
+          });
         else if (hit.dmg > 0)
-          narrate(
-            narrative,
-            `  ${def.unitName || def.type} fires at ${target.unitName || target.type}: −${hit.dmg} strength${hit.isFly ? ' (×2 vs flying!)' : ''}${hit.thickHide ? ' (Thick Hide: half)' : ''}${dmgMult > 1 ? ` (${def.type} ability ×${dmgMult.toFixed(2)})` : ''}${hit.capped ? ' (softened to the limit)' : ''}.`,
-          );
+          narrate(narrative, {
+            kind: 'a unit fires at its target and weakens it',
+            shooterName: def.unitName || def.type,
+            targetUnitName: target.unitName || target.type,
+            damage: hit.dmg,
+            wordsIfFlying: hit.isFly ? ' (×2 vs flying!)' : '',
+            wordsIfThickHide: hit.thickHide ? ' (Thick Hide: half)' : '',
+            wordsIfAbilityMultiplier: dmgMult > 1 ? ` (${def.type} ability ×${dmgMult.toFixed(2)})` : '',
+            wordsIfSoftenedToTheLimit: hit.capped ? ' (softened to the limit)' : '',
+          });
         else
-          narrate(
-            narrative,
-            `  ${def.unitName || def.type} fires at ${target.unitName || target.type}, but they are already as softened as arrows can manage.`,
-          );
+          narrate(narrative, {
+            kind: "a defending unit's target is already softened as far as arrows allow",
+            unitName: def.unitName || def.type,
+            targetUnitName: target.unitName || target.type,
+          });
       }
     });
-    narrate(
-      narrative,
-      `📊 Defender archery total: −${totalDefArrow} strength spread across attackers (each unit softened by at most ${dispFloor(MISSILE_CAP_FRACTION * 100)}%).`,
-    );
+    narrate(narrative, {
+      kind: "the defenders' archery volley's total",
+      totalDamage: totalDefArrow,
+      arrowSofteningCapPct: dispFloor(MISSILE_CAP_FRACTION * 100),
+    });
   }
 
   // DEFENDER ARMY SPELLS: primal/special defending units cast their innate battle spells. MOVED
@@ -983,41 +1042,70 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       def.type,
     );
     if (kcRng() * 100 < armySpellChance) {
-      narrate(narrative, `✨ ${def.unitName || def.type} (defending) — **${sp.name}**: "${sp.flavour}"`);
+      narrate(narrative, {
+        kind: 'a defending unit uses its power in battle',
+        unitName: def.unitName || def.type,
+        powerName: sp.name,
+        powerFlavour: sp.flavour,
+      });
       if (sp.target === 'all') {
         const dmg = rng(sp.dmg[0], sp.dmg[1]);
         armies.forEach((a) => {
           a._tempStrReduction = (a._tempStrReduction || 0) + dmg;
         });
-        narrate(narrative, `  ${sp.name} hits all ${armies.length} attacking units: −${dmg} strength each.`);
+        narrate(narrative, {
+          kind: "a unit's power hits every attacking unit",
+          powerName: sp.name,
+          unitCount: armies.length,
+          damage: dmg,
+        });
       } else {
         const a = armies[Math.floor(kcRng() * armies.length)];
         const dmg = rng(sp.dmg[0], sp.dmg[1]);
         a._tempStrReduction = (a._tempStrReduction || 0) + dmg;
-        narrate(narrative, `  ${sp.name} hits ${a.unitName || a.type}: −${dmg} strength this battle.`);
+        narrate(narrative, {
+          kind: "a unit's power hits one unit of the other side",
+          powerName: sp.name,
+          struckUnitName: a.unitName || a.type,
+          damage: dmg,
+        });
       }
     } else if (_isPrimalStrike) {
       // Primal strikes now announce a miss (standard units stay quiet to keep reports lean).
-      narrate(
-        narrative,
-        `〰 ${def.unitName || def.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${defDruIdLvl > 0 ? `, Druid ${defDruIdLvl}` : ', no commanding Druid'}).`,
-      );
+      narrate(narrative, {
+        kind: "a unit's power gathers but never strikes",
+        unitName: def.unitName || def.type,
+        powerName: sp.name,
+        strikeChancePct: armySpellChance,
+        druidWords: defDruIdLvl > 0 ? `, Druid ${defDruIdLvl}` : ', no commanding Druid',
+      });
     }
   });
 
   // ── TERRAIN MODIFIER NOTES ──
   {
     const _tn = terrainNoteList(armies, prov.terrain);
-    if (_tn) narrate(narrative, `📊 Terrain (${prov.terrain}): ${cName} — ${_tn}`);
+    if (_tn)
+      narrate(narrative, {
+        kind: "the terrain's effect on the attacker's units",
+        terrain: prov.terrain,
+        cName,
+        terrainNotes: _tn,
+      });
   } // 2026-09-23d: shared formatter
   if (!isLandBattle && armies.some((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type))) {
     // 2026-09-23e: flying beasts are not "land units at sea"
     if (isAirborneAtSea(armies))
-      narrate(
-        narrative,
-        `⚠ Airborne over open water: land units carried by flyers fight at ×${SEA_AIRBORNE_LAND_PENALTY}, and the flyers carrying them at ×${SEA_AIRBORNE_FLYER_PENALTY}.`,
-      );
-    else narrate(narrative, `⚠ Land units at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
+      narrate(narrative, {
+        kind: 'hosts airborne over open water fight at a penalty against the defenders',
+        seaAirborneLandPenalty: SEA_AIRBORNE_LAND_PENALTY,
+        seaAirborneFlyerPenalty: SEA_AIRBORNE_FLYER_PENALTY,
+      });
+    else
+      narrate(narrative, {
+        kind: 'land units fight at sea at a penalty against the defenders',
+        seaLandPenalty: SEA_LAND_PENALTY,
+      });
   }
 
   // ── BATTLE LINES ──
@@ -1032,10 +1120,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const _illCasterN = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
   const _atkIllActive = _illCasterN != null && c.player !== _illCasterN;
   if (_atkIllActive)
-    narrate(
-      narrative,
-      `  🌫 The ever-shifting illusory ground of ${prov.name} throws ${cName}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`,
-    );
+    narrate(narrative, {
+      kind: "the illusory ground of the province confuses a side's forces",
+      provName: prov.name,
+      sideName: cName,
+    });
   // 2026-09-23b: rows built by ladderRow so the Battle-stats ladder names every modifier and
   // reconciles with rawAtkStr exactly. Same multipliers as before, same order-independent product.
   const armiesWithStr = armies
@@ -1155,11 +1244,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     defOrdN = 1;
   if (c._grandStratagemTurn === G.turn) {
     atkOrdN *= 1.2;
-    narrate(narrative, `  📜 ${cName} unfolds a Grand Stratagem — the assault lands at +20% strength.`);
+    narrate(narrative, { kind: 'the attacker unfolds a grand stratagem against the defenders', cName });
   }
   if (raidLandedHere(turnContext, c, prov)) {
     atkOrdN *= 1.25;
-    narrate(narrative, `  ⚓ ${cName} storms ashore in a Raid the Coast — +25% strength.`);
+    narrate(narrative, { kind: 'the attacker storms ashore in a raid on the coast against the defenders', cName });
   } // 2026-09-23e: only a coast attacked from the sea
   const atkStr = rawAtkStr * _npcAtkMorale * atkOrdN * atkHomeBonus;
   const defStr = rawDefStr * defBonus * homeBonus * _npcDefMorale * defOrdN;
@@ -1196,22 +1285,27 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     skelHeroFanatic ? UNDEAD_SKEL_HERO_FAN : 1,
   ); // strongest counts (2026-09-23b)
   if (evilMonsterFanatic && !fanatic)
-    narrate(narrative, `${cName}'s monsters are driven to savage fury under their Evil overlord! (+25% strength)`);
+    narrate(narrative, { kind: "the attacker's monsters are driven to savage fury", cName });
   if (fanatic && !skeletalFanatic && !skelHeroFanatic)
-    narrate(narrative, `Seized by religious fervour, ${cName}'s troops fight with fanatical zeal! (+30% strength)`);
+    narrate(narrative, { kind: "the attacker's troops fight with fanatical zeal", cName });
   if (skeletalFanatic)
-    narrate(
-      narrative,
-      `${cName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${Math.round((UNDEAD_SKEL_KING_FAN - 1) * 100)}% strength)`,
-    );
+    narrate(narrative, {
+      kind: "a side's skeletal legions fight with fanaticism under their undead king",
+      sideName: cName,
+      undeadKingFanaticismPct: Math.round((UNDEAD_SKEL_KING_FAN - 1) * 100),
+    });
   if (skelHeroFanatic)
-    narrate(
-      narrative,
-      `${cName}'s skeletal legions know no fear (+${Math.round((UNDEAD_SKEL_HERO_FAN - 1) * 100)}% strength — undying fanaticism).`,
-    );
+    narrate(narrative, {
+      kind: "a side's skeletal legions know no fear",
+      sideName: cName,
+      undeadHeroFanaticismPct: Math.round((UNDEAD_SKEL_HERO_FAN - 1) * 100),
+    });
   const discArmyBonus = 1 + discoveryArmyBonus(c.player);
   if (discArmyBonus > 1)
-    narrate(narrative, `Realm discoveries grant +${((discArmyBonus - 1) * 100).toFixed(0)}% army strength.`);
+    narrate(narrative, {
+      kind: "the attacker's realm discoveries strengthen his army",
+      discoveriesArmyBonusPct: ((discArmyBonus - 1) * 100).toFixed(0),
+    });
 
   // Apply discovery bonuses to final attack str
   const finalAtkMod = discArmyBonus;
@@ -1222,10 +1316,12 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     isConsecrated(G.players[prov.owner], prov.id) &&
     (align === 'Undead' || align === 'Evil');
   if (_consecNPC)
-    narrate(
-      narrative,
-      `✨ The ground of ${prov.name} is consecrated — ${cName}'s ${align.toLowerCase()} host falters on hallowed earth (−15% strength).`,
-    );
+    narrate(narrative, {
+      kind: "the consecrated ground of the province weakens the attacker's host",
+      provName: prov.name,
+      atkName: cName,
+      attackersAlignment: align.toLowerCase(),
+    });
   // Post-multiplier base strengths — every battle-level multiplier (fanaticism, discoveries,
   // morale, home/defensive bonus, illusory, consecrate) folded in, BEFORE the dice.
   void atkStr;
@@ -1326,7 +1422,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const _defLabelStat = defHero ? defHero.name : `the defenders of ${prov.name}`;
   const _nAtkTm = tacMulted(effectiveTactBonus, c),
     _nDefTm = tacMulted(defTactBonus, defHero);
-  narrate(narrative, `📊 **Battle stats:**`);
+  narrate(narrative, { kind: "the battle's statistics begin" });
   narrateAll(
     narrative,
     ladderLines('Attacker', cName, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {
@@ -1341,7 +1437,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       tact: prov.terrain !== 'sea' && _nDefTm > 1 ? { mult: _nDefTm, label: `Tactical ${ladderFm(_nDefTm)}` } : null,
     }),
   );
-  narrate(narrative, `  ${fortuneNarrative(cName, _defLabelStat, atkBaseStr, defBaseStr, _fort)}`);
+  narrate(narrative, {
+    kind: 'the fortune of the battle',
+    fortuneWords: fortuneNarrative(cName, _defLabelStat, atkBaseStr, defBaseStr, _fort),
+  });
 
   // Combat result narrative
   const margin = finalAtk - finalDef;
@@ -1418,12 +1517,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const _npcRideAtk = rideThemDownBonus(armies, _npcTerrain, c);
   const _npcRideDef = rideThemDownBonus(defenders, _npcTerrain, defHero);
   if (_npcRideAtk > 0 && !OPEN_COUNTRY.has(_npcTerrain))
-    narrate(
-      narrative,
-      `📯 ${cName}'s War-Horn of the Plains sounds — the Free Lances ride the broken enemy down even in ${_npcTerrain} country.`,
-    );
+    narrate(narrative, {
+      kind: "a side's war-horn of the plains lets its free lances ride in rough country",
+      sideName: cName,
+      terrain: _npcTerrain,
+    });
   if (_npcRideAtk === 0 && countType(armies, 'Free Lances') > 0)
-    narrate(narrative, `🐎 ${cName}'s Free Lances find no room to ride in ${_npcTerrain} country.`);
+    narrate(narrative, { kind: "the attacker's free lances find no room to ride", cName, terrain: _npcTerrain });
   // HUMAN — Cut the Line becomes Keep the Sea Lanes. Neutral guards still never withdraw, so
   // there is no enemy line of retreat to sever; a corsair-heavy force instead guarantees its OWN
   // escape back to the ships.
@@ -1449,18 +1549,23 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     // engagement" and printed a defender casualty header with nothing under it.
     const _noDefLeft = defenders.length === 0;
     if (_noDefLeft)
-      narrate(narrative, `${cName}'s forces sweep into ${prov.name} — nothing is left to stand against them.`);
+      narrate(narrative, {
+        kind: 'the attacker sweeps into a province with no one left to stand against him',
+        cName,
+        provName: prov.name,
+      });
     else
-      narrate(
-        narrative,
-        `After ${aAn(severity)} ${severity} engagement (margin ${(margRatio * 100).toFixed(0)}% of total strength), ${cName}'s forces ${pick(WIN_VERBS)} ${guardName}!`,
-      );
-    narrate(narrative, `⚔ **${cName}'s forces** (attacker):`);
-    if (_npcWargs)
-      narrate(
-        narrative,
-        `🐺 The warg packs are into the defenders before they can set themselves — the business is over quickly, and ${cName}'s losses are halved.`,
-      );
+      narrate(narrative, {
+        kind: 'the attacker wins the battle against the defenders',
+        severityArticle: aAn(severity),
+        severity,
+        marginPct: (margRatio * 100).toFixed(0),
+        cName,
+        winVerb: pick(WIN_VERBS),
+        guardName,
+      });
+    narrate(narrative, { kind: "the attacker's casualties begin", atkName: cName });
+    if (_npcWargs) narrate(narrative, { kind: "the attacker's warg riders halve his losses", cName });
     // (Run Them Down halves the death roll only; the promotion window keeps the unhalved figure, as it always has.)
     const _fw = rollUnitFates(armies, {
       owner: cName,
@@ -1473,7 +1578,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     });
     const winSurv = _fw.survived,
       winEvents = _fw.died + _fw.promoted;
-    if (winSurv > 0) narrate(narrative, `— ${winEvents > 0 ? 'All other' : 'All'} forces survive the engagement.`);
+    if (winSurv > 0)
+      narrate(narrative, {
+        kind: "a side's other forces survive the engagement",
+        allOrAllOther: winEvents > 0 ? 'All other' : 'All',
+      });
     c.armies = c.armies.filter((a) => !a._died && !a._disbanded);
     // Evil: Terror effect on decisive win — battle province AND all adjacent provinces
     // demoralised (stacking)
@@ -1495,26 +1604,31 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     // roll a trapped player takes — because neutrals genuinely cannot retreat. Survivors stay in
     // the province and contest it again next phase.
     const _defOwnerNm = defHero ? defHero.name.replace(' (wandering)', '') : 'The defenders of ' + prov.name;
-    narrate(narrative, `🛡 **${_defOwnerNm}'s forces** (defender):`);
-    if (_noDefLeft) narrate(narrative, `— None left to fight: every defending unit was lost before the lines closed.`);
+    narrate(narrative, { kind: "the defender's casualties begin", defName: _defOwnerNm });
+    if (_noDefLeft) narrate(narrative, { kind: 'every defending unit was lost before the lines closed' });
     // DWARF — Shield Fort on the DEFENDING side (2026-09-27, Toby): a Guard-heavy garrison gives no
     // broken backs to ride down.
     const _npcRideAtkEff = _npcSFDef ? 0 : _npcRideAtk;
     if (_npcRideAtk > 0 && _npcSFDef)
-      narrate(
-        narrative,
-        `🛡 The defenders' Dwarven Guard lock shields where they stand — ${cName}'s Free Lances find no broken backs to ride down.`,
-      );
+      narrate(narrative, {
+        kind: "the defenders' dwarven guard leave the attacker's free lances no broken backs",
+        cName,
+      });
     else if (_npcRideAtk > 0)
-      narrate(
-        narrative,
-        `🐎 ${cName}'s Free Lances ride down the broken companies across open ground (+${dispFloor(_npcRideAtk * 100)}% losses).`,
-      );
+      narrate(narrative, {
+        kind: "the attacker's free lances ride down the defenders' broken companies",
+        cName,
+        extraLossesPct: dispFloor(_npcRideAtk * 100),
+      });
     defenders.forEach((a) => {
       if (kcRng() < loseDeathChance * steelMultOf(a) + _npcRideAtkEff) {
         a._died = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
-        narrate(narrative, `— ${unitRef(_defOwnerNm, a)}${_fc ? `, ${_fc},` : ''} were destroyed in the rout!`);
+        narrate(narrative, {
+          kind: 'a defending unit is destroyed in the rout',
+          defendingUnitName: unitRef(_defOwnerNm, a),
+          facedClauseWords: _fc ? `, ${_fc},` : '',
+        });
       }
     });
     const _trapped = defenders.filter((a) => !a._died);
@@ -1523,20 +1637,20 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       // Guard-heavy player force does. Announced instead of the "further losses" line, which would
       // otherwise promise casualties that never come.
       if (_npcSFDef) {
-        narrate(
-          narrative,
-          `🛡 Shield Fort — the defenders of ${prov.name} have nowhere to retreat, so they lock shields where they stand. None are cut down.`,
-        );
+        narrate(narrative, {
+          kind: 'the defenders have nowhere to retreat and hold a shield fort',
+          provName: prov.name,
+        });
       } else {
-        narrate(
-          narrative,
-          `The defenders of ${prov.name} have nowhere to retreat — they are pinned against their own ground and take further losses!`,
-        );
+        narrate(narrative, {
+          kind: 'the defenders have nowhere to retreat and take further losses',
+          provName: prov.name,
+        });
         _trapped.forEach((a) => {
           // (Skyward Retreat retired with the unit abilities, 2026-10-11: the Eagles roll like anyone.)
           if (kcRng() < 0.15) {
             a._died = true;
-            narrate(narrative, `— ${a.unitName || a.type} are cut down with no escape!`);
+            narrate(narrative, { kind: 'a unit is cut down with no escape', unitName: a.unitName || a.type });
           }
         });
       }
@@ -1568,25 +1682,34 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
           ? 'the garrison holds these waters!'
           : 'the garrison holds its walls!'
         : 'neutral defenders never retreat!'; // no walls at sea (2026-09-23b)
-    narrate(
-      narrative,
-      `${cName}'s forces are repelled! After ${aAn(severity)} ${severity} engagement (margin ${(margRatio * 100).toFixed(0)}%), ${defName2} hold their ground — ${_holdTag}`,
-    );
-    narrate(narrative, `🛡 **${defName2.replace(' (wandering)', '')}'s forces** (defender):`);
+    narrate(narrative, {
+      kind: 'the attacker is repelled by the defenders',
+      cName,
+      severityArticle: aAn(severity),
+      severity,
+      marginPct: (margRatio * 100).toFixed(0),
+      defName2,
+      holdWords: _holdTag,
+    });
+    narrate(narrative, { kind: "the defender's casualties begin", defName: defName2.replace(' (wandering)', '') });
     // Log fate of each defender (some may have died in the fighting even in a win)
     defenders.forEach((a) => {
       if (kcRng() < winDeathChance * 0.5) {
         // defenders take lighter casualties when they win
         a._defDied = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
-        narrate(
-          narrative,
-          `— ${unitRef(defName2.replace(' (wandering)', ''), a)}${_fc ? `, ${_fc},` : ''} were destroyed in the fighting.`,
-        ); // item 8
+        narrate(narrative, {
+          kind: 'a defending unit is destroyed in the fighting',
+          defendingUnitName: unitRef(defName2.replace(' (wandering)', ''), a),
+          facedClauseWords: _fc ? `, ${_fc},` : '',
+        }); // item 8
       }
     });
     if (defenders.some((a) => !a._defDied))
-      narrate(narrative, `— ${defenders.some((a) => a._defDied) ? 'All other' : 'All'} forces survive the engagement.`);
+      narrate(narrative, {
+        kind: "a side's other forces survive the engagement",
+        allOrAllOther: defenders.some((a) => a._defDied) ? 'All other' : 'All',
+      });
     const defSurv = defenders.filter((a) => !a._defDied);
     const defLost = defenders.filter((a) => a._defDied);
     _npcDefWinLost = defLost.filter((a) => a && !a._phantom).length;
@@ -1597,10 +1720,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     // above. A guard with no host is a guard no more: demote him to a plain wanderer on the spot.
     if (defHero && defHero._isNeutralGuard && defHero.alive !== false && defSurv.length === 0) {
       demoteGuardToWanderer(defHero);
-      narrate(
-        narrative,
-        `— but every soldier of ${defHero.name.replace(' (wandering)', '')}'s band lies dead. With no host left to command, they are ${prov.name}'s guardian no more — a masterless hero now.`,
-      );
+      narrate(narrative, {
+        kind: "the guard's host is destroyed and he is a masterless hero",
+        guardName: defHero.name.replace(' (wandering)', ''),
+        provName: prov.name,
+      });
     }
     // Sync the province's defender array too. Callers re-read prov.neutralDefenders to restore
     // the guard's army after the battle — without this line a defender who died holding the
@@ -1610,7 +1734,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     // Clean up flag
     defenders.forEach((a) => delete a._defDied);
 
-    narrate(narrative, `⚔ **${cName}'s forces** (attacker):`);
+    narrate(narrative, { kind: "the attacker's casualties begin", atkName: cName });
     // DWARF — Shield Fort, the GOOD-ORDER half (2026-09-27, Toby): this block never consulted
     // _npcSF, so a beaten Guard-heavy force attacking a neutral garrison still took the defenders'
     // Ride Them Down losses and still demoted — under a narrative line a few dozen lines below
@@ -1618,15 +1742,16 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     // against it, and a demotion roll becomes an orderly fall-back instead of a loss of quality.
     const _npcRideDefEff = _npcSF ? 0 : _npcRideDef;
     if (_npcRideDef > 0 && _npcSF)
-      narrate(
-        narrative,
-        `🛡 ${cName}'s Dwarven Guard lock shields as they give ground — the defenders' Free Lances find no broken backs to ride down.`,
-      );
+      narrate(narrative, {
+        kind: "the attacker's dwarven guard leave the defenders' free lances no broken backs",
+        cName,
+      });
     else if (_npcRideDef > 0)
-      narrate(
-        narrative,
-        `🐎 The defenders' Free Lances range across the open ground and ride down ${cName}'s broken companies (+${dispFloor(_npcRideDef * 100)}% losses).`,
-      );
+      narrate(narrative, {
+        kind: "the defenders' free lances ride down the attacker's broken companies",
+        cName,
+        extraLossesPct: dispFloor(_npcRideDef * 100),
+      });
     rollUnitFates(armies, {
       owner: cName,
       won: false,
@@ -1670,29 +1795,28 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     } else if (friendlyAdj.length === 0 || infStay) {
       if (_npcSeaTrap) narrate(narrative, _npcSeaTrap);
       if (_dmNPC && !infStay) {
-        narrate(
-          narrative,
-          `💀 Deathless March — ${cName}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${prov.name}.`,
-        );
+        narrate(narrative, {
+          kind: "the loser's skeletal host stands its ground in a deathless march",
+          loserName: cName,
+          provName: prov.name,
+        });
         prov._battleUnresolved = true;
       } else if (_sfNPC && !infStay) {
-        narrate(
-          narrative,
-          `🛡 Shield Fort — with no road out, ${cName}'s Dwarven Guard lock shields where they stand. None are cut down in flight, and ${prov.name} remains contested.`,
-        );
+        narrate(narrative, {
+          kind: "the loser's dwarven guard hold a shield fort with no road out",
+          loserName: cName,
+          provName: prov.name,
+        });
         prov._battleUnresolved = true;
       } else if (_seaEscape && !infStay) {
-        narrate(
-          narrative,
-          `⛵ ${cName}'s corsairs stand off the shore with boats ready — the beaten force pulls back to the ships in good order rather than being cut down.`,
-        );
+        narrate(narrative, { kind: "the attacker's corsairs take his beaten force back to the ships", cName });
       } else {
         // Routed in place — no retreat available (or Shield-Wall Rune: the line will not break)
         narrate(
           narrative,
           infStay
-            ? `${cName}'s Shield-Wall holds — the infantry refuse to retreat and stand their ground, come what may.`
-            : `${cName}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`,
+            ? { kind: "the attacker's shield-wall holds and the infantry stand their ground", cName }
+            : { kind: 'the attacker has nowhere to retreat and takes further losses', cName },
         );
         armies
           .filter((a) => !a._died)
@@ -1700,10 +1824,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
             // (The Eagle Riders' Skyward Retreat was retired with the unit abilities, 2026-10-11: theirs are
             // Stoop on the Horses and Eyes of the Forest.)
             if (kcRng() < 0.15) {
-              narrate(
-                narrative,
-                `— ${a.unitName || a.type} are cut down in the rout — no escape!${a._isSkeletal ? ' Their bones crumble to dust.' : ''}`,
-              );
+              narrate(narrative, {
+                kind: 'an attacking unit is cut down in the rout with no escape',
+                unitName: a.unitName || a.type,
+                wordsIfSkeletal: a._isSkeletal ? ' Their bones crumble to dust.' : '',
+              });
               a._died = true;
             }
           });
@@ -1711,7 +1836,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     } else {
       // Retreat to the province they attacked from if possible, else closest friendly
       if (_sfNPC)
-        narrate(narrative, `🛡 Shield Fort — ${cName}'s Dwarven Guard withdraw in good order behind locked shields.`);
+        narrate(narrative, { kind: "the loser's dwarven guard withdraw behind a shield fort", loserName: cName });
       const fromProv = G.world.provinces[c._attackedFrom];
       // never retreat INTO the contested province (stale _attackedFrom guard).
       const retreatTo =
@@ -1722,7 +1847,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
               c,
               friendlyAdj.filter((p2) => p2.id !== prov.id),
             ) || friendlyAdj[0]; // must be ADJACENT (and friendly, enterable) — never a stale far-off origin; with a choice, the most valuable ground wins
-      narrate(narrative, `${cName}'s forces retreat to ${retreatTo.name}.`);
+      narrate(narrative, { kind: "the attacker's forces retreat to a province", cName, retreatToName: retreatTo.name });
       prov.characters = (prov.characters || []).filter((id) => id !== c.id);
       retreatTo.characters = retreatTo.characters || [];
       if (!retreatTo.characters.includes(c.id)) retreatTo.characters.push(c.id);
@@ -1731,10 +1856,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     }
 
     if (armies.some((a) => !a._died && !a._notable))
-      narrate(
-        narrative,
-        `— ${armies.some((a) => a._died || a._notable) ? 'All other' : 'All'} forces survive the engagement.`,
-      );
+      narrate(narrative, {
+        kind: "a side's other forces survive the engagement",
+        allOrAllOther: armies.some((a) => a._died || a._notable) ? 'All other' : 'All',
+      });
     recordBattleGraves(
       turnContext,
       prov,
@@ -1788,7 +1913,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // full blow-by-blow. The caller can override with a fuller "seized/held" line where it knows
   // more.
   const _sumDef = defHero ? defHero.name.replace(' (wandering)', '') : `the defenders of ${prov.name}`;
-  const summaryText = `⚔ Battle at ${prov.name}: ${won ? `${cName}'s forces defeat ${_sumDef}` : `${_sumDef} hold against ${cName}`}.`; // same shape as PvP
+  const summaryText = {
+    kind: "the onlookers' summary of a battle",
+    provName: prov.name,
+    outcomeWords: won ? `${cName}'s forces defeat ${_sumDef}` : `${_sumDef} hold against ${cName}`,
+  }; // same shape as PvP
   // report casualties so a fight against an enemy realm's GARRISON can pay Grand Marshal / Sea
   // Lord merit too. `armies` / `defenders` still hold the fallen (the branches above rebuild
   // c.armies with a filter rather than mutating these).

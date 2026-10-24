@@ -31,11 +31,14 @@ interface Staged {
 }
 interface Battle {
   won?: boolean;
-  narrative?: string[];
+  narrative?: unknown[];
 }
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
+/** A line's words: its words, or a fact's, which the views write (theWordsOf, src/views/prose/, P1-12c6). */
+const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const wordsOf = (line: unknown): string => (typeof line === 'string' ? line : theWordsOf(line));
 const combatVsNPC = engineFn(engine, 'combatVsNPC') as (
   t: TurnContext,
   c: unknown,
@@ -169,7 +172,7 @@ function caseA(terrain: string, runs: number) {
       [U('Yeoman Longbows', 'Veteran', 'Human'), U('Yeoman Longbows', 'Veteran', 'Human')],
       'Elven',
     );
-    const narr = out.narrative || [];
+    const narr = (out.narrative || []).map(wordsOf);
     if (has(narr, /Defender Archery Phase/)) volley++;
     if (has(narr, /answering volley never comes/)) blockLine++;
   }
@@ -210,7 +213,7 @@ function caseB1(guards: number, runs: number) {
     for (let k = 0; k < 10; k++) defenders.push(U('Free Lances', 'Elite', 'Human'));
     const out = battle('plain', 'Dwarven', armies, defenders);
     if (out.won !== false) continue;
-    const narr = out.narrative || [];
+    const narr = (out.narrative || []).map(wordsOf);
     losses++;
     if (has(narr, /Free Lances range across the open ground/)) ride++;
     if (has(narr, /lock shields as they give ground/)) shield++;
@@ -257,7 +260,7 @@ test('Shield Fort: a beaten Guard garrison locks shields, is not ridden down or 
       5,
     );
     if (out.won !== true) continue;
-    const narr = out.narrative || [];
+    const narr = (out.narrative || []).map(wordsOf);
     wins++;
     if (has(narr, /Free Lances ride down the broken companies across open ground/)) ride++;
     if (has(narr, /Dwarven Guard lock shields where they stand/)) shield++;

@@ -17,12 +17,12 @@ import { d100, describeArmy } from '../dice-and-army-names.ts';
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
 import { TM, creditMapped, perkTier } from '../titles/perks.ts';
 import { discSum } from '../discoveries.ts';
-import { narrText } from '../turn/log-line-helpers.ts';
 import {
   emit,
   narrateAt,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  theWordsOrTheFactOfALine,
 } from '../turn/events-and-their-audiences.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from '../realms/relations-and-captures.ts';
@@ -699,7 +699,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       if (_aPick.changed)
         emit(turnContext, {
           type: 'combat',
-          text: commandHandoverLine(_aLead, c, toProv.name),
+          fact: commandHandoverLine(_aLead, c, toProv.name),
           audience: { actor: c.player, realms: [c.player], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: toProv.id,
@@ -795,7 +795,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         (line) =>
           emit(turnContext, {
             type: 'combat',
-            text: line,
+            ...theWordsOrTheFactOfALine(line),
             audience: { actor: c.player, realms: [] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: toProv.id,
@@ -1082,7 +1082,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       if (_aP.changed)
         emit(turnContext, {
           type: 'combat',
-          text: commandHandoverLine(_atkLead, c, toProv.name),
+          fact: commandHandoverLine(_atkLead, c, toProv.name),
           audience: { actor: c.player, realms: [c.player], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: toProv.id,
@@ -1116,12 +1116,9 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       // otherwise (no move-in line, e.g. a suppressed/edge case) prepend so they still lead
       // the block.
       if (_defFormupLines.length && battle && Array.isArray(battle.narrative)) {
-        // The "…moves into… a battle is initiated." line: a fact since P1-12c5 (combatVsChar's), found by its kind;
-        // else its words.
+        // The "…moves into… a battle is initiated." line: a fact (P1-12c5), found by its kind.
         let _mi = battle.narrative.findIndex(
-          (l) =>
-            (typeof narrText(l) === 'string' && String(narrText(l)).includes('a battle is initiated')) ||
-            l?.kind === 'the attacker moves into the province and a battle is initiated',
+          (l) => l?.kind === 'the attacker moves into the province and a battle is initiated',
         );
         narrateAt(battle.narrative, _mi >= 0 ? _mi + 1 : 0, _defFormupLines);
       }
@@ -1625,7 +1622,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           (line) =>
             emit(turnContext, {
               type: 'combat',
-              text: line,
+              ...theWordsOrTheFactOfALine(line),
               audience: { actor: c.player, realms: [] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               province: toProv.id,

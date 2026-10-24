@@ -457,7 +457,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
     if (_hP.changed)
       emit(turnContext, {
         type: 'combat',
-        text: commandHandoverLine(_hP.leader, quarry, prov.name),
+        fact: commandHandoverLine(_hP.leader, quarry, prov.name),
         audience: { actor: quarry.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,

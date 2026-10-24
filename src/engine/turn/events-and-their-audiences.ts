@@ -35,7 +35,9 @@
 // battle's lines take their tiers, and its losses tally its place, from those words, in the views too (emitBattle).
 //
 // Each kind of fact has its audience, written once beside it in its area's module (Decision 6): the fight's, for most
-// of a fight's lines, or its hero's realm alone (THE_AUDIENCE_OF_EACH_KIND, which emitNarrLine reads).
+// of a fight's lines; its hero's realm alone (THE_AUDIENCE_OF_EACH_KIND, which emitNarrLine reads); or, for a kind
+// filed on its own and not in a fight's narrative (a host gained in a province, a stalled battle), its event's: the
+// audience the event that files it names (theWordsOrTheFactOfALine hands emit its words or its fact).
 //
 // It also holds the helpers that write lines: a fight's narrative (narrate, narrateAll, narrateAt, takeBackLinesFrom;
 // emitNarrLine writes it out with the fight's event, FightLine, or its hero's realm alone), a line to the hero or the province
@@ -61,9 +63,10 @@ export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolv
 export type LineFact = TheFactOfABattlesLine | TheFactOfAPersonalCombatsLine;
 
 /** Who may read a kind of line, as its area's module says beside the kind: the fight's audience (whoever the fight's
- *  lines are written for), or its hero's realm alone (a line that names the realm: a hero's hit-point rise in a fight,
- *  what the man across the field must not learn). */
-export type TheAudienceOfAKindOfLine = "the fight's" | "its hero's realm alone";
+ *  lines are written for), its hero's realm alone (a line that names the realm: a hero's hit-point rise in a fight,
+ *  what the man across the field must not learn), or its event's (a kind filed on its own: the audience its event
+ *  names; in a fight's narrative, the fight's). */
+export type TheAudienceOfAKindOfLine = "the fight's" | "its hero's realm alone" | "its event's";
 
 /** Each kind's audience, of every area's kinds. */
 const THE_AUDIENCE_OF_EACH_KIND: Readonly<Record<LineFact['kind'], TheAudienceOfAKindOfLine>> = {
@@ -246,6 +249,11 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
   console.log(`[${event.type}] ${event.fact === undefined ? event.text : event.fact.kind}`);
 }
 
+/** A line's words, or the fact its words are written from, as an event takes them (emit's text or fact). */
+export function theWordsOrTheFactOfALine(line: NarrativeLine): { text: string } | { fact: LineFact } {
+  return typeof line === 'string' ? { text: line } : { fact: line };
+}
+
 // ── A FIGHT'S NARRATIVE ────
 // A battle's or a duel's narrative is an ordered list of lines (it is spliced, searched and counted by index), written
 // out in order once the fight is over (emitBattle, emitNarrLine). narrate adds a line: its words, or the fact they are
@@ -289,8 +297,8 @@ export function takeBackLinesFrom(narrative: NarrativeLine[], index: number): Na
 // alone (told to it alone, seen by nobody else, no heroes spill), under its hero (else the fight's),
 // and every other line with the fight's own event (FightLine: its audience, province, phase, heroes,
 // battle). Because it is filed in sequence with the rest of the narrative, the owner still reads it
-// exactly where it happened in the fight. narrText() is for the rare consumer that needs a line's
-// words in the engine (splice-point searches): a string line's; a fact is found by its kind (P1-12c5).
+// exactly where it happened in the fight. A splice point (a battle's header) is found by its kind: every line of
+// battle/ is a fact (P1-12c5, c6).
 export function emitNarrLine(turnContext: TurnContext, line: NarrativeLine, fight: FightLine): void {
   if (typeof line === 'string') {
     emit(turnContext, { ...fight, text: line });
@@ -317,7 +325,7 @@ export function emitNarrLine(turnContext: TurnContext, line: NarrativeLine, figh
 export function notifyTarget(
   turnContext: TurnContext,
   targetChar: { id: number; player: number | null; location: number | null } | null | undefined,
-  text: string,
+  line: NarrativeLine,
   ph?: number | null,
   type?: string,
 ): void {
@@ -325,7 +333,7 @@ export function notifyTarget(
   const _ph = ph ?? turnContext._logCtx.phase ?? turnContext._currentPhase;
   emit(turnContext, {
     type: type ?? 'system',
-    text,
+    ...theWordsOrTheFactOfALine(line),
     audience: { actor: null, realms: targetChar.player != null ? [targetChar.player] : [] },
     hero: targetChar.id,
     phase: _ph,
@@ -383,7 +391,7 @@ export function logSplit(
 export function notifyProvinceOwner(
   turnContext: TurnContext,
   prov: { id: number; owner: number | null } | null | undefined,
-  text: string,
+  line: NarrativeLine,
   casterPlayer: number | null | undefined,
   ph?: number | null,
 ): void {
@@ -393,7 +401,7 @@ export function notifyProvinceOwner(
   // worked out here (the bare form never had the End of Turn's 99).
   emit(turnContext, {
     type: 'system',
-    text,
+    ...theWordsOrTheFactOfALine(line),
     audience: { actor: null, realms: [prov.owner] },
     province: prov.id,
     hero: null,

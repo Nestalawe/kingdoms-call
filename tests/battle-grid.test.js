@@ -22,12 +22,13 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,1200));
   const w=dom.window; const ev=expr=>w.eval(expr);
+  const wordsOf=l=>l==null||typeof l==='string'?l:ev('theWordsOf')(l); // a line's words: its words, or a fact's (the views write them, P1-12c6)
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   for(const f of ['battleGrid','battleRole','rollBattleWidth','battleFrontWidth','battleGridLines','battleGridStage','battleLineTotal','battleWidthLine']){
     ok(ev(`typeof ${f}`)==='function',`${f}() is declared at module level`);
   }
   if(fail){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
-  const G=ev('battleGrid'), role=ev('battleRole'), roll=ev('rollBattleWidth'), mid=ev('battleFrontWidth'), lines=ev('battleGridLines'), stage=ev('battleGridStage'), total=ev('battleLineTotal');
+  const G=ev('battleGrid'), role=ev('battleRole'), roll=ev('rollBattleWidth'), mid=ev('battleFrontWidth'), lines=(...a)=>ev('battleGridLines')(...a).map(wordsOf), stage=ev('battleGridStage'), total=ev('battleLineTotal');
   const row=(type,base)=>({a:{type,quality:'Average',unitName:type},base,fly:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'].includes(type)});
   const rows=(spec,base)=>[].concat(...spec.map(([t,n,b])=>Array.from({length:n},()=>row(t,b||base||8))));
 
@@ -110,8 +111,8 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   ok(/flanks: FreeL/.test(L[0])&&/air: Eagl/.test(L[0]),'flank riders and flyers are named on the front line');
   ok(/Bow/.test(L[1])&&!/Bow/.test(L[0]),'the Longbows appear in the second line, not the front');
   ok(/front ×1: /.test(stage(g))&&/second ×1: Bow, Bow/.test(stage(g))&&/flank ×1: FreeL/.test(stage(g)),'the ladder stage groups every unit by place and multiplier');
-  ok(/the forest allows a front of 7/.test(ev("battleWidthLine('forest',7)"))&&/the open ground allows a front of 8/.test(ev("battleWidthLine('plain',8)")),'the width line names the ground and the front');
-  ok(/the mountains allow a front of 3/.test(ev("battleWidthLine('mountain',3)"))&&/the open water allows a front of 9/.test(ev("battleWidthLine('sea',9)")),'mountains and open water have their own words');
+  ok(/the forest allows a front of 7/.test(wordsOf(ev("battleWidthLine('forest',7)")))&&/the open ground allows a front of 8/.test(wordsOf(ev("battleWidthLine('plain',8)"))),'the width line names the ground and the front');
+  ok(/the mountains allow a front of 3/.test(wordsOf(ev("battleWidthLine('mountain',3)")))&&/the open water allows a front of 9/.test(wordsOf(ev("battleWidthLine('sea',9)"))),'mountains and open water have their own words');
   dom.window.close();
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);

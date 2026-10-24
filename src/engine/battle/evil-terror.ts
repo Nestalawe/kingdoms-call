@@ -43,10 +43,12 @@ export function spreadTerror(
     const adjNames = getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)
       .map((n) => n && n.name)
       .filter(Boolean);
-    narrate(
-      narrative,
-      `💀 Terror radiates from ${battleProv.name}${adjNames.length ? ` into the surrounding lands (${adjNames.join(', ')})` : ''} — any army that next defends there fights demoralised (−${dispFloor((TERROR_PCT_PER_STACK + discSum(turnContext, byPlayer, 'terror', 'pct')) * 100)}% per terror, stacking).`,
-    );
+    narrate(narrative, {
+      kind: 'terror radiates from a province after an evil victory',
+      provName: battleProv.name,
+      wordsIfTheSurroundingLands: adjNames.length ? ` into the surrounding lands (${adjNames.join(', ')})` : '',
+      terrorPctPerStack: dispFloor((TERROR_PCT_PER_STACK + discSum(turnContext, byPlayer, 'terror', 'pct')) * 100),
+    });
   }
 }
 // Consume any lingering terror in a province at the start of a battle: returns true if applied.
@@ -77,10 +79,13 @@ export function consumeTerror(
     d._terrorMult = Math.max(0, 1 - frac);
   }); // 2026-09-24: a modifier (armStr), not pre-battle damage
   if (narrative)
-    narrate(
-      narrative,
-      `💀 Terror lingers in ${prov.name} — defenders fight at −${dispFloor(frac * 100)}% strength (${stacks} terror stack${stacks !== 1 ? 's' : ''} from earlier Evil victories nearby).`,
-    );
+    narrate(narrative, {
+      kind: 'terror lingers in a province and its defenders fight demoralised',
+      provName: prov.name,
+      terrorPct: dispFloor(frac * 100),
+      terrorStacks: stacks,
+      terrorStacksPlural: stacks !== 1 ? 's' : '',
+    });
   delete prov._terrorStacks;
   delete prov._terrorTurn;
   delete prov._terrorisedBy;

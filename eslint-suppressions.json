@@ -42,7 +42,7 @@
       "count": 6
     },
     "@typescript-eslint/restrict-template-expressions": {
-      "count": 5
+      "count": 4
     }
   },
   "src/engine/battle/battles-against-province-defenders.ts": {
@@ -104,9 +104,6 @@
     },
     "@typescript-eslint/restrict-plus-operands": {
       "count": 1
-    },
-    "@typescript-eslint/restrict-template-expressions": {
-      "count": 3
     }
   },
   "src/engine/battle/fates.ts": {
@@ -142,7 +139,7 @@
       "count": 2
     },
     "@typescript-eslint/restrict-template-expressions": {
-      "count": 21
+      "count": 2
     }
   },
   "src/engine/battle/lines.ts": {

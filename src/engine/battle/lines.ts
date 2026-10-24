@@ -309,7 +309,7 @@ export const GROUND_WORDS = {
 };
 export function battleWidthLine(terrain, W) {
   const g = GROUND_WORDS[terrain] || [String(terrain || 'ground'), 'allows'];
-  return `📊 Battle lines — the ${g[0]} ${g[1]} a front of ${W}.`;
+  return { kind: 'the ground allows a front of a width', groundWords: g[0], allowsWord: g[1], frontWidth: W };
 }
 export function battleGridLines(label, g, defender) {
   if (!g) return [];
@@ -322,8 +322,15 @@ export function battleGridLines(label, g, defender) {
   if (g.flanks.length) extras.push('flanks: ' + g.flanks.map((x) => shortUnit(x.r)).join(', '));
   if (g.fly.length) extras.push('air: ' + g.fly.map((x) => shortUnit(x.r)).join(', '));
   if (g.reserve.length) extras.push('reserve: ' + g.reserve.map((x) => shortUnit(x.r)).join(', '));
-  const l1 = `📊 ${lab} 1st │ ${g.front.map(cell).join(' ')} │${extras.length ? ' ' + extras.join(' · ') : ''}`;
-  const l2 = g.second.some(Boolean) ? `📊 ${lab} 2nd │ ${g.second.map(cell).join(' ')} │` : null;
+  const l1 = {
+    kind: "a side's front line in the battle grid",
+    sideLabel: lab,
+    frontLineCells: g.front.map(cell).join(' '),
+    wordsIfFlanksAirOrReserve: extras.length ? ' ' + extras.join(' · ') : '',
+  };
+  const l2 = g.second.some(Boolean)
+    ? { kind: "a side's second line in the battle grid", sideLabel: lab, secondLineCells: g.second.map(cell).join(' ') }
+    : null;
   return defender ? [l2, l1].filter(Boolean) : [l1, l2].filter(Boolean);
 }
 // The ladder's Battle-lines stage: every unit's place and multiplier, grouped.
@@ -970,7 +977,14 @@ export function battleScoutLine(d, atkName, defName, explAtk, explDef) {
       : d.W > d.roll
         ? `widens the front from ${d.roll} to ${d.W}`
         : `narrows the front from ${d.roll} to ${d.W}`;
-  return `📊 Scouting — ${s} ${why}: ${s} ${w} and lines up second${d.lineup ? ` (${d.lineup} ${d.lineup === 1 ? 'adjustment' : 'adjustments'})` : ''}.`;
+  return {
+    kind: 'the scouting side chooses the front',
+    scoutName: s,
+    whyItScouts: why,
+    scoutName2: s,
+    whatItDoesWithTheFront: w,
+    wordsIfAdjustments: d.lineup ? ` (${d.lineup} ${d.lineup === 1 ? 'adjustment' : 'adjustments'})` : '',
+  };
 }
 export function battleMovesLine(d, atkName, defName) {
   if (!d.moves.other && !d.moves.scout) return null;
@@ -985,5 +999,11 @@ export function battleMovesLine(d, atkName, defName) {
         : k === 2
           ? 'shifts the line twice'
           : `shifts the line ${k} times`;
-  return `📊 Tactics — ${o} ${n(d.moves.other)}; ${s} ${n(d.moves.scout)}.`;
+  return {
+    kind: 'each side shifts its battle line',
+    otherSideName: o,
+    otherSidesMoves: n(d.moves.other),
+    scoutName: s,
+    scoutsMoves: n(d.moves.scout),
+  };
 }

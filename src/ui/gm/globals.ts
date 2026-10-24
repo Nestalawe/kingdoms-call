@@ -124,6 +124,7 @@ import { getNeighborsP, hexDistP } from '../../engine/world/map-helpers.ts';
 import { castChanceFor, guardCastChance, primalStrikeChance } from '../../engine/chances-and-lair-grades.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
 import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
+import { theWordsOf } from '../../views/prose/the-words-of-each-line.ts';
 import { runTurn } from './turn-shell.ts';
 import { botRaiseTargets } from '../../engine/bots/strategy.ts';
 
@@ -262,6 +263,7 @@ Object.assign(window, {
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
   sb, // ui/gm/config.ts
   shieldFortHolds, // engine/units/movement.ts
+  theWordsOf, // views/prose/the-words-of-each-line.ts
   unitAbilityMult, // engine/battle/strength.ts
   unitRef, // engine/army-tables.ts
   unitTypeOf, // engine/rules-on-plain-values/unit-types-and-base-strength.ts
