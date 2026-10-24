@@ -3,8 +3,17 @@ import { KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
-import { botNeighbourProv, botRelationRaw, botSeesChar, botTuning } from './intel.ts';
-import { BOT_AERIAL_TYPES, BOT_CARRIER_TYPES, BOT_FLYING_TYPES, BOT_SEA_ALL } from './war.ts';
+import {
+  BOT_AERIAL_TYPES,
+  BOT_CARRIER_TYPES,
+  BOT_SEA_ALL,
+  botNeighbourProv,
+  botRelationRaw,
+  botSeesChar,
+  botTuning,
+  botTurnCache,
+} from './intel.ts';
+import { BOT_FLYING_TYPES } from './war.ts';
 import { botFrontierTarget, botHasMetPlayers, botIsEdge, botLandCount, botMagicScore } from './specialists.ts';
 import {
   BOT_RUMOUR_FUND_PER_SLAYER,
@@ -142,17 +151,6 @@ export function botGeneralship(c) {
     (c.isKing && (s.necromancy || 0) >= 1 && skel >= 0.5 ? 10 : 0)
   );
 } // +8 sticky bonus: handing a host to a marginally better general cost a turn of conquest every time a hero was hired
-// Per-turn scratch state (roles + treasury ledger), keyed by the live game-state object so it never
-// leaks into the persisted game_state and never survives into the next turn.
-export const _botTurnCache = new WeakMap();
-export function botTurnCache(G) {
-  let o = _botTurnCache.get(G);
-  if (!o || o.turn !== G.turn) {
-    o = { turn: G.turn, roles: {}, ledger: {} };
-    _botTurnCache.set(G, o);
-  }
-  return o;
-}
 // ROLES — field-army LEADERS (best generals; one per desired field army) vs FEEDERS (everyone
 // else). Desired field armies = 1 + floor(empire diameter / primary reach): once the realm is wider
 // than the main host can cross in a turn, a second host is raised, and so on.

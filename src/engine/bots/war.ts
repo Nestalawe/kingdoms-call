@@ -3,7 +3,11 @@ import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
+  BOT_AERIAL_TYPES,
+  BOT_CARRIER_TYPES,
   BOT_DEF_BONUS,
+  BOT_MONSTER_ARMIES,
+  BOT_SEA_ALL,
   BOT_TUNING,
   botAlignOf,
   botBattleForce,
@@ -484,16 +488,12 @@ export function botPlanAssaults(G, pi, chars, assigned) {
 // Module-level mirrors of the engine's sea taxonomy + getSeaCapability, so the bot movement/economy
 // passes (which live at module scope, above runTurn) can reason about fleets. Kept in sync with the
 // in-engine sets around the FLYING_TYPES/CARRIER_TYPES block.
-export const BOT_CARRIER_TYPES = new Set(KC_UNIT_CLASS.carrier);
-export const BOT_PRIMAL_SEA_TYPES = new Set(KC_UNIT_CLASS.primalSea);
-export const BOT_AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
-export const BOT_SEA_ALL = new Set([...BOT_CARRIER_TYPES, ...BOT_PRIMAL_SEA_TYPES]);
+// The carrier, primal-sea, aerial and all-sea sets, and BOT_MONSTER_ARMIES, are in bots/intel.ts.
 export const BOT_LIGHT_ARMIES = new Set(KC_UNIT_CLASS.lightFoot); // mirrors LIGHT_ARMIES in getSeaCapability
 // 'all' (empty / only flyers-or-sea), 'sea' (fleets carry every land unit aboard), or 'land' (not
 // enough hulls to put to sea). Mirrors getSeaCapability exactly.
 export const BOT_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
 export const BOT_CREATURE_ARMIES = new Set(KC_UNIT_CLASS.creature);
-export const BOT_MONSTER_ARMIES = new Set(KC_UNIT_CLASS.monster);
 export const BOT_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
 // bot mirror of getFlyCapability — can the humanoid flyers lift every foot soldier so the whole
 // column flies (and crosses sea without a fleet)?

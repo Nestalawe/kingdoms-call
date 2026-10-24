@@ -6,6 +6,7 @@ import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../army-tables.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import {
   BOT_HEX_DIRS,
+  BOT_SEA_ALL,
   botBelief,
   botConceded,
   botKnows,
@@ -15,10 +16,10 @@ import {
   botScouted,
   botSees,
   botSeesChar,
+  botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
-import { BOT_SEA_ALL, botDefenceNeed, botEnemyDefence } from './war.ts';
-import { botTurnCache } from './strategy.ts';
+import { botDefenceNeed, botEnemyDefence } from './war.ts';
 import { BOT_SCHOOLS } from './schools.ts';
 import { botRoleTrainSkill } from './specialists.ts';
 import { botAssumedChar, botEnemyIntel, botIsTeach, botRumourFor } from './missions.ts';

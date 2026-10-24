@@ -5,7 +5,7 @@ import { activeItems } from '../items/equipment.ts';
 import { effSkillOf, skillBonusBreakdown } from './skills-and-hp.ts';
 import { fmtRoll } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
-import { botKnownSkills } from '../bots/missions.ts';
+import { botKnownSkills } from '../bots/intel.ts';
 import { skillLevel } from '../titles/perks.ts';
 
 // ── A HERO'S SKILLS IN PLAY, WHAT OTHERS MAY KNOW, AND WHO IS HIDDEN (plan P1-08a: lifted out of resolveTurn) ────

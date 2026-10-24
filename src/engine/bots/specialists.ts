@@ -6,6 +6,7 @@ import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and
 import {
   BOT_DEF_BONUS,
   BOT_HEX_DIRS,
+  BOT_SEA_ALL,
   botAlignFriendly,
   botBattleForce,
   botBelief,
@@ -22,9 +23,10 @@ import {
   botSees,
   botSeesChar,
   botTargetDefence,
+  botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
-import { BOT_SEA_ALL, botDefenceNeed, botEnemyChars, botIsLoadedFleet, botIsValuable, botSeaCap } from './war.ts';
+import { botDefenceNeed, botEnemyChars, botIsLoadedFleet, botIsValuable, botSeaCap } from './war.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
 import {
   BOT_SLAYER_FIGHTERS_ONLY,
@@ -38,7 +40,6 @@ import {
   botPassable,
   botRecruitOrder,
   botRoles,
-  botTurnCache,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
 import {
