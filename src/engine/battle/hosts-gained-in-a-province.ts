@@ -192,8 +192,11 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         );
       if (_rbP.changed) _form.push(commandHandoverLine(_rbP.leader, enemyChar, prov.name));
       if (_form.length) {
+        // The "Battle for …" header: a fact since P1-12c5 (combatVsChar's), found by its kind; else its words.
         const _bi = battle.narrative.findIndex(
-          (l) => typeof narrText(l) === 'string' && String(narrText(l)).includes('Battle for '),
+          (l) =>
+            (typeof narrText(l) === 'string' && String(narrText(l)).includes('Battle for ')) ||
+            l?.kind === 'the battle for a province begins',
         );
         narrateAt(battle.narrative, _bi >= 0 ? _bi : 0, _form);
       }

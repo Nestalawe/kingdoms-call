@@ -1116,8 +1116,12 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       // otherwise (no move-in line, e.g. a suppressed/edge case) prepend so they still lead
       // the block.
       if (_defFormupLines.length && battle && Array.isArray(battle.narrative)) {
+        // The "…moves into… a battle is initiated." line: a fact since P1-12c5 (combatVsChar's), found by its kind;
+        // else its words.
         let _mi = battle.narrative.findIndex(
-          (l) => typeof narrText(l) === 'string' && String(narrText(l)).includes('a battle is initiated'),
+          (l) =>
+            (typeof narrText(l) === 'string' && String(narrText(l)).includes('a battle is initiated')) ||
+            l?.kind === 'the attacker moves into the province and a battle is initiated',
         );
         narrateAt(battle.narrative, _mi >= 0 ? _mi + 1 : 0, _defFormupLines);
       }

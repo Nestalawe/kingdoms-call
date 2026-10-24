@@ -440,9 +440,9 @@ portals' start-up guards are gone.
   its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words is a compile
   error. A battle's lines take their tiers (key or detail) and its losses tally its place from those words, as
   `emitBattle` did before. The result is the GM's log in words, in the form it was always stored in: `buildReports`
-  returns it as `gmLog`, and the shell saves it. Today the force markers and every line of a personal combat are kinds
-  (P1-12c3, P1-12c4); the battles' lines follow (P1-12c5, c6), and in this run a line's words are the same for every
-  reader. Then it works out, for each played
+  returns it as `gmLog`, and the shell saves it. Today the force markers, every line of a personal combat, and every
+  sentence of a battle between heroes and of the duel before a battle are kinds (P1-12c3, P1-12c4, P1-12c5); the rest of
+  the battles' lines follow (P1-12c6), and in this run a line's words are the same for every reader. Then it works out, for each played
   slot, the lines the realm reads (from the lines in words) and what it may see of the world, and builds its report
   from those two alone: **perception** comes first, in two functions, and the report
   reads nothing else (P1-12b5). `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines

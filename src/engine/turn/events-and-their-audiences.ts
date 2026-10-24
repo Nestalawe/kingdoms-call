@@ -290,7 +290,7 @@ export function takeBackLinesFrom(narrative: NarrativeLine[], index: number): Na
 // and every other line with the fight's own event (FightLine: its audience, province, phase, heroes,
 // battle). Because it is filed in sequence with the rest of the narrative, the owner still reads it
 // exactly where it happened in the fight. narrText() is for the rare consumer that needs a line's
-// words in the engine (splice-point searches): a string line's.
+// words in the engine (splice-point searches): a string line's; a fact is found by its kind (P1-12c5).
 export function emitNarrLine(turnContext: TurnContext, line: NarrativeLine, fight: FightLine): void {
   if (typeof line === 'string') {
     emit(turnContext, { ...fight, text: line });

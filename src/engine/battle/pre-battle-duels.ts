@@ -42,7 +42,7 @@ export function preBattleDuel(
   const demoralise = (who: Character, why: string) => {
     if (who === atk) atkMorale = DUEL_MORALE_PENALTY;
     else defMorale = DUEL_MORALE_PENALTY;
-    narrate(narrative, `\u{1F4C9} ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
+    narrate(narrative, { kind: "a commander's force is demoralised", commanderName: who.name, why });
   };
   ensureEncounterPlan(turnContext, atk);
   ensureEncounterPlan(turnContext, def); // NPC commanders fall back on Temper
@@ -68,13 +68,21 @@ export function preBattleDuel(
   const challenger = atkStance === 'challenge' ? atk : def;
   const challenged = challenger === atk ? def : atk;
   const challengedStance = challenged === atk ? atkStance : defStance;
-  narrate(narrative, `— ${challenger.name} rides out and challenges ${challenged.name} to single combat. —`);
+  narrate(narrative, {
+    kind: 'a commander rides out and challenges the other to single combat',
+    challengerName: challenger.name,
+    challengedName: challenged.name,
+  });
   if (challengedStance === 'refuse') {
-    narrate(narrative, `${challenged.name} will not answer the call, and the watching ranks see it.`);
+    narrate(narrative, { kind: 'the challenged commander will not answer the call', challengedName: challenged.name });
     demoralise(challenged, `their commander refused the challenge`);
     return { atkMorale, defMorale };
   }
-  narrate(narrative, `\u2694 — Personal duel: ${challenger.name} vs ${challenged.name} —`);
+  narrate(narrative, {
+    kind: 'a personal duel before the battle begins',
+    challengerName: challenger.name,
+    challengedName: challenged.name,
+  });
   pushBattlecry(narrative, challenger, challenged.name);
   pushBattlecry(narrative, challenged, challenger.name);
   const duelResult = resolveDuel(turnContext, challenger, challenged, narrative);
@@ -121,8 +129,8 @@ export function preBattleDuel(
     narrate(
       narrative,
       _saved
-        ? `\u{1FA79} ${loser.name} falls in the duel — at death's door, but not slain.`
-        : `\u{1F480} ${loser.name} is slain in the duel!`,
+        ? { kind: "the duel's loser falls at death's door but is not slain", loserName: String(loser.name) }
+        : { kind: "the duel's loser is slain", loserName: String(loser.name) },
     );
     _dOpts.lines.forEach((l) => {
       if (l.priv != null)
@@ -159,10 +167,7 @@ export function preBattleDuel(
     demoralise(duelResult.fled, `their commander broke off the duel`);
     if (duelResult.heldField) awardWinHp(turnContext, duelResult.heldField, narrative, 'duel'); // holding the field in a pre-battle duel is a win
   } else {
-    narrate(
-      narrative,
-      `The duel ends inconclusively — both commanders live to fight on, and neither host loses heart.`,
-    );
+    narrate(narrative, { kind: 'the duel ends inconclusively' });
   }
   return { atkMorale, defMorale, atkSlain, defSlain };
 }
