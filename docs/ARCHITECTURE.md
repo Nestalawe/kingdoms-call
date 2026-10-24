@@ -157,17 +157,20 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   Overlord page reach it only through `shared/` and `views/`.
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
-**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (129 findings)
-and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), and the 115 findings of the three
+**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (119 findings)
+and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), and the 105 findings of the three
 import cycles left (P1-13e breaks them by moving code, one cycle a pull request; P1-13e1 broke the engine's four
-two-file cycles in one, P1-13e2 its core, and the bots' cycle takes three, P1-13e3 the first): one in the engine (the bots, 8 files), the GM
+two-file cycles in one, P1-13e2 its core, and the bots' cycle takes three, P1-13e3 and P1-13e4 the first two): one in the engine (the bots, 6 files), the GM
 page's (10 files, both of `db/` among them) and the player page's (18). The ratchet counts the list
 (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no longer
 occurs: when you fix one, remove it in the same pull request with
 `npx depcruise src --baseline --baseline-mode shrink-only`. Never add a finding to it. A cut that leaves part of a
 cycle may make dependency-cruiser report some of the findings that stay along another path, which shrink-only mode
-can't follow: then rewrite the list with `npx depcruise src --baseline`, and check that every entry it adds has the
-same importing and imported file as one it removes (P1-13e3: 19 removed, 7 re-described).
+can't follow. (dependency-cruiser reports a cycle once, along one path, and matches a known one by its set of files.)
+Then rewrite the list with `npx depcruise src --baseline`, check that every entry it adds is a cycle among the files
+still in the cycle and that every import on it was there before, and name in the pull request any import the cut adds
+inside the cycle (P1-13e3: 19 removed, 7 re-described; P1-13e4: 15 removed, 5 added, two of them on the two imports the
+cut adds into `bots/strategy.ts`, the bots' shared base).
 
 **Unused code** is knip's (`npm run knip`, `knip.ts`): files nothing imports, exports nothing reads (an export read in
 its own file counts as used) and dependencies nothing uses, from the pages' real entries. Today it finds 29 (15 exports
