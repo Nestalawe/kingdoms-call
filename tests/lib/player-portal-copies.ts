@@ -205,11 +205,14 @@ export interface Samples {
   readonly heroes: Projected[];
   /** How many reports the values come from: the game's, and the staged world's. */
   readonly reports: number;
-  /** A hero of the realm and a unit he might lead (P1-11b1): each of his own units in the game's reports; and in the
-   *  worlds staged for the Druid rule, every staged hero with every staged unit. */
+}
+/** The values of the copies that read the realm, the report's shape or the world (P1-11b1). */
+export interface WorldSamples {
+  /** A hero of the realm and a unit he might lead: each of his own units in the game's reports; and in the worlds
+   *  staged for the Druid rule, every staged hero with every staged unit. */
   readonly druid: DruidCase[];
-  /** A hero of the realm and the terrain of a province he might explore (P1-11b1): his own province's in the game's
-   *  reports; every land terrain in the world staged for exploring. */
+  /** A hero of the realm and a province he might explore: his own in the game's reports; one of every land terrain in
+   *  the world staged for exploring. */
   readonly explore: ExploreCase[];
 }
 /** The world a case comes from: the report the portal is handed, and the state it was made from. */
@@ -498,11 +501,16 @@ function quietly<T>(fn: () => T): T {
   }
 }
 
+let theGame: World[] | null = null;
+/** scripted-05's turns (played once in a process: the game takes about a second). A test may play it in a hook of its
+ *  own, before samples() and worldSamples() read it, so that each hook has Vitest's limit for itself. */
+export const theGamePlayed = (): World[] => (theGame ??= quietly(scripted05));
+
 let made: Samples | null = null;
-/** The values the checks are made on (made once in a process: the game takes about a second). */
+/** The values the checks are made on (made once in a process). */
 export function samples(): Samples {
   if (made) return made;
-  const pairs = quietly(() => [...scripted05(), stagedWorld()]);
+  const pairs = [...theGamePlayed(), quietly(stagedWorld)];
   const armies: Projected[] = [];
   const items: (Projected & { holder: Projected | null })[] = [];
   const heroes: Projected[] = [];
@@ -521,12 +529,22 @@ export function samples(): Samples {
       });
     }
   }
+  made = { armies, items, heroes, reports: pairs.length };
+  deepFreeze(made);
+  return made;
+}
+
+let madeOfTheWorld: WorldSamples | null = null;
+/** The values of the copies that read the realm, the report's shape or the world (made once in a process, apart from
+ *  samples(): a test builds each in its own hook, each well inside Vitest's limit for one). */
+export function worldSamples(): WorldSamples {
+  if (madeOfTheWorld) return madeOfTheWorld;
   const druid: DruidCase[] = [];
   const explore: ExploreCase[] = [];
   const provinceOf = (state: Obj, id: unknown) =>
     objects(isObj(state['world']) ? state['world']['provinces'] : []).find((p) => p['id'] === id) ?? null;
   // the game's: each hero of the realm with each unit he leads, and the province he stands in
-  for (const world of pairs.slice(0, -1))
+  for (const world of theGamePlayed())
     for (const hero of ownHeroes(world)) {
       objects(hero.report['armies']).forEach((a, i) => {
         const unit = objects(hero.state['armies'])[i];
@@ -552,9 +570,9 @@ export function samples(): Samples {
   const { world, provinces } = quietly(exploreWorld);
   for (const hero of ownHeroes(world).filter((h) => !h.report['isKing']))
     for (const province of provinces) explore.push({ world, hero, province });
-  made = { armies, items, heroes, reports: pairs.length, druid, explore };
-  deepFreeze(made);
-  return made;
+  madeOfTheWorld = { druid, explore };
+  deepFreeze(madeOfTheWorld);
+  return madeOfTheWorld;
 }
 /** The realm's own heroes in a world's report, each with the state's hero (those the state holds). */
 function ownHeroes(world: World): (Projected & { state: Obj })[] {
@@ -882,8 +900,8 @@ const strengthLeftByAShortfall = (levels: unknown) =>
 
 /** druidNeedP (the Druid a hero needs to lead a unit, and his shortfall: the order form's Druid line and the army
  *  card read it), against the battle's druIdPenaltyMult: the strength the shortfall leaves. */
-export function druidNeedAgainstTheBattle(c: Copies, s: Samples): DruidComparison[] {
-  return s.druid.map(({ world, hero, unit }) => {
+export function druidNeedAgainstTheBattle(c: Copies, w: WorldSamples): DruidComparison[] {
+  return w.druid.map(({ world, hero, unit }) => {
     const need = c.druidNeedP(unit.report, hero.report, world.report);
     return druidCase(
       aboutTheUnit(world, hero, unit),
@@ -896,45 +914,40 @@ export function druidNeedAgainstTheBattle(c: Copies, s: Samples): DruidCompariso
   });
 }
 
-/** The army card's Druid lines, read by their statements: the strength it shows a unit of 1,000 after a shortfall,
- *  against the battle's (druIdPenaltyMult, rounded as the card rounds); and its Druid mastery bonus, in percent,
- *  against the turn's (druidMasteryGain). */
-export function armyCardDruidLinesAgainstTheTurn(
-  c: Copies,
-  s: Samples,
-): { shortfall: DruidComparison[]; mastery: Comparison[] } {
-  const shortfall: DruidComparison[] = [];
-  const mastery: Comparison[] = [];
-  for (const { world, hero, unit } of s.druid) {
+/** The army card's Druid shortfall line, read by its statements: the strength it shows a unit of 1,000 after a
+ *  shortfall, against the battle's (druIdPenaltyMult, rounded as the card rounds). */
+export function armyCardShortfallAgainstTheBattle(c: Copies, w: WorldSamples): DruidComparison[] {
+  return w.druid.map(({ world, hero, unit }) => {
     const card = c.armyCardDruidLines(unit.report, hero.report, world.report);
-    const on = aboutTheUnit(world, hero, unit);
     const multiplier = battleDruidMultiplier(world);
-    shortfall.push(
-      druidCase(
-        on,
-        isObj(card) ? card['strengthOfAThousand'] : card,
-        hero.state,
-        unit.state,
-        auraIn(hero.report, 'druid'),
-        (h, u) => Math.round(1000 * multiplier(h, u)),
-      ),
+    return druidCase(
+      aboutTheUnit(world, hero, unit),
+      isObj(card) ? card['strengthOfAThousand'] : card,
+      hero.state,
+      unit.state,
+      auraIn(hero.report, 'druid'),
+      (h, u) => Math.round(1000 * multiplier(h, u)),
     );
+  });
+}
+/** The army card's Druid mastery line, read by its statements: its bonus in percent, against the turn's
+ *  (druidMasteryGain). */
+export function armyCardMasteryAgainstTheTurn(c: Copies, w: WorldSamples): Comparison[] {
+  return w.druid.map(({ world, hero, unit }) => {
+    const card = c.armyCardDruidLines(unit.report, hero.report, world.report);
     const alignment = realmOf(world, hero.state)['alignment'];
-    mastery.push(
-      compare(
-        on,
-        isObj(card) ? card['mastery'] : card,
-        engineOn(
-          (h: Obj, u: Obj) => {
-            const gain: unknown = druidMasteryGain({ G: world.state }, h, u, alignment);
-            return isObj(gain) && typeof gain['gain'] === 'number' ? Math.round(gain['gain'] * 100) : gain;
-          },
-          [hero.state, unit.state],
-        ),
+    return compare(
+      aboutTheUnit(world, hero, unit),
+      isObj(card) ? card['mastery'] : card,
+      engineOn(
+        (h: Obj, u: Obj) => {
+          const gain: unknown = druidMasteryGain({ G: world.state }, h, u, alignment);
+          return isObj(gain) && typeof gain['gain'] === 'number' ? Math.round(gain['gain'] * 100) : gain;
+        },
+        [hero.state, unit.state],
       ),
     );
-  }
-  return { shortfall, mastery };
+  });
 }
 
 /** The turn report's flying carry, read by its statements: whether a unit type can be carried through the air,
@@ -1003,8 +1016,8 @@ export interface ExploreComparison extends Comparison {
 }
 /** The Explore order's forecast (exploreGainFor: the percentage of the province the order form says the order maps),
  *  against what the engine's order maps. */
-export function exploreForecastAgainstTheOrder(c: Copies, s: Samples): ExploreComparison[] {
-  return s.explore.map(({ world, hero, province }) => ({
+export function exploreForecastAgainstTheOrder(c: Copies, w: WorldSamples): ExploreComparison[] {
+  return w.explore.map(({ world, hero, province }) => ({
     ...compare(
       [
         hero.report['name'],

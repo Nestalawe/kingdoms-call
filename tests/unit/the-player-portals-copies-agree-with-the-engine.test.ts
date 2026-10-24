@@ -12,8 +12,9 @@
 // answer.
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
-  armyCardDruidLinesAgainstTheTurn,
+  armyCardMasteryAgainstTheTurn,
   armyCardSeaNoteAgainstTheEngine,
+  armyCardShortfallAgainstTheBattle,
   type Comparison,
   type Copies,
   druidNeedAgainstTheBattle,
@@ -28,6 +29,9 @@ import {
   samples,
   type Samples,
   STAYING,
+  theGamePlayed,
+  worldSamples,
+  type WorldSamples,
 } from '../lib/player-portal-copies.ts';
 import {
   ALL_MAGIC_ITEMS_P,
@@ -53,15 +57,25 @@ function lazily<T>(make: () => T): () => T {
   let kept: { value: T } | null = null;
   return () => (kept ??= { value: make() }).value;
 }
-const druidNeed = lazily(() => druidNeedAgainstTheBattle(copies, values));
-const armyCardDruid = lazily(() => armyCardDruidLinesAgainstTheTurn(copies, values));
+const druidNeed = lazily(() => druidNeedAgainstTheBattle(copies, worldValues));
+const armyCardShortfall = lazily(() => armyCardShortfallAgainstTheBattle(copies, worldValues));
+const armyCardMastery = lazily(() => armyCardMasteryAgainstTheTurn(copies, worldValues));
 const flyingCarry = lazily(() => flyingCarryAgainstTheEngine(copies, values));
-const exploreForecast = lazily(() => exploreForecastAgainstTheOrder(copies, values));
+const exploreForecast = lazily(() => exploreForecastAgainstTheOrder(copies, worldValues));
 const seaNote = lazily(() => armyCardSeaNoteAgainstTheEngine(copies, values));
 const casesOf = (p: (typeof PROJECTIONS)[number]) => once(`${p.engine} projection`, () => p.cases(values));
+let worldValues: WorldSamples;
+// The values in three hooks, each with Vitest's limit for itself (a hook's 10 s; on a busy runner the three together
+// can take more): the game, then the samples with the staged world, then the staged worlds of P1-11b1.
 beforeAll(() => {
   copies = playerPortalCopies();
+  theGamePlayed();
+});
+beforeAll(() => {
   values = samples();
+});
+beforeAll(() => {
+  worldValues = worldSamples();
 });
 
 /** A value in a line short enough to read (cut to 160 characters). */
@@ -158,7 +172,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     expect(need.filter((x) => x.aura > 0).length).toBeGreaterThan(1000);
     expect(exploreForecast().filter((x) => x.loremaster).length).toBeGreaterThan(0);
     expect(
-      values.explore.filter((x) => objectsOf(x.hero.report['minorHeld']).some((t) => t['key'] === 'trailblazer'))
+      worldValues.explore.filter((x) => objectsOf(x.hero.report['minorHeld']).some((t) => t['key'] === 'trailblazer'))
         .length,
     ).toBeGreaterThan(0);
     expect(seaNote().filter((x) => x.naval8).length).toBeGreaterThan(0);
@@ -176,14 +190,14 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
   });
 
   test("the army card's Druid shortfall: the strength it shows is the battle's, but beside a Crown of Command (the same aura)", () => {
-    const list = armyCardDruid().shortfall;
+    const list = armyCardShortfall();
     expect(differences(list.filter((x) => x.aura === 0))).toEqual([]);
     expect(pinnedDifferences(list.filter((x) => x.aura !== 0))).toEqual([]);
     expect(list.filter((x) => x.aura !== 0 && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
   });
 
   test("the army card's Druid mastery bonus is the turn's (druidMasteryGain), beside a Crown of Command too", () => {
-    expect(differences(armyCardDruid().mastery)).toEqual([]);
+    expect(differences(armyCardMastery())).toEqual([]);
   });
 
   test("the turn report's flying carry: isAirCarriable on every unit type, getFlyCapability on every column", () => {
@@ -221,8 +235,8 @@ test('each engine function leaves its input as it was (the values are frozen: a 
     ...PROJECTIONS.flatMap((p) => casesOf(p)),
     ...STAYING.flatMap((pair) => truthOf(pair)),
     ...druidNeed(),
-    ...armyCardDruid().shortfall,
-    ...armyCardDruid().mastery,
+    ...armyCardShortfall(),
+    ...armyCardMastery(),
     ...flyingCarry().unitTypes,
     ...flyingCarry().columns,
     ...seaNote(),
