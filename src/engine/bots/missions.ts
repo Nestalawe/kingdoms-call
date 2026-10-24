@@ -11,11 +11,17 @@ import { ITEM_SLOT_CAP, activeItems, itemPowerScore } from '../items/equipment.t
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { RUMOUR_COST_BY_POWER, isMithril } from '../personal-combat/helpers.ts';
 import {
+  BOT_AERIAL_TYPES,
+  BOT_ASSUMED_SKILLS,
+  BOT_CARRIER_TYPES,
   BOT_DEF_BONUS,
   BOT_HEX_DIRS,
+  BOT_MONSTER_ARMIES,
+  BOT_SEA_ALL,
   botBattleForce,
   botBelief,
   botBelievedOwner,
+  botKnownSkills,
   botKnows,
   botKnowsGraves,
   botMarginFor,
@@ -25,16 +31,13 @@ import {
   botSees,
   botSeesChar,
   botTargetDefence,
+  botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
 import {
-  BOT_AERIAL_TYPES,
-  BOT_CARRIER_TYPES,
   BOT_CAVALRY_TYPES,
   BOT_CREATURE_ARMIES,
   BOT_FLYING_TYPES,
-  BOT_MONSTER_ARMIES,
-  BOT_SEA_ALL,
   botCanFly,
   botEnemyChars,
   botSeaCap,
@@ -47,7 +50,6 @@ import {
   botHomeId,
   botIsLeader,
   botSpend,
-  botTurnCache,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
 import {
@@ -1294,23 +1296,7 @@ export function botAirStrike(G, pi, c, P, myStr, T, maxHops) {
   );
   return { moves, N: best.N };
 }
-// ══ HONEST KNOWLEDGE OF RIVAL CHARACTERS (Sept 2026, Toby / review II A5) ════
-// The engine keeps what a realm's spies learned about a character in p._spiedHeroSkills[id] (skills + turn).
-// A bot reads a rival's skills only from there (eight turns' currency); otherwise it plans against an
-// ASSUMED profile — a Tactical-2 general, a Melee-3/Archery-2 duellist with a school at 2 — as a human
-// would guess from the report's silence. Spies therefore spy on generals and hunters' marks first.
-export const BOT_ASSUMED_SKILLS = { melee: 3, archery: 2, tactical: 2, elemental: 2 };
-export function botKnownSkills(G, pi, e) {
-  if (!e) return null;
-  if (e.player === pi || e.player == null) return e.skills || {}; // our own; wanderers are hired on sight of their skills
-  const p = (G.players || [])[pi];
-  const r = p && p._spiedHeroSkills && p._spiedHeroSkills[e.id];
-  if (r && (G.turn || 0) - (r.turn || 0) <= 8) return r.skills || {};
-  return null;
-}
-export function botSkillsFor(G, pi, e) {
-  return botKnownSkills(G, pi, e) || BOT_ASSUMED_SKILLS;
-}
+// HONEST KNOWLEDGE OF RIVAL CHARACTERS: the rule, BOT_ASSUMED_SKILLS, botKnownSkills and botSkillsFor are in bots/intel.ts.
 // A clone of a rival with only the skills we know (for the duel forecast).
 export function botAssumedChar(G, pi, e) {
   const k = botKnownSkills(G, pi, e);

@@ -2,7 +2,10 @@
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
+  BOT_AERIAL_TYPES,
+  BOT_CARRIER_TYPES,
   BOT_HEX_DIRS,
+  BOT_SEA_ALL,
   botBattleForce,
   botConceded,
   botForceStrength,
@@ -12,13 +15,11 @@ import {
   botSeesChar,
   botTargetDefence,
   botTuning,
+  botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
 import {
-  BOT_AERIAL_TYPES,
-  BOT_CARRIER_TYPES,
   BOT_FLYING_TYPES,
-  BOT_SEA_ALL,
   botCanFly,
   botEnemyDefence,
   botIsValuable,
@@ -40,7 +41,6 @@ import {
   botRoles,
   botSeaReach,
   botSpend,
-  botTurnCache,
   botUnderAttack,
 } from './strategy.ts';
 import {

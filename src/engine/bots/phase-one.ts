@@ -3,6 +3,7 @@ import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-s
 import {
   BOT_DEF_BONUS,
   BOT_HEX_DIRS,
+  BOT_SEA_ALL,
   botBattleForce,
   botConceded,
   botEffForce,
@@ -13,18 +14,11 @@ import {
   botSees,
   botTargetDefence,
   botTuning,
+  botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
-import { BOT_SEA_ALL, botEnemyChars, botIsValuable } from './war.ts';
-import {
-  botFieldRecruitTokens,
-  botHexDist,
-  botHomeId,
-  botLedger,
-  botRecruitOrder,
-  botRoles,
-  botTurnCache,
-} from './strategy.ts';
+import { botEnemyChars, botIsValuable } from './war.ts';
+import { botFieldRecruitTokens, botHexDist, botHomeId, botLedger, botRecruitOrder, botRoles } from './strategy.ts';
 import { botMoveOrder, botNearbyThreat } from './specialists.ts';
 import { botIsTeach } from './missions.ts';
 import { botAtWar } from './economy.ts';

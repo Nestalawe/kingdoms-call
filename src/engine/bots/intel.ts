@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_HEX_DIRS, KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
+import { KC_HEX_DIRS, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleFrontWidth, battleLineTotal } from '../battle/lines.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
@@ -11,9 +11,6 @@ import {
   featDiscovered,
   nearSpiedProvIds,
 } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
-import { BOT_AERIAL_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL } from './war.ts';
-import { botTurnCache } from './strategy.ts';
-import { botSkillsFor } from './missions.ts';
 
 // ══ BOT PLAYERS — Phase 3a: core movement AI (expansion) ════
 // Self-contained, module-top-level so it can run at order-merge time in runTurn with no dependency
@@ -164,6 +161,25 @@ export function botNeighbourProv(G, prov, i) {
 }
 export function botForceStrength(armies) {
   return (armies || []).reduce((s, a) => s + unitBaseStrength(a), 0);
+}
+
+// ── UNIT-TYPE SETS ── the bots' copies of the content's unit classes, read by every bot file (bots/war.ts's
+// naval section says what they mirror).
+export const BOT_CARRIER_TYPES = new Set(KC_UNIT_CLASS.carrier);
+export const BOT_PRIMAL_SEA_TYPES = new Set(KC_UNIT_CLASS.primalSea);
+export const BOT_AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
+export const BOT_SEA_ALL = new Set([...BOT_CARRIER_TYPES, ...BOT_PRIMAL_SEA_TYPES]);
+export const BOT_MONSTER_ARMIES = new Set(KC_UNIT_CLASS.monster);
+// Per-turn scratch state (roles + treasury ledger), keyed by the live game-state object so it never
+// leaks into the persisted game_state and never survives into the next turn.
+export const _botTurnCache = new WeakMap();
+export function botTurnCache(G) {
+  let o = _botTurnCache.get(G);
+  if (!o || o.turn !== G.turn) {
+    o = { turn: G.turn, roles: {}, ledger: {} };
+    _botTurnCache.set(G, o);
+  }
+  return o;
 }
 
 // ══ BOT INTEL — WHAT A BOT REALM IS ALLOWED TO KNOW ════
@@ -357,6 +373,23 @@ export function botKnownFeatures(G, pi, prov) {
 export function botKnowsGraves(G, pi, provId) {
   const g = botIntel(G, pi).graves;
   return !!(g && provId != null && g[provId]);
+}
+// ══ HONEST KNOWLEDGE OF RIVAL CHARACTERS (Sept 2026, Toby / review II A5) ════
+// The engine keeps what a realm's spies learned about a character in p._spiedHeroSkills[id] (skills + turn).
+// A bot reads a rival's skills only from there (eight turns' currency); otherwise it plans against an
+// ASSUMED profile — a Tactical-2 general, a Melee-3/Archery-2 duellist with a school at 2 — as a human
+// would guess from the report's silence. Spies therefore spy on generals and hunters' marks first.
+export const BOT_ASSUMED_SKILLS = { melee: 3, archery: 2, tactical: 2, elemental: 2 };
+export function botKnownSkills(G, pi, e) {
+  if (!e) return null;
+  if (e.player === pi || e.player == null) return e.skills || {}; // our own; wanderers are hired on sight of their skills
+  const p = (G.players || [])[pi];
+  const r = p && p._spiedHeroSkills && p._spiedHeroSkills[e.id];
+  if (r && (G.turn || 0) - (r.turn || 0) <= 8) return r.skills || {};
+  return null;
+}
+export function botSkillsFor(G, pi, e) {
+  return botKnownSkills(G, pi, e) || BOT_ASSUMED_SKILLS;
 }
 // Sept 2026 (bot upgrade): the strength a commander REALLY brings — every unit discounted by the
 // Druid shortfall penalty the engine will apply (same-race rule, Druidic realm, sd40 Dragon Taming
