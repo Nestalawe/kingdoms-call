@@ -222,20 +222,16 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         // The addressee's copy must NOT name the sender as `actor`: the report filter shows a
         // player every entry where actor===them, so the sender was being handed the
         // incoming-dispatch line as well as their own sent-confirmation — reading their own words
-        // as though addressed to them. charId is nulled for the same reason (emit falls back to
-        // _logCtx.charId when it is null).
-        const _savedDispatchChar = turnContext._logCtx.charId;
-        turnContext._logCtx.charId = null;
+        // as though addressed to them. It is filed under no hero for the same reason.
         rcpts.forEach((rpi) => {
           emit(turnContext, {
             type: 'message',
             text: `📨 Dispatch from ${senderName}: “${text}”`,
             audience: { actor: null, realms: [rpi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            hero: null,
             phase: 99,
           });
         });
-        turnContext._logCtx.charId = _savedDispatchChar;
         // Sender's own copy (confirmation of what they sent, and to whom).
         emit(turnContext, {
           type: 'message',

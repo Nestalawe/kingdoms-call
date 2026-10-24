@@ -120,20 +120,15 @@ export function applySpySuccess(turnContext, c, sprov) {
         turn: G.turn,
       });
     }
-    // this alert belongs ONLY to the pried-upon owner. Passing charId:null is not enough —
-    // emit's `hero ?? _logCtx.charId` would fall back to the PRYING character, and the
-    // report filter (ownCharIds.has(e.charId)) would then surface it in the spy's OWN report.
-    // Detach the character context for this one line so its charId truly resolves to null.
-    const _savedCtxChar = turnContext._logCtx.charId;
-    turnContext._logCtx.charId = null;
+    // this alert belongs ONLY to the pried-upon owner: filed under no hero, never the PRYING character (the report
+    // filter, ownCharIds.has(e.charId), would surface it in the spy's OWN report).
     emit(turnContext, {
       type: 'spy',
       text: `[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,
       audience: { actor: null, realms: [sprov.owner] },
-      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      hero: null,
       province: sprov.id,
     });
-    turnContext._logCtx.charId = _savedCtxChar;
   }
   c.merits = (c.merits || 0) + 1;
   (sprov.features || [])
