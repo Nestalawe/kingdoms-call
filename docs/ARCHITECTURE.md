@@ -51,7 +51,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   `engine/rules-on-plain-values/` the portal calls, and nothing else; [below](#kingdoms-call-datats-the-one-source-for-shared-rules)),
   `schemas/` (the types of the world, from Zod schemas: below), `ui/<page>/` (each page's styles,
   its entry and the rest of its code), `ui/shared/` (`kc-safe.ts`), `rulebook/`. The
-  templates are at the top of `src/`. The GM portal's code is 128 modules; `src/engine/run-turn.ts` (the turn,
+  templates are at the top of `src/`. The GM portal's code is 141 modules; `src/engine/run-turn.ts` (the turn,
   `resolveTurn`, once ~13,000 lines, now ~240) was taken apart by P1-08, one area at a time (below). The player portal's
   is 35: its own 23, the data file, `kc-safe.ts`, `kc-db-guard.ts`, `src/shared/`'s file and the folder's eight.
 - **TypeScript checks the site** (`tsconfig.json` includes `src/`, with the browser's types; one project until P1-10
@@ -157,10 +157,11 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   Overlord page reach it only through `shared/` and `views/`.
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
-**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (154 findings)
-and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), and the 140 findings of the eight
-import cycles (P1-13e breaks them, one a pull request): six in the engine (11, 9, 2, 2, 2 and 2 files), the GM page's
-(10 files, both of `db/` among them) and the player page's (18). The ratchet counts the list
+**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (150 findings)
+and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), and the 136 findings of the four
+import cycles left (P1-13e breaks them by moving code, one cycle a pull request; P1-13e1 broke the engine's four
+two-file cycles in one, and the bots' cycle takes three): two in the engine (the bots, 11 files; its core, 9), the GM
+page's (10 files, both of `db/` among them) and the player page's (18). The ratchet counts the list
 (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no longer
 occurs: when you fix one, remove it in the same pull request with
 `npx depcruise src --baseline --baseline-mode shrink-only`. Never add to it.
@@ -563,7 +564,7 @@ portals' start-up guards are gone.
   `runReinforcementArrivals`, `engine/units/defend-ride-outs-ambushes-and-reinforcements.ts`). P1-08i3, the last phase
   helpers: stalled battles and a beaten guard's survivors (`resolveStalledBattles`, `erodeGuardSurvivors`,
   `engine/battle/stalled-battles-and-beaten-guards.ts`), a host gained in a province (`resolveUnitGainInProvince`,
-  `engine/battle/hosts-gained-in-a-province.ts`), pursuits (`advancePursuit`, `pursuitCatchChance`, `endPursuit`,
+  `engine/battle/hosts-gained-in-a-province.ts`, where `erodeGuardSurvivors` moved in P1-13e1, to break a cycle), pursuits (`advancePursuit`, `pursuitCatchChance`, `endPursuit`,
   `engine/heroes/pursuits-and-the-catch-roll.ts`), war fronts and stand-offs (`warFrontThreats`, `resolveWarFronts`,
   `flagEnemyStandoffs`, `engine/battle/war-fronts-and-enemy-stand-offs.ts`), and `syncAllMaxHp` (beside the earned-HP
   helpers, `engine/heroes/experience-skill-rises-and-earned-hp.ts`). P1-08j1, the first order taken out of `processOrder`

@@ -287,7 +287,6 @@ export const ARCHERY_VOLLEY_AT = 3; // arrows per Fire action becomes 2 at this 
 // bow looses one arrow first (the mirror of the free strike a fleeing enemy eats). Characters only:
 // it is a perk of the skill, not a property of every creature that can spit.
 // Bow vs Stone Golem 85% → 99%, vs Sea Wyrm 81% → 100%; Blade / Sword & bow / Archmage figures unchanged.
-export const ARCHERY_FIELDCRAFT_PCT = 5;
 export const ARCHERY_PARTING_SHOT = true;
 export function pcVolleySize(cbt) {
   return (cbt.archery || 0) >= ARCHERY_VOLLEY_AT ? 2 : 1;

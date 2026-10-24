@@ -1,7 +1,7 @@
 // The layers of src/ and no import cycle (plan P1-13, Decisions 2 and 3; npm run lint:arch). Every rule is an error.
 // What broke a rule when it came in (P1-13a) is listed in .dependency-cruiser-known-violations.json and let through
 // (--ignore-known); the ratchet counts that list (knownArchitectureViolations), so it only shrinks. A finding fixed
-// leaves the list in the same PR: npm run lint:arch -- --update-known rewrites it.
+// leaves the list in the same PR: npx depcruise src --baseline --baseline-mode shrink-only removes it, adding nothing.
 //
 // A layer's own folder, and the folders it may import from, are in each rule's pathNot. `import type` and
 // `export type … from` bring no code (TypeScript erases them), so src/schemas/, which holds only types, may be

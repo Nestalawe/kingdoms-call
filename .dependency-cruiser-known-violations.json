@@ -186,66 +186,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/engine/battle/hosts-gained-in-a-province.ts",
-    "to": "src/engine/battle/stalled-battles-and-beaten-guards.ts",
-    "unresolvedTo": "./stalled-battles-and-beaten-guards.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/battle/stalled-battles-and-beaten-guards.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/battle/hosts-gained-in-a-province.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/battle/ladder.ts",
-    "to": "src/engine/battle/lines.ts",
-    "unresolvedTo": "./lines.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/battle/lines.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/battle/ladder.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/engine/bots/economy.ts",
     "to": "src/engine/bots/intel.ts",
     "unresolvedTo": "./intel.ts",
@@ -1979,66 +1919,6 @@
       },
       {
         "name": "src/engine/items/tiers-and-hoards.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/personal-combat/melee-flight-and-archery.ts",
-    "to": "src/engine/personal-combat/speed-encounter-plans-and-combatants.ts",
-    "unresolvedTo": "./speed-encounter-plans-and-combatants.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/personal-combat/speed-encounter-plans-and-combatants.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/personal-combat/melee-flight-and-archery.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/units/movement-pools.ts",
-    "to": "src/engine/units/sea-lift-stranding-and-retreats.ts",
-    "unresolvedTo": "./sea-lift-stranding-and-retreats.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/units/sea-lift-stranding-and-retreats.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/units/movement-pools.ts",
         "dependencyTypes": [
           "local",
           "import"

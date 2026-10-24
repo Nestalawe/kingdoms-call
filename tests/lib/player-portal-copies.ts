@@ -40,7 +40,7 @@ import {
   LEGENDARY_ITEMS_P,
 } from '../../src/content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../../src/engine/army-tables.ts';
-import { getSeaCapability } from '../../src/engine/units/sea-lift-stranding-and-retreats.ts';
+import { getSeaCapability } from '../../src/engine/units/movement-pools.ts';
 import {
   isLegendaryItem,
   itemRaceOf,
