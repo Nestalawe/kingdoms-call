@@ -2,7 +2,8 @@
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { gainedItemNote, hasItemBase } from '../items/equipment.ts';
-import { applyItemMaxHp, pcFoeCat, transferableItems } from './helpers.ts';
+import { applyItemMaxHp, transferableItems } from './helpers.ts';
+import { pcFoeCat } from '../titles/perks.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import {

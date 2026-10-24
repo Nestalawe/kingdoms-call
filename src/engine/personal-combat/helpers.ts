@@ -326,8 +326,3 @@ export function grantMithrilToDwarves(gs) {
     if (ok) grantMithrilTo(ch, gs);
   });
 }
-
-// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the kind of foe a personal fight is against. It reads no turn state.
-export function pcFoeCat(foe) {
-  return foe.cat || (foe.kind === 'character' ? (foe.isUndead ? 'undead' : 'humanoid') : 'beast');
-}

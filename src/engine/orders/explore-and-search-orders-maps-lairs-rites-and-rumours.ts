@@ -5,13 +5,13 @@ import { QUALITY_TIERS } from '../army-tables.ts';
 import {
   ENCOUNTER_CLEAR_GOLD_BANDS,
   encounterClearGold,
+  ensureLairHoard,
   featureTreasure,
   setFeatureTreasure,
 } from '../world/tables.ts';
 import {
   WILD_HUNT_TURNS,
   WILD_HUNT_UNITS,
-  ensureLairHoard,
   guardianCanUseItem,
   itemLoreLines,
   monsterCatLabel,

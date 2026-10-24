@@ -1,7 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { monsterCat } from '../names.ts';
-import { ensureLairHoard, guardianCanUseItem, monsterCatLabel } from '../items/tiers-and-hoards.ts';
+import { guardianCanUseItem, monsterCatLabel } from '../items/tiers-and-hoards.ts';
+import { ensureLairHoard } from '../world/tables.ts';
 import { _ITEM_ALT_BASE, isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, transferableItems } from './helpers.ts';

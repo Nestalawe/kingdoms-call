@@ -1,7 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng, kcRngStream } from './rng.ts';
 import { migrateLegacyUnitNames } from './army-tables.ts';
-import { backfillHomeRosters, retireCorsairPools } from './grand-design.ts';
+import { retireCorsairPools } from './grand-design.ts';
+import { backfillHomeRosters } from './world/tables.ts';
 import { seedUsedHeroNames } from './names.ts';
 import { ensureAllLairHoards } from './items/lair-items.ts';
 import { migrateItemTiers } from './items/equipment.ts';

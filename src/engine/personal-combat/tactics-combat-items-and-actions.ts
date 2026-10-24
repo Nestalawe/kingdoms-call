@@ -1,12 +1,12 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { NPC_SCHOOL_SPELL, STEAL_TIER_PEN } from '../army-tables.ts';
-import { encounterClearGold, temperOf } from '../world/tables.ts';
-import { ensureLairHoard } from '../items/tiers-and-hoards.ts';
+import { encounterClearGold, ensureLairHoard, temperOf } from '../world/tables.ts';
 import { itemNameList } from '../heroes/fame-and-consecration.ts';
 import { hasItemBase } from '../items/equipment.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
-import { PARLEY_ENABLED, SCOUT_ENABLED, pcDeferEffect, pcFoeCat, pcLearnWeakness, pcPushDot } from './helpers.ts';
+import { PARLEY_ENABLED, SCOUT_ENABLED, pcDeferEffect, pcLearnWeakness, pcPushDot } from './helpers.ts';
+import { pcFoeCat } from '../titles/perks.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';

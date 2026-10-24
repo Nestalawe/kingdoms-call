@@ -1,7 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { SKILL_MAX } from '../army-tables.ts';
-import { activeItems } from '../items/equipment.ts';
 
 // ── BUILD PLAYER TURN REPORT ────
 // ══ VICTORY & TITLES (KC Reckoning system) — see KC-design-victory-and-titles.md ════
@@ -151,14 +150,6 @@ export function reckoningDecayOf(state) {
 // Alignments keep every one of their other distinctions (zeal, hiring costs, signature actions, the
 // starting skill nudge); what they no longer get is a discount on the throne.
 export const _MAGIC_SCHOOLS = KC_MAGIC_SCHOOLS.slice();
-export function _skillItem(c, stat) {
-  const base = ((c && c.skills) || {})[stat] || 0;
-  const bonus = activeItems(c).reduce(
-    (s, it) => s + (it && it.effect && it.effect.stat === stat ? it.effect.bonus || 0 : 0),
-    0,
-  ); // equipped only
-  return Math.max(0, Math.min(9, base + bonus)); // TITLES count skill levels up to 9 (benefits still cap at 5 via effStat)
-}
 // Skill LEVEL (base proficiency, 0–9) for perk unlocks; perkTier = levels past 5 (0–4).
 // ── WHAT WAS GAINED THIS TURN (2026-09-26, Toby item 3) ────
 // A hero's item list says nothing about WHEN each piece was won, so a relic taken from a lair this
@@ -196,4 +187,12 @@ export function perkTier(c, stat) {
 // can print (or fight at) "Melee 11".
 export function pcSkillCap(v) {
   return Math.max(0, Math.min(SKILL_MAX, Math.round(v || 0)));
+}
+
+// sd40 Dragon Taming: the winged beasts a realm with the discovery leads without any Druid penalty
+// (Gnomish Gyrocopters are machines, not beasts, and are deliberately NOT tamed).
+export const TAMED_FLYER_TYPES_D = new Set(KC_UNIT_CLASS.tamedFlyer);
+// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the kind of foe a personal fight is against. It reads no turn state.
+export function pcFoeCat(foe) {
+  return foe.cat || (foe.kind === 'character' ? (foe.isUndead ? 'undead' : 'humanoid') : 'beast');
 }
