@@ -15,7 +15,8 @@
 //               player what the turn will do. P1-11b1 added the Druid a hero needs to lead a unit (druidNeedP), the
 //               army card's Druid and sea-transport lines, the turn report's own flying carry and the Explore order's
 //               forecast (exploreGainFor); where a copy is known to disagree (plan P1-11b's questions for Toby), the
-//               difference is pinned exactly.
+//               difference is pinned exactly. P1-11b2 retired the turn report's copy (it calls getFlyCapability): its
+//               statement that gives a column the flyers' pace is checked against the engine on the state's column.
 //
 // The copies are read from src/ui/player/ by their syntax tree (tests/lib/source.ts) and run in a context of their
 // own, with the data file run beside them as a script (the content as the player page holds it, before the engine
@@ -125,9 +126,9 @@ const ARMY_CARD = 'ui/player/report.ts';
 const TURN_REPORT = 'views/turn-report.ts';
 /** The copies written inline, inside a longer function: each read by its statements (tests/lib/source.ts's
  *  statementsBetween) and run as a function of what those statements read. The army card is the "Armies leading" part
- *  of a hero's card on the player's report screen (renderReportView); the turn report's flying carry is the report's
- *  own copy of getFlyCapability and isAirCarriable (buildTurnReport: the pace it shows a column that takes to the
- *  air). */
+ *  of a hero's card on the player's report screen (renderReportView); the turn report's flying carry is the statement
+ *  that gives a column the flyers' pace when it takes to the air (buildTurnReport: it calls getFlyCapability, since
+ *  P1-11b2, where it kept a copy of it and of isAirCarriable). */
 const statementCopies = (opts: SourceOptions) => `
 // The army card's Druid lines for one unit \`a\` of the hero \`c\`: the strength left of a unit of 1,000 by a Druid
 // shortfall (the card's own sum), the Druid mastery bonus in percent, and the shortfall.
@@ -146,8 +147,8 @@ function armyCardSeaNote(arr, c) {
 // The turn report's flying carry, on the column \`armies\` as the report projects it.
 function turnReportFlyingCarry(armies) {
   ${statementsBetween(TURN_REPORT, 'buildTurnReport', 'SEA_UNIT_TYPES', 'AERIAL_UNIT_TYPES', opts)}
-  ${statementsBetween(TURN_REPORT, 'buildTurnReport', 'FLY_CARRIERS_REP', 'canFlyRep', opts)}
-  return { canFly: canFlyRep, airCarriable: repAirCarriable };
+  ${statementsBetween(TURN_REPORT, 'buildTurnReport', 'canFlyRep', 'canFlyRep', opts)}
+  return { canFly: canFlyRep };
 }
 // exploreGainFor reads the report the page shows (its currentReport): here, the one handed in.
 function exploreGainOn(report, c, terrain) {
@@ -171,7 +172,7 @@ export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 /** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file and kc-safe
  *  (kcHtml: the army card's notes) beside them, and the names src/shared/ hands the portal (effMagicLvl calls itemSlot
  *  and itemUsableBy; poSeaAnalysis getFlyCapability and isAirCarriable). The turn report's flying carry runs beside
- *  them too: it reads only the data file. */
+ *  them too: it reads the data file and getFlyCapability. */
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   const code = [
     'let currentReport = null;',
@@ -950,21 +951,17 @@ export function armyCardMasteryAgainstTheTurn(c: Copies, w: WorldSamples): Compa
   });
 }
 
-/** The turn report's flying carry, read by its statements: whether a unit type can be carried through the air,
- *  against isAirCarriable, on every unit type; and whether a column takes to the air (the flyers lift every foot
- *  soldier), against getFlyCapability, on every column of the realm's heroes (a column all of whose units fly is not
- *  carried: the report gives it the flyers' pace apart). */
-export function flyingCarryAgainstTheEngine(c: Copies, s: Samples): { unitTypes: Comparison[]; columns: Comparison[] } {
+/** The turn report's flying carry, read by its statements: whether a column takes to the air (the flyers lift every
+ *  foot soldier), on the report's column, against getFlyCapability on the state's, on every column of the realm's
+ *  heroes (a column all of whose units fly is not carried: the report gives it the flyers' pace apart). Until P1-11b2
+ *  the report kept its own copy of getFlyCapability and of isAirCarriable, and this checked the second on every unit
+ *  type too; it calls getFlyCapability now. */
+export function flyingCarryAgainstTheEngine(c: Copies, s: Samples): { columns: Comparison[] } {
   const carry = (armies: unknown): Obj => {
     const answer = c.turnReportFlyingCarry(armies);
     if (!isObj(answer)) throw new Error("the turn report's flying carry gave no answer");
     return answer;
   };
-  const carriable = carry([])['airCarriable'];
-  if (typeof carriable !== 'function') throw new Error("the turn report's flying carry has no repAirCarriable");
-  const unitTypes = Object.keys(KC_UNIT_TYPE).map((type) =>
-    compare(type, (carriable as (t: string) => unknown)(type), engineOn(isAirCarriable, [{ type }])),
-  );
   const columns = withState(s.heroes)
     .filter((h) => objects(h.report['armies']).length > 0)
     .map((h) =>
@@ -978,7 +975,7 @@ export function flyingCarryAgainstTheEngine(c: Copies, s: Samples): { unitTypes:
         ),
       ),
     );
-  return { unitTypes, columns };
+  return { columns };
 }
 
 /** The gain the engine's Explore order makes for the hero in the province, on a copy of the state as the next turn
