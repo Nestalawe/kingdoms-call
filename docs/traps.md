@@ -340,19 +340,24 @@ check finds were made.
   (`targets`, `provinceId`, `charId`, `public`). A line seen by those there but with no province is seen by the world
   (`seen: 'world'`), as the report reads it: where the province may be missing, say so
   (`seen: prov ? 'there' : 'world'`).
-- **A hero left out is the hero whose order is resolving, if the line reaches his realm.** `emit` keeps the old
-  `log()`'s fallback within the line's own audience (P1-12c1): a `hero` left out or `null` is
-  `turnContext._logCtx.charId`, but only when the line already reaches that hero's realm (it is told to it, is its
-  deed, or is seen by the world or there; a battle's line reaches those who fought in it by being told). Otherwise
-  the line is filed under no hero. A realm reads every line filed under one of its heroes, so before this a line
-  written while Aldric's order resolved, told only to the province's owner, reached Aldric's realm too. A hero who
-  serves no realm keeps his lines. To file a line under a hero, name him (`hero: c.id`); for no hero, say
-  `hero: 'none'` (the lines that were pushed straight into `turnLog` do: a capture's, `notifyProvinceOwner`'s,
-  `logSplit`'s public half; and a line for the GM alone, the Philosopher's Stone's note on the hoards,
-  `tests/scenario/a-line-for-the-gm-alone-reaches-no-realm.test.ts`). The cases: `tests/unit/emit-writes-the-lines-log-wrote.test.ts`;
-  the audience check (`tests/lib/report-leaks.ts`) states the same rule apart. The same for `phase`: left out or `null`
-  is the phase of that order, else the phase resolving, else 99 once the phases are over; `phase: 'none'` is no phase.
-  P1-12c2 has every event name its hero.
+- **Every event names its hero** (P1-12c2). `hero` is a hero's id (`hero: c.id`), `null` for no hero, or
+  `THE_HERO_WHOSE_ORDER_IS_RESOLVING` (a named constant in the events file) for the hero whose order is resolving
+  (`turnContext._logCtx.charId`). `emit` files a line naming the constant under that hero only when the line already
+  reaches his realm (it is told to it, is its deed, or is seen by the world or there; a battle's line reaches those who
+  fought in it by being told), else under no hero (P1-12c1). A realm reads every line filed under one of its heroes, so
+  before that a line written while Aldric's order resolved, told only to the province's owner, reached Aldric's realm
+  too. A hero who serves no realm keeps his lines. `emit` throws on an event with no `hero`; the lint rule refuses
+  `emit`'s event, and an event's place (an object literal with an `audience`, as handed to `logSplit`,
+  `reportHeroFall` or the held-back skill rises), written without `hero` and without a spread; a spread place carries
+  its own. Before P1-12c2 a `hero` left out or `null` meant the hero whose order is resolving and `'none'` meant no
+  hero; the script that named every hero made the first the constant and `'none'` `null` (a line for the GM alone, the
+  Philosopher's Stone's note on the hoards, says `hero: null`:
+  `tests/scenario/a-line-for-the-gm-alone-reaches-no-realm.test.ts`). Where a hero's id may be missing, say what then
+  (`hero: dest ? dest.id : THE_HERO_WHOSE_ORDER_IS_RESOLVING`, or `?? THE_HERO_WHOSE_ORDER_IS_RESOLVING`). The cases:
+  `tests/unit/emit-writes-the-lines-log-wrote.test.ts`; the audience check (`tests/lib/report-leaks.ts`) states the
+  same rule apart. The area rows of P1-12c replace the constant with the hero each fact names. The `phase` falls back
+  as before: left out or `null` is the phase of that order, else the phase resolving, else 99 once the phases are over;
+  `phase: 'none'` is no phase.
 - Nothing stored changes until P1-12c: `emit` writes today's line forms, key for key and in the same order (the old
   `log()`'s 17 keys; `form: 'bare'`, the 14 of the lines once pushed directly; `notFor` last when `except` is given). The balance
   matrix hashes the stored log (`writes`), and every realm's report is compared line for line (`npm run balance`).
