@@ -1,13 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
-import {
-  DRUID_MASTERY_CAP,
-  DRUID_MASTERY_MAX_LVL,
-  DRUID_MASTERY_PER_LVL,
-  MISSILE_ARMIES_MASTER,
-  ladderFm,
-} from './ladder.ts';
+import { DRUID_MASTERY_CAP, DRUID_MASTERY_MAX_LVL, DRUID_MASTERY_PER_LVL, MISSILE_ARMIES_MASTER } from './ladder.ts';
+import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import {
   AERIAL_TYPES,
   CREATURE_ARMIES,

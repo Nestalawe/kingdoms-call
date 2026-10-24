@@ -216,36 +216,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/engine/battle/ladder.ts",
-    "to": "src/engine/battle/lines.ts",
-    "unresolvedTo": "./lines.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/battle/lines.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/battle/ladder.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/engine/bots/economy.ts",
     "to": "src/engine/bots/intel.ts",
     "unresolvedTo": "./intel.ts",

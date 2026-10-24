@@ -23,14 +23,8 @@ import {
   battleWidthLine,
   rollBattleWidth,
 } from './lines.ts';
-import {
-  ARCHERY_MISSILE_PCT,
-  UNDEAD_SKEL_HERO_FAN,
-  UNDEAD_SKEL_KING_FAN,
-  aAn,
-  ladderFm,
-  ladderLines,
-} from './ladder.ts';
+import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, aAn, ladderLines } from './ladder.ts';
+import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import {
   OPEN_COUNTRY,
   RUN_THEM_DOWN_PCT,

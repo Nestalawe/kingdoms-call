@@ -3,6 +3,7 @@ import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { BATTLE_LINE_MULTS, battleFacingStage, battleGridStage, battleLineTotal, flankLineMults } from './lines.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { Army } from '../../schemas/saved-game-state.ts';
+import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 
 // ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
 // "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid
@@ -13,11 +14,6 @@ import type { Army } from '../../schemas/saved-game-state.ts';
 // unit, then the terrain-width lines) → Whole force (fanaticism, discoveries, morale, defender…).
 // Rows come from ladderRow() (inside runTurn, beside armStr) so the ladder and the real total are
 // computed from the SAME figures. Module-level so every battle site can share it.
-export function ladderFm(v: number) {
-  let t = (+v).toFixed(3);
-  while (t.endsWith('0') && !/\.\d$/.test(t)) t = t.slice(0, -1);
-  return '×' + t;
-} // ×1.4, ×2.0, ×1.44, ×1.375 — exact to 3 dp so the ladder can be checked by hand
 // 2026-09-24 (Toby) — the stages, in the order the battle applies them: Units (every per-unit modifier)
 // → Command (Tactical / Archery / Naval / illusory per unit) → Whole force (fanaticism, discoveries,
 // morale, the defender's position…) → Pre-battle damage (arrows, battle magic, primal strikes, flak —
