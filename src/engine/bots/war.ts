@@ -24,10 +24,15 @@ import {
   botTuning,
   botVisibleCharsIn,
 } from './intel.ts';
-import { botFillOrders } from './specialists.ts';
-import { botEnemyIntel } from './missions.ts';
-import { botCanBeatGuardian, botPathLenAny } from './spellcraft.ts';
-import { BOT_CAVALRY_TYPES, BOT_CREATURE_ARMIES, BOT_FLYING_TYPES, botDefenceNeed, botIsValuable } from './strategy.ts';
+import { botCanBeatGuardian, botFillOrders, botPathLenAny } from './spellcraft.ts';
+import {
+  BOT_CAVALRY_TYPES,
+  BOT_CREATURE_ARMIES,
+  BOT_FLYING_TYPES,
+  botDefenceNeed,
+  botEnemyIntel,
+  botIsValuable,
+} from './strategy.ts';
 
 // ══ WAR ASSESSMENT (2026-09-29, Toby) ══════════════════════════════════════════════════════════════
 // A bot no longer declares war the moment it meets a crown two or more steps away on the alignment

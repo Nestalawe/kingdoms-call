@@ -222,11 +222,8 @@
     }
   },
   "src/engine/bots/missions.ts": {
-    "@typescript-eslint/no-dynamic-delete": {
-      "count": 5
-    },
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 1
     },
     "no-useless-assignment": {
       "count": 1
@@ -267,8 +264,11 @@
     }
   },
   "src/engine/bots/strategy.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 5
+    },
     "@typescript-eslint/no-unused-vars": {
-      "count": 1
+      "count": 2
     },
     "no-useless-assignment": {
       "count": 1
