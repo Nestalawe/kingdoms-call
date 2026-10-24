@@ -2,6 +2,7 @@
 import { buildTurnReport } from './turn-report.ts';
 import { playerView } from './what-each-realm-may-see-of-the-world.ts';
 import { hasDisc } from '../engine/discoveries.ts';
+import { theTurnsLinesInWords } from './prose/the-words-of-each-line.ts';
 
 // ── THE LINES EACH REALM READS (plan P1-12b3: P1-12's Decision 10, out of buildReports) ────
 // playerEvents works out, from the turn's events (the GM's log, as emit stores them), which of them one realm reads,
@@ -12,7 +13,7 @@ import { hasDisc } from '../engine/discoveries.ts';
 // events come unnamed (provinceEventsItReads: the realm's view names their provinces, buildReports). It reads the
 // world (G: the realm's provinces, heroes, discoveries and meetings, the watched hero's place) and the turn's sight
 // (presenceByPhase, battleCommanders, clairWatch, which resolveTurn recorded), and writes nothing.
-//   turnLog  the turn's events, as the GM's log stores them (P1-12c gives them their typed form)
+//   turnLog  the turn's lines, as the GM's log stores them: each with its words (theTurnsLinesInWords, P1-12c3)
 //   G        the world after the turn, with the Spy stealth's stamps
 //   pi       the realm reading
 //   sight    { presenceByPhase, battleCommanders, clairWatch }: the turn's sight facts (whatTheReportsRead)
@@ -359,10 +360,13 @@ export function playerEvents(turnLog, G, pi, sight) {
 // (P1-12b2; tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts), and draws no dice. The shell
 // (src/ui/gm/turn-shell.ts) calls it once the turn is saved and the Spy stealth rolled, with what resolveTurn hands
 // over for it (whatTheReportsRead, src/engine/run-turn.ts): the slot rows, the world after the turn (the working
-// copy), the turn's log, the turn's sight and the telemetry's collectors (_tel). Returns {reports, tel}, where reports
-// is [{gp, report}] (gp: the slot row it is for) and tel what telemetry reads.
+// copy), the turn's log, the turn's sight and the telemetry's collectors (_tel). It writes every line's words first
+// (theTurnsLinesInWords, src/views/prose/: P1-12c3), and every realm's lines are picked from the lines in words.
+// Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the slot row it is for), tel what telemetry reads
+// and gmLog the GM's log of the turn in words, in its stored form, which the shell saves.
 export function buildReports(whatTheReportsRead) {
-  const { freshPlayers, G, turnLog, sight, _tel } = whatTheReportsRead;
+  const { freshPlayers, G, sight, _tel } = whatTheReportsRead;
+  const { gmLog: turnLog } = theTurnsLinesInWords(whatTheReportsRead.turnLog);
   const activePlayers = freshPlayers.filter((p) => p.user_id);
   const reports = [];
   for (const gp of activePlayers) {
@@ -377,5 +381,5 @@ export function buildReports(whatTheReportsRead) {
   }
   // The battle flags (_hadBattleThisTurn, _combatPlayersThisTurn) stay on the working copy: the world was saved before
   // the reports, and the next turn's start clears them (lastTurnsBattleAndDuelSwordsClearedFromTheMap).
-  return { reports, tel: { gs: G, collected: _tel } };
+  return { reports, tel: { gs: G, collected: _tel }, gmLog: turnLog };
 }

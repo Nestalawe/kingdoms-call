@@ -61,7 +61,9 @@ import {
 //                     in use (kcRng, src/engine/rng.ts), as a test fixes them
 // Returns {state, log, spyStealthAndInvisibilityStampedForTheReports, whatTheReportsRead}:
 //   state             the world after the turn, as JSON: what the shell saves (with its two turn-mode stamps added)
-//   log               the GM's log of the turn (turnLog); the Spy-stealth step adds its lines to it
+//   log               the GM's log of the turn (turnLog): its events, a typed line with its fact and no words yet (the
+//                     views write them: buildReports returns the log in words, which the shell saves, P1-12c3); the
+//                     Spy-stealth step adds its lines to it
 //   spyStealthAndInvisibilityStampedForTheReports()
 //                     rolls each hero's Spy stealth and carries this turn's Invisibility into the reports' turn, on the
 //                     working copy, once, after the save and before the reports (P1-12b2)

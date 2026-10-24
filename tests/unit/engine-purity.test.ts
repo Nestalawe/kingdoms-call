@@ -73,6 +73,8 @@ interface Engine {
   buildReports(whatTheReportsRead: unknown): {
     reports: { gp: { player_index?: unknown }; report: Report }[];
     tel: unknown;
+    /** The GM's log in words, as the views write it for the shell to save (P1-12c3). */
+    gmLog: unknown[];
   };
 }
 
@@ -167,7 +169,7 @@ describe('a whole game, played in the bare vm', () => {
       if ((JSON.parse(state) as { gameOver?: unknown }).gameOver) break;
       const resolved = e.resolveTurn(state, slotRows(e.engine, state, turn), turn, shellSeed(e.engine));
       resolved.spyStealthAndInvisibilityStampedForTheReports();
-      const { reports } = e.buildReports(resolved.whatTheReportsRead());
+      const { reports, gmLog } = e.buildReports(resolved.whatTheReportsRead());
       if (turn === 1) {
         try {
           e.buildReports(resolved.whatTheReportsRead());
@@ -178,7 +180,7 @@ describe('a whole game, played in the bare vm', () => {
       played.turns++;
       played.reports.push(reports.map((r) => [r.gp.player_index, r.report.playerIndex]));
       played.nextTurns.push((JSON.parse(resolved.state) as { turn: number }).turn);
-      played.logLines.push(resolved.log.length);
+      played.logLines.push(gmLog.length);
       const now = snapshot();
       for (const n of names) if (now[n] !== was[n]) played.changed.set(n, [...(played.changed.get(n) ?? []), turn]);
       was = now;
@@ -187,7 +189,7 @@ describe('a whole game, played in the bare vm', () => {
       played.hashes.push(
         turnHashes({
           state: JSON.parse(state) as unknown,
-          gmLog: JSON.parse(JSON.stringify(resolved.log)) as unknown[],
+          gmLog: JSON.parse(JSON.stringify(gmLog)) as unknown[],
           telemetry: [],
           report: mine ? (JSON.parse(JSON.stringify(mine.report)) as Record<string, unknown>) : null,
           writes: [],

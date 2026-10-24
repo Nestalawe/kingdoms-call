@@ -171,7 +171,9 @@ export function board(engine: vm.Context, world: string, ph: number) {
     p.owner = pi;
     if (pi != null) must(G.players[pi], 'realm ' + String(pi)).provinces.push(p.id);
   };
-  const lines = () => tc.turnLog as unknown as Line[];
+  // The turn's lines so far in words, as the views write them (theTurnsLinesInWords, P1-12c3).
+  const inWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => { gmLog: Line[] };
+  const lines = () => inWords(tc.turnLog).gmLog;
   return { engine, tc, G, ph, X, ring1, ring2, near, nbrs, own, lines };
 }
 export type Board = ReturnType<typeof board>;
@@ -258,7 +260,7 @@ export interface RealmSends {
 export interface PlayedTurn {
   /** The world after the turn, as saved. */
   after: World;
-  /** The GM's log of the turn. */
+  /** The GM's log of the turn, in words (as the views write it: theTurnsLinesInWords, P1-12c3). */
   lines: Line[];
 }
 /** Plays one whole turn (resolveTurn) from the board as staged (plan P1-08j1): every realm human-held, each hero given
@@ -308,9 +310,10 @@ export function playTurn(
     rows: unknown,
     turn: number,
   ) => { state: string; log: Line[] };
+  const inWords = engineFn(b.engine, 'theTurnsLinesInWords') as (log: Line[]) => { gmLog: Line[] };
   const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
   const resolved = resolveTurn(JSON.stringify(G), inVm(JSON.stringify(rows)), G.turn);
-  return { after: JSON.parse(resolved.state) as World, lines: resolved.log };
+  return { after: JSON.parse(resolved.state) as World, lines: inWords(resolved.log).gmLog };
 }
 /** A hero's points of movement left. */
 export const points = (b: Board, c: Character) => {

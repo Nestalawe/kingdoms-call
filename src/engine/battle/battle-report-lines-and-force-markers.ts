@@ -1,25 +1,34 @@
-import { battleLineTiers, battleTallyLine } from './fates.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
 import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { dragonTamed } from '../discoveries.ts';
-import { narrText } from '../turn/log-line-helpers.ts';
-import { emit, emitNarrLine, narrate, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
+  emit,
+  emitNarrLine,
+  narrate,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+} from '../turn/events-and-their-audiences.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
 import type { Quality } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { FightLine, NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import {
+  THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
+  type AForceDrawnUpForBattle,
+} from './the-facts-a-battles-lines-record.ts';
 
 // ── BATTLE REPORT LINES AND FORCE MARKERS (plan P1-08c: lifted out of resolveTurn) ────
 // The lines a battle report is built from: a force's header row (forceMarker), a unit's quality in words, a hero's
 // battlecry, a side's Druid shortfall and terrain notes, and emitBattle, which files a battle's lines in the GM's log
 // with its number (turnContext._battleSeq) and each line's tier. forceMarker, druidShortfallLine and emitBattle take the
 // turn's context first (src/engine/turn/context.ts); the rest read no turn state.
-// ── Structured battle-force marker (items 2 & 3) ── Emits a single parseable log line the player
+// ── Structured battle-force marker (items 2 & 3) ── The fact of a single parseable log line the player
 // Chronicle expands into: a header coloured in the owner's map colour (neutral = dark grey) + one
-// icon row per unit (same look as "Your Realm").
+// icon row per unit (same look as "Your Realm"). Since P1-12c3 it returns the fact, and the views write its words
+// ('⚑FORCE⚑' and the header as JSON: src/views/prose/the-words-of-a-battles-lines.ts).
 // playerIdx null → neutral. role: 'attacker' | 'defender'. verbText overrides the default verb.
 export function forceMarker(
   turnContext: TurnContext,
@@ -29,7 +38,7 @@ export function forceMarker(
   armies: Army[] | null | undefined,
   verbText?: string | null,
   opts?: { guard?: boolean | undefined } | null,
-) {
+): AForceDrawnUpForBattle {
   const { G } = turnContext;
   const color = playerIdx != null && G.players[playerIdx] ? G.players[playerIdx].color || null : null;
   const guard = !!(opts && opts.guard); // a local chieftain's force — the player portal tints it chieftain-brown
@@ -60,18 +69,16 @@ export function forceMarker(
       _nm = `${_dn}'s leaderless host` + _nm.slice(_dn.length);
     }
   }
-  return (
-    '⚑FORCE⚑' +
-    JSON.stringify({
-      name: _nm,
-      color,
-      neutral: playerIdx == null,
-      guard,
-      role: role || '',
-      verb: verbText || '',
-      armies: arr,
-    })
-  );
+  return {
+    kind: 'a force drawn up for battle',
+    name: _nm,
+    color,
+    neutral: playerIdx == null,
+    guard,
+    role: role || '',
+    verb: verbText || '',
+    armies: arr,
+  };
 }
 
 export function qualityAdj(quality: Quality) {
@@ -178,25 +185,25 @@ export function emitBattle(
   // 2026-09-23d (Toby item 1): every line is tagged with this battle's id and its tier, and a
   // losses tally is added (short view only) where the casualty sections begin — see
   // battleLineTiers / battleTallyLine. The player portal folds the full report behind a button.
+  // Since P1-12c3 the tiers and the tally are worked out from the lines' words, so in the views, once they have written
+  // them (theTurnsLinesInWords, src/views/prose/the-words-of-each-line.ts): each line is filed with its tier still to
+  // work out, and the tally's place after them, with the fight's event (its audience, hero and place, as the tally
+  // had). A tally is made from lines for everyone in the fight (the casualty lists, a breach), so a battle with none
+  // has no place for one.
   const _bid = ++turnContext._battleSeq;
   const _lines = (battle && battle.narrative) || [];
-  const _texts = _lines.map(narrText);
-  const _tiers = battleLineTiers(_texts);
-  let _tally = null;
-  try {
-    _tally = battleTallyLine(_texts);
-  } catch (_e) {
-    _tally = null;
-  }
-  let _tallyDone = false;
-  _lines.forEach((line, i) => {
-    if (_tally && !_tallyDone && i === _tiers.casIdx) {
-      emit(turnContext, { ...fight, text: _tally, battle: { id: _bid, tier: 't' } });
-      _tallyDone = true;
-    }
-    emitNarrLine(turnContext, line, { ...fight, battle: { id: _bid, tier: _tiers.t[i] || 'k' } });
+  _lines.forEach((line) => {
+    emitNarrLine(turnContext, line, {
+      ...fight,
+      battle: { id: _bid, tier: A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES },
+    });
   });
-  if (_tally && !_tallyDone) emit(turnContext, { ...fight, text: _tally, battle: { id: _bid, tier: 't' } });
+  if (_lines.some((line) => typeof line !== 'object' || 'kind' in line || line.onlyPlayer == null))
+    emit(turnContext, {
+      ...fight,
+      fact: THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
+      battle: { id: _bid, tier: 't' },
+    });
   const sTxt = opts.summaryText || (battle && battle.summaryText);
   if (sTxt) emit(turnContext, { ...fight, text: sTxt, battle: { id: _bid, tier: 's' } });
 }

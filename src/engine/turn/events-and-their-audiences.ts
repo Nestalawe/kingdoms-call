@@ -1,8 +1,9 @@
 // ── EVERY LINE OF THE TURN, AND WHO MAY READ IT (plan P1-12a, Decisions 2 to 6) ────
 // The one door into the GM's log of the turn (turnContext.turnLog): emit(turnContext, event). An event says what
-// happened (its type and, for now, its finished text), where and when (its province, its phase), whom it is about (its
-// hero, its heroes, its battle), and who may read it (its audience). Nothing else writes to turnLog: the lint rule
-// kc/narrative-lines-go-through-emit refuses a write anywhere but here (docs/traps.md, "A line goes through emit").
+// happened (its type, and its finished text or the fact its words are written from), where and when (its province, its
+// phase), whom it is about (its hero, its heroes, its battle), and who may read it (its audience). Nothing else writes
+// to turnLog: the lint rule kc/narrative-lines-go-through-emit refuses a write anywhere but here (docs/traps.md, "A line
+// goes through emit").
 //
 // The audience, as the reports read the line today (playerEvents, src/views/every-realms-report-and-the-lines-each-
 // realm-reads.ts):
@@ -15,8 +16,8 @@
 //
 // Nothing stored changes in P1-12a and P1-12b (Decision 2): emit writes today's line forms, key for key and in the
 // same order: the 17 keys of the lines the old `log` helper wrote; the 14 of the lines that were pushed straight
-// into turnLog (form: 'bare', with no battle fields); and notFor after them when an `except` is given. P1-12c changes
-// the stored form once.
+// into turnLog (form: 'bare', with no battle fields); and notFor after them when an `except` is given. P1-12c keeps it
+// (its Decision 3): the stored form changes once, declared, when the last area is typed.
 //
 // Every event names its hero (P1-12c2; docs/traps.md, "Every event names its hero"), and the phase falls back as the
 // old `log` helper's did:
@@ -27,16 +28,31 @@
 //   phase  left out or null: the phase of that order, else the phase resolving, else 99 once the phases are over;
 //          'none': no phase (the lines that were pushed straight into turnLog, which never had the 99)
 //
+// A line records its finished words (text) or, from P1-12c3, a fact (fact: one kind of LineFact, the union of every
+// area's kinds, each typed in its area's module beside its code; src/engine/battle/the-facts-a-battles-lines-record.ts
+// is the first). The views write a fact's words after the turn (src/views/prose/; docs/traps.md, "A line goes through
+// emit"), and the GM's log is stored with every line's words, in the form above: a fact never reaches the store. A
+// battle's lines take their tiers, and its losses tally its place, from those words, in the views too (emitBattle).
+//
 // It also holds the helpers that write lines: a fight's narrative (narrate, narrateTo, narrateAll, narrateAt,
 // takeBackLinesFrom; emitNarrLine writes it out with the fight's event, FightLine), a line to the hero or the province
 // owner it happened to (notifyTarget, notifyProvinceOwner), a private line with a public twin (logSplit), and the
 // placement of the skill rises held back to the end of the phase (writeDeferredSkillLines).
 import type { TurnContext } from './context.ts';
+import type { TheFactOfABattlesLine } from '../battle/the-facts-a-battles-lines-record.ts';
 
 /** An event's hero when the line is the deed of the hero whose order is resolving, whoever he is: emit files it under
  *  him only when the line already reaches his realm, else under no hero. The area rows of P1-12c replace it with the
  *  hero each fact names. */
 export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolving';
+
+/** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
+export type LineFact = TheFactOfABattlesLine;
+
+/** A battle's line whose tier ('k' key or 'd' detail) the views work out from the words of the battle's lines, as
+ *  emitBattle did before P1-12c3 (theTurnsLinesInWords, src/views/prose/the-words-of-each-line.ts). The GM's log is
+ *  stored with the tier in its place. */
+export const A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES = "worked out from the words of the battle's lines";
 
 /** Who may read a line (each left out grants nothing). */
 export interface LineAudience {
@@ -50,11 +66,10 @@ export interface LineAudience {
   except?: number[] | undefined;
 }
 
-/** Something that happened this turn, with its finished text (P1-12c gives each area its typed facts). */
-export interface TurnEvent {
-  /** 'system', 'combat', 'move', 'hire', 'explore', 'message', … */
-  type: string;
-  text: string;
+/** An event but its type and its words: who may read a line, where and when, whom it is about. A caller that files
+ *  several lines alike, or hands a helper the line's place (logSplit, reportHeroFall, the skill rises held back),
+ *  builds it once: emit(turnContext, { type, text, ...place }). */
+export interface EventButItsWords {
   audience: LineAudience;
   province?: number | null | undefined;
   /** 0 to 4, or 99 for the end of the turn; left out or null: the phase resolving; 'none': no phase. */
@@ -80,10 +95,23 @@ export interface TurnEvent {
   form?: 'full' | 'bare' | undefined;
 }
 
-/** A line of the GM's log (turnLog), as emit writes it: today's stored form. */
+/** What every line of a fight is, but its words: its type, its audience (those who fought in it), its province,
+ *  phase, heroes and battle. emitNarrLine files each line of the fight's narrative with it. */
+export interface FightLine extends EventButItsWords {
+  /** 'system', 'combat', 'move', 'hire', 'explore', 'message', … */
+  type: string;
+}
+
+/** Something that happened this turn: its finished words (text), or the fact its words are written from (fact; the
+ *  views write them, src/views/prose/), never both. */
+export type TurnEvent = FightLine & ({ text: string; fact?: undefined } | { fact: LineFact; text?: undefined });
+
+/** A line of the GM's log (turnLog), as emit writes it: today's stored form, but that a line recording a fact has no
+ *  words yet (text null, its fact last) and a battle's line its tier still to work out from the words; the views write
+ *  them (theTurnsLinesInWords, src/views/prose/the-words-of-each-line.ts), and the GM's log is stored with them. */
 export interface LogLine {
   type: string;
-  text: string;
+  text: string | null;
   actor: number | null;
   targets: (number | null)[];
   provinceId: number | null;
@@ -102,21 +130,15 @@ export interface LogLine {
   gameEnd?: boolean;
   /** The realms that never read it (audience.except). */
   notFor?: number[];
+  /** What a typed line records, until the views write its words (never stored). */
+  fact?: LineFact;
 }
 
-/** A line of a battle's or a duel's narrative: shown to everyone there (narrate), or (an object with onlyPlayer) to one
- *  realm alone (narrateTo). emitNarrLine writes each into the GM's log in order. */
+/** A line of a battle's or a duel's narrative: shown to everyone there (narrate: its words, or the fact they are
+ *  written from), or (an object with onlyPlayer) to one realm alone (narrateTo). emitNarrLine writes each into the GM's
+ *  log in order. */
 export type NarrativeLine =
-  string | { text: string; onlyPlayer?: number | null | undefined; charId?: number | null | undefined };
-
-/** What every line of a fight is, but its text: its type, its audience (those who fought in it), its province, phase,
- *  heroes and battle. emitNarrLine files each line of the fight's narrative with it. */
-export type FightLine = Omit<TurnEvent, 'text'>;
-
-/** An event but its type and text: who may read a line, where and when, whom it is about. A caller that files several
- *  lines alike, or hands a helper the line's place (logSplit, reportHeroFall, the skill rises held back), builds it
- *  once: emit(turnContext, { type, text, ...place }). */
-export type EventButItsWords = Omit<TurnEvent, 'type' | 'text'>;
+  string | LineFact | { text: string; onlyPlayer?: number | null | undefined; charId?: number | null | undefined };
 
 /** The hero a line naming THE_HERO_WHOSE_ORDER_IS_RESOLVING is filed under: that hero, but only when the line already
  *  reaches his realm by its audience (told to it, its deed, seen by the world or seen there; a battle's line reaches
@@ -144,14 +166,19 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
   const { audience } = event;
   // Read as the engine may hand it: most callers are not type-checked yet (P1-10 and P1-16 type them).
   const heroAsHanded: unknown = event.hero;
+  const wordsOrFact = event.fact === undefined ? `"${event.text}"` : `recording "${event.fact.kind}"`;
   if (heroAsHanded === undefined)
     throw new Error(
-      `emit: the event "${event.text}" names no hero. Every event names its hero: a hero's id, null for no hero, or ` +
+      `emit: the event ${wordsOrFact} names no hero. Every event names its hero: a hero's id, null for no hero, or ` +
         'THE_HERO_WHOSE_ORDER_IS_RESOLVING (docs/traps.md, "Every event names its hero").',
     );
+  // Read as the engine may hand it, too: an event records its words or its fact, never both.
+  const wordsAsHanded: unknown = event.text;
+  if (event.fact !== undefined && wordsAsHanded !== undefined)
+    throw new Error(`emit: the event ${wordsOrFact} has words as well: the views write a fact's words.`);
   const line: LogLine = {
     type: event.type,
-    text: event.text,
+    text: event.fact === undefined ? event.text : null,
     actor: audience.actor ?? null,
     targets: audience.realms ?? [],
     provinceId: event.province ?? null,
@@ -183,8 +210,9 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
     line.gameEnd = event.gameEnd ?? false;
   }
   if (audience.except !== undefined) line.notFor = audience.except;
+  if (event.fact !== undefined) line.fact = event.fact;
   turnContext.turnLog.push(line);
-  console.log(`[${event.type}] ${event.text}`);
+  console.log(`[${event.type}] ${event.fact === undefined ? event.text : event.fact.kind}`);
 }
 
 // ── A FIGHT'S NARRATIVE ────
@@ -194,9 +222,9 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
 // learn), filed under that realm's hero. Lines already written move only through narrateAll, narrateAt and
 // takeBackLinesFrom, each line as it is, so a line for one realm stays that realm's.
 
-/** Adds a line for everyone in the fight. */
-export function narrate(narrative: NarrativeLine[], text: string): void {
-  narrative.push(text);
+/** Adds a line for everyone in the fight: its words, or the fact they are written from. */
+export function narrate(narrative: NarrativeLine[], line: string | LineFact): void {
+  narrative.push(line);
 }
 
 /** Adds a line for one realm alone, filed under its hero. */
@@ -235,6 +263,7 @@ export function takeBackLinesFrom(narrative: NarrativeLine[], index: number): Na
 //
 // So a narrative array may now hold OBJECTS as well as strings (narrateTo makes them):
 // { text:'…', onlyPlayer:<realm index>, charId:<that realm's character> }
+// and, from P1-12c3, facts (a LineFact, with its kind), filed with the fight's event like a string.
 // Every consumer of a narrative array routes each entry through emitNarrLine(), which files a
 // private entry to that realm alone (told to it alone, seen by nobody else, no heroes spill) and
 // every other line with the fight's own event (FightLine: its audience, province, phase, heroes,
@@ -242,6 +271,10 @@ export function takeBackLinesFrom(narrative: NarrativeLine[], index: number): Na
 // it exactly where it happened in the fight. narrText() is for the rare consumer that needs the
 // raw string (splice-point searches, etc.).
 export function emitNarrLine(turnContext: TurnContext, line: NarrativeLine, fight: FightLine): void {
+  if (typeof line === 'object' && 'kind' in line) {
+    emit(turnContext, { ...fight, fact: line });
+    return;
+  }
   if (typeof line === 'object') {
     if (line.onlyPlayer == null) {
       emit(turnContext, { ...fight, text: line.text });

@@ -15,6 +15,7 @@ import { createTurnContext, type TurnContext } from '../../src/engine/turn/conte
 import {
   emit,
   emitNarrLine,
+  type EventButItsWords,
   type FightLine,
   narrate,
   narrateTo,
@@ -158,7 +159,7 @@ describe('the hero whose order is resolving files a line only when it already re
     { id: 7, player: 0 },
     { id: 9, player: null },
   ];
-  type ItsPlace = Omit<Parameters<typeof emit>[1], 'type' | 'text' | 'hero'> & Partial<Pick<TurnEvent, 'hero'>>;
+  type ItsPlace = Omit<EventButItsWords, 'hero'> & Partial<Pick<TurnEvent, 'hero'>>;
   const filedUnder = (event: ItsPlace, state = resolving) => {
     const tc = newContext(state, heroes);
     emit(tc, { type: 'system', text: 'a line', hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, ...event });
@@ -233,5 +234,40 @@ describe('every event names its hero', () => {
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     expect(tc.turnLog.map((l) => l.charId)).toEqual([null, null, 7]);
+  });
+});
+
+// P1-12c3 (P1-12's Decisions of 2026-10-24, Decision 2): an event records its words or the fact they are written from,
+// and the views write a fact's words (tests/unit/the-views-write-each-lines-words.test.ts).
+describe('an event records its words or its fact', () => {
+  const state: ContextState = { charId: 7, phase: 2, currentPhase: 2, afterPhases: false };
+  const TALLY = { kind: "a battle's losses, tallied from its lines" } as const;
+
+  test('a fact is filed with no words yet, the fact last, and every other key in its place', () => {
+    const tc = newContext(state);
+    emit(tc, { type: 'combat', fact: TALLY, audience: { realms: [0] }, hero: null, battle: { id: 1, tier: 't' } });
+    expect(tc.turnLog[0]).toMatchObject({ type: 'combat', text: null, targets: [0], bTier: 't', fact: TALLY });
+    expect(Object.keys(tc.turnLog[0] ?? {}).at(-1)).toBe('fact');
+  });
+
+  test('an event with words and a fact as well throws, and writes no line', () => {
+    const tc = newContext(state);
+    // An engine file not yet type-checked can hand such an event: the type refuses it, emit throws.
+    const both: unknown = { type: 'combat', text: 'A tally.', fact: TALLY, audience: {}, hero: null };
+    expect(() => {
+      emit(tc, both as TurnEvent);
+    }).toThrow(/has words as well/);
+    expect(tc.turnLog).toEqual([]);
+  });
+
+  test("narrate adds a fact for everyone in the fight; emitNarrLine files it with the fight's event", () => {
+    const tc = newContext(state);
+    const narrative: NarrativeLine[] = [];
+    narrate(narrative, TALLY);
+    const fight: FightLine = { type: 'combat', audience: { realms: [0, 1], seen: 'battle' }, hero: null, province: 3 };
+    narrative.forEach((line) => {
+      emitNarrLine(tc, line, fight);
+    });
+    expect(tc.turnLog[0]).toMatchObject({ text: null, fact: TALLY, targets: [0, 1], public: true, provinceId: 3 });
   });
 });

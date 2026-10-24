@@ -70,6 +70,8 @@ interface Resolved {
 interface Built {
   reports: { gp: { player_index: number }; report: Record<string, unknown> }[];
   tel: { gs: unknown; collected: Record<string, unknown> };
+  /** The GM's log in words (P1-12c3). */
+  gmLog: unknown;
 }
 
 /** A copy, as a page's writes are JSON. */
@@ -192,7 +194,8 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
       // through the module, so a stand-in set on it (reportEveryRealm, a test's vi.spyOn) is the one called
       return reportsModule.buildReports(resolved.whatTheReportsRead());
     });
-    const log = plain(resolved.log);
+    // The GM's log in words, as the views wrote it and the shell saves it (P1-12c3).
+    const log = plain(built.gmLog) as Line[];
     const reports: Record<number, Record<string, unknown>> = {};
     for (const { gp, report } of built.reports) reports[gp.player_index] = plain(report);
     return {

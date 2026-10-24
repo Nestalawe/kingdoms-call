@@ -185,7 +185,7 @@ export async function runTurn(opts) {
     // The Spy stealth is rolled first, on the working copy (an engine step, P1-12b2); then the views build the reports
     // from what the turn hands over for them (P1-12b3), writing nothing.
     resolved.spyStealthAndInvisibilityStampedForTheReports();
-    const { reports, tel } = buildReports(resolved.whatTheReportsRead());
+    const { reports, tel, gmLog } = buildReports(resolved.whatTheReportsRead());
     let reportErrors = [];
     for (const { gp, report } of reports) {
       report.engineStamp = typeof runningBuildStamp === 'function' ? runningBuildStamp() : null; // which GM build wrote it: the page's to know, not the engine's
@@ -213,12 +213,13 @@ export async function runTurn(opts) {
       }
     }
 
-    // 11. Save full log to turn_logs table
+    // 11. Save full log to turn_logs table: the turn's lines in words, as the views wrote them (P1-12c3), in the form
+    // the GM log has always been stored in.
     await sb.from('turn_logs').insert({
       game_id: gameRow.id,
       player_index: -1, // -1 = full GM log
       turn: G.turn - 1,
-      entries: resolved.log,
+      entries: gmLog,
     });
 
     // 12. TELEMETRY (2026-09-25): one turn_events row per realm, and game_results when the game ended.
