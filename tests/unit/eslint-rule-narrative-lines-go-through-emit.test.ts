@@ -1,7 +1,8 @@
 // kc/narrative-lines-go-through-emit (tools/eslint-rules/; plan P1-12, Decision 6): every line of the turn enters the
 // GM's log through emit. Refused: a write to turnLog (a mutating call on it, an assignment to it or inside it, delete,
-// ++), a log() call (but console's and Math's), a push, unshift or splice on a fight's narrative, and an object literal
-// with an onlyPlayer key. Allowed: emit, narrate, narrateTo, narrateAll, narrateAt, takeBackLinesFrom, reading the log
+// ++), a log() call (but console's and Math's), a push, unshift or splice on a fight's narrative, an object literal
+// with an onlyPlayer key, and an event written without its hero (emit's event, or a place with an audience, with no hero
+// and no spread: P1-12c2). Allowed: emit, narrate, narrateTo, narrateAll, narrateAt, takeBackLinesFrom, reading the log
 // and narratives, console.log, Math.log. Each refusal is red on its planted line. Where the rule runs (all of the engine
 // and the views but the events file, since P1-12a4) is eslint.config.js's; tests/static/harness.test.ts checks it
 // refuses a planted line there and nowhere else.
@@ -19,11 +20,22 @@ const turnLog = [{ messageId: 'turnLog' }];
 const log = [{ messageId: 'log' }];
 const narrative = [{ messageId: 'narrative' }];
 const onlyPlayer = [{ messageId: 'onlyPlayer' }];
+const hero = [{ messageId: 'hero' }];
 
 tester.run('kc/narrative-lines-go-through-emit', rule, {
   valid: [
     // the door, and the narrative's two helpers
-    "emit(turnContext, { type: 'system', text, audience: { realms: [pi] } });",
+    "emit(turnContext, { type: 'system', text, audience: { realms: [pi] }, hero: c.id });",
+    // every event names its hero: a hero's id, null for no hero, the hero whose order is resolving; a place with an
+    // audience names it too; an event spreading a place carries the place's
+    "emit(turnContext, { type: 'system', text, audience: {}, hero: null });",
+    "emit(turnContext, { type: 'system', text, audience: { actor: pi }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING });",
+    "logSplit(turnContext, 'system', mine, theirs, { audience: { actor: pi }, hero: c.id, province: p.id });",
+    'const place = { audience: { realms: [owner] }, hero: null, province: prov.id };',
+    "emit(turnContext, { type: 'combat', text: slainLine, ...place });",
+    "lines.push([msg, { audience: { actor: pi }, 'hero': THE_HERO_WHOSE_ORDER_IS_RESOLVING }]);",
+    // an object that is no event: no audience, not handed to emit
+    'const opts = { actor: c.player, charId: c.id };',
     "narrate(narrative, 'The hosts close.');",
     'narrateTo(narrative, realm, hero.id, line);',
     // and the three that move lines already written: a duel's narrative into a battle's, lines put in before a line,
@@ -51,7 +63,7 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
     'const r = Math.log(Math.max(a, 1e-9) / Math.max(b, 1e-9));',
     'const small = Math.abs(S) < globalThis.Math.log(1.15);',
     {
-      code: 'emit(turnContext, { type: "move", text: t as string, audience: {} });',
+      code: 'emit(turnContext, { type: "move", text: t as string, audience: {}, hero: null });',
       languageOptions: { parser: tseslint.parser },
     },
   ],
@@ -91,6 +103,21 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
       errors: onlyPlayer,
     },
     { code: "const l = { text, 'onlyPlayer': 1 };", errors: onlyPlayer },
+    // an event written without its hero: emit's, or a place with an audience
+    { code: "emit(turnContext, { type: 'system', text, audience: { realms: [pi] } });", errors: hero },
+    { code: "emit(turnContext, { type: 'system', text, audience: {}, heroes: [c.id] });", errors: hero },
+    { code: "emit(turnContext, { type: 'system', text, audience: {}, charId: c.id });", errors: hero },
+    {
+      code: "logSplit(turnContext, 'system', mine, theirs, { audience: { actor: pi }, province: p.id });",
+      errors: hero,
+    },
+    { code: 'const place = { audience: { realms: [owner] }, province: prov.id };', errors: hero },
+    { code: 'lines.push([msg, { audience: { actor: pi }, phase: ph }]);', errors: hero },
+    {
+      code: 'emit(turnContext, { type: "move", text: t as string, audience: {} });',
+      languageOptions: { parser: tseslint.parser },
+      errors: hero,
+    },
     {
       code: "log('system', (text as string), { actor: pi });",
       languageOptions: { parser: tseslint.parser },

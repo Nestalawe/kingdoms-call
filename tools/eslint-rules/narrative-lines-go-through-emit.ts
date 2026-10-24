@@ -8,7 +8,11 @@
 // - push, unshift or splice on a fight's narrative (narrative, narr or X.narrative): narrate(narrative, text), or
 //   narrateTo(narrative, realm, heroId, text) for one realm alone (and, for lines already written, narrateAll,
 //   narrateAt and takeBackLinesFrom);
-// - an object literal with an onlyPlayer key: narrateTo makes it.
+// - an object literal with an onlyPlayer key: narrateTo makes it;
+// - an event written without its hero (P1-12c2): emit's event, or an event's place (an object literal with an audience
+//   key: what logSplit, reportHeroFall and the held-back skill rises are handed), with no hero key and no spread. Every
+//   event names its hero: a hero's id, null for no hero, or THE_HERO_WHOSE_ORDER_IS_RESOLVING. A spread place carries
+//   its own (its literal is checked where it is written; emit throws on one left out).
 // Reading a narrative, emit and the events file's narrative helpers are allowed.
 import type { Rule } from 'eslint';
 
@@ -48,6 +52,12 @@ const isConsoleOrMath = (node: Expression): boolean =>
   memberName(node) === 'console' ||
   memberName(node) === 'Math';
 
+/** A property's name when its key is written as a name or a string. */
+function keyNameOf(property: { key: { type: string; name?: string; value?: unknown } }): unknown {
+  const { key } = property;
+  return key.type === 'Identifier' ? key.name : key.type === 'Literal' ? key.value : null;
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
@@ -65,6 +75,9 @@ const rule: Rule.RuleModule = {
       onlyPlayer:
         'A line of a narrative for one realm alone is narrateTo(narrative, realm, heroId, text), not an object with ' +
         'onlyPlayer.',
+      hero:
+        "Every event names its hero: hero: <a hero's id>, hero: null for no hero, or hero: " +
+        'THE_HERO_WHOSE_ORDER_IS_RESOLVING (docs/traps.md, "Every event names its hero").',
     },
     schema: [],
   },
@@ -96,9 +109,19 @@ const rule: Rule.RuleModule = {
       },
       Property(node) {
         if (node.parent.type !== 'ObjectExpression' || node.computed) return;
-        const { key } = node;
-        const keyName = key.type === 'Identifier' ? key.name : key.type === 'Literal' ? key.value : null;
-        if (keyName === 'onlyPlayer') context.report({ node, messageId: 'onlyPlayer' });
+        if (keyNameOf(node) === 'onlyPlayer') context.report({ node, messageId: 'onlyPlayer' });
+      },
+      ObjectExpression(node) {
+        const { parent } = node;
+        const isEmitsEvent =
+          parent.type === 'CallExpression' &&
+          parent.callee.type === 'Identifier' &&
+          parent.callee.name === 'emit' &&
+          parent.arguments[1] === node;
+        const keys = node.properties.map((p) => (p.type === 'Property' && !p.computed ? keyNameOf(p) : null));
+        if (!isEmitsEvent && !keys.includes('audience')) return;
+        if (keys.includes('hero') || node.properties.some((p) => p.type === 'SpreadElement')) return;
+        context.report({ node, messageId: 'hero' });
       },
     };
   },
