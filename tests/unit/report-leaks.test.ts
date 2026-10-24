@@ -388,6 +388,11 @@ const ev = (
   place: {
     province?: number | null;
     hero?: number | null;
+    /** Left out: the hero is named when one is given (false: emit filed the line under the hero whose order was
+     *  resolving). */
+    heroNamed?: boolean;
+    /** The realm the hero served as the line was written (left out: none). */
+    heroRealmThen?: number | null;
     heroes?: number[] | null;
     spy?: boolean;
     type?: string;
@@ -399,6 +404,8 @@ const ev = (
   province: place.province ?? null,
   phase,
   hero: place.hero ?? null,
+  heroNamed: place.heroNamed ?? place.hero != null,
+  heroRealmThen: place.heroRealmThen ?? null,
   heroes: place.heroes ?? null,
   spy: place.spy ?? false,
 });
@@ -559,6 +566,16 @@ describe('the audience check: every line a realm reads comes from an event whose
       'realm 0 reads a line its audience does not admit at lastTurnLog[4]',
     ],
     [
+      // P1-12c1: a line filed under a hero only because his order was resolving reaches his realm by its audience alone.
+      "a line told to another realm, filed under the reader's hero only because his order was resolving",
+      (_, r, p) => {
+        const told = 'Your garrison in Fenwick resumes its post.';
+        p.events.push(ev(told, 1, { realms: [1] }, { hero: 10, heroNamed: false, heroRealmThen: 0, province: 1 }));
+        read(r, 0, told, 1);
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
+    ],
+    [
       'a line no event of the turn wrote',
       (_, r) => {
         read(r, 0, 'Aldo the Bold finds a dragon.', 2);
@@ -640,6 +657,40 @@ describe('the audience check: every line a realm reads comes from an event whose
         }),
       ),
     ).toEqual([`realm 0 reads a line its audience does not admit at spyActivity[0].lines[1]: "${CLASH}"`]);
+    // P1-12c1: a line that names its hero is about him, whatever its audience; one filed under the hero whose order was
+    // resolving is about him when it reached his realm then, so the realm holding him as the report is built reads it
+    // (Aldo's own deed, a line told to Ashmark or one seen where he was, read by Brightvale had he joined it that turn),
+    // or when he served no realm.
+    const rests = 'Aldo the Bold rests and recovers.';
+    const wage = "Aldo the Bold's wage is paid.";
+    const digs = 'Aldo the Bold digs in before Coldmere.';
+    const stranger = 'Ewan the Unsworn wanders into Fenwick.';
+    const admitted = [
+      perceived((_, r, p) => {
+        p.events.push(ev(STORM, 1, {}, { hero: 10, heroRealmThen: 0, province: 1 }));
+        read(r, 0, STORM, 1);
+      }),
+      perceived((t, r, p) => {
+        char(t.after, 10).player = 1;
+        p.events.push(ev(rests, 1, { actor: 0 }, { hero: 10, heroNamed: false, heroRealmThen: 0 }));
+        read(r, 1, rests, 1);
+      }),
+      perceived((t, r, p) => {
+        char(t.after, 10).player = 1;
+        p.events.push(ev(wage, 1, { realms: [0] }, { hero: 10, heroNamed: false, heroRealmThen: 0 }));
+        read(r, 1, wage, 1);
+      }),
+      perceived((t, r, p) => {
+        char(t.after, 10).player = 1;
+        p.events.push(ev(digs, 1, { seen: 'there' }, { hero: 10, heroNamed: false, heroRealmThen: 0, province: 2 }));
+        read(r, 1, digs, 1);
+      }),
+      perceived((_, r, p) => {
+        p.events.push(ev(stranger, 1, { realms: [2] }, { hero: 11, heroNamed: false, province: 1 }));
+        read(r, 1, stranger, 1);
+      }),
+    ];
+    expect(admitted.map((t) => audienceCheck?.(t))).toEqual([[], [], [], [], []]);
   });
 
   test("an unmet realm's name, read as “an unknown realm”, matches its event; another wording does not", () => {

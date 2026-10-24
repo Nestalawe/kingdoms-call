@@ -238,8 +238,8 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
 
   /** From now on each turn's events are recorded as they are emitted (emit, src/engine/turn/events-and-their-
    *  audiences.ts, stood in, in the vm, to note each event after it has filed its line), with the phase and the hero
-   *  its line was filed under (emit's fallbacks worked out); and play returns them with the turn's sight as
-   *  r.perception. */
+   *  its line was filed under (emit's fallbacks worked out), whether the event named that hero, and the realm he served
+   *  as the line was written; and play returns them with the turn's sight as r.perception. */
   let recording = false;
   function recordTheEvents() {
     if (recording) return;
@@ -249,8 +249,10 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
         emitFor(turnContext, event);
         const line = turnContext.turnLog[turnContext.turnLog.length - 1];
         __kcEventsOfTheTurn.push({ type: event.type, text: event.text, audience: { ...event.audience },
-          province: event.province ?? null, phase: line.phase, hero: line.charId, heroes: event.heroes ?? null,
-          spy: !!event.spy });
+          province: event.province ?? null, phase: line.phase, hero: line.charId,
+          heroNamed: typeof event.hero === 'number',
+          heroRealmThen: line.charId == null ? null : (turnContext.G.characters.find((c) => c && c.id === line.charId)?.player ?? null),
+          heroes: event.heroes ?? null, spy: !!event.spy });
       }; }`);
   }
   /** The turn's recorded events (as many as its log has lines, or it throws: a line that didn't come through emit) and

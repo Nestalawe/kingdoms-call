@@ -2,8 +2,9 @@
 // writes today's stored forms, so nothing stored changes in P1-12a and P1-12b: a line has the 17 keys log() gave it, a
 // 'bare' one (the lines once pushed straight into turnLog) the first 14, `except` adds notFor last; an audience grants
 // what the line's fields say; hero and phase left out or null are the hero and phase of the order resolving (else the
-// phase resolving, else 99 once the phases are over), 'none' a real null; narrate and narrateTo add a line for
-// everyone in the fight, or one for one realm alone that emitNarrLine files to that realm under its hero.
+// phase resolving, else 99 once the phases are over), 'none' a real null; a line is filed under the hero whose order
+// is resolving only when it already reaches his realm (P1-12c1); narrate and narrateTo add a line for everyone in the
+// fight, or one for one realm alone that emitNarrLine files to that realm under its hero.
 // (The oracle that checked emit against copies of the code before it, for any input, ran from P1-12a2 to P1-12a4 and
 // went with log() in P1-12a4, as Decision 5 planned. The lines a capture writes, which went straight into turnLog
 // before: tests/unit/a-capture-tells-the-realm-that-lost-it-with-no-hero-and-no-phase.test.ts.)
@@ -35,9 +36,13 @@ interface ContextState {
   afterPhases: boolean;
 }
 
-/** A context made by the engine (createTurnContext), in the state given. */
-function newContext(state: ContextState): TurnContext {
-  const tc = createTurnContext({ turn: 3, players: [], world: { provinces: [] } }, [], 3) as unknown as TurnContext;
+/** A context made by the engine (createTurnContext), in the state given, with these heroes in the world. */
+function newContext(state: ContextState, characters: { id: number; player: number | null }[] = []): TurnContext {
+  const tc = createTurnContext(
+    { turn: 3, players: [], characters, world: { provinces: [] } },
+    [],
+    3,
+  ) as unknown as TurnContext;
   tc._logCtx = { charId: state.charId, phase: state.phase };
   tc._currentPhase = state.currentPhase;
   tc._afterPhases = state.afterPhases;
@@ -122,5 +127,58 @@ describe("emit's forms", () => {
     });
     expect(tc.turnLog[0]).toMatchObject({ targets: [0, 1], actor: 0, public: true, charIds: [11, 12] });
     expect(tc.turnLog[1]).toMatchObject({ targets: [1], actor: null, public: false, charIds: null, charId: 12 });
+  });
+});
+
+// P1-12c1 (P1-12's Decisions of 2026-10-24, Decision 1): a line that names no hero is filed under the hero whose order
+// is resolving only when its audience already reaches his realm, since a realm reads every line filed under one of its
+// heroes. Aldric (7) serves realm 0 and his order is resolving; Wenna (9) serves no realm.
+describe('the hero whose order is resolving files a line only when it already reaches his realm', () => {
+  const resolving: ContextState = { charId: 7, phase: 2, currentPhase: 2, afterPhases: false };
+  const heroes = [
+    { id: 7, player: 0 },
+    { id: 9, player: null },
+  ];
+  const filedUnder = (event: Omit<Parameters<typeof emit>[1], 'type' | 'text'>, state = resolving) => {
+    const tc = newContext(state, heroes);
+    emit(tc, { type: 'system', text: 'a line', ...event });
+    return tc.turnLog[0]?.charId;
+  };
+
+  test('a line told to realm 1 alone is filed under no hero; one told to realm 0 is filed under Aldric', () => {
+    expect(filedUnder({ audience: { realms: [1], actor: null } })).toBeNull();
+    expect(filedUnder({ audience: { realms: [0], actor: null } })).toBe(7);
+  });
+
+  test('his realm reaches it as its deed, or seen by the world or there; a battle only by being told', () => {
+    expect(filedUnder({ audience: { actor: 0 } })).toBe(7);
+    expect(filedUnder({ audience: { seen: 'world' } })).toBe(7);
+    expect(filedUnder({ audience: { seen: 'there' }, province: 4 })).toBe(7);
+    expect(filedUnder({ audience: { actor: 1 } })).toBeNull();
+    expect(filedUnder({ audience: { realms: [1], seen: 'battle' }, province: 4 })).toBeNull();
+    expect(filedUnder({ audience: { realms: [0, 1], seen: 'battle' }, province: 4 })).toBe(7);
+  });
+
+  test("a line for the GM alone is filed under no hero; a hero named, or 'none', is kept", () => {
+    expect(filedUnder({ audience: {} })).toBeNull();
+    expect(filedUnder({ audience: {}, hero: null })).toBeNull();
+    expect(filedUnder({ audience: { realms: [1] }, hero: 3 })).toBe(3);
+    expect(filedUnder({ audience: { realms: [0] }, hero: 'none' })).toBeNull();
+  });
+
+  test('with no order resolving, or a hero who serves no realm, nothing changes', () => {
+    expect(filedUnder({ audience: { realms: [0] } }, { ...resolving, charId: null })).toBeNull();
+    expect(filedUnder({ audience: { realms: [1] } }, { ...resolving, charId: 9 })).toBe(9);
+  });
+
+  test("a fight's line for one realm alone, written with no hero, is filed under no hero of another realm", () => {
+    const narrative: NarrativeLine[] = [];
+    narrateTo(narrative, 1, undefined, 'Your duellist falls.');
+    const tc = newContext(resolving, heroes);
+    const fight = { type: 'combat', audience: { realms: [0, 1], seen: 'battle' as const }, province: 5, hero: null };
+    narrative.forEach((line) => {
+      emitNarrLine(tc, line, fight);
+    });
+    expect(tc.turnLog[0]).toMatchObject({ targets: [1], charId: null });
   });
 });

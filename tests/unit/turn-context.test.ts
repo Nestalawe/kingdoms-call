@@ -43,7 +43,9 @@ describe('createTurnContext', () => {
   });
 
   test('emit files a line under the hero and the phase the context names when it is written', () => {
-    const tc = turnContext(engine, { turn: 1, players: [] });
+    // A world holds its heroes (every saved state has `characters`): emit looks up the realm of the hero whose order is
+    // resolving (P1-12c1). Hero 7 isn't among them, so he serves no realm and keeps his lines.
+    const tc = turnContext(engine, { turn: 1, players: [], characters: [] });
     const restore = quiet();
     const emit = engineFn(engine, 'emit') as (tc: TurnContext, event: Record<string, unknown>) => void;
     const line = (place?: Record<string, unknown>) => {
