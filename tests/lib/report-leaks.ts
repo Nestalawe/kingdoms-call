@@ -166,7 +166,8 @@ function privateLines(t: Turn): string[] {
   return out;
 }
 
-/** The realms of the heroes `r` sees (its SIGHTINGS, less the parked list of its own provinces' heroes). */
+/** The realms of the heroes `r` sees (its SIGHTINGS, less the list of its own provinces' heroes, which the map's
+ *  repeats: a realm is met through the map). */
 function realmsSeen(s: SavedState, r: RealmReport): unknown[] {
   return SIGHTINGS.filter((path) => !path.startsWith('ownedProvinces'))
     .flatMap((path) => select(r.report, path))

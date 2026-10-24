@@ -1291,7 +1291,7 @@ export function buildTurnReport(view, itsLines = null) {
 // it was in buildTurnReport, reading the view's province (and the realm, view.me) where it read the world; the sight
 // rules and the engine's helpers that read the whole world are the view's. view.realm is the realm reading.
 
-// The realm's own provinces, in full (with the heroes in them: P1-23's entry 4).
+// The realm's own provinces, in full (with the heroes it sees in them, as its map does).
 function ownedProvincesOf(view) {
   const playerIndex = view.realm;
   return view.provinces
@@ -1358,8 +1358,8 @@ function ownedProvincesOf(view) {
           }
         : null, // Wonder of the age
       explored: p.explored || 0,
-      // KNOWN BREACH (P1-23's entry 4): the heroes here as this list has always had them.
-      characters: p.knownBreachEveryHeroThereSeenOrNot
+      // the heroes it sees here (the map's sight rule: the view's list)
+      characters: p.heroesItSeesInItsOwnProvince
         .map((c) => {
           // A fallen character is shown ONLY by the ☠ marker (from visibleDeadHeroes), never as a
           // living character circle. This owned-province list omitted the c.alive filter that

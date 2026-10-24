@@ -15,9 +15,9 @@
 // helper TypeScript doesn't check yet (P1-10b), its type here is unknown. A record is read as a saved state may hold
 // it (AsSaved: any field missing or null), so each guard the report's code had is kept.
 //
-// The breach the leak check still lets through here (P1-23's entry 4) is carried as it is, in a field named for it
-// (knownBreach…), so P1-23 changes that one field. Entry 2 is fixed: a province it once visited names its owner only
-// once the realm has met them (R-046).
+// The two breaches it once carried in fields named for them are fixed (P1-23's entries 2 and 4): a province it once
+// visited names its owner only once the realm has met them (R-046), and its own provinces list only the heroes its
+// sight rule shows there, as its map does.
 //
 // It writes nothing and draws no dice (tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts).
 // The cases of each sight rule: tests/unit/what-each-realm-may-see-of-the-world.test.ts.
@@ -98,7 +98,7 @@ export interface HeroAsSeen {
   /** The name and colour of the realm he serves, as his banner shows them (undefined: he serves none). */
   realmName: AsItIs<string>;
   realmColor: AsItIs<string>;
-  /** How many units he leads: for a hero of its own (and in P1-23's entry 4's list). */
+  /** How many units he leads: for a hero of its own (and for every hero in the list of its own provinces). */
   armyCount: number | null;
   /** The rough size of his force at a glance (armySizeBand): for anyone else's hero. */
   armyBand: string | null;
@@ -320,9 +320,9 @@ export interface ProvinceAsSeen {
   /** The name of the realm that holds it now, once this realm has met that realm (or the game is over), else null
    *  (R-046): a province it once visited and doesn't hold (its province intelligence). */
   theOwnersNameOnceItHasMetThem?: AsItIs<string>;
-  /** KNOWN BREACH, P1-23's entry 4 (its KNOWN_BREACHES entry, ownedProvinces): in its own provinces, the heroes there
-   *  as that list has always had them, each with the number of units he leads. */
-  knownBreachEveryHeroThereSeenOrNot?: HeroAsSeen[];
+  /** In its own provinces, the heroes it sees there (the map's sight rule, so the same heroes as heroesOnTheMap), each
+   *  with the number of units he leads (the report's list of its own provinces). */
+  heroesItSeesInItsOwnProvince?: HeroAsSeen[];
 }
 
 /** What one realm may see of the world: the map and the provinces (P1-12b4), its heroes and the others it sees, the
@@ -806,15 +806,16 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
         hireWage: heroHireWage(me.alignment || 'Neutral', h.alignment, sd31, h),
       }));
 
-    const heroesOnTheMap =
+    const heroesTheMapShowsHere =
       owned || heroThere || spied || nextToSpied
         ? (q.characters ?? []).flatMap((cid) => {
             const c = characters[cid];
             if (!c?.alive) return [];
             if (c.player !== realm && !enemyCharVisibleTo(state, realm, c, mapSight)) return [];
-            return [heroAsSeen(c, 'map')];
+            return [c];
           })
         : null;
+    const heroesOnTheMap = heroesTheMapShowsHere?.map((c) => heroAsSeen(c, 'map')) ?? null;
     const heroesInItsProvinceIntelligence =
       heroThere || spiedHereByItsLines
         ? characters
@@ -922,12 +923,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
         ? { theOwnersNameOnceItHasMetThem: q.owner != null ? (realms[q.owner]?.name ?? null) : null }
         : {}),
       ...(owned
-        ? {
-            knownBreachEveryHeroThereSeenOrNot: (q.characters ?? []).flatMap((cid) => {
-              const c = characters[cid];
-              return c?.alive ? [heroAsSeen(c, 'everyHero')] : [];
-            }),
-          }
+        ? { heroesItSeesInItsOwnProvince: (heroesTheMapShowsHere ?? []).map((c) => heroAsSeen(c, 'everyHero')) }
         : {}),
     };
   };

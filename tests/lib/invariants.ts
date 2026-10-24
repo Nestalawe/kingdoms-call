@@ -286,11 +286,6 @@ export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string
     why: "Enemy orders and reactions still reach a hero after he turns invisible (the Defend ambush, Encounter and Pursue, a chase under way, Spy on a hero, Steal, Curse: they check cloaks and Vanish, not Invisibility), and the acting realm's report tells it so",
   },
   {
-    check: 'an unseen hero',
-    line: /^realm \d+ sees [^"]+ \(id \d+, invisible from phase \d\) at ownedProvinces\[\d+\]\.characters\[\d+\]$/,
-    why: "The list of the heroes in a realm's own provinces skips the sight rule (buildTurnReport's ownedProvinces)",
-  },
-  {
     check: "another realm's private line",
     line: /^realm \d+ reads [A-Za-z -]+ of realm \d+(?:, \d+)*'s [^"]+ at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
     why: "Another realm's private line in the report's spy activity section: waits for P1-23",

@@ -157,6 +157,13 @@ describe('each planted leak breaks its check, and only that one', () => {
     ],
     [
       'an unseen hero',
+      'the list of its own provinces shows him',
+      (_, r) =>
+        (of(r, 1)['ownedProvinces'] = [{ id: 1, characters: [{ id: 12, name: 'Corin the Grey', ownerName: null }] }]),
+      /^realm 1 sees Corin the Grey \(id 12, invisible from phase 1\) at ownedProvinces\[0\]\.characters\[0\]$/,
+    ],
+    [
+      'an unseen hero',
       'a sighting without an id',
       (_, r) => (of(r, 1)['heroSightings'] = [{ type: 'enemy', name: 'Corin the Grey', locationName: 'Coldmere' }]),
       /^realm 1 sees Corin the Grey \(id 12, invisible from phase 1\) at heroSightings\[0\]$/,
@@ -264,7 +271,7 @@ describe('what each leak check allows', () => {
     ).toEqual([]);
   });
 
-  test('a realm seen through its hero is met; the parked list of its own provinces does not meet it', () => {
+  test('a realm seen through its hero is met; the list of its own provinces (the map’s again) does not meet it', () => {
     const seen = (r: RealmReport[]) =>
       (of(r, 1)['heroSightings'] = [{ type: 'enemy', name: 'Dorn the Red', kingdom: 'Coldharbour' }]);
     expect(leaks(turn((_, r) => seen(r)))).toEqual([]);
@@ -341,15 +348,6 @@ describe('the known breaches of the leak checks', () => {
     expect(leaks(turn((_, r) => line(r, 1, HARDENED)))).toEqual(["another realm's private line"]);
     const call = '📯 Call to Arms! The folk of Fenwick answer their king.';
     expect(leaks(turn((t, r) => (line(r, 0, call), spied(call)(t, r))))).toEqual(["another realm's private line"]);
-  });
-
-  test("an invisible hero in the list of the realm's own provinces is let through; on the map he is not", () => {
-    const at = (key: string) =>
-      turn((_, r) => (of(r, 1)[key] = [{ id: 1, characters: [{ id: 12, name: 'Corin the Grey', ownerName: null }] }]));
-    expect(leaks(at('ownedProvinces'))).toEqual([]);
-    expect(leaks(turn((_, r) => (of(r, 1)['visibleChars'] = [{ id: 12, name: 'Corin the Grey' }])))).toEqual([
-      'an unseen hero',
-    ]);
   });
 
   test("a line of the reader's own order naming an invisible hero is let through; any other line is not", () => {
