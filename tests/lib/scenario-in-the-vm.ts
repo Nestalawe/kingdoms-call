@@ -75,6 +75,8 @@ interface Resolved {
 interface Built {
   reports: { gp: { player_index: number }; report: Record<string, unknown> }[];
   tel: { gs: unknown; collected: Record<string, unknown> };
+  /** The GM's log in words (P1-12c3). */
+  gmLog: Line[];
 }
 
 /** A copy made outside the vm: the engine's objects become this realm's, as a page's writes are JSON. */
@@ -200,14 +202,15 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
     // the shell's seed: one number from the dice, as a 32-bit integer (0 read as 1)
     const seed = Math.floor((run('kcRng()') as number) * 2 ** 32) || 1;
     const rowsInVm = (run('(j)=>JSON.parse(j)') as (j: string) => unknown)(JSON.stringify(rows));
-    if (recording) run('__kcEventsOfTheTurn.length = 0;');
+    if (recording) run('__kcEventsOfTheTurn.length = 0; __kcLinesOfTheTurn.length = 0;');
     const resolved = quietly(() => call('resolveTurn', json, rowsInVm, turn, seed) as Resolved);
     const { built, forTheReports } = quietly(() => {
       resolved.spyStealthAndInvisibilityStampedForTheReports();
       const handedOver = resolved.whatTheReportsRead();
       return { built: call('buildReports', handedOver) as Built, forTheReports: handedOver };
     });
-    const log = plain(resolved.log);
+    // The GM's log in words, as the views wrote it and the shell saves it (P1-12c3).
+    const log = plain(built.gmLog);
     const reports: Record<number, Record<string, unknown>> = {};
     for (const { gp, report } of built.reports) reports[gp.player_index] = plain(report);
     return {
@@ -215,7 +218,7 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
       log,
       reports,
       collected: plain(built.tel.collected),
-      ...(recording ? { perception: perceptionOf(forTheReports, log.length) } : {}),
+      ...(recording ? { perception: perceptionOf(forTheReports, resolved.log, log.length) } : {}),
       seed,
       text: (charId?: unknown) =>
         log
@@ -239,15 +242,17 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
   /** From now on each turn's events are recorded as they are emitted (emit, src/engine/turn/events-and-their-
    *  audiences.ts, stood in, in the vm, to note each event after it has filed its line), with the phase and the hero
    *  its line was filed under (emit's fallbacks worked out), whether the event named that hero, and the realm he served
-   *  as the line was written; and play returns them with the turn's sight as r.perception. */
+   *  as the line was written; and play returns them with the turn's sight as r.perception, each with its line's words
+   *  as the views wrote them (a fact's; a battle's tally place left empty is no line, P1-12c3). */
   let recording = false;
   function recordTheEvents() {
     if (recording) return;
     recording = true;
-    run(`{ globalThis.__kcEventsOfTheTurn = []; const emitFor = emit;
+    run(`{ globalThis.__kcEventsOfTheTurn = []; globalThis.__kcLinesOfTheTurn = []; const emitFor = emit;
       emit = function (turnContext, event) {
         emitFor(turnContext, event);
         const line = turnContext.turnLog[turnContext.turnLog.length - 1];
+        __kcLinesOfTheTurn.push(line);
         __kcEventsOfTheTurn.push({ type: event.type, text: event.text, audience: { ...event.audience },
           province: event.province ?? null, phase: line.phase, hero: line.charId,
           heroNamed: typeof event.hero === 'number',
@@ -255,10 +260,26 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
           heroes: event.heroes ?? null, spy: !!event.spy });
       }; }`);
   }
-  /** The turn's recorded events (as many as its log has lines, or it throws: a line that didn't come through emit) and
-   *  its sight, from what it handed over for the reports, as plain values. */
-  function perceptionOf(forTheReports: ReturnType<Resolved['whatTheReportsRead']>, lines: number): Perception {
-    const events = JSON.parse(run('JSON.stringify(__kcEventsOfTheTurn)') as string) as EventAsEmitted[];
+  /** The turn's recorded events (as many as its log in words has lines, or it throws: a line that didn't come through
+   *  emit), each with its line's words (theTurnsLinesInWords on the engine's log, `engineLog`), and its sight, from what
+   *  it handed over for the reports, as plain values. */
+  function perceptionOf(
+    forTheReports: ReturnType<Resolved['whatTheReportsRead']>,
+    engineLog: unknown,
+    lines: number,
+  ): Perception {
+    const events = JSON.parse(
+      (
+        run(`(engineLog) => { const { wordsOfEachLine } = theTurnsLinesInWords(engineLog);
+          const wordsOf = new Map(engineLog.map((line, at) => [line, wordsOfEachLine[at]]));
+          return JSON.stringify(__kcEventsOfTheTurn.flatMap((event, i) => {
+            const line = __kcLinesOfTheTurn[i];
+            if (line.fact === undefined) return [event];
+            const words = wordsOf.get(line);
+            return words == null ? [] : [{ ...event, text: words }];
+          })); }`) as (engineLog: unknown) => string
+      )(engineLog),
+    ) as EventAsEmitted[];
     if (events.length !== lines)
       throw new Error(`recorded ${String(events.length)} events, but the GM's log has ${String(lines)} lines`);
     const presence = JSON.parse(

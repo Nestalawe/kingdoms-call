@@ -603,13 +603,15 @@ test('the page plays the turn the engine plays from the seed the shell returns',
   };
   const buildReports = vm.runInContext('buildReports', engine) as (whatTheReportsRead: unknown) => {
     reports: { gp: Row; report: unknown }[];
+    gmLog: unknown;
   };
   const resolved = resolveTurn(world, slotRows(engine, world, 1), 1);
   resolved.spyStealthAndInvisibilityStampedForTheReports();
-  const { reports } = buildReports(resolved.whatTheReportsRead());
+  // The GM's log in words, as the views write it for the shell to save (P1-12c3).
+  const { reports, gmLog } = buildReports(resolved.whatTheReportsRead());
   const alone = engineOutput(
     resolved.state,
-    resolved.log,
+    gmLog,
     new Map(reports.map(({ gp, report }) => [gp['player_index'], JSON.stringify(report)])),
   );
 

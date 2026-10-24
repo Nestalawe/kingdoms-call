@@ -46,7 +46,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   balance runner; `tests/static/pages-build.test.ts` checks it names what Vite's build holds, and that every file
   under `src/` is in some page.
 - **Folders say what most of a file is**: `engine/` (rules, bots, world generation; `engine/sight/`, the sight rules
-  the engine asks as it resolves and the report applies, P1-12b1), `views/` (every realm's turn report, the lines each realm reads: `playerEvents`, P1-12b3, and what it may see of the world: `playerView`, P1-12b4 and P1-12b5, from which alone the report is built), `db/` (the version guard, telemetry and the light `meta` rows),
+  the engine asks as it resolves and the report applies, P1-12b1), `views/` (every realm's turn report, the lines each realm reads: `playerEvents`, P1-12b3, and what it may see of the world: `playerView`, P1-12b4 and P1-12b5, from which alone the report is built; `views/prose/`, the words of each line, written after the engine, P1-12c3), `db/` (the version guard, telemetry and the light `meta` rows),
   `content/` (the data file), `shared/` (the player portal's one door to the engine: it re-exports the rules of
   `engine/rules-on-plain-values/` the portal calls, and nothing else; [below](#kingdoms-call-datats-the-one-source-for-shared-rules)),
   `schemas/` (the types of the world, from Zod schemas: below), `ui/<page>/` (each page's styles,
@@ -423,7 +423,7 @@ portals' start-up guards are gone.
   `// 4. Run all 5 phases`) and the end of the turn. It is synchronous and reads no database, no screen and
   no clock; its dice are the seed's (below), or, given no seed, the dice in use (as a test fixes them). It returns
   `{state, log, spyStealthAndInvisibilityStampedForTheReports, whatTheReportsRead}`: the world to save, as JSON; the
-  GM's log; the Spy-stealth step, which rolls each hero's Spy stealth and carries this turn's Invisibility into the
+  GM's log, before its words are written (a typed line has its fact and no words yet, below); the Spy-stealth step, which rolls each hero's Spy stealth and carries this turn's Invisibility into the
   reports' turn, on the working copy, once, on the turn's dice (P1-12b2); and `whatTheReportsRead()`, which hands over,
   once, after the stealth step, what the reports are built from: the slot rows, the working copy, the turn's log, the
   turn's sight (whose heroes stood where in each phase, who fought in each battle, whom each realm watches by
@@ -431,8 +431,16 @@ portals' start-up guards are gone.
   view: the reports are the views' (below). `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
   with no page.
 - **Every realm's report** is built in `src/views/every-realms-report-and-the-lines-each-realm-reads.ts` (P1-12b3):
-  `buildReports(whatTheReportsRead)` works out, for each played slot, the lines the realm reads and what it may see of
-  the world, and builds its report from those two alone: **perception** comes first, in two functions, and the report
+  `buildReports(whatTheReportsRead)` first writes every line's words (`theTurnsLinesInWords`, `src/views/prose/`,
+  P1-12c3): a typed line records a fact, not words (its kind and fields; the kinds of an area are typed beside its code,
+  the battles' in `engine/battle/the-facts-a-battles-lines-record.ts`, all of them in `LineFact`), and the views write
+  its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words is a compile
+  error. A battle's lines take their tiers (key or detail) and its losses tally its place from those words, as
+  `emitBattle` did before. The result is the GM's log in words, in the form it was always stored in: `buildReports`
+  returns it as `gmLog`, and the shell saves it. Today the force markers are the one kind; the fights' lines follow
+  (P1-12c4 to c6), and in this run a line's words are the same for every reader. Then it works out, for each played
+  slot, the lines the realm reads (from the lines in words) and what it may see of the world, and builds its report
+  from those two alone: **perception** comes first, in two functions, and the report
   reads nothing else (P1-12b5). `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines
   sent to it or about its heroes, the world's announcements and what happened where it had eyes at the time, unmet
   realms left nameless, its spies' lingering sight and its Clairvoyance feed. `playerView(G, realm, itsLines)`
@@ -460,8 +468,8 @@ portals' start-up guards are gone.
   2. sets `_turnCommitted=true` on the line after that save succeeds;
   3. calls the Spy-stealth step, then the views' `buildReports(resolved.whatTheReportsRead())`, and writes each realm's
      report, stamped with the build that
-     wrote it (`engineStamp`), and its `turn_logs` snapshot, then the GM's log (with the stealth step's lines at its
-     end), then telemetry.
+     wrote it (`engineStamp`), and its `turn_logs` snapshot, then the GM's log in words, as the views wrote it
+     (`buildReports`' `gmLog`, with the stealth step's lines at its end), then telemetry.
 
   Steps 2–3 are **post-commit**: a failure there must never restore orders or retry the turn
   ([traps.md](traps.md#post-commit-work-in-runturn)). Everything from the load to the save is in one `try`
