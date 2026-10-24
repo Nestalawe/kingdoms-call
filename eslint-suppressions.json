@@ -171,9 +171,6 @@
     },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 4
-    },
-    "@typescript-eslint/restrict-template-expressions": {
-      "count": 2
     }
   },
   "src/engine/battle/raid-the-coast-and-landing-parties.ts": {
