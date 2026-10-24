@@ -10,15 +10,19 @@
 //               the report hands the portal what the engine reads. For the 9 swapped rules whose value the report
 //               makes from the state (the other 7 take a number, a level, an alignment or a games row: one function on
 //               one value, nothing left to compare).
-//   truth       for the three copies that stay until P1-11b (they read the report's shape): the copy on the report's
-//               value, the engine's function on the state's. It says whether the portal tells the player what the turn
-//               will do.
+//   truth       for the copies that stay until P1-11b (they read the report's shape, the realm or the world): the
+//               copy on the report's value, the engine's function on the state's. It says whether the portal tells the
+//               player what the turn will do. P1-11b1 added the Druid a hero needs to lead a unit (druidNeedP), the
+//               army card's Druid and sea-transport lines, the turn report's own flying carry and the Explore order's
+//               forecast (exploreGainFor); where a copy is known to disagree (plan P1-11b's questions for Toby), the
+//               difference is pinned exactly.
 //
 // The copies are read from src/ui/player/ by their syntax tree (tests/lib/source.ts) and run in a context of their
 // own, with the data file run beside them as a script (the content as the player page holds it, before the engine
 // rewrites the item catalogue's tiers as it loads) and the names src/shared/ hands the portal, as it imports them. The
-// player page's modules can't be imported here: they start the page (its database client) as they load. The engine's
-// functions are imported directly, with no vm (P1-11a1).
+// player page's modules can't be imported here: they start the page (its database client) as they load. A copy written
+// inline in a longer function is read by its statements (statementsBetween) and run as a function of what they read.
+// The engine's functions are imported directly, with no vm (P1-11a1).
 //
 // The values (Decision 5): the balance matrix's game scripted-05 played with the engine's modules imported directly,
 // its scripted realm's report after every turn and the state it was built from; and a staged world in the engine's
@@ -26,18 +30,24 @@
 // race and alignment; every unit type at every quality, with the flags the engine and the report use; columns made of
 // every kind of unit, led by heroes with and without the naval mastery that doubles a hull. The checks read the
 // realm's own heroes, their units and their items: the values the report makes from the state. (Until P1-11a4 the swap
-// cases also took every alignment pair, every level, games rows and every number the reports hold.)
+// cases also took every alignment pair, every level, games rows and every number the reports hold.) For the Druid
+// rule, six more staged worlds (druidWorlds) and for the Explore order one more (exploreWorld), each sized so the whole
+// test runs in a few seconds.
 import vm from 'node:vm';
 import {
   ALL_MAGIC_ITEMS_P,
   KC_ALIGNMENTS,
   KC_CARRIER_BERTHS,
+  KC_DRUID_LEVELS,
+  KC_HUMANOID_RACES,
   KC_ITEM_RACE_ALIAS,
   KC_MAGIC_SCHOOLS,
   KC_QUALITY_TIERS,
+  KC_SEASONS,
   KC_UNIT_CLASS,
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
+  SAGE_DISCOVERIES_P,
 } from '../../src/content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../../src/engine/army-tables.ts';
 import { getSeaCapability } from '../../src/engine/units/movement-pools.ts';
@@ -54,10 +64,18 @@ import {
 } from '../../src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import { unitBaseStrength, unitTypeOf } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import {
+  AERIAL_TYPES,
   getFlyCapability,
   isAirCarriable,
 } from '../../src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { beastCommandCount } from '../../src/engine/world/tables.ts';
+import { beastCommandCount, druIdPenaltyMult } from '../../src/engine/world/tables.ts';
+import { druidMasteryGain } from '../../src/engine/battle/terrain-and-unit-strength.ts';
+import { dragonTamed } from '../../src/engine/discoveries.ts';
+import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
+import { createTurnContext } from '../../src/engine/turn/context.ts';
+import { isBotRow } from '../../src/engine/bots/setup.ts';
+import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
+import { TITLES_PUBLIC_FROM_TURN } from '../../src/engine/titles/perks.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { resolveTurn } from '../../src/engine/run-turn.ts';
 import { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
@@ -68,7 +86,8 @@ import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import * as theRulesTheSharedDoorHandsThePortal from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { GAME, SETUPS, slotRowsJson } from './matrix-game.ts';
-import { scriptOf, sourceOf, type SourceOptions } from './source.ts';
+import { scriptOf, sourceOf, statementsBetween, type SourceOptions } from './source.ts';
+import { addTheFieldsResolveTurnAdds } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
 /** A value as the JSON of a save or a report holds it. */
 export type Obj = Record<string, unknown>;
@@ -79,7 +98,7 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 
 // ── The copies ────
 
-/** The copies left (and the tables they read) by file, as the player portal declares them. */
+/** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
   'ui/player/order-chances.ts': ['ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl'],
   'ui/player/map-symbols.ts': ['beastCommandCountP'],
@@ -91,19 +110,75 @@ const COPIES: Record<string, string[]> = {
     'PO_LIGHT_TYPES',
     'poSeaAnalysis',
   ],
+  // a hero's skill as the report counts it (skillEff): druidNeedP, exploreGainFor and the army card read it
+  'ui/player/briefing-and-submit.ts': ['effSkillP'],
+  'ui/player/skills-and-projections.ts': [
+    'CREATURE_ARMIES_UI',
+    'MONSTER_ARMIES_UI',
+    'DRUID_LEVEL_OF_P',
+    'TAMED_FLYERS_P',
+    'druidNeedP',
+  ],
+  'ui/player/order-targets.ts': ['exploreGainFor'],
 };
-/** The functions among them that the checks call. */
-const COPY_FUNCTIONS = ['beastCommandCountP', 'poSeaAnalysis', 'effMagicLvl'] as const;
+const ARMY_CARD = 'ui/player/report.ts';
+const TURN_REPORT = 'views/turn-report.ts';
+/** The copies written inline, inside a longer function: each read by its statements (tests/lib/source.ts's
+ *  statementsBetween) and run as a function of what those statements read. The army card is the "Armies leading" part
+ *  of a hero's card on the player's report screen (renderReportView); the turn report's flying carry is the report's
+ *  own copy of getFlyCapability and isAirCarriable (buildTurnReport: the pace it shows a column that takes to the
+ *  air). */
+const statementCopies = (opts: SourceOptions) => `
+// The army card's Druid lines for one unit \`a\` of the hero \`c\`: the strength left of a unit of 1,000 by a Druid
+// shortfall (the card's own sum), the Druid mastery bonus in percent, and the shortfall.
+function armyCardDruidLines(a, c, report) {
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel', opts)}
+  let bs = 1000, druidUnits = 0, druidShort = 0;
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'mastery', opts)}
+  return { strengthOfAThousand: bs, mastery, shortfall };
+}
+// The army card's sea-transport note for the column \`arr\` the hero \`c\` leads, as the words the card shows.
+function armyCardSeaNote(arr, c) {
+  let druidUnits = 0, druidShort = 0;
+  ${statementsBetween(ARMY_CARD, 'renderReportView', '_FLY_UI2', 'druNote', opts)}
+  return String(_seaNote);
+}
+// The turn report's flying carry, on the column \`armies\` as the report projects it.
+function turnReportFlyingCarry(armies) {
+  ${statementsBetween(TURN_REPORT, 'buildTurnReport', 'SEA_UNIT_TYPES', 'AERIAL_UNIT_TYPES', opts)}
+  ${statementsBetween(TURN_REPORT, 'buildTurnReport', 'FLY_CARRIERS_REP', 'canFlyRep', opts)}
+  return { canFly: canFlyRep, airCarriable: repAirCarriable };
+}
+// exploreGainFor reads the report the page shows (its currentReport): here, the one handed in.
+function exploreGainOn(report, c, terrain) {
+  currentReport = report;
+  try { return exploreGainFor(c, terrain); } finally { currentReport = null; }
+}`;
+/** The functions the checks call: the portal's copies, and those made of a copy's statements. */
+const COPY_FUNCTIONS = [
+  'beastCommandCountP',
+  'poSeaAnalysis',
+  'effMagicLvl',
+  'druidNeedP',
+  'exploreGainOn',
+  'armyCardDruidLines',
+  'armyCardSeaNote',
+  'turnReportFlyingCarry',
+] as const;
 export type CopyName = (typeof COPY_FUNCTIONS)[number];
 export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 
-/** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file beside them and
- *  the names src/shared/ hands the portal (effMagicLvl calls itemSlot and itemUsableBy; poSeaAnalysis getFlyCapability
- *  and isAirCarriable). */
+/** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file and kc-safe
+ *  (kcHtml: the army card's notes) beside them, and the names src/shared/ hands the portal (effMagicLvl calls itemSlot
+ *  and itemUsableBy; poSeaAnalysis getFlyCapability and isAirCarriable). The turn report's flying carry runs beside
+ *  them too: it reads only the data file. */
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   const code = [
+    'let currentReport = null;',
     scriptOf('content/kingdoms-call-data.ts', opts),
+    scriptOf('ui/shared/kc-safe.ts', opts),
     ...Object.entries(COPIES).map(([file, names]) => sourceOf(file, names, opts)),
+    statementCopies(opts),
   ].join('\n');
   const made: unknown = vm.runInNewContext(`(() => {\n${code}\nreturn { ${COPY_FUNCTIONS.join(', ')} };\n})()`, {
     ...theRulesTheSharedDoorHandsThePortal,
@@ -130,6 +205,28 @@ export interface Samples {
   readonly heroes: Projected[];
   /** How many reports the values come from: the game's, and the staged world's. */
   readonly reports: number;
+  /** A hero of the realm and a unit he might lead (P1-11b1): each of his own units in the game's reports; and in the
+   *  worlds staged for the Druid rule, every staged hero with every staged unit. */
+  readonly druid: DruidCase[];
+  /** A hero of the realm and the terrain of a province he might explore (P1-11b1): his own province's in the game's
+   *  reports; every land terrain in the world staged for exploring. */
+  readonly explore: ExploreCase[];
+}
+/** The world a case comes from: the report the portal is handed, and the state it was made from. */
+export interface World {
+  readonly state: Obj;
+  readonly report: Obj;
+}
+export interface DruidCase {
+  readonly world: World;
+  readonly hero: Projected & { readonly state: Obj };
+  readonly unit: Projected & { readonly state: Obj };
+}
+export interface ExploreCase {
+  readonly world: World;
+  readonly hero: Projected & { readonly state: Obj };
+  /** The province the engine explores (its terrain is the forecast's). */
+  readonly province: Obj;
 }
 
 /** Each turn of the matrix's game scripted-05, played with the engine's modules imported directly: the state after
@@ -279,6 +376,117 @@ export function stagedWorld(): { state: Obj; report: Obj } {
   return { state, report };
 }
 
+/** A new world of three realms (realm 0's king a Human of a Good realm), with a way to stage heroes of realm 0 in it
+ *  as copies of its king, and its land provinces other than the king's. */
+function aWorldToStageIn(): { g: Obj; king: Obj; land: Obj[]; hero: (fields: Obj) => Obj } {
+  kcRng.seed(7);
+  const setups = [0, 1, 2].map((i) => ({
+    id: i,
+    gamePlayerId: 'gp' + String(i),
+    isBot: i > 0,
+    name: 'Realm' + String(i),
+    kingName: 'King' + String(i),
+    kingdomName: 'Realm' + String(i),
+    race: ['Human', 'Elven', 'Orcish'][i],
+    alignment: ['Good', 'Druidic', 'Evil'][i],
+    temper: 'Brave',
+    skills: { melee: 1 },
+  }));
+  const g = generateNewGame(setups, copyOf(MAP_SIZES[3]), 0, { seaPct: 20 }) as Obj;
+  const characters = objects(g['characters']);
+  const king = characters.find((c) => c['player'] === 0 && c['isKing']);
+  if (!king) throw new Error('the staged world has no king for realm 0');
+  const land = objects(isObj(g['world']) ? g['world']['provinces'] : []).filter(
+    (p) => p['terrain'] !== 'sea' && p['id'] !== king['location'],
+  );
+  let id = 20_000;
+  const hero = (fields: Obj): Obj => {
+    const h: Obj = { ...copyOf(king), isKing: false, items: [], armies: [], skills: {}, ...fields, id };
+    h['name'] = `Staged ${String(id++)}`;
+    characters.push(h);
+    return h;
+  };
+  g['characters'] = characters;
+  return { g, king, land, hero };
+}
+/** The world `g` as saved, and realm 0's report on it. */
+function savedAndReported(g: Obj): World {
+  const state = copyOf(g);
+  // (a staged world, made with the fields the report reads: a saved state's type by assertion, as stagedWorld's)
+  const report: Obj = buildTurnReport(playerView(copyOf(g) as unknown as GameState, 0));
+  return { state, report };
+}
+
+/** One unit type for each Druid level a unit can need (0: none) and each class the Druid rule reads: neither
+ *  creature nor monster, creature, monster, and either of them a winged beast Dragon Taming tames. */
+export function oneUnitTypePerDruidLevelAndClass(): string[] {
+  const classes: Record<string, readonly string[]> = KC_UNIT_CLASS;
+  const has = (cls: string, t: string) => (classes[cls] ?? []).includes(t);
+  const classOf = (t: string) =>
+    `${has('creature', t) ? 'creature' : has('monster', t) ? 'monster' : 'neither'}${has('tamedFlyer', t) ? ' tamed' : ''}`;
+  const levels: Record<string, readonly string[]> = KC_DRUID_LEVELS;
+  const inTheTable = new Set(Object.values(levels).flat());
+  const byLevel: [string, readonly string[]][] = [
+    ['0', Object.keys(KC_UNIT_TYPE).filter((t) => !inTheTable.has(t))],
+    ...Object.entries(levels),
+  ];
+  const chosen = new Map<string, string>();
+  for (const [level, types] of byLevel)
+    for (const t of types) if (!chosen.has(`${level} ${classOf(t)}`)) chosen.set(`${level} ${classOf(t)}`, t);
+  return [...chosen.values()];
+}
+
+/** The worlds staged for the Druid rule: realm 0 Good, Druidic or Evil, without and with Dragon Taming (sd40). In
+ *  each, realm 0's king leads one unit of each type oneUnitTypePerDruidLevelAndClass gives, of his own race (Human)
+ *  and of none, alive and skeletal; and a hero of every race, alignment and Druid level 0 to 5 stands in a province
+ *  beside one wearing the Crown of Command (its aura lifts every skill of his realm's heroes there: the report's
+ *  effective Druid counts it) and in another, away from it. */
+export function druidWorlds(): World[] {
+  const { g, king, land, hero } = aWorldToStageIn();
+  const [besideTheCrown, away] = land;
+  if (!besideTheCrown || !away) throw new Error('the staged world has too few land provinces');
+  king['armies'] = oneUnitTypePerDruidLevelAndClass().flatMap((type) =>
+    [{ race: 'Human' }, {}].flatMap((race) =>
+      [{}, { _isSkeletal: true }].map((flag) => ({ type, quality: 'Average', unitName: type, ...race, ...flag })),
+    ),
+  );
+  const crown = catalogue().find((it) => isObj(it['effect']) && it['effect']['stat'] === 'aura');
+  if (!crown) throw new Error('the catalogue has no item with an aura');
+  // (worn, as a saved game holds it once the turn has put it on: so reading his items changes nothing)
+  hero({ location: besideTheCrown['id'], items: [{ ...copyOf(crown), id: 60_000, equipped: true }], skills: {} });
+  for (const race of KC_HUMANOID_RACES)
+    for (const alignment of KC_ALIGNMENTS)
+      for (let druid = 0; druid <= 5; druid++)
+        for (const where of [besideTheCrown, away]) hero({ race, alignment, location: where['id'], skills: { druid } });
+  const sd40 = objects(SAGE_DISCOVERIES_P).find((d) => d['id'] === 'sd40');
+  if (!sd40) throw new Error('the data file has no Dragon Taming (sd40)');
+  const realm = objects(g['players'])[0];
+  if (!realm) throw new Error('the staged world has no realm 0');
+  return ['Good', 'Druidic', 'Evil'].flatMap((alignment) =>
+    [false, true].map((tamed) => {
+      realm['alignment'] = alignment;
+      realm['discoveries'] = tamed ? [copyOf(sd40)] : [];
+      return savedAndReported(g);
+    }),
+  );
+}
+
+/** The world staged for exploring: titles public (turn 10), realm 0 with no discovery that adds to exploring, and a
+ *  hero of each Explorer level 0 to 5, the Loremaster (the best at Sage; Explorer 2) and the Trailblazer (the best at
+ *  Explorer: 9), each standing in a province of every land terrain in turn (the forecast reads the terrain; the
+ *  engine's order explores the province it is handed). */
+export function exploreWorld(): { world: World; provinces: Obj[] } {
+  const { g, land, hero } = aWorldToStageIn();
+  g['turn'] = 10;
+  const realm = objects(g['players'])[0];
+  if (realm) realm['discoveries'] = [];
+  for (let explorer = 0; explorer <= 5; explorer++) hero({ skills: { explorer } });
+  hero({ skills: { explorer: 2, sage: 9 } });
+  hero({ skills: { explorer: 9 } });
+  const provinces = [...new Map(land.map((p) => [p['terrain'], p])).values()];
+  return { world: savedAndReported(g), provinces };
+}
+
 /** `fn`, with the engine's echo of the GM's log to console.log (engine/turn/context.ts) quiet. */
 function quietly<T>(fn: () => T): T {
   const was = console.log;
@@ -313,9 +521,48 @@ export function samples(): Samples {
       });
     }
   }
-  made = { armies, items, heroes, reports: pairs.length };
+  const druid: DruidCase[] = [];
+  const explore: ExploreCase[] = [];
+  const provinceOf = (state: Obj, id: unknown) =>
+    objects(isObj(state['world']) ? state['world']['provinces'] : []).find((p) => p['id'] === id) ?? null;
+  // the game's: each hero of the realm with each unit he leads, and the province he stands in
+  for (const world of pairs.slice(0, -1))
+    for (const hero of ownHeroes(world)) {
+      objects(hero.report['armies']).forEach((a, i) => {
+        const unit = objects(hero.state['armies'])[i];
+        if (unit) druid.push({ world, hero, unit: { report: a, state: unit } });
+      });
+      const province = provinceOf(world.state, hero.state['location']);
+      if (province) explore.push({ world, hero, province });
+    }
+  // the staged worlds': every staged hero (not the king) with every unit the king leads; every staged explorer in a
+  // province of every land terrain
+  for (const world of quietly(druidWorlds)) {
+    const heroes = ownHeroes(world);
+    const king = heroes.find((h) => h.report['isKing']);
+    if (!king) throw new Error('a Druid world has no king in its report');
+    const units = objects(king.report['armies']).map((a, i) => ({
+      report: a,
+      state: objects(king.state['armies'])[i],
+    }));
+    for (const hero of heroes.filter((h) => !h.report['isKing']))
+      for (const unit of units)
+        if (unit.state) druid.push({ world, hero, unit: { report: unit.report, state: unit.state } });
+  }
+  const { world, provinces } = quietly(exploreWorld);
+  for (const hero of ownHeroes(world).filter((h) => !h.report['isKing']))
+    for (const province of provinces) explore.push({ world, hero, province });
+  made = { armies, items, heroes, reports: pairs.length, druid, explore };
   deepFreeze(made);
   return made;
+}
+/** The realm's own heroes in a world's report, each with the state's hero (those the state holds). */
+function ownHeroes(world: World): (Projected & { state: Obj })[] {
+  const inTheState = new Map(objects(world.state['characters']).map((c) => [c['id'], c]));
+  return objects(world.report['characters']).flatMap((c) => {
+    const state = inTheState.get(c['id']);
+    return state ? [{ report: c, state }] : [];
+  });
 }
 
 // ── Comparing answers ────
@@ -574,4 +821,235 @@ export function effMagicLvlAgainstTheReport(
       };
     }),
   );
+}
+
+// ── The copies that read the realm, the report's shape or the world (P1-11b1) ────
+// Truth parity (Decision 6), each a copy on the report's value against the engine's function on the state's: what
+// the portal tells the player against what the turn does. Where the two are known to disagree (plan P1-11b's
+// Decisions, questions 13 and 15 for Toby), the difference is pinned exactly: the check fails the day either side
+// changes alone, which is when the fix rewrites it.
+
+/** What a case is about, short enough for a line. */
+const aboutTheUnit = (world: World, hero: Projected & { state: Obj }, unit: Projected) => ({
+  unit: [unit.report['type'], unit.report['race'], unit.report['skeletal'] ? 'skeletal' : 'alive'],
+  hero: [
+    hero.report['race'],
+    hero.report['alignment'],
+    (isObj(hero.report['skills']) ? hero.report['skills'] : {})['druid'],
+  ],
+  realm: [realmOf(world, hero.state)['alignment'], objects(world.report['discoveries']).map((d) => d['id'])],
+});
+const realmOf = (world: World, hero: Obj): Obj => objects(world.state['players'])[Number(hero['player'])] ?? {};
+/** The aura of a Crown of Command in the report's effective level of a hero's skill (0: none). */
+export const auraIn = (reportHero: Obj, skill: string): number => {
+  const e = isObj(reportHero['skillEff']) ? reportHero['skillEff'][skill] : undefined;
+  return isObj(e) && typeof e['aura'] === 'number' ? e['aura'] : 0;
+};
+/** The hero with his trained level of `skill` set to `level`. */
+const withSkillAt = (hero: Obj, skill: string, level: number): Obj => ({
+  ...hero,
+  skills: { ...(isObj(hero['skills']) ? hero['skills'] : {}), [skill]: level },
+});
+const skillOf = (hero: Obj, skill: string): number => {
+  const v = isObj(hero['skills']) ? hero['skills'][skill] : 0;
+  return typeof v === 'number' ? v : 0;
+};
+
+/** The battle's Druid multiplier on a unit's strength (druIdPenaltyMult, as the battle calls it: the realm's
+ *  alignment, and whether its Dragon Taming tames the unit). */
+const battleDruidMultiplier = (world: World) => (hero: Obj, unit: Obj) =>
+  druIdPenaltyMult(hero, unit, realmOf(world, hero)['alignment'], dragonTamed({ G: world.state }, hero, unit));
+
+/** One Druid case compared, and the Crown's aura in the report's effective Druid of the hero, with the engine's
+ *  answer for the hero trained that much higher. */
+export interface DruidComparison extends Comparison {
+  readonly aura: number;
+  readonly engineWithTheAura: unknown;
+}
+/** The engine's answer `fn` on the state's hero and unit, and on the hero trained higher by the aura. */
+function druidCase(on: unknown, copy: unknown, hero: Obj, unit: Obj, aura: number, fn: (h: Obj, u: Obj) => unknown) {
+  return {
+    ...compare(on, copy, engineOn(fn, [hero, unit])),
+    aura,
+    engineWithTheAura: engineOn(fn, [withSkillAt(hero, 'druid', skillOf(hero, 'druid') + aura), unit]).answer,
+  };
+}
+
+/** The strength a Druid shortfall of `levels` leaves a unit in battle, as the rule says (each level short costs 20%,
+ *  down to a tenth): what the shortfall druidNeedP answers comes to. */
+const strengthLeftByAShortfall = (levels: unknown) =>
+  typeof levels === 'number' ? Math.max(0.1, 1 - levels * 0.2) : levels;
+
+/** druidNeedP (the Druid a hero needs to lead a unit, and his shortfall: the order form's Druid line and the army
+ *  card read it), against the battle's druIdPenaltyMult: the strength the shortfall leaves. */
+export function druidNeedAgainstTheBattle(c: Copies, s: Samples): DruidComparison[] {
+  return s.druid.map(({ world, hero, unit }) => {
+    const need = c.druidNeedP(unit.report, hero.report, world.report);
+    return druidCase(
+      aboutTheUnit(world, hero, unit),
+      strengthLeftByAShortfall(isObj(need) ? need['shortfall'] : need),
+      hero.state,
+      unit.state,
+      auraIn(hero.report, 'druid'),
+      battleDruidMultiplier(world),
+    );
+  });
+}
+
+/** The army card's Druid lines, read by their statements: the strength it shows a unit of 1,000 after a shortfall,
+ *  against the battle's (druIdPenaltyMult, rounded as the card rounds); and its Druid mastery bonus, in percent,
+ *  against the turn's (druidMasteryGain). */
+export function armyCardDruidLinesAgainstTheTurn(
+  c: Copies,
+  s: Samples,
+): { shortfall: DruidComparison[]; mastery: Comparison[] } {
+  const shortfall: DruidComparison[] = [];
+  const mastery: Comparison[] = [];
+  for (const { world, hero, unit } of s.druid) {
+    const card = c.armyCardDruidLines(unit.report, hero.report, world.report);
+    const on = aboutTheUnit(world, hero, unit);
+    const multiplier = battleDruidMultiplier(world);
+    shortfall.push(
+      druidCase(
+        on,
+        isObj(card) ? card['strengthOfAThousand'] : card,
+        hero.state,
+        unit.state,
+        auraIn(hero.report, 'druid'),
+        (h, u) => Math.round(1000 * multiplier(h, u)),
+      ),
+    );
+    const alignment = realmOf(world, hero.state)['alignment'];
+    mastery.push(
+      compare(
+        on,
+        isObj(card) ? card['mastery'] : card,
+        engineOn(
+          (h: Obj, u: Obj) => {
+            const gain: unknown = druidMasteryGain({ G: world.state }, h, u, alignment);
+            return isObj(gain) && typeof gain['gain'] === 'number' ? Math.round(gain['gain'] * 100) : gain;
+          },
+          [hero.state, unit.state],
+        ),
+      ),
+    );
+  }
+  return { shortfall, mastery };
+}
+
+/** The turn report's flying carry, read by its statements: whether a unit type can be carried through the air,
+ *  against isAirCarriable, on every unit type; and whether a column takes to the air (the flyers lift every foot
+ *  soldier), against getFlyCapability, on every column of the realm's heroes (a column all of whose units fly is not
+ *  carried: the report gives it the flyers' pace apart). */
+export function flyingCarryAgainstTheEngine(c: Copies, s: Samples): { unitTypes: Comparison[]; columns: Comparison[] } {
+  const carry = (armies: unknown): Obj => {
+    const answer = c.turnReportFlyingCarry(armies);
+    if (!isObj(answer)) throw new Error("the turn report's flying carry gave no answer");
+    return answer;
+  };
+  const carriable = carry([])['airCarriable'];
+  if (typeof carriable !== 'function') throw new Error("the turn report's flying carry has no repAirCarriable");
+  const unitTypes = Object.keys(KC_UNIT_TYPE).map((type) =>
+    compare(type, (carriable as (t: string) => unknown)(type), engineOn(isAirCarriable, [{ type }])),
+  );
+  const columns = withState(s.heroes)
+    .filter((h) => objects(h.report['armies']).length > 0)
+    .map((h) =>
+      compare(
+        objects(h.report['armies']).map((a) => a['type']),
+        carry(h.report['armies'])['canFly'],
+        engineOn(
+          (armies: Obj[]) =>
+            getFlyCapability(armies as { type: string }[]) && !armies.every((a) => AERIAL_TYPES.has(String(a['type']))),
+          [objects(h.state['armies'])],
+        ),
+      ),
+    );
+  return { unitTypes, columns };
+}
+
+/** The gain the engine's Explore order makes for the hero in the province, on a copy of the state as the next turn
+ *  starts: the title holders worked out from it as the turn does before its first phase. */
+function exploreOrderGain(state: Obj, heroId: unknown, provinceId: unknown): number {
+  const G = copyOf(state);
+  G['_titleHolders'] = {};
+  G['_minorHolders'] = {};
+  const turn = typeof G['turn'] === 'number' ? G['turn'] : 1;
+  // (the titles' perks are live from the turn the titles go public: TITLE_PERKS_ENABLED is on)
+  if (turn >= TITLES_PUBLIC_FROM_TURN) {
+    const standings: unknown = computeStandings(G);
+    G['_titleHolders'] = (isObj(standings) ? standings['titles'] : null) ?? {};
+    G['_minorHolders'] = computeMinorTitles(G);
+  }
+  const c = objects(G['characters']).find((x) => x['id'] === heroId);
+  const prov = objects(isObj(G['world']) ? G['world']['provinces'] : []).find((p) => p['id'] === provinceId);
+  if (!c || !prov) throw new Error('the explore case has no hero or no province');
+  prov['exploredBy'] = {};
+  prov['explored'] = 0;
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], turn), { KC_SEASONS, isBotRow });
+  tc._currentPhase = 0;
+  tc._logCtx = { charId: c['id'], phase: 0 };
+  kcRng.seed(1);
+  quietly(() => {
+    resolveExploreOrder(tc, c, prov);
+  });
+  const by = prov['exploredBy'];
+  const gain = isObj(by) ? by[String(c['player'])] : undefined;
+  return typeof gain === 'number' ? gain : 0;
+}
+/** One Explore case compared, and whether the hero holds the Loremaster (in the report: the forecast reads it). */
+export interface ExploreComparison extends Comparison {
+  readonly loremaster: boolean;
+}
+/** The Explore order's forecast (exploreGainFor: the percentage of the province the order form says the order maps),
+ *  against what the engine's order maps. */
+export function exploreForecastAgainstTheOrder(c: Copies, s: Samples): ExploreComparison[] {
+  return s.explore.map(({ world, hero, province }) => ({
+    ...compare(
+      [
+        hero.report['name'],
+        province['terrain'],
+        (isObj(hero.report['skills']) ? hero.report['skills'] : {})['explorer'],
+      ],
+      c.exploreGainOn(world.report, hero.report, province['terrain']),
+      { answer: exploreOrderGain(world.state, hero.state['id'], province['id']), changed: false },
+    ),
+    loremaster: objects(hero.report['titlesHeld']).some((t) => String(t['name']).includes('Loremaster')),
+  }));
+}
+
+/** What the army card's sea note tells the player, in the engine's words (getSeaCapability's answers): 'all' (every
+ *  unit sails or flies on its own), 'sea' (the column can put to sea: its hulls carry it, or its flyers lift it and
+ *  the card shows no note), 'land' (it needs more fleet units). */
+function seaNoteVerdict(note: unknown): string {
+  const words = String(note);
+  if (words === '') return 'sea';
+  if (words.includes('every unit sails or flies on its own')) return 'all';
+  if (words.includes('can put to sea')) return 'sea';
+  if (words.includes('more fleet unit')) return 'land';
+  return `(a note the check doesn't know: ${words})`;
+}
+/** One sea case compared, whether the hero has the naval mastery that doubles a hull (Naval 8), and the engine's
+ *  answer for the column under a leader one level short of it. */
+export interface SeaNoteComparison extends Comparison {
+  readonly naval8: boolean;
+  readonly engineWithoutTheMastery: unknown;
+}
+/** The army card's sea-transport note, read by its statements, against getSeaCapability, on every column of the
+ *  realm's heroes. */
+export function armyCardSeaNoteAgainstTheEngine(c: Copies, s: Samples): SeaNoteComparison[] {
+  return withState(s.heroes)
+    .filter((h) => objects(h.report['armies']).length > 0)
+    .map((h) => {
+      const armies = objects(h.state['armies']);
+      return {
+        ...compare(
+          [objects(h.report['armies']).map((a) => a['type']), skillOf(h.state, 'naval')],
+          seaNoteVerdict(c.armyCardSeaNote(h.report['armies'], h.report)),
+          engineOn(getSeaCapability, [armies, h.state]),
+        ),
+        naval8: skillOf(h.state, 'naval') >= 8,
+        engineWithoutTheMastery: engineOn(getSeaCapability, [armies, withSkillAt(h.state, 'naval', 7)]).answer,
+      };
+    });
 }
