@@ -451,7 +451,11 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         src.player !== c.player ||
         (src.armies || []).length === 0
       ) {
-        emit(turnContext, { type: 'system', text: `${c.name}: cannot pick up army.`, audience: {} });
+        emit(turnContext, {
+          type: 'system',
+          text: `${c.name}: cannot pick up army.`,
+          audience: { actor: c.player, realms: [c.player] },
+        });
         return;
       }
       const army = src.armies.pop();

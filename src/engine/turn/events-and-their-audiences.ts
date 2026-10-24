@@ -19,7 +19,9 @@
 // the stored form once.
 //
 // The fallbacks are the old `log` helper's (docs/traps.md, "A hero left out is the hero whose order is resolving"):
-//   hero   left out or null: the hero whose order is resolving (turnContext._logCtx.charId); 'none': no hero
+//   hero   left out or null: the hero whose order is resolving (turnContext._logCtx.charId), but only when the line
+//          already reaches his realm (it is told to it, is its deed, or is seen by the world or there; a battle's line
+//          reaches those who fought in it by being told); otherwise no hero (P1-12c1). 'none': no hero
 //   phase  left out or null: the phase of that order, else the phase resolving, else 99 once the phases are over;
 //          'none': no phase (the lines that were pushed straight into turnLog, which never had the 99)
 //
@@ -50,7 +52,8 @@ export interface TurnEvent {
   province?: number | null | undefined;
   /** 0 to 4, or 99 for the end of the turn; left out or null: the phase resolving; 'none': no phase. */
   phase?: number | null | 'none' | undefined;
-  /** The hero whose deed it is; left out or null: the hero whose order is resolving; 'none': no hero. */
+  /** The hero whose deed it is; left out or null: the hero whose order is resolving, when the line already reaches his
+   *  realm (else no hero); 'none': no hero. */
   hero?: number | null | 'none' | undefined;
   /** More heroes it is about: it is filed under whichever of them the reader owns. */
   heroes?: number[] | null | undefined;
@@ -108,6 +111,27 @@ export type FightLine = Omit<TurnEvent, 'text'>;
  *  once: emit(turnContext, { type, text, ...place }). */
 export type EventButItsWords = Omit<TurnEvent, 'type' | 'text'>;
 
+/** The hero a line that names none is filed under: the hero whose order is resolving, but only when the line already
+ *  reaches his realm by its audience (told to it, its deed, seen by the world or seen there; a battle's line reaches
+ *  those who fought in it by being told). Otherwise no hero, so that filing it under him never shows his realm a line
+ *  its audience keeps from it (playerEvents gives a realm every line filed under one of its heroes). A hero who serves
+ *  no realm has no realm to reach: the line is filed under him as before. */
+function theHeroWhoseOrderIsResolvingIfTheLineReachesHisRealm(
+  turnContext: TurnContext,
+  audience: LineAudience,
+): number | null {
+  const resolving = turnContext._logCtx.charId;
+  if (resolving == null) return null;
+  const hisRealm = turnContext.G.characters.find((c) => c.id === resolving)?.player;
+  if (hisRealm == null) return resolving;
+  const reachesHisRealm =
+    audience.actor === hisRealm ||
+    (audience.realms ?? []).includes(hisRealm) ||
+    audience.seen === 'world' ||
+    audience.seen === 'there';
+  return reachesHisRealm ? resolving : null;
+}
+
 /** Files an event in the GM's log of the turn: the one way a line enters it. */
 export function emit(turnContext: TurnContext, event: TurnEvent): void {
   const { audience } = event;
@@ -121,7 +145,10 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
     spy: event.spy ?? false,
     system: event.system ?? false,
     armyEstimate: event.armyEstimate ?? null,
-    charId: event.hero === 'none' ? null : (event.hero ?? turnContext._logCtx.charId),
+    charId:
+      event.hero === 'none'
+        ? null
+        : (event.hero ?? theHeroWhoseOrderIsResolvingIfTheLineReachesHisRealm(turnContext, audience)),
     charIds: event.heroes ?? null,
     // 2026-09-23 (Toby item 10): a line logged DURING a phase but outside any character's order (the lone-defender
     // ambush, Defend ride-outs, end-of-phase sweeps) had no phase at all, and the player's Chronicle files an unphased

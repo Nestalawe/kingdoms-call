@@ -289,7 +289,8 @@ function unseenHeroes(t: Turn): string[] {
 }
 
 /** An event as the turn emitted it (TurnEvent, src/engine/turn/events-and-their-audiences.ts), as scenarioInTheVm's
- *  recordTheEvents notes it: its audience as given, and the phase and the hero its line was filed under. */
+ *  recordTheEvents notes it: its audience as given, the phase and the hero its line was filed under, and whether the
+ *  event named that hero (else emit filed it under the hero whose order was resolving, or under none). */
 export interface EventAsEmitted {
   type?: unknown;
   text?: unknown;
@@ -302,6 +303,10 @@ export interface EventAsEmitted {
   province: unknown;
   phase: unknown;
   hero: unknown;
+  /** The event named its hero (a number), rather than leaving it to emit's fallback. */
+  heroNamed: boolean;
+  /** The realm the hero it was filed under served as the line was written (null: none, or no hero). */
+  heroRealmThen: unknown;
   heroes: unknown[] | null;
   spy: boolean;
 }
@@ -327,7 +332,9 @@ const phaseOf = (v: unknown): number | null => (isNumber(v) ? v : null);
  *  phase, admits it. Not if the event excepts the realm (except); otherwise:
  *  - told: the realm is among the event's realms;
  *  - its own deed: the realm is its actor;
- *  - about its hero: its hero, or one of its heroes, is one the realm owns as the report is built;
+ *  - about its hero: its hero, or one of its heroes, is one the realm owns as the report is built; but a line that
+ *    names no hero, filed under the hero whose order was resolving, is about him only when its audience reached the
+ *    realm he served as it was written (told it, its deed, seen by the world or there), or he served none (P1-12c1);
  *  - the world: seen by the world;
  *  - eyes there: seen there, in a province the realm owns, or where a hero of its own stood that phase, or that it spied
  *    that phase or before (any phase, for a line with none);
@@ -395,13 +402,20 @@ function linesTheirAudienceDoesNotAdmit(t: Turn): string[] {
       return from !== undefined && (phase == null || from <= phase);
     };
     const excepted = (e: EventAsEmitted) => (e.audience.except ?? []).includes(realm);
+    /** The hero it is filed under is the line's own: named by the event, or the hero whose order was resolving when
+     *  its audience reached his realm then (or he served none). A line seen by the world reaches every realm anyway. */
+    const filedUnderItsOwnHero = (e: EventAsEmitted) => {
+      const a = e.audience;
+      const then = e.heroRealmThen;
+      return e.heroNamed || then == null || (a.realms ?? []).includes(then) || a.actor === then || a.seen === 'there';
+    };
     const admits = (e: EventAsEmitted) => {
       const a = e.audience;
       if (excepted(e)) return false;
       return (
         (a.realms ?? []).includes(realm) ||
         a.actor === realm ||
-        (e.hero != null && ownHeroes.has(e.hero)) ||
+        (e.hero != null && ownHeroes.has(e.hero) && filedUnderItsOwnHero(e)) ||
         (e.heroes ?? []).some((h) => ownHeroes.has(h)) ||
         a.seen === 'world' ||
         (a.seen === 'there' && e.province != null && eyesThere(e.province, phaseOf(e.phase)))
