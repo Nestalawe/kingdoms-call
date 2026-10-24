@@ -1928,36 +1928,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/engine/units/movement-pools.ts",
-    "to": "src/engine/units/sea-lift-stranding-and-retreats.ts",
-    "unresolvedTo": "./sea-lift-stranding-and-retreats.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/units/sea-lift-stranding-and-retreats.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/units/movement-pools.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/ui/gm/auto-turn.ts",
     "to": "src/db/game-meta.ts",
     "unresolvedTo": "../../db/game-meta.ts",

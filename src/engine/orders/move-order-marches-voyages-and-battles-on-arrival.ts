@@ -23,13 +23,14 @@ import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import { clearNavalHold, navalHeldIn, navalHoldLine } from '../units/sea-lift-stranding-and-retreats.ts';
 import {
-  clearNavalHold,
+  canEnterTerrain,
+  contingentUnifyChance,
   getSeaCapability,
-  navalHeldIn,
-  navalHoldLine,
-} from '../units/sea-lift-stranding-and-retreats.ts';
-import { canEnterTerrain, contingentUnifyChance, refreshMovePool, setMovePool } from '../units/movement-pools.ts';
+  refreshMovePool,
+  setMovePool,
+} from '../units/movement-pools.ts';
 import { commandHandoverLine, pickBattleCommander, relocateChar, syncLeaderCopy } from '../battle/best-commander.ts';
 import {
   SKILLGAIN_COMMON,

@@ -95,11 +95,11 @@ import {
 } from './terrain-and-unit-strength.ts';
 import {
   bestRetreat,
-  getSeaCapability,
   navalSplitRetreat,
   retreatOptions,
   seaTrapLine,
 } from '../units/sea-lift-stranding-and-retreats.ts';
+import { getSeaCapability } from '../units/movement-pools.ts';
 import { realCharOf } from './best-commander.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { druidShortfallLine, forceMarker, terrainNoteList } from './battle-report-lines-and-force-markers.ts';

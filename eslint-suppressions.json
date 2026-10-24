@@ -633,17 +633,17 @@
       "count": 1
     }
   },
+  "src/engine/units/movement-pools.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
   "src/engine/units/recruit-limits.ts": {
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 3
     },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 2
-    }
-  },
-  "src/engine/units/sea-lift-stranding-and-retreats.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
     }
   },
   "src/engine/world/generate.ts": {
