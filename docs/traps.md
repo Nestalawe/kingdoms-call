@@ -467,9 +467,10 @@ portal uses (P1-11a): it calls the engine's own function, in `src/engine/rules-o
 `src/shared/` ([ARCHITECTURE.md](ARCHITECTURE.md#kingdoms-call-datats-the-one-source-for-shared-rules)). Change such a
 rule there, once. Rules are still restated:
 - in the player portal's projections (forecasts, order validation, hints): the copies still left are the ones
-  `tests/lib/player-portal-copies.ts` checks (`poSeaAnalysis`, `effMagicLvl`, the army card's sea-transport line, the
-  Explore forecast `exploreGainFor`; and the level of a hero's Druid that `druidNeedP` and the army card's Druid lines
-  feed the engine's Druid rule), and the other forecasts and order checks whose engine rule is written inline (P1-11b,
+  `tests/lib/player-portal-copies.ts` checks (`effMagicLvl`, the army card's sea-transport line, the
+  Explore forecast `exploreGainFor`; the level of a hero's Druid that `druidNeedP` and the army card's Druid lines
+  feed the engine's Druid rule; and the Naval 8 the Move notice works out from the report's skills to feed the sea
+  lift, `seaLiftOfAColumn`), and the other forecasts and order checks whose engine rule is written inline (P1-11b,
   P1-19);
 - at order time and again at resolution time in the engine;
 - in the turn-report forecast versus the end-of-turn collector;
