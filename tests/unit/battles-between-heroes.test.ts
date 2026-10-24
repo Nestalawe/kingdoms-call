@@ -44,7 +44,7 @@ interface Province {
 interface Battle {
   won: boolean;
   narrative: unknown[];
-  summaryText: string;
+  summaryText: unknown;
   atkLost: number;
   defLost: number;
 }
@@ -71,12 +71,11 @@ const getNeighbors = engineFn(engine, 'getNeighborsP') as (
   rows: number,
   provinces: Province[],
 ) => Province[];
-/** A report line's words: a line is its words, an object with its words (a line for one realm alone), or a fact whose
- *  words the views write (a force marker: theWordsOf, src/views/prose/, P1-12c3). */
-const narrText = engineFn(engine, 'narrText') as (line: unknown) => unknown;
+/** A report line's words: a line is its words, or a fact whose words the views write (theWordsOf, src/views/prose/,
+ *  P1-12c3). */
 const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
 const wordsOf = (line: unknown): unknown =>
-  typeof line === 'object' && line !== null && 'kind' in line ? theWordsOf(line) : narrText(line);
+  typeof line === 'object' && line !== null && 'kind' in line ? theWordsOf(line) : line;
 
 // every land company a realm can raise on open plains, with its race (the garrisons stay home)
 const COMPANIES = Object.entries(vm.runInContext('PROVINCE_ARMIES_P.plain', engine) as Record<string, string[]>)
@@ -202,11 +201,11 @@ test('the report is whole, and its summary names the side that won', () => {
     fc.property(battleInput, (input) => {
       const { tc, atk, def, prov } = stage(input);
       const r = combatVsChar(tc, atk, def, prov);
-      for (const line of [...r.narrative.map(wordsOf), r.summaryText]) {
+      for (const line of [...r.narrative.map(wordsOf), wordsOf(r.summaryText)]) {
         expect(typeof line).toBe('string');
         expect(String(line)).not.toMatch(/NaN|undefined/);
       }
-      expect(r.summaryText).toMatch(r.won ? /'s forces defeat / : /'s forces hold against /);
+      expect(wordsOf(r.summaryText)).toMatch(r.won ? /'s forces defeat / : /'s forces hold against /);
       if (r.won) seen.won++;
       else seen.held++;
     }),

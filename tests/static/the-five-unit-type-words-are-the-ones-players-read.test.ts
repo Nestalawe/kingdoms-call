@@ -7,8 +7,9 @@
 //      Gyrocopters need no Druid; the Shieldwall Levies row names Shieldwall; Forest Wardens are infantry (they never
 //      shoot).
 //   3. The rulebook's roles table and the intro's kinds-of-unit list use the five words as headings.
-//   4. The player portal's unit blurbs, the GM portal's archery-phase report lines and the Hall of Fame's "Storm of
-//      arrows" label say ranged, not missile.
+//   4. The player portal's unit blurbs, the GM portal's archery-phase report lines (whose words the views write since
+//      plan P1-12c6: src/views/prose/the-words-of-a-battles-lines.ts) and the Hall of Fame's "Storm of arrows" label
+//      say ranged, not missile.
 //
 // Level 0 (static): the rulebooks as built (site/); the portals and the Hall of Fame from src/ by their syntax tree
 // (tests/lib/source.ts); the data file's table from its module, imported with the whole engine loaded
@@ -18,7 +19,7 @@ import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { KC_UNIT_BASE_STR } from '../../src/content/kingdoms-call-data.ts';
 import { readPage } from '../lib/boot.js';
-import { compactPage, entriesOf, fileDeclaring, pageStrings, pageText } from '../lib/source.ts';
+import { compactPage, entriesOf, fileDeclaring, pageStrings, pageText, stringsOf } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const rules = readPage('kingdoms-call-rules.html'),
@@ -140,7 +141,10 @@ test('4. the portals and the Hall of Fame say ranged, not missile', timeLimitFor
     blurbText.length > 500 && !/missile/i.test(blurbText),
     'no unit blurb in the player portal says "missile"',
   ).toBe(true);
-  const archeryLines = pageStrings('kingdoms-call-gm-portal.html').filter((l) => l.includes('Archery Phase**'));
+  const archeryLines = [
+    ...pageStrings('kingdoms-call-gm-portal.html'),
+    ...stringsOf('views/prose/the-words-of-a-battles-lines.ts'),
+  ].filter((l) => l.includes('Archery Phase**'));
   expect(
     archeryLines.length === 2 && archeryLines.every((l) => l.includes('ranged unit') && !l.includes('missile unit')),
     'both archery-phase report lines count "ranged units", not "missile units"',

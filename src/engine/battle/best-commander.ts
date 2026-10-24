@@ -143,7 +143,12 @@ export function syncLeaderCopy(turnContext, real, copy) {
 }
 // The line the Chronicle prints when command changes hands.
 export function commandHandoverLine(leader, deflt, provName) {
-  return `\u{1F396} ${leader.name} takes command of the combined host at ${provName} \u2014 the most seasoned captain on the field, and ${deflt.name}'s troops fall in behind him.`;
+  return {
+    kind: 'the most seasoned captain takes command of the combined host',
+    leaderName: leader.name,
+    provName,
+    previousCommanderName: deflt.name,
+  };
 }
 
 export function armyTotalStr(turnContext, ch, prov) {

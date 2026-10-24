@@ -15,10 +15,12 @@ export function bloodHarvest(turnContext, winner, destroyed, narrative) {
   const _pl = G.players[winner.player];
   const _take = destroyed * (BLOOD_HARVEST_PER_UNIT + discSum(turnContext, winner.player, 'bloodHarvest', 'gold')); // + ap09 Skull Tithe
   _pl.gold = (_pl.gold || 0) + _take;
-  narrate(
-    narrative,
-    `\u{1FA78} Blood Harvest — the old gods claim their due from ${destroyed} fallen enemy unit${destroyed !== 1 ? 's' : ''}: +${_take}g in offerings.`,
-  );
+  narrate(narrative, {
+    kind: 'the blood harvest claims offerings from the fallen enemy units',
+    fallenUnitCount: destroyed,
+    fallenUnitsPlural: destroyed !== 1 ? 's' : '',
+    offeringsGold: _take,
+  });
 }
 // GRAND DESIGN — Evil (Iron Throne of Skulls): enemy units that fall in a battle you WIN have a
 // 20% chance to rise as your skeletons. Copies are pushed into the winner's WORKING array before
@@ -50,8 +52,5 @@ export function ironThroneRaise(turnContext, winnerChar, deadUnits, narrative) {
     }
   });
   if (_r > 0 && narrative)
-    narrate(
-      narrative,
-      `\u{1F480} Iron Throne of Skulls — ${_r} of the enemy's fallen claw their way up to serve as your skeletons.`,
-    );
+    narrate(narrative, { kind: "the iron throne of skulls raises the enemy's fallen as skeletons", raisedCount: _r });
 }

@@ -4,6 +4,7 @@ import { BATTLE_LINE_MULTS, battleFacingStage, battleGridStage, battleLineTotal,
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { Army } from '../../schemas/saved-game-state.ts';
 import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
+import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
 
 // ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
 // "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid
@@ -99,33 +100,75 @@ export function ladderLines(
   const fm = (forceMods || []).filter((x) => x && Math.abs(x.m - 1) > 1e-9);
   const hit = rows.filter((r) => (r._dmg || 0) > 1e-9);
   const ground = rows.filter((r) => !r.fly).length;
-  const L = [`  ${role} (${name}): ${pl(nUnits, 'unit')} — strength **${r0(final)}**`];
-  L.push(`    · Units: base ${r0(base)} → ${r0(unitSum)}${unitMods.length ? ` (${unitMods.join('; ')})` : ''}`);
+  const L: TheFactOfOneOfABattlesSentences[] = [
+    {
+      kind: "a side's strength ladder begins",
+      roleWords: role,
+      sideName: name,
+      unitsWords: pl(nUnits, 'unit'),
+      strength: r0(final),
+    },
+  ];
+  L.push({
+    kind: "the strength ladder's units",
+    baseStrength: r0(base),
+    unitsStrength: r0(unitSum),
+    wordsIfUnitModifiers: unitMods.length ? ` (${unitMods.join('; ')})` : '',
+  });
   if (cmd.length || r0(cmdSum) !== r0(unitSum))
-    L.push(`    · Command: ${r0(unitSum)} → ${r0(cmdSum)}${cmd.length ? ` (${cmd.join('; ')})` : ''}`);
+    L.push({
+      kind: "the strength ladder's command",
+      unitsStrength: r0(unitSum),
+      commandStrength: r0(cmdSum),
+      wordsIfCommand: cmd.length ? ` (${cmd.join('; ')})` : '',
+    });
   L.push(
     fm.length
-      ? `    · Whole force: ${r0(cmdSum)} ${fm.map((x) => `× ${x.label} ${ladderFm(x.m)}`).join(' ')} = ${r0(preSum)}`
-      : `    · Whole force: no force-wide modifiers — ${r0(preSum)}`,
+      ? {
+          kind: "the strength ladder's force-wide modifiers",
+          commandStrength: r0(cmdSum),
+          forceModifiersWords: fm.map((x) => `× ${x.label} ${ladderFm(x.m)}`).join(' '),
+          wholeForceStrength: r0(preSum),
+        }
+      : { kind: 'the strength ladder has no force-wide modifiers', wholeForceStrength: r0(preSum) },
   );
   if (hit.length && r0(preSum - postSum) > 0)
-    L.push(
-      `    · Pre-battle volleys & spells: ${r0(preSum)} − ${r0(preSum - postSum)} = ${r0(postSum)} (${pl(hit.length, 'unit')} hit; taken off the finished figures)`,
-    );
+    L.push({
+      kind: "the strength ladder's pre-battle damage",
+      wholeForceStrength: r0(preSum),
+      preBattleDamage: r0(preSum - postSum),
+      afterPreBattleDamage: r0(postSum),
+      unitsHitWords: pl(hit.length, 'unit'),
+    });
   if (opt.grid) {
     const face = opt.grid.face;
-    L.push(
-      `    · Battle lines (front of ${opt.grid.W}): ${r0(postSum)} → ${face ? r0(lineTot) : '**' + r0(lineTot) + '**'} (${battleGridStage(opt.grid)})`,
-    );
-    if (face) L.push(`    · Who faces whom: ${r0(lineTot)} → **${r0(face.total)}** (${battleFacingStage(opt.grid)})`);
+    L.push({
+      kind: "the strength ladder's battle lines",
+      frontWidth: opt.grid.W,
+      afterPreBattleDamage: r0(postSum),
+      battleLinesStrengthWords: face ? r0(lineTot) : '**' + r0(lineTot) + '**',
+      gridStageWords: battleGridStage(opt.grid),
+    });
+    if (face)
+      L.push({
+        kind: "the strength ladder's who faces whom",
+        battleLinesStrength: r0(lineTot),
+        facingStrength: r0(face.total),
+        facingStageWords: battleFacingStage(opt.grid),
+      });
   } else if (ground > width) {
     const m = flank ? flankLineMults() : BATTLE_LINE_MULTS;
-    L.push(
-      `    · Battle lines: ${r0(postSum)} → **${r0(lineTot)}** (${pl(ground - width, 'unit')} behind the ${width}-unit front at ${m
+    L.push({
+      kind: "the strength ladder's units behind the front",
+      afterPreBattleDamage: r0(postSum),
+      battleLinesStrength: r0(lineTot),
+      unitsBehindTheFrontWords: pl(ground - width, 'unit'),
+      frontWidth: width,
+      lineMultipliersWords: m
         .slice(1)
         .map((x) => '×' + x)
-        .join(' / ')})`,
-    );
+        .join(' / '),
+    });
   }
   return L;
 }

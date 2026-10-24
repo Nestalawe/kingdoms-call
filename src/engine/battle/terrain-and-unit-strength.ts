@@ -442,7 +442,7 @@ export function kinNarrative(force, leader, ownerRace, sideName) {
     );
   if (kingOnly) parts.push(`${kingOnly} unit${kingOnly !== 1 ? 's' : ''} of the king's race (+20%)`);
   if (leadOnly) parts.push(`${leadOnly} unit${leadOnly !== 1 ? 's' : ''} of their commander's race (+20%)`);
-  return `🤝 Kinship — ${sideName}: ${parts.join('; ')}.`;
+  return { kind: "a side's units fight beside their own kin", sideName, kinshipWords: parts.join('; ') };
 }
 // ownedUnitName / unitRef moved to module level beside disbandLine (2026-10-11), so rollUnitFates and the
 // tests can reach them.

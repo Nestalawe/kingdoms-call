@@ -18,13 +18,14 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,1200));
   const w=dom.window; const ev=expr=>w.eval(expr);
+  const wordsOf=l=>l==null||typeof l==='string'?l:ev('theWordsOf')(l); // a line's words: its words, or a fact's (the views write them, P1-12c6)
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   for(const f of ['rollUnitFates','unitRef','ownedUnitName','demoteOrDisband','disbandLine']) ok(ev(`typeof ${f}`)==='function',`${f}() is declared at module level`);
   if(fail){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
   const fates=ev('rollUnitFates'), unitRef=ev('unitRef'), owned=ev('ownedUnitName');
   const dice=seq=>{ let i=0; const f=()=>{ if(i>=seq.length) throw new Error('more dice than planned'); return seq[i++]; }; f.used=()=>i; return f; };
   const unit=(type,quality,extra)=>Object.assign({type,quality,unitName:type+' 1'},extra||{});
-  const run=(force,o,seq)=>{ const lines=[]; const rng=dice(seq); const r=fates(force,Object.assign({rng,say:l=>lines.push(l)},o)); return {r,lines,used:rng.used()}; };
+  const run=(force,o,seq)=>{ const lines=[]; const rng=dice(seq); const r=fates(force,Object.assign({rng,say:l=>lines.push(wordsOf(l))},o)); return {r,lines,used:rng.used()}; };
 
   // the winner
   let f=[unit('Shieldwall Levies','Average'),unit('Yeoman Longbows','Veteran'),unit('Dwarven Guard','Elite'),unit('Shieldwall Levies','Average',{_isSkeletal:true})];

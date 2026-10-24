@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── LINES IN THE GM'S LOG (plan P1-08a: lifted out of resolveTurn) ────
-// The spell records, a narrative line's raw text, the silent heroes' line and a realm's name tag. Each takes the turn's
-// context first (src/engine/turn/context.ts), but narrText, which reads none. The helpers that write a line of a
+// The spell records, the silent heroes' line and a realm's name tag. Each takes the turn's context first
+// (src/engine/turn/context.ts). The helpers that write a line of a
 // fight's narrative, to a hero or a province's owner, or a private line with a public twin are in
 // events-and-their-audiences.ts (plan P1-12a2), beside emit, the one door into the GM's log. At the end, the
 // telemetry's two snapshots of a realm, its situation and its orders (telRealmSnapshot, telOrdersFor: moved from
@@ -30,12 +30,6 @@ export const telSpell = (turnContext, ch, spell, school, lvl, chance, roll, ctx)
   } catch (_te) {}
 };
 
-// A fight's narrative holds words (strings) and facts, whose words the views write (events-and-their-audiences.ts,
-// NarrativeLine; P1-12c3, P1-12c4). narrText() is for the rare consumer that needs a line's raw string (splice-point
-// searches, etc.): a fact has no words in the engine, so it is handed back as it is (no string).
-export function narrText(line) {
-  return line && typeof line === 'object' && line.text != null ? line.text : line;
-}
 // ── NO SILENT SEASON (2026-10-09, Toby item 1) ────
 // Every hero of a realm has at least one line in every season of his Chronicle. A hero can still
 // be moved or swept into a fight by code that files its lines under someone else (a veiled march,

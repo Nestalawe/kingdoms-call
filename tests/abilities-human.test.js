@@ -23,6 +23,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,1200));
   const w=dom.window; const ev=expr=>w.eval(expr);
+  const wordsOf=l=>l==null||typeof l==='string'?l:ev('theWordsOf')(l); // a line's words: its words, or a fact's (the views write them, P1-12c6)
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   const G=ev('battleGrid'), F=ev('battleFacing'), UAM=ev('unitAbilityMult'), MDM=ev('missileDamageMult'), FATES=ev('rollUnitFates');
   const BASE={'Shieldwall Levies':8,'Yeoman Longbows':8,'Free Lances':10,'Gilded Lances':12,'Men-at-Arms':12,'Human Garrison':4,'Noble Griffons':12,'Warg Riders':10,'Orc Berserkers':12,'Elven Bowmen':10};
@@ -113,7 +114,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   // Knightly Example: Levies and Men-at-Arms never lose a tier in defeat while a Gilded Lances unit is in the army
   { const mk=(type,q)=>({type,quality:q||'Veteran',unitName:type}); const said=[];
     const force=[mk('Shieldwall Levies'),mk('Men-at-Arms'),mk('Yeoman Longbows'),mk('Gilded Lances')];
-    const res=FATES(force,{owner:'Test',won:false,dieAt:()=>0,demoteAt:()=>1,promoteTo:()=>0,rng:()=>0.5,say:s=>said.push(s)});
+    const res=FATES(force,{owner:'Test',won:false,dieAt:()=>0,demoteAt:()=>1,promoteTo:()=>0,rng:()=>0.5,say:s=>said.push(wordsOf(s))});
     ok(force[0].quality==='Veteran'&&force[1].quality==='Veteran','the Levies and the Men-at-Arms keep Veteran though the roll said demote');
     ok(force[2].quality==='Average'&&force[3].quality==='Average','the Longbows and the Gilded Lances themselves still lose a tier');
     ok(res.held===2&&res.demoted===2,`two held, two demoted (got held ${res.held}, demoted ${res.demoted})`);

@@ -1938,7 +1938,11 @@ export function combatVsChar(turnContext, atk, def, prov) {
   } // Druid: winner full, loser half
   // onlooker summary (see combatVsNPC). atkName/defName reflect a slain commander's leaderless
   // host.
-  const summaryText = `⚔ Battle at ${prov.name}: ${won ? `${atkName}'s forces defeat ${defName}` : `${defName}'s forces hold against ${atkName}`}.`;
+  const summaryText = {
+    kind: "the onlookers' summary of a battle",
+    provName: prov.name,
+    outcomeWords: won ? `${atkName}'s forces defeat ${defName}` : `${defName}'s forces hold against ${atkName}`,
+  };
   _tallyLost();
   try {
     _tel.battles.push({

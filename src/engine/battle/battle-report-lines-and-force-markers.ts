@@ -9,6 +9,7 @@ import {
   isALineForEveryoneInTheFight,
   narrate,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  theWordsOrTheFactOfALine,
 } from '../turn/events-and-their-audiences.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
@@ -99,7 +100,7 @@ export function battlecryOf(ch: Character | null | undefined) {
 export function pushBattlecry(narrative: NarrativeLine[], ch: Character, foeName: string) {
   const cry = battlecryOf(ch);
   if (!cry) return;
-  narrate(narrative, `📣 ${ch.name} cries out to ${foeName}: “${cry}”`);
+  narrate(narrative, { kind: 'a hero cries out his battlecry to his foe', heroName: ch.name, foeName, battlecry: cry });
 }
 
 // ── BATTLE-REPORT AUDIENCE ────
@@ -134,7 +135,13 @@ export function druidShortfallLine(
   });
   if (!m.size) return null;
   const n = [...m.values()].reduce((s, x) => s + x, 0);
-  return `⚠ Druid shortfall — ${sideName} cannot fully command ${n} unit${n !== 1 ? 's' : ''}: ${[...m].map(([k, c]) => (c > 1 ? `${c}× ${k}` : k)).join(', ')}.`;
+  return {
+    kind: "a side's Druid cannot fully command its units",
+    sideName,
+    unitCount: n,
+    unitsPlural: n !== 1 ? 's' : '',
+    shortfallUnitsWords: [...m].map(([k, c]) => (c > 1 ? `${c}× ${k}` : k)).join(', '),
+  };
 }
 // Terrain note for one side of a battle: "Free Lances +15%, 2× Forest Ents −40%" (2026-09-23d: both
 // battle paths share this — the PvP copy printed "Free Lances:+15%" and mixed both sides
@@ -154,7 +161,7 @@ export function terrainNoteList(force: Army[] | null | undefined, terrain: strin
 
 export function emitBattle(
   turnContext: TurnContext,
-  battle: { narrative?: NarrativeLine[] | undefined; summaryText?: string | undefined } | null | undefined,
+  battle: { narrative?: NarrativeLine[] | undefined; summaryText?: NarrativeLine | undefined } | null | undefined,
   prov: Province | null | undefined,
   ph: number | null | undefined,
   participants: (number | null | undefined)[] | null | undefined,
@@ -162,7 +169,7 @@ export function emitBattle(
     actor?: number | null | undefined;
     charId?: number | null | undefined;
     charIds?: number[] | null | undefined;
-    summaryText?: string | undefined;
+    summaryText?: NarrativeLine | undefined;
   } | null,
 ) {
   opts = opts || {};
@@ -206,5 +213,5 @@ export function emitBattle(
       battle: { id: _bid, tier: 't' },
     });
   const sTxt = opts.summaryText || (battle && battle.summaryText);
-  if (sTxt) emit(turnContext, { ...fight, text: sTxt, battle: { id: _bid, tier: 's' } });
+  if (sTxt) emit(turnContext, { ...fight, ...theWordsOrTheFactOfALine(sTxt), battle: { id: _bid, tier: 's' } });
 }

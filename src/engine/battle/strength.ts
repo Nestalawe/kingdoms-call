@@ -114,7 +114,7 @@ export function archeryBlockedBy(defenderForce, terrain, shooters) {
 export function eyesOfTheForestLine(defenderForce, terrain, shooters, shooterName) {
   if ((terrain !== 'forest' && terrain !== 'jungle') || !eyesOfTheForest(shooters)) return null;
   if (!(defenderForce || []).some((a) => a && a.type === 'Forest Wardens')) return null;
-  return `🦅 ${shooterName}'s Eagle Riders mark the Forest Wardens in the thickets — the Ambush is spoiled and the volley flies.`;
+  return { kind: 'the eagle riders mark the forest wardens and spoil the ambush', shooterName };
 }
 // Per-shot damage multipliers from the firing unit's ability. isAtk: the firer's side attacks.
 // 2026-10-11 (Toby, the unit abilities): the Longbows' Massed Volley is retired (theirs are Bodkin Points
@@ -176,11 +176,19 @@ export function applyFlakScreen(myForce, enemyForce, myName, narr) {
     t._flakTargeted = true;
     const red = Math.max(1, Math.round(unitBaseStrength(t) * 0.3));
     t._tempStrReduction = (t._tempStrReduction || 0) + red;
-    lines.push(`  💨 Gyrocopters harry the ${t.unitName || t.type} — driven off their line (−${red} strength).`);
+    lines.push({
+      kind: 'the gyrocopters harry a flying unit off its line',
+      targetUnitName: t.unitName || t.type,
+      strengthLost: red,
+    });
     engaged++;
   });
   if (engaged) {
-    narrate(narr, `🌀 ${myName}'s Gnomish Gyrocopters climb to meet the enemy's flyers — ${engaged} engaged.`);
+    narrate(narr, {
+      kind: "a side's gyrocopters climb to meet the enemy's flyers",
+      sideName: myName,
+      engagedCount: engaged,
+    });
     lines.forEach((l) => narrate(narr, l));
   }
 }

@@ -1,14 +1,18 @@
-// ── THE FACTS A BATTLE'S LINES RECORD (plan P1-12c3 and c5: P1-12's Decisions of 2026-10-24, Decisions 2, 5 and 6) ────
+// ── THE FACTS A BATTLE'S LINES RECORD (plan P1-12c3, c5 and c6: P1-12's Decisions of 2026-10-24, Decisions 2, 5 and 6) ──
 // A typed line records a fact, and the views write its words after perception (src/views/prose/the-words-of-a-
 // battles-lines.ts): the engine no longer writes those words itself. Each kind below is one sentence's sense, with the
 // fields its words are made from, and its audience (Decision 6: THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE, which
 // emitNarrLine reads). Rows c4 to c6 add the rest of the fights' lines: c5 every sentence of a battle between two
-// heroes' hosts and of the duel before a battle (battle/battles-between-heroes.ts, battle/pre-battle-duels.ts), one
+// heroes' hosts and of the duel before a battle (battle/battles-between-heroes.ts, battle/pre-battle-duels.ts), c6 every
+// other sentence of battle/ (a battle against a province's own defenders, a host gained in a province, a stalled
+// battle, a war front, terror, the blood harvest, and the helpers that return a line: the kinship, Druid, eagle and
+// command lines, the ladder and grid rows, the scouting and tactics lines, the units' fates, the battlecries), one
 // kind per sentence, one field per value the sentence was written with, worked out where the line is told and in the
 // sentence's order, so the words are the same by construction (TheFactOfOneOfABattlesSentences). A field may hold words
-// itself (those named wordsIf…, …Words, …Plural, …Mark, …Names, …Notes, why, a verb, the fortune): P1-12d moves those
-// words into the prose and merges the kinds into facts by sense. Words a battle's narrative takes from another file's
-// helper (the kinship and terror lines, the ladder rows, the battlecries, the grid) stay words until P1-12c6.
+// itself (those named wordsIf…, …Words, …Plural, …Mark, …Names, …Notes, why, a verb, the fortune, a unit's reference):
+// P1-12d moves those words into the prose and merges the kinds into facts by sense. Words a battle takes from another
+// folder's helper (a unit disbanding, a sea trap, a naval hold, the wanderer's escape, a hero's death) stay words
+// until P1-12d.
 // LineFact (src/engine/turn/events-and-their-audiences.ts) is the union of every area's kinds; a kind with no words in
 // src/views/prose/ is a compile error there.
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
@@ -48,7 +52,7 @@ export interface ABattlesLossesTalliedFromItsLines {
 }
 
 /** One sentence of a battle's lines, each with its kind: one kind per sentence, one field per value it was written
- *  with. Their audience: the fight's. */
+ *  with. Their audience: the fight's, or for those filed on their own (not in a fight's narrative), their event's. */
 export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the attacker's lightning advance catches the defender unready";
@@ -322,7 +326,526 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'a personal duel before the battle begins'; challengerName: string; challengedName: string }
   | { kind: "the duel's loser falls at death's door but is not slain"; loserName: string }
   | { kind: "the duel's loser is slain"; loserName: string }
-  | { kind: 'the duel ends inconclusively' };
+  | { kind: 'the duel ends inconclusively' }
+  | {
+      kind: 'a hero cries out his battlecry to his foe';
+      heroName: AValueInALinesWords;
+      foeName: AValueInALinesWords;
+      battlecry: AValueInALinesWords;
+    }
+  | {
+      kind: "a side's Druid cannot fully command its units";
+      sideName: string;
+      unitCount: number;
+      unitsPlural: string;
+      shortfallUnitsWords: string;
+    }
+  | {
+      kind: 'the attacker moves into a province held by its defenders and a battle is initiated';
+      cName: string;
+      wordsOfTheAttackersRealm: string;
+      provName: string;
+      heldByName: string;
+    }
+  | {
+      kind: 'the guard is slain before his host, and a sergeant of the garrison takes up the banner';
+      guardName: AValueInALinesWords;
+    }
+  | { kind: 'the attacker is cut down before the lines join, and the eldest captain takes command'; cName: string }
+  | { kind: "the attacker's Tactical command does not apply at sea"; cName: string }
+  | { kind: 'the defenders of a province defend ground held justly'; provName: string }
+  | { kind: 'the defenders fight on home soil' }
+  | {
+      kind: 'the attacker casts a spell before the battle against the defenders';
+      cName: string;
+      spellName: string;
+      schoolLabel: string;
+      spellLevel: number;
+      castChance: number;
+      castRoll: number;
+      castMark: string;
+    }
+  | {
+      kind: "a fireball engulfs the defenders' strongest units";
+      fireballTargetsWords: string;
+      fireballHitUnitNames: string;
+    }
+  | { kind: 'a telekinetic storm finds no command among leaderless defenders' }
+  | { kind: 'a psychic blast finds no commander among the defenders' }
+  | { kind: 'a lightning bolt sears the defending units'; unitCount: number; unitsPlural: string }
+  | { kind: 'a curse finds no commander among leaderless defenders' }
+  | {
+      kind: "control undead turns a defending undead unit to the attacker's side";
+      turnedUnitName: string;
+      cName: string;
+    }
+  | { kind: 'control undead finds no undead among the defenders' }
+  | {
+      kind: 'a holy symbol sears the defending undead';
+      undeadUnitCount: AValueInALinesWords;
+      undeadUnitsPlural: AValueInALinesWords;
+    }
+  | { kind: 'a holy symbol finds no undead among the defenders' }
+  | { kind: "spiritwrack halves the defenders' missile units"; missileUnitCount: number; missileUnitsPlural: string }
+  | { kind: 'spiritwrack finds no missile troops among the defenders' }
+  | { kind: "the attacker's spell before the battle fizzles" }
+  | { kind: "a unit's power hits every defending unit"; powerName: string; unitCount: number; damage: number }
+  | {
+      kind: "a unit's power hits one unit of the other side";
+      powerName: string;
+      struckUnitName: string;
+      damage: number;
+    }
+  | { kind: 'a whale cohort sinks a defending ship before a shot is fired'; targetUnitName: string }
+  | {
+      kind: "the attacker's archery volley begins";
+      missileUnitCount: number;
+      missileUnitsPlural: string;
+      wordsIfDoubleVolleys: string;
+      wordsIfOneMoreShot: string;
+    }
+  | {
+      kind: 'a unit fires at its target and the shot glances off';
+      shooterName: AValueInALinesWords;
+      targetUnitName: AValueInALinesWords;
+      whyTheShotGlances: AValueInALinesWords;
+    }
+  | {
+      kind: 'a unit fires at its target and weakens it';
+      shooterName: string;
+      targetUnitName: string;
+      damage: number;
+      wordsIfFlying: string;
+      wordsIfThickHide: string;
+      wordsIfAbilityMultiplier: string;
+      wordsIfSoftenedToTheLimit: string;
+    }
+  | {
+      kind: "an attacking unit's target is already softened as far as arrows allow";
+      shooterName: AValueInALinesWords;
+      targetUnitName: AValueInALinesWords;
+    }
+  | { kind: "the attacker's archery volley's total"; totalDamage: number; arrowSofteningCapPct: number }
+  | {
+      kind: 'the defender casts a spell before the battle';
+      casterName: string;
+      spellName: string;
+      schoolLabel: string;
+      spellLevel: number;
+      castChance: number;
+      castRoll: number;
+      castMark: string;
+    }
+  | { kind: "a fireball halves the attackers' strongest unit"; targetUnitName: string; strengthLost: number }
+  | { kind: 'a lightning bolt sears the attacking units'; unitCount: number; unitsPlural: string }
+  | { kind: 'control undead finds no undead among the attackers' }
+  | { kind: 'a holy symbol sears the attacking undead'; undeadUnitCount: number; undeadUnitsPlural: string }
+  | { kind: 'a holy symbol finds no undead among the attackers' }
+  | { kind: "spiritwrack halves the attackers' missile units"; missileUnitCount: number; missileUnitsPlural: string }
+  | { kind: 'spiritwrack finds no missile troops among the attackers' }
+  | { kind: "the defender's spell before the battle fizzles" }
+  | { kind: "the attacker's lightning advance catches the defenders unready"; cName: AValueInALinesWords }
+  | { kind: "the defenders' archers find no target among the attacker's forest wardens"; cName: string }
+  | {
+      kind: "the defenders' archery volley begins";
+      missileUnitCount: number;
+      missileUnitsPlural: string;
+      wordsIfPreparedGround: string;
+    }
+  | {
+      kind: "a defending unit's target is already softened as far as arrows allow";
+      unitName: AValueInALinesWords;
+      targetUnitName: AValueInALinesWords;
+    }
+  | { kind: "the defenders' archery volley's total"; totalDamage: number; arrowSofteningCapPct: number }
+  | { kind: 'a defending unit uses its power in battle'; unitName: string; powerName: string; powerFlavour: string }
+  | { kind: "a unit's power hits every attacking unit"; powerName: string; unitCount: number; damage: number }
+  | { kind: "the terrain's effect on the attacker's units"; terrain: string; cName: string; terrainNotes: string }
+  | {
+      kind: 'hosts airborne over open water fight at a penalty against the defenders';
+      seaAirborneLandPenalty: number;
+      seaAirborneFlyerPenalty: number;
+    }
+  | { kind: 'land units fight at sea at a penalty against the defenders'; seaLandPenalty: number }
+  | { kind: 'the attacker unfolds a grand stratagem against the defenders'; cName: AValueInALinesWords }
+  | { kind: 'the attacker storms ashore in a raid on the coast against the defenders'; cName: AValueInALinesWords }
+  | { kind: "the attacker's monsters are driven to savage fury"; cName: string }
+  | { kind: "the attacker's troops fight with fanatical zeal"; cName: string }
+  | { kind: "the attacker's realm discoveries strengthen his army"; discoveriesArmyBonusPct: AValueInALinesWords }
+  | { kind: "the attacker's free lances find no room to ride"; cName: string; terrain: string }
+  | {
+      kind: 'the attacker sweeps into a province with no one left to stand against him';
+      cName: string;
+      provName: string;
+    }
+  | {
+      kind: 'the attacker wins the battle against the defenders';
+      severityArticle: string;
+      severity: string;
+      marginPct: string;
+      cName: string;
+      winVerb: string;
+      guardName: string;
+    }
+  | { kind: "the attacker's warg riders halve his losses"; cName: string }
+  | { kind: 'every defending unit was lost before the lines closed' }
+  | { kind: "the defenders' dwarven guard leave the attacker's free lances no broken backs"; cName: string }
+  | {
+      kind: "the attacker's free lances ride down the defenders' broken companies";
+      cName: string;
+      extraLossesPct: number;
+    }
+  | { kind: 'a defending unit is destroyed in the rout'; defendingUnitName: string; facedClauseWords: string }
+  | { kind: 'the defenders have nowhere to retreat and hold a shield fort'; provName: string }
+  | { kind: 'the defenders have nowhere to retreat and take further losses'; provName: string }
+  | {
+      kind: 'the attacker is repelled by the defenders';
+      cName: string;
+      severityArticle: string;
+      severity: string;
+      marginPct: string;
+      defName2: string;
+      holdWords: string;
+    }
+  | { kind: 'a defending unit is destroyed in the fighting'; defendingUnitName: string; facedClauseWords: string }
+  | { kind: "the guard's host is destroyed and he is a masterless hero"; guardName: string; provName: string }
+  | { kind: "the attacker's dwarven guard leave the defenders' free lances no broken backs"; cName: string }
+  | {
+      kind: "the defenders' free lances ride down the attacker's broken companies";
+      cName: string;
+      extraLossesPct: number;
+    }
+  | { kind: "the attacker's corsairs take his beaten force back to the ships"; cName: AValueInALinesWords }
+  | { kind: "the attacker's shield-wall holds and the infantry stand their ground"; cName: string }
+  | { kind: 'the attacker has nowhere to retreat and takes further losses'; cName: string }
+  | { kind: 'an attacking unit is cut down in the rout with no escape'; unitName: string; wordsIfSkeletal: string }
+  | { kind: "the attacker's forces retreat to a province"; cName: string; retreatToName: string }
+  | { kind: "the onlookers' summary of a battle"; provName: string; outcomeWords: string }
+  | {
+      kind: 'the most seasoned captain takes command of the combined host';
+      leaderName: string;
+      provName: string;
+      previousCommanderName: string;
+    }
+  | {
+      kind: 'the blood harvest claims offerings from the fallen enemy units';
+      fallenUnitCount: number;
+      fallenUnitsPlural: string;
+      offeringsGold: number;
+    }
+  | { kind: "the iron throne of skulls raises the enemy's fallen as skeletons"; raisedCount: AValueInALinesWords }
+  | {
+      kind: 'terror radiates from a province after an evil victory';
+      provName: string;
+      wordsIfTheSurroundingLands: string;
+      terrorPctPerStack: number;
+    }
+  | {
+      kind: 'terror lingers in a province and its defenders fight demoralised';
+      provName: string;
+      terrorPct: number;
+      terrorStacks: number;
+      terrorStacksPlural: string;
+    }
+  | { kind: 'a unit is cut down and rises again by its regenerating hide'; unitReference: string }
+  | { kind: 'a unit dies in the battle'; unitReference: string; diedVerb: string; wordsIfSkeletal: string }
+  | {
+      kind: 'a unit is promoted after the battle';
+      unitReferenceAtItsOldQuality: string;
+      promoteVerb: string;
+      unitQuality: string;
+    }
+  | { kind: 'a unit falls back behind the shield wall in good order'; unitReference: string }
+  | { kind: 'a unit keeps its nerve under the knightly example'; unitReference: string }
+  | {
+      kind: 'a unit loses heart in defeat and is reduced a tier';
+      unitReferenceAtItsOldQuality: string;
+      unitQuality: string;
+    }
+  | { kind: 'a unit improves a tier despite defeat'; unitReferenceAtItsOldQuality: string; unitQuality: string }
+  | {
+      kind: "a hero not at war with the province's realm gains a host inside it";
+      cName: string;
+      realmTag: string;
+      unitCount: number;
+      unitsPlural: string;
+      provName: string;
+      relationWords: string;
+      provName2: string;
+    }
+  | { kind: "a hero's new host is still forming up in a province"; cName: string; provName: string }
+  | {
+      kind: 'no one stands to defend a province and the hero takes control of it';
+      provName: string;
+      cName: string;
+      playerName: string;
+    }
+  | {
+      kind: 'with fresh troops the hero takes control of a province';
+      cName: string;
+      provName: string;
+      playerName: string;
+    }
+  | {
+      kind: 'the hero turns a newly gathered host on a province and a battle is initiated';
+      cName: string;
+      realmTag: string;
+      provName: string;
+      heldByName: string;
+    }
+  | {
+      kind: 'the defenders riding in were keeping watch and are already in the line';
+      ridersNames: string;
+      wasOrWere: string;
+      provName: string;
+      isOrAre: string;
+      cName: string;
+      whatTheHostDoes: string;
+      provName2: string;
+    }
+  | {
+      kind: 'the defender is reinforced by other heroes in the defence of a province';
+      defenderName: string;
+      reinforcementsNames: string;
+      provName: string;
+    }
+  | {
+      kind: "the province's standing troops rally to the defender";
+      provName: string;
+      leaderName: string;
+      garrisonUnitCount: number;
+      garrisonUnitsPlural: string;
+      garrisonWords: string;
+    }
+  | {
+      kind: 'a hero fell in the battle line beside the commander of the defence';
+      heroName: AValueInALinesWords;
+      leaderName: AValueInALinesWords;
+      provName: AValueInALinesWords;
+      leaderName2: AValueInALinesWords;
+    }
+  | {
+      kind: 'a hero stands in the battle line beside the commander of the defence';
+      heroName: string;
+      leaderName: string;
+      provName: string;
+      leaderName2: string;
+    }
+  | {
+      kind: "the province's standing troops fall back with the defender";
+      provName: AValueInALinesWords;
+      fellBackToName: AValueInALinesWords;
+      defenderName: AValueInALinesWords;
+    }
+  | {
+      kind: "the province's standing troops fall in with the defender as the battle continues";
+      provName: string;
+      defenderName: string;
+    }
+  | {
+      kind: "the province's garrison is overwhelmed as the province falls";
+      provName: string;
+      overrunUnitsNames: string;
+      isOrAre: string;
+    }
+  | {
+      kind: 'the hero has the better of the fighting but the guard still holds the field';
+      hostName: string;
+      provName: string;
+      guardName: string;
+      guardUnitCount: number;
+      guardUnitsPlural: string;
+    }
+  | {
+      kind: 'the hero has the better of the fighting but leaderless defenders still hold the field';
+      hostName: AValueInALinesWords;
+      provName: AValueInALinesWords;
+      leaderlessUnitCount: AValueInALinesWords;
+      leaderlessUnitsPlural: AValueInALinesWords;
+    }
+  | {
+      kind: 'the hero has the better of the fighting but enemy forces still hold their ground';
+      hostName: string;
+      provName: string;
+    }
+  | {
+      kind: "the hero has the better of the fighting but the province's garrison still holds";
+      hostName: AValueInALinesWords;
+      provName: AValueInALinesWords;
+      whatTheGarrisonDoes: AValueInALinesWords;
+    }
+  | {
+      kind: 'the hero overcomes the defenders and claims the province for his realm';
+      hostName: string;
+      provName: string;
+      playerName: string;
+    }
+  | {
+      kind: "the province's owner learns his defenders still hold against the hero";
+      cName: string;
+      realmTag: string;
+      provName: string;
+      provName2: string;
+      hostWords: string;
+      unitCount: number;
+      unitsPlural: string;
+    }
+  | {
+      kind: "the province's owner learns the hero was beaten back";
+      cName: string;
+      realmTag: string;
+      provName: string;
+      provName2: string;
+    }
+  | {
+      kind: "a beaten guard's surviving unit breaks ranks and flees as mercenaries";
+      unitName: string;
+      wordsIfTheVictorsHost: string;
+      provName: string;
+    }
+  | {
+      kind: "a beaten guard's surviving unit loses heart and is reduced a tier";
+      unitNameAtItsOldQuality: string;
+      unitQuality: string;
+      wordsIfTheVictorsHost: string;
+      guardName: string;
+    }
+  | {
+      kind: "a beaten guard's surviving unit holds its ground unbroken";
+      unitName: string;
+      wordsIfTheVictorsHost: string;
+      guardName: string;
+    }
+  | {
+      kind: "a side's strength ladder begins";
+      roleWords: string;
+      sideName: string;
+      unitsWords: string;
+      strength: number;
+    }
+  | { kind: "the strength ladder's units"; baseStrength: number; unitsStrength: number; wordsIfUnitModifiers: string }
+  | { kind: "the strength ladder's command"; unitsStrength: number; commandStrength: number; wordsIfCommand: string }
+  | {
+      kind: "the strength ladder's force-wide modifiers";
+      commandStrength: number;
+      forceModifiersWords: string;
+      wholeForceStrength: number;
+    }
+  | { kind: 'the strength ladder has no force-wide modifiers'; wholeForceStrength: number }
+  | {
+      kind: "the strength ladder's pre-battle damage";
+      wholeForceStrength: number;
+      preBattleDamage: number;
+      afterPreBattleDamage: number;
+      unitsHitWords: string;
+    }
+  | {
+      kind: "the strength ladder's battle lines";
+      frontWidth: number;
+      afterPreBattleDamage: number;
+      battleLinesStrengthWords: number | string;
+      gridStageWords: string;
+    }
+  | {
+      kind: "the strength ladder's who faces whom";
+      battleLinesStrength: number;
+      facingStrength: number;
+      facingStageWords: string;
+    }
+  | {
+      kind: "the strength ladder's units behind the front";
+      afterPreBattleDamage: AValueInALinesWords;
+      battleLinesStrength: AValueInALinesWords;
+      unitsBehindTheFrontWords: AValueInALinesWords;
+      frontWidth: AValueInALinesWords;
+      lineMultipliersWords: AValueInALinesWords;
+    }
+  | { kind: 'the ground allows a front of a width'; groundWords: string; allowsWord: string; frontWidth: number }
+  | {
+      kind: "a side's front line in the battle grid";
+      sideLabel: string;
+      frontLineCells: string;
+      wordsIfFlanksAirOrReserve: string;
+    }
+  | { kind: "a side's second line in the battle grid"; sideLabel: string; secondLineCells: string }
+  | {
+      kind: 'the scouting side chooses the front';
+      scoutName: string;
+      whyItScouts: string;
+      scoutName2: string;
+      whatItDoesWithTheFront: string;
+      wordsIfAdjustments: string;
+    }
+  | {
+      kind: 'each side shifts its battle line';
+      otherSideName: string;
+      otherSidesMoves: string;
+      scoutName: string;
+      scoutsMoves: string;
+    }
+  | {
+      kind: "an unfinished battle against a province's defenders resumes";
+      provName: string;
+      attackersHostName: string;
+      defendersName: string;
+    }
+  | { kind: 'the guard still holds a contested province with survivors'; guardName: string; provName: string }
+  | {
+      kind: 'commanderless survivors still contest a province';
+      survivingUnitCount: AValueInALinesWords;
+      survivingUnitsPlural: AValueInALinesWords;
+      provName: AValueInALinesWords;
+    }
+  | {
+      kind: 'the attacker finally overcomes the defenders and claims a province';
+      attackersHostName: string;
+      provName: string;
+    }
+  | {
+      kind: 'the attacker breaks off a stalled battle and retreats';
+      attackersHostName: AValueInALinesWords;
+      retreatToName: AValueInALinesWords;
+    }
+  | { kind: 'the attacker is pinned in a province with no way out'; attackersHostName: string; provName: string }
+  | {
+      kind: 'a contest for a province lapses as the realms are no longer at war';
+      provName: string;
+      attackersRealmName: string;
+      defendersRealmName: string;
+    }
+  | {
+      kind: "war comes to a province two realms' hosts share";
+      provName: AValueInALinesWords;
+      attackersHostName: AValueInALinesWords;
+      attackersRealmTag: AValueInALinesWords;
+      defendersHostName: AValueInALinesWords;
+      defendersRealmTag: AValueInALinesWords;
+      seasonName: AValueInALinesWords;
+    }
+  | {
+      kind: 'an unfinished battle between two hosts resumes';
+      provName: string;
+      attackersHostName: string;
+      defendersHostName: string;
+    }
+  | { kind: 'the winner of a stalled battle secures a province'; winnersHostName: string; provName: string }
+  | { kind: 'a host holds a province unopposed and secures it'; hostName: string; provName: string }
+  | { kind: 'the eagle riders mark the forest wardens and spoil the ambush'; shooterName: string }
+  | { kind: 'the gyrocopters harry a flying unit off its line'; targetUnitName: string; strengthLost: number }
+  | { kind: "a side's gyrocopters climb to meet the enemy's flyers"; sideName: string; engagedCount: number }
+  | { kind: "a side's units fight beside their own kin"; sideName: string; kinshipWords: string }
+  | {
+      kind: "a hero's host turns on a province it has shared with a realm at war";
+      attackersRealmName: string;
+      ownersRealmName: string;
+      cName: string;
+      realmTag: string;
+      unitCount: number;
+      unitsPlural: string;
+      provName: string;
+      seasonName: string;
+      wordsIfTheOwnersRealm: string;
+    };
 
 /** The facts a battle's lines record. */
 export type TheFactOfABattlesLine =
@@ -333,9 +856,10 @@ export const THE_PLACE_OF_A_BATTLES_LOSSES_TALLY: ABattlesLossesTalliedFromItsLi
   kind: "a battle's losses, tallied from its lines",
 };
 
-/** Each kind's audience: the fight's (its type says so, so a kind given another is a compile error). */
+/** Each kind's audience: the fight's, or its event's for a kind filed on its own (its type says so, so a kind given
+ *  its hero's realm alone is a compile error). */
 export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
-  Record<TheFactOfABattlesLine['kind'], Extract<TheAudienceOfAKindOfLine, "the fight's">>
+  Record<TheFactOfABattlesLine['kind'], Extract<TheAudienceOfAKindOfLine, "the fight's" | "its event's">>
 > = {
   'a force drawn up for battle': "the fight's",
   "a battle's losses, tallied from its lines": "the fight's",
@@ -434,4 +958,143 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "the duel's loser falls at death's door but is not slain": "the fight's",
   "the duel's loser is slain": "the fight's",
   'the duel ends inconclusively': "the fight's",
+  'a hero cries out his battlecry to his foe': "the fight's",
+  "a side's Druid cannot fully command its units": "the fight's",
+  'the attacker moves into a province held by its defenders and a battle is initiated': "the fight's",
+  'the guard is slain before his host, and a sergeant of the garrison takes up the banner': "the fight's",
+  'the attacker is cut down before the lines join, and the eldest captain takes command': "the fight's",
+  "the attacker's Tactical command does not apply at sea": "the fight's",
+  'the defenders of a province defend ground held justly': "the fight's",
+  'the defenders fight on home soil': "the fight's",
+  'the attacker casts a spell before the battle against the defenders': "the fight's",
+  "a fireball engulfs the defenders' strongest units": "the fight's",
+  'a telekinetic storm finds no command among leaderless defenders': "the fight's",
+  'a psychic blast finds no commander among the defenders': "the fight's",
+  'a lightning bolt sears the defending units': "the fight's",
+  'a curse finds no commander among leaderless defenders': "the fight's",
+  "control undead turns a defending undead unit to the attacker's side": "the fight's",
+  'control undead finds no undead among the defenders': "the fight's",
+  'a holy symbol sears the defending undead': "the fight's",
+  'a holy symbol finds no undead among the defenders': "the fight's",
+  "spiritwrack halves the defenders' missile units": "the fight's",
+  'spiritwrack finds no missile troops among the defenders': "the fight's",
+  "the attacker's spell before the battle fizzles": "the fight's",
+  "a unit's power hits every defending unit": "the fight's",
+  "a unit's power hits one unit of the other side": "the fight's",
+  'a whale cohort sinks a defending ship before a shot is fired': "the fight's",
+  "the attacker's archery volley begins": "the fight's",
+  'a unit fires at its target and the shot glances off': "the fight's",
+  'a unit fires at its target and weakens it': "the fight's",
+  "an attacking unit's target is already softened as far as arrows allow": "the fight's",
+  "the attacker's archery volley's total": "the fight's",
+  'the defender casts a spell before the battle': "the fight's",
+  "a fireball halves the attackers' strongest unit": "the fight's",
+  'a lightning bolt sears the attacking units': "the fight's",
+  'control undead finds no undead among the attackers': "the fight's",
+  'a holy symbol sears the attacking undead': "the fight's",
+  'a holy symbol finds no undead among the attackers': "the fight's",
+  "spiritwrack halves the attackers' missile units": "the fight's",
+  'spiritwrack finds no missile troops among the attackers': "the fight's",
+  "the defender's spell before the battle fizzles": "the fight's",
+  "the attacker's lightning advance catches the defenders unready": "the fight's",
+  "the defenders' archers find no target among the attacker's forest wardens": "the fight's",
+  "the defenders' archery volley begins": "the fight's",
+  "a defending unit's target is already softened as far as arrows allow": "the fight's",
+  "the defenders' archery volley's total": "the fight's",
+  'a defending unit uses its power in battle': "the fight's",
+  "a unit's power hits every attacking unit": "the fight's",
+  "the terrain's effect on the attacker's units": "the fight's",
+  'hosts airborne over open water fight at a penalty against the defenders': "the fight's",
+  'land units fight at sea at a penalty against the defenders': "the fight's",
+  'the attacker unfolds a grand stratagem against the defenders': "the fight's",
+  'the attacker storms ashore in a raid on the coast against the defenders': "the fight's",
+  "the attacker's monsters are driven to savage fury": "the fight's",
+  "the attacker's troops fight with fanatical zeal": "the fight's",
+  "the attacker's realm discoveries strengthen his army": "the fight's",
+  "the attacker's free lances find no room to ride": "the fight's",
+  'the attacker sweeps into a province with no one left to stand against him': "the fight's",
+  'the attacker wins the battle against the defenders': "the fight's",
+  "the attacker's warg riders halve his losses": "the fight's",
+  'every defending unit was lost before the lines closed': "the fight's",
+  "the defenders' dwarven guard leave the attacker's free lances no broken backs": "the fight's",
+  "the attacker's free lances ride down the defenders' broken companies": "the fight's",
+  'a defending unit is destroyed in the rout': "the fight's",
+  'the defenders have nowhere to retreat and hold a shield fort': "the fight's",
+  'the defenders have nowhere to retreat and take further losses': "the fight's",
+  'the attacker is repelled by the defenders': "the fight's",
+  'a defending unit is destroyed in the fighting': "the fight's",
+  "the guard's host is destroyed and he is a masterless hero": "the fight's",
+  "the attacker's dwarven guard leave the defenders' free lances no broken backs": "the fight's",
+  "the defenders' free lances ride down the attacker's broken companies": "the fight's",
+  "the attacker's corsairs take his beaten force back to the ships": "the fight's",
+  "the attacker's shield-wall holds and the infantry stand their ground": "the fight's",
+  'the attacker has nowhere to retreat and takes further losses': "the fight's",
+  'an attacking unit is cut down in the rout with no escape': "the fight's",
+  "the attacker's forces retreat to a province": "the fight's",
+  "the onlookers' summary of a battle": "the fight's",
+  'the most seasoned captain takes command of the combined host': "its event's",
+  'the blood harvest claims offerings from the fallen enemy units': "the fight's",
+  "the iron throne of skulls raises the enemy's fallen as skeletons": "the fight's",
+  'terror radiates from a province after an evil victory': "the fight's",
+  'terror lingers in a province and its defenders fight demoralised': "the fight's",
+  'a unit is cut down and rises again by its regenerating hide': "the fight's",
+  'a unit dies in the battle': "the fight's",
+  'a unit is promoted after the battle': "the fight's",
+  'a unit falls back behind the shield wall in good order': "the fight's",
+  'a unit keeps its nerve under the knightly example': "the fight's",
+  'a unit loses heart in defeat and is reduced a tier': "the fight's",
+  'a unit improves a tier despite defeat': "the fight's",
+  "a hero not at war with the province's realm gains a host inside it": "its event's",
+  "a hero's new host is still forming up in a province": "its event's",
+  'no one stands to defend a province and the hero takes control of it': "its event's",
+  'with fresh troops the hero takes control of a province': "its event's",
+  'the hero turns a newly gathered host on a province and a battle is initiated': "the fight's",
+  'the defenders riding in were keeping watch and are already in the line': "the fight's",
+  'the defender is reinforced by other heroes in the defence of a province': "the fight's",
+  "the province's standing troops rally to the defender": "the fight's",
+  'a hero fell in the battle line beside the commander of the defence': "its event's",
+  'a hero stands in the battle line beside the commander of the defence': "its event's",
+  "the province's standing troops fall back with the defender": "its event's",
+  "the province's standing troops fall in with the defender as the battle continues": "its event's",
+  "the province's garrison is overwhelmed as the province falls": "its event's",
+  'the hero has the better of the fighting but the guard still holds the field': "its event's",
+  'the hero has the better of the fighting but leaderless defenders still hold the field': "its event's",
+  'the hero has the better of the fighting but enemy forces still hold their ground': "its event's",
+  "the hero has the better of the fighting but the province's garrison still holds": "its event's",
+  'the hero overcomes the defenders and claims the province for his realm': "its event's",
+  "the province's owner learns his defenders still hold against the hero": "its event's",
+  "the province's owner learns the hero was beaten back": "its event's",
+  "a beaten guard's surviving unit breaks ranks and flees as mercenaries": "its event's",
+  "a beaten guard's surviving unit loses heart and is reduced a tier": "its event's",
+  "a beaten guard's surviving unit holds its ground unbroken": "its event's",
+  "a side's strength ladder begins": "the fight's",
+  "the strength ladder's units": "the fight's",
+  "the strength ladder's command": "the fight's",
+  "the strength ladder's force-wide modifiers": "the fight's",
+  'the strength ladder has no force-wide modifiers': "the fight's",
+  "the strength ladder's pre-battle damage": "the fight's",
+  "the strength ladder's battle lines": "the fight's",
+  "the strength ladder's who faces whom": "the fight's",
+  "the strength ladder's units behind the front": "the fight's",
+  'the ground allows a front of a width': "the fight's",
+  "a side's front line in the battle grid": "the fight's",
+  "a side's second line in the battle grid": "the fight's",
+  'the scouting side chooses the front': "the fight's",
+  'each side shifts its battle line': "the fight's",
+  "an unfinished battle against a province's defenders resumes": "its event's",
+  'the guard still holds a contested province with survivors': "its event's",
+  'commanderless survivors still contest a province': "its event's",
+  'the attacker finally overcomes the defenders and claims a province': "its event's",
+  'the attacker breaks off a stalled battle and retreats': "its event's",
+  'the attacker is pinned in a province with no way out': "its event's",
+  'a contest for a province lapses as the realms are no longer at war': "its event's",
+  "war comes to a province two realms' hosts share": "its event's",
+  'an unfinished battle between two hosts resumes': "its event's",
+  'the winner of a stalled battle secures a province': "its event's",
+  'a host holds a province unopposed and secures it': "its event's",
+  'the eagle riders mark the forest wardens and spoil the ambush': "the fight's",
+  'the gyrocopters harry a flying unit off its line': "the fight's",
+  "a side's gyrocopters climb to meet the enemy's flyers": "the fight's",
+  "a side's units fight beside their own kin": "the fight's",
+  "a hero's host turns on a province it has shared with a realm at war": "its event's",
 };

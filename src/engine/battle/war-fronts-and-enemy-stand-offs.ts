@@ -104,7 +104,18 @@ export function resolveWarFronts(turnContext, ph) {
       turnContext._logCtx = { charId: c.id, phase: ph };
       emit(turnContext, {
         type: 'combat',
-        text: `⚔ War stands between ${G.players[c.player]?.name || 'their realm'} and ${ownerNm || 'the realm whose host shares the ground'}, and ${c.name}${realmTag(turnContext, c.player)} has held ${c.armies.length} unit${c.armies.length !== 1 ? 's' : ''} in ${prov.name} since the season opened. With ${SEASONS[ph]}'s orders done, the host turns on the province${ownerNm ? ` of ${ownerNm}` : ''}.`,
+        fact: {
+          kind: "a hero's host turns on a province it has shared with a realm at war",
+          attackersRealmName: G.players[c.player]?.name || 'their realm',
+          ownersRealmName: ownerNm || 'the realm whose host shares the ground',
+          cName: c.name,
+          realmTag: realmTag(turnContext, c.player),
+          unitCount: c.armies.length,
+          unitsPlural: c.armies.length !== 1 ? 's' : '',
+          provName: prov.name,
+          seasonName: SEASONS[ph],
+          wordsIfTheOwnersRealm: ownerNm ? ` of ${ownerNm}` : '',
+        },
         audience: { actor: c.player, realms: [c.player, prov.owner].filter((x) => x != null), seen: 'battle' },
         province: prov.id,
         hero: c.id,

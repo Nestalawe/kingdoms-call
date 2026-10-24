@@ -10,6 +10,9 @@ import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../
 
 const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
+/** A line's words: its words, or a fact's, which the views write (theWordsOf, src/views/prose/, P1-12c6). */
+const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const wordsOf = (line: unknown): string => (typeof line === 'string' ? line : theWordsOf(line));
 afterAll(restoreLog);
 const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
 type Province = {
@@ -25,12 +28,12 @@ const spreadTerror = engineFn(engine, 'spreadTerror') as (
   t: typeof tc,
   battleProv: Province,
   byPlayer: number,
-  narrative: string[] | null,
+  narrative: unknown[] | null,
 ) => void;
 const consumeTerror = engineFn(engine, 'consumeTerror') as (
   prov: Province,
   defenders: Defender[],
-  narrative: string[],
+  narrative: unknown[],
 ) => boolean;
 const G = tc.G as { turn: number; world: { provinces: Province[] } };
 const levies = (): Defender[] => [{ type: 'Shieldwall Levies', quality: 'Average' }];
@@ -46,14 +49,14 @@ test('Terror stacks at most three times', () => {
   const owner = P.owner;
   P.owner = null;
   const defs = levies();
-  const narr: string[] = [];
+  const narr: unknown[] = [];
   consumeTerror(P, defs, narr);
   expect(Math.abs((defs[0]?._terrorMult ?? NaN) - 0.7), 'three stacks: the defenders fight at ×0.7, −30%').toBeLessThan(
     1e-9,
   );
   expect(
-    narr.some((l) => /−30% strength \(3 terror stacks/.test(l)),
-    `the report says −30% from 3 stacks (${narr.join(' | ')})`,
+    narr.map(wordsOf).some((l) => /−30% strength \(3 terror stacks/.test(l)),
+    `the report says −30% from 3 stacks (${narr.map(wordsOf).join(' | ')})`,
   ).toBe(true);
   // an older save still holding five
   P._terrorStacks = 5;
