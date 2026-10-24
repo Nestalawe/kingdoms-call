@@ -319,19 +319,19 @@ Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state t
 ## A line goes through `emit`
 
 Every line of the turn enters the GM's log (`turnContext.turnLog`) through `emit(turnContext, event)`, in
-`src/engine/turn/events-and-their-audiences.ts` (P1-12a2). The event says what happened (its type and, until P1-12c, its
-finished text), where and when (`province`, `phase`), whom it is about (`hero`, `heroes`, `battle`), and who may read it
+`src/engine/turn/events-and-their-audiences.ts` (P1-12a2). The event says what happened (its type, and its finished
+text or, from P1-12c3, the fact its words are written from: below), where and when (`province`, `phase`), whom it is about (`hero`, `heroes`, `battle`), and who may read it
 (`audience`: `realms` told, the `actor`, `seen` by the `'world'`, by whoever is `'there'` or by those in the `'battle'`,
 and `except` the realms that never read it). A line pushed past it chooses its own audience, the way the leaks the report
 check finds were made.
 - The lint rule `kc/narrative-lines-go-through-emit` refuses, in all of `src/engine` and `src/views` but the events file
   (since P1-12a4; folder by folder from P1-12a2), any write to `turnLog`, a `log(…)` call (but `console.log` and
   `Math.log`; there is no `log()` helper any more) and a narrative written by hand: add a fight's line with
-  `narrate(narrative, text)`, or `narrateTo(narrative, realm, heroId, text)` for one realm alone (it files under that realm's hero, and
+  `narrate(narrative, text)` (or a fact: below), or `narrateTo(narrative, realm, heroId, text)` for one realm alone (it files under that realm's hero, and
   nobody else in the fight reads it). Lines already written move with `narrateAll` (a duel's narrative into a
   battle's, each line as it is), `narrateAt` (lines for everyone put in before a line) and `takeBackLinesFrom` (a blow
   that never landed). `emitBattle` and `emitNarrLine` write a fight's narrative out with the fight's event
-  (`FightLine`: the event but its text), each line in order: a `narrateTo` line to its realm alone, the rest to the
+  (`FightLine`: the event but its words), each line in order: a `narrateTo` line to its realm alone, the rest to the
   fight's audience.
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
   `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
@@ -358,11 +358,32 @@ check finds were made.
   same rule apart. The area rows of P1-12c replace the constant with the hero each fact names. The `phase` falls back
   as before: left out or `null` is the phase of that order, else the phase resolving, else 99 once the phases are over;
   `phase: 'none'` is no phase.
-- Nothing stored changes until P1-12c: `emit` writes today's line forms, key for key and in the same order (the old
-  `log()`'s 17 keys; `form: 'bare'`, the 14 of the lines once pushed directly; `notFor` last when `except` is given). The balance
-  matrix hashes the stored log (`writes`), and every realm's report is compared line for line (`npm run balance`).
-  `tests/unit/emit-writes-the-lines-log-wrote.test.ts` checks the forms (its oracle against copies of the old code ran
-  from P1-12a2 to P1-12a4, until every caller was converted).
+- **A typed line records a fact, and the views write its words** (P1-12c3). An event carries `text` (its finished
+  words) or `fact` (one kind of `LineFact`, never both: `emit` throws on both). An area's kinds are typed beside its code
+  (the battles': `src/engine/battle/the-facts-a-battles-lines-record.ts`), each with its fields and its audience, and
+  `src/views/prose/` writes their words after the turn, one module per area, a `switch` over the kinds with a `never`
+  default: a new kind with no words doesn't compile there. `forceMarker` returns its fact, and `narrate` takes it as it
+  takes words. So **the engine's log holds no words for a typed line** (its `text` is `null`, its `fact` last): read a
+  line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
+  line.ts`), never from `resolveTurn`'s `log` or `turnContext.turnLog`. `buildReports` writes them before it picks any
+  realm's lines and returns them as `gmLog`, which the shell saves; every harness that plays a turn reads them
+  (`tests/lib/scenario-in-the-vm.ts`, `a-staged-turn-on-the-engines-modules.ts`, the board's `lines()` in
+  `middle-of-a-bot-world.ts`), and a test that reads a narrative writes a fact's words with `theWordsOf`. In this run a
+  line's words are the same for every reader (the masking of unmet realms stays on them, R-046).
+- **A battle's tiers and its tally come from its words, in the views.** `emitBattle` files each line with its tier
+  still to work out (`A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES`) and, after them, the place of its losses
+  tally (a fact with no words, filed with the fight's event, so it keeps the fight's audience, hero and place; none when
+  every line is for one realm alone). The words pass gives each line its tier (`battleLineTiers`) and writes the tally
+  (`battleTallyLine`, both in `src/engine/battle/fates.ts`, unchanged) where the casualty lists begin, else after the
+  lines, else nowhere. Nothing in the engine may read a line's tier, or the tally, as the turn goes on: they aren't
+  there yet. The cases: `tests/unit/the-views-write-each-lines-words.test.ts`.
+- Nothing stored changes in P1-12a, P1-12b or this run of P1-12c: the GM's log in words is today's line forms, key for
+  key and in the same order (the old `log()`'s 17 keys; `form: 'bare'`, the 14 of the lines once pushed directly;
+  `notFor` last when `except` is given), with no fact in it. The stored form changes once, declared, when the last area
+  is typed (P1-12's Decisions of 2026-10-24, Decision 3). The balance matrix hashes the stored log (`writes`), and every
+  realm's report is compared line for line (`npm run balance`). `tests/unit/emit-writes-the-lines-log-wrote.test.ts`
+  checks the forms (its oracle against copies of the old code ran from P1-12a2 to P1-12a4, until every caller was
+  converted).
 
 ## Views never write
 
