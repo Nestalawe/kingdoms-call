@@ -8,7 +8,10 @@ import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wanderin
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE } from '../units/drill-and-spoils.ts';
 import {
+  BOT_CARRIER_TYPES,
   BOT_HEX_DIRS,
+  BOT_MONSTER_ARMIES,
+  BOT_SEA_ALL,
   botBelievedOwner,
   botHasDisc,
   botNeighbourProv,
@@ -16,7 +19,6 @@ import {
   botRelationRaw,
   botSeesChar,
 } from './intel.ts';
-import { BOT_CARRIER_TYPES, BOT_MONSTER_ARMIES, BOT_SEA_ALL } from './war.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
 import {
   botFieldRecruitTokens,
