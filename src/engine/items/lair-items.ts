@@ -8,15 +8,14 @@ import {
   LAIR_EFFECT_SPREAD,
   LAIR_ITEM_ODDS,
   awardedEffectSet,
-  ensureLairHoard,
   itemEffectKey,
-  itemFallbackOk,
   itemHoardCategory,
   lairItemTier,
   migrateHoardTally,
   preferFreshEffects,
-  rollMagicItem,
 } from './tiers-and-hoards.ts';
+import { itemFallbackOk, rollMagicItem } from './equipment.ts';
+import { ensureLairHoard } from '../world/tables.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { hexDistP } from '../world/map-helpers.ts';
 

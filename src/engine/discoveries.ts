@@ -6,8 +6,7 @@ import {
   MONSTER_ARMIES,
 } from './rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { gdActiveFor, homeFounderOf } from './grand-design.ts';
-import { TAMED_FLYER_TYPES_D } from './world/tables.ts';
-import { pcFoeCat } from './personal-combat/helpers.ts';
+import { TAMED_FLYER_TYPES_D, pcFoeCat } from './titles/perks.ts';
 import { getNeighborsP } from './world/map-helpers.ts';
 
 // ── RESOLVE TURN — FULL INLINE ENGINE ────

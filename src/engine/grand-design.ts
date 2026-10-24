@@ -1,6 +1,4 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { fullRaceLandRoster } from './world/tables.ts';
-import { discProvCoastal } from './discoveries.ts';
 
 // ── GRAND DESIGN ────
 // A Wonder stands in the province it was raised in. Its realm-wide blessings flow only while the
@@ -58,26 +56,6 @@ export function neutralTradeGold(pl, income) {
   return pl && pl.alignment === 'Neutral' ? Math.floor((income || 0) / 5) : 0;
 }
 
-// Existing saves: every king's home province recruits his race's FULL land roster. Idempotent -
-// appends any missing land type to the home's armyTypes, keeping fleets and order. Runs at the top
-// of every runTurn; a no-op once the roster is complete.
-export function backfillHomeRosters(gs) {
-  ((gs && gs.players) || []).forEach((pl, pi) => {
-    if (!pl) return;
-    const hid = homeProvinceIdFor(gs, pi);
-    const h = hid != null ? ((gs.world && gs.world.provinces) || [])[hid] : null;
-    if (!h || h.terrain === 'sea' || !pl.race || h.race !== pl.race) return;
-    if (!Array.isArray(h.armyTypes)) h.armyTypes = [];
-    fullRaceLandRoster(pl.race).forEach((u) => {
-      if (!h.armyTypes.includes(u)) h.armyTypes.push(u);
-    });
-    // 2026-09-25 (Toby): a coastal capital always offers its racial fleet — add it to any running
-    // game whose home rolled without one.
-    const fleet = HOME_FLEET_BY_RACE[pl.race];
-    if (fleet && !h.armyTypes.includes(fleet) && typeof discProvCoastal === 'function' && discProvCoastal(gs, h))
-      h.armyTypes.push(fleet);
-  });
-}
 export const HOME_FLEET_BY_RACE = {
   Human: 'Galleon Fleet',
   Elven: 'Elven Galleys',

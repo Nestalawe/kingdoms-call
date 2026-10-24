@@ -5,14 +5,13 @@ import {
   MONSTER_ARMIES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { ITEMS_BY_TIER } from '../items/tiers-and-hoards.ts';
-import { activeItems } from '../items/equipment.ts';
+import { _skillItem, activeItems } from '../items/equipment.ts';
 import { botConceded } from '../bots/intel.ts';
 import {
   RECKONING_CALLER_MIN_FRAC,
   RECKONING_MIN_TURN,
   RELIC_PRIZE_EACH,
   _MAGIC_SCHOOLS,
-  _skillItem,
   reckoningAllyStepPct,
   reckoningDecayOf,
   reckoningThreshold,

@@ -157,10 +157,10 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   Overlord page reach it only through `shared/` and `views/`.
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
-**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (150 findings)
-and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), and the 136 findings of the four
+**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (141 findings)
+and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), and the 127 findings of the three
 import cycles left (P1-13e breaks them by moving code, one cycle a pull request; P1-13e1 broke the engine's four
-two-file cycles in one, and the bots' cycle takes three): two in the engine (the bots, 11 files; its core, 9), the GM
+two-file cycles in one, P1-13e2 its core, and the bots' cycle takes three): one in the engine (the bots, 11 files), the GM
 page's (10 files, both of `db/` among them) and the player page's (18). The ratchet counts the list
 (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no longer
 occurs: when you fix one, remove it in the same pull request with
@@ -524,7 +524,7 @@ portals' start-up guards are gone.
   (`engine/realms/relations-and-captures.ts`), the title lookups and battle merit
   (`engine/titles/title-holders-and-battle-merit.ts`), skills in play and hidden heroes
   (`engine/heroes/effective-skills-and-hidden-heroes.ts`), the discovery helpers (`engine/discoveries.ts`), `rng`, `pick`
-  and `describeArmy` (`engine/dice-and-army-names.ts`), and `pcFoeCat` (`engine/personal-combat/helpers.ts`). P1-08b: terrain, sea and a unit's strength (`armStr`,
+  and `describeArmy` (`engine/dice-and-army-names.ts`), and `pcFoeCat` (`engine/personal-combat/helpers.ts`; in `engine/titles/perks.ts` since P1-13e2, to break a cycle). P1-08b: terrain, sea and a unit's strength (`armStr`,
   `engine/battle/terrain-and-unit-strength.ts`), sea lift, stranding and retreats
   (`engine/units/sea-lift-stranding-and-retreats.ts`), the movement pools (`engine/units/movement-pools.ts`), recruit
   limits (`engine/units/recruit-limits.ts`), the best commander (`engine/battle/best-commander.ts`), the intrusion
