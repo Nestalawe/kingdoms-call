@@ -57,14 +57,14 @@ too, and the run still shows "success". That is how the deploys of #184 to #186 
 ## A constant read at load time must live in a leaf module
 
 The site's code is ES modules (P1-09d): each file runs after the files it imports. That orders almost everything by
-itself, but not a cycle: when two files import each other (the engine has two cycles, each portal's UI one), one of
+itself, but not a cycle: when two files import each other (the engine has one cycle, the bots', and each portal's UI one), one of
 them runs first and finds the other's top-level `const`/`let` not yet set. Read as a file loads, that is a
 temporal-dead-zone `ReferenceError`, and at the top level it stops the page: the portal hangs on its spinner (the
 boot-failure reporter shows the error). Rolldown, the bundler, writes each top-level `const` as a `var`, so in the built
 bundle the read may instead find `undefined`, silently. Inside a function, read later, a cycle is harmless.
 
-**A new cycle fails `npm run lint:arch`** (P1-13a; CI and `npm run check` run it). The four known (the engine's core
-and its bots, and the GM and player pages) are listed in `.dependency-cruiser-known-violations.json`, and P1-13e
+**A new cycle fails `npm run lint:arch`** (P1-13a; CI and `npm run check` run it). The three known (the engine's bots,
+and the GM and player pages) are listed in `.dependency-cruiser-known-violations.json`, and P1-13e
 breaks them. A cycle of `import type` only is let through: types
 are erased, so no code runs in its order.
 
@@ -72,9 +72,11 @@ are erased, so no code runs in its order.
   `engine/items/hoard-categories.ts`, `engine/bots/specialist-skills.ts`, `engine/bots/schools.ts`,
   `ui/player/l79-orders.ts`), re-exported from its old file. A file that imports nothing always runs first.
 - **What files do as they load keeps its order through the page's entry** (`ui/<page>/page.ts` imports every file in
-  the order the classic scripts ran): the item tables are built in `engine/items/tiers-and-hoards.ts` and then
-  re-tiered in `engine/items/equipment.ts`, because `page.ts` imports them in that order. The engine's bundle
-  (`tests/lib/engine.ts`) takes the same order. Don't reorder `page.ts`.
+  the order the classic scripts ran). The engine's bundle (`tests/lib/engine.ts`) takes the same order. Don't reorder
+  `page.ts`. The item tables no longer hang on it: they are built in `engine/items/tiers-and-hoards.ts` and then
+  re-tiered in `engine/items/equipment.ts`, which imports them, and since P1-13e2 the tiers file imports nothing that
+  reaches the equipment file, so its tables are always built first, whichever file is reached first. The no-cycle rule
+  keeps it so.
 - Code that runs at top level calls only top-level helpers. A lifted engine helper may need the turn's context
   (`effStat(turnContext, c, stat)`; use `effSkillOf` outside a turn), and one handed to another as a value is wrapped
   with it (`(...a)=>f(turnContext,...a)`, as the bots' duel forecast is). Declare shared helpers as hoisted
