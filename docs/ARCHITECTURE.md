@@ -93,8 +93,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     TypeScript checks nothing in a file with it, these types and the map's `satisfies` included: a file is checked
     against them once it loses `@ts-nocheck`. Since P1-10a3 the files freed of it are; where their reads disagreed with
     `TurnContext`, the type was corrected (a line's `targets` may hold null: callers pass `[c.player]`). Beside them in
-    `context.ts`: `NarrativeLine` (a line of a battle's narrative, a string or a line for one realm alone) and
-    `TurnOrder` (a hero's order for a phase as the turn holds it). The freed files declare a few shapes of their own
+    `context.ts`: `TurnOrder` (a hero's order for a phase as the turn holds it); in the events file
+    (`engine/turn/events-and-their-audiences.ts`), `NarrativeLine` (a line of a fight's narrative: its words, or the
+    fact they are written from). The freed files declare a few shapes of their own
     (`LadderRow` in `battle/ladder.ts`, `SightContext` in
     `sight/heroes-in-sight-features-discovered-and-army-size-bands.ts`), and the schemas' file names a feature
     (`ProvinceFeature`) and the title keys (`MajorTitleKey`, `MinorTitleKey`).
@@ -433,12 +434,15 @@ portals' start-up guards are gone.
 - **Every realm's report** is built in `src/views/every-realms-report-and-the-lines-each-realm-reads.ts` (P1-12b3):
   `buildReports(whatTheReportsRead)` first writes every line's words (`theTurnsLinesInWords`, `src/views/prose/`,
   P1-12c3): a typed line records a fact, not words (its kind and fields; the kinds of an area are typed beside its code,
-  the battles' in `engine/battle/the-facts-a-battles-lines-record.ts`, all of them in `LineFact`), and the views write
+  the battles' in `engine/battle/the-facts-a-battles-lines-record.ts`, personal combat's in
+  `engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, all of them in `LineFact`, each with its
+  audience: the fight's, or its hero's realm alone), and the views write
   its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words is a compile
   error. A battle's lines take their tiers (key or detail) and its losses tally its place from those words, as
   `emitBattle` did before. The result is the GM's log in words, in the form it was always stored in: `buildReports`
-  returns it as `gmLog`, and the shell saves it. Today the force markers are the one kind; the fights' lines follow
-  (P1-12c4 to c6), and in this run a line's words are the same for every reader. Then it works out, for each played
+  returns it as `gmLog`, and the shell saves it. Today the force markers and every line of a personal combat are kinds
+  (P1-12c3, P1-12c4); the battles' lines follow (P1-12c5, c6), and in this run a line's words are the same for every
+  reader. Then it works out, for each played
   slot, the lines the realm reads (from the lines in words) and what it may see of the world, and builds its report
   from those two alone: **perception** comes first, in two functions, and the report
   reads nothing else (P1-12b5). `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines

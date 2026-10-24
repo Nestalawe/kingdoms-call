@@ -5,10 +5,10 @@
 // - a write to turnLog: a call of push, pop, shift, unshift, splice, sort, reverse, fill or copyWithin on it, an
 //   assignment to it or to anything inside it, `delete` or `++` there (turnLog, or X.turnLog);
 // - a call of log(…) or X.log(…), but console's and Math's: emit(turnContext, event) files a line;
-// - push, unshift or splice on a fight's narrative (narrative, narr or X.narrative): narrate(narrative, text), or
-//   narrateTo(narrative, realm, heroId, text) for one realm alone (and, for lines already written, narrateAll,
+// - push, unshift or splice on a fight's narrative (narrative, narr or X.narrative): narrate(narrative, line), its words
+//   or a fact, a fact of a kind for its hero's realm alone for one realm (and, for lines already written, narrateAll,
 //   narrateAt and takeBackLinesFrom);
-// - an object literal with an onlyPlayer key: narrateTo makes it;
+// - an object literal with an onlyPlayer key: the old line for one realm alone (P1-12c4: a kind of fact says it now);
 // - an event written without its hero (P1-12c2): emit's event, or an event's place (an object literal with an audience
 //   key: what logSplit, reportHeroFall and the held-back skill rises are handed), with no hero key and no spread. Every
 //   event names its hero: a hero's id, null for no hero, or THE_HERO_WHOSE_ORDER_IS_RESOLVING. A spread place carries
@@ -70,11 +70,11 @@ const rule: Rule.RuleModule = {
         'File the line with emit(turnContext, event), whose audience says who may read it: docs/traps.md, "A line ' +
         'goes through emit".',
       narrative:
-        "Add to a fight's narrative with narrate(narrative, text), or narrateTo(narrative, realm, heroId, text) for one " +
-        'realm alone (src/engine/turn/events-and-their-audiences.ts).',
+        "Add to a fight's narrative with narrate(narrative, line): its words, or a fact (one for its hero's realm alone " +
+        'is a kind whose audience says so: src/engine/turn/events-and-their-audiences.ts).',
       onlyPlayer:
-        'A line of a narrative for one realm alone is narrateTo(narrative, realm, heroId, text), not an object with ' +
-        'onlyPlayer.',
+        "A line of a narrative for one realm alone is a fact of a kind whose audience is its hero's realm alone " +
+        '(docs/traps.md, "A line for one realm alone inside a fight"), not an object with onlyPlayer.',
       hero:
         "Every event names its hero: hero: <a hero's id>, hero: null for no hero, or hero: " +
         'THE_HERO_WHOSE_ORDER_IS_RESOLVING (docs/traps.md, "Every event names its hero").',

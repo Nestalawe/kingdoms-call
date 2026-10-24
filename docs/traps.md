@@ -327,12 +327,23 @@ check finds were made.
 - The lint rule `kc/narrative-lines-go-through-emit` refuses, in all of `src/engine` and `src/views` but the events file
   (since P1-12a4; folder by folder from P1-12a2), any write to `turnLog`, a `log(…)` call (but `console.log` and
   `Math.log`; there is no `log()` helper any more) and a narrative written by hand: add a fight's line with
-  `narrate(narrative, text)` (or a fact: below), or `narrateTo(narrative, realm, heroId, text)` for one realm alone (it files under that realm's hero, and
-  nobody else in the fight reads it). Lines already written move with `narrateAll` (a duel's narrative into a
-  battle's, each line as it is), `narrateAt` (lines for everyone put in before a line) and `takeBackLinesFrom` (a blow
-  that never landed). `emitBattle` and `emitNarrLine` write a fight's narrative out with the fight's event
-  (`FightLine`: the event but its words), each line in order: a `narrateTo` line to its realm alone, the rest to the
-  fight's audience.
+  `narrate(narrative, line)`: its words, or a fact (below). Lines already written move with `narrateAll` (a duel's
+  narrative into a battle's, each line as it is), `narrateAt` (lines put in before a line) and `takeBackLinesFrom` (a
+  blow that never landed). `emitBattle` and `emitNarrLine` write a fight's narrative out with the fight's event
+  (`FightLine`: the event but its words), each line in order: a fact of a kind whose audience is its hero's realm alone
+  to that realm alone (below), the rest to the fight's audience.
+- **A line for one realm alone inside a fight is a kind whose audience says so** (P1-12c4; `narrateTo` and its
+  `{ text, onlyPlayer, charId }` lines went). Each kind's audience is written once, beside the kind in its area's
+  module, and its type says which (`THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE`: a kind given another is a
+  compile error): the fight's, or its hero's realm alone. Two kinds are for one realm alone: a hero's hit-point rise in a
+  fight (`awardHpRoll`'s line) and the surgeons' word to a fallen duellist's own realm (`preBattleDuel`); each names its
+  `realm` (and the rise its `hero`), and `emitNarrLine` files it told to that realm alone, with no heroes, under its
+  hero (else the fight's). A new line the man across the field must not read is a new kind of that audience, and the
+  leak check's own list of them (`KINDS_FOR_ONE_REALM_ALONE`, `tests/lib/report-leaks.ts`) gains it: the check "a line
+  for one realm alone" reads every realm's report against the recorded events, whatever audience the engine gave them.
+  The engine reads a fight's line by its kind, never its words: the mercy that stays a killing blow keeps a skill rise's
+  words, a line for one realm alone and another area's fact, and drops the fight's own lines
+  (`isAPersonalCombatsLine`, `isALineForEveryoneInTheFight`).
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
   `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
   (the event without its type and text: `{ audience, province, hero, phase, … }`), and files it with
@@ -360,15 +371,19 @@ check finds were made.
   `phase: 'none'` is no phase.
 - **A typed line records a fact, and the views write its words** (P1-12c3). An event carries `text` (its finished
   words) or `fact` (one kind of `LineFact`, never both: `emit` throws on both). An area's kinds are typed beside its code
-  (the battles': `src/engine/battle/the-facts-a-battles-lines-record.ts`), each with its fields and its audience, and
-  `src/views/prose/` writes their words after the turn, one module per area, a `switch` over the kinds with a `never`
+  (the battles': `src/engine/battle/the-facts-a-battles-lines-record.ts`; personal combat's:
+  `src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, P1-12c4, one kind per sentence, one field
+  per value it was written with), each with its fields and its audience, and `src/views/prose/` writes their words after
+  the turn, one module per area (`theWordsOf` hands each fact to its area's), a `switch` over the kinds with a `never`
   default: a new kind with no words doesn't compile there. `forceMarker` returns its fact, and `narrate` takes it as it
   takes words. So **the engine's log holds no words for a typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
   line.ts`), never from `resolveTurn`'s `log` or `turnContext.turnLog`. `buildReports` writes them before it picks any
   realm's lines and returns them as `gmLog`, which the shell saves; every harness that plays a turn reads them
   (`tests/lib/scenario-in-the-vm.ts`, `a-staged-turn-on-the-engines-modules.ts`, the board's `lines()` in
-  `middle-of-a-bot-world.ts`), and a test that reads a narrative writes a fact's words with `theWordsOf`. In this run a
+  `middle-of-a-bot-world.ts`), and a test that reads a narrative writes a fact's words with `theWordsOf` (a personal
+  combat's: `wordsOf` or `wordsForEveryoneInTheFight`, `tests/lib/personal-combat.ts`). A test that keeps a
+  narrative's strings and drops the rest reads nothing of a typed line: read its words. In this run a
   line's words are the same for every reader (the masking of unmet realms stays on them, R-046).
 - **A battle's tiers and its tally come from its words, in the views.** `emitBattle` files each line with its tier
   still to work out (`A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES`) and, after them, the place of its losses
