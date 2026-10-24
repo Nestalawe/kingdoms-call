@@ -7,20 +7,23 @@ import { UNIT_DRILL_BASE } from '../units/drill-and-spoils.ts';
 import { BOT_HEX_DIRS, BOT_SEA_ALL, botNeighbourProv } from './intel.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
 import {
+  BOT_SPECIALIST_ROLES,
   botFieldRecruitTokens,
   botGarrisonOrder,
   botHireOrder,
+  botIsTeach,
   botLedger,
+  botNearbyThreat,
   botPracticeSkill,
   botRecruitOrder,
   botRoles,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
-import { BOT_SPECIALIST_ROLES, botNearbyThreat, botPracticeFallback } from './specialists.ts';
-import { botIsTeach, botOrderLocs, botPickupOrder } from './missions.ts';
+import { botOrderLocs, botPickupOrder } from './missions.ts';
 import { skillLevel } from '../titles/perks.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { _BEST_SCHOOL } from '../titles/reckoning.ts';
+import { botPracticeFallback } from './spellcraft.ts';
 
 // ══ BOT PLAYERS — Phase 3b: economy (recruit / hire) ════
 // Runs AFTER runBotMovement: any bot character still HOLDING (no movement order) in an owned

@@ -12,16 +12,13 @@ import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { RUMOUR_COST_BY_POWER, isMithril } from '../personal-combat/helpers.ts';
 import {
   BOT_AERIAL_TYPES,
-  BOT_ASSUMED_SKILLS,
   BOT_CARRIER_TYPES,
   BOT_DEF_BONUS,
   BOT_HEX_DIRS,
-  BOT_MONSTER_ARMIES,
   BOT_SEA_ALL,
   botBattleForce,
   botBelief,
   botBelievedOwner,
-  botKnownSkills,
   botKnows,
   botKnowsGraves,
   botMarginFor,
@@ -36,34 +33,34 @@ import {
 } from './intel.ts';
 import { botCanFly, botSeaCap } from './war.ts';
 import {
-  BOT_CAVALRY_TYPES,
-  BOT_CREATURE_ARMIES,
-  BOT_FLYING_TYPES,
+  BOT_LAIR_GO_BAND_HI,
+  BOT_LAIR_REASK_GAIN,
+  BOT_SPECIALIST_ROLES,
+  botAssumedChar,
   botAtWar,
-  botCoastalFleetType,
+  botDuelSkill,
   botEnemyChars,
+  botEnemyIntel,
   botFleetOnly,
   botGarrisonTarget,
+  botHasMetPlayers,
   botHeroCap,
   botHireBias,
   botHomeId,
-  botIsLeader,
-  botNavalEnemyCoast,
-  botSpend,
-} from './strategy.ts';
-import { BOT_SCHOOLS } from './schools.ts';
-import {
-  BOT_SPECIALIST_ROLES,
-  botFillOrders,
-  botHasMetPlayers,
   botIsEdge,
+  botIsLeader,
+  botIsTeach,
+  botLairRating,
+  botLiftable,
   botMoveOrder,
   botNearbyThreat,
   botPathDirs,
   botPathLen,
-  botSpyTarget,
-} from './specialists.ts';
-import { botDuelRating, botPathAny, botPathLenAny } from './spellcraft.ts';
+  botRumourFor,
+  botSpend,
+} from './strategy.ts';
+import { BOT_SCHOOLS } from './schools.ts';
+import { botDuelRating, botFillOrders, botPathAny, botPathLenAny, botSpyTarget } from './spellcraft.ts';
 import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
 import { DISC_BY_ID } from '../discoveries.ts';
 import { emit } from '../turn/events-and-their-audiences.ts';
@@ -571,62 +568,7 @@ export function botAllyNear(G, pi, X) {
 // troops, p._botIntel.heroes for the unarmed. Only characters botSeesChar can see are recorded, so the
 // memory is exactly what a human's past reports hold. A remembered host that is no longer visible still
 // counts against a target for three turns (it may still be there), and remembered heroes are hunted.
-export function botUpdateIntel(G, pi) {
-  const p = (G.players || [])[pi];
-  if (!p) return null;
-  const I = (p._botIntel = p._botIntel || { generals: {}, heroes: {} });
-  const turn = G.turn || 0;
-  (G.characters || []).forEach((e) => {
-    if (!(e && e.player != null && e.player !== pi)) return;
-    if (!e.alive) {
-      delete I.generals[e.id];
-      delete I.heroes[e.id];
-      return;
-    }
-    if (!botSeesChar(G, pi, e)) return;
-    const rec = {
-      turn,
-      provId: e.location,
-      units: (e.armies || []).length,
-      name: e.name,
-      player: e.player,
-      isKing: !!e.isKing,
-      strength: botBattleForce(G, e, null, 'plain', { viewerPi: pi }),
-      skillsKnown: !botSkillsUnknown(G, pi, e),
-    };
-    if (rec.units) {
-      I.generals[e.id] = rec;
-      delete I.heroes[e.id];
-    } else {
-      I.heroes[e.id] = rec;
-      delete I.generals[e.id];
-    }
-  });
-  [I.generals, I.heroes].forEach((M) =>
-    Object.keys(M).forEach((k) => {
-      if (turn - M[k].turn > 6) delete M[k];
-    }),
-  );
-  // review II A10: allied realms exchange reports — what an ally saw this turn is copied in (never overwriting fresher news)
-  (G.players || []).forEach((a, j) => {
-    if (j === pi || !a || !a._botIntel || botRelationRaw(G, pi, j) !== 'allied') return;
-    [
-      ['generals', I.generals, a._botIntel.generals],
-      ['heroes', I.heroes, a._botIntel.heroes],
-    ].forEach(([_, mine, theirs]) => {
-      Object.keys(theirs || {}).forEach((k) => {
-        const r = theirs[k];
-        if (!r || r.player === pi || botRelationRaw(G, pi, r.player) !== 'enemy') return;
-        if (!mine[k] || mine[k].turn < r.turn) mine[k] = { ...r };
-      });
-    });
-  });
-  return I;
-}
-export function botEnemyIntel(G, pi) {
-  const p = (G.players || [])[pi];
-  return (p && p._botIntel) || { generals: {}, heroes: {} };
-}
+// botUpdateIntel, which records what the realm saw, and botEnemyIntel, which reads it back, are in bots/strategy.ts.
 // Remembered at-war hosts last seen in province `provId` within three turns and not visible now: {units,strength}.
 export function botRememberedHostAt(G, pi, provId) {
   const I = botEnemyIntel(G, pi);
@@ -655,25 +597,7 @@ export function botHostMargin(base, hostUnits) {
 // (80%+) sends him in. A rumour by another hero, or older than three turns, or bought before the hero
 // gained a level, is stale. Lairs are taken weakest grade first.
 export const BOT_LAIR_GRADE = { '': 0, Weak: 0, Moderate: 1, Powerful: 2, Legendary: 3 };
-export function botRumourFor(G, pi, c, f) {
-  const r = f && f._rumourOdds && f._rumourOdds[pi];
-  if (!r || r.charId !== c.id) return null;
-  if ((G.turn || 0) - r.turn > 3) return null;
-  if (r.rating != null && botLairRating(c) < r.rating) return null;
-  if (BOT_LAIR_REASK_GAIN > 0 && r.rating != null && botLairRating(c) >= r.rating + BOT_LAIR_REASK_GAIN) return null;
-  return r;
-} // 2026-09-28: stale only if he has WEAKENED since (a level gained no longer voids it)
-export function botLairRating(c) {
-  const sk = c.skills || {};
-  return (
-    (c.maxHp || 20) +
-    (sk.melee || 0) * 6 +
-    (sk.tactical || 0) * 3 +
-    (sk.archery || 0) * 2 +
-    ((sk.elemental || 0) + (sk.necromancy || 0) + (sk.psychic || 0)) * 4 +
-    (c.items || []).length
-  );
-}
+// botRumourFor (a hero's rumour of a lair, while it holds) and botLairRating are in bots/strategy.ts.
 // Candidate lairs for this hero: {X,li,f,grade,d,rumour}. `maxD` hops through own/allied/unowned ground.
 export function botLairCandidates(G, pi, c, maxD) {
   const from = G.world.provinces[c.location];
@@ -749,7 +673,7 @@ export function botSlayerTrainSkill(c) {
 // Hunt Rumours phase resolves. The planner used to demand it from the muster budget, which the leaders (who plan
 // first) had usually spent to nothing — a slayer with lairs in reach then trained instead of asking, one slayer
 // year in five. Now the rumour goes ahead whenever the treasury itself can pay it with a little to spare.
-export const BOT_RUMOUR_FUND_PER_SLAYER = 4;
+// BOT_RUMOUR_FUND_PER_SLAYER (each slayer's share of the rumour fund) is in bots/strategy.ts.
 export function botRumourAffordable(G, pi, L, price) {
   return (
     (L.rumourFund || 0) >= price || L.budget >= price + 1 || (((G.players || [])[pi] || {}).gold || 0) >= price + 3
@@ -776,11 +700,7 @@ export const BOT_LAIR_WEAK_BAND = 80,
   BOT_LAIR_MAX_RUMOURS = 3; // 2026-09-28 (options 3, 5)
 // 2026-09-29 (Toby): PROMOTE_AT 6 → 4 → 2 (study C4; RETRY_EXTRA 2 → 0: no hold after a poor reading) — the rumour (80%+) still decides whether he goes in, so asking sooner
 // costs a few gold, not a life.
-// 2026-09-29 tuning knobs (defaults = previous behaviour): BOT_LAIR_GO_BAND_HI is the rumour band that sends a hero
-// into a Moderate-or-higher lair (BOT_LAIR_GO_BAND stays the Weak one); BOT_LAIR_REASK_GAIN > 0 lets a hero re-ask a
-// lair once his botLairRating has risen that much since he was told (0 = off: he waits out the six turns).
-export const BOT_LAIR_GO_BAND_HI = 90,
-  BOT_LAIR_REASK_GAIN = 3; // 2026-09-29 (Toby, study C4): re-ask once his rating has risen 3
+// The tuning knobs BOT_LAIR_GO_BAND_HI and BOT_LAIR_REASK_GAIN are in bots/strategy.ts.
 export function botGoBand(g) {
   return g > 0 ? BOT_LAIR_GO_BAND_HI : BOT_LAIR_GO_BAND;
 }
@@ -1002,31 +922,11 @@ export function botSlayerHasLairsToGrowInto(G, pi, c) {
 // enemy coasts — the scorer's −40 on sea targets does not apply to him. A realm wants one admiral once it
 // holds two coastal provinces that can build ships and there is sea worth taking (unowned sea in reach, or
 // an at-war coast across the water). Fleets are still bought for ordinary hosts only for the old reasons.
-export function botCoastalPorts(G, pi) {
-  return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea' && botCoastalFleetType(p));
-}
-// 2026-09-26 (Toby item 1/6): ONE port is enough to want an admiral (was two — most realms never got there).
-export function botSeaWorthTaking(G, pi) {
-  const ports = botCoastalPorts(G, pi);
-  if (ports.length < 1) return false;
-  return ports.some((p) => {
-    for (let i = 0; i < 6; i++) {
-      const N = botNeighbourProv(G, p, i);
-      if (!N || N.terrain !== 'sea') continue;
-      if (N.owner == null || N.owner !== pi) return true;
-    }
-    return botNavalEnemyCoast(G, p, pi);
-  });
-}
+// botCoastalPorts and botSeaWorthTaking (does the realm want an admiral?) are in bots/strategy.ts.
 // ── FLYING GENERAL (2026-09-26, Toby item 8) ── the owned provinces that raise a humanoid flyer (the
 // only units that both fly AND carry a foot soldier), and the reach of an airborne column: the slowest
 // self-flying unit sets the pace, March never speeds flight (mirrors computeMovePoolMax's FLYING CARRY).
-export function botFlyerType(prov) {
-  return ((prov && prov.armyTypes) || []).find((t) => BOT_FLYING_TYPES.has(t)) || null;
-}
-export function botFlyerPorts(G, pi) {
-  return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea' && botFlyerType(p));
-}
+// botFlyerType and botFlyerPorts are in bots/strategy.ts; botAirReach, the column's reach, is below.
 export function botAirReach(c) {
   const sp = (c.armies || [])
     .filter((a) => a && BOT_AERIAL_TYPES.has(a.type))
@@ -1055,15 +955,7 @@ export function botSpareBerths(c) {
     ) - a.filter((x) => x && botLiftable(x.type) && !BOT_SEA_ALL.has(x.type)).length
   );
 } // berths: a turtle's Island Back offers two
-export function botLiftable(t) {
-  return !(
-    BOT_SEA_ALL.has(t) ||
-    BOT_AERIAL_TYPES.has(t) ||
-    BOT_CREATURE_ARMIES.has(t) ||
-    BOT_MONSTER_ARMIES.has(t) ||
-    BOT_CAVALRY_TYPES.has(t)
-  );
-}
+// botLiftable (a land unit a fleet can carry) is in bots/strategy.ts.
 // BFS over sea hexes from `P` (a coast or a sea hex): the best landing — an enemy or unowned land province
 // beside the water that this column can beat — or an unowned sea hex to claim. Returns {moves,N} or null.
 // 2026-09-26 (Toby item 6): SEA TARGETS ARE NOW STRENGTH-GATED — before this an admiral would sail into a
@@ -1295,21 +1187,8 @@ export function botAirStrike(G, pi, c, P, myStr, T, maxHops) {
   );
   return { moves, N: best.N };
 }
-// HONEST KNOWLEDGE OF RIVAL CHARACTERS: the rule, BOT_ASSUMED_SKILLS, botKnownSkills and botSkillsFor are in bots/intel.ts.
-// A clone of a rival with only the skills we know (for the duel forecast).
-export function botAssumedChar(G, pi, e) {
-  const k = botKnownSkills(G, pi, e);
-  if (k === (e.skills || {}) || e.player === pi) return e;
-  const c = JSON.parse(JSON.stringify(e));
-  c.skills = k ? { ...k } : { ...BOT_ASSUMED_SKILLS };
-  if (!k) {
-    c.items = [];
-  }
-  return c;
-}
-export function botSkillsUnknown(G, pi, e) {
-  return botKnownSkills(G, pi, e) === null;
-}
+// HONEST KNOWLEDGE OF RIVAL CHARACTERS: the rule, BOT_ASSUMED_SKILLS, botKnownSkills and botSkillsFor are in bots/intel.ts;
+// botAssumedChar and botSkillsUnknown, which read them, in bots/strategy.ts.
 // ══ MASTERY ORDERS (review II A7) ════
 export function botMasteryPre(G, pi, c, P, ctx) {
   const sk = c.skills || {};
@@ -1375,10 +1254,7 @@ export function botMasteryPre(G, pi, c, P, ctx) {
 // (a fighting skill or battle school at 4+, 80%+ health) and any enemy general seen within two hexes
 // is forecast beaten (on the skills our spies know); ACCEPT when he can hold his own (a duel skill at
 // 2+, 60%+ health); REFUSE when he cannot (the 20% morale cost is cheaper than a dead general).
-export function botDuelSkill(c) {
-  const s = c.skills || {};
-  return Math.max(s.melee || 0, s.archery || 0, s.elemental || 0, s.necromancy || 0, s.psychic || 0);
-}
+// botDuelSkill (a character's best duelling skill) is in bots/strategy.ts.
 export function botDuelStance(G, pi, c, duelSim) {
   const hp = c.hp != null ? c.hp : c.maxHp || 20,
     mhp = c.maxHp || 20;
@@ -1525,9 +1401,7 @@ export function runBotConcessions(G, botIdxSet, turnContext) {
 // recruiting is handed to another hero standing with him — he raises the same troops for the king's host — so
 // the king is free to teach ("heroes other than the king recruit to the general").
 export const BOT_TEACH_KING = ['melee', 'archery', ...BOT_SCHOOLS];
-export function botIsTeach(o) {
-  return !!(o && o.action === 'practice' && /\(teach /.test(o.desc || ''));
-}
+// botIsTeach (is this order a lesson?) is in bots/strategy.ts.
 export function botSlayerSkillPri(S, sk) {
   if (S === 'melee') return 0;
   if (S === botSlayerSchool({ skills: sk })) return 1;

@@ -26,14 +26,15 @@ import {
   botHexDist,
   botHomeId,
   botInContact,
+  botIsTeach,
   botIsValuable,
   botLedger,
+  botMoveOrder,
+  botNearbyThreat,
   botRecruitOrder,
   botRoles,
   botSchoolLimit,
 } from './strategy.ts';
-import { botMoveOrder, botNearbyThreat } from './specialists.ts';
-import { botIsTeach } from './missions.ts';
 import { skillLevel } from '../titles/perks.ts';
 
 // ══ PHASE-ONE PASS (2026-09-29, Toby: "use phase 1 orders wisely") ═════════════════════════════════
