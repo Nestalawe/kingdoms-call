@@ -1988,36 +1988,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/engine/personal-combat/melee-flight-and-archery.ts",
-    "to": "src/engine/personal-combat/speed-encounter-plans-and-combatants.ts",
-    "unresolvedTo": "./speed-encounter-plans-and-combatants.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/personal-combat/speed-encounter-plans-and-combatants.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/personal-combat/melee-flight-and-archery.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/engine/units/movement-pools.ts",
     "to": "src/engine/units/sea-lift-stranding-and-retreats.ts",
     "unresolvedTo": "./sea-lift-stranding-and-retreats.ts",
