@@ -2,7 +2,7 @@
 // Wyvern Riders are no longer Creatures or Monsters: Druid 1 to lead like every racial troop (waived for
 // their own race), no place in Dragon Taming (Awaken the Wild itself was removed on 2026-10-12), and their own strikes land one time in
 // two whatever the commander's Druid. Level 1 (unit): the data file's tables, the booted GM portal's
-// getDruidLevel and primalStrikeChance, and the player portal's Druid table.
+// getDruidLevel and primalStrikeChance, and the player portal's Druid table (the same getDruidLevel, through src/shared/).
 const fs=require('fs'), vm=require('vm');
 const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -36,7 +36,7 @@ const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
   gm.dom.window.close();
   const pp=await boot('kingdoms-call-player-portal.html');
   ok(pp.errors.length===0,'the player portal boots'+(pp.errors.length?' — '+pp.errors[0].split('\n')[0]:''));
-  for(const r of RIDERS) ok(pp.ev(`DRUID_LEVEL_OF_P[${JSON.stringify(r)}]`)===1,`the player portal's Druid table says 1 for ${r}`);
+  for(const r of RIDERS) ok(pp.ev(`getDruidLevel(${JSON.stringify(r)})`)===1,`the player portal's Druid table says 1 for ${r}`);
   pp.dom.window.close();
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);

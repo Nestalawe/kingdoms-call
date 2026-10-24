@@ -85,7 +85,7 @@ import {
   updateRaceDesc,
   updateTemperDesc,
 } from './briefing-and-submit.ts';
-import { DRUID_LEVEL_OF_P, PRIMAL_ARMY_SPEEDS, druidNeedP } from './skills-and-projections.ts';
+import { PRIMAL_ARMY_SPEEDS, druidNeedP } from './skills-and-projections.ts';
 import { buildTargetField, leaveToggleAll, updateLeaveTarget, updateRecruitTarget } from './order-targets.ts';
 import { popupKnownChars, terrorNoteP } from './map-symbols.ts';
 import { _closeMapTip, highlightMapProv, locateOnMap, showFullscreenMap, toggleMapIcon } from './map.ts';
@@ -106,7 +106,7 @@ import {
   toggleMsgGroupPicker,
   updateMsgComposer,
 } from './dispatches.ts';
-import { unitTypeOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import { getDruidLevel, unitTypeOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
 // ── The player portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // The page's scripts are ES modules (P1-09d), so a top-level name belongs to its own file: an inline on…="…" handler, a
@@ -211,8 +211,8 @@ Object.assign(window, {
   buildOrdersForm, // ui/player/orders-form.ts
   buildTargetField, // ui/player/order-targets.ts
   computeOrderLedgerP, // ui/player/orders-form.ts
-  DRUID_LEVEL_OF_P, // ui/player/skills-and-projections.ts
   druidNeedP, // ui/player/skills-and-projections.ts
+  getDruidLevel, // engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts
   initMessaging, // ui/player/dispatches.ts
   loadMessageRoster, // ui/player/dispatches.ts
   loadMyGames, // ui/player/game-lists.ts

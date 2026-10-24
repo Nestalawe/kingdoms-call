@@ -76,7 +76,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok((rules.match(/a hero leads at most as many Creature and Monster units as his Druid level/g)||[]).length>=2,'…and both crowns\' sections say so beside their waiver');
     ok((intro.match(/a hero leads as many beasts as his Druid level/g)||[]).length===2,"the intro's Druidic and Evil rows say so");
     ok(!/no Druid training at all/.test(pp),'the player portal no longer says a crown\'s heroes lead beasts with no Druid training at all');
-    ok(/function beastCommandCountP/.test(ppCode)&&/🐾 beasts \$\{_bLed\}\/\$\{druLevel\}/.test(ppCode),"the hero's card counts his beasts against his Druid"); }
+    ok(/arr\.filter\(countsAgainstBeastCommand\)/.test(ppCode)&&/🐾 beasts \$\{_bLed\}\/\$\{druLevel\}/.test(ppCode),"the hero's card counts his beasts against his Druid"); }
 
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);

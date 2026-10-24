@@ -2,11 +2,12 @@
 // engine reads (plan P1-11a2, P1-11a4; the checks and the values in tests/lib/player-portal-copies.ts). P1-11a4 swapped
 // the 16 copies that agreed for the engine's own functions (the portal imports them through src/shared/), so their
 // swap cases went with them; for the 9 whose value the report makes from the state, the truth case stays as a
-// projection case: the engine's function on the report's value and on the state's, the same answer. For three copies
-// that stay until P1-11b, the truth: the copy on the report's value, the engine's function on the state's. For the
-// copies that read the realm, the report's shape or the world (P1-11b1: the Druid a hero needs, the army card's Druid
-// and sea lines, the turn report's flying carry, the Explore forecast), the truth too, with the differences known to
-// Toby's questions pinned exactly. And each engine function leaves its input as it was.
+// projection case: the engine's function on the report's value and on the state's, the same answer (and for the beast
+// command, which P1-11b3 swapped). For two copies that stay until P1-11b, the truth: the copy on the report's value, the
+// engine's function on the state's. For the copies that read the realm, the report's shape or the world (P1-11b1: the
+// Druid a hero needs, the army card's Druid and sea lines, the turn report's flying carry, the Explore forecast), the
+// truth too, with the differences known to Toby's questions pinned exactly (since P1-11b3 the Druid ones call the
+// engine's rule with the portal's level of the hero's Druid). And each engine function leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -121,9 +122,9 @@ test("the values reach every catalogue item and every unit type at every quality
   expect(values.heroes.filter((h) => h.state).length).toBeGreaterThan(500);
 });
 
-describe('the 9 rules the portal calls the engine for whose value the report makes from the state (P1-11a4)', () => {
-  test('there are 9', () => {
-    expect(PROJECTIONS).toHaveLength(9);
+describe('the 10 rules the portal calls the engine for whose value the report makes from the state (P1-11a4, P1-11b3)', () => {
+  test('there are 10', () => {
+    expect(PROJECTIONS).toHaveLength(10);
   });
   test.each(PROJECTIONS.map((p) => [`${p.engine} (for ${p.retiredCopy})`, p] as const))(
     "%s: the engine's function on the report's value and on the state's: the same answer",
@@ -135,7 +136,7 @@ describe('the 9 rules the portal calls the engine for whose value the report mak
   );
 });
 
-describe('three copies that stay until P1-11b (they read the report’s shape)', () => {
+describe('two copies that stay until P1-11b (they read the report’s shape)', () => {
   test.each(STAYING.map((p) => [`${p.copy} and ${p.engine}`, p] as const))(
     "%s: the copy on the report's value, the engine's function on the state's: the same answer",
     (_name, pair) => {

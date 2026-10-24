@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_TERRAIN_COLORS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_TERRAIN_COLORS } from '../../content/kingdoms-call-data.ts';
 import { skillFameLabelM, topSkillOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import { GD_BY_ALIGNMENT, GUARD_POWER_COLORS_P, deadHeroRealmTagP } from './items-and-heroes.ts';
@@ -484,22 +484,6 @@ export function _lairName(f) {
 // EVIL TERROR (2026-10-12, Toby item 23): an Evil realm's report carries each province's Terror ({pct, stacks,
 // byYou} on the map's records and its own provinces); the popup and the Your Provinces entry print it. `light`: the
 // report's pale page rather than the dark popup. No reading (any other crown, or no Terror there) → nothing.
-// BEAST COMMAND (2026-10-12, Toby item 24; mirrors the GM portal's beastCommandCount): the units that count against a
-// hero's Druid level — every living Creature or Monster, not skeletons, a summoned grove or Wild Hunt beasts.
-export function beastCommandCountP(a) {
-  const C = new Set([...KC_UNIT_CLASS.creature, ...KC_UNIT_CLASS.monster]);
-  return (
-    !!a &&
-    C.has(a.type) &&
-    !a.skeletal &&
-    !a._isSkeletal &&
-    !a.temporary &&
-    !a._temporary &&
-    !a.wildHunt &&
-    a._wildHuntUntilTurn == null &&
-    !a.phantom
-  );
-}
 export function terrorNoteP(pd, light) {
   const t = pd && pd.terror;
   if (!t || !(t.pct > 0)) return '';

@@ -9,7 +9,8 @@
 //   projection  the engine's function on the report's value against it on the state's value the report made it from:
 //               the report hands the portal what the engine reads. For the 9 swapped rules whose value the report
 //               makes from the state (the other 7 take a number, a level, an alignment or a games row: one function on
-//               one value, nothing left to compare).
+//               one value, nothing left to compare), and for the beast command P1-11b3 swapped (the portal's
+//               beastCommandCountP gave way to countsAgainstBeastCommand, its Druid table to the engine's).
 //   truth       for the copies that stay until P1-11b (they read the report's shape, the realm or the world): the
 //               copy on the report's value, the engine's function on the state's. It says whether the portal tells the
 //               player what the turn will do. P1-11b1 added the Druid a hero needs to lead a unit (druidNeedP), the
@@ -17,6 +18,8 @@
 //               forecast (exploreGainFor); where a copy is known to disagree (plan P1-11b's questions for Toby), the
 //               difference is pinned exactly. P1-11b2 retired the turn report's copy (it calls getFlyCapability): its
 //               statement that gives a column the flyers' pace is checked against the engine on the state's column.
+//               Since P1-11b3 druidNeedP and the army card's Druid lines call the engine's rule (src/shared/) with the
+//               portal's own level of the hero's Druid, so their truth cases check the level each side feeds it.
 //
 // The copies are read from src/ui/player/ by their syntax tree (tests/lib/source.ts) and run in a context of their
 // own, with the data file run beside them as a script (the content as the player page holds it, before the engine
@@ -69,6 +72,7 @@ import {
   getFlyCapability,
   isAirCarriable,
 } from '../../src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { countsAgainstBeastCommand } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { beastCommandCount, druIdPenaltyMult } from '../../src/engine/world/tables.ts';
 import { druidMasteryGain } from '../../src/engine/battle/terrain-and-unit-strength.ts';
 import { dragonTamed } from '../../src/engine/discoveries.ts';
@@ -102,7 +106,6 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 /** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
   'ui/player/order-chances.ts': ['ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl'],
-  'ui/player/map-symbols.ts': ['beastCommandCountP'],
   'ui/player/move-analysis.ts': [
     'PO_SEA_TYPES',
     'PO_CARRIER_TYPES',
@@ -113,13 +116,9 @@ const COPIES: Record<string, string[]> = {
   ],
   // a hero's skill as the report counts it (skillEff): druidNeedP, exploreGainFor and the army card read it
   'ui/player/briefing-and-submit.ts': ['effSkillP'],
-  'ui/player/skills-and-projections.ts': [
-    'CREATURE_ARMIES_UI',
-    'MONSTER_ARMIES_UI',
-    'DRUID_LEVEL_OF_P',
-    'TAMED_FLYERS_P',
-    'druidNeedP',
-  ],
+  // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); the army card reads
+  // the two sets
+  'ui/player/skills-and-projections.ts': ['CREATURE_ARMIES_UI', 'MONSTER_ARMIES_UI', 'druidNeedP'],
   'ui/player/order-targets.ts': ['exploreGainFor'],
 };
 const ARMY_CARD = 'ui/player/report.ts';
@@ -157,7 +156,6 @@ function exploreGainOn(report, c, terrain) {
 }`;
 /** The functions the checks call: the portal's copies, and those made of a copy's statements. */
 const COPY_FUNCTIONS = [
-  'beastCommandCountP',
   'poSeaAnalysis',
   'effMagicLvl',
   'druidNeedP',
@@ -672,8 +670,8 @@ const engineFameText = (hero: unknown): { answer: unknown; changed: boolean } =>
   };
 };
 
-/** The 9 rules of the 16 P1-11a4 swapped whose value the report makes from the state: their truth cases, now that the
- *  portal calls the engine's function, as projection cases (Decision 7). */
+/** The 9 rules of the 16 P1-11a4 swapped whose value the report makes from the state, and the beast command P1-11b3
+ *  swapped: their truth cases, now that the portal calls the engine's function, as projection cases (Decision 7). */
 export const PROJECTIONS: Projection[] = [
   {
     engine: 'unitTypeOf',
@@ -763,6 +761,17 @@ export const PROJECTIONS: Projection[] = [
         ),
       ),
   },
+  {
+    // The report's unit carries the names its realm sees it by (skeletal, temporary, wildHunt); the engine's,
+    // _isSkeletal and the rest: beastCommandCount hands its unit through unitAsItsRealmSeesIt (P1-11b2).
+    engine: 'countsAgainstBeastCommand',
+    retiredCopy: 'beastCommandCountP',
+    on: "every unit of the realm's heroes (the report's flags; on the state's unit, as beastCommandCount asks it)",
+    cases: (s) =>
+      withState(s.armies).map((a) =>
+        project(a.report, engineOn(countsAgainstBeastCommand, [a.report]), engineOn(beastCommandCount, [a.state])),
+      ),
+  },
 ];
 
 // ── The copies that stay ────
@@ -792,17 +801,9 @@ export interface Staying {
   readonly truth: (c: Copies, s: Samples) => Comparison[];
 }
 
-/** Two of the three copies that stay, whose truth cases agree on every value. */
+/** One of the two copies that stay (beastCommandCountP, the third until P1-11b3, is a projection case now), whose
+ *  truth cases agree on every value. */
 export const STAYING: Staying[] = [
-  {
-    copy: 'beastCommandCountP',
-    engine: 'beastCommandCount',
-    on: "every unit of the realm's heroes (the report's flags against the state's)",
-    truth: (c, s) =>
-      withState(s.armies).map((a) =>
-        compare(a.report, c.beastCommandCountP(a.report), engineOn(beastCommandCount, [a.state])),
-      ),
-  },
   {
     copy: "poSeaAnalysis's cap",
     engine: 'getSeaCapability',
@@ -820,7 +821,7 @@ export const STAYING: Staying[] = [
   },
 ];
 
-/** The third: effMagicLvl, the level of a magic school the order form offers spells by, against the effective level
+/** The second: effMagicLvl, the level of a magic school the order form offers spells by, against the effective level
  *  the report sends (skillEff: the engine's skillBonusBreakdown, the level the turn casts at), for every school of every
  *  hero of the realm; with the aura the report says it counts. */
 export function effMagicLvlAgainstTheReport(

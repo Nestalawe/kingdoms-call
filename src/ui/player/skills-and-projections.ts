@@ -1,12 +1,13 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
+import { KC_HUMANOID_RACES, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import {
-  KC_DRUID_LEVELS,
-  KC_HUMANOID_RACES,
-  KC_UNIT_CLASS,
-  PRIMAL_ARMY_DEFS_P,
-} from '../../content/kingdoms-call-data.ts';
-import { heroHireWage } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+  TAMED_FLYER_TYPES_D,
+  druidALeaderBringsToAUnit,
+  druidLevelALeaderNeeds,
+  druidShortfall,
+  heroHireWage,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import { ITEM_UNCAPPED_SKILLS_P } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
@@ -207,39 +208,28 @@ export const HUMANOID_RACES_UI = new Set(KC_HUMANOID_RACES);
 export const CREATURE_ARMIES_UI = new Set(KC_UNIT_CLASS.creature);
 export const MONSTER_ARMIES_UI = new Set(KC_UNIT_CLASS.monster);
 // ── DRUID: WHAT DOES THIS COMMANDER NEED TO LEAD THIS UNIT? (2026-09-27) ────────────────────────
-// The ONE player-side copy of the engine's druIdPenaltyMult rule. The level table itself is
-// KC_DRUID_LEVELS in kingdoms-call-data.ts — the same table the engine builds its Sets from — so the
-// portal and the battle maths cannot drift apart again. (They had: the portal kept two hand-typed
-// tables with no level 1, and one of them ignored every waiver.)
+// The order form's Druid line and the army card ask this. The rule is the engine's own, shared through src/shared/
+// (plan P1-11b3): the Druid a unit needs with its waivers (druidLevelALeaderNeeds, which reads KC_DRUID_LEVELS, the
+// one table), the same-race Druid 1 (druidALeaderBringsToAUnit) and the shortfall (druidShortfall). What stays the
+// portal's is the commander's Druid it feeds in: the report's effective level (effSkillP), which counts a Crown of
+// Command's +1 where the battle's druIdPenaltyMult doesn't (plan P1-11b, question 13 for Toby).
 //   req       — Druid needed after waivers: skeletons 0; a creature under a Druidic realm OR a
-//               personally Druidic commander 0; a winged beast with sd40 Dragon Taming 0
+//               personally Druidic commander 0; a monster under an Evil realm OR a personally Evil
+//               commander 0; a winged beast with sd40 Dragon Taming 0
 //   effDru    — the commander's Druid, counted as at least 1 for units of his own race
 //   shortfall — levels short (each costs 20% strength in battle)
 //   counts    — whether leading this unit depends on Druid training at all (an own-race unit's
 //               level-1 need is met by birth, so it does not count)
-export const DRUID_LEVEL_OF_P = (() => {
-  const m = {};
-  Object.entries(KC_DRUID_LEVELS).forEach(([lvl, types]) =>
-    types.forEach((t) => {
-      m[t] = +lvl;
-    }),
-  );
-  return m;
-})();
-export const TAMED_FLYERS_P = new Set(KC_UNIT_CLASS.tamedFlyer);
 export function druidNeedP(a, c, report) {
   const rep = report || currentReport || {};
   if (!a || a.skeletal || a._isSkeletal) return { req: 0, effDru: 0, shortfall: 0, counts: false };
-  let req = DRUID_LEVEL_OF_P[a.type] || 0;
   const realmAlign = (rep.kingdom && rep.kingdom.alignment) || null;
-  if (req > 0 && CREATURE_ARMIES_UI.has(a.type) && (realmAlign === 'Druidic' || (c && c.alignment === 'Druidic')))
-    req = 0;
-  if (req > 0 && MONSTER_ARMIES_UI.has(a.type) && (realmAlign === 'Evil' || (c && c.alignment === 'Evil'))) req = 0; // 2026-10-13: Evil's mirror
-  if (req > 0 && TAMED_FLYERS_P.has(a.type) && (rep.discoveries || []).some((d) => d && d.id === 'sd40')) req = 0;
+  const tamed = TAMED_FLYER_TYPES_D.has(a.type) && (rep.discoveries || []).some((d) => d && d.id === 'sd40');
+  const req = druidLevelALeaderNeeds(a.type, realmAlign, c && c.alignment, tamed);
   const druLevel = effSkillP(c, 'druid');
   const sameRace = !!(a.race && c && a.race === c.race);
-  const effDru = sameRace ? Math.max(1, druLevel) : druLevel;
-  return { req, effDru, shortfall: Math.max(0, req - effDru), counts: req > 0 && !(sameRace && req <= 1) };
+  const effDru = druidALeaderBringsToAUnit(druLevel, sameRace);
+  return { req, effDru, shortfall: druidShortfall(req, effDru), counts: req > 0 && !(sameRace && req <= 1) };
 }
 export const PRIMAL_SUBRACE_CLASS = {
   'Stone Giant': 'Creature',
