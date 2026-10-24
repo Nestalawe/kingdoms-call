@@ -18,27 +18,27 @@ import {
   botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
+import { botCanFly, botLairDir, botPlanAssaults, botSeaCap } from './war.ts';
 import {
   BOT_FLYING_TYPES,
-  botCanFly,
+  BOT_NAVAL_TYPES,
+  botAtWar,
+  botCoastalFleetType,
   botEnemyDefence,
-  botIsValuable,
-  botLairDir,
-  botPlanAssaults,
-  botSeaCap,
-} from './war.ts';
-import {
   botFieldRecruitTokens,
   botGarrisonOrder,
   botHeroCap,
   botHireBias,
   botHireOrder,
   botHomeId,
+  botIsValuable,
   botLandReach,
   botLedger,
   botPassable,
+  botRaiseTargets,
   botRecruitOrder,
   botRoles,
+  botSchoolLimit,
   botSeaReach,
   botSpend,
   botUnderAttack,
@@ -87,7 +87,6 @@ import {
   botSignaturePre,
   botSpareBerths,
 } from './missions.ts';
-import { BOT_NAVAL_TYPES, botAtWar, botCoastalFleetType } from './economy.ts';
 import {
   botBeatableLairIn,
   botCastPlan,
@@ -97,9 +96,7 @@ import {
   botPathLenAny,
   botPlannedAttackTarget,
   botRaidTarget,
-  botSchoolLimit,
 } from './spellcraft.ts';
-import { graveServedOther } from '../heroes/charms-and-neutrals.ts';
 
 // ══ RAISE THE FALLEN (2026-09-28, Toby: bots with white mages resurrect their heroes) ════
 // Before any other plan, each body the realm may raise — one of ITS OWN fallen heroes whose death it knows of (never
@@ -109,29 +106,7 @@ import { graveServedOther } from '../heroes/charms-and-neutrals.ts';
 // richest held province) and casts Resurrect on that body as often as his White allows in the phases left — a
 // second cast only matters if the first fizzles (the engine allows one raise per body per turn). A body more than
 // four hops away is walked toward over several years (up to eight hops). Richest bodies first: the king, then by skill.
-export function botRaiseTargets(G, pi) {
-  const p = (G.players || [])[pi] || {};
-  const known = new Set(p.knownDeadHeroIds || []);
-  return (G.heroGraveyard || [])
-    .filter((g) => {
-      if (!g) return false;
-      if (g._monarch) return g.player === pi && p._resurrectableMonarchId === g.id;
-      return (
-        !g.isKing &&
-        g.player === pi &&
-        known.has(g.id) &&
-        !graveServedOther(g, pi) &&
-        !(G.characters || []).some((c) => c && c.id === g.id && c.alive)
-      );
-    })
-    .map((g) => ({
-      g,
-      loc: g.location,
-      val: (g._monarch ? 100 : 0) + Object.values(g.skills || {}).reduce((a, b) => a + (b || 0), 0),
-    }))
-    .filter((x) => x.loc != null)
-    .sort((a, b) => b.val - a.val);
-}
+// botRaiseTargets (the bodies this realm may raise) is in bots/strategy.ts; botResurrectErrands, below, sends the mages.
 export function botResurrectErrands(G, pi, all, roles, assigned) {
   const targets = botRaiseTargets(G, pi);
   if (!targets.length) return;

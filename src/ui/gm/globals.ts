@@ -118,13 +118,13 @@ import {
 import { autoTurnTick, refreshIfNewerBuild } from './auto-turn.ts';
 import { BOT_SKILL_BUILD, generateBotSetups } from '../../engine/bots/setup.ts';
 import { botBattleForce } from '../../engine/bots/intel.ts';
-import { botRaiseTargets } from '../../engine/bots/movement.ts';
 import { generateNewGame } from '../../engine/world/generate.ts';
 import { getNeighborsP, hexDistP } from '../../engine/world/map-helpers.ts';
 import { castChanceFor, guardCastChance, primalStrikeChance } from '../../engine/chances-and-lair-grades.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
 import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
 import { runTurn } from './turn-shell.ts';
+import { botRaiseTargets } from '../../engine/bots/strategy.ts';
 
 // ── The GM portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // The page's scripts are ES modules (P1-09d), so a top-level name belongs to its own file: an inline on…="…" handler, a
@@ -208,7 +208,7 @@ Object.assign(window, {
   battleWidthLine, // engine/battle/lines.ts
   BOT_SKILL_BUILD, // engine/bots/setup.ts
   botBattleForce, // engine/bots/intel.ts
-  botRaiseTargets, // engine/bots/movement.ts
+  botRaiseTargets, // engine/bots/strategy.ts
   buildGameMeta, // db/game-meta.ts
   buildGameRecords, // ui/gm/hall-of-fame.ts
   buildTurnReport, // views/turn-report.ts

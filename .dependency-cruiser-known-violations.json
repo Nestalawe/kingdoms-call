@@ -186,96 +186,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/engine/bots/economy.ts",
-    "to": "src/engine/bots/missions.ts",
-    "unresolvedTo": "./missions.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/missions.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/economy.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/economy.ts",
-    "to": "src/engine/bots/specialists.ts",
-    "unresolvedTo": "./specialists.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/specialists.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/economy.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/economy.ts",
-    "to": "src/engine/bots/strategy.ts",
-    "unresolvedTo": "./strategy.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/strategy.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/economy.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/engine/bots/missions.ts",
     "to": "src/engine/bots/specialists.ts",
     "unresolvedTo": "./specialists.ts",
@@ -396,277 +306,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/engine/bots/movement.ts",
-    "to": "src/engine/bots/missions.ts",
-    "unresolvedTo": "./missions.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/missions.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/spellcraft.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/movement.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/movement.ts",
-    "to": "src/engine/bots/specialists.ts",
-    "unresolvedTo": "./specialists.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/specialists.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/spellcraft.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/movement.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/movement.ts",
-    "to": "src/engine/bots/spellcraft.ts",
-    "unresolvedTo": "./spellcraft.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/spellcraft.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/movement.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/movement.ts",
-    "to": "src/engine/bots/strategy.ts",
-    "unresolvedTo": "./strategy.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/strategy.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/economy.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/missions.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/specialists.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/phase-one.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/spellcraft.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/movement.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/movement.ts",
-    "to": "src/engine/bots/war.ts",
-    "unresolvedTo": "./war.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/war.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/missions.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/economy.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/specialists.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/phase-one.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/spellcraft.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/movement.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/phase-one.ts",
-    "to": "src/engine/bots/economy.ts",
-    "unresolvedTo": "./economy.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/economy.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/specialists.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/phase-one.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/engine/bots/phase-one.ts",
     "to": "src/engine/bots/missions.ts",
     "unresolvedTo": "./missions.ts",
@@ -735,36 +374,6 @@
   {
     "type": "cycle",
     "from": "src/engine/bots/phase-one.ts",
-    "to": "src/engine/bots/spellcraft.ts",
-    "unresolvedTo": "./spellcraft.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/spellcraft.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/phase-one.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/phase-one.ts",
     "to": "src/engine/bots/strategy.ts",
     "unresolvedTo": "./strategy.ts",
     "dependencyTypes": [
@@ -784,44 +393,7 @@
         ]
       },
       {
-        "name": "src/engine/bots/phase-one.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/engine/bots/phase-one.ts",
-    "to": "src/engine/bots/war.ts",
-    "unresolvedTo": "./war.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/bots/war.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
         "name": "src/engine/bots/missions.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/bots/economy.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -936,8 +508,8 @@
   {
     "type": "cycle",
     "from": "src/engine/bots/spellcraft.ts",
-    "to": "src/engine/bots/economy.ts",
-    "unresolvedTo": "./economy.ts",
+    "to": "src/engine/bots/phase-one.ts",
+    "unresolvedTo": "./phase-one.ts",
     "dependencyTypes": [
       "local",
       "import"
@@ -948,7 +520,7 @@
     },
     "cycle": [
       {
-        "name": "src/engine/bots/economy.ts",
+        "name": "src/engine/bots/phase-one.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -973,8 +545,8 @@
   {
     "type": "cycle",
     "from": "src/engine/bots/spellcraft.ts",
-    "to": "src/engine/bots/war.ts",
-    "unresolvedTo": "./war.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
     "dependencyTypes": [
       "local",
       "import"
@@ -985,7 +557,14 @@
     },
     "cycle": [
       {
-        "name": "src/engine/bots/war.ts",
+        "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -1002,9 +581,9 @@
   },
   {
     "type": "cycle",
-    "from": "src/engine/bots/strategy.ts",
-    "to": "src/engine/bots/war.ts",
-    "unresolvedTo": "./war.ts",
+    "from": "src/engine/bots/war.ts",
+    "to": "src/engine/bots/spellcraft.ts",
+    "unresolvedTo": "./spellcraft.ts",
     "dependencyTypes": [
       "local",
       "import"
@@ -1015,7 +594,7 @@
     },
     "cycle": [
       {
-        "name": "src/engine/bots/war.ts",
+        "name": "src/engine/bots/spellcraft.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -1029,7 +608,44 @@
         ]
       },
       {
+        "name": "src/engine/bots/war.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/engine/bots/war.ts",
+    "to": "src/engine/bots/strategy.ts",
+    "unresolvedTo": "./strategy.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
         "name": "src/engine/bots/strategy.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/missions.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/engine/bots/war.ts",
         "dependencyTypes": [
           "local",
           "import"

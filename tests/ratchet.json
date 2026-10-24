@@ -11,7 +11,7 @@
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 82,
     "eslintSuppressions": 825,
-    "knownArchitectureViolations": 129,
+    "knownArchitectureViolations": 119,
     "unusedCode": 27
   }
 }
