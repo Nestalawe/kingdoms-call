@@ -26,20 +26,27 @@ import {
   botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
-import { botDefenceNeed, botEnemyChars, botIsLoadedFleet, botIsValuable, botSeaCap } from './war.ts';
+import { botIsLoadedFleet, botSeaCap } from './war.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
 import {
+  BOT_NAVAL_TYPES,
   BOT_SLAYER_FIGHTERS_ONLY,
+  botAtWar,
+  botDefenceNeed,
+  botEnemyChars,
   botFieldRecruitTokens,
   botFleetOnly,
   botHeroCap,
   botHexDist,
   botHomeId,
   botIsFighter,
+  botIsValuable,
   botLandReach,
   botPassable,
+  botPracticeSkill,
   botRecruitOrder,
   botRoles,
+  botSchoolLimit,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
 import {
@@ -56,7 +63,6 @@ import {
   botSlayerHasLairsToGrowInto,
   botSlayerTrainSkill,
 } from './missions.ts';
-import { BOT_NAVAL_TYPES, botAtWar, botPracticeSkill } from './economy.ts';
 import {
   botBeatableLairIn,
   botCastPlan,
@@ -64,7 +70,6 @@ import {
   botPathAny,
   botPathLenAny,
   botPlannedAttackTarget,
-  botSchoolLimit,
   botTargetTitles,
   botTitleFocusSkill,
 } from './spellcraft.ts';

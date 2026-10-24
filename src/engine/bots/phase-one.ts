@@ -17,12 +17,23 @@ import {
   botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
-import { botEnemyChars, botIsValuable } from './war.ts';
-import { botFieldRecruitTokens, botHexDist, botHomeId, botLedger, botRecruitOrder, botRoles } from './strategy.ts';
+import {
+  BOT_P1,
+  botAtWar,
+  botEnemyChars,
+  botEnemyHostsIn,
+  botFieldRecruitTokens,
+  botHexDist,
+  botHomeId,
+  botInContact,
+  botIsValuable,
+  botLedger,
+  botRecruitOrder,
+  botRoles,
+  botSchoolLimit,
+} from './strategy.ts';
 import { botMoveOrder, botNearbyThreat } from './specialists.ts';
 import { botIsTeach } from './missions.ts';
-import { botAtWar } from './economy.ts';
-import { botSchoolLimit } from './spellcraft.ts';
 import { skillLevel } from '../titles/perks.ts';
 
 // ══ PHASE-ONE PASS (2026-09-29, Toby: "use phase 1 orders wisely") ═════════════════════════════════
@@ -51,18 +62,7 @@ import { skillLevel } from '../titles/perks.ts';
 //   B–D. REORDER — a stable sort of each plan's pre-move block: strikes (5), musters in contact (4),
 //      guard magic and the watch under threat (3), hire (1), the rest (0).
 // Reordering is confined to the orders before the first move (all resolve in the starting province).
-export const BOT_P1 = {
-  retreatRatio: 0.75,
-  fleeRatio: 0.5,
-  levyCap: 1.2,
-  levyWages: 8,
-  chestPerHost: 10,
-  chestShare: 0.5,
-  strike: new Set(['Flood', 'Plague', 'Curse', 'Psychic Blast', 'Telekinetic Storm', 'Charm']),
-  guard: new Set(['Illusory Terrain', 'Oratory', 'Phantasmal Armies']),
-  gainSpell: new Set(['Elemental Summon', 'Skeletal Armies']),
-  reloc: new Set(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']),
-};
+// The pass's tuning, BOT_P1, and its contact tests, botEnemyHostsIn and botInContact, are in bots/strategy.ts.
 export function botOrderDest(G, cur, o) {
   if (!cur || !o) return null;
   if (String(o.target).startsWith('dir:'))
@@ -76,27 +76,6 @@ export function botIsFiller(o) {
     (o.action === 'defend' && o.desc !== 'Watch') ||
     ((o.action === 'practice' || o.action === 'explore' || o.action === 'research') && !botIsTeach(o))
   );
-}
-export function botEnemyHostsIn(G, pi, X) {
-  return X
-    ? botVisibleCharsIn(G, pi, X).filter(
-        (e) =>
-          e.player != null && e.player !== pi && (e.armies || []).length && botRelationRaw(G, pi, e.player) === 'enemy',
-      )
-    : [];
-}
-// A host in CONTACT: battle running here, a visible at-war host here or next door, or standing on enemy ground.
-export function botInContact(G, pi, c) {
-  if (!c || !(c.armies || []).length) return false;
-  const P = G.world.provinces[c.location];
-  if (!P) return false;
-  if (P._battleUnresolved || botEnemyHostsIn(G, pi, P).length) return true;
-  if (P.owner != null && P.owner !== pi && botRelationRaw(G, pi, P.owner) === 'enemy') return true;
-  for (let i = 0; i < 6; i++) {
-    const N = botNeighbourProv(G, P, i);
-    if (N && botEnemyHostsIn(G, pi, N).length) return true;
-  }
-  return false;
 }
 // FLOOD PINS (2026-09-29, Toby: flood to slow the enemy, and to lock a host in place while we strike
 // elsewhere). Chosen from the start-of-year board, lazily, before the movement planner reads them:
