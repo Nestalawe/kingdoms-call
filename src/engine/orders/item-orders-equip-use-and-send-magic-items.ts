@@ -174,7 +174,10 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       emit(turnContext, {
         type: 'system',
         text: `(GM note: ${_purged} undiscovered ${_stoneName}${_purged !== 1 ? 's were' : ' was'} struck from the world's lair hoards — the artefact is destroyed.)`,
+        // the GM's alone: no realm is granted it, and it is about no hero (left out, it would be filed under the hero
+        // working the Stone, and his realm would read it)
         audience: { actor: null, realms: [] },
+        hero: 'none',
       });
     G._destroyedItems = (G._destroyedItems || []).concat([
       { name: _stoneName, turn: G.turn, by: c.name, player: c.player },
