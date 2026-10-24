@@ -23,13 +23,14 @@ import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import { clearNavalHold, navalHeldIn, navalHoldLine } from '../units/sea-lift-stranding-and-retreats.ts';
 import {
-  clearNavalHold,
+  canEnterTerrain,
+  contingentUnifyChance,
   getSeaCapability,
-  navalHeldIn,
-  navalHoldLine,
-} from '../units/sea-lift-stranding-and-retreats.ts';
-import { canEnterTerrain, contingentUnifyChance, refreshMovePool, setMovePool } from '../units/movement-pools.ts';
+  refreshMovePool,
+  setMovePool,
+} from '../units/movement-pools.ts';
 import { commandHandoverLine, pickBattleCommander, relocateChar, syncLeaderCopy } from '../battle/best-commander.ts';
 import {
   SKILLGAIN_COMMON,
@@ -44,7 +45,7 @@ import { combatVsChar } from '../battle/battles-between-heroes.ts';
 import { intendedDestination, normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
 import { provDistance, stepTowardPreferSafe } from '../world/routes-and-distances.ts';
 import { noteEntered } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
-import { erodeGuardSurvivors } from '../battle/stalled-battles-and-beaten-guards.ts';
+import { erodeGuardSurvivors } from '../battle/hosts-gained-in-a-province.ts';
 
 // ── THE MOVE ORDER (plan P1-08j1: the first order taken out of processOrder in resolveTurn) ────
 // One hero's Move this phase, once processOrder has read the order (a Forced March is a Move here, with _fmSlip set)

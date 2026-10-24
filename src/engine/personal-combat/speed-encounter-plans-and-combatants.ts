@@ -10,7 +10,6 @@ import { pcSkillCap, perkTier, skillLevel } from '../titles/perks.ts';
 import { discSum, hasDisc } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
-import { ARCHERY_FIELDCRAFT_PCT } from './melee-flight-and-archery.ts';
 
 // ── PERSONAL COMBAT: SPEED, ENCOUNTER PLANS AND COMBATANTS (plan P1-08e: lifted out of resolveTurn) ────
 // The engine's overview, then who acts first and who can change range (speed), the plan an un-ordered character fights
@@ -62,6 +61,9 @@ export function pcRangeStep(from, dir) {
   const i = Math.max(0, Math.min(2, PC_RANGES.indexOf(from) + dir));
   return PC_RANGES[i];
 }
+// ARCHERY FIELDCRAFT: each point of a character's raw Archery adds this much to both range checks (melee-flight-and-archery.ts
+// tells the rule, beside the parting shot).
+export const ARCHERY_FIELDCRAFT_PCT = 5;
 // Chance to change range. Advancing into firing range is a test of one's own speed; breaking back
 // out of melee is an opposed contest — a faster foe pins you in place.
 export function pcMoveCheck(actor, foe, mode) {

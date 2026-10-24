@@ -1,10 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcRng } from '../rng.ts';
-import { demoteOrDisband, disbandLine, unitRef } from '../army-tables.ts';
-import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
-import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -21,72 +17,19 @@ import { armyTotalStr } from './best-commander.ts';
 import { emitBattle } from './battle-report-lines-and-force-markers.ts';
 import { combatVsNPC } from './battles-against-province-defenders.ts';
 import { combatVsChar } from './battles-between-heroes.ts';
-import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
+import { erodeGuardSurvivors, resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
 import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── STALLED BATTLES AND A BEATEN GUARD'S SURVIVORS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where a battle was left unresolved (the loser could not retreat) is fought over again at the start of
 // each phase until one side is gone or breaks away (resolveStalledBattles, which resolveTurn's phase loop and
-// resolveWarFronts call). Each time a neutral guard loses a battle, its survivors flee as mercenaries, lose heart and
-// drop a grade, or hold their ground (erodeGuardSurvivors, GUARD_FLIGHT_CHANCE, GUARD_DEMOTE_CHANCE). They take the
-// turn's context first (src/engine/turn/context.ts).
+// resolveWarFronts call). A beaten guard's survivors (erodeGuardSurvivors) are in hosts-gained-in-a-province.ts. It
+// takes the turn's context first (src/engine/turn/context.ts).
 // ── STALLED-BATTLE RESOLVER ────
 // If a battle's loser could not retreat to an adjacent province, the opposing forces stay
 // co-located. At the start of the next phase they fight again — repeatedly, each phase, until one
 // side is destroyed or manages to break away. Covers neutral-guard and player-vs-player battles
 // alike. Provinces are flagged with _battleUnresolved by the combat code above.
-
-// ── Erosion of a beaten neutral guard's SURVIVORS ────
-// Applied every time a guard loses a battle, not just the first. Each survivor either breaks away
-// as mercenaries, drops a quality tier, or — if already Green — disbands entirely (no graves:
-// nobody died, the unit simply ceased to exist).
-export const GUARD_FLIGHT_CHANCE = 0.35;
-// Of the survivors who hold their ground (don't flee), only SOME are bloodied down a quality
-// tier; the rest fight on unbowed.
-export const GUARD_DEMOTE_CHANCE = 0.5;
-// victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
-export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASurvivingUnitsFate, victor) {
-  const { G } = turnContext;
-  const kept = [];
-  const _vh = victor ? `${String(victor).replace(' (wandering)', '')}'s host` : null;
-  (survivors || []).forEach((a) => {
-    const gname = ((guard && guard.name) || 'the defenders').replace(' (wandering)', '');
-    if (kcRng() < GUARD_FLIGHT_CHANCE) {
-      if (!G.mercenaries) G.mercenaries = [];
-      G.mercenaries.push({
-        type: a.type,
-        quality: a.quality,
-        race: a.race || 'Unknown',
-        unitName: a.unitName,
-        location: prov.id,
-        isSea: SEA_TYPES.has(a.type),
-        id: newMercId(turnContext),
-      });
-      tellASurvivingUnitsFate(
-        `— ${unitRef(gname, a)} break ranks and flee${_vh ? ` before ${_vh}` : ''} — they now roam as mercenaries near ${prov.name}.`,
-      ); // unified unit naming
-      return;
-    }
-    // Only some of those who stay are worn down a tier; the rest hold at their current quality.
-    if (kcRng() < GUARD_DEMOTE_CHANCE) {
-      const _q0 = a.quality;
-      if (demoteOrDisband(a)) {
-        tellASurvivingUnitsFate(disbandLine(gname, a));
-        return;
-      }
-      tellASurvivingUnitsFate(
-        `— ${unitRef(gname, { ...a, quality: _q0 })} lost heart in defeat, reduced to ${a.quality} — ${_vh ? `beaten by ${_vh}, ` : ''}they rally around ${gname}.`,
-      );
-      kept.push(a);
-      return;
-    }
-    tellASurvivingUnitsFate(
-      `— ${unitRef(gname, a)} hold their ground unbroken${_vh ? ` against ${_vh}` : ''} and rally around ${gname}.`,
-    );
-    kept.push(a);
-  });
-  return kept;
-}
 
 export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
   const { G, seaMovePoints, movePoints, SEASONS } = turnContext;
