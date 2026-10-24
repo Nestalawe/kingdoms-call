@@ -17,13 +17,27 @@ import {
   botSeesChar,
   botTurnCache,
   botVisibleCharsIn,
+  botBelievedOwner,
 } from './intel.ts';
 import { BOT_SCHOOLS } from './schools.ts';
-import { botRoleTrainSkill } from './specialists.ts';
-import { botAssumedChar, botEnemyIntel, botIsTeach, botRumourFor } from './missions.ts';
 import { botPins } from './phase-one.ts';
 import { _charTitleMerit, computeStandings } from '../titles/reckoning.ts';
-import { botDefenceNeed, botEnemyDefence, botPracticeSkill, botRaiseTargets, botSchoolLimit } from './strategy.ts';
+import {
+  botAssumedChar,
+  botDefenceNeed,
+  botDrillOrder,
+  botEnemyDefence,
+  botEnemyIntel,
+  botHasMetPlayers,
+  botIsTeach,
+  botNearbyThreat,
+  botPracticeSkill,
+  botRaiseTargets,
+  botRoleTrainSkill,
+  botRumourFor,
+  botSchoolLimit,
+  botSkillsUnknown,
+} from './strategy.ts';
 
 // ══ BOT SPELLCRAFT (Sept 2026 self-play batch) ════
 // Replaces the single-cast botActionCast. botCastPlan builds an ORDERED list of action-phase casts
@@ -751,4 +765,118 @@ export function runBotActions(G, botIdxSet) {
         // else: nothing worthwhile — leave the character to the default-to-Defend pass.
       });
   });
+}
+// ══ SHARED BY THE BOTS' PASSES: a spy's target and a character's five phases ════
+// Kept here, below every pass that calls them: war, missions, economy, specialists and movement.
+// SPY — a rival's province the realm has seen, within reach; prefer capitals, wealth, war enemies and
+// ground not spied lately. Memo of spied provinces lives on the player record (p._botSpyMemo).
+export function botSpyTarget(G, pi, c, maxD) {
+  const from = G.world.provinces[c.location];
+  if (!from) return null;
+  const memo = ((G.players || [])[pi] || {})._botSpyMemo || {};
+  let best = null;
+  (G.world.provinces || []).forEach((X) => {
+    if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) return;
+    const bo = botBelievedOwner(G, pi, X);
+    if (bo == null || bo === pi || botRelationRaw(G, pi, bo) === 'allied') return;
+    const d = X.id === from.id ? 0 : botPathLenAny(G, from, X.id, maxD);
+    if (d == null) return;
+    const b = botBelief(G, pi, X) || {};
+    const home = ((G.players || [])[bo] || {}).homeProvinceId === X.id;
+    const staleness = Math.min(4, (G.turn || 0) - (memo[X.id] || -99));
+    let gen = 0;
+    {
+      const I = botEnemyIntel(G, pi);
+      Object.values(I.generals).forEach((r) => {
+        if (botRelationRaw(G, pi, r.player) !== 'enemy' || (G.turn || 0) - r.turn > 3) return;
+        if (r.provId === X.id) gen += 5;
+        else
+          for (let i = 0; i < 6; i++) {
+            const N = botNeighbourProv(G, X, i);
+            if (N && N.id === r.provId) {
+              gen += 2;
+              break;
+            }
+          }
+      });
+    }
+    let unknown = 0;
+    botVisibleCharsIn(G, pi, X).forEach((e) => {
+      if (e && e.player != null && e.player !== pi && botSkillsUnknown(G, pi, e))
+        unknown += (e.armies || []).length ? 4 : 2;
+    });
+    const sc =
+      (b.tax || 0) +
+      (home ? 4 : 0) +
+      (botRelationRaw(G, pi, bo) === 'enemy' ? 6 : 0) +
+      staleness * 2 -
+      d * 2 +
+      gen +
+      unknown; // Sept 2026: scout where the enemy's hosts were last seen; learn the skills of whoever stands there
+    if (!best || sc > best.sc) best = { X, d, sc };
+  });
+  return best;
+}
+// Fill a 5-phase order list: pre-orders, then moves, then a Defend watch if a phase is spare, then
+// the character's practice fallback — drilling a host, else the skill most worth training (with
+// co-located partners when possible, toward the drill cap of 5). Practice is always secondary: it
+// only ever fills phases nothing else claimed.
+export function botPracticeFallback(G, pi, c, opts) {
+  const drill = botDrillOrder(G, pi, c);
+  if (drill) return drill;
+  {
+    const rs = botRoleTrainSkill(c);
+    if (rs)
+      return {
+        action: 'practice',
+        target: rs,
+        extra: '',
+        desc:
+          'Practice ' +
+          (SKILL_LABELS[rs] || rs) +
+          ' (' +
+          (c._botRole === 'admiral' ? 'admiral' : 'flying general') +
+          ')',
+      };
+  }
+  // 2026-09-26 (Toby item 1): Practice is the LAST resort, not the default. Ground under the character's
+  // feet that the realm has not fully mapped is explored first (lairs, features and wanderers come of it).
+  // Only for a character standing still this turn — an Explore after a march would land on other ground.
+  const P = G.world.provinces[c.location];
+  if (
+    !(opts && opts.moving) &&
+    P &&
+    P.terrain !== 'sea' &&
+    (P.owner === pi || P.owner == null) &&
+    ((P.exploredBy || {})[pi] || 0) < 100
+  )
+    return { action: 'explore', target: '', extra: '', desc: 'Explore ' + P.name };
+  const sk = botCrossTrainSkill(G, c, pi) || botTitleFocusSkill(c, botTargetTitles(G, pi)) || botPracticeSkill(c);
+  if (!sk) return null;
+  const sg = (c.skills || {}).sage || 0;
+  if (sk === 'sage' && sg >= 1 && (sg >= 5 || kcRng() < 0.5))
+    return { action: 'research', target: '', extra: '', desc: 'Research' };
+  return { action: 'practice', target: sk, extra: '', desc: 'Practice ' + (SKILL_LABELS[sk] || sk) };
+}
+// Fill a 5-phase order list. Toby 2026-09-10: a Defend watch is set EARLY (phase 0) and only when
+// it is needed — other crowns met and a hostile host within 2 hexes — so the general answers an
+// incursion at the top of the year and still marches to his attacks afterwards (the engine drops a
+// watch the moment a later phase holds a Move). A general with no moves keeps the watch all turn.
+// Before this a Defend was tacked on AFTER the moves, and reacting to a neighbour's skirmish
+// routinely dragged the main host off its advance.
+export function botFillOrders(G, pi, c, pre, moves) {
+  const armed = (c.armies || []).length > 0,
+    met = botHasMetPlayers(G, pi);
+  const watch =
+    armed && met && botNearbyThreat(G, pi, c) ? [{ action: 'defend', target: '', extra: '', desc: 'Watch' }] : [];
+  const out = (
+    moves.length
+      ? [...watch, ...pre, ...moves]
+      : [...pre, ...(met ? [{ action: 'defend', target: '', extra: '', desc: 'Hold' }] : [])]
+  ).slice(0, 5);
+  const tail = botPracticeFallback(G, pi, c, {
+    moving: out.some((o) => o && (o.action === 'move' || o.action === 'encounter')),
+  });
+  while (out.length < 5) out.push(tail ? { ...tail } : { action: 'defend', target: '', extra: '', desc: 'Hold' });
+  return out;
 }

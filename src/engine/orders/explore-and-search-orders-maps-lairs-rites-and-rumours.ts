@@ -26,7 +26,6 @@ import { gainedItemNote, hasItemBase } from '../items/equipment.ts';
 import { RUMOUR_COST_BY_POWER, applyItemMaxHp, noteLairRumour, pcLearnWeakness } from '../personal-combat/helpers.ts';
 import { armyUnitName, d100, fmtRoll, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
-import { botLairRating } from '../bots/missions.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM, creditMapped, perkTier, skillLevel } from '../titles/perks.ts';
 import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
@@ -43,6 +42,7 @@ import {
 import { resolveEncounter, rumourOddsBand, simulateLairOdds } from '../personal-combat/lair-guardians-and-the-odds.ts';
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.ts';
+import { botLairRating } from '../bots/strategy.ts';
 
 // ── THE EXPLORE AND SEARCH ORDERS (plan P1-08j2: the second family taken out of processOrder in resolveTurn) ──
 // Six orders a hero spends a phase on where he stands: Explore, Perform Rite, Hunting Rumours, Search Lair, Chart the

@@ -1,17 +1,14 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcRng } from '../rng.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS, STEAL_TIER_PEN } from '../army-tables.ts';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import {
   BOT_DEF_BONUS,
-  BOT_HEX_DIRS,
   BOT_SEA_ALL,
   botAlignFriendly,
   botBattleForce,
   botBelief,
   botBelievedOwner,
-  botDruidShortfall,
   botEffForce,
   botForceStrength,
   botKnows,
@@ -31,35 +28,44 @@ import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
 import {
   BOT_NAVAL_TYPES,
   BOT_SLAYER_FIGHTERS_ONLY,
+  BOT_SPECIALIST_ROLES,
   botAtWar,
   botDefenceNeed,
   botEnemyChars,
+  botEnemyIntel,
   botFieldRecruitTokens,
   botFleetOnly,
+  botFrontierTarget,
+  botHasMetPlayers,
   botHeroCap,
   botHexDist,
   botHomeId,
+  botIsEdge,
   botIsFighter,
   botIsValuable,
+  botLandCount,
   botLandReach,
+  botMagicScore,
+  botMoveOrder,
+  botNearbyThreat,
   botPassable,
+  botPathDirs,
+  botPathLen,
   botPracticeSkill,
   botRecruitOrder,
   botRoles,
   botSchoolLimit,
+  botSkillsUnknown,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
 import {
   botAllyNear,
-  botDuelSkill,
-  botEnemyIntel,
   botHostMargin,
   botLairCandidates,
   botLairPlan,
   botMasteryPre,
   botPickupOrder,
   botRememberedHostAt,
-  botSkillsUnknown,
   botSlayerHasLairsToGrowInto,
   botSlayerTrainSkill,
 } from './missions.ts';
@@ -67,11 +73,12 @@ import {
   botBeatableLairIn,
   botCastPlan,
   botCrossTrainSkill,
+  botFillOrders,
   botPathAny,
   botPathLenAny,
   botPlannedAttackTarget,
+  botSpyTarget,
   botTargetTitles,
-  botTitleFocusSkill,
 } from './spellcraft.ts';
 import { botPins } from './phase-one.ts';
 
@@ -94,15 +101,8 @@ export function botMageAptitude(c) {
   const [a, b] = botMageSchools(c);
   return (s[a] || 0) * 4 + (s[b] || 0) * 3;
 }
-export const BOT_SPECIALIST_ROLES = new Set(Object.keys(BOT_SPECIALIST_SKILLS));
+// BOT_SPECIALIST_ROLES, botMagicScore and botLandCount are in bots/strategy.ts.
 export const BOT_DEFEND_ORDER = { action: 'defend', target: '', extra: '', desc: 'Hold the post' };
-export function botMagicScore(c) {
-  const s = c.skills || {};
-  return (s.elemental || 0) + (s.necromancy || 0) + (s.psychic || 0) + (s.illusory || 0) + (s.white || 0);
-}
-export function botLandCount(G, pi) {
-  return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea').length;
-}
 // The six-hex Defend zone about a province (the engine's inDefendZone, in engine/units/defend-ride-outs-ambushes-and-reinforcements.ts, takes the turn's context).
 export function botZoneOf(G, X) {
   const z = [X];
@@ -417,55 +417,7 @@ export function botRoamOrders(G, pi, c, pre) {
   while (out.length < 5) out.push({ action: 'explore', target: '', extra: '', desc: 'Explore ' + best.X.name });
   return out;
 }
-// SPY — a rival's province the realm has seen, within reach; prefer capitals, wealth, war enemies and
-// ground not spied lately. Memo of spied provinces lives on the player record (p._botSpyMemo).
-export function botSpyTarget(G, pi, c, maxD) {
-  const from = G.world.provinces[c.location];
-  if (!from) return null;
-  const memo = ((G.players || [])[pi] || {})._botSpyMemo || {};
-  let best = null;
-  (G.world.provinces || []).forEach((X) => {
-    if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) return;
-    const bo = botBelievedOwner(G, pi, X);
-    if (bo == null || bo === pi || botRelationRaw(G, pi, bo) === 'allied') return;
-    const d = X.id === from.id ? 0 : botPathLenAny(G, from, X.id, maxD);
-    if (d == null) return;
-    const b = botBelief(G, pi, X) || {};
-    const home = ((G.players || [])[bo] || {}).homeProvinceId === X.id;
-    const staleness = Math.min(4, (G.turn || 0) - (memo[X.id] || -99));
-    let gen = 0;
-    {
-      const I = botEnemyIntel(G, pi);
-      Object.values(I.generals).forEach((r) => {
-        if (botRelationRaw(G, pi, r.player) !== 'enemy' || (G.turn || 0) - r.turn > 3) return;
-        if (r.provId === X.id) gen += 5;
-        else
-          for (let i = 0; i < 6; i++) {
-            const N = botNeighbourProv(G, X, i);
-            if (N && N.id === r.provId) {
-              gen += 2;
-              break;
-            }
-          }
-      });
-    }
-    let unknown = 0;
-    botVisibleCharsIn(G, pi, X).forEach((e) => {
-      if (e && e.player != null && e.player !== pi && botSkillsUnknown(G, pi, e))
-        unknown += (e.armies || []).length ? 4 : 2;
-    });
-    const sc =
-      (b.tax || 0) +
-      (home ? 4 : 0) +
-      (botRelationRaw(G, pi, bo) === 'enemy' ? 6 : 0) +
-      staleness * 2 -
-      d * 2 +
-      gen +
-      unknown; // Sept 2026: scout where the enemy's hosts were last seen; learn the skills of whoever stands there
-    if (!best || sc > best.sc) best = { X, d, sc };
-  });
-  return best;
-}
+// botSpyTarget (the rival province a spy goes to) is in bots/spellcraft.ts.
 // INVISIBILITY FIRST (2026-09-26, idea 3): an Illusory 1+ character who will end a walk on ground that is not
 // ours casts Invisibility before setting out — twice as hard to hit, +30% to flee, +15% to steal.
 export function botCloakPre(G, pi, c, pre, destProv) {
@@ -1173,255 +1125,9 @@ export function botDefenderOrders(G, pi, c, pre, post, L) {
   while (out.length < 5) out.push({ ...pr });
   return out.slice(0, 5);
 }
-// DRILL: a commander leading 3+ land/air units practises Tactical in every spare phase (levels the
-// skill AND promotes unit quality); a fleet commander drills Naval. Else the phase is a Hold.
-export function botDrillOrder(G, pi, c) {
-  const land = (c.armies || []).filter((a) => a && !BOT_SEA_ALL.has(a.type) && !a._isSkeletal).length;
-  const sea = (c.armies || []).filter((a) => a && BOT_SEA_ALL.has(a.type)).length;
-  // a commander whose host carries units he cannot lead cleanly trains DRUID before anything else —
-  // every missing level is −20% on those units, which no amount of Tactical drill recovers.
-  if ((c.armies || []).length && ((c.skills || {}).druid || 0) < 5 && botDruidShortfall(G, c) > 0)
-    return { action: 'practice', target: 'druid', extra: '', desc: 'Practice Druid (lead the host cleanly)' };
-  // Sept 2026 (Toby): a general who cannot win a duel trains for one — his best of Melee / Archery / a battle
-  // school — until it stands at 3; Tactical drill then resumes. He must be able to fight the duel his host invites.
-  if ((c.armies || []).length && botDuelSkill(c) < 3 && ((c.skills || {}).tactical || 0) >= 2) {
-    const s = c.skills || {};
-    const pick = [
-      ['melee', s.melee || 0],
-      ['archery', s.archery || 0],
-      ['elemental', s.elemental || 0],
-      ['necromancy', s.necromancy || 0],
-      ['psychic', s.psychic || 0],
-    ].sort((a, b) => b[1] - a[1])[0][0];
-    return {
-      action: 'practice',
-      target: pick,
-      extra: '',
-      desc: 'Practice ' + (SKILL_LABELS[pick] || pick) + ' (fit for a duel)',
-    };
-  }
-  if (land >= 3)
-    return { action: 'practice', target: 'tactical', extra: '', desc: 'Practice Tactical (drill the host)' };
-  if (sea >= 3) return { action: 'practice', target: 'naval', extra: '', desc: 'Practice Naval (drill the fleet)' };
-  return null;
-}
-// Fill a 5-phase order list: pre-orders, then moves, then a Defend watch if a phase is spare, then
-// the character's practice fallback — drilling a host, else the skill most worth training (with
-// co-located partners when possible, toward the drill cap of 5). Practice is always secondary: it
-// only ever fills phases nothing else claimed.
-// 2026-09-26 (study): an officer below his role's working level trains THAT skill in every filler phase — an
-// admiral to Naval 3. (The flying general trained Druid 3 while the winged riders were beasts; since 2026-10-11
-// they are soldiers of their race and need none.) Without this the explore-first filler left admirals at Naval 1.
-export function botRoleTrainSkill(c) {
-  const s = (c && c.skills) || {};
-  if (c._botRole === 'admiral' && (s.naval || 0) < 3) return 'naval';
-  // 2026-09-26 (idea 8): the holder of a craft keeps at it to MASTERY 7 in his filler phases — Sabotage,
-  // Grand Heist, Chart the Unknown, Research Breakthrough and the rest are level-7 orders nobody reached.
-  const k = { scholar: 'sage', scout: 'explorer', spy: 'spy', thief: 'thief' }[c._botRole];
-  if (k && (s[k] || 0) >= 5 && (s[k] || 0) < 7) return k;
-  return null;
-}
-export function botPracticeFallback(G, pi, c, opts) {
-  const drill = botDrillOrder(G, pi, c);
-  if (drill) return drill;
-  {
-    const rs = botRoleTrainSkill(c);
-    if (rs)
-      return {
-        action: 'practice',
-        target: rs,
-        extra: '',
-        desc:
-          'Practice ' +
-          (SKILL_LABELS[rs] || rs) +
-          ' (' +
-          (c._botRole === 'admiral' ? 'admiral' : 'flying general') +
-          ')',
-      };
-  }
-  // 2026-09-26 (Toby item 1): Practice is the LAST resort, not the default. Ground under the character's
-  // feet that the realm has not fully mapped is explored first (lairs, features and wanderers come of it).
-  // Only for a character standing still this turn — an Explore after a march would land on other ground.
-  const P = G.world.provinces[c.location];
-  if (
-    !(opts && opts.moving) &&
-    P &&
-    P.terrain !== 'sea' &&
-    (P.owner === pi || P.owner == null) &&
-    ((P.exploredBy || {})[pi] || 0) < 100
-  )
-    return { action: 'explore', target: '', extra: '', desc: 'Explore ' + P.name };
-  const sk = botCrossTrainSkill(G, c, pi) || botTitleFocusSkill(c, botTargetTitles(G, pi)) || botPracticeSkill(c);
-  if (!sk) return null;
-  const sg = (c.skills || {}).sage || 0;
-  if (sk === 'sage' && sg >= 1 && (sg >= 5 || kcRng() < 0.5))
-    return { action: 'research', target: '', extra: '', desc: 'Research' };
-  return { action: 'practice', target: sk, extra: '', desc: 'Practice ' + (SKILL_LABELS[sk] || sk) };
-}
-// CONTACT: until another crown has been met — a non-neutral relation, or any other player's land or
-// armed character within 2 hexes of our own land — Defend watches are pointless.
-export function botHasMetPlayers(G, pi) {
-  const cache = botTurnCache(G);
-  cache.met = cache.met || {};
-  if (cache.met[pi] != null) return cache.met[pi];
-  let met = false;
-  const rel = G.relations || {};
-  for (const k of Object.keys(rel)) {
-    if (rel[k] !== 'neutral' && k.split('-').map(Number).includes(pi)) {
-      met = true;
-      break;
-    }
-  }
-  // "have we met another crown" is now the engine's OWN encounter record
-  // (player._encountered), which updateProvinceMemory fills from provinces and characters this realm
-  // actually observed — the same list that gates a human's Treat / Declare War controls. The old
-  // test measured raw hex distance to any rival province or host, so a bot knew it had neighbours
-  // before it had seen one.
-  if (!met) {
-    met = (((G.players || [])[pi] || {})._encountered || []).length > 0;
-  }
-  cache.met[pi] = met;
-  return met;
-}
-// A non-allied player's armed host within 2 hexes of this character — reason for an early watch.
-export function botNearbyThreat(G, pi, c) {
-  const P = G.world.provinces[c.location];
-  if (!P) return false;
-  // a host two hexes away sets a watch only if the realm can see it standing there.
-  return (G.characters || []).some(
-    (e) =>
-      e &&
-      e.alive &&
-      e.player != null &&
-      e.player !== pi &&
-      (e.armies || []).length &&
-      botRelationRaw(G, pi, e.player) !== 'allied' &&
-      botSeesChar(G, pi, e) &&
-      (() => {
-        const X = G.world.provinces[e.location];
-        return X && botHexDist(G, P, X) <= 2;
-      })(),
-  );
-}
-// Fill a 5-phase order list. Toby 2026-09-10: a Defend watch is set EARLY (phase 0) and only when
-// it is needed — other crowns met and a hostile host within 2 hexes — so the general answers an
-// incursion at the top of the year and still marches to his attacks afterwards (the engine drops a
-// watch the moment a later phase holds a Move). A general with no moves keeps the watch all turn.
-// Before this a Defend was tacked on AFTER the moves, and reacting to a neighbour's skirmish
-// routinely dragged the main host off its advance.
-export function botFillOrders(G, pi, c, pre, moves) {
-  const armed = (c.armies || []).length > 0,
-    met = botHasMetPlayers(G, pi);
-  const watch =
-    armed && met && botNearbyThreat(G, pi, c) ? [{ action: 'defend', target: '', extra: '', desc: 'Watch' }] : [];
-  const out = (
-    moves.length
-      ? [...watch, ...pre, ...moves]
-      : [...pre, ...(met ? [{ action: 'defend', target: '', extra: '', desc: 'Hold' }] : [])]
-  ).slice(0, 5);
-  const tail = botPracticeFallback(G, pi, c, {
-    moving: out.some((o) => o && (o.action === 'move' || o.action === 'encounter')),
-  });
-  while (out.length < 5) out.push(tail ? { ...tail } : { action: 'defend', target: '', extra: '', desc: 'Hold' });
-  return out;
-}
-export const botMoveOrder = (dirIdx, desc) => ({
-  action: 'move',
-  target: 'dir:' + BOT_HEX_DIRS[dirIdx],
-  extra: '',
-  desc: desc || 'Advance',
-});
-// PATHING — shortest march from `from` to province `toId` through passable land (own/allied); the
-// destination itself may be anything. Returns up to maxHops direction indices, or null if
-// unreachable.
-export function botPathDirs(G, pi, from, toId, maxHops, unarmed) {
-  if (!from || toId == null || from.id === toId) return [];
-  const prev = {};
-  prev[from.id] = null;
-  const dirOf = {};
-  const q = [from];
-  const passable = (N) => botPassable(G, pi, N) || (unarmed && N && N.terrain !== 'sea' && N.owner == null);
-  while (q.length) {
-    const cur = q.shift();
-    let found = false;
-    for (let i = 0; i < 6; i++) {
-      const N = botNeighbourProv(G, cur, i);
-      if (!N || prev[N.id] !== undefined) continue;
-      if (N.id !== toId && !passable(N)) continue;
-      prev[N.id] = cur.id;
-      dirOf[N.id] = i;
-      if (N.id === toId) {
-        found = true;
-        break;
-      }
-      q.push(N);
-    }
-    if (found) break;
-  }
-  if (prev[toId] === undefined) return null;
-  const dirs = [];
-  let id = toId;
-  while (prev[id] !== null) {
-    dirs.unshift(dirOf[id]);
-    id = prev[id];
-  }
-  return dirs.slice(0, Math.max(0, maxHops));
-}
-// BFS distance through passable land (null = unreachable).
-export function botPathLen(G, pi, from, toId, unarmed) {
-  const d = botPathDirs(G, pi, from, toId, 99, unarmed);
-  return d ? d.length : null;
-}
-// FRONTIER — nearest own/allied land province that borders unowned or at-war-enemy land (ties → the one
-// with the most such neighbours). null if `P` is itself on the edge or nothing is reachable.
-export function botIsEdge(G, pi, prov) {
-  for (let i = 0; i < 6; i++) {
-    const N = botNeighbourProv(G, prov, i);
-    if (!N || N.terrain === 'sea') continue;
-    if (N.owner == null || (N.owner !== pi && botRelationRaw(G, pi, N.owner) === 'enemy')) return true;
-  }
-  return false;
-}
-export function botFrontierTarget(G, pi, P) {
-  if (botIsEdge(G, pi, P)) return null;
-  // counted on BELIEVED ownership — staging through an ally's land can look two hops past our own
-  // border, and unmapped ground is not counted as open country.
-  const openCount = (prov) => {
-    let n = 0;
-    for (let j = 0; j < 6; j++) {
-      const K = botNeighbourProv(G, prov, j);
-      if (!K || K.terrain === 'sea') continue;
-      const ko = botBelievedOwner(G, pi, K);
-      if (ko === undefined) continue;
-      if (ko == null || (ko !== pi && botRelationRaw(G, pi, ko) === 'enemy')) {
-        const b = botBelief(G, pi, K);
-        n += 1 + Math.min(3, ((b && b.tax) || 0) / 3);
-      }
-    }
-    return n;
-  }; // Sept 2026 (R8): weighted by the wealth band the border shows
-  const seen = new Set([P.id]);
-  let q = [P],
-    depth = 0,
-    best = null;
-  while (q.length && depth < 8) {
-    const next = [];
-    depth++;
-    q.forEach((cur) => {
-      for (let i = 0; i < 6; i++) {
-        const N = botNeighbourProv(G, cur, i);
-        if (!N || seen.has(N.id) || !botPassable(G, pi, N)) continue;
-        seen.add(N.id);
-        const oc = openCount(N);
-        if (oc > 0 && (!best || oc > best.oc)) best = { id: N.id, oc };
-        next.push(N);
-      }
-    });
-    if (best) return best.id;
-    q = next;
-  }
-  return null;
-}
+// Filling a character's five phases: botFillOrders and its practice fallback are in bots/spellcraft.ts; the drill, the
+// role skill, the contact tests, botMoveOrder, the pathing (botPathDirs, botPathLen) and the frontier (botIsEdge,
+// botFrontierTarget) in bots/strategy.ts.
 // HOME THREAT — the strongest at-war enemy host standing within 2 hops of the capital (a human
 // massing on the border). {force, provId} or null.
 export function botHomeThreat(G, pi) {
