@@ -189,9 +189,6 @@ export function pcSkillCap(v) {
   return Math.max(0, Math.min(SKILL_MAX, Math.round(v || 0)));
 }
 
-// sd40 Dragon Taming: the winged beasts a realm with the discovery leads without any Druid penalty
-// (Gnomish Gyrocopters are machines, not beasts, and are deliberately NOT tamed).
-export const TAMED_FLYER_TYPES_D = new Set(KC_UNIT_CLASS.tamedFlyer);
 // ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the kind of foe a personal fight is against. It reads no turn state.
 export function pcFoeCat(foe) {
   return foe.cat || (foe.kind === 'character' ? (foe.isUndead ? 'undead' : 'humanoid') : 'beast');

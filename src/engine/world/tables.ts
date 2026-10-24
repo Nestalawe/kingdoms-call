@@ -1,6 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
-  KC_DRUID_LEVELS,
   KC_HUMANOID_RACES,
   KC_TEMPERS,
   KC_TERRAIN_COLORS,
@@ -15,6 +14,14 @@ import { LAIR_ITEM_ODDS, awardedEffectSet, itemEffectKey } from '../items/tiers-
 import { HOME_FLEET_BY_RACE, homeProvinceIdFor } from '../grand-design.ts';
 import { discProvCoastal } from '../discoveries.ts';
 import { dedupeItemsByName, effSkillOf } from '../heroes/skills-and-hp.ts';
+import {
+  countsAgainstBeastCommand,
+  druidALeaderBringsToAUnit,
+  druidLevelALeaderNeeds,
+  druidShortfall,
+  strengthLeftByADruidShortfall,
+  unitAsItsRealmSeesIt,
+} from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 
 // ── INLINE GAME GENERATION ENGINE ────
 // Self-contained mini game engine for the portal
@@ -138,36 +145,13 @@ export function twoATurn(armyType) {
 }
 export const SEA_TYPES_GEN = new Set(KC_UNIT_CLASS.sea);
 
-// DRUID ARMY LEVEL TABLE — a commander's Druid must be >= a unit's level, or it fights at −20% per
-// level short. A commander leads his OWN race's units as if he had Druid 1.
-// 2026-09-27 (Toby: collapse to one source): this table used to exist THREE times — here and twice
-// in the player portal — and the player-portal copies had drifted (they lacked level 1, so a
-// foreign-race unit under a Druid-0 commander showed no penalty while the engine applied −20%).
-// The ONE copy is now KC_DRUID_LEVELS in kingdoms-call-data.ts; this builds the engine's Sets
-// from it, in the same level order (getDruidLevel walks the levels ascending).
-export const DRUID_ARMY_LEVELS_P = Object.fromEntries(
-  Object.entries(KC_DRUID_LEVELS).map(([lvl, types]) => [lvl, new Set(types)]),
-);
-// Returns the Druid level required to lead a given army type
-export function getDruidLevel(armyType) {
-  for (const [lvl, armies] of Object.entries(DRUID_ARMY_LEVELS_P)) {
-    if (armies.has(armyType)) return parseInt(lvl);
-  }
-  return 0; // own race / unknown defaults to 0
-}
-
 // Returns the effective quality after druid shortfall penalty shortfall of N = -N quality tiers
 // (each missing level = 20% str penalty)
 // ── BEAST COMMAND (2026-10-12, Toby item 24) ── A hero may lead only as many Creature and Monster units as his Druid
-// level. Counted: every living beast in the column — not skeletons (the dead need no Druid), nor a summoned grove,
-// Wild Hunt beasts or phantoms, which leave at the turn's end. A realm's own heroes only (a province's chieftain
-// commands its own beasts). The rule bites where a beast would JOIN a column (Recruit Armies, Pick Up Army,
-// Leave/Transfer to a hero, Wild Calling): a hero already over it keeps what he leads and takes on no more.
-export const BEAST_CMD_TYPES = new Set([...KC_UNIT_CLASS.creature, ...KC_UNIT_CLASS.monster]);
+// level. Which units count is countsAgainstBeastCommand's (engine/rules-on-plain-values/, which the player portal
+// shares), on a unit as its realm sees it: the engine hands it its own unit in the realm's names.
 export function beastCommandCount(a) {
-  return (
-    !!a && BEAST_CMD_TYPES.has(a.type) && !a._isSkeletal && !a._temporary && a._wildHuntUntilTurn == null && !a._phantom
-  );
+  return !!a && countsAgainstBeastCommand(unitAsItsRealmSeesIt(a));
 }
 export function beastsLed(c) {
   return ((c && c.armies) || []).filter(beastCommandCount).length;
@@ -189,34 +173,15 @@ export function druIdPenaltyMult(heroChar, army, playerAlignment, tamed) {
   const heroRace = heroChar.race;
 
   const armyRace = army.race;
-  // ── SAME-RACE RULE ── Every commander (king or hero) can lead troops of their OWN race as if
-  // they had at least Druid level 1 for that race — no Druid training is needed to command your own
-  // people. Leading other races or exotic creatures still requires the appropriate Druid skill.
-  // (Note: a unit's race is the race of the province it was raised in, so troops recruited in a
-  // conquered province of another race count as that race and are led cross-race unless the
-  // commander shares it.)
+  // ── SAME-RACE RULE ── (druidALeaderBringsToAUnit, engine/rules-on-plain-values/) a commander leads troops of his
+  // OWN race as if he had at least Druid 1. A unit's race is the race of the province it was raised in.
   const sameRace = !!(armyRace && armyRace === heroRace);
 
-  // Druidic alignment: no Druid penalty for Creature armies (they follow willingly). Keyed on the
-  // KINGDOM's alignment (playerAlignment) — NOT the commander's personal alignment — so EVERY
-  // character of a Druidic realm (king and heroes alike) leads Creatures freely, even though a
-  // Druidic king's heroes are seeded with a randomised personal alignment near his own
-  // (Good/Druidic/Neutral) and so are usually NOT personally Druidic. A personally-Druidic
-  // wandering hero (player===null, so no realm alignment is passed) also qualifies via the second
-  // clause. (druIdPenaltyMult is module-level; the runTurn-local G is out of scope here, so we rely
-  // on the caller passing the realm alignment — which every combat call site does.)
-  const CREATURE_ARMIES_D = new Set(KC_UNIT_CLASS.creature);
-  if (CREATURE_ARMIES_D.has(armyType) && (playerAlignment === 'Druidic' || heroChar.alignment === 'Druidic'))
-    return 1.0;
-  // Evil alignment (2026-10-13, Toby, Creatures and Monsters I): the mirror — no Druid penalty for Monster
-  // armies under an Evil realm (or a personally Evil wandering commander). They are driven, not led.
-  const MONSTER_ARMIES_D = new Set(KC_UNIT_CLASS.monster);
-  if (MONSTER_ARMIES_D.has(armyType) && (playerAlignment === 'Evil' || heroChar.alignment === 'Evil')) return 1.0;
-
-  // sd40 Dragon Taming: the caller (inside runTurn, where G is visible) passes tamed=true when the
-  // commander's realm holds the discovery and the army is a winged beast — no Druid penalty at all.
-  if (tamed) return 1.0;
-  const required = getDruidLevel(armyType);
+  // The waivers (druidLevelALeaderNeeds): a Druidic realm's Creatures, an Evil realm's Monsters (or a personally
+  // Druidic or Evil commander's), and sd40 Dragon Taming's winged beasts. The realm alignment is the caller's
+  // (druIdPenaltyMult is module-level; every combat call site passes it); so is `tamed`: the caller (inside runTurn,
+  // where G is visible) passes tamed=true when the commander's realm holds the discovery and the army is a winged beast.
+  const required = druidLevelALeaderNeeds(armyType, playerAlignment, heroChar.alignment, tamed);
   if (required === 0) return 1.0;
 
   // Psychic Blast (battle magic): this commander's Druid skill has been negated for the battle.
@@ -237,12 +202,9 @@ export function druIdPenaltyMult(heroChar, army, playerAlignment, tamed) {
   if (heroChar._curseHalveStat === 'druid') rawDruid = Math.floor(rawDruid / 2);
   // Same-race troops are led as if the commander had at least Druid 1 for that race
   // (but a negated commander loses even that — their bond is severed).
-  const herodruid = sameRace && !heroChar._druidNegated ? Math.max(1, rawDruid) : rawDruid;
-  const shortfall = Math.max(0, required - herodruid);
-  if (shortfall === 0) return 1.0;
-
-  // 20% strength penalty per level of shortfall
-  return Math.max(0.1, 1 - shortfall * 0.2);
+  const herodruid = druidALeaderBringsToAUnit(rawDruid, sameRace && !heroChar._druidNegated);
+  const shortfall = druidShortfall(required, herodruid);
+  return strengthLeftByADruidShortfall(shortfall);
 }
 export const TEMPERS_P = KC_TEMPERS.slice();
 export function temperOf(t) {

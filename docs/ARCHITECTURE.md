@@ -705,6 +705,15 @@ portals' start-up guards are gone.
   but every table holds the same values once the page has loaded. P1-11a4 swapped the player portal's 16 copies of
   them for these functions, which it imports through `src/shared/`
   ([above](#kingdoms-call-datats-the-one-source-for-shared-rules)).
+  P1-11b2 added `beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts`: which units count against a hero's beast
+  command (`countsAgainstBeastCommand`, on a unit as its realm sees it: `skeletal`, `temporary`, `wildHunt`, as the
+  turn report names them; `unitAsItsRealmSeesIt` makes that shape from the engine's unit), the Druid table
+  (`DRUID_ARMY_LEVELS_P`, `getDruidLevel`), the tamed flyers (`TAMED_FLYER_TYPES_D`), the waivers once
+  (`druidNeedWaivedByAlignment`, `druidLevelALeaderNeeds`), the same-race rule, the shortfall and the strength it
+  leaves (`strengthLeftByADruidShortfall`), and the Druid mastery's constants and sum. The engine's
+  `beastCommandCount`, `druIdPenaltyMult` and `druidMasteryGain` call them, each working out the leader's Druid
+  itself (from his skills and items). The turn report asks `getFlyCapability` whether a column takes to the air,
+  where it kept its own copy.
   A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 

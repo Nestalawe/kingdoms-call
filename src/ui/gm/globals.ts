@@ -80,7 +80,8 @@ import { homeProvinceIdFor } from '../../engine/grand-design.ts';
 import { backfillHomeRosters } from '../../engine/world/tables.ts';
 import { deleteGame, loadTurnLog } from './turn-log.ts';
 import { commitTurn0, runTurn0 } from './turn-zero.ts';
-import { druIdPenaltyMult, getDruidLevel } from '../../engine/world/tables.ts';
+import { druIdPenaltyMult } from '../../engine/world/tables.ts';
+import { getDruidLevel } from '../../engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { unitTypeOf } from '../../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import { pickLairNameP } from '../../engine/names.ts';
 import { itemEffectKey, lairItemTier } from '../../engine/items/tiers-and-hoards.ts';
@@ -218,7 +219,7 @@ Object.assign(window, {
   gainedItemNote, // engine/items/equipment.ts
   generateBotSetups, // engine/bots/setup.ts
   generateNewGame, // engine/world/generate.ts
-  getDruidLevel, // engine/world/tables.ts
+  getDruidLevel, // engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts
   getNeighborsP, // engine/world/map-helpers.ts
   guardCastChance, // engine/chances-and-lair-grades.ts
   hexDistP, // engine/world/map-helpers.ts

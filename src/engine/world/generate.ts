@@ -23,9 +23,9 @@ import {
   TEMPERS_P,
   buildHumanoidPool,
   fullRaceLandRoster,
-  getDruidLevel,
   provincePoolSize,
 } from './tables.ts';
+import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { ALIGNMENTS_P } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { ABILITIES_P, shuffleP } from '../battle/fortune.ts';
 import {
