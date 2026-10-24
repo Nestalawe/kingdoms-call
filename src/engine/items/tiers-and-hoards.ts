@@ -1,11 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS } from '../../content/kingdoms-call-data.ts';
-import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
-import { ENCOUNTER_CLEAR_GOLD_BANDS, setFeatureTreasure } from '../world/tables.ts';
 import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS, monsterCat } from '../names.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
-import { itemRole } from './equipment.ts';
 import { isLegendaryItem, itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 
 // ── GUARDIAN CATEGORY, SHOWN TO THE PLAYER ────
@@ -229,26 +226,6 @@ export function preferFreshEffects(pool, takenEff) {
   const fresh = pool.filter((it) => !takenEff.has(itemEffectKey(it)));
   return fresh.length ? fresh : pool;
 }
-export function rollMagicItem(monsterPower, taken, takenEff) {
-  taken = taken || new Set();
-  const t = lairItemTier(monsterPower); // the guardian's power IS the tier
-  const inTier = preferFreshEffects(
-    (ITEMS_BY_TIER[t] && ITEMS_BY_TIER[t].length ? ITEMS_BY_TIER[t] : ALL_MAGIC_ITEMS_P).filter(
-      (it) => !taken.has(it.name),
-    ),
-    takenEff,
-  );
-  if (inTier.length) return inTier[Math.floor(kcRng() * inTier.length)];
-  let anyLeft = ALL_MAGIC_ITEMS_P.filter((it) => !taken.has(it.name) && itemFallbackOk(it, t));
-  if (!anyLeft.length) anyLeft = ALL_MAGIC_ITEMS_P.filter((it) => !taken.has(it.name));
-  anyLeft = preferFreshEffects(anyLeft, takenEff);
-  return anyLeft.length ? anyLeft[Math.floor(kcRng() * anyLeft.length)] : null;
-}
-// When a tier is spent, a WEAK lair may still take any utility item of any tier (rule 1 survives
-// exhaustion); a combat item reaches a Weak lair only when the treasury is otherwise bare.
-export function itemFallbackOk(it, t) {
-  return t == null || t !== 1 || itemRole(it) === 'utility';
-}
 // ── LAIR HOARDS ── every lair's gold AND magic items are decided at world generation
 // (or, for a game saved before this build, once at the start of the next turn) and stored on the feature:
 // `treasure` (gold, one figure — what a clearer takes and what a thief chips at) and `hoardItems`
@@ -265,43 +242,6 @@ export const LAIR_ITEM_ODDS = {
   Powerful: { itemChance: 1.0, bonusItem: 0, thirdItem: 0 },
   Legendary: { itemChance: 1.0, bonusItem: 0, thirdItem: 0 },
 }; // was 40/0, 80/15, 100/40, 100/100/50
-export function ensureLairHoard(f, gs, opts) {
-  if (!f || f.ritualSite) return;
-  const _noItems = !!(opts && opts.noItems); // balanced stocking (ensureAllLairHoards) fills items itself
-  f.hoardItems = Array.isArray(f.hoardItems) ? f.hoardItems : [];
-  if (Array.isArray(f.lairItems) && f.lairItems.length) {
-    f.hoardItems.push(...f.lairItems);
-    f.lairItems = [];
-  }
-  if (f._hoardV2) return;
-  f._hoardV2 = true;
-  const power = (f.monster && f.monster.power) || 'Weak';
-  const band = ENCOUNTER_CLEAR_GOLD_BANDS[power] || [1, 5];
-  const gold = f._clearGold != null ? f._clearGold : Math.floor(kcRng() * (band[1] - band[0] + 1)) + band[0];
-  delete f._clearGold;
-  setFeatureTreasure(f, gold);
-  // Thief revision: remember the hoard as it stood at generation — a thief's cut is a share of the
-  // ORIGINAL pile, so each successive theft takes a like amount until it runs dry.
-  if (f._hoardGoldOrig == null) f._hoardGoldOrig = gold;
-  if (f.cleared || !gs || _noItems) return;
-  if (!Array.isArray(gs._awardedItems)) gs._awardedItems = [];
-  const taken = new Set(gs._awardedItems);
-  const takenEff = awardedEffectSet(gs);
-  const T = LAIR_ITEM_ODDS[power] || LAIR_ITEM_ODDS.Weak;
-  const roll = () => {
-    const base = rollMagicItem(power, taken, takenEff);
-    if (!base) return;
-    taken.add(base.name);
-    takenEff.add(itemEffectKey(base));
-    gs._awardedItems.push(base.name);
-    const id = gs.nextItemId || 0;
-    gs.nextItemId = id + 1;
-    f.hoardItems.push({ ...base, effect: { ...base.effect }, id });
-  };
-  if (kcRng() < T.itemChance) roll();
-  if (kcRng() < T.bonusItem) roll();
-  if (kcRng() < (T.thirdItem || 0)) roll();
-}
 // The tier a lair of this power holds. Since 2026-09-11 this is simply the guardian's own power.
 export function lairItemTier(power) {
   return ITEM_TIER_OF_POWER[power] || 1;

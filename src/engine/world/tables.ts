@@ -10,7 +10,10 @@ import {
 } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { shuffleP } from '../battle/fortune.ts';
-import { activeItems } from '../items/equipment.ts';
+import { activeItems, rollMagicItem } from '../items/equipment.ts';
+import { LAIR_ITEM_ODDS, awardedEffectSet, itemEffectKey } from '../items/tiers-and-hoards.ts';
+import { HOME_FLEET_BY_RACE, homeProvinceIdFor } from '../grand-design.ts';
+import { discProvCoastal } from '../discoveries.ts';
 import { dedupeItemsByName, effSkillOf } from '../heroes/skills-and-hp.ts';
 
 // ── INLINE GAME GENERATION ENGINE ────
@@ -84,6 +87,26 @@ export function fullRaceLandRoster(race) {
   });
   return [...types, ...garrison];
 }
+// Existing saves: every king's home province recruits his race's FULL land roster. Idempotent -
+// appends any missing land type to the home's armyTypes, keeping fleets and order. Runs at the top
+// of every runTurn; a no-op once the roster is complete.
+export function backfillHomeRosters(gs) {
+  ((gs && gs.players) || []).forEach((pl, pi) => {
+    if (!pl) return;
+    const hid = homeProvinceIdFor(gs, pi);
+    const h = hid != null ? ((gs.world && gs.world.provinces) || [])[hid] : null;
+    if (!h || h.terrain === 'sea' || !pl.race || h.race !== pl.race) return;
+    if (!Array.isArray(h.armyTypes)) h.armyTypes = [];
+    fullRaceLandRoster(pl.race).forEach((u) => {
+      if (!h.armyTypes.includes(u)) h.armyTypes.push(u);
+    });
+    // 2026-09-25 (Toby): a coastal capital always offers its racial fleet — add it to any running
+    // game whose home rolled without one.
+    const fleet = HOME_FLEET_BY_RACE[pl.race];
+    if (fleet && !h.armyTypes.includes(fleet) && typeof discProvCoastal === 'function' && discProvCoastal(gs, h))
+      h.armyTypes.push(fleet);
+  });
+}
 // ── WORLD-GEN TUNING ── Share of LAND provinces that are Primal (wild Creature / Monster country).
 // The remainder is split exactly equally between the four humanoid races.
 export const PRIMAL_LAND_CHANCE = 0.3;
@@ -125,10 +148,6 @@ export const SEA_TYPES_GEN = new Set(KC_UNIT_CLASS.sea);
 export const DRUID_ARMY_LEVELS_P = Object.fromEntries(
   Object.entries(KC_DRUID_LEVELS).map(([lvl, types]) => [lvl, new Set(types)]),
 );
-
-// sd40 Dragon Taming: the winged beasts a realm with the discovery leads without any Druid penalty
-// (Gnomish Gyrocopters are machines, not beasts, and are deliberately NOT tamed).
-export const TAMED_FLYER_TYPES_D = new Set(KC_UNIT_CLASS.tamedFlyer);
 // Returns the Druid level required to lead a given army type
 export function getDruidLevel(armyType) {
   for (const [lvl, armies] of Object.entries(DRUID_ARMY_LEVELS_P)) {
@@ -255,4 +274,41 @@ export function encounterClearGold(feat) {
     feat._clearGold = Math.floor(kcRng() * (band[1] - band[0] + 1)) + band[0];
   }
   return feat._clearGold;
+}
+export function ensureLairHoard(f, gs, opts) {
+  if (!f || f.ritualSite) return;
+  const _noItems = !!(opts && opts.noItems); // balanced stocking (ensureAllLairHoards) fills items itself
+  f.hoardItems = Array.isArray(f.hoardItems) ? f.hoardItems : [];
+  if (Array.isArray(f.lairItems) && f.lairItems.length) {
+    f.hoardItems.push(...f.lairItems);
+    f.lairItems = [];
+  }
+  if (f._hoardV2) return;
+  f._hoardV2 = true;
+  const power = (f.monster && f.monster.power) || 'Weak';
+  const band = ENCOUNTER_CLEAR_GOLD_BANDS[power] || [1, 5];
+  const gold = f._clearGold != null ? f._clearGold : Math.floor(kcRng() * (band[1] - band[0] + 1)) + band[0];
+  delete f._clearGold;
+  setFeatureTreasure(f, gold);
+  // Thief revision: remember the hoard as it stood at generation — a thief's cut is a share of the
+  // ORIGINAL pile, so each successive theft takes a like amount until it runs dry.
+  if (f._hoardGoldOrig == null) f._hoardGoldOrig = gold;
+  if (f.cleared || !gs || _noItems) return;
+  if (!Array.isArray(gs._awardedItems)) gs._awardedItems = [];
+  const taken = new Set(gs._awardedItems);
+  const takenEff = awardedEffectSet(gs);
+  const T = LAIR_ITEM_ODDS[power] || LAIR_ITEM_ODDS.Weak;
+  const roll = () => {
+    const base = rollMagicItem(power, taken, takenEff);
+    if (!base) return;
+    taken.add(base.name);
+    takenEff.add(itemEffectKey(base));
+    gs._awardedItems.push(base.name);
+    const id = gs.nextItemId || 0;
+    gs.nextItemId = id + 1;
+    f.hoardItems.push({ ...base, effect: { ...base.effect }, id });
+  };
+  if (kcRng() < T.itemChance) roll();
+  if (kcRng() < T.bonusItem) roll();
+  if (kcRng() < (T.thirdItem || 0)) roll();
 }

@@ -76,7 +76,8 @@ import {
   updateSeaHint,
 } from './game-list.ts';
 import { openGame } from './game-detail.ts';
-import { backfillHomeRosters, homeProvinceIdFor } from '../../engine/grand-design.ts';
+import { homeProvinceIdFor } from '../../engine/grand-design.ts';
+import { backfillHomeRosters } from '../../engine/world/tables.ts';
 import { deleteGame, loadTurnLog } from './turn-log.ts';
 import { commitTurn0, runTurn0 } from './turn-zero.ts';
 import { druIdPenaltyMult, getDruidLevel } from '../../engine/world/tables.ts';
@@ -185,7 +186,7 @@ Object.assign(window, {
   ARMY_COST_MASTER, // engine/army-tables.ts
   ARMY_SPEED_MASTER, // engine/army-tables.ts
   autoTurnTick, // ui/gm/auto-turn.ts
-  backfillHomeRosters, // engine/grand-design.ts
+  backfillHomeRosters, // engine/world/tables.ts
   BATTLE_FACING, // engine/battle/lines.ts
   BATTLE_FRONT_RANGE, // engine/battle/lines.ts
   battleDeploy, // engine/battle/lines.ts

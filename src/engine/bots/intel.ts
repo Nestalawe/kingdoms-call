@@ -2,7 +2,8 @@
 import { KC_HEX_DIRS, KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
 import { battleFrontWidth, battleLineTotal } from '../battle/lines.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
-import { TAMED_FLYER_TYPES_D, druIdPenaltyMult } from '../world/tables.ts';
+import { druIdPenaltyMult } from '../world/tables.ts';
+import { TAMED_FLYER_TYPES_D } from '../titles/perks.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { consecratedIds } from '../heroes/fame-and-consecration.ts';
 import {

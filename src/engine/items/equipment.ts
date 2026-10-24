@@ -9,7 +9,14 @@ import {
 import type { Item } from '../../schemas/saved-game-state.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
 import { HOARD_CATEGORIES } from './hoard-categories.ts';
-import { ITEMS_BY_TIER, ITEM_LORE_BY_NAME, itemHoardCategory } from './tiers-and-hoards.ts';
+import { kcRng } from '../rng.ts';
+import {
+  ITEMS_BY_TIER,
+  ITEM_LORE_BY_NAME,
+  itemHoardCategory,
+  lairItemTier,
+  preferFreshEffects,
+} from './tiers-and-hoards.ts';
 import {
   _ITEM_ALT_BASE,
   isLegendaryItem,
@@ -571,4 +578,32 @@ export function effTemper(c) {
   if (!c) return 'Brave';
   const it = activeItems(c).find((x) => x && x.effect && x.effect.stat === 'temper' && x.effect.temper);
   return (it && it.effect.temper) || c.temper || 'Brave';
+}
+export function rollMagicItem(monsterPower, taken, takenEff) {
+  taken = taken || new Set();
+  const t = lairItemTier(monsterPower); // the guardian's power IS the tier
+  const inTier = preferFreshEffects(
+    (ITEMS_BY_TIER[t] && ITEMS_BY_TIER[t].length ? ITEMS_BY_TIER[t] : ALL_MAGIC_ITEMS_P).filter(
+      (it) => !taken.has(it.name),
+    ),
+    takenEff,
+  );
+  if (inTier.length) return inTier[Math.floor(kcRng() * inTier.length)];
+  let anyLeft = ALL_MAGIC_ITEMS_P.filter((it) => !taken.has(it.name) && itemFallbackOk(it, t));
+  if (!anyLeft.length) anyLeft = ALL_MAGIC_ITEMS_P.filter((it) => !taken.has(it.name));
+  anyLeft = preferFreshEffects(anyLeft, takenEff);
+  return anyLeft.length ? anyLeft[Math.floor(kcRng() * anyLeft.length)] : null;
+}
+// When a tier is spent, a WEAK lair may still take any utility item of any tier (rule 1 survives
+// exhaustion); a combat item reaches a Weak lair only when the treasury is otherwise bare.
+export function itemFallbackOk(it, t) {
+  return t == null || t !== 1 || itemRole(it) === 'utility';
+}
+export function _skillItem(c, stat) {
+  const base = ((c && c.skills) || {})[stat] || 0;
+  const bonus = activeItems(c).reduce(
+    (s, it) => s + (it && it.effect && it.effect.stat === stat ? it.effect.bonus || 0 : 0),
+    0,
+  ); // equipped only
+  return Math.max(0, Math.min(9, base + bonus)); // TITLES count skill levels up to 9 (benefits still cap at 5 via effStat)
 }
