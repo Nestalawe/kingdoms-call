@@ -4,8 +4,10 @@
 //     berths (both portals' guard lists named the table until P1-06c removed the guards);
 //   • the engine (getSeaCapability and seaLiftShortfall, top-level functions called directly in its bare vm): a
 //     turtle carries two heavy units or four light foot where a galleon carries one or two; a third heavy unit is a
-//     shortfall; a Whale Cohort still carries one;
-//   • the player portal's mirror (poSeaAnalysis, module level) counts the same berths;
+//     shortfall; a Whale Cohort still carries one; the rule they share with the player portal (seaLiftOfAColumn, in
+//     src/engine/rules-on-plain-values/ since plan P1-11b4) counts two berths and names the unit left ashore;
+//   • the player portal's Move notice (poSeaAnalysis, module level), which counts through seaLiftOfAColumn, counts the
+//     same berths, and doubles them under a leader of Naval 8;
 //   • a turn: a hero with a turtle and two Gilded Lances puts out from his coast into his own waters and arrives with
 //     everyone aboard; with three Gilded Lances the move is blocked for want of a berth;
 //   • the words: the rulebook's Naval row, Sea-beasts row and turtle row, and the player portal's blurb, say so.
@@ -24,7 +26,7 @@ const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
 (async()=>{
   const sc=scenarioInTheVm({seed:1});
   const W=sc.W;
-  const L={getSeaCapability:W.getSeaCapability,seaLiftShortfall:W.seaLiftShortfall};
+  const L={getSeaCapability:W.getSeaCapability,seaLiftShortfall:W.seaLiftShortfall,seaLiftOfAColumn:W.seaLiftOfAColumn};
 
   // ── The data file ──
   ok(W.eval("KC_UNIT_CLASS.carrier.includes('Great Turtles')&&KC_UNIT_CLASS.primalSea.includes('Great Turtles')&&KC_UNIT_CLASS.sea.includes('Great Turtles')"),'the Great Turtles are a carrier, and still a primal sea beast');
@@ -44,8 +46,14 @@ const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
   ok(cap(u('Whale Cohort'),u('Gilded Lances',2))==='land','a whale cohort still carries one');
   ok(cap(u('Great Turtles'),u('Galleon Fleet'),u('Gilded Lances',3))==='sea','a turtle and a galleon together carry three');
   ok(short(u('Great Turtles'),u('Gilded Lances',2))===0&&cap(u('Sea Giants'),u('Gilded Lances'))==='land','no shortfall for two aboard a turtle; a Sea Giant still carries nothing');
+  { const lift=(naval8,...groups)=>L.seaLiftOfAColumn([].concat(...groups),naval8);
+    const two=lift(false,u('Great Turtles'),u('Gilded Lances',2)), three=lift(false,u('Great Turtles'),u('Gilded Lances',3));
+    ok(two.answer==='sea'&&two.berths===2&&two.unitsLeftAshore.length===0,`the shared rule (seaLiftOfAColumn) counts two berths on a turtle and leaves no one ashore (${two.answer}, ${two.berths} berths)`);
+    ok(three.answer==='land'&&three.unitsLeftAshore.length===1&&three.unitsLeftAshore[0].type==='Gilded Lances',`…and with three Gilded Lances names the one left ashore (${three.answer}, ${three.unitsLeftAshore.map(a=>a.unitName).join(', ')})`);
+    const mastered=lift(true,u('Great Turtles'),u('Gilded Lances',4));
+    ok(mastered.answer==='sea'&&mastered.berthsUnderItsLeader===4,`…and under a leader of Naval 8 the turtle's two berths carry four (${mastered.answer}, ${mastered.berthsUnderItsLeader})`); }
 
-  // ── The player portal's mirror ──
+  // ── The player portal's Move notice ──
   { const errors=[]; const dom=bootJsdom(readPage('kingdoms-call-player-portal.html'),{supabase:{createClient:()=>nullStub()},url:'https://example.org/pp',
       setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
     await new Promise(r=>setTimeout(r,1200)); const P=dom.window;
@@ -54,6 +62,9 @@ const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
     const two=an([].concat(u('Great Turtles'),u('Gilded Lances',2))), three=an([].concat(u('Great Turtles'),u('Gilded Lances',3)));
     ok(two&&two.cap==='sea'&&two.hullCap===2,`the move analysis counts two berths on a turtle (cap ${two&&two.cap}, hullCap ${two&&two.hullCap})`);
     ok(three&&three.cap==='land','…and reads three heavy units as one too many');
+    const four=(naval)=>P.poSeaAnalysis([].concat(u('Great Turtles'),u('Gilded Lances',4)),naval);
+    ok(four(8).cap==='sea'&&four(8).hullCap===4&&four(8).navalL8===true,`…under a leader of Naval 8 a turtle carries four (cap ${four(8).cap}, hullCap ${four(8).hullCap})`);
+    ok(four(7).cap==='land'&&four(7).hullCap===2&&four(7).short===2,`…and under Naval 7 two (cap ${four(7).cap}, hullCap ${four(7).hullCap}, ${four(7).short} short)`);
     dom.window.close(); }
 
   // ── A turn: putting out with a turtle ──

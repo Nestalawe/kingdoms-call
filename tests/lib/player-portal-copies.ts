@@ -9,10 +9,11 @@
 //   projection  the engine's function on the report's value against it on the state's value the report made it from:
 //               the report hands the portal what the engine reads. For the 9 swapped rules whose value the report
 //               makes from the state (the other 7 take a number, a level, an alignment or a games row: one function on
-//               one value, nothing left to compare), and for the beast command P1-11b3 swapped (the portal's
-//               beastCommandCountP gave way to countsAgainstBeastCommand, its Druid table to the engine's).
-//   truth       for the copies that stay until P1-11b (they read the report's shape, the realm or the world): the
-//               copy on the report's value, the engine's function on the state's. It says whether the portal tells the
+//               one value, nothing left to compare), for the beast command P1-11b3 swapped (the portal's
+//               beastCommandCountP gave way to countsAgainstBeastCommand, its Druid table to the engine's), and for the
+//               sea lift P1-11b4 swapped (poSeaAnalysis counts through seaLiftOfAColumn, getSeaCapability's body).
+//   truth       for the copies that stay (they read the report's shape, the realm or the world): the copy on the
+//               report's value, the engine's function on the state's. It says whether the portal tells the
 //               player what the turn will do. P1-11b1 added the Druid a hero needs to lead a unit (druidNeedP), the
 //               army card's Druid and sea-transport lines, the turn report's own flying carry and the Explore order's
 //               forecast (exploreGainFor); where a copy is known to disagree (plan P1-11b's questions for Toby), the
@@ -55,6 +56,8 @@ import {
 } from '../../src/content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../../src/engine/army-tables.ts';
 import { getSeaCapability } from '../../src/engine/units/movement-pools.ts';
+import { seaLiftOfAColumn } from '../../src/engine/rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
+import { perkTier } from '../../src/engine/titles/perks.ts';
 import {
   isLegendaryItem,
   itemRaceOf,
@@ -106,14 +109,6 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 /** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
   'ui/player/order-chances.ts': ['ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl'],
-  'ui/player/move-analysis.ts': [
-    'PO_SEA_TYPES',
-    'PO_CARRIER_TYPES',
-    'PO_AERIAL_TYPES',
-    'PO_FLYING_TYPES',
-    'PO_LIGHT_TYPES',
-    'poSeaAnalysis',
-  ],
   // a hero's skill as the report counts it (skillEff): druidNeedP, exploreGainFor and the army card read it
   'ui/player/briefing-and-submit.ts': ['effSkillP'],
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); the army card reads
@@ -156,7 +151,6 @@ function exploreGainOn(report, c, terrain) {
 }`;
 /** The functions the checks call: the portal's copies, and those made of a copy's statements. */
 const COPY_FUNCTIONS = [
-  'poSeaAnalysis',
   'effMagicLvl',
   'druidNeedP',
   'exploreGainOn',
@@ -169,8 +163,8 @@ export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 
 /** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file and kc-safe
  *  (kcHtml: the army card's notes) beside them, and the names src/shared/ hands the portal (effMagicLvl calls itemSlot
- *  and itemUsableBy; poSeaAnalysis getFlyCapability and isAirCarriable). The turn report's flying carry runs beside
- *  them too: it reads the data file and getFlyCapability. */
+ *  and itemUsableBy). The turn report's flying carry runs beside them too: it reads the data file and
+ *  getFlyCapability, which the views import from the folder (the portal no longer does, since P1-11b4). */
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   const code = [
     'let currentReport = null;',
@@ -181,6 +175,7 @@ export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   ].join('\n');
   const made: unknown = vm.runInNewContext(`(() => {\n${code}\nreturn { ${COPY_FUNCTIONS.join(', ')} };\n})()`, {
     ...theRulesTheSharedDoorHandsThePortal,
+    getFlyCapability,
   });
   if (!isObj(made)) throw new Error('the copies did not load');
   for (const name of COPY_FUNCTIONS)
@@ -772,7 +767,33 @@ export const PROJECTIONS: Projection[] = [
         project(a.report, engineOn(countsAgainstBeastCommand, [a.report]), engineOn(beastCommandCount, [a.state])),
       ),
   },
+  {
+    // The Move notice (poSeaAnalysis) counts a column through seaLiftOfAColumn (P1-11b4), whose figures it explains
+    // itself by: the lift on the report's column under the report's hero against it on the state's, the leader's naval
+    // mastery worked out as getSeaCapability works it out, and on the state's side getSeaCapability's own answer.
+    engine: 'seaLiftOfAColumn (getSeaCapability its wrapper)',
+    retiredCopy: "poSeaAnalysis's own lift",
+    on: "every column the realm's heroes lead, under its leader",
+    cases: (s) =>
+      withState(s.heroes).map((h) =>
+        project(
+          [h.report['armies'], skillOf(h.report, 'naval')],
+          engineOn(theSeaLiftOf, [h.report['armies'], h.report]),
+          engineOn(
+            (armies: unknown, hero: Obj) => ({ ...theSeaLiftOf(armies, hero), answer: getSeaCapability(armies, hero) }),
+            [h.state['armies'], h.state],
+          ),
+        ),
+      ),
+  },
 ];
+const hasAType = (a: Obj): a is Obj & { type: string } => typeof a['type'] === 'string';
+/** A column's sea lift (seaLiftOfAColumn) under its leader, with his naval mastery as getSeaCapability works it out;
+ *  the units left ashore by their type and name. */
+function theSeaLiftOf(armies: unknown, hero: Obj) {
+  const lift = seaLiftOfAColumn(objects(armies).filter(hasAType), perkTier(hero, 'naval') >= 3);
+  return { ...lift, unitsLeftAshore: lift.unitsLeftAshore.map((a) => [a.type, a['unitName']]) };
+}
 
 // ── The copies that stay ────
 
@@ -792,38 +813,10 @@ const compare = (on: unknown, copy: unknown, engine: { answer: unknown; changed:
   engineChangedItsInput: engine.changed,
 });
 
-/** A copy that stays in P1-11a (it reads the report's shape: P1-11b's), and the engine's function it restates. */
-export interface Staying {
-  readonly copy: string;
-  readonly engine: string;
-  readonly on: string;
-  /** Truth parity: the copy on the report's value, the engine's function on the state's. */
-  readonly truth: (c: Copies, s: Samples) => Comparison[];
-}
-
-/** One of the two copies that stay (beastCommandCountP, the third until P1-11b3, is a projection case now), whose
- *  truth cases agree on every value. */
-export const STAYING: Staying[] = [
-  {
-    copy: "poSeaAnalysis's cap",
-    engine: 'getSeaCapability',
-    on: "every column the realm's heroes lead, with the hero's naval skill",
-    truth: (c, s) =>
-      withState(s.heroes).map((h) => {
-        const naval = (isObj(h.report['skills']) ? h.report['skills']['naval'] : 0) ?? 0;
-        const analysis = c.poSeaAnalysis(h.report['armies'], naval);
-        return compare(
-          [h.report['armies'], naval],
-          isObj(analysis) ? analysis['cap'] : analysis,
-          engineOn(getSeaCapability, [h.state['armies'], h.state]),
-        );
-      }),
-  },
-];
-
-/** The second: effMagicLvl, the level of a magic school the order form offers spells by, against the effective level
- *  the report sends (skillEff: the engine's skillBonusBreakdown, the level the turn casts at), for every school of every
- *  hero of the realm; with the aura the report says it counts. */
+/** The copy that stays of the two P1-11a2 checked the truth of (the other, poSeaAnalysis's cap, is a projection case
+ *  since P1-11b4): effMagicLvl, the level of a magic school the order form offers spells by, against the effective
+ *  level the report sends (skillEff: the engine's skillBonusBreakdown, the level the turn casts at), for every school
+ *  of every hero of the realm; with the aura the report says it counts. */
 export function effMagicLvlAgainstTheReport(
   c: Copies,
   s: Samples,
