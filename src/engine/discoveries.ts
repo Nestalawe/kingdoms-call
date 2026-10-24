@@ -6,7 +6,8 @@ import {
   MONSTER_ARMIES,
 } from './rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { gdActiveFor, homeFounderOf } from './grand-design.ts';
-import { TAMED_FLYER_TYPES_D, pcFoeCat } from './titles/perks.ts';
+import { pcFoeCat } from './titles/perks.ts';
+import { TAMED_FLYER_TYPES_D } from './rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { getNeighborsP } from './world/map-helpers.ts';
 
 // ── RESOLVE TURN — FULL INLINE ENGINE ────

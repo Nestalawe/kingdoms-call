@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
-import { DRUID_MASTERY_CAP, DRUID_MASTERY_MAX_LVL, DRUID_MASTERY_PER_LVL, MISSILE_ARMIES_MASTER } from './ladder.ts';
+import { MISSILE_ARMIES_MASTER } from './ladder.ts';
 import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import {
   AERIAL_TYPES,
@@ -12,7 +12,13 @@ import {
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { missileCap, unitAbilityMult } from './strength.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT, unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
-import { druIdPenaltyMult, getDruidLevel } from '../world/tables.ts';
+import { druIdPenaltyMult } from '../world/tables.ts';
+import {
+  druidLevelTheMasteryCounts,
+  druidMasteryGainOver,
+  druidNeedWaivedByAlignment,
+  getDruidLevel,
+} from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { activeItems, hasItemBase } from '../items/equipment.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
@@ -463,13 +469,12 @@ export function druidMasteryGain(turnContext, heroChar, army, playerAlignment) {
   if (!(CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type))) return none;
   let lvl = heroChar._druidNegated ? 0 : effStat(turnContext, heroChar, 'druid') || 0;
   if (heroChar._curseHalveStat === 'druid') lvl = Math.floor(lvl / 2);
-  lvl = Math.max(0, Math.min(DRUID_MASTERY_MAX_LVL, lvl));
+  lvl = druidLevelTheMasteryCounts(lvl);
   const waived =
-    (CREATURE_ARMIES.has(army.type) && (playerAlignment === 'Druidic' || heroChar.alignment === 'Druidic')) ||
-    (MONSTER_ARMIES.has(army.type) && (playerAlignment === 'Evil' || heroChar.alignment === 'Evil')) || // 2026-10-13: Evil's mirror
+    druidNeedWaivedByAlignment(army.type, playerAlignment, heroChar.alignment) ||
     !!dragonTamed(turnContext, heroChar, army);
   const min = waived ? 0 : getDruidLevel(army.type);
-  const gain = Math.min(DRUID_MASTERY_CAP, DRUID_MASTERY_PER_LVL * Math.max(0, lvl - min));
+  const gain = druidMasteryGainOver(lvl, min);
   return { gain: Math.round(gain * 100) / 100, lvl, min };
 }
 export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ctx, opts) {

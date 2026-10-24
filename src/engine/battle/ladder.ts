@@ -135,11 +135,7 @@ export function ladderLines(
 // rulebook and DEV_LOG said "no strength bonus" while both battle paths quietly applied +10%/level —
 // the NPC path even carried a comment claiming the bonus had been removed. One constant now.
 export const ARCHERY_MISSILE_PCT = 0.05;
-// DRUID MASTERY (2026-09-24, Toby): +20% per Druid level over the minimum to lead a Creature/Monster,
-// Druid counted to 9, gain capped at +100%. Applied in armStr via druidMasteryGain.
-export const DRUID_MASTERY_PER_LVL = 0.2,
-  DRUID_MASTERY_CAP = 1.0,
-  DRUID_MASTERY_MAX_LVL = 9;
+// DRUID MASTERY (2026-09-24, Toby): its three constants are in engine/rules-on-plain-values/, with its sum (plan P1-11b2).
 // UNDEAD — undying fanaticism (2026-09-23b, Toby): a host with skeletal units in it, led by the Undead
 // KING in person ×1.5, by any other Undead commander ×1.3 (was ×1.3 / ×1.2). Whole force, no roll.
 // Undead's own zeal roll is 0%. Where several fervours apply the strongest one counts (max, never stacked).
