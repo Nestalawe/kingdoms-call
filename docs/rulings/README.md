@@ -105,7 +105,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-043](R-043-bots-know-what-a-player-knows.md) | Bots know only what a player in their seat could know | 2026-09-24 | Confirmed | no test yet |
 | [R-044](R-044-breaking-an-alliance.md) | Breaking an alliance makes realms neutral | 2026-09-24 | Confirmed | no test yet |
 | [R-045](R-045-consecration-capture-experience.md) | Taking holy ground: experience by the conqueror's crown | 2026-09-24 | Confirmed | no test yet |
-| [R-046](R-046-unmet-realms-are-nameless.md) | Realms you have not met are nameless | 2026-09-24 | Confirmed | [`fuzz-advance-masking`](../../tests/fuzz-advance-masking.test.js) |
+| [R-046](R-046-unmet-realms-are-nameless.md) | Realms you have not met are nameless | 2026-09-24 | Confirmed | [`fuzz-advance-masking`](../../tests/fuzz-advance-masking.test.js), [`what-each-realm-may-see-of-the-world`](../../tests/unit/what-each-realm-may-see-of-the-world.test.ts) |
 | [R-047](R-047-two-recruits-at-home.md) | Two recruits a season only in your founding capital | 2026-09-24 | Confirmed (open question) | no test yet |
 | [R-048](R-048-heroes-not-yet-joined.md) | A hero being hired is unknown until he joins | 2026-09-24 | Confirmed (open question) | no test yet |
 | [R-049](R-049-charmed-heroes-and-items.md) | A charmed hero handles no items | 2026-09-24 | Confirmed | no test yet |

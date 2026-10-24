@@ -15,8 +15,9 @@
 // helper TypeScript doesn't check yet (P1-10b), its type here is unknown. A record is read as a saved state may hold
 // it (AsSaved: any field missing or null), so each guard the report's code had is kept.
 //
-// The two breaches the leak check lets through (P1-23's entries 2 and 4) are carried as they are, in fields named for
-// them (knownBreach…), so P1-23 changes one field each.
+// The breach the leak check still lets through here (P1-23's entry 4) is carried as it is, in a field named for it
+// (knownBreach…), so P1-23 changes that one field. Entry 2 is fixed: a province it once visited names its owner only
+// once the realm has met them (R-046).
 //
 // It writes nothing and draws no dice (tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts).
 // The cases of each sight rule: tests/unit/what-each-realm-may-see-of-the-world.test.ts.
@@ -316,9 +317,9 @@ export interface ProvinceAsSeen {
   heroesInItsProvinceIntelligence?: HeroAsSeen[];
   /** An Evil realm sees the terror that grips every province. */
   terror?: TerrorAsSeen;
-  /** KNOWN BREACH, P1-23's entry 2 (KNOWN_BREACHES' "an unmet realm"): a province it once visited and doesn't hold
-   *  names the realm that holds it now, met or not. */
-  knownBreachTheOwnersNameThoughItMayBeUnmet?: AsItIs<string>;
+  /** The name of the realm that holds it now, once this realm has met that realm (or the game is over), else null
+   *  (R-046): a province it once visited and doesn't hold (its province intelligence). */
+  theOwnersNameOnceItHasMetThem?: AsItIs<string>;
   /** KNOWN BREACH, P1-23's entry 4 (its KNOWN_BREACHES entry, ownedProvinces): in its own provinces, the heroes there
    *  as that list has always had them, each with the number of units he leads. */
   knownBreachEveryHeroThereSeenOrNot?: HeroAsSeen[];
@@ -917,7 +918,9 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
             },
           }
         : {}),
-      ...(visited && !owned ? { knownBreachTheOwnersNameThoughItMayBeUnmet: ownerRealm?.name } : {}),
+      ...(visited && !owned
+        ? { theOwnersNameOnceItHasMetThem: q.owner != null ? (realms[q.owner]?.name ?? null) : null }
+        : {}),
       ...(owned
         ? {
             knownBreachEveryHeroThereSeenOrNot: (q.characters ?? []).flatMap((cid) => {
