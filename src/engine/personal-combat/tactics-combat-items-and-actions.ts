@@ -148,20 +148,31 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
   const hurt = (d, label) => {
     const dealt = pcTakeHit(turnContext, foe, d, narrative, actor.name, label || nm);
     if (dealt)
-      narrate(narrative, `  ${nm} strikes ${foe.name} for ${dealt} damage. (HP ${Math.max(0, Math.round(foe.hp))})`);
+      narrate(narrative, {
+        kind: 'a combat item strikes the foe',
+        nm,
+        foeName: foe.name,
+        dealt,
+        foeHp: Math.max(0, Math.round(foe.hp)),
+      });
     return dealt;
   };
-  narrate(narrative, `  🧪 ${who} uses the ${nm}!`);
+  narrate(narrative, { kind: 'a fighter uses a combat item', who, nm });
   switch (e.use) {
     case 'heal': {
       const h = Math.min(e.amt || 5, Math.max(0, (actor.maxHp || 20) - actor.hp));
       actor.hp += h;
-      narrate(narrative, `  ${who} recovers ${h} HP. (HP ${dispFloor(actor.hp)})`);
+      narrate(narrative, { kind: 'a fighter recovers hit points', who, healed: h, actorHp: dispFloor(actor.hp) });
       break;
     }
     case 'hot': {
       st.hot = { amt: e.amt || 3, rounds: e.rounds || 3, label: nm };
-      narrate(narrative, `  Warmth spreads through ${actor.name} — ${e.amt} HP a round for ${e.rounds} rounds.`);
+      narrate(narrative, {
+        kind: 'warmth spreads through a fighter each round',
+        actorName: actor.name,
+        eAmt: e.amt,
+        eRounds: e.rounds,
+      });
       break;
     }
     case 'secondwind': {
@@ -170,7 +181,12 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
       st.dot = [];
       st.hitPenalty = 0;
       st.hitPenaltyFixed = 0;
-      narrate(narrative, `  ${who} recovers ${h} HP and every lingering affliction lifts. (HP ${dispFloor(actor.hp)})`);
+      narrate(narrative, {
+        kind: 'a fighter recovers hit points and every lingering affliction lifts',
+        who,
+        healed: h,
+        actorHp: dispFloor(actor.hp),
+      });
       break;
     }
     case 'dmg':
@@ -180,17 +196,21 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
         let d = rng(e.dmg[0], e.dmg[1]);
         if ((e.doubleVs || []).includes(pcFoeCat(foe))) {
           d *= 2;
-          narrate(narrative, `  The ${nm} blazes twice as bright against ${foe.name}!`);
+          narrate(narrative, { kind: 'a combat item blazes twice as bright against the foe', nm, foeName: foe.name });
         }
         hurt(d);
       }
       if (e.dot && foe.hp > 0) {
         const _de = pcPushDot(foe, e.dot[0], e.dot[1], nm);
         if (_de)
-          narrate(
-            narrative,
-            `  ${nm} keeps burning on ${foe.name} — ${_de.dmg} a round for ${_de.rounds} round${_de.rounds !== 1 ? 's' : ''}.`,
-          );
+          narrate(narrative, {
+            kind: 'a combat item keeps burning on the foe',
+            nm,
+            foeName: foe.name,
+            deDmg: _de.dmg,
+            deRounds: _de.rounds,
+            deRoundsPlural: _de.rounds !== 1 ? 's' : '',
+          });
       }
       // these ride on the damage the item just dealt, so they grip from the NEXT round. (A
       // pure-penalty or pure-stun item — case 'pen' / 'stun' below — still bites now.)
@@ -198,7 +218,7 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
         pcDeferEffect(foe, () => {
           fs.hitPenalty = (fs.hitPenalty || 0) + e.hitPen;
         });
-        narrate(narrative, `  ${foe.name} is thrown off (−${e.hitPen}% to hit from the next round).`);
+        narrate(narrative, { kind: 'the foe is thrown off from the next round', foeName: foe.name, eHitPen: e.hitPen });
       }
       if (e.stun && foe.hp > 0) {
         if (pcStunTurned(foe, narrative, `the ${nm}'s daze`)) {
@@ -207,10 +227,12 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
           pcDeferEffect(foe, () => {
             fs.stun = (fs.stun || 0) + e.stun;
           });
-          narrate(
-            narrative,
-            `  ${foe.name} reels — ${e.stun} action${e.stun !== 1 ? 's' : ''} lost from the next round.`,
-          );
+          narrate(narrative, {
+            kind: 'the foe reels losing actions from the next round',
+            foeName: foe.name,
+            eStun: e.stun,
+            eStunPlural: e.stun !== 1 ? 's' : '',
+          });
         }
       }
       break;
@@ -220,26 +242,38 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
       const dealt = hurt(d);
       const h = Math.min(dealt, Math.max(0, (actor.maxHp || 20) - actor.hp));
       actor.hp += h;
-      if (h > 0) narrate(narrative, `  ${who} drinks the stolen vigour — +${h} HP. (HP ${dispFloor(actor.hp)})`);
+      if (h > 0)
+        narrate(narrative, {
+          kind: 'a fighter drinks the stolen vigour',
+          who,
+          healed: h,
+          actorHp: dispFloor(actor.hp),
+        });
       break;
     }
     case 'stun':
     case 'banestun': {
       if (pcLandStun(foe, e.stun || 1, narrative, `the ${nm}`))
-        narrate(narrative, `  ${foe.name} is held fast — ${e.stun || 1} action${(e.stun || 1) !== 1 ? 's' : ''} lost.`);
+        narrate(narrative, {
+          kind: 'the foe is held fast, losing actions',
+          foeName: foe.name,
+          eStun: e.stun || 1,
+          eStunPlural: (e.stun || 1) !== 1 ? 's' : '',
+        });
       break;
     }
     case 'pen': {
       // an item that says "for the rest of the fight" no longer fades 5% a round
       if (/rest of the fight/i.test(it.desc || '')) {
         fs.hitPenaltyFixed = (fs.hitPenaltyFixed || 0) + (e.hitPen || 15);
-        narrate(
-          narrative,
-          `  ${foe.name} can barely see to strike (−${e.hitPen || 15}% to hit for the rest of the fight).`,
-        );
+        narrate(narrative, { kind: 'the foe can barely see to strike', foeName: foe.name, eHitPen: e.hitPen || 15 });
       } else {
         fs.hitPenalty = (fs.hitPenalty || 0) + (e.hitPen || 15);
-        narrate(narrative, `  ${foe.name} can barely see to strike (−${e.hitPen || 15}% to hit).`);
+        narrate(narrative, {
+          kind: 'the foe can barely see to strike for now',
+          foeName: foe.name,
+          eHitPen: e.hitPen || 15,
+        });
       }
       break;
     }
@@ -254,39 +288,47 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
         foe.archery = Math.max(0, (foe.archery || 0) - e.archery);
         if (foe.archeryRaw != null) foe.archeryRaw = Math.max(0, foe.archeryRaw - e.archery);
       }
-      narrate(
-        narrative,
-        `  ${foe.name} is sapped — Melee ${pcHitSkill(foe, 'melee')}${e.archery ? `, Archery ${pcHitSkill(foe, 'archery')}` : ''} for the rest of the fight.`,
-      );
+      narrate(narrative, {
+        kind: 'the foe is sapped for the rest of the fight',
+        foeName: foe.name,
+        foeMelee: pcHitSkill(foe, 'melee'),
+        wordsIfEArchery: e.archery ? `, Archery ${pcHitSkill(foe, 'archery')}` : '',
+      });
       break;
     }
     case 'terror': {
       if (!foe.neverFlees && kcRng() < 0.5) {
         state.fledBy = foe;
-        narrate(narrative, `  ${foe.name} is overcome with dread and flees!`);
+        narrate(narrative, { kind: 'the foe is overcome with dread and flees', foeName: foe.name });
       } else {
         fs.hitPenalty = (fs.hitPenalty || 0) + (e.hitPen || 15);
-        narrate(narrative, `  ${foe.name} holds their ground, badly shaken (−${e.hitPen || 15}% to hit).`);
+        narrate(narrative, {
+          kind: 'the foe holds their ground badly shaken',
+          foeName: foe.name,
+          eHitPen: e.hitPen || 15,
+        });
       }
       break;
     }
     case 'silence': {
       fs.silenceRounds = (fs.silenceRounds || 0) + (e.rounds || 3);
-      narrate(narrative, `  ${foe.name}'s magic and powers are bound for ${e.rounds || 3} rounds.`);
+      narrate(narrative, { kind: "the foe's magic and powers are bound", foeName: foe.name, eRounds: e.rounds || 3 });
       break;
     }
     case 'buff': {
       if (e.melee) actor.melee = (actor.melee || 0) + e.melee;
       if (e.archery) actor.archery = (actor.archery || 0) + e.archery;
-      narrate(
-        narrative,
-        `  ${who} surges with strength — Melee ${actor.melee}${e.archery ? `, Archery ${actor.archery}` : ''}.`,
-      );
+      narrate(narrative, {
+        kind: 'a fighter surges with strength',
+        who,
+        actorMelee: actor.melee,
+        wordsIfEArchery: e.archery ? `, Archery ${actor.archery}` : '',
+      });
       break;
     }
     case 'focus': {
       st.hitBonus = (st.hitBonus || 0) + (e.hitBonus || 10);
-      narrate(narrative, `  ${who}'s eye sharpens (+${e.hitBonus || 10}% to hit).`);
+      narrate(narrative, { kind: "a fighter's eye sharpens", who, eHitBonus: e.hitBonus || 10 });
       break;
     }
     case 'absorb': {
@@ -294,43 +336,53 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
       if (e.reflect) {
         st.reflect = (st.reflect || 0) + e.reflect;
       }
-      narrate(
-        narrative,
-        `  A ward settles over ${actor.name}, ready to drink ${st.absorb} damage${e.reflect ? ` and bite back for ${st.reflect}` : ''}.`,
-      );
+      narrate(narrative, {
+        kind: 'a ward settles over a fighter',
+        actorName: actor.name,
+        stAbsorb: st.absorb,
+        wordsIfEReflect: e.reflect ? ` and bite back for ${st.reflect}` : '',
+      });
       break;
     }
     case 'mirror': {
       st.mirrorImages = (st.mirrorImages || 0) + (e.images || 2);
-      narrate(narrative, `  ${e.images || 2} shimmering doubles step out of ${actor.name}.`);
+      narrate(narrative, {
+        kind: 'shimmering doubles step out of a fighter',
+        eImages: e.images || 2,
+        actorName: actor.name,
+      });
       break;
     }
     case 'flee': {
       st.fleeBonus = (st.fleeBonus || 0) + (e.fleeBonus || 25);
       if (e.toHitReduce) st.toHitReduce = (st.toHitReduce || 0) + e.toHitReduce;
-      narrate(
-        narrative,
-        `  ${who} is ready to break away (+${e.fleeBonus || 25}% to flee${e.toHitReduce ? `, foe −${e.toHitReduce}% to hit` : ''}).`,
-      );
+      narrate(narrative, {
+        kind: 'a fighter is ready to break away',
+        who,
+        eFleeBonus: e.fleeBonus || 25,
+        wordsIfEToHitReduce: e.toHitReduce ? `, foe −${e.toHitReduce}% to hit` : '',
+      });
       break;
     }
     case 'invis': {
       st.toHitReduce = (st.toHitReduce || 0) + (e.toHitReduce || 25);
-      narrate(
-        narrative,
-        `  ${who} fades from sight — ${foe.name} strikes at shadows (−${e.toHitReduce || 25}% to hit).`,
-      );
+      narrate(narrative, {
+        kind: 'a fighter fades from sight the foe',
+        who,
+        foeName: foe.name,
+        eToHitReduce: e.toHitReduce || 25,
+      });
       break;
     }
     case 'dispel': {
       st.dot = [];
       st.hitPenalty = 0;
       st.hitPenaltyFixed = 0;
-      narrate(narrative, `  Every poison, burn and blinding on ${actor.name} lifts.`);
+      narrate(narrative, { kind: 'every poison burn and blinding on a fighter lifts', actorName: actor.name });
       break;
     }
     default:
-      narrate(narrative, `  …but nothing happens.`);
+      narrate(narrative, { kind: 'but nothing happens' });
   }
 }
 
@@ -339,7 +391,11 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
 export function pcAct(turnContext, actor, foe, narrative, state) {
   const { G } = turnContext;
   if (actor.status.stun > 0) {
-    narrate(narrative, `  ${actor.name} is stunned and cannot act. (${actor.status.stun} left)`);
+    narrate(narrative, {
+      kind: 'a fighter is stunned and cannot act',
+      actorName: actor.name,
+      actorStatusStun: actor.status.stun,
+    });
     actor.status.stun--;
     return;
   }
@@ -362,12 +418,15 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
     case 'FIRE':
     case 'ARROW': {
       if (actor.status.silenceRounds > 0) {
-        narrate(narrative, `  ${actor.name} cannot shoot (bound by Spiritwrack) — they close in instead.`);
+        narrate(narrative, {
+          kind: 'a fighter bound by spiritwrack cannot shoot and closes in',
+          actorName: actor.name,
+        });
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
       if (!pcHasRanged(actor)) {
-        narrate(narrative, `  ${actor.name} has no ranged attack — they press forward instead.`);
+        narrate(narrative, { kind: 'a fighter has no ranged attack and presses forward', actorName: actor.name });
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
@@ -381,21 +440,25 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
         if (temperOf(actor.temper).openingShot && !actor._openingShotUsed) {
           actor._openingShotUsed = true;
           state.range = 'bow';
-          narrate(
-            narrative,
-            `  ${actor.name} gives ground and gets to firing range before anything can reach them. (${actor.temper} — opening shot)`,
-          );
+          narrate(narrative, {
+            kind: 'a fighter gives ground and gets to firing range first',
+            actorName: actor.name,
+            actorTemper: actor.temper,
+          });
           pcFireShot(turnContext, actor, foe, narrative);
           break;
         }
         const ch = dispFloor(pcMoveCheck(actor, foe, 'advance')),
           roll = d100();
-        narrate(
-          narrative,
-          `  ${actor.name} moves up to firing range (${ch}% [roll ${roll}]${roll <= ch ? ' ✓' : ' ✗'})`,
-        );
+        narrate(narrative, {
+          kind: 'a fighter moves up to firing range',
+          actorName: actor.name,
+          rangeChance: ch,
+          roll,
+          rollChMark: roll <= ch ? ' ✓' : ' ✗',
+        });
         if (roll > ch) {
-          narrate(narrative, `  ${actor.name} cannot close the distance in time — no shot.`);
+          narrate(narrative, { kind: 'a fighter cannot close the distance in time', actorName: actor.name });
           break;
         }
         state.range = 'bow';
@@ -407,16 +470,23 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
       } else if (state.range === 'melee') {
         const ch = dispFloor(pcMoveCheck(actor, foe, 'withdraw')),
           roll = d100();
-        narrate(
-          narrative,
-          `  ${actor.name} tries to break away to firing range (${ch}% [roll ${roll}]${roll <= ch ? ' ✓' : ' ✗'})`,
-        );
+        narrate(narrative, {
+          kind: 'a fighter tries to break away to firing range',
+          actorName: actor.name,
+          rangeChance: ch,
+          roll,
+          rollChMark: roll <= ch ? ' ✓' : ' ✗',
+        });
         if (roll > ch) {
-          narrate(narrative, `  ${foe.name} stays right on top of ${actor.name} — no room to draw.`);
+          narrate(narrative, {
+            kind: 'the foe stays right on top of a fighter',
+            foeName: foe.name,
+            actorName: actor.name,
+          });
           break;
         }
         state.range = 'bow';
-        narrate(narrative, `  ${actor.name} disengages to bow range.`);
+        narrate(narrative, { kind: 'a fighter disengages to bow range', actorName: actor.name });
       }
       pcFireShot(turnContext, actor, foe, narrative);
       break;
@@ -433,19 +503,22 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
       // side ever stands idle for a failed power; only a stun does that). It is still ONE action:
       // the special did nothing, so the attack is all the guardian does this round.
       if (actor.status.silenceRounds > 0) {
-        narrate(
-          narrative,
-          `  ${actor.name}'s power is bound and will not answer — it falls on ${foe.name} with tooth and claw instead.`,
-        );
+        narrate(narrative, {
+          kind: "a fighter's power is bound and it attacks with tooth and claw",
+          actorName: actor.name,
+          foeName: foe.name,
+        });
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
       const cc = sp.castChance != null ? sp.castChance : 50;
       if (kcRng() * 100 >= cc) {
-        narrate(
-          narrative,
-          `  ${actor.name} gathers itself for ${sp.name} but the moment slips away — it attacks instead. [${cc}%]`,
-        );
+        narrate(narrative, {
+          kind: 'a fighter gathers itself for a power but the moment slips away',
+          actorName: actor.name,
+          spName: sp.name,
+          castChancePct: cc,
+        });
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
@@ -457,7 +530,7 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
       // 2026-10-14 (batch item 1): a spell that cannot be cast (silenced, no skill, already cast,
       // the school's limit reached) or that fizzles becomes an ordinary attack — the round is not lost.
       if (actor.status.silenceRounds > 0) {
-        narrate(narrative, `  ${actor.name} is silenced and cannot cast — they attack instead.`);
+        narrate(narrative, { kind: 'a fighter is silenced and cannot cast', actorName: actor.name });
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
@@ -477,7 +550,7 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
     case 'FL':
     case 'FLEE': {
       if (actor.neverFlees) {
-        narrate(narrative, `  ${actor.name} knows nothing of retreat.`);
+        narrate(narrative, { kind: 'a fighter knows nothing of retreat', actorName: actor.name });
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
@@ -503,25 +576,26 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
         const dr = actor.kind === 'character' ? effStat(turnContext, actor.ref, 'druid') : 0;
         const chance = foe.pacifiable === false ? 0 : 20 + dr * 15;
         const roll = d100();
-        narrate(
-          narrative,
-          `  ${actor.name} calls for parley (Druid ${dr}, ${chance}%${chance ? ` [roll ${roll}]${roll <= chance ? ' ✓' : ' ✗'}` : ' — it cannot be reasoned with'})`,
-        );
+        narrate(narrative, {
+          kind: "a fighter calls for parley with a druid's roll",
+          actorName: actor.name,
+          dr,
+          chance,
+          chanceMark: chance ? ` [roll ${roll}]${roll <= chance ? ' ✓' : ' ✗'}` : ' — it cannot be reasoned with',
+        });
         if (chance > 0 && roll <= chance) {
           state.parley = true;
-          narrate(narrative, `  ${foe.name} lowers its guard and stands aside.`);
-        } else narrate(narrative, `  ${foe.name} answers with a roar.`);
-      } else narrate(narrative, `  ${actor.name} calls for parley, but blades are already drawn.`);
+          narrate(narrative, { kind: 'the foe lowers its guard and stands aside', foeName: foe.name });
+        } else narrate(narrative, { kind: 'the foe answers with a roar', foeName: foe.name });
+      } else
+        narrate(narrative, { kind: 'a fighter calls for parley but blades are already drawn', actorName: actor.name });
       break;
     }
     case 'ST':
     case 'STEAL': {
       const th = actor.kind === 'character' ? effStat(turnContext, actor.ref, 'thief') : 0;
       if (th < 1) {
-        narrate(
-          narrative,
-          `  ${actor.name} has no Thief skill and cannot attempt a steal — they press forward instead.`,
-        );
+        narrate(narrative, { kind: 'a fighter has no thief skill and cannot steal', actorName: actor.name });
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
@@ -536,15 +610,20 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
       const chance = Math.max(5, Math.min(95, 50 + 10 * Math.min(th, 5) + bonus - tierPen));
       if (kcRng() * 100 < chance) {
         state.stoleBy = actor;
-        narrate(
-          narrative,
-          `  ${actor.name} slips past the ${_tier.toLowerCase()} guardian and seizes the prize! [${chance}%${tierPen ? `, −${tierPen}% ${_tier}` : ''}]`,
-        );
+        narrate(narrative, {
+          kind: 'a fighter slips past the guardian and seizes the prize',
+          actorName: actor.name,
+          tierWord: _tier.toLowerCase(),
+          chance,
+          wordsIfTierPen: tierPen ? `, −${tierPen}% ${_tier}` : '',
+        });
       } else
-        narrate(
-          narrative,
-          `  ${actor.name}'s theft is noticed. [${chance}%${tierPen ? `, −${tierPen}% ${_tier}` : ''}]`,
-        );
+        narrate(narrative, {
+          kind: "a fighter's theft is noticed",
+          actorName: actor.name,
+          chance,
+          wordsIfTierPen: tierPen ? `, −${tierPen}% ${_tier}` : '',
+        });
       break;
     }
     case 'SC':
@@ -627,13 +706,26 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
         // has to be re-derived when it comes back.
         if (PARLEY_ENABLED && foe.pacifiable) vulnClause += ' A Druid could talk it down rather than fight it.';
         const descClause = foe.ref && foe.ref.desc ? ` ${foe.ref.desc}` : '';
-        narrate(
-          narrative,
-          `  🔍 ${actor.name} scouts the ${feat.name}: ${foe.name}${power ? ` (${power})` : ''} stands guard at ${curHp}/${fullHp} HP.${descClause}${abilityClause}${vulnClause} Defeating it will yield exactly ${clearGold}g${itemOut}.`,
-        );
+        narrate(narrative, {
+          kind: 'a fighter scouts the feature and its guardian',
+          actorName: actor.name,
+          featName: feat.name,
+          foeName: foe.name,
+          wordsIfPower: power ? ` (${power})` : '',
+          curHp,
+          fullHp,
+          descClause,
+          abilityClause,
+          vulnClause,
+          clearGold,
+          itemOut,
+        });
         feat.scouted = true;
       } else {
-        narrate(narrative, `  ${actor.name} scouts the ground, but there is nothing here to guard.`);
+        narrate(narrative, {
+          kind: 'a fighter scouts the ground but there is nothing to guard',
+          actorName: actor.name,
+        });
       }
       // Scout only ever CANCELLED fading to-hit penalties (it never added a bonus) — the line now
       // says so.
@@ -642,10 +734,12 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
           _cut = Math.min(_had, b);
         actor.status.hitPenalty = _had - _cut;
         if (_cut > 0)
-          narrate(
-            narrative,
-            `  ${actor.name} reads the ground and steadies — ${_cut}% of their to-hit penalty is shaken off (Explorer ${ex}).`,
-          );
+          narrate(narrative, {
+            kind: 'a fighter reads the ground and steadies their aim',
+            actorName: actor.name,
+            cut: _cut,
+            ex,
+          });
       }
       break;
     }

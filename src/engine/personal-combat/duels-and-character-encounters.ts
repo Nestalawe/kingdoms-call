@@ -42,7 +42,11 @@ export function magicItemsLine(ch) {
     (it) => it && it.name && (!it.effect || _COMBAT_ITEM_STATS.has(it.effect.stat) || it.effect.combat),
   );
   if (!its.length) return null;
-  return `  ⚜ ${ch.name} bears ${its.map((it) => it.name + (isLegendaryItem(it) ? ' (Legendary)' : '')).join(', ')} into the fight.`;
+  return {
+    kind: 'a hero bears magic items into the fight',
+    chName: ch.name,
+    itemNames: its.map((it) => it.name + (isLegendaryItem(it) ? ' (Legendary)' : '')).join(', '),
+  };
 }
 // ── FLEE SPOILS ── A character who breaks off a duel or an Encounter against another character
 // has a DUEL_FLEE_DROP chance of dropping one magic item in the scramble; the character who held
@@ -60,10 +64,13 @@ export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
   if (!pool.length) return null;
   const roll = d100(),
     chance = Math.round(DUEL_FLEE_DROP * 100);
-  narrate(
-    narrative,
-    `  ${runner.name} scrambles clear — ${chance}% chance of dropping something in the rout [roll ${roll}${roll <= chance ? ' ✓' : ' ✗'}]`,
-  );
+  narrate(narrative, {
+    kind: 'the runner scrambles clear with a chance of dropping something',
+    runnerName: runner.name,
+    chance,
+    roll,
+    rollChanceMark: roll <= chance ? ' ✓' : ' ✗',
+  });
   if (roll > chance) return null;
   const it = pool[Math.floor(kcRng() * pool.length)];
   runner.items = (runner.items || []).filter((x) => x !== it);
@@ -75,13 +82,16 @@ export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
   stayer.items = (stayer.items || []).concat([it]);
   if (stayerCbt.ref !== stayer && Array.isArray(stayerCbt.ref.items))
     stayerCbt.ref.items = stayerCbt.ref.items.concat([it]);
-  narrate(
-    narrative,
-    `  💎 In the rout ${runner.name} drops ${it.name}${isLegendaryItem(it) ? ' (Legendary)' : ''} — ${stayer.name} claims it.`,
-  );
+  narrate(narrative, {
+    kind: 'in the rout the runner drops an item the one who stays claims',
+    runnerName: runner.name,
+    itName: it.name,
+    wordsIfIsLegendaryItemIt: isLegendaryItem(it) ? ' (Legendary)' : '',
+    stayerName: stayer.name,
+  });
   {
     const _gn = gainedItemNote(stayer, [it]);
-    if (_gn) narrate(narrative, '  ' + _gn);
+    if (_gn) narrate(narrative, { kind: 'a gained item noted', gainedItemNote: _gn });
   } // item 10
   return it;
 }
@@ -106,7 +116,11 @@ export function resolveDuel(turnContext, atk, def, narrative) {
   if (res.fledBy) {
     const runner = res.fledBy.ref,
       stayer = runner === atk ? def : atk;
-    narrate(narrative, `${runner.name} breaks off the duel and slips away — ${stayer.name} holds the field.`);
+    narrate(narrative, {
+      kind: 'the runner breaks off the duel and slips away',
+      runnerName: runner.name,
+      stayerName: stayer.name,
+    });
     duelFleeItemDrop(turnContext, res.fledBy, res.fledBy === A ? B : A, narrative); // flee spoils
     // Nobody is slain, but breaking off IS losing the duel — the caller demoralises their force.
     return { fled: runner, heldField: stayer };
@@ -121,10 +135,15 @@ export function resolveDuel(turnContext, atk, def, narrative) {
 // alternation to duels and monster encounters. The only difference is who is on the other side.
 export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics, prov, effStat, rng, G) {
   const narrative = [];
-  narrate(
-    narrative,
-    `${atk.name} (${atk.race}, ${atk.temper}) meets ${def.name} (${def.race}, ${def.player !== null ? G.players[def.player]?.name : 'wandering'}) in a personal encounter.`,
-  );
+  narrate(narrative, {
+    kind: 'the attacker meets the defender in a personal encounter',
+    atkName: atk.name,
+    atkRace: atk.race,
+    atkTemper: atk.temper,
+    defName: def.name,
+    defRace: def.race,
+    defRealmName: def.player !== null ? G.players[def.player]?.name : 'wandering',
+  });
   pushBattlecry(narrative, atk, def.name);
   pushBattlecry(narrative, def, atk.name);
 
@@ -140,34 +159,51 @@ export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics,
   // THIEF L8: a master thief's own purse cannot be picked.
   const _pickProof = (x) => perkTier(x, 'thief') >= 3;
   if (res.stoleBy === A && def.player !== null && atk.player !== null && _pickProof(def)) {
-    narrate(
-      narrative,
-      `${atk.name} goes for ${def.name}'s purse and comes away with nothing — a master thief keeps their own coin far better hidden.`,
-    );
+    narrate(narrative, {
+      kind: "the attacker goes for the defender's purse and comes away with nothing",
+      atkName: atk.name,
+      defName: def.name,
+    });
   } else if (res.stoleBy === B && atk.player !== null && def.player !== null && _pickProof(atk)) {
-    narrate(
-      narrative,
-      `${def.name} goes for ${atk.name}'s purse and comes away with nothing — a master thief keeps their own coin far better hidden.`,
-    );
+    narrate(narrative, {
+      kind: "the attacker goes for the defender's purse and comes away with nothing",
+      atkName: def.name,
+      defName: atk.name,
+    });
   } else if (res.stoleBy === A && def.player !== null && atk.player !== null) {
     const purse = G.players[def.player]?.gold || 0;
     const stolen = Math.min(purse, rng(1, 5));
     if (stolen > 0) {
       G.players[def.player].gold -= stolen;
       G.players[atk.player].gold = (G.players[atk.player].gold || 0) + stolen;
-      narrate(narrative, `${atk.name} lifts ${stolen}g from ${def.name}'s purse and is gone.`);
-    } else narrate(narrative, `${atk.name} finds ${def.name}'s purse empty.`);
+      narrate(narrative, {
+        kind: "the attacker lifts gold from the defender's purse",
+        atkName: atk.name,
+        stolen,
+        defName: def.name,
+      });
+    } else
+      narrate(narrative, {
+        kind: "the attacker finds the defender's purse empty",
+        atkName: atk.name,
+        defName: def.name,
+      });
   } else if (res.stoleBy === B && atk.player !== null && def.player !== null) {
     const purse = G.players[atk.player]?.gold || 0;
     const stolen = Math.min(purse, rng(1, 5));
     if (stolen > 0) {
       G.players[atk.player].gold -= stolen;
       G.players[def.player].gold = (G.players[def.player].gold || 0) + stolen;
-      narrate(narrative, `${def.name} lifts ${stolen}g from ${atk.name}'s purse and is gone.`);
+      narrate(narrative, {
+        kind: "the attacker lifts gold from the defender's purse",
+        atkName: def.name,
+        stolen,
+        defName: atk.name,
+      });
     }
   }
   if (res.fledBy) {
-    narrate(narrative, `${res.fledBy.name} breaks away and escapes the encounter.`);
+    narrate(narrative, { kind: 'the one who flees breaks away and escapes', resFledByName: res.fledBy.name });
     duelFleeItemDrop(turnContext, res.fledBy, res.fledBy === A ? B : A, narrative);
   } // flee spoils
 
@@ -178,11 +214,11 @@ export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics,
   let atkKilled = false,
     defKilled = false;
   if (atkHp <= 0) {
-    narrate(narrative, `${atk.name} is overwhelmed!`);
+    narrate(narrative, { kind: 'the attacker is overwhelmed', atkName: atk.name });
     atkKilled = atk.isKing ? false : kcRng() < 0.3;
   }
   if (defHp <= 0) {
-    narrate(narrative, `${def.name} is overcome!`);
+    narrate(narrative, { kind: 'the defender is overcome', defName: def.name });
     defKilled = !def.isKing && def.player !== null && kcRng() < 0.3;
   }
 

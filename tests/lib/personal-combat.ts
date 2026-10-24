@@ -10,6 +10,12 @@
 // call() gives a function that takes the turn's context (its first parameter is `turnContext`) the one context made
 // here, on a new world of bot realms; a pure one gets its arguments only. The console's log is quiet.
 //
+// A fight's narrative holds facts (P1-12c4: personal combat's lines record a fact, and the views write its words):
+// wordsOf(narrative) gives each line's words, as a report reads them; wordsForEveryoneInTheFight(narrative) those of the
+// lines for everyone in the fight (not those for one realm alone, a hero's hit-point rise).
+//
+//   const words = pc.wordsOf(res.narrative).join('\n');
+//
 // Fresh modules (tests/README.md, "How the tests reach the site"): it calls vi.resetModules() and imports the whole
 // engine again (tests/lib/the-whole-engine.ts) before it seeds the dice, so the world is the one the bare vm made from
 // the same seed, whatever the file made before. A module the test imports after this call (`await import(…)`: a table,
@@ -17,6 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { vi } from 'vitest';
+import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { addTheFieldsResolveTurnAdds, type TurnContext } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
 /** A combatant's state in a fight (pcNewStatus), as far as the tests read it. */
@@ -79,7 +86,7 @@ export interface FightResult {
   fledBy?: Combatant | null;
   aHp: number;
   bHp: number;
-  narrative: (string | { text: string })[];
+  narrative: NarrativeLine[];
 }
 
 export interface PersonalCombatEngine {
@@ -93,6 +100,10 @@ export interface PersonalCombatEngine {
   MON: Guardian[];
   /** Runs fn with the engine's dice (kcRng) fixed at r (or a list used in turn, the last repeating). */
   pinned: <T>(r: number | number[], fn: () => T) => T;
+  /** Each line's words, as the views write them (a fact's; a line's own words as they are). */
+  wordsOf: (narrative: readonly NarrativeLine[]) => string[];
+  /** The words of the lines for everyone in the fight (not those for one realm alone). */
+  wordsForEveryoneInTheFight: (narrative: readonly NarrativeLine[]) => string[];
 }
 
 /** A deep copy, made in this realm. */
@@ -162,6 +173,8 @@ export async function personalCombatEngine({
     }
     return f;
   };
+  const wordsOf = (narrative: readonly NarrativeLine[]) =>
+    narrative.map((line) => (typeof line === 'string' ? line : String(fnOf('theWordsOf')(line))));
   const characters = tc.G['characters'] as Character[];
   const base = characters.find((c) => c.alive && c.player != null);
   if (!base) throw new Error('the world has no living hero of a realm');
@@ -179,5 +192,8 @@ export async function personalCombatEngine({
         kcRng.use(real);
       }
     },
+    wordsOf,
+    wordsForEveryoneInTheFight: (narrative) =>
+      wordsOf(narrative.filter((line) => fnOf('isALineForEveryoneInTheFight')(line) === true)),
   };
 }

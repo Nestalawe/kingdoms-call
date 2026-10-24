@@ -9,7 +9,7 @@ import { discSum, hasDisc } from '../discoveries.ts';
 import { recalcHeroPay, skillInPlayNote } from './effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
 import {
-  narrateTo,
+  narrate,
   emit,
   writeDeferredSkillLines,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -331,7 +331,13 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
   if (!line) {
     /* nothing gained — nothing to say */
   } else if (Array.isArray(narrative)) {
-    if (real.player != null) narrateTo(narrative, real.player, real.id, line);
+    if (real.player != null)
+      narrate(narrative, {
+        kind: "a hero's hit points rise in a fight, for his realm alone",
+        realm: real.player,
+        hero: real.id,
+        words: line,
+      });
   } else {
     const prov = real.location != null ? G.world.provinces[real.location] : null;
     emit(turnContext, {

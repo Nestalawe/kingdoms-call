@@ -1,7 +1,7 @@
 // ── THE WORDS OF EACH LINE OF THE TURN (plan P1-12c3: P1-12's Decisions of 2026-10-24, Decisions 2 and 3) ────
 // The engine files each line of the turn with its finished words or with the fact they are written from (emit,
 // src/engine/turn/events-and-their-audiences.ts). The views write every line's words here, after the turn and before
-// any realm's lines are picked (buildReports), one module per area (the-words-of-a-battles-lines.ts the first). A
+// any realm's lines are picked (buildReports), one module per area (the-words-of-a-battles-lines.ts, the-words-of-a-personal-combats-lines.ts). A
 // battle's lines take their tiers ('k' key, 'd' detail) and its losses tally its place from those words, as emitBattle
 // did before (battleLineTiers and battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
 // as it is stored (turn_logs, player index −1), in the same form as before, key for key: the shell saves it, and the
@@ -13,11 +13,13 @@ import {
   type LineFact,
   type LogLine,
 } from '../../engine/turn/events-and-their-audiences.ts';
+import { isAPersonalCombatsLine } from '../../engine/personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import { theWordsOfABattlesLine } from './the-words-of-a-battles-lines.ts';
+import { theWordsOfAPersonalCombatsLine } from './the-words-of-a-personal-combats-lines.ts';
 
-/** The words of a fact, of any area. */
+/** The words of a fact, of any area: each area's module writes its own kinds'. */
 export function theWordsOf(fact: LineFact): string {
-  return theWordsOfABattlesLine(fact);
+  return isAPersonalCombatsLine(fact) ? theWordsOfAPersonalCombatsLine(fact) : theWordsOfABattlesLine(fact);
 }
 
 /** The GM's log of the turn with every line's words, as it is stored and as the realms' lines are read from it; and

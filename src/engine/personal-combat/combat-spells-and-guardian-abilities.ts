@@ -71,17 +71,26 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
   const lvl = caster.school[school] || 0;
   const lvlEff = Math.min(lvl, 5); // every EFFECT scales with caster level capped at 5 (cast chance still uses the full level)
   if (lvl < 1) {
-    narrate(narrative, `  ${caster.name} cannot cast ${spellName} (no ${SKILL_LABELS[school] || school} skill).`);
+    narrate(narrative, {
+      kind: 'the caster cannot cast a spell without its skill',
+      casterName: caster.name,
+      spellName,
+      schoolLabel: SKILL_LABELS[school] || school,
+    });
     return false;
   }
   // Per-combat spell limits: same spell once; per school 1 at Lv1, 2 at Lv2+.
   const limit = combatSpellsAllowedPerSchoolEachFight(lvl);
   if (caster.castSpells.includes(spellName)) {
-    narrate(narrative, `  ${caster.name}: ${spellName} already cast this combat.`);
+    narrate(narrative, { kind: "the caster's spell already cast this combat", casterName: caster.name, spellName });
     return false;
   }
   if ((caster.castSchool[school] || 0) >= limit) {
-    narrate(narrative, `  ${caster.name}: ${SKILL_LABELS[school] || school} spell limit reached this combat.`);
+    narrate(narrative, {
+      kind: "the caster's spell limit reached this combat",
+      casterName: caster.name,
+      schoolLabel: SKILL_LABELS[school] || school,
+    });
     return false;
   }
   // ── WEAKNESS ── a guardian open to this school cannot shrug the weave off: the cast always
@@ -128,26 +137,36 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
   // the chance succeeds, matching every other percentage check in the engine.
   const _castRoll = d100();
   telSpell(turnContext, caster.ref, spellName, school, lvl, castChance, _castRoll, 'duel');
-  narrate(
-    narrative,
-    `  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to cast successfully${_sw > 0 ? `, −${_sw} for ${pcWardWord(target, 'ward', 'schoolWard')}` : ''}) [roll ${_castRoll} ${_castRoll <= castChance ? '✓' : '✗'}].`,
-  );
+  narrate(narrative, {
+    kind: "the caster calls on a school's arts, weaving a spell",
+    casterName: caster.name,
+    schoolWeave: _schoolWeave,
+    spellName,
+    castChance,
+    wordsIfSw: _sw > 0 ? `, −${_sw} for ${pcWardWord(target, 'ward', 'schoolWard')}` : '',
+    castRoll: _castRoll,
+    castRollCastChanceMark: _castRoll <= castChance ? '✓' : '✗',
+  });
   if (_castRoll > castChance) {
-    narrate(narrative, `  …but the spell guts and fizzles, coming to nothing.`);
+    narrate(narrative, { kind: 'but the spell guts and fizzles' });
     return false;
   }
   caster.castSpells.push(spellName);
   caster.castSchool[school] = (caster.castSchool[school] || 0) + 1;
   if (_wkSch) {
-    narrate(
-      narrative,
-      `  💥 ${target.name} is open to the ${_schoolWeave} arts — ${target.weak.name}: the weave takes hold at once and bites twice as deep.`,
-    );
+    narrate(narrative, {
+      kind: "the target is open to the school's arts",
+      targetName: target.name,
+      schoolWeave: _schoolWeave,
+      targetWeakName: target.weak.name,
+    });
     if (caster.player != null && pcLearnWeakness(G, caster.player, target.name))
-      narrate(
-        narrative,
-        `  📖 ${caster.name} marks it well: ${target.weak.desc}. Your realm will remember this of every ${target.name}.`,
-      );
+      narrate(narrative, {
+        kind: "the caster marks the target's weakness well",
+        casterName: caster.name,
+        targetWeakDesc: target.weak.desc,
+        targetName: target.name,
+      });
   }
 
   // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
@@ -165,10 +184,13 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         'Lightning Bolt',
       );
       if (dealt)
-        narrate(
-          narrative,
-          `  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt} damage. (HP ${Math.max(0, Math.round(target.hp))})`,
-        );
+        narrate(narrative, {
+          kind: "the caster's lightning bolt arcs into the target",
+          casterName: caster.name,
+          targetName: target.name,
+          dealt,
+          targetHp: Math.max(0, Math.round(target.hp)),
+        });
       break;
     }
     case 'Fireball': {
@@ -183,10 +205,13 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       const _fbPct = (SPELL_FIREBALL_BASE_PCT + SPELL_FIREBALL_PCT_PER_LVL * lvlEff) * wx * (1 - _fbWard / 100);
       const _fbD = Math.max(1, Math.round((target.maxHp * _fbPct) / 100));
       const _fbE = pcPushDot(target, _fbD, 3, 'Fireball burns');
-      narrate(
-        narrative,
-        `  🔥 Fireball engulfs ${target.name} — it will burn for ${dispFloor(_fbPct)}% of its health each round for ${_fbE ? _fbE.rounds : 3} rounds${_fbWard ? ` (its ward turns ${_fbWard}% of the heat)` : ''}.`,
-      );
+      narrate(narrative, {
+        kind: 'a fireball engulfs the target and will burn',
+        targetName: target.name,
+        fbPct: dispFloor(_fbPct),
+        burnRounds: _fbE ? _fbE.rounds : 3,
+        wordsIfFbWard: _fbWard ? ` (its ward turns ${_fbWard}% of the heat)` : '',
+      });
       break;
     }
     // ── WHITE (CSV) ──
@@ -203,18 +228,23 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       const _hm = holy ? SPELL_HOLY_UNCLEAN_MULT : 1;
       const pen = Math.round(lvlEff * SPELL_HOLY_PEN_PER_LVL * _hm * wx);
       target.status.hitPenalty = (target.status.hitPenalty || 0) + pen;
-      narrate(
-        narrative,
-        `  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy ? ' (×1.5 against the undead and fiends)' : ''}.`,
-      );
+      narrate(narrative, {
+        kind: 'the caster raises a holy symbol',
+        casterName: caster.name,
+        targetName: target.name,
+        pen,
+        wordsIfHoly: holy ? ' (×1.5 against the undead and fiends)' : '',
+      });
       const _hsHeal = Math.max(1, Math.round(((caster.maxHp || 20) * SPELL_HOLY_HEAL_PCT) / 100));
       if (caster.hp < (caster.maxHp || 20)) {
         const _h = Math.min(_hsHeal, (caster.maxHp || 20) - caster.hp);
         caster.hp += _h;
-        narrate(
-          narrative,
-          `  ✝ The light closes ${caster.name}'s hurts — ${_h} recovered. (HP ${dispFloor(caster.hp)})`,
-        );
+        narrate(narrative, {
+          kind: "the light closes the caster's hurts",
+          casterName: caster.name,
+          healed: _h,
+          casterHp: dispFloor(caster.hp),
+        });
       }
       // The light burns whatever stands between a hero and a barrow, and burns the unclean twice
       // as deep. Measured, a symbol that only blinded left White worse than carrying no magic at
@@ -223,10 +253,14 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         const _hsD = Math.max(1, Math.round((target.maxHp * SPELL_HOLY_BURN_PCT * _hm) / 100));
         const _dealt = pcTakeHit(turnContext, target, _hsD, narrative, caster.name, 'Holy Symbol');
         if (_dealt)
-          narrate(
-            narrative,
-            `  ✝ ${holy ? `The unclean flesh of ${target.name} chars at the sight of it` : `The light sears ${target.name}`} — ${_dealt} damage. (HP ${Math.max(0, Math.round(target.hp))})`,
-          );
+          narrate(narrative, {
+            kind: "the holy light's damage",
+            wordsIfHoly: holy
+              ? `The unclean flesh of ${target.name} chars at the sight of it`
+              : `The light sears ${target.name}`,
+            dealt: _dealt,
+            targetHp: Math.max(0, Math.round(target.hp)),
+          });
       }
       break;
     }
@@ -244,10 +278,16 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       target.status.meleeHalvedRounds = Math.max(target.status.meleeHalvedRounds, _swR);
       const _shr = target.kind === 'monster' ? SPIRITWRACK_SHRUG_PCT[target.power] || 0 : 0;
       target.status._swShrugPct = _shr;
-      narrate(
-        narrative,
-        `  ${caster.name} binds ${target.name} with Spiritwrack — for ${_swR} round${_swR !== 1 ? 's' : ''} it cannot cast, use its powers or use archery, and its melee is halved.${_shr ? ` (A ${String(target.power).toLowerCase()} guardian may shrug it off — ${_shr}% each round after the first.)` : ''}`,
-      );
+      narrate(narrative, {
+        kind: 'the caster binds the target with spiritwrack',
+        casterName: caster.name,
+        targetName: target.name,
+        swR: _swR,
+        swRPlural: _swR !== 1 ? 's' : '',
+        wordsIfShr: _shr
+          ? ` (A ${String(target.power).toLowerCase()} guardian may shrug it off — ${_shr}% each round after the first.)`
+          : '',
+      });
       break;
     }
     case 'Psychic Blast': {
@@ -258,10 +298,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         (SPELL_BLAST_BASE_ROUNDS + Math.floor(lvlEff / 2)) * wx +
         (caster.ref && hasItemBase(caster.ref, 'Dreamstone') ? 1 : 0);
       if (pcLandStun(target, _stunN, narrative, 'the blast'))
-        narrate(
-          narrative,
-          `  🧠 Psychic Blast sears ${target.name}'s mind — for their next ${_stunN} rounds they can do nothing at all: no blow, no arrow, no spell, and no flight.`,
-        );
+        narrate(narrative, { kind: "psychic blast sears the target's mind", targetName: target.name, stunN: _stunN });
       break;
     }
     case 'Telekinetic Storm': {
@@ -272,23 +309,24 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       const dealt = pcTakeHit(turnContext, target, d, narrative, caster.name, 'Telekinetic Storm');
       caster.hp -= self;
       if (dealt)
-        narrate(
-          narrative,
-          `  🌀 Telekinetic Storm rips ${target.name} for ${dealt} damage; the strain costs ${caster.name} ${self} damage. (Target HP ${Math.max(0, Math.round(target.hp))})`,
-        );
+        narrate(narrative, {
+          kind: 'a telekinetic storm rips the target',
+          targetName: target.name,
+          dealt,
+          casterName: caster.name,
+          self,
+          targetHp: Math.max(0, Math.round(target.hp)),
+        });
       break;
     }
     case 'Mirror Image': {
       if (!state) {
-        narrate(narrative, `  ${caster.name} conjures a Mirror Image.`);
+        narrate(narrative, { kind: 'the caster conjures a mirror image', casterName: caster.name });
         break;
       }
       if (state.mirror) {
         // casting again while an illusion fights dissipates both images
-        narrate(
-          narrative,
-          `  ${caster.name} weaves a second Mirror Image — the competing illusions unravel and both vanish.`,
-        );
+        narrate(narrative, { kind: 'the caster weaves a second mirror image', casterName: caster.name });
         state.mirror = null;
         break;
       }
@@ -327,10 +365,13 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         status: pcNewStatus(),
       };
       state.mirror = { caster, victim: target, phantasm: ph, life: SPELL_MIRROR_ROUNDS };
-      narrate(
-        narrative,
-        `  🪞 ${caster.name} conjures a phantom of ${target.name} — ${target.name} turns on their own mirror, and ${caster.name} is left free to act.`,
-      );
+      narrate(narrative, {
+        kind: 'the caster conjures a phantom of the target',
+        casterName: caster.name,
+        targetName: target.name,
+        targetName2: target.name,
+        casterName2: caster.name,
+      });
       break;
     }
     case 'Invisibility': {
@@ -342,7 +383,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       const _invPct = SPELL_INVIS_BASE_PCT + SPELL_INVIS_PCT_PER_LVL * lvlEff;
       caster.status.toHitReduce = Math.max(caster.status.toHitReduce || 0, _invPct);
       caster.status.fleeBonus = (caster.status.fleeBonus || 0) + 30;
-      narrate(narrative, `  ${caster.name} fades from sight — enemies suffer \u2212${_invPct}% to hit, +30% flee.`);
+      narrate(narrative, { kind: 'the caster fades from sight', casterName: caster.name, invPct: _invPct });
       break;
     }
     case 'Hand of Death': {
@@ -354,15 +395,19 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         const d = Math.max(1, Math.round(((target.maxHp * SPELL_HOD_BITE_PCT) / 100) * _dfMult));
         const dealt = pcTakeHit(turnContext, target, d, narrative, caster.name, 'Hand of Death');
         if (dealt)
-          narrate(
-            narrative,
-            `  ☠ Hand of Death claims ${SPELL_HOD_BITE_PCT}% of ${target.name}'s health — ${dealt} damage! (HP ${Math.max(0, Math.round(target.hp))})`,
-          );
+          narrate(narrative, {
+            kind: "the hand of death claims part of the target's health",
+            handOfDeathBitePct: SPELL_HOD_BITE_PCT,
+            targetName: target.name,
+            dealt,
+            targetHp: Math.max(0, Math.round(target.hp)),
+          });
       } else
-        narrate(
-          narrative,
-          `  ${caster.name}'s Hand of Death fails to take hold. [${Math.min(SPELL_HOD_MAX_PCT, lvlEff * 10 * wx)}%]`,
-        );
+        narrate(narrative, {
+          kind: "the caster's hand of death fails",
+          casterName: caster.name,
+          handOfDeathChancePct: Math.min(SPELL_HOD_MAX_PCT, lvlEff * 10 * wx),
+        });
       break;
     }
     case 'Curse': {
@@ -382,37 +427,53 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         if (bestKey === 'melee') target.melee = Math.floor(target.melee / 2);
         else if (bestKey === 'archery') target.archery = Math.floor(target.archery / 2);
         else target.school[bestSchool] = Math.floor(target.school[bestSchool] / 2);
-        narrate(
-          narrative,
-          `  ${caster.name}'s Curse withers ${target.name}'s ${bestKey === 'magic' ? bestSchool + ' magic' : bestKey} — halved to ${bestKey === 'melee' ? target.melee : bestKey === 'archery' ? target.archery : target.school[bestSchool]} for the fight.`,
-        );
-      } else narrate(narrative, `  ${caster.name}'s Curse finds no ability in ${target.name} worth withering.`);
+        narrate(narrative, {
+          kind: "the caster's curse withers the target",
+          casterName: caster.name,
+          targetName: target.name,
+          bestAbility: bestKey === 'magic' ? bestSchool + ' magic' : bestKey,
+          bestAbilityLevel:
+            bestKey === 'melee' ? target.melee : bestKey === 'archery' ? target.archery : target.school[bestSchool],
+        });
+      } else
+        narrate(narrative, {
+          kind: "the caster's curse finds no ability",
+          casterName: caster.name,
+          targetName: target.name,
+        });
       break;
     }
     case 'Control Undead': {
       if (target.isUndead) {
         const _cuR = Math.max(1, lvlEff);
         if (!pcLandStun(target, _cuR, narrative, `${caster.name}'s grip`)) break; // printed the RAW level while applying the capped one — a Necromancy 8 caster was told "8 rounds" and got 5.
-        narrate(narrative, `  ${caster.name} seizes the undead ${target.name} — helpless for ${_cuR} rounds.`);
-      } else narrate(narrative, `  Control Undead has no hold over the living ${target.name}.`);
+        narrate(narrative, {
+          kind: 'the caster seizes the undead target',
+          casterName: caster.name,
+          targetName: target.name,
+          cuR: _cuR,
+        });
+      } else narrate(narrative, { kind: 'control undead has no hold over the living', targetName: target.name });
       break;
     }
     case 'Charm': {
       // a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
       if (target && target.kind === 'character' && target.ref && target.ref.isKing) {
-        narrate(
-          narrative,
-          `  ${caster.name}'s Charm washes over ${target.name} and finds nothing to grip — a crowned will cannot be swayed.`,
-        );
+        narrate(narrative, {
+          kind: "the caster's charm washes over a crowned will",
+          casterName: caster.name,
+          targetName: target.name,
+        });
         break;
       }
       // ...and so is a mind swayed only last season — the same immunity the action-phase Charm
       // honours.
       if (target && target.kind === 'character' && target.ref && target.ref._charmImmuneTurn === G.turn) {
-        narrate(
-          narrative,
-          `  ${caster.name}'s Charm slides off ${target.name} — a mind so lately swayed is closed to enchantment for a season.`,
-        );
+        narrate(narrative, {
+          kind: "the caster's charm slides off a mind lately swayed",
+          casterName: caster.name,
+          targetName: target.name,
+        });
         break;
       }
       // a mind swayed before resists any later Charm, combat casts included (30% per past charm,
@@ -424,21 +485,24 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         (target.ref._charmResist || 0) > 0 &&
         d100() <= target.ref._charmResist
       ) {
-        narrate(
-          narrative,
-          `  ${caster.name}'s Charm breaks against ${target.name}'s will (${target.ref._charmResist}% resistance) — a mind swayed before knows the feel of it, and shuts.`,
-        );
+        narrate(narrative, {
+          kind: "the caster's charm breaks against the target's will",
+          casterName: caster.name,
+          targetName: target.name,
+          targetRefCharmResist: target.ref._charmResist,
+        });
         break;
       }
       caster.status.fleeDoubled = true;
-      narrate(
-        narrative,
-        `  ${caster.name} charms ${target.name}'s wits — their next attempt to slip away will come far more easily.`,
-      );
+      narrate(narrative, {
+        kind: "the caster charms the target's wits",
+        casterName: caster.name,
+        targetName: target.name,
+      });
       break;
     }
     default:
-      narrate(narrative, `  ${caster.name} casts ${spellName}.`);
+      narrate(narrative, { kind: 'the caster casts a spell', casterName: caster.name, spellName });
   }
   // small skill-up chance — pass narrative so the "X rises to level N" line appears at the end of
   // the encounter report, not emitted ahead of it at the top of the phase.
@@ -461,7 +525,12 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
 // MS:<name> and resolves here. Effects are parsed from the ability's `effect` text so new
 // monsters can be added as data without touching the engine.
 export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) {
-  narrate(narrative, `  ✨ ${actor.name} uses **${sp.name}**!${sp.flavour ? ` "${sp.flavour}"` : ''}`);
+  narrate(narrative, {
+    kind: 'a fighter uses a power',
+    actorName: actor.name,
+    spName: sp.name,
+    wordsIfSpFlavour: sp.flavour ? ` "${sp.flavour}"` : '',
+  });
   const eff = String(sp.effect || '');
   let dealt = 0;
   // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — its tier's base + ⌈melee/2⌉)
@@ -473,10 +542,13 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
     if (/hits twice/i.test(eff)) d *= 2;
     dealt = pcTakeHit(turnContext, foe, d, narrative, actor.name, sp.name);
     if (dealt)
-      narrate(
-        narrative,
-        `  ${sp.name} tears into ${foe.name} for ${dealt} damage. (HP ${Math.max(0, Math.round(foe.hp))})`,
-      );
+      narrate(narrative, {
+        kind: 'a power tears into the foe',
+        spName: sp.name,
+        foeName: foe.name,
+        dealt,
+        foeHp: Math.max(0, Math.round(foe.hp)),
+      });
   }
   // ── Self-healing ──
   let heal = 0;
@@ -493,15 +565,20 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
   if (heal > 0 && actor._selfHealUsed) {
     heal = 0;
     if (dealt === 0)
-      narrate(
-        narrative,
-        `  The ${actor.name} reaches for its own wounds again — but that well is dry; it has already drawn on it this fight.`,
-      );
+      narrate(narrative, {
+        kind: 'the guardian reaches for its own wounds again but the well is dry',
+        actorName: actor.name,
+      });
   }
   if (heal > 0) {
     actor._selfHealUsed = true;
     actor.hp = Math.min(actor.maxHp, actor.hp + heal);
-    narrate(narrative, `  The ${actor.name} knits its wounds for ${heal}. (HP ${dispFloor(actor.hp)})`);
+    narrate(narrative, {
+      kind: 'the guardian knits its wounds',
+      actorName: actor.name,
+      heal,
+      actorHp: dispFloor(actor.hp),
+    });
   }
   // ── Lost actions ──
   let stun = 0;
@@ -522,13 +599,20 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
         foe.status.stun = (foe.status.stun || 0) + stun;
       })
     )
-      narrate(
-        narrative,
-        `  ${foe.name} reels from the blow — ${stun} action${stun !== 1 ? 's' : ''} will be lost from the next round.`,
-      );
+      narrate(narrative, {
+        kind: 'the foe reels from the blow, losing actions',
+        foeName: foe.name,
+        stun,
+        stunPlural: stun !== 1 ? 's' : '',
+      });
     else {
       foe.status.stun = (foe.status.stun || 0) + stun;
-      narrate(narrative, `  ${foe.name} is caught helpless — ${stun} action${stun !== 1 ? 's' : ''} lost.`);
+      narrate(narrative, {
+        kind: 'the foe is caught helpless, losing actions',
+        foeName: foe.name,
+        stun,
+        stunPlural: stun !== 1 ? 's' : '',
+      });
     }
   }
   // ── To-hit penalties ──
@@ -542,10 +626,10 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
         foe.status.hitPenalty = (foe.status.hitPenalty || 0) + pen;
       })
     )
-      narrate(narrative, `  ${foe.name} is thrown off balance — −${pen}% to hit from the next round.`);
+      narrate(narrative, { kind: 'the foe is thrown off balance from the next round', foeName: foe.name, pen });
     else {
       foe.status.hitPenalty = (foe.status.hitPenalty || 0) + pen;
-      narrate(narrative, `  ${foe.name} is thrown off balance (−${pen}% to hit).`);
+      narrate(narrative, { kind: 'the foe is thrown off balance', foeName: foe.name, pen });
     }
   }
   // ── Stat swings ──
@@ -559,37 +643,49 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
     };
     const _now = Math.max(0, pcHitSkill(foe, 'melee') - 1);
     if (dealt > 0 && pcDeferEffect(foe, _chill))
-      narrate(narrative, `  ${foe.name}'s guard is beaten down — Melee ${_now} next round.`);
+      narrate(narrative, { kind: "the foe's guard is beaten down next round", foeName: foe.name, now: _now });
     else {
       _chill();
-      narrate(narrative, `  ${foe.name}'s guard is beaten down — Melee now ${_now}.`);
+      narrate(narrative, { kind: "the foe's guard is beaten down now", foeName: foe.name, now: _now });
     }
   }
   const bm = eff.match(/gains \+(\d+) melee/i);
   if (bm) {
     actor.melee = (actor.melee || 0) + parseInt(bm[1]);
-    narrate(narrative, `  The ${actor.name}'s Melee surges to ${actor.melee}!`);
+    narrate(narrative, { kind: "the guardian's melee surges", actorName: actor.name, actorMelee: actor.melee });
   }
   // ── Lingering harm ──
   const dm = eff.match(/takes (\d+) dmg at start of each round for (\d+) rounds/i);
   if (dm) {
     const _e = pcPushDot(foe, parseInt(dm[1]), parseInt(dm[2]), sp.name);
     if (_e)
-      narrate(
-        narrative,
-        `  ${sp.name} festers on ${foe.name} — ${_e.dmg} a round for ${_e.rounds} round${_e.rounds !== 1 ? 's' : ''}.`,
-      );
+      narrate(narrative, {
+        kind: 'a power festers on the foe',
+        spName: sp.name,
+        foeName: foe.name,
+        eDmg: _e.dmg,
+        eRounds: _e.rounds,
+        eRoundsPlural: _e.rounds !== 1 ? 's' : '',
+      });
   }
   // ── Wards and shields ──
   const rf = eff.match(/reflects (\d+) dmg/i);
   if (rf) {
     actor.status.reflect = (actor.status.reflect || 0) + parseInt(rf[1]);
-    narrate(narrative, `  Every blow against the ${actor.name} will bite back for ${actor.status.reflect}.`);
+    narrate(narrative, {
+      kind: 'every blow against the guardian will bite back',
+      actorName: actor.name,
+      actorStatusReflect: actor.status.reflect,
+    });
   }
   const ab = eff.match(/absorbs next (\d+) dmg/i);
   if (ab) {
     actor.status.absorb = (actor.status.absorb || 0) + parseInt(ab[1]);
-    narrate(narrative, `  A ward shrouds the ${actor.name}, ready to drink ${actor.status.absorb} damage.`);
+    narrate(narrative, {
+      kind: 'a ward shrouds the guardian',
+      actorName: actor.name,
+      actorStatusAbsorb: actor.status.absorb,
+    });
   }
   if (/ignores all armour/i.test(eff)) foe.status.incomingDmgBonus = (foe.status.incomingDmgBonus || 0) + 3;
   // ── Halving (Sept 2026: replaced Finger of Death's 10% instant kill) — a chance to cut the
@@ -598,39 +694,44 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
   if (hv && foe.hp > 1 && kcRng() * 100 < parseInt(hv[1])) {
     const _cut = Math.floor(foe.hp / 2);
     foe.hp -= _cut;
-    narrate(
-      narrative,
-      `  ☠ Death's touch takes hold — ${foe.name}'s strength is torn in half (−${_cut}). (HP ${Math.max(0, Math.round(foe.hp))})`,
-    );
+    narrate(narrative, {
+      kind: "death's touch tears the foe's strength in half",
+      foeName: foe.name,
+      cut: _cut,
+      foeHp: Math.max(0, Math.round(foe.hp)),
+    });
   }
   // ── Instant kill ──
   const ik = eff.match(/(\d+)% instant kill/i);
   if (ik && kcRng() * 100 < parseInt(ik[1])) {
     foe.hp = 0;
-    narrate(narrative, `  ☠ ${foe.name} is struck down where they stand!`);
+    narrate(narrative, { kind: 'the foe is struck down where they stand', foeName: foe.name });
   }
   // A demigod was still routed by a Banshee a quarter of the time. It is now a real contest (see
   // pcCourageChance): nerve comes from martial mastery, temper and faith, and the creature's own
   // stature sets how hard it presses.
   if (/courage test or flee/i.test(eff) && !foe.neverFlees) {
     if (foe.arm && foe.arm.stunImmune) {
-      narrate(narrative, `  ${foe.name} cannot be gripped by it — the terror washes over them and passes.`);
+      narrate(narrative, { kind: 'the foe cannot be gripped by it', foeName: foe.name });
     } else {
       const _tc = pcCourageChance(foe, actor),
         _tr = d100();
-      narrate(
-        narrative,
-        `  ${foe.name} must hold their nerve (${_tc}% to break) [roll ${_tr} ${_tr <= _tc ? '✗' : '✓'}].`,
-      );
+      narrate(narrative, {
+        kind: 'the foe must hold their nerve',
+        foeName: foe.name,
+        tc: _tc,
+        tr: _tr,
+        trTcMark: _tr <= _tc ? '✗' : '✓',
+      });
       if (_tr <= _tc) {
         state.fledBy = foe;
-        narrate(narrative, `  ${foe.name} is overcome with sheer terror and flees!`);
-      } else narrate(narrative, `  ${foe.name} steels their nerve.`);
+        narrate(narrative, { kind: 'the foe is overcome with sheer terror', foeName: foe.name });
+      } else narrate(narrative, { kind: 'the foe steels their nerve', foeName: foe.name });
     }
   }
   if (/flee chance/i.test(eff)) {
     foe.status.fleePenalty = (foe.status.fleePenalty || 0) + 30;
-    narrate(narrative, `  ${foe.name} feels dragged towards the creature — escape will be far harder.`);
+    narrate(narrative, { kind: 'the foe feels dragged towards the creature', foeName: foe.name });
   }
   // ── Rebirth (Phoenix) — banked, spent if the creature is felled ──
   if (/rebirth/i.test(sp.name || '')) actor._rebirth = true;

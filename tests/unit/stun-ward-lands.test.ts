@@ -7,9 +7,10 @@
 // Level 1 (unit): the functions called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
 import { expect, test } from 'vitest';
+import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 
-const { call, base, MON, pinned } = await personalCombatEngine();
+const { call, base, MON, pinned, wordsOf } = await personalCombatEngine();
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
 const ITEMS = ALL_MAGIC_ITEMS_P as { name: string }[];
 const item = (n: string) => ITEMS.find((i) => i.name === n);
@@ -52,13 +53,13 @@ test('the stun items were read', () => {
 test('Psychic Blast, cast with the initiative: the immune guardian still acts this round', () => {
   const h = hero();
   const g = immune();
-  const n: string[] = [];
+  const n: NarrativeLine[] = [];
   pinned(0.01, () => call('pcCastCombatSpell', h, g, 'Psychic Blast', n, st()));
   expect(g.status.stun, 'Psychic Blast does not hold a stun-immune guardian').toBe(0);
-  const n2: string[] = [];
+  const n2: NarrativeLine[] = [];
   pinned(0.5, () => call('pcAct', g, h, n2, st()));
-  expect(n2.join('\n'), '…which acts the same round').not.toMatch(/stunned and cannot act/);
-  expect(n.join('\n'), '…and the report says the blast found no hold').toMatch(/cannot be held/);
+  expect(wordsOf(n2).join('\n'), '…which acts the same round').not.toMatch(/stunned and cannot act/);
+  expect(wordsOf(n).join('\n'), '…and the report says the blast found no hold').toMatch(/cannot be held/);
 });
 
 test('Psychic Blast still holds a guardian without the ward', () => {

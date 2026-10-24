@@ -34,12 +34,23 @@
 // emit"), and the GM's log is stored with every line's words, in the form above: a fact never reaches the store. A
 // battle's lines take their tiers, and its losses tally its place, from those words, in the views too (emitBattle).
 //
-// It also holds the helpers that write lines: a fight's narrative (narrate, narrateTo, narrateAll, narrateAt,
-// takeBackLinesFrom; emitNarrLine writes it out with the fight's event, FightLine), a line to the hero or the province
+// Each kind of fact has its audience, written once beside it in its area's module (Decision 6): the fight's, for most
+// of a fight's lines, or its hero's realm alone (THE_AUDIENCE_OF_EACH_KIND, which emitNarrLine reads).
+//
+// It also holds the helpers that write lines: a fight's narrative (narrate, narrateAll, narrateAt, takeBackLinesFrom;
+// emitNarrLine writes it out with the fight's event, FightLine, or its hero's realm alone), a line to the hero or the province
 // owner it happened to (notifyTarget, notifyProvinceOwner), a private line with a public twin (logSplit), and the
 // placement of the skill rises held back to the end of the phase (writeDeferredSkillLines).
 import type { TurnContext } from './context.ts';
-import type { TheFactOfABattlesLine } from '../battle/the-facts-a-battles-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE,
+  type TheFactOfABattlesLine,
+} from '../battle/the-facts-a-battles-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE,
+  type TheFactOfAFightsLineForItsHerosRealmAlone,
+  type TheFactOfAPersonalCombatsLine,
+} from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 
 /** An event's hero when the line is the deed of the hero whose order is resolving, whoever he is: emit files it under
  *  him only when the line already reaches his realm, else under no hero. The area rows of P1-12c replace it with the
@@ -47,7 +58,29 @@ import type { TheFactOfABattlesLine } from '../battle/the-facts-a-battles-lines-
 export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolving';
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
-export type LineFact = TheFactOfABattlesLine;
+export type LineFact = TheFactOfABattlesLine | TheFactOfAPersonalCombatsLine;
+
+/** Who may read a kind of line, as its area's module says beside the kind: the fight's audience (whoever the fight's
+ *  lines are written for), or its hero's realm alone (a line that names the realm: a hero's hit-point rise in a fight,
+ *  what the man across the field must not learn). */
+export type TheAudienceOfAKindOfLine = "the fight's" | "its hero's realm alone";
+
+/** Each kind's audience, of every area's kinds. */
+const THE_AUDIENCE_OF_EACH_KIND: Readonly<Record<LineFact['kind'], TheAudienceOfAKindOfLine>> = {
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE,
+};
+
+/** Whether a fight's line is for its hero's realm alone, by its kind's audience. */
+function isForItsHerosRealmAlone(fact: LineFact): fact is TheFactOfAFightsLineForItsHerosRealmAlone {
+  return THE_AUDIENCE_OF_EACH_KIND[fact.kind] === "its hero's realm alone";
+}
+
+/** Whether a line of a fight's narrative is for everyone in the fight: its words, or a fact of a kind whose audience is
+ *  the fight's (not its hero's realm alone). */
+export function isALineForEveryoneInTheFight(line: NarrativeLine): boolean {
+  return typeof line === 'string' || !isForItsHerosRealmAlone(line);
+}
 
 /** A battle's line whose tier ('k' key or 'd' detail) the views work out from the words of the battle's lines, as
  *  emitBattle did before P1-12c3 (theTurnsLinesInWords, src/views/prose/the-words-of-each-line.ts). The GM's log is
@@ -134,11 +167,9 @@ export interface LogLine {
   fact?: LineFact;
 }
 
-/** A line of a battle's or a duel's narrative: shown to everyone there (narrate: its words, or the fact they are
- *  written from), or (an object with onlyPlayer) to one realm alone (narrateTo). emitNarrLine writes each into the GM's
- *  log in order. */
-export type NarrativeLine =
-  string | LineFact | { text: string; onlyPlayer?: number | null | undefined; charId?: number | null | undefined };
+/** A line of a battle's or a duel's narrative: its words, or the fact they are written from. emitNarrLine writes each
+ *  into the GM's log in order, for everyone in the fight or, by its kind, for its hero's realm alone. */
+export type NarrativeLine = string | LineFact;
 
 /** The hero a line naming THE_HERO_WHOSE_ORDER_IS_RESOLVING is filed under: that hero, but only when the line already
  *  reaches his realm by its audience (told to it, its deed, seen by the world or seen there; a battle's line reaches
@@ -217,24 +248,15 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
 
 // ── A FIGHT'S NARRATIVE ────
 // A battle's or a duel's narrative is an ordered list of lines (it is spliced, searched and counted by index), written
-// out in order once the fight is over (emitBattle, emitNarrLine). narrate adds a line for everyone in the fight;
-// narrateTo a line for one realm alone (a hero's skill rising, his hit points: what the man across the field must not
-// learn), filed under that realm's hero. Lines already written move only through narrateAll, narrateAt and
-// takeBackLinesFrom, each line as it is, so a line for one realm stays that realm's.
+// out in order once the fight is over (emitBattle, emitNarrLine). narrate adds a line: its words, or the fact they are
+// written from. A fact of a kind whose audience is its hero's realm alone (a hero's hit points rising: what the man
+// across the field must not learn) is written for that realm alone, filed under its hero; every other line is for
+// everyone in the fight. Lines already written move only through narrateAll, narrateAt and takeBackLinesFrom, each
+// line as it is, so a line for one realm stays that realm's.
 
-/** Adds a line for everyone in the fight: its words, or the fact they are written from. */
-export function narrate(narrative: NarrativeLine[], line: string | LineFact): void {
+/** Adds a line to the fight: its words, or the fact they are written from. */
+export function narrate(narrative: NarrativeLine[], line: NarrativeLine): void {
   narrative.push(line);
-}
-
-/** Adds a line for one realm alone, filed under its hero. */
-export function narrateTo(
-  narrative: NarrativeLine[],
-  realm: number,
-  heroId: number | null | undefined,
-  text: string,
-): void {
-  narrative.push({ text, onlyPlayer: realm, charId: heroId });
 }
 
 /** Adds lines already written for a fight, each as it is (for everyone, or for one realm alone): a duel's narrative
@@ -243,10 +265,10 @@ export function narrateAll(narrative: NarrativeLine[], lines: readonly Narrative
   narrative.push(...lines);
 }
 
-/** Adds lines for everyone in the fight before the line at `index` (a host's forming-up before "Battle for …", a plea
- *  before the blow it begged against). */
-export function narrateAt(narrative: NarrativeLine[], index: number, texts: readonly string[]): void {
-  narrative.splice(index, 0, ...texts);
+/** Adds lines to the fight before the line at `index` (a host's forming-up before "Battle for …", a plea before the
+ *  blow it begged against). */
+export function narrateAt(narrative: NarrativeLine[], index: number, lines: readonly NarrativeLine[]): void {
+  narrative.splice(index, 0, ...lines);
 }
 
 /** Takes the lines from `index` on out of a fight's narrative (a killing blow that never landed), and returns them. */
@@ -257,39 +279,34 @@ export function takeBackLinesFrom(narrative: NarrativeLine[], index: number): Na
 // ── PRIVATE LINES INSIDE A SHARED NARRATIVE ────
 // A battle or duel narrative is written once and then shown to EVERY participant — that is the
 // whole point of a blow-by-blow. But a handful of lines in it belong to one realm alone: a hero's
-// skill rising through experience, the mastery that crossing 6+ unlocks, and the wage rise that
-// follows. An enemy commander has no way of knowing that the man across the field just got better
-// at archery, and reading it told them his exact skill level for free.
+// hit points rising in the fight, the surgeons' word to a fallen duellist's own realm. An enemy
+// commander has no way of knowing that the man across the field just got harder to kill, and
+// reading it told them for free.
 //
-// So a narrative array may now hold OBJECTS as well as strings (narrateTo makes them):
-// { text:'…', onlyPlayer:<realm index>, charId:<that realm's character> }
-// and, from P1-12c3, facts (a LineFact, with its kind), filed with the fight's event like a string.
-// Every consumer of a narrative array routes each entry through emitNarrLine(), which files a
-// private entry to that realm alone (told to it alone, seen by nobody else, no heroes spill) and
-// every other line with the fight's own event (FightLine: its audience, province, phase, heroes,
-// battle). Because it is filed in sequence with the rest of the narrative, the owner still reads
-// it exactly where it happened in the fight. narrText() is for the rare consumer that needs the
-// raw string (splice-point searches, etc.).
+// So such a line is a fact whose kind's audience is its hero's realm alone (P1-12c4; each area's
+// module says so beside the kind), naming that realm and, if it has one, its hero. Every consumer of
+// a narrative array routes each entry through emitNarrLine(), which files such a line to that realm
+// alone (told to it alone, seen by nobody else, no heroes spill), under its hero (else the fight's),
+// and every other line with the fight's own event (FightLine: its audience, province, phase, heroes,
+// battle). Because it is filed in sequence with the rest of the narrative, the owner still reads it
+// exactly where it happened in the fight. narrText() is for the rare consumer that needs a line's
+// words in the engine (splice-point searches): a string line's.
 export function emitNarrLine(turnContext: TurnContext, line: NarrativeLine, fight: FightLine): void {
-  if (typeof line === 'object' && 'kind' in line) {
+  if (typeof line === 'string') {
+    emit(turnContext, { ...fight, text: line });
+    return;
+  }
+  if (!isForItsHerosRealmAlone(line)) {
     emit(turnContext, { ...fight, fact: line });
     return;
   }
-  if (typeof line === 'object') {
-    if (line.onlyPlayer == null) {
-      emit(turnContext, { ...fight, text: line.text });
-      return;
-    }
-    emit(turnContext, {
-      ...fight,
-      text: line.text,
-      audience: { realms: [line.onlyPlayer], actor: null },
-      heroes: null,
-      hero: line.charId ?? fight.hero,
-    });
-    return;
-  }
-  emit(turnContext, { ...fight, text: line });
+  emit(turnContext, {
+    ...fight,
+    fact: line,
+    audience: { realms: [line.realm], actor: null },
+    heroes: null,
+    hero: ('hero' in line ? line.hero : undefined) ?? fight.hero,
+  });
 }
 
 // ── TARGET NOTIFICATIONS ────

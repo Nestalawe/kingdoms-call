@@ -1,12 +1,19 @@
 // The report-leak check (tests/lib/report-leaks.ts, P1-04c) on a small made-up turn: it passes, each planted leak
 // breaks exactly the check meant to catch it, saying what leaked, and what the rules allow passes. The audience check
 // (P1-12b3, P1-12's Decision 12) on a made-up turn of its own, with the events it was emitted from and its sight: each
-// line read that no event admits is a breach, and what the audience model admits passes. Level 1 (unit): pure
+// line read that no event admits is a breach, and what the audience model admits passes; and the check of the kinds for
+// one realm alone (P1-12c4) on the same turn. Level 1 (unit): pure
 // functions on made-up values; turn-fuzz, report-privacy and the balance matrix run the same checks over whole games
 // (level 3; the audience check where the turn's events are recorded: the matrix's every-realm half).
 import { describe, expect, test } from 'vitest';
 import { checkLeaks, checkTurn, type SavedState, type Turn } from '../lib/invariants.ts';
-import { LEAK_CHECKS, type EventAsEmitted, type Perception, type RealmReport } from '../lib/report-leaks.ts';
+import {
+  KINDS_FOR_ONE_REALM_ALONE,
+  LEAK_CHECKS,
+  type EventAsEmitted,
+  type Perception,
+  type RealmReport,
+} from '../lib/report-leaks.ts';
 
 // Three realms. Ashmark (0) and Brightvale (1) have met; neither has met Coldharbour (2), whose hero Corin cast
 // Invisibility in phase 1 of the turn just played (turn 7: the state after it is turn 8). Ashmark and Brightvale have
@@ -100,6 +107,7 @@ test('every leak check has a planted leak below', () => {
     'an unmet realm',
     'an unseen hero',
     'a line its audience does not admit',
+    'a line for one realm alone',
   ]);
 });
 
@@ -396,6 +404,9 @@ const ev = (
     heroes?: number[] | null;
     spy?: boolean;
     type?: string;
+    /** The kind of fact its line records, and the realm the fact names (left out: none). */
+    kind?: string;
+    factsRealm?: number;
   } = {},
 ): EventAsEmitted => ({
   type: place.type ?? 'system',
@@ -408,6 +419,8 @@ const ev = (
   heroRealmThen: place.heroRealmThen ?? null,
   heroes: place.heroes ?? null,
   spy: place.spy ?? false,
+  kind: place.kind ?? null,
+  factsRealm: place.factsRealm ?? null,
 });
 const MOVES = 'Aldo the Bold moves to Fenwick.';
 const RESTS = 'Bera the Wise rests.';
@@ -726,5 +739,102 @@ describe('the audience check: every line a realm reads comes from an event whose
         }),
       ),
     ).toEqual(['a line its audience does not admit']);
+  });
+});
+
+// ── A LINE FOR ONE REALM ALONE (P1-12c4) ────
+// P1-12's Decision 6: a fight's line of a kind that is its hero's realm's alone (the surgeons' word to a fallen duellist's
+// realm, a hero's hit-point rise) is read by that realm alone, whatever audience the engine gave it. On the audience
+// check's made-up turn: Aldo (Ashmark) falls in the duel of the battle for Fenwick, and the surgeons come too late.
+const SURGEONS = '🩹 Battlefield Surgery: the surgeons reach Aldo the Bold too late. (40% [roll 77 ✗])';
+const forOneRealmAlone = LEAK_CHECKS.find((c) => c.name === 'a line for one realm alone')?.check;
+/** The surgeons' line, recorded with `audience` (Ashmark's alone, or, planted, the battle's). */
+const surgeons = (audience: EventAsEmitted['audience']) =>
+  ev(SURGEONS, 2, audience, {
+    province: 1,
+    hero: 10,
+    heroes: [10, 11],
+    type: 'combat',
+    kind: 'the surgeons reach a fallen duellist too late, for his realm alone',
+    factsRealm: 0,
+  });
+
+describe('a line for one realm alone is read by that realm and no other', () => {
+  test('its own list names the two kinds for one realm alone', () => {
+    expect(KINDS_FOR_ONE_REALM_ALONE).toEqual([
+      "a hero's hit points rise in a fight, for his realm alone",
+      'the surgeons reach a fallen duellist too late, for his realm alone',
+    ]);
+  });
+
+  test('read by its own realm, with its own audience: no breach', () => {
+    const t = perceived((_, r, p) => {
+      p.events.push(surgeons({ realms: [0], actor: null }));
+      read(r, 0, SURGEONS, 2);
+    });
+    expect(checkLeaks(t)).toEqual([]);
+  });
+
+  test.each<[string, (t: Turn, r: RealmReport[], p: Perception) => void, string]>([
+    [
+      "given the battle's audience, read by the realm across the field (the audience check admits it)",
+      (_, r, p) => {
+        p.events.push(surgeons({ realms: [0, 1], seen: 'battle' }));
+        read(r, 0, SURGEONS, 2);
+        read(r, 1, SURGEONS, 2);
+      },
+      'realm 1 reads a line for realm 0 alone at lastTurnLog[10]',
+    ],
+    [
+      'given the world, read by another realm in its province events',
+      (_, r, p) => {
+        p.events.push(surgeons({ seen: 'world' }));
+        read(r, 1, SURGEONS, 2, 'provinceEvents');
+      },
+      'realm 1 reads a line for realm 0 alone at provinceEvents[0]',
+    ],
+  ])('%s', (_what, plant, at) => {
+    const breaches = checkLeaks(perceived(plant));
+    expect(breaches.map((b) => b.check)).toEqual(['a line for one realm alone']);
+    expect(breaches[0]?.what[0]).toMatch(new RegExp(`^${at.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: "`));
+  });
+
+  // As another realm's private line in a spy's feed (P1-12a1), its KNOWN_BREACHES entry lets it through, until P1-23.
+  test("in another realm's spy feed it is let through by its entry; in the chronicle it is not", () => {
+    const feed = perceived((_, r, p) => {
+      p.events.push({ ...surgeons({ seen: 'there' }), province: 2, phase: 3 });
+      r[1] = { realm: 1, report: { ...of(r, 1), spyActivity: [{ provId: 2, lines: [{ phase: 3, text: SURGEONS }] }] } };
+    });
+    expect(forOneRealmAlone?.(feed)).toEqual([
+      `realm 1 reads a line for realm 0 alone at spyActivity[0].lines[0]: "${SURGEONS}"`,
+    ]);
+    expect(leaks(feed)).toEqual([]);
+  });
+
+  test('let through: Clairvoyance, the same words from a line for everyone, the realm its hero joined, and a harness that records no events', () => {
+    const scried = perceived((_, r, p) => {
+      p.events.push(surgeons({ realms: [0, 1], seen: 'battle' }));
+      read(r, 1, SCRY + SURGEONS, 2);
+    });
+    expect(forOneRealmAlone?.(scried)).toEqual([]);
+    const shared = perceived((_, r, p) => {
+      p.events.push(surgeons({ realms: [0], actor: null }));
+      p.events.push(ev(SURGEONS, 2, { realms: [0, 1], seen: 'battle' }, { province: 1, hero: 10, type: 'combat' }));
+      read(r, 1, SURGEONS, 2);
+    });
+    expect(forOneRealmAlone?.(shared)).toEqual([]);
+    // the realm the hero it is filed under served this turn (he joined it): it reads his own lines (the audience model)
+    const joined = perceived((t, r, p) => {
+      char(t.after, 10).player = 1;
+      p.events.push(surgeons({ realms: [0], actor: null }));
+      read(r, 1, SURGEONS, 2);
+    });
+    expect(forOneRealmAlone?.(joined)).toEqual([]);
+    const unrecorded = perceived((t, r, p) => {
+      p.events.push(surgeons({ realms: [0, 1], seen: 'battle' }));
+      read(r, 1, SURGEONS, 2);
+      delete t.perception;
+    });
+    expect(forOneRealmAlone?.(unrecorded)).toEqual([]);
   });
 });

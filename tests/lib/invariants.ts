@@ -295,6 +295,11 @@ export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string
     line: /^realm \d+ reads, through its spy, a line its audience keeps from it at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
     why: "Another realm's private line in the report's spy activity section: waits for P1-23",
   },
+  {
+    check: 'a line for one realm alone',
+    line: /^realm \d+ reads a line for realm \d+(?:, \d+)* alone at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
+    why: "Another realm's private line in the report's spy activity section: waits for P1-23",
+  },
 ];
 const known = (check: string, line: string) => KNOWN_BREACHES.some((k) => k.check === check && k.line.test(line));
 

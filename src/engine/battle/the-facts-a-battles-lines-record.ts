@@ -1,9 +1,11 @@
 // ── THE FACTS A BATTLE'S LINES RECORD (plan P1-12c3: P1-12's Decisions of 2026-10-24, Decision 2) ────
 // A typed line records a fact, and the views write its words after perception (src/views/prose/the-words-of-a-
 // battles-lines.ts): the engine no longer writes those words itself. Each kind below is one sentence's sense, with the
-// fields its words are made from, and its audience (Decision 6). Rows c4 to c6 add the rest of the fights' lines.
+// fields its words are made from, and its audience (Decision 6: THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE, which
+// emitNarrLine reads). Rows c4 to c6 add the rest of the fights' lines.
 // LineFact (src/engine/turn/events-and-their-audiences.ts) is the union of every area's kinds; a kind with no words in
 // src/views/prose/ is a compile error there.
+import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 
 /** One unit of a force drawn up for battle, as its header row shows it. */
 export interface AUnitOfAForceDrawnUp {
@@ -44,4 +46,12 @@ export type TheFactOfABattlesLine = AForceDrawnUpForBattle | ABattlesLossesTalli
 /** The place of a battle's losses tally, as emitBattle files it. */
 export const THE_PLACE_OF_A_BATTLES_LOSSES_TALLY: ABattlesLossesTalliedFromItsLines = {
   kind: "a battle's losses, tallied from its lines",
+};
+
+/** Each kind's audience: the fight's (its type says so, so a kind given another is a compile error). */
+export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
+  Record<TheFactOfABattlesLine['kind'], Extract<TheAudienceOfAKindOfLine, "the fight's">>
+> = {
+  'a force drawn up for battle': "the fight's",
+  "a battle's losses, tallied from its lines": "the fight's",
 };

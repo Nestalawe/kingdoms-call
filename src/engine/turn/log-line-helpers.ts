@@ -30,9 +30,9 @@ export const telSpell = (turnContext, ch, spell, school, lvl, chance, roll, ctx)
   } catch (_te) {}
 };
 
-// A fight's narrative may hold objects as well as strings ({ text, onlyPlayer, charId }: a line for one realm alone;
-// events-and-their-audiences.ts, narrateTo). narrText() is for the rare consumer that needs the raw string
-// (splice-point searches, etc.).
+// A fight's narrative holds words (strings) and facts, whose words the views write (events-and-their-audiences.ts,
+// NarrativeLine; P1-12c3, P1-12c4). narrText() is for the rare consumer that needs a line's raw string (splice-point
+// searches, etc.): a fact has no words in the engine, so it is handed back as it is (no string).
 export function narrText(line) {
   return line && typeof line === 'object' && line.text != null ? line.text : line;
 }

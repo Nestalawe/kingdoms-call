@@ -11,7 +11,7 @@
 import { expect, test } from 'vitest';
 import { personalCombatEngine, type Character, type Combatant, type FightResult } from '../lib/personal-combat.ts';
 
-const { call, turnContext } = await personalCombatEngine();
+const { call, turnContext, wordsOf } = await personalCombatEngine();
 const G = turnContext.G as { characters: Character[] };
 let nextId = 9300;
 type Hero = Character & { hp: number; maxHp: number; hpEarned: number };
@@ -68,7 +68,7 @@ test('a short, even fight that nobody wins: both are wounded, both roll, both ha
   expect(a.hpEarned, 'a wounded hero who did not win hardens (Aldric)').toBeGreaterThan(0);
   expect(b.hpEarned, '…and so does the other (Brannoc)').toBeGreaterThan(0);
   expect(
-    res.narrative.some((l) => /hardened by the wounds of the fight/.test(typeof l === 'string' ? l : l.text)),
+    wordsOf(res.narrative).some((l) => /hardened by the wounds of the fight/.test(l)),
     "the fight report says so (to the hero's own realm: a private line since 2026-10-12, unit/hp-gain-private)",
   ).toBe(true);
 });

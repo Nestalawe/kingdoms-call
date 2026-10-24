@@ -5,7 +5,10 @@
 // - an unseen hero: a hero under Invisibility is seen by another realm (only Clairvoyance pierces it);
 // - a line its audience does not admit (P1-12b3, P1-12's Decision 12): a line a realm reads comes from no event of the
 //   turn whose audience admits it, by the audience model stated here (linesTheirAudienceDoesNotAdmit), apart from the
-//   views' own (playerEvents); where the harness records the turn's events (Turn.perception).
+//   views' own (playerEvents); where the harness records the turn's events (Turn.perception);
+// - a line for one realm alone (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
+//   (KINDS_FOR_ONE_REALM_ALONE, this check's own list) is read by another realm, whatever audience the engine gave it;
+//   where the harness records the turn's events.
 // The first three read the report's text and today's state and log metadata (an entry's actor and targets); what they
 // can't see yet is in tests/README.md.
 //
@@ -27,6 +30,14 @@ export const PRIVATE_LINES: readonly { name: string; line: RegExp }[] = [
   },
   { name: 'Phantasmal Armies', line: /✨ (?<hero>.+?) conjures phantasmal duplicates/ },
   { name: 'Phantom Host', line: /✨ (?<hero>.+?) conjures a Phantom Host/ },
+];
+
+/** The kinds of a fight's line that are one realm's alone (P1-12c4, P1-12's Decision 6), listed here apart from the
+ *  engine's audience of each kind: a hero's hit-point rise in a fight, and the surgeons' word to a fallen duellist's own
+ *  realm. Each names its realm (its fact's `realm`). */
+export const KINDS_FOR_ONE_REALM_ALONE: readonly string[] = [
+  "a hero's hit points rise in a fight, for his realm alone",
+  'the surgeons reach a fallen duellist too late, for his realm alone',
 ];
 
 /** A chronicle line scried by Clairvoyance starts with this. The rulebook gives the caster everything that happens to
@@ -310,6 +321,10 @@ export interface EventAsEmitted {
   heroRealmThen: unknown;
   heroes: unknown[] | null;
   spy: boolean;
+  /** The kind of fact its line records (null: a line written with its words). */
+  kind?: unknown;
+  /** The realm its fact names (a line for one realm alone: KINDS_FOR_ONE_REALM_ALONE), else null. */
+  factsRealm?: unknown;
 }
 /** What perception read besides the world: the turn's events, and its sight (resolveTurn's whatTheReportsRead). */
 export interface Perception {
@@ -473,10 +488,47 @@ function linesTheirAudienceDoesNotAdmit(t: Turn): string[] {
   });
 }
 
+/** No realm reads a line of a kind that is another realm's alone (KINDS_FOR_ONE_REALM_ALONE): such a line is read by
+ *  the realm its fact names, or one the hero it is filed under served this turn (realmsServed: he joined it, or a Charm
+ *  lent him to it), and by no other, whatever audience the engine gave it, so a line of one given the fight's audience
+ *  shows (which the audience check, taking the audience as given, lets through). A line a realm reads (the chronicle,
+ *  province events, spy activity: LINES) whose every event of the turn with its words and phase is of such a kind for
+ *  other realms is a breach. Clairvoyance's lines are let through (CLAIRVOYANCE). Runs where the harness records the
+ *  turn's events (Turn.perception). */
+function linesForOneRealmAloneReadByAnother(t: Turn): string[] {
+  const p = t.perception;
+  if (!p) return [];
+  const key = (phase: number | null, text: string) => `${String(phase)}|${text}`;
+  const byLine = new Map<string, EventAsEmitted[]>();
+  for (const e of p.events) {
+    if (typeof e.text !== 'string') continue;
+    const k = key(phaseOf(e.phase), e.text);
+    byLine.set(k, [...(byLine.get(k) ?? []), e]);
+  }
+  const forOneRealm = (e: EventAsEmitted) => KINDS_FOR_ONE_REALM_ALONE.includes(String(e.kind));
+  /** Whether `realm` may read the line of `e`: the realm its fact names, or one its hero served this turn. */
+  const itsOwn = (e: EventAsEmitted, realm: number) => {
+    if (e.factsRealm === realm) return true;
+    const hero = t.after.characters.find((c) => c.id === e.hero) ?? t.before.characters.find((c) => c.id === e.hero);
+    return hero !== undefined && realmsServed(t, hero).has(realm);
+  };
+  return (t.reports ?? []).flatMap((r) =>
+    LINES.flatMap((path) => select(r.report, path)).flatMap(({ at, value }) => {
+      const text = textOf(value);
+      if (typeof text !== 'string' || text.startsWith(CLAIRVOYANCE)) return [];
+      const sources = byLine.get(key(phaseOf(record(value)['phase']), text)) ?? [];
+      if (!sources.length || !sources.every(forOneRealm) || sources.some((e) => itsOwn(e, r.realm))) return [];
+      const realms = [...new Set(sources.map((e) => String(e.factsRealm)))].join(', ');
+      return [`realm ${String(r.realm)} reads a line for realm ${realms} alone at ${at}: ${quote(text)}`];
+    }),
+  );
+}
+
 /** The leak checks, in the order they are checked. */
 export const LEAK_CHECKS: readonly { name: string; check: (t: Turn) => string[] }[] = [
   { name: "another realm's private line", check: privateLines },
   { name: 'an unmet realm', check: unmetRealms },
   { name: 'an unseen hero', check: unseenHeroes },
   { name: 'a line its audience does not admit', check: linesTheirAudienceDoesNotAdmit },
+  { name: 'a line for one realm alone', check: linesForOneRealmAloneReadByAnother },
 ];

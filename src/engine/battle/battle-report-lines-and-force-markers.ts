@@ -6,6 +6,7 @@ import {
   A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   emit,
   emitNarrLine,
+  isALineForEveryoneInTheFight,
   narrate,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
 } from '../turn/events-and-their-audiences.ts';
@@ -198,7 +199,7 @@ export function emitBattle(
       battle: { id: _bid, tier: A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES },
     });
   });
-  if (_lines.some((line) => typeof line !== 'object' || 'kind' in line || line.onlyPlayer == null))
+  if (_lines.some(isALineForEveryoneInTheFight))
     emit(turnContext, {
       ...fight,
       fact: THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
