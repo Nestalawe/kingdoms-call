@@ -4,7 +4,7 @@ import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { discSum } from '../discoveries.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ── RELATIONS AND CAPTURES (plan P1-08a: lifted out of resolveTurn) ────
 // Who is at war or allied with whom (G.relations, keyed "minIdx-maxIdx": see "DIPLOMACY" in resolveTurn), and what
@@ -14,8 +14,8 @@ import { emit } from '../turn/events-and-their-audiences.ts';
 // Every path that hands a province to a new realm goes through here. When the ground was another
 // player's, that player gets a line in their REALM EVENTS for the phase — who took it (hero and
 // realm) and how many units the conqueror was leading. A capture from neutral/unowned ground
-// notifies nobody. Filed with no hero (hero: 'none', as notifyProvinceOwner does) so the line never inherits the
-// conqueror's log context and never lands in a character section.
+// notifies nobody. Filed with no hero (hero: null, as notifyProvinceOwner does) so the line is never the
+// conqueror's and never lands in a character section.
 export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, byChar, _ph) {
   const { G } = turnContext;
   const pl = G.players[prev];
@@ -29,7 +29,7 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
     text: `✨ The consecration of ${prov.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
     audience: { actor: null, realms: [prev] },
     province: prov.id,
-    hero: 'none',
+    hero: null,
     phase: _ph ?? 'none',
     form: 'bare',
   });
@@ -102,7 +102,7 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
     text,
     audience: { actor: null, realms: [prev] },
     province: prov.id,
-    hero: 'none',
+    hero: null,
     phase: _ph ?? 'none',
     form: 'bare',
   });
@@ -159,6 +159,7 @@ export function applyEvilConquest(turnContext, cc, prov, pl) {
       type: 'combat',
       text: `⛓ Enslavement: ${cc.name} presses the beaten folk of ${prov.name} into service — a Green ${enType} joins the garrison in chains, but the province seethes (−1 tax for 3 turns).`,
       audience: { actor: cc.player, realms: [cc.player], seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   } else {
@@ -167,6 +168,7 @@ export function applyEvilConquest(turnContext, cc, prov, pl) {
         type: 'combat',
         text: `⛓ ${cc.name} would enslave ${prov.name}, but there are no humanoid folk here to press — the forces plunder instead.`,
         audience: { actor: cc.player, realms: [cc.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     const loot = Math.floor(
@@ -180,6 +182,7 @@ export function applyEvilConquest(turnContext, cc, prov, pl) {
         type: 'combat',
         text: `⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${loot}g seized immediately!`,
         audience: { actor: cc.player, realms: [cc.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }

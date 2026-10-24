@@ -17,7 +17,7 @@ import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM, skillLevel } from '../titles/perks.ts';
 import { discEff, discSum, gdActive, hasDisc } from '../discoveries.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
-import { emit, logSplit } from '../turn/events-and-their-audiences.ts';
+import { emit, logSplit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
@@ -41,6 +41,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       type: 'system',
       text: `${c.name} may pray, but only the anointed King can consecrate ground — the rite belongs to the crown alone.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -49,6 +50,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       type: 'system',
       text: `${c.name} kneels and prays, but the gods answer only Divine crowns — Consecration is not for this realm.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -57,6 +59,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       type: 'system',
       text: `${c.name}: only a province of your own realm can be consecrated — take and hold this land first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -73,6 +76,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       type: 'system',
       text: `${c.name}: the crown's own hearth was anointed at the coronation — its grace already shelters the throne and the lands in its shadow. The gods charge their servants to carry the light OUTWARD: consecrate a province beyond the home marches.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -82,6 +86,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       type: 'system',
       text: `${prov.name} is already consecrated — the ground is holy and needs no second blessing.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -98,6 +103,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       type: 'system',
       text: `${c.name}: ${prov.name} borders ${G.world.provinces[_adjConsecId]?.name || 'already-hallowed ground'} — two consecrated provinces may not lie side by side. Carry the light to ground set apart from your other holy lands.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -110,6 +116,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       type: 'system',
       text: `${c.name}: consecration flows from the White arts — learn White magic before you can sanctify ground.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -123,6 +130,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
           .join(', ') || '—'
       }). One must be lost or captured before you can hallow ${prov.name}. (Raise your White skill to consecrate more.)`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -133,6 +141,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
     type: 'explore',
     text: `✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and your fallen can be restored only here — they rise in the nearest consecrated province, which then gives up its consecration. If it is captured the consecration breaks at once and the conquerors are emboldened. (${_cList.length}/${_cLimit} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`,
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
     env: true,
   });
@@ -146,6 +155,7 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
       type: 'system',
       text: `${c.name}'s call goes unanswered — only the folk of a Good realm rise for their king unpaid.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -154,6 +164,7 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
       type: 'system',
       text: `${c.name}: only the KING's voice carries the Call to Arms.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -162,6 +173,7 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
       type: 'system',
       text: `${c.name}: the realm has already answered one Call to Arms this turn — the folk cannot muster twice in a season.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -171,6 +183,7 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
       type: 'system',
       text: `${c.name}: Call to Arms must name a province you control this phase.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -179,6 +192,7 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
       type: 'system',
       text: `${c.name}: only the humanoid folk of settled land answer a Call to Arms — ${ctaProv.name} has no villages to raise.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -211,6 +225,7 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
     type: 'hire',
     text: `📯 Call to Arms! The folk of ${ctaProv.name} answer their king — ${_ctaQ === 'Green' ? 'a Green' : 'an ' + _ctaQ} ${ctaType} joins the province garrison, free of wages this muster. (Once per turn.)`,
     audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: ctaProv.id,
   });
   return;
@@ -223,6 +238,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       type: 'system',
       text: `${c.name}: only a Neutral crown keeps the web of factors and go-betweens that Brokering requires.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -231,6 +247,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       type: 'system',
       text: `${c.name}: only the KING commands the realm's brokers.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -244,6 +261,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
         type: 'hire',
         text: `${c.name}'s brokers find no such hero within reach of the realm's agents.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -252,6 +270,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
         type: 'hire',
         text: `${bh.name} was only just released from service and will hear no offers this turn. Try again next turn.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     } // same rule as Hire Hero
@@ -266,6 +285,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
         type: 'hire',
         text: `${bh.name} will not treat with your brokers — the alignment gulf is too wide.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -274,6 +294,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
         type: 'hire',
         text: `${c.name} cannot afford ${bh.name} — needs ${bWage}g/turn.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -302,6 +323,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       type: 'hire',
       text: _brokerLine,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: bhProv.id,
     });
     // mirror into the brokered hero's own Chronicle section at the hire phase.
@@ -325,6 +347,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
         type: 'system',
         text: `${c.name}: your brokers can only reach provinces the realm has seen.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -333,6 +356,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
         type: 'system',
         text: `${c.name}: brokered intelligence costs 2g — the treasury cannot cover it.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -341,6 +365,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       type: 'system',
       text: `🤝 ${c.name}'s brokers buy word from ${sp2.name} (2g).`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     applySpySuccess(turnContext, c, sp2);
   } else {
@@ -348,6 +373,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       type: 'system',
       text: `${c.name}: Broker requires a target — a hero to hire or a province to buy word from.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   }
   return;
@@ -360,6 +386,7 @@ export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, 
     type: 'system',
     text: `${c.name}: ${_gone} is no more — Creatures and Monsters now come only by recruiting them where they live.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
   return;
 }
@@ -371,6 +398,7 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
       type: 'system',
       text: `${c.name} has neither the craft nor the stomach for grave-harvesting — only Undead realms keep corpse-carters.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -380,6 +408,7 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
       type: 'system',
       text: `${c.name} walks the field of ${prov.name}, but there are no battlefield dead here to raise.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -389,6 +418,7 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
       type: 'system',
       text: `${c.name}: the corpse-carters and grave-wights want their ${_hCost}g — the treasury cannot pay.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -408,6 +438,7 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
     type: 'hire',
     text: `💀 Harvest the Field — ${c.name}'s carters work the graves of ${prov.name}: ${hSkel.unitName} (${hSkel.quality}) rises to serve, no magic required. (${_hCost}g; upkeep 1g/turn.)`,
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   // Harvest the Field is the ONE way to raise the dead without any Necromancy — an Undead
@@ -420,6 +451,7 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
       type: 'hire',
       text: `⚠ ${c.name} has no Necromancy of their own — ${hSkel.unitName} will crumble to dust at the end of this turn unless it is handed to a character with at least Necromancy 1. The dead do not stand without a master, and a garrison is no master at all.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   resolveUnitGainInProvince(turnContext, c, prov, ph);
@@ -432,6 +464,7 @@ export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `${c.name} lacks the Druid mastery (7) to Awaken a Grove.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -442,6 +475,7 @@ export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `${c.name}: Awaken Grove works only while standing in an OWNED forest, jungle or wild (Creature or Monster) province.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -460,7 +494,7 @@ export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
     'explore',
     `🌳 ${c.name} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under your banner until the turn's end.`,
     `🌳 ${c.name}${realmTag(turnContext, c.player)} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under their banner until the turn's end.`,
-    { audience: { actor: c.player }, province: prov.id },
+    { audience: { actor: c.player }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, province: prov.id },
   );
   resolveUnitGainInProvince(turnContext, c, prov, ph);
   trySkillGain(turnContext, c, 'druid', SKILLGAIN_STD);
@@ -478,6 +512,7 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `${c.name} lacks the Druid mastery (9) to sound a Wild Calling.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -527,6 +562,7 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
       type: 'explore',
       text: `${c.name} sounds a Wild Calling, but nothing wild stands in ${prov.name} to answer it.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -536,6 +572,7 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
       type: 'explore',
       text: `🐾 ${c.name} sounds a Wild Calling over ${_wcCalled} wild creature${_wcCalled !== 1 ? 's' : ''} in ${prov.name} — not one of them breaks for the call.`,
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     trySkillGain(turnContext, c, 'druid', SKILLGAIN_STD);
@@ -548,7 +585,7 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
     'explore',
     `🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} of ${_wcCalled} wild creature${_wcCalled !== 1 ? 's' : ''} answer and fall in behind your banner${_wcFrom}!`,
     `🐾 ${c.name}${realmTag(turnContext, c.player)} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} wild creature${_wcWon.length !== 1 ? 's' : ''} answer and fall in behind their banner.`,
-    { audience: { actor: c.player }, province: prov.id },
+    { audience: { actor: c.player }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, province: prov.id },
   );
   if (typeof refreshMovePool === 'function') refreshMovePool(turnContext, c);
   resolveUnitGainInProvince(turnContext, c, prov, ph);
@@ -563,6 +600,7 @@ export function resolveGrandDesignOrder(turnContext, c, prov) {
       type: 'system',
       text: `${c.name} lacks the Sage mastery (9) to realise a Grand Design.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -573,6 +611,7 @@ export function resolveGrandDesignOrder(turnContext, c, prov) {
       type: 'system',
       text: `${G.players[c.player]?.name} has already completed its Grand Design — there can be only one.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -600,6 +639,7 @@ export function resolveGrandDesignOrder(turnContext, c, prov) {
     type: 'explore',
     text: `🏗 ${c.name} completes ${G.players[c.player]?.name}'s Grand Design \u2014 the ${_gdD.name}, a Wonder of the age, raised in ${prov.name}! ${_gdD.desc} Its blessings last only while ${G.players[c.player]?.name} holds ${prov.name} — lose the province and they lapse; retake it and they return.`,
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);

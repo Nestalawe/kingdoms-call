@@ -70,7 +70,7 @@ import {
   resolveRampageOrder,
   resolveSnipersMarkOrder,
 } from './war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { botPracticeSkill } from '../bots/strategy.ts';
 
 // ── ONE HERO'S ORDER, CHECKED AND HANDED TO ITS ORDER'S FUNCTION (plan P1-08j9: lifted out of resolveTurn) ────
@@ -151,6 +151,7 @@ export function processOrder(turnContext, c, o, ph) {
       type: 'explore',
       text: `${c.name} is too badly hurt to face another guardian this season and rests instead.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: c.location,
     });
     action = 'rest';
@@ -174,6 +175,7 @@ export function processOrder(turnContext, c, o, ph) {
         type: 'explore',
         text: `${c.name} weighs what the taverns said of the ${_f ? _f.name : 'lair'} and leaves it for another day.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
       });
       action = 'rest';
@@ -191,6 +193,7 @@ export function processOrder(turnContext, c, o, ph) {
       type: 'explore',
       text: `${c.name} never reaches the lair they set out for${_pw ? ` in ${_pw.name}` : ''}, and will not go blind into another — the search is abandoned and they rest instead.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: c.location,
     });
     action = 'rest';
@@ -268,6 +271,7 @@ export function processOrder(turnContext, c, o, ph) {
         type: 'system',
         text: `${c.name} is held by an enchantment, not an oath — they will not ${_why}. The order comes to nothing.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       turnContext._logCtx = { charId: null, phase: null };
       return;
@@ -282,6 +286,7 @@ export function processOrder(turnContext, c, o, ph) {
         type: 'system',
         text: `${c.name} has already used their ${MASTERY_ORDER_LABEL[action] || action} mastery this turn \u2014 it may be commanded but once per turn.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       turnContext._logCtx = { charId: null, phase: null };
       return;
@@ -298,6 +303,7 @@ export function processOrder(turnContext, c, o, ph) {
         type: 'system',
         text: `${c.name} lacks the March mastery (7) for a Forced March.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       turnContext._logCtx = { charId: null, phase: null };
       return;

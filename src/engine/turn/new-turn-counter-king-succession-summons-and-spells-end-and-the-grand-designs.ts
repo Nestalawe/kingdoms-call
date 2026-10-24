@@ -5,7 +5,7 @@ import { TEMPERS_P } from '../world/tables.ts';
 import { nextHeroName } from '../names.ts';
 import { ownedConsecratedProvs } from '../heroes/fame-and-consecration.ts';
 import { discBlockedIds, discEligible, gdActive } from '../discoveries.ts';
-import { emit } from './events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 
 // ── THE NEW TURN, FIRST PART (plan P1-08k5a: one stage taken out of resolveTurn's own body) ─────────────────────────
 // Once the turn's diplomacy and victory are settled (diplomacy-resolution-and-victory-….js), the turn counter moves on
@@ -42,6 +42,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
           type: 'system',
           text: `✨ The realm's last consecrated ground is gone, and with it the way back for ${k.name}: the divine cannot restore a monarch where no holy ground remains. An heir takes the crown.`,
           audience: { actor: pi, realms: [pi] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       });
   });
@@ -85,6 +86,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
           type: 'system',
           text: `⚠ ${p.name}'s king has fallen and no lands remain — their dynasty is extinguished.`,
           audience: { actor: pi, realms: [pi] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       }
       return;
@@ -140,6 +142,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       type: 'system',
       text: `👑 With the old king fallen, ${heir.name} is crowned in ${heirProv.name}. Name them, choose their Temper and allocate their 4 remaining skill points before submitting orders.`,
       audience: { actor: pi, realms: [pi] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: heirProv.id,
     });
     // NOT public. This line is an instruction to one player — name your heir, set their temper,
@@ -176,6 +179,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
         type: 'explore',
         text: `\u2728 As the season turns, ${_names} ${_gone.length === 1 ? 'is' : 'are'} released from ${_gone.length === 1 ? 'its' : 'their'} bonds and ${_gone.length === 1 ? 'returns' : 'return'} to the Elemental Realm, leaving ${c.name}'s host.`,
         audience: { actor: c.player, realms: [c.player].filter((x) => x !== null) },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
       });
     }
@@ -191,6 +195,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
         type: 'explore',
         text: `\u{1F43E} The Wild Hunt is done — ${_wnames} slip the binding and melt back into the wilds, leaving ${c.name}'s host.`,
         audience: { actor: c.player, realms: [c.player].filter((x) => x !== null) },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
       });
     }
@@ -311,6 +316,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
         type: 'system',
         text: `\ud83d\udcda Grand Library: your scholars have already unlocked every known discovery.`,
         audience: { actor: pi, realms: [pi] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -320,6 +326,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       type: 'explore',
       text: `\ud83d\udcda Grand Library: this turn your scholars uncover \u2014 **${_d.name}** (${_d.category}). ${_d.desc}`,
       audience: { actor: pi, realms: [pi] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   });
 }

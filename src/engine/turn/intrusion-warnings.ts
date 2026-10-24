@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { armySizeBand } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
-import { emit } from './events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 
 // ── INTRUSION WARNINGS (plan P1-08b: lifted out of resolveTurn) ────
 // After each phase, the warnings a realm gets of enemy heroes in its land or beside its own heroes. It takes the turn's
@@ -98,6 +98,7 @@ export function flushIntrusionNotifications(turnContext) {
         type: 'combat',
         text: `[Intelligence] ${rec.acName} of ${rec.actingName} was spotted in your province of ${rec.provName} during ${phaseStr}. ${forceStr}`,
         audience: { actor: null, realms: [rec.targetPi] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: rec.provId,
       });
     } else {
@@ -105,6 +106,7 @@ export function flushIntrusionNotifications(turnContext) {
         type: 'system',
         text: `[Intelligence] A hero of ${rec.actingName} (${rec.acName}) shared ${rec.provName} with your forces during ${phaseStr}. ${forceStr}`,
         audience: { actor: null, realms: [rec.targetPi] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: rec.provId,
       });
     }

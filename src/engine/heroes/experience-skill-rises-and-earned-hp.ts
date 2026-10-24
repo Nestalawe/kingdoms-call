@@ -8,7 +8,12 @@ import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-r
 import { discSum, hasDisc } from '../discoveries.ts';
 import { recalcHeroPay, skillInPlayNote } from './effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
-import { narrateTo, emit, writeDeferredSkillLines } from '../turn/events-and-their-audiences.ts';
+import {
+  narrateTo,
+  emit,
+  writeDeferredSkillLines,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+} from '../turn/events-and-their-audiences.ts';
 
 // ── EXPERIENCE, SKILL RISES AND EARNED HP (plan P1-08c: lifted out of resolveTurn) ────
 // A hero's chance to raise a skill by using it (trySkillGain, and rollNavalVoyage for a voyage), the one rise a phase
@@ -216,6 +221,7 @@ export function resolvePendingSkillGain(turnContext, real) {
       type: 'system',
       text: `📜 ${String(real.name || '').replace(/\s*\(wandering\)/i, '')} learns from the fighting — ${SKILL_LABELS[skill] || skill} rises to ${lvl + 1}.`,
       audience: { realms: [] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: e.prov != null ? e.prov : real.location,
       system: true,
     });
@@ -356,7 +362,7 @@ export function syncAllMaxHp(turnContext) {
             hero: ch.id,
             province: prov ? prov.id : undefined,
           }
-        : { audience: { actor: -1, realms: [] } };
+        : { audience: { actor: -1, realms: [] }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING };
     emit(turnContext, {
       type: 'system',
       text:

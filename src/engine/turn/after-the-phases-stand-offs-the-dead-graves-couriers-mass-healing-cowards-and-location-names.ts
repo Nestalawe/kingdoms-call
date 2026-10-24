@@ -11,7 +11,7 @@ import { MASS_HEALING_PCT, healFeatureMonsters } from '../chances-and-lair-grade
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { flushIntrusionNotifications } from './intrusion-warnings.ts';
 import { resolveAllPendingSkillGains, syncAllMaxHp } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit, writeDeferredSkillLines } from './events-and-their-audiences.ts';
+import { emit, writeDeferredSkillLines, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 import { abandonHostOnFlight, disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.ts';
@@ -91,6 +91,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         type: 'hire',
         text: `\u{1F480} The dead will not stand alone. ${lines.join('; ')}. ${total === 1 ? 'It crumbles' : 'They crumble'} to dust — a skeletal host holds together only while a character of at least Necromancy 1 leads it.`,
         audience: { actor: pi, realms: [pi] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
       });
     });
@@ -114,6 +115,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         type: 'explore',
         text: `💀 ${c.name} feels the dead of ${p2.name} stirring underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: p2.id,
       }),
     );
@@ -136,6 +138,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       type: 'system',
       text: txt,
       audience: { realms: [] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: pv ? pv.id : null,
       system: true,
     }),
@@ -162,6 +165,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
               type: 'system',
               text: `✨ The consecration of ${pv.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
               audience: { actor: pi, realms: [pi], seen: 'there' },
+              hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               province: pid,
               env: true,
             });
@@ -191,6 +195,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
             type: 'hire',
             text: `📦 A courier bearing ${nm}${d.fromName ? ` from ${d.fromName}` : ''} finds no one left to receive it — the parcel is lost.`,
             audience: { actor: null, realms: [] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: 99,
           });
         return;
@@ -242,6 +247,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
           type: 'combat',
           text: `🍃 ${units.length} Elven unit${units.length !== 1 ? 's' : ''} broke free of battle and made for home — but ${G.players[pi]?.name || 'the realm'} holds no land left to return to, and they scatter into the wild, lost.`,
           audience: { actor: null, realms: [pi] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: 99,
         });
         return;
@@ -252,6 +258,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         type: 'combat',
         text: `🍃 ${units.map((u) => u.unitName || u.type).join(', ')} (${units.length} unit${units.length !== 1 ? 's' : ''}) slipped away from battle and have found their way home to ${dest.name}, rejoining the garrison there.`,
         audience: { actor: pi, realms: [pi] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: dest.id,
         phase: 99,
       });

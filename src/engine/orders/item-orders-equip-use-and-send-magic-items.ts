@@ -5,7 +5,7 @@ import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { applyItemMaxHp, isMithril } from '../personal-combat/helpers.ts';
 import { isCharmedNow, isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
-import { emit, notifyTarget } from '../turn/events-and-their-audiences.ts';
+import { emit, notifyTarget, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 
 // ── THE ITEM ORDERS (plan P1-08j5: the fifth family taken out of processOrder in resolveTurn) ──
@@ -31,6 +31,7 @@ export function resolveEquipItemsOrder(turnContext, c, target) {
       type: 'system',
       text: `${c.name} carries nothing that can be worn or wielded.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -60,6 +61,7 @@ export function resolveEquipItemsOrder(turnContext, c, target) {
     type: 'system',
     text: `\u{1F6E1} ${c.name} arms and dresses for the season — now wearing: ${worn.join(', ') || 'nothing'}.${refused.length ? ` Could not also wear ${refused.join(', ')} (slot already filled).` : ''}`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
   return;
 }
@@ -86,6 +88,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name}: no such item to use.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -94,6 +97,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `The ${it.name} has already been used.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -144,6 +148,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `${c.name} raises the ${it.name}, but there is nothing for it to work on — ${total === 0 ? 'your realm has no armies in the field or in garrison' : 'every unit you command is already Elite'}. The Stone is NOT spent, and may be invoked another turn.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -174,10 +179,10 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       emit(turnContext, {
         type: 'system',
         text: `(GM note: ${_purged} undiscovered ${_stoneName}${_purged !== 1 ? 's were' : ' was'} struck from the world's lair hoards — the artefact is destroyed.)`,
-        // the GM's alone: no realm is granted it, and it is about no hero (left out, it would be filed under the hero
-        // working the Stone, and his realm would read it)
+        // the GM's alone: no realm is granted it, and it is about no hero (filed under the hero working the Stone, his
+        // realm would read it)
         audience: { actor: null, realms: [] },
-        hero: 'none',
+        hero: null,
       });
     G._destroyedItems = (G._destroyedItems || []).concat([
       { name: _stoneName, turn: G.turn, by: c.name, player: c.player },
@@ -203,6 +208,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `🌍 A light passes over the world: somewhere in ${prov.name}, ${_pi === c.player ? `your own ${c.name}` : `${G.players[c.player]?.name || 'a distant realm'}`} has worked the ${_stoneName} and burned it out. Every soldier of that realm stands a little taller tonight — and the Stone itself is gone from the world for good. No lair will yield another.`,
         audience: { actor: null, realms: [_pi], seen: 'world' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     });
   } else {
@@ -210,6 +216,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `The ${it.name} is a passive item and does not need to be used — its power is always active.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   }
   return;
@@ -246,6 +253,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       type: 'item',
       text: `${c.name}: cannot send item — no such recipient.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -272,6 +280,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       type: 'item',
       text: `${c.name}: items can only be sent to one of your own living characters.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -280,6 +289,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       type: 'item',
       text: `${c.name}: cannot send items to themselves.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -323,6 +333,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       type: 'item',
       text: `${c.name}: Mithril Armour is forged to its wearer and cannot be sent — it stays in their pack.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   }
   if (uniq.length === 0) {
@@ -330,6 +341,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       type: 'item',
       text: `${c.name}: cannot send item.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }

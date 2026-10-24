@@ -14,7 +14,7 @@ import { DISC_BY_ID, gdActive } from '../discoveries.ts';
 import { relKeyOf } from '../realms/relations-and-captures.ts';
 import { setMovePool } from '../units/movement-pools.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
-import { emit } from './events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 
 // ── BEFORE THE FIRST PHASE: WAR WITHOUT WARNING, RESEARCH CHOICES, MESSAGES, MOVE POOLS AND DEFAULT DEFEND (plan
 // P1-08k8: four stages taken out of resolveTurn's own body, before the phase loop) ──────────────────────────────────
@@ -88,7 +88,7 @@ export function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPi
         type: 'explore',
         text: `💡 ${opts.includes(want) ? `${pl.name} pursues` : `No choice was sent, so ${pl.name}'s scholars choose for themselves and pursue`} **${d.name}** (${d.category}), found by ${p.charName || 'a scholar'} last turn. ${d.desc}${lostNames ? ` The other lead — ${lostNames} — is set aside and forgotten for good.` : ''}`,
         audience: { actor: pi, realms: [pi] },
-        hero: null,
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: 0,
       });
     });
@@ -116,6 +116,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
           type: 'system',
           text: `⚔ ${na} declares war on ${nb} and marches without warning — ${pa.alignment === 'Undead' ? 'the dead keep no truce' : 'the wicked keep no faith'}. War stands between the two realms from this very season.`,
           audience: { actor: null, realms: [a, b] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
         });
       }
@@ -151,6 +152,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
       type: 'system',
       text: `🕊 Safe Start: no Treat or declaration of war may be made before the orders for Turn ${SAFE_START_TURN}. Your diplomacy this turn was set aside — relations are unchanged.`,
       audience: { actor: null, realms: [pi] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       system: true,
     }),
   );
@@ -160,6 +162,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         type: 'system',
         text: w,
         audience: { actor: -1, realms: [], seen: w.startsWith('\u{1F3F3}') ? 'world' : undefined },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
       }),
     );
@@ -177,6 +180,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         type: 'system',
         text: `\u{1F3F3} ${_pl.name} has withdrawn from the game and CONCEDES. Its heroes lay down their ambitions and will only defend what they hold from now on.`,
         audience: { actor: -1, realms: [], seen: 'world' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
       });
     });
@@ -227,6 +231,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
             type: 'message',
             text: `📨 Dispatch from ${senderName}: “${text}”`,
             audience: { actor: null, realms: [rpi] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: 99,
           });
         });
@@ -236,6 +241,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
           type: 'message',
           text: `📨 You sent to ${rcptNames.join(', ')}: “${text}”`,
           audience: { actor: senderPi, realms: [senderPi] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: 99,
         });
       });
@@ -365,6 +371,7 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
         type: 'system',
         text: `\u{1F5FA} The chronicles are corrected: ${_rn} lair${_rn !== 1 ? 's are' : ' is'} now recorded under a name befitting what dwells there.`,
         audience: { actor: null, realms: [] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
   }
   // EVERY GUARDIAN IS 5 HP FRAILER. The table was re-statted, but a live world keeps its own copy
@@ -390,6 +397,7 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
         type: 'system',
         text: `\u{1F489} The world's guardians are re-measured: ${_gh} lair-keeper${_gh !== 1 ? 's'.concat(' are') : ' is'} 5 hit points frailer than before.`,
         audience: { actor: null, realms: [] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
   }
 

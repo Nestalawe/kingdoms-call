@@ -11,6 +11,7 @@
 // targets and its public flag). Plan P1-08e: this was a script that took them from the "  // 4. Run all 5 phases" hook
 // after a turn on the GM portal.
 import { expect, test } from 'vitest';
+import { THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { personalCombatEngine, type Character, type Combatant, type FightResult } from '../lib/personal-combat.ts';
 
 const { call, turnContext } = await personalCombatEngine();
@@ -63,6 +64,7 @@ test("two rivals both harden; each realm reads only its own hero's rise, and the
       type: 'combat',
       audience: { actor: 0, realms: [0, 1] },
       province: 0,
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       heroes: [a.id, b.id],
     }),
   );

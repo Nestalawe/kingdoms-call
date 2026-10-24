@@ -27,7 +27,7 @@ import {
   isGarrisonUnitType,
   realmRecruitCost,
 } from '../discoveries.ts';
-import { emit, notifyTarget } from '../turn/events-and-their-audiences.ts';
+import { emit, notifyTarget, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
@@ -156,6 +156,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         type: 'hire',
         text: `🐾 ${beastCommandWords(_destChar, G.characters)}: ${unit.unitName || unit.type} (${unit.type}) musters into the garrison of ${prov.name} instead.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else {
@@ -188,6 +189,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
           type: 'hire',
           text: `🐾 ${beastCommandWords(_destChar, G.characters)} — the ${merc.unitName || merc.type} mercenaries are not hired.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
         return;
@@ -205,6 +207,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
           type: 'hire',
           text: `${c.name}: cannot afford ${merc.unitName || merc.type} mercenaries (${mCost}g).`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
         return;
       }
@@ -216,6 +219,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         type: 'hire',
         text: `${c.name} hires mercenary band ${merc.unitName || merc.type} (${merc.quality}) for ${mCost}g${mCost < baseMercCost ? ' (Neutral discount)' : ''}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
       });
     });
@@ -250,6 +254,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       type: 'system',
       text: `${c.name} cannot recruit in ${prov.name} — you must control the province to raise troops there.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -330,6 +335,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         `${c.name} recruits ${recruited.join(', ')} in ${prov.name}${_destNote}${_autoGarrNote}. Cost: ${totalCost}g. Treasury: ${player.gold}g remaining.` +
         (blocked.length > 0 ? ` (Blocked: ${blocked.join('; ')}.)` : ''),
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     // if the muster went to ANOTHER of the player's characters, notify them in their section.
@@ -350,6 +356,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       type: 'system',
       text: `${c.name}'s recruitment in ${prov.name} was entirely blocked: ${blocked.join('; ')}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   }
   return;
@@ -366,6 +373,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
       type: 'hire',
       text: `${c.name} tries to hire a hero but none matching that description are available in ${prov.name}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -374,6 +382,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
       type: 'hire',
       text: `${h.name} is sworn to defend ${prov.name} and will not abandon their post — the guardian of a neutral province cannot be hired away. You must defeat them in battle to take the province.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -382,6 +391,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
       type: 'hire',
       text: `${h.name} is furious at being driven from their home — they refuse to work with you this turn. Try again next turn.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -390,6 +400,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
       type: 'hire',
       text: `${h.name} was only just released from service and will hear no offers this turn. Try again next turn.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -405,6 +416,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
       type: 'hire',
       text: `${h.name} (${h.alignment}) recoils from ${c.name}'s offer — ${kingdomAlign === 'Divine' ? 'no creature of the grave will serve a Divine crown' : 'the faithful will never serve an Undead throne'}. (Alignment gulf too wide: Divine and Undead cannot hire one another.)`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -413,6 +425,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
       type: 'hire',
       text: `${c.name} cannot afford to hire ${h.name} — needs ${hireWage}g/turn, treasury has only ${player.gold}g.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -457,6 +470,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
     type: 'hire',
     text: _hireLine,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   // also file the same line under the HIRED hero's own Chronicle section, at the hire phase,

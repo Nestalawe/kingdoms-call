@@ -4,7 +4,7 @@ import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { totalInit } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { stepTowardPreferSafe } from '../world/routes-and-distances.ts';
-import { emit } from './events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 
 // ── THE PHASE PIPELINE: INTENTS, DEPENDENCY ORDERING, MOVEMENT INTERLOCKS (plan P1-08i1: lifted out of resolveTurn) ────
 // Before anyone acts in a phase: what every acting character intends to do (buildPhaseIntents), the order they act in
@@ -459,6 +459,7 @@ export function applyMoveInterlocks(turnContext, ph, intents) {
         type: 'move',
         text: `${def.c.name} breaks camp for ${dest.name}, but ${swapPartner.c.name}'s banners are already cresting the hills toward ${home ? home.name : 'the province'} — there is no time to march past one another. ${def.c.name} turns their column about and stands to defend.`,
         audience: { actor: def.player, realms: [def.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: def.fromId,
       });
     } else {
@@ -466,6 +467,7 @@ export function applyMoveInterlocks(turnContext, ph, intents) {
         type: 'move',
         text: `${def.c.name} is under orders to march on ${dest.name}, but an enemy force enters ${home ? home.name : 'the province'} before the column can clear the gates. ${def.c.name} stays to defend.`,
         audience: { actor: def.player, realms: [def.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: def.fromId,
       });
     }

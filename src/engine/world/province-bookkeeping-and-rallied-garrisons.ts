@@ -6,7 +6,7 @@ import { getNeighborsP } from './map-helpers.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ── PROVINCE BOOKKEEPING AND RALLIED GARRISONS (plan P1-08i1: lifted out of resolveTurn) ────
 // Once a contest ends, the garrison troops a defending hero rallied go home or stay with him (settleRalliedGarrisons).
@@ -64,6 +64,7 @@ export function settleRalliedGarrisons(turnContext) {
       type: 'combat',
       text: `🛡 With ${prov.name} held, its standing troops (${n} unit${n !== 1 ? 's' : ''}) resume their post as the garrison.`,
       audience: { actor: prov.owner, realms: [prov.owner].filter((x) => x != null), seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   });

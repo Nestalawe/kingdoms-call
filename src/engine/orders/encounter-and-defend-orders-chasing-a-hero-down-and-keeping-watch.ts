@@ -3,7 +3,7 @@ import { isHiddenChar } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext, TurnOrder } from '../turn/context.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ── THE ENCOUNTER AND DEFEND ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // Encounter Character sets a hero after a quarry he may hunt (never himself, a hero of the lord who holds him by a
@@ -37,6 +37,7 @@ export function resolveEncounterCharacterOrder(
       type: 'system',
       text: `${c.name} casts about for a quarry to hunt down but finds no trail to follow.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -46,6 +47,7 @@ export function resolveEncounterCharacterOrder(
       type: 'system',
       text: `${c.name} cannot set out to encounter themself.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -58,6 +60,7 @@ export function resolveEncounterCharacterOrder(
       type: 'system',
       text: `${c.name} will not hunt ${quarry.name} — the Charm bends their will, but not so far as to turn them on their own lord's people.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -70,6 +73,7 @@ export function resolveEncounterCharacterOrder(
       type: 'system',
       text: `${c.name} sets out after ${quarry.name}, but a rival king does not answer to a common hero — only a king may run down another king. The chase is abandoned.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -79,6 +83,7 @@ export function resolveEncounterCharacterOrder(
       type: 'system',
       text: `${c.name} sets out after ${quarry.name}, but they are cloaked and leave no trail to follow.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -93,6 +98,7 @@ export function resolveEncounterCharacterOrder(
       type: 'move',
       text: `${c.name} sets out after ${quarry.name}, but there is no trail to follow — the quarry has vanished into the shadows.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -103,6 +109,7 @@ export function resolveEncounterCharacterOrder(
     type: 'move',
     text: `${c.name} sets out to run down ${quarry.name} and will not turn aside until the matter is settled.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   advancePursuit(turnContext, c, ph);
@@ -120,6 +127,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       type: 'move',
       text: `🛡 ${c.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -151,6 +159,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
           ? `🛡 ${c.name} still lies in wait about ${prov.name}.`
           : `🛡 ${c.name} keeps the watch in ${prov.name}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   } else if ((c.armies || []).length === 0) {
@@ -158,6 +167,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       type: 'move',
       text: `${c.name} melts into the country around ${prov.name} and lies in wait — with no column at their back they cannot bar a road, but they will try to ambush any enemy who ventures into these lands (their Spy craft decides whether they can spring the trap).`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   } else if (centreProv.id === prov.id) {
@@ -165,6 +175,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       type: 'move',
       text: `${c.name} makes camp in ${prov.name} and sets a watch — their column will answer any incursion into the lands about them for the rest of the year.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   } else {
@@ -172,6 +183,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       type: 'move',
       text: `${c.name} sets a watch from ${prov.name} over the country around ${centreProv.name} — their column will ride to meet any incursion there for the rest of the year.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   }

@@ -21,7 +21,7 @@ import {
 } from '../titles/reckoning.ts';
 import { areAllied, realmHasMet, relKeyOf } from '../realms/relations-and-captures.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
-import { emit } from './events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 
 // ── DIPLOMACY RESOLUTION AND VICTORY (plan P1-08k4: two stages taken out of resolveTurn's own body) ────────────────
 // Once the turn has settled what its seasons left (after-the-phases-….js) and the bots have made any late declaration,
@@ -119,6 +119,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             type: 'system',
             text: `🕊 ${fromName} has sent you an overture of ${_offerWord}.${_mutual ? ' You answered in kind.' : ` Declare a Treat toward ${fromName} with next turn's orders to answer it.`}`,
             audience: { actor: null, realms: [to] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
         };
@@ -129,12 +130,14 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             type: 'system',
             text: `${na} and ${nb} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,
             audience: { actor: null, realms: [a] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
           emit(turnContext, {
             type: 'system',
             text: `${nb} and ${na} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,
             audience: { actor: null, realms: [b] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
           continue;
@@ -147,6 +150,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               type: 'system',
               text: `${na}'s overture of ${cur === 'enemy' ? 'peace' : 'alliance'} to ${nb} went unanswered this year — relations are unchanged.`,
               audience: { actor: null, realms: [a] },
+              hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               system: true,
             });
           if (db === 'treat')
@@ -154,6 +158,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               type: 'system',
               text: `${nb}'s overture of ${cur === 'enemy' ? 'peace' : 'alliance'} to ${na} went unanswered this year — relations are unchanged.`,
               audience: { actor: null, realms: [b] },
+              hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               system: true,
             });
           continue;
@@ -174,8 +179,20 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           mA =
             mB = `🕊 ${na} and ${nb} have made peace and are now NEUTRAL — neither may march an army across the other's border.`;
         }
-        emit(turnContext, { type: 'system', text: mA, audience: { actor: null, realms: [a] }, system: true });
-        emit(turnContext, { type: 'system', text: mB, audience: { actor: null, realms: [b] }, system: true });
+        emit(turnContext, {
+          type: 'system',
+          text: mA,
+          audience: { actor: null, realms: [a] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          system: true,
+        });
+        emit(turnContext, {
+          type: 'system',
+          text: mB,
+          audience: { actor: null, realms: [b] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          system: true,
+        });
         // WAR FRONTS: hosts already standing on the new enemy's ground (or beside his host) will turn
         // on that province at the END of next Spring unless they leave — both sides are told now,
         // while they can still write orders for it (see resolveWarFronts).
@@ -198,6 +215,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               type: 'system',
               text: `⚠ War front: ${c.name}'s host (${n} unit${n !== 1 ? 's' : ''}) stands in ${pv.name}, ${onFoeLand ? `land of ${foeNm}` : `face to face with a host of ${foeNm}`}. If it is still there at the end of next Spring it will give battle for the province — march it out in Spring to avoid the fight, or reinforce it.`,
               audience: { actor: null, realms: [c.player] },
+              hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               system: true,
               province: pv.id,
             });
@@ -206,6 +224,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
                 type: 'system',
                 text: `⚠ War front: ${c.name} (${ownNm}) holds a host of ${n} unit${n !== 1 ? 's' : ''} ${onFoeLand ? `inside your province of ${pv.name}` : `beside your host in ${pv.name}`}. Unless it withdraws, it will attack at the end of next Spring — reinforce ${pv.name}, or keep a general on Defend next door to ride in.`,
                 audience: { actor: null, realms: [foe] },
+                hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
                 system: true,
                 province: pv.id,
               });
@@ -228,6 +247,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           type: 'system',
           text: `${G.players[pi]?.name || 'A king'} calls for the Reckoning, but the throne cannot be claimed before Turn ${RECKONING_MIN_TURN} — the realms are barely settled and the world will not yet be judged. The claim may be lodged again from that turn.`,
           audience: { actor: null, realms: [pi] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
         });
       }
@@ -240,6 +260,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             type: 'system',
             text: `Only a king may call the Reckoning.`,
             audience: { actor: null, realms: [pi] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
           continue;
@@ -271,6 +292,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             type: 'system',
             text: `👑 THE RECKONING IS CALLED. ${nm}${blocNm} lay claim to the vacant Imperial throne, commanding ${dispFloor(share * 100)}% of the world${allies.length ? ` — a bar of ${dispFloor(thr * 100)}%, raised by ${allies.length} all${allies.length === 1 ? 'y' : 'ies'} standing with the claim` : ''}. The realms have TWO turns to contest it — drive ${nm}'s bloc below ${dispFloor(thr * 100)}% and the claim collapses. Otherwise the world is judged at the end of Turn ${G.reckoning.resolveAtTurn}.`,
             audience: { actor: null, realms: [], seen: 'world' },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
           break;
@@ -281,6 +303,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             type: 'system',
             text: `${G.players[pi]?.name || 'A king'} calls for the Reckoning on the strength of their alliance, but their OWN realm commands only ${dispFloor(_el.ownShare * 100)}% of the world — a claimant must personally hold at least ${dispFloor(_el.callerMin * 100)}% (half the ${dispFloor(thr * 100)}% bar) to press the claim. The throne is not won by riding a stronger ally's coat-tails; let the bloc's greatest realm lodge it.`,
             audience: { actor: null, realms: [pi] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
         } else {
@@ -288,6 +311,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             type: 'system',
             text: `${G.players[pi]?.name || 'A king'} calls for the Reckoning, but commands only ${dispFloor(share * 100)}% of the world — short of the ${dispFloor(thr * 100)}% needed to press the claim.`,
             audience: { actor: null, realms: [pi] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
         }
@@ -310,6 +334,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           type: 'system',
           text: `The claim to the throne collapses — ${G.players[G.reckoning.by]?.name || 'the claimant'}'s bloc no longer commands the world (${dispFloor(share * 100)}% < ${dispFloor(thr * 100)}%). The Reckoning is called off; the war goes on.`,
           audience: { actor: null, realms: [], seen: 'world' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
         });
         delete G.reckoning;
@@ -318,6 +343,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           type: 'system',
           text: `The claim to the throne collapses — ${G.players[G.reckoning.by]?.name || 'the claimant'} has been cut down to ${dispFloor(_ownNow * 100)}% of the world in their own right, beneath the ${dispFloor(_minNow * 100)}% a claimant must personally hold. Their allies still stand, but the claim was theirs to carry and they can no longer carry it. The Reckoning is called off; the war goes on.`,
           audience: { actor: null, realms: [], seen: 'world' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
         });
         delete G.reckoning;
@@ -347,6 +373,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           type: 'system',
           text: `⏳ The world grows weary of the long war. No throne has been claimed, and the crown's price falls: a realm standing alone now needs only ${after}% of the world's tax base to Call the Reckoning — down from ${before}%. (A claim carried by allies still costs ${reckoningAllyStepPct(nP)} points more for every ally standing with it.)${after <= RECKONING_FLOOR_PCT ? ' It will fall no further.' : ` It will fall another ${RECKONING_DECAY_STEP_PCT}% at the end of next turn.`}`,
           audience: { actor: null, realms: [], seen: 'world' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
         });
       }
@@ -402,6 +429,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
         type: 'system',
         text: `👑 THE RECKONING IS CALLED — ${_nOut} realm${_nOut !== 1 ? 's have' : ' has'} conceded and ${live.length <= 1 ? 'only one crown still contests the world' : 'the last crowns standing are sworn to one another'}. The throne is settled here and now; the Legacy of every realm, titles and relics counted, is set down below.`,
         audience: { actor: null, realms: [], seen: 'world' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
         gameEnd: true,
       });
@@ -423,6 +451,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       type: 'system',
       text: `🏆 THE GAME IS DECIDED — ${wn} is ${how}!`,
       audience: { actor: null, realms: [], seen: 'world' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       system: true,
       gameEnd: true,
     });
@@ -438,6 +467,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           type: 'system',
           text: `   ${i + 1}. ${st.name} — ${st.score} Legacy${tHeld || relicTxt ? ` (${tHeld}${relicTxt})` : ''}`,
           audience: { actor: null, realms: [], seen: 'world' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
           gameEnd: true,
         });

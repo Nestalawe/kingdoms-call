@@ -3,7 +3,7 @@ import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { beastCommandCount, beastCommandRoom, beastCommandWords } from '../world/tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';
-import { emit, notifyTarget } from '../turn/events-and-their-audiences.ts';
+import { emit, notifyTarget, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isOpenSea, seaLiftShortfall, strandLabel } from '../units/sea-lift-stranding-and-retreats.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
@@ -28,6 +28,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       type: 'system',
       text: `${c.name}: no armies to transfer.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -49,6 +50,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
           ? `${c.name} cannot hand the troops to ${recip2.name} — they had already marched on to ${_rp.name} before the column could be handed over. The troops stay under ${c.name}'s command.`
           : `${c.name} cannot transfer armies — the recipient must be one of your own characters standing in ${prov.name}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -60,6 +62,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
         type: 'system',
         text: `${c.name} cannot garrison armies in ${prov.name} — you do not control this province, so there is no garrison to leave them in. The troops stay under their command.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -91,6 +94,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       type: 'system',
       text: `${c.name}: could not find specified armies to transfer.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -106,6 +110,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
         type: 'system',
         text: `⚓ ${c.name} cannot ${recip2 ? `hand ${_lbl} to ${recip2.name}` : `leave ${_lbl} in ${prov.name}`} out on open water — ${_gShort ? `the ships that stay would be too few to carry the rest of ${c.name}'s column` : `${recip2.name}'s ships could not carry them`}. The order is refused and the troops stay where they are.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -129,6 +134,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       type: 'system',
       text: `💀 ${skelTransfer.map((a) => a.unitName || a.type).join(', ')} refuse to follow a non-Undead commander — they dig their own graves and go to sleep.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     removed = removed.filter((a) => !a._isSkeletal); // remove skeletal from transfer
@@ -154,6 +160,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
         type: 'hire',
         text: `🐾 ${beastCommandWords(recip2, G.characters)}: ${_stay.map((a) => a.unitName || a.type).join(', ')} ${_stay.length === 1 ? 'stays' : 'stay'} with ${c.name}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       if (!removed.length) {
@@ -168,6 +175,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       type: 'hire',
       text: `${c.name} transfers ${removed.map((a) => a.unitName || a.type).join(', ')} to ${recip2.name}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     // notify the receiving commander in their own section.
@@ -190,6 +198,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
     type: 'hire',
     text: `${c.name} garrisons ${removed.map((a) => a.type).join(', ')} in ${prov.name}.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   // Recompute the move pool from the REMAINING force. Dropping a slow unit correctly frees up
@@ -202,6 +211,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       type: 'move',
       text: `${c.name} left all armies behind in ${prov.name} — now travelling light (land ${movePoints[c.id]}, sea ${seaMovePoints[c.id]} move points).`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   }
@@ -221,6 +231,7 @@ export function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
       type: 'system',
       text: `${c.name} wears the crown — a king cannot release himself from his own service.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -232,6 +243,7 @@ export function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
       type: 'system',
       text: `${c.name} cannot be released while leading ${c.armies.length} unit${c.armies.length !== 1 ? 's' : ''} — transfer, garrison or disband the troops first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -276,6 +288,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name}: no armies to disband.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -298,6 +311,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name}: could not find specified armies to disband.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -309,6 +323,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `💀 ${skelDisbanded.map((a) => a.unitName || a.type).join(', ')} cannot be disbanded as mercenaries — skeletal armies return to their graves and crumble to dust.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     disbanding = disbanding.filter((a) => !a._isSkeletal);
@@ -333,6 +348,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       type: 'hire',
       text: `${c.name} disbands ${army.unitName || army.type} (${army.quality}) — they become a mercenary band in ${prov.name}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   });
@@ -346,6 +362,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       type: 'move',
       text: `${c.name} has disbanded all armies — now travelling light (land ${movePoints[c.id]}, sea ${seaMovePoints[c.id]} move points).`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   }
@@ -364,6 +381,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `${c.name} finds no garrison armies in ${prov.name} to pick up.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -377,6 +395,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
       type: 'hire',
       text: `${c.name} takes command of all ${n} garrisoned unit${n !== 1 ? 's' : ''} in ${prov.name}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   } else if (
@@ -393,6 +412,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name} cannot simply take up a mercenary band with a Pick Up order — mercenaries are hired through Recruit Armies. (Pick Up Army takes only unled garrison units.)`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -414,6 +434,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `${c.name} finds no matching garrison armies in ${prov.name} to pick up.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -431,6 +452,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
       type: 'hire',
       text: `${c.name} takes command of ${_lbl} from the garrison in ${prov.name}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   } else {
@@ -455,6 +477,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
           type: 'system',
           text: `${c.name}: cannot pick up army.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
         return;
       }
@@ -466,6 +489,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         type: 'hire',
         text: `${c.name} takes command of ${army.unitName ? army.unitName + ' (' + army.quality + ' ' + army.type + ')' : army.quality + ' ' + army.type} from ${src.name}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else {
@@ -475,6 +499,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
           type: 'system',
           text: `${c.name} finds no garrison armies in ${prov.name} to pick up.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
         return;
       }
@@ -484,6 +509,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         type: 'hire',
         text: `${c.name} picks up ${army.unitName ? army.unitName + ' (' + army.quality + ' ' + army.type + ')' : army.quality + ' ' + army.type} from the garrison in ${prov.name}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }
@@ -510,6 +536,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         type: 'hire',
         text: `🐾 ${beastCommandWords(c, G.characters)}: ${_backB.map((a) => a.unitName || a.type).join(', ')} ${_backB.length === 1 ? 'stays' : 'stay'} ${_pickSrc ? `with ${_pickSrc.name}` : `in the garrison of ${prov.name}`}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }
@@ -532,6 +559,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         type: 'hire',
         text: `⚓ ${_back.map(strandLabel).join(', ')} cannot be taken aboard — ${c.name}'s ships have no room for them on open water, so ${_back.length === 1 ? 'it stays' : 'they stay'} ${_pickSrc ? `with ${_pickSrc.name}` : `in the garrison of ${prov.name}`}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }
@@ -544,6 +572,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
     type: 'move',
     text: `${c.name} now leads ${(c.armies || []).length} arm${(c.armies || []).length !== 1 ? 'ies' : 'y'}. Land MPs: ${movePoints[c.id]}, Sea MPs: ${seaMovePoints[c.id]}.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
   return;
 }

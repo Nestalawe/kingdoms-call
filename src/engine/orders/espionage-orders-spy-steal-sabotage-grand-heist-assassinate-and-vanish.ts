@@ -11,7 +11,7 @@ import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-r
 import { markProvinceCombat } from '../bots/intel.ts';
 import { TM, noteEspionage, perkTier, skillLevel } from '../titles/perks.ts';
 import { discParam, discSum, hasDisc } from '../discoveries.ts';
-import { emit, emitNarrLine } from '../turn/events-and-their-audiences.ts';
+import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, isVanished, oddsNote, statNote } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -50,6 +50,7 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
       type: 'system',
       text: `${victim.name} raises the alarm, but ${thief.name} has already melted into the shadows. (Vanish)`,
       audience: { actor: thief.player, realms: targetsPi },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: [thief.id, victim.id],
     });
@@ -61,6 +62,7 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
       type: 'system',
       text: `${victim.name} catches ${thief.name} ${what}, but wants no part in a brawl — the thief is driven off empty-handed.`,
       audience: { actor: thief.player, realms: targetsPi },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: [thief.id, victim.id],
     });
@@ -81,6 +83,7 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
     type: 'combat',
     text: `⚔ ${victim.name} catches ${thief.name} ${what} — blades are drawn!`,
     audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
     heroes: _duelChars,
   });
@@ -100,6 +103,7 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
     emitNarrLine(turnContext, line, {
       type: 'combat',
       audience: { actor: thief.player, realms: targetsPi },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: _duelChars,
     }),
@@ -113,12 +117,14 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
         type: 'combat',
         text: _garrethEscapeLine(thief),
         audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
         heroes: _duelChars,
       });
     } else {
       reportHeroFall(turnContext, thief, victim, `${thief.name} is cut down — a thief's end.`, {
         audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
         heroes: _duelChars,
       });
@@ -132,12 +138,14 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
         type: 'combat',
         text: _garrethEscapeLine(victim),
         audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
         heroes: _duelChars,
       });
     } else {
       reportHeroFall(turnContext, victim, thief, `${victim.name} is slain by the cornered thief!`, {
         audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
         heroes: _duelChars,
       });
@@ -209,6 +217,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `${c.name} looks for ${_tgt ? _tgt.name : 'their quarry'} in ${prov.name}, but they are not to be found here — the spying comes to nothing.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -218,6 +227,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `${c.name} shadows ${_tgt.name} through ${prov.name}, but can never quite fix on a face — nothing is learned. (Cloak of Many Faces)`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -245,6 +255,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `📊 Spy on ${_tgt.name} — ${c.name} (Spy ${_mySpy}) in ${prov.name}: ${_auto ? `automatic success (${hasCrystalOrb ? 'Crystal Orb' : 'Master Spy'})` : fmtRoll(_chance, _roll)}`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     if (_ok) {
@@ -280,6 +291,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
         type: 'spy',
         text: `[Intelligence] 🔍 ${c.name}'s report on ${_tgt.name}${_tgt.player != null ? ` of ${G.players[_tgt.player]?.name}` : ''} (${_tgt.race || '?'}, ${_tgt.alignment || '?'}${_tgt.isKing ? ', king' : ''}): skills — ${_sk}. Items — ${_it}. Leads — ${_ar}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
         spy: true,
       });
@@ -288,6 +300,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `${c.name} watches ${_tgt.name} closely in ${prov.name}, but learns nothing of use.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       trySkillGain(turnContext, c, 'spy', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
@@ -307,6 +320,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `📊 Detection — ${_tgt.name}${statNote(turnContext, c.player, _tgt, 'spy')} noticing ${c.name}${_tgRealmLand ? ' in their own land' : _myLand ? ' in your land' : ''}: ${oddsNote(turnContext, c.player, _tgt, _catch, _cr)}`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       if (_cr <= _catch) {
@@ -325,6 +339,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `${c.name} slips away unseen. (The Shadow)`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     return;
@@ -345,6 +360,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
     type: 'system',
     text: `📊 Spy — ${c.name} (Spy ${effStat(turnContext, c, 'spy')}) in ${prov.name}: ${_autoSpy ? `automatic success (${hasCrystalOrb ? 'Crystal Orb' : 'Master Spy'})` : fmtRoll(_spyChance, _spyRoll)}`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   // sd23 Disguise Techniques: 50% HARDER to be discovered — the counter-intelligence alert
@@ -357,6 +373,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `📊 Disguise Techniques — ${c.name} works under a false face in ${prov.name}: ${fmtRoll(_dgPct, _dgRoll)} — ${c._spyDisguised ? 'the disguise holds; no alarm is raised.' : 'the disguise slips; the province\u2019s watch will report the intrusion.'}`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   }
@@ -369,6 +386,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     trySkillGain(turnContext, c, 'spy', SKILLGAIN_COMMON);
   } // batch item 11: a failed attempt is a small chance to learn
@@ -390,6 +408,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
       type: 'system',
       text: `${c.name} has no Thief skill — light fingers take training.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -409,6 +428,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
         type: 'system',
         text: `${c.name} finds no enemy paymaster to rob in ${prov.name} — it needs a rival's garrison standing here.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -420,6 +440,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
       type: 'system',
       text: `📊 Steal — ${c.name} (Thief ${thiefLevel}) goes for the garrison paymaster of ${prov.name} (${_gN} unit${_gN !== 1 ? 's' : ''}, guarded — halved): ${fmtRoll(chance, roll)}`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     if (roll <= chance) {
@@ -434,6 +455,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
         type: 'hire',
         text: `💰 ${c.name} lifts ${take}g from the garrison paymaster's strongbox in ${prov.name}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       if (take > 0)
@@ -441,6 +463,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
           type: 'system',
           text: `[Intelligence] The garrison paymaster of ${prov.name} was robbed of ${take}g — ${c.name} (${G.players[c.player]?.name}) is suspected.`,
           audience: { actor: c.player, realms: [prov.owner] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
       trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
@@ -451,12 +474,14 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
         type: 'combat',
         text: `${c.name} is caught by the garrison guards of ${prov.name} and beaten back — ${dmg} damage taken.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       emit(turnContext, {
         type: 'system',
         text: `[Intelligence] ${c.name} (${G.players[c.player]?.name}) was caught trying to rob the garrison paymaster of ${prov.name}.`,
         audience: { actor: c.player, realms: [prov.owner] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else
@@ -464,6 +489,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
         type: 'system',
         text: `${c.name}'s attempt on the paymaster of ${prov.name} fails, but the thief slips away unnoticed.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     if (roll > chance) trySkillGain(turnContext, c, 'thief', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
@@ -476,6 +502,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
       type: 'system',
       text: `${c.name} finds no suitable target to steal from in ${prov.name}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -484,6 +511,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
       type: 'system',
       text: `${c.name} will not rob a comrade.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -492,6 +520,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
       type: 'system',
       text: `${c.name} reaches for ${victim.name}'s purse and closes on nothing — the man has vanished.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -507,6 +536,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
       type: 'system',
       text: `${c.name} finds ${victim.name} carries no purse worth the risk and no magic to lift.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -519,6 +549,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
     type: 'system',
     text: `📊 Steal — ${c.name} (Thief ${thiefLevel}) targets ${victim.name} (${wantGold ? 'gold' : 'a magic item'}): ${fmtRoll(stealChance, stealRoll)}${leadsArmies ? ' (halved — target leads armies)' : ''}`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   if (stealRoll <= stealChance) {
@@ -531,6 +562,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
           type: 'system',
           text: `${c.name} picks ${victim.name}'s purse — and finds it empty.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
       } else {
@@ -541,6 +573,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
           type: 'hire',
           text: `💰 ${c.name} deftly lifts ${take}g from ${victim.name}'s strongbox (5% of the realm's treasury).`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
         emit(turnContext, {
@@ -558,6 +591,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
           type: 'system',
           text: `${c.name}'s fingers find nothing — ${victim.name} keeps every trinket sewn tight; a master thief cannot be robbed of their own.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
       } else {
@@ -566,12 +600,14 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
           type: 'hire',
           text: `${c.name} deftly lifts the ${stolen.name} from ${victim.name}!`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
         emit(turnContext, {
           type: 'hire',
           text: gainedItemNote(c, [stolen]),
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         }); // item 10
         if (victim.player !== null)
@@ -594,6 +630,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
         type: 'system',
         text: `${c.name}'s theft attempt on ${victim.name} fails but the thief slips away undetected.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     trySkillGain(turnContext, c, 'thief', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
   }
@@ -607,6 +644,7 @@ export function resolveSabotageOrder(turnContext, c, target) {
       type: 'system',
       text: `${c.name} lacks the Spy mastery (7) to attempt Sabotage.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -616,6 +654,7 @@ export function resolveSabotageOrder(turnContext, c, target) {
       type: 'system',
       text: `${c.name}: Sabotage needs a valid enemy province you have seen.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -624,6 +663,7 @@ export function resolveSabotageOrder(turnContext, c, target) {
       type: 'system',
       text: `${c.name}: you are not at war with the owner of ${tp.name} — Sabotage would be an act of war. Declare war first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -637,6 +677,7 @@ export function resolveSabotageOrder(turnContext, c, target) {
     type: 'spy',
     text: `🕵 ${c.name}'s agents sabotage ${tp.name} — its coffers yield nothing this turn.${disbanded}`,
     audience: { actor: c.player, realms: [c.player, tp.owner].filter((x) => x != null) },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: tp.id,
   });
   TM(c).spyActions = (TM(c).spyActions || 0) + 1; // TITLE MERIT: Spymaster
@@ -667,6 +708,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `${c.name} lacks the Thief mastery (7) for a Grand Heist.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -675,6 +717,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `${c.name} has already attempted a Grand Heist this turn — one great job a season is all the nerves will bear.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -684,6 +727,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `${c.name} looks for vaults to crack in ${prov.name}, but no rival crown holds this ground — a Grand Heist is staged in an enemy's own country.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -693,6 +737,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `${c.name}: you are not at war with ${G.players[vp]?.name || 'this realm'} — a Grand Heist would be an act of war. Declare war first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -704,6 +749,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `${c.name} casts an eye over ${prov.name} and finds nothing worth the risk — a Grand Heist is staged in an enemy's home capital or in rich country (tax ${GRAND_HEIST_RICH_TAX}+; this province: ${prov.tax || 0}).`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -720,6 +766,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
     type: 'system',
     text: `📊 Grand Heist — ${c.name} (Thief ${_hLvl}) cracks the vaults of ${_ghHome ? 'the enemy capital of ' : 'the rich province of '}${prov.name} (${G.players[vp]?.name || 'an enemy realm'}): ${fmtRoll(_hChance, _hRoll)}${_ghGuarded ? ' (halved — the vaults are guarded)' : ''}`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   if (_hRoll <= _hChance) {
@@ -755,7 +802,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
         text: `📦 A courier of ${G.players[vp]?.name} is waylaid on the road — ${_it.name}${_p.fromName ? `, sent by ${_p.fromName}` : ''}${_dest ? ` and bound for ${_dest.name}` : ''}, never arrives.`,
         audience: { actor: null, realms: [vp] },
         province: prov.id,
-        hero: _dest ? _dest.id : null,
+        hero: _dest ? _dest.id : THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: ph,
       });
     } else parts.push(`though no courier of theirs was on the road to waylay`);
@@ -765,6 +812,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       type: 'hire',
       text: `💰 ${c.name} pulls off a Grand Heist in ${prov.name}${msg ? ` — ${msg}!` : ', but finds little worth taking.'}`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     if (_heistItem) {
@@ -774,6 +822,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
           type: 'hire',
           text: _gn,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
     } // item 10
@@ -781,6 +830,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       type: 'system',
       text: `[Intelligence] ${c.name} (${G.players[c.player]?.name}) staged a Grand Heist in ${prov.name}${msg ? `: ${msg}` : ''}.`,
       audience: { actor: c.player, realms: [vp] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
@@ -792,6 +842,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
         type: 'system',
         text: `${c.name}'s Grand Heist in ${prov.name} comes to nothing, but the thief slips away undetected.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -806,12 +857,14 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
         type: 'combat',
         text: `${c.name} is caught at the vaults of ${prov.name} and beaten back by the guards — ${dmg} damage taken.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       emit(turnContext, {
         type: 'system',
         text: `[Intelligence] A thief — ${c.name} (${G.players[c.player]?.name}) — was driven off the vaults of ${prov.name}.`,
         audience: { actor: c.player, realms: [vp] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }
@@ -826,6 +879,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name} lacks the Spy mastery (9) to Assassinate.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -837,6 +891,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name} finds no enemy hero to assassinate in ${prov.name} this phase.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -845,6 +900,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       type: 'spy',
       text: `${c.name} stalks ${victim.name} through ${prov.name} and never once catches sight of them — the mark has vanished.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -854,6 +910,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -869,6 +926,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
     type: 'spy',
     text: `📊 Assassination — ${c.name} (Spy ${skillLevel(c, 'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll <= chance ? ' ✓' : ' ✗'})${victim.isKing ? ' (king — heavily guarded)' : ''}`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     heroes: [c.id, victim.id].filter((v) => v != null),
     province: prov.id,
   });
@@ -877,6 +935,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       type: 'spy',
       text: `🗡 An attempt is made on ${victim.name}'s life${victim.isKing ? ' — the royal guard close ranks' : ''}.`,
       audience: { actor: victim.player, realms: [victim.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       heroes: [victim.id].filter((v) => v != null),
       province: prov.id,
     });
@@ -886,6 +945,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
         type: 'combat',
         text: _garrethEscapeLine(victim),
         audience: { actor: c.player, realms: [c.player].filter((x) => x != null), seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else {
@@ -896,6 +956,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
         `🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,
         {
           audience: { actor: c.player, realms: [c.player, victim.player].filter((x) => x != null), seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         },
       );
@@ -909,6 +970,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       type: 'spy',
       text: `${c.name}'s attempt on ${victim.name} fails — the mark slips the knife.`,
       audience: { actor: c.player, realms: [c.player, victim.player].filter((x) => x != null) },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       heroes: [c.id, victim.id].filter((v) => v != null),
       province: prov.id,
     });
@@ -924,6 +986,7 @@ export function resolveVanishOrder(turnContext, c, prov) {
       type: 'system',
       text: `${c.name} lacks the Thief mastery (9) to Vanish.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -932,6 +995,7 @@ export function resolveVanishOrder(turnContext, c, prov) {
     type: 'move',
     text: `🌫 ${c.name} melts into the shadows — for the rest of the turn nothing can bring them to bay and nothing can harm them: no pursuit, Encounter or ambush, no hostile spell, no blade, no assassin's knife.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
