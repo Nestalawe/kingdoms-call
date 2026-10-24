@@ -186,36 +186,6 @@
   },
   {
     "type": "cycle",
-    "from": "src/engine/battle/hosts-gained-in-a-province.ts",
-    "to": "src/engine/battle/stalled-battles-and-beaten-guards.ts",
-    "unresolvedTo": "./stalled-battles-and-beaten-guards.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/engine/battle/stalled-battles-and-beaten-guards.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/engine/battle/hosts-gained-in-a-province.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/engine/bots/economy.ts",
     "to": "src/engine/bots/intel.ts",
     "unresolvedTo": "./intel.ts",
