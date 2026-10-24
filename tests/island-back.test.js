@@ -65,6 +65,10 @@ const norm=s=>strip(s).replace(/[’‘]/g,"'").replace(/\s+/g,' ');
     const four=(naval)=>P.poSeaAnalysis([].concat(u('Great Turtles'),u('Gilded Lances',4)),naval);
     ok(four(8).cap==='sea'&&four(8).hullCap===4&&four(8).navalL8===true,`…under a leader of Naval 8 a turtle carries four (cap ${four(8).cap}, hullCap ${four(8).hullCap})`);
     ok(four(7).cap==='land'&&four(7).hullCap===2&&four(7).short===2,`…and under Naval 7 two (cap ${four(7).cap}, hullCap ${four(7).hullCap}, ${four(7).short} short)`);
+    // a unit the player's earlier orders will raise, whose type can't be known yet ('__projected foot__', the notice's
+    // stand-in), takes half a hull, as light foot do: a galleon carries two
+    const graves=an([].concat(u('Galleon Fleet'),[1,2].map(i=>({type:'__projected foot__',quality:'Average',unitName:`a grave ${i}`,_projected:true}))));
+    ok(graves&&graves.cap==='sea'&&graves.short===0,`…and two graves still to be raised take one galleon's berth (cap ${graves&&graves.cap}, ${graves&&graves.short} short)`);
     dom.window.close(); }
 
   // ── A turn: putting out with a turtle ──
