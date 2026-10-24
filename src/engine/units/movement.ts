@@ -1,10 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_CARRIER_BERTHS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { typeOfX } from '../battle/lines.ts';
 import { hasItemBase } from '../items/equipment.ts';
 import { discEffectsOf, discUnitMatch } from '../discoveries.ts';
-import { CARRIER_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 
 // ── MARCH AND NAVAL SPEED BONUS ────
 // 2026-10-13 (Toby, item 14): one rate of advance. Every unit a hero leads gains the same bonus
@@ -36,11 +35,6 @@ export function garrisonMoveRate(a, pl) {
 export function navalSpeedBonus(baseSpeed, navalLevel) {
   // baseSpeed is no longer used (item 14: one rate)
   return MARCH_NAVAL_BONUS[Math.max(0, Math.min(5, navalLevel || 0))];
-}
-// Berths a unit offers land troops: one per hull, KC_CARRIER_BERTHS for the exceptions (2026-10-13, Creatures and Monsters VI:
-// the Great Turtles' Island Back carries two), nothing for anything that is not a carrier.
-export function carrierBerths(a) {
-  return a && CARRIER_TYPES.has(a.type) ? (KC_CARRIER_BERTHS && KC_CARRIER_BERTHS[a.type]) || 1 : 0;
 }
 
 // HUMAN — Ride Them Down only works in open country. Light horse need room to run a broken enemy

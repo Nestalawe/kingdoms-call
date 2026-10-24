@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { carrierBerths } from './movement.ts';
+import { carrierBerths } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
 import {
   AERIAL_TYPES,
   FLYING_TYPES,
