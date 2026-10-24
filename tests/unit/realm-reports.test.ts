@@ -7,10 +7,13 @@
 //   line sent to it, one its own realm did, one about its own hero (filed under that hero), and a public line with no
 //   province (the world is told) or in one of its own provinces. Nothing else: no other realm's private business, and
 //   no public line from a province it has no eyes on (no hero stood there and no spy saw it, as on this context).
+// - Its Clairvoyance feed (P1-21b): a realm watching another realm's hero by Clairvoyance reads every line about him
+//   from the phase the watch began (the phase it was cast), not before, each once, and where he stands as the turn
+//   ends. No other test and no game of the balance matrix builds a report with a Clairvoyance watch.
 // Level 1 (unit): the function is called on a world and a turn's sight made in the test; nothing else of the turn runs.
 // The property describes the game as it is; a fault planted in a copy of the function turns it red (the PR shows it).
 import fc from 'fast-check';
-import { afterAll, expect, test } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
@@ -25,9 +28,9 @@ const freshPlayers = Array.from({ length: REALMS }, (_, i) => ({
 }));
 const tc = turnContext(engine, botWorld(engine, REALMS, { cols: 12, rows: 7 }), { freshPlayers });
 const G = tc.G as {
-  world: { provinces: unknown[] };
+  world: { provinces: { name: string }[] };
   players: { provinces?: number[] }[];
-  characters: { id: number; player: number | null }[];
+  characters: { id: number; player: number | null; name: string; location: number; alive: boolean }[];
 };
 const playerEvents = engineFn(engine, 'playerEvents') as (
   events: Entry[],
@@ -132,4 +135,67 @@ test('each realm reads exactly the lines the visibility rule allows, in the log�
       ],
     },
   );
+});
+
+describe('the Clairvoyance feed', () => {
+  // Realm 0 watches realm 1's hero from phase 2 (the phase it cast the spell). The lines about him are written for his
+  // own realm only (it is their actor), so realm 0 reads them through the watch alone; one is told to realm 0 as well.
+  const watched = G.characters.find((c) => c.player === 1 && c.alive);
+  if (!watched) throw new Error('realm 1 has no living hero');
+  const FROM = 2;
+  const about = (n: number, phase: number | null, extra: Partial<Entry> = {}): Entry => ({
+    type: 'movement',
+    text: `[about him ${String(n)}]`,
+    actor: 1,
+    targets: [],
+    public: false,
+    provinceId: null,
+    charId: watched.id,
+    charIds: null,
+    phase,
+    ...extra,
+  });
+  const log: Entry[] = [
+    about(0, 0),
+    about(1, 1),
+    about(2, FROM),
+    about(3, 3, { targets: [0] }), // told to realm 0 as well: read once, as told
+    about(4, 4),
+    about(5, null), // a line with no phase: not part of the feed
+    { ...about(6, 3), charId: null, text: '[about someone else]' },
+  ];
+  const watching = { ...sight, clairWatch: { 0: { charId: watched.id, fromPhase: FROM } } };
+  const read = () =>
+    playerEvents(
+      log.map((e) => ({ ...e })),
+      tc.G,
+      0,
+      watching,
+    ).lastTurnLog.map((l) => ({ text: l.text, phase: l.phase }));
+  const where = G.world.provinces[watched.location]?.name;
+
+  test('a realm reads every line about the hero it watches from the phase the watch began, each once', () => {
+    expect(read().filter((l) => l.text.includes('[about'))).toEqual([
+      { text: '[about him 3]', phase: 3 },
+      { text: '🔮 Clairvoyance — [about him 2]', phase: 2 },
+      { text: '🔮 Clairvoyance — [about him 4]', phase: 4 },
+    ]);
+  });
+  test('and where he stands as the turn ends', () => {
+    expect(read().filter((l) => l.phase === null)).toEqual([
+      {
+        text: `🔮 Clairvoyance — as the turn ends, ${watched.name} stands in ${String(where)}. They are marked on your map.`,
+        phase: null,
+      },
+    ]);
+  });
+  test('a realm watching no hero reads none of those lines', () => {
+    const lines = playerEvents(
+      log.map((e) => ({ ...e })),
+      tc.G,
+      2,
+      watching,
+    ).lastTurnLog.filter((l) => l.text.includes('Clairvoyance') || l.text.includes('[about'));
+    expect(lines).toEqual([]);
+  });
 });
