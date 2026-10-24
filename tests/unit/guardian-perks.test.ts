@@ -6,6 +6,7 @@
 // Level 1 (unit): every function called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
 import { expect, test } from 'vitest';
+import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import {
   clone,
   personalCombatEngine,
@@ -14,7 +15,7 @@ import {
   type Guardian,
 } from '../lib/personal-combat.ts';
 
-const { call, base, MON, pinned } = await personalCombatEngine();
+const { call, base, MON, pinned, wordsOf, wordsForEveryoneInTheFight } = await personalCombatEngine();
 type Fx = Record<string, unknown> & { ward?: string; pct?: number; amt?: number; school?: string };
 // The decided table: a perk's value at Weak / Moderate / Powerful / Legendary (cap: a lower ceiling is stronger).
 const DECIDED: Record<string, number[]> = {
@@ -145,9 +146,9 @@ test('every perk of every guardian is felt in a fight', () => {
 
 test("a Psychic 5 hero's blast at the Reef Siren (Siren's Mind, a 30 ward) is cast at 80 − 30 = 50%", () => {
   const t = g('Reef Siren');
-  const n: string[] = [];
+  const n: NarrativeLine[] = [];
   pinned(0.99, () => call('pcCastCombatSpell', mage({ psychic: 5 }), t, 'Psychic Blast', n, st()));
-  expect(n.join('\n')).toMatch(/\(50% to cast/);
+  expect(wordsOf(n).join('\n')).toMatch(/\(50% to cast/);
 });
 
 test("a Legendary guardian's stun ward (100) turns a Psychic Blast as it lands", () => {
@@ -180,8 +181,8 @@ test('the fight opens by naming every perk of the guardian', () => {
   const t = g('Sphinx');
   t.hp = 0;
   const res = call('resolvePersonalCombat', mage({ melee: 3 }), t, { maxRounds: 1 }) as FightResult;
-  // a line is text, or a private line ({text, …}), which the old join read as "[object Object]"
-  const txt = res.narrative.filter((l): l is string => typeof l === 'string').join('\n');
+  // the lines for everyone in the fight (not a private line, for one realm alone), in words
+  const txt = wordsForEveryoneInTheFight(res.narrative).join('\n');
   expect(perks(m).every((p) => txt.includes(p.name))).toBe(true);
 });
 

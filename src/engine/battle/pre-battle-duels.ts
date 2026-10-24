@@ -8,7 +8,7 @@ import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { EventButItsWords, NarrativeLine } from '../turn/events-and-their-audiences.ts';
-import { narrate, narrateTo } from '../turn/events-and-their-audiences.ts';
+import { narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
 // The single combat between the two commanders before an army battle, and the morale each host carries into the battle
@@ -125,7 +125,12 @@ export function preBattleDuel(
         : `\u{1F480} ${loser.name} is slain in the duel!`,
     );
     _dOpts.lines.forEach((l) => {
-      if (l.priv != null) narrateTo(narrative, l.priv, undefined, l.text);
+      if (l.priv != null)
+        narrate(narrative, {
+          kind: 'the surgeons reach a fallen duellist too late, for his realm alone',
+          realm: l.priv,
+          words: l.text,
+        });
       else narrate(narrative, l.text);
     });
     demoralise(loser, `their commander fell in single combat`);

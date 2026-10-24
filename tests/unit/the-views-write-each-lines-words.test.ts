@@ -14,7 +14,6 @@ import { battleTallyLine } from '../../src/engine/battle/fates.ts';
 import {
   emit,
   narrate,
-  narrateTo,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   type EventButItsWords,
   type NarrativeLine,
@@ -144,7 +143,12 @@ describe("a battle's lines in words", () => {
   test('a battle whose lines are all for one realm alone files no tally place', () => {
     const tc = newContext();
     const narrative: NarrativeLine[] = [];
-    narrateTo(narrative, 0, 7, "📈 Aldric's Tactics rises to level 3.");
+    narrate(narrative, {
+      kind: "a hero's hit points rise in a fight, for his realm alone",
+      realm: 0,
+      hero: 7,
+      words: '💪 Aldric is hardened by the wounds of battle.',
+    });
     fileTheBattle(tc, narrative);
     expect(tc.turnLog.map((l) => l.bTier)).toEqual(["worked out from the words of the battle's lines", 's']);
     expect(theTurnsLinesInWords(tc.turnLog).gmLog.map((l) => [l.bTier, l.targets])).toEqual([

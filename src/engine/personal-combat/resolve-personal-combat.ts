@@ -16,7 +16,14 @@ import { pcSpeedOf } from './speed-encounter-plans-and-combatants.ts';
 import { pcHitChance, pcMeleeDamage, pcPerkWord, pcRoundStart, pcTakeHit } from './to-hit-wounds-stuns-and-courage.ts';
 import { pcAttemptFlee } from './melee-flight-and-archery.ts';
 import { pcAct } from './tactics-combat-items-and-actions.ts';
-import { narrateAll, narrateAt, takeBackLinesFrom, narrate } from '../turn/events-and-their-audiences.ts';
+import {
+  isALineForEveryoneInTheFight,
+  narrateAll,
+  narrateAt,
+  takeBackLinesFrom,
+  narrate,
+} from '../turn/events-and-their-audiences.ts';
+import { isAPersonalCombatsLine } from './the-facts-a-personal-combats-lines-record.ts';
 
 // ── PERSONAL COMBAT: THE FIGHT (plan P1-08e: lifted out of resolveTurn) ────
 // resolvePersonalCombat runs a whole personal fight between two combatants, round by round. It takes the turn's
@@ -72,35 +79,48 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
     [B, A],
   ]) {
     if (me.kind === 'monster' && (me.perks || []).length)
-      me.perks.forEach((p) => narrate(narrative, `  🜏 ${me.name} — ${p.name}: ${p.desc}.`));
+      me.perks.forEach((p) =>
+        narrate(narrative, { kind: "a guardian's perk is named", meName: me.name, pName: p.name, pDesc: p.desc }),
+      );
     else if (me.kind === 'monster' && me.passiveName)
-      narrate(narrative, `  🜏 ${me.name} — ${me.passiveName}: ${me.passiveDesc}.`);
+      narrate(narrative, {
+        kind: "a guardian's perk is named",
+        meName: me.name,
+        pName: me.passiveName,
+        pDesc: me.passiveDesc,
+      });
     if (me.aura > 0) {
       foe.status.auraPenalty = (foe.status.auraPenalty || 0) + me.aura;
     }
   }
   if (A.druidBeastWard)
-    narrate(
-      narrative,
-      `  🍃 ${A.name} has hunted this kind before — the beast's blows will land at half force (Druid ${A.druidBeastWard}).`,
-    );
+    narrate(narrative, {
+      kind: 'a druid has hunted this kind of beast before',
+      aName: A.name,
+      aDruidBeastWard: A.druidBeastWard,
+    });
   if (B.druidBeastWard)
-    narrate(
-      narrative,
-      `  🍃 ${B.name} has hunted this kind before — the beast's blows will land at half force (Druid ${B.druidBeastWard}).`,
-    );
+    narrate(narrative, {
+      kind: 'a druid has hunted this kind of beast before',
+      aName: B.name,
+      aDruidBeastWard: B.druidBeastWard,
+    });
   // Initiative: speed first, then raw martial skill; ties broken at random.
   const initA = pcSpeedOf(A) * 10 + (A.melee || 0) + (A.archery || 0) + kcRng();
   const initB = pcSpeedOf(B) * 10 + (B.melee || 0) + (B.archery || 0) + kcRng();
   const first = initA >= initB ? A : B,
     second = first === A ? B : A;
-  narrate(narrative, `  ${first.name} has the initiative. The fight opens at spell range.`);
+  narrate(narrative, { kind: 'one fighter has the initiative', firstName: first.name });
 
   // One "mirror round": the victim fights their phantom (an even duel) while the caster
   // concentrates. Shared by the round-start mirror branch and the same-round hook below.
   const _mirrorExchange = () => {
     const { caster, victim, phantasm } = state.mirror;
-    narrate(narrative, `  🪞 ${victim.name} fights their own mirror image while ${caster.name} concentrates.`);
+    narrate(narrative, {
+      kind: 'the victim fights their own mirror image',
+      victimName: victim.name,
+      casterName: caster.name,
+    });
     // the VICTIM fights the phantom with their own Encounter Plan too
     // (spells, arrows, tactics), not a bare sword-swing — "the two mirror images fight it out" on
     // equal terms. The victim's plan pointer, spell limits and status are their real ones (to
@@ -111,12 +131,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       const _vstate = { fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null };
       pcAct(turnContext, victim, phantasm, narrative, _vstate);
       if (_vstate.fledBy)
-        narrate(
-          narrative,
-          `    …but there is no escaping one's own reflection — the phantom is on ${victim.name} again at once.`,
-        );
-      if (_vstate.mirror)
-        narrate(narrative, `    …but an illusion cast upon an illusion finds no purchase, and fades.`);
+        narrate(narrative, { kind: "but there is no escaping one's own reflection", victimName: victim.name });
+      if (_vstate.mirror) narrate(narrative, { kind: 'but an illusion cast upon an illusion' });
     }
     // the phantom fights back exactly as the mirrored character would — it runs THEIR Encounter
     // Plan (from the start), so a spell-caster's reflection hurls the same spells, an archer's
@@ -129,14 +145,14 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       pcAct(turnContext, phantasm, victim, narrative, _mstate);
     }
     if (phantasm.hp <= 0) {
-      narrate(narrative, `  🪞 ${victim.name} shatters the phantom — the illusion ends.`);
+      narrate(narrative, { kind: 'the victim shatters the phantom', victimName: victim.name });
       state.mirror = null;
     } else if (state.mirror && --state.mirror.life <= 0) {
-      narrate(narrative, `  🪞 The phantom of ${victim.name} thins to nothing of its own accord.`);
+      narrate(narrative, { kind: 'the phantom of the victim thins to nothing', victimName: victim.name });
       state.mirror = null;
     }
     if (victim.hp <= 0) {
-      narrate(narrative, `  ${victim.name} is struck down by their own mirror image!`);
+      narrate(narrative, { kind: 'the victim is struck down by their own mirror image', victimName: victim.name });
       state.mirror = null;
     }
   };
@@ -185,10 +201,13 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       ]) {
         if (me.burn > 0 && me.hp > 0 && foe.hp > 0) {
           foe.hp -= me.burn;
-          narrate(
-            narrative,
-            `  🜏 ${pcPerkWord(me, 'burn', 'The aura')} sears ${foe.name} for ${me.burn}. (HP ${Math.max(0, Math.round(foe.hp))})`,
-          );
+          narrate(narrative, {
+            kind: "a guardian's aura sears the foe",
+            meBurnWord: pcPerkWord(me, 'burn', 'The aura'),
+            foeName: foe.name,
+            meBurn: me.burn,
+            foeHp: Math.max(0, Math.round(foe.hp)),
+          });
         }
       }
     _stepCheck(_sm);
@@ -210,10 +229,11 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       if (caster && caster.ref && hasItemBase(caster.ref, 'Mirror Shard')) disbelief *= 0.5; // Mirror Shard: harder to disbelieve
       disbelief = Math.max(2, Math.min(90, disbelief));
       if (kcRng() * 100 < disbelief) {
-        narrate(
-          narrative,
-          `  ✨ ${victim.name} sees through the illusion (${disbelief.toFixed(0)}% disbelief) — the phantom dissolves and the real fight resumes.`,
-        );
+        narrate(narrative, {
+          kind: 'the victim sees through the illusion',
+          victimName: victim.name,
+          disbeliefPct: disbelief.toFixed(0),
+        });
         state.mirror = null;
         // fall through to a normal round below
       } else {
@@ -249,13 +269,20 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
         const hit = pcHitChance(turnContext, actor, foe);
         if (kcRng() * 100 < hit) {
           const dmg = pcMeleeDamage(actor, foe);
-          narrate(narrative, `  ⚔ ${actor.name} takes a free strike at ${foe.name}!`);
+          narrate(narrative, {
+            kind: 'a fighter takes a free strike at the foe',
+            actorName: actor.name,
+            foeName: foe.name,
+          });
           const dealt = pcTakeHit(turnContext, foe, dmg, narrative, actor.name, 'free strike');
           if (dealt)
-            narrate(
-              narrative,
-              `  ${actor.name}'s free strike lands for ${dealt} damage! (${foe.name} HP ${Math.max(0, Math.round(foe.hp))})`,
-            );
+            narrate(narrative, {
+              kind: "a fighter's free strike lands",
+              actorName: actor.name,
+              dealt,
+              foeName: foe.name,
+              foeHp: Math.max(0, Math.round(foe.hp)),
+            });
         }
         /* 2026-09-23: announced before the armour line, as the counterattack */ free--;
       }
@@ -264,12 +291,20 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       if (foe.hp <= 0 && foe._rebirth) {
         foe._rebirth = false;
         foe.hp = Math.max(5, Math.round(foe.maxHp * 0.4));
-        narrate(narrative, `  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`);
+        narrate(narrative, {
+          kind: 'the foe bursts into ash then blazes back to life',
+          foeName: foe.name,
+          foeHp: foe.hp,
+        });
       }
       if (actor.hp <= 0 && actor._rebirth) {
         actor._rebirth = false;
         actor.hp = Math.max(5, Math.round(actor.maxHp * 0.4));
-        narrate(narrative, `  🔥 ${actor.name} bursts into ash — then blazes back to life! (HP ${actor.hp})`);
+        narrate(narrative, {
+          kind: 'the foe bursts into ash then blazes back to life',
+          foeName: actor.name,
+          foeHp: actor.hp,
+        });
       }
       if (state.fledBy || state.parley || state.stoleBy || foe.hp <= 0 || actor.hp <= 0) break;
     }
@@ -284,10 +319,13 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       cbt._secondWindUsed = true;
       const back = Math.max(1, Math.round((cbt.maxHp || 20) * tt.secondWind));
       cbt.hp = Math.min(cbt.maxHp || 20, cbt.hp + back);
-      narrate(
-        narrative,
-        `  💪 ${cbt.name} (${cbt.temper}) finds their second wind and fights on — ${back} HP recovered. (HP ${dispFloor(cbt.hp)})`,
-      );
+      narrate(narrative, {
+        kind: 'a fighter finds their second wind and fights on',
+        cbtName: cbt.name,
+        cbtTemper: cbt.temper,
+        back,
+        cbtHp: dispFloor(cbt.hp),
+      });
     }
 
     // ── Flight from Combat (AK §2.4): a fighter's Temper may make them break off when death
@@ -361,18 +399,24 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
           : 'power';
       const _pow = _k && _cls === 'power' ? _k : 'its power';
       const plea = !_blow
-        ? `  🙏 As their strength fails and death closes in, ${who} begs ${foeWho} for mercy!${_odds}`
+        ? { kind: 'as their strength fails a fighter begs the foe for mercy', who, foeWho, odds: _odds }
         : _cls === 'ranged'
           ? _pick([
-              `  🙏 As ${foeWho} draws for the killing shot, ${who} throws down their weapon and begs for their life!${_odds}`,
-              `  🙏 Pinned and bleeding, ${who} cries out for mercy before the last arrow can fly!${_odds}`,
+              { kind: 'as the foe draws for the killing shot a fighter begs for their life', foeWho, who, odds: _odds },
+              { kind: 'pinned and bleeding a fighter cries out for mercy', who, odds: _odds },
             ])
           : _cls === 'power'
-            ? `  🙏 As ${foeWho} readies ${_pow} for the killing stroke, ${who} falls to their knees and begs to be spared!${_odds}`
+            ? {
+                kind: 'as the foe readies a power for the killing stroke a fighter begs',
+                foeWho,
+                pow: _pow,
+                who,
+                odds: _odds,
+              }
             : _pick([
-                `  🙏 Beaten and bleeding, ${who} sees the killing blow coming — they throw down their weapon and beg ${foeWho} for their life!${_odds}`,
-                `  🙏 As ${foeWho} closes for the kill, ${who} flings up their hands and cries out for mercy!${_odds}`,
-                `  🙏 ${who} drops to their knees before the final stroke can fall, pleading to be spared!${_odds}`,
+                { kind: 'beaten and bleeding a fighter sees the killing blow coming', who, foeWho, odds: _odds },
+                { kind: 'as the foe closes for the kill a fighter cries out for mercy', foeWho, who, odds: _odds },
+                { kind: 'a fighter drops to their knees before the final stroke', who, odds: _odds },
               ]);
       const _falls =
         _cls === 'ranged'
@@ -387,22 +431,38 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
         state.fledBy = cbt;
         const spared =
           foe.kind === 'monster'
-            ? `  ${FoeWho} pauses over its prey — and, for reasons of its own, lets ${who} crawl away. ${who} flees the field with their life. (HP 1)`
+            ? {
+                kind: 'the guardian pauses over its prey and lets a fighter crawl away',
+                foeWho: FoeWho,
+                who,
+                who2: who,
+              }
             : !_blow
-              ? `  ${FoeWho} lets them go — ${who} staggers from the field with their life. (HP 1)`
+              ? { kind: 'the foe lets a fighter go', foeWho: FoeWho, who }
               : _cls === 'ranged'
-                ? `  ${FoeWho} lowers their bow. "Go, while you still can." ${who} flees the field with their life. (HP 1)`
+                ? { kind: 'the foe lowers their bow and lets a fighter go', foeWho: FoeWho, who }
                 : _cls === 'power'
-                  ? `  ${FoeWho} lets ${_pow} die unspent and waves ${who} away. ${who} flees the field with their life. (HP 1)`
+                  ? { kind: 'the foe lets a power die unspent', foeWho: FoeWho, pow: _pow, who, who2: who }
                   : _pick([
-                      `  ${FoeWho} stays the blow. "Go — and never let me see your face again." ${who} scrambles away and flees the field with their life. (HP 1)`,
-                      `  ${FoeWho} lowers their weapon in disgust and lets ${who} go. ${who} flees the field, alive but broken. (HP 1)`,
-                      `  The stroke never falls — ${foeWho} spares them. ${who} stumbles from the field with their life. (HP 1)`,
+                      { kind: 'the foe stays the blow and lets a fighter go', foeWho: FoeWho, who },
+                      {
+                        kind: 'the foe lowers their weapon in disgust and lets a fighter go',
+                        foeWho: FoeWho,
+                        who,
+                        who2: who,
+                      },
+                      { kind: 'the stroke never falls and the foe spares a fighter', foeWho, who },
                     ]);
         if (_blow) {
-          // the killing blow never landed: drop its lines, keep the owner's private skill markers
+          // the killing blow never landed: drop its lines, keep the owner's private skill markers (a skill rise's
+          // words; a line for one realm alone, another area's fact). Since P1-12c4 the fight's own lines are facts of
+          // personal combat's kinds, none of whose words starts with those markers: a kind check, not a test of words.
           const tail = takeBackLinesFrom(narrative, at);
-          const kept = tail.filter((x) => typeof x !== 'string' || /^\s*(📈|🎉|💰)/.test(x));
+          const kept = tail.filter((x) =>
+            typeof x === 'string'
+              ? /^\s*(📈|🎉|💰)/.test(x)
+              : !(isAPersonalCombatsLine(x) && isALineForEveryoneInTheFight(x)),
+          );
           narrateAll(narrative, [plea, spared, ...kept]);
         } else {
           narrate(narrative, plea);
@@ -421,22 +481,27 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
             applyItemMaxHp(cbt.ref, _lost);
             foe.ref.items = foe.ref.items || [];
             foe.ref.items.push(_lost);
-            narrate(narrative, `  🎒 ${cbt.name} surrenders ${_lost.name} to ${foe.name} as the price of mercy.`);
+            narrate(narrative, {
+              kind: 'a fighter surrenders an item to the foe as the price of mercy',
+              cbtName: cbt.name,
+              lostName: _lost.name,
+              foeName: foe.name,
+            });
             {
               const _gn = gainedItemNote(foe.ref, [_lost]);
-              if (_gn) narrate(narrative, '  ' + _gn);
+              if (_gn) narrate(narrative, { kind: 'a gained item noted', gainedItemNote: _gn });
             } // item 10
           }
         }
       } else {
         const refused =
           foe.kind === 'monster'
-            ? `  ${FoeWho} knows nothing of mercy.${_blow ? _falls : ''}`
+            ? { kind: 'the foe knows nothing of mercy', foeWho: FoeWho, wordsIfABlowFalls: _blow ? _falls : '' }
             : foeAlign === 'Evil' || foeAlign === 'Undead'
-              ? `  ${FoeWho} laughs at the plea.${_blow ? _falls : ''}`
+              ? { kind: 'the foe laughs at the plea', foeWho: FoeWho, wordsIfABlowFalls: _blow ? _falls : '' }
               : _pick([
-                  `  ${FoeWho} is deaf to the plea.${_blow ? _falls : ''}`,
-                  `  There is no pity in ${foeWho} today.${_blow ? _falls : ''}`,
+                  { kind: 'the foe is deaf to the plea', foeWho: FoeWho, wordsIfABlowFalls: _blow ? _falls : '' },
+                  { kind: 'there is no pity in the foe', foeWho, wordsIfABlowFalls: _blow ? _falls : '' },
                 ]);
         if (_blow) {
           narrateAt(narrative, at, [plea, refused]);

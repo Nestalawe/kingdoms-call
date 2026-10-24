@@ -4,8 +4,8 @@
 // what the line's fields say; every event names its hero (P1-12c2): a hero left out throws, null is no hero, and
 // THE_HERO_WHOSE_ORDER_IS_RESOLVING is that hero, but only when the line already reaches his realm (P1-12c1); a phase
 // left out or null is the phase of the order resolving (else the phase resolving, else 99 once the phases are over),
-// 'none' a real null; narrate and narrateTo add a line for everyone in the fight, or one for one realm alone that
-// emitNarrLine files to that realm under its hero.
+// 'none' a real null; narrate adds a line to a fight: for everyone in it, or, a fact of a kind whose audience is its
+// hero's realm alone (P1-12c4), one that emitNarrLine files to that realm under its hero.
 // (The oracle that checked emit against copies of the code before it, for any input, ran from P1-12a2 to P1-12a4 and
 // went with log() in P1-12a4, as Decision 5 planned. The lines a capture writes, which went straight into turnLog
 // before: tests/unit/a-capture-tells-the-realm-that-lost-it-with-no-hero-and-no-phase.test.ts.)
@@ -18,7 +18,6 @@ import {
   type EventButItsWords,
   type FightLine,
   narrate,
-  narrateTo,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   type NarrativeLine,
   type TurnEvent,
@@ -125,14 +124,17 @@ describe("emit's forms", () => {
     ]);
   });
 
-  test('narrate and narrateTo: a line for everyone in the fight, and one that emitNarrLine files to one realm alone', () => {
+  test("narrate: a line for everyone in the fight, and a fact for its hero's realm alone that emitNarrLine files to that realm", () => {
     const narrative: NarrativeLine[] = [];
+    const risen = {
+      kind: "a hero's hit points rise in a fight, for his realm alone",
+      realm: 1,
+      hero: 12,
+      words: '💪 Aldric is hardened by the wounds of battle.',
+    } as const;
     narrate(narrative, 'The hosts close.');
-    narrateTo(narrative, 1, 12, "Aldric's Swordplay rises to 4.");
-    expect(narrative).toEqual([
-      'The hosts close.',
-      { text: "Aldric's Swordplay rises to 4.", onlyPlayer: 1, charId: 12 },
-    ]);
+    narrate(narrative, risen);
+    expect(narrative).toEqual(['The hosts close.', risen]);
     const tc = newContext(state);
     const fight: FightLine = {
       type: 'combat',
@@ -192,7 +194,11 @@ describe('the hero whose order is resolving files a line only when it already re
 
   test("a fight's line for one realm alone, written with no hero, is filed under no hero of another realm", () => {
     const narrative: NarrativeLine[] = [];
-    narrateTo(narrative, 1, undefined, 'Your duellist falls.');
+    narrate(narrative, {
+      kind: 'the surgeons reach a fallen duellist too late, for his realm alone',
+      realm: 1,
+      words: 'Your duellist falls.',
+    });
     const tc = newContext(resolving, heroes);
     const fight: FightLine = {
       type: 'combat',

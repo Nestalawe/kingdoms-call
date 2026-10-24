@@ -8,9 +8,10 @@
 // was a scenario-level script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal).
 // Each blow is sampled 600 times from the seeded dice, as before.
 import { expect, test } from 'vitest';
+import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { personalCombatEngine, type Character, type Combatant } from '../lib/personal-combat.ts';
 
-const { call, MON, turnContext } = await personalCombatEngine({ realms: 3, opts: { seaPct: 30 } });
+const { call, MON, turnContext, wordsOf } = await personalCombatEngine({ realms: 3, opts: { seaPct: 30 } });
 const BASE: Record<string, [number, number]> = { Weak: [1, 3], Moderate: [2, 5], Powerful: [3, 7], Legendary: [4, 9] };
 const dummy = () => ({ kind: 'character', name: 'Dummy', hp: 999, maxHp: 999, status: {}, temper: 'None' });
 const blow = (c: Combatant) => call('pcMeleeDamage', c, dummy()) as number;
@@ -89,7 +90,7 @@ test('Grave Chill: −1 Melee for the next round, and only that round', () => {
   const g = call('pcMonsterCombatant', { ...wight, _hpFull: wight.hp }) as Combatant;
   const before = call('pcHitSkill', hero, 'melee') as number;
   const dmgBefore = maxDmg();
-  const narr: string[] = [];
+  const narr: NarrativeLine[] = [];
   call('pcMonsterSpecial', g, hero, chill, narr, { range: 'melee' });
   call('pcRoundStart', hero, narr); // the next round: the chill bites
   const during = call('pcHitSkill', hero, 'melee') as number;
@@ -102,7 +103,7 @@ test('Grave Chill: −1 Melee for the next round, and only that round', () => {
   call('pcRoundStart', hero, narr); // the round after: gone
   expect(call('pcHitSkill', hero, 'melee'), `the round after, Melee is back to ${String(before)}`).toBe(before);
   expect(
-    narr.some((l) => /Melee/.test(l)),
+    wordsOf(narr).some((l) => /Melee/.test(l)),
     'the battle report mentions the chill',
   ).toBe(true);
 });

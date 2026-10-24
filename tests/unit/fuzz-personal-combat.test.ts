@@ -17,7 +17,7 @@ import {
 
 /** Fights in each test (the scripts' own sizes: 4,000, and 20,000 in npm run test:full). */
 const FIGHTS = process.env['KC_FULL'] === '1' ? 20_000 : 4_000;
-const { call, MON } = await personalCombatEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const { call, MON, wordsOf } = await personalCombatEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 
 const RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'];
 const TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
@@ -26,7 +26,7 @@ const TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
 function faults(fight: () => FightResult): string[] {
   try {
     const res = fight();
-    const text = res.narrative.map((x) => (typeof x === 'string' ? x : x.text || '')).join('\n');
+    const text = wordsOf(res.narrative).join('\n');
     return text.split('\n').filter((l) => /NaN|undefined/.test(l));
   } catch (e) {
     return [`threw: ${e instanceof Error ? (e.stack ?? e.message).split('\n').slice(0, 3).join(' | ') : String(e)}`];
