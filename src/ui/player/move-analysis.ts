@@ -1,13 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import {
-  KC_CARRIER_BERTHS,
-  KC_HEX_DIRS,
-  KC_SKILL_LABELS,
-  KC_TEMPERS,
-  KC_UNIT_CLASS,
-} from '../../content/kingdoms-call-data.ts';
-import { getFlyCapability, isAirCarriable } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import { KC_HEX_DIRS, KC_SKILL_LABELS, KC_TEMPERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { seaLiftOfAColumn, takesHalfAHullAboard } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
 import { SKILL_COLUMNS } from './join-and-chronicle.ts';
 import { getOrderTarget } from './pre-orders.ts';
@@ -18,98 +12,41 @@ import { predictedLocation, projectedLedArmies } from './order-targets.ts';
 // ══ MOVE ANALYSIS (2026-09-26, Toby item 1) ═══════════════════════════════════════════════════
 // Before a Move order is submitted, tell the player what KIND of move it is — a land march, a
 // voyage, or a flight — and warn them when they are ordering a column into the sea that their
-// hulls and flyers cannot carry. Whether a unit can be lifted through the air and whether a whole
-// column can fly are the engine's own isAirCarriable and getFlyCapability (src/shared/). Every other
-// set and rule below mirrors the GM engine exactly (AERIAL_TYPES / SEA_TYPES / CARRIER_TYPES /
-// FLYING_TYPES, getSeaCapability and seaLiftShortfall). If any of those change in the engine, change
-// these too — a warning that disagrees with the resolver is worse than no warning at all.
+// hulls and flyers cannot carry. Whether the hulls and flyers can carry the column, and the figures the note explains
+// itself by (its berths, its land units, the units left ashore), are the engine's own seaLiftOfAColumn (src/shared/;
+// plan P1-11b4: the engine's getSeaCapability asks it too). The sets below only sort the column for the note's words.
 export const PO_SEA_TYPES = new Set(KC_UNIT_CLASS.sea);
 export const PO_CARRIER_TYPES = new Set(KC_UNIT_CLASS.carrier);
 export const PO_AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
-export const PO_FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
-// Light foot take half a hull; everything else takes a whole one (engine: LIGHT_ARMIES).
-export const PO_LIGHT_TYPES = new Set([...KC_UNIT_CLASS.lightFoot, '__projected foot__']); // a unit the player has ordered raised or summoned earlier this turn — counted as light foot
 // The stand-in type for a unit an earlier order will produce whose TYPE cannot be known in advance
 // (a grave raised by Skeletal Armies or Harvest the Field). It belongs to no aerial, sea, creature
-// or monster set, so isAirCarriable treats it as humanoid foot and PO_LIGHT_TYPES prices it at half
-// a hull — the commonest case by far for a raised or harvested unit.
+// or monster set, so isAirCarriable treats it as humanoid foot, and poSeaAnalysis has it take half
+// a hull, as light foot do — the commonest case by far for a raised or harvested unit.
 export const PO_PROJECTED_FOOT = '__projected foot__';
-// The engine's getSeaCapability, plus the figures the note needs to explain itself.
+const takesHalfAHullAboardOrIsYetToBeRaised = (a) => a.type === PO_PROJECTED_FOOT || takesHalfAHullAboard(a); // a unit the player has ordered raised or summoned earlier this turn — counted as light foot
+// The engine's sea lift, with the figures the note needs to explain itself.
 // cap: 'all' (nothing to carry), 'sea' (hulls and flyers lift the lot), 'land' (cannot put to sea).
 export function poSeaAnalysis(armies, navalRaw) {
   const A = (armies || []).filter(Boolean);
-  const hulls = A.reduce(
-    (s, a) => s + (PO_CARRIER_TYPES.has(a.type) ? (KC_CARRIER_BERTHS && KC_CARRIER_BERTHS[a.type]) || 1 : 0),
-    0,
-  ); // berths, as the engine counts them: a turtle's Island Back offers two
-  const seaBeasts = A.filter((a) => PO_SEA_TYPES.has(a.type) && !PO_CARRIER_TYPES.has(a.type)).length;
-  const flyers = A.filter((a) => PO_FLYING_TYPES.has(a.type)).length;
-  const aerial = A.filter((a) => PO_AERIAL_TYPES.has(a.type)).length;
-  const land = A.filter((a) => !PO_AERIAL_TYPES.has(a.type) && !PO_SEA_TYPES.has(a.type));
   const navalL8 = (navalRaw || 0) >= 8; // NAVAL L8: one hull carries what once needed two
-  const hullCap = hulls * (navalL8 ? 2 : 1);
-  const out = {
-    cap: 'all',
-    hulls,
-    seaBeasts,
-    flyers,
-    aerial,
-    landCount: land.length,
-    hullCap,
+  const lift = seaLiftOfAColumn(A, navalL8, takesHalfAHullAboardOrIsYetToBeRaised);
+  return {
+    cap: lift.answer,
+    hulls: lift.berths, // berths, as the engine counts them: a turtle's Island Back offers two
+    seaBeasts: A.filter((a) => PO_SEA_TYPES.has(a.type) && !PO_CARRIER_TYPES.has(a.type)).length,
+    flyers: lift.humanoidFlyers,
+    aerial: A.filter((a) => PO_AERIAL_TYPES.has(a.type)).length,
+    landCount: lift.landUnits,
+    hullCap: lift.berthsUnderItsLeader,
     navalL8,
-    lifted: getFlyCapability(A),
+    lifted: lift.flyersLiftTheWholeColumn,
     allAerial: A.length > 0 && A.every((a) => PO_AERIAL_TYPES.has(a.type)),
     allSea: A.length > 0 && A.every((a) => PO_SEA_TYPES.has(a.type)),
     total: A.length,
-    mustSail: 0,
-    short: 0,
-    shortNames: [],
+    mustSail: lift.unitsThatMustSail,
+    short: lift.unitsLeftAshore.length, // the units left ashore: the ship-only ones without a berth, the heaviest first, or those no flyer is left to lift
+    shortNames: lift.unitsLeftAshore.map((a) => a.unitName || a.type),
   };
-  if (!A.length || !land.length) return out; // empty, or only flyers and hulls
-  if (out.lifted) {
-    out.cap = 'sea';
-    return out;
-  } // the flyers carry the whole column
-  const capOf = (a) => (PO_LIGHT_TYPES.has(a.type) ? 0.5 : 1);
-  const mustSail = land.filter((a) => !isAirCarriable(a)); // horses, siege, beasts — ship or nothing
-  const liftable = land.filter((a) => isAirCarriable(a));
-  out.mustSail = mustSail.length;
-  let room = hullCap - mustSail.reduce((s, a) => s + capOf(a), 0);
-  if (room < 0) {
-    out.cap = 'land';
-    // How many of the ship-only units have no berth, cheapest-first, so the message can name them.
-    let over = -room,
-      i = 0;
-    const order = mustSail.slice().sort((a, b) => capOf(b) - capOf(a));
-    while (over > 0 && i < order.length) {
-      out.shortNames.push(order[i].unitName || order[i].type);
-      over -= capOf(order[i]);
-      i++;
-    }
-    out.short = out.shortNames.length;
-    return out;
-  }
-  let byAir = 0;
-  const airQueue = [];
-  liftable
-    .slice()
-    .sort((a, b) => capOf(a) - capOf(b))
-    .forEach((a) => {
-      const c2 = capOf(a);
-      if (room >= c2) room -= c2;
-      else {
-        byAir++;
-        airQueue.push(a);
-      }
-    });
-  if (byAir <= flyers) {
-    out.cap = 'sea';
-    return out;
-  }
-  out.cap = 'land';
-  out.short = byAir - flyers;
-  out.shortNames = airQueue.slice(flyers).map((a) => a.unitName || a.type);
-  return out;
 }
 // The notice shown under a Move order's dropdown: what kind of move this is, and a warning when the
 // column cannot be carried to a sea province. `destProv` is a worldMeta province (may be undefined
