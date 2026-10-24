@@ -1,4 +1,4 @@
-// ── The engine's rules the player portal shares (plan P1-11a4) ────
+// ── The engine's rules the player portal shares (plan P1-11a4; the beasts and the Druid rule, P1-11b3) ────
 // The player portal's one door to the engine (plan P1-11a, Decision 2): the rules of a hero, an army, an item, a level
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
@@ -11,6 +11,17 @@ export {
   alignDistP,
   heroHireWage,
 } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+export {
+  TAMED_FLYER_TYPES_D,
+  countsAgainstBeastCommand,
+  druidALeaderBringsToAUnit,
+  druidLevelALeaderNeeds,
+  druidLevelTheMasteryCounts,
+  druidMasteryGainOver,
+  druidShortfall,
+  getDruidLevel,
+  strengthLeftByADruidShortfall,
+} from '../engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 export {
   isLegendaryItem,
   itemRaceOf,

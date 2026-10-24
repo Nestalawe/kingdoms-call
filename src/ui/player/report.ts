@@ -2,9 +2,13 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_CARRIER_BERTHS, KC_RIVAL_RACE, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
+  countsAgainstBeastCommand,
   dispFloor,
+  druidLevelTheMasteryCounts,
+  druidMasteryGainOver,
   itemUsableBy,
   skillFameLabelM,
+  strengthLeftByADruidShortfall,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
@@ -36,7 +40,6 @@ import {
 import {
   CHIEFTAIN_MARKER_COLOR,
   _lairName,
-  beastCommandCountP,
   bulletizeDesc,
   provLinkHtml,
   provinceGrandDesignHTML,
@@ -375,7 +378,7 @@ export function renderReportView(report) {
             if (arr.length === 0)
               return kcHtml`${head}<div style="font-size:.75rem;color:#3a3224">No armies led — moves 5 provinces/turn on its own.</div></div>`;
             const druLevel = effSkillP(c, 'druid');
-            // Druid requirement, waivers and shortfall: ONE rule, druidNeedP (mirrors the engine).
+            // Druid requirement, waivers and shortfall: ONE rule, druidNeedP (the engine's, with the portal's level).
             let totalStr = 0,
               totalCost = 0,
               druidUnits = 0,
@@ -405,16 +408,20 @@ export function renderReportView(report) {
               const effDru = _dn.effDru;
               const shortfall = _dn.shortfall;
               // a Druid shortfall actually REDUCES the unit's strength — apply it to the shown
-              // figure and the panel total (matching the engine's max(0.1, 1−0.2×shortfall)),
-              // instead of only tagging the penalty beside a full-strength number.
+              // figure and the panel total (the engine's own strengthLeftByADruidShortfall:
+              // max(0.1, 1−0.2×shortfall)), instead of only tagging the penalty beside a
+              // full-strength number.
               if (shortfall > 0) {
                 druidShort++;
-                bs = Math.max(1, Math.round(bs * Math.max(0.1, 1 - shortfall * 0.2)));
+                bs = Math.max(1, Math.round(bs * strengthLeftByADruidShortfall(shortfall)));
               }
-              // DRUID MASTERY (2026-09-24, mirrors GM druidMasteryGain): +20% per Druid level over the
-              // unit's minimum (0 where the requirement is waived), Druid counted to 9, capped +100%.
+              // DRUID MASTERY (2026-09-24; the engine's own rule, as druidMasteryGain asks it): +20% per
+              // Druid level over the unit's minimum (0 where the requirement is waived), Druid counted to
+              // 9, capped +100%; shown in percent.
               const mastery =
-                !a.skeletal && (creature || monster) ? Math.min(100, 20 * Math.max(0, Math.min(9, druLevel) - req)) : 0;
+                !a.skeletal && (creature || monster)
+                  ? Math.round(druidMasteryGainOver(druidLevelTheMasteryCounts(druLevel), req) * 100)
+                  : 0;
               if (mastery > 0) bs = Math.round(bs * (1 + mastery / 100));
               totalStr += bs;
               totalCost += a.cost != null ? a.cost : 2;
@@ -500,7 +507,7 @@ export function renderReportView(report) {
             if (_airSpd > 0) _paceBits.push(kcHtml`🦅 Flying <strong>${_airSpd}</strong>`);
             if (_seaSpd > 0) _paceBits.push(kcHtml`⚓ Sea <strong>${_seaSpd}</strong>`);
             // Item 24 (2026-10-12): a hero leads at most as many Creature and Monster units as his Druid level.
-            const _bLed = arr.filter(beastCommandCountP).length;
+            const _bLed = arr.filter(countsAgainstBeastCommand).length;
             const _bNote =
               _bLed > 0
                 ? kcHtml` · <span style="color:${_bLed > druLevel ? 'var(--crimson)' : '#1d5a1d'}" title="A hero may lead only as many Creature and Monster units as his Druid level">🐾 beasts ${_bLed}/${druLevel}${_bLed > druLevel ? ' — over his Druid, he takes on no more' : ''}</span>`
