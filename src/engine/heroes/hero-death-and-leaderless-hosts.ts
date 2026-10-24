@@ -16,7 +16,7 @@ import { setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { effStat, isVanished } from './effective-skills-and-hidden-heroes.ts';
 import { isOpenSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { flushDeferredSkillLogsFor } from './experience-skill-rises-and-earned-hp.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ── HERO DEATH AND LEADERLESS HOSTS (plan P1-08f: lifted out of resolveTurn) ────
 // What becomes of a dead commander's armies (disperseDeadCharArmies) and of the host a spared coward leaves behind
@@ -44,6 +44,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         realms: deadChar.player != null ? [deadChar.player] : [],
         seen: prov?.id != null ? 'there' : 'world',
       },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov?.id,
     });
   }
@@ -75,6 +76,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
           ? `${deadChar.name}'s armies, their commander slain by ${_by}, scatter — they wander as mercenaries near ${prov?.name || 'their last position'}.`
           : `${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name || 'their last position'}.`,
         audience: { actor: deadChar.player, realms: deadChar.player != null ? [deadChar.player] : [] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     };
     if (deadChar.player === null) {
@@ -87,6 +89,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         type: 'system',
         text: `${deadChar.name}'s armies garrison in ${prov.name} ${_fell}.`,
         audience: { actor: deadChar.player, realms: [deadChar.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else if (isOpenSea(prov) && prov.owner == null && !(prov.neutralDefenders || []).length) {
@@ -104,6 +107,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         type: 'system',
         text: `${deadChar.name}'s armies hold ${prov.name} ${_fell} — the water is claimed for ${_pl ? _pl.name : 'the realm'} and they garrison it.`,
         audience: { actor: deadChar.player, realms: [deadChar.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else {
@@ -130,6 +134,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
             ? `${deadChar.name}'s leaderless armies retreat to ${safeProv.name}, their commander slain by ${_by}.`
             : `${deadChar.name}'s leaderless armies retreat to ${safeProv.name}.`,
           audience: { actor: deadChar.player, realms: [deadChar.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: safeProv.id,
         });
       } else {
@@ -195,6 +200,7 @@ export function abandonHostOnFlight(turnContext, c) {
       type: 'system',
       text: `🏳 ${_who} abandons his command in ${prov.name} — with no officer left to lead them, ${_n} of his host take their place in the province garrison.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return left.length;
@@ -203,6 +209,7 @@ export function abandonHostOnFlight(turnContext, c) {
     type: 'system',
     text: `🏳 ${_who} slips away from ${prov.name} with his life, leaving ${_n} leaderless on ground the realm does not hold.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   disperseDeadCharArmies(turnContext, {
@@ -273,6 +280,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         realms: deadChar.player != null ? [deadChar.player] : [],
         seen: deadChar.location != null ? 'battle' : 'world',
       },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: deadChar.location != null ? deadChar.location : undefined,
     });
     return false;
@@ -291,6 +299,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         realms: [],
         seen: deadChar.location != null ? 'battle' : 'world',
       },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: deadChar.location != null ? deadChar.location : undefined,
     });
     return false;
@@ -391,6 +400,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
       type: 'combat',
       text: `⚑ ${deadChar.name} has fallen, but the battle for ${prov.name} is not done — the senior captain takes up the banner and the host fights on.`,
       audience: { actor: deadChar.player, realms: deadChar.player != null ? [deadChar.player] : [], seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   }
@@ -439,6 +449,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         type: 'system',
         text: `${deadChar.name}'s possessions — ${deadItems.map((i) => i.name).join(', ')} — pass to ${recipient.name}.`,
         audience: { actor: deadChar.player, realms: [deadChar.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       if (recipient.player != null && recipient.player !== deadChar.player)
         emit(turnContext, {
@@ -466,6 +477,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         type: 'system',
         text: `${deadChar.name}'s possessions are lost — no heir to receive them.`,
         audience: { actor: deadChar.player, realms: [deadChar.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     }
   }
@@ -512,6 +524,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
           realms: [deadChar.player],
           seen: deadChar.location != null ? 'there' : 'world',
         },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: deadChar.location != null ? deadChar.location : undefined,
       });
     } else if (pKing && pKing.alignment === 'Divine') {
@@ -519,6 +532,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         type: 'system',
         text: `✨ ${deadChar.name}, monarch of a Divine realm, has fallen — and the realm holds no consecrated ground to which the divine could return them. An heir must take the crown.`,
         audience: { actor: deadChar.player, realms: [deadChar.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: deadChar.location != null ? deadChar.location : undefined,
       });
     }

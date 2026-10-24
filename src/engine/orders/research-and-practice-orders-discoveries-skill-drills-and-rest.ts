@@ -21,7 +21,7 @@ import {
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, recalcHeroPay, skillInPlayNote } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ── THE RESEARCH AND PRACTICE ORDERS (plan P1-08j4: the fourth family taken out of processOrder in resolveTurn) ──
 // Research (a Sage's roll for a discovery of the realm, or an unlooked-for find in a hidden field), Practice Skill (a
@@ -42,6 +42,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       type: 'system',
       text: `${c.name} pores over the archives, but without any Sage learning (Sage 1+) the pages mean nothing to them.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -72,6 +73,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
           type: 'system',
           text: `${c.name}: every ${_rcat} discovery has already been made, set aside, or is awaiting your choice — and so has every other field your realm can study. There is nothing left to research.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
         return;
       }
@@ -80,6 +82,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         type: 'system',
         text: `📚 ${c.name} finds the ${_rcat} archives already spent — every ${_rcat} discovery has been made, set aside, or is awaiting your choice — and turns instead to ${_to}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       _rcat = _to;
     }
@@ -159,6 +162,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
           type: 'explore',
           text: `💡 An unlooked-for find! Among the pages ${c.name} was not even studying, **${disc.name}** (${disc.category}) comes to light — and the ordinary course of study is set aside for it. ${disc.desc}`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
         trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);
         _sideFound = true;
@@ -172,6 +176,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
     type: 'system',
     text: `📊 Research${_rcat && _rcat.toLowerCase() !== 'any' ? ` (${_rcat})` : ''} — Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}${neutralSageBonus > 0 ? ', Neutral ×2' : ''}${_rStreak > 0 ? ` ×${_rPersevere.toFixed(2)} for ${_rStreak} earlier failed Research${_rStreak !== 1 ? ' orders' : ''} this turn` : ''}) — roll ${dRoll} — ${dRoll <= discoveryChance ? '✓ Success!' : '✗ No discovery this turn.'}`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
   c._researchFailStreak = { turn: G.turn, n: dRoll <= discoveryChance ? 0 : _rStreak + 1 }; // item 18: the next Research this turn is ×1.2 likelier after a failure
   if (dRoll <= discoveryChance) {
@@ -209,6 +214,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         type: 'explore',
         text: `💡 ${c.name}'s research bears fruit — two discoveries come to light: **${d1.name}** (${d1.category}) and **${d2.name}** (${d2.category}). Only one can be pursued: choose which to keep in next turn's orders (the 💡 Research box just under the Realm section). The other will be lost for good.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD); // Sage: made a discovery
     } else if (available.length > 0) {
@@ -235,6 +241,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         type: 'explore',
         text: `💡 ${c.name}'s research bears fruit! **${disc.name}** (${disc.category}) discovered — the last discovery this field still holds for your realm, so there is nothing to choose between. ${disc.desc}`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD); // Sage: made a discovery
     } else {
@@ -242,6 +249,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         type: 'system',
         text: `${c.name} researches diligently — the roll succeeded but all known discoveries have already been made by your realm.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     }
   } else {
@@ -249,6 +257,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       type: 'system',
       text: `${c.name} researches hard but makes no new discovery this turn.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_COMMON); // 2026-09-21 (Toby): even a fruitless season in the archives teaches a little
   }
@@ -286,6 +295,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
       type: 'system',
       text: `${c.name} has trained ${SKILL_LABELS[skill] || skill} as far as drilling can take them (level 5). Higher mastery (levels 6–9) is won only through experience in the field, never the practice ground.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   }
   if (!_practiceMaxed) {
@@ -384,12 +394,14 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
         type: 'hire',
         text: `${c.name} practises ${SKILL_LABELS[skill] || skill} and improves to level ${c.skills[skill]}${skillInPlayNote(turnContext, c, skill)}!${mentors.length > 0 ? '' : ' ' + fmtRoll(_prPct, _prRoll)}${bonusReason}${pupilNote}${_prHp > 0 ? ` (Max HP +${_prHp} → ${c.maxHp}.)` : ''}`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       if (_prPayAfter > _prPayBefore)
         emit(turnContext, {
           type: 'hire',
           text: `💰 ${c.name}'s growing renown raises their wage to ${_prPayAfter}g/turn (was ${_prPayBefore}g/turn).`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         }); // 2026-09-21: practice raised the wage silently
     } else {
       c._practiceFailStreak = { turn: G.turn, n: _streak + 1 }; // the next practice this turn is ×1.2 likelier
@@ -397,6 +409,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
         type: 'system',
         text: `${c.name} practises ${SKILL_LABELS[skill] || skill} but makes no measurable progress this season. ${fmtRoll(_prPct, _prRoll)}${bonusReason ? ` ${bonusReason}.` : ''}${pupilNote ? ` ${pupilNote.slice(3)}.` : ''}`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     }
   } // end !_practiceMaxed
@@ -429,6 +442,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
             type: 'hire',
             text: `${c.name}'s ${isNaval ? 'Naval drills' : 'training drills'}: ${army.unitName || army.type} (${army.type}) advances to **${army.quality}**!`,
             audience: { actor: c.player, realms: [c.player] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
           trainedAny = true;
         }
@@ -441,6 +455,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
         type: 'system',
         text: `${c.name}'s ${isNaval ? 'Naval drills were thorough but no crews' : 'training drills were thorough but no units'} achieved a breakthrough this season.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     } else {
       emit(turnContext, {
@@ -449,6 +464,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
           ? `${c.name} drills Naval theory alone — commanding fleets or sea-beasts would yield greater benefit.`
           : `${c.name} practises Tactical theory alone — leading land armies would yield greater benefit.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     }
   }
@@ -485,6 +501,7 @@ export function resolveRestOrder(turnContext, c, prov) {
     type: 'system',
     text: `${c.name} rests and recovers. +${heal} HP (${c.hp}/${c.maxHp}${isDivineKingdom ? ' — Divine blessing lifts healing by half' : ''}).`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
   return;
 }
@@ -496,6 +513,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
       type: 'system',
       text: `${c.name} lacks the Sage mastery (7) for a Research Breakthrough.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -508,6 +526,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
       type: 'explore',
       text: `${c.name}'s Research Breakthrough succeeds, but your scholars have already unlocked every known discovery.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);
     return;
@@ -525,6 +544,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
     type: 'explore',
     text: `💡 ${c.name} drives a Research Breakthrough — **${disc.name}** (${disc.category}) discovered! ${disc.desc}`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
   trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);
   return;

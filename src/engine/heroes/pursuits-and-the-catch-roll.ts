@@ -5,7 +5,12 @@ import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
-import { emit, emitNarrLine, notifyTarget } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  emitNarrLine,
+  notifyTarget,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+} from '../turn/events-and-their-audiences.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, isHiddenChar, oddsNote, statNote } from './effective-skills-and-hidden-heroes.ts';
@@ -74,6 +79,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'move',
       text: `${c.name}'s quarry is beyond catching now — the chase is called off.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: here ? here.id : null,
     });
     endPursuit(c);
@@ -91,6 +97,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'move',
       text: `${c.name} follows the trail of ${quarry.name} into ${here ? here.name : 'the wilds'} and loses it utterly — the man seems to leave no track at all.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: here ? here.id : null,
     });
     endPursuit(c);
@@ -103,6 +110,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'move',
       text: `${c.name} presses the chase after ${quarry.name}, but the quarry melts into the shadows and is gone. (Vanish)`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: here ? here.id : null,
     });
     endPursuit(c);
@@ -125,6 +133,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'move',
       text: `${c.name} has a battle on their hands in ${here ? here.name : 'the field'} this season — the chase after ${quarry.name} must wait.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: here ? here.id : null,
     });
     return;
@@ -139,6 +148,7 @@ export function advancePursuit(turnContext, c, ph) {
         type: 'move',
         text: `${c.name} can drive their horses no further this year — the chase after ${quarry.name} stalls.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: here ? here.id : null,
       });
       endPursuit(c);
@@ -150,6 +160,7 @@ export function advancePursuit(turnContext, c, ph) {
         type: 'move',
         text: `${c.name} can find no road that brings them closer to ${quarry.name} — the trail goes cold.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: here ? here.id : null,
       });
       endPursuit(c);
@@ -162,6 +173,7 @@ export function advancePursuit(turnContext, c, ph) {
           type: 'move',
           text: `${c.name} has no ships left to follow ${quarry.name} out onto the water.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: here ? here.id : null,
         });
         endPursuit(c);
@@ -174,6 +186,7 @@ export function advancePursuit(turnContext, c, ph) {
           type: 'move',
           text: `${c.name}'s column is spent and can march no further after ${quarry.name}.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: here ? here.id : null,
         });
         endPursuit(c);
@@ -196,6 +209,7 @@ export function advancePursuit(turnContext, c, ph) {
         type: 'move',
         text: `${c.name} presses on into ${step.name}, hard on the trail of ${quarry.name}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: step.id,
       });
       return; // still chasing — try again next phase
@@ -204,6 +218,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'move',
       text: `${c.name} rides into ${step.name} and finds ${quarry.name} there.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: step.id,
     });
   }
@@ -221,12 +236,14 @@ export function advancePursuit(turnContext, c, ph) {
     type: 'system',
     text: `📊 Pursuit — ${c.name} (Spy ${effStat(turnContext, c, 'spy')}) closing on ${quarry.name}${statNote(turnContext, c.player, quarry, 'spy')}: ${oddsNote(turnContext, c.player, quarry, chance, roll)}`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
   if (roll > chance) {
     emit(turnContext, {
       type: 'move',
       text: `${quarry.name} slips away through the country around ${prov.name} — ${c.name} keeps the trail but cannot close.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return; // pursuit stays live into the next phase
@@ -238,6 +255,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'move',
       text: `${c.name} catches up with ${quarry.name} in ${prov.name} and the two columns join company.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     endPursuit(c);
@@ -251,6 +269,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'move',
       text: `${c.name} overtakes ${quarry.name} in ${prov.name}, but ${G.players[quarry.player]?.name || 'their realm'} is not at war with ${G.players[c.player]?.name || 'us'} — the two columns pass without bloodshed.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     endPursuit(c);
@@ -265,6 +284,7 @@ export function advancePursuit(turnContext, c, ph) {
         type: 'move',
         text: `${c.name} closes on ${quarry.name} in ${prov.name}, but the ground is already a battlefield this season — the reckoning must wait.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -286,6 +306,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'combat',
       text: `⚔ ${c.name} runs ${quarry.name} to ground in ${prov.name} and forces battle!`,
       audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: [c.id, quarry.id],
     });
@@ -368,6 +389,7 @@ export function advancePursuit(turnContext, c, ph) {
               ? `${c.name} carries the field at ${prov.name}, but its garrison still holds the province — the fight for it resumes next season.`
               : `${c.name} carries the field at ${prov.name}, but enemy forces still hold their ground — the province remains contested.`,
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
         if (!_hostileLeft && _hulls.length)
@@ -375,6 +397,7 @@ export function advancePursuit(turnContext, c, ph) {
             type: 'combat',
             text: navalHoldLine(turnContext, prov, _hulls, G.players[c.player]?.name || 'the hunter'),
             audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
           });
       } else {
@@ -391,6 +414,7 @@ export function advancePursuit(turnContext, c, ph) {
           type: 'combat',
           text: `${c.name} claims ${prov.name} for ${_wp ? _wp.name : 'their realm'}!`,
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
         if (_wp) applyEvilConquest(turnContext, c, prov, _wp);
@@ -429,6 +453,7 @@ export function advancePursuit(turnContext, c, ph) {
         type: 'system',
         text: `📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units !== 1 ? 's' : ''}${statNote(turnContext, c.player, quarry, 'tactical')}: ${oddsNote(turnContext, c.player, quarry, _pct, _roll)}`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       if (_roll > _pct) {
@@ -497,6 +522,7 @@ export function advancePursuit(turnContext, c, ph) {
       type: 'combat',
       text: `⚔ ${c.name} finally corners ${quarry.name} in ${prov.name}.`,
       audience: { actor: c.player, realms: targetsPi, seen: prov.owner !== null ? 'battle' : undefined },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: _duelChars,
     });
@@ -516,6 +542,7 @@ export function advancePursuit(turnContext, c, ph) {
       emitNarrLine(turnContext, line, {
         type: 'combat',
         audience: { actor: c.player, realms: targetsPi },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
         heroes: _duelChars,
       }),
@@ -532,12 +559,14 @@ export function advancePursuit(turnContext, c, ph) {
           type: 'combat',
           text: _garrethEscapeLine(c),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
           heroes: _duelChars,
         });
       } else {
         reportHeroFall(turnContext, c, quarry, `${c.name} has been slain at the end of the chase!`, {
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
           heroes: _duelChars,
         });
@@ -551,12 +580,14 @@ export function advancePursuit(turnContext, c, ph) {
           type: 'combat',
           text: _garrethEscapeLine(quarry),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
           heroes: _duelChars,
         });
       } else {
         reportHeroFall(turnContext, quarry, c, `${quarry.name} is run down and slain!`, {
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
           heroes: _duelChars,
         });

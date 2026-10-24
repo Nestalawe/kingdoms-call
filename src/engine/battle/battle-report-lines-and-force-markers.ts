@@ -4,7 +4,7 @@ import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-a
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { dragonTamed } from '../discoveries.ts';
 import { narrText } from '../turn/log-line-helpers.ts';
-import { emit, emitNarrLine, narrate } from '../turn/events-and-their-audiences.ts';
+import { emit, emitNarrLine, narrate, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
 import type { Quality } from '../../content/kingdoms-call-data.ts';
@@ -172,7 +172,7 @@ export function emitBattle(
     },
     province: provinceId,
     phase: ph != null ? ph : undefined,
-    hero: opts.charId !== undefined ? opts.charId : null,
+    hero: opts.charId ?? THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     heroes: opts.charIds || null,
   };
   // 2026-09-23d (Toby item 1): every line is tagged with this battle's id and its tier, and a

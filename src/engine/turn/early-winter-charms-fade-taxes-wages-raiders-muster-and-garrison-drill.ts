@@ -28,7 +28,7 @@ import {
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { isOpenSea, seaLiftShortfall, settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { setMovePool } from '../units/movement-pools.ts';
-import { emit } from './events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 
 // ── EARLY WINTER (plan P1-08k2: a stage taken out of resolveTurn's phase loop) ─────────────────────────────────────
 // After the four stages of the turn's last phase (Early Winter), the realms settle their accounts, in this order:
@@ -67,6 +67,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           type: 'system',
           text: `As the season turns, the enchantment on ${hc.name} fades and they return to their own lord.`,
           audience: { actor: back, realms: [back] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
     }
   });
@@ -77,7 +78,12 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
   // 40 discoveries organised by category. effect: {type,...params} — applied at turn resolution time
 
   // Tax collection (before wages)
-  emit(turnContext, { type: 'system', text: '═ Tax collection ═', audience: {} });
+  emit(turnContext, {
+    type: 'system',
+    text: '═ Tax collection ═',
+    audience: {},
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  });
   G.players.forEach((p) => {
     const pi = p.id;
     // open the Realm Events economy block with the treasury balance the realm carries INTO tax
@@ -92,6 +98,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         type: 'system',
         text: `${p.name} has ${p.gold || 0}g in the treasury.`,
         audience: { actor: p.id, realms: [p.id] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     }
     const _taxAcc = new Map(); // capped `tax` discoveries: gold paid so far this collection
@@ -186,9 +193,15 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         type: 'system',
         text: `${p.name} collects ${income + taxBonus + perProvBonus + interestBonus + neutralTradeBonus + taxRecordsBonus + titlePerkGold + thiefStipend}g in taxes${taxRecordsBonus > 0 ? ` (+${taxRecordsBonus}g Taxation Records)` : ''}${perProvBonus > 0 ? ` (+${perProvBonus}g Merchant's Ledger)` : ''}${neutralTradeBonus > 0 ? ` (+${neutralTradeBonus}g Neutral trade bonus)` : ''}${interestBonus > 0 ? ` (+${interestBonus}g Merchant Guilds interest)` : ''}${_consecBonus > 0 ? ` (+${_consecBonus}g from consecrated ground)` : ''}${titlePerkNote}${thiefNote}.`,
         audience: { actor: p.id, realms: [p.id] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
   });
-  emit(turnContext, { type: 'system', text: '═ Army wages & hero wages ═', audience: {} });
+  emit(turnContext, {
+    type: 'system',
+    text: '═ Army wages & hero wages ═',
+    audience: {},
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  });
   G.players.forEach((p) => {
     const pi = p.id;
     // the same 5%-of-base-income ceiling the tax collection above uses: `upkeep`, `heroWage` and
@@ -308,7 +321,12 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     };
 
     if (totalWages === 0) {
-      emit(turnContext, { type: 'system', text: `${p.name}: no wages to pay.`, audience: {} });
+      emit(turnContext, {
+        type: 'system',
+        text: `${p.name}: no wages to pay.`,
+        audience: {},
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
       return;
     }
 
@@ -323,6 +341,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         type: 'system',
         text: `${p.name} owes ${totalWages}g wages (armies: ${armyWages}g, heroes: ${heroWages}g)${_notes.length ? ` — after ${_notes.join(', ')}` : ''}.`,
         audience: { actor: p.id, realms: [p.id] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     }
 
@@ -332,6 +351,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         type: 'system',
         text: `${p.name} pays ${totalWages}g in wages. Treasury: ${p.gold}g remaining.`,
         audience: { actor: p.id, realms: [p.id] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     } else {
       // Can't pay in full — armies disband first (cheapest first), then heroes desert
@@ -339,6 +359,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         type: 'system',
         text: `⚠ ${p.name} cannot pay ${totalWages}g wages! Only ${p.gold || 0}g available. The rawest troops melt away first — the greenest companies anywhere in the realm, garrison or field alike — then better men as the shortfall bites. The skeletal dead ask for nothing and are the last to go. Heroes may desert.`,
         audience: { actor: p.id, realms: [p.id] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       let deficit = totalWages - (p.gold || 0);
       p.gold = 0;
@@ -387,6 +408,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
             type: 'hire',
             text: `${_h.unitName ? _h.unitName + ' (' + _h.type + ')' : 'A ' + _h.quality + ' ' + _h.type} disbands — ${p.name} could not pay their wages, and with the troops aboard gone the ship is no longer needed to carry them.`,
             audience: { actor: p.id, realms: [p.id] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
         }
       };
@@ -450,6 +472,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
             type: 'hire',
             text: `${army.unitName ? army.unitName + ' (' + army.type + ')' : 'A ' + army.quality + ' ' + army.type} disbands — ${p.name} could not pay their wages.`,
             audience: { actor: p.id, realms: [p.id] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
           if (_sparedHulls.length) _revisitSpared(); // a ship kept for these troops may now be free to go
         }
@@ -460,6 +483,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           type: 'system',
           text: `⚓ ${_sparedHulls.length} ship${_sparedHulls.length !== 1 ? 's' : ''} carrying troops at sea ${_sparedHulls.length !== 1 ? 'are' : 'is'} kept at the oars unpaid — disbanding ${_sparedHulls.length !== 1 ? 'them' : 'it'} would leave the men aboard stranded.`,
           audience: { actor: p.id, realms: [p.id] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       // If still in deficit, heroes desert
       if (deficit > 0) {
@@ -477,6 +501,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
                 type: 'hire',
                 text: `${h.name} abandons ${p.name}'s service, unpaid and disillusioned.`,
                 audience: { actor: p.id, realms: [p.id] },
+                hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               });
             }
           });
@@ -502,6 +527,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       type: 'hire',
       text: `🥁 Raiders' Muster — word of the victory at ${pv.name} draws ${_gob.unitName} (Goblin Horde, Average) to its garrison for nothing.`,
       audience: { actor: pv.owner, realms: [pv.owner] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: pv.id,
     });
   });
@@ -529,6 +555,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         type: 'hire',
         text: `🎖 Garrison drills in ${pv.name}: ${_up.join('; ')}.`,
         audience: { actor: pv.owner, realms: [pv.owner] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: pv.id,
       });
   });

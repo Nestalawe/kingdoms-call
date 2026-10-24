@@ -8,7 +8,7 @@ import { TM } from '../titles/perks.ts';
 import { DISC_BY_ID, discBlockedIds, discEligible } from '../discoveries.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { botTaxIncome } from '../bots/strategy.ts';
 
 // ── WHAT A SPY LEARNS (plan P1-08c: lifted out of resolveTurn) ────
@@ -37,6 +37,7 @@ export function applySpySuccess(turnContext, c, sprov) {
     type: 'explore',
     text: `${c.name} spies on ${sprov.name}: controlled by ${sprov.owner !== null ? G.players[sprov.owner].name : 'no-one'}, tax ${sprov.tax}g, defenders: ${defs}.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     spy: true,
     province: sprov.id,
   });
@@ -60,6 +61,7 @@ export function applySpySuccess(turnContext, c, sprov) {
         type: 'spy',
         text: `[Intelligence] Home-capital intelligence on ${_kp.name}: the crown draws ~${_kIncome}g in tax income each turn and commands ${_kHeroes} hero${_kHeroes === 1 ? '' : 'es'} beyond the king.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: sprov.id,
       });
       const _spyLvl = effStat(turnContext, c, 'spy');
@@ -75,6 +77,7 @@ export function applySpySuccess(turnContext, c, sprov) {
           type: 'spy',
           text: `[Intelligence] 📊 Discovery theft — ${c.name} (Spy ${_spyLvl}) rifling ${_kp.name}'s archives: ${fmtRoll(_stealPct, _sr)}`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: sprov.id,
         });
         if (_sr <= _stealPct) {
@@ -94,6 +97,7 @@ export function applySpySuccess(turnContext, c, sprov) {
             type: 'spy',
             text: `[Intelligence] 🗝 ${c.name} copies the secret of "${_disc.name}" from ${_kp.name}'s archives — your scholars now hold it as their own.`,
             audience: { actor: c.player, realms: [c.player] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: sprov.id,
           });
         }
@@ -116,19 +120,15 @@ export function applySpySuccess(turnContext, c, sprov) {
         turn: G.turn,
       });
     }
-    // this alert belongs ONLY to the pried-upon owner. Passing charId:null is not enough —
-    // emit's `hero ?? _logCtx.charId` would fall back to the PRYING character, and the
-    // report filter (ownCharIds.has(e.charId)) would then surface it in the spy's OWN report.
-    // Detach the character context for this one line so its charId truly resolves to null.
-    const _savedCtxChar = turnContext._logCtx.charId;
-    turnContext._logCtx.charId = null;
+    // this alert belongs ONLY to the pried-upon owner: filed under no hero, never the PRYING character (the report
+    // filter, ownCharIds.has(e.charId), would surface it in the spy's OWN report).
     emit(turnContext, {
       type: 'spy',
       text: `[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,
       audience: { actor: null, realms: [sprov.owner] },
+      hero: null,
       province: sprov.id,
     });
-    turnContext._logCtx.charId = _savedCtxChar;
   }
   c.merits = (c.merits || 0) + 1;
   (sprov.features || [])

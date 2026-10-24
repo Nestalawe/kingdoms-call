@@ -405,6 +405,7 @@ describe('the lint rules', () => {
         '  turnContext.turnLog.push(1);',
         "  log('system', 'a line');",
         "  narrative.push('a line');",
+        "  emit(turnContext, { type: 'system', text: 'a line', audience: {} });",
         "  return { text: 'a line', onlyPlayer: 1 };",
         '}',
       ].join('\n');
@@ -414,13 +415,13 @@ describe('the lint rules', () => {
           .filter((m) => m.ruleId === 'kc/narrative-lines-go-through-emit')
           .map((m) => m.line);
       };
-      expect(await refused('src/engine/turn/planted-here.ts')).toEqual([2, 3, 4, 5]);
-      expect(await refused('src/views/planted-here.ts')).toEqual([2, 3, 4, 5]);
-      expect(await refused('src/engine/battle/planted-here.ts')).toEqual([2, 3, 4, 5]);
-      expect(await refused('src/engine/personal-combat/planted-here.ts')).toEqual([2, 3, 4, 5]);
-      expect(await refused('src/engine/orders/planted-here.ts')).toEqual([2, 3, 4, 5]);
-      expect(await refused('src/engine/heroes/planted-here.ts')).toEqual([2, 3, 4, 5]);
-      expect(await refused('src/engine/planted-here.ts')).toEqual([2, 3, 4, 5]);
+      expect(await refused('src/engine/turn/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/views/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/battle/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/personal-combat/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/orders/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/heroes/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
       expect(await refused(EVENTS_FILE)).toEqual([]);
       expect(await refused('src/ui/gm/planted-here.ts')).toEqual([]);
     },

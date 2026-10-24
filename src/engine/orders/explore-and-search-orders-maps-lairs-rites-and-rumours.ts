@@ -29,7 +29,7 @@ import { markProvinceCombat } from '../bots/intel.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM, creditMapped, perkTier, skillLevel } from '../titles/perks.ts';
 import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
-import { emit, emitNarrLine } from '../turn/events-and-their-audiences.ts';
+import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
@@ -92,6 +92,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
         type: 'explore',
         text: `\u26f0 ${c.name}'s keen survey of ${prov.name} reveals richer land \u2014 its tax base rises to ${prov.tax}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
   }
@@ -141,6 +142,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
         type: 'explore',
         text: `🔍 The Philosopher's Lens shows ${c.name} what the ground itself hides — the ${_lf.name}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }
@@ -150,6 +152,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
       type: 'explore',
       text: `🌫 Something clouds ${c.name}'s exploration of ${prov.name} — a veiling illusion conceals lairs hidden here, and none can be discovered while it holds.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   }
@@ -170,6 +173,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
         type: 'explore',
         text: `${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped) and discovers the ${f.name}! ${_rtTail(f)}`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else {
@@ -181,6 +185,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
         type: 'explore',
         text: `${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped) and uncovers ${newlyDiscovered.length} sites: ${list}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }
@@ -192,6 +197,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
       type: 'explore',
       text: `${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped). ${prov.explored < 30 ? 'Much of the province remains uncharted.' : prov.explored < 70 ? 'The province is becoming well-known.' : 'The province is thoroughly explored.'}`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   }
@@ -207,6 +213,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
       type: 'system',
       text: `${c.name} does not keep the old faith — only Pagan realms may perform rites.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -221,6 +228,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
       type: 'system',
       text: `${c.name} finds no ritual site in ${prov.name} — rites need standing stones, and stones must first be found.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -234,6 +242,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
       type: 'system',
       text: `${c.name} comes to the ${_riteSite.name} in ${prov.name}, but the stones have already answered once this turn — the old gods will hear no second rite here until the turn has passed.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -248,6 +257,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
         type: 'system',
         text: `${c.name} calls the Wild Hunt at the ${_riteSite.name}, but nothing wild answers in ${prov.name} — the rite needs a province where Creatures or Monsters still roam.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -258,6 +268,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
         type: 'system',
         text: `${c.name} cannot afford the Wild Hunt offerings (${_huntCost}g).`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -282,6 +293,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
       type: 'combat',
       text: `\u{1F525} ${c.name} performs the Rite of the Wild Hunt at the ${_riteSite.name} (${_huntCost}g — the price of a single beast, whatever number answer). The old gods answer: ${_boundNames.join(' and ')} come down from the wilds to serve as veterans — they draw no wages, and hold until the end of next turn, when the binding fails.`,
       audience: { actor: c.player, realms: [c.player], seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     // Gaining a force in a province you don't own is resolved like any other unit gain:
@@ -332,6 +344,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
         type: 'system',
         text: `${c.name} makes no Blood Offering — name units to sacrifice and an equal number to empower (needs at least two of its own units).`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -351,6 +364,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
     type: 'combat',
     text: `\u{1FA78} ${c.name} makes a Blood Offering at the ${_riteSite.name} — ${_sac.map((a) => a.unitName || a.type).join(', ')} (${_bn} unit${_bn !== 1 ? 's' : ''}) are given to the old gods, and their strength passes to ${_ben.map((a) => `${a.unitName || a.type} (rise to ${a.quality})`).join(', ')}.`,
     audience: { actor: c.player, realms: [c.player], seen: 'battle' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   return;
@@ -389,6 +403,7 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
       type: 'explore',
       text: `${c.name} asks after the lairs of ${prov.name}, but no one has anything to tell — there is no known lair here to ask about.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -397,6 +412,7 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
     type: 'explore',
     text: `🍺 ${c.name} spends the season in the taverns and on the roads of ${prov.name}, hunting rumours of ${_feats.length} lair${_feats.length !== 1 ? 's' : ''}.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   for (const { f, i: _fi } of _feats) {
@@ -408,6 +424,7 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
         type: 'explore',
         text: `  ${c.name} cannot afford the ${price}g the ${f.name}'s rumours would cost (${player.gold || 0}g in the treasury) — the rest of the hunt is abandoned.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       break;
@@ -476,6 +493,7 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
         type: 'explore',
         text: t,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       }),
     );
@@ -494,6 +512,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       type: 'explore',
       text: `${c.name} searches ${prov.name} but finds nothing of note.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -505,6 +524,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       type: 'explore',
       text: `${c.name} looks for the lair they meant to search in ${prov.name}, but it is not here.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -526,6 +546,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       type: 'explore',
       text: `${c.name} walks the ${f.name} of ${prov.name}. The old stones hum with something older than realms${isPagan ? ' — a Pagan may Perform Rites here' : ', but they do not answer'}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -535,6 +556,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       type: 'explore',
       text: `${c.name} revisits the cleared ${f.name} in ${prov.name}.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     return;
@@ -576,6 +598,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     emitNarrLine(turnContext, line, {
       type: 'explore',
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   });
@@ -597,7 +620,11 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       c,
       null,
       `💀 ${c.name} has been slain by the ${f.monster?.name || 'creature'}!`,
-      { audience: { actor: c.player, realms: [c.player], seen: 'battle' }, province: prov.id },
+      {
+        audience: { actor: c.player, realms: [c.player], seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        province: prov.id,
+      },
       { slainBy: `the ${f.monster?.name || 'guardian'} of ${prov.name}` },
     ); // the host is told what slew its commander (2026-10-12)
     if (_lairDied === false) {
@@ -610,6 +637,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         text: `The ${f.monster?.name || 'guardian'} drags ${c.name}'s possessions into its hoard — ${_lairLeft.map((it) => it.name).join(', ')} now lie among the bones, waiting for a stronger hand.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }
@@ -635,6 +663,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         text: `${c.name} slips past the ${f.monster?.name || 'guardian'} of the ${f.name}, but the hoard is already picked clean — nothing left to steal.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else {
@@ -657,6 +686,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         text: `${c.name} escapes with ${gold}g lifted from the ${f.name}'s hoard (Thief ${_thLvl}: ${_thLvl * 10}% of the original hoard)! The ${f.monster?.name || 'guardian'} still guards the site.${_dregs}`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     }
@@ -673,6 +703,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
           type: 'explore',
           text: `${c.name} eyes the ${f.monster?.name || 'guardian'}'s relic, but a Legendary treasure is not something that can be spirited away — it must be won by defeating its keeper.`,
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
       if (_hi.length) {
@@ -690,12 +721,14 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
             type: 'explore',
             text: `🗝 ${c.name} also slips ${isLegendaryItem(_it) ? 'the LEGENDARY ' : 'the '}${_it.name} (${_it.desc}) out from under the guardian's nose! ${fmtRoll(_ch, _r)}`,
             audience: { actor: c.player, realms: [c.player] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
           });
           emit(turnContext, {
             type: 'explore',
             text: gainedItemNote(c, [_it]),
             audience: { actor: c.player, realms: [c.player] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
           }); // item 10
         } else
@@ -703,6 +736,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
             type: 'explore',
             text: `${c.name} eyes the hoard's magic but cannot get near it. ${fmtRoll(_ch, _r)}`,
             audience: { actor: c.player, realms: [c.player] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
           });
       }
@@ -789,12 +823,14 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
             type: 'explore',
             text: `Your realm's lore yields an extra find: the ${bonus.name}!`,
             audience: { actor: c.player, realms: [c.player] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
           });
           emit(turnContext, {
             type: 'explore',
             text: itemLoreLines([bonus]),
             audience: { actor: c.player, realms: [c.player] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
           });
         }
@@ -815,6 +851,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         text: `Victory! ${c.name} claims ${gold}g from the ${f.name} and hauls out ${itemNameList(baseDrops, false)}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       baseDrops.forEach((it) =>
@@ -822,6 +859,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
           type: 'explore',
           text: itemLoreLines([it]),
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         }),
       ); // one lore line per relic won
@@ -831,6 +869,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         text: gainedItemNote(c, drops),
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       }); // item 10: worn at once, or no room
     // recover any items earlier challengers left behind when the guardian slew them.
@@ -845,6 +884,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         text: `Among the bones of the fallen, ${c.name} recovers ${itemNameList(_recovered, false)}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       _recovered.forEach((it) =>
@@ -852,6 +892,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
           type: 'explore',
           text: itemLoreLines([it]),
           audience: { actor: c.player, realms: [c.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         }),
       ); // lore line per recovered relic
@@ -859,6 +900,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         text: gainedItemNote(c, _recovered),
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       }); // item 10
     }
@@ -869,6 +911,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         text: `Victory! ${c.name} claims ${gold}g from the ${f.name}, though the lair holds no magic${(f._stolenItems || []).length ? ` — a thief got here first and lifted ${f._stolenItems.join(', ')}` : ''}.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
   } else if (!encounter.fled) {
@@ -878,6 +921,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       type: 'combat',
       text: `${c.name} is forced to retreat from the ${f.name}, wounded. HP: ${c.hp}/${c.maxHp}`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
   }
@@ -894,6 +938,7 @@ export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name} lacks the Explorer mastery (7) to Chart the Unknown.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -907,6 +952,7 @@ export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
         type: 'system',
         text: `${c.name} cannot chart that ground from ${prov.name} — Chart the Unknown reaches this province or one bordering it.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       return;
@@ -938,6 +984,7 @@ export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
     type: 'explore',
     text: `🧭 ${c.name} charts ${_cuProv.name}${_cuProv !== prov ? ` from across the border in ${prov.name}` : ''} in full and scouts its ${nbrs.length} neighbour${nbrs.length !== 1 ? 's' : ''}${revealed ? ` (${revealed} newly glimpsed)` : ''}.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: _cuProv.id,
   });
   trySkillGain(turnContext, c, 'explorer', SKILLGAIN_STD);
@@ -955,6 +1002,7 @@ export function resolveDiscoverLostRuinOrder(turnContext, c, target, prov) {
       type: 'system',
       text: `${c.name} lacks the Explorer mastery (9) to Discover a Lost Ruin.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -986,6 +1034,7 @@ export function resolveDiscoverLostRuinOrder(turnContext, c, target, prov) {
       type: 'explore',
       text: `${c.name} combs ${prov.name} and the country about it for ${_drWant === 'Ritual' ? 'ritual sites' : `${_drWant.toLowerCase()} lairs`}, but every such secret hereabouts is already laid bare.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
     });
     trySkillGain(turnContext, c, 'explorer', SKILLGAIN_STD);
@@ -1002,6 +1051,7 @@ export function resolveDiscoverLostRuinOrder(turnContext, c, target, prov) {
     type: 'explore',
     text: `🏛 ${c.name} reads the land for ${_drWant === 'Ritual' ? 'the old stones' : `${_drWant.toLowerCase()} lairs`} and lays bare ${_drFound.length} site${_drFound.length !== 1 ? 's' : ''} across ${Object.keys(_drByProv).length} province${Object.keys(_drByProv).length !== 1 ? 's' : ''} — ${_drTxt}.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'explorer', SKILLGAIN_STD);

@@ -18,10 +18,12 @@
 // into turnLog (form: 'bare', with no battle fields); and notFor after them when an `except` is given. P1-12c changes
 // the stored form once.
 //
-// The fallbacks are the old `log` helper's (docs/traps.md, "A hero left out is the hero whose order is resolving"):
-//   hero   left out or null: the hero whose order is resolving (turnContext._logCtx.charId), but only when the line
-//          already reaches his realm (it is told to it, is its deed, or is seen by the world or there; a battle's line
-//          reaches those who fought in it by being told); otherwise no hero (P1-12c1). 'none': no hero
+// Every event names its hero (P1-12c2; docs/traps.md, "Every event names its hero"), and the phase falls back as the
+// old `log` helper's did:
+//   hero   a hero's id; null: no hero; THE_HERO_WHOSE_ORDER_IS_RESOLVING: the hero whose order is resolving
+//          (turnContext._logCtx.charId), but only when the line already reaches his realm (it is told to it, is its
+//          deed, or is seen by the world or there; a battle's line reaches those who fought in it by being told),
+//          else no hero (P1-12c1). Left out, emit throws (and the lint rule refuses an event written without it)
 //   phase  left out or null: the phase of that order, else the phase resolving, else 99 once the phases are over;
 //          'none': no phase (the lines that were pushed straight into turnLog, which never had the 99)
 //
@@ -30,6 +32,11 @@
 // owner it happened to (notifyTarget, notifyProvinceOwner), a private line with a public twin (logSplit), and the
 // placement of the skill rises held back to the end of the phase (writeDeferredSkillLines).
 import type { TurnContext } from './context.ts';
+
+/** An event's hero when the line is the deed of the hero whose order is resolving, whoever he is: emit files it under
+ *  him only when the line already reaches his realm, else under no hero. The area rows of P1-12c replace it with the
+ *  hero each fact names. */
+export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolving';
 
 /** Who may read a line (each left out grants nothing). */
 export interface LineAudience {
@@ -52,9 +59,9 @@ export interface TurnEvent {
   province?: number | null | undefined;
   /** 0 to 4, or 99 for the end of the turn; left out or null: the phase resolving; 'none': no phase. */
   phase?: number | null | 'none' | undefined;
-  /** The hero whose deed it is; left out or null: the hero whose order is resolving, when the line already reaches his
-   *  realm (else no hero); 'none': no hero. */
-  hero?: number | null | 'none' | undefined;
+  /** The hero whose deed it is; null: no hero; THE_HERO_WHOSE_ORDER_IS_RESOLVING: the hero whose order is resolving,
+   *  when the line already reaches his realm (else no hero). Every event names it: emit throws on one left out. */
+  hero: number | null | typeof THE_HERO_WHOSE_ORDER_IS_RESOLVING;
   /** More heroes it is about: it is filed under whichever of them the reader owns. */
   heroes?: number[] | null | undefined;
   /** The battle it belongs to (emitBattle numbers them), and its place there: 'k' key, 'd' detail, 't' tally, 's' an
@@ -111,7 +118,7 @@ export type FightLine = Omit<TurnEvent, 'text'>;
  *  once: emit(turnContext, { type, text, ...place }). */
 export type EventButItsWords = Omit<TurnEvent, 'type' | 'text'>;
 
-/** The hero a line that names none is filed under: the hero whose order is resolving, but only when the line already
+/** The hero a line naming THE_HERO_WHOSE_ORDER_IS_RESOLVING is filed under: that hero, but only when the line already
  *  reaches his realm by its audience (told to it, its deed, seen by the world or seen there; a battle's line reaches
  *  those who fought in it by being told). Otherwise no hero, so that filing it under him never shows his realm a line
  *  its audience keeps from it (playerEvents gives a realm every line filed under one of its heroes). A hero who serves
@@ -135,6 +142,13 @@ function theHeroWhoseOrderIsResolvingIfTheLineReachesHisRealm(
 /** Files an event in the GM's log of the turn: the one way a line enters it. */
 export function emit(turnContext: TurnContext, event: TurnEvent): void {
   const { audience } = event;
+  // Read as the engine may hand it: most callers are not type-checked yet (P1-10 and P1-16 type them).
+  const heroAsHanded: unknown = event.hero;
+  if (heroAsHanded === undefined)
+    throw new Error(
+      `emit: the event "${event.text}" names no hero. Every event names its hero: a hero's id, null for no hero, or ` +
+        'THE_HERO_WHOSE_ORDER_IS_RESOLVING (docs/traps.md, "Every event names its hero").',
+    );
   const line: LogLine = {
     type: event.type,
     text: event.text,
@@ -146,9 +160,9 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
     system: event.system ?? false,
     armyEstimate: event.armyEstimate ?? null,
     charId:
-      event.hero === 'none'
-        ? null
-        : (event.hero ?? theHeroWhoseOrderIsResolvingIfTheLineReachesHisRealm(turnContext, audience)),
+      event.hero === THE_HERO_WHOSE_ORDER_IS_RESOLVING
+        ? theHeroWhoseOrderIsResolvingIfTheLineReachesHisRealm(turnContext, audience)
+        : event.hero,
     charIds: event.heroes ?? null,
     // 2026-09-23 (Toby item 10): a line logged DURING a phase but outside any character's order (the lone-defender
     // ambush, Defend ride-outs, end-of-phase sweeps) had no phase at all, and the player's Chronicle files an unphased
@@ -300,7 +314,7 @@ export function logSplit(
       actor: line.audience.actor,
     },
   });
-  // The public half: no hero (a real null, not the hero whose order is resolving), in the bare form.
+  // The public half: no hero, in the bare form.
   emit(turnContext, {
     type,
     text: pubText,
@@ -311,7 +325,7 @@ export function logSplit(
       except: [actor].concat(alsoNotFor ?? []).filter((x) => x != null),
     },
     province: line.province,
-    hero: 'none',
+    hero: null,
     phase: line.phase,
     form: 'bare',
   });
@@ -325,14 +339,14 @@ export function notifyProvinceOwner(
 ): void {
   if (prov?.owner == null || prov.owner === casterPlayer) return;
   const _ph = ph ?? turnContext._logCtx.phase ?? turnContext._currentPhase;
-  // No hero (a real null charId, never inherited from the casting character's log context), so it files under the
-  // owner's KINGDOM EVENTS; and no phase but the one worked out here (the bare form never had the End of Turn's 99).
+  // No hero (never the casting character's), so it files under the owner's KINGDOM EVENTS; and no phase but the one
+  // worked out here (the bare form never had the End of Turn's 99).
   emit(turnContext, {
     type: 'system',
     text,
     audience: { actor: null, realms: [prov.owner] },
     province: prov.id,
-    hero: 'none',
+    hero: null,
     phase: _ph ?? 'none',
     form: 'bare',
   });

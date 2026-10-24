@@ -4,7 +4,7 @@ import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
 import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
-import { emit } from './events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
 // Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts:
@@ -53,6 +53,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           type: 'system',
           text: `War Academy: ${army.unitName ? army.unitName + ' (' + army.type + ')' : 'a ' + army.type} in ${homeProv.name} trains to ${army.quality}!`,
           audience: { actor: pi, realms: [pi] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       }
     });
@@ -61,6 +62,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         type: 'system',
         text: `War Academy: the drills in ${homeProv.name} produced no promotions this turn.`,
         audience: { actor: pi, realms: [pi] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
   });
 
@@ -106,6 +108,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         type: 'system',
         text: `[Intelligence] Your informants surface nothing new — every enemy captain they could name is already within your sight.`,
         audience: { actor: pi, realms: [pi] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
@@ -115,6 +118,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       type: 'system',
       text: `[Intelligence] Informant Network reports: ${target.name} of ${G.players[target.player]?.name} \u2014 unseen by your own eyes \u2014 was last in ${tProv?.name || 'unknown'}.`,
       audience: { actor: pi, realms: [pi] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   });
   // `return`s — so it only ever fired for a player who ALSO held sd22 and had an unseen enemy. It is
@@ -127,6 +131,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         type: 'explore',
         text: `\ud83d\udd2d Arcane Observatory: your astronomers find no uncharted province left to study \u2014 the whole known world is already mapped in full.`,
         audience: { actor: pi, realms: [pi] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: 99,
       });
       return;
@@ -140,6 +145,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       type: 'explore',
       text: `\ud83d\udd2d Arcane Observatory: your astronomers chart **${_pk.name}** (${_pk.terrain || 'unknown terrain'}) in full from afar \u2014 the province is now 100% explored.`,
       audience: { actor: pi, realms: [pi] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: _pk.id,
       phase: 99,
     });
@@ -177,6 +183,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           type: 'explore',
           text: `✨ ${hero.name} does not return. The divine restore the fallen only upon consecrated ground, and the realm holds none — the grace is lost. (The body remains where it lies; a Resurrect spell may yet reach it.)`,
           audience: { actor: grave.player, realms: [grave.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
         return;
       }
@@ -207,7 +214,8 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         audience: {
           actor: grave.player,
           realms: [grave.player],
-        } /* 2026-09-27 (Toby item 6): realm-private — never public */,
+        }, // 2026-09-27 (Toby item 6): realm-private — never public
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: homeProv.id,
       });
     });
@@ -250,6 +258,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           type: 'system',
           text: `The mercenary band ${merc.unitName || merc.type} in ${G.world.provinces[merc.location]?.name || 'unknown'} has retired and dispersed.`,
           audience: { actor: null, realms: [] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
         return false; // remove
       }
@@ -294,6 +303,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       type: 'system',
       text: `[Integrity] ${G._nameRepairs} hero${G._nameRepairs !== 1 ? 'es' : ''} in a realm's service still bore the \u201c(wandering)\u201d tag \u2014 the name has been corrected.`,
       audience: { actor: null, realms: [] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   }
   G._nameRepairs = 0;
@@ -302,6 +312,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       type: 'system',
       text: `[Integrity] ${G._retiredDiscoveries} retired Sage discover${G._retiredDiscoveries !== 1 ? 'ies were' : 'y was'} removed from realm records.`,
       audience: { actor: null, realms: [] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   }
   delete G._retiredDiscoveries;
@@ -319,6 +330,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           type: 'system',
           text: `[Integrity] ${g.name} was listed in the graveyard while alive — the stale grave has been removed.`,
           audience: { actor: null, realms: [] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
         (G.players || []).forEach((p) => {
           if (p && p._resurrectableMonarchId === g.id) p._resurrectableMonarchId = null;

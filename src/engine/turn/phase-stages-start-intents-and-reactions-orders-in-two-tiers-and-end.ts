@@ -6,7 +6,7 @@ import { settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.ts
 import { generateIntrusionNotifications } from './intrusion-warnings.ts';
 import { spreadPlagues } from '../magic/plague-and-bless-ward.ts';
 import { resolveAllPendingSkillGains } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit, writeDeferredSkillLines } from './events-and-their-audiences.ts';
+import { emit, writeDeferredSkillLines, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 import { disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { applyMoveInterlocks, normaliseAction, orderPhaseActors } from './phase-intents-and-dependency-ordering.ts';
 import {
@@ -46,7 +46,12 @@ import { processOrder } from '../orders/order-dispatch-the-checks-before-a-hero-
 
 export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   const { SEASONS, G, presenceByPhase, _warFrontProvs } = turnContext;
-  emit(turnContext, { type: 'system', text: `— ${SEASONS[ph]} —`, audience: {} });
+  emit(turnContext, {
+    type: 'system',
+    text: `— ${SEASONS[ph]} —`,
+    audience: {},
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  });
   // sd29 Herbal Lore: a character who took wounds in the PREVIOUS phase has them dressed at the
   // start of this one, recovering 40% of the damage that fight cost them
   // (rounded, never less than 1). `_hpAtPhaseStart` is the HP snapshot taken here each phase; it
@@ -130,6 +135,7 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
         type: 'hire',
         text: `${c.name} was hired this phase and will be ready to act from the next phase.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     }
   });

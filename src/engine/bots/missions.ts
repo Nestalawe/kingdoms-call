@@ -63,7 +63,7 @@ import { BOT_SCHOOLS } from './schools.ts';
 import { botDuelRating, botFillOrders, botPathAny, botPathLenAny, botSpyTarget } from './spellcraft.ts';
 import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
 import { DISC_BY_ID } from '../discoveries.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ══ INFILTRATOR — conjure a host behind the enemy line ════
 // A caster with Necromancy or Elemental magic takes provinces by himself, with no army at all. He
@@ -1381,6 +1381,7 @@ export function runBotConcessions(G, botIdxSet, turnContext) {
         type: 'system',
         text: `\u{1F3F3} ${p.name} holds no province in all the world — the realm CONCEDES the game. Its heroes lay down their ambitions and will only defend what they have from here on.`,
         audience: { actor: null, realms: [], seen: 'world' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
       });
   });

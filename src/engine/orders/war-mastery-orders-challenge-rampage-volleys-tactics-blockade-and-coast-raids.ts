@@ -12,7 +12,7 @@ import { pcCharCombatant } from '../personal-combat/speed-encounter-plans-and-co
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ── THE WAR MASTERY ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // The masteries a hero of level 7 or 9 in a war skill may order once a turn (processOrder checks that first): Naval's
@@ -31,6 +31,7 @@ export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, tar
       type: 'system',
       text: `${c.name} lacks the Naval mastery (7) to raise a Blockade.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -40,6 +41,7 @@ export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, tar
       type: 'system',
       text: `${c.name}: Blockade must target a sea province.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -53,6 +55,7 @@ export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, tar
       type: 'system',
       text: `${c.name}: Blockade must seal a sea province you are in or adjacent to.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -61,6 +64,7 @@ export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, tar
       type: 'system',
       text: `${c.name}: a Blockade must be thrown by a fleet — you lead no naval units or sea creatures.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   } // NAVAL L7: must lead a naval unit / sea creature
@@ -72,6 +76,7 @@ export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, tar
       type: 'move',
       text: `⚓ ${c.name} throws a Blockade across ${sp.name} — enemy fleets may not cross these waters this turn.`,
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: sp.id,
     });
   } else {
@@ -79,6 +84,7 @@ export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, tar
       type: 'move',
       text: `⚓ ${c.name} tries to blockade ${sp.name}, but the fleet cannot close the waters in time — no blockade forms this turn.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: sp.id,
     });
   }
@@ -93,6 +99,7 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
       type: 'system',
       text: `${c.name} lacks the Melee mastery (7) to issue a Challenge.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -104,6 +111,7 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
       type: 'system',
       text: `${c.name} finds no enemy hero to challenge in ${prov.name} this phase.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -112,6 +120,7 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
       type: 'system',
       text: `${c.name}: you are not at war with ${foe.name}'s crown — a Challenge would be an act of war. Declare war first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -120,6 +129,7 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
       type: 'combat',
       text: `${foe.name} is at the head of an army and will not break off to answer ${c.name}'s Challenge.`,
       audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null) },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       heroes: [c.id, foe.id].filter((v) => v != null),
       province: prov.id,
     });
@@ -139,6 +149,7 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
     type: 'combat',
     text: `⚔ ${c.name} calls ${foe.name} to single combat! ${winner.name} has the better of it — ${loser.name} takes ${dmg} wounds.`,
     audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   if (loser.hp <= 0) {
@@ -148,11 +159,13 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
         type: 'combat',
         text: _garrethEscapeLine(loser),
         audience: { actor: c.player, realms: [c.player].filter((x) => x != null), seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else {
       reportHeroFall(turnContext, loser, winner, `${loser.name} falls in the duel!`, {
         audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       awardKillXP(turnContext, winner, loser);
@@ -170,6 +183,7 @@ export function resolveRampageOrder(turnContext: TurnContext, c: Character, targ
       type: 'system',
       text: `${c.name} lacks the Melee mastery (9) to Rampage.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -181,6 +195,7 @@ export function resolveRampageOrder(turnContext: TurnContext, c: Character, targ
       type: 'combat',
       text: `${c.name} finds no enemy force to fall upon in ${prov.name} this phase.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -189,6 +204,7 @@ export function resolveRampageOrder(turnContext: TurnContext, c: Character, targ
       type: 'system',
       text: `${c.name}: you are not at war with ${foe.name}'s crown — a Rampage would be an act of war. Declare war first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -204,6 +220,7 @@ export function resolveRampageOrder(turnContext: TurnContext, c: Character, targ
     type: 'combat',
     text: `🗡 ${c.name} goes on a Rampage through ${foe.name}'s ranks — ${kills} unit${kills !== 1 ? 's' : ''} cut down and their commander bloodied!`,
     audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   c.merits = (c.merits || 0) + 1;
@@ -218,6 +235,7 @@ export function resolveRainOfArrowsOrder(turnContext: TurnContext, c: Character,
       type: 'system',
       text: `${c.name} lacks the Archery mastery (7) for a Rain of Arrows.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -229,6 +247,7 @@ export function resolveRainOfArrowsOrder(turnContext: TurnContext, c: Character,
       type: 'combat',
       text: `${c.name} finds no enemy force to volley in ${prov.name} this phase.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -237,6 +256,7 @@ export function resolveRainOfArrowsOrder(turnContext: TurnContext, c: Character,
       type: 'system',
       text: `${c.name}: you are not at war with ${foe.name}'s crown — a Rain of Arrows would be an act of war. Declare war first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -250,6 +270,7 @@ export function resolveRainOfArrowsOrder(turnContext: TurnContext, c: Character,
     type: 'combat',
     text: `🏹 ${c.name} looses a Rain of Arrows on ${foe.name}'s host — ${kills} unit${kills !== 1 ? 's' : ''} fall to the volley.`,
     audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'archery', SKILLGAIN_STD);
@@ -263,6 +284,7 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
       type: 'system',
       text: `${c.name} lacks the Archery mastery (9) for a Sniper's Mark.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -274,6 +296,7 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
       type: 'system',
       text: `${c.name} finds no enemy commander to mark in ${prov.name} this phase.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -282,6 +305,7 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
       type: 'system',
       text: `${c.name}: you are not at war with ${foe.name}'s crown — a Sniper's Mark would be an act of war. Declare war first.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -293,6 +317,7 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
     type: 'combat',
     text: `🎯 ${c.name} takes a Sniper's Mark on ${foe.name} — ${dmg} wounds${foe.hp <= 0 ? '' : ` (${killChance}% to slay, roll ${roll})`}.`,
     audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   if (foe.hp <= 0 || roll <= killChance) {
@@ -302,12 +327,14 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
         type: 'combat',
         text: _garrethEscapeLine(foe),
         audience: { actor: c.player, realms: [c.player].filter((x) => x != null), seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     } else {
       foe.hp = 0;
       reportHeroFall(turnContext, foe, c, `${foe.name} is felled by the shot!`, {
         audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
       awardKillXP(turnContext, c, foe);
@@ -325,6 +352,7 @@ export function resolveFeignedRetreatOrder(turnContext: TurnContext, c: Characte
       type: 'system',
       text: `${c.name} lacks the Tactical mastery (7) for a Feigned Retreat.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -333,6 +361,7 @@ export function resolveFeignedRetreatOrder(turnContext: TurnContext, c: Characte
     type: 'combat',
     text: `🏳 ${c.name} lays a Feigned Retreat — should the enemy take the bait and attack, the counter will strike at +25% strength this turn.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'tactical', SKILLGAIN_STD);
@@ -346,6 +375,7 @@ export function resolveGrandStratagemOrder(turnContext: TurnContext, c: Characte
       type: 'system',
       text: `${c.name} lacks the Tactical mastery (9) for a Grand Stratagem.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -354,6 +384,7 @@ export function resolveGrandStratagemOrder(turnContext: TurnContext, c: Characte
     type: 'combat',
     text: `📜 ${c.name} sets a Grand Stratagem in motion — their next battle this turn is fought at +20% strength.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'tactical', SKILLGAIN_STD);
@@ -367,6 +398,7 @@ export function resolveLightningAdvanceOrder(turnContext: TurnContext, c: Charac
       type: 'system',
       text: `${c.name} lacks the March mastery (9) for a Lightning Advance.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -375,6 +407,7 @@ export function resolveLightningAdvanceOrder(turnContext: TurnContext, c: Charac
     type: 'move',
     text: `⚡ ${c.name} orders a Lightning Advance — any enemy they attack this turn is caught unready (−20% on the defence).`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'march', SKILLGAIN_STD);
@@ -388,6 +421,7 @@ export function resolveRaidTheCoastOrder(turnContext: TurnContext, c: Character,
       type: 'system',
       text: `${c.name} lacks the Naval mastery (9) to Raid the Coast.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
@@ -396,6 +430,7 @@ export function resolveRaidTheCoastOrder(turnContext: TurnContext, c: Character,
       type: 'system',
       text: `${c.name}: a Raid the Coast must be led by a fleet — you lead no naval units or sea creatures.`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   } // NAVAL L9: must lead a naval unit / sea creature
@@ -404,6 +439,7 @@ export function resolveRaidTheCoastOrder(turnContext: TurnContext, c: Character,
     type: 'move',
     text: `⚓ ${c.name} readies a Raid the Coast — an amphibious assault launched from the sea against a coastal province this turn strikes at +25% strength, and plunders the province treasury if it falls.`,
     audience: { actor: c.player, realms: [c.player] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'naval', SKILLGAIN_STD);

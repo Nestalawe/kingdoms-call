@@ -5,7 +5,7 @@ import { d100, fmtRoll, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
-import { emit, emitNarrLine } from '../turn/events-and-their-audiences.ts';
+import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { completeDefendWatches } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
@@ -449,6 +449,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
       type: 'combat',
       text: `⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`,
       audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: [c.id, quarry.id, ...defReinf.map((d) => d.id)],
       phase: ph,
@@ -458,6 +459,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
         type: 'combat',
         text: commandHandoverLine(_hP.leader, quarry, prov.name),
         audience: { actor: quarry.player, realms: targetsPi, seen: 'battle' },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
     const battle = combatVsChar(turnContext, combinedAtk, combinedDef, prov);
@@ -533,6 +535,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
           type: 'combat',
           text: `${c.name} drives the interlopers out and secures ${prov.name} for ${wp ? wp.name : 'their realm'}!`,
           audience: { actor: c.player, realms: [], seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
       }
@@ -604,6 +607,7 @@ export function runDefendAmbush(turnContext, ph) {
       type: 'system',
       text: `📊 Ambush — ${c.name} (Spy ${spy}) lies in wait for ${quarry.name}${guarded ? ' (guarded — halved)' : ''}: ${fmtRoll(chance, roll)}`,
       audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: quarryProv.id,
     });
     if (roll > chance) {
@@ -611,6 +615,7 @@ export function runDefendAmbush(turnContext, ph) {
         type: 'move',
         text: `${c.name} watches ${quarry.name} pass through ${quarryProv.name} but cannot find the opening to strike.`,
         audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: quarryProv.id,
       });
       c._defendReactedPhase = ph; // the attempt spends his watch for this phase
@@ -646,6 +651,7 @@ export function runDefendAmbush(turnContext, ph) {
       type: 'combat',
       text: `⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`,
       audience: { actor: c.player, realms: targetsPi, seen: prov.owner !== null ? 'battle' : undefined },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: _duelChars,
     });
@@ -665,6 +671,7 @@ export function runDefendAmbush(turnContext, ph) {
       emitNarrLine(turnContext, line, {
         type: 'combat',
         audience: { actor: c.player, realms: targetsPi },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
         heroes: _duelChars,
       }),
@@ -678,12 +685,14 @@ export function runDefendAmbush(turnContext, ph) {
           type: 'combat',
           text: _garrethEscapeLine(c),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
           heroes: _duelChars,
         });
       } else {
         reportHeroFall(turnContext, c, quarry, `${c.name} is cut down in the ambush they laid!`, {
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
           heroes: _duelChars,
         });
@@ -697,12 +706,14 @@ export function runDefendAmbush(turnContext, ph) {
           type: 'combat',
           text: _garrethEscapeLine(quarry),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
           heroes: _duelChars,
         });
       } else {
         reportHeroFall(turnContext, quarry, c, `${quarry.name} is struck down in the ambush!`, {
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
           heroes: _duelChars,
         });
@@ -768,6 +779,7 @@ export function runReinforcementArrivals(turnContext, ph, intents) {
       type: 'move',
       text: `${it.c.name} force-marches into ${P.name} ahead of the enemy — their troops are in the line before the first banners appear over the ridge.`,
       audience: { actor: it.player, realms: [it.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: P.id,
     });
   });

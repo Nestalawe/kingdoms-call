@@ -4,7 +4,7 @@ import { kcRng } from '../rng.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { _isHumanoidRace } from '../discoveries.ts';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ── PLAGUE AND THE BLESS WARD (plan P1-08b: lifted out of resolveTurn) ────
 // The Plague's toll on a province's humanoid troops and its spread to the neighbours, and the Bless ward that may turn
@@ -31,6 +31,7 @@ export function blessWardNegates(turnContext, prov, caster, spellName) {
       realms: prov._blessWardBy != null ? [prov._blessWardBy] : [],
       seen: 'battle',
     },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
     env: true,
   });
@@ -83,7 +84,11 @@ export function applyPlague(turnContext, prov, level, ph) {
   hitByCtx.forEach((rec) => {
     const names = rec.units.map((u) => `${u.unitName || u.type} (now ${u.quality})`).join(', ');
     const where = rec.garrison ? `the garrison of ${prov.name}` : `your troops in ${prov.name}`;
-    const place = { audience: { actor: null, realms: [rec.owner] }, province: prov.id };
+    const place = {
+      audience: { actor: null, realms: [rec.owner] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: prov.id,
+    };
     if (rec.charId != null) place.hero = rec.charId;
     if (ph != null) place.phase = ph;
     emit(turnContext, {
@@ -121,6 +126,7 @@ export function spreadPlagues(turnContext, ph) {
             realms: (nb.owner != null ? [nb.owner] : []).concat(p._plagueCaster != null ? [p._plagueCaster] : []),
             seen: 'battle',
           },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: nb.id,
           env: true,
         });

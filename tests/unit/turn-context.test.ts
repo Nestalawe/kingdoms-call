@@ -12,6 +12,7 @@ import { types } from 'node:util';
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
+import { THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { engineFn, loadEngine, turnContext, type TurnContext } from '../lib/engine.ts';
 
 const engine = loadEngine({ seed: 1 });
@@ -49,7 +50,7 @@ describe('createTurnContext', () => {
     const restore = quiet();
     const emit = engineFn(engine, 'emit') as (tc: TurnContext, event: Record<string, unknown>) => void;
     const line = (place?: Record<string, unknown>) => {
-      emit(tc, { type: 'combat', text: 'a line', audience: {}, ...place });
+      emit(tc, { type: 'combat', text: 'a line', audience: {}, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, ...place });
       return tc.turnLog[tc.turnLog.length - 1];
     };
     try {

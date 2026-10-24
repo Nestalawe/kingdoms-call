@@ -188,7 +188,8 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // already under way waits when its hunter has fought this phase — as the attacker OR the defender.
     const fieldBattlePhase = {};
     turnContext.fieldBattlePhase = fieldBattlePhase;
-    // Current character context — set by processOrder so all log calls get charId/phase automatically
+    // Current character context — set by processOrder: the hero a line naming THE_HERO_WHOSE_ORDER_IS_RESOLVING is
+    // filed under (when the line reaches his realm), and the phase of a line that names none
     turnContext._logCtx = { charId: null, phase: null };
     // the phase currently being resolved. _logCtx is cleared to null between characters and after
     // resolveStalledBattles, so a skill-rise earned in a phase-pipeline STAGE

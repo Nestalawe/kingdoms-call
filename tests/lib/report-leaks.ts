@@ -303,7 +303,8 @@ export interface EventAsEmitted {
   province: unknown;
   phase: unknown;
   hero: unknown;
-  /** The event named its hero (a number), rather than leaving it to emit's fallback. */
+  /** The event named its hero by his id (a number), not as the hero whose order is resolving (emit works that one
+   *  out). */
   heroNamed: boolean;
   /** The realm the hero it was filed under served as the line was written (null: none, or no hero). */
   heroRealmThen: unknown;
