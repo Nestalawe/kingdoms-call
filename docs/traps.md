@@ -335,7 +335,9 @@ check finds were made.
 - **A line for one realm alone inside a fight is a kind whose audience says so** (P1-12c4; `narrateTo` and its
   `{ text, onlyPlayer, charId }` lines went). Each kind's audience is written once, beside the kind in its area's
   module, and its type says which (`THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE`: a kind given another is a
-  compile error): the fight's, or its hero's realm alone. Two kinds are for one realm alone: a hero's hit-point rise in a
+  compile error): the fight's, its hero's realm alone, or, for a kind filed on its own and not in a fight's narrative
+  (a host gained in a province, a stalled battle: P1-12c6), its event's, the audience the event that files it names.
+  Two kinds are for one realm alone: a hero's hit-point rise in a
   fight (`awardHpRoll`'s line) and the surgeons' word to a fallen duellist's own realm (`preBattleDuel`); each names its
   `realm` (and the rise its `hero`), and `emitNarrLine` files it told to that realm alone, with no heroes, under its
   hero (else the fight's). A new line the man across the field must not read is a new kind of that audience, and the
@@ -344,13 +346,15 @@ check finds were made.
   The engine reads a fight's line by its kind, never its words: the mercy that stays a killing blow keeps a skill rise's
   words, a line for one realm alone and another area's fact, and drops the fight's own lines
   (`isAPersonalCombatsLine`, `isALineForEveryoneInTheFight`); the two searches for a battle's header find a battle
-  between heroes' "Battle for …" line and its "… a battle is initiated." line by their kinds (P1-12c5), and still by
-  their words where the line is words (a battle against a province's defenders: P1-12c6). A line overwritten in place
-  (a battle's heading, once the beaten side holds the field) is overwritten with a fact of another kind.
+  between heroes' "Battle for …" line and its "… a battle is initiated." line by their kinds alone (P1-12c5, c6: no
+  line of `battle/` is words any more, so `narrText` went). A line overwritten in place (a battle's heading, once the
+  beaten side holds the field) is overwritten with a fact of another kind.
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
   `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
   (the event without its type and text: `{ audience, province, hero, phase, … }`), and files it with
-  `emit(turnContext, { type, text, ...place })`. Build it as the event's own fields, never as the old `log()` meta
+  `emit(turnContext, { type, text, ...place })`. A line that may be words or a fact (a beaten guard's survivors' fates:
+  facts, but a unit disbanding is still words from `army-tables.ts`; what `notifyTarget` and `notifyProvinceOwner` are
+  handed) goes in as `...theWordsOrTheFactOfALine(line)`, which gives `emit` its `text` or its `fact`. Build it as the event's own fields, never as the old `log()` meta
   (`targets`, `provinceId`, `charId`, `public`). A line seen by those there but with no province is seen by the world
   (`seen: 'world'`), as the report reads it: where the province may be missing, say so
   (`seen: prov ? 'there' : 'world'`).
@@ -374,20 +378,27 @@ check finds were made.
   `phase: 'none'` is no phase.
 - **A typed line records a fact, and the views write its words** (P1-12c3). An event carries `text` (its finished
   words) or `fact` (one kind of `LineFact`, never both: `emit` throws on both). An area's kinds are typed beside its code
-  (the battles': `src/engine/battle/the-facts-a-battles-lines-record.ts`, the force markers and, since P1-12c5, every
-  sentence of a battle between heroes and of the duel before a battle; personal combat's:
+  (the battles': `src/engine/battle/the-facts-a-battles-lines-record.ts`, the force markers and, since P1-12c5 and c6,
+  every sentence of `battle/`: a battle between heroes, the duel before a battle, a battle against a province's own
+  defenders, a host gained in a province, a stalled battle, a war front, and the helpers that return a line, which
+  return its fact; personal combat's:
   `src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, P1-12c4; one kind per sentence, one field
   per value it was written with, and a kind's name unique across the areas, since `theWordsOf` routes a fact by its
   kind), each with its fields and its audience, and `src/views/prose/` writes their words after
   the turn, one module per area (`theWordsOf` hands each fact to its area's), a `switch` over the kinds with a `never`
   default: a new kind with no words doesn't compile there. `forceMarker` returns its fact, and `narrate` takes it as it
-  takes words. So **the engine's log holds no words for a typed line** (its `text` is `null`, its `fact` last): read a
+  takes words. **`src/engine/battle/` and `src/engine/personal-combat/` write no line's words** (P1-12c6): a new line
+  there is a new kind (its words in `src/views/prose/`), or a field of one where the words are a fragment (P1-12d moves
+  those fields' words into the prose); the words a battle takes from another folder's helper (a unit disbanding, a sea
+  trap, a naval hold, the wanderer's escape, a hero's death) are P1-12d's. So **the engine's log holds no words for a
+  typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
   line.ts`), never from `resolveTurn`'s `log` or `turnContext.turnLog`. `buildReports` writes them before it picks any
   realm's lines and returns them as `gmLog`, which the shell saves; every harness that plays a turn reads them
   (`tests/lib/scenario-in-the-vm.ts`, `a-staged-turn-on-the-engines-modules.ts`, the board's `lines()` in
-  `middle-of-a-bot-world.ts`), and a test that reads a narrative writes a fact's words with `theWordsOf` (a personal
-  combat's: `wordsOf` or `wordsForEveryoneInTheFight`, `tests/lib/personal-combat.ts`). A test that keeps a
+  `middle-of-a-bot-world.ts`), and a test that reads a narrative, or a line a helper returns, writes a fact's words
+  with `theWordsOf` (a personal combat's: `wordsOf` or `wordsForEveryoneInTheFight`, `tests/lib/personal-combat.ts`; on
+  the booted GM portal, its `theWordsOf`: `tests/battle-grid.test.js`). A test that keeps a
   narrative's strings and drops the rest reads nothing of a typed line: read its words. In this run a
   line's words are the same for every reader (the masking of unmet realms stays on them, R-046).
 - **A battle's tiers and its tally come from its words, in the views.** `emitBattle` files each line with its tier

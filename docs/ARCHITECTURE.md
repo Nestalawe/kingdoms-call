@@ -436,13 +436,17 @@ portals' start-up guards are gone.
   P1-12c3): a typed line records a fact, not words (its kind and fields; the kinds of an area are typed beside its code,
   the battles' in `engine/battle/the-facts-a-battles-lines-record.ts`, personal combat's in
   `engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, all of them in `LineFact`, each with its
-  audience: the fight's, or its hero's realm alone), and the views write
-  its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words is a compile
-  error. A battle's lines take their tiers (key or detail) and its losses tally its place from those words, as
-  `emitBattle` did before. The result is the GM's log in words, in the form it was always stored in: `buildReports`
-  returns it as `gmLog`, and the shell saves it. Today the force markers, every line of a personal combat, and every
-  sentence of a battle between heroes and of the duel before a battle are kinds (P1-12c3, P1-12c4, P1-12c5); the rest of
-  the battles' lines follow (P1-12c6), and in this run a line's words are the same for every reader. Then it works out, for each played
+  audience: the fight's, its hero's realm alone, or for a kind filed on its own the audience its event names), and the
+  views write its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words
+  is a compile error. A battle's lines take their tiers (key or detail) and its losses tally its place from those words,
+  as `emitBattle` did before. The result is the GM's log in words, in the form it was always stored in: `buildReports`
+  returns it as `gmLog`, and the shell saves it. Since P1-12c6, `engine/battle/` and `engine/personal-combat/` write no
+  line's words: every line they tell is a kind (the force markers, personal combat, a battle between heroes and the duel
+  before it, a battle against a province's own defenders, a host gained in a province, a stalled battle, a war front,
+  and the helpers that return a line: the kinship, Druid and command lines, the ladder and grid rows, the units' fates),
+  but the few words a battle takes from another folder's helper (a unit disbanding, a sea trap, a naval hold, the
+  wanderer's escape, a hero's death: P1-12d). The rest of the engine's lines still carry their words (P1-12d), and in
+  this run a line's words are the same for every reader. Then it works out, for each played
   slot, the lines the realm reads (from the lines in words) and what it may see of the world, and builds its report
   from those two alone: **perception** comes first, in two functions, and the report
   reads nothing else (P1-12b5). `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines
