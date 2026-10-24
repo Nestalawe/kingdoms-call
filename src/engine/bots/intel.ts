@@ -3,7 +3,7 @@ import { KC_HEX_DIRS, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdom
 import { battleFrontWidth, battleLineTotal } from '../battle/lines.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
-import { TAMED_FLYER_TYPES_D } from '../titles/perks.ts';
+import { TAMED_FLYER_TYPES_D } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { consecratedIds } from '../heroes/fame-and-consecration.ts';
 import {

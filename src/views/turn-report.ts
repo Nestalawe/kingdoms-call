@@ -22,6 +22,7 @@ import { marchSpeedBonus, navalSpeedBonus } from '../engine/units/movement.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
+  getFlyCapability,
 } from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
@@ -158,37 +159,12 @@ export function buildTurnReport(view, itsLines = null) {
               ? Math.min(...landArmiesRep.map((a) => repSpd(a)))
               : 5
             : 0;
-    // ── FLYING CARRY (report mirror of getFlyCapability) ── If the humanoid flyers can lift every
+    // ── FLYING CARRY (getFlyCapability, engine/rules-on-plain-values/) ── If the humanoid flyers can lift every
     // foot soldier in the force (1 each, nothing grounded left behind), the column takes to the
     // air: it moves at the flyers' pace (carried infantry no longer slow it) and crosses sea
-    // freely.
+    // freely. (A column all of whose units fly is not carried: it gets the flyers' pace below.)
     {
-      const FLY_CARRIERS_REP = new Set(KC_UNIT_CLASS.flying);
-      const CAV_REP = new Set(KC_UNIT_CLASS.cavalry);
-      const CRE_REP = new Set(KC_UNIT_CLASS.creature);
-      const MON_REP = new Set(KC_UNIT_CLASS.monster);
-      const repAirCarriable = (t) =>
-        !(AERIAL_UNIT_TYPES.has(t) || SEA_UNIT_TYPES.has(t) || CRE_REP.has(t) || MON_REP.has(t) || CAV_REP.has(t));
-      let carriers = 0,
-        carried = 0,
-        selfFly = false,
-        grounded = false;
-      armies.forEach((a) => {
-        if (FLY_CARRIERS_REP.has(a.type)) {
-          carriers++;
-          selfFly = true;
-        } else if (AERIAL_UNIT_TYPES.has(a.type)) {
-          selfFly = true;
-        } else if (repAirCarriable(a.type)) {
-          carried++;
-        } else grounded = true;
-      });
-      const canFlyRep =
-        armies.length > 0 &&
-        !grounded &&
-        selfFly &&
-        carriers >= carried &&
-        !armies.every((a) => AERIAL_UNIT_TYPES.has(a.type));
+      const canFlyRep = getFlyCapability(armies) && !armies.every((a) => AERIAL_UNIT_TYPES.has(a.type));
       if (canFlyRep) {
         const flyerSpeeds = armies.filter((a) => AERIAL_UNIT_TYPES.has(a.type)).map((a) => repSpd(a));
         if (flyerSpeeds.length) {
@@ -476,10 +452,9 @@ export function buildTurnReport(view, itsLines = null) {
   })();
 
   // Helper: get the single most notable skill for display (highest level; random if tie)
-  // 2026-09-13: keep in step with skillFameLabel() in the player portal — a hero who is not yours
-  // is known by reputation, not by an exact skill level. Three bands across levels 1–9. 2026-09-13:
-  // both now delegate to the module-level helpers, so the Intelligence report, the Hire dropdown
-  // and the Broker dropdown cannot describe the same hero differently.
+  // A hero who is not yours is known by reputation, not by an exact skill level. Three bands across levels 1–9:
+  // skillFameLabelM (engine/rules-on-plain-values/), which the player portal shares (P1-11a4 retired its own copy),
+  // so the Intelligence report, the Hire dropdown and the Broker dropdown cannot describe the same hero differently.
   function skillFameLabel(level) {
     return skillFameLabelM(level);
   }

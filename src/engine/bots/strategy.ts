@@ -3,7 +3,7 @@ import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.t
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
-import { TAMED_FLYER_TYPES_D } from '../titles/perks.ts';
+import { TAMED_FLYER_TYPES_D } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { graveServedOther } from '../heroes/charms-and-neutrals.ts';

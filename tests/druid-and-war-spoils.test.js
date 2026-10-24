@@ -4,7 +4,7 @@
 const vm=require('vm'); const {sourceOf,scriptOf}=require('./lib/source.ts');
 const parts=[
   sourceOf('engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts',['FLYING_TYPES','CREATURE_ARMIES','MONSTER_ARMIES']),
-  sourceOf('engine/world/tables.ts',['DRUID_ARMY_LEVELS_P','getDruidLevel']),
+  sourceOf('engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts',['DRUID_ARMY_LEVELS_P','getDruidLevel']),
   sourceOf('engine/discoveries.ts',['DISC_CLS_SETS','discUnitIs','ARMY_RACE_OF_TYPE','discUnitMatch']),
 ];
 const ctx={console};

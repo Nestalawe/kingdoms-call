@@ -1,5 +1,6 @@
 import { battleLineTiers, battleTallyLine } from './fates.ts';
-import { druIdPenaltyMult, getDruidLevel } from '../world/tables.ts';
+import { druIdPenaltyMult } from '../world/tables.ts';
+import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { dragonTamed } from '../discoveries.ts';
 import { narrText } from '../turn/log-line-helpers.ts';

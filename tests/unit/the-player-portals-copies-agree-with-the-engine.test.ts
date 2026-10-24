@@ -200,10 +200,10 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     expect(differences(armyCardMastery())).toEqual([]);
   });
 
-  test("the turn report's flying carry: isAirCarriable on every unit type, getFlyCapability on every column", () => {
-    const { unitTypes, columns } = flyingCarry();
-    expect(unitTypes.length).toBeGreaterThan(50);
-    expect(differences(unitTypes)).toEqual([]);
+  test("the turn report's flying carry: getFlyCapability's answer on every column", () => {
+    // Since P1-11b2 the report calls getFlyCapability (it kept its own copy of it, and of isAirCarriable).
+    const { columns } = flyingCarry();
+    expect(columns.length).toBeGreaterThan(0);
     expect(differences(columns)).toEqual([]);
   });
 
@@ -237,7 +237,6 @@ test('each engine function leaves its input as it was (the values are frozen: a 
     ...druidNeed(),
     ...armyCardShortfall(),
     ...armyCardMastery(),
-    ...flyingCarry().unitTypes,
     ...flyingCarry().columns,
     ...seaNote(),
   ]

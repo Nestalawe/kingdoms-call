@@ -470,7 +470,6 @@ rule there, once. Rules are still restated:
   `tests/lib/player-portal-copies.ts` checks (`beastCommandCountP`, `poSeaAnalysis`, `effMagicLvl`, `druidNeedP`, the
   army card's Druid and sea-transport lines, the Explore forecast `exploreGainFor`), and the other forecasts and order
   checks whose engine rule is written inline (P1-11b, P1-19);
-- in the turn report's own flying carry (`views/turn-report.ts`; the same test checks it against the engine's);
 - at order time and again at resolution time in the engine;
 - in the turn-report forecast versus the end-of-turn collector;
 - in narrative strings, both rulebooks, join-screen blurbs and tooltips.
