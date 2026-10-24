@@ -467,9 +467,10 @@ portal uses (P1-11a): it calls the engine's own function, in `src/engine/rules-o
 `src/shared/` ([ARCHITECTURE.md](ARCHITECTURE.md#kingdoms-call-datats-the-one-source-for-shared-rules)). Change such a
 rule there, once. Rules are still restated:
 - in the player portal's projections (forecasts, order validation, hints): the copies still left are the ones
-  `tests/lib/player-portal-copies.ts` checks (`beastCommandCountP`, `poSeaAnalysis`, `effMagicLvl`, `druidNeedP`, the
-  army card's Druid and sea-transport lines, the Explore forecast `exploreGainFor`), and the other forecasts and order
-  checks whose engine rule is written inline (P1-11b, P1-19);
+  `tests/lib/player-portal-copies.ts` checks (`poSeaAnalysis`, `effMagicLvl`, the army card's sea-transport line, the
+  Explore forecast `exploreGainFor`; and the level of a hero's Druid that `druidNeedP` and the army card's Druid lines
+  feed the engine's Druid rule), and the other forecasts and order checks whose engine rule is written inline (P1-11b,
+  P1-19);
 - at order time and again at resolution time in the engine;
 - in the turn-report forecast versus the end-of-turn collector;
 - in narrative strings, both rulebooks, join-screen blurbs and tooltips.
@@ -710,7 +711,8 @@ Since 2026-10-12 (item 24) a realm's hero leads at most as many Creature and Mon
 (`beastCommandCount`, `beastsLed`, `beastCommandRoom`, module level beside `druIdPenaltyMult`). The rule is enforced
 where a beast joins a column: Recruit Armies (overflow musters into the garrison), Pick Up Army, Leave/Transfer to a
 hero and Wild Calling. A new path that puts a living beast into a hero's `armies` must ask `beastCommandRoom` first,
-or the cap is quietly broken. The player portal's `beastCommandCountP` mirrors what counts.
+or the cap is quietly broken. The player portal's hero card counts with the same `countsAgainstBeastCommand`
+(`engine/rules-on-plain-values/`, through `src/shared/`).
 `tests/beast-command.test.js` holds the three orders.
 
 ## Terror is spent at battle start

@@ -136,7 +136,7 @@ const CELLS_BEFORE={
   ok(p.errors.length===0,'the player portal boots'+(p.errors.length?' — '+p.errors[0].split('\n')[0]:''));
   for(const u of NEW_UNITS){
     ok(p.ev(`unitTypeOf(${JSON.stringify(u)})`)===ROSTER[u].type,`player portal unitTypeOf('${u}') is '${ROSTER[u].type}'`);
-    ok(p.ev(`DRUID_LEVEL_OF_P[${JSON.stringify(u)}]`)===1,`the player portal's Druid table says 1 for ${u}`);
+    ok(p.ev(`getDruidLevel(${JSON.stringify(u)})`)===1,`the player portal's Druid table says 1 for ${u}`);
   }
   p.dom.window.close();
 

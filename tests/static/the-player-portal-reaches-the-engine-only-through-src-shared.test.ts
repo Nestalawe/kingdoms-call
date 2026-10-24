@@ -23,8 +23,9 @@ const RULES = 'engine/rules-on-plain-values/';
 const PLAYER = 'ui/player/';
 const PLAYER_PAGE = 'kingdoms-call-player-portal.html';
 
-/** The player portal's copies of the engine's rules that P1-11a4 swapped for the engine's functions, and the tables
- *  only they read: none may come back, under these names or any other (the names src/shared/ hands the portal). */
+/** The player portal's copies of the engine's rules that P1-11a4 and P1-11b3 swapped for the engine's functions, and
+ *  the tables only they read: none may come back, under these names or any other (the names src/shared/ hands the
+ *  portal). */
 const RETIRED = [
   'floorNumP',
   'unitTypeOfP',
@@ -49,6 +50,10 @@ const RETIRED = [
   'poFlyCapability',
   'actionSpellLimit',
   'combatSpellLimit',
+  // P1-11b3: the beast command and the Druid table
+  'beastCommandCountP',
+  'DRUID_LEVEL_OF_P',
+  'TAMED_FLYERS_P',
 ];
 
 const filesIn = (folder: string) => filesUnder(SRC).filter((f) => f.startsWith(folder));
