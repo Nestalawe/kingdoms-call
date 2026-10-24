@@ -79,7 +79,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-017](R-017-charm-resistance.md) | Charm resistance grows 30% per Charm | 2026-09-21 | Confirmed (open question) | no test yet |
 | [R-018](R-018-world-generation-guarantees.md) | What every new world guarantees | 2026-09-21 | Confirmed | [`home-placement`](../../tests/home-placement.test.js) |
 | [R-019](R-019-dead-commander-earns-nothing.md) | A commander slain in his own battle earns nothing from it | 2026-09-21 | To confirm | no test yet |
-| [R-020](R-020-own-provinces-seen-fully.md) | A realm sees its own provinces fully | 2026-09-21 | Confirmed (open question) | no test yet |
+| [R-020](R-020-own-provinces-seen-fully.md) | A realm sees its own provinces fully | 2026-09-21 | Confirmed (open question) | [`heroes-in-sight-and-features-discovered-called-directly`](../../tests/unit/heroes-in-sight-and-features-discovered-called-directly.test.ts) |
 | [R-021](R-021-king-may-run-down-king.md) | Only a king may run down another king | 2026-09-21 | Confirmed | no test yet |
 | [R-022](R-022-titles-card-order.md) | The Titles card lists your titles first | 2026-09-21 | Confirmed | no test yet |
 | [R-023](R-023-experience-routes.md) | How the slow skills are learned in the field | 2026-09-21 | Confirmed (open question) | no test yet |
@@ -169,7 +169,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-107](R-107-duel-stance-refuse.md) | A player's hero refuses duels unless told otherwise | 2026-10-13 | Confirmed (open question) | [`duel-refuse-default`](../../tests/duel-refuse-default.test.js) |
 | [R-108](R-108-lairs-unique-per-province.md) | One lair per name and one of each guardian per province | 2026-10-13 | Confirmed | [`lair-province-unique`](../../tests/lair-province-unique.test.js) |
 | [R-109](R-109-corsairs-retired.md) | The Corsair fleet is gone | 2026-10-15 | Confirmed | [`corsairs-retired`](../../tests/corsairs-retired.test.js), [`roster-words`](../../tests/roster-words.test.js) |
-| [R-110](R-110-heroes-sharing-a-province.md) | Another realm's hero beside yours is always seen, and only roughly | 2026-10-15 | Confirmed | [`sight-shared-province`](../../tests/sight-shared-province.test.js), [`intrusion-invisible`](../../tests/intrusion-invisible.test.js), [`intrusion-lurker`](../../tests/intrusion-lurker.test.js) |
+| [R-110](R-110-heroes-sharing-a-province.md) | Another realm's hero beside yours is always seen, and only roughly | 2026-10-15 | Confirmed | [`sight-shared-province`](../../tests/sight-shared-province.test.js), [`intrusion-invisible`](../../tests/intrusion-invisible.test.js), [`intrusion-lurker`](../../tests/intrusion-lurker.test.js), [`heroes-in-sight-and-features-discovered-called-directly`](../../tests/unit/heroes-in-sight-and-features-discovered-called-directly.test.ts) |
 | [R-111](R-111-what-spying-shows.md) | What spying shows | 2026-10-15 | Confirmed | [`spy-reveals`](../../tests/spy-reveals.test.js) |
 | [R-112](R-112-dreamstone-after-doubling.md) | The Dreamstone's round comes after Psychic Blast's doubling | 2026-10-15 | Confirmed | [`blast-dreamstone`](../../tests/unit/blast-dreamstone.test.ts) |
 | [R-113](R-113-spiritwrack-counted-to-five.md) | Spiritwrack counts White to 5 | 2026-10-15 | Confirmed | [`spiritwrack-five`](../../tests/unit/spiritwrack-five.test.ts) |
