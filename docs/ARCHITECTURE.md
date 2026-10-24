@@ -53,8 +53,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   its entry and the rest of its code), `ui/shared/` (`kc-safe.ts`), `rulebook/`. The
   templates are at the top of `src/`. The GM portal's code is 141 modules; `src/engine/run-turn.ts` (the turn,
   `resolveTurn`, once ~13,000 lines, now ~240) was taken apart by P1-08, one area at a time (below). The player portal's
-  is 38: its own 23, the data file, `kc-safe.ts`, the reload banner's two files, `kc-db-guard.ts`, `src/shared/`'s
-  file and the folder's nine.
+  is 39: its own 23, the data file, `kc-safe.ts`, the reload banner's two files, `kc-db-guard.ts`, `src/shared/`'s
+  file and the folder's ten.
 - **TypeScript checks the site** (`tsconfig.json` includes `src/`, with the browser's types; one project until P1-10
   splits the engine's). The files that were JavaScript start with `// @ts-nocheck` and the reason (142 of 158 at the
   rename: strict TypeScript found errors in each); P1-10 and P1-16 type them, and the ratchet's `tsNocheck` only falls.
@@ -394,7 +394,7 @@ reason; one that matches nothing is itself a finding. Mistakes to avoid: [traps.
   is written once, in `src/engine/rules-on-plain-values/` (its files import only the data file and each other), and the
   player portal imports it by the engine's name through `src/shared/the-engines-rules-the-player-portal-shares.ts`,
   which re-exports only from that folder: e.g. `dispFloor`, `unitBaseStrength`, `itemSlot`, `heroHireWage`,
-  `getFlyCapability`, the two casting limits, the beast command and the Druid rule. So the player page loads no other engine file and runs none of the
+  the two casting limits, the beast command, the Druid rule and a column's sea lift. So the player page loads no other engine file and runs none of the
   engine's set-up as it loads. `tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts`
   refuses a portal file that imports an engine or a views file, or declares one of the retired copies (`floorNumP`, …)
   or a name `src/shared/` hands it. The portal's copies still left (they read the report's shape: P1-11b) are the
@@ -718,6 +718,14 @@ portals' start-up guards are gone.
   counts beasts with `countsAgainstBeastCommand` and works out its Druid lines with the shortfall's and the mastery's
   functions, and `druidNeedP` asks `druidLevelALeaderNeeds`, each feeding in the portal's own level of the hero's Druid
   (the report's, which counts a Crown of Command: question 13 for Toby).
+  P1-11b4 added `ships-and-flyers-that-carry-a-column-across-the-sea.ts`: the berths a unit offers (`carrierBerths`,
+  moved from `engine/units/movement.ts`), which units take half a hull (`takesHalfAHullAboard`), and whether a column
+  can put to sea with the figures the answer comes from (`seaLiftOfAColumn`: its berths, with the leader's Naval 8
+  mastery, its land units, the units that must sail, its humanoid flyers, the hulls' room left and the units left
+  ashore). That was `getSeaCapability`'s body; `getSeaCapability` (`engine/units/movement-pools.ts`) is now its
+  wrapper, which works out the leader's mastery from his skills. The player portal's Move notice (`poSeaAnalysis`)
+  counts through it, handing in the mastery from the report's skills and counting a unit it can't type in advance as
+  light foot; the army card's own sea note stays as it is (question 15 for Toby).
   A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and `botWorld` in
   `tests/lib/engine.ts` ([traps.md](traps.md#a-lifted-helper-takes-the-turns-context-first)).
 

@@ -1,4 +1,4 @@
-// ── The engine's rules the player portal shares (plan P1-11a4; the beasts and the Druid rule, P1-11b3) ────
+// ── The engine's rules the player portal shares (plan P1-11a4; beasts and Druid, P1-11b3; the sea lift, P1-11b4) ────
 // The player portal's one door to the engine (plan P1-11a, Decision 2): the rules of a hero, an army, an item, a level
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
@@ -29,6 +29,10 @@ export {
   itemUsableBy,
 } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 export {
+  seaLiftOfAColumn,
+  takesHalfAHullAboard,
+} from '../engine/rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
+export {
   ALL_SKILLS,
   skillFameLabelM,
   topSkillOf,
@@ -38,7 +42,3 @@ export {
   combatSpellsAllowedPerSchoolEachFight,
 } from '../engine/rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 export { unitBaseStrength, unitTypeOf } from '../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
-export {
-  getFlyCapability,
-  isAirCarriable,
-} from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';

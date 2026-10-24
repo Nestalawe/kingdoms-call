@@ -1,14 +1,12 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_R } from '../battle/ladder.ts';
-import { carrierBerths, marchSpeedBonus, navalSpeedBonus } from './movement.ts';
+import { marchSpeedBonus, navalSpeedBonus } from './movement.ts';
 import {
   AERIAL_TYPES,
-  FLYING_TYPES,
   SEA_TYPES,
   getFlyCapability,
-  isAirCarriable,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { seaLiftOfAColumn } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
 import { discEff, discUnitMatch } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -24,49 +22,9 @@ import { perkTier } from '../titles/perks.ts';
 // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
 // stored per character for the whole turn
 export function getSeaCapability(armies, leadChar) {
-  // spectral doubles are illusions — they weigh nothing, need no berth and no griffon, and are
-  // never counted against a force's lift. (They normally live outside ch.armies entirely; this
-  // guards the case where a fighting copy is still attached mid-phase.)
-  armies = (armies || []).filter((a) => a && !a._phantom);
-  if (armies.length === 0) return 'all';
-  const landArmies = armies.filter((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type));
-  // Only CARRIERS provide capacity. Primal sea beasts swim themselves across but carry nothing,
-  // so they contribute 0 — a force of one Kraken plus one Goblin Horde still cannot put to sea.
-  const seaCount = armies.reduce((s, a) => s + carrierBerths(a), 0); // berths, not hulls: a turtle offers two (Island Back)
-  const flyCount = armies.filter((a) => AERIAL_TYPES.has(a.type)).length;
-  if (landArmies.length === 0) return 'all'; // only flying/sea
-  // if the humanoid flyers can lift every foot soldier, the whole column takes to the air and
-  // crosses sea without a fleet — just like an all-flying host.
-  if (getFlyCapability(armies)) return 'sea';
-  // Fleet capacity: light foot = 0.5 capacity (2 per hull), heavy/cavalry/siege/beast = 1 per
-  // hull
-  const LIGHT_ARMIES = new Set(KC_UNIT_CLASS.lightFoot); // gun-crews ride as light foot — an Ironclad ferries a Gun + a Guard
-  // HULLS AND FLYERS POOL THEIR LIFT. Now:
-  // • units a flyer cannot lift (cavalry, siege, walking creatures/monsters) MUST go aboard ship;
-  // • everything a flyer CAN lift rides a hull if there is room, else is carried by one humanoid
-  // flyer apiece (primal winged beasts still carry nothing);
-  // • the shortfall is what the flyers must cover, so hulls + flyers together decide the question.
-  const _capOf = (a) => (LIGHT_ARMIES.has(a.type) ? 0.5 : 1); // light foot take half a hull, everything else a full one
-  let hullCap = seaCount;
-  if (leadChar && perkTier(leadChar, 'naval') >= 3) hullCap *= 2; // NAVAL L8: one naval hull carries what once needed two
-  const _mustSail = landArmies.filter((a) => !isAirCarriable(a)); // horses, siege, beasts — ship or nothing
-  const _liftable = landArmies.filter((a) => isAirCarriable(a)); // humanoid foot — ship OR air
-  let _room = hullCap - _mustSail.reduce((s, a) => s + _capOf(a), 0);
-  if (_room < 0) return 'land'; // no berth for the unliftable — stay ashore
-  // Fill the remaining berths with the LIGHTEST liftable units first: that puts the most bodies
-  // aboard and so leaves the fewest for the flyers (a flyer lifts one unit whatever its weight).
-  let _byAir = 0;
-  _liftable
-    .slice()
-    .sort((a, b) => _capOf(a) - _capOf(b))
-    .forEach((a) => {
-      const _c = _capOf(a);
-      if (_room >= _c) _room -= _c;
-      else _byAir++;
-    });
-  const flyerLift = armies.filter((a) => FLYING_TYPES.has(a.type)).length; // humanoid flyers: one unit each
-  if (_byAir <= flyerLift) return 'sea';
-  return 'land';
+  // The rule is seaLiftOfAColumn's (plan P1-11b4 moved the body there, so the player portal's Move notice asks it
+  // too); the leader's naval mastery is worked out here. NAVAL L8: one naval hull carries what once needed two.
+  return seaLiftOfAColumn(armies, !!leadChar && perkTier(leadChar, 'naval') >= 3).answer;
 }
 
 export function canEnterTerrain(c, terrain, seaCap) {

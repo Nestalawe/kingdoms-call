@@ -3,10 +3,10 @@
 // the 16 copies that agreed for the engine's own functions (the portal imports them through src/shared/), so their
 // swap cases went with them; for the 9 whose value the report makes from the state, the truth case stays as a
 // projection case: the engine's function on the report's value and on the state's, the same answer (and for the beast
-// command, which P1-11b3 swapped). For two copies that stay until P1-11b, the truth: the copy on the report's value, the
-// engine's function on the state's. For the copies that read the realm, the report's shape or the world (P1-11b1: the
-// Druid a hero needs, the army card's Druid and sea lines, the turn report's flying carry, the Explore forecast), the
-// truth too, with the differences known to Toby's questions pinned exactly (since P1-11b3 the Druid ones call the
+// command, which P1-11b3 swapped, and the sea lift, P1-11b4's). For effMagicLvl, a copy that stays, the truth: the copy
+// on the report's value, against the level the report sends. For the copies that read the realm, the report's shape or
+// the world (P1-11b1: the Druid a hero needs, the army card's Druid and sea lines, the turn report's flying carry, the
+// Explore forecast), the truth too, with the differences known to Toby's questions pinned exactly (since P1-11b3 the Druid ones call the
 // engine's rule with the portal's level of the hero's Druid). And each engine function leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
@@ -29,7 +29,6 @@ import {
   sameAnswer,
   samples,
   type Samples,
-  STAYING,
   theGamePlayed,
   worldSamples,
   type WorldSamples,
@@ -52,7 +51,6 @@ function once<T extends Comparison[] | ProjectionComparison[]>(name: string, mak
   made.set(name, list);
   return list;
 }
-const truthOf = (pair: (typeof STAYING)[number]) => once(`${pair.copy} truth`, () => pair.truth(copies, values));
 /** `make`'s answer, made once (the P1-11b1 checks: each runs on about 90,000 Druid cases or a few hundred others). */
 function lazily<T>(make: () => T): () => T {
   let kept: { value: T } | null = null;
@@ -122,9 +120,9 @@ test("the values reach every catalogue item and every unit type at every quality
   expect(values.heroes.filter((h) => h.state).length).toBeGreaterThan(500);
 });
 
-describe('the 10 rules the portal calls the engine for whose value the report makes from the state (P1-11a4, P1-11b3)', () => {
-  test('there are 10', () => {
-    expect(PROJECTIONS).toHaveLength(10);
+describe('the 11 rules the portal calls the engine for whose value the report makes from the state (P1-11a4, P1-11b3, P1-11b4)', () => {
+  test('there are 11', () => {
+    expect(PROJECTIONS).toHaveLength(11);
   });
   test.each(PROJECTIONS.map((p) => [`${p.engine} (for ${p.retiredCopy})`, p] as const))(
     "%s: the engine's function on the report's value and on the state's: the same answer",
@@ -136,16 +134,9 @@ describe('the 10 rules the portal calls the engine for whose value the report ma
   );
 });
 
-describe('two copies that stay until P1-11b (they read the report’s shape)', () => {
-  test.each(STAYING.map((p) => [`${p.copy} and ${p.engine}`, p] as const))(
-    "%s: the copy on the report's value, the engine's function on the state's: the same answer",
-    (_name, pair) => {
-      const list = truthOf(pair);
-      expect(list.length).toBeGreaterThan(0);
-      expect(differences(list)).toEqual([]);
-    },
-  );
-
+describe('a copy that stays (it reads the report’s shape)', () => {
+  // poSeaAnalysis's cap, the other copy P1-11a2 checked the truth of here, counts through seaLiftOfAColumn since
+  // P1-11b4: a projection case above.
   test("effMagicLvl is the report's effective level of each magic school, but for the Crown of Command's aura", () => {
     // The order form offers spells by effMagicLvl (a school's level and the hero's items); the turn casts at the
     // report's skillEff, which also counts the aura of a Crown of Command worn by a hero of his realm in his province
@@ -234,7 +225,6 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
 test('each engine function leaves its input as it was (the values are frozen: a write throws)', () => {
   const changed = [
     ...PROJECTIONS.flatMap((p) => casesOf(p)),
-    ...STAYING.flatMap((pair) => truthOf(pair)),
     ...druidNeed(),
     ...armyCardShortfall(),
     ...armyCardMastery(),

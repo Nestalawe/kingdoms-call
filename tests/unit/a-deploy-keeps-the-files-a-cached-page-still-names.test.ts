@@ -106,7 +106,9 @@ const copyOf = (dir: string) => {
 };
 const publishedFiles = (dir: string) =>
   JSON.parse(fs.readFileSync(path.join(dir, PUBLISHED_FILES), 'utf8')) as PublishedFiles;
-/** A file's name with its hash replaced by `*`, so a test can name it before it is built. */
+/** A file's name with its hash replaced by `*`, so a test can name it before it is built. A list of names sorted with
+ *  their hashes in is sorted again once they are out: the hashes decide the first order (a page's .js before its .css
+ *  when the bundle's hash sorts first), the names alone the second. */
 const unhash = (name: string) => name.replace(/-[A-Za-z0-9_-]{8}(\.(?:js|css))$/, '-*$1');
 
 /** The site as it is published today, before P1-06b: the same build with assets/<page>.js and assets/<page>.css. */
@@ -176,7 +178,7 @@ beforeAll(() => {
 
 describe('deploys in a row', () => {
   test("a changed file gets a new name: the GM bundle, and the player portal's stylesheet and bundle", () => {
-    expect(missingOrDifferent(b1, b2).map(unhash)).toEqual([
+    expect(missingOrDifferent(b1, b2).map(unhash).sort()).toEqual([
       'assets/kingdoms-call-gm-portal-*.js',
       'assets/kingdoms-call-player-portal-*.css',
       'assets/kingdoms-call-player-portal-*.js',
@@ -204,7 +206,7 @@ describe('deploys in a row', () => {
     const d2 = deploy(b2, d1.dir, T2);
     const d3 = deploy(b3, d2.dir, T3);
     // The first deploy's three (stopped being live 7 minutes ago) and the second's Hall of Fame bundle.
-    expect(d3.result.kept.map(unhash)).toEqual([
+    expect(d3.result.kept.map(unhash).sort()).toEqual([
       'assets/kingdoms-call-gm-portal-*.js',
       'assets/kingdoms-call-leaderboard-*.js',
       'assets/kingdoms-call-player-portal-*.css',
