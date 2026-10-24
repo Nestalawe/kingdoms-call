@@ -1,7 +1,9 @@
 // 2026-09-27 (item 6) — does another realm's private business turn up in your report?
 // Runs real all-bot games, captures EVERY per-realm turn_report the engine writes, and runs the
 // report-leak check (lib/report-leaks.ts, P1-04c) on each turn: no realm reads
-// another realm's private line, names a realm it hasn't met, or sees a hero under Invisibility.
+// another realm's private line, names a realm it hasn't met, or sees a hero under Invisibility, and every line a realm
+// reads comes from an event of the turn whose audience admits it (the audience check: the turn's events are recorded
+// as they are emitted, scenarioInTheVm's recordTheEvents, and handed to the check as `perception`).
 // It also counts how many DIFFERENT realms were shown the same line.
 // The games are played in the engine's bare vm, as the shell plays them (tests/lib/scenario-in-the-vm.ts). Until plan
 // P1-09a they were played on the booted GM portal, its buildReports wrapped from outside.
@@ -21,8 +23,10 @@ const WATCHED=[
   // Reports are only built for HUMAN slots; an all-bot game therefore writes none. Build one for
   // EVERY realm so the visibility filter can be measured on real bot activity.
   sc.reportEveryRealm();
+  // record each turn's events with their audiences, so the leak check's audience check runs (r.perception)
+  sc.recordTheEvents();
   const seenBy={};   // line text -> Set of player indices shown it
-  let turns=0, reportsSeen=0, linesSeen=0; const leaks=[];
+  let turns=0, reportsSeen=0, linesSeen=0, unrecorded=0; const leaks=[];
   for(let g=0;g<GAMES;g++){
     const setup=W.generateBotSetups([],BOTS,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
     let S=await W.generateNewGame(setup,{cols:12,rows:7},999,{seaPct:35+5*g}); S.botDifficulty='hard'; S.botDiplomacy='normal';
@@ -36,7 +40,8 @@ const WATCHED=[
       });
       const before=S; S=JSON.parse(JSON.stringify(r.S2)); turns++;
       const broke=checkLeaks({before,after:S,gmLog:r.log,
-        telemetry:[],players:[],reports:Object.entries(r.reports).map(([realm,report])=>({realm:+realm,report}))});
+        telemetry:[],players:[],reports:Object.entries(r.reports).map(([realm,report])=>({realm:+realm,report})),perception:r.perception});
+      if(!r.perception) unrecorded++;
       if(broke.length) leaks.push(describeBreaches(`game ${g} turn ${t}`,broke));
     }
   }
@@ -48,6 +53,8 @@ const WATCHED=[
     console.log(`[watched] ${label.padEnd(20)} events=${String(hits.length).padStart(4)}  shown to more than one realm=${hits.filter(([,s])=>s.size>1).length}`);
   });
   fail=leaks.length; leaks.slice(0,5).forEach(l=>console.log('  ✗ '+l.split('\n').join('\n    ')));
+  // the audience check runs only on a turn whose events were recorded
+  if(unrecorded){ fail++; console.log(`  ✗ ${unrecorded} turn(s) handed over no recorded events: the audience check did not run on them`); }
   // every realm, bots' too, gets a report each resolved turn (reportEveryRealm), or there is nothing to check
   if(reportsSeen!==turns*BOTS){ fail++; console.log(`  ✗ ${reportsSeen} realm reports written over ${turns} turns; expected one a realm a turn (${turns*BOTS})`); }
   console.log(fail===0?'\nOK — no report leaked':`\nFAIL — ${leaks.length} turn(s) leaked`);
