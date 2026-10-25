@@ -10,7 +10,8 @@
 //   pageFiles(page, src)        the page's template, its stylesheets and its modules: the files under src/ it is built
 //                               from
 //   importsOf(file, src)        the files a module imports for its code, in its order, relative to src/ (an `import type`
-//                               or `export type … from` brings no code, so it isn't one)
+//                               or `export type … from` brings no code, so it isn't one; a package's isn't a file of
+//                               src/)
 //   engineEntryFiles(src)       the files of the engine (plan P1-18c): the data file, then the files under engine/ and
 //                               views/ the GM portal's entry imports, in its order, then any other file there
 //
@@ -53,15 +54,19 @@ export function pageEntries(page: string, src = SRC): { modules: string[]; style
   };
 }
 
+/** Whether a module name is a package's (`zod`, `@scope/name`), not a file's: a file's starts with `.` or `/`. */
+const isAPackage = (name: string): boolean => !/^[./]/.test(name);
+
 /** The files the module `file` imports for its code (static imports, re-exports and `import()`), in its order, relative
  *  to src/. A type-only import or re-export (`import type`, `export type … from`) is left out (plan P1-10a2): the build
- *  erases it, so no bundle holds the file for it (src/schemas/ is reached only so). `import { type X } from` is kept:
- *  with verbatimModuleSyntax the build leaves a bare import of the file. */
+ *  erases it, so no bundle holds the file for it. `import { type X } from` is kept: with verbatimModuleSyntax the build
+ *  leaves a bare import of the file. A package's import is left out too (plan P1-15d: Zod, which the schemas import):
+ *  its files aren't under src/, and package-lock.json says which version a page is built with. */
 export function importsOf(file: string, src = SRC): string[] {
   const text = fs.readFileSync(path.join(src, file), 'utf8');
-  return namesImportedForCode(text).map((name) =>
-    path.posix.normalize(path.posix.join(path.posix.dirname(file), name)),
-  );
+  return namesImportedForCode(text)
+    .filter((name) => !isAPackage(name))
+    .map((name) => path.posix.normalize(path.posix.join(path.posix.dirname(file), name)));
 }
 
 /** The module names a file's text imports for its code, by the text: the parse is the slow part (the data file is

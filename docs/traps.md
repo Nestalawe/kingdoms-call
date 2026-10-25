@@ -1035,6 +1035,43 @@ older save.
   first bump (P1-20's, version 2) deploys only once every open GM page has had time to reload onto a build with the
   check.
 
+## The check is not the save
+
+Since P1-15d the turn checks the save it has just upgraded against the saved state's schema made strict
+(`src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts`,
+[ARCHITECTURE.md](ARCHITECTURE.md#a-saved-game-its-version-its-upgrade-its-check)). Zod's `z.object` returns a copy
+without the keys it doesn't name, and a live save holds keys the schema may not know yet (a released hero's
+`_releasedBy` today: STATUS, Parked).
+
+- **Never play, save or return the parse's output.** The turn plays the object it upgraded, every key kept. A turn
+  that played the parse's copy would drop each such key from every live game for good. `tests/unit/a-save-the-check-
+  refuses-still-plays-and-the-gm-is-told.test.ts` keeps a field this build doesn't know through the upgrade and the
+  turn.
+- **Name a place by its path and kind, never its value.** The GM's line and the turn's message may be passed on, so
+  they hold no name or text from a game: a key that isn't a number or a name as code writes one is shown as "(a key)".
+- **A place reported is a fix of its own**: a field the code saves goes into the schema (optional, with what writes
+  it); a battle's mark that leaked is a Parked bug. Until a pull request of its own turns a difference into a stop
+  (Theo's Choice 1, after two weeks with nothing reported), the turn runs and the GM is told.
+- **A staged world in a test is not a save.** A world made by `generateNewGame` alone lacks what Turn 0 adds (the turn
+  mode, the bots' settings), and a hero a test stands on the board lacks fields a real one holds, so a turn played on
+  them has a `[Save check]` line in the GM's log. A test that reads every line of the turn's end must say which it
+  reads (the stage's own lines), as `tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts` does.
+
+## A package imported from `src/`
+
+`src/schemas/` imports Zod, the first package `src/` imports for its code (P1-15d; supabase-js is a served copy, not
+an import). The harness reads `src/` as files, so a package needs two things:
+
+- **`tools/pages.ts`'s `importsOf` leaves a package's import out** (a name that doesn't start with `.` or `/`): its
+  files aren't under `src/`, so they are no page's sources, and `package-lock.json` (an engine path) says which version
+  a page is built with.
+- **A copy of `src/` outside the repository finds the repository's packages.** Node looks for `node_modules` from the
+  importing file's folder upwards, so a test's planted copy in a temporary folder finds none. The site's build and the
+  engine's bundle take the Vite plugin `packagesFromTheRepository()` (`tools/build.ts`), which resolves a package
+  imported from outside the repository from the repository's root; from `src/` itself it changes nothing. A new
+  builder of `src/` takes it too. A copy of the whole repository (`git archive`, `rsync`) links `node_modules` in
+  instead.
+
 ## A migration waiting for approval holds every deploy
 
 A merge that adds a migration stops at `migrate-production` until Toby approves it, and the site deploys

@@ -15,9 +15,16 @@
 // And the turn's dice (P1-18e): each turn plays from a seed of its own, drawn from the page's dice and returned, and
 // the page gets its own dice back; the shell hands resolveTurn that seed (P1-08m); the turn the page plays is the one
 // the engine plays alone, in the bare vm, from that seed.
+// And the check of a saved game at load (P1-15d, Theo's Choice 1, "tell now, stop later"): the GM page plays a turn from
+// the made-up save of version 0 (tests/fixtures/saves/version-0.json, what every live game held the day the version
+// came in): the turn is saved at version 1 and the message says nothing of the check; with a battle's mark left on a
+// company, the turn still runs and is saved, and the message names the place, never its value, and still does once
+// the page has refreshed the game; and a new game's Turn 0, then two turns, on the stand-in database, each message
+// with nothing of the check.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.ts)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
@@ -623,3 +630,113 @@ test('the page plays the turn the engine plays from the seed the shell returns',
   expect(firstDifference(page.log, alone.log), "the GM's log").toBe('');
   expect(page.reports, 'each report').toEqual(alone.reports);
 }, 60_000);
+
+// ── The check of a saved game at load (P1-15d) ────
+describe('the GM page plays a turn from a version-0 save', () => {
+  const VERSION_0 = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/saves/version-0.json'), 'utf8');
+  type Save = Record<string, unknown> & { turn: number; players: unknown[] };
+  /** The slot rows of the fixture's all-bot game, as the GM page's Turn 0 writes them. */
+  const botRows = (save: Save): Row[] =>
+    save.players.map((_, pi) => ({
+      id: 'G1gp' + String(pi),
+      game_id: 'G1',
+      user_id: null,
+      player_index: pi,
+      display_name: 'Realm' + String(pi),
+      orders_submitted: false,
+      orders: null,
+      turn_report: JSON.stringify({ isBot: true, playerSetup: {} }),
+    }));
+  const THE_CHECK = /this build of Kingdoms Call doesn't know|Save check/;
+  const A_LEAKED_MARKS_VALUE = 'Captain Ostrel of the Ember Coast';
+  const THE_LEAKED_MARK = "characters.0.armies.2: a field this build doesn't know, _flakTargeted";
+
+  test('as it is: the turn is saved at version 1, and the message says nothing of the check', async () => {
+    const save = JSON.parse(VERSION_0) as Save;
+    expect(save['schemaVersion']).toBeUndefined();
+    const t = seat(await boot(), () => ({ world: VERSION_0, rows: botRows(save) }));
+    try {
+      t.game()['turn'] = save.turn;
+      expect(await t.run()).toMatchObject({ ok: true, committed: true, turn: save.turn + 1 });
+      const saved = JSON.parse(String(t.game()['game_state'])) as Save;
+      expect([saved.turn, saved['schemaVersion']]).toEqual([save.turn + 1, 1]);
+      expect(t.message()).toMatch(/Turn 4 resolved!/);
+      expect(t.message()).not.toMatch(THE_CHECK);
+    } finally {
+      t.W.close();
+    }
+  }, 60_000);
+
+  test("with a battle's mark left on a company: the turn runs and is saved, and the message names the place, not its value, after the refresh too", async () => {
+    const save = JSON.parse(VERSION_0) as Save & { characters: { armies: Record<string, unknown>[] }[] };
+    const company = save.characters[0]?.armies[2];
+    if (!company) throw new Error('the fixture’s first hero leads fewer than three companies');
+    company['_flakTargeted'] = A_LEAKED_MARKS_VALUE;
+    const t = seat(await boot(), () => ({ world: JSON.stringify(save), rows: botRows(save) }));
+    try {
+      t.game()['turn'] = save.turn;
+      t.W['currentGame'] = { id: 'G1', turn: save.turn, status: 'active' };
+      expect(await t.run()).toMatchObject({ ok: true, committed: true, turn: save.turn + 1 });
+      expect((JSON.parse(String(t.game()['game_state'])) as Save).turn, 'the turn was saved').toBe(save.turn + 1);
+      const said = t.message();
+      expect(said).toMatch(/Turn 4 resolved!/);
+      expect(said).toContain(
+        "⚠ The saved game holds 1 thing this build of Kingdoms Call doesn't know, and the turn ran on it as it was. " +
+          `Please send this list to the Kingdoms Call team: ${THE_LEAKED_MARK}.`,
+      );
+      expect(said).not.toContain(A_LEAKED_MARKS_VALUE);
+      // the page refreshes the game two seconds after the turn, which empties the message: the check's words come back
+      await new Promise((r) => setTimeout(r, 2600));
+      expect(t.message()).toContain(THE_LEAKED_MARK);
+      expect(t.message()).not.toMatch(/Turn 4 resolved!/);
+    } finally {
+      t.W.close();
+    }
+  }, 60_000);
+
+  test("a new game's Turn 0, then two turns: each saved at version 1, no message says anything of the check", async () => {
+    const { S, W } = await boot();
+    try {
+      const settings = {
+        allBot: true,
+        mapSize: 'p3',
+        maxTurns: 12,
+        turnMode: { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null },
+      };
+      const games = S.DB['games'] ?? [];
+      games.push({
+        id: 'G1',
+        name: 'Two turns from Turn 0',
+        gm_user_id: 'gm1',
+        status: 'setup',
+        turn: 0,
+        max_players: 3,
+        max_turns: 0,
+        created_at: new Date().toISOString(),
+        game_state: JSON.stringify(settings),
+        meta: null,
+      });
+      const message = () => String(W.eval("document.getElementById('detail-msg').textContent"));
+      W.eval('window.confirm=()=>true;');
+      await W.eval("openGame('G1')");
+      await W.eval('runTurn0()');
+      await W.eval('commitTurn0()');
+      const game = () => games[0] ?? {};
+      expect([game()['status'], game()['turn']], message()).toEqual(['active', 1]);
+      expect((JSON.parse(String(game()['game_state'])) as Save)['schemaVersion'], 'Turn 0 writes version 1').toBe(1);
+      for (const turn of [1, 2]) {
+        W['__game'] = structuredClone(game());
+        expect(await W.eval('runTurn({game:__game})'), `turn ${String(turn)}`).toMatchObject({
+          ok: true,
+          turn: turn + 1,
+        });
+        expect(message()).toMatch(new RegExp(`Turn ${String(turn)} resolved!`));
+        expect(message()).not.toMatch(THE_CHECK);
+        const saved = JSON.parse(String(game()['game_state'])) as Save;
+        expect([saved.turn, saved['schemaVersion']]).toEqual([turn + 1, 1]);
+      }
+    } finally {
+      W.close();
+    }
+  }, 60_000);
+});

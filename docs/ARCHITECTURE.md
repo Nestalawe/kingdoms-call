@@ -71,12 +71,14 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   `Province`, `Grave`, `Mercenary`, and the shapes they share), the orders a realm submits (`orders-a-realm-submits.ts`:
   `OrdersARealmSubmits`, `PhaseOrder`, `EncounterPlan`) and the branded ids (`ids-of-provinces-heroes-and-realms.ts`:
   `ProvinceId`, `CharacterId`, `RealmIndex`, so a hero's id can't be passed as a province's). Each type is
-  `z.infer` of its schema, so one definition types the code now and later checks a save at load (P1-15) and a database
-  row (P1-17). They are on today's shape, written from the balance matrix's 2,687 saved states and tidied by hand: a
+  `z.infer` of its schema, so one definition types the code and checks a save at load (P1-15d,
+  [below](#a-saved-game-its-version-its-upgrade-its-check)), and later a database row (P1-17). They are on today's shape, written from the balance matrix's 2,687 saved states and tidied by hand: a
   field only some code reads is added when the file that reads it is typed (P1-10a3, P1-10b). `src/` imports them as
-  types only (`import type`) until P1-15, so no page's bundle holds them or Zod; `pages-build` refuses a value import.
-  Their objects are `z.object`, which drops a key it doesn't name; the tests parse strictly
-  (`tests/lib/strict-schema.ts`), and `tests/unit/the-saved-game-state-schemas-parse-every-state-of-a-matrix-game.test.ts`
+  types only (`import type`) but once: the save's upgrade imports the check of a saved game for its code (P1-15d), so
+  the GM page's bundle holds the check, the saved state's schema and Zod, and no other page's holds any; `pages-build`
+  and dependency-cruiser refuse a second value import. Their objects are `z.object`, which drops a key it doesn't name;
+  their strict version (`src/schemas/the-strict-version-of-a-schema.ts`, from `tests/lib/` since P1-15d) refuses it,
+  for the check and the tests (`tests/lib/strict-schema.ts`'s `strictIssues`), and `tests/unit/the-saved-game-state-schemas-parse-every-state-of-a-matrix-game.test.ts`
   parses a whole matrix game's states and orders. They type the 14 files of the engine's side that pass strict
   TypeScript with annotations alone (P1-10a3: the dice, the routes, the ladder, the visibility rule, the battle report's
   lines and more; the list is in P1-10a3's pull request), the three P1-10b2 freed (`army-tables.ts`,
@@ -117,7 +119,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     added as the file loads), and the schemas' file names a feature
     (`ProvinceFeature`) and the title keys (`MajorTitleKey`, `MinorTitleKey`).
   - `tools/pages.ts` reads a module's imports that bring code, so an `import type` (of `src/schemas/`, say) adds no file
-    to a page.
+    to a page; a package's import (Zod) adds none either: its files aren't under `src/`
+    ([traps.md](traps.md#a-package-imported-from-src)).
 - **The engine is `engine/` and `views/`** (P1-18c): nothing in them reads the screen, the database or the page's other
   globals, and every name they read is imported from them or the data file: P1-18d moved the last exceptions, the
   turn's database and screen work and the reports' build stamp, into the turn's shell (`ui/gm/turn-shell.ts`).
@@ -170,8 +173,9 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   what its stage hands it (P1-19a).
 - **`views/`** imports only `views/`, `engine/` and `content/`; **`shared/`** only `shared/`, `views/`,
   `engine/rules-on-plain-values/` and `content/`.
-- **`schemas/`** holds types only: any folder may import it with `import type` (TypeScript erases it), and none another
-  way.
+- **`schemas/`** holds the world's types: any folder may import it with `import type` (TypeScript erases it), and none
+  another way but the save's upgrade (`engine/saves/upgrade-a-saved-game-and-check-it.ts`), whose check at load
+  parses with it (P1-15d).
 - **`db/`** imports only `db/` and `schemas/`, and only the pages' code (`ui/`) imports `db/`. Only `db/` may import
   `@supabase/supabase-js` (none does until P1-17: the pages read the copy served with the site).
 - **A page's code** (`ui/<page>/`) imports no other page's but `ui/shared/`, which imports only itself. **Only the GM
@@ -398,7 +402,23 @@ the turn reads it.
   never edited once merged. What checks them: `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts`
   (each fixture upgraded to this build's version, parsed strictly, upgraded twice as once, a turn played on it with its
   invariants; one fixture per version; a newer save refused; a new world at this build's version).
-- **Next:** the check of the upgraded save against the saved state's schema (P1-15d).
+- **The check** (P1-15d): last, `upgradeGameState` parses the upgraded save against the saved state's schema made
+  strict (`src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts`), so a key the schema doesn't know is
+  found, not dropped. It returns each place the save differs (`whereTheSaveDiffersFromThisBuildsSchema`), by its path and
+  its kind, never a value: `characters.17.armies.2: a field this build doesn't know, _flakTargeted`; a key that isn't a
+  number or a name as code writes one is shown as "(a key)". **The check is not the save**: the turn plays the save as
+  upgraded, every key kept, never the parse's output ([traps.md](traps.md#the-check-is-not-the-save)). How a save that
+  differs is met is Theo's Choice 1, "tell now, stop later": the turn runs; its end tells the GM in one line of the GM's
+  log, which no realm reads (`[Save check] The saved game holds 1 thing this build of Kingdoms Call doesn't know, …`);
+  `resolveTurn` returns the list, and the shell's message says the same (at most ten places, then a count;
+  `src/engine/saves/what-the-saves-check-found-in-words.ts`), and shows it again once the page has refreshed the game.
+  A save that isn't a game in play (no provinces, no realms, no list of heroes: the new game's settings before Turn 0)
+  is refused first, before anything changes, as a newer save is. Once every live game has run two weeks of turns with
+  no place reported, a pull request of its own turns a difference into a stop. What checks it:
+  `tests/unit/a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts` (the version-1 fixture: as it is, with
+  a leaked mark, with a field of a later build, each kind, ten then a count, the refusals) and the page test
+  `tests/page/turn-shell.test.ts` ("the GM page plays a turn from a version-0 save": the message, after the refresh
+  too; Turn 0 then two turns). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes (P1-15d).
 
 ## The pages (`site/`)
 

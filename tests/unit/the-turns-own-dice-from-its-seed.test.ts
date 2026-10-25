@@ -157,12 +157,14 @@ describe('the same seed plays the same turn', () => {
     expect(play(engineOn(55), high + 2 ** 32).state === play(lent).state, 'at 2^31 and over').toBe(true);
   });
 
-  test('it hands back the world, the log, the Spy-stealth step and what the reports read, in that order', () => {
+  test("it hands back the world, the log, the Spy-stealth step, what the reports read and what the save's check found, in that order", () => {
     expect(Object.keys(resolve(engineOn(55), TURN_SEED))).toEqual([
       'state',
       'log',
       'spyStealthAndInvisibilityStampedForTheReports',
       'whatTheReportsRead',
+      // P1-15d: the places the save differs from this build's schema, for the shell's message
+      'whereTheSaveDiffersFromThisBuildsSchema',
     ]);
   });
 });

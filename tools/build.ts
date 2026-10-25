@@ -38,7 +38,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { build as viteBuild, createLogger, type InlineConfig, type Logger } from 'vite';
+import { build as viteBuild, createLogger, type InlineConfig, type Logger, type Plugin } from 'vite';
 
 export const ROOT = path.resolve(import.meta.dirname, '..');
 const SITE = path.join(ROOT, 'site');
@@ -78,6 +78,28 @@ function quietAboutClassicScripts(): Logger {
  *  where it is read. */
 export const KEEP_THE_CODE = { optimization: { inlineConst: false } } as const;
 
+/** Whether `file` is inside the repository. */
+const inTheRepository = (file: string): boolean => {
+  const relative = path.relative(ROOT, file);
+  return !relative.startsWith('..') && !path.isAbsolute(relative);
+};
+
+/** A Vite plugin (plan P1-15d): a package a module imports (Zod, which src/schemas/ imports) is found in the
+ *  repository's node_modules, also from a copy of src/ outside the repository (a test's planted copy, in a temporary
+ *  folder, where Node's lookup would find none). From src/ itself it changes nothing: the lookup finds the same files.
+ *  For the site's build and the engine's bundle (tests/lib/engine.ts). */
+export function packagesFromTheRepository(): Plugin {
+  return {
+    name: 'kc-packages-from-the-repository',
+    enforce: 'pre',
+    async resolveId(source, importer, options) {
+      if (/^[./\0]/.test(source) || path.isAbsolute(source) || importer === undefined || inTheRepository(importer))
+        return null;
+      return this.resolve(source, path.join(ROOT, 'package.json'), { ...options, skipSelf: true });
+    },
+  };
+}
+
 /** Vite's options for the site, shared by the build (one page at a time) and the dev server (tools/dev.ts). */
 export function siteOptions(src = SRC, pub = PUBLIC): InlineConfig {
   return {
@@ -87,6 +109,7 @@ export function siteOptions(src = SRC, pub = PUBLIC): InlineConfig {
     base: './',
     logLevel: 'warn',
     customLogger: quietAboutClassicScripts(),
+    plugins: [packagesFromTheRepository()],
     build: { minify: false, target: 'esnext', modulePreload: false },
   };
 }

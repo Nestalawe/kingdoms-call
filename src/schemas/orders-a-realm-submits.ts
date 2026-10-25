@@ -7,8 +7,8 @@
 // The merge also reads an older form (the heroes' orders alone, with no encounterPlans), which no page sends now.
 //
 // Objects are z.object, so a type has exactly the keys named; the tests parse strictly (tests/lib/strict-schema.ts).
-// Imported as types only until P1-15 (saved-game-state.ts says why); nothing parses a submitted row at run time yet
-// (P1-17 parses rows at the edge).
+// Imported as types only (the save's check at load reads the saved state's schema alone, P1-15d); nothing parses a
+// submitted row at run time yet (P1-17 parses rows at the edge).
 import { z } from 'zod';
 import { SkillLevelsSchema } from './saved-game-state.ts';
 

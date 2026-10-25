@@ -64,7 +64,15 @@ function newWorld(realms: number, cols: number, rows: number, seed = SEED): Save
   return JSON.parse(JSON.stringify(generateNewGame(setups, { cols, rows }, 0, {}))) as Save;
 }
 const WORLD = newWorld(3, 10, 8);
-const NOTHING_FOUND: WhatTheSavesUpgradeFound = {
+/** What the upgrade's passes counted. The check's findings are left out: a world made by world generation and staged
+ *  here isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots' settings), so the check names those;
+ *  the check has its own test (a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts, P1-15d). */
+type TheCounts = Omit<WhatTheSavesUpgradeFound, 'whereTheSaveDiffersFromThisBuildsSchema'>;
+const countsOf = ({
+  retiredSageDiscoveriesRemoved,
+  heroesCarriedOverToTheEarnedHpPool,
+}: WhatTheSavesUpgradeFound): TheCounts => ({ retiredSageDiscoveriesRemoved, heroesCarriedOverToTheEarnedHpPool });
+const NOTHING_FOUND: TheCounts = {
   retiredSageDiscoveriesRemoved: 0,
   heroesCarriedOverToTheEarnedHpPool: [],
 };
@@ -116,7 +124,7 @@ interface OldShape {
   pass: string;
   stage: (s: Save) => unknown;
   /** What the upgraded save holds (got) beside what it must (want). */
-  mended: (s: Save, staged: unknown, found: WhatTheSavesUpgradeFound) => { got: unknown; want: unknown };
+  mended: (s: Save, staged: unknown, found: TheCounts) => { got: unknown; want: unknown };
 }
 const OLD_SHAPES: OldShape[] = [
   {
@@ -279,7 +287,7 @@ describe("a saved game's old shapes are mended before the turn (upgradeGameState
   test.each(OLD_SHAPES.map((c) => [c.name, c] as const))('%s', (_, c) => {
     const s = copy(WORLD);
     const staged = c.stage(s);
-    const { got, want } = c.mended(s, staged, upgradeGameState(s));
+    const { got, want } = c.mended(s, staged, countsOf(upgradeGameState(s)));
     expect(got).toEqual(want);
   });
 
@@ -288,7 +296,7 @@ describe("a saved game's old shapes are mended before the turn (upgradeGameState
     const staged = OLD_SHAPES.map((c) => c.stage(s));
     upgradeGameState(s);
     const once = copy(s);
-    expect(upgradeGameState(s)).toEqual(NOTHING_FOUND);
+    expect(countsOf(upgradeGameState(s))).toEqual(NOTHING_FOUND);
     expect(s).toEqual(once);
     expect(staged).toHaveLength(OLD_SHAPES.length);
   });
@@ -329,7 +337,7 @@ describe('a brand-new world through the upgrade', () => {
   test.each(WORLDS)('%i realms on %i by %i: nothing changes but what the known list names', (realms, cols, rows) => {
     const world = newWorld(realms, cols, rows);
     const upgraded = copy(world);
-    expect(upgradeGameState(upgraded)).toEqual(NOTHING_FOUND);
+    expect(countsOf(upgradeGameState(upgraded))).toEqual(NOTHING_FOUND);
     const unknown = differences(world, upgraded).filter((d) => !KNOWN.some((k) => k.matches(d)));
     expect(unknown.map((d) => `${d.path}: ${JSON.stringify(d.was)} → ${JSON.stringify(d.is)}`)).toEqual([]);
   });

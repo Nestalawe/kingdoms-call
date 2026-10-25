@@ -55,7 +55,8 @@ import {
 //   expectedTurnToRun the turn being run (the games row's turn, which the save checks)
 //   seed              the turn's seed, a 32-bit integer (kcRngStream reads 0 as 1); none (the tests' turns): the dice
 //                     in use (kcRng, src/engine/rng.ts), as a test fixes them
-// Returns {state, log, spyStealthAndInvisibilityStampedForTheReports, whatTheReportsRead}:
+// Returns {state, log, spyStealthAndInvisibilityStampedForTheReports, whatTheReportsRead,
+// whereTheSaveDiffersFromThisBuildsSchema}:
 //   state             the world after the turn, as JSON: what the shell saves (with its two turn-mode stamps added)
 //   log               the GM's log of the turn (turnLog): its events, a typed line with its fact and no words yet (the
 //                     views write them: buildReports returns the log in words, which the shell saves, P1-12c3); the
@@ -67,6 +68,10 @@ import {
 //                     what the views build every realm's report from (buildReports, src/views/every-realms-report-and-
 //                     the-lines-each-realm-reads.ts), once, after the stealth step (P1-12b3: the engine imports no
 //                     view): the slot rows, the working copy, the turn's log, its sight and the telemetry's collectors
+//   whereTheSaveDiffersFromThisBuildsSchema
+//                     what the save's check found (engine/saves/, P1-15d): each place the save as loaded, upgraded,
+//                     differs from this build's schema, by its path and kind; the turn ran on it as it was, and the
+//                     shell's message tells the GM, as the GM's log does
 // The body keeps runTurn's two-space indent and names, so the code anchors in tests/README.md still match.
 export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
   // ── THE TURN'S DICE (P1-08m, 2026-10-20) ── given a seed, the turn plays on dice of its own: kcRngStream(seed), made
@@ -312,6 +317,7 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
       spyStealthAndInvisibilityStampedForTheReports: () =>
         onTheTurnsDice(() => spyStealthAndInvisibilityStampedForTheReports(turnContext)),
       whatTheReportsRead: () => whatTheReportsRead(turnContext),
+      whereTheSaveDiffersFromThisBuildsSchema: whatTheSavesUpgradeFound.whereTheSaveDiffersFromThisBuildsSchema,
     };
   });
 }

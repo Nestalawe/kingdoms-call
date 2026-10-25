@@ -5,6 +5,7 @@ import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from 
 import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import { whatTheSavesCheckFoundInWords } from '../saves/what-the-saves-check-found-in-words.ts';
 
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
 // Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts:
@@ -313,6 +314,17 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     emit(turnContext, {
       type: 'system',
       text: `[Integrity] ${retiredSageDiscoveriesRemoved} retired Sage discover${retiredSageDiscoveriesRemoved !== 1 ? 'ies were' : 'y was'} removed from realm records.`,
+      audience: { actor: null, realms: [] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    });
+  }
+  // where the save differs from this build's schema (the save's check, engine/saves/, plan P1-15d): the turn ran on it
+  // as it was, and the GM alone is told, with each place's path and kind, never a value (Theo's Choice 1, tell now)
+  const whereTheSaveDiffers = turnContext.whatTheSavesUpgradeFound.whereTheSaveDiffersFromThisBuildsSchema;
+  if (whereTheSaveDiffers.length > 0) {
+    emit(turnContext, {
+      type: 'system',
+      text: `[Save check] ${whatTheSavesCheckFoundInWords(whereTheSaveDiffers)}`,
       audience: { actor: null, realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });

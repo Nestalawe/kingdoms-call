@@ -8,14 +8,17 @@
 //   (tests/lib/boot.js), and holds no stitch marker.
 // - Every file under src/ is in a page: in a bundle (Rolldown's own list of the bundle's modules), or a page's
 //   template or stylesheet. A file nothing reaches is found (planted), and a file a module imports that isn't there
-//   stops the build (planted). Two kinds of file are for TypeScript only, in no bundle: src/globals.d.ts, and the
-//   schemas of src/schemas/ (P1-10a1), which src/ imports as types only (`import type`) until P1-15 parses a save at
-//   load: a value import of one (planted) is refused, and a type-only one (planted) leaves every bundle without it.
+//   stops the build (planted). src/globals.d.ts is for TypeScript only, in no bundle. The schemas of src/schemas/
+//   (P1-10a1) are imported as types only (`import type`) but once: the save's upgrade imports the check of a saved
+//   game for its code (P1-15d: the check at load parses with the saved state's schema), so the GM page's bundle holds
+//   that check, the schemas it reads and Zod, and no other page's holds any; a schema no bundle holds (the orders')
+//   is let through as types. A second value import (planted, in each form, the upgrade's own file too) is refused,
+//   and a type-only one (planted) leaves every bundle without the file it names.
 // - tools/pages.ts names each page's files as Rolldown does, but a module nothing on the page reads, which Rolldown
 //   would leave out (none today: kc-safe.ts was one, on the Overlord page, until its reload banner called it, P1-06d;
 //   so the test now expects none on any page). Its importsOf reads a module's imports that
 //   bring code, and leaves out a type-only one (P1-10a2: engine/turn/context.ts imports the schemas' types), in every
-//   form (planted).
+//   form, and a package's (P1-15d: Zod), whose files aren't under src/ (planted).
 // - The engine's files (tools/pages.ts's engineEntryFiles, which tests/lib/engine.ts bundles) are the data file and
 //   every file under src/engine/ and src/views/, each in the GM page's bundle, in the order the page's entry lists them,
 //   the dice and the clock first.
@@ -72,26 +75,39 @@ function unreached(src: string, r: BuildResult): string[] {
     // Types only, for TypeScript (tsconfig.json includes src/): no module imports it and no bundle holds it (P1-09e).
     'globals.d.ts',
   ]);
-  return filesUnder(src).filter((f) => !reached.has(f) && !isTypesOnly(f));
+  return filesUnder(src).filter((f) => !reached.has(f) && !isASchema(f));
 }
 
-// The saved state's and the orders' Zod schemas (P1-10a1): src/ imports them as types only until P1-15, so no bundle
-// holds them (nor Zod).
+// The saved state's and the orders' Zod schemas (P1-10a1), and the check of a saved game that parses with them
+// (P1-15d): src/ imports them as types only, but the save's upgrade, which imports the check for its code. So the GM
+// page's bundle holds the check and what it reads, and a schema no bundle holds is types for the code.
 const SCHEMAS = 'schemas/';
-const isTypesOnly = (file: string): boolean => file.startsWith(SCHEMAS);
+const isASchema = (file: string): boolean => file.startsWith(SCHEMAS);
+/** The one value import of src/schemas/, as valueImportsOfTheSchemas names it. */
+const THE_ONE_VALUE_IMPORT =
+  'engine/saves/upgrade-a-saved-game-and-check-it.ts: ' +
+  "import { whereASavedGameDiffersFromThisBuildsSchema } from '../../schemas/where-a-saved-game-differs-from-this-builds-schema.ts';";
+/** The files of src/schemas/ the GM page's bundle holds: the check, the schemas it reads, and theirs. */
+const THE_SCHEMAS_THE_GM_PAGE_BUNDLES = [
+  'schemas/ids-of-provinces-heroes-and-realms.ts',
+  'schemas/saved-game-state.ts',
+  'schemas/the-strict-version-of-a-schema.ts',
+  'schemas/where-a-saved-game-differs-from-this-builds-schema.ts',
+];
 
 /** Each import or re-export of src/schemas/ from a file of src/ outside it that isn't `import type` or `export type`
- *  (`file: the line`): a value import, an `import { type X }` (with verbatimModuleSyntax it leaves a bare import of the
- *  file behind), an `import()` or a `require()`. */
-function valueImportsOfTheSchemas(src: string): string[] {
+ *  (`file: the line`), but the one (THE_ONE_VALUE_IMPORT, kept with `andTheOne`): a value import, an
+ *  `import { type X }` (with verbatimModuleSyntax it leaves a bare import of the file behind), an `import()` or a
+ *  `require()`. */
+function valueImportsOfTheSchemas(src: string, andTheOne = false): string[] {
   const found: string[] = [];
-  for (const file of filesUnder(src).filter((f) => /\.(ts|mts|cts)$/.test(f) && !isTypesOnly(f))) {
+  for (const file of filesUnder(src).filter((f) => /\.(ts|mts|cts)$/.test(f) && !isASchema(f))) {
     const text = fs.readFileSync(path.join(src, file), 'utf8');
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
     const intoTheSchemas = (spec: ts.Node | undefined): boolean =>
       !!spec &&
       ts.isStringLiteralLike(spec) &&
-      isTypesOnly(path.posix.normalize(path.posix.join(path.posix.dirname(file), spec.text)));
+      isASchema(path.posix.normalize(path.posix.join(path.posix.dirname(file), spec.text)));
     const visit = (node: ts.Node): void => {
       const value =
         (ts.isImportDeclaration(node) &&
@@ -110,7 +126,7 @@ function valueImportsOfTheSchemas(src: string): string[] {
     };
     visit(source);
   }
-  return found;
+  return andTheOne ? found : found.filter((line) => line !== THE_ONE_VALUE_IMPORT);
 }
 
 const SITE = path.join(tmp, 'site');
@@ -202,7 +218,7 @@ describe('every file under src/ is in a page', () => {
   );
 
   test(
-    'src/schemas/ is in no bundle, and src/ imports it as types only',
+    "src/schemas/ is in the GM page's bundle alone, through the one value import, the save's upgrade's",
     timeLimitForTheWork({ everyFileReads: 1 }),
     () => {
       expect(filesUnder(path.join(SRC, SCHEMAS))).toEqual(
@@ -210,15 +226,21 @@ describe('every file under src/ is in a page', () => {
           'ids-of-provinces-heroes-and-realms.ts',
           'orders-a-realm-submits.ts',
           'saved-game-state.ts',
+          'the-strict-version-of-a-schema.ts',
+          'where-a-saved-game-differs-from-this-builds-schema.ts',
         ]),
       );
-      expect(Object.values(built.modules).flat().filter(isTypesOnly)).toEqual([]);
+      for (const page of pages)
+        expect((built.modules[page] ?? []).filter(isASchema), page).toEqual(
+          page === 'kingdoms-call-gm-portal.html' ? THE_SCHEMAS_THE_GM_PAGE_BUNDLES : [],
+        );
+      expect(valueImportsOfTheSchemas(SRC, true)).toEqual([THE_ONE_VALUE_IMPORT]);
       expect(valueImportsOfTheSchemas(SRC)).toEqual([]);
     },
   );
 
   test(
-    'a value import of src/schemas/ is refused, in each of its forms (planted)',
+    "a second value import of src/schemas/ is refused, in each of its forms, the upgrade's own file too (planted)",
     timeLimitForTheWork({ everyFileReads: 2 }),
     () => {
       const copy = srcCopy((d) => {
@@ -235,6 +257,12 @@ describe('every file under src/ is in a page', () => {
             '',
           ].join('\n'),
         );
+        const upgrade = path.join(d, 'engine', 'saves', 'upgrade-a-saved-game-and-check-it.ts');
+        fs.writeFileSync(
+          upgrade,
+          fs.readFileSync(upgrade, 'utf8') +
+            "import { GameStateSchema } from '../../schemas/saved-game-state.ts';\nexport const planted = GameStateSchema;\n",
+        );
       });
       expect(valueImportsOfTheSchemas(copy)).toEqual([
         "engine/reads-a-schema.ts: import { GameStateSchema } from '../schemas/saved-game-state.ts';",
@@ -242,34 +270,34 @@ describe('every file under src/ is in a page', () => {
         "engine/reads-a-schema.ts: import '../schemas/orders-a-realm-submits.ts';",
         "engine/reads-a-schema.ts: export { ProvinceIdSchema } from '../schemas/ids-of-provinces-heroes-and-realms.ts';",
         "engine/reads-a-schema.ts: import('../schemas/saved-game-state.ts')",
+        "engine/saves/upgrade-a-saved-game-and-check-it.ts: import { GameStateSchema } from '../../schemas/saved-game-state.ts';",
       ]);
     },
   );
 
   test(
-    "a type-only import of src/schemas/ from a page's module leaves every bundle without it (planted)",
+    "a type-only import of src/schemas/ from a page's module leaves every bundle without the file it names (planted)",
     timeLimitForTheWork({ siteBuilds: 1, everyFileReads: 3 }),
     () => {
+      // the orders' schema, which the check doesn't read, so no bundle holds it; rng.ts is in the GM page's bundle
+      const ORDERS = 'schemas/orders-a-realm-submits.ts';
       const copy = srcCopy((d) => {
         const file = path.join(d, 'engine', 'rng.ts');
         fs.writeFileSync(
           file,
-          "import type { GameState } from '../schemas/saved-game-state.ts';\n" +
-            "export type { Realm } from '../schemas/saved-game-state.ts';\n" +
-            'export type StateTheDiceServe = GameState;\n' +
+          "import type { OrdersARealmSubmits } from '../schemas/orders-a-realm-submits.ts';\n" +
+            "export type { PhaseOrder } from '../schemas/orders-a-realm-submits.ts';\n" +
+            'export type OrdersTheDiceServe = OrdersARealmSubmits;\n' +
             fs.readFileSync(file, 'utf8'),
         );
       });
       expect(valueImportsOfTheSchemas(copy)).toEqual([]);
       const r = build(path.join(tmp, 'site-types-only'), copy);
-      expect(Object.values(r.modules).flat().filter(isTypesOnly)).toEqual([]);
+      expect(Object.values(r.modules).flat()).toContain('engine/rng.ts');
+      expect(Object.values(r.modules).flat()).not.toContain(ORDERS);
       expect(unreached(copy, r)).toEqual([]);
-      // …and tools/pages.ts names no schema for any page either (P1-10a2: importsOf leaves type-only imports out).
-      expect(
-        pageNames(copy)
-          .flatMap((page) => pageFiles(page, copy))
-          .filter(isTypesOnly),
-      ).toEqual([]);
+      // …and tools/pages.ts names it for no page either (P1-10a2: importsOf leaves type-only imports out).
+      expect(pageNames(copy).flatMap((page) => pageFiles(page, copy))).not.toContain(ORDERS);
     },
   );
 
@@ -283,13 +311,14 @@ describe('every file under src/ is in a page', () => {
           [
             "import type { GameState } from '../schemas/saved-game-state.ts';",
             "export type { Realm } from '../schemas/saved-game-state.ts';",
+            "import { z } from 'zod';",
             "import { kcRng } from './rng.ts';",
             "import { type kcClock } from './clock.ts';",
             "import './graves.ts';",
             "export * from './discoveries.ts';",
             "export { KC_UNIT_TYPE } from '../content/kingdoms-call-data.ts';",
             "export const later = () => import('./world/map-helpers.ts');",
-            'export const roll = (g: GameState) => (g ? kcRng() : 0);',
+            'export const roll = (g: GameState) => (g ? kcRng() : z.number().parse(0));',
             '',
           ].join('\n'),
         );

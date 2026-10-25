@@ -4,13 +4,15 @@
 // leaves the list in the same PR: npx depcruise src --baseline --baseline-mode shrink-only removes it, adding nothing.
 //
 // A layer's own folder, and the folders it may import from, are in each rule's pathNot. `import type` and
-// `export type … from` bring no code (TypeScript erases them), so src/schemas/, which holds only types, may be
-// imported that way from anywhere, and only that way. A cycle counts only through imports that bring code.
+// `export type … from` bring no code (TypeScript erases them), so src/schemas/, the saved world's types, may be
+// imported that way from anywhere; for its code, only by the save's upgrade, whose check at load parses with it (plan
+// P1-15d), so only the GM page bundles it. A cycle counts only through imports that bring code.
 
 import type { IConfiguration } from 'dependency-cruiser';
 
 /** The folders a layer may import from, as a pattern for a rule's `to.pathNot`. Schemas are types: any layer may
- *  import them as types (the rule `schemas-are-imported-as-types-only` refuses the other ways). */
+ *  import them as types (the rule `the-schemas-are-imported-for-code-by-the-saves-upgrade-alone` refuses the other ways,
+ *  but the one). */
 const mayImport = (...folders: string[]): string => `^src/(${[...folders, 'schemas'].join('|')})/`;
 
 const config: IConfiguration = {
@@ -69,11 +71,11 @@ const config: IConfiguration = {
       to: { path: '^src/', pathNot: mayImport('shared', 'views', 'engine/rules-on-plain-values', 'content') },
     },
     {
-      name: 'schemas-are-imported-as-types-only',
+      name: 'the-schemas-are-imported-for-code-by-the-saves-upgrade-alone',
       comment:
-        'src/schemas/ holds the types of the saved world (plan P1-10a1): no page bundles it, so no file imports code from it.',
+        "src/schemas/ holds the types of the saved world (plan P1-10a1): every file imports them as types, but the save's upgrade, whose check at load parses with them (P1-15d), so the GM page alone bundles them and Zod.",
       severity: 'error',
-      from: { path: '^src/', pathNot: '^src/schemas/' },
+      from: { path: '^src/', pathNot: ['^src/schemas/', '^src/engine/saves/upgrade-a-saved-game-and-check-it\\.ts$'] },
       to: { path: '^src/schemas/', dependencyTypesNot: ['type-only'] },
     },
     {

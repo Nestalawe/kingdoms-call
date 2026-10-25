@@ -5,8 +5,8 @@
 // `number`. The state's id fields use them (saved-game-state.ts: `id`, `location`, `player`, `owner`). The brand is a
 // type only: parsing checks a number, as `z.number()` does. An item's id gets its brand when items get ids (P1-20).
 //
-// src/schemas/ is imported as types only (`import type`) until P1-15 parses a save at load:
-// tests/static/pages-build.test.ts refuses a value import of it from src/.
+// src/schemas/ is imported as types only (`import type`) but by the save's upgrade, whose check at load parses with the
+// saved state's schema (P1-15d): tests/static/pages-build.test.ts refuses any other value import of it from src/.
 import { z } from 'zod';
 
 /** A province's id: its index in `world.provinces`. */

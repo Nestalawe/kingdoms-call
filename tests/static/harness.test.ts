@@ -1057,13 +1057,18 @@ describe('CI', () => {
       const page = pageSources();
       expect(page).toContain('src/content/kingdoms-call-data.ts');
       expect(page).toContain('src/engine/run-turn.ts');
+      // the save's check at the turn's start parses with the saved state's schema (P1-15d)
+      expect(page).toContain('src/schemas/saved-game-state.ts');
       expect(page.filter((f) => !isEnginePath(f))).toEqual([]);
-      // Under src/, the engine paths are exactly the page's sources and the pages' templates: no other page's code plays
-      // the matrix.
+      // Under src/, the engine paths are exactly the page's sources, the pages' templates and the schemas (one folder,
+      // every file: the page bundles the saved state's, and the orders' is types for its code): no other page's code
+      // plays the matrix.
       const src = filesUnder(path.join(ROOT, 'src')).map((f) => 'src/' + f);
       const templates = pageNames().map((p) => 'src/' + p);
+      const schemas = src.filter((f) => f.startsWith('src/schemas/'));
+      expect(schemas).toContain('src/schemas/orders-a-realm-submits.ts');
       expect(src.filter(isEnginePath).sort()).toEqual(
-        [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates])].sort(),
+        [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates, ...schemas])].sort(),
       );
       const dir = path.join(ROOT, 'tools', 'balance');
       const direct = fs
@@ -1861,7 +1866,7 @@ describe('the architecture rules', () => {
       'the-rule-registry-imports-only-itself-the-rules-on-plain-values-and-the-content',
       'the-views-import-only-the-views-the-engine-and-the-content',
       'shared-imports-only-the-views-the-rules-on-plain-values-and-the-content',
-      'schemas-are-imported-as-types-only',
+      'the-schemas-are-imported-for-code-by-the-saves-upgrade-alone',
       'the-database-code-imports-only-itself-and-the-schemas',
       'only-the-pages-import-the-database-code',
       'a-page-imports-no-other-pages-code-but-ui-shared',

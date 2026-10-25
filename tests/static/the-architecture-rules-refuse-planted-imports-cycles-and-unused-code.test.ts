@@ -158,13 +158,19 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
       file: 'src/engine/planted-reads-a-schema-as-code.ts',
       code: "import { ProvinceIdSchema } from '../schemas/ids-of-provinces-heroes-and-realms.ts';\nexport const planted = ProvinceIdSchema;\n",
       refused:
-        'schemas-are-imported-as-types-only: src/engine/planted-reads-a-schema-as-code.ts -> src/schemas/ids-of-provinces-heroes-and-realms.ts',
+        'the-schemas-are-imported-for-code-by-the-saves-upgrade-alone: src/engine/planted-reads-a-schema-as-code.ts -> src/schemas/ids-of-provinces-heroes-and-realms.ts',
     },
     {
       file: 'src/views/planted-re-exports-a-schema.ts',
       code: "export * from '../schemas/ids-of-provinces-heroes-and-realms.ts';\n",
       refused:
-        'schemas-are-imported-as-types-only: src/views/planted-re-exports-a-schema.ts -> src/schemas/ids-of-provinces-heroes-and-realms.ts',
+        'the-schemas-are-imported-for-code-by-the-saves-upgrade-alone: src/views/planted-re-exports-a-schema.ts -> src/schemas/ids-of-provinces-heroes-and-realms.ts',
+    },
+    {
+      // the save's upgrade, whose check at load parses with the schemas (plan P1-15d), may import them for code: let
+      // through (another engine file's value import is refused, above)
+      file: 'src/engine/saves/upgrade-a-saved-game-and-check-it.ts',
+      code: "import { ProvinceIdSchema } from '../../schemas/ids-of-provinces-heroes-and-realms.ts';\nexport const planted = ProvinceIdSchema;\n",
     },
     {
       // a schema's type, imported or re-exported as a type, from any folder: let through
