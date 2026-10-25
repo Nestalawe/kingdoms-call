@@ -5,6 +5,10 @@
 // registry holds, so no row waits for its code. Change a number here, and the books with it: tests/static/
 // each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts reads every row against the unit's blurb in the player
 // portal and its roster row in the rulebook.
+//
+// Below the rows, the blurbs themselves (UNIT_ABILITIES, plan P1-19e, moved word for word from the player portal): each
+// unit's abilities as the player portal shows them, keyed by unit. The player portal imports them, and its page's entry
+// (ui/player/page.ts) lists this file, so the words tests read them as the page's.
 import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 
 /** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1); a chance as `30%` (0.3);
@@ -322,3 +326,103 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
 
 /** The slug of an ability the registry holds. */
 export type UnitAbilitySlug = keyof typeof UNIT_ABILITIES_THE_REGISTRY_HOLDS;
+
+// Every humanoid land unit has a MATCHUP ability (what it does to the unit it meets in the battle line,
+// or shoots over its fighter at) and ONE more; the fleets keep theirs. 2026-10-11 (Toby, the unit
+// abilities). Kept in step with battleFaceSide / abilityFront / abilityBack, the volley helpers and
+// rollUnitFates in the GM portal; tests/abilities-words holds the names to the rulebook's roster.
+export const UNIT_ABILITIES = {
+  'Shieldwall Levies':
+    "Spear Hedge — cavalry facing them in the line fights at no better than ×0.75 (the Unicorn Herd's Purity breaks it). Shieldwall — ×1.25 when an archer stands in the second line behind them.",
+  'Men-at-Arms': 'Halberds — ×1.25 facing cavalry. Sergeants — Levies beside them in the front line fight ×1.1.',
+  'Free Lances':
+    'Harriers — ×1.15 in a flank duel. Ride Them Down — in plains and desert only, each adds +6% to enemy losses when your side wins (max +18%). Works the same against neutral defenders — and theirs works the same against you.',
+  'Yeoman Longbows':
+    'Bodkin Points — no penalty shooting cavalry from the second line (other archers fire at ×0.75). Prepared Ground — defending, they loose two pre-battle volleys.',
+  'Gilded Lances':
+    'Lance Charge — ×1.15 facing foot, where cavalry is usually ×0.85 (a Spear Hedge still stops it). Knightly Example — while a Gilded Lances unit is in the army, your Levies and Men-at-Arms never lose a tier in defeat.',
+  'Noble Griffons':
+    'Dive on the Bowmen — the enemy’s strongest second-line archer fights ×0.75. Screech Dive — a diving pre-battle strike scatters one enemy unit (2–4), one chance in two whatever the commander’s Druid.',
+  'Human Garrison':
+    'Hold the Gate — defending, never hit from the side when the enemy line wraps its end. Town Watch — counts as Levies for Shieldwall and for anchoring the line.',
+  'Galleon Fleet': 'Broadside — fires in the pre-battle archery phase during sea battles.',
+  'Forest Wardens':
+    'Woodland Skirmish — ×1.15 in forest and jungle, whatever they face. Ambush — in forest or jungle, the side facing them gets no archery phase at all (unless Eagle Riders fly with it). Works attacking or defending, and against province defenders as well as another realm.',
+  'Elven Bowmen':
+    'Volley at the Charge — ×1.25 shooting cavalry from the second line. Woodland Volley — double volley damage in forest and jungle.',
+  'Shadow Archers':
+    'Marksmen — ×1.25 shooting archers from the second line, and they pick the best target anywhere along the enemy front. Loosed From Cover — cannot be targeted by enemy volleys (unless Eagle Riders fly with the shooters).',
+  'Stag Riders':
+    'Through the Trees — the one cavalry that takes a flank in forest and jungle. Forest Runners — ×1.1 in forest and no penalty in jungle (see the roster).',
+  'Eagle Riders':
+    'Stoop on the Horses — on open ground they may hold a flank slot no rider fills, and fight cavalry at ×1.25. Eyes of the Forest — while they fly with your shooters, an enemy Ambush is spoiled and Shadow Archers can be shot at.',
+  'Elven Garrison':
+    'Thorn Hedge — cavalry facing it in forest or jungle ×0.85. Tree Watch — in forest or jungle it shoots in the archery step like an archer unit.',
+  'Elven Galleys': 'Sea Archers — your ranged units ignore the land-unit penalty at sea.',
+  'Dwarven Guard':
+    "Unbreakable — foot facing them in the line ×0.85, and they are never hit from the side. Shield Fort — when at least half the front line is Guard (a Dwarf Garrison counts), a beaten force never routs: with a retreat open it withdraws in good order (immune to pursuit losses and to demotion in retreat); trapped, it locks shields and holds the province contested with no flight casualties. In every battle, and for a province's own Guard defenders too.",
+  'Ironwood Crossbows':
+    'Armour-Piercing — ×1.25 shooting a unit of base strength 6 or more from the second line. Punch Through — can soften a target to 55% instead of the usual 40% limit (90% instead of 80% against a winged rider).',
+  'Mountain Guns':
+    'Bombard — ×1.15 from the second line, whatever they shoot. Bombardment — fire before all other ranged units, and +50% volley damage against garrisons.',
+  'Ironhoof Rams':
+    'Battering Horns — a Ram riding free turns the enemy flank even when infantry anchor both ends of its line. Crag Charge — the one cavalry that takes a flank in the mountains.',
+  'Gnomish Gyrocopters':
+    'Flak Gunners — ×1.25 when the enemy has flyers. Flak Screen — each engages one enemy flying unit before the battle (−30% strength). No two gyrocopters engage the same flyer.',
+  'Dwarf Garrison': 'Stone Halls — foot facing it in the mountains ×0.9. Deep Halls — counts as Guard for Shield Fort.',
+  'Dwarf Ironclads': 'Armoured Hulls — immune to pre-battle volleys.',
+  'Goblin Horde':
+    'Arrow Fodder — second-line archers shooting them fire at ×0.75. Sheer Numbers — +10% strength per other orc foot unit in the force (Goblin Hordes, Berserkers, the Orc Garrison), max +30%.',
+  'Orc Berserkers':
+    'Frenzy — ×1.15 facing foot. Driven Before Them — +10% for each Goblin Horde beside them in the front line.',
+  'Black Arrows':
+    'Brawling Archers — full strength when forced into the front line, where other archers fight ×0.75. Raiders’ Volley — their pre-battle volley does ×1.5 when attacking.',
+  'Warg Riders':
+    'Wolves Panic Horses — ×1.25 facing cavalry. Run Them Down — if at least half your winning force are Wargs, they run the beaten army down on the field: every beaten unit is 15% more likely to be destroyed in the rout, on any ground (not against a Dwarven Shield Fort). There is no chase afterwards. Against neutral guards, who never flee, they end the fight fast instead: half casualties for you on a win.',
+  'Wyvern Riders':
+    'Terror From Above — the enemy’s strongest front-line unit fights ×0.85. Acid Spit — a pre-battle strike on one enemy unit (2–5), one chance in two whatever the commander’s Druid.',
+  'Orc Garrison':
+    'Bloodthirsty — defending, ×1.15 facing foot. Raiders’ Muster — an orcish province that sees an orc realm win there gains a Goblin Horde in its garrison at turn’s end, for nothing.',
+  'Orcish Longships':
+    'Reaver Crews — the whole force fights at +25% in any battle the phase it lands from these ships, even if another hero takes command of the combined host.',
+  'Whale Cohort': 'Breach and Swamp — 25% chance each to sink one enemy fleet outright before the battle is fought.',
+  // ── Creature / Monster / primal army abilities ── Each carries an always-on signature multiplier
+  // PLUS a pre-battle strike (fires in the pre-battle magic phase; its chance rises with the
+  // commanding hero’s Druid skill — 30% base, +10% per level, hard cap 90%; see primalStrikeChance (the winged riders’ own strikes: a flat 50%, 2026-10-11)
+  // in the GM portal. 2026-09-27: this comment read "20% base" and had done for some time.
+  // (The Noble Griffons' blurb is with the other human units above: a second key here would silently replace it.)
+  Thunderbirds:
+    'Storm Wings — every enemy unit in the air fights ×0.85. Lightning Strike: a pre-battle strike on one enemy unit (4–8). Storm-birds of the high crags that fight from the air, taking no place in the line.',
+  'Forest Ents':
+    'Rooted — never hit from the side when the enemy line wraps their end. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each). At home in forest and jungle (terrain ×1.15), withering in the desert.',
+  'Stone Giants':
+    "Boulder Wall — cavalry facing them fights at no better than ×0.75 (the Unicorn Herd's Purity breaks it). Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7). At home in the mountains (terrain ×1.15); slow.",
+  'Cave Trolls':
+    'Regenerating Hide — after a lost battle, a 30% chance to shrug off a death roll. Hurled Rubble: a pre-battle strike on one enemy unit (4–7). At home in the mountains and the forest (terrain ×1.15 and ×1.1).',
+  'Manticore Pride':
+    'Relentless Hunt — ×1.25 strength when their side is the attacker, and when at least half the winning force are Manticores the beaten foe takes +15% rout losses. Spine Volley: a pre-battle strike across every enemy unit (2–4 each). Fights from the air.',
+  'Basilisk Brood':
+    'Stone Deterrent — ×1.25 strength when their side is defending. Petrifying Gaze: a pre-battle strike across the whole enemy line (2–4 each).',
+  'Crimson Rocs':
+    'Air Superiority — ×1.3 strength when the enemy fields ranged troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9). Fights from the air, taking no place in the line.',
+  'Elder Dragons':
+    'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes every enemy unit in fire (3–6 each). Fights from the air, taking no place in the line.',
+  'Titan Warbeasts':
+    'Colossal Bulk — fights from the second line at full strength. World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each). At home on the plain and in the desert (terrain ×1.1).',
+  'Sea Giants':
+    'Tidal Might — ×1.2 strength in a coastal land province (one bordering the sea). Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
+  'Eldritch Kraken':
+    'Deepwater Grasp — ×1.35 strength at sea. Crushing Coils: a pre-battle strike that drags one enemy unit under (5–9).',
+  'Dread Hydras':
+    'Many Heads — ×1.25 facing foot. Venom Breath: a pre-battle strike across the whole enemy line (3–6 each). The greatest of the Monsters, at home in jungle and forest (terrain ×1.1 and ×1.05).',
+  'Shark Shoals':
+    'Shoal Swarm — +10% strength per other Shark Shoals in the force, to +30%. Feeding Frenzy — when at least half the winning force are shoals, a foe beaten at sea takes +15% rout losses. A shoal is no hull: it carries nothing.',
+  'Great Bears':
+    'Maul — ×1.15 facing foot. Thick Hide — pre-battle volleys against them do half. At home in forest and mountain (terrain ×1.1), poor in the desert; move 3.',
+  'Unicorn Herd':
+    'Purity — ×1.25 facing Monsters and skeletons, and it breaks a Spear Hedge or a Boulder Wall (no ×0.75 cap). Through the Glades — the one cavalry, with the Stag Riders, that takes a flank in forest and jungle. At home on the plain and in the forest (terrain ×1.1).',
+  'Mammoth Host':
+    'Trample — ×1.15 facing foot. Stampede: a pre-battle strike across the whole enemy line (2–4 each). At home on the open plain (terrain ×1.1), ill at ease under trees; slow.',
+  'Great Turtles':
+    'Island Back — carries two land units a hull, where a fleet carries one. Shell Wall — immune to pre-battle volleys, as the Ironclads. Island-backed turtles of the prosperous seas that swim under their own power; slow.',
+};

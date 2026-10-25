@@ -118,7 +118,7 @@ describe('each helper gives the same answer on both layouts', () => {
       'initializersOf',
       (o) => initializersOf('ui/player/items-and-heroes.ts', 'ACTION_DISPLAY_ORDER', o).map(compactCode),
     ],
-    ['entriesOf', (o) => entriesOf('ui/player/briefing-and-submit.ts', 'UNIT_ABILITIES', o)],
+    ['entriesOf', (o) => entriesOf('content/unit-abilities-their-names-numbers-and-words.ts', 'UNIT_ABILITIES', o)],
     ['callsTo', (o) => callsTo('engine/battle/battles-between-heroes.ts', 'trySkillGain', o)],
     [
       'compactDeclaration',

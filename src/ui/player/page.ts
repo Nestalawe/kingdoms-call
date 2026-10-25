@@ -4,6 +4,9 @@
 import '../shared/kc-safe.ts';
 import '../../db/kc-db-guard.ts';
 import '../../content/kingdoms-call-data.ts';
+// The units' ability blurbs (UNIT_ABILITIES, plan P1-19e), which briefing-and-submit.ts reads: listed here so that the
+// words tests, which read the files this list names, still read them as the page's.
+import '../../content/unit-abilities-their-names-numbers-and-words.ts';
 import './startup.ts';
 import './l79-orders.ts';
 import './items-and-heroes.ts';
