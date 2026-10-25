@@ -1,12 +1,13 @@
 // The rule registry holds each effect once, in the order of its stage (plan P1-19, Decisions 2 and 3): every effect an
 // entry names at a stage is in that stage's order exactly once, and each order names only entries with an effect at its
 // stage (an effect left out of its order would never run; one named twice would run twice). Each content row's unit,
-// and each unit it counts, is a unit type, and no two rows share a name. The compiler checks the rest: a content row
+// each unit it counts, reaches or counts as, is a unit type, and no two rows share a name. The compiler checks the rest: a content row
 // with no entry, an entry with no row, and an entry on a stage or a hook point with no signature yet fail to compile
 // (tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts).
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
-// twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type, two rows' name.
+// twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
+// reaches, or counts as), two rows' name.
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { KC_UNIT_TYPE } from '../../src/content/kingdoms-call-data.ts';
@@ -21,7 +22,16 @@ type Entries = Readonly<Record<string, Readonly<Record<string, Readonly<Record<s
 type Orders = Readonly<Record<string, Readonly<Record<string, readonly string[]>>>>;
 /** A content row as this test reads it (a unit as any string, so a planted row may name one that isn't a unit type). */
 type Rows = Readonly<
-  Record<string, { readonly unit: string; readonly name: string; readonly counts?: readonly string[] }>
+  Record<
+    string,
+    {
+      readonly unit: string;
+      readonly name: string;
+      readonly counts?: readonly string[];
+      readonly reaches?: string | readonly string[];
+      readonly countsAs?: string;
+    }
+  >
 >;
 
 /** What the registry breaks, one line each: an empty list when it holds each effect once in its stage's order. */
@@ -49,6 +59,10 @@ function whatTheRegistryBreaks(entries: Entries, orders: Orders, rows: Rows): st
   for (const [slug, row] of Object.entries(rows)) {
     if (!unitTypes.has(row.unit)) broken.push(`${slug}'s unit, ${row.unit}, is not a unit type`);
     for (const u of row.counts ?? []) if (!unitTypes.has(u)) broken.push(`${slug} counts ${u}, not a unit type`);
+    if (typeof row.reaches === 'object')
+      for (const u of row.reaches) if (!unitTypes.has(u)) broken.push(`${slug} reaches ${u}, not a unit type`);
+    if (row.countsAs !== undefined && !unitTypes.has(row.countsAs))
+      broken.push(`${slug} counts as ${row.countsAs}, not a unit type`);
     const other = names.get(row.name);
     if (other) broken.push(`${slug} and ${other} share the name ${row.name}`);
     names.set(row.name, slug);
@@ -92,14 +106,21 @@ test.for([
   expect(whatTheRegistryBreaks(ENTRIES, orders, ROWS)).toEqual(found);
 });
 
-test('planted, a content row whose unit is no unit type and two rows of one name, are found', () => {
+test('planted, a content row whose unit is no unit type, units reached and counted as that are none, and two rows of one name, are found', () => {
   const rows: Rows = {
     ...ROWS,
     wyrmscale: { ...UNIT_ABILITIES_THE_REGISTRY_HOLDS.wyrmscale, unit: 'Planted Wyrms' },
     'tidal-might': { ...UNIT_ABILITIES_THE_REGISTRY_HOLDS['tidal-might'], name: 'Deepwater Grasp' },
+    'hold-the-gate': {
+      ...UNIT_ABILITIES_THE_REGISTRY_HOLDS['hold-the-gate'],
+      reaches: ['Orc Garrison', 'Planted Gate'],
+    },
+    'town-watch': { ...UNIT_ABILITIES_THE_REGISTRY_HOLDS['town-watch'], countsAs: 'Planted Levies' },
   };
   expect(whatTheRegistryBreaks(ENTRIES, ORDERS, rows)).toEqual([
     'deepwater-grasp and tidal-might share the name Deepwater Grasp',
     "wyrmscale's unit, Planted Wyrms, is not a unit type",
+    'hold-the-gate reaches Planted Gate, not a unit type',
+    'town-watch counts as Planted Levies, not a unit type',
   ]);
 });

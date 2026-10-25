@@ -6,7 +6,9 @@
 // family's share of plan P3-02's words helper; the older words tests (abilities-words, primal-abilities-words) keep the
 // names of the abilities the registry doesn't hold yet.
 // One gap is known and let through, each with its fix parked: the rulebook's Orcish Longships row doesn't name Reaver
-// Crews (the test fails once it does, so the exception leaves with the fix).
+// Crews (the test fails once it does, so the exception leaves with the fix). An ability the books give no number (Rooted,
+// Hold the Gate, Town Watch, Battering Horns: plan P1-19c) is listed below, and its name is checked; a number the books
+// leave out (Driven Before Them's cap, which the units beside them never reach) is checked to be still left out.
 // Level 0 (static): the content's rows imported (plain data), the player portal's blurbs by their syntax tree
 // (tests/lib/source.ts), the rulebook as built (site/); nothing runs.
 import { describe, expect, test } from 'vitest';
@@ -23,13 +25,24 @@ const NOT_IN_THE_RULEBOOK_YET: Readonly<Record<string, string>> = {
   'reaver-crews': "the rulebook's Orcish Longships row doesn't name Reaver Crews (parked: add it to the row)",
 };
 
-/** A number as the books write it: ×1.25; +10% for a fraction added; "no penalty" for full strength, ×1 (any other
- *  value is written so that no book holds it, and the test turns red); "base strength 6" for a unit's base strength. */
+/** The abilities whose words in the books give no number, each with why: the test checks that their rows hold none,
+ *  and that every other row holds one. */
+const NO_NUMBER_IN_THE_BOOKS: Readonly<Record<string, string>> = {
+  rooted: "never hit from the side: the side hit it is spared is the battle lines' number",
+  'hold-the-gate': 'never hit from the side, defending',
+  'town-watch': "a Human Garrison counts as Levies for Shieldwall: Shieldwall's number",
+  'battering-horns': "a free Ram turns an anchored line: the turned flank is the battle lines' number",
+};
+
+/** A number as the books write it: ×1.25; +10% for a fraction added (and for one the books leave out, which the test
+ *  checks they still do); "no penalty" for full strength, ×1 (any other value is written so that no book holds it, and
+ *  the test turns red); "base strength 6" for a unit's base strength. */
 function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
   switch (n.theBooksWriteIt) {
     case 'a multiplier':
       return `×${String(n.value)}`;
     case 'a fraction added':
+    case 'a fraction the books leave out':
       return `+${String(Number((n.value * 100).toFixed(6)))}%`;
     case 'no penalty':
       return n.value === 1 ? 'no penalty' : `×${String(n.value)}, which is not "no penalty"`;
@@ -68,35 +81,48 @@ function ownWords(text: string, name: string): string | null {
   return name + (next ? rest.slice(0, next.index + 1) : rest);
 }
 
-const ROWS = Object.entries(UNIT_ABILITIES_THE_REGISTRY_HOLDS).map(([slug, row]) => ({
-  slug,
-  unit: row.unit,
-  name: row.name,
-  numbers: Object.values<ANumberOfAnAbility>(row.numbers).map(asTheBooksWriteIt),
-}));
+const ROWS = Object.entries(UNIT_ABILITIES_THE_REGISTRY_HOLDS).map(([slug, row]) => {
+  const all = Object.values<ANumberOfAnAbility>(row.numbers);
+  const leftOut = (n: ANumberOfAnAbility) => n.theBooksWriteIt === 'a fraction the books leave out';
+  return {
+    slug,
+    unit: row.unit,
+    name: row.name,
+    numbers: all.filter((n) => !leftOut(n)).map(asTheBooksWriteIt),
+    numbersLeftOut: all.filter(leftOut).map(asTheBooksWriteIt),
+  };
+});
 
 describe("each ability's name and numbers in its unit's blurb and its roster row", () => {
-  test('the content holds rows, each with its numbers', () => {
+  test('the content holds rows, each with its numbers but those listed as having none in the books', () => {
     expect(ROWS.length).toBeGreaterThan(0);
-    for (const row of ROWS) expect(row.numbers.length, row.slug).toBeGreaterThan(0);
+    for (const row of ROWS)
+      expect(row.numbers.length > 0, `${row.slug} holds a number the books write`).toBe(
+        !(row.slug in NO_NUMBER_IN_THE_BOOKS),
+      );
+    for (const slug of Object.keys(NO_NUMBER_IN_THE_BOOKS))
+      expect(Object.keys(UNIT_ABILITIES_THE_REGISTRY_HOLDS)).toContain(slug);
   });
 
-  test.for(ROWS)("$name ($unit): the player portal's blurb", ({ unit, name, numbers }) => {
+  test.for(ROWS)("$name ($unit): the player portal's blurb", ({ unit, name, numbers, numbersLeftOut }) => {
     const blurb = blurbs.get(unit);
     expect(blurb, `the player portal has a blurb for ${unit}`).toBeDefined();
     const words = ownWords(blurb ?? '', name);
     expect(words, `${unit}'s blurb names ${name}`).not.toBeNull();
     for (const n of numbers) expect(words, `${name} in ${unit}'s blurb says ${n}`).toContain(n);
+    for (const n of numbersLeftOut) expect(words, `${name} in ${unit}'s blurb still leaves out ${n}`).not.toContain(n);
   });
 
   test.for(ROWS.filter((r) => !(r.slug in NOT_IN_THE_RULEBOOK_YET)))(
     "$name ($unit): the rulebook's roster row",
-    ({ unit, name, numbers }) => {
+    ({ unit, name, numbers, numbersLeftOut }) => {
       const row = rosterRow(unit);
       expect(row, `the rulebook's roster has a row for ${unit}`).not.toBeNull();
       const words = ownWords(row ?? '', name);
       expect(words, `${unit}'s roster row names ${name}`).not.toBeNull();
       for (const n of numbers) expect(words, `${name} in ${unit}'s roster row says ${n}`).toContain(n);
+      for (const n of numbersLeftOut)
+        expect(words, `${name} in ${unit}'s roster row still leaves out ${n}`).not.toContain(n);
     },
   );
 

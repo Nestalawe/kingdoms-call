@@ -60,7 +60,7 @@ const PLANTS: Record<string, Record<string, string>> = {
     [REGISTRY]: replacedOnce(
       read(REGISTRY),
       WYRMSCALE_ENTRY,
-      "  wyrmscale: {\n    strength: {\n      'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale,\n      'held when hit from the side': () => null,\n    },\n  },\n",
+      "  wyrmscale: {\n    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale },\n    fate: { 'a beaten unit fails its death roll': () => null },\n  },\n",
     ),
   },
   'an effect at a hook point with no signature yet': {

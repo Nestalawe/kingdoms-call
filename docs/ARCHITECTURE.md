@@ -308,7 +308,10 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   on it fails to compile meanwhile.
 - **Within a stage, the effects run in the order its list gives** (`THE_ORDER_OF_EACH_STAGE`), not by a number: a product
   of decimals, and the ladder's words, depend on the order ([traps.md](traps.md#order-is-data)). The runner finds a unit's
-  effects by its type, from a `Map` built once from content as the file loads.
+  effects by its type, from a `Map` built once from content as the file loads (an ability whose row says it reaches
+  other units is found under each of them: Hold the Gate under every garrison, Sergeants under the Levies). Where an
+  effect needs what only the resolver's grid can say, the runner takes it from the resolver, never the effect: whether
+  the enemy's line holds a unit, and the worth of each shot, worked out only for a shooter that picks its target.
 - **The stages written so far:** `strength: the whole force` (P1-19a), the unit's factor from its force (in `armStr`,
   through `unitAbilityMult`): Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
   Deepwater Grasp, Wyrmscale and Air Superiority, in that order. Facing (P1-19b), four stages that take the multiplier
@@ -318,7 +321,15 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   Purity), then **what the unit it meets does to it** (Spear Hedge, Boulder Wall, Unbreakable, Stone Halls, Thorn
   Hedge); in `abilityBack`, from the role's multiplier, **what a shooter does to its target** (Bodkin Points, Volley at
   the Charge, Marksmen, Armour-Piercing, Bombard), then **what the target does to the shooter** (Arrow Fodder). The
-  whole line and the fates follow (P1-19c and d).
+  whole line (P1-19c), six stages in `battleFaceSide`
+  (`src/engine/rules/unit-abilities/a-unit-beside-behind-and-under-the-enemys-line.ts`): **turns an anchored line**
+  (Battering Horns: its words, or nothing) and **marked by the enemy line** (Terror From Above, Dive on the Bowmen, Storm
+  Wings: the units of my line each marks, the factor and the words, applied last where each marked unit fights), both
+  read before the lines are faced; then, for a front-line unit at a wrapped end, **held when hit from the side**
+  (Unbreakable, Rooted, Hold the Gate: the first one's words, or the side hit), then **beside and behind it in the front
+  line** (Shieldwall, Town Watch, Sergeants, Driven Before Them, on the multiplier so far); for a shooter, **a shooter
+  picks its target** (Marksmen: its place in the enemy front's list, or nothing); for a unit in the air, **what a flyer
+  does** (Flak Gunners, from ×1). The fates follow (P1-19d).
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
   `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its

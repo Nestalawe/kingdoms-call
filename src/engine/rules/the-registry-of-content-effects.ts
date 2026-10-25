@@ -21,6 +21,14 @@ import {
   WHAT_THE_TARGET_DOES_TO_THE_SHOOTER,
   WHAT_THE_UNIT_IT_MEETS_DOES_TO_IT,
 } from './unit-abilities/a-unit-meeting-another-or-shooting-over-the-line.ts';
+import {
+  A_SHOOTER_PICKS_ITS_TARGET,
+  BESIDE_AND_BEHIND_IT_IN_THE_FRONT_LINE,
+  HELD_WHEN_HIT_FROM_THE_SIDE,
+  MARKED_BY_THE_ENEMY_LINE,
+  TURNS_AN_ANCHORED_LINE,
+  WHAT_A_FLYER_DOES,
+} from './unit-abilities/a-unit-beside-behind-and-under-the-enemys-line.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -82,6 +90,69 @@ export interface AShooterAndItsTarget {
   readonly theTargetsBaseStrength: number;
 }
 
+/** What the stage "held when hit from the side" hands an effect (battleFaceSide): a unit at an end of its front that
+ *  the enemy line wraps, which would be hit from the side. */
+export interface AUnitAtAWrappedEnd {
+  readonly theUnit: AUnitInTheLine;
+  /** Whether the unit's side is the attacker. */
+  readonly theUnitsSideAttacks: boolean;
+}
+
+/** What the stage "beside and behind it in the front line" hands an effect (battleFaceSide): a unit of the front line,
+ *  the units either side of it in the front (none at an end or beside an empty place), and the unit behind it in the
+ *  second line (none if the place is empty). */
+export interface AUnitBesideAndBehindOthers {
+  readonly theUnit: AUnitInTheLine;
+  readonly theUnitsEitherSide: readonly [left: AUnitInTheLine | null, right: AUnitInTheLine | null];
+  readonly theUnitBehind: AUnitInTheLine | null;
+}
+
+/** A unit placed in a line, as the stage "marked by the enemy line" reads it: its part in the line and its strength
+ *  (`s`, the grid's name for it). */
+export interface AUnitPlacedInALine {
+  readonly role: ARoleInTheBattleLine;
+  readonly s: number;
+}
+
+/** What the stage "marked by the enemy line" hands an effect (battleFaceSide), once the enemy's line holds the
+ *  ability's unit: my line, its front and second line by column (a place may be empty), and my units in the air. */
+export interface MyLineAsTheEnemyLineMarksIt {
+  readonly theFront: readonly (AUnitPlacedInALine | null | undefined)[];
+  readonly theSecondLine: readonly (AUnitPlacedInALine | null | undefined)[];
+  readonly theAir: readonly AUnitPlacedInALine[];
+}
+
+/** A mark the enemy's line leaves on mine: the units it marks (of those my line handed), the factor each of them fights
+ *  at, and its words in the ladder. */
+export interface AMarkOnMyLine {
+  readonly theUnitsMarked: readonly AUnitPlacedInALine[];
+  readonly factor: number;
+  readonly words: string;
+}
+
+/** What the stage "a shooter picks its target" hands an effect (battleFaceSide): a ranged unit of the second line, and
+ *  what its shot is worth at each unit of the enemy front (the unit's strength times the shooter's multiplier against
+ *  it), in the front's order, its empty places left out. The effect returns the place in that list of the unit it
+ *  shoots instead of the one in front of it, or nothing. */
+export interface AShooterAndTheEnemyFront {
+  readonly theShooter: AUnitInTheLine;
+  readonly theWorthOfAShotAtEachUnitOfTheEnemyFront: readonly number[];
+}
+
+/** What the stage "turns an anchored line" hands an effect (battleFaceSide): the enemy's riders that ride free (no duel,
+ *  no line's end to guard). The effect returns its words when they turn my flank even though foot anchor both ends of
+ *  my front, or nothing. */
+export interface TheFreeEnemyRiders {
+  readonly theFreeEnemyRiders: readonly AUnitInTheLine[];
+}
+
+/** What the stage "what a flyer does" hands an effect (battleFaceSide): a unit of mine in the air, and whether the
+ *  enemy has flyers (in the air or on a flank). */
+export interface AFlyerAndTheEnemysFlyers {
+  readonly theFlyer: AUnitInTheLine;
+  readonly theEnemyHasFlyers: boolean;
+}
+
 /** A multiplier, and its words in the strength ladder (the ability's name, or its own words). */
 export interface AMultiplierAndItsWords {
   readonly multiplier: number;
@@ -107,12 +178,19 @@ export interface TheStagesOfEachHookPoint {
     readonly 'what a shooter does to its target': AnEffectOnTheMultiplierSoFar<AShooterAndItsTarget>;
     /** What the target does to the shooter, after the shooter's own (abilityBack). */
     readonly 'what the target does to the shooter': AnEffectOnTheMultiplierSoFar<AShooterAndItsTarget>;
-    readonly 'held when hit from the side': never;
-    readonly 'beside and behind it in the front line': never;
-    readonly 'marked by the enemy line': never;
-    readonly 'a shooter picks its target': never;
-    readonly 'turns an anchored line': never;
-    readonly 'what a flyer does': never;
+    /** Whether a unit at a wrapped end isn't hit from the side: the ability's words, or nothing (battleFaceSide). */
+    readonly 'held when hit from the side': (facts: AUnitAtAWrappedEnd) => string | null;
+    /** What the units beside and behind a front-line unit do to it, after its facing and any side hit. */
+    readonly 'beside and behind it in the front line': AnEffectOnTheMultiplierSoFar<AUnitBesideAndBehindOthers>;
+    /** The units of my line the enemy's ability marks, and the factor they fight at (the resolver applies each mark
+     *  last, where the unit marked fights: the front, the second line, the air). */
+    readonly 'marked by the enemy line': (myLine: MyLineAsTheEnemyLineMarksIt) => AMarkOnMyLine | null;
+    /** The unit of the enemy front a shooter shoots instead of the one in front of it: its place in the list. */
+    readonly 'a shooter picks its target': (facts: AShooterAndTheEnemyFront) => number | null;
+    /** Whether free enemy riders turn an anchored line: the ability's words, or nothing. */
+    readonly 'turns an anchored line': (facts: TheFreeEnemyRiders) => string | null;
+    /** A unit's own ability in the air, from ×1. */
+    readonly 'what a flyer does': AnEffectOnTheMultiplierSoFar<AFlyerAndTheEnemysFlyers>;
   };
   readonly volley: never;
   readonly fate: {
@@ -177,7 +255,12 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'boulder-wall': {
     strength: { 'what the unit it meets does to it': WHAT_THE_UNIT_IT_MEETS_DOES_TO_IT['boulder-wall'] },
   },
-  unbreakable: { strength: { 'what the unit it meets does to it': WHAT_THE_UNIT_IT_MEETS_DOES_TO_IT.unbreakable } },
+  unbreakable: {
+    strength: {
+      'what the unit it meets does to it': WHAT_THE_UNIT_IT_MEETS_DOES_TO_IT.unbreakable,
+      'held when hit from the side': HELD_WHEN_HIT_FROM_THE_SIDE.unbreakable,
+    },
+  },
   'stone-halls': {
     strength: { 'what the unit it meets does to it': WHAT_THE_UNIT_IT_MEETS_DOES_TO_IT['stone-halls'] },
   },
@@ -190,7 +273,12 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'volley-at-the-charge': {
     strength: { 'what a shooter does to its target': WHAT_A_SHOOTER_DOES_TO_ITS_TARGET['volley-at-the-charge'] },
   },
-  marksmen: { strength: { 'what a shooter does to its target': WHAT_A_SHOOTER_DOES_TO_ITS_TARGET.marksmen } },
+  marksmen: {
+    strength: {
+      'what a shooter does to its target': WHAT_A_SHOOTER_DOES_TO_ITS_TARGET.marksmen,
+      'a shooter picks its target': A_SHOOTER_PICKS_ITS_TARGET.marksmen,
+    },
+  },
   'armour-piercing': {
     strength: { 'what a shooter does to its target': WHAT_A_SHOOTER_DOES_TO_ITS_TARGET['armour-piercing'] },
   },
@@ -198,6 +286,27 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'arrow-fodder': {
     strength: { 'what the target does to the shooter': WHAT_THE_TARGET_DOES_TO_THE_SHOOTER['arrow-fodder'] },
   },
+  rooted: { strength: { 'held when hit from the side': HELD_WHEN_HIT_FROM_THE_SIDE.rooted } },
+  'hold-the-gate': { strength: { 'held when hit from the side': HELD_WHEN_HIT_FROM_THE_SIDE['hold-the-gate'] } },
+  shieldwall: {
+    strength: { 'beside and behind it in the front line': BESIDE_AND_BEHIND_IT_IN_THE_FRONT_LINE.shieldwall },
+  },
+  'town-watch': {
+    strength: { 'beside and behind it in the front line': BESIDE_AND_BEHIND_IT_IN_THE_FRONT_LINE['town-watch'] },
+  },
+  sergeants: {
+    strength: { 'beside and behind it in the front line': BESIDE_AND_BEHIND_IT_IN_THE_FRONT_LINE.sergeants },
+  },
+  'driven-before-them': {
+    strength: {
+      'beside and behind it in the front line': BESIDE_AND_BEHIND_IT_IN_THE_FRONT_LINE['driven-before-them'],
+    },
+  },
+  'terror-from-above': { strength: { 'marked by the enemy line': MARKED_BY_THE_ENEMY_LINE['terror-from-above'] } },
+  'dive-on-the-bowmen': { strength: { 'marked by the enemy line': MARKED_BY_THE_ENEMY_LINE['dive-on-the-bowmen'] } },
+  'storm-wings': { strength: { 'marked by the enemy line': MARKED_BY_THE_ENEMY_LINE['storm-wings'] } },
+  'battering-horns': { strength: { 'turns an anchored line': TURNS_AN_ANCHORED_LINE['battering-horns'] } },
+  'flak-gunners': { strength: { 'what a flyer does': WHAT_A_FLYER_DOES['flak-gunners'] } },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -238,6 +347,12 @@ export const THE_ORDER_OF_EACH_STAGE = {
       'bombard',
     ],
     'what the target does to the shooter': ['arrow-fodder'],
+    'held when hit from the side': ['unbreakable', 'rooted', 'hold-the-gate'],
+    'beside and behind it in the front line': ['shieldwall', 'town-watch', 'sergeants', 'driven-before-them'],
+    'marked by the enemy line': ['terror-from-above', 'dive-on-the-bowmen', 'storm-wings'],
+    'a shooter picks its target': ['marksmen'],
+    'turns an anchored line': ['battering-horns'],
+    'what a flyer does': ['flak-gunners'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: { readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly UnitAbilitySlug[] };
@@ -270,7 +385,9 @@ export function theStrengthOfAUnitInItsWholeForce(facts: AUnitInItsForce): numbe
   return m;
 }
 
-/** Each unit type's effects at a stage, in the stage's order. Built once, as the file loads, from the content. */
+/** Each unit type's effects at a stage, in the stage's order: an ability's effect is the effect of its own unit, or of
+ *  each unit its row says it reaches (Hold the Gate: every garrison; Sergeants: the Levies). Built once, as the file
+ *  loads, from the content. */
 function theEffectsOfEachUnitAt<Effect>(
   order: readonly UnitAbilitySlug[],
   effectOf: (entry: UnitAbilityEntry) => Effect | undefined,
@@ -279,8 +396,9 @@ function theEffectsOfEachUnitAt<Effect>(
   for (const slug of order) {
     const effect = effectOf(ENTRIES[slug]);
     if (!effect) continue;
-    const unit = ROWS[slug].unit;
-    byUnit.set(unit, [...(byUnit.get(unit) ?? []), effect]);
+    const { unit, reaches } = ROWS[slug];
+    for (const reached of typeof reaches === 'object' ? reaches : [unit])
+      byUnit.set(reached, [...(byUnit.get(reached) ?? []), effect]);
   }
   return byUnit;
 }
@@ -302,6 +420,34 @@ const WHAT_THE_TARGET_DOES_BY_UNIT = theEffectsOfEachUnitAt(
   THE_ORDER_OF_STRENGTH['what the target does to the shooter'],
   (entry) => entry.strength?.['what the target does to the shooter'],
 );
+const HELD_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_STRENGTH['held when hit from the side'],
+  (entry) => entry.strength?.['held when hit from the side'],
+);
+const BESIDE_AND_BEHIND_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_STRENGTH['beside and behind it in the front line'],
+  (entry) => entry.strength?.['beside and behind it in the front line'],
+);
+const A_SHOOTER_PICKS_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_STRENGTH['a shooter picks its target'],
+  (entry) => entry.strength?.['a shooter picks its target'],
+);
+const WHAT_A_FLYER_DOES_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_STRENGTH['what a flyer does'],
+  (entry) => entry.strength?.['what a flyer does'],
+);
+type MarkedByTheEnemyLineEffect = TheStagesOfEachHookPoint['strength']['marked by the enemy line'];
+/** The effects of "marked by the enemy line", in the stage's order, each with the unit the enemy's line must hold. */
+const THE_MARKS_OF_THE_ENEMY_LINE = THE_ORDER_OF_STRENGTH['marked by the enemy line'].flatMap((slug) => {
+  const effect = ENTRIES[slug].strength?.['marked by the enemy line'];
+  return effect ? [{ unit: ROWS[slug].unit, effect }] : [];
+}) satisfies readonly { unit: string; effect: MarkedByTheEnemyLineEffect }[];
+type TurnsAnAnchoredLineEffect = TheStagesOfEachHookPoint['strength']['turns an anchored line'];
+/** The effects of "turns an anchored line", in the stage's order (each looks for its unit among the free riders). */
+const TURNS_AN_ANCHORED_LINE_EFFECTS = THE_ORDER_OF_STRENGTH['turns an anchored line'].flatMap((slug) => {
+  const effect = ENTRIES[slug].strength?.['turns an anchored line'];
+  return effect ? [effect] : [];
+}) satisfies readonly TurnsAnAnchoredLineEffect[];
 const NO_EFFECTS: readonly never[] = [];
 
 /** A multiplier, and the words of each ability that moved it, in order. */
@@ -349,5 +495,78 @@ export function theStrengthOfAShooterOverTheLine(
   const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: theRolesMultiplier, words: [] };
   runOnTheMultiplier(WHAT_A_SHOOTER_DOES_BY_UNIT.get(facts.theShooter.unitType) ?? NO_EFFECTS, facts, soFar);
   runOnTheMultiplier(WHAT_THE_TARGET_DOES_BY_UNIT.get(facts.theTarget.unitType) ?? NO_EFFECTS, facts, soFar);
+  return soFar;
+}
+
+/** The runner of "held when hit from the side" (battleFaceSide): the words of the first of the unit's abilities that
+ *  holds it, in the stage's order, or nothing (it is hit from the side). */
+export function theAbilityThatHoldsAUnitHitFromTheSide(facts: AUnitAtAWrappedEnd): string | null {
+  for (const effect of HELD_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS) {
+    const words = effect(facts);
+    if (words !== null) return words;
+  }
+  return null;
+}
+
+/** The runner of "beside and behind it in the front line" (battleFaceSide): from the multiplier so far, the unit's
+ *  effects in the stage's order. */
+export function theStrengthOfAUnitBesideAndBehindOthers(
+  facts: AUnitBesideAndBehindOthers,
+  theMultiplierSoFar: number,
+): AMultiplierAndTheAbilitiesThatMovedIt {
+  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: theMultiplierSoFar, words: [] };
+  runOnTheMultiplier(BESIDE_AND_BEHIND_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS, facts, soFar);
+  return soFar;
+}
+
+/** The runner of "marked by the enemy line" (battleFaceSide): in the stage's order, the mark of each ability whose
+ *  unit the enemy's line holds (the resolver says which it holds, from its grid). */
+export function theMarksTheEnemyLineLeavesOnMine(
+  myLine: MyLineAsTheEnemyLineMarksIt,
+  theEnemyLineHoldsAUnitOf: (unitType: string) => boolean,
+): readonly AMarkOnMyLine[] {
+  const marks: AMarkOnMyLine[] = [];
+  for (const { unit, effect } of THE_MARKS_OF_THE_ENEMY_LINE) {
+    if (!theEnemyLineHoldsAUnitOf(unit)) continue;
+    const mark = effect(myLine);
+    if (mark) marks.push(mark);
+  }
+  return marks;
+}
+
+/** The runner of "a shooter picks its target" (battleFaceSide): the place, in the enemy front's list, of the unit the
+ *  first of the shooter's abilities that picks one picks, or nothing. The worth of each shot is worked out only for a
+ *  shooter with such an ability (the resolver hands the work, not its result). */
+export function theTargetAShooterPicks(
+  theShooter: AUnitInTheLine,
+  theWorthOfAShotAtEachUnitOfTheEnemyFront: () => readonly number[],
+): number | null {
+  const effects = A_SHOOTER_PICKS_BY_UNIT.get(theShooter.unitType) ?? NO_EFFECTS;
+  if (!effects.length) return null;
+  const facts: AShooterAndTheEnemyFront = {
+    theShooter,
+    theWorthOfAShotAtEachUnitOfTheEnemyFront: theWorthOfAShotAtEachUnitOfTheEnemyFront(),
+  };
+  for (const effect of effects) {
+    const pick = effect(facts);
+    if (pick !== null) return pick;
+  }
+  return null;
+}
+
+/** The runner of "turns an anchored line" (battleFaceSide): the words of the first ability, in the stage's order, by
+ *  which the free enemy riders turn an anchored line, or nothing. */
+export function theAbilityThatTurnsAnAnchoredLine(facts: TheFreeEnemyRiders): string | null {
+  for (const effect of TURNS_AN_ANCHORED_LINE_EFFECTS) {
+    const words = effect(facts);
+    if (words !== null) return words;
+  }
+  return null;
+}
+
+/** The runner of "what a flyer does" (battleFaceSide): from ×1, the flyer's effects in the stage's order. */
+export function theStrengthOfAFlyer(facts: AFlyerAndTheEnemysFlyers): AMultiplierAndTheAbilitiesThatMovedIt {
+  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: 1, words: [] };
+  runOnTheMultiplier(WHAT_A_FLYER_DOES_BY_UNIT.get(facts.theFlyer.unitType) ?? NO_EFFECTS, facts, soFar);
   return soFar;
 }

@@ -853,8 +853,9 @@ player portal's blurb, in the rulebook's roster row, and in the battle report's 
 engine itself keeps them in several places by kind:
 
 - a matchup on the battle grid: the registry's four stages of facing, which `abilityFront` (front line) and
-  `abilityBack` (the second line shooting) ask, with the cases that need the whole line (side hits, Shieldwall, Sergeants, Marksmen, Terror From Above,
-  Dive on the Bowmen, Flak Gunners, Battering Horns) inside `battleFaceSide`;
+  `abilityBack` (the second line shooting) ask, and its six stages of the whole line (side hits, Shieldwall, Sergeants,
+  Marksmen's target, Terror From Above, Dive on the Bowmen, Flak Gunners, Battering Horns, …), which `battleFaceSide`
+  asks;
 - who takes a flank or shoots: `battleGrid` (`abilityFlanksRough`, Eagle Riders on an open flank, Black Arrows
   in front) and `abilityMissileUnits`;
 - the pre-battle volley: `missileDamageMult`, `abilityVolleys`, `missileTargetPool`, `archeryBlockedBy`;
@@ -868,12 +869,16 @@ Tidal Might, Deepwater Grasp, Wyrmscale and Air Superiority; and the 23 matchups
 over its line (P1-19b), Halberds, Lance Charge, Frenzy, Wolves Panic Horses, Stoop on the Horses (its matchup; its flank
 slot is still in the grid), Harriers, Woodland Skirmish, Bloodthirsty, Maul, Trample, Many Heads, Purity, Spear Hedge,
 Boulder Wall, Unbreakable (its matchup; never hit from the side is still in the line), Stone Halls, Thorn Hedge, Bodkin
-Points, Volley at the Charge, Marksmen (its matchup; its choice of target is still in the line), Armour-Piercing, Bombard
-and Arrow Fodder. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
+Points, Volley at the Charge, Marksmen, Armour-Piercing, Bombard and Arrow Fodder; and the 11 of the whole line
+(P1-19c), with Unbreakable's side and Marksmen's choice of target: Rooted, Hold the Gate (every garrison, defending, as
+the engine does; the books name only the Human Garrison, a question for Toby), Shieldwall, Town
+Watch, Sergeants, Driven Before Them, Terror From Above, Dive on the Bowmen, Storm Wings, Battering Horns and Flak
+Gunners. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
 numbers), its effect in a file of `src/engine/rules/unit-abilities/` and its entry in the registry, in its stage's order;
 `tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts` checks its name and numbers in both books
-from its row. Change a number in its row and in both books. **Still inline**: every other ability, in the places below
-(the whole line and the fates join the registry in P1-19c and d).
+from its row (an ability the books give no number, Rooted for one, is listed there and its name checked). Change a
+number in its row and in both books. **Still inline**: every other ability, in the places below (the fates join the
+registry in P1-19d).
 
 `tests/abilities-words.test.js` holds the table of names of the abilities still inline and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and

@@ -5,11 +5,14 @@
 // registry holds, so no row waits for its code. Change a number here, and the books with it: tests/static/
 // each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts reads every row against the unit's blurb in the player
 // portal and its roster row in the rulebook.
-import type { UnitType } from './kingdoms-call-data.ts';
+import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 
 /** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1); full strength (×1, where
- *  others fight at less) as `no penalty`; a unit's base strength as `base strength 6`. */
-export type HowTheBooksWriteANumber = 'a multiplier' | 'a fraction added' | 'no penalty' | 'a base strength';
+ *  others fight at less) as `no penalty`; a unit's base strength as `base strength 6`. A number the books leave out
+ *  (Driven Before Them's cap, which the units beside them never reach) says so, and the words test checks that they
+ *  still do. */
+export type HowTheBooksWriteANumber =
+  'a multiplier' | 'a fraction added' | 'no penalty' | 'a base strength' | 'a fraction the books leave out';
 
 /** One number of an ability, and how the books write it. */
 export interface ANumberOfAnAbility {
@@ -27,8 +30,12 @@ export interface AUnitAbilityAsTheBooksWriteIt {
   readonly numbers: Readonly<Record<string, ANumberOfAnAbility>>;
   /** The units of the force it counts (Sheer Numbers: the orc foot), when it counts the others in the force. */
   readonly counts?: readonly UnitType[];
-  /** The units it reaches, when more than its own (Reaver Crews: every unit of the force the ships land). */
-  readonly reaches?: 'every unit of the force';
+  /** The units it acts on, when not only its own: every unit of the force the ships land (Reaver Crews), or the units
+   *  named (Hold the Gate: every garrison, the data file's class; Sergeants: the Levies beside the Men-at-Arms). A class
+   *  of the data file is a list of strings: the registry's unit test checks that each is a unit type. */
+  readonly reaches?: 'every unit of the force' | readonly string[];
+  /** The unit it counts as for another ability (Town Watch: a Human Garrison counts as Levies for Shieldwall). */
+  readonly countsAs?: UnitType;
   /** The grounds it acts on, when not every ground (a terrain's name: Woodland Skirmish, in forest and jungle). */
   readonly onTheGround?: readonly string[];
   /** Its words in the strength ladder, where they differ from its name (Spear Hedge, when Purity breaks it). */
@@ -36,8 +43,8 @@ export interface AUnitAbilityAsTheBooksWriteIt {
 }
 
 /** The unit abilities the registry holds, in the order the battle code meets them: the strength of a unit in its
- *  whole force (plan P1-19a), then a unit meeting another or shooting over its line (P1-19b; the whole line and the
- *  fates join row by row). */
+ *  whole force (plan P1-19a), then a unit meeting another or shooting over its line (P1-19b), then the whole line
+ *  (P1-19c; the fates join in P1-19d). */
 export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // Orc: goblins are worth little alone and a great deal in a mob.
   'sheer-numbers': {
@@ -203,7 +210,7 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     name: 'Volley at the Charge',
     numbers: { shootingCavalry: { value: 1.25, theBooksWriteIt: 'a multiplier' } },
   },
-  // Its matchup; its choice of target along the enemy front stays in the line (battleFaceSide).
+  // Its matchup, and its choice of target along the enemy front (the whole line, P1-19c: battleFaceSide).
   marksmen: {
     unit: 'Shadow Archers',
     name: 'Marksmen',
@@ -227,6 +234,67 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     unit: 'Goblin Horde',
     name: 'Arrow Fodder',
     numbers: { archersShootingThem: { value: 0.75, theBooksWriteIt: 'a multiplier' } },
+  },
+  // ── The whole line (plan P1-19c: battleFaceSide) ──
+  // Held when hit from the side: a unit at a wrapped end of its front that the enemy line hits from the side is not hit
+  // (Unbreakable, the Dwarven Guard's, is its row above).
+  rooted: { unit: 'Forest Ents', name: 'Rooted', numbers: {} },
+  // Every garrison holds the gate, defending, not only the Human Garrison the books name: the engine's rule since
+  // 2026-10-11, kept as it is while Toby is asked which he meant.
+  'hold-the-gate': {
+    unit: 'Human Garrison',
+    name: 'Hold the Gate',
+    numbers: {},
+    reaches: KC_UNIT_CLASS.garrison,
+  },
+  // Beside and behind it in the front line.
+  shieldwall: {
+    unit: 'Shieldwall Levies',
+    name: 'Shieldwall',
+    numbers: { withAnArcherBehind: { value: 1.25, theBooksWriteIt: 'a multiplier' } },
+  },
+  'town-watch': { unit: 'Human Garrison', name: 'Town Watch', numbers: {}, countsAs: 'Shieldwall Levies' },
+  sergeants: {
+    unit: 'Men-at-Arms',
+    name: 'Sergeants',
+    numbers: { leviesBesideThem: { value: 1.1, theBooksWriteIt: 'a multiplier' } },
+    reaches: ['Shieldwall Levies'],
+  },
+  'driven-before-them': {
+    unit: 'Orc Berserkers',
+    name: 'Driven Before Them',
+    numbers: {
+      perGoblinHordeBeside: { value: 0.1, theBooksWriteIt: 'a fraction added' },
+      // Two units at most stand beside them (+20%), so the cap never binds.
+      atMost: { value: 0.3, theBooksWriteIt: 'a fraction the books leave out' },
+    },
+    counts: ['Goblin Horde'],
+  },
+  // Marked by the enemy's line: with the unit on the other side, a unit of mine it marks fights at less.
+  'terror-from-above': {
+    unit: 'Wyvern Riders',
+    name: 'Terror From Above',
+    numbers: { theStrongestFrontUnit: { value: 0.85, theBooksWriteIt: 'a multiplier' } },
+  },
+  'dive-on-the-bowmen': {
+    unit: 'Noble Griffons',
+    name: 'Dive on the Bowmen',
+    numbers: { theStrongestSecondLineArcher: { value: 0.75, theBooksWriteIt: 'a multiplier' } },
+    wordsInTheLadder: { onTheArcherTheyDiveOn: 'Griffon dive' },
+  },
+  'storm-wings': {
+    unit: 'Thunderbirds',
+    name: 'Storm Wings',
+    numbers: { everyUnitInTheAir: { value: 0.85, theBooksWriteIt: 'a multiplier' } },
+  },
+  // Marksmen's choice of target is its row above. Turns an anchored line: a free enemy rider that turns the flank even
+  // when foot anchor both ends.
+  'battering-horns': { unit: 'Ironhoof Rams', name: 'Battering Horns', numbers: {} },
+  // What a flyer does.
+  'flak-gunners': {
+    unit: 'Gnomish Gyrocopters',
+    name: 'Flak Gunners',
+    numbers: { whenTheEnemyHasFlyers: { value: 1.25, theBooksWriteIt: 'a multiplier' } },
   },
 } as const satisfies Record<string, AUnitAbilityAsTheBooksWriteIt>;
 

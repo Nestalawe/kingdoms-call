@@ -8,9 +8,16 @@ import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
 import {
+  theAbilityThatHoldsAUnitHitFromTheSide,
+  theAbilityThatTurnsAnAnchoredLine,
+  theMarksTheEnemyLineLeavesOnMine,
+  theStrengthOfAFlyer,
   theStrengthOfAShooterOverTheLine,
+  theStrengthOfAUnitBesideAndBehindOthers,
   theStrengthOfAUnitMeetingAnother,
+  theTargetAShooterPicks,
   type ARoleInTheBattleLine,
+  type AUnitInTheLine,
   type WhereTwoUnitsMeet,
 } from '../rules/the-registry-of-content-effects.ts';
 
@@ -510,12 +517,11 @@ export const backMult = (r: string) => {
 };
 // ── UNIT ABILITIES IN THE LINE (2026-10-11, Toby) ── Every humanoid unit has a matchup ability, read here
 // when a unit meets another (faces, is met by, duels, guards) or shoots over its fighter, and one more
-// ability, some of which also live here (Shieldwall, Sergeants, Driven Before Them, Terror From Above,
-// Dive on the Bowmen, Flak Gunners, the flank slots above) and the rest in the volley, fate and
-// end-of-turn code. Each returns the multiplier and the names that moved it, for the ladder and the
-// report. tests/abilities-* hold every one of them.
+// ability, some of which also live here (the flank slots above; the whole line's, which battleFaceSide asks the rule
+// registry: Shieldwall, Sergeants, Driven Before Them, Terror From Above, Dive on the Bowmen, Flak Gunners, …) and the
+// rest in the volley, fate and end-of-turn code. Each returns the multiplier and the names that moved it, for the
+// ladder and the report. tests/abilities-* hold every one of them.
 export const ABILITY_WOODS: ReadonlySet<string | null> = new Set(['forest', 'jungle']);
-export const GRID_GARRISON_TYPES: ReadonlySet<string | undefined> = new Set(KC_UNIT_CLASS.garrison);
 /** A cell's unit type: any cell, or an empty place (null). */
 export const typeOfX = (
   x:
@@ -585,6 +591,9 @@ export function abilityBack(x: GridCell, e: GridCell): AMatchup {
   );
   return { m: moved.multiplier, why: moved.words.map((n) => ', ' + n).join('') };
 }
+/** A placed unit as the rule registry's stages read it: its type and its part in the line (none for an empty place). */
+const inTheLine = (x: GridCell): AUnitInTheLine => ({ unitType: typeOfX(x), role: x.role });
+const inTheLineOrNone = (x: GridCell | null | undefined): AUnitInTheLine | null => (x ? inTheLine(x) : null);
 // The engagement: each side's span of the front, the columns where it overlaps the enemy's span
 // (nearest the centre first), how many flank duels there are, and which overlapping enemy columns each
 // side's spare riders cover (alternating sides, nearest first). Riders left after that ride free.
@@ -683,19 +692,29 @@ export function battleFaceSide(
   const anchored =
     firstCol !== undefined && lastCol !== undefined && footish(me.front[firstCol]) && footish(me.front[lastCol]);
   const freeRiders = them.flanks.slice(theirs.duel + theirs.blocking.length);
-  const rams = freeRiders.some((x) => typeOfX(x) === 'Ironhoof Rams'); // Battering Horns: a free Ram turns even an anchored line
-  const turned = BATTLE_FLANK_TERRAINS.has(terrain) && freeRiders.length > 0 && (!anchored || rams);
-  // Terror From Above: with Wyvern Riders on the other side, my strongest front unit fights ×0.85.
-  let terrorCol = -1;
-  if (abilityHas(them, 'Wyvern Riders'))
-    me.front.forEach((x, c) => {
-      const strongest = me.front[terrorCol]; // a unit, once terrorCol is a column
-      if (x && (terrorCol < 0 || (strongest && x.s > strongest.s))) terrorCol = c;
-    });
+  // Free riders that turn even an anchored line (Battering Horns: a free Ram), by the rule registry (plan P1-19c): its
+  // words, or none.
+  const horns = theAbilityThatTurnsAnAnchoredLine({ theFreeEnemyRiders: freeRiders.map(inTheLine) });
+  const turned = BATTLE_FLANK_TERRAINS.has(terrain) && freeRiders.length > 0 && (!anchored || horns !== null);
+  // What the enemy's line marks on mine (Terror From Above: my strongest front unit; Dive on the Bowmen: my strongest
+  // shooting archer; Storm Wings: my units in the air), each applied last where the unit marked fights.
+  const marks = theMarksTheEnemyLineLeavesOnMine(
+    { theFront: me.front, theSecondLine: me.second, theAir: me.fly },
+    (t) => abilityHas(them, t),
+  );
+  /** The marks on a unit, in the stage's order: its multiplier and words after them. */
+  const marked = (x: GridCell, m: number, why: string): [number, string] => {
+    for (const mark of marks)
+      if (mark.theUnitsMarked.includes(x)) {
+        m *= mark.factor;
+        why += ', ' + mark.words;
+      }
+    return [m, why];
+  };
+  const theEnemyFront = them.front.filter((y): y is GridCell => Boolean(y));
   me.front.forEach((x, c) => {
     if (!x) return;
     const e = them.front[c];
-    const t = typeOfX(x);
     let m = 1,
       kind: GridFacing['kind'] = 'even',
       vs: GridCell | null | undefined = null,
@@ -722,54 +741,30 @@ export function battleFaceSide(
         why += ' wraps the end';
       }
     }
+    const unit = inTheLine(x);
     if (endHit.has(c)) {
-      const held =
-        t === 'Dwarven Guard'
-          ? 'Unbreakable'
-          : t === 'Forest Ents'
-            ? 'Rooted'
-            : !meIsAtk && GRID_GARRISON_TYPES.has(t)
-              ? 'Hold the Gate'
-              : null; // never hit from the side (Rooted: the Ents, 2026-10-13)
+      // Never hit from the side (Unbreakable, Rooted, Hold the Gate: the rule registry's stage), or hit.
+      const held = theAbilityThatHoldsAUnitHitFromTheSide({ theUnit: unit, theUnitsSideAttacks: meIsAtk });
       if (held) why += `, ${held}`;
       else {
         m *= BATTLE_FACING.sideHit;
         why += ', hit from the side';
       }
     }
-    const s = me.second[c];
-    if ((t === 'Shieldwall Levies' || t === 'Human Garrison') && s?.role === 'arc') {
-      m *= 1.25;
-      why += ', Shieldwall';
-    } // Town Watch: a garrison counts as Levies
-    if (
-      t === 'Shieldwall Levies' &&
-      [c - 1, c + 1].some((j) => me.front[j] && typeOfX(me.front[j]) === 'Men-at-Arms')
-    ) {
-      m *= 1.1;
-      why += ', Sergeants';
-    }
-    if (t === 'Orc Berserkers') {
-      const n = [c - 1, c + 1].filter((j) => me.front[j] && typeOfX(me.front[j]) === 'Goblin Horde').length;
-      if (n) {
-        const g = 1 + Math.min(0.3, 0.1 * n);
-        m *= g;
-        why += `, Driven Before Them ×${g.toFixed(1)}`;
-      }
-    }
-    if (c === terrorCol) {
-      m *= 0.85;
-      why += ', Terror From Above';
-    }
+    // The units beside it and behind it (Shieldwall with Town Watch, Sergeants, Driven Before Them).
+    const beside = theStrengthOfAUnitBesideAndBehindOthers(
+      {
+        theUnit: unit,
+        theUnitsEitherSide: [inTheLineOrNone(me.front[c - 1]), inTheLineOrNone(me.front[c + 1])],
+        theUnitBehind: inTheLineOrNone(me.second[c]),
+      },
+      m,
+    );
+    m = beside.multiplier;
+    why += beside.words.map((w) => ', ' + w).join('');
+    [m, why] = marked(x, m, why);
     put(x, m, kind, vs, why);
   });
-  // Dive on the Bowmen: with Noble Griffons on the other side, my strongest shooting archer fights ×0.75.
-  let dive: GridCell | null = null;
-  if (abilityHas(them, 'Noble Griffons'))
-    me.second.forEach((x, c) => {
-      const f = me.front[c];
-      if (x?.role === 'arc' && f && f.role !== 'arc' && (!dive || x.s > dive.s)) dive = x;
-    });
   me.second.forEach((x, c) => {
     if (!x) return;
     const f = me.front[c];
@@ -777,10 +772,9 @@ export function battleFaceSide(
       let e = them.front[c];
       let m = 1,
         why = shortUnit(x.r);
-      if (typeOfX(x) === 'Shadow Archers') {
-        const cands = them.front.filter((y): y is GridCell => Boolean(y));
-        if (cands.length) e = cands.reduce((b, y) => (abilityBack(x, y).m * y.s > abilityBack(x, b).m * b.s ? y : b));
-      } // Marksmen: they pick the best target along the line
+      // A shooter that picks its target along the enemy front (Marksmen), by what each shot is worth.
+      const pick = theTargetAShooterPicks(inTheLine(x), () => theEnemyFront.map((y) => abilityBack(x, y).m * y.s));
+      if (pick !== null) e = theEnemyFront[pick];
       if (e) {
         const b = abilityBack(x, e);
         m = b.m;
@@ -788,12 +782,9 @@ export function battleFaceSide(
       } else why += ' shoots at an empty column';
       if (turned) {
         m *= BATTLE_FACING.turned;
-        why += rams && anchored ? ', flank turned (Battering Horns)' : ', flank turned';
+        why += horns !== null && anchored ? `, flank turned (${horns})` : ', flank turned';
       }
-      if (x === dive) {
-        m *= 0.75;
-        why += ', Griffon dive';
-      }
+      [m, why] = marked(x, m, why);
       put(x, m, e ? 'shoots' : 'even', e ?? null, why);
     } else put(x, 1, 'even', null, shortUnit(x.r));
   });
@@ -815,21 +806,11 @@ export function battleFaceSide(
     } else put(x, BATTLE_FACING.freeFlank, 'free', null, `${shortUnit(x.r)} rides free`);
   });
   const enemyFlyers = them.fly.length > 0 || them.flanks.some((x) => x.role === 'fly');
-  // Storm Wings (2026-10-13, the beast abilities): with Thunderbirds on the other side, every unit of mine in the air fights ×0.85.
-  const storm = abilityHas(them, 'Thunderbirds');
   me.fly.forEach((x) => {
-    let m = 1,
-      why = shortUnit(x.r),
-      kind: GridFacing['kind'] = 'even';
-    if (typeOfX(x) === 'Gnomish Gyrocopters' && enemyFlyers) {
-      m *= 1.25;
-      why += ', Flak Gunners';
-      kind = 'faces';
-    }
-    if (storm) {
-      m *= 0.85;
-      why += ', Storm Wings';
-    }
+    // Its own ability in the air (Flak Gunners, against enemy flyers): a flyer whose ability acts faces them.
+    const flyer = theStrengthOfAFlyer({ theFlyer: inTheLine(x), theEnemyHasFlyers: enemyFlyers });
+    const kind: GridFacing['kind'] = flyer.words.length ? 'faces' : 'even';
+    const [m, why] = marked(x, flyer.multiplier, shortUnit(x.r) + flyer.words.map((w) => ', ' + w).join(''));
     put(x, m, kind, null, why);
   });
   return { total, units, turned, anchored, duels: mine.duel, guarding: mine.blocking.length, free: mine.free };
