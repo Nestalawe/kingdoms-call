@@ -35,11 +35,14 @@ import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
 import {
   BASELINE_FILE,
   compare,
+  countsFromTheCodeFiles,
+  ENGINE_SIDE_FOLDERS,
   ESLINT_SUPPRESSIONS_FILE,
   eslintSuppressions,
   KNOWN_ARCHITECTURE_VIOLATIONS_FILE,
   measure,
   readBaseline,
+  theCodeFiles,
 } from '../../tools/ratchet.ts';
 import { LEVELS } from '../suite.ts';
 import { ALLOWANCE_MS, timeLimitForPropertyRuns, timeLimitForTheWork } from '../lib/time-limits.ts';
@@ -109,7 +112,7 @@ describe('the compiler', () => {
   });
 
   // P1-09e: a file of src/ that TypeScript doesn't check says why in its first line (Decision 15); the ratchet counts
-  // them (tsNocheck), so they only fall.
+  // them, the engine's side and the UI's apart (tsNocheckEngineSide and tsNocheckUi, P1-10b1), so they only fall.
   test('a file of src/ that TypeScript skips says why, in its first line', () => {
     const without = filesUnder(path.join(ROOT, 'src'))
       .filter((f) => f.endsWith('.ts'))
@@ -242,9 +245,7 @@ describe('the lint rules', () => {
         const checked = typeChecked(file);
         // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js)
         const allowedOff = [...(file === 'src/globals.d.ts' ? ['no-var'] : []), ...(checked ? [DISAGREE] : [])];
-        const off = notAtError({ ...siteExpected, ...(checked ? typedExpected : {}) }, rules).filter(
-          (rule) => rule !== NO_ASSERTIONS,
-        );
+        const off = notAtError({ ...siteExpected, ...(checked ? typedExpected : {}) }, rules);
         if (off.join() !== allowedOff.join()) wrong.push(`${file}: not errors: ${off.join(', ')}`);
         if (level(rules['no-undef']) !== 2) wrong.push(`${file}: no-undef`);
         const ban = rules['@typescript-eslint/ban-ts-comment'];
@@ -254,10 +255,10 @@ describe('the lint rules', () => {
         )
           wrong.push(`${file}: ban-ts-comment`);
         if (level(rules[NO_NON_NULL]) !== 2) wrong.push(`${file}: ${NO_NON_NULL}`);
-        // the type assertions kept are the test below's
+        // no type assertion at all, in every file (P1-10b1 replaced the three let through with statements)
         const assertions = rules[NO_ASSERTIONS];
         if (
-          level(assertions) === 2 &&
+          level(assertions) !== 2 ||
           JSON.stringify(Array.isArray(assertions) ? assertions[1] : undefined) !== '{"assertionStyle":"never"}'
         )
           wrong.push(`${file}: ${NO_ASSERTIONS}`);
@@ -531,40 +532,25 @@ describe('the lint rules', () => {
     },
   );
 
-  // The type assertions src/ held when the rule came in (eslint.config.js's TYPE_ASSERTIONS_KEPT, written by P1-11a3):
-  // only those files may hold one, one each, and the list only shrinks (P1-10b replaces each with a check).
-  test(
-    'only the type assertions kept from before the rule are let through, one a file, and no more files',
-    timeLimitForTheWork({ toolRuns: 1 }),
-    async () => {
-      const KEPT = [
-        'src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts',
-        'src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts',
-        'src/engine/rules-on-plain-values/unit-types-and-base-strength.ts',
-      ];
-      const assertionsIn = (file: string): number => {
-        const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
-        let n = 0;
-        const visit = (node: ts.Node): void => {
-          if (
-            (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) &&
-            !(ts.isTypeReferenceNode(node.type) && node.type.getText(source) === 'const')
-          )
-            n++;
-          ts.forEachChild(node, visit);
-        };
-        visit(source);
-        return n;
-      };
-      const off: string[] = [];
-      for (const f of filesUnder(path.join(ROOT, 'src')).filter((x) => x.endsWith('.ts'))) {
-        const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'src', f))) as Linter.Config).rules ?? {};
-        if (level(rules[NO_ASSERTIONS]) < 2) off.push('src/' + f);
-      }
-      expect(off.filter((f) => !KEPT.includes(f))).toEqual([]);
-      for (const f of off) expect(assertionsIn(f), f).toBe(1);
-    },
-  );
+  // The three type assertions src/ held when the rule came in (P1-11a3 wrote them; eslint.config.js let them through by
+  // a list, TYPE_ASSERTIONS_KEPT) are statements since P1-10b1, and the list is gone: an `as` planted in any of their
+  // files is refused, as everywhere in src/ (the test above holds the rule at error in every file). ESLint builds each
+  // file's program first.
+  test('no list of files lets a type assertion through', () => {
+    expect(read('eslint.config.js')).not.toMatch(/TYPE_ASSERTIONS_KEPT/);
+  });
+  test.for([
+    'src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts',
+    'src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts',
+    'src/engine/rules-on-plain-values/unit-types-and-base-strength.ts',
+  ])('%s: a planted type assertion is refused', timeLimitForTheWork({ typeScriptPrograms: 1 }), async (file) => {
+    const code = read(file) + '\nexport const planted = (x: unknown) => x as string;\n';
+    const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
+    const found = (result?.messages ?? []).filter((m) => m.ruleId === NO_ASSERTIONS);
+    expect(found.map((m) => `${String(m.line)} ${String(m.severity)}`)).toEqual([
+      `${String(code.split('\n').length - 1)} 2`,
+    ]);
+  });
 
   test('a focused or skipped test is an error', async () => {
     const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, 'tests/static/x.test.ts'))) as Linter.Config)
@@ -1738,6 +1724,55 @@ describe('the ratchet', () => {
   test('npm run ratchet reads tests/ratchet.json', () => {
     expect(pkg.scripts['ratchet']).toBe('tsx tools/ratchet.ts');
     expect(path.relative(ROOT, BASELINE_FILE)).toBe('tests/ratchet.json');
+  });
+
+  // The ts-nocheck line is counted in two (plan P1-10, Decision 9; P1-10b's Decision 5): the engine's side, which P1-10b
+  // takes to 0, and the UI's (P1-16), so neither may rise while the other falls. One planted line in each folder raises
+  // its own count alone, and the ratchet fails on it.
+  test(
+    'the ts-nocheck line is counted on the engine side and in the UI, apart, and no longer as one',
+    timeLimitForTheWork({ toolRuns: 1 }),
+    () => {
+      const baseline = readBaseline();
+      const now = measure();
+      for (const counts of [baseline, now]) {
+        expect(counts).not.toHaveProperty('tsNocheck');
+        expect(counts['tsNocheckEngineSide']).toBeGreaterThan(0);
+        expect(counts['tsNocheckUi']).toBeGreaterThan(0);
+      }
+      expect([...ENGINE_SIDE_FOLDERS]).toEqual([
+        'src/engine/',
+        'src/views/',
+        'src/db/',
+        'src/ui/shared/',
+        'src/content/',
+        'src/schemas/',
+        'src/shared/',
+      ]);
+    },
+  );
+  const NOCHECK_LINE = '// @ts-' + 'nocheck: planted, to show the ratchet counts it\n';
+  test.for([
+    ['src/engine/battle/x.ts', 'tsNocheckEngineSide'],
+    ['src/views/x.ts', 'tsNocheckEngineSide'],
+    ['src/db/x.ts', 'tsNocheckEngineSide'],
+    ['src/ui/shared/x.ts', 'tsNocheckEngineSide'],
+    ['src/content/x.ts', 'tsNocheckEngineSide'],
+    ['src/schemas/x.ts', 'tsNocheckEngineSide'],
+    ['src/shared/x.ts', 'tsNocheckEngineSide'],
+    ['src/ui/gm/x.ts', 'tsNocheckUi'],
+    ['src/ui/player/x.ts', 'tsNocheckUi'],
+    ['src/rulebook/x.ts', 'tsNocheckUi'],
+    ['tests/unit/x.test.ts', 'tsNocheckUi'],
+    ['tools/x.ts', 'tsNocheckUi'],
+  ] as const)('a ts-nocheck line planted in %s raises %s alone, and the ratchet fails', ([file, count]) => {
+    const files = theCodeFiles();
+    const asTheyAre = { ...readBaseline(), ...countsFromTheCodeFiles(files) };
+    expect(compare(asTheyAre, asTheyAre).rose).toEqual([]);
+    const planted = { ...asTheyAre, ...countsFromTheCodeFiles([...files, [file, NOCHECK_LINE + 'export {};\n']]) };
+    const { rose } = compare(asTheyAre, planted);
+    expect(rose).toEqual([expect.stringMatching(new RegExp(`^${count} rose from \\d+ to \\d+\\.`))]);
+    expect(planted[count]).toBe((asTheyAre[count] ?? 0) + 1);
   });
 
   // measure() runs knip for unusedCode: a few seconds, more on a slow runner.

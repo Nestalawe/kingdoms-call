@@ -57,14 +57,15 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   file and the folder's ten.
 - **TypeScript checks the site** (`tsconfig.json` includes `src/`, with the browser's types; one project until P1-10
   splits the engine's). The files that were JavaScript start with `// @ts-nocheck` and the reason (142 of 158 at the
-  rename: strict TypeScript found errors in each); P1-10 and P1-16 type them, and the ratchet's `tsNocheck` only falls.
+  rename: strict TypeScript found errors in each); P1-10 and P1-16 type them. The ratchet counts the line in two, so
+  each only falls: `tsNocheckEngineSide` (the engine's side: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`,
+  `src/content/`, `src/schemas/`, `src/shared/`; 94, P1-10b's) and `tsNocheckUi` (every other file: the UI's pages and
+  `src/rulebook/`; 34, P1-16's).
   A new file is checked from the start. `src/globals.d.ts` declares what the modules read without importing it:
   `KC_CONFIG` and `supabase` (the pages' classic scripts), `KC_RNG_SEED` (the tests' seed) and each page's declared
   globals (`tests/static/globals-d-ts.test.ts` checks it names exactly those). No file of `src/` may claim what the
   compiler can't check: a type assertion (`x as T`; `as const` is fine) or a non-null assertion (`x!`) is a lint error
-  (P1-10a1). The three assertions P1-11a3 wrote before the rule are let through, one in each of its files
-  (`eslint.config.js`, `TYPE_ASSERTIONS_KEPT`, which `tests/static/harness.test.ts` checks only shrinks); P1-10b
-  replaces them with checks.
+  (P1-10a1), in every file: the three assertions P1-11a3 wrote before the rule became statements in P1-10b1.
 - **The types of the world come from Zod schemas, in `src/schemas/`**
   (P1-10a1): the saved game state (`saved-game-state.ts`: `GameState`, `Realm`, `Character`, `Army`, `Item`,
   `Province`, `Grave`, `Mercenary`, and the shapes they share), the orders a realm submits (`orders-a-realm-submits.ts`:

@@ -25,6 +25,8 @@ export function topSkillOf(char: HeroWithSkills | null | undefined): { skill: st
   const tied = skills.filter(([, v]) => v === maxLevel);
   // Deterministic tie-break by canonical skill order, so the same hero reads the same everywhere.
   tied.sort((a, b) => ALL_SKILLS.indexOf(a[0]) - ALL_SKILLS.indexOf(b[0]));
-  const [sk, lv] = tied[0] as [string, number];
+  const top = tied[0];
+  if (!top) return null; // never met: the highest level is one of the skills above
+  const [sk, lv] = top;
   return { skill: sk, level: lv };
 }
