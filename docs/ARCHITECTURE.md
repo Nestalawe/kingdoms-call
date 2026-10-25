@@ -351,6 +351,34 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   lists the file so that the words tests read it as the page's) and its roster row (the words test reads them). The hook points' types live in the registry's file, which holds code:
   a file only `import type` reaches is in no bundle ([traps.md](traps.md#an-effect-reads-only-what-its-hook-hands-it)).
 
+## A saved game: its version, its upgrade, its check
+
+A running game's save (`games.game_state`) holds what older builds wrote: its own copies of content and shapes the code
+has moved on from ([traps.md](traps.md#live-saves-keep-copies)). P1-15 brings every save up to date in one place before
+the turn reads it.
+
+- **The upgrade** (P1-15a): `upgradeGameState(save)`, in `src/engine/saves/upgrade-a-saved-game-and-check-it.ts`,
+  typed. `resolveTurn` calls it on the save it has just parsed, before the turn's context is made. It runs the six
+  passes the turn used to run at its start, in the same order: `migrateMaxHpV2` (which calls
+  `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
+  `migrateLegacyUnitNames` and `migrateItemTiers` (until P1-15a the turn ran it after the merge of the realms' orders;
+  nothing between reads an item's tier). Each pass runs on every turn and is safe to repeat; it also mends what the
+  turn before wrote (a hero hired last turn gets his earned-HP pool).
+- **It draws no dice and writes no line.** What it finds for the GM's log it returns (`WhatTheSavesUpgradeFound`: how
+  many retired Sage discoveries it took, and the heroes of a save from before the earned-HP pool it carried over).
+  `resolveTurn` keeps that on the turn's context (`whatTheSavesUpgradeFound`), and the stages at the turn's end tell
+  it, as before. The save keeps none of it (until P1-15a the two passes kept their counts on the save until the turn's
+  end deleted them).
+- **Still in the turn** (P1-15's second slice brings them here, each with an old shape staged): the flagged passes
+  before the first phase (`_lairNamesV3`, `_guardianHpV2`, the Library's), the turn-start repairs, the reads that write
+  an old save's missing field, and the readers of older shapes. `ensureAllLairHoards` stays in the turn: it draws dice
+  every turn.
+- **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
+  a new world and mended; the upgrade run twice equals once; a new world changes only by a known list) and
+  `corsairs-retired` (the turn passes the loaded world through the upgrade, which calls the pass).
+- **Next:** the save's version, `schemaVersion` (P1-15c), and the check of the upgraded save against the saved state's
+  schema (P1-15d).
+
 ## The pages (`site/`)
 
 Built from `src/` and `public/` ([above](#the-build-src-becomes-site)).
@@ -625,7 +653,7 @@ portals' start-up guards are gone.
   turn's context** first: `turnContext`, made by `createTurnContext(G, freshPlayers, expectedTurnToRun)`
   (`src/engine/turn/context.ts`, whose `TurnContext` is its type since P1-10a2) just after the save is parsed. It holds the state and the GM's log (`turnLog`, which only `emit` writes, since P1-12a2: every line enters through it with its audience, in `engine/turn/events-and-their-audiences.ts`; since P1-12a4 there is no `log()`; [traps.md](traps.md#a-line-goes-through-emit)),
   the collectors (`_tel`, `battleCommanders`, …), the movement pools (`movePoints`, `seaMovePoints`, …), `SEASONS`,
-  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, since P1-08i3 `_warFrontAtStart` and `_warFrontProvs`, since P1-08j1 `lightLandMoves` and `lightSeaMoves`, since P1-08k4 `diploDeclarations` and `reckoningCalls`, since P1-08k7 `staleOrderWarnings`, `safeStartRefused`, `discoveryChoicePicks` and `playerMessages`, and since P1-08l1 `_botEncounteredAtStart` (each joins by reference on the line after `resolveTurn` declares it; since P1-08k8 the movement pools, `lightLandMoves`, `lightSeaMoves`, `SEASONS`, `recruitedThisTurn`, `presenceByPhase`, `_intrusionAcc`, `_distCache`, `_warFrontAtStart` and `_warFrontProvs` are made, and joined, by the stage before the first phase that first needs them), and the values the turn changes as it goes (`_logCtx`,
+  `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, since P1-08d `presenceByPhase`, `clairWatch` and `_reports`, since P1-08e `_botPlayerIdx`, since P1-08i1 `_distCache`, since P1-08i3 `_warFrontAtStart` and `_warFrontProvs`, since P1-08j1 `lightLandMoves` and `lightSeaMoves`, since P1-08k4 `diploDeclarations` and `reckoningCalls`, since P1-08k7 `staleOrderWarnings`, `safeStartRefused`, `discoveryChoicePicks` and `playerMessages`, since P1-08l1 `_botEncounteredAtStart`, and since P1-15a `whatTheSavesUpgradeFound` (what the save's upgrade found, [below](#a-saved-game-its-version-its-upgrade-its-check)) (each joins by reference on the line after `resolveTurn` declares it; since P1-08k8 the movement pools, `lightLandMoves`, `lightSeaMoves`, `SEASONS`, `recruitedThisTurn`, `presenceByPhase`, `_intrusionAcc`, `_distCache`, `_warFrontAtStart` and `_warFrontProvs` are made, and joined, by the stage before the first phase that first needs them), and the values the turn changes as it goes (`_logCtx`,
   `_currentPhase`, `_afterPhases`, since P1-08c `_combatSkillProv`, `_duelFoes`, `_battleSeq`, `_chieftainDuelGain`,
   `_deferredSkillLogs`, `_pcSimulating`, since P1-08i1 `enteredThisPhase`, and since P1-08i3 `_tier0Open` and `_unitGainQueue`), which are read and written as `turnContext._currentPhase` everywhere, in
   `resolveTurn` too. A helper that reads none keeps its own arguments. No dice and no clock in it: the turn's dice are

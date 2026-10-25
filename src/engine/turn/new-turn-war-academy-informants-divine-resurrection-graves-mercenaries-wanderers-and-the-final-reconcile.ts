@@ -307,15 +307,16 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     });
   }
   G._nameRepairs = 0;
-  if (G._retiredDiscoveries > 0) {
+  // the retired Sage discoveries the save's upgrade took (engine/saves/)
+  const retiredSageDiscoveriesRemoved = turnContext.whatTheSavesUpgradeFound.retiredSageDiscoveriesRemoved;
+  if (retiredSageDiscoveriesRemoved > 0) {
     emit(turnContext, {
       type: 'system',
-      text: `[Integrity] ${G._retiredDiscoveries} retired Sage discover${G._retiredDiscoveries !== 1 ? 'ies were' : 'y was'} removed from realm records.`,
+      text: `[Integrity] ${retiredSageDiscoveriesRemoved} retired Sage discover${retiredSageDiscoveriesRemoved !== 1 ? 'ies were' : 'y was'} removed from realm records.`,
       audience: { actor: null, realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
   }
-  delete G._retiredDiscoveries;
   // graveyard sweep — a grave whose character record is ALIVE is a doppelganger (dead in the
   // graveyard, alive in the realm). Purge it and say so in the GM log.
   if (Array.isArray(G.heroGraveyard) && G.heroGraveyard.length) {

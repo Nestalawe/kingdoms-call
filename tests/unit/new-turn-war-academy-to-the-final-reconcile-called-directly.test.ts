@@ -61,6 +61,7 @@ import {
 } from '../lib/new-turn-succession-and-summons-cases.ts';
 import { board, must, withDice, type Board, type Character, type Province } from '../lib/middle-of-a-bot-world.ts';
 import { knows, leads, realm, ring1, ring2 } from '../lib/cast-spell-order-cases.ts';
+import type { WhatTheSavesUpgradeFound } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -73,6 +74,8 @@ const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const tc = (b: Board) => b.tc as unknown as Raw & Board['tc'];
 const G = (b: Board) => b.G as unknown as Raw & Board['G'];
+/** What the save's upgrade found as the turn began, on the turn's context (plan P1-15a): the stage tells it. */
+const found = (b: Board) => tc(b)['whatTheSavesUpgradeFound'] as WhatTheSavesUpgradeFound;
 /** The stage, as resolveTurn calls it once the new turn's first part is done: the counter moved on, no phase current,
  *  every line filed after the phases, the log's context cleared. Gives back the turn that was played. */
 const settle = (b: Board) => {
@@ -583,17 +586,17 @@ describe('The new turn’s second part: what only a direct call can stage', () =
   test('the repairs told: 2 heroes renamed and 1 discovery retired, from the counts the turn’s start leaves; none at 0', () => {
     const b = fresh();
     G(b)['_nameRepairs'] = 2;
-    G(b)['_retiredDiscoveries'] = 1;
+    found(b).retiredSageDiscoveriesRemoved = 1;
     after(b);
     expect(texts(b)).toEqual([renamed(2), discoveriesRetired(1)]);
     expect([G(b)['_nameRepairs'], '_retiredDiscoveries' in G(b)]).toEqual([0, false]);
     const b2 = fresh();
     G(b2)['_nameRepairs'] = 1;
-    G(b2)['_retiredDiscoveries'] = 0;
+    found(b2).retiredSageDiscoveriesRemoved = 0;
     after(b2);
     expect([texts(b2), '_retiredDiscoveries' in G(b2)]).toEqual([[renamed(1)], false]);
     const b3 = fresh();
-    G(b3)['_retiredDiscoveries'] = 2;
+    found(b3).retiredSageDiscoveriesRemoved = 2;
     after(b3);
     expect(texts(b3)).toEqual([discoveriesRetired(2)]);
   });

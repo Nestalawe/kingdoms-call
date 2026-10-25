@@ -40,6 +40,7 @@ import { board, must, type Board, type Character, type Province, type Unit } fro
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { at, leads, rival, wanderer } from '../lib/cast-spell-order-cases.ts';
 import { companies, item, skeletal } from '../lib/item-and-army-order-cases.ts';
+import type { WhatTheSavesUpgradeFound } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -51,7 +52,8 @@ const afterThePhases = fn(STAGE);
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const tc = (b: Board) => b.tc as unknown as Record<string, unknown> & Board['tc'];
-const G = (b: Board) => b.G as unknown as Record<string, unknown> & Board['G'];
+/** What the save's upgrade found as the turn began, on the turn's context (plan P1-15a): the stage tells it. */
+const found = (b: Board) => tc(b)['whatTheSavesUpgradeFound'] as WhatTheSavesUpgradeFound;
 /** The stage, as resolveTurn calls it once the phase loop is over: no phase current, every later line filed after the
  *  phases, the log's context cleared. */
 const settle = (b: Board) => {
@@ -273,7 +275,7 @@ describe('After the phases: what it calls', () => {
   test('the maximum HP is resynced after the earned-HP notes are told, with the realms the stage set for every helper', () => {
     const b = fresh();
     const h = at(b);
-    G(b)['_maxHpMigration'] = [{ charId: h.id, player: 0, old: 80, nu: 60 }];
+    found(b).heroesCarriedOverToTheEarnedHpPool = [{ charId: h.id, player: 0, old: 80, nu: 60 }];
     const players = vm.runInContext('()=>maxHpPlayers.players', engine) as () => unknown;
     let seen: unknown = null;
     vm.runInContext('maxHpPlayers.players=null', engine);
@@ -428,10 +430,10 @@ describe('After the phases: what only a direct call can stage', () => {
     expect(texts(b).some((t) => t.includes('The consecration of'))).toBe(false);
   });
 
-  test("an old save's note for a hero no longer in the world is skipped; the notes are dropped once read", () => {
+  test("an old save's note for a hero no longer in the world is skipped; the save holds no notes", () => {
     const b = fresh();
     const h = at(b);
-    G(b)['_maxHpMigration'] = [
+    found(b).heroesCarriedOverToTheEarnedHpPool = [
       { charId: 8999, player: 0, old: 80, nu: 60 },
       { charId: h.id, player: 0, old: 70, nu: 60 },
     ];

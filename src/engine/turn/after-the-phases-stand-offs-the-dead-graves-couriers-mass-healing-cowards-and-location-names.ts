@@ -332,8 +332,8 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // wins announce their own gain at the moment of victory (rollHpGain); this catches item/discovery
   // moves.
   maxHpPlayers.players = G.players;
-  (G._maxHpMigration || []).forEach((r) => {
-    // one-time note for saves migrated to the earned-HP pool
+  turnContext.whatTheSavesUpgradeFound.heroesCarriedOverToTheEarnedHpPool.forEach((r) => {
+    // one-time note for saves migrated to the earned-HP pool (the save's upgrade found them: engine/saves/)
     const ch = (G.characters || []).find((c) => c && c.id === r.charId);
     if (!ch) return;
     emit(turnContext, {
@@ -343,7 +343,6 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       hero: ch.id,
     });
   });
-  delete G._maxHpMigration;
   syncAllMaxHp(turnContext); // end-of-turn pass (also run after every phase — see the phase loop)
 
   // ── Spared cowards slink home ── A Cowardly commander who begged for mercy this turn abandons
