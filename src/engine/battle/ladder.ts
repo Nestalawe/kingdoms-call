@@ -1,6 +1,7 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { BATTLE_LINE_MULTS, battleFacingStage, battleGridStage, battleLineTotal, flankLineMults } from './lines.ts';
+import type { BattleGrid } from './lines.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { Army } from '../../schemas/saved-game-state.ts';
 import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
@@ -48,7 +49,7 @@ export function ladderLines(
   forceMods: { m: number; label: string }[] | null | undefined,
   final: number,
   opt?: {
-    grid?: { total: number; W: number; face?: { total: number } | null | undefined } | null | undefined;
+    grid?: BattleGrid | null | undefined;
     tact?: { mult: number; label: string } | null | undefined;
   } | null,
 ) {
