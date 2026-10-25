@@ -7,10 +7,16 @@ import { DISC_BY_ID } from '../discoveries.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
+import {
+  theStrengthOfAShooterOverTheLine,
+  theStrengthOfAUnitMeetingAnother,
+  type ARoleInTheBattleLine,
+  type WhereTwoUnitsMeet,
+} from '../rules/the-registry-of-content-effects.ts';
 
 // ── THE GRID'S TYPES ── what battleGrid places, what battleRegrid scores and what battleFacing faces.
 /** A unit's part in the line (battleRole): in the air, cavalry, ranged, or on foot (everything else). */
-export type BattleRole = 'fly' | 'cav' | 'arc' | 'foot';
+export type BattleRole = ARoleInTheBattleLine;
 /** The place a unit stands in its side's grid (battleRegrid). */
 export type GridPlaceName = 'front' | 'second' | 'reserve' | 'flank' | 'air';
 /** Whom a unit fought, and how (battleFaceSide): stamped on its row as `_faced` and on its place as `face`. */
@@ -546,122 +552,38 @@ export function abilityFront(
   x: GridCell,
   e: GridCell,
   terrain: string | null,
-  where: 'front' | 'duel' | 'guard',
+  where: WhereTwoUnitsMeet,
   meIsAtk: boolean,
 ): AMatchup {
-  const t = typeOfX(x),
-    et = typeOfX(e);
-  let m = faceMult(BATTLE_FACING.front, x.role, e.role);
-  const names: string[] = [];
-  if (t === 'Men-at-Arms' && e.role === 'cav') {
-    m = 1.25;
-    names.push('Halberds');
-  }
-  if (t === 'Gilded Lances' && e.role === 'foot') {
-    m = 1.15;
-    names.push('Lance Charge');
-  }
-  if (t === 'Orc Berserkers' && e.role === 'foot') {
-    m *= 1.15;
-    names.push('Frenzy');
-  }
-  if (t === 'Warg Riders' && e.role === 'cav') {
-    m = 1.25;
-    names.push('Wolves Panic Horses');
-  }
-  if (t === 'Eagle Riders' && e.role === 'cav') {
-    m = 1.25;
-    names.push('Stoop on the Horses');
-  }
-  if (t === 'Free Lances' && where === 'duel') {
-    m *= 1.15;
-    names.push('Harriers');
-  }
-  if (t === 'Forest Wardens' && ABILITY_WOODS.has(terrain)) {
-    m *= 1.15;
-    names.push('Woodland Skirmish');
-  }
-  if (t === 'Orc Garrison' && !meIsAtk && e.role === 'foot') {
-    m *= 1.15;
-    names.push('Bloodthirsty');
-  }
-  // The beasts (2026-10-13, Creatures and Monsters V): the walking beasts' matchups, and the unicorns' Purity.
-  if (t === 'Great Bears' && e.role === 'foot') {
-    m *= 1.15;
-    names.push('Maul');
-  }
-  if (t === 'Mammoth Host' && e.role === 'foot') {
-    m *= 1.15;
-    names.push('Trample');
-  }
-  if (t === 'Dread Hydras' && e.role === 'foot') {
-    m *= 1.25;
-    names.push('Many Heads');
-  }
-  if (t === 'Unicorn Herd' && (GRID_MONSTER_TYPES.has(et) || e.r.a?._isSkeletal)) {
-    m *= 1.25;
-    names.push('Purity');
-  }
-  // 2026-10-12 (Toby): Purity breaks a Spear Hedge or a Boulder Wall — the Unicorn Herd is never held to their ×0.75 cap.
-  if (et === 'Shieldwall Levies' && x.role === 'cav' && m > 0.75) {
-    if (t === 'Unicorn Herd') names.push('Purity breaks the Spear Hedge');
-    else {
-      m = 0.75;
-      names.push('Spear Hedge');
-    }
-  }
-  if (et === 'Stone Giants' && x.role === 'cav' && m > 0.75) {
-    if (t === 'Unicorn Herd') names.push('Purity breaks the Boulder Wall');
-    else {
-      m = 0.75;
-      names.push('Boulder Wall');
-    }
-  }
-  if (et === 'Dwarven Guard' && x.role === 'foot') {
-    m *= 0.85;
-    names.push('Unbreakable');
-  }
-  if (et === 'Dwarf Garrison' && x.role === 'foot' && terrain === 'mountain') {
-    m *= 0.9;
-    names.push('Stone Halls');
-  }
-  if (et === 'Elven Garrison' && x.role === 'cav' && ABILITY_WOODS.has(terrain)) {
-    m *= 0.85;
-    names.push('Thorn Hedge');
-  }
-  return { m, why: names.map((n) => ', ' + n).join('') };
+  const et = typeOfX(e);
+  // The unit's ability, then the one met's (the rule registry's two stages, plan P1-19b): each sets or multiplies the
+  // role matchup's multiplier and names itself.
+  const moved = theStrengthOfAUnitMeetingAnother(
+    {
+      theUnit: { unitType: typeOfX(x), role: x.role },
+      theUnitItMeets: { unitType: et, role: e.role },
+      theUnitItMeetsIsAMonsterOrSkeletal: GRID_MONSTER_TYPES.has(et) || !!e.r.a?._isSkeletal,
+      ground: terrain,
+      where,
+      theUnitsSideAttacks: meIsAtk,
+    },
+    faceMult(BATTLE_FACING.front, x.role, e.role),
+  );
+  return { m: moved.multiplier, why: moved.words.map((n) => ', ' + n).join('') };
 }
-// x, a second-line ranged unit, shoots e, an enemy front unit.
+// x, a second-line ranged unit, shoots e, an enemy front unit: the shooter's ability, then the target's (the rule
+// registry's two stages, plan P1-19b).
 export function abilityBack(x: GridCell, e: GridCell): AMatchup {
-  const t = typeOfX(x),
-    et = typeOfX(e);
-  let m = backMult(e.role);
-  const names: string[] = [];
-  if (t === 'Yeoman Longbows' && e.role === 'cav') {
-    m = 1;
-    names.push('Bodkin Points');
-  }
-  if (t === 'Elven Bowmen' && e.role === 'cav') {
-    m = 1.25;
-    names.push('Volley at the Charge');
-  }
-  if (t === 'Shadow Archers' && e.role === 'arc') {
-    m = 1.25;
-    names.push('Marksmen');
-  }
-  if (t === 'Ironwood Crossbows' && et !== undefined && (UNIT_BASE_STR[et] ?? 0) >= 6) {
-    m *= 1.25;
-    names.push('Armour-Piercing');
-  }
-  if (t === 'Mountain Guns') {
-    m *= 1.15;
-    names.push('Bombard');
-  }
-  if (et === 'Goblin Horde') {
-    m *= 0.75;
-    names.push('Arrow Fodder');
-  }
-  return { m, why: names.map((n) => ', ' + n).join('') };
+  const et = typeOfX(e);
+  const moved = theStrengthOfAShooterOverTheLine(
+    {
+      theShooter: { unitType: typeOfX(x), role: x.role },
+      theTarget: { unitType: et, role: e.role },
+      theTargetsBaseStrength: et !== undefined ? (UNIT_BASE_STR[et] ?? 0) : 0,
+    },
+    backMult(e.role),
+  );
+  return { m: moved.multiplier, why: moved.words.map((n) => ', ' + n).join('') };
 }
 // The engagement: each side's span of the front, the columns where it overlaps the enemy's span
 // (nearest the centre first), how many flank duels there are, and which overlapping enemy columns each

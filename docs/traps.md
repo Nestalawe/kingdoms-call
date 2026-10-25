@@ -852,8 +852,8 @@ Every humanoid land unit has two abilities: a matchup and one more. Each lives i
 player portal's blurb, in the rulebook's roster row, and in the battle report's `why` text, and the
 engine itself keeps them in several places by kind:
 
-- a matchup on the battle grid: `abilityFront` (front line) and `abilityBack` (the second line shooting),
-  with the cases that need the whole line (side hits, Shieldwall, Sergeants, Marksmen, Terror From Above,
+- a matchup on the battle grid: the registry's four stages of facing, which `abilityFront` (front line) and
+  `abilityBack` (the second line shooting) ask, with the cases that need the whole line (side hits, Shieldwall, Sergeants, Marksmen, Terror From Above,
   Dive on the Bowmen, Flak Gunners, Battering Horns) inside `battleFaceSide`;
 - who takes a flank or shoots: `battleGrid` (`abilityFlanksRough`, Eagle Riders on an open flank, Black Arrows
   in front) and `abilityMissileUnits`;
@@ -862,13 +862,18 @@ engine itself keeps them in several places by kind:
   `rollUnitFates` (Knightly Example) and `shieldFortHolds`;
 - turn hooks inside `resolveTurn`: Prepared Ground's second volley, Raiders' Muster at turn's end.
 
-**One content row and one registry entry** (P1-19a, [ARCHITECTURE.md](ARCHITECTURE.md#the-rule-registry)): the nine
-abilities of a unit's whole force, Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
-Deepwater Grasp, Wyrmscale and Air Superiority. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts`
-(its name and numbers), its effect in `src/engine/rules/unit-abilities/the-strength-of-a-unit-in-its-force.ts` and its
-entry in the registry, in its stage's order; `tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts`
-checks its name and numbers in both books from its row. Change a number in its row and in both books. **Still inline**:
-every other ability, in the places below (the facing, the whole line and the fates join the registry in P1-19b to d).
+**One content row and one registry entry** ([ARCHITECTURE.md](ARCHITECTURE.md#the-rule-registry)): the nine
+abilities of a unit's whole force (P1-19a), Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent,
+Tidal Might, Deepwater Grasp, Wyrmscale and Air Superiority; and the 23 matchups of a unit meeting another or shooting
+over its line (P1-19b), Halberds, Lance Charge, Frenzy, Wolves Panic Horses, Stoop on the Horses (its matchup; its flank
+slot is still in the grid), Harriers, Woodland Skirmish, Bloodthirsty, Maul, Trample, Many Heads, Purity, Spear Hedge,
+Boulder Wall, Unbreakable (its matchup; never hit from the side is still in the line), Stone Halls, Thorn Hedge, Bodkin
+Points, Volley at the Charge, Marksmen (its matchup; its choice of target is still in the line), Armour-Piercing, Bombard
+and Arrow Fodder. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
+numbers), its effect in a file of `src/engine/rules/unit-abilities/` and its entry in the registry, in its stage's order;
+`tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts` checks its name and numbers in both books
+from its row. Change a number in its row and in both books. **Still inline**: every other ability, in the places below
+(the whole line and the fates join the registry in P1-19c and d).
 
 `tests/abilities-words.test.js` holds the table of names of the abilities still inline and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and

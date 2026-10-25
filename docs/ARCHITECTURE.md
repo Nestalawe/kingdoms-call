@@ -309,10 +309,16 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 - **Within a stage, the effects run in the order its list gives** (`THE_ORDER_OF_EACH_STAGE`), not by a number: a product
   of decimals, and the ladder's words, depend on the order ([traps.md](traps.md#order-is-data)). The runner finds a unit's
   effects by its type, from a `Map` built once from content as the file loads.
-- **The stages written so far** (P1-19a): `strength: the whole force`, the unit's factor from its force (in `armStr`,
+- **The stages written so far:** `strength: the whole force` (P1-19a), the unit's factor from its force (in `armStr`,
   through `unitAbilityMult`): Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
-  Deepwater Grasp, Wyrmscale and Air Superiority, in that order. The facing, the whole line and the fates follow
-  (P1-19b to d).
+  Deepwater Grasp, Wyrmscale and Air Superiority, in that order. Facing (P1-19b), four stages that take the multiplier
+  so far and return a new one and its words in the ladder, or nothing (`src/engine/rules/unit-abilities/a-unit-meeting-another-or-shooting-over-the-line.ts`):
+  in `abilityFront`, from the role matchup, **what a unit does to the unit it meets** (Halberds, Lance Charge, Frenzy,
+  Wolves Panic Horses, Stoop on the Horses, Harriers, Woodland Skirmish, Bloodthirsty, Maul, Trample, Many Heads,
+  Purity), then **what the unit it meets does to it** (Spear Hedge, Boulder Wall, Unbreakable, Stone Halls, Thorn
+  Hedge); in `abilityBack`, from the role's multiplier, **what a shooter does to its target** (Bodkin Points, Volley at
+  the Charge, Marksmen, Armour-Piercing, Bombard), then **what the target does to the shooter** (Arrow Fodder). The
+  whole line and the fates follow (P1-19c and d).
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
   `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its

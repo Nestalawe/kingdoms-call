@@ -23,10 +23,19 @@ const NOT_IN_THE_RULEBOOK_YET: Readonly<Record<string, string>> = {
   'reaver-crews': "the rulebook's Orcish Longships row doesn't name Reaver Crews (parked: add it to the row)",
 };
 
-/** A number as the books write it: ×1.25, or +10% for a fraction added. */
+/** A number as the books write it: ×1.25; +10% for a fraction added; "no penalty" for full strength, ×1 (any other
+ *  value is written so that no book holds it, and the test turns red); "base strength 6" for a unit's base strength. */
 function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
-  if (n.theBooksWriteIt === 'a multiplier') return `×${String(n.value)}`;
-  return `+${String(Number((n.value * 100).toFixed(6)))}%`;
+  switch (n.theBooksWriteIt) {
+    case 'a multiplier':
+      return `×${String(n.value)}`;
+    case 'a fraction added':
+      return `+${String(Number((n.value * 100).toFixed(6)))}%`;
+    case 'no penalty':
+      return n.value === 1 ? 'no penalty' : `×${String(n.value)}, which is not "no penalty"`;
+    case 'a base strength':
+      return `base strength ${String(n.value)}`;
+  }
 }
 
 const norm = (s: string) => s.replace(/[’‘]/g, "'");

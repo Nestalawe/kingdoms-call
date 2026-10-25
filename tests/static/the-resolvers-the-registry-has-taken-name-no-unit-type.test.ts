@@ -5,7 +5,7 @@
 // unitNameChecksByFunction), which also counts the engine's checks outside the registry (unitNameChecksInEngine), so
 // that count only falls.
 //
-// Red on each row's base by design (unitAbilityMult held 9 on P1-19a's base), as P1-11a4's static test was: the one
+// Red on each row's base by design (unitAbilityMult held 9 on P1-19a's base; abilityFront 19 and abilityBack 6 on P1-19b's), as P1-11a4's static test was: the one
 // exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
 import fs from 'node:fs';
@@ -17,6 +17,8 @@ import { unitNameChecksByFunction } from '../../tools/ratchet.ts';
 /** Each function the registry has taken, by its file, from the row that took it. */
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/strength.ts', 'unitAbilityMult', 'P1-19a, the whole force'],
+  ['src/engine/battle/lines.ts', 'abilityFront', 'P1-19b, facing'],
+  ['src/engine/battle/lines.ts', 'abilityBack', 'P1-19b, facing'],
 ];
 
 test.for(TAKEN)('%s: %s names no unit type (%s)', ([file, fn]) => {
