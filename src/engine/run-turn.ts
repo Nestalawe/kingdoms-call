@@ -1,12 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng, kcRngStream } from './rng.ts';
-import { migrateLegacyUnitNames } from './army-tables.ts';
-import { retireCorsairPools } from './grand-design.ts';
-import { backfillHomeRosters } from './world/tables.ts';
+import { upgradeGameState } from './saves/upgrade-a-saved-game-and-check-it.ts';
 import { seedUsedHeroNames } from './names.ts';
 import { ensureAllLairHoards } from './items/lair-items.ts';
-import { migrateItemTiers } from './items/equipment.ts';
-import { migrateMaxHpV2, retireDiscoveries } from './heroes/skills-and-hp.ts';
 import { d100, seedUsedArmyNames } from './dice-and-army-names.ts';
 import { isBotRow } from './bots/setup.ts';
 import { botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim } from './bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts';
@@ -89,15 +85,12 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     }
   };
   return onTheTurnsDice(() => {
+    let whatTheSavesUpgradeFound;
     try {
       G = typeof G === 'string' ? JSON.parse(G) : G;
       seedUsedArmyNames(G);
       seedUsedHeroNames(G);
-      migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
-      backfillHomeRosters(G); // home provinces recruit the king's full racial land roster
-      retireCorsairPools(G); // 2026-10-15 (D3): no province offers the retired Corsair Fleet
-      retireDiscoveries(G); // strip retired Sage discovery ids (sd34) from live saves
-      migrateLegacyUnitNames(G); // pre-2026.09.06 unit-type strings → current names (idempotent)
+      whatTheSavesUpgradeFound = upgradeGameState(G); // the save brought up to date (engine/saves/, plan P1-15a)
       snapshotHeldItems(G); // remember every pack as it stands NOW, so the report can mark what was gained this turn
       lastTurnsBattleAndDuelSwordsClearedFromTheMap(G); // the save still holds last turn's crossed swords on the map
     } catch (e) {
@@ -107,6 +100,9 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // ── THE TURN'S CONTEXT (plan P1-08a) ── what the helpers lifted out of resolveTurn read: the state, the log
     // and its collectors, the phase being resolved. They take it first (src/engine/turn/context.ts).
     const turnContext = createTurnContext(G, freshPlayers, expectedTurnToRun);
+    // what the save's upgrade found (a retired discovery taken, a hero carried over to the earned-HP pool): the turn's
+    // end tells the GM and the realms, and the save keeps none of it
+    turnContext.whatTheSavesUpgradeFound = whatTheSavesUpgradeFound;
     // ── MERCENARY BAND IDS (P1-18b, 2026-10-18) ── a band made this turn is `merc_t<turn>_<n>`, counted
     // afresh each turn: no clock and no dice, so the turn's dice don't depend on how many bands it makes.
     // The `merc_` prefix is what the hire code tests for, and an older save's `merc_<ms>_<b36>` ids can't
@@ -160,7 +156,6 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // whose function declarations live in that block. A bot-pass failure therefore also restores the
     // players' orders.
 
-    migrateItemTiers(G); // re-stamp saved items with their tier under the four-tier scheme
     ensureAllLairHoards(G); // stocks any lair from a pre-hoard save (no-op afterwards)
 
     // 4. Run all 5 phases

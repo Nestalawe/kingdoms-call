@@ -996,11 +996,13 @@ uncleared lairs, held Sage discoveries, unit names. The engine reads those copie
 in `kingdoms-call-data.ts` changes new games only, unless a migration carries the change into running
 games.
 
-- **Migrations run at the start of every turn**, on the world `resolveTurn` has just read:
-  `migrateMaxHpV2` (which calls `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`
-  and `migrateLegacyUnitNames`, then `migrateItemTiers` and `ensureAllLairHoards` before the phases
-  resolve. `migrateHoardTally` runs wherever the find tally is read or written. A running game picks
-  up a change at its next turn.
+- **Migrations run at the start of every turn**, on the world `resolveTurn` has just read, in one place since P1-15a:
+  `upgradeGameState` (`src/engine/saves/upgrade-a-saved-game-and-check-it.ts`) runs `migrateMaxHpV2` (which calls
+  `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
+  `migrateLegacyUnitNames` and `migrateItemTiers`, in that order. A new pass goes there, draws no dice and writes no
+  line: what it has to tell the GM it returns, and the turn tells it ([ARCHITECTURE.md](ARCHITECTURE.md#a-saved-game-its-version-its-upgrade-its-check)).
+  `ensureAllLairHoards` still runs in the turn, after the merge of the orders (it draws dice). `migrateHoardTally` runs
+  wherever the find tally is read or written. A running game picks up a change at its next turn.
 - **Every migration runs on every turn**, not once, so it must be safe to repeat (idempotent).
 - **Guardians:** `migrateLairGuardiansV2` re-stats uncleared lairs from `MONSTERS_P`, by name, only
   when `GUARDIAN_TABLE_VER` is higher than the save's `_guardiansVer`. When you change a guardian's

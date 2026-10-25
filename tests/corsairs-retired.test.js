@@ -2,7 +2,7 @@
 // book or page a player reads names it either: the rulebooks' roster, move-rate table, ferry list and
 // retreat rule, the player portal's unit blurb and Human description, and Admiralty's text. In a game
 // already running, a province whose pool still offers Corsairs offers the Galleon Fleet instead
-// (retireCorsairPools, at the top of every turn); a Corsair company already raised keeps fighting as it
+// (retireCorsairPools, in the save's upgrade at the top of every turn); a Corsair company already raised keeps fighting as it
 // did. Letters of Marque, the Human discovery that only lifted Corsairs, now lifts the Galleon Fleet the same
 // way (+30% when attacking) until a full review of the discoveries (Toby, 2026-10-15).
 // Level 0 (static) for the words; level 1 (unit) for the migration: retireCorsairPools is a top-level function of
@@ -50,8 +50,10 @@ ok(/"effect":\{"kind":"unitStr","pct":0\.3,"types":\["Galleon Fleet"\],"side":"a
     ok(gs.characters[0].armies[0].type==='Corsair Fleet','a Corsair company already raised is kept');
     const before=JSON.stringify(gs); fn(gs); ok(JSON.stringify(gs)===before,'a second run changes nothing (it runs every turn)');
   }
-  const calls=pageScripts('kingdoms-call-gm-portal.html').flatMap(f=>callsTo(f,'retireCorsairPools'));
-  ok(calls.some(c=>c.within==='resolveTurn'&&c.args.join()==='G'),'runTurn calls retireCorsairPools on the loaded world');
+  // the turn passes the loaded world through the save's upgrade (plan P1-15a), which calls the pass on it
+  const calls=pageScripts('kingdoms-call-gm-portal.html').flatMap(f=>callsTo(f,'upgradeGameState'));
+  ok(calls.some(c=>c.within==='resolveTurn'&&c.args.join()==='G'),'runTurn passes the loaded world through the save\'s upgrade');
+  ok(callsTo('engine/saves/upgrade-a-saved-game-and-check-it.ts','retireCorsairPools').some(c=>c.within==='upgradeGameState'&&c.args.join()==='save'),'the save\'s upgrade calls retireCorsairPools on it');
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);
 }

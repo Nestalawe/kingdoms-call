@@ -10,13 +10,14 @@
 //   freshPlayers       the game's slot rows, as loaded
 //   expectedTurnToRun  the turn being run
 //   turnLog            the GM's log of the turn, which emit() fills (events-and-their-audiences.ts: the one door)
-// resolveTurn adds the rest as it reaches them: _mercIds, _tel, battleCommanders, fieldBattlePhase, _logCtx,
-// _currentPhase, _afterPhases, and more as each lifted area needs them (docs/ARCHITECTURE.md lists them). The lifted code keeps resolveTurn's two-space indent (plan P1-08's Decisions).
+// resolveTurn adds the rest as it reaches them: whatTheSavesUpgradeFound, _mercIds, _tel, battleCommanders,
+// fieldBattlePhase, _logCtx, _currentPhase, _afterPhases, and more as each lifted area needs them (docs/ARCHITECTURE.md lists them). The lifted code keeps resolveTurn's two-space indent (plan P1-08's Decisions).
 // TurnContext, below the function, is the context's type (plan P1-10a2); LogLine, the type of a line of the log, is the
 // events file's.
 import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { EventButItsWords, LogLine } from './events-and-their-audiences.ts';
+import type { WhatTheSavesUpgradeFound } from '../saves/upgrade-a-saved-game-and-check-it.ts';
 
 export function createTurnContext(G, freshPlayers, expectedTurnToRun) {
   return { G, freshPlayers, expectedTurnToRun, turnLog: [] };
@@ -171,4 +172,6 @@ export interface TurnContext {
   _botPlayerIdx: Set<number>;
   /** The rivals each bot realm had identified when the turn began, by realm. */
   _botEncounteredAtStart: Record<number, number[]>;
+  /** What the save's upgrade found as the turn began (src/engine/saves/), told at the turn's end. */
+  whatTheSavesUpgradeFound: WhatTheSavesUpgradeFound;
 }

@@ -458,8 +458,8 @@ export const _VARIANT_EPITHETS = [
 
 // Items already sitting in a save carry whatever tier they were given when they were rolled.
 // Re-stamp them from the master table by name on load, so a relic won three turns ago still scores
-// as legendary and a Weak find still reads as Weak. Runs beside ensureAllLairHoards at the head of
-// every turn.
+// as legendary and a Weak find still reads as Weak. Runs in the save's upgrade at the head of every
+// turn (engine/saves/upgrade-a-saved-game-and-check-it.ts, plan P1-15a).
 export function migrateItemTiers(gs) {
   if (!gs) return;
   const byName = new Map();

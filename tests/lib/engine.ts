@@ -160,7 +160,7 @@ export function engineFn(engine: vm.Context, name: string): (...args: never[]) =
  *  resolveTurn declares it: no hero has move points yet, no battle has been numbered, no skill rise is held back, no
  *  realm is watching by Clairvoyance, nobody has been seen in a phase yet, and the reports aren't built; the bot realms
  *  are the slot rows that are bots' (P1-08e); no province has been entered this phase and no distance measured
- *  (P1-08i1); the Defend step isn't open, no raised host waits for it, and no host stood on a war front (P1-08i3); no hero has travelled light (P1-08j1); no realm has declared anything or called the Reckoning (P1-08k4); no order was refused as stale, no realm's declarations refused for the Safe Start, no research choice picked and no message sent (P1-08k7). Give it a state as an object or as JSON. */
+ *  (P1-08i1); the Defend step isn't open, no raised host waits for it, and no host stood on a war front (P1-08i3); no hero has travelled light (P1-08j1); no realm has declared anything or called the Reckoning (P1-08k4); no order was refused as stale, no realm's declarations refused for the Safe Start, no research choice picked and no message sent (P1-08k7); the save's upgrade found nothing to tell (P1-15a). Give it a state as an object or as JSON. */
 export function turnContext(
   engine: vm.Context,
   state: object | string,
