@@ -89,17 +89,23 @@ test('the registry holds each effect once, in the order of its stage, and each c
 test.for([
   [
     'an entry left out of its order',
-    { strength: { ...ORDERS['strength'], 'the whole force': THE_WHOLE_FORCE.filter((s) => s !== 'wyrmscale') } },
+    {
+      ...ORDERS,
+      strength: { ...ORDERS['strength'], 'the whole force': THE_WHOLE_FORCE.filter((s) => s !== 'wyrmscale') },
+    },
     ['wyrmscale is in the order of strength: the whole force 0 times'],
   ],
   [
     'an entry named twice in its order',
-    { strength: { ...ORDERS['strength'], 'the whole force': [...THE_WHOLE_FORCE, 'reaver-crews'] } },
+    { ...ORDERS, strength: { ...ORDERS['strength'], 'the whole force': [...THE_WHOLE_FORCE, 'reaver-crews'] } },
     ['reaver-crews is in the order of strength: the whole force 2 times'],
   ],
   [
     'an order naming an entry with no effect at its stage',
-    { strength: { ...ORDERS['strength'], 'what a unit does to the unit it meets': [...MEETS, 'wyrmscale'] } },
+    {
+      ...ORDERS,
+      strength: { ...ORDERS['strength'], 'what a unit does to the unit it meets': [...MEETS, 'wyrmscale'] },
+    },
     ['the order of strength: what a unit does to the unit it meets names wyrmscale, which has no effect there'],
   ],
 ] as const)('planted, %s, is found', ([, orders, found]) => {
