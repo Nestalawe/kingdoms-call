@@ -32,7 +32,7 @@ export function spreadTerror(
   const targets = [battleProv, ...getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)];
   const seen = new Set<number>();
   targets.forEach((tp) => {
-    if (!tp || seen.has(tp.id)) return;
+    if (seen.has(tp.id)) return;
     seen.add(tp.id);
     tp._terrorStacks = Math.min(TERROR_MAX_STACKS, (tp._terrorStacks || 0) + 1);
     tp._terrorTurn = G.turn;
@@ -41,7 +41,7 @@ export function spreadTerror(
   });
   if (narrative) {
     const adjNames = getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)
-      .map((n) => n && n.name)
+      .map((n) => n.name)
       .filter(Boolean);
     narrate(narrative, {
       kind: 'terror radiates from a province after an evil victory',

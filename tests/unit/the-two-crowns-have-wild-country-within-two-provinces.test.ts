@@ -64,6 +64,8 @@ async function theEngineIn(src: string): Promise<TheEngine> {
 
 interface Province {
   id: number;
+  row: number;
+  col: number;
   name: string;
   terrain: string;
   race?: string;

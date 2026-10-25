@@ -139,6 +139,8 @@ export const ArmySchema = z.object({
   _terrorMult: z.number().optional(),
   // an illusory unit (Illusory magic's phantom troops)
   _phantom: z.boolean().optional(),
+  // (P1-10b5: read by Wraith's Touch) a company of Wraiths raised by Raise Wraiths
+  _isWraith: z.boolean().optional(),
 });
 export type Army = z.infer<typeof ArmySchema>;
 

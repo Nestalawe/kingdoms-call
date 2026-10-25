@@ -29,7 +29,7 @@ export function provDistance(
     for (const p of frontier) {
       if (!p) continue;
       for (const nb of getNeighborsP(p, G.world.cols, G.world.rows, G.world.provinces)) {
-        if (!nb || seen.has(nb.id)) continue;
+        if (seen.has(nb.id)) continue;
         seen.add(nb.id);
         if (nb.id === toId) {
           _distCache.set(key, d);
@@ -123,7 +123,7 @@ export function stepTowardPath(
     const next = [];
     for (const e of frontier) {
       for (const nb of getNeighborsP(e.p, G.world.cols, G.world.rows, G.world.provinces)) {
-        if (!nb || seen.has(nb.id) || !passable(nb) || !edgeOk(e.p, nb)) continue;
+        if (seen.has(nb.id) || !passable(nb) || !edgeOk(e.p, nb)) continue;
         seen.add(nb.id);
         next.push({ p: nb, first: e.first });
       }

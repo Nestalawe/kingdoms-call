@@ -1,6 +1,9 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { SKILL_MAX } from '../army-tables.ts';
+import type { Character, Item } from '../../schemas/saved-game-state.ts';
+
+// A hero's title-merit counters (TM, below).
+type TitleMeritCounters = NonNullable<Character['tm']>;
 
 // ── BUILD PLAYER TURN REPORT ────
 // ══ VICTORY & TITLES (KC Reckoning system) — see KC-design-victory-and-titles.md ════
@@ -8,21 +11,20 @@ import { SKILL_MAX } from '../army-tables.ts';
 // four new accumulators. `TM` is ensured LAZILY, so a character created before
 // this build has a `tm` object without the new keys \u2014 every read therefore uses `||0` rather than
 // trusting the shape, and every write uses `=(x||0)+n`. Do not "tidy" those into bare `+=`.
-export function TM(c) {
-  if (!c.tm)
-    c.tm = {
-      marshal: 0,
-      sea: 0,
-      monster: 0,
-      holyCasts: 0,
-      darkCasts: 0,
-      featuresFound: 0,
-      discoveries: 0,
-      spyActions: 0,
-      explored: 0,
-      monsterHost: 0,
-      wildHost: 0,
-    };
+export function TM(c: Pick<Character, 'tm'>): TitleMeritCounters {
+  c.tm ??= {
+    marshal: 0,
+    sea: 0,
+    monster: 0,
+    holyCasts: 0,
+    darkCasts: 0,
+    featuresFound: 0,
+    discoveries: 0,
+    spyActions: 0,
+    explored: 0,
+    monsterHost: 0,
+    wildHost: 0,
+  };
   return c.tm;
 }
 
@@ -43,11 +45,33 @@ export const TITLE_MONSTER_ARMIES = new Set(KC_UNIT_CLASS.monster);
 // turn, and a ledger that resolved ids late would print "undefined" for exactly the most
 // interesting entries. `byPi` is kept alongside so the line can still say which crown the agent
 // serves.
-export function noteEspionage(G, c, provId, kind) {
+// One entry of the Spymaster's ledger as it is written: `byPi` is null for an agent who serves no realm.
+interface EspionageNote {
+  byPi: number | null;
+  charId: number;
+  charName: string;
+  isKing: boolean;
+  provId: number;
+  kind: string;
+}
+export function noteEspionage(
+  G: { _espionageLedger?: EspionageNote[] | undefined } | null | undefined,
+  c:
+    | {
+        readonly player: number | null;
+        readonly id: number;
+        readonly name: string;
+        readonly isKing?: boolean | undefined;
+      }
+    | null
+    | undefined,
+  provId: number | null | undefined,
+  kind: string,
+) {
   if (!G || !c || provId == null) return;
   try {
-    (G._espionageLedger = G._espionageLedger || []).push({
-      byPi: c.player != null ? c.player : null,
+    (G._espionageLedger ??= []).push({
+      byPi: c.player ?? null,
       charId: c.id,
       charName: c.name,
       isKing: !!c.isKing,
@@ -60,12 +84,20 @@ export function noteEspionage(G, c, provId, kind) {
 // exploring actually ADDED \u2014 the delta after the 100% clamp, never the raw roll, so grinding
 // Explore on a fully-charted province earns nothing. Raw points are stored; _charTitleMerit divides
 // by 10.
-export function creditMapped(c, before, after) {
-  const d = (after || 0) - (before || 0);
+export function creditMapped(
+  c: Pick<Character, 'tm'>,
+  before: number | null | undefined,
+  after: number | null | undefined,
+) {
+  const d = (Number(after) || 0) - (Number(before) || 0);
   if (d > 0) TM(c).explored = (TM(c).explored || 0) + d;
 }
 // Credit a muster or a victory to whichever beast title the unit belongs to. Safe on any object.
-export function creditBeastUnit(tmRec, unit, n) {
+export function creditBeastUnit(
+  tmRec: Pick<TitleMeritCounters, 'monsterHost' | 'wildHost'> | null | undefined,
+  unit: { readonly type: string } | null | undefined,
+  n: number,
+) {
   if (!tmRec || !unit) return;
   const t = unit.type;
   if (TITLE_MONSTER_ARMIES.has(t)) tmRec.monsterHost = (tmRec.monsterHost || 0) + (n || 1);
@@ -87,7 +119,7 @@ export const TITLE_PERKS_ENABLED = true; // live perks while a Title is held (fr
 // same point rather than jumping to catch up with the turn. All of it in INTEGER percentage points
 // — 0.40 - 0.05 in floats is 0.35000000000000003, and that class of drift has caused live bugs in
 // this engine before.
-export const RECKONING_BASE_PCT = { 2: 60, 3: 50, 4: 45, 5: 42 };
+export const RECKONING_BASE_PCT: Readonly<Record<number, number | undefined>> = { 2: 60, 3: 50, 4: 45, 5: 42 };
 export const RECKONING_DEFAULT_PCT = 40; // 6 or more realms
 export const RECKONING_DECAY_FROM_TURN = 15; // the first END-of-turn at which the bar may erode
 export const RECKONING_DECAY_STEP_PCT = 5; // percentage points shed per eroding turn
@@ -108,33 +140,33 @@ export const RECKONING_CALLER_MIN_FRAC = 0.5;
 // but never a cheaper one. Ceiling at RECKONING_CAP_PCT so a large bloc is not locked out forever —
 // and the war-weariness decay still erodes the base underneath it.
 export const RECKONING_CAP_PCT = 80; // no bloc ever needs more than this
-export function reckoningAllyStepPct(nPlayers) {
+export function reckoningAllyStepPct(nPlayers: number) {
   return Math.round(50 / Math.max(2, nPlayers | 0));
 }
 // no claim before this turn, whatever anyone's share. Titles go public at turn 5; the throne cannot
 // be claimed for another five turns after that, so an early runaway start cannot end the game
 // before the other realms have had a chance to build.
 export const RECKONING_MIN_TURN = 10;
-export function reckoningBasePct(nPlayers) {
-  return RECKONING_BASE_PCT[nPlayers] || RECKONING_DEFAULT_PCT;
+export function reckoningBasePct(nPlayers: number) {
+  return RECKONING_BASE_PCT[nPlayers] ?? RECKONING_DEFAULT_PCT;
 }
 // INTEGER percentage points throughout (see the note above RECKONING_BASE_PCT). `blocSize` is the
 // number of realms in the claimant's bloc, 1 for a solo claim; it defaults to 1 so an older caller
 // that has not been taught about blocs still gets the solo bar rather than NaN.
-export function reckoningThresholdPct(nPlayers, decaySteps, blocSize) {
-  const steps = Math.max(0, decaySteps | 0);
-  const k = Math.max(1, blocSize | 0 || 1);
+export function reckoningThresholdPct(nPlayers: number, decaySteps?: number | null, blocSize?: number | null) {
+  const steps = Math.max(0, Number(decaySteps) | 0);
+  const k = Math.max(1, Number(blocSize) | 0 || 1);
   const base = Math.max(RECKONING_FLOOR_PCT, reckoningBasePct(nPlayers) - RECKONING_DECAY_STEP_PCT * steps);
   return Math.min(RECKONING_CAP_PCT, base + reckoningAllyStepPct(nPlayers) * (k - 1));
 }
 // Fraction form, for the share comparisons. `decaySteps` defaults to 0, so any caller that has not
 // been taught about the decay still gets the undecayed base rather than NaN.
-export function reckoningThreshold(nPlayers, decaySteps, blocSize) {
+export function reckoningThreshold(nPlayers: number, decaySteps?: number | null, blocSize?: number | null) {
   return reckoningThresholdPct(nPlayers, decaySteps, blocSize) / 100;
 }
 // Steps read off a game state, wherever the state is called `G` or `gameState` or `state`.
-export function reckoningDecayOf(state) {
-  return (state && state.reckoningDecaySteps) | 0;
+export function reckoningDecayOf(state: { reckoningDecaySteps?: number | undefined } | null | undefined) {
+  return Number(state?.reckoningDecaySteps) | 0;
 }
 // THE ALIGNMENT TITLE BOOST IS WITHDRAWN. Every alignment now competes for every Imperial Title on
 // exactly the same terms. Toby's ruling: "all alignments should be the same." A quarter of a
@@ -161,35 +193,55 @@ export const _MAGIC_SCHOOLS = KC_MAGIC_SCHOOLS.slice();
 // items in older saves without an id still resolve.
 // A character created DURING the turn has no photograph; its items are treated as already held, so
 // a newly hired hero's own kit is never mislabelled.
-export function itemKeyOf(it) {
-  return it && it.id != null ? '#' + it.id : '@' + ((it && it.name) || '');
+// an item as these read it: a saved one, or one from an older save without an id
+type ItemAsTheseRead = Partial<Pick<Item, 'id' | 'name'>>;
+export function itemKeyOf(it: ItemAsTheseRead | null | undefined) {
+  return it?.id != null ? '#' + String(it.id) : '@' + (it?.name ?? '');
 }
-export function snapshotHeldItems(gs) {
-  ((gs && gs.characters) || []).forEach((c) => {
-    if (c) c._itemsAtTurnStart = (c.items || []).filter(Boolean).map(itemKeyOf);
+// a hero as the photograph reads him: his pack may be missing, or hold a gap
+type HeroWithAPack = Pick<Character, '_itemsAtTurnStart'> & {
+  readonly items?: readonly (ItemAsTheseRead | null | undefined)[] | null | undefined;
+};
+const isAnItem = (it: ItemAsTheseRead | null | undefined): it is ItemAsTheseRead => Boolean(it);
+export function snapshotHeldItems(
+  gs: { readonly characters?: readonly (HeroWithAPack | null | undefined)[] | null | undefined } | null | undefined,
+) {
+  (gs?.characters ?? []).forEach((c) => {
+    if (c) c._itemsAtTurnStart = (c.items ?? []).filter(isAnItem).map(itemKeyOf);
   });
 }
 // True when this character's photograph exists and does NOT contain the item.
-export function itemAcquiredThisTurn(c, it) {
+export function itemAcquiredThisTurn(
+  c: Pick<Character, '_itemsAtTurnStart'> | null | undefined,
+  it: ItemAsTheseRead | null | undefined,
+) {
   if (!c || !it || !Array.isArray(c._itemsAtTurnStart)) return false;
   return !c._itemsAtTurnStart.includes(itemKeyOf(it));
 }
 
-export function skillLevel(c, stat) {
-  return Math.max(0, Math.min(9, ((c && c.skills) || {})[stat] || 0));
+// a hero's skill levels as these read them, by any skill's name
+type SkillsAsTheseRead =
+  { skills?: Readonly<Record<string, number | undefined>> | null | undefined } | null | undefined;
+export function skillLevel(c: SkillsAsTheseRead, stat: string) {
+  return Math.max(0, Math.min(9, Number(c?.skills?.[stat]) || 0));
 }
-export function perkTier(c, stat) {
+export function perkTier(c: SkillsAsTheseRead, stat: string) {
   return Math.max(0, skillLevel(c, stat) - 5);
 }
 // 2026-09-26 (Toby item 3): the personal-combat ceiling. SKILL_MAX is the highest any skill can
 // reach, however it is reached — training, items, the Crown aura, minor titles, discoveries. Every
 // figure that feeds a duel's hit chance or damage roll passes through here, so no stack of bonuses
 // can print (or fight at) "Melee 11".
-export function pcSkillCap(v) {
-  return Math.max(0, Math.min(SKILL_MAX, Math.round(v || 0)));
+export function pcSkillCap(v: number | null | undefined) {
+  return Math.max(0, Math.min(SKILL_MAX, Math.round(Number(v) || 0)));
 }
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the kind of foe a personal fight is against. It reads no turn state.
-export function pcFoeCat(foe) {
-  return foe.cat || (foe.kind === 'character' ? (foe.isUndead ? 'undead' : 'humanoid') : 'beast');
+export function pcFoeCat(foe: {
+  readonly cat?: string | null | undefined;
+  readonly kind?: string | undefined;
+  readonly isUndead?: boolean | undefined;
+}) {
+  const cat = foe.cat ?? '';
+  return cat || (foe.kind === 'character' ? (foe.isUndead ? 'undead' : 'humanoid') : 'beast');
 }

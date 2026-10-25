@@ -59,7 +59,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   splits the engine's). The files that were JavaScript start with `// @ts-nocheck` and the reason (142 of 158 at the
   rename: strict TypeScript found errors in each); P1-10 and P1-16 type them. The ratchet counts the line in two, so
   each only falls: `tsNocheckEngineSide` (the engine's side: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`,
-  `src/content/`, `src/schemas/`, `src/shared/`; 89, P1-10b's) and `tsNocheckUi` (every other file: the UI's pages and
+  `src/content/`, `src/schemas/`, `src/shared/`; 83, P1-10b's) and `tsNocheckUi` (every other file: the UI's pages and
   `src/rulebook/`; 34, P1-16's).
   A new file is checked from the start. `src/globals.d.ts` declares what the modules read without importing it:
   `KC_CONFIG` and `supabase` (the pages' classic scripts), `KC_RNG_SEED` (the tests' seed) and each page's declared
@@ -80,8 +80,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   parses a whole matrix game's states and orders. They type the 14 files of the engine's side that pass strict
   TypeScript with annotations alone (P1-10a3: the dice, the routes, the ladder, the visibility rule, the battle report's
   lines and more; the list is in P1-10a3's pull request), the three P1-10b2 freed (`army-tables.ts`,
-  `units/movement.ts`, `battle/strength.ts`), the one P1-10b3 freed (`battle/fates.ts`) and the one P1-10b4 freed
-  (`battle/lines.ts`). The other 89 of those 108 files still say `@ts-nocheck`:
+  `units/movement.ts`, `battle/strength.ts`), the one P1-10b3 freed (`battle/fates.ts`), the one P1-10b4 freed
+  (`battle/lines.ts`) and the six P1-10b5 freed (`battle/fortune.ts`, `grand-design.ts`, `names.ts`, `titles/perks.ts`,
+  `world/map-helpers.ts`, `heroes/charms-and-neutrals.ts`). The other 83 of those 108 files still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](traps.md#ts-nocheck-checks-nothing-in-the-file)).
 - **The content's and the engine's own types** (P1-10a2), types only, so no file the build makes changes with them:

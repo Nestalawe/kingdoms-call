@@ -27,7 +27,7 @@ export function nearSpiedProvIds(gs: GameState, spiedIds: Set<number>) {
     const p = P[id];
     if (!p) return;
     getNeighborsP(p, W.cols, W.rows, P).forEach((n) => {
-      if (n && !spiedIds.has(n.id)) out.add(n.id);
+      if (!spiedIds.has(n.id)) out.add(n.id);
     });
   });
   return out;
