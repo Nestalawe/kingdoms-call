@@ -107,15 +107,6 @@ const siteRules = {
 const typedSets = atError([...tseslint.configs.strictTypeChecked, ...tseslint.configs.stylisticTypeChecked]);
 const typedRules = { '@typescript-eslint/non-nullable-type-assertion-style': 'off' };
 const projectService = { parserOptions: { projectService: true, tsconfigRootDir: __dirname } };
-// The three type assertions src/ held when the rule came in (P1-11a3 wrote them, for reads TypeScript can't follow
-// without a statement changed: a table read by any name, a key that may be missing, the first of a list that is never
-// empty). P1-10b replaces each with a check, and this list goes; tests/static/harness.test.ts checks that it only
-// shrinks and that each file holds just its one.
-const TYPE_ASSERTIONS_KEPT = [
-  'src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts',
-  'src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts',
-  'src/engine/rules-on-plain-values/unit-types-and-base-strength.ts',
-];
 
 // The engine's purity (above): the names src/engine/, src/views/, src/content/, src/shared/ and src/schemas/ may not
 // read, each with what to do instead. `except` names the ones a reviewed exception reads.
@@ -260,10 +251,6 @@ module.exports = defineConfig(
   {
     files: ['src/engine/clock.ts'],
     rules: { 'no-restricted-globals': pureGlobals(['Date']) },
-  },
-  {
-    files: TYPE_ASSERTIONS_KEPT,
-    rules: { '@typescript-eslint/consistent-type-assertions': 'off' },
   },
   {
     // TypeScript's form for a global variable is `declare var`: with `let` or `const`, globalThis.<name> (how a page's

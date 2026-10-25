@@ -38,6 +38,40 @@ function files(): string[] {
 
 const lines = (text: string, re: RegExp) => text.split('\n').filter((l) => re.test(l)).length;
 
+// The ts-nocheck line is counted in two (plan P1-10, Decision 9; P1-10b's Decision 5), so that the engine's side can
+// reach 0 (P1-10b) before the UI's (P1-16): tsNocheckEngineSide, the files of the folders below, which the engine runs
+// on or the player portal shares; tsNocheckUi, every other file (src/ui/'s pages, src/rulebook/, tests/, tools/).
+export const ENGINE_SIDE_FOLDERS = [
+  'src/engine/',
+  'src/views/',
+  'src/db/',
+  'src/ui/shared/',
+  'src/content/',
+  'src/schemas/',
+  'src/shared/',
+] as const;
+const onTheEngineSide = (file: string) => ENGINE_SIDE_FOLDERS.some((folder) => file.startsWith(folder));
+
+/** The counts read from the code files' text (the ts-nocheck lines in their two counts, the other switch-offs, and the
+ *  tests on the database stand-in), for the files given as [path from the repository's root, text]. */
+export function countsFromTheCodeFiles(codeFiles: readonly (readonly [file: string, text: string])[]): Counts {
+  const counts = { tsNocheckEngineSide: 0, tsNocheckUi: 0, tsIgnore: 0, eslintDisable: 0, stubDbTests: 0 };
+  for (const [f, text] of codeFiles) {
+    if (!CODE.test(f)) continue;
+    if (onTheEngineSide(f)) counts.tsNocheckEngineSide += lines(text, NOCHECK);
+    else counts.tsNocheckUi += lines(text, NOCHECK);
+    counts.tsIgnore += lines(text, TS_IGNORE);
+    counts.eslintDisable += lines(text, ESLINT_DISABLE);
+    if (f.startsWith('tests/') && !f.startsWith('tests/lib/stub-db.') && STUB_DB.test(text)) counts.stubDbTests++;
+  }
+  return counts;
+}
+
+/** The code files git knows, each with its text, as countsFromTheCodeFiles reads them. */
+export function theCodeFiles(all = files()): [file: string, text: string][] {
+  return all.filter((f) => CODE.test(f)).map((f) => [f, fs.readFileSync(path.join(ROOT, f), 'utf8')]);
+}
+
 // The engine's loader (plan P1-09, Decision 11): the engine's bundle run in a vm. P1-14 moves its tests to importing
 // the engine's modules directly, so the number of test files that reach it, themselves or through a helper of
 // tests/, only falls.
@@ -137,17 +171,8 @@ export function unusedCode(root = ROOT): number {
 
 export function measure(): Counts {
   const all = files();
-  const code = all.filter((f) => CODE.test(f));
-  const counts = { tsNocheck: 0, tsIgnore: 0, eslintDisable: 0, stubDbTests: 0 };
-  for (const f of code) {
-    const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    counts.tsNocheck += lines(text, NOCHECK);
-    counts.tsIgnore += lines(text, TS_IGNORE);
-    counts.eslintDisable += lines(text, ESLINT_DISABLE);
-    if (f.startsWith('tests/') && !f.startsWith('tests/lib/stub-db.') && STUB_DB.test(text)) counts.stubDbTests++;
-  }
   return {
-    ...counts,
+    ...countsFromTheCodeFiles(theCodeFiles(all)),
     allowlistEntries: ALLOWLISTS.reduce((n, a) => n + allowlistLength(a.file, a.name), 0),
     javascriptFiles: all.filter((f) => /\.(js|mjs|cjs)$/.test(f) && !/^(src|public)\//.test(f)).length,
     // The site's own code, inline in its pages until P1-05 split it into src/ (so it wasn't counted before then). Since

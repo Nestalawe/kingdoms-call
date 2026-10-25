@@ -81,7 +81,8 @@ export function itemSlot(it: ItemOfTheseRules | null | undefined): string | null
   if (it.effect && it.effect.stat === 'combatUse') return 'combat'; // every other potion, scroll or device is a COMBAT ITEM and takes a Combat Item slot (two per character). This test runs BEFORE `it.slot` is read, so items saved with the old inline slot:'consumable' re-resolve here with no migration.
   if (it.effect && it.effect.stat === 'mithrilArmour') return 'armour'; // Mithril is worn in the armour slot // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
   if (it.slot !== undefined) return it.slot || null;
-  return ITEM_SLOT_OF[it.name] || ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name] as string] || null;
+  const altBase = _ITEM_ALT_BASE[it.name]; // the item's base name, when this is its second name
+  return ITEM_SLOT_OF[it.name] || (altBase === undefined ? undefined : ITEM_SLOT_OF[altBase]) || null;
 }
 
 // Which race / alignment an item is bound to, if any; an item a character cannot use is inert in
