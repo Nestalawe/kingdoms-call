@@ -279,9 +279,9 @@ src_ui_leaderboard_-->src_db_
 src_ui_leaderboard_-->src_ui_shared_
 src_ui_overlord_-->src_db_
 src_ui_overlord_-->src_ui_shared_
+src_ui_player_-->src_content_
 src_ui_player_-->src_ui_shared_
 src_ui_player_-->src_shared_
-src_ui_player_-->src_content_
 src_ui_player_-->src_db_
 src_views_-->src_engine_
 src_views_-->src_content_
@@ -347,7 +347,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   `src/content/unit-abilities-their-names-numbers-and-words.ts`; its effect in the stage's file under
   `src/engine/rules/unit-abilities/`, reading its numbers from its row (another ability is asked by its slug, never by a
   unit's name); its entry in the registry and its place in the stage's order; its name and numbers in the unit's blurb
-  and its roster row (the words test reads them). The hook points' types live in the registry's file, which holds code:
+  (`UNIT_ABILITIES`, in the same content file since P1-19e: the player portal imports it, and the player page's entry
+  lists the file so that the words tests read it as the page's) and its roster row (the words test reads them). The hook points' types live in the registry's file, which holds code:
   a file only `import type` reaches is in no bundle ([traps.md](traps.md#an-effect-reads-only-what-its-hook-hands-it)).
 
 ## The pages (`site/`)

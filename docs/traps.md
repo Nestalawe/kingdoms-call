@@ -805,7 +805,8 @@ Guard", one missing from a terrain block fights at ×1 there. When adding (or re
 - GM portal: `ARMY_COST_MASTER`, `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
   `'Orc Garrison':'Orcish'};` as its last entry: a test slices the source up to it), `DISC_CLS_SETS`,
   `TERRAIN_MODS` (`engine/battle/terrain-and-unit-strength.ts`) and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
-- Player portal: `UNIT_ABILITIES` and the race blurbs. Rulebook: the roster, home-roster, move-rate and
+- `src/content/unit-abilities-their-names-numbers-and-words.ts`: the unit's blurb in `UNIT_ABILITIES` (the player
+  portal shows it). Player portal: the race blurbs. Rulebook: the roster, home-roster, move-rate and
   kinds-of-unit tables and the light-foot list. The intro's list of kinds.
 
 Add the unit to `tests/lib/roster-decided.js` first: `tests/roster.test.js` and `tests/roster-words.test.js`
@@ -848,9 +849,10 @@ a garrison for exactly this reason. World generation's prosperous-seas pool is `
 
 ## A unit ability is written in four places
 
-Every humanoid land unit has two abilities: a matchup and one more. Each lives in the engine, in the
-player portal's blurb, in the rulebook's roster row, and in the battle report's `why` text, and the
-engine itself keeps them in several places by kind:
+Every humanoid land unit has two abilities: a matchup and one more. Each lives in the engine, in the unit's
+blurb (`UNIT_ABILITIES`, which the player portal shows; since P1-19e in the content file below, beside the rows), in
+the rulebook's roster row, and in the battle report's `why` text, and the engine itself keeps them in several places
+by kind:
 
 - a matchup on the battle grid: the registry's four stages of facing, which `abilityFront` (front line) and
   `abilityBack` (the second line shooting) ask, and its six stages of the whole line (side hits, Shieldwall, Sergeants,
@@ -875,17 +877,20 @@ Points, Volley at the Charge, Marksmen, Armour-Piercing, Bombard and Arrow Fodde
 the engine does; the books name only the Human Garrison, a question for Toby), Shieldwall, Town
 Watch, Sergeants, Driven Before Them, Terror From Above, Dive on the Bowmen, Storm Wings, Battering Horns and Flak
 Gunners; and the two of a unit's fate after the battle (P1-19d), Regenerating Hide and Knightly Example. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
-numbers), its effect in a file of `src/engine/rules/unit-abilities/` and its entry in the registry, in its stage's order;
+numbers, in the same file as its unit's blurb), its effect in a file of `src/engine/rules/unit-abilities/` and its entry in the registry, in its stage's order;
 `tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts` checks its name and numbers in both books
 from its row (an ability the books give no number, Rooted for one, is listed there and its name checked). Change a
-number in its row and in both books. **Still inline**: every other ability, in the places above (the family's second
+number in its row and in both books (the blurb a few hundred lines below it, the rulebook by hand). **Still inline**: every other ability, in the places above (the family's second
 slice: the volley, the grid's flank slots, the rout, the pre-battle strikes, the turn hooks).
 
 `tests/abilities-words.test.js` holds the table of names of the abilities still inline and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and
-`tests/abilities-turn.test.js` the turn hooks. Add a new ability to the words table first. In the player portal's
-`UNIT_ABILITIES` a unit may appear **once**: an object literal keeps the last key, so a second entry silently
-replaces the first (the words test checks).
+`tests/abilities-turn.test.js` the turn hooks. Add a new ability to the words table first. In
+`UNIT_ABILITIES` a unit may appear **once**: an object literal keeps the last key, so a second entry would silently
+replace the first. Since P1-19e the blurbs are in a typed file, so a second entry fails `npm run typecheck` (TS1117),
+and the words test checks too. The words tests find the blurbs as the player page's because its entry
+(`src/ui/player/page.ts`) lists the content file: keep that import, or `fileDeclaring(PLAYER, 'UNIT_ABILITIES')`
+finds no file.
 
 The beasts' abilities (2026-10-13) live in the same places, with `tests/primal-abilities-words.test.js` for the
 names and `tests/abilities-beasts.test.js` / `tests/abilities-beasts-turn.test.js` for the numbers, plus three
