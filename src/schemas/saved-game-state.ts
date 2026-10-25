@@ -8,7 +8,8 @@
 // is optional where some states lack it and nullable where one holds null.
 //
 // What the matrix never writes isn't here yet: a field only some code reads, or an array the matrix holds only empty
-// (`z.unknown()` for its element). P1-10a3 and P1-10b add the fields each file they type reads.
+// (`z.unknown()` for its element). P1-10a3 and P1-10b add the fields each file they type reads; P1-15b the fields live
+// saves hold that the matrix's never do (the player portal's hero order, the GM page's fields, the marks the code keeps).
 //
 // Objects are z.object, so a type has exactly the keys named and a misspelt field fails to compile. Parsing with them
 // drops a key they don't name; the tests parse strictly (tests/lib/strict-schema.ts), so an unnamed key fails there.
@@ -303,6 +304,16 @@ export const CharacterSchema = z.object({
   _vanishTurn: z.number().optional(),
   // the turn the hero ordered a Feigned Retreat (Tactical 7)
   _feignedRetreatTurn: z.number().optional(),
+  // Fields live saves hold that the matrix's never do, each kept by its writer (P1-15b)
+  // the turn Mass Confusion took the commander's Tactical for his next battle
+  _massConfusedTurn: z.number().optional(),
+  // each mastery spell (a school's spells of level 7 and 9) the hero worked, and the turn: each once a turn
+  _masterySpellUsed: z.record(z.string(), z.number()).optional(),
+  // the turn a realm released the hero into the wilds
+  _releasedTurn: z.number().optional(),
+  // Veil (Illusory 9): the turn and the phase the hero drew it, hidden for that phase and the next
+  _veilTurn: z.number().optional(),
+  _veilCastPhase: z.number().optional(),
 });
 export type Character = z.infer<typeof CharacterSchema>;
 
@@ -379,6 +390,10 @@ export const ProvinceSchema = z.object({
       // Fields the matrix's states don't hold, written by the code (P1-10a3: each read by a file freed of ts-nocheck)
       // a feature found before discoveries were kept by realm (an old save): every realm keeps it
       _legacyAll: z.boolean().optional(),
+      // Fields live saves hold that the matrix's never do, each kept by its writer (P1-15b)
+      // a lair hidden by Hide Lairs, and the realm that hid it, until it fades (20% a turn)
+      _hidden: z.boolean().optional(),
+      _hiddenBy: z.number().optional(),
     }),
   ),
   npcArmies: z.number(),
@@ -426,6 +441,14 @@ export const ProvinceSchema = z.object({
   _enslavedUntil: z.number().optional(),
   // (P1-12b5) the tax an earthquake still takes from the province
   _earthquakeTax: z.number().optional(),
+  // Fields live saves hold that the matrix's never do, each kept by its writer (P1-15b)
+  // neutral defenders whose guard fell in a duel, fighting on unled until the province is taken
+  _leaderlessDefenders: z.boolean().optional(),
+  // Sanctuary (White 7): the turn the province was warded, and the realm that warded it
+  _sanctuaryTurn: z.number().optional(),
+  _sanctuaryBy: z.number().optional(),
+  // Cataclysm: the province's tax ruined for good
+  _taxDestroyed: z.boolean().optional(),
 });
 export type Province = z.infer<typeof ProvinceSchema>;
 /** A province's feature: a lair, a ruin, a ritual site. */
@@ -611,6 +634,12 @@ export const RealmSchema = z.object({
   botGrudges: z.array(z.number()).optional(),
   // a rival realm → the turn the bot let its grudge rest (the matrix holds it only empty)
   _botGrudgeTruce: z.record(z.string(), z.number()).optional(),
+  // Fields live saves hold that the matrix's never do, each kept by its writer (P1-15b)
+  // the order of the realm's heroes on the player portal, as ids in text: the portal sends it with every submission
+  // and the merge keeps it (the matrix's scripted realm never sends one)
+  heroOrder: z.array(z.string()).optional(),
+  // a realm the GM removed from the game in play (the GM page's removePlayer): it concedes
+  _gmRemoved: z.boolean().optional(),
 });
 export type Realm = z.infer<typeof RealmSchema>;
 
@@ -876,6 +905,16 @@ export const GameStateSchema = z.object({
       }),
     )
     .optional(),
+  // Fields live saves hold that the matrix's never do, each kept by its writer (P1-15b)
+  // each Philosopher's Stone worked and gone from the world: its name, the turn, the hero and his realm
+  _destroyedItems: z
+    .array(z.object({ name: z.string(), turn: z.number(), by: z.string(), player: z.number() }))
+    .optional(),
+  // the realms the GM removed since the last turn (the GM page's removePlayer); the next turn tells and clears them
+  _gmRemovedRealms: z.array(z.number()).optional(),
+  // a game the GM put away (the GM page's setGameArchived), and when, as an ISO time; restoring it clears both
+  archived: z.boolean().optional(),
+  archivedAt: z.string().optional(),
 });
 export type GameState = z.infer<typeof GameStateSchema>;
 /** A Title's key (`throne`, `vault`, …) and a minor title's (`duelist`, …), as the turn keeps their holders. */
