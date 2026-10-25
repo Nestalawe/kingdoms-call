@@ -12,8 +12,10 @@ export const REWRITE_COMMAND = 'npx tsx tools/module-map.ts --write';
 const START = `<!-- The module map: generated from the imports by ${REWRITE_COMMAND}. Don't edit it by hand. -->`;
 const END = '<!-- End of the module map. -->';
 
-// One box a folder: the engine's rules on plain values apart from the rest of the engine, each page's code apart.
-const FOLDERS = '^src/(engine/rules-on-plain-values|engine|views|content|shared|schemas|db|ui/[^/]+|rulebook)/';
+// One box a folder: the engine's rules on plain values and its rule registry apart from the rest of the engine, each
+// page's code apart.
+const FOLDERS =
+  '^src/(engine/rules-on-plain-values|engine/rules|engine|views|content|shared|schemas|db|ui/[^/]+|rulebook)/';
 
 /** The Mermaid flowchart of src/'s folders and the imports between them, as dependency-cruiser draws it. */
 export function moduleMap(root = ROOT): string {

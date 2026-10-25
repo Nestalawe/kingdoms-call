@@ -165,6 +165,9 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
 - **`content/`** (the data file) imports nothing.
 - **`engine/`** imports only `engine/` and `content/`; **`engine/rules-on-plain-values/`**, the rules the player portal
   shares, only itself and `content/`.
+- **`engine/rules/`**, the rule registry ([below](#the-rule-registry)), imports only itself,
+  `engine/rules-on-plain-values/` and `content/`: an effect reaches the dice, the turn's state or a report only through
+  what its stage hands it (P1-19a).
 - **`views/`** imports only `views/`, `engine/` and `content/`; **`shared/`** only `shared/`, `views/`,
   `engine/rules-on-plain-values/` and `content/`.
 - **`schemas/`** holds types only: any folder may import it with `import type` (TypeScript erases it), and none another
@@ -220,6 +223,9 @@ subgraph src["src"]
     subgraph src_engine_rules_on_plain_values["rules-on-plain-values"]
       src_engine_rules_on_plain_values_[" "]
     end
+    subgraph src_engine_rules["rules"]
+      src_engine_rules_[" "]
+    end
   end
   subgraph src_rulebook["rulebook"]
     src_rulebook_[" "]
@@ -259,7 +265,9 @@ src_db_-->src_engine_
 src_engine_-->src_content_
 src_engine_-->src_engine_rules_on_plain_values_
 src_engine_-->src_schemas_
+src_engine_-->src_engine_rules_
 src_engine_rules_on_plain_values_-->src_content_
+src_engine_rules_-->src_content_
 src_shared_-->src_engine_rules_on_plain_values_
 src_ui_gm_-->src_content_
 src_ui_gm_-->src_db_
@@ -282,6 +290,42 @@ src_views_-->src_schemas_
 ```
 
 <!-- End of the module map. -->
+
+## The rule registry
+
+A **content effect** (today, a unit ability; then items, discoveries, spells, guardian perks and alignment orders, P1-19)
+is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
+books write them, and the units it counts or reaches when more than its own) and **one entry in the registry**
+(`src/engine/rules/the-registry-of-content-effects.ts`), keyed by the same slug (`'sheer-numbers'`). The entry names the
+ability's **effect** at each **stage** it acts in; the effects are in `src/engine/rules/<family>/`, a file per group of
+stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, and asks the stage's **runner**.
+
+- **Hook points** are the engine's real decisions, nine of them: `strength`, `volley`, `fate`, `movementCost`,
+  `orderValidity`, `experience`, `visibility`, `turnStart`, `turnEnd` (the union `HookPointName`). Each is a set of named
+  stages, in the order the engine runs them (`TheStagesOfEachHookPoint`). A stage's effect type says exactly what the
+  stage hands the effect, read-only, and what it returns; an effect changes nothing (the turn hooks will be the one
+  exception). A stage or a hook point typed `never` has no signature yet: its family's first row writes it, and an entry
+  on it fails to compile meanwhile.
+- **Within a stage, the effects run in the order its list gives** (`THE_ORDER_OF_EACH_STAGE`), not by a number: a product
+  of decimals, and the ladder's words, depend on the order ([traps.md](traps.md#order-is-data)). The runner finds a unit's
+  effects by its type, from a `Map` built once from content as the file loads.
+- **The stages written so far** (P1-19a): `strength: the whole force`, the unit's factor from its force (in `armStr`,
+  through `unitAbilityMult`): Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
+  Deepwater Grasp, Wyrmscale and Air Superiority, in that order. The facing, the whole line and the fates follow
+  (P1-19b to d).
+- **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
+  content row with no entry fails, TS1360, an entry with no row too, TS2353:
+  `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its
+  stage's order once (`tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`); each row's
+  name and numbers in both books (`tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts`); no unit
+  type named in a function the registry has taken (`tests/static/the-resolvers-the-registry-has-taken-name-no-unit-type.test.ts`),
+  and, outside the registry, the ratchet's `unitNameChecksInEngine`, which only falls; the layer rule above.
+- **How to add an ability** of a stage already written: its row in
+  `src/content/unit-abilities-their-names-numbers-and-words.ts`; its effect in the stage's file under
+  `src/engine/rules/unit-abilities/`, reading its numbers from its row (another ability is asked by its slug, never by a
+  unit's name); its entry in the registry and its place in the stage's order; its name and numbers in the unit's blurb
+  and its roster row (the words test reads them). The hook points' types live in the registry's file, which holds code:
+  a file only `import type` reaches is in no bundle ([traps.md](traps.md#an-effect-reads-only-what-its-hook-hands-it)).
 
 ## The pages (`site/`)
 
@@ -964,7 +1008,8 @@ TypeScript tests that import a changed file (`vitest related`), or every level b
 since the test scripts load `site/` (built from `src/`) by file name and `vitest related` can't follow that. `npm run ratchet`
 (`tools/ratchet.ts`) keeps the counts in `tests/ratchet.json` from rising: switched-off checks, allowlist entries,
 JavaScript files, quarantined tests, tests on `tests/lib/stub-db.js`, tests on the engine's `vm` loader
-(`vmLoaderTests`, P1-09d: P1-14 moves them to the engine's modules), ESLint's suppressed findings
+(`vmLoaderTests`, P1-09d: P1-14 moves them to the engine's modules), the engine's checks of a unit by its type's name
+outside the rule registry (`unitNameChecksInEngine`, P1-19a: each row of P1-19 lowers it), ESLint's suppressed findings
 (`eslintSuppressions`, P1-13b; the site's lint warnings, `eslintWarnings`, before it), the import rules' known violations (`knownArchitectureViolations`) and what knip finds unused (`unusedCode`,
 both P1-13a). `tests/static/harness.test.ts` fails if any
 of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a

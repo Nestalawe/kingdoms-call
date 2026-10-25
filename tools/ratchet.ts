@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
-// tests on the hand-written database stand-in, tests on the engine's vm loader, ESLint's suppressed findings, the
-// import rules' known violations and what knip finds unused) and fails if
+// tests on the hand-written database stand-in, tests on the engine's vm loader, the engine's checks of a unit by its
+// type's name, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { z } from 'zod';
+import { KC_UNIT_TYPE } from '../src/content/kingdoms-call-data.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const BASELINE_FILE = path.join(ROOT, 'tests', 'ratchet.json');
@@ -102,6 +103,74 @@ export function vmLoaderTests(all: string[]): number {
   return all.filter((f) => /^tests\/(?!quarantine\/).*\.test\.[jt]s$/.test(f) && reaches(f, new Set())).length;
 }
 
+// The engine's checks of a unit by its type's name (plan P1-19, Decision 7): a string naming a unit type of
+// KC_UNIT_TYPE that the code compares (===, !==, ==, !=, a case), looks up by (a table's ['…']) or passes to has,
+// get, includes or indexOf, counted by syntax tree in the files of src/engine/ outside src/engine/rules/. The rule
+// registry takes them out family by family (an effect asks its content row, by slug), so the count only falls.
+// tests/static/the-resolvers-the-registry-has-taken-name-no-unit-type.test.ts counts the functions the registry has
+// taken, with unitNameChecksByFunction, at 0 each.
+const UNIT_TYPE_NAMES: ReadonlySet<string> = new Set(Object.keys(KC_UNIT_TYPE));
+const COMPARISONS = new Set([
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+]);
+const LOOKUPS = new Set(['has', 'get', 'includes', 'indexOf']);
+/** Whether a string literal is a check of a unit by its type's name (above). */
+function isAUnitNameCheck(node: ts.StringLiteral): boolean {
+  if (!UNIT_TYPE_NAMES.has(node.text)) return false;
+  const p = node.parent;
+  return (
+    (ts.isBinaryExpression(p) && COMPARISONS.has(p.operatorToken.kind)) ||
+    ts.isCaseClause(p) ||
+    (ts.isElementAccessExpression(p) && p.argumentExpression === node) ||
+    (ts.isCallExpression(p) && ts.isPropertyAccessExpression(p.expression) && LOOKUPS.has(p.expression.name.text))
+  );
+}
+/** The name a function is declared by (a function or a method, or a variable an arrow or a function is given to). */
+function nameOfAFunction(node: ts.Node): string | null {
+  if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name) return node.name.getText();
+  if (
+    ts.isVariableDeclaration(node) &&
+    ts.isIdentifier(node.name) &&
+    node.initializer &&
+    (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))
+  )
+    return node.name.text;
+  return null;
+}
+/** Each function of a file, by its name, with the unit-name checks in it (0 for a function with none); a check
+ *  inside a nested function that has no name counts for the named one around it, and one outside any function for
+ *  '(top)'. */
+export function unitNameChecksByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    if (ts.isStringLiteral(node) && isAUnitNameCheck(node)) counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)');
+  return counts;
+}
+/** The files whose unit-name checks unitNameChecksInEngine counts. */
+export const countsUnitNameChecks = (file: string): boolean =>
+  file.startsWith('src/engine/') && !file.startsWith('src/engine/rules/') && file.endsWith('.ts');
+/** The unit-name checks in the files of src/engine/ outside src/engine/rules/, for the files given as [path from the
+ *  repository's root, text]. */
+export function unitNameChecksInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    if (!countsUnitNameChecks(file)) continue;
+    for (const count of unitNameChecksByFunction(file, text).values()) n += count;
+  }
+  return n;
+}
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -171,8 +240,9 @@ export function unusedCode(root = ROOT): number {
 
 export function measure(): Counts {
   const all = files();
+  const codeFiles = theCodeFiles(all);
   return {
-    ...countsFromTheCodeFiles(theCodeFiles(all)),
+    ...countsFromTheCodeFiles(codeFiles),
     allowlistEntries: ALLOWLISTS.reduce((n, a) => n + allowlistLength(a.file, a.name), 0),
     javascriptFiles: all.filter((f) => /\.(js|mjs|cjs)$/.test(f) && !/^(src|public)\//.test(f)).length,
     // The site's own code, inline in its pages until P1-05 split it into src/ (so it wasn't counted before then). Since
@@ -184,6 +254,7 @@ export function measure(): Counts {
     ).length,
     quarantinedTests: all.filter((f) => f.startsWith('tests/quarantine/') && /\.test\.[jt]s$/.test(f)).length,
     vmLoaderTests: vmLoaderTests(all),
+    unitNameChecksInEngine: unitNameChecksInEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),

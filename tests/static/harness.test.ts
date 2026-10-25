@@ -43,6 +43,7 @@ import {
   measure,
   readBaseline,
   theCodeFiles,
+  unitNameChecksInEngine,
 } from '../../tools/ratchet.ts';
 import { LEVELS } from '../suite.ts';
 import { ALLOWANCE_MS, timeLimitForPropertyRuns, timeLimitForTheWork } from '../lib/time-limits.ts';
@@ -1775,6 +1776,30 @@ describe('the ratchet', () => {
     expect(planted[count]).toBe((asTheyAre[count] ?? 0) + 1);
   });
 
+  // The engine's checks of a unit by its type's name (plan P1-19, Decision 7): a comparison planted in a file of
+  // src/engine/ raises unitNameChecksInEngine by one, and the ratchet fails on it; one planted in src/engine/rules/ (the
+  // registry's effects, which ask their content rows) or in a page's code isn't counted.
+  test.for([
+    ['src/engine/battle/x.ts', 1],
+    ['src/engine/rules/x.ts', 0],
+    ['src/ui/gm/x.ts', 0],
+  ] as const)('a unit-name comparison planted in %s raises unitNameChecksInEngine by %i', ([file, rise]) => {
+    const files = theCodeFiles();
+    const asTheyAre = { ...readBaseline(), unitNameChecksInEngine: unitNameChecksInEngine(files) };
+    expect(asTheyAre.unitNameChecksInEngine).toBe(readBaseline()['unitNameChecksInEngine']);
+    const planted = {
+      ...asTheyAre,
+      unitNameChecksInEngine: unitNameChecksInEngine([
+        ...files,
+        [file, "export const planted = (t: string): boolean => t === 'Goblin Horde';\n"],
+      ]),
+    };
+    expect(planted.unitNameChecksInEngine).toBe(asTheyAre.unitNameChecksInEngine + rise);
+    const { rose } = compare(asTheyAre, planted);
+    expect(rose).toHaveLength(rise);
+    expect(rose.filter((r) => /^unitNameChecksInEngine rose from \d+ to \d+\./.test(r))).toEqual(rose);
+  });
+
   // measure() runs knip for unusedCode: a few seconds, more on a slow runner.
   test('no count is above its baseline', timeLimitForTheWork({ toolRuns: 1 }), () => {
     const { rose } = compare(readBaseline(), measure());
@@ -1832,6 +1857,8 @@ describe('the architecture rules', () => {
       'the-content-imports-nothing',
       'the-engine-imports-only-the-engine-and-the-content',
       'the-rules-on-plain-values-import-only-each-other-and-the-content',
+      // plan P1-19, Decision 6 (P1-19a)
+      'the-rule-registry-imports-only-itself-the-rules-on-plain-values-and-the-content',
       'the-views-import-only-the-views-the-engine-and-the-content',
       'shared-imports-only-the-views-the-rules-on-plain-values-and-the-content',
       'schemas-are-imported-as-types-only',

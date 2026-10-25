@@ -605,6 +605,25 @@ Every name, message and record on screen was typed by someone, so it goes into a
 - The few GM-portal tables marked `NOT a copy` are deliberate re-orderings (tie-break priorities). Don't
   collapse them into the shared table.
 - Never reorder a character's `items` array. Send Item addresses items by index.
+- A stage of the rule registry runs its effects in the order its list gives (`THE_ORDER_OF_EACH_STAGE` in
+  `src/engine/rules/the-registry-of-content-effects.ts`), not in the order of the registry's entries or of the content's
+  rows. The list is the battle code's order before the registry took the effects: moving a slug in it changes a product
+  of decimals or the ladder's words (Shieldwall after Sergeants: 9 of the matrix's 60 games differ). Add a new effect at
+  its place; never re-sort.
+
+## An effect reads only what its hook hands it
+
+An effect of the rule registry (`src/engine/rules/`, [ARCHITECTURE.md](ARCHITECTURE.md#the-rule-registry)) reads its
+stage's facts and its content row, and returns a value: a factor, a multiplier and its words, a line or nothing. It
+imports nothing but `src/engine/rules/`, `src/engine/rules-on-plain-values/` and `src/content/` (`npm run lint:arch`
+refuses the rest), so it can't draw a die (`kcRng`), read the turn's state or write a line: what it needs, its stage hands
+it. A set it needs is built from content (`KC_UNIT_CLASS`, a row's `counts`) or handed by the stage (whether the enemy
+fields ranged units, from the ladder's missile set), never imported from `battle/`. Another ability is asked about by
+its slug, never by a unit's name.
+
+The stage types live in the registry's own file, which holds code. **A file that only `import type` reaches is in no
+bundle**: the build's checks (`tests/static/pages-build.test.ts`, "none is left out", and the engine paths in
+`tests/static/harness.test.ts`) refuse it. Only `src/globals.d.ts` and `src/schemas/` may hold types alone.
 
 ## Dice come from `kcRng()`
 
@@ -839,10 +858,19 @@ engine itself keeps them in several places by kind:
 - who takes a flank or shoots: `battleGrid` (`abilityFlanksRough`, Eagle Riders on an open flank, Black Arrows
   in front) and `abilityMissileUnits`;
 - the pre-battle volley: `missileDamageMult`, `abilityVolleys`, `missileTargetPool`, `archeryBlockedBy`;
-- force-wide strength: `unitAbilityMult`; fates: `rollUnitFates` (Knightly Example) and `shieldFortHolds`;
+- force-wide strength: the registry's stage "the whole force" (above), which `unitAbilityMult` asks; fates:
+  `rollUnitFates` (Knightly Example) and `shieldFortHolds`;
 - turn hooks inside `resolveTurn`: Prepared Ground's second volley, Raiders' Muster at turn's end.
 
-`tests/abilities-words.test.js` holds the table of names and checks both books; the four race tests
+**One content row and one registry entry** (P1-19a, [ARCHITECTURE.md](ARCHITECTURE.md#the-rule-registry)): the nine
+abilities of a unit's whole force, Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
+Deepwater Grasp, Wyrmscale and Air Superiority. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts`
+(its name and numbers), its effect in `src/engine/rules/unit-abilities/the-strength-of-a-unit-in-its-force.ts` and its
+entry in the registry, in its stage's order; `tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts`
+checks its name and numbers in both books from its row. Change a number in its row and in both books. **Still inline**:
+every other ability, in the places below (the facing, the whole line and the fates join the registry in P1-19b to d).
+
+`tests/abilities-words.test.js` holds the table of names of the abilities still inline and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and
 `tests/abilities-turn.test.js` the turn hooks. Add a new ability to the words table first. In the player portal's
 `UNIT_ABILITIES` a unit may appear **once**: an object literal keeps the last key, so a second entry silently
@@ -850,7 +878,8 @@ replaces the first (the words test checks).
 
 The beasts' abilities (2026-10-13) live in the same places, with `tests/primal-abilities-words.test.js` for the
 names and `tests/abilities-beasts.test.js` / `tests/abilities-beasts-turn.test.js` for the numbers, plus three
-more homes: a beast's always-on multiplier in `unitAbilityMult` (Relentless Hunt, Shoal Swarm, …), its pre-battle
+more homes: a beast's always-on multiplier at the registry's stage "the whole force" (Relentless Hunt, Shoal Swarm, …,
+above), its pre-battle
 strike on its `spells` in `PRIMAL_ARMY_DEFS_P`, and the rout in the realm battle (the Manticores' pursuit and
 Feeding Frenzy beside Run Them Down). The grid's flyer set is `KC_UNIT_CLASS.aerial` (riders and flying beasts);
 the archers' first-target set is still `KC_UNIT_CLASS.flying` (riders only). A missile immunity is one line in

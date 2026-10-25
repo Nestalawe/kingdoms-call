@@ -46,6 +46,14 @@ const config: IConfiguration = {
       to: { path: '^src/', pathNot: mayImport('engine/rules-on-plain-values', 'content') },
     },
     {
+      name: 'the-rule-registry-imports-only-itself-the-rules-on-plain-values-and-the-content',
+      comment:
+        "An effect reads only what its hook hands it (plan P1-19, Decision 6): src/engine/rules/ reaches the dice, the turn's state or a report only through its stage, never by an import.",
+      severity: 'error',
+      from: { path: '^src/engine/rules/' },
+      to: { path: '^src/', pathNot: mayImport('engine/rules', 'engine/rules-on-plain-values', 'content') },
+    },
+    {
       name: 'the-views-import-only-the-views-the-engine-and-the-content',
       comment: 'What a realm sees is written from the engine and the content, never from a page or the database.',
       severity: 'error',

@@ -131,6 +131,18 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
         'the-rules-on-plain-values-import-only-each-other-and-the-content: src/engine/rules-on-plain-values/planted.ts -> src/engine/rng.ts',
     },
     {
+      // an effect of the rule registry reaches the dice only through its hook (plan P1-19, Decision 6)
+      file: 'src/engine/rules/planted.ts',
+      code: "import { kcRng } from '../rng.ts';\nexport const planted = kcRng;\n",
+      refused:
+        'the-rule-registry-imports-only-itself-the-rules-on-plain-values-and-the-content: src/engine/rules/planted.ts -> src/engine/rng.ts',
+    },
+    {
+      // …and may read the rules on plain values and the content: let through
+      file: 'src/engine/rules/planted-reads-the-rules-on-plain-values.ts',
+      code: "import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';\nimport { KC_SEASONS } from '../../content/kingdoms-call-data.ts';\nexport const planted = [unitBaseStrength, KC_SEASONS];\n",
+    },
+    {
       file: 'src/views/planted.ts',
       code: "import { kcEsc } from '../ui/shared/kc-safe.ts';\nexport const planted = kcEsc;\n",
       refused:
