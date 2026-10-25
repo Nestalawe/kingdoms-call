@@ -1,6 +1,7 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS, demoteOrDisband, disbandLine, unitRef } from '../army-tables.ts';
+import type { ArmyInABattle } from '../army-tables.ts';
+import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
 
 // ── UNIT FATES AFTER A BATTLE (2026-10-11, refactor only) ── the per-unit rolls that four casualty loops
 // used to repeat (the NPC attacker winning or losing; a realm battle's winner and loser). The numbers stay
@@ -22,30 +23,74 @@ import { QUALITY_TIERS, demoteOrDisband, disbandLine, unitRef } from '../army-ta
 //                annihilated in the rout!". Without it the lines read as they always did.
 // Returns {died, promoted, demoted, disbanded, held, survived}.
 export const TROLL_REGEN_CHANCE = 0.3; // Regenerating Hide (the Cave Trolls)
-export function rollUnitFates(force, o) {
-  const rng = o.rng || kcRng,
-    tiers = o.tiers || QUALITY_TIERS,
-    say = o.say || (() => {}),
-    ref = o.unitRef || unitRef,
-    who = o.owner || '';
-  const dust = (a) => (a._isSkeletal ? ' Their bones crumble to dust — gone forever.' : '');
-  const diedVerb = o.diedVerb || (o.won ? 'were destroyed in the fighting.' : 'were destroyed in the rout!'),
-    promoteVerb = o.promoteVerb || 'earn promotion to';
-  const clauseOf = (a) => {
+/** A unit's chance, as the battle that rolls its fate works it out: a roll below it, and the unit dies (dieAt), loses a
+ *  tier (demoteAt) or rises one (promoteTo). */
+type AUnitsChanceOfAFate = (a: ArmyInABattle) => number;
+/** What rollUnitFates is told by the battle that calls it (the header above): the dice, the thresholds, the words. */
+interface TheOptionsOfEveryUnitsFate {
+  /** The dice (the tests feed their own); else kcRng. */
+  rng?: (() => number) | null;
+  /** The quality tiers, lowest first; else QUALITY_TIERS. */
+  tiers?: readonly string[] | null;
+  /** Receives each unit's line. */
+  say?: ((line: string | TheFactOfOneOfABattlesSentences) => void) | null;
+  /** How a unit is named in its line; else unitRef. */
+  unitRef?: ((ownerName: string, a: ArmyInABattle) => string) | null;
+  /** The units' owner, as each line names him. */
+  owner?: string | null;
+  diedVerb?: string | null;
+  promoteVerb?: string | null;
+  /** Each unit's clause, whom it faced (battleFacedClauses): a Map army → clause (the tests' Map comes from another
+   *  window, hence the check on its get), or a function of the army. */
+  faced?:
+    | ((a: ArmyInABattle) => string | null | undefined)
+    | { readonly get?: (a: ArmyInABattle) => string | null | undefined }
+    | null;
+  /** Stamps a._notable on a demoted or promoted unit. */
+  notable?: boolean | null;
+  /** The Knightly Example, given; else it holds when a Gilded Lances unit is in the force. */
+  knightly?: boolean | null;
+  /** Regenerating Hide's chance, given; else TROLL_REGEN_CHANCE. */
+  regen?: number | null;
+  /** A Shield Fort: a unit that would lose a tier falls back in good order. */
+  shieldFort?: boolean | null;
+  dieAt: AUnitsChanceOfAFate;
+  promoteTo: AUnitsChanceOfAFate;
+}
+/** rollUnitFates' options: the winner's rolls, or the loser's, which roll demoteAt too. */
+export type UnitFateOptions = TheOptionsOfEveryUnitsFate &
+  ({ won: true } | { won: false; demoteAt: AUnitsChanceOfAFate });
+export function rollUnitFates(
+  force: readonly (ArmyInABattle | null | undefined)[] | null | undefined,
+  o: UnitFateOptions,
+) {
+  const rng = o.rng ?? kcRng,
+    tiers = o.tiers ?? QUALITY_TIERS,
+    say =
+      o.say ??
+      (() => {
+        // no line is said
+      }),
+    ref = o.unitRef ?? unitRef,
+    who = o.owner ?? '';
+  const dust = (a: ArmyInABattle) => (a._isSkeletal ? ' Their bones crumble to dust — gone forever.' : '');
+  const diedVerb = o.diedVerb ?? (o.won ? 'were destroyed in the fighting.' : 'were destroyed in the rout!'),
+    promoteVerb = o.promoteVerb ?? 'earn promotion to';
+  const clauseOf = (a: ArmyInABattle | null | undefined) => {
     const f = o.faced;
     if (!f || !a) return '';
     const c = typeof f === 'function' ? f(a) : typeof f.get === 'function' ? f.get(a) : null;
-    return c ? String(c) : '';
+    return c ?? '';
   };
-  const head = (a, q0) => {
+  const head = (a: ArmyInABattle, q0?: string) => {
     const c = clauseOf(a);
     return ref(who, q0 ? { ...a, quality: q0 } : a) + (c ? `, ${c},` : '');
   };
   const r = { died: 0, promoted: 0, demoted: 0, disbanded: 0, held: 0, survived: 0 };
   // HUMAN — Knightly Example (2026-10-11, Toby): with a Gilded Lances unit in the army, Levies and
   // Men-at-Arms never lose a tier in defeat (they hold, as under a Shield Fort). o.knightly overrides.
-  const knightly = o.knightly != null ? !!o.knightly : (force || []).some((a) => a && a.type === 'Gilded Lances');
-  (force || []).forEach((a) => {
+  const knightly = o.knightly ?? (force ?? []).some((a) => a?.type === 'Gilded Lances');
+  (force ?? []).forEach((a) => {
     if (!a) return;
     const idx = tiers.indexOf(a.quality),
       roll = rng();
@@ -53,7 +98,7 @@ export function rollUnitFates(force, o) {
       // PRIMAL — Regenerating Hide (2026-10-13, the beast abilities): a Cave Trolls company that fails its death roll after a
       // LOST battle shrugs it off three times in ten (the rulebook's "regenerating" brutes, now real). Not in a victory: the
       // hide knits in flight, not in the press of the win. o.regen overrides the chance (the tests feed the dice).
-      if (a.type === 'Cave Trolls' && !o.won && rng() < (o.regen != null ? o.regen : TROLL_REGEN_CHANCE)) {
+      if (a.type === 'Cave Trolls' && !o.won && rng() < (o.regen ?? TROLL_REGEN_CHANCE)) {
         r.survived++;
         say({ kind: 'a unit is cut down and rises again by its regenerating hide', unitReference: head(a) });
         return;
@@ -70,7 +115,7 @@ export function rollUnitFates(force, o) {
     if (o.won) {
       if (roll < o.promoteTo(a) && idx >= 0 && idx < 4) {
         const q0 = a.quality;
-        a.quality = tiers[idx + 1];
+        a.quality = tiers[idx + 1] ?? q0;
         r.promoted++;
         if (o.notable) a._notable = true;
         say({
@@ -107,7 +152,7 @@ export function rollUnitFates(force, o) {
       }
     } else if (roll2 < o.promoteTo(a) && idx >= 0 && idx < 4) {
       const q0 = a.quality;
-      a.quality = tiers[idx + 1];
+      a.quality = tiers[idx + 1] ?? q0;
       r.promoted++;
       if (o.notable) a._notable = true;
       say({
@@ -128,13 +173,19 @@ export function rollUnitFates(force, o) {
 // The rule is a BLACKLIST of known technical lines — anything unrecognised stays in the short view,
 // so a new narrative line can never silently vanish from what the player reads.
 export const BATTLE_CAS_HEAD_RE = /^(⚔|🛡) \*\*(.+?)(?:'s|') forces\*\* \((attacker|defender)\):\s*$/;
-export function battleLineTiers(texts) {
-  const t = [];
+/** A battle line's tier, as battleLineTiers gives it: 'k' in the short account and the full report, 'd' in the full
+ *  report only (the views add 't', the tally, and 's', the onlookers' summary). */
+export type ABattleLinesTier = 'k' | 'd';
+export function battleLineTiers(texts: readonly (string | null | undefined)[] | null | undefined): {
+  t: ABattleLinesTier[];
+  casIdx: number;
+} {
+  const t: ABattleLinesTier[] = [];
   let inCas = false,
     casIdx = -1;
-  (texts || []).forEach((raw, i) => {
-    const s = String(raw == null ? '' : raw);
-    let tier = 'k';
+  (texts ?? []).forEach((raw, i) => {
+    const s = raw ?? '';
+    let tier: ABattleLinesTier = 'k';
     if (s.startsWith('\u2691FORCE\u2691'))
       tier = 'k'; // deployment — shown compact in the short view
     else if (BATTLE_CAS_HEAD_RE.test(s)) {
@@ -144,14 +195,14 @@ export function battleLineTiers(texts) {
     } else if (inCas && s.startsWith('— '))
       tier = /masterless hero|None left to fight/.test(s) ? 'k' : 'd'; // unit fates → the tally
     else if (/^\s/.test(s))
-      tier = /Fortune of battle/.test(s) ? 'k' : 'd'; // duel blows, volleys, ladder rows, spell hits
+      tier = s.includes('Fortune of battle') ? 'k' : 'd'; // duel blows, volleys, ladder rows, spell hits
     else if (s.startsWith('📊'))
-      tier = /completely destroyed/.test(s) ? 'k' : 'd'; // stats, ladder heads, outcome band, survivors
+      tier = s.includes('completely destroyed') ? 'k' : 'd'; // stats, ladder heads, outcome band, survivors
     else if (/^(🤝 Kinship|🏹|⚠|〰)/.test(s)) tier = 'd';
     else if (/^The \w+ terrain sets a /.test(s)) tier = 'd';
     else if (/^✨ .+ — \*\*[^*]+\*\*: /.test(s))
       tier = 'd'; // a unit's own pre-battle strike (the hit line follows)
-    else if (/find no room to ride/.test(s)) tier = 'd';
+    else if (s.includes('find no room to ride')) tier = 'd';
     t.push(tier);
   });
   return { t, casIdx };
@@ -159,28 +210,63 @@ export function battleLineTiers(texts) {
 // One line per side: "Vervain: 1 of 6 units lost (Shadow Archers)". Built from the casualty
 // sections of the narrative, the unit type read off the side's own ⚑FORCE⚑ roster (by unit name,
 // else by the longest type name in the line), so it survives any rewording of a casualty line.
-export function battleTallyLine(texts) {
-  const T = (texts || []).map((x) => String(x == null ? '' : x));
-  const roster = { attacker: [], defender: [] };
+// The rows are read back from the line's JSON as JavaScript reads any value's field (fieldAsJavaScriptReadsIt): the
+// engine writes them (forceMarker), and whatever a row holds is read as it always was.
+/** `value[key]`, as JavaScript reads it: a field of an object, of an array or of a string, undefined where it has
+ *  none, and a TypeError for null or undefined. */
+function fieldAsJavaScriptReadsIt(value: unknown, key: string): unknown {
+  if (value === null || value === undefined) throw new TypeError(`Cannot read properties of ${String(value)}`);
+  const field: unknown = Reflect.get(Object(value), key);
+  return field;
+}
+/** `value.startsWith(prefix)`, as JavaScript calls it: a TypeError for a value that isn't a string. */
+function startsWithAsJavaScriptCallsIt(value: unknown, prefix: string): boolean {
+  if (typeof value !== 'string') throw new TypeError('value.startsWith is not a function');
+  return value.startsWith(prefix);
+}
+/** `(list || []).filter((a) => a && !a.phantom)` on a row's units, as JavaScript runs it: a TypeError for a truthy
+ *  value that isn't a list. */
+function theUnitsOnAForcesRow(list: unknown): unknown[] {
+  if (!list) return [];
+  if (!Array.isArray(list)) throw new TypeError('list.filter is not a function');
+  const each: readonly unknown[] = list;
+  return each.filter((a) => a && !fieldAsJavaScriptReadsIt(a, 'phantom'));
+}
+/** A side of the battle, as its tally counts it: its name, its role, the types it lost and those that fled. */
+interface ASidesLosses {
+  name: string;
+  role: string;
+  lost: unknown[];
+  fled: unknown[];
+  dem: number;
+  pro: number;
+}
+export function battleTallyLine(texts: readonly (string | null | undefined)[] | null | undefined): string | null {
+  const T = (texts ?? []).map((x) => x ?? '');
+  const roster: Record<string, unknown[]> = { attacker: [], defender: [] };
   T.forEach((s) => {
     if (s.startsWith('\u2691FORCE\u2691')) {
       try {
-        const f = JSON.parse(s.slice(7));
-        if (f && roster[f.role])
-          roster[f.role] = roster[f.role].concat((f.armies || []).filter((a) => a && !a.phantom));
+        const f: unknown = JSON.parse(s.slice(7));
+        if (f) {
+          const role = String(fieldAsJavaScriptReadsIt(f, 'role'));
+          const units = roster[role];
+          if (units) roster[role] = units.concat(theUnitsOnAForcesRow(fieldAsJavaScriptReadsIt(f, 'armies')));
+        }
       } catch (_) {}
     }
   });
-  const sides = [];
-  let cur = null;
+  const sides: ASidesLosses[] = [];
+  let cur: ASidesLosses | null = null;
   // every side's casualty header first, so a unit's fate written AFTER both sections (a trapped
   // attacker cut down after the defender's list) is still credited to the side it names.
-  const _heads = [];
+  const _heads: { name: string; role: string }[] = [];
   T.forEach((s) => {
-    const h = s.match(BATTLE_CAS_HEAD_RE);
-    if (h && !_heads.some((x) => x.role === h[3])) _heads.push({ name: h[2], role: h[3] });
+    const h = BATTLE_CAS_HEAD_RE.exec(s);
+    // (groups 2 and 3 are never missing from a match: the `?? ''` is never used)
+    if (h && !_heads.some((x) => x.role === h[3])) _heads.push({ name: h[2] ?? '', role: h[3] ?? '' });
   });
-  const sideFor = (role) => {
+  const sideFor = (role: string) => {
     let sd = sides.find((x) => x.role === role);
     if (!sd) {
       const h = _heads.find((x) => x.role === role);
@@ -192,78 +278,91 @@ export function battleTallyLine(texts) {
   // 2026-10-12 (Toby: who beat whom): a fate line now names the ENEMY company too ("…, facing the Red Hand
   // (Aldric's Gnomish Gyrocopters), were annihilated…"), so the owner and the type are read from the company
   // named FIRST — its own reference always opens the line — not from the longest match anywhere in it.
-  const ownerSide = (s) => {
+  const ownerSide = (s: string) => {
     const body = s.replace(/^— (Despite defeat, )?/, '');
-    let best = null;
-    _heads.forEach((h) => {
+    let best: { i: number; h: { name: string; role: string } } | null = null;
+    // (a loop, not forEach, so the compiler sees best set)
+    for (const h of _heads) {
       const i1 = body.startsWith(`${h.name}'s `) ? 0 : -1,
         i2 = body.indexOf(`(${h.name}'s `);
       const i = [i1, i2].filter((x) => x >= 0).sort((a, b) => a - b)[0];
-      if (i == null) return;
+      if (i == null) continue;
       if (!best || i < best.i || (i === best.i && h.name.length > best.h.name.length)) best = { i, h };
-    });
+    }
     return best ? sideFor(best.h.role) : null;
   };
-  const typeOf = (s, role) => {
-    const R = roster[role] || [];
+  const lengthOf = (x: unknown) => Number(fieldAsJavaScriptReadsIt(x, 'length'));
+  const typeOf = (s: string, role: string): unknown => {
+    const R = roster[role] ?? [];
     // the type printed first in the line wins ("the Red Hand (Def's Thunderbirds, Crack)"); a bare unit
     // name ("— the Red Hand are cut down") is looked up on the side's roster.
-    const types = [...new Set(R.map((a) => a.type))]
-      .map((ty) => ({ ty, i: s.indexOf(ty) }))
+    const types = [...new Set(R.map((a) => fieldAsJavaScriptReadsIt(a, 'type')))]
+      .map((ty) => ({ ty, i: s.indexOf(String(ty)) }))
       .filter((x) => x.i >= 0)
-      .sort((a, b) => a.i - b.i || b.ty.length - a.ty.length);
+      .sort((a, b) => a.i - b.i || lengthOf(b.ty) - lengthOf(a.ty));
     if (types[0]) return types[0].ty;
-    const byName = R.filter((a) => a.unitName && a.unitName !== a.type && s.includes(a.unitName))
-      .map((a) => ({ a, i: s.indexOf(a.unitName) }))
-      .sort((x, y) => x.i - y.i || y.a.unitName.length - x.a.unitName.length)[0];
-    return byName ? byName.a.type : null;
+    const nameOf = (a: unknown) => fieldAsJavaScriptReadsIt(a, 'unitName');
+    const byName = R.filter(
+      (a) => nameOf(a) && nameOf(a) !== fieldAsJavaScriptReadsIt(a, 'type') && s.includes(String(nameOf(a))),
+    )
+      .map((a) => ({ a, i: s.indexOf(String(nameOf(a))) }))
+      .sort((x, y) => x.i - y.i || lengthOf(nameOf(y.a)) - lengthOf(nameOf(x.a)))[0];
+    return byName ? fieldAsJavaScriptReadsIt(byName.a, 'type') : null;
   };
-  const _atkForceName = (() => {
-    const f = T.find((s) => s.startsWith('\u2691FORCE\u2691') && /"role":"attacker"/.test(s));
+  // `ty || 'unit'`: a type the line names, else 'unit'
+  const orUnit = (ty: unknown): unknown => {
+    if (ty) return ty;
+    return 'unit';
+  };
+  const _atkForceName = ((): unknown => {
+    const f = T.find((s) => s.startsWith('\u2691FORCE\u2691') && s.includes('"role":"attacker"'));
     try {
-      return f ? JSON.parse(f.slice(7)).name : '';
+      return f ? fieldAsJavaScriptReadsIt(JSON.parse(f.slice(7)), 'name') : '';
     } catch (_) {
       return '';
     }
   })();
   T.forEach((s) => {
     // a whale cohort's breach sinks a hull BEFORE the casualty lists — a real loss for the other side.
-    const br = s.match(/^🌊 A (?:(.+?) )?whale cohort breaches beneath the /);
+    const br = /^🌊 A (?:(.+?) )?whale cohort breaches beneath the /.exec(s);
     if (br) {
-      const loser = br[1] && _atkForceName && !_atkForceName.startsWith(br[1]) ? 'attacker' : 'defender';
+      const loser =
+        br[1] && _atkForceName && !startsWithAsJavaScriptCallsIt(_atkForceName, br[1]) ? 'attacker' : 'defender';
       const sd = sideFor(loser);
-      sd.lost.push(typeOf(s.slice(br[0].length), loser) || 'unit');
+      sd.lost.push(orUnit(typeOf(s.slice(br[0].length), loser)));
       return;
     }
-    const h = s.match(BATTLE_CAS_HEAD_RE);
+    const h = BATTLE_CAS_HEAD_RE.exec(s);
     if (h) {
-      cur = sideFor(h[3]);
+      cur = sideFor(h[3] ?? ''); // (group 3 is never missing from a match)
       return;
     }
     if (!cur || !s.startsWith('— ')) return;
-    const sd = ownerSide(s) || cur;
+    const sd = ownerSide(s) ?? cur;
     if (/promotion to|hardened by victory|improved to/.test(s)) sd.pro++;
-    else if (/lost heart in defeat/.test(s)) sd.dem++;
-    else if (/have had enough|slip away/.test(s)) sd.fled.push(typeOf(s, sd.role) || 'unit');
+    else if (s.includes('lost heart in defeat')) sd.dem++;
+    else if (/have had enough|slip away/.test(s)) sd.fled.push(orUnit(typeOf(s, sd.role)));
     else if (/annihilated|destroyed|cut down|slain|sunk|drown|lost at sea|crumble/.test(s))
-      sd.lost.push(typeOf(s, sd.role) || 'unit');
+      sd.lost.push(orUnit(typeOf(s, sd.role)));
   });
   if (!sides.length) return null;
-  const grp = (a) => {
-    const m = new Map();
-    a.forEach((x) => m.set(x, (m.get(x) || 0) + 1));
-    return [...m].map(([k, n]) => (n > 1 ? `${n}× ${k}` : k)).join(', ');
+  const grp = (a: readonly unknown[]) => {
+    const m = new Map<unknown, number>();
+    a.forEach((x) => m.set(x, (m.get(x) ?? 0) + 1));
+    return [...m].map(([k, n]) => (n > 1 ? `${String(n)}× ${String(k)}` : k)).join(', ');
   };
   sides.sort((a, b) => (a.role === 'attacker' ? 0 : 1) - (b.role === 'attacker' ? 0 : 1));
   const parts = sides.map((sd) => {
-    const tot = (roster[sd.role] || []).length,
+    const tot = (roster[sd.role] ?? []).length,
       n = sd.lost.length;
     const bits = [
-      n ? `${n}${tot ? ` of ${tot}` : ''} unit${(tot || n) !== 1 ? 's' : ''} lost (${grp(sd.lost)})` : 'no units lost',
+      n
+        ? `${String(n)}${tot ? ` of ${String(tot)}` : ''} unit${(tot || n) !== 1 ? 's' : ''} lost (${grp(sd.lost)})`
+        : 'no units lost',
     ];
-    if (sd.fled.length) bits.push(`${sd.fled.length} disbanded (${grp(sd.fled)})`);
-    if (sd.dem) bits.push(`${sd.dem} demoted`);
-    if (sd.pro) bits.push(`${sd.pro} promoted`);
+    if (sd.fled.length) bits.push(`${String(sd.fled.length)} disbanded (${grp(sd.fled)})`);
+    if (sd.dem) bits.push(`${String(sd.dem)} demoted`);
+    if (sd.pro) bits.push(`${String(sd.pro)} promoted`);
     return `**${sd.name}**: ${bits.join(', ')}`;
   });
   return `⚰ Losses — ${parts.join(' · ')}.`;
@@ -283,7 +382,7 @@ export const BATTLE_MARGIN_BANDS = [
   { label: 'crushing', max: 0.75, winDeath: 0.01, loseDeath: 0.5, winXP: 0.08, loseXP: 0.01, loseDemote: 0.45 },
   { label: 'annihilating', max: 9, winDeath: 0.01, loseDeath: 0.6, winXP: 0.05, loseXP: 0.01, loseDemote: 0.55 },
 ];
-export function battleMarginBand(margRatio) {
+export function battleMarginBand(margRatio: number) {
   const r = Math.max(0, margRatio || 0);
-  return BATTLE_MARGIN_BANDS.find((b) => r < b.max) || BATTLE_MARGIN_BANDS[BATTLE_MARGIN_BANDS.length - 1];
+  return BATTLE_MARGIN_BANDS.find((b) => r < b.max) ?? BATTLE_MARGIN_BANDS[BATTLE_MARGIN_BANDS.length - 1];
 }

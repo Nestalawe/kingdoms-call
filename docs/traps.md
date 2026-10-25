@@ -646,8 +646,8 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 
 ## `@ts-nocheck` checks nothing in the file
 
-125 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(91: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+124 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(90: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -695,6 +695,19 @@ table with a key left out.
     with every field it reads optional, so each of its guards stays needed; today's `GameState` passes.
   A guard lint calls needless is dropped only where the code would already have thrown without it (in
   `abilityMissileUnits`, `a && a.type` after a filter that reads `a.type` of every unit).
+- (P1-10b3: `battle/fates.ts`, 14,606 bytes): 56 errors, 30 of them a parameter with no type; then 13 typed lint
+  findings, all fixed. Three more forms:
+  - **A value parsed from JSON** (`battleTallyLine` reads each force's row back from its line's words) is typed
+    `unknown`, and each field is read through `fieldAsJavaScriptReadsIt(value, key)`, which does what `value[key]` does
+    (undefined where there is none, a `TypeError` for `null`), so a row the engine never writes still gives the tally it
+    gave. Checking each field's type instead would be shorter, but it changes what such a row gives.
+    `tests/unit/the-battle-fate-and-tally-lines-no-matrix-game-reaches-keep-their-values.test.ts` holds those rows.
+  - **A `let` set inside a `forEach` callback and read after it** (`let best = null`) is still `null` to the compiler,
+    so a property read after it fails (TS2339 on `never`). A `for … of` loop over the same list, with `continue` for the
+    callback's `return`, keeps the order and lets the compiler see the assignment.
+  - **A callback option a winner never calls** (`demoteAt`) is required only where it is called: `rollUnitFates`'
+    options are a union on `won`, `{ won: true }` or `{ won: false; demoteAt }`, so no caller passes a dummy and no
+    `?.` hides a missing one.
 
 ## A battle-only mark is not part of the saved state
 
