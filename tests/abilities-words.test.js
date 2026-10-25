@@ -2,7 +2,8 @@
 // humanoid land unit's two ability names appear in its player-portal blurb (UNIT_ABILITIES) and in its
 // comprehensive-rulebook roster row; the four retired abilities (Massed Volley, Shock of the Charge, Skyward
 // Retreat, the Wyverns' Dread) are named on no page; the rulebook explains the new conditions of Shieldwall,
-// Shield Fort and Sheer Numbers.
+// Shield Fort and Sheer Numbers. The abilities the rule registry holds (Sheer Numbers, plan P1-19a) left the table: their
+// names and numbers are checked from their content rows by tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
 // The player portal is read from src/ by its syntax tree (tests/lib/source.ts): its blurbs as entries of the object
 // literal, its words as the strings it holds. (Until plan P1-09a they were matched in the built page's text.)
 const fs=require('fs');
@@ -19,7 +20,7 @@ const ABILITIES={
   'Stag Riders':['Through the Trees','Forest Runners'], 'Eagle Riders':['Stoop on the Horses','Eyes of the Forest'], 'Elven Garrison':['Thorn Hedge','Tree Watch'],
   'Dwarven Guard':['Unbreakable','Shield Fort'], 'Ironwood Crossbows':['Armour-Piercing','Punch Through'], 'Mountain Guns':['Bombard','Bombardment'],
   'Ironhoof Rams':['Battering Horns','Crag Charge'], 'Gnomish Gyrocopters':['Flak Gunners','Flak Screen'], 'Dwarf Garrison':['Stone Halls','Deep Halls'],
-  'Goblin Horde':['Arrow Fodder','Sheer Numbers'], 'Orc Berserkers':['Frenzy','Driven Before Them'], 'Black Arrows':['Brawling Archers',"Raiders' Volley"],
+  'Goblin Horde':['Arrow Fodder'], 'Orc Berserkers':['Frenzy','Driven Before Them'], 'Black Arrows':['Brawling Archers',"Raiders' Volley"],
   'Warg Riders':['Wolves Panic Horses','Run Them Down'], 'Wyvern Riders':['Terror From Above','Acid Spit'], 'Orc Garrison':['Bloodthirsty',"Raiders' Muster"],
 };
 const norm=s=>s.replace(/[’‘]/g,"'");

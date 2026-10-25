@@ -97,6 +97,3 @@ export function shieldFortHolds(
   }
   return isHalfOrMore(force, 'Dwarven Guard');
 }
-
-// The orc foot that count for Sheer Numbers.
-export const ORC_FOOT_TYPES = new Set(['Goblin Horde', 'Orc Berserkers', 'Orc Garrison']);

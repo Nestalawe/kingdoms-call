@@ -1,11 +1,11 @@
 import { kcRng } from '../rng.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
-import { ORC_FOOT_TYPES } from '../units/movement.ts';
 import { FLYING_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
+import { theStrengthOfAUnitInItsWholeForce } from '../rules/the-registry-of-content-effects.ts';
 
 /** A unit of a force as the battle code hands it: an army, or a hole the guards skip. */
 type ForceUnit = ArmyInABattle | null | undefined;
@@ -18,53 +18,25 @@ export interface UnitAbilityContext {
   readonly coastal?: boolean | null;
 }
 
-// ── Force-composition strength multipliers (applied inside armStr) ──
+// ── Force-composition strength multipliers (applied inside armStr) ── The abilities are the rule registry's (plan
+// P1-19a): their effects at the stage "strength: the whole force", in src/engine/rules/unit-abilities/, and their
+// numbers in src/content/unit-abilities-their-names-numbers-and-words.ts.
 export function unitAbilityMult(
   army: ForceUnit,
   ctx: UnitAbilityContext | null | undefined,
   terrain: string | null | undefined,
 ): number {
   if (!army || !ctx) return 1;
-  const t = army.type,
-    force = ctx.force ?? [],
-    enemy = ctx.enemyForce ?? [];
-  const enemyHasMissile = enemy.some((a) => a && MISSILE_ARMIES_MASTER.has(a.type));
-  let m = 1;
-  // 2026-10-11 (Toby, the unit abilities): Shieldwall now lives in the line (battleFaceSide: Levies with an
-  // archer behind them), and the Gilded Lances' Shock of the Charge (+40% attacking) is retired; their
-  // abilities are Lance Charge and Knightly Example. The Berserkers' old ratio bonus went with the
-  // roster PR; theirs are Frenzy and Driven Before Them (battleFaceSide).
-  // ORC — Sheer Numbers: goblins are worth little alone and a great deal in a mob — +10% per other orc
-  // foot unit in the force (Goblin Hordes, Berserkers, the Orc Garrison), to +30%.
-  if (t === 'Goblin Horde') {
-    const others = Math.max(0, force.filter((a) => a && ORC_FOOT_TYPES.has(a.type)).length - 1);
-    m *= 1 + Math.min(0.3, others * 0.1);
-  }
-  // ORC — Reaver Crews: troops put ashore by longships hit the beach at a run.
-  if (ctx.amphibious) m *= 1.25;
-  // PRIMAL — Shoal Swarm (2026-10-13, the beast abilities): sharks are worthless alone and deadly in numbers — +10% per
-  // other Shark Shoals in the force, to +30% (as the goblins' Sheer Numbers).
-  if (t === 'Shark Shoals') {
-    const others = Math.max(0, force.filter((a) => a?.type === 'Shark Shoals').length - 1);
-    m *= 1 + Math.min(0.3, others * 0.1);
-  }
-
-  // ── PRIMAL ARMY SIGNATURE ABILITIES ────
-  // Each primal beast carries one always-on battle ability, hooked into the enemy's composition or
-  // attack/defend posture — the army-battle counterpart of a monster's special. Pre-battle strikes live
-  // on the units' `spells` and resolve separately in the pre-battle magic phase.
-  // 2026-10-13 (Toby, Creatures and Monsters I): terrain is written ONCE, in TERRAIN_MODS. The multipliers
-  // that doubled a terrain row are gone — Mountain Bulwark (Stone Giants), Rooted Grove (Forest Ents),
-  // Regenerating Hide's ×1.2/×1.3 (Cave Trolls) — and so is the Titans' always-on ×1.3 (Colossal Bulk's
-  // place in the line comes with the beast abilities, as the humanoid units' did). Druid 4 —
-  if (t === 'Manticore Pride' && ctx.isAttacker) m *= 1.25; // Relentless Hunt
-  if (t === 'Basilisk Brood' && !ctx.isAttacker) m *= 1.25; // Stone Deterrent
-  if (t === 'Sea Giants' && terrain !== 'sea' && ctx.coastal) m *= 1.2; // Tidal Might
-  if (t === 'Eldritch Kraken' && terrain === 'sea') m *= 1.35; // Deepwater Grasp
-  // Druid 5 —
-  if (t === 'Elder Dragons') m *= 1.25; // Wyrmscale (unconditional)
-  if (t === 'Crimson Rocs' && enemyHasMissile) m *= 1.3; // Air Superiority
-  return m;
+  const enemy = ctx.enemyForce ?? [];
+  return theStrengthOfAUnitInItsWholeForce({
+    unitType: army.type,
+    itsForce: ctx.force ?? [],
+    theEnemyFieldsRangedUnits: enemy.some((a) => a && MISSILE_ARMIES_MASTER.has(a.type)),
+    itsSideAttacks: Boolean(ctx.isAttacker),
+    landedFromLongshipsThisPhase: Boolean(ctx.amphibious),
+    coastal: Boolean(ctx.coastal),
+    ground: terrain,
+  });
 }
 
 // ── Archery-phase ability helpers ── Which units actually loose this phase, and in what order.
