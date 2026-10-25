@@ -11,7 +11,7 @@
     "quarantinedTests": 4,
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 82,
-    "unitNameChecksInEngine": 55,
+    "unitNameChecksInEngine": 44,
     "eslintSuppressions": 734,
     "knownArchitectureViolations": 105,
     "unusedCode": 26
