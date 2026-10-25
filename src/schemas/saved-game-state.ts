@@ -144,6 +144,9 @@ export const ArmySchema = z.object({
   _phantom: z.boolean().optional(),
   // (P1-10b5: read by Wraith's Touch) a company of Wraiths raised by Raise Wraiths
   _isWraith: z.boolean().optional(),
+  // Fields a human realm's orders and the orders no bot gives save (P1-15b2)
+  // a wild beast that answered a Wild Calling and fell in behind the caller (written, never read)
+  _pacified: z.boolean().optional(),
 });
 export type Army = z.infer<typeof ArmySchema>;
 
@@ -195,8 +198,11 @@ export const CharacterSchema = z.object({
       tactics: z.array(z.string()).optional(),
       notes: z.string().optional(),
       _auto: z.boolean().optional(),
-      duelStance: z.string(),
-      _botStance: z.boolean(),
+      // a realm's plan, as the player portal sends it and the merge keeps it, holds tactics, notes, a duel stance and,
+      // for an Evil realm's hero, the conquest doctrine (P1-15b2); a bot's plan marks the stance it chose itself
+      duelStance: z.string().optional(),
+      evilMode: z.string().optional(),
+      _botStance: z.boolean().optional(),
       _botTactics: z.boolean().optional(),
     })
     .optional(),
@@ -254,7 +260,13 @@ export const CharacterSchema = z.object({
   _researchFailStreak: FailStreakSchema.optional(),
   _botLadder: z.object({ retryAt: z.number().optional() }).optional(),
   _botLairKills: z
-    .object({ Weak: z.number(), Moderate: z.number().optional(), Powerful: z.number().optional() })
+    // (P1-15b2) any realm's hero who clears a lair, of each grade
+    .object({
+      Weak: z.number().optional(),
+      Moderate: z.number().optional(),
+      Powerful: z.number().optional(),
+      Legendary: z.number().optional(),
+    })
     .optional(),
   _gravesSensedTurn: z.number().optional(),
   _gravesSensedIds: z.array(z.number()).optional(),
@@ -287,6 +299,20 @@ export const CharacterSchema = z.object({
       grand_stratagem: z.number().optional(),
       grand_heist: z.number().optional(),
       blockade: z.number().optional(),
+      // (P1-15b2) the order dispatch stamps each mastery order (MASTERY_ORDER_KEYS) before the hero's skill is checked
+      challenge: z.number().optional(),
+      rampage: z.number().optional(),
+      rain_of_arrows: z.number().optional(),
+      snipers_mark: z.number().optional(),
+      feigned_retreat: z.number().optional(),
+      raid_coast: z.number().optional(),
+      research_breakthrough: z.number().optional(),
+      grand_design: z.number().optional(),
+      assassinate: z.number().optional(),
+      vanish: z.number().optional(),
+      awaken_grove: z.number().optional(),
+      wild_calling: z.number().optional(),
+      discover_ruin: z.number().optional(),
     })
     .optional(),
   _lightningAdvanceTurn: z.number().optional(),
@@ -316,6 +342,9 @@ export const CharacterSchema = z.object({
   // Veil (Illusory 9): the turn and the phase the hero drew it, hidden for that phase and the next
   _veilTurn: z.number().optional(),
   _veilCastPhase: z.number().optional(),
+  // Fields a human realm's orders and the orders no bot gives save (P1-15b2)
+  // the realm that released the hero into the wilds (Release Hero)
+  _releasedBy: z.number().optional(),
 });
 export type Character = z.infer<typeof CharacterSchema>;
 
@@ -485,10 +514,11 @@ export const RealmSchema = z.object({
         isKing: z.boolean(),
         alignment: z.string(),
         race: z.string(),
-        kingdom: z.string(),
+        // (P1-15b2) a wandering hero's realm is null; Clairvoyance learns his skills alone, without items or companies
+        kingdom: z.string().nullable(),
         skills: SkillLevelsSchema,
-        items: z.array(z.string()),
-        armies: z.array(z.object({ type: z.string(), quality: z.string(), unitName: z.string() })),
+        items: z.array(z.string()).optional(),
+        armies: z.array(z.object({ type: z.string(), quality: z.string(), unitName: z.string() })).optional(),
         turn: z.number(),
       }),
     )
@@ -563,6 +593,9 @@ export const RealmSchema = z.object({
         category: z.string(),
         desc: z.string(),
         turnDiscovered: z.number(),
+        // (P1-15b2) the Grand Design's discovery: the province its Wonder stands in
+        provinceId: z.number().optional(),
+        provinceName: z.string().optional(),
       }),
     )
     .optional(),
@@ -642,6 +675,10 @@ export const RealmSchema = z.object({
   heroOrder: z.array(z.string()).optional(),
   // a realm the GM removed from the game in play (the GM page's removePlayer): it concedes
   _gmRemoved: z.boolean().optional(),
+  // Fields a human realm's orders and the orders no bot gives save (P1-15b2)
+  // the realm's Grand Design: the province its Wonder stands in, and the Wonder's name
+  gdProvinceId: z.number().optional(),
+  gdName: z.string().optional(),
 });
 export type Realm = z.infer<typeof RealmSchema>;
 
@@ -658,7 +695,8 @@ export const GraveSchema = z.object({
   killedOnTurn: z.number(),
   location: ProvinceIdSchema,
   served: z.array(z.number()),
-  _releasedBy: z.null(),
+  // (P1-15b2) the realm that released the hero, if one did
+  _releasedBy: z.number().nullable(),
   _monarch: z.boolean().optional(),
   _divineLost: z.boolean().optional(),
 });
@@ -727,7 +765,8 @@ export const GameStateSchema = z.object({
     turnRanAt: z.string().nullable(),
   }),
   botDifficulty: z.string(),
-  botDiplomacy: z.string(),
+  // (P1-15b2) optional: Turn 0 writes it only since 26 September, and every reader takes "normal" when it is missing
+  botDiplomacy: z.string().optional(),
   // (P1-12b5: read by the realm's view, for its diplomacy) Safe Start: no diplomacy before turn SAFE_START_TURN; the
   // matrix's games don't set it
   safeStart: z.boolean().optional(),
@@ -879,8 +918,10 @@ export const GameStateSchema = z.object({
     .optional(),
   gameOver: z
     .object({
-      winner: z.number(),
-      byReckoning: z.boolean(),
+      // (P1-15b2) no winner when every realm conceded; a win by elimination is not by the Reckoning
+      winner: z.number().nullable(),
+      byReckoning: z.boolean().optional(),
+      byElimination: z.boolean().optional(),
       turn: z.number(),
       standings: z.array(
         z.object({
