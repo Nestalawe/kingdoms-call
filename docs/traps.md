@@ -1040,8 +1040,8 @@ older save.
 Since P1-15d the turn checks the save it has just upgraded against the saved state's schema made strict
 (`src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts`,
 [ARCHITECTURE.md](ARCHITECTURE.md#a-saved-game-its-version-its-upgrade-its-check)). Zod's `z.object` returns a copy
-without the keys it doesn't name, and a live save holds keys the schema may not know yet (a released hero's
-`_releasedBy` today: STATUS, Parked).
+without the keys it doesn't name, and a live save may hold keys the schema doesn't know yet (a field only live play
+writes, or a battle's mark that leaked into the save).
 
 - **Never play, save or return the parse's output.** The turn plays the object it upgraded, every key kept. A turn
   that played the parse's copy would drop each such key from every live game for good. `tests/unit/a-save-the-check-
