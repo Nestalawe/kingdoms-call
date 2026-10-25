@@ -279,7 +279,7 @@ export function discUnitIs(cls, army, typeOnly) {
 }
 // Does a unit-filtered effect (race / types / cls) apply to this army? (typeOnly: `army` is a type
 // name.)
-export function discUnitMatch(e, army, typeOnly) {
+export function discUnitMatch(e, army, typeOnly?) {
   if (!e) return false;
   const t = typeOnly ? army : army && army.type;
   if (e.types && !e.types.includes(t)) return false;

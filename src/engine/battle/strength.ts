@@ -1,17 +1,33 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
 import { ORC_FOOT_TYPES } from '../units/movement.ts';
 import { FLYING_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { ArmyInABattle } from '../army-tables.ts';
+
+/** A unit of a force as the battle code hands it: an army, or a hole the guards skip. */
+type ForceUnit = ArmyInABattle | null | undefined;
+/** What armStr tells unitAbilityMult of the battle (the fields this file reads). */
+export interface UnitAbilityContext {
+  readonly force?: readonly ForceUnit[] | null;
+  readonly enemyForce?: readonly ForceUnit[] | null;
+  readonly amphibious?: boolean | null;
+  readonly isAttacker?: boolean | null;
+  readonly coastal?: boolean | null;
+}
 
 // ── Force-composition strength multipliers (applied inside armStr) ──
-export function unitAbilityMult(army, ctx, terrain) {
+export function unitAbilityMult(
+  army: ForceUnit,
+  ctx: UnitAbilityContext | null | undefined,
+  terrain: string | null | undefined,
+): number {
   if (!army || !ctx) return 1;
   const t = army.type,
-    force = ctx.force || [],
-    enemy = ctx.enemyForce || [];
+    force = ctx.force ?? [],
+    enemy = ctx.enemyForce ?? [];
   const enemyHasMissile = enemy.some((a) => a && MISSILE_ARMIES_MASTER.has(a.type));
   let m = 1;
   // 2026-10-11 (Toby, the unit abilities): Shieldwall now lives in the line (battleFaceSide: Levies with an
@@ -29,7 +45,7 @@ export function unitAbilityMult(army, ctx, terrain) {
   // PRIMAL — Shoal Swarm (2026-10-13, the beast abilities): sharks are worthless alone and deadly in numbers — +10% per
   // other Shark Shoals in the force, to +30% (as the goblins' Sheer Numbers).
   if (t === 'Shark Shoals') {
-    const others = Math.max(0, force.filter((a) => a && a.type === 'Shark Shoals').length - 1);
+    const others = Math.max(0, force.filter((a) => a?.type === 'Shark Shoals').length - 1);
     m *= 1 + Math.min(0.3, others * 0.1);
   }
 
@@ -52,17 +68,20 @@ export function unitAbilityMult(army, ctx, terrain) {
 }
 
 // ── Archery-phase ability helpers ── Which units actually loose this phase, and in what order.
-export function abilityMissileUnits(force, terrain) {
-  const list = (force || []).filter((a) => MISSILE_ARMIES_MASTER.has(a.type));
+export function abilityMissileUnits(
+  force: readonly ArmyInABattle[] | null | undefined,
+  terrain: string | null | undefined,
+): ArmyInABattle[] {
+  const list = (force ?? []).filter((a) => MISSILE_ARMIES_MASTER.has(a.type));
   // HUMAN — Broadside: at sea a galleon is a floating battery.
   if (terrain === 'sea')
-    (force || []).forEach((a) => {
+    (force ?? []).forEach((a) => {
       if (a.type === 'Galleon Fleet') list.push(a);
     });
   // ELF — Tree Watch: in forest or jungle the Elven Garrison shoots like an archer unit.
   if (terrain === 'forest' || terrain === 'jungle')
-    (force || []).forEach((a) => {
-      if (a && a.type === 'Elven Garrison') list.push(a);
+    (force ?? []).forEach((a) => {
+      if (a.type === 'Elven Garrison') list.push(a);
     });
   // DWARF — Bombardment: the guns speak first, so they get the clear shot before the cap fills.
   list.sort((a, b) => (b.type === 'Mountain Guns' ? 1 : 0) - (a.type === 'Mountain Guns' ? 1 : 0));
@@ -74,66 +93,86 @@ export function abilityMissileUnits(force, terrain) {
 // nothing from more shots, so the target pool skips it (kept in this scope so missileTargetPool
 // sees it).
 export const _MISSILE_CAP_FRAC = 0.4; // mirrors MISSILE_CAP_FRACTION (kept local to this module scope) — 2026-09-24: 30% → 40% (80% winged)
-export function missileCap(target, firer) {
+export function missileCap(target: ArmyInABattle, firer: ForceUnit): number {
   const baseStr = unitBaseStrength(target);
   const isFly = FLYING_TYPES.has(target.type);
   let capFraction = isFly ? _MISSILE_CAP_FRAC * 2 : _MISSILE_CAP_FRAC;
-  if (firer && firer.type === 'Ironwood Crossbows') capFraction = isFly ? 0.9 : 0.55; // Punch Through: +15 points on the ground (was 45 vs 30); winged 90 (was 90 vs 60)
+  if (firer?.type === 'Ironwood Crossbows') capFraction = isFly ? 0.9 : 0.55; // Punch Through: +15 points on the ground (was 45 vs 30); winged 90 (was 90 vs 60)
   return Math.max(1, Math.floor(baseStr * capFraction));
 }
-export function missileCapReached(target, firer) {
+export function missileCapReached(target: ForceUnit, firer: ForceUnit): boolean {
   if (!target) return true;
   if (target.type === 'Dwarf Ironclads' || target.type === 'Great Turtles') return true; // arrow-immune (Armoured Hulls; the turtles' Shell Wall) — never worth a shot
-  return (target._archeryRed || 0) >= missileCap(target, firer);
+  return (target._archeryRed ?? 0) >= missileCap(target, firer);
 }
 // 2026-09-24 (Toby): targets are RANDOM. Every shot picks at random among the enemy's winged riders
 // still below their arrow cap; only when none is left does it pick at random among ALL the other
 // enemy units below their cap (no "front row" any more). Shadow Archers stay hidden while anything
 // else is visible (Loosed From Cover). `frontWidth` is ignored — kept so old callers still work.
-export function missileTargetPool(enemyArmies, frontWidth, firer, myForce) {
-  const all = (enemyArmies || []).filter(Boolean);
+export function missileTargetPool(
+  enemyArmies: readonly ForceUnit[] | null | undefined,
+  frontWidth: unknown,
+  firer: ForceUnit,
+  myForce: readonly ForceUnit[] | null | undefined,
+): ArmyInABattle[] {
+  const all = (enemyArmies ?? []).filter((a): a is ArmyInABattle => Boolean(a));
   // ELF — Eyes of the Forest: with Eagle Riders overhead nothing hides, Shadow Archers included.
   const visible = eyesOfTheForest(myForce) ? all : all.filter((a) => a.type !== 'Shadow Archers');
   const src = visible.length ? visible : all;
-  const live = (u) => !missileCapReached(u, firer);
+  const live = (u: ArmyInABattle) => !missileCapReached(u, firer);
   const fly = src.filter((u) => FLYING_TYPES.has(u.type) && live(u));
   if (fly.length) return fly;
   return src.filter((u) => live(u));
 }
 // ELF — Ambush: enemy archers never get a clear shot at Wardens in their own woods — unless Eagle Riders
 // fly with the shooters (Eyes of the Forest, 2026-10-11): then the Wardens are seen and the volley flies.
-export function eyesOfTheForest(force) {
-  return (force || []).some((a) => a && a.type === 'Eagle Riders');
+export function eyesOfTheForest(force: readonly ForceUnit[] | null | undefined): boolean {
+  return (force ?? []).some((a) => a?.type === 'Eagle Riders');
 }
-export function archeryBlockedBy(defenderForce, terrain, shooters) {
+export function archeryBlockedBy(
+  defenderForce: readonly ForceUnit[] | null | undefined,
+  terrain: string | null | undefined,
+  shooters: readonly ForceUnit[] | null | undefined,
+): boolean {
   if (terrain !== 'forest' && terrain !== 'jungle') return false;
   if (eyesOfTheForest(shooters)) return false;
-  return (defenderForce || []).some((a) => a && a.type === 'Forest Wardens');
+  return (defenderForce ?? []).some((a) => a?.type === 'Forest Wardens');
 }
 // The line the report shows when Eyes of the Forest lifts an Ambush (null when it does not apply).
-export function eyesOfTheForestLine(defenderForce, terrain, shooters, shooterName) {
+export function eyesOfTheForestLine(
+  defenderForce: readonly ForceUnit[] | null | undefined,
+  terrain: string | null | undefined,
+  shooters: readonly ForceUnit[] | null | undefined,
+  shooterName: string,
+) {
   if ((terrain !== 'forest' && terrain !== 'jungle') || !eyesOfTheForest(shooters)) return null;
-  if (!(defenderForce || []).some((a) => a && a.type === 'Forest Wardens')) return null;
+  if (!(defenderForce ?? []).some((a) => a?.type === 'Forest Wardens')) return null;
   return { kind: 'the eagle riders mark the forest wardens and spoil the ambush', shooterName };
 }
 // Per-shot damage multipliers from the firing unit's ability. isAtk: the firer's side attacks.
 // 2026-10-11 (Toby, the unit abilities): the Longbows' Massed Volley is retired (theirs are Bodkin Points
 // and Prepared Ground); the Black Arrows' Raiders' Volley arrives.
-export function missileDamageMult(firer, force, terrain, target, isAtk) {
+export function missileDamageMult(
+  firer: ForceUnit,
+  force: unknown,
+  terrain: string | null | undefined,
+  target: ForceUnit,
+  isAtk: boolean,
+): number {
   if (!firer) return 1;
   let m = 1;
   // ELF — Woodland Volley: elven bows in elven woods.
   if (firer.type === 'Elven Bowmen' && (terrain === 'forest' || terrain === 'jungle')) m *= 2;
   // DWARF — Bombardment: siege guns are built for breaking fortifications.
-  if (firer.type === 'Mountain Guns' && target && /Garrison/.test(target.type || '')) m *= 1.5;
+  if (firer.type === 'Mountain Guns' && target && (target.type || '').includes('Garrison')) m *= 1.5;
   // ORC — Raiders' Volley: the Black Arrows loose hardest going forward.
   if (firer.type === 'Black Arrows' && isAtk) m *= 1.5;
   return m;
 }
 // Prepared Ground: a defending Longbow company looses two volleys. How many shots a unit fires this
 // phase, before any quiver the commander carries.
-export function abilityVolleys(firer, isAtk) {
-  return firer && firer.type === 'Yeoman Longbows' && !isAtk ? 2 : 1;
+export function abilityVolleys(firer: ForceUnit, isAtk: boolean): number {
+  return firer?.type === 'Yeoman Longbows' && !isAtk ? 2 : 1;
 }
 
 // ── DWARF — Flak Screen ── Each Gyrocopter harries ONE enemy flying unit (-30%). A unit already
@@ -155,10 +194,17 @@ export function abilityVolleys(firer, isAtk) {
 // with game state, and a winged rider harried once was immune to Flak Screen for the rest of the
 // GAME. It is now deleted alongside those flags at every one of those five sites. If a new
 // battle-only flag is added, add it to all five.
-export function applyFlakScreen(myForce, enemyForce, myName, narr) {
-  const gyros = (myForce || []).filter((a) => a && a.type === 'Gnomish Gyrocopters');
+export function applyFlakScreen(
+  myForce: readonly ForceUnit[] | null | undefined,
+  enemyForce: readonly ForceUnit[] | null | undefined,
+  myName: string,
+  narr: NarrativeLine[],
+): void {
+  const gyros = (myForce ?? []).filter((a) => a?.type === 'Gnomish Gyrocopters');
   if (!gyros.length) return;
-  const flyers = (enemyForce || []).filter((a) => a && FLYING_TYPES.has(a.type) && !a._flakTargeted);
+  const flyers = (enemyForce ?? []).filter(
+    (a): a is ArmyInABattle => !!a && FLYING_TYPES.has(a.type) && !a._flakTargeted,
+  );
   if (!flyers.length) return;
   const pool = flyers.slice();
   let engaged = 0;
@@ -168,14 +214,15 @@ export function applyFlakScreen(myForce, enemyForce, myName, narr) {
   // (above "battle is initiated") while the harry details pushed to the end — scattering the
   // sequence. Appending the summary then its details keeps the flak event in order, wherever this
   // pre-battle call sits.
-  const lines = [];
+  const lines: NarrativeLine[] = [];
   gyros.forEach(() => {
     if (!pool.length) return;
     const idx = Math.floor(kcRng() * pool.length);
     const t = pool.splice(idx, 1)[0];
+    if (!t) return;
     t._flakTargeted = true;
     const red = Math.max(1, Math.round(unitBaseStrength(t) * 0.3));
-    t._tempStrReduction = (t._tempStrReduction || 0) + red;
+    t._tempStrReduction = (Number(t._tempStrReduction) || 0) + red;
     lines.push({
       kind: 'the gyrocopters harry a flying unit off its line',
       targetUnitName: t.unitName || t.type,
@@ -189,6 +236,8 @@ export function applyFlakScreen(myForce, enemyForce, myName, narr) {
       sideName: myName,
       engagedCount: engaged,
     });
-    lines.forEach((l) => narrate(narr, l));
+    lines.forEach((l) => {
+      narrate(narr, l);
+    });
   }
 }

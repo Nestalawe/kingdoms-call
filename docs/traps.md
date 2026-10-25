@@ -646,8 +646,8 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 
 ## `@ts-nocheck` checks nothing in the file
 
-128 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(94: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+125 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(91: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -682,6 +682,36 @@ table with a key left out.
   caller still keeping its line may need stays, its parameter typed optional; a `no-unsafe-*` finding from a callee
   that keeps its line is met by typing the value where the freed file takes it. A finding that can't be fixed without
   freeing another file waits for that file.
+- **What it took, file by file** (P1-10b2: `army-tables.ts`, `units/movement.ts`, `battle/strength.ts`, 34,104
+  bytes): the line off, strict TypeScript reported 103 errors; about 40 annotations and 9 statements cleared them, then
+  the type-aware lint found 55 findings there, all fixed (mostly `?? []` for `|| []` on a list, and `a?.type === x`
+  for `a && a.type === x`). Three forms keep a value where `??` wouldn't:
+  - **`x || 0` on a number that is worked out** (a skill level, a strength taken off) becomes `Number(x) || 0`, not
+    `x ?? 0`: the two differ when `x` is `NaN`, which `|| 0` turns into 0. `?? 0` is right where `x` can't be `NaN`
+    (a number from the data file, a field compared at once in a way `NaN` and 0 both fail).
+  - **`(a && (a.unitName || a.type)) || 'unit'`**, where `''` may reach, is read into a `const` first:
+    `const nameOrType = a ? a.unitName || a.type : '';`, then `nameOrType || 'unit'`.
+  - **A function that reads an old save** (`migrateLegacyUnitNames`) takes the old save's shape, declared beside it
+    with every field it reads optional, so each of its guards stays needed; today's `GameState` passes.
+  A guard lint calls needless is dropped only where the code would already have thrown without it (in
+  `abilityMissileUnits`, `a && a.type` after a filter that reads `a.type` of every unit).
+
+## A battle-only mark is not part of the saved state
+
+A battle writes marks on its units and its commanders that last for that battle only: on a unit, `_archeryRed` (what
+the arrows took off), `_tempStrReduction` (what it lost before the clash), `_flakTargeted` (a flyer a gyrocopter
+harried) and `_disbanded` (forced below Green); on a hero, `_tacticalMult` (Telekinetic Storm). The battle wipes them
+at its end, before the state is saved. They are typed by `ArmyInABattle` and `HeroInABattle` (`engine/army-tables.ts`),
+**not** in the saved state's schema (P1-10b2).
+
+- **Why not in the schema:** on 2026-09-27 `_flakTargeted` was never wiped, so it was saved, and a flyer harried once
+  was immune to Flak Screen for the rest of the game. The schemas' tests parse every state of a matrix game strictly
+  (`tests/lib/strict-schema.ts`), so a mark left on a unit in a save fails them; an optional field in `ArmySchema`
+  would let it through.
+- **An `Army` passes where an `ArmyInABattle` is wanted** (each mark is optional), so a caller needn't change. A
+  freed function that reads or writes a mark takes `ArmyInABattle` (or `HeroInABattle`), not `Army`.
+- **A new battle-only mark** goes in the type, with a line saying what it is, and is wiped at every place the others
+  are (the comment above `applyFlakScreen`, `engine/battle/strength.ts`, names them).
 
 ## A fixed lint finding must leave the suppressions
 
@@ -724,9 +754,11 @@ turn (`backfillHomeRosters`); other provinces keep the pool they were generated 
 `KC_UNIT_BASE_STR` (every humanoid unit and elemental) and `ARMY_UNIT_NAMES` with `PRIMAL_UNIT_NAMES` (every unit type)
 end in `satisfies`, so a unit in `KC_UNIT_TYPE` that is missing from one fails `npm run typecheck` (TS1360). A unit
 that `PRIMAL_ARMY_DEFS_P`, `ARMY_UNIT_NAMES` or `KC_CARRIER_BERTHS` names but `KC_UNIT_TYPE` doesn't fails too
-(TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it. The
-engine's tables (`ARMY_COST_MASTER`, `UNIT_SHORT`, `TERRAIN_MODS`, `ARMY_RACE_OF_TYPE`, …) are still unchecked: their
-files keep `@ts-nocheck`, and a `satisfies` there checks nothing
+(TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it.
+Since P1-10b2 the engine's `ARMY_COST_MASTER` and `ARMY_SPEED_MASTER` (`engine/army-tables.ts`) end in `satisfies
+Record<HumanoidUnitType, number>` too: a humanoid unit missing from either fails (a primal unit's cost and speed come
+from `PRIMAL_ARMY_DEFS_P`). The engine's other tables (`UNIT_SHORT`, `TERRAIN_MODS`, `ARMY_RACE_OF_TYPE`, …) are
+still unchecked: their files keep `@ts-nocheck`, and a `satisfies` there checks nothing
 ([above](#ts-nocheck-checks-nothing-in-the-file)). Each gets its `satisfies` when its file loses `@ts-nocheck`
 (P1-10b: none of those files passes with annotations alone, P1-10a3). The lists above are still the whole job.
 

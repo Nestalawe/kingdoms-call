@@ -59,7 +59,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   splits the engine's). The files that were JavaScript start with `// @ts-nocheck` and the reason (142 of 158 at the
   rename: strict TypeScript found errors in each); P1-10 and P1-16 type them. The ratchet counts the line in two, so
   each only falls: `tsNocheckEngineSide` (the engine's side: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`,
-  `src/content/`, `src/schemas/`, `src/shared/`; 94, P1-10b's) and `tsNocheckUi` (every other file: the UI's pages and
+  `src/content/`, `src/schemas/`, `src/shared/`; 91, P1-10b's) and `tsNocheckUi` (every other file: the UI's pages and
   `src/rulebook/`; 34, P1-16's).
   A new file is checked from the start. `src/globals.d.ts` declares what the modules read without importing it:
   `KC_CONFIG` and `supabase` (the pages' classic scripts), `KC_RNG_SEED` (the tests' seed) and each page's declared
@@ -79,7 +79,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   (`tests/lib/strict-schema.ts`), and `tests/unit/the-saved-game-state-schemas-parse-every-state-of-a-matrix-game.test.ts`
   parses a whole matrix game's states and orders. They type the 14 files of the engine's side that pass strict
   TypeScript with annotations alone (P1-10a3: the dice, the routes, the ladder, the visibility rule, the battle report's
-  lines and more; the list is in P1-10a3's pull request). The other 94 of those 108 files still say `@ts-nocheck`:
+  lines and more; the list is in P1-10a3's pull request), and the three P1-10b2 freed (`army-tables.ts`,
+  `units/movement.ts`, `battle/strength.ts`). The other 91 of those 108 files still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](traps.md#ts-nocheck-checks-nothing-in-the-file)).
 - **The content's and the engine's own types** (P1-10a2), types only, so no file the build makes changes with them:
@@ -98,7 +99,12 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     (`engine/turn/events-and-their-audiences.ts`), `NarrativeLine` (a line of a fight's narrative: its words, or the
     fact they are written from). The freed files declare a few shapes of their own
     (`LadderRow` in `battle/ladder.ts`, `SightContext` in
-    `sight/heroes-in-sight-features-discovered-and-army-size-bands.ts`), and the schemas' file names a feature
+    `sight/heroes-in-sight-features-discovered-and-army-size-bands.ts`, `UnitAbilityContext` in `battle/strength.ts`);
+    `army-tables.ts` declares a unit and a hero in a battle, `ArmyInABattle` and `HeroInABattle`: an `Army` or a
+    `Character` plus the marks a battle writes and wipes before the save, which the saved state's schema doesn't hold
+    ([traps.md](traps.md#a-battle-only-mark-is-not-part-of-the-saved-state)). Its two master tables, the cost and the
+    speed by unit type, end in `satisfies Record<HumanoidUnitType, number>` (their written part; the primal rows are
+    added as the file loads), and the schemas' file names a feature
     (`ProvinceFeature`) and the title keys (`MajorTitleKey`, `MinorTitleKey`).
   - `tools/pages.ts` reads a module's imports that bring code, so an `import type` (of `src/schemas/`, say) adds no file
     to a page.

@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   KC_ITEM_UNCAPPED_SKILLS,
   KC_QUALITY_TIERS,
@@ -6,6 +5,31 @@ import {
   KC_UNIT_CLASS,
   PRIMAL_ARMY_DEFS_P,
 } from '../content/kingdoms-call-data.ts';
+import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
+import type { Army, Character, GameState, Grave } from '../schemas/saved-game-state.ts';
+
+// ── A UNIT AND A HERO IN A BATTLE ────
+// A battle writes marks on its units and its commanders that last for that battle only, and wipes them at the battle's
+// end, before the state is saved (2026-09-27: `_flakTargeted` was never wiped, so it was saved, and a flyer harried
+// once was immune to Flak Screen for the rest of the game). They aren't in the saved state's schema: a save that holds
+// one fails the strict parse in the schemas' tests. An Army passes where an ArmyInABattle is wanted (each mark is
+// optional), so no caller changes.
+/** A unit in a battle: an army and the marks the battle writes on it. */
+export type ArmyInABattle = Army & {
+  /** The strength the enemy's arrows have taken off it this battle (missileCapReached caps it). */
+  _archeryRed?: number;
+  /** The strength it lost before the clash (Flak Screen, a pre-battle strike). */
+  _tempStrReduction?: number;
+  /** A flyer a gyrocopter has already harried this battle (applyFlakScreen). */
+  _flakTargeted?: boolean;
+  /** A unit forced below Green (demoteOrDisband): its force drops it, and no grave records it. */
+  _disbanded?: boolean;
+};
+/** A hero in a battle: a character and the marks the battle writes on him. */
+export type HeroInABattle = Character & {
+  /** How much of his Tactical bonus is left (tacMulted): 1 unless Telekinetic Storm halved it to 0.5. */
+  _tacticalMult?: number;
+};
 
 // ════
 // MASTER UNIT TABLES — single source of truth
@@ -18,7 +42,7 @@ import {
 // Cost is BOTH the recruitment price and the per-turn wage: a unit costs its price again every turn
 // it exists. 2026-10-11 (Toby, the army roster): Forest Wardens 3→2, Shadow Archers 3→4, Ironwood
 // Crossbows 3→2; their base strengths moved with them (KC_UNIT_BASE_STR). tests/roster holds both.
-export const ARMY_COST_MASTER = {
+export const ARMY_COST_MASTER: Record<string, number> = {
   // ── Human ──
   'Shieldwall Levies': 2,
   'Free Lances': 3,
@@ -56,14 +80,14 @@ export const ARMY_COST_MASTER = {
   'Black Arrows': 2,
   // Primal units: their cost is written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.ts), and
   // added below — 2026-09-27, it used to be re-typed here and kept "in step" by hand.
-};
+} satisfies Record<HumanoidUnitType, number>;
 Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t, d]) => {
   ARMY_COST_MASTER[t] = d.cost;
 });
 // 2026-10-11 (Toby, the army roster): land move rates by kind — garrisons 1; line foot, archers and
 // guns 2; heavy horse and the special foot (Wardens, Berserkers, Shadow Archers) 3; light horse 4;
 // the winged riders 5 (Gyrocopters 4). tests/roster holds this table to the decided roster.
-export const ARMY_SPEED_MASTER = {
+export const ARMY_SPEED_MASTER: Record<string, number> = {
   // ── Human ──
   'Shieldwall Levies': 2,
   'Free Lances': 4,
@@ -100,7 +124,7 @@ export const ARMY_SPEED_MASTER = {
   'Orcish Longships': 3,
   'Black Arrows': 2,
   // Primal units: speed written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.ts), added below.
-};
+} satisfies Record<HumanoidUnitType, number>;
 Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t, d]) => {
   ARMY_SPEED_MASTER[t] = d.speed;
 });
@@ -113,7 +137,7 @@ export const PRIMAL_SEA_NAMES = new Set(KC_UNIT_CLASS.primalSea);
 // is a DISPLAY-ONLY rounder: use it on every number interpolated into narrative/log text. It must
 // NEVER be used on a value that feeds back into the maths, and it is deliberately NOT applied to
 // multipliers — "× tactical ×1.2" rounded to "×1" would be meaningless.
-export function n0(x) {
+export function n0(x: unknown): string {
   const v = Number(x);
   return Number.isFinite(v) ? String(Math.round(v)) : String(x);
 }
@@ -127,20 +151,24 @@ export function n0(x) {
 // Green does not die and does not become mercenaries — it DISBANDS: the men melt back into the
 // population and the unit ceases to exist. Disbanded units are never recorded in battle graves
 // (nobody was killed) and can never be raised as skeletons.
-export const QUALITY_TIERS = KC_QUALITY_TIERS.slice();
+export const QUALITY_TIERS: string[] = KC_QUALITY_TIERS.slice();
 // Returns true if the unit disbanded. Callers MUST drop units flagged _disbanded from their force
 // and must NOT pass them to recordBattleGraves.
-export function demoteOrDisband(a) {
+export function demoteOrDisband(a: ArmyInABattle | null | undefined): boolean {
   if (!a) return false;
   const qi = QUALITY_TIERS.indexOf(a.quality);
   if (qi > 0) {
-    a.quality = QUALITY_TIERS[qi - 1];
+    a.quality = QUALITY_TIERS[qi - 1] ?? a.quality;
     return false;
   }
   a._disbanded = true;
   return true;
 }
-export function disbandLine(owner, a, clause) {
+export function disbandLine(
+  owner: string | null | undefined,
+  a: Pick<Army, 'type' | 'unitName'>,
+  clause?: string | null,
+): string {
   // 2026-09-23d: a unit NAMED "the …" reads "the Pale Shades (Vervain's Shadow Archers)", never
   // "Vervain's the Pale Shades" (same rule as unitRef). `clause` (2026-10-12): whom they fought, after the name.
   const _core =
@@ -151,12 +179,16 @@ export function disbandLine(owner, a, clause) {
 }
 // "Atk's Warg Riders" / "the Red Hand (Atk's Eagle Riders)" — an owner plus a unit's name or type,
 // never "Atk's the Red Hand" (2026-09-23d). Module level since 2026-10-11 (they were inside runTurn).
-export function ownedUnitName(ownerName, a) {
-  if (a && a.unitName && /^the\s/i.test(a.unitName))
+export function ownedUnitName(
+  ownerName: string | null | undefined,
+  a: Pick<Army, 'type' | 'unitName'> | null | undefined,
+): string {
+  if (a?.unitName && /^the\s/i.test(a.unitName))
     return `${a.unitName} (${ownerName ? ownerName + "'s " : ''}${a.type})`;
-  return `${ownerName ? ownerName + "'s " : ''}${(a && (a.unitName || a.type)) || 'unit'}`;
+  const nameOrType = a ? a.unitName || a.type : '';
+  return `${ownerName ? ownerName + "'s " : ''}${nameOrType || 'unit'}`;
 }
-export function unitRef(ownerName, a) {
+export function unitRef(ownerName: string | null | undefined, a: Pick<Army, 'type' | 'unitName' | 'quality'>): string {
   // 2026-09-23d: "the Pale Shades (Vervain's Shadow Archers, Average)" — never "Vervain's the Pale Shades".
   if (a.unitName && /^the\s/i.test(a.unitName))
     return `${a.unitName} (${ownerName ? ownerName + "'s " : ''}${a.type}, ${a.quality})`;
@@ -323,16 +355,16 @@ export const SPELL_FNS_NEED_COLOCATED_TARGET = new Set([
 // orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
 // make none. `turn` is the turn being resolved (games.turn when its orders are run).
 export const SAFE_START_TURN = 6;
-export function safeStartLocked(gs, turn) {
-  return !!(gs && gs.safeStart) && (Number(turn) || 0) < SAFE_START_TURN;
+export function safeStartLocked(gs: Pick<GameState, 'safeStart'> | null | undefined, turn: unknown): boolean {
+  return !!gs?.safeStart && (Number(turn) || 0) < SAFE_START_TURN;
 }
 // BOTS' reading of Safe Start (2026-09-29): true while even NEXT turn is still locked, so no war can
 // touch the realm before its next orders — the bot posts no defenders and leaves the capital
 // ungarrisoned, putting every hero and levy into expansion. On the last locked turn (Turn
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
-export function botSafeWindow(G) {
-  return safeStartLocked(G, ((G && G.turn) || 0) + 1);
+export function botSafeWindow(G: Pick<GameState, 'safeStart' | 'turn'> | null | undefined): boolean {
+  return safeStartLocked(G, (G?.turn ?? 0) + 1);
 }
 
 // ── LEGACY UNIT-TYPE MIGRATION ────
@@ -342,7 +374,7 @@ export function botSafeWindow(G) {
 // level, missile/flying/sea sets, name pools) is keyed by the new ones — so an unmigrated save
 // would silently fall back to default stats. This walks a loaded state and rewrites them. Safe to
 // run repeatedly: unknown//already-migrated names pass through untouched.
-export const LEGACY_UNIT_RENAMES = {
+export const LEGACY_UNIT_RENAMES: Readonly<Record<string, string>> = {
   Infantry: 'Shieldwall Levies',
   Cavalry: 'Free Lances',
   Longbowmen: 'Yeoman Longbows',
@@ -357,47 +389,82 @@ export const LEGACY_UNIT_RENAMES = {
   'Leviathan Pods': 'Eldritch Kraken',
 };
 // A province's (or a company's) primal race string, where the beast it names was renamed.
-export const LEGACY_RACE_RENAMES = { 'Primal:Giant Eagle': 'Primal:Thunderbird', 'Primal:Leviathan': 'Primal:Kraken' };
-export function migrateLegacyUnitNames(state) {
+export const LEGACY_RACE_RENAMES: Readonly<Record<string, string>> = {
+  'Primal:Giant Eagle': 'Primal:Thunderbird',
+  'Primal:Leviathan': 'Primal:Kraken',
+};
+// The saved state as migrateLegacyUnitNames reads it: today's, or an older save's, so any field it reads may be
+// missing (the guards below say so), and a hero's grave is today's plus the companies he led (`armies`), which nothing
+// writes today (an older save's field, or dead code). P1-15 types the old saves; until then their shape is
+// declared here, with only the fields this function reads. Today's GameState passes.
+interface UnitOfAnOldSave {
+  type?: string | null;
+  race?: string | null;
+}
+type UnitsOfAnOldSave = readonly (UnitOfAnOldSave | null | undefined)[] | null | undefined;
+interface ProvinceOfAnOldSave {
+  race?: string | null;
+  garrisonArmies?: UnitsOfAnOldSave;
+  neutralDefenders?: UnitsOfAnOldSave;
+  armyTypes?: string[] | null;
+  battleGraves?: UnitsOfAnOldSave;
+}
+interface StateOfAnOldSave {
+  readonly characters?: readonly { readonly armies?: UnitsOfAnOldSave }[] | null;
+  readonly world?: { readonly provinces?: readonly (ProvinceOfAnOldSave | null | undefined)[] | null } | null;
+  readonly heroGraveyard?: readonly ((Grave & { readonly armies?: UnitsOfAnOldSave }) | null | undefined)[] | null;
+}
+export function migrateLegacyUnitNames(
+  state: StateOfAnOldSave | null | undefined,
+): StateOfAnOldSave | null | undefined {
   if (!state || typeof state !== 'object') return state;
   let n = 0;
-  const fixArmyList = (list) => {
-    (list || []).forEach((a) => {
-      if (a && a.type && LEGACY_UNIT_RENAMES[a.type]) {
-        a.type = LEGACY_UNIT_RENAMES[a.type];
+  const fixArmyList = (list: UnitsOfAnOldSave) => {
+    (list ?? []).forEach((a) => {
+      const toType = a?.type ? LEGACY_UNIT_RENAMES[a.type] : undefined;
+      if (a && toType) {
+        a.type = toType;
         n++;
       }
-      if (a && a.race && LEGACY_RACE_RENAMES[a.race]) {
-        a.race = LEGACY_RACE_RENAMES[a.race];
+      const toRace = a?.race ? LEGACY_RACE_RENAMES[a.race] : undefined;
+      if (a && toRace) {
+        a.race = toRace;
         n++;
       }
     });
   };
-  (state.characters || []).forEach((c) => fixArmyList(c.armies));
-  ((state.world && state.world.provinces) || []).forEach((p) => {
+  (state.characters ?? []).forEach((c) => {
+    fixArmyList(c.armies);
+  });
+  (state.world?.provinces ?? []).forEach((p) => {
     if (!p) return;
-    if (p.race && LEGACY_RACE_RENAMES[p.race]) {
-      p.race = LEGACY_RACE_RENAMES[p.race];
+    const toRace = p.race ? LEGACY_RACE_RENAMES[p.race] : undefined;
+    if (toRace) {
+      p.race = toRace;
       n++;
     }
     fixArmyList(p.garrisonArmies);
     fixArmyList(p.neutralDefenders);
     if (Array.isArray(p.armyTypes))
       p.armyTypes = p.armyTypes.map((t) => {
-        if (LEGACY_UNIT_RENAMES[t]) {
+        const to = LEGACY_UNIT_RENAMES[t];
+        if (to) {
           n++;
-          return LEGACY_UNIT_RENAMES[t];
+          return to;
         }
         return t;
       });
-    (p.battleGraves || []).forEach((g) => {
-      if (g && g.type && LEGACY_UNIT_RENAMES[g.type]) {
-        g.type = LEGACY_UNIT_RENAMES[g.type];
+    (p.battleGraves ?? []).forEach((g) => {
+      const to = g?.type ? LEGACY_UNIT_RENAMES[g.type] : undefined;
+      if (g && to) {
+        g.type = to;
         n++;
       }
     });
   });
-  (state.heroGraveyard || []).forEach((g) => fixArmyList(g && g.armies));
-  if (n > 0) console.log(`[migration] renamed ${n} legacy unit reference(s) to the current names.`);
+  (state.heroGraveyard ?? []).forEach((g) => {
+    fixArmyList(g?.armies);
+  });
+  if (n > 0) console.log(`[migration] renamed ${String(n)} legacy unit reference(s) to the current names.`);
   return state;
 }
