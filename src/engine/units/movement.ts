@@ -1,6 +1,7 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { typeOfX } from '../battle/lines.ts';
+import type { GridCell } from '../battle/lines.ts';
 import { hasItemBase } from '../items/equipment.ts';
 import { discEffectsOf, discUnitMatch } from '../discoveries.ts';
 import type { HeroInABattle } from '../army-tables.ts';
@@ -84,7 +85,7 @@ export function isHalfOrMore(force: readonly ForceUnit[] | null | undefined, typ
 // it reads half the force, as it did before.
 export function shieldFortHolds(
   force: readonly ForceUnit[] | null | undefined,
-  grid: { readonly front?: readonly unknown[] } | null | undefined,
+  grid: { readonly front?: (GridCell | null | undefined)[] } | null | undefined,
 ): boolean {
   if (grid && Array.isArray(grid.front)) {
     const cells = grid.front.filter(Boolean);

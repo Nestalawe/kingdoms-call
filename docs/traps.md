@@ -646,8 +646,8 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 
 ## `@ts-nocheck` checks nothing in the file
 
-124 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(90: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+123 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(89: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -708,6 +708,19 @@ table with a key left out.
   - **A callback option a winner never calls** (`demoteAt`) is required only where it is called: `rollUnitFates`'
     options are a union on `won`, `{ won: true }` or `{ won: false; demoteAt }`, so no caller passes a dummy and no
     `?.` hides a missing one.
+- (P1-10b4: `battle/lines.ts`, 42,398 bytes): 195 errors, 162 of them a parameter with no type; then 4 typed lint
+  findings, all fixed. Freeing it also cleared the 5 findings `battle/ladder.ts` held for its calls into it (a value
+  from a file that keeps the line is `any`), so `eslintSuppressions` fell. Four more forms:
+  - **A function that adds fields to the object it is handed** (`battleRegrid` adds `units` and `total` to a grid)
+    returns `Object.assign(g, { units, total })`: the same object, the same fields in the same order, and its type is
+    the grid with them (`BattleGrid`), so no reader needs a check for them.
+  - **A list's element read where the code has just made it sure** (`cav[i]` after `i >= 0`, `them.flanks[i]` with
+    `i` below both sides' count) is read into a `const` and checked; where the function must return a value and the
+    old code would have thrown there (`gA.face.total` right after `battleFacing`), the check throws.
+  - **`Array.isArray` on a `readonly` list type** narrows it to `any[]`, which the typed lint refuses: a parameter the
+    body tests with `Array.isArray` takes a list that isn't `readonly` (`shieldFortHolds`' `grid.front`).
+  - **A list a filter keeps the right kind of** (`filter(isALine)` on a list whose members the compiler has narrowed)
+    needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`, not one written for the wider type.
 
 ## A battle-only mark is not part of the saved state
 
