@@ -76,8 +76,9 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
   if (!prov) return;
   const prev = prov.owner;
   prov.owner = newOwner;
-  if (prev != null && prev !== newOwner) {
-    // PROTOTYPE Good (round 2): Reclaim remembers who lost the province and when
+  if (prev != null && prev !== newOwner && alignProto(G, 'Good')) {
+    // PROTOTYPE Good (round 2): Reclaim remembers who lost the province and when (only while the kit is on, so a game
+    // without it keeps today's saved state to the byte)
     prov._lostFrom = prev;
     prov._lostTurn = G.turn;
   }
