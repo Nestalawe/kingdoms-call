@@ -14,6 +14,12 @@
 //   5. migrateLegacyUnitNames: the units and races renamed since are called by their names now;
 //   6. migrateItemTiers: every item in a pack, a hoard or a vault has its tier from the item tables (until P1-15a the
 //      turn ran it after the merge of the realms' orders; nothing between reads an item's tier).
+// Then the save's version (P1-15c): a save holds its shape's number at its top level, schemaVersion (a save without
+// one is version 0: every save from before P1-15c). A save from a newer build is refused first, before anything
+// changes (an open GM page of an older build mustn't run a turn on a shape it doesn't know); then, after the six
+// passes, each numbered step whose version is above the save's runs once, and the save is stamped with its version.
+// World generation writes the version this build writes on a new world (src/engine/world/generate.ts), so a new
+// world needs no step; the number is in a file of its own (the-saved-games-version-this-build-writes.ts).
 // It draws no dice and writes no line. What it finds for the GM's log, it returns (WhatTheSavesUpgradeFound): the turn
 // keeps it on the turn's context and tells it at the turn's end, as before, and the save keeps none of it.
 // Still in the turn, not here (P1-15's second slice): the flagged passes before the first phase, the turn-start
@@ -25,6 +31,7 @@ import { retireCorsairPools } from '../grand-design.ts';
 import { backfillHomeRosters } from '../world/tables.ts';
 import { migrateItemTiers } from '../items/equipment.ts';
 import { migrateMaxHpV2, retireDiscoveries } from '../heroes/skills-and-hp.ts';
+import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from './the-saved-games-version-this-build-writes.ts';
 
 /** A hero of a save from before the earned-HP pool, carried over to it by the first upgrade: his realm is told at the
  *  turn's end. His id and his realm's index (plain numbers, as the turn's context keeps them); `old`, his maximum HP as
@@ -50,8 +57,42 @@ type TheSaveWithThePassesCounts = GameState & {
   _maxHpMigration?: AHeroCarriedOverToTheEarnedHpPool[] | undefined;
 };
 
-/** Brings the save, as parsed, up to date, in place, and returns what it found. */
+/** A numbered step of the upgrade: it mends a save below its version into that version's shape, once. Each stays safe
+ *  to repeat, as the passes are. */
+interface ANumberedStepOfTheUpgrade {
+  /** The version a save is at once the step has run. */
+  version: number;
+  /** Mends the save, in place, from the shape of the version before into this one's. */
+  upgrade: (save: GameState) => void;
+}
+
+/** The numbered steps, in order, the last one's version THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES: a change to the saved state's shape that an older save can't meet as it is (a field
+ *  renamed, moved, retyped, or now required) adds one, with a fixture of its version (tests/fixtures/saves/, made by
+ *  tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts) and the schema's change (CLAUDE.md, "Changes"). */
+export const THE_NUMBERED_STEPS_OF_THE_UPGRADE: readonly ANumberedStepOfTheUpgrade[] = [
+  // Version 1 (P1-15c, 2026-10-25): the shape the six passes leave, which every save had when the version came in.
+  // The step is the stamp alone.
+  { version: 1, upgrade: () => undefined },
+];
+
+/** The version a save says it is at: 0 for a save from before the version came in, which holds none. */
+const theVersionOf = (save: { readonly schemaVersion?: number | undefined }): number => save.schemaVersion ?? 0;
+
+/** Throws, before anything changes, on a save from a newer build than this one: its shape is one this build doesn't
+ *  know (the turn's shell puts the realms' orders back, as for any save it can't read). */
+function refuseASaveFromANewerBuild(save: GameState): void {
+  const version = theVersionOf(save);
+  if (version > THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES)
+    throw new Error(
+      `This game was saved by a newer version of Kingdoms Call (save version ${String(version)}; this page knows ` +
+        `${String(THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES)}). Reload this page.`,
+    );
+}
+
+/** Brings the save, as parsed, up to date, in place, and returns what it found. Throws on a save from a newer build,
+ *  before anything changes. */
 export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSavesUpgradeFound {
+  refuseASaveFromANewerBuild(save);
   migrateMaxHpV2(save); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
   backfillHomeRosters(save); // home provinces recruit the king's full racial land roster
   retireCorsairPools(save); // 2026-10-15 (D3): no province offers the retired Corsair Fleet
@@ -64,5 +105,10 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
   };
   delete save._retiredDiscoveries;
   delete save._maxHpMigration;
+  for (const step of THE_NUMBERED_STEPS_OF_THE_UPGRADE) {
+    if (theVersionOf(save) >= step.version) continue;
+    step.upgrade(save);
+    save.schemaVersion = step.version;
+  }
   return found;
 }

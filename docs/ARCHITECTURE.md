@@ -383,8 +383,22 @@ the turn reads it.
   lair's, …), each optional, with a comment saying what writes it. A mark a battle writes and wipes before the save
   (`_flakTargeted`, `_tacticalMult`, …) stays out, so the check finds one that leaks. What checks it:
   `tests/unit/the-fields-the-portal-and-the-gm-page-save-parse-strictly.test.ts`.
-- **Next:** the save's version, `schemaVersion` (P1-15c), and the check of the upgraded save against the saved state's
-  schema (P1-15d).
+- **The version** (P1-15c): a save holds the number of its shape, `schemaVersion`, at its top level; a save without
+  one is version 0 (every live save before P1-15c). Version 1 is the shape the six passes leave. The number this build
+  writes is in `src/engine/saves/the-saved-games-version-this-build-writes.ts`, a file that imports nothing, so world
+  generation writes it on a new world without loading the passes. `upgradeGameState` first refuses a save from a newer
+  build, before anything changes (`resolveTurn` throws "Could not read the saved game: This game was saved by a newer
+  version of Kingdoms Call (save version 2; this page knows 1). Reload this page.", and the shell puts the orders
+  back); then, after the passes, it runs each numbered step (`THE_NUMBERED_STEPS_OF_THE_UPGRADE`, `{ version, upgrade
+  }`) whose version is above the save's, and stamps the save with it. Version 1's step is the stamp alone. When to
+  bump it: [traps.md](traps.md#a-change-to-the-saves-shape-needs-its-version).
+- **The fixtures** (P1-15c): `tests/fixtures/saves/version-<n>.json`, one per version, each a made-up game of three
+  bot realms after its third turn, one line of JSON (about 0.3 MB), made by
+  `tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts` with the build of its day (version 0 by P1-15c's base),
+  never edited once merged. What checks them: `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts`
+  (each fixture upgraded to this build's version, parsed strictly, upgraded twice as once, a turn played on it with its
+  invariants; one fixture per version; a newer save refused; a new world at this build's version).
+- **Next:** the check of the upgraded save against the saved state's schema (P1-15d).
 
 ## The pages (`site/`)
 
