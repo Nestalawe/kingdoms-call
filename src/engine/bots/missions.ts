@@ -1,6 +1,18 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kitTactics, kitTargetBonus } from '../alignment-prototypes.ts';
-import { alignProto } from '../alignment-prototypes.ts';
+import {
+  alignProto,
+  CALL_OF_THE_WILD_RANGE,
+  DARK_PACT_COST,
+  DARK_PACT_HP,
+  isPaganStones,
+  kingOrderReady,
+  kitTactics,
+  kitTargetBonus,
+  neighboursOf,
+  PROCLAIM_CRUSADE_COST,
+  protoBeastRoomExtra,
+} from '../alignment-prototypes.ts';
+import { hexDistP } from '../world/map-helpers.ts';
 import { tradePactPrice, tradePactTargets } from '../orders/alignment-prototype-orders.ts';
 import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
@@ -20,6 +32,7 @@ import {
   BOT_DEF_BONUS,
   BOT_HEX_DIRS,
   BOT_SEA_ALL,
+  BOT_MONSTER_ARMIES,
   botBattleForce,
   botBelief,
   botBelievedOwner,
@@ -1698,7 +1711,10 @@ export function botKitBredHere(G, pi, c, X) {
   if (!kit || !X || X.owner !== pi) return false;
   const garr = X.garrisonArmies || [];
   if (kit === 'Druidic')
-    return garr.some((a) => a && beastCommandCount(a)) && beastCommandRoom(c, G.characters || []) > 0;
+    return (
+      garr.some((a) => a && beastCommandCount(a)) &&
+      beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) > 0
+    );
   if (kit === 'Undead') return garr.some((a) => a && a._isSkeletal) && (c.skills || {}).necromancy >= 1;
   return false;
 }
@@ -1726,6 +1742,11 @@ export function botKitPre(G, pi, c, P, L) {
     });
     if (toks.length)
       return { action: 'recruit', target: toks.join(','), extra: '', desc: 'Hire the sell-swords in ' + P.name };
+  }
+  // PROTOTYPE tactics (round 2): the king's own orders, each when its moment comes
+  if (tactics && c.isKing) {
+    const ko = botKingKitOrder(G, pi, c, P, L);
+    if (ko) return ko;
   }
   switch (pl.alignment) {
     case 'Good':
@@ -1811,6 +1832,100 @@ export function botKitPre(G, pi, c, P, L) {
         return { action: 'rite', target: 'awakening', extra: '', desc: 'Perform Rite — the Awakening at ' + P.name };
       }
       return null;
+    }
+  }
+  return null;
+}
+
+// PROTOTYPE tactics (alignment ideas round 2): the kings' orders. The realm the bot is at war with that holds the most
+// land is the one it proclaims against or embargoes; the muster, the sacrifice and the plague wait for a war; the pact
+// and the call wait for room to lead what they bring.
+function botWarFoe(G, pi) {
+  let best = null;
+  (G.players || []).forEach((p, j) => {
+    if (j === pi || !p || botRelationRaw(G, pi, j) !== 'enemy') return;
+    if (!(G.characters || []).some((k) => k && k.alive && k.isKing && k.player === j)) return;
+    const land = (p.provinces || []).length;
+    if (!best || land > best.land) best = { j, land };
+  });
+  return best ? best.j : null;
+}
+export function botKingKitOrder(G, pi, c, P, L) {
+  const pl = (G.players || [])[pi];
+  if (!pl || !P) return null;
+  const war = botAtWar(G, pi);
+  const owned = P.owner === pi;
+  const ready = (key) => kingOrderReady(G, pl, key);
+  switch (pl.alignment) {
+    case 'Divine': {
+      if (!war || !ready('proclaim_crusade') || !botCanAfford(L, PROCLAIM_CRUSADE_COST)) return null;
+      const foe = botWarFoe(G, pi);
+      if (foe == null) return null;
+      botSpend(L, PROCLAIM_CRUSADE_COST);
+      return {
+        action: 'proclaim_crusade',
+        target: 'realm:' + String(foe),
+        extra: '',
+        desc: 'Proclaim a Crusade against ' + ((G.players || [])[foe] || {}).name,
+      };
+    }
+    case 'Good':
+      if (!war || !ready('light_beacons') || !owned) return null;
+      return { action: 'light_beacons', target: '', extra: '', desc: 'Light the Beacons' };
+    case 'Druidic': {
+      if ((c.skills || {}).druid < 1 || !owned) return null;
+      const room = beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c));
+      if (room < 2) return null;
+      let n = 0;
+      (pl.provinces || []).forEach((id) => {
+        const X = G.world.provinces[id];
+        if (!X || X.owner !== pi || hexDistP(X, P, G.world.cols) > CALL_OF_THE_WILD_RANGE) return;
+        n += (X.garrisonArmies || []).filter(
+          (a) => a && beastCommandCount(a) && !BOT_MONSTER_ARMIES.has(a.type),
+        ).length;
+      });
+      if (n < 2) return null;
+      return { action: 'call_wild', target: '', extra: '', desc: 'Sound the Call of the Wild' };
+    }
+    case 'Neutral': {
+      if (!war || !ready('embargo')) return null;
+      const foe = botWarFoe(G, pi);
+      if (foe == null) return null;
+      return {
+        action: 'embargo',
+        target: 'realm:' + String(foe),
+        extra: '',
+        desc: 'Declare an Embargo on ' + ((G.players || [])[foe] || {}).name,
+      };
+    }
+    case 'Pagan': {
+      if (!war || !owned || !ready('great_sacrifice')) return null;
+      if (!(P.features || []).some(isPaganStones) || (c.armies || []).length < 3) return null;
+      return { action: 'great_sacrifice', target: '', extra: '', desc: 'Make the Great Sacrifice at ' + P.name };
+    }
+    case 'Evil': {
+      if (!ready('dark_pact') || L.budget < DARK_PACT_COST + 4 || (c.hp || 0) <= DARK_PACT_HP + 5) return null;
+      if (beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) <= 0) return null;
+      botSpend(L, DARK_PACT_COST);
+      return { action: 'dark_pact', target: '', extra: '', desc: 'Make a Dark Pact' };
+    }
+    case 'Undead': {
+      if (!war || !ready('spread_plague')) return null;
+      let best = null;
+      neighboursOf(G, P).forEach((X) => {
+        if (X.terrain === 'sea' || String(X.race || '').startsWith('Primal') || X.owner === pi) return;
+        if (X.owner == null || botRelationRaw(G, pi, X.owner) !== 'enemy') return;
+        if (X._kitPlague && X._kitPlague.until >= G.turn) return;
+        if ((X.tax || 0) < 3) return;
+        if (!best || (X.tax || 0) > (best.tax || 0)) best = X;
+      });
+      if (!best) return null;
+      return {
+        action: 'spread_plague',
+        target: 'prov:' + String(best.id),
+        extra: '',
+        desc: 'Spread the Plague into ' + best.name,
+      };
     }
   }
   return null;

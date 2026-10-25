@@ -143,6 +143,7 @@ export const ArmySchema = z.object({
   // no wage; a skeletal company the land itself raised (Undead) needs no master while it garrisons an Undead province
   _slave: z.boolean().optional(),
   _kitGarrison: z.boolean().optional(),
+  _merc: z.boolean().optional(), // Neutral (round 2): a mercenary company hired under the kit, a condottiere
 });
 export type Army = z.infer<typeof ArmySchema>;
 
@@ -422,6 +423,10 @@ export const ProvinceSchema = z.object({
   _tradePactTurn: z.number().optional(), // Neutral: the turn a Trade Pact bought the province
   _laidWaste: z.number().optional(), // Evil: the turn Lay Waste stripped it
   _despoiled: z.number().optional(), // Undead: the turn Despoil killed the land
+  // round 2
+  _lostFrom: z.number().optional(), // Good: the realm this province was last taken from (Reclaim)
+  _lostTurn: z.number().optional(), // Good: the turn it was taken
+  _kitPlague: z.object({ by: z.number(), until: z.number() }).optional(), // Undead: the king's Plague on this province
   _earthquakeNoTax: z.number().optional(),
   _terrorStacks: z.number().optional(),
   _terrorTurn: z.number().optional(),
@@ -464,6 +469,13 @@ export const RealmSchema = z.object({
   merits: z.number(),
   _encountered: z.array(z.number()),
   consecratedProvIds: z.array(z.number()).optional(),
+  // PROTOTYPE (alignment ideas round 2, src/engine/alignment-prototypes.ts): what the kings' orders leave on a realm
+  _kingOrderLast: z.record(z.string(), z.number()).optional(), // the turn each king-only kit order was last given
+  _crusadeVs: z.number().optional(), // Divine: the realm the Crusade is proclaimed against
+  _crusadeUntil: z.number().optional(), // Divine: the last turn it holds
+  _embargoUntil: z.number().optional(), // Neutral: the last turn this realm's tax is under Embargo
+  _embargoBy: z.number().optional(), // Neutral: the realm whose Embargo it is
+  _sacrificeUntil: z.number().optional(), // Pagan: the last turn the Great Sacrifice's favour holds
   _spiedProvincesLastTurn: z.array(z.number()).optional(),
   _spiedProvincesThisTurn: z.array(z.number()).optional(),
   // the hero the realm watches with Clairvoyance this turn (the matrix's states hold only null)

@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto, divinePower } from '../alignment-prototypes.ts';
+import { alignProto, divinePower, protoBeastRoomExtra } from '../alignment-prototypes.ts';
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -580,7 +580,7 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
   const _wcWon = [];
   const _wcHeard = [];
   let _wcCalled = 0;
-  const _wcRoom = beastCommandRoom(c, G.characters); // item 24: no more answer than the caller's Druid has room for
+  const _wcRoom = beastCommandRoom(c, G.characters, protoBeastRoomExtra(G, c)); // item 24: no more answer than the caller's Druid has room for
   const _wcSift = (arr, label) => {
     if (!Array.isArray(arr)) return;
     for (let i = arr.length - 1; i >= 0; i--) {

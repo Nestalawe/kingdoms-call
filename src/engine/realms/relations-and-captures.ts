@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto } from '../alignment-prototypes.ts';
+import { alignProto, protoAlignOf } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
@@ -25,6 +25,20 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
   const at = list.indexOf(prov.id);
   if (at < 0) return;
   list.splice(at, 1);
+  // PROTOTYPE Undead (round 2): Desecrate — holy ground an Undead kit realm takes is despoiled at once
+  if (newOwner != null && protoAlignOf(G, newOwner) === 'Undead' && prov._despoiled == null && prov.terrain !== 'sea') {
+    prov._despoiled = G.turn;
+    prov.tax = 1;
+    prov.armyTypes = [];
+    emit(turnContext, {
+      type: 'combat',
+      text: `☠ Desecrate: the altars of ${prov.name} are thrown down and its fields salted with grave-dust — the land is dead, and pays 1 tax for ever.`,
+      audience: { actor: newOwner, realms: [newOwner, prev] },
+      province: prov.id,
+      hero: byChar ? byChar.id : null,
+      phase: _ph,
+    });
+  }
   emit(turnContext, {
     type: 'system',
     text: `✨ The consecration of ${prov.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
@@ -62,6 +76,11 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
   if (!prov) return;
   const prev = prov.owner;
   prov.owner = newOwner;
+  if (prev != null && prev !== newOwner) {
+    // PROTOTYPE Good (round 2): Reclaim remembers who lost the province and when
+    prov._lostFrom = prev;
+    prov._lostTurn = G.turn;
+  }
   if (prev !== newOwner) {
     try {
       _tel.captures.push({

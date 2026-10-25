@@ -56,6 +56,13 @@ export type OrderKind =
   | 'lay_waste'
   | 'despoil'
   | 'bind_bones'
+  | 'proclaim_crusade'
+  | 'light_beacons'
+  | 'call_wild'
+  | 'embargo'
+  | 'great_sacrifice'
+  | 'dark_pact'
+  | 'spread_plague'
   | 'encounter'
   | 'steal'
   | 'use_item'
@@ -154,6 +161,20 @@ export const PHASE_ACTION_MAP = {
   despoil: 'despoil',
   bind_bones: 'bind_bones',
   'bind the bones': 'bind_bones',
+  // the kings' orders (alignment ideas round 2)
+  proclaim_crusade: 'proclaim_crusade',
+  'proclaim crusade': 'proclaim_crusade',
+  light_beacons: 'light_beacons',
+  'light the beacons': 'light_beacons',
+  call_wild: 'call_wild',
+  'call of the wild': 'call_wild',
+  embargo: 'embargo',
+  great_sacrifice: 'great_sacrifice',
+  'great sacrifice': 'great_sacrifice',
+  dark_pact: 'dark_pact',
+  'dark pact': 'dark_pact',
+  spread_plague: 'spread_plague',
+  'spread plague': 'spread_plague',
   encounter: 'encounter',
   'encounter character': 'encounter',
   steal: 'steal',

@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { divinePower } from '../alignment-prototypes.ts';
+import { DIVINE_POWER_RETURN, divinePower } from '../alignment-prototypes.ts';
 import { alignmentPrototypeNewTurnSteps } from './alignment-prototype-turn-steps.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -194,7 +194,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         delete hero._divineReturn;
         if (playerP) delete playerP._resurrectableMonarchId;
       }
-      const _keepHoly = divinePower(G, grave.player) >= 2; // PROTOTYPE Divine: at Divine Power 2 the return spends no consecration
+      const _keepHoly = divinePower(G, grave.player) >= DIVINE_POWER_RETURN; // PROTOTYPE Divine: at Divine Power 3 (round 2) the return spends no consecration
       if (!_keepHoly) {
         const _cl = consecratedIds(playerP);
         const _ci = _cl.indexOf(homeProv.id);

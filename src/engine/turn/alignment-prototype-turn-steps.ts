@@ -1,11 +1,11 @@
-// ── THE PROTOTYPE KITS' TURN STEPS (alignment ideas round 1, 2026-10-25) ────
+// ── THE PROTOTYPE KITS' TURN STEPS (alignment ideas rounds 1 and 2, 2026-10-25) ────
 // What a kit does between the phases, once a turn, after the turn counter has advanced (the new-turn step calls it
 // before the graves decay): beasts bred in a held wild province (Druidic, Evil), the dead rising in an Undead realm's
 // graveyards and despoiled lands, Terror fading (Evil), the green healing a Druidic realm's heroes, mercenary bands drawn
 // to a Neutral realm's markets. Nothing here is a decided rule (src/engine/alignment-prototypes.ts).
 import { KC_QUALITY_TIERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import type { Army, Province } from '../../schemas/saved-game-state.ts';
-import { alignProto, isWild, protoAlignOf } from '../alignment-prototypes.ts';
+import { alignProto, isBarrow, isWild, protoAlignOf } from '../alignment-prototypes.ts';
 import { armyUnitNameOf } from '../dice-and-army-names.ts';
 import { kcRng } from '../rng.ts';
 import type { TurnContext } from './context.ts';
@@ -14,8 +14,9 @@ import { newMercId } from './mercenary-ids-and-battle-records.ts';
 
 const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
 const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
-/** A held wild province breeds a beast into its garrison every this many turns. */
+/** A held wild province breeds a beast into its garrison every this many turns (round 2: Druidic every 4th, Evil every 3rd). */
 export const WILD_BREED_EVERY = 3;
+export const WILD_BREED_EVERY_DRUIDIC = 4;
 /** The most companies a kit will raise into one garrison on its own. */
 export const KIT_GARRISON_CAP = 3;
 export const FOREST_HEAL_SHARE = 0.25;
@@ -66,7 +67,8 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     if (pi == null || align == null) continue;
 
     // ── DRUIDIC / EVIL: a held wild province breeds ── every third turn a beast of its kind joins the garrison.
-    if ((align === 'Druidic' || align === 'Evil') && isWild(pv) && G.turn % WILD_BREED_EVERY === 0) {
+    const breedEvery = align === 'Druidic' ? WILD_BREED_EVERY_DRUIDIC : WILD_BREED_EVERY;
+    if ((align === 'Druidic' || align === 'Evil') && isWild(pv) && G.turn % breedEvery === 0) {
       const kind = pv.armyTypes.find((t) => (align === 'Druidic' ? CREATURES.has(t) : MONSTERS.has(t)));
       if (kind && pv.garrisonArmies.length < KIT_GARRISON_CAP) {
         const u: Army = { type: kind, quality: 'Average', race: pv.race ?? 'Primal', unitName: armyUnitNameOf(kind) };
@@ -81,9 +83,11 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
       }
     }
 
-    // ── UNDEAD: the dead rise unbidden ── a grave in any held province rises as a skeletal garrison company; a despoiled
-    // province raises one from its own blackened soil whether graves lie there or not.
-    if (align === 'Undead' && pv.garrisonArmies.filter((a) => a._isSkeletal).length < KIT_GARRISON_CAP) {
+    // ── UNDEAD: the dead rise unbidden ── (round 2: only in dead land) a grave in a held despoiled province or at a held
+    // barrow rises as a skeletal garrison company; a despoiled province raises one from its own blackened soil whether
+    // graves lie there or not.
+    const deadLand = pv._despoiled != null || pv.features.some(isBarrow);
+    if (align === 'Undead' && deadLand && pv.garrisonArmies.filter((a) => a._isSkeletal).length < KIT_GARRISON_CAP) {
       let u: Army | null = null;
       if ((pv.battleGraves ?? []).length) {
         const g = takeTheBestGrave(pv);
@@ -110,6 +114,36 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
         line(pi, `💀 The dead rise in ${pv.name}: ${u.unitName} (${u.quality}) joins the garrison unbidden.`, pv);
       }
     }
+  }
+
+  // ── UNDEAD (round 2): the Plague runs its course ── each turn a company in the plagued province dies and lies in the
+  // grave (a garrison company first, else a neutral defender), and its tax falls by one, to 1 at least.
+  for (const pv of provinces) {
+    const pk = pv._kitPlague;
+    if (!pk) continue;
+    if (pk.until < G.turn || !alignProto(G, 'Undead')) {
+      delete pv._kitPlague;
+      continue;
+    }
+    let dead: Army | null = null;
+    const gi = pv.garrisonArmies.findIndex((a) => !a._isSkeletal);
+    if (gi >= 0) dead = pv.garrisonArmies.splice(gi, 1)[0] ?? null;
+    else if (pv.neutralDefenders.length) {
+      const d = pv.neutralDefenders.shift();
+      if (d) {
+        dead = { type: d.type, quality: d.quality, race: d.race, unitName: d.unitName || armyUnitNameOf(d.type) };
+        pv.npcArmies = Math.max(0, pv.npcArmies - 1);
+      }
+    }
+    if (dead) {
+      pv.battleGraves = pv.battleGraves ?? [];
+      pv.battleGraves.push({ type: dead.type, quality: dead.quality, race: dead.race, unitName: dead.unitName });
+    }
+    const tax0 = pv.tax;
+    pv.tax = Math.max(1, pv.tax - 1);
+    const words = `${dead ? `${dead.unitName || dead.type} (${dead.quality}) dies and is laid in the grave` : 'no soldier is left to die'}; tax ${String(tax0)} → ${String(pv.tax)}.`;
+    line(pk.by, `☠ The Plague in ${pv.name}: ${words}`, pv);
+    if (pv.owner != null && pv.owner !== pk.by) line(pv.owner, `☠ The Plague in ${pv.name}: ${words}`, pv);
   }
 
   // ── DRUIDIC: the green heals ── a hero of the realm who ends the turn in forest or jungle recovers a quarter of their

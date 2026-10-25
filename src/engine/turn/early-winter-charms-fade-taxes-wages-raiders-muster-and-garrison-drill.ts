@@ -1,5 +1,12 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto, protoProvinceTaxAdd } from '../alignment-prototypes.ts';
+import {
+  alignProto,
+  embargoTaxMult,
+  isWild,
+  protoAlignOf,
+  protoProvinceTaxAdd,
+  protoRealmGold,
+} from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
 import {
@@ -106,7 +113,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     const _baseTax = realmBaseTax(G, pi),
       _taxCap = taxBonusCap(_baseTax); // 5%-of-base ceiling (Toby 2026-09-24)
     let _consecBonus = 0; // DIVINE — Consecrate: track the +50% holy-ground uplift so the player can SEE it itemised
-    const income = (p.provinces || []).reduce((s, id) => {
+    let income = (p.provinces || []).reduce((s, id) => {
       const pv = G.world.provinces[id];
       if (!pv) return s;
       let t = pv.tax || 0;
@@ -129,6 +136,11 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (gdActive(turnContext, pi, 'Good') && (pv.garrisonArmies || []).length > 0) t += 2;
       return s + t;
     }, 0);
+    // PROTOTYPE round 2: a Neutral Embargo takes 30% of the province tax; a kit may pay the realm gold of its own
+    // (Pilgrims' Coin, the counting-houses, Tribute of Fear, grave goods)
+    const _embargo = embargoTaxMult(G, p);
+    if (_embargo < 1) income = Math.floor(income * _embargo);
+    const _kitGold = protoRealmGold(G, pi);
     const pChars = (G.characters || []).filter((c) => c.player === p.id && c.alive);
     const itemStat = (st) =>
       pChars.reduce(
@@ -189,11 +201,12 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       neutralTradeBonus +
       taxRecordsBonus +
       titlePerkGold +
-      thiefStipend;
-    if (income > 0 || perProvBonus > 0 || titlePerkGold > 0 || thiefStipend > 0)
+      thiefStipend +
+      _kitGold.gold;
+    if (income > 0 || perProvBonus > 0 || titlePerkGold > 0 || thiefStipend > 0 || _kitGold.gold > 0)
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} collects ${income + taxBonus + perProvBonus + interestBonus + neutralTradeBonus + taxRecordsBonus + titlePerkGold + thiefStipend}g in taxes${taxRecordsBonus > 0 ? ` (+${taxRecordsBonus}g Taxation Records)` : ''}${perProvBonus > 0 ? ` (+${perProvBonus}g Merchant's Ledger)` : ''}${neutralTradeBonus > 0 ? ` (+${neutralTradeBonus}g Neutral trade bonus)` : ''}${interestBonus > 0 ? ` (+${interestBonus}g Merchant Guilds interest)` : ''}${_consecBonus > 0 ? ` (+${_consecBonus}g from consecrated ground)` : ''}${titlePerkNote}${thiefNote}.`,
+        text: `${p.name} collects ${income + taxBonus + perProvBonus + interestBonus + neutralTradeBonus + taxRecordsBonus + titlePerkGold + thiefStipend + _kitGold.gold}g in taxes${_embargo < 1 ? ' (under Embargo: −30%)' : ''}${taxRecordsBonus > 0 ? ` (+${taxRecordsBonus}g Taxation Records)` : ''}${perProvBonus > 0 ? ` (+${perProvBonus}g Merchant's Ledger)` : ''}${neutralTradeBonus > 0 ? ` (+${neutralTradeBonus}g Neutral trade bonus)` : ''}${interestBonus > 0 ? ` (+${interestBonus}g Merchant Guilds interest)` : ''}${_consecBonus > 0 ? ` (+${_consecBonus}g from consecrated ground)` : ''}${_kitGold.note}${titlePerkNote}${thiefNote}.`,
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -233,6 +246,24 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           if (CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a);
         });
     }); // + GRAND DESIGN Druidic
+    // PROTOTYPE round 2: the Yeomanry (Good): a garrison company in a humanoid province of the realm pays half; the Wood
+    // Provides (Druidic): a creature company in a host standing in forest or jungle pays nothing.
+    const _kit = protoAlignOf(G, pi);
+    const _yeomanry = new Set();
+    const _woodFed = new Set();
+    if (_kit === 'Good')
+      (G.world.provinces || []).forEach((pv) => {
+        if (pv.owner === pi && pv.terrain !== 'sea' && !isWild(pv))
+          (pv.garrisonArmies || []).forEach((a) => _yeomanry.add(a));
+      });
+    if (_kit === 'Druidic')
+      playerChars.forEach((ch) => {
+        const at = G.world.provinces[ch.location];
+        if (at && (at.terrain === 'forest' || at.terrain === 'jungle'))
+          (ch.armies || []).forEach((a) => {
+            if (CREATURE_ARMIES.has(a.type)) _woodFed.add(a);
+          });
+      });
     const _upkAcc = new Map();
     let _discUpkeepG = 0;
     let _orcSpoilsG = 0; // 2026-09-10 item 3: itemised so the report can explain the one-off discount
@@ -253,8 +284,10 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
       if (a._wildHuntUntilTurn != null) return s;
       if (a._slave) return s; // PROTOTYPE Evil: slaves are paid nothing
+      if (_woodFed.has(a)) return s; // PROTOTYPE Druidic (round 2): the wood provides
       if (a._isSkeletal) return s + 1;
       let w = ARMY_COST[a.type] || 2;
+      if (_yeomanry.has(a)) w = Math.max(1, Math.floor(w / 2)); // PROTOTYPE Good (round 2): the Yeomanry
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
         const _w0 = w,
           _half = _w0 * 0.5;
@@ -488,8 +521,8 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           audience: { actor: p.id, realms: [p.id] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
-      // If still in deficit, heroes desert
-      if (deficit > 0) {
+      // If still in deficit, heroes desert (PROTOTYPE Good, round 2: Stout Hearts — a Good realm's heroes never do)
+      if (deficit > 0 && protoAlignOf(G, pi) !== 'Good') {
         heroes
           .sort((a, b) => (b.pay || 0) - (a.pay || 0))
           .forEach((h) => {

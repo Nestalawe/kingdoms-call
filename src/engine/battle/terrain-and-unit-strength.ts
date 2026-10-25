@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto } from '../alignment-prototypes.ts';
+import { alignProto, protoAlignOf } from '../alignment-prototypes.ts';
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
@@ -475,7 +475,9 @@ export function druidMasteryGain(turnContext, heroChar, army, playerAlignment) {
     druidNeedWaivedByAlignment(army.type, playerAlignment, heroChar.alignment) ||
     !!dragonTamed(turnContext, heroChar, army);
   const min = waived ? 0 : getDruidLevel(army.type);
-  const gain = druidMasteryGainOver(lvl, min);
+  let gain = druidMasteryGainOver(lvl, min);
+  // PROTOTYPE Druidic (round 2): Beast-speech — mastery over the beasts grows twice as fast (still capped at +100%)
+  if (gain > 0 && protoAlignOf(turnContext.G, heroChar.player) === 'Druidic') gain = Math.min(1, gain * 2);
   return { gain: Math.round(gain * 100) / 100, lvl, min };
 }
 export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ctx, opts) {
@@ -729,6 +731,11 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   ) {
     str = Math.round(str * 1.5);
     if (_tr) _tr.push({ label: 'Home of the Wild ×1.5' });
+  }
+  // PROTOTYPE Neutral (round 2): Condottieri — a mercenary company hired under the kit fights ×1.5
+  if (army._merc && heroChar && protoAlignOf(turnContext.G, heroChar.player) === 'Neutral') {
+    str = Math.round(str * 1.5);
+    if (_tr) _tr.push({ label: 'Condottieri ×1.5' });
   }
   // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies
   // +5%.

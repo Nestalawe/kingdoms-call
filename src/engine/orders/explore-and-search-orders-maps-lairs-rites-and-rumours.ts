@@ -1,5 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { RITE_OF_AWAKENING_COST, activatedSites, alignProto } from '../alignment-prototypes.ts';
+import {
+  RITE_OF_AWAKENING_COST,
+  RITE_OF_AWAKENING_TAX,
+  activatedSites,
+  alignProto,
+  protoAlignOf,
+} from '../alignment-prototypes.ts';
 import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -74,7 +80,8 @@ export function resolveExploreOrder(turnContext, c, prov) {
   discEff(turnContext, c.player, 'explore').forEach((e) => {
     if (!e.terrains || e.terrains.includes(prov.terrain)) _discExpl *= e.mult || 1;
   }); // explore discoveries
-  const gain = Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * loreMult * _discExpl));
+  const _omens = protoAlignOf(G, c.player) === 'Pagan' ? 2 : 1; // PROTOTYPE Pagan (round 2): Omens — twice the ground
+  const gain = Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * loreMult * _discExpl * _omens));
   if (!prov.exploredBy) prov.exploredBy = {};
   const before = prov.exploredBy[c.player] || 0;
   prov.exploredBy[c.player] = Math.min(100, before + gain);
@@ -305,11 +312,11 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
     prov._riteTurn = G.turn;
     if (!prov._awakened) {
       prov._awakened = G.turn;
-      prov.tax = (prov.tax || 0) + 1;
+      prov.tax = (prov.tax || 0) + RITE_OF_AWAKENING_TAX; // round 2 (Votive Hoards): +3
     }
     emit(turnContext, {
       type: 'combat',
-      text: `\u{1F525} ${c.name} performs the Rite of Awakening at the ${_riteSite.name} (${RITE_OF_AWAKENING_COST}g of gold and grain burned on the stones). The old gods wake in ${prov.name}: the land gives +1 tax from now on.`,
+      text: `\u{1F525} ${c.name} performs the Rite of Awakening at the ${_riteSite.name} (${RITE_OF_AWAKENING_COST}g of gold and grain burned on the stones). The old gods wake in ${prov.name}: the land gives +${RITE_OF_AWAKENING_TAX} tax from now on.`,
       audience: { actor: c.player, realms: [c.player], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,

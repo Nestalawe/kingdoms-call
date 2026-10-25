@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { protoAlignOf, qualityUp } from '../alignment-prototypes.ts';
+import { protoAlignOf, qualityUp, protoBeastRoomExtra } from '../alignment-prototypes.ts';
 import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, SKILL_LABELS } from '../army-tables.ts';
@@ -145,7 +145,10 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     // Item 24 (2026-10-12): a beast recruited into a column already holding as many beasts as its leader's
     // Druid musters into the garrison instead (native beasts are raised only in a province the realm holds).
     const _overCmd =
-      !_toGarr && prov.owner === c.player && beastCommandCount(unit) && beastCommandRoom(_destChar, G.characters) <= 0;
+      !_toGarr &&
+      prov.owner === c.player &&
+      beastCommandCount(unit) &&
+      beastCommandRoom(_destChar, G.characters, protoBeastRoomExtra(G, _destChar)) <= 0;
     if (_toGarr) {
       prov.garrisonArmies = prov.garrisonArmies || [];
       prov.garrisonArmies.push(unit);
@@ -184,7 +187,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         !_destGarrison &&
         prov.owner !== c.player &&
         beastCommandCount({ type: merc.type }) &&
-        beastCommandRoom(_destChar, G.characters) <= 0
+        beastCommandRoom(_destChar, G.characters, protoBeastRoomExtra(G, _destChar)) <= 0
       ) {
         emit(turnContext, {
           type: 'hire',
@@ -214,8 +217,16 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       }
       player.gold -= mCost;
       // PROTOTYPE Neutral: Mercenary Captains — a band hired by a Neutral realm musters one quality tier higher
-      const _mq = protoAlignOf(G, c.player) === 'Neutral' ? qualityUp(merc.quality) : merc.quality;
-      _pushRecruit({ type: merc.type, quality: _mq, race: merc.race, unitName: merc.unitName });
+      const _neutralKit = protoAlignOf(G, c.player) === 'Neutral';
+      const _mq = _neutralKit ? qualityUp(merc.quality) : merc.quality;
+      // PROTOTYPE Neutral (round 2): a hired band is a condottiere company, fighting ×1.5 (armStr)
+      _pushRecruit({
+        type: merc.type,
+        quality: _mq,
+        race: merc.race,
+        unitName: merc.unitName,
+        ...(_neutralKit ? { _merc: true } : {}),
+      });
       G.mercenaries = G.mercenaries.filter((m) => m.id !== merc.id);
       mHired = true;
       emit(turnContext, {

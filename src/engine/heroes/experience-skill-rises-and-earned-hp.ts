@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { protoAlignOf } from '../alignment-prototypes.ts';
 import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
@@ -54,6 +55,9 @@ export function trySkillGain(turnContext, char, skill, base, narr?, mult?) {
   mult = mult > 0 ? mult : 1;
   const real = (char.id != null && (G.characters || []).find((r) => r && r.id === char.id)) || char; // 2026-09-21: match by id, never by array index — an index lookup could check a DIFFERENT character's alive flag
   if (!real || !real.alive) return;
+  // PROTOTYPE Neutral (round 2): the Guilds teach — Sage, Spy and Thief rise twice as fast, however earned
+  if ((skill === 'sage' || skill === 'spy' || skill === 'thief') && protoAlignOf(G, real.player) === 'Neutral')
+    mult *= 2;
   // 2026-09-26 (Toby): NEUTRALS MAY LEARN FROM BATTLE. Wandering heroes and chieftains were
   // excluded from every experience path (`real.player==null` returned here), so their only growth
   // was the idle 25% roll in progressNeutralHeroes. They now take the same checks a player's hero

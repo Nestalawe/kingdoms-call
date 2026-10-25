@@ -1,4 +1,4 @@
-// ── ALIGNMENT PROTOTYPES (ideas round 1, 2026-10-25) ────
+// ── ALIGNMENT PROTOTYPES (ideas rounds 1 and 2, 2026-10-25) ────
 // Each alignment's proposed kit is switched on per game by `G.alignmentPrototypes`, a list of alignment names set when
 // the game is created (the balance runner sets it from KC_ALIGN_PROTO). A kit is live for a realm only when its
 // alignment is in the list, so the matrix can measure one alignment's kit at a time against today's rules. Nothing here
@@ -23,8 +23,38 @@ export function protoAlignOf(G: GameState, pi: number | null | undefined): strin
 // ── The map's sites. A holy site (Divine) or a barrow (Undead) is a feature carrying `ritualSite: true` so every path
 // that finds, shows and remembers the old stones treats it alike, plus `siteKind: 'holy' | 'barrow'`. A Pagan rite is
 // answered only by a site with no `siteKind`.
-export const SITE_SHARE_OF_LAND = 1 / 7; // about one land province in seven holds a holy site, and one in seven a barrow
+export const SITE_SHARE_OF_LAND = 1 / 7; // about one land province in seven holds a barrow
+export const HOLY_SITE_SHARE_OF_LAND = 1 / 5; // round 2: and one in five a holy site
 export const RITE_OF_AWAKENING_COST = 10;
+export const RITE_OF_AWAKENING_TAX = 3; // round 2 (Votive Hoards): an awakened site pays +3 tax (round 1: +1)
+// round 2: the Divine Power thresholds (a held holy site counts 1, a held AND consecrated one 2)
+export const DIVINE_POWER_WHITE = 1; // every Divine hero casts White one level higher
+export const DIVINE_POWER_RETURN = 3; // a fallen hero's return spends no consecration
+export const DIVINE_POWER_UNLEASHED = 5; // the Crusade's ×1.5 in every battle
+// round 2: the kings' orders and how long their effects hold
+export const KING_ORDER_EVERY: Record<string, number> = {
+  proclaim_crusade: 5,
+  light_beacons: 6,
+  embargo: 5,
+  great_sacrifice: 5,
+  dark_pact: 5,
+  spread_plague: 5,
+};
+export const CRUSADE_TURNS = 3;
+export const EMBARGO_TURNS = 3;
+export const EMBARGO_TAX_MULT = 0.7;
+export const SACRIFICE_TURNS = 3;
+export const PLAGUE_TURNS = 3;
+export const PROCLAIM_CRUSADE_COST = 5;
+export const DARK_PACT_COST = 10;
+export const DARK_PACT_HP = 5;
+export const BEACONS_CAP = 6;
+export const CALL_OF_THE_WILD_RANGE = 3;
+export const RECLAIM_TURNS = 5;
+export const PILGRIMS_COIN_PER_SITE = 3;
+export const COUNTING_HOUSE_CAP = 5;
+export const GRAVE_GOODS_PER_PROVINCE = 2;
+export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
   'Shrine of the First Light',
   'Chapel of the Nine Candles',
@@ -103,12 +133,32 @@ const kitRealm = (G: GameState, pi: number, align: string): Realm | null => {
   return pl.alignment === align && alignProto(G, align) ? pl : null;
 };
 
-// ── Divine: Divine Power is the number of holy sites that shine (a holy site in a consecrated province the realm holds).
-export function divinePower(G: GameState, pi: number): number {
+// ── Divine: Divine Power counts the holy sites the realm holds, and again those that shine (a holy site in a consecrated
+// province the realm holds): a shining site is worth 2 (round 2; round 1 counted shining sites alone).
+export function shiningSites(G: GameState, pi: number): number {
   const pl = kitRealm(G, pi, 'Divine');
   if (!pl) return 0;
   const cons = pl.consecratedProvIds ?? [];
   return heldSites(G, pi, isHolySite).filter((pv) => cons.includes(pv.id)).length;
+}
+export function divinePower(G: GameState, pi: number): number {
+  if (!kitRealm(G, pi, 'Divine')) return 0;
+  return heldSites(G, pi, isHolySite).length + shiningSites(G, pi);
+}
+/** Round 2: is the king's order `key` off its cooldown for realm `pl` this turn? */
+export function kingOrderReady(G: GameState, pl: Realm, key: string): boolean {
+  const last = pl._kingOrderLast?.[key];
+  const every = KING_ORDER_EVERY[key] ?? 0;
+  return last == null || G.turn - last >= every;
+}
+export function noteKingOrder(G: GameState, pl: Realm, key: string): void {
+  pl._kingOrderLast = { ...(pl._kingOrderLast ?? {}), [key]: G.turn };
+}
+/** Round 2 (Beast-friend): the beasts a hero of a Druidic or Evil kit realm leads beyond his Druid level. */
+export function protoBeastRoomExtra(G: GameState, c: Character | null | undefined): number {
+  if (c?.player == null) return 0;
+  const align = protoAlignOf(G, c.player);
+  return align === 'Druidic' || align === 'Evil' ? BEAST_FRIEND_EXTRA : 0;
 }
 // ── Undead: barrows held, and despoiled provinces held.
 export function barrowsHeld(G: GameState, pi: number): number {
@@ -133,10 +183,15 @@ export function activatedSites(G: GameState, pi: number): number {
     return pv.owner === pi && pv._riteActivatedBy === pi && pv.features.some(isPaganStones);
   }).length;
 }
-/** The Favour of the Old Gods: the Pagan host's strength multiplier. */
+/** Round 2: the Favour's points: 1 for each stones province the realm holds, 1 more for each it has woken. */
+export function paganFavourPoints(G: GameState, pi: number): number {
+  if (!kitRealm(G, pi, 'Pagan')) return 0;
+  return heldSites(G, pi, isPaganStones).length + activatedSites(G, pi);
+}
+/** The Favour of the Old Gods: the Pagan host's strength multiplier (2 points ×1.3, 4 points ×1.5). */
 export function paganFavourMult(G: GameState, pi: number): number {
-  const n = activatedSites(G, pi);
-  return n >= 3 ? 1.5 : n >= 1 ? 1.3 : 1;
+  const n = paganFavourPoints(G, pi);
+  return n >= 4 ? 1.5 : n >= 2 ? 1.3 : 1;
 }
 
 // ── Skills a kit lifts: the level a hero's skill counts as, over the trained and equipped level. Read by effStat.
@@ -146,8 +201,11 @@ export function protoSkillLift(G: GameState, c: Character | null | undefined, st
   if (!align) return 0;
   if (align === 'Neutral' && (stat === 'sage' || stat === 'spy' || stat === 'thief') && base >= 1) return 1; // Guilds
   if (align === 'Evil' && (stat === 'spy' || stat === 'thief') && base >= 1) return 1; // Dread: poisoners and spies
-  if (align === 'Divine' && stat === 'white' && divinePower(G, c.player) >= 1) return 1; // Divine Power 1
-  if (align === 'Undead' && stat === 'necromancy') return Math.min(2, barrowsHeld(G, c.player)); // barrows held
+  if (align === 'Divine' && stat === 'white' && divinePower(G, c.player) >= DIVINE_POWER_WHITE) return 1; // Divine Power
+  if (align === 'Undead' && stat === 'necromancy') return (base >= 1 ? 1 : 0) + Math.min(2, barrowsHeld(G, c.player)); // round 2: necromancers +1, and the barrows held
+  if (align === 'Good' && stat === 'tactical' && base >= 1 && !c.isKing) return 1; // round 2: Captains of the Shield
+  if (align === 'Druidic' && stat === 'druid' && base >= 1) return 1; // round 2: the circle's craft
+  if (align === 'Pagan' && stat === 'explorer' && base >= 1) return 1; // round 2: Seers
   return 0;
 }
 
@@ -184,25 +242,39 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       const monsterWild = wild && prov.armyTypes.some((t) => monsterTypes.has(t));
       const dark = enemyAlign === 'Undead' || enemyAlign === 'Evil';
       const holy = !isAttacker && !!prov && prov.owner === pi && (pl.consecratedProvIds ?? []).includes(prov.id);
-      const unleashed = divinePower(G, pi) >= 3;
+      const unleashed = divinePower(G, pi) >= DIVINE_POWER_UNLEASHED;
+      const proclaimed = enemyPi != null && pl._crusadeVs === enemyPi && (pl._crusadeUntil ?? -1) >= G.turn; // round 2
+      if (proclaimed) return { mult: 1.5, label: 'Proclaimed Crusade ×1.5' };
       if (dark || (isAttacker && monsterWild) || holy || unleashed)
         return { mult: 1.5, label: holy && !dark ? 'Crusade: holy ground ×1.5' : 'Crusade ×1.5' };
       return nothing;
     }
-    case 'Good': // the Shield of the Realm is the defence bonus, not a fervour
+    case 'Good': {
+      // the Shield of the Realm is the defence bonus, not a fervour; round 2: Reclaim, ×1.5 retaking land lately lost
+      const lost =
+        isAttacker &&
+        !!prov &&
+        prov._lostFrom === pi &&
+        prov._lostTurn != null &&
+        G.turn - prov._lostTurn <= RECLAIM_TURNS;
+      return lost ? { mult: 1.5, label: 'Reclaim ×1.5' } : nothing;
+    }
     case 'Druidic':
     case 'Neutral':
       return nothing;
     case 'Pagan': {
+      if ((pl._sacrificeUntil ?? -1) >= G.turn) return { mult: 1.5, label: 'Great Sacrifice ×1.5' }; // round 2
       const m = paganFavourMult(G, pi);
       return m > 1 ? { mult: m, label: `Favour of the Old Gods ×${m.toFixed(1)}` } : nothing;
     }
     case 'Evil': {
       const monsters = armies.some((a) => monsterTypes.has(a.type));
-      return isAttacker && monsters ? { mult: 1.5, label: 'Savage Fury ×1.5' } : nothing;
+      if (!monsters) return nothing;
+      return isAttacker ? { mult: 1.5, label: 'Savage Fury ×1.5' } : { mult: 1.25, label: 'Savage Fury ×1.25' }; // round 2: ×1.25 defending
     }
     case 'Undead': {
       // the king's x1.5 and a hero's x1.3 stay as they are; 3 despoiled provinces lift every commander to x1.5
+      if (enemyAlign === 'Divine') return { mult: 1.5, label: 'Hatred of the Light ×1.5' }; // round 2: the mortal enemy
       const skel = armies.some((a) => a._isSkeletal);
       if (skel && leader && !leader.isKing && despoiledHeld(G, pi) >= 3)
         return { mult: 1.5, label: 'The Rising Tide ×1.5' };
@@ -221,6 +293,40 @@ export function protoProvinceTaxAdd(G: GameState, pl: Realm, pv: Province, taxSo
   if (pl.alignment === 'Good' && base <= 3 && !isWild(pv)) return 2;
   if (pl.alignment === 'Neutral' && base >= 4) return Math.round(taxSoFar * 0.5);
   return 0;
+}
+
+/** Round 2 (Embargo): what a realm's province tax is multiplied by this turn. */
+export function embargoTaxMult(G: GameState, pl: Realm): number {
+  return (pl._embargoUntil ?? -1) >= G.turn && alignProto(G, 'Neutral') ? EMBARGO_TAX_MULT : 1;
+}
+/** Round 2: the gold a kit pays a realm at tax time beyond its provinces' tax, itemised. Pilgrims' Coin (Divine),
+ *  Counting-houses (Neutral), Tribute of Fear (Evil), Grave Goods (Undead). */
+export function protoRealmGold(G: GameState, pi: number): { gold: number; note: string } {
+  const align = protoAlignOf(G, pi);
+  const pl = realmOf(G, pi);
+  if (!align || !pl) return { gold: 0, note: '' };
+  switch (align) {
+    case 'Divine': {
+      const g = PILGRIMS_COIN_PER_SITE * shiningSites(G, pi);
+      return { gold: g, note: g ? ` (+${String(g)}g Pilgrims' Coin)` : '' };
+    }
+    case 'Neutral': {
+      const g = Math.min(COUNTING_HOUSE_CAP, Math.floor(pl.gold / 10));
+      return { gold: g, note: g ? ` (+${String(g)}g the counting-houses)` : '' };
+    }
+    case 'Evil': {
+      let g = 0;
+      for (const pv of G.world.provinces)
+        if (pv.owner != null && pv.owner !== pi && pv._terrorisedBy === pi && pv._terrorStacks) g += pv._terrorStacks;
+      return { gold: g, note: g ? ` (+${String(g)}g Tribute of Fear)` : '' };
+    }
+    case 'Undead': {
+      const g = GRAVE_GOODS_PER_PROVINCE * despoiledHeld(G, pi);
+      return { gold: g, note: g ? ` (+${String(g)}g grave goods)` : '' };
+    }
+    default:
+      return { gold: 0, note: '' };
+  }
 }
 
 // ── Bot tactics for the kits (ideas round 1b). A second switch, `G.alignmentPrototypeTactics` (the balance runner sets it

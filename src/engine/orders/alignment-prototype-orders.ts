@@ -1,18 +1,40 @@
-// ── THE PROTOTYPE KITS' ORDERS (alignment ideas round 1, 2026-10-25) ────
+// ── THE PROTOTYPE KITS' ORDERS (alignment ideas rounds 1 and 2, 2026-10-25) ────
 // Each order here belongs to one alignment's proposed kit (src/engine/alignment-prototypes.ts) and is refused unless
-// that kit is switched on for the game and the hero's realm is of that alignment. Good Works (Good), Grow the Wild and
-// Tend the Grove (Druidic), Trade Pact (Neutral), Lay Waste (Evil), Despoil and Bind the Bones (Undead). The Pagan
-// kit's new rites live with Perform Rite (explore-and-search-orders…); the Divine kit reshapes Consecrate in place.
-import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
-import type { Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
-import { alignProto, isWild, neighboursOf } from '../alignment-prototypes.ts';
+// that kit is switched on for the game and the hero's realm is of that alignment. Round 1: Good Works (Good), Grow the
+// Wild and Tend the Grove (Druidic), Trade Pact (Neutral), Lay Waste (Evil), Despoil and Bind the Bones (Undead). Round 2,
+// the kings' own orders: Proclaim Crusade (Divine), Light the Beacons (Good), Call of the Wild (Druidic), Embargo
+// (Neutral), Great Sacrifice (Pagan), Dark Pact (Evil), Plague (Undead). The Pagan kit's new rites live with Perform Rite
+// (explore-and-search-orders…); the Divine kit reshapes Consecrate in place.
+import { KC_QUALITY_TIERS, KC_QUALITY_UP, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import type { Army, Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
+import {
+  alignProto,
+  BEACONS_CAP,
+  CALL_OF_THE_WILD_RANGE,
+  CRUSADE_TURNS,
+  DARK_PACT_COST,
+  DARK_PACT_HP,
+  EMBARGO_TURNS,
+  isPaganStones,
+  isWild,
+  KING_ORDER_EVERY,
+  kingOrderReady,
+  neighboursOf,
+  noteKingOrder,
+  PLAGUE_TURNS,
+  PROCLAIM_CRUSADE_COST,
+  protoBeastRoomExtra,
+  SACRIFICE_TURNS,
+} from '../alignment-prototypes.ts';
 import { armyUnitNameOf } from '../dice-and-army-names.ts';
 import { homeProvinceIdFor } from '../grand-design.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { demoteGuardToWanderer } from '../heroes/fame-and-consecration.ts';
-import { setProvinceOwner } from '../realms/relations-and-captures.ts';
+import { areEnemies, realmHasMet, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import type { TurnContext } from '../turn/context.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import { hexDistP } from '../world/map-helpers.ts';
+import { beastCommandRoom } from '../world/tables.ts';
 
 type Prov = Province | null | undefined;
 const humanoidLand = (pv: Prov): pv is Province => pv != null && pv.terrain !== 'sea' && !isWild(pv);
@@ -293,4 +315,309 @@ export function resolveBindTheBonesOrder(turnContext: TurnContext, c: Character,
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+// ROUND 2: THE KINGS' ORDERS. Each is the king's alone, and each comes round again only after KING_ORDER_EVERY turns.
+// ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
+const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
+const TIERS: readonly string[] = KC_QUALITY_TIERS;
+const fieldUnit = (t: string): boolean => !/garrison|fleet|galley|ironclad|longship/i.test(t);
+/** The king's check: the kit on, the crown's head, and the order off its cooldown. */
+function kingMay(turnContext: TurnContext, c: Character, align: string, key: string, orderName: string): Realm | null {
+  const { G } = turnContext;
+  if (kitOff(turnContext, c, align, orderName)) return null;
+  const pl = c.player == null ? null : G.players[c.player];
+  if (!pl) return null;
+  if (!c.isKing) {
+    refuse(turnContext, c, `${c.name}: only the KING may ${orderName}.`);
+    return null;
+  }
+  if (!kingOrderReady(G, pl, key)) {
+    const last = pl._kingOrderLast?.[key] ?? G.turn;
+    const again = last + (KING_ORDER_EVERY[key] ?? 0);
+    refuse(turnContext, c, `${c.name}: the realm cannot ${orderName} again until turn ${String(again)}.`);
+    return null;
+  }
+  return pl;
+}
+const realmTarget = (target: string): number | null => {
+  const m = /^realm:(\d+)$/.exec(target.trim());
+  return m ? parseInt(m[1] ?? '', 10) : null;
+};
+function realmLine(turnContext: TurnContext, pi: number, type: string, text: string, pv?: Province): void {
+  emit(turnContext, {
+    type,
+    text,
+    audience: { actor: pi, realms: [pi] },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    province: pv ? pv.id : undefined,
+  });
+}
+
+// ── DIVINE: Proclaim Crusade ── 5g; a realm at war with the crown is named; for three turns every Divine host fights it
+// at ×1.5 wherever they meet.
+export function resolveProclaimCrusadeOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: string,
+  player: Realm,
+): void {
+  const { G } = turnContext;
+  const pl = kingMay(turnContext, c, 'Divine', 'proclaim_crusade', 'Proclaim a Crusade');
+  if (!pl || c.player == null) return;
+  const vs = realmTarget(target);
+  const foe = vs == null ? null : G.players[vs];
+  if (vs == null || !foe || vs === c.player || !areEnemies(turnContext, c.player, vs)) {
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: a Crusade is proclaimed against a realm the crown is at war with — none answers.`,
+    );
+    return;
+  }
+  if (player.gold < PROCLAIM_CRUSADE_COST) {
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: the proclamation's alms cost ${String(PROCLAIM_CRUSADE_COST)}g — the treasury cannot pay.`,
+    );
+    return;
+  }
+  player.gold -= PROCLAIM_CRUSADE_COST;
+  pl._crusadeVs = vs;
+  pl._crusadeUntil = G.turn + CRUSADE_TURNS - 1;
+  noteKingOrder(G, pl, 'proclaim_crusade');
+  realmLine(
+    turnContext,
+    c.player,
+    'explore',
+    `✝ ${c.name} proclaims a Crusade against ${foe.name}! Until the end of turn ${String(pl._crusadeUntil)} every host of the realm fights ${foe.name}'s forces at ×1.5.`,
+  );
+  realmLine(
+    turnContext,
+    vs,
+    'system',
+    `✝ ${pl.name} has proclaimed a Crusade against you — its hosts come with a fervour that lasts three turns.`,
+  );
+}
+
+// ── GOOD: Light the Beacons ── the shires muster: every humanoid province of the realm (the nearest to the king first,
+// to six) raises an Average company of its own first field kind into its garrison, for nothing.
+export function resolveLightTheBeaconsOrder(turnContext: TurnContext, c: Character, prov: Prov): void {
+  const { G } = turnContext;
+  const pl = kingMay(turnContext, c, 'Good', 'light_beacons', 'Light the Beacons');
+  if (!pl || c.player == null || !prov) return;
+  const pi = c.player;
+  const shires = pl.provinces
+    .map((id) => G.world.provinces[id])
+    .filter((pv): pv is Province => humanoidLand(pv) && pv.owner === pi && pv.armyTypes.some(fieldUnit))
+    .sort((a, b) => hexDistP(a, prov, G.world.cols) - hexDistP(b, prov, G.world.cols))
+    .slice(0, BEACONS_CAP);
+  if (!shires.length) {
+    refuse(turnContext, c, `${c.name}: the beacons burn, but no shire of the realm can send men.`);
+    return;
+  }
+  noteKingOrder(G, pl, 'light_beacons');
+  const raised: string[] = [];
+  for (const pv of shires) {
+    const kind = pv.armyTypes.find(fieldUnit);
+    if (!kind) continue;
+    const u: Army = { type: kind, quality: 'Average', race: pv.race ?? pl.race, unitName: armyUnitNameOf(kind) };
+    pv.garrisonArmies.push(u);
+    raised.push(`${pv.name} (${kind})`);
+  }
+  realmLine(
+    turnContext,
+    pi,
+    'hire',
+    `🔥 ${c.name} lights the beacons from ${prov.name}, and the shires answer the muster: ${raised.join(', ')} each raise an Average company into the garrison. They draw wages from next turn like any other.`,
+    prov,
+  );
+}
+
+// ── DRUIDIC: Call of the Wild ── a Druid king calls every creature company garrisoned in a realm province within three
+// hexes to his side, as many as he has room to lead.
+export function resolveCallOfTheWildOrder(turnContext: TurnContext, c: Character, prov: Prov): void {
+  const { G } = turnContext;
+  const pl = kingMay(turnContext, c, 'Druidic', 'call_wild', 'sound the Call of the Wild');
+  if (!pl || c.player == null || !prov) return;
+  if (effStat(turnContext, c, 'druid') < 1) {
+    refuse(turnContext, c, `${c.name} has no Druid craft — the wild does not hear.`);
+    return;
+  }
+  const pi = c.player;
+  let room = beastCommandRoom(c, G.characters, protoBeastRoomExtra(G, c));
+  if (room <= 0) {
+    refuse(turnContext, c, `${c.name} can lead no more beasts than march with him already.`);
+    return;
+  }
+  const came: string[] = [];
+  for (const id of pl.provinces) {
+    const pv = G.world.provinces[id];
+    if (pv?.owner !== pi || hexDistP(pv, prov, G.world.cols) > CALL_OF_THE_WILD_RANGE) continue;
+    for (let i = pv.garrisonArmies.length - 1; i >= 0 && room > 0; i--) {
+      const a = pv.garrisonArmies[i];
+      if (!a || !CREATURES.has(a.type)) continue;
+      pv.garrisonArmies.splice(i, 1);
+      delete a._kitGarrison;
+      c.armies.push(a);
+      room -= 1;
+      came.push(`${a.unitName || a.type} (${a.quality}) from ${pv.name}`);
+    }
+    if (room <= 0) break;
+  }
+  if (!came.length) {
+    refuse(
+      turnContext,
+      c,
+      `${c.name} sounds the horn, but no beast of the realm is garrisoned within ${String(CALL_OF_THE_WILD_RANGE)} hexes.`,
+    );
+    return;
+  }
+  noteKingOrder(G, pl, 'call_wild');
+  realmLine(
+    turnContext,
+    pi,
+    'hire',
+    `🐾 ${c.name} sounds the Call of the Wild in ${prov.name}, and the beasts come down from the realm's garrisons: ${came.join('; ')} join the king's host.`,
+    prov,
+  );
+}
+
+// ── NEUTRAL: Embargo ── the League closes its markets to a realm it has met: for three turns that realm's provinces
+// pay 30% less tax.
+export function resolveEmbargoOrder(turnContext: TurnContext, c: Character, target: string): void {
+  const { G } = turnContext;
+  const pl = kingMay(turnContext, c, 'Neutral', 'embargo', 'declare an Embargo');
+  if (!pl || c.player == null) return;
+  const vs = realmTarget(target);
+  const foe = vs == null ? null : G.players[vs];
+  if (vs == null || !foe || vs === c.player || !realmHasMet(turnContext, c.player, vs)) {
+    refuse(turnContext, c, `${c.name}: an Embargo is declared against a realm the League has met — none answers.`);
+    return;
+  }
+  foe._embargoUntil = G.turn + EMBARGO_TURNS - 1;
+  foe._embargoBy = c.player;
+  noteKingOrder(G, pl, 'embargo');
+  realmLine(
+    turnContext,
+    c.player,
+    'explore',
+    `⚖ ${c.name} declares an Embargo on ${foe.name}: the League's factors close their counting-houses to it. Until the end of turn ${String(foe._embargoUntil)} its provinces pay 30% less tax.`,
+  );
+  realmLine(
+    turnContext,
+    vs,
+    'system',
+    `⚖ ${pl.name} has declared an Embargo against you — your markets starve for three turns (−30% tax).`,
+  );
+}
+
+// ── PAGAN: Great Sacrifice ── the king at stones in a province of the realm gives his weakest company to the old gods;
+// for three turns every host of the realm fights at ×1.5.
+export function resolveGreatSacrificeOrder(turnContext: TurnContext, c: Character, prov: Prov): void {
+  const { G } = turnContext;
+  const pl = kingMay(turnContext, c, 'Pagan', 'great_sacrifice', 'make the Great Sacrifice');
+  if (!pl || c.player == null) return;
+  if (!ownedBy(prov, c, (pv) => pv.features.some(isPaganStones))) {
+    refuse(turnContext, c, `${c.name}: the Great Sacrifice is made at the old stones, on the realm's own ground.`);
+    return;
+  }
+  const real = c.armies.filter((a) => !a._phantom);
+  if (real.length < 2) {
+    refuse(turnContext, c, `${c.name} needs two companies at least — one to give, and one to march on with.`);
+    return;
+  }
+  const victim = [...real].sort((a, b) => TIERS.indexOf(a.quality) - TIERS.indexOf(b.quality))[0];
+  if (!victim) return;
+  c.armies.splice(c.armies.indexOf(victim), 1);
+  pl._sacrificeUntil = G.turn + SACRIFICE_TURNS - 1;
+  noteKingOrder(G, pl, 'great_sacrifice');
+  realmLine(
+    turnContext,
+    c.player,
+    'explore',
+    `🩸 Great Sacrifice: at the ${prov.features.find(isPaganStones)?.name ?? 'stones'} of ${prov.name}, ${c.name} gives ${victim.unitName || victim.type} (${victim.quality}) to the old gods. Until the end of turn ${String(pl._sacrificeUntil)} every host of the realm fights at ×1.5.`,
+    prov,
+  );
+}
+
+// ── EVIL: Dark Pact ── 10g and five of the king's hit points buy an Elite monster company, of a kind the realm's monster
+// provinces breed (else Cave Trolls), which joins his host.
+export function resolveDarkPactOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
+  const { G } = turnContext;
+  const pl = kingMay(turnContext, c, 'Evil', 'dark_pact', 'make a Dark Pact');
+  if (!pl || c.player == null || !prov) return;
+  if (player.gold < DARK_PACT_COST || c.hp <= DARK_PACT_HP) {
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: the pact asks ${String(DARK_PACT_COST)}g and ${String(DARK_PACT_HP)} of the king's own blood — he cannot pay both.`,
+    );
+    return;
+  }
+  if (beastCommandRoom(c, G.characters, protoBeastRoomExtra(G, c)) <= 0) {
+    refuse(turnContext, c, `${c.name} can lead no more beasts — the summoned thing would turn on him.`);
+    return;
+  }
+  const pi = c.player;
+  const kind =
+    pl.provinces
+      .map((id) => G.world.provinces[id])
+      .filter((pv): pv is Province => !!pv && pv.owner === pi && isWild(pv))
+      .flatMap((pv) => pv.armyTypes.filter((t) => MONSTERS.has(t)))[0] ?? 'Cave Trolls';
+  player.gold -= DARK_PACT_COST;
+  c.hp -= DARK_PACT_HP;
+  const u: Army = { type: kind, quality: 'Elite', race: 'Primal', unitName: armyUnitNameOf(kind) };
+  c.armies.push(u);
+  noteKingOrder(G, pl, 'dark_pact');
+  realmLine(
+    turnContext,
+    pi,
+    'hire',
+    `😈 Dark Pact: ${c.name} cuts the bargain in his own blood (${String(DARK_PACT_COST)}g, −${String(DARK_PACT_HP)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, Elite) joins the king's host.`,
+    prov,
+  );
+}
+
+// ── UNDEAD: Plague ── the king lets the plague loose on a humanoid province next door that another realm holds (or none):
+// for three turns a company there dies each turn and lies in the grave, and its tax falls by one (to 1 at least).
+export function resolveSpreadPlagueOrder(turnContext: TurnContext, c: Character, target: string, prov: Prov): void {
+  const { G } = turnContext;
+  const pl = kingMay(turnContext, c, 'Undead', 'spread_plague', 'spread the Plague');
+  if (!pl || c.player == null || !prov) return;
+  const m = /^prov:(\d+)$/.exec(target.trim());
+  const wanted = m ? parseInt(m[1] ?? '', 10) : null;
+  const pv = neighboursOf(G, prov).find((x) => x.id === wanted && humanoidLand(x) && x.owner !== c.player);
+  if (!pv) {
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: the Plague is loosed on a living humanoid province next door that is not the realm's own — none answers.`,
+    );
+    return;
+  }
+  if (pv._kitPlague && pv._kitPlague.until >= G.turn) {
+    refuse(turnContext, c, `${c.name}: ${pv.name} sickens already.`);
+    return;
+  }
+  pv._kitPlague = { by: c.player, until: G.turn + PLAGUE_TURNS };
+  noteKingOrder(G, pl, 'spread_plague');
+  realmLine(
+    turnContext,
+    c.player,
+    'explore',
+    `☠ ${c.name} sends the Plague into ${pv.name}: for ${String(PLAGUE_TURNS)} turns a company there dies each turn and is laid in the grave, and the province's tax falls by one a turn.`,
+    pv,
+  );
+  if (pv.owner != null)
+    realmLine(
+      turnContext,
+      pv.owner,
+      'system',
+      `☠ A plague breaks out in ${pv.name} — your soldiers there sicken and die, a company a turn, and the fields go untended.`,
+      pv,
+    );
 }

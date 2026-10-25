@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { BARROW_NAMES, HOLY_SITE_NAMES, SITE_SHARE_OF_LAND } from '../alignment-prototypes.ts';
+import { BARROW_NAMES, HOLY_SITE_NAMES, HOLY_SITE_SHARE_OF_LAND, SITE_SHARE_OF_LAND } from '../alignment-prototypes.ts';
 import {
   KC_HUMANOID_RACES,
   KC_RIVAL_RACE,
@@ -772,9 +772,9 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
             treasure: 0,
           });
         }
-        // PROTOTYPE: a holy site (Divine) or a barrow (Undead) in about one land province in seven; a site like the
+        // PROTOTYPE: a holy site (Divine, one land province in five since round 2) or a barrow (Undead, one in seven); a site like the
         // stones for finding and showing (ritualSite), set apart by siteKind so no rite answers there.
-        if (hasHolySites && kcRng() < SITE_SHARE_OF_LAND) {
+        if (hasHolySites && kcRng() < HOLY_SITE_SHARE_OF_LAND) {
           features.push({
             name: HOLY_SITE_NAMES[Math.floor(kcRng() * HOLY_SITE_NAMES.length)],
             ritualSite: true,

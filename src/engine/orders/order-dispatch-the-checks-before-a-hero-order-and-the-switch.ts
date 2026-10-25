@@ -1,10 +1,17 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   resolveBindTheBonesOrder,
+  resolveCallOfTheWildOrder,
+  resolveDarkPactOrder,
   resolveDespoilOrder,
+  resolveEmbargoOrder,
   resolveGoodWorksOrder,
+  resolveGreatSacrificeOrder,
   resolveGrowTheWildOrder,
   resolveLayWasteOrder,
+  resolveLightTheBeaconsOrder,
+  resolveProclaimCrusadeOrder,
+  resolveSpreadPlagueOrder,
   resolveTendTheGroveOrder,
   resolveTradePactOrder,
 } from './alignment-prototype-orders.ts';
@@ -394,6 +401,28 @@ export function processOrder(turnContext, c, o, ph) {
       break;
     case 'bind_bones':
       resolveBindTheBonesOrder(turnContext, c, player);
+      break;
+    // the kings' orders (alignment ideas round 2)
+    case 'proclaim_crusade':
+      resolveProclaimCrusadeOrder(turnContext, c, target, player);
+      break;
+    case 'light_beacons':
+      resolveLightTheBeaconsOrder(turnContext, c, prov);
+      break;
+    case 'call_wild':
+      resolveCallOfTheWildOrder(turnContext, c, prov);
+      break;
+    case 'embargo':
+      resolveEmbargoOrder(turnContext, c, target);
+      break;
+    case 'great_sacrifice':
+      resolveGreatSacrificeOrder(turnContext, c, prov);
+      break;
+    case 'dark_pact':
+      resolveDarkPactOrder(turnContext, c, prov, player);
+      break;
+    case 'spread_plague':
+      resolveSpreadPlagueOrder(turnContext, c, target, prov);
       break;
     case 'research':
       resolveResearchOrder(turnContext, c, ph, target, player);

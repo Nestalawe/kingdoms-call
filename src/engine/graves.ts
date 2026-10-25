@@ -1,4 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { isConsecrated } from './heroes/fame-and-consecration.ts';
+import { protoAlignOf } from './alignment-prototypes.ts';
 import { kcRng } from './rng.ts';
 import { QUALITY_TIERS } from './army-tables.ts';
 import { unitBaseStrength } from './rules-on-plain-values/unit-types-and-base-strength.ts';
@@ -185,6 +187,15 @@ export function elvenEscapeChance(terrain) {
 export function recordBattleGraves(turnContext, prov, killedArmies, ownerPlayer) {
   const { G, _elvenEscapeQueue } = turnContext;
   if (!killedArmies || !killedArmies.length) return;
+  // PROTOTYPE Divine (round 2): Last Rites — the fallen on a Divine realm's consecrated ground are buried with rites and
+  // leave no grave for any necromancer.
+  if (
+    prov.owner != null &&
+    protoAlignOf(G, prov.owner) === 'Divine' &&
+    G.players[prov.owner] &&
+    isConsecrated(G.players[prov.owner], prov.id)
+  )
+    return;
   if (!prov.battleGraves) prov.battleGraves = [];
   const ownerIsElven = ownerPlayer != null && G.players[ownerPlayer] && G.players[ownerPlayer].race === 'Elven';
   killedArmies.forEach((a) => {

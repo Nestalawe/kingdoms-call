@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { protoBeastRoomExtra } from '../alignment-prototypes.ts';
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { beastCommandCount, beastCommandRoom, beastCommandWords } from '../world/tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -143,7 +144,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
 
   // Item 24 (2026-10-12): beasts beyond the recipient's Druid stay with the giver.
   if (recip2) {
-    let _room = beastCommandRoom(recip2, G.characters);
+    let _room = beastCommandRoom(recip2, G.characters, protoBeastRoomExtra(G, recip2));
     const _stay = [];
     removed = removed.filter((a) => {
       if (!beastCommandCount(a)) return true;
@@ -517,7 +518,11 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
   // Item 24 (2026-10-12): beasts taken up beyond the leader's Druid go back where they came from.
   {
     const _new = (c.armies || []).filter((a) => !_pickBefore.includes(a));
-    let _room = beastCommandRoom({ ...c, armies: _pickBefore }, G.characters);
+    let _room = beastCommandRoom(
+      { ...c, armies: _pickBefore },
+      G.characters,
+      protoBeastRoomExtra(G, { ...c, armies: _pickBefore }),
+    );
     const _keepN = [],
       _backB = [];
     _new.forEach((a) => {

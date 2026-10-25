@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto } from '../alignment-prototypes.ts';
+import { alignProto, protoAlignOf } from '../alignment-prototypes.ts';
 import { KC_QUALITY_UP, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
@@ -824,6 +824,16 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       emit(turnContext, {
         type: 'system',
         text: `Charm cannot be used on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    // PROTOTYPE Good (round 2): Stout Hearts — a Good realm's heroes cannot be Charmed
+    if (t.player != null && protoAlignOf(G, t.player) === 'Good') {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Charm finds no purchase on ${t.name} — a stout heart sworn to a Good crown is closed to enchantment.`,
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });

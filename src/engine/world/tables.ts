@@ -156,9 +156,10 @@ export function beastCommandCount(a) {
 export function beastsLed(c) {
   return ((c && c.armies) || []).filter(beastCommandCount).length;
 }
-export function beastCommandRoom(c, chars) {
+export function beastCommandRoom(c, chars, extra = 0) {
   if (!c || c.player == null) return Infinity;
-  return Math.max(0, (effSkillOf(c, 'druid', chars || []) | 0) - beastsLed(c));
+  // `extra`: the beasts a kit lets the hero lead beyond his Druid level (PROTOTYPE round 2, Beast-friend)
+  return Math.max(0, (effSkillOf(c, 'druid', chars || []) | 0) + (extra | 0) - beastsLed(c));
 }
 export function beastCommandWords(c, chars) {
   const d = effSkillOf(c, 'druid', chars || []) | 0;

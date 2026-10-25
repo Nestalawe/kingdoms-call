@@ -1,3 +1,4 @@
+import { protoAlignOf } from '../alignment-prototypes.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { discSum } from '../discoveries.ts';
@@ -34,7 +35,11 @@ export function spreadTerror(
   targets.forEach((tp) => {
     if (!tp || seen.has(tp.id)) return;
     seen.add(tp.id);
-    tp._terrorStacks = Math.min(TERROR_MAX_STACKS, (tp._terrorStacks || 0) + 1);
+    // PROTOTYPE Evil (round 2): Fearmongers — Terror lays two stacks at once
+    tp._terrorStacks = Math.min(
+      TERROR_MAX_STACKS,
+      (tp._terrorStacks || 0) + (protoAlignOf(G, byPlayer) === 'Evil' ? 2 : 1),
+    );
     tp._terrorTurn = G.turn;
     tp._terrorisedBy = byPlayer;
     tp._terrorPct = TERROR_PCT_PER_STACK + discSum(turnContext, byPlayer, 'terror', 'pct'); // ae03 Reign of Terror
