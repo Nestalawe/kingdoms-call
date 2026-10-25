@@ -376,6 +376,13 @@ the turn reads it.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
   a new world and mended; the upgrade run twice equals once; a new world changes only by a known list) and
   `corsairs-retired` (the turn passes the loaded world through the upgrade, which calls the pass).
+- **What the schema knows** (P1-15b): the saved state's schema (`src/schemas/saved-game-state.ts`) was written from the
+  balance matrix's states, so it also names what only live play saves: the hero order the player portal sends with
+  every submission (a realm's `heroOrder`), what the GM page writes between turns (`archived`, `archivedAt`,
+  `_gmRemovedRealms`, a realm's `_gmRemoved`), and each mark the code keeps in the save (Sanctuary's, Veil's, a hidden
+  lair's, …), each optional, with a comment saying what writes it. A mark a battle writes and wipes before the save
+  (`_flakTargeted`, `_tacticalMult`, …) stays out, so the check finds one that leaks. What checks it:
+  `tests/unit/the-fields-the-portal-and-the-gm-page-save-parse-strictly.test.ts`.
 - **Next:** the save's version, `schemaVersion` (P1-15c), and the check of the upgraded save against the saved state's
   schema (P1-15d).
 
