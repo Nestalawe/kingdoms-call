@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { alignProto } from '../alignment-prototypes.ts';
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
@@ -480,7 +481,7 @@ export function resolveRestOrder(turnContext, c, prov) {
   // "make it a multiplier, but only half of what it was" — the BONUS is halved, from +100% to
   // +50%, so the blessing stays a multiplier rather than becoming a flat addition). Rounded
   // UP, so the blessing is never worth nothing on a small pool.
-  const isDivineKingdom = G.players[c.player]?.alignment === 'Divine';
+  const isDivineKingdom = G.players[c.player]?.alignment === 'Divine' && !alignProto(G, 'Divine'); // PROTOTYPE Divine: the Rest bonus is cut
   const _medArts = hasDisc(turnContext, c.player, 'sd28'); // Medical Arts: a single Rest fully restores HP
   const baseHeal = Math.max(1, Math.ceil((c.maxHp || 20) * REST_HEAL_PCT)); // 30% of maximum HP (was 2–5)
   let heal = _medArts ? Math.max(0, (c.maxHp || 20) - c.hp) : isDivineKingdom ? Math.ceil(baseHeal * 1.5) : baseHeal;

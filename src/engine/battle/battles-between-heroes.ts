@@ -54,6 +54,7 @@ import { homeFounderOf } from '../grand-design.ts';
 import { battleFortune, fortuneNarrative, shuffleP } from './fortune.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { isConsecrated } from '../heroes/fame-and-consecration.ts';
+import { alignProto, protoFervour } from '../alignment-prototypes.ts';
 import { activeItems, hasItemBase } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100, describeArmy, pick, rng } from '../dice-and-army-names.ts';
@@ -421,8 +422,13 @@ export function combatVsChar(turnContext, atk, def, prov) {
   }
   // GOOD — Righteous Defence: +10% when a Good player defends a province they own.
   if (prov.owner === def.player && G.players[def.player]?.alignment === 'Good') {
-    defBonus *= 1.1;
-    narrate(narrative, { kind: "the defender's host defends ground held justly", defName });
+    if (alignProto(G, 'Good')) {
+      defBonus *= 1.5; // PROTOTYPE Good: the Shield of the Realm — ×1.5 defending its own province
+      narrate(narrative, `🛡 The Shield of the Realm: ${defName}'s host defends its own ground at ×1.5.`);
+    } else {
+      defBonus *= 1.1;
+      narrate(narrative, { kind: "the defender's host defends ground held justly", defName });
+    }
   }
   {
     const _dOwnP =
@@ -486,16 +492,31 @@ export function combatVsChar(turnContext, atk, def, prov) {
   if (_consecratedHere) {
     _defFanPct = Math.min(1, _defFanPct * 2);
   }
-  const atkFanatic = kcRng() < _atkFanPct;
-  const defFanatic = kcRng() < _defFanPct;
+  // PROTOTYPE (alignment ideas round 1): a realm whose kit is on rolls no zeal; its kit's fervour counts instead.
+  const _pfA = protoFervour(G, atk.player, atkArmies, {
+    enemyPi: def.player,
+    prov,
+    isAttacker: true,
+    leader: atk,
+    monsterTypes: MONSTER_ARMIES,
+  });
+  const _pfD = protoFervour(G, def.player, defArmies, {
+    enemyPi: atk.player,
+    prov,
+    isAttacker: false,
+    leader: def,
+    monsterTypes: MONSTER_ARMIES,
+  });
+  const atkFanatic = _pfA ? false : kcRng() < _atkFanPct;
+  const defFanatic = _pfD ? false : kcRng() < _defFanPct;
   // Skeletal armies are always fanatical ONLY when led by the Undead king in person.
   const atkSkelFanatic = atkAlign === 'Undead' && atk.isKing && atkArmies.some((a) => a._isSkeletal);
   const defSkelFanatic = defAlign === 'Undead' && def.isKing && defArmies.some((a) => a._isSkeletal);
   const atkSkelHero = atkAlign === 'Undead' && !atk.isKing && atkArmies.some((a) => a._isSkeletal);
   const defSkelHero = defAlign === 'Undead' && !def.isKing && defArmies.some((a) => a._isSkeletal);
   // Evil: Monster armies +25%. (Wild Ferocity, the Druidic ×1.25 with any Creature, retired 2026-10-13.)
-  const atkEvilMonster = atkAlign === 'Evil' && atkArmies.some((a) => MONSTER_ARMIES.has(a.type));
-  const defEvilMonster = defAlign === 'Evil' && defArmies.some((a) => MONSTER_ARMIES.has(a.type));
+  const atkEvilMonster = atkAlign === 'Evil' && !_pfA && atkArmies.some((a) => MONSTER_ARMIES.has(a.type));
+  const defEvilMonster = defAlign === 'Evil' && !_pfD && defArmies.some((a) => MONSTER_ARMIES.has(a.type));
   // Strongest fervour counts (max) — the old precedence chain let a ×1.3 zeal roll mask the
   // skeletal bonus once that bonus rose above it.
   const atkFanMult = Math.max(
@@ -504,6 +525,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     atkSkelFanatic ? UNDEAD_SKEL_KING_FAN : 1,
     atkEvilMonster ? 1.25 : 1,
     atkSkelHero ? UNDEAD_SKEL_HERO_FAN : 1,
+    _pfA ? _pfA.mult : 1,
   );
   const defFanMult = Math.max(
     1,
@@ -511,7 +533,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
     defSkelFanatic ? UNDEAD_SKEL_KING_FAN : 1,
     defEvilMonster ? 1.25 : 1,
     defSkelHero ? UNDEAD_SKEL_HERO_FAN : 1,
+    _pfD ? _pfD.mult : 1,
   );
+  if (_pfA && _pfA.mult > 1) narrate(narrative, `${atkName}'s host: ${_pfA.label}.`);
+  if (_pfD && _pfD.mult > 1) narrate(narrative, `${defName}'s host: ${_pfD.label}.`);
   const _pct = (m) => Math.round((m - 1) * 100);
   if (atkSkelFanatic)
     narrate(narrative, {
@@ -1090,7 +1115,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   } // 2026-09-23e: only a coast attacked from the sea
   // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
   // consecrated province).
-  const _consecPenalty = _consecratedHere && (atkAlign === 'Undead' || atkAlign === 'Evil') ? 0.85 : 1;
+  const _consecPenalty =
+    _consecratedHere && (atkAlign === 'Undead' || atkAlign === 'Evil') && !alignProto(G, 'Divine') ? 0.85 : 1; // PROTOTYPE Divine: the Crusade replaces the −15%
   if (_consecPenalty < 1)
     narrate(narrative, {
       kind: "the consecrated ground of the province weakens the attacker's host",

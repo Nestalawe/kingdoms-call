@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { alignProto, barrowsHeld, heldSites, isBarrow } from '../alignment-prototypes.ts';
 import { KC_SKILLS, SAGE_DISCOVERIES_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { TEMPERS_P } from '../world/tables.ts';
@@ -93,6 +94,33 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     }
     p.heirPending = false;
     const deadKing = G.characters.find((c) => c.isKing && c.player === pi && !c.alive);
+    // PROTOTYPE Undead: Lichdom — while the realm holds a barrow, its slain king rises there instead of an heir.
+    if (deadKing && barrowsHeld(G, pi) >= 1 && (p.provinces || []).length > 0) {
+      const barrow = heldSites(G, pi, isBarrow)[0];
+      if (barrow) {
+        deadKing.alive = true;
+        deadKing.hp = Math.floor((deadKing.maxHp || 15) * 0.5) || 8;
+        deadKing.killedThisTurn = false;
+        deadKing.armies = [];
+        deadKing.items = [];
+        const _from = G.world.provinces[deadKing.location];
+        if (_from) _from.characters = (_from.characters || []).filter((id) => id !== deadKing.id);
+        deadKing.location = barrow.id;
+        barrow.characters = barrow.characters || [];
+        if (!barrow.characters.includes(deadKing.id)) barrow.characters.push(deadKing.id);
+        G.heroGraveyard = (G.heroGraveyard || []).filter((g) => g.id !== deadKing.id);
+        delete p._resurrectableMonarchId;
+        p.heirPending = false;
+        emit(turnContext, {
+          type: 'system',
+          text: `💀 Lichdom: ${deadKing.name} does not stay dead. The crown's phylactery lies in the ${(barrow.features || []).find(isBarrow)?.name || 'barrow'} of ${barrow.name}, and the king rises there with ${deadKing.hp} HP — no armies, no items, the same cold will.`,
+          audience: { actor: pi, realms: [pi] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          province: barrow.id,
+        });
+        return;
+      }
+    }
     if (deadKing) deadKing.isKing = false; // demote the fallen king so the realm has exactly one monarch
     const heirSkills = { melee: 2, archery: 1, sage: 1 };
     if (p.alignment === 'Divine') heirSkills.white = (heirSkills.white || 0) + 1;
@@ -100,6 +128,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     if (p.alignment === 'Evil') heirSkills.druid = (heirSkills.druid || 0) + 1; // 2026-10-13: as the king
     if (p.alignment === 'Pagan') heirSkills.explorer = (heirSkills.explorer || 0) + 1;
     if (p.alignment === 'Undead') heirSkills.necromancy = (heirSkills.necromancy || 0) + 1;
+    if (p.alignment === 'Good' && alignProto(G, 'Good')) heirSkills.tactical = (heirSkills.tactical || 0) + 1; // PROTOTYPE Good
     const heirName =
       typeof nextHeroName === 'function'
         ? nextHeroName(p.alignment || 'Neutral')

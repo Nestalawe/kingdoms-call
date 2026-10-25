@@ -1,4 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { protoAlignOf } from '../alignment-prototypes.ts';
+import { spreadTerror } from '../battle/evil-terror.ts';
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { monarchRestProvId } from '../grand-design.ts';
@@ -285,6 +287,33 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     });
     return false;
   }
+  // PROTOTYPE Good: Guarded by the Folk — a hero of a Good realm struck down inside a province the realm owns is carried
+  // off by the villagers and lives, at 1 HP, three times in four.
+  if (
+    deadChar.player != null &&
+    protoAlignOf(G, deadChar.player) === 'Good' &&
+    deadChar.location != null &&
+    G.world.provinces[deadChar.location]?.owner === deadChar.player &&
+    !deadChar.killedThisTurn &&
+    kcRng() < 0.75
+  ) {
+    if (opts) opts.outcome = 'escaped';
+    deadChar.hp = 1;
+    deadChar.alive = true;
+    deadChar.killedThisTurn = false;
+    emit(turnContext, {
+      type: 'combat',
+      text: `🛡 The folk of ${G.world.provinces[deadChar.location]?.name || 'the province'} carry ${deadChar.name} from the field and hide them until the danger passes — alive, at 1 HP.`,
+      audience: {
+        actor: killerChar && killerChar.player != null ? killerChar.player : null,
+        realms: [deadChar.player],
+        seen: 'battle',
+      },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: deadChar.location,
+    });
+    return false;
+  }
   if (_escapesTheEnd(deadChar)) {
     if (opts) opts.outcome = 'escaped';
     if (deadChar.hp != null && deadChar.hp <= 0)
@@ -562,6 +591,25 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   }
   deadChar.alive = false;
   deadChar.killedThisTurn = true;
+  // PROTOTYPE Evil: Dread — an Evil realm's hero who slays another realm's hero spreads Terror where the body falls.
+  if (
+    killerChar &&
+    killerChar.player != null &&
+    deadChar.player != null &&
+    deadChar.player !== killerChar.player &&
+    protoAlignOf(G, killerChar.player) === 'Evil' &&
+    deadChar.location != null &&
+    G.world.provinces[deadChar.location]
+  ) {
+    spreadTerror(turnContext, G.world.provinces[deadChar.location], killerChar.player, null);
+    emit(turnContext, {
+      type: 'combat',
+      text: `😈 Dread: word of ${deadChar.name}'s death at ${killerChar.name}'s hands spreads terror through ${G.world.provinces[deadChar.location].name} and the lands around it.`,
+      audience: { actor: killerChar.player, realms: [killerChar.player], seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: deadChar.location,
+    });
+  }
   try {
     _tel.deaths.push({
       ph: turnContext._logCtx.phase ?? turnContext._currentPhase,

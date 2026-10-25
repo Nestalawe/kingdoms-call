@@ -287,7 +287,21 @@ export const MASTERY_ORDER_LABEL = {
 };
 // Alignment-signature orders, by engine action key. Used with MASTERY_ORDER_KEYS to decide what a
 // charmed enemy hero may not be made to do.
-export const ALIGNMENT_ORDER_KEYS = new Set(['consecrate', 'call_to_arms', 'broker', 'harvest_field', 'rite']); // Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22)
+export const ALIGNMENT_ORDER_KEYS = new Set([
+  'consecrate',
+  'call_to_arms',
+  'broker',
+  'harvest_field',
+  'rite',
+  // the prototype kits' orders (alignment ideas round 1)
+  'good_works',
+  'grow_wild',
+  'tend_grove',
+  'trade_pact',
+  'lay_waste',
+  'despoil',
+  'bind_bones',
+]); // Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22)
 // the character-targeted hostile spells a seized enemy hero will not aim at their ORIGINAL lord's
 // characters (the Encounter order is refused on the same grounds).
 export const CHARMED_NO_TURN_SPELLS = new Set([

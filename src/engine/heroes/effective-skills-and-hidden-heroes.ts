@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { protoSkillLift } from '../alignment-prototypes.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { activeItems } from '../items/equipment.ts';
@@ -37,7 +38,11 @@ export function totalInit(c) {
 //, minus any Curse, plus the Crown of Command aura; capped 0..5.
 export function effStat(turnContext, c, stat) {
   const { G } = turnContext;
-  return effSkillOf(c, stat, G.characters || []);
+  const base = effSkillOf(c, stat, G.characters || []);
+  // PROTOTYPE (alignment ideas round 1): a kit may lift a skill (Neutral's guilds, Evil's poisoners, Divine Power,
+  // the barrows an Undead realm holds), never past 9.
+  const lift = protoSkillLift(G, c, stat, base);
+  return lift > 0 ? Math.min(9, base + lift) : base;
 }
 // ── WHAT A VIEWER MAY BE TOLD ABOUT SOMEONE ELSE'S HERO (2026-09-26, Toby) ────────────────
 // Roll lines used to print BOTH sides' skill levels — "Pursuit — Merek (Spy 0) closing on

@@ -50,6 +50,7 @@ import { homeFounderOf } from '../grand-design.ts';
 import { battleFortune, fortuneNarrative, shuffleP } from './fortune.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { demoteGuardToWanderer, isConsecrated } from '../heroes/fame-and-consecration.ts';
+import { alignProto, protoFervour } from '../alignment-prototypes.ts';
 import { activeItems, hasItemBase } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100, pick, rng } from '../dice-and-army-names.ts';
@@ -395,8 +396,24 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // GOOD — Righteous Defence: a Good realm's own soil is defended with quiet, unshakable
   // conviction (+10% to the defence of any province the Good player OWNS).
   if (prov.owner != null && prov.owner !== c.player && G.players[prov.owner]?.alignment === 'Good') {
-    defBonus *= 1.1;
-    narrate(narrative, { kind: 'the defenders of a province defend ground held justly', provName: prov.name });
+    if (alignProto(G, 'Good')) {
+      defBonus *= 1.5; // PROTOTYPE Good: the Shield of the Realm — ×1.5 defending its own province
+      narrate(narrative, `🛡 The Shield of the Realm: the folk of ${prov.name} defend their own ground at ×1.5.`);
+    } else {
+      defBonus *= 1.1;
+      narrate(narrative, { kind: 'the defenders of a province defend ground held justly', provName: prov.name });
+    }
+  }
+  // PROTOTYPE Divine: a garrison on consecrated ground holds at ×1.5 (in place of the doubled zeal)
+  if (
+    prov.owner != null &&
+    prov.owner !== c.player &&
+    G.players[prov.owner]?.alignment === 'Divine' &&
+    alignProto(G, 'Divine') &&
+    isConsecrated(G.players[prov.owner], prov.id)
+  ) {
+    defBonus *= 1.5;
+    narrate(narrative, `✨ Crusade: the defenders of consecrated ${prov.name} hold their holy ground at ×1.5.`);
   }
   if (activeItems(c).some((it) => it.effect && it.effect.stat === 'siegeBonus')) {
     defBonus = 1 + (defBonus - 1) * 0.5;
@@ -1262,10 +1279,22 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // Fanaticism check
   const align = G.players[c.player]?.alignment || 'Neutral';
   const FANATIC_CHANCE = { ...FANATIC_CHANCE_BY_ALIGN };
-  const fanatic =
-    kcRng() <
-    (FANATIC_CHANCE[align] ?? 0.1) +
-      discSum(turnContext, c.player, 'fanatic', 'pct', (e) => discFanaticApplies(e, 'atk', prov.terrain, armies)); // fanatic discoveries
+  // PROTOTYPE (alignment ideas round 1): a realm whose kit is on rolls no zeal; its kit's fervour counts instead.
+  const _pf =
+    c.player != null
+      ? protoFervour(G, c.player, armies, {
+          enemyPi: prov.owner != null && prov.owner !== c.player ? prov.owner : null,
+          prov,
+          isAttacker: true,
+          leader: c,
+          monsterTypes: MONSTER_ARMIES,
+        })
+      : null;
+  const fanatic = _pf
+    ? false
+    : kcRng() <
+      (FANATIC_CHANCE[align] ?? 0.1) +
+        discSum(turnContext, c.player, 'fanatic', 'pct', (e) => discFanaticApplies(e, 'atk', prov.terrain, armies)); // fanatic discoveries
   // Skeletal armies are always fanatical ONLY when led by the Undead king in person — other
   // heroes serving the Undead realm do not inspire the same undying zeal.
   const skeletalFanatic = align === 'Undead' && c.isKing && armies.some((a) => a._isSkeletal);
@@ -1276,14 +1305,16 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // Evil: Monster armies get +25% fanaticism on top of base. (The Druidic mirror, Wild Ferocity — ×1.25
   // for a host with any Creature — was retired on 2026-10-13 (Toby, Creatures and Monsters I): the Druidic
   // crown keeps its waiver, Home of the Wild and mastery.)
-  const evilMonsterFanatic = align === 'Evil' && armies.some((a) => MONSTER_ARMIES.has(a.type));
+  const evilMonsterFanatic = align === 'Evil' && !_pf && armies.some((a) => MONSTER_ARMIES.has(a.type));
   const fanMult = Math.max(
     1,
     fanatic ? 1.3 : 1,
     skeletalFanatic ? UNDEAD_SKEL_KING_FAN : 1,
     evilMonsterFanatic ? 1.25 : 1,
     skelHeroFanatic ? UNDEAD_SKEL_HERO_FAN : 1,
+    _pf ? _pf.mult : 1,
   ); // strongest counts (2026-09-23b)
+  if (_pf && _pf.mult > 1) narrate(narrative, `${cName}'s host: ${_pf.label}.`);
   if (evilMonsterFanatic && !fanatic)
     narrate(narrative, { kind: "the attacker's monsters are driven to savage fury", cName });
   if (fanatic && !skeletalFanatic && !skelHeroFanatic)
@@ -1314,7 +1345,8 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     prov.owner != null &&
     prov.owner !== c.player &&
     isConsecrated(G.players[prov.owner], prov.id) &&
-    (align === 'Undead' || align === 'Evil');
+    (align === 'Undead' || align === 'Evil') &&
+    !alignProto(G, 'Divine'); // PROTOTYPE Divine: the Crusade replaces the −15%
   if (_consecNPC)
     narrate(narrative, {
       kind: "the consecrated ground of the province weakens the attacker's host",

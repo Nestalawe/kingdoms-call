@@ -72,6 +72,15 @@ export const _NAME_TAILS = [
   'of the Long March',
   'of the Last Stand',
 ];
+/** The unit types that have a pool of names: a guard for a type read as a plain string (the prototype kits' modules). */
+const NAME_POOLS: Record<string, readonly string[]> = { ...ARMY_UNIT_NAMES, ...PRIMAL_UNIT_NAMES };
+function isUnitType(type: string): type is UnitType {
+  return Object.hasOwn(NAME_POOLS, type);
+}
+/** armyUnitName for a type held as a plain string: the type itself when it has no pool. */
+export function armyUnitNameOf(type: string): string {
+  return isUnitType(type) ? (armyUnitName(type) ?? type) : type;
+}
 export function armyUnitName(type: UnitType) {
   const pool = { ...ARMY_UNIT_NAMES, ...PRIMAL_UNIT_NAMES }[type] || ['the Guard'];
   // Try to find a unique name from the (generously sized) pool.

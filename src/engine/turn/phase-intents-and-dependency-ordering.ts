@@ -49,6 +49,13 @@ export type OrderKind =
   | 'awaken_wild'
   | 'call_pit'
   | 'harvest_field'
+  | 'good_works'
+  | 'grow_wild'
+  | 'tend_grove'
+  | 'trade_pact'
+  | 'lay_waste'
+  | 'despoil'
+  | 'bind_bones'
   | 'encounter'
   | 'steal'
   | 'use_item'
@@ -133,6 +140,20 @@ export const PHASE_ACTION_MAP = {
   call_pit: 'call_pit',
   'harvest the field': 'harvest_field',
   harvest_field: 'harvest_field',
+  // the prototype kits' orders (alignment ideas round 1)
+  good_works: 'good_works',
+  'good works': 'good_works',
+  grow_wild: 'grow_wild',
+  'grow the wild': 'grow_wild',
+  tend_grove: 'tend_grove',
+  'tend the grove': 'tend_grove',
+  trade_pact: 'trade_pact',
+  'trade pact': 'trade_pact',
+  lay_waste: 'lay_waste',
+  'lay waste': 'lay_waste',
+  despoil: 'despoil',
+  bind_bones: 'bind_bones',
+  'bind the bones': 'bind_bones',
   encounter: 'encounter',
   'encounter character': 'encounter',
   steal: 'steal',

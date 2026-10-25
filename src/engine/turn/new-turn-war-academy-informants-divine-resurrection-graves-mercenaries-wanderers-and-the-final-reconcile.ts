@@ -1,4 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { divinePower } from '../alignment-prototypes.ts';
+import { alignmentPrototypeNewTurnSteps } from './alignment-prototype-turn-steps.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
@@ -192,7 +194,8 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         delete hero._divineReturn;
         if (playerP) delete playerP._resurrectableMonarchId;
       }
-      {
+      const _keepHoly = divinePower(G, grave.player) >= 2; // PROTOTYPE Divine: at Divine Power 2 the return spends no consecration
+      if (!_keepHoly) {
         const _cl = consecratedIds(playerP);
         const _ci = _cl.indexOf(homeProv.id);
         if (_ci >= 0) _cl.splice(_ci, 1);
@@ -219,6 +222,9 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         province: homeProv.id,
       });
     });
+
+  // PROTOTYPE (alignment ideas round 1): the kits' once-a-turn effects, before the graves decay.
+  alignmentPrototypeNewTurnSteps(turnContext);
 
   // 7e. Battlefield grave pool decay — ~10% of remaining graves rot each turn, halved to 5% in
   // provinces owned by an UNDEAD realm (necromantic preservation — the advertised perk, now real).

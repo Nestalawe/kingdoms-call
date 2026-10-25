@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { protoAlignOf, qualityUp } from '../alignment-prototypes.ts';
 import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, SKILL_LABELS } from '../army-tables.ts';
@@ -212,7 +213,9 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         return;
       }
       player.gold -= mCost;
-      _pushRecruit({ type: merc.type, quality: merc.quality, race: merc.race, unitName: merc.unitName });
+      // PROTOTYPE Neutral: Mercenary Captains — a band hired by a Neutral realm musters one quality tier higher
+      const _mq = protoAlignOf(G, c.player) === 'Neutral' ? qualityUp(merc.quality) : merc.quality;
+      _pushRecruit({ type: merc.type, quality: _mq, race: merc.race, unitName: merc.unitName });
       G.mercenaries = G.mercenaries.filter((m) => m.id !== merc.id);
       mHired = true;
       emit(turnContext, {
@@ -306,7 +309,13 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     totalCost += cost;
     for (let q = 0; q < actualQty; q++) {
       // sd01 Superior Forging: recruited armies start at Veteran
+      // PROTOTYPE Druidic / Evil: a beast raised in a held wild province of the realm's own kind musters as a Veteran
+      const _kitVet =
+        String(prov.race || '').startsWith('Primal') &&
+        ((protoAlignOf(G, c.player) === 'Druidic' && CREATURE_ARMIES.has(armyType)) ||
+          (protoAlignOf(G, c.player) === 'Evil' && MONSTER_ARMIES.has(armyType)));
       const startQuality =
+        _kitVet ||
         (gdActive(turnContext, c.player, 'Druidic') &&
           (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType))) ||
         kcRng() < discRecruitQChance(G.players[c.player], armyType)

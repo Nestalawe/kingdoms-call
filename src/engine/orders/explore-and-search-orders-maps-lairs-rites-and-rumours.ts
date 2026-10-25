@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { RITE_OF_AWAKENING_COST, activatedSites, alignProto } from '../alignment-prototypes.ts';
 import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -221,7 +222,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
   // rite may be performed there without first Exploring. Elsewhere, the site must be
   // discovered.
   const _riteSite = (prov.features || []).find(
-    (f) => f.ritualSite && (featDiscovered(f, c.player) || prov.owner === c.player),
+    (f) => f.ritualSite && !f.siteKind && (featDiscovered(f, c.player) || prov.owner === c.player), // a holy site or a barrow is no stones of the old gods
   );
   if (!_riteSite) {
     emit(turnContext, {
@@ -248,6 +249,118 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
     return;
   }
   const _rite = (target || '').toLowerCase();
+  // PROTOTYPE Pagan: a rite performed at stones the realm holds activates them (the Favour of the Old Gods counts them).
+  const _activate = () => {
+    if (alignProto(G, 'Pagan') && prov.owner === c.player && prov._riteActivatedBy !== c.player) {
+      prov._riteActivatedBy = c.player;
+      emit(turnContext, {
+        type: 'explore',
+        text: `🔥 The stones of ${prov.name} (the ${_riteSite.name}) wake to ${player.name}: the realm's Favour of the Old Gods now counts ${activatedSites(G, c.player)} site${activatedSites(G, c.player) !== 1 ? 's' : ''}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        province: prov.id,
+      });
+    }
+  };
+  if (_rite.startsWith('awaken')) {
+    // ── PROTOTYPE Pagan: Rite of Awakening ── 10g at stones in a province the realm holds: the stones are activated for
+    // good, and the province's tax rises by one (once).
+    if (!alignProto(G, 'Pagan')) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} knows no Rite of Awakening.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    if (prov.owner !== c.player) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: only stones on the realm's own ground can be awakened — take ${prov.name} first.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    if (prov._riteActivatedBy === c.player && prov._awakened) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: the ${_riteSite.name} of ${prov.name} are awake already.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    if ((player.gold || 0) < RITE_OF_AWAKENING_COST) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} cannot afford the Rite of Awakening's offering (${RITE_OF_AWAKENING_COST}g).`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    player.gold -= RITE_OF_AWAKENING_COST;
+    prov._riteTurn = G.turn;
+    if (!prov._awakened) {
+      prov._awakened = G.turn;
+      prov.tax = (prov.tax || 0) + 1;
+    }
+    emit(turnContext, {
+      type: 'combat',
+      text: `\u{1F525} ${c.name} performs the Rite of Awakening at the ${_riteSite.name} (${RITE_OF_AWAKENING_COST}g of gold and grain burned on the stones). The old gods wake in ${prov.name}: the land gives +1 tax from now on.`,
+      audience: { actor: c.player, realms: [c.player], seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: prov.id,
+    });
+    _activate();
+    return;
+  }
+  if (_rite.startsWith('ley')) {
+    // ── PROTOTYPE Pagan: Rite of the Ley ── from stones the realm has found, the hero steps along the ley lines to any
+    // other stones the realm has found (target 'ley:<province id>'). The host comes too; arriving in ground the realm
+    // does not hold is settled as any host appearing there.
+    if (!alignProto(G, 'Pagan')) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} knows no Rite of the Ley.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    const _to = G.world.provinces[parseInt(_rite.split(':')[1])];
+    const _toStones =
+      _to && _to.id !== prov.id
+        ? (_to.features || []).find(
+            (f) => f && f.ritualSite && !f.siteKind && (featDiscovered(f, c.player) || _to.owner === c.player),
+          )
+        : null;
+    if (!_toStones) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: the ley lines run only between stones the realm has found — name another ritual site.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    prov._riteTurn = G.turn;
+    prov.characters = (prov.characters || []).filter((id) => id !== c.id);
+    c.location = _to.id;
+    _to.characters = _to.characters || [];
+    if (!_to.characters.includes(c.id)) _to.characters.push(c.id);
+    emit(turnContext, {
+      type: 'move',
+      text: `\u{1F525} ${c.name} walks the ley from the ${_riteSite.name} of ${prov.name} and steps out at the ${_toStones.name} of ${_to.name}.`,
+      audience: { actor: c.player, realms: [c.player], seen: 'there' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: _to.id,
+    });
+    resolveUnitGainInProvince(turnContext, c, _to, ph);
+    return;
+  }
   if (_rite.startsWith('wild')) {
     // ── Rite of the Wild Hunt ── Bind the province's native primal creatures for this turn
     // and WILD_HUNT_TURNS more. The ONLY way to field Creatures/Monsters without Druid magic.
@@ -274,6 +387,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
     }
     player.gold -= _huntCost;
     prov._riteTurn = G.turn; // the province's one rite this turn is spent
+    _activate();
     c.armies = c.armies || [];
     const _boundNames = [];
     for (let wi = 0; wi < WILD_HUNT_UNITS; wi++) {
@@ -353,6 +467,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
   const _sac = _sacI.slice(0, _bn).map((i) => _army[i]);
   const _ben = _benI.slice(0, _bn).map((i) => _army[i]);
   prov._riteTurn = G.turn; // the province's one rite this turn is spent
+  _activate();
   c.armies = _army.filter((a) => !_sac.includes(a));
   recordBattleGraves(turnContext, prov, _sac);
   _ben.forEach((b) => {

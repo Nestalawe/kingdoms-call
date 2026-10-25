@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { protoAlignOf } from '../alignment-prototypes.ts';
 import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
@@ -731,6 +732,22 @@ export function botEnemyDefence(G, prov, ownerPi, viewerPi) {
 export function botIsValuable(G, prov, pi) {
   if (!prov) return false;
   const home = (G.players[pi] || {}).homeProvinceId;
+  // PROTOTYPE: a holy site to a Divine realm, a barrow to an Undead one, the stones to a Pagan one
+  const kit = protoAlignOf(G, pi);
+  if (
+    kit &&
+    (prov.features || []).some(
+      (f) =>
+        f &&
+        f.ritualSite &&
+        (kit === 'Divine'
+          ? f.siteKind === 'holy'
+          : kit === 'Undead'
+            ? f.siteKind === 'barrow'
+            : kit === 'Pagan' && !f.siteKind),
+    )
+  )
+    return true;
   return prov.id === home || (prov.tax || 0) >= BOT_TUNING.valuableTax;
 }
 // How under-defended an owned province is RIGHT NOW: (strongest at-war enemy force adjacent to it)
@@ -906,7 +923,7 @@ export function botUpkeep(G, pi) {
   (G.characters || []).forEach((c) => {
     if (c && c.alive && c.player === pi)
       (c.armies || []).forEach((a) => {
-        if (a._temporary || a._wildHuntUntilTurn != null) return;
+        if (a._temporary || a._wildHuntUntilTurn != null || a._slave) return;
         w += a._isSkeletal ? 1 : ARMY_COST_MASTER[a.type] || 2;
       });
   });

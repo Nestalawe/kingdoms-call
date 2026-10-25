@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { alignProto, divinePower } from '../alignment-prototypes.ts';
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -36,6 +37,62 @@ import { landHirePreOrders } from './recruit-and-hire-orders-companies-mercenari
 // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
 export function resolveConsecrateOrder(turnContext, c, prov, player) {
   const { G } = turnContext;
+  // PROTOTYPE Divine (alignment ideas round 1): the crusade spreads from the hearth — any hero with White 1+ consecrates
+  // a province of the realm's that borders hallowed ground (the home counts as hallowed); no cap, no two-apart rule.
+  if (alignProto(G, 'Divine') && G.players[c.player]?.alignment === 'Divine') {
+    if (prov.owner !== c.player) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: only a province of your own realm can be consecrated — take and hold this land first.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    if (effStat(turnContext, c, 'white') < 1) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: consecration flows from the White arts — learn White magic before you can sanctify ground.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    const _home = homeProvinceIdFor(G, c.player);
+    const _list = consecratedIds(player);
+    if (prov.id === _home || _list.includes(prov.id)) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${prov.name} is hallowed ground already.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    const _adj = getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces)
+      .map((x) => x && x.id)
+      .filter((x) => x != null);
+    if (!_adj.some((id) => id === _home || _list.includes(id))) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: the light is carried outward from hallowed ground — ${prov.name} borders none of yours. Consecrate a province beside your hearth or your other holy ground.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    _list.push(prov.id);
+    const _shine = (prov.features || []).some((f) => f && f.ritualSite && f.siteKind === 'holy');
+    emit(turnContext, {
+      type: 'explore',
+      text: `✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, its defenders fight at ×1.5, and your fallen can return here.${_shine ? ` The holy site here shines: the realm's Divine Power is ${divinePower(G, c.player)}.` : ''} (${_list.length} consecrated.)`,
+      audience: { actor: c.player, realms: [c.player], seen: 'there' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: prov.id,
+      env: true,
+    });
+    return;
+  }
   if (!c.isKing) {
     emit(turnContext, {
       type: 'system',

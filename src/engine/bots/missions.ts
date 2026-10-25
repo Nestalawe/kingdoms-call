@@ -1,4 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { alignProto } from '../alignment-prototypes.ts';
+import { tradePactPrice, tradePactTargets } from '../orders/alignment-prototype-orders.ts';
 import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
@@ -178,7 +180,20 @@ export function botInfiltrateOrders(G, pi, c, pre, school, range) {
 // signature pre-order per character per turn; the engine's own once-per-turn rules still apply.
 export function botConsecrateOK(G, pi, c, X) {
   const pl = (G.players || [])[pi];
-  if (!pl || pl.alignment !== 'Divine' || !c.isKing || !X || X.owner !== pi || X.terrain === 'sea') return false;
+  if (!pl || pl.alignment !== 'Divine' || !X || X.owner !== pi || X.terrain === 'sea') return false;
+  if (alignProto(G, 'Divine')) {
+    // PROTOTYPE Divine: any hero with White 1+, on a province of the realm's bordering the home or holy ground
+    if (effSkillOf(c, 'white', G.characters || []) < 1) return false;
+    const home = botHomeId(G, pi);
+    const list = consecratedIds(pl) || [];
+    if (X.id === home || list.includes(X.id)) return false;
+    for (let i = 0; i < 6; i++) {
+      const N = botNeighbourProv(G, X, i);
+      if (N && (N.id === home || list.includes(N.id))) return true;
+    }
+    return false;
+  }
+  if (!c.isKing) return false;
   const home = botHomeId(G, pi);
   if (X.id === home) return false;
   const H = home != null ? G.world.provinces[home] : null;
@@ -215,6 +230,12 @@ export function botSignaturePre(G, pi, c, P, L) {
   if (!pl || !P) return null;
   const sk = c.skills || {};
   L.sig = L.sig || {}; // per-realm once-per-turn flags
+  // PROTOTYPE (alignment ideas round 1): the kits' own orders, when the realm's kit is on.
+  if (alignProto(G, pl.alignment)) {
+    const kit = botKitPre(G, pi, c, P, L);
+    if (kit) return kit;
+    if (pl.alignment === 'Good' || pl.alignment === 'Druidic' || pl.alignment === 'Evil') return null; // their old orders are gone
+  }
   switch (pl.alignment) {
     case 'Divine': // CONSECRATE the ground the king stands on
       if (botConsecrateOK(G, pi, c, P))
@@ -295,7 +316,9 @@ export function botRitePre(G, pi, c, P, L, fightAhead) {
   const pl = (G.players || [])[pi];
   if (!pl || pl.alignment !== 'Pagan' || !P || !fightAhead) return null;
   if (P._riteTurn === G.turn) return null;
-  const site = (P.features || []).find((f) => f && f.ritualSite && (featDiscovered(f, pi) || P.owner === pi));
+  const site = (P.features || []).find(
+    (f) => f && f.ritualSite && !f.siteKind && (featDiscovered(f, pi) || P.owner === pi),
+  );
   if (!site) return null;
   const army = (c.armies || []).filter((a) => a && !a._temporary && a._wildHuntUntilTurn == null && !a._isSkeletal);
   const wild = (P.armyTypes || []).find((t) => PRIMAL_ARMY_DEFS_P[t]);
@@ -1652,4 +1675,85 @@ export function botRunSlayerSchool(G, pi, roles) {
       handed: best.plan.filter((x) => x.helper).length,
     });
   });
+}
+
+// ── PROTOTYPE (alignment ideas round 1): the kits' orders a bot gives where it stands ────
+// One pre-order per hero per turn, through the ledger where gold is spent. Good Works where a Good hero stands on a
+// province of the realm's that can still rise; Grow the Wild and Tend the Grove for a Druid on the realm's plains or
+// woods; a Trade Pact for the richest unclaimed humanoid neighbour the chest can buy (once a turn); Lay Waste when an
+// Evil realm is short of gold, and an Evil column of three or fewer companies enslaves rather than plunders; Despoil a
+// poor province of the Undead realm's, and Bind the Bones when a necromancer has two or more companies to bind and the
+// gold to pay; a Pagan awakens the stones the realm holds.
+export function botKitPre(G, pi, c, P, L) {
+  const pl = (G.players || [])[pi];
+  const sk = c.skills || {};
+  const home = botHomeId(G, pi);
+  const humanoid = P.terrain !== 'sea' && !String(P.race || '').startsWith('Primal');
+  const owned = P.owner === pi;
+  switch (pl.alignment) {
+    case 'Good':
+      if (owned && humanoid && (P._goodWorks || 0) < 2 && !c._isHeir)
+        return { action: 'good_works', target: '', extra: '', desc: 'Good Works in ' + P.name };
+      return null;
+    case 'Druidic':
+      if (!owned || (sk.druid || 0) < 1) return null;
+      if (P.terrain === 'plain' || P.terrain === 'desert')
+        return { action: 'grow_wild', target: '', extra: '', desc: 'Grow the Wild in ' + P.name };
+      if ((P.terrain === 'forest' || P.terrain === 'jungle') && (P._tendedGrove || 0) < 2)
+        return { action: 'tend_grove', target: '', extra: '', desc: 'Tend the Grove in ' + P.name };
+      return null;
+    case 'Neutral': {
+      if (L.sig.pact) return null;
+      let best = null;
+      tradePactTargets(G, c, P).forEach((X) => {
+        if (!botKnows(G, pi, X.id)) return;
+        const price = tradePactPrice(X);
+        if (price > L.budget) return;
+        const v = (X.tax || 0) * 3 - price * 0.5;
+        if (!best || v > best.v) best = { X, price, v };
+      });
+      if (!best) return null;
+      L.budget -= best.price;
+      L.sig.pact = 1;
+      return {
+        action: 'trade_pact',
+        target: 'prov:' + String(best.X.id),
+        extra: '',
+        desc: 'Trade Pact with ' + best.X.name,
+      };
+    }
+    case 'Evil': {
+      // enslave with a small column, plunder and terrorise with a large one
+      c.encounterPlan = c.encounterPlan || {};
+      c.encounterPlan.evilMode = (c.armies || []).length <= 3 ? 'enslave' : 'terror';
+      if (owned && humanoid && P.id !== home && !P._laidWaste && (P.tax || 0) >= 3 && L.budget < 6 && !L.sig.waste) {
+        L.sig.waste = 1;
+        L.budget += 3 * (P.tax || 0);
+        return { action: 'lay_waste', target: '', extra: '', desc: 'Lay Waste to ' + P.name };
+      }
+      return null;
+    }
+    case 'Undead': {
+      const land = (pl.provinces || []).length;
+      if (owned && humanoid && P.id !== home && !P._despoiled && (P.tax || 0) <= 3 && land >= 4)
+        return { action: 'despoil', target: '', extra: '', desc: 'Despoil ' + P.name };
+      if ((sk.necromancy || 0) >= 1) {
+        const n = (c.armies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
+        if (n >= 2 && L.budget >= 3 * n + 4) {
+          L.budget -= 3 * n;
+          return { action: 'bind_bones', target: '', extra: '', desc: 'Bind the Bones' };
+        }
+      }
+      return null;
+    }
+    case 'Pagan': {
+      const stones = (P.features || []).find((f) => f && f.ritualSite && !f.siteKind);
+      if (owned && stones && P._riteActivatedBy !== pi && P._riteTurn !== G.turn && L.budget >= 14) {
+        L.budget -= 10;
+        return { action: 'rite', target: 'awakening', extra: '', desc: 'Perform Rite — the Awakening at ' + P.name };
+      }
+      return null;
+    }
+  }
+  return null;
 }

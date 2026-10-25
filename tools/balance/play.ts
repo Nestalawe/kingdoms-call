@@ -11,6 +11,8 @@
 // - the runner stops at gameOver: runTurn doesn't stop a finished game.
 // After every turn it checks the invariants (tests/lib/invariants.ts, P1-04b) and, in a scripted game, the scripted
 // realm's report for leaks (tests/lib/report-leaks.ts, P1-04c): a breach fails the game. They only read.
+import fs from 'node:fs';
+import path from 'node:path';
 import { bootJsdom, readPage, type PageWindow } from '../../tests/lib/boot.js';
 import { checkTurn, describeBreaches } from '../../tests/lib/invariants.ts';
 import type { RealmReport } from '../../tests/lib/report-leaks.ts';
@@ -87,7 +89,12 @@ function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): vo
     skills: { melee: 1, tactical: 1, march: 1, white: 1, naval: i % 3 === 0 ? 1 : 0, sage: 1, explorer: 1 },
   }));
   W['__sz'] = size;
-  W['__opt'] = { seaPct: spec.seaPct };
+  // KC_ALIGN_PROTO=Divine,Good,... switches those alignments' prototype kits on (src/engine/alignment-prototypes.ts).
+  const alignmentPrototypes = (process.env['KC_ALIGN_PROTO'] ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  W['__opt'] = { seaPct: spec.seaPct, alignmentPrototypes };
   W.eval(`(function(){ const g=generateNewGame(__sp,__sz,0,__opt);
     g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
     g.botDifficulty='hard'; g.botDiplomacy=${JSON.stringify(spec.diplomacy)}; window.__G=g; })()`);
@@ -217,6 +224,15 @@ export async function playGame(
       }
     }
 
+    // KC_DUMP_LOG=<dir>: the whole GM log of each game, one text file a game, to read what the rules did (ideas round 1).
+    if (process.env['KC_DUMP_LOG']) {
+      const dir = process.env['KC_DUMP_LOG'];
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, `${spec.id}.log`),
+        gmLog.map((e) => (typeof e.text === 'string' ? e.text : JSON.stringify(e['fact'] ?? e))).join('\n'),
+      );
+    }
     const final = JSON.parse(String(game()['game_state'])) as { gameOver?: GameOver };
     const resultRows = [...(DB['game_results'] ?? []), ...(DB['game_records'] ?? [])].map(withoutStamps);
     const result: GameResult = {
@@ -228,6 +244,7 @@ export async function playGame(
         gmLog,
         unresolved,
         gameOver: final.gameOver ?? null,
+        alignments: Array.from({ length: spec.realms }, (_, i) => spec.alignments[i % spec.alignments.length] ?? ''),
       }),
       ms: Math.round(performance.now() - t0),
     };

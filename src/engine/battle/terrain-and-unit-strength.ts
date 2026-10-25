@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { alignProto } from '../alignment-prototypes.ts';
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
@@ -655,7 +656,14 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   }
   // REIGN OF FEAR (2026-10-13): an Evil realm's Monsters on ground its own Terror still grips (ctx.reignOfFear,
   // read at the call site before the Terror is consumed). 2026-10-12 (Toby): only when they ATTACK there.
-  if (ctx && ctx.reignOfFear && ctx.isAttacker && playerAlignment === 'Evil' && MONSTER_ARMIES.has(army.type)) {
+  if (
+    ctx &&
+    ctx.reignOfFear &&
+    ctx.isAttacker &&
+    playerAlignment === 'Evil' &&
+    MONSTER_ARMIES.has(army.type) &&
+    !alignProto(turnContext.G, 'Evil') // PROTOTYPE Evil: Savage Fury ×1.5 on the attack replaces Reign of Fear
+  ) {
     str = Math.round(str * REIGN_OF_FEAR_MULT);
     if (_tr) _tr.push({ label: `Reign of Fear ${ladderFm(REIGN_OF_FEAR_MULT)}` });
   }
@@ -717,7 +725,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   if (
     (playerAlignment === 'Druidic' || (heroChar && heroChar.alignment === 'Druidic')) &&
     (terrain === 'forest' || terrain === 'jungle') &&
-    CREATURE_ARMIES.has(army.type)
+    (CREATURE_ARMIES.has(army.type) || (playerAlignment === 'Druidic' && alignProto(turnContext.G, 'Druidic'))) // PROTOTYPE Druidic: every unit of the realm
   ) {
     str = Math.round(str * 1.5);
     if (_tr) _tr.push({ label: 'Home of the Wild ×1.5' });

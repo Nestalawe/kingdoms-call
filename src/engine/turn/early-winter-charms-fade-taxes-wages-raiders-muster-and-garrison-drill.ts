@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { alignProto, protoProvinceTaxAdd } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
 import {
@@ -117,6 +118,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         t = Math.round(t * 1.5);
         _consecBonus += t - _cb;
       } // DIVINE — Consecrate: hallowed ground prospers (+50%)
+      t += protoProvinceTaxAdd(G, p, pv, t); // PROTOTYPE: Good's villages (+2 on Poor), Neutral's markets (+50% on Prosperous and Rich)
       if (pv._enslavedUntil != null && pv._enslavedUntil >= G.turn) t = Math.max(0, t - 1); // EVIL — Enslave: resentment (−1 tax while it lasts)
       if (pv._earthquakeTax) t = Math.max(0, t - (pv._earthquakeTax || 0));
       // every province-tax discovery (sd11 / sd15 / sd18 and the heritage & creed ones), capped
@@ -152,7 +154,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // reason neutralTradeGold uses it — floor(income*0.10) drifts a gold on float-unfriendly
     // totals.
     const taxRecordsBonus = hasDisc(turnContext, pi, 'sd14') ? taxRecordsGold(income, _taxCap) : 0;
-    const neutralTradeBonus = neutralTradeGold(p, income);
+    const neutralTradeBonus = alignProto(G, 'Neutral') ? 0 : neutralTradeGold(p, income); // PROTOTYPE Neutral: the markets replace the flat +20%
     // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g
     // per 5 provinces.
     // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
@@ -250,6 +252,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
       if (a._wildHuntUntilTurn != null) return s;
+      if (a._slave) return s; // PROTOTYPE Evil: slaves are paid nothing
       if (a._isSkeletal) return s + 1;
       let w = ARMY_COST[a.type] || 2;
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {

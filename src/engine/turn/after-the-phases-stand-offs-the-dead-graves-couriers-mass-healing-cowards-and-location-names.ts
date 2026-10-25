@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { protoAlignOf } from '../alignment-prototypes.ts';
 import { monarchRestProvId } from '../grand-design.ts';
 import { senseGravesUnderfoot } from '../graves.ts';
 import { consecratedIds, relOfReport } from '../heroes/fame-and-consecration.ts';
@@ -75,9 +76,11 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
     // (b) set down as a garrison, where no character leads them at all
     (G.world.provinces || []).forEach((pv) => {
       if (!pv || !Array.isArray(pv.garrisonArmies) || !pv.garrisonArmies.length) return;
-      const dead = pv.garrisonArmies.filter((a) => a && a._isSkeletal);
+      // PROTOTYPE Undead: the dead the land itself raised need no master while they garrison an Undead realm's province
+      const _kitHeld = pv.owner != null && protoAlignOf(G, pv.owner) === 'Undead';
+      const dead = pv.garrisonArmies.filter((a) => a && a._isSkeletal && !(_kitHeld && a._kitGarrison));
       if (!dead.length) return;
-      pv.garrisonArmies = pv.garrisonArmies.filter((a) => !(a && a._isSkeletal));
+      pv.garrisonArmies = pv.garrisonArmies.filter((a) => !(a && a._isSkeletal && !(_kitHeld && a._kitGarrison)));
       _note(
         pv.owner,
         `${dead.length} skeletal unit${dead.length !== 1 ? 's' : ''} left to garrison ${pv.name} — no one was left to command them`,

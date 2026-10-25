@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { alignProto } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
@@ -145,7 +146,26 @@ export function applyEvilConquest(turnContext, cc, prov, pl) {
   prov._evilConqTurn = G.turn;
   const mode = cc.encounterPlan?.evilMode || 'terror';
   const humanoid = prov.terrain !== 'sea' && !String(prov.race || '').startsWith('Primal');
-  if (mode === 'enslave' && humanoid) {
+  if (mode === 'enslave' && humanoid && alignProto(G, 'Evil')) {
+    // PROTOTYPE Evil: the beaten folk are pressed into the conqueror's own column as a wage-free Green company
+    const enType = (prov.armyTypes && prov.armyTypes[0]) || 'Shieldwall Levies';
+    cc.armies = cc.armies || [];
+    cc.armies.push({
+      type: enType,
+      quality: 'Green',
+      race: prov.race || 'Human',
+      unitName: `${armyUnitName(enType)} (Slaves)`,
+      _slave: true,
+    });
+    prov._enslavedUntil = G.turn + 3;
+    emit(turnContext, {
+      type: 'combat',
+      text: `⛓ Enslavement: ${cc.name} marches the beaten folk of ${prov.name} off in chains — a Green ${enType} joins the column, paid nothing, and the province seethes (−1 tax for 3 turns).`,
+      audience: { actor: cc.player, realms: [cc.player], seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: prov.id,
+    });
+  } else if (mode === 'enslave' && humanoid) {
     const enType = (prov.armyTypes && prov.armyTypes[0]) || 'Shieldwall Levies';
     prov.garrisonArmies = prov.garrisonArmies || [];
     prov.garrisonArmies.push({

@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { BARROW_NAMES, HOLY_SITE_NAMES, SITE_SHARE_OF_LAND } from '../alignment-prototypes.ts';
 import {
   KC_HUMANOID_RACES,
   KC_RIVAL_RACE,
@@ -89,6 +90,12 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
   // With no Pagan player in the game they are dead weight — nobody can ever use them — so we
   // suppress them entirely at world gen. See the ritual-site block in the feature pass below.
   const hasPaganPlayer = setupPlayers.some((sp) => sp.alignment === 'Pagan');
+  // PROTOTYPE (alignment ideas round 1): holy sites for a Divine realm and barrows for an Undead realm, when the kit is
+  // on and such a realm plays (src/engine/alignment-prototypes.ts).
+  const _protoList =
+    genOpts && Array.isArray(genOpts.alignmentPrototypes) ? genOpts.alignmentPrototypes.filter(Boolean) : [];
+  const hasHolySites = _protoList.includes('Divine') && setupPlayers.some((sp) => sp.alignment === 'Divine');
+  const hasBarrows = _protoList.includes('Undead') && setupPlayers.some((sp) => sp.alignment === 'Undead');
 
   // Hex neighbour offsets + helpers (defined up front — king placement below needs them).
   const offEven = [
@@ -765,6 +772,30 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
             treasure: 0,
           });
         }
+        // PROTOTYPE: a holy site (Divine) or a barrow (Undead) in about one land province in seven; a site like the
+        // stones for finding and showing (ritualSite), set apart by siteKind so no rite answers there.
+        if (hasHolySites && kcRng() < SITE_SHARE_OF_LAND) {
+          features.push({
+            name: HOLY_SITE_NAMES[Math.floor(kcRng() * HOLY_SITE_NAMES.length)],
+            ritualSite: true,
+            siteKind: 'holy',
+            monster: null,
+            discovered: false,
+            cleared: false,
+            treasure: 0,
+          });
+        }
+        if (hasBarrows && kcRng() < SITE_SHARE_OF_LAND) {
+          features.push({
+            name: BARROW_NAMES[Math.floor(kcRng() * BARROW_NAMES.length)],
+            ritualSite: true,
+            siteKind: 'barrow',
+            monster: null,
+            discovered: false,
+            cleared: false,
+            treasure: 0,
+          });
+        }
       }
       // Neutral defenders
       let neutralDefenders = [];
@@ -1260,7 +1291,7 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
             unitName: armyUnitName(primalUnit),
           }));
           cand.npcArmies = cand.neutralDefenders.length;
-          if (_align === 'Pagan' && !(cand.features || []).some((f) => f && f.ritualSite)) {
+          if (_align === 'Pagan' && !(cand.features || []).some((f) => f && f.ritualSite && !f.siteKind)) {
             cand.features = cand.features || [];
             cand.features.push({
               name: RITUAL_SITE_NAMES[Math.floor(kcRng() * RITUAL_SITE_NAMES.length)],
@@ -1347,6 +1378,7 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
     if (sp.alignment === 'Undead') {
       kingSkills.necromancy = (kingSkills.necromancy || 0) + 1;
     }
+    if (sp.alignment === 'Good' && _protoList.includes('Good')) kingSkills.tactical = (kingSkills.tactical || 0) + 1; // PROTOTYPE Good: the shield-wall's king
     // Normalise any mixed-case skill keys from the join form to engine keys
     const SKILL_NORM = {
       Melee: 'melee',
@@ -1881,6 +1913,10 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
 
   const _newGameState = {
     world: { provinces, cols, rows, seaPct },
+    // the alignment kits switched on for this game (src/engine/alignment-prototypes.ts): the ideas round 1 prototypes
+    ...(genOpts && Array.isArray(genOpts.alignmentPrototypes) && genOpts.alignmentPrototypes.filter(Boolean).length
+      ? { alignmentPrototypes: genOpts.alignmentPrototypes.filter(Boolean) }
+      : {}),
     players,
     characters: allChars,
     mercenaries: [],

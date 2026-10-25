@@ -50,7 +50,14 @@ export function newWorldOf(engine: vm.Context, spec: GameSpec): string {
   return make(
     JSON.stringify(setupsOf(spec)),
     JSON.stringify(MAP_SIZES[spec.realms]),
-    JSON.stringify({ seaPct: spec.seaPct }),
+    JSON.stringify({
+      seaPct: spec.seaPct,
+      // KC_ALIGN_PROTO: the alignment kits switched on (src/engine/alignment-prototypes.ts), as the page's games have them
+      alignmentPrototypes: (process.env['KC_ALIGN_PROTO'] ?? '')
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean),
+    }),
     spec.diplomacy,
   );
 }

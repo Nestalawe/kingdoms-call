@@ -139,6 +139,10 @@ export const ArmySchema = z.object({
   _terrorMult: z.number().optional(),
   // an illusory unit (Illusory magic's phantom troops)
   _phantom: z.boolean().optional(),
+  // PROTOTYPE (alignment ideas round 1, src/engine/alignment-prototypes.ts): a company of slaves (Evil's Enslave) draws
+  // no wage; a skeletal company the land itself raised (Undead) needs no master while it garrisons an Undead province
+  _slave: z.boolean().optional(),
+  _kitGarrison: z.boolean().optional(),
 });
 export type Army = z.infer<typeof ArmySchema>;
 
@@ -372,6 +376,9 @@ export const ProvinceSchema = z.object({
         .record(z.string(), z.object({ turn: z.number(), charId: z.number(), band: z.number(), rating: z.number() }))
         .optional(),
       ritualSite: z.boolean().optional(),
+      // PROTOTYPE (alignment ideas round 1): a holy site (Divine) or a barrow (Undead), a site like the stones for finding
+      // and showing, which answers no Pagan rite
+      siteKind: z.string().optional(), // 'holy' | 'barrow'
       _stolenItems: z.array(z.string()).optional(),
       _pickedCleanBy: z.array(z.number()).optional(),
       // Fields the matrix's states don't hold, written by the code (P1-10a3: each read by a file freed of ts-nocheck)
@@ -390,6 +397,8 @@ export const ProvinceSchema = z.object({
   _homePairIds: z.array(z.number()).optional(),
   _carryOnRounds: z.number().optional(),
   _hadBattleThisTurn: z.boolean().optional(),
+  // a neutral province whose guard fell but whose companies held it (the move order sets it; the Trade Pact clears it)
+  _leaderlessDefenders: z.boolean().optional(),
   battleGraves: z.array(ArmySchema).optional(),
   _battleUnresolved: z.boolean().optional(),
   _blessedTurn: z.number().optional(),
@@ -404,6 +413,15 @@ export const ProvinceSchema = z.object({
   _plagueCaster: z.number().optional(),
   _illusoryTerrain: z.object({ caster: z.number(), fake: z.string(), appliedTurn: z.number() }).optional(),
   _riteTurn: z.number().optional(),
+  // PROTOTYPE (alignment ideas round 1, src/engine/alignment-prototypes.ts): what the kits' orders leave on a province
+  _riteActivatedBy: z.number().optional(), // Pagan: the realm whose rite woke the stones here
+  _awakened: z.number().optional(), // Pagan: the turn of the Rite of Awakening (its +1 tax paid once)
+  _goodWorks: z.number().optional(), // Good: times Good Works raised the tax here (to 2)
+  _tendedGrove: z.number().optional(), // Druidic: times Tend the Grove raised the tax here (to 2)
+  _grownWild: z.number().optional(), // Druidic: the turn Grow the Wild made this forest or jungle
+  _tradePactTurn: z.number().optional(), // Neutral: the turn a Trade Pact bought the province
+  _laidWaste: z.number().optional(), // Evil: the turn Lay Waste stripped it
+  _despoiled: z.number().optional(), // Undead: the turn Despoil killed the land
   _earthquakeNoTax: z.number().optional(),
   _terrorStacks: z.number().optional(),
   _terrorTurn: z.number().optional(),
@@ -692,6 +710,8 @@ export const GameStateSchema = z.object({
   }),
   botDifficulty: z.string(),
   botDiplomacy: z.string(),
+  // PROTOTYPE (alignment ideas round 1): the alignments whose proposed kit is switched on in this game; absent when none
+  alignmentPrototypes: z.array(z.string()).optional(),
   // (P1-12b5: read by the realm's view, for its diplomacy) Safe Start: no diplomacy before turn SAFE_START_TURN; the
   // matrix's games don't set it
   safeStart: z.boolean().optional(),

@@ -84,6 +84,7 @@ export interface TelemetryRow {
 }
 export interface GameOver {
   turn: number;
+  winner?: number | null;
   byReckoning?: boolean;
   byElimination?: boolean;
   byConcession?: boolean;
@@ -95,6 +96,8 @@ export interface GameRecord {
   /** Provinces with an unresolved battle in the saved state, after each turn. */
   unresolved: number[];
   gameOver: GameOver | null;
+  /** Each realm's alignment, by player index (the alignment slices). */
+  alignments?: string[];
 }
 
 /** GM log lines the chase figures are read from (the GM portal's advancePursuit). */
@@ -204,7 +207,26 @@ export function gameStats(g: GameRecord): Stats {
       add(`realms: gold at ${when}`, row.post.gold, 1);
       add(`realms: provinces at ${when}`, row.post.provinces, 1);
       add(`realms: army strength at ${when}`, row.post.str, 1);
+      // By alignment (ideas round 1): the same figures, one slice per alignment, so a kit's effect on its own realms
+      // shows apart from its effect on the others.
+      const al = g.alignments?.[row.player_index];
+      if (al) {
+        add(`realms: gold at ${when} | by alignment: ${al}`, row.post.gold, 1);
+        add(`realms: provinces at ${when} | by alignment: ${al}`, row.post.provinces, 1);
+        add(`realms: army strength at ${when} | by alignment: ${al}`, row.post.str, 1);
+      }
     }
+  }
+  // Which alignment wins (ideas round 1): of the realms of each alignment in games that ended, the share that won; and
+  // of the realms of each alignment, the share still holding land at the end.
+  if (g.alignments) {
+    const endRows = g.telemetry.filter((r) => r.turn === lastTurn);
+    g.alignments.forEach((al, pi) => {
+      if (!al) return;
+      if (g.gameOver) share(`game: won | by alignment: ${al}`, g.gameOver.winner === pi);
+      const row = endRows.find((r) => r.player_index === pi);
+      share(`game: realm alive at the end | by alignment: ${al}`, !!row && row.post.provinces > 0);
+    });
   }
   perGame(
     'items: gained',

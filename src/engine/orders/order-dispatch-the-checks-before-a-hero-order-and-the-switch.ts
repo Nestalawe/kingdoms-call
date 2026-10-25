@@ -1,4 +1,13 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import {
+  resolveBindTheBonesOrder,
+  resolveDespoilOrder,
+  resolveGoodWorksOrder,
+  resolveGrowTheWildOrder,
+  resolveLayWasteOrder,
+  resolveTendTheGroveOrder,
+  resolveTradePactOrder,
+} from './alignment-prototype-orders.ts';
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, MASTERY_ORDER_LABEL, SKILL_LABELS } from '../army-tables.ts';
 import { botDrillUseful } from '../bots/economy.ts';
@@ -363,6 +372,28 @@ export function processOrder(turnContext, c, o, ph) {
       break;
     case 'harvest_field':
       resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player);
+      break;
+    // the prototype kits' orders (alignment ideas round 1): src/engine/orders/alignment-prototype-orders.ts
+    case 'good_works':
+      resolveGoodWorksOrder(turnContext, c, prov);
+      break;
+    case 'grow_wild':
+      resolveGrowTheWildOrder(turnContext, c, prov);
+      break;
+    case 'tend_grove':
+      resolveTendTheGroveOrder(turnContext, c, prov);
+      break;
+    case 'trade_pact':
+      resolveTradePactOrder(turnContext, c, ph, target, prov, player);
+      break;
+    case 'lay_waste':
+      resolveLayWasteOrder(turnContext, c, prov, player);
+      break;
+    case 'despoil':
+      resolveDespoilOrder(turnContext, c, prov);
+      break;
+    case 'bind_bones':
+      resolveBindTheBonesOrder(turnContext, c, player);
       break;
     case 'research':
       resolveResearchOrder(turnContext, c, ph, target, player);
