@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { despoiledHeld, divinePower, kitTactics, paganFavourMult } from '../alignment-prototypes.ts';
 import { KC_HEX_DIRS, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleFrontWidth, battleLineTotal } from '../battle/lines.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
@@ -447,6 +448,8 @@ export function botRaceTerrainMult(G, c, a, terrain, defending, ownerPi) {
   }
   if (uRace === 'Elven' && oRace === 'Elven' && (terrain === 'forest' || terrain === 'jungle')) m *= 1.5;
   if (uRace === 'Dwarven' && oRace === 'Dwarven' && defending) m *= 1.5;
+  // PROTOTYPE tactics (ideas round 1b): a Druidic realm's bot knows its whole host fights ×1.5 under the trees
+  if (kitTactics(G, oPi) === 'Druidic' && (terrain === 'forest' || terrain === 'jungle')) m *= 1.5;
   return m;
 }
 // Whole-force multipliers the rulebook promises without a roll: Evil ×1.25 with any Monster (the Druidic
@@ -456,6 +459,17 @@ export function botFervourMult(G, c, armies, defending) {
   if (!c || c.player == null) return 1;
   const align = ((G.players || [])[c.player] || {}).alignment || 'Neutral';
   let m = 1;
+  // PROTOTYPE tactics (ideas round 1b): a bot whose kit is on reckons with the kit's fervour, not the old rules'
+  const kit = kitTactics(G, c.player);
+  if (kit) {
+    if (kit === 'Evil' && !defending && armies.some((a) => a && BOT_MONSTER_ARMIES.has(a.type))) m = 1.5;
+    if (kit === 'Undead' && armies.some((a) => a && a._isSkeletal))
+      m = Math.max(m, c.isKing || despoiledHeld(G, c.player) >= 3 ? 1.5 : 1.3);
+    if (kit === 'Good' && defending) m *= 1.5; // the Shield, on the realm's own ground (where a bot mostly defends)
+    if (kit === 'Pagan') m = Math.max(m, paganFavourMult(G, c.player));
+    if (kit === 'Divine' && divinePower(G, c.player) >= 3) m = Math.max(m, 1.5);
+    return m;
+  }
   if (align === 'Evil' && armies.some((a) => a && BOT_MONSTER_ARMIES.has(a.type))) m = Math.max(m, 1.25);
   if (align === 'Undead' && armies.some((a) => a && a._isSkeletal)) m = Math.max(m, c.isKing ? 1.5 : 1.3);
   if (align === 'Good' && defending) m *= 1.1;

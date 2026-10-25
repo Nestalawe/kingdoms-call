@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { kitTargetBonus } from '../alignment-prototypes.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS, STEAL_TIER_PEN } from '../army-tables.ts';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -1235,6 +1236,7 @@ export function botScanTargets(G, pi, c, P, myStr, T, visited) {
       ec.value +
       ec.units * 3 +
       terrainEdge +
+      kitTargetBonus(G, pi, N, (f) => featDiscovered(f, pi)) + // PROTOTYPE tactics: the ground the kit covets
       (ec.units > 0 ? T.rivalBias : 0) +
       trap +
       (enemyTarget && botMutualFoe(G, pi, N.owner) ? T.rivalBias : 0) +
@@ -1354,6 +1356,7 @@ export function botDistantStrike(G, pi, c, P, myStr, T, maxHops) {
             ec.units * 3 -
             depth * 4 +
             terrainEdge +
+            kitTargetBonus(G, pi, X, (f) => featDiscovered(f, pi)) + // PROTOTYPE tactics
             (ec.units > 0 ? T.rivalBias : 0) +
             (enemyTarget && botMutualFoe(G, pi, X.owner) ? T.rivalBias : 0) +
             (enemyTarget && botAllyNear(G, pi, X) ? T.rivalBias / 2 : 0);

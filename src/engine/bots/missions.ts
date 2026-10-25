@@ -1,8 +1,10 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { kitTactics, kitTargetBonus } from '../alignment-prototypes.ts';
 import { alignProto } from '../alignment-prototypes.ts';
 import { tradePactPrice, tradePactTargets } from '../orders/alignment-prototype-orders.ts';
 import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
-import { ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
+import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
+import { beastCommandCount, beastCommandRoom } from '../world/tables.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { wildHuntPrice } from '../items/tiers-and-hoards.ts';
@@ -59,6 +61,7 @@ import {
   botPathDirs,
   botPathLen,
   botRumourFor,
+  botCanAfford,
   botSpend,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
@@ -220,7 +223,9 @@ export function botConsecrateTarget(G, pi, c, maxD) {
     if (!botConsecrateOK(G, pi, c, X)) return;
     const d = X.id === P.id ? 0 : botPathLen(G, pi, P, X.id, false);
     if (d == null || d > maxD) return;
-    const sc = (X.tax || 0) * 2 - d * 3;
+    const holy =
+      kitTactics(G, pi) === 'Divine' && (X.features || []).some((f) => f && f.ritualSite && f.siteKind === 'holy');
+    const sc = (X.tax || 0) * 2 - d * 3 + (holy ? 20 : 0); // PROTOTYPE tactics: a holy site first
     if (!best || sc > best.sc) best = { X, d, sc };
   });
   return best;
@@ -1165,7 +1170,8 @@ export function botAirStrike(G, pi, c, P, myStr, T, maxHops) {
       (rear ? 25 : 0) +
       w.ec.value +
       w.ec.units * 3 -
-      d * 2;
+      d * 2 +
+      kitTargetBonus(G, pi, N, (f) => featDiscovered(f, pi)); // PROTOTYPE tactics
     if (!best || sc > best.sc) best = { N, sc, d, fight: w.tStr > 0 };
   };
   const passable = (N) =>
@@ -1361,7 +1367,8 @@ export function botOrphanHostOrders(G, pi, c, pre) {
   (G.world.provinces || []).forEach((X) => {
     if (!X || X.owner !== pi || X.terrain === 'sea' || cache.orphan.has(X.id)) return;
     const n = (X.garrisonArmies || []).length - Math.min(2, botGarrisonTarget(G, X, pi));
-    if (n < 3) return;
+    const bred = botKitBredHere(G, pi, c, X); // PROTOTYPE tactics: beasts or skeletons the kit raised here
+    if (n < 3 && !(bred && n >= 1)) return;
     const d = X.id === P.id ? 0 : botPathLen(G, pi, P, X.id, true);
     if (d == null || d > 5) return;
     const sc = n * 3 - d * 2;
@@ -1684,12 +1691,42 @@ export function botRunSlayerSchool(G, pi, roles) {
 // Evil realm is short of gold, and an Evil column of three or fewer companies enslaves rather than plunders; Despoil a
 // poor province of the Undead realm's, and Bind the Bones when a necromancer has two or more companies to bind and the
 // gold to pay; a Pagan awakens the stones the realm holds.
+/** PROTOTYPE tactics: the kit's own units standing in the garrison of `X` that hero `c` could lead away (a Druidic
+ *  realm's beasts with command room to spare; an Undead necromancer's skeletons). */
+export function botKitBredHere(G, pi, c, X) {
+  const kit = kitTactics(G, pi);
+  if (!kit || !X || X.owner !== pi) return false;
+  const garr = X.garrisonArmies || [];
+  if (kit === 'Druidic')
+    return garr.some((a) => a && beastCommandCount(a)) && beastCommandRoom(c, G.characters || []) > 0;
+  if (kit === 'Undead') return garr.some((a) => a && a._isSkeletal) && (c.skills || {}).necromancy >= 1;
+  return false;
+}
 export function botKitPre(G, pi, c, P, L) {
   const pl = (G.players || [])[pi];
   const sk = c.skills || {};
   const home = botHomeId(G, pi);
   const humanoid = P.terrain !== 'sea' && !String(P.race || '').startsWith('Primal');
   const owned = P.owner === pi;
+  const tactics = kitTactics(G, pi) != null;
+  // PROTOTYPE tactics: take up what the kit bred in this garrison before anything else
+  if (tactics && botKitBredHere(G, pi, c, P)) {
+    const po = botPickupOrder(G, pi, c, P);
+    if (po) return po;
+  }
+  // PROTOTYPE tactics (Neutral): hire the sell-swords standing here, at the realm's discount
+  if (tactics && pl.alignment === 'Neutral') {
+    const toks = [];
+    (G.mercenaries || []).forEach((m) => {
+      if (!m || m.location !== P.id || m.isSea) return;
+      const cost = Math.max(1, (ARMY_COST_MASTER[m.type] || 2) - 2);
+      if (!botCanAfford(L, cost)) return;
+      botSpend(L, cost);
+      toks.push('merc:' + String(m.id));
+    });
+    if (toks.length)
+      return { action: 'recruit', target: toks.join(','), extra: '', desc: 'Hire the sell-swords in ' + P.name };
+  }
   switch (pl.alignment) {
     case 'Good':
       if (owned && humanoid && (P._goodWorks || 0) < 2 && !c._isHeir)
@@ -1726,7 +1763,15 @@ export function botKitPre(G, pi, c, P, L) {
       // enslave with a small column, plunder and terrorise with a large one
       c.encounterPlan = c.encounterPlan || {};
       c.encounterPlan.evilMode = (c.armies || []).length <= 3 ? 'enslave' : 'terror';
-      if (owned && humanoid && P.id !== home && !P._laidWaste && (P.tax || 0) >= 3 && L.budget < 6 && !L.sig.waste) {
+      if (
+        owned &&
+        humanoid &&
+        P.id !== home &&
+        !P._laidWaste &&
+        (P.tax || 0) >= 3 &&
+        (tactics ? L.budget < 4 && botAtWar(G, pi) : L.budget < 6) && // tactics: only a war chest in need
+        !L.sig.waste
+      ) {
         L.sig.waste = 1;
         L.budget += 3 * (P.tax || 0);
         return { action: 'lay_waste', target: '', extra: '', desc: 'Lay Waste to ' + P.name };
@@ -1735,11 +1780,18 @@ export function botKitPre(G, pi, c, P, L) {
     }
     case 'Undead': {
       const land = (pl.provinces || []).length;
-      if (owned && humanoid && P.id !== home && !P._despoiled && (P.tax || 0) <= 3 && land >= 4)
+      if (
+        owned &&
+        humanoid &&
+        P.id !== home &&
+        !P._despoiled &&
+        (P.tax || 0) <= (tactics ? 4 : 3) &&
+        land >= (tactics ? 3 : 4)
+      )
         return { action: 'despoil', target: '', extra: '', desc: 'Despoil ' + P.name };
       if ((sk.necromancy || 0) >= 1) {
         const n = (c.armies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
-        if (n >= 2 && L.budget >= 3 * n + 4) {
+        if (n >= (tactics ? 1 : 2) && L.budget >= 3 * n + (tactics ? 2 : 4)) {
           L.budget -= 3 * n;
           return { action: 'bind_bones', target: '', extra: '', desc: 'Bind the Bones' };
         }
@@ -1748,7 +1800,13 @@ export function botKitPre(G, pi, c, P, L) {
     }
     case 'Pagan': {
       const stones = (P.features || []).find((f) => f && f.ritualSite && !f.siteKind);
-      if (owned && stones && P._riteActivatedBy !== pi && P._riteTurn !== G.turn && L.budget >= 14) {
+      if (
+        owned &&
+        stones &&
+        P._riteActivatedBy !== pi &&
+        P._riteTurn !== G.turn &&
+        (tactics ? G.turn >= 5 && L.budget >= 20 : L.budget >= 14) // tactics: soldiers first, the stones from turn 5
+      ) {
         L.budget -= 10;
         return { action: 'rite', target: 'awakening', extra: '', desc: 'Perform Rite — the Awakening at ' + P.name };
       }

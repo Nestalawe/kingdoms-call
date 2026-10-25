@@ -57,6 +57,7 @@ export function newWorldOf(engine: vm.Context, spec: GameSpec): string {
         .split(',')
         .map((x) => x.trim())
         .filter(Boolean),
+      alignmentPrototypeTactics: process.env['KC_ALIGN_TACTICS'] === '1',
     }),
     spec.diplomacy,
   );

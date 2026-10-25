@@ -94,7 +94,12 @@ function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): vo
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  W['__opt'] = { seaPct: spec.seaPct, alignmentPrototypes };
+  // KC_ALIGN_TACTICS=1: the bots play to their kits (ideas round 1b).
+  W['__opt'] = {
+    seaPct: spec.seaPct,
+    alignmentPrototypes,
+    alignmentPrototypeTactics: process.env['KC_ALIGN_TACTICS'] === '1',
+  };
   W.eval(`(function(){ const g=generateNewGame(__sp,__sz,0,__opt);
     g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
     g.botDifficulty='hard'; g.botDiplomacy=${JSON.stringify(spec.diplomacy)}; window.__G=g; })()`);

@@ -222,3 +222,38 @@ export function protoProvinceTaxAdd(G: GameState, pl: Realm, pv: Province, taxSo
   if (pl.alignment === 'Neutral' && base >= 4) return Math.round(taxSoFar * 0.5);
   return 0;
 }
+
+// ── Bot tactics for the kits (ideas round 1b). A second switch, `G.alignmentPrototypeTactics` (the balance runner sets it
+// from KC_ALIGN_TACTICS=1), under which a bot realm whose kit is on plays to it: its strength estimate knows the kit's
+// bonuses, its marching favours the ground the kit covets, it collects what the kit breeds, hires what the kit brings
+// to market, and times the kit's orders. Off, the bots play as they do today, kit or no kit.
+export function kitTactics(G: GameState, pi: number | null | undefined): string | null {
+  if (G.alignmentPrototypeTactics !== true) return null;
+  return protoAlignOf(G, pi);
+}
+/** How much a bot of realm `pi` wants province `pv` for its kit's sake, on top of the usual score (0 when it has no
+ *  kit, no tactics, or the province holds nothing the kit covets). `known` says which features the realm has found. */
+export function kitTargetBonus(G: GameState, pi: number, pv: Province, known: (f: ProvinceFeature) => boolean): number {
+  const align = kitTactics(G, pi);
+  if (!align || pv.terrain === 'sea') return 0;
+  const has = (test: (f: ProvinceFeature) => boolean) => pv.features.some((f) => test(f) && known(f));
+  const wild = isWild(pv);
+  switch (align) {
+    case 'Divine':
+      return has(isHolySite) ? 15 : 0;
+    case 'Good':
+      return !wild && pv.tax <= 3 ? 8 : 0;
+    case 'Druidic':
+      return (pv.terrain === 'forest' || pv.terrain === 'jungle' ? 8 : 0) + (wild ? 10 : 0);
+    case 'Neutral':
+      return pv.tax >= 4 ? 8 : 0;
+    case 'Pagan':
+      return has(isPaganStones) ? 10 : 0;
+    case 'Evil':
+      return wild ? 10 : 0;
+    case 'Undead':
+      return has(isBarrow) ? 12 : 0;
+    default:
+      return 0;
+  }
+}

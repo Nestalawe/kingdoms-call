@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { kitTactics } from '../alignment-prototypes.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
@@ -1103,8 +1104,8 @@ export function runBotMovement(G, botIdxSet, hooks) {
         }
       }
       // A Divine king with holy ground still to claim walks to the richest consecratable province (review §2).
-      if (c.isKing && maxHops >= 1) {
-        const ct = botConsecrateTarget(G, pi, c, maxHops - 1);
+      if ((c.isKing || (kitTactics(G, pi) === 'Divine' && (c.skills || {}).white >= 1)) && maxHops >= 1) {
+        const ct = botConsecrateTarget(G, pi, c, maxHops - 1); // PROTOTYPE tactics: any White hero carries the light
         if (ct && ct.d > 0) {
           const path = botPathDirs(G, pi, P, ct.X.id, maxHops - 1, false) || [];
           if (path.length === ct.d) {

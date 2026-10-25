@@ -1917,6 +1917,7 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
     ...(genOpts && Array.isArray(genOpts.alignmentPrototypes) && genOpts.alignmentPrototypes.filter(Boolean).length
       ? { alignmentPrototypes: genOpts.alignmentPrototypes.filter(Boolean) }
       : {}),
+    ...(genOpts && genOpts.alignmentPrototypeTactics === true ? { alignmentPrototypeTactics: true } : {}),
     players,
     characters: allChars,
     mercenaries: [],
