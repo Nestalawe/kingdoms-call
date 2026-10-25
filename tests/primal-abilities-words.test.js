@@ -4,8 +4,8 @@
 // like the winged riders; and no page still promises an ability "with the beast abilities" to come.
 // The abilities the rule registry holds (plan P1-19a: Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
 // Deepwater Grasp, Wyrmscale, Air Superiority; P1-19b: Maul, Boulder Wall, Purity, Trample, Many Heads; P1-19c: Storm
-// Wings, Rooted) left the table: their names and numbers are checked from their content rows by
-// tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
+// Wings, Rooted; P1-19d: Regenerating Hide) left the table: their names and numbers are checked from their content
+// rows by tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
 // The player portal and the data file are read from src/ by their syntax tree (tests/lib/source.ts): the blurbs as
 // entries of the object literal, the words as the strings each holds. (Until plan P1-09a they were matched in the built
 // files' text.)
@@ -22,7 +22,7 @@ const ABILITIES={
   'Thunderbirds':['Lightning Strike'], 'Forest Ents':['Choking Spores'], 'Great Bears':['Thick Hide'],
   'Stone Giants':['Boulder Barrage'], 'Unicorn Herd':['Through the Glades'], 'Mammoth Host':['Stampede'],
   'Great Turtles':['Shell Wall','Island Back'], 'Crimson Rocs':['Thunderous Stoop'],
-  'Cave Trolls':['Regenerating Hide','Hurled Rubble'], 'Basilisk Brood':['Petrifying Gaze'], 'Manticore Pride':['Spine Volley'],
+  'Cave Trolls':['Hurled Rubble'], 'Basilisk Brood':['Petrifying Gaze'], 'Manticore Pride':['Spine Volley'],
   'Sea Giants':['Tidal Surge'], 'Eldritch Kraken':['Crushing Coils'], 'Titan Warbeasts':['Colossal Bulk','World-Shaking Charge'],
   'Elder Dragons':['Dragonfire Breath'], 'Dread Hydras':['Venom Breath'],
 };

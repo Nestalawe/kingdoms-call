@@ -7,8 +7,9 @@
 // names of the abilities the registry doesn't hold yet.
 // One gap is known and let through, each with its fix parked: the rulebook's Orcish Longships row doesn't name Reaver
 // Crews (the test fails once it does, so the exception leaves with the fix). An ability the books give no number (Rooted,
-// Hold the Gate, Town Watch, Battering Horns: plan P1-19c) is listed below, and its name is checked; a number the books
-// leave out (Driven Before Them's cap, which the units beside them never reach) is checked to be still left out.
+// Hold the Gate, Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d) is listed below, and its name is
+// checked; a number the books leave out (Driven Before Them's cap, which the units beside them never reach) is checked
+// to be still left out.
 // Level 0 (static): the content's rows imported (plain data), the player portal's blurbs by their syntax tree
 // (tests/lib/source.ts), the rulebook as built (site/); nothing runs.
 import { describe, expect, test } from 'vitest';
@@ -32,11 +33,13 @@ const NO_NUMBER_IN_THE_BOOKS: Readonly<Record<string, string>> = {
   'hold-the-gate': 'never hit from the side, defending',
   'town-watch': "a Human Garrison counts as Levies for Shieldwall: Shieldwall's number",
   'battering-horns': "a free Ram turns an anchored line: the turned flank is the battle lines' number",
+  'knightly-example':
+    'the Levies and the Men-at-Arms never lose a tier in defeat while a Gilded Lances unit is in the army',
 };
 
 /** A number as the books write it: ×1.25; +10% for a fraction added (and for one the books leave out, which the test
- *  checks they still do); "no penalty" for full strength, ×1 (any other value is written so that no book holds it, and
- *  the test turns red); "base strength 6" for a unit's base strength. */
+ *  checks they still do); 30% for a chance; "no penalty" for full strength, ×1 (any other value is written so that no
+ *  book holds it, and the test turns red); "base strength 6" for a unit's base strength. */
 function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
   switch (n.theBooksWriteIt) {
     case 'a multiplier':
@@ -44,6 +47,8 @@ function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
     case 'a fraction added':
     case 'a fraction the books leave out':
       return `+${String(Number((n.value * 100).toFixed(6)))}%`;
+    case 'a chance':
+      return `${String(Number((n.value * 100).toFixed(6)))}%`;
     case 'no penalty':
       return n.value === 1 ? 'no penalty' : `×${String(n.value)}, which is not "no penalty"`;
     case 'a base strength':

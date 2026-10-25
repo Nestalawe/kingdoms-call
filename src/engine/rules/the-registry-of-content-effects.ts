@@ -29,6 +29,10 @@ import {
   TURNS_AN_ANCHORED_LINE,
   WHAT_A_FLYER_DOES,
 } from './unit-abilities/a-unit-beside-behind-and-under-the-enemys-line.ts';
+import {
+  A_BEATEN_UNIT_FAILS_ITS_DEATH_ROLL,
+  A_BEATEN_UNIT_FAILS_ITS_DEMOTION_ROLL,
+} from './unit-abilities/a-units-fate-after-a-battle.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -153,6 +157,33 @@ export interface AFlyerAndTheEnemysFlyers {
   readonly theEnemyHasFlyers: boolean;
 }
 
+/** What the stage "a beaten unit fails its death roll" hands an effect (rollUnitFates): a unit whose roll fell below
+ *  its chance of dying, whether its side won, the dice (an effect whose roll is its own draws its die from them, and
+ *  only when its condition holds), and Regenerating Hide's chance where the call gives one (o.regen, the tests'). */
+export interface AUnitThatFailedItsDeathRoll {
+  readonly unitType: string;
+  readonly itsSideWon: boolean;
+  readonly theDice: () => number;
+  readonly theChanceOfRegeneratingHideTheCallGives: number | null | undefined;
+}
+
+/** The line of the battle by which a unit that failed its death roll lives (the kind of the fact the views word; the
+ *  resolver gives it the unit's reference). */
+export type TheLineOfAUnitThatLivesThroughItsDeathRoll = 'a unit is cut down and rises again by its regenerating hide';
+
+/** What the stage "a beaten unit fails its demotion roll" hands an effect (rollUnitFates): a unit of the beaten side
+ *  whose second roll fell below its chance of losing a tier (no Shield Fort holding it), its force, itself among them,
+ *  with the holes the battle code leaves in a force, and the Knightly Example where the call gives it (o.knightly). */
+export interface AUnitThatFailedItsDemotionRoll {
+  readonly unitType: string;
+  readonly itsForce: readonly (AUnitOfAForce | null | undefined)[];
+  readonly theKnightlyExampleTheCallGives: boolean | null | undefined;
+}
+
+/** The line of the battle by which a unit that failed its demotion roll holds its tier (the kind of the fact the views
+ *  word; the resolver gives it the unit's reference). */
+export type TheLineOfAUnitThatHoldsThroughItsDemotionRoll = 'a unit keeps its nerve under the knightly example';
+
 /** A multiplier, and its words in the strength ladder (the ability's name, or its own words). */
 export interface AMultiplierAndItsWords {
   readonly multiplier: number;
@@ -194,8 +225,14 @@ export interface TheStagesOfEachHookPoint {
   };
   readonly volley: never;
   readonly fate: {
-    readonly 'a beaten unit fails its death roll': never;
-    readonly 'a beaten unit fails its demotion roll': never;
+    /** Whether a unit that failed its death roll lives: the line of the battle by which it does, or nothing (it dies). */
+    readonly 'a beaten unit fails its death roll': (
+      facts: AUnitThatFailedItsDeathRoll,
+    ) => TheLineOfAUnitThatLivesThroughItsDeathRoll | null;
+    /** Whether a beaten unit that failed its demotion roll holds its tier: the line by which it does, or nothing. */
+    readonly 'a beaten unit fails its demotion roll': (
+      facts: AUnitThatFailedItsDemotionRoll,
+    ) => TheLineOfAUnitThatHoldsThroughItsDemotionRoll | null;
   };
   readonly movementCost: never;
   readonly orderValidity: never;
@@ -307,6 +344,12 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'storm-wings': { strength: { 'marked by the enemy line': MARKED_BY_THE_ENEMY_LINE['storm-wings'] } },
   'battering-horns': { strength: { 'turns an anchored line': TURNS_AN_ANCHORED_LINE['battering-horns'] } },
   'flak-gunners': { strength: { 'what a flyer does': WHAT_A_FLYER_DOES['flak-gunners'] } },
+  'regenerating-hide': {
+    fate: { 'a beaten unit fails its death roll': A_BEATEN_UNIT_FAILS_ITS_DEATH_ROLL['regenerating-hide'] },
+  },
+  'knightly-example': {
+    fate: { 'a beaten unit fails its demotion roll': A_BEATEN_UNIT_FAILS_ITS_DEMOTION_ROLL['knightly-example'] },
+  },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -353,6 +396,10 @@ export const THE_ORDER_OF_EACH_STAGE = {
     'a shooter picks its target': ['marksmen'],
     'turns an anchored line': ['battering-horns'],
     'what a flyer does': ['flak-gunners'],
+  },
+  fate: {
+    'a beaten unit fails its death roll': ['regenerating-hide'],
+    'a beaten unit fails its demotion roll': ['knightly-example'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: { readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly UnitAbilitySlug[] };
@@ -448,6 +495,15 @@ const TURNS_AN_ANCHORED_LINE_EFFECTS = THE_ORDER_OF_STRENGTH['turns an anchored 
   const effect = ENTRIES[slug].strength?.['turns an anchored line'];
   return effect ? [effect] : [];
 }) satisfies readonly TurnsAnAnchoredLineEffect[];
+const THE_ORDER_OF_FATE = THE_ORDER_OF_EACH_STAGE.fate;
+const THE_DEATH_ROLL_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_FATE['a beaten unit fails its death roll'],
+  (entry) => entry.fate?.['a beaten unit fails its death roll'],
+);
+const THE_DEMOTION_ROLL_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_FATE['a beaten unit fails its demotion roll'],
+  (entry) => entry.fate?.['a beaten unit fails its demotion roll'],
+);
 const NO_EFFECTS: readonly never[] = [];
 
 /** A multiplier, and the words of each ability that moved it, in order. */
@@ -569,4 +625,29 @@ export function theStrengthOfAFlyer(facts: AFlyerAndTheEnemysFlyers): AMultiplie
   const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: 1, words: [] };
   runOnTheMultiplier(WHAT_A_FLYER_DOES_BY_UNIT.get(facts.theFlyer.unitType) ?? NO_EFFECTS, facts, soFar);
   return soFar;
+}
+
+/** The runner of "a beaten unit fails its death roll" (rollUnitFates): the line of the first of the unit's abilities,
+ *  in the stage's order, by which it lives, or nothing (it dies). An effect that rolls draws its die only when it runs,
+ *  so a unit with no such ability draws none. */
+export function theLineByWhichAUnitLivesThroughItsDeathRoll(
+  facts: AUnitThatFailedItsDeathRoll,
+): TheLineOfAUnitThatLivesThroughItsDeathRoll | null {
+  for (const effect of THE_DEATH_ROLL_BY_UNIT.get(facts.unitType) ?? NO_EFFECTS) {
+    const line = effect(facts);
+    if (line !== null) return line;
+  }
+  return null;
+}
+
+/** The runner of "a beaten unit fails its demotion roll" (rollUnitFates): the line of the first ability reaching the
+ *  unit, in the stage's order, by which it holds its tier, or nothing (it loses one). */
+export function theLineByWhichABeatenUnitHoldsItsTier(
+  facts: AUnitThatFailedItsDemotionRoll,
+): TheLineOfAUnitThatHoldsThroughItsDemotionRoll | null {
+  for (const effect of THE_DEMOTION_ROLL_BY_UNIT.get(facts.unitType) ?? NO_EFFECTS) {
+    const line = effect(facts);
+    if (line !== null) return line;
+  }
+  return null;
 }

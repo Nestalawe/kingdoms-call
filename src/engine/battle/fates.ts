@@ -2,6 +2,10 @@ import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS, demoteOrDisband, disbandLine, unitRef } from '../army-tables.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
+import {
+  theLineByWhichABeatenUnitHoldsItsTier,
+  theLineByWhichAUnitLivesThroughItsDeathRoll,
+} from '../rules/the-registry-of-content-effects.ts';
 
 // ── UNIT FATES AFTER A BATTLE (2026-10-11, refactor only) ── the per-unit rolls that four casualty loops
 // used to repeat (the NPC attacker winning or losing; a realm battle's winner and loser). The numbers stay
@@ -21,8 +25,9 @@ import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-line
 //                battleFacedClauses: each line puts it after the company's own reference — "Aldric's Levies
 //                (Shieldwall Levies, Average), facing the Iron Halberds (Gorbash's Men-at-Arms), were
 //                annihilated in the rout!". Without it the lines read as they always did.
+//   The unit abilities at a fate (Regenerating Hide, Knightly Example) are the rule registry's (plan P1-19d): the stages
+//   "a beaten unit fails its death roll" and "… its demotion roll" (src/engine/rules/), asked where they were inline.
 // Returns {died, promoted, demoted, disbanded, held, survived}.
-export const TROLL_REGEN_CHANCE = 0.3; // Regenerating Hide (the Cave Trolls)
 /** A unit's chance, as the battle that rolls its fate works it out: a roll below it, and the unit dies (dieAt), loses a
  *  tier (demoteAt) or rises one (promoteTo). */
 type AUnitsChanceOfAFate = (a: ArmyInABattle) => number;
@@ -48,9 +53,9 @@ interface TheOptionsOfEveryUnitsFate {
     | null;
   /** Stamps a._notable on a demoted or promoted unit. */
   notable?: boolean | null;
-  /** The Knightly Example, given; else it holds when a Gilded Lances unit is in the force. */
+  /** The Knightly Example, given; else it holds when a Gilded Lances unit is in the force (its content row). */
   knightly?: boolean | null;
-  /** Regenerating Hide's chance, given; else TROLL_REGEN_CHANCE. */
+  /** Regenerating Hide's chance, given; else its content row's. */
   regen?: number | null;
   /** A Shield Fort: a unit that would lose a tier falls back in good order. */
   shieldFort?: boolean | null;
@@ -87,20 +92,22 @@ export function rollUnitFates(
     return ref(who, q0 ? { ...a, quality: q0 } : a) + (c ? `, ${c},` : '');
   };
   const r = { died: 0, promoted: 0, demoted: 0, disbanded: 0, held: 0, survived: 0 };
-  // HUMAN — Knightly Example (2026-10-11, Toby): with a Gilded Lances unit in the army, Levies and
-  // Men-at-Arms never lose a tier in defeat (they hold, as under a Shield Fort). o.knightly overrides.
-  const knightly = o.knightly ?? (force ?? []).some((a) => a?.type === 'Gilded Lances');
-  (force ?? []).forEach((a) => {
+  const theForce = force ?? [];
+  theForce.forEach((a) => {
     if (!a) return;
     const idx = tiers.indexOf(a.quality),
       roll = rng();
     if (roll < o.dieAt(a)) {
-      // PRIMAL — Regenerating Hide (2026-10-13, the beast abilities): a Cave Trolls company that fails its death roll after a
-      // LOST battle shrugs it off three times in ten (the rulebook's "regenerating" brutes, now real). Not in a victory: the
-      // hide knits in flight, not in the press of the win. o.regen overrides the chance (the tests feed the dice).
-      if (a.type === 'Cave Trolls' && !o.won && rng() < (o.regen ?? TROLL_REGEN_CHANCE)) {
+      // The registry's "a beaten unit fails its death roll" (Regenerating Hide): a line by which the unit lives, or none.
+      const lives = theLineByWhichAUnitLivesThroughItsDeathRoll({
+        unitType: a.type,
+        itsSideWon: o.won,
+        theDice: rng,
+        theChanceOfRegeneratingHideTheCallGives: o.regen,
+      });
+      if (lives) {
         r.survived++;
-        say({ kind: 'a unit is cut down and rises again by its regenerating hide', unitReference: head(a) });
+        say({ kind: lives, unitReference: head(a) });
         return;
       }
       a._died = true;
@@ -132,9 +139,17 @@ export function rollUnitFates(
       if (o.shieldFort) {
         r.held++;
         say({ kind: 'a unit falls back behind the shield wall in good order', unitReference: head(a) });
-      } else if (knightly && (a.type === 'Shieldwall Levies' || a.type === 'Men-at-Arms')) {
+        return;
+      }
+      // The registry's "a beaten unit fails its demotion roll" (Knightly Example): a line by which it holds, or none.
+      const holds = theLineByWhichABeatenUnitHoldsItsTier({
+        unitType: a.type,
+        itsForce: theForce,
+        theKnightlyExampleTheCallGives: o.knightly,
+      });
+      if (holds) {
         r.held++;
-        say({ kind: 'a unit keeps its nerve under the knightly example', unitReference: head(a) });
+        say({ kind: holds, unitReference: head(a) });
       } else {
         const q0 = a.quality;
         if (demoteOrDisband(a)) {

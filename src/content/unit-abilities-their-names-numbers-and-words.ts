@@ -7,12 +7,17 @@
 // portal and its roster row in the rulebook.
 import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 
-/** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1); full strength (×1, where
- *  others fight at less) as `no penalty`; a unit's base strength as `base strength 6`. A number the books leave out
- *  (Driven Before Them's cap, which the units beside them never reach) says so, and the words test checks that they
- *  still do. */
+/** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1); a chance as `30%` (0.3);
+ *  full strength (×1, where others fight at less) as `no penalty`; a unit's base strength as `base strength 6`. A
+ *  number the books leave out (Driven Before Them's cap, which the units beside them never reach) says so, and the
+ *  words test checks that they still do. */
 export type HowTheBooksWriteANumber =
-  'a multiplier' | 'a fraction added' | 'no penalty' | 'a base strength' | 'a fraction the books leave out';
+  | 'a multiplier'
+  | 'a fraction added'
+  | 'a chance'
+  | 'no penalty'
+  | 'a base strength'
+  | 'a fraction the books leave out';
 
 /** One number of an ability, and how the books write it. */
 export interface ANumberOfAnAbility {
@@ -44,7 +49,7 @@ export interface AUnitAbilityAsTheBooksWriteIt {
 
 /** The unit abilities the registry holds, in the order the battle code meets them: the strength of a unit in its
  *  whole force (plan P1-19a), then a unit meeting another or shooting over its line (P1-19b), then the whole line
- *  (P1-19c; the fates join in P1-19d). */
+ *  (P1-19c), then a unit's fate after the battle (P1-19d). */
 export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // Orc: goblins are worth little alone and a great deal in a mob.
   'sheer-numbers': {
@@ -295,6 +300,23 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     unit: 'Gnomish Gyrocopters',
     name: 'Flak Gunners',
     numbers: { whenTheEnemyHasFlyers: { value: 1.25, theBooksWriteIt: 'a multiplier' } },
+  },
+  // ── A unit's fate after the battle (plan P1-19d: rollUnitFates) ──
+  // A beaten unit fails its death roll: a Cave Trolls company that fails it after a lost battle shrugs it off three
+  // times in ten (2026-10-13, the beast abilities). Not in a victory: the hide knits in flight, not in the press of the
+  // win.
+  'regenerating-hide': {
+    unit: 'Cave Trolls',
+    name: 'Regenerating Hide',
+    numbers: { afterALostBattle: { value: 0.3, theBooksWriteIt: 'a chance' } },
+  },
+  // A beaten unit fails its demotion roll: with a Gilded Lances unit in the force, the Levies and the Men-at-Arms (its
+  // reach) never lose a tier in defeat; they hold, as under a Shield Fort (2026-10-11, Toby).
+  'knightly-example': {
+    unit: 'Gilded Lances',
+    name: 'Knightly Example',
+    numbers: {},
+    reaches: ['Shieldwall Levies', 'Men-at-Arms'],
   },
 } as const satisfies Record<string, AUnitAbilityAsTheBooksWriteIt>;
 

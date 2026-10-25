@@ -329,7 +329,13 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   (Unbreakable, Rooted, Hold the Gate: the first one's words, or the side hit), then **beside and behind it in the front
   line** (Shieldwall, Town Watch, Sergeants, Driven Before Them, on the multiplier so far); for a shooter, **a shooter
   picks its target** (Marksmen: its place in the enemy front's list, or nothing); for a unit in the air, **what a flyer
-  does** (Flak Gunners, from ×1). The fates follow (P1-19d).
+  does** (Flak Gunners, from ×1). The fates (P1-19d), two stages in `rollUnitFates`
+  (`src/engine/rules/unit-abilities/a-units-fate-after-a-battle.ts`), each returning the line by which a unit is spared,
+  or nothing: **a beaten unit fails its death roll** (Regenerating Hide: the stage hands the dice, and the effect draws
+  its die only after a lost battle, where the code drew it before), then, for a beaten unit that fails its demotion roll
+  with no Shield Fort holding it, **a beaten unit fails its demotion roll** (Knightly Example, which reaches the Levies
+  and the Men-at-Arms). Every stage of `strength` and `fate` now has its signature; the other seven hook points are
+  `never` until their family's first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
   `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its

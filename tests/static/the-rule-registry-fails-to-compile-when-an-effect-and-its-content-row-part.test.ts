@@ -6,7 +6,9 @@
 // - a content row with no entry (TS1360: the registry doesn't satisfy its type, the slug missing);
 // - an entry with no content row (TS2353: a key the type doesn't know);
 // - an entry with an effect at a stage that has no signature yet, and at a hook point that has none (both `never`
-//   until their family's first row writes them: plan P1-19's Choice 1; TS2322).
+//   until their family's first row writes them: plan P1-19's Choice 1; TS2322). Since P1-19d every stage of `strength`
+//   and `fate` has its signature, so the copy plants a stage typed `never` in `fate` beside the entry on it: the check
+//   is of the mechanism a later family's first row leans on while it writes its stages.
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
 // lower level has nothing to read. The copies hold only src/content/ and src/engine/rules/ (the registry imports nothing
 // else: npm run lint:arch), so each compiles on its own with tsconfig.json's settings. About 2 s (the data file is read
@@ -58,9 +60,13 @@ const PLANTS: Record<string, Record<string, string>> = {
   },
   'an effect at a stage with no signature yet': {
     [REGISTRY]: replacedOnce(
-      read(REGISTRY),
+      replacedOnce(
+        read(REGISTRY),
+        "    readonly 'a beaten unit fails its demotion roll': (",
+        "    readonly 'a planted stage with no signature yet': never;\n    readonly 'a beaten unit fails its demotion roll': (",
+      ),
       WYRMSCALE_ENTRY,
-      "  wyrmscale: {\n    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale },\n    fate: { 'a beaten unit fails its death roll': () => null },\n  },\n",
+      "  wyrmscale: {\n    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale },\n    fate: { 'a planted stage with no signature yet': () => null },\n  },\n",
     ),
   },
   'an effect at a hook point with no signature yet': {
