@@ -84,26 +84,8 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 8
-    },
-    "@typescript-eslint/no-unsafe-return": {
-      "count": 1
-    },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 4
-    },
-    "@typescript-eslint/prefer-optional-chain": {
-      "count": 1
-    },
-    "@typescript-eslint/restrict-plus-operands": {
-      "count": 1
     }
   },
   "src/engine/battle/fates.ts": {
@@ -382,17 +364,8 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 6
     },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-return": {
-      "count": 1
-    },
     "@typescript-eslint/prefer-optional-chain": {
-      "count": 2
+      "count": 1
     },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 6
@@ -503,12 +476,6 @@
     "@typescript-eslint/no-unnecessary-type-conversion": {
       "count": 2
     },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 2
-    },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 5
     }
@@ -539,17 +506,11 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 4
-    },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2
     },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 7
-    },
-    "@typescript-eslint/restrict-plus-operands": {
-      "count": 2
     }
   },
   "src/engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.ts": {
@@ -642,18 +603,6 @@
   "src/engine/world/routes-and-distances.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 6
-    },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 10
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 6
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 7
-    },
-    "@typescript-eslint/no-unsafe-return": {
-      "count": 3
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1

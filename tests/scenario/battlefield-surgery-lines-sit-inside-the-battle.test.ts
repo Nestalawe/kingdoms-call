@@ -44,6 +44,8 @@ interface Character {
 }
 interface Province {
   id: number;
+  row: number;
+  col: number;
   name: string;
   terrain: string;
   owner?: number | null;

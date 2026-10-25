@@ -45,11 +45,9 @@ export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, tar
     });
     return;
   }
-  const adj = new Set(
-    getNeighborsP(G.world.provinces[c.location], G.world.cols, G.world.rows, G.world.provinces)
-      .map((p) => p && p.id)
-      .filter((x) => x != null),
-  );
+  const heroProv = G.world.provinces[c.location];
+  if (!heroProv) throw new TypeError("the hero's province isn't on the map"); // never met: a hero stands on the map
+  const adj = new Set(getNeighborsP(heroProv, G.world.cols, G.world.rows, G.world.provinces).map((p) => p.id));
   if (sp.id !== c.location && !adj.has(sp.id)) {
     emit(turnContext, {
       type: 'system',

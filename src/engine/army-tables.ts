@@ -24,6 +24,9 @@ export type ArmyInABattle = Army & {
   _flakTargeted?: boolean;
   /** A unit forced below Green (demoteOrDisband): its force drops it, and no grave records it. */
   _disbanded?: boolean;
+  /** A spectral double's fighting copy (injectPhantoms): the tag of the unit it mirrors. clearPhantomCopies drops
+   *  every copy at the battle's end. */
+  _phantomOf?: string | undefined;
 };
 /** A hero in a battle: a character and the marks the battle writes on him. */
 export type HeroInABattle = Character & {

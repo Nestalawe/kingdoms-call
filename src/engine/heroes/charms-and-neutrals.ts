@@ -1,7 +1,10 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { SKILL_LABELS, SKILL_MAX } from '../army-tables.ts';
 import { ALL_SKILLS } from '../rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
+import type { Character, Province } from '../../schemas/saved-game-state.ts';
+
+// What an order names a hero by: his id, or a pre-order card's synthetic id (below), as the order carries it.
+type AHeroAsAnOrderNamesHim = string | number | null | undefined;
 
 // ── NEUTRAL HERO PROGRESSION (2026-09-17 (late), Toby item 1) ── see the end-of-turn call in
 // runTurn.
@@ -18,8 +21,8 @@ import { ALL_SKILLS } from '../rules-on-plain-values/skills-in-order-and-a-heros
 // spell). isPreOrderRef tells the synthetic form apart; orderCharRef resolves either form to the
 // real character record (by id, never by array index) — or null. Every caller still checks the
 // hero is the orderer's own, so a hire that failed (or a rival's) is refused, never honoured.
-export function isPreOrderRef(raw) {
-  return /^(?:hired|resurrect|charm)_\d+_via_/.test(String(raw == null ? '' : raw).trim());
+export function isPreOrderRef(raw: AHeroAsAnOrderNamesHim) {
+  return /^(?:hired|resurrect|charm)_\d+_via_/.test(String(raw ?? '').trim());
 }
 // ── A HERO UNDER A CHARM THIS TURN ───────────────────────────────────────────────────────────────
 // Either kind: an ENEMY whose command was seized for the season (`_charmTempControl`, reverts at the
@@ -30,22 +33,34 @@ export function isPreOrderRef(raw) {
 // untouched: they keep it, fight with it, and its passive magic still works. This predicate is the
 // single gate; the player portal hides the three orders, and these engine checks catch a stale or
 // hand-crafted submission that walks past the form.
-export function isCharmedNow(G, c) {
-  return !!(c && (c._charmTempControl || c._charmedTurn === (G && G.turn)));
+export function isCharmedNow(
+  G: Pick<GameStateAsTheseRead, 'turn'> | null | undefined,
+  c: Pick<Character, '_charmTempControl' | '_charmedTurn'> | null | undefined,
+) {
+  return !!(c && (Boolean(c._charmTempControl) || c._charmedTurn === (G ? G.turn : G)));
 }
-export function orderCharRef(G, raw) {
-  const t = String(raw == null ? '' : raw).trim();
-  const m = t.match(/^(?:hired|resurrect|charm)_(\d+)_via_/);
-  const id = m ? parseInt(m[1]) : parseInt(t);
+export function orderCharRef<Hero extends { readonly id: number }>(
+  G: { readonly characters?: readonly (Hero | null | undefined)[] | null | undefined } | null | undefined,
+  raw: AHeroAsAnOrderNamesHim,
+) {
+  const t = String(raw ?? '').trim();
+  const m = /^(?:hired|resurrect|charm)_(\d+)_via_/.exec(t);
+  const id = m ? parseInt(m[1] ?? '') : parseInt(t); // a match always holds its digits
   if (!Number.isInteger(id)) return null;
-  return ((G && G.characters) || []).find((ch) => ch && ch.id === id) || null;
+  return (G?.characters ?? []).find((ch) => ch?.id === id) ?? null;
 }
-export function noteServedRealm(c, pi) {
+export function noteServedRealm(c: Pick<Character, '_servedRealms'> | null | undefined, pi: number | null | undefined) {
   if (!c || pi == null) return;
   if (!Array.isArray(c._servedRealms)) c._servedRealms = [];
   if (!c._servedRealms.includes(pi)) c._servedRealms.push(pi);
 }
-export function graveServedOther(g, pi) {
+// a fallen hero's grave as these read it: today's, or an older save's (no service history, a release stamp)
+interface AGraveAsTheseRead {
+  readonly player?: number | null | undefined;
+  readonly _releasedBy?: number | null | undefined;
+  readonly served?: readonly (number | null | undefined)[] | null | undefined;
+}
+export function graveServedOther(g: AGraveAsTheseRead | null | undefined, pi: number | null | undefined) {
   if (!g) return false;
   if (g.player != null && g.player !== pi) return true;
   if (g._releasedBy != null && g._releasedBy !== pi) return true;
@@ -58,10 +73,13 @@ export const NEUTRAL_PROG_TOP_PCT = 75; // 2026-09-26 (Toby): when the idle roll
 // Hex neighbours of a province, as ids. progressNeutralHeroes is module scope and cannot reach
 // runTurn's neighborInDir, so the offsets live here too — same even/odd row convention as the rest
 // of the map code.
-export function _neutralAdjIds(gs, p) {
-  const w = gs && gs.world;
+export function _neutralAdjIds(
+  gs: Pick<GameStateAsTheseRead, 'world'> | null | undefined,
+  p: Pick<Province, 'row' | 'col'> | null | undefined,
+) {
+  const w = gs?.world;
   if (!w || !p) return [];
-  const even = [
+  const even: readonly (readonly [number, number])[] = [
     [-1, -1],
     [-1, 0],
     [0, -1],
@@ -69,7 +87,7 @@ export function _neutralAdjIds(gs, p) {
     [1, -1],
     [1, 0],
   ];
-  const odd = [
+  const odd: readonly (readonly [number, number])[] = [
     [-1, 0],
     [-1, 1],
     [0, -1],
@@ -77,7 +95,7 @@ export function _neutralAdjIds(gs, p) {
     [1, 0],
     [1, 1],
   ];
-  const out = [];
+  const out: number[] = [];
   (p.row % 2 === 0 ? even : odd).forEach(([dr, dc]) => {
     const nr = p.row + dr;
     if (nr < 0 || nr >= w.rows) return;
@@ -98,57 +116,102 @@ export function _neutralAdjIds(gs, p) {
 // • Self-study is no longer a flat random pick among their skills: 75% it deepens whichever skill
 //   they are already best at (a random one of them if several tie), 25% it goes to a different
 //   skill of theirs chosen at random. Falls back to the other branch when one has nothing legal.
-export function progressNeutralHeroes(gs, tellANeutralHerosLesson, rng) {
-  rng = rng || kcRng;
-  const turn = (gs && gs.turn) || 0;
+// The game's state as these read it: the turn's, or one a test stages, so a list or a field may be missing (the
+// guards below say so). Today's GameState passes.
+interface AProvinceAsTheseRead {
+  readonly id: number;
+  readonly row: number;
+  readonly col: number;
+  readonly name: string;
+}
+interface AHeroAsTheseRead {
+  readonly id: number;
+  readonly name?: string | undefined;
+  readonly alive?: boolean | undefined;
+  readonly player?: number | null | undefined;
+  readonly isKing?: boolean | undefined;
+  readonly location: number;
+  readonly _neutralXpTurn?: number | undefined;
+  skills?: Record<string, number | undefined> | null | undefined;
+}
+interface GameStateAsTheseRead {
+  readonly turn?: number | undefined;
+  readonly characters?: readonly (AHeroAsTheseRead | null | undefined)[] | null | undefined;
+  readonly world?:
+    | {
+        readonly rows: number;
+        readonly cols: number;
+        readonly provinces?: readonly (AProvinceAsTheseRead | null | undefined)[] | null | undefined;
+      }
+    | null
+    | undefined;
+}
+// One point a neutral hero gained, and from whom.
+interface ANeutralHerosGain {
+  id: number;
+  skill: string;
+  from: number;
+  to: number;
+  teacher: number | null;
+  nearby: boolean;
+}
+export function progressNeutralHeroes(
+  gs: GameStateAsTheseRead | null | undefined,
+  tellANeutralHerosLesson?: ((line: string, where: AProvinceAsTheseRead | null | undefined) => void) | null,
+  rng?: (() => number) | null,
+): ANeutralHerosGain[] {
+  const theDice = rng ?? kcRng;
+  const turn = Number(gs?.turn) || 0;
   if (turn < NEUTRAL_PROG_FROM_TURN) return [];
-  const chars = (gs && gs.characters) || [];
-  const neutrals = chars.filter((c) => c && c.alive && c.player === null && !c.isKing);
+  const chars = gs?.characters ?? [];
+  const neutrals = chars.filter((c): c is AHeroAsTheseRead => !!(c && c.alive && c.player === null && !c.isKing));
   // Snapshot every neutral's skills BEFORE anyone gains, so two heroes in one province read each
   // other's start-of-sweep levels — order of iteration must not change who learns what.
-  const snap = new Map(neutrals.map((c) => [c.id, { ...(c.skills || {}) }]));
-  const topSkillsOf = (sk) => {
+  const snap = new Map(neutrals.map((c) => [c.id, { ...(c.skills ?? {}) }]));
+  const topSkillsOf = (sk: Readonly<Record<string, number | undefined>>) => {
     let best = 0;
     ALL_SKILLS.forEach((k) => {
-      best = Math.max(best, sk[k] || 0);
+      best = Math.max(best, Number(sk[k]) || 0);
     });
-    return best > 0 ? ALL_SKILLS.filter((k) => (sk[k] || 0) === best) : [];
+    return best > 0 ? ALL_SKILLS.filter((k) => (Number(sk[k]) || 0) === best) : [];
   };
-  const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+  const pick = <T>(arr: readonly T[]) => arr[Math.floor(theDice() * arr.length)];
   // neutrals indexed by the province they stand in, so the adjacency sweep is a lookup not a scan
-  const byProv = new Map();
+  const byProv = new Map<number, AHeroAsTheseRead[]>();
   neutrals.forEach((o) => {
     const k = o.location;
-    if (!byProv.has(k)) byProv.set(k, []);
-    byProv.get(k).push(o);
+    const here = byProv.get(k);
+    if (here) here.push(o);
+    else byProv.set(k, [o]);
   });
-  const provs = (gs.world && gs.world.provinces) || [];
-  const gains = [];
+  const provs = gs?.world?.provinces ?? [];
+  const gains: ANeutralHerosGain[] = [];
   neutrals.forEach((c) => {
     // battle experience this turn stands in place of the idle roll
     if (c._neutralXpTurn === turn) return;
-    if (rng() * 100 >= NEUTRAL_PROG_PCT) return;
-    c.skills = c.skills || {};
+    if (theDice() * 100 >= NEUTRAL_PROG_PCT) return;
+    const skills = (c.skills ??= {}); // the same object as c.skills, which the closures below read
     const _cap = Math.min(SKILL_MAX, NEUTRAL_PROG_CAP);
-    const own = ALL_SKILLS.filter((k) => (c.skills[k] || 0) > 0 && (c.skills[k] || 0) < _cap);
-    let skill = null,
-      teacher = null,
+    const own = ALL_SKILLS.filter((k) => (Number(skills[k]) || 0) > 0 && (Number(skills[k]) || 0) < _cap);
+    let skill: string | null | undefined = null,
+      teacher: AHeroAsTheseRead | null = null,
       nearby = false;
     // 1. TEACHING FIRST — own province, then adjacent ones.
-    const here = (byProv.get(c.location) || []).filter((o) => o !== c);
-    let ring = [];
+    const here = (byProv.get(c.location) ?? []).filter((o) => o !== c);
+    let ring: AHeroAsTheseRead[] = [];
     _neutralAdjIds(gs, provs[c.location]).forEach((nid) => {
-      (byProv.get(nid) || []).forEach((o) => {
+      (byProv.get(nid) ?? []).forEach((o) => {
         if (o !== c) ring.push(o);
       });
     });
     for (const group of [here, ring]) {
       if (skill || !group.length) continue;
       // only peers who actually have something legal to teach are worth approaching
-      const able = group.filter((t) => topSkillsOf(snap.get(t.id) || {}).some((k) => (c.skills[k] || 0) < _cap));
+      const able = group.filter((t) => topSkillsOf(snap.get(t.id) ?? {}).some((k) => (Number(skills[k]) || 0) < _cap));
       if (!able.length) continue;
       const t = pick(able);
-      const cand = topSkillsOf(snap.get(t.id) || {}).filter((k) => (c.skills[k] || 0) < _cap);
+      if (!t) continue; // never met: able isn't empty
+      const cand = topSkillsOf(snap.get(t.id) ?? {}).filter((k) => (Number(skills[k]) || 0) < _cap);
       if (cand.length) {
         skill = pick(cand);
         teacher = t;
@@ -157,29 +220,30 @@ export function progressNeutralHeroes(gs, tellANeutralHerosLesson, rng) {
     }
     // 2. SELF-STUDY — 75% their best skill, 25% one of the others.
     if (!skill && own.length) {
-      const best = topSkillsOf(c.skills).filter((k) => (c.skills[k] || 0) < _cap);
-      const rest = own.filter((k) => best.indexOf(k) < 0);
-      const wantTop = rng() * 100 < NEUTRAL_PROG_TOP_PCT;
+      const best = topSkillsOf(skills).filter((k) => (Number(skills[k]) || 0) < _cap);
+      const rest = own.filter((k) => !best.includes(k));
+      const wantTop = theDice() * 100 < NEUTRAL_PROG_TOP_PCT;
       if (wantTop) skill = best.length ? pick(best) : rest.length ? pick(rest) : null;
       else skill = rest.length ? pick(rest) : best.length ? pick(best) : null;
     }
     if (!skill) return;
-    const from = c.skills[skill] || 0,
+    const from = Number(skills[skill]) || 0,
       to = from + 1;
-    c.skills[skill] = to;
+    skills[skill] = to;
     gains.push({ id: c.id, skill, from, to, teacher: teacher ? teacher.id : null, nearby });
     if (tellANeutralHerosLesson) {
-      const pv = gs.world && gs.world.provinces ? gs.world.provinces[c.location] : null;
-      const nm = String(c.name || '').replace(/\s*\(wandering\)/i, '');
-      const lbl = (typeof SKILL_LABELS !== 'undefined' && SKILL_LABELS[skill]) || skill;
-      const tn = teacher ? String(teacher.name || '').replace(/\s*\(wandering\)/i, '') : '';
-      const tpv = teacher && provs[teacher.location] ? provs[teacher.location] : null;
+      const pv = gs?.world?.provinces ? gs.world.provinces[c.location] : null;
+      const nm = (c.name ?? '').replace(/\s*\(wandering\)/i, '');
+      const labelOfASkill: Readonly<Record<string, string | undefined>> = SKILL_LABELS; // read by any skill's name
+      const lbl = labelOfASkill[skill] ?? skill;
+      const tn = teacher ? (teacher.name ?? '').replace(/\s*\(wandering\)/i, '') : '';
+      const tpv = teacher ? (provs[teacher.location] ?? null) : null;
       tellANeutralHerosLesson(
         teacher
           ? nearby
-            ? `📜 ${nm}${pv ? ` in ${pv.name}` : ''} rides out to ${tn}${tpv ? ` in ${tpv.name}` : ''} to learn — ${lbl} rises to ${to}.`
-            : `📜 ${nm}${pv ? ` in ${pv.name}` : ''} learns from ${tn} — ${lbl} rises to ${to}.`
-          : `📜 ${nm}${pv ? ` in ${pv.name}` : ''} hones their craft — ${lbl} rises to ${to}.`,
+            ? `📜 ${nm}${pv ? ` in ${pv.name}` : ''} rides out to ${tn}${tpv ? ` in ${tpv.name}` : ''} to learn — ${lbl} rises to ${String(to)}.`
+            : `📜 ${nm}${pv ? ` in ${pv.name}` : ''} learns from ${tn} — ${lbl} rises to ${String(to)}.`
+          : `📜 ${nm}${pv ? ` in ${pv.name}` : ''} hones their craft — ${lbl} rises to ${String(to)}.`,
         pv,
       );
     }

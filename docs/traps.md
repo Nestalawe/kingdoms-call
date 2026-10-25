@@ -646,8 +646,8 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 
 ## `@ts-nocheck` checks nothing in the file
 
-123 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(89: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+117 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(83: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -721,13 +721,30 @@ table with a key left out.
     body tests with `Array.isArray` takes a list that isn't `readonly` (`shieldFortHolds`' `grid.front`).
   - **A list a filter keeps the right kind of** (`filter(isALine)` on a list whose members the compiler has narrowed)
     needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`, not one written for the wider type.
+- (P1-10b5: six files, 56,447 bytes: `battle/fortune.ts`, `grand-design.ts`, `names.ts`, `titles/perks.ts`,
+  `world/map-helpers.ts`, `heroes/charms-and-neutrals.ts`): 172 errors, 141 of them a parameter with no type; then the
+  typed lint's findings, all fixed. Freeing them cleared 54 findings their typed readers held on values from their calls
+  into the untyped files, and the readers met 7 new ones, each a guard on a neighbour `getNeighborsP` returns (it keeps
+  only provinces), dropped with 2 suppressed findings on the same guards: `eslintSuppressions` fell, 790 to 734. Four more forms:
+  - **A parameter is typed by what the function reads, not by the schema's whole type:** an interface beside it, "the
+    state as these read it", with each field a guard tests optional and a plain `number` where the schema has a brand
+    (`id`, `location`), so a `GameState` passes and so does a test's plain object, with no cast in either.
+  - **A table read by any string is typed inside the function that reads it**, not by a second module-level `const`:
+    `tests/unit/engine-purity.test.ts` watches the engine's module-level names, and an alias of `SKILL_LABELS` there
+    reads as a second table the turn wrote.
+  - **A `||` on a name that a player may choose** (a hero's, a realm's) keeps its `''` case: `const name = ch?.name ??
+    '';` then `name || 'The wanderer'`. A key that may be `undefined` is read as JavaScript reads it,
+    `table[String(key)]` (the key `"undefined"`), not guarded away.
+  - **An element read where the list may hold `undefined`** (`shuffleP`'s swap) is checked by its place (`k in list`),
+    not by `!== undefined`, so a list holding `undefined` shuffles exactly as before.
 
 ## A battle-only mark is not part of the saved state
 
 A battle writes marks on its units and its commanders that last for that battle only: on a unit, `_archeryRed` (what
 the arrows took off), `_tempStrReduction` (what it lost before the clash), `_flakTargeted` (a flyer a gyrocopter
-harried) and `_disbanded` (forced below Green); on a hero, `_tacticalMult` (Telekinetic Storm). The battle wipes them
-at its end, before the state is saved. They are typed by `ArmyInABattle` and `HeroInABattle` (`engine/army-tables.ts`),
+harried), `_disbanded` (forced below Green) and `_phantomOf` (a spectral double's fighting copy: the unit it mirrors,
+P1-10b5); on a hero, `_tacticalMult` (Telekinetic Storm). The battle wipes them at its end, before the state is saved
+(a double's copy goes whole: `clearPhantomCopies`). They are typed by `ArmyInABattle` and `HeroInABattle` (`engine/army-tables.ts`),
 **not** in the saved state's schema (P1-10b2).
 
 - **Why not in the schema:** on 2026-09-27 `_flakTargeted` was never wiped, so it was saved, and a flyer harried once

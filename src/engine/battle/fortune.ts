@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_SKILLS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -18,12 +17,21 @@ export const FORTUNE_CURVE = [
   [Math.log(2), 0.8],
   [Math.log(3), 0.9],
   [Math.log(4), 1],
-];
-export function battleFortune() {
+] as const satisfies readonly (readonly [number, number])[];
+// The dice's swing, and the two luck multipliers it gives.
+interface FortuneOfABattle {
+  S: number;
+  atk: number;
+  def: number;
+}
+export function battleFortune(): FortuneOfABattle {
   const u = kcRng();
   for (let i = 1; i < FORTUNE_CURVE.length; i++) {
-    const [a, fa] = FORTUNE_CURVE[i - 1],
-      [b, fb] = FORTUNE_CURVE[i];
+    const below = FORTUNE_CURVE[i - 1],
+      above = FORTUNE_CURVE[i];
+    if (!below || !above) continue; // never met: i runs inside the curve
+    const [a, fa] = below,
+      [b, fb] = above;
     if (u <= fb) {
       const S = a + (b - a) * ((u - fa) / (fb - fa));
       return { S, atk: Math.exp(S / 2), def: Math.exp(-S / 2) };
@@ -35,33 +43,42 @@ export function battleFortune() {
 // (players read that as their army being weakened). Strengths are shown untouched; fortune is
 // described as what it did to the EDGE: the pre-fortune ratio and win chance, which side luck ran
 // with and how rare the roll was, and the post-fortune edge.
-export function fortuneCdf(x) {
+export function fortuneCdf(x: number) {
   const C = FORTUNE_CURVE;
   if (x <= C[0][0]) return 0;
   for (let i = 1; i < C.length; i++) {
-    const [a, fa] = C[i - 1],
-      [b, fb] = C[i];
+    const below = C[i - 1],
+      above = C[i];
+    if (!below || !above) continue; // never met: i runs inside the curve
+    const [a, fa] = below,
+      [b, fb] = above;
     if (x <= b) return fa + (fb - fa) * ((x - a) / (b - a));
   }
   return 1;
 }
 // Attacker's win chance for a strength ratio r = atk/def: P(S > -ln r).
-export function fortuneWinChance(r) {
+export function fortuneWinChance(r: number) {
   if (!(r > 0)) return 0;
   if (!isFinite(r)) return 1;
   return 1 - fortuneCdf(-Math.log(r));
 }
-export function fortuneEdgeNum(r) {
+export function fortuneEdgeNum(r: number) {
   const e = r >= 1 ? r : r > 0 ? 1 / r : Infinity;
   return !isFinite(e) ? '∞×' : `${e >= 10 ? e.toFixed(0) : e.toFixed(1)}×`;
 }
-export function fortuneEdgeText(r) {
+export function fortuneEdgeText(r: number) {
   const e = r >= 1 ? r : r > 0 ? 1 / r : Infinity;
   if (!isFinite(e)) return 'total superiority';
   if (e < 1.05) return 'an even match';
   return `a ${fortuneEdgeNum(r)} edge`;
 }
-export function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort) {
+export function fortuneNarrative(
+  atkLabel: string,
+  defLabel: string,
+  atkBase: number,
+  defBase: number,
+  fort: FortuneOfABattle,
+) {
   if (!(defBase > 0)) return `${atkLabel} meets no effective resistance — **${atkLabel} wins**.`;
   if (!(atkBase > 0)) return `${atkLabel} brings no effective strength — **${defLabel} wins**.`;
   const r0 = atkBase / defBase,
@@ -70,7 +87,7 @@ export function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort) {
     winner = r1 >= 1 ? atkLabel : defLabel;
   const pAtk = fortuneWinChance(r0),
     pFav = r0 >= 1 ? pAtk : 1 - pAtk;
-  const edge = `${favoured} holds ${fortuneEdgeText(r0)} (${dispFloor(pFav * 100)}% to win)`;
+  const edge = `${favoured} holds ${fortuneEdgeText(r0)} (${String(dispFloor(pFav * 100))}% to win)`;
   const S = fort.S || 0,
     small = Math.abs(S) < Math.log(1.15);
   let luck;
@@ -80,7 +97,7 @@ export function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort) {
       tail = S > 0 ? 1 - fortuneCdf(S) : fortuneCdf(S);
     const adv = tail <= 0.05 ? 'strongly' : tail <= 0.2 ? 'firmly' : 'mildly';
     const rare =
-      tail < 0.25 ? ` (a 1-in-${Math.min(1000, Math.max(4, Math.round(1 / Math.max(tail, 1e-4))))} roll)` : '';
+      tail < 0.25 ? ` (a 1-in-${String(Math.min(1000, Math.max(4, Math.round(1 / Math.max(tail, 1e-4)))))} roll)` : '';
     luck = `Fortune of battle: luck ran ${adv} with ${side}${rare}`;
   }
   let outcome;
@@ -98,12 +115,20 @@ export function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort) {
 // `.sort(()=>Math.random()-0.5)` now goes through here — that comparator is not a fair shuffle
 // (engine-dependent, and it leaves elements near their original positions far more often than
 // chance), which skewed "pick n at random" draws toward the front of the list.
-export function shuffleP(arr, rnd = kcRng) {
+export function shuffleP<T>(arr: Iterable<T>, rnd: () => number = kcRng): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    const ai = a[i],
+      aj = a[j];
+    // never met: i and j are places in the copy, so what was read there is one of its elements (even undefined)
+    if (!isAPlaceIn(a, i, ai) || !isAPlaceIn(a, j, aj)) continue;
+    [a[i], a[j]] = [aj, ai];
   }
   return a;
+}
+// Whether `read` is the element at place `k` of `list` (so one of its elements, even an undefined one).
+function isAPlaceIn<T>(list: readonly T[], k: number, read: T | undefined): read is T {
+  return k in list && Object.is(list[k], read);
 }
 export const ABILITIES_P = KC_SKILLS.slice();
