@@ -3,8 +3,9 @@
 // comprehensive-rulebook roster row; the rulebook's battle-lines text says the flying beasts fight from the air
 // like the winged riders; and no page still promises an ability "with the beast abilities" to come.
 // The abilities the rule registry holds (plan P1-19a: Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
-// Deepwater Grasp, Wyrmscale, Air Superiority) left the table: their names and numbers are checked from their content
-// rows by tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
+// Deepwater Grasp, Wyrmscale, Air Superiority; P1-19b: Maul, Boulder Wall, Purity, Trample, Many Heads) left the
+// table: their names and numbers are checked from their content rows by
+// tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
 // The player portal and the data file are read from src/ by their syntax tree (tests/lib/source.ts): the blurbs as
 // entries of the object literal, the words as the strings each holds. (Until plan P1-09a they were matched in the built
 // files' text.)
@@ -18,12 +19,12 @@ const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(
 const norm=s=>s.replace(/[’‘]/g,"'");
 const ABILITIES={
   'Whale Cohort':['Breach and Swamp'], 'Shark Shoals':['Feeding Frenzy'],
-  'Thunderbirds':['Storm Wings','Lightning Strike'], 'Forest Ents':['Rooted','Choking Spores'], 'Great Bears':['Maul','Thick Hide'],
-  'Stone Giants':['Boulder Wall','Boulder Barrage'], 'Unicorn Herd':['Purity','Through the Glades'], 'Mammoth Host':['Trample','Stampede'],
+  'Thunderbirds':['Storm Wings','Lightning Strike'], 'Forest Ents':['Rooted','Choking Spores'], 'Great Bears':['Thick Hide'],
+  'Stone Giants':['Boulder Barrage'], 'Unicorn Herd':['Through the Glades'], 'Mammoth Host':['Stampede'],
   'Great Turtles':['Shell Wall','Island Back'], 'Crimson Rocs':['Thunderous Stoop'],
   'Cave Trolls':['Regenerating Hide','Hurled Rubble'], 'Basilisk Brood':['Petrifying Gaze'], 'Manticore Pride':['Spine Volley'],
   'Sea Giants':['Tidal Surge'], 'Eldritch Kraken':['Crushing Coils'], 'Titan Warbeasts':['Colossal Bulk','World-Shaking Charge'],
-  'Elder Dragons':['Dragonfire Breath'], 'Dread Hydras':['Many Heads','Venom Breath'],
+  'Elder Dragons':['Dragonfire Breath'], 'Dread Hydras':['Venom Breath'],
 };
 ok(LIVE.every(u=>u in ABILITIES),`every live beast has its abilities listed here (missing: ${LIVE.filter(u=>!(u in ABILITIES)).join(', ')||'none'})`);
 // the player portal's blurbs

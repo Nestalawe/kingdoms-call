@@ -2,8 +2,10 @@
 // humanoid land unit's two ability names appear in its player-portal blurb (UNIT_ABILITIES) and in its
 // comprehensive-rulebook roster row; the four retired abilities (Massed Volley, Shock of the Charge, Skyward
 // Retreat, the Wyverns' Dread) are named on no page; the rulebook explains the new conditions of Shieldwall,
-// Shield Fort and Sheer Numbers. The abilities the rule registry holds (Sheer Numbers, plan P1-19a) left the table: their
-// names and numbers are checked from their content rows by tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
+// Shield Fort and Sheer Numbers. The abilities the rule registry holds (Sheer Numbers, plan P1-19a; the matchups
+// of abilityFront and abilityBack, Halberds to Arrow Fodder, P1-19b) left the table, a unit with none left keeping
+// the check of its blurb and its roster row: their names and numbers are checked from their content rows by
+// tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
 // The player portal is read from src/ by its syntax tree (tests/lib/source.ts): its blurbs as entries of the object
 // literal, its words as the strings it holds. (Until plan P1-09a they were matched in the built page's text.)
 const fs=require('fs');
@@ -13,15 +15,15 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=pageText(PP);
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
 const ABILITIES={
-  'Shieldwall Levies':['Spear Hedge','Shieldwall'], 'Men-at-Arms':['Halberds','Sergeants'], 'Yeoman Longbows':['Bodkin Points','Prepared Ground'],
-  'Free Lances':['Harriers','Ride Them Down'], 'Gilded Lances':['Lance Charge','Knightly Example'], 'Noble Griffons':['Dive on the Bowmen','Screech Dive'],
+  'Shieldwall Levies':['Shieldwall'], 'Men-at-Arms':['Sergeants'], 'Yeoman Longbows':['Prepared Ground'],
+  'Free Lances':['Ride Them Down'], 'Gilded Lances':['Knightly Example'], 'Noble Griffons':['Dive on the Bowmen','Screech Dive'],
   'Human Garrison':['Hold the Gate','Town Watch'],
-  'Forest Wardens':['Woodland Skirmish','Ambush'], 'Elven Bowmen':['Volley at the Charge','Woodland Volley'], 'Shadow Archers':['Marksmen','Loosed From Cover'],
-  'Stag Riders':['Through the Trees','Forest Runners'], 'Eagle Riders':['Stoop on the Horses','Eyes of the Forest'], 'Elven Garrison':['Thorn Hedge','Tree Watch'],
-  'Dwarven Guard':['Unbreakable','Shield Fort'], 'Ironwood Crossbows':['Armour-Piercing','Punch Through'], 'Mountain Guns':['Bombard','Bombardment'],
-  'Ironhoof Rams':['Battering Horns','Crag Charge'], 'Gnomish Gyrocopters':['Flak Gunners','Flak Screen'], 'Dwarf Garrison':['Stone Halls','Deep Halls'],
-  'Goblin Horde':['Arrow Fodder'], 'Orc Berserkers':['Frenzy','Driven Before Them'], 'Black Arrows':['Brawling Archers',"Raiders' Volley"],
-  'Warg Riders':['Wolves Panic Horses','Run Them Down'], 'Wyvern Riders':['Terror From Above','Acid Spit'], 'Orc Garrison':['Bloodthirsty',"Raiders' Muster"],
+  'Forest Wardens':['Ambush'], 'Elven Bowmen':['Woodland Volley'], 'Shadow Archers':['Loosed From Cover'],
+  'Stag Riders':['Through the Trees','Forest Runners'], 'Eagle Riders':['Eyes of the Forest'], 'Elven Garrison':['Tree Watch'],
+  'Dwarven Guard':['Shield Fort'], 'Ironwood Crossbows':['Punch Through'], 'Mountain Guns':['Bombardment'],
+  'Ironhoof Rams':['Battering Horns','Crag Charge'], 'Gnomish Gyrocopters':['Flak Gunners','Flak Screen'], 'Dwarf Garrison':['Deep Halls'],
+  'Goblin Horde':[], 'Orc Berserkers':['Driven Before Them'], 'Black Arrows':['Brawling Archers',"Raiders' Volley"],
+  'Warg Riders':['Run Them Down'], 'Wyvern Riders':['Terror From Above','Acid Spit'], 'Orc Garrison':["Raiders' Muster"],
 };
 const norm=s=>s.replace(/[’‘]/g,"'");
 // the player portal's blurbs

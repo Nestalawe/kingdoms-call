@@ -62,27 +62,30 @@ const ENTRIES: Entries = THE_REGISTRY_OF_UNIT_ABILITIES;
 const ORDERS: Orders = THE_ORDER_OF_EACH_STAGE;
 const ROWS: Rows = UNIT_ABILITIES_THE_REGISTRY_HOLDS;
 const THE_WHOLE_FORCE = THE_ORDER_OF_EACH_STAGE.strength['the whole force'];
+const MEETS = THE_ORDER_OF_EACH_STAGE.strength['what a unit does to the unit it meets'];
 
 test('the registry holds each effect once, in the order of its stage, and each content row is sound', () => {
   expect(whatTheRegistryBreaks(ENTRIES, ORDERS, ROWS)).toEqual([]);
   expect(Object.keys(ENTRIES).length).toBeGreaterThan(0);
-  expect(THE_WHOLE_FORCE.length).toBe(Object.keys(ENTRIES).length);
+  // Every entry acts at some stage: each is in a stage's order.
+  const ordered = new Set(Object.values(ORDERS).flatMap((stages) => Object.values(stages).flat()));
+  expect([...ordered].sort()).toEqual(Object.keys(ENTRIES).sort());
 });
 
 test.for([
   [
     'an entry left out of its order',
-    { strength: { 'the whole force': THE_WHOLE_FORCE.filter((s) => s !== 'wyrmscale') } },
+    { strength: { ...ORDERS['strength'], 'the whole force': THE_WHOLE_FORCE.filter((s) => s !== 'wyrmscale') } },
     ['wyrmscale is in the order of strength: the whole force 0 times'],
   ],
   [
     'an entry named twice in its order',
-    { strength: { 'the whole force': [...THE_WHOLE_FORCE, 'reaver-crews'] } },
+    { strength: { ...ORDERS['strength'], 'the whole force': [...THE_WHOLE_FORCE, 'reaver-crews'] } },
     ['reaver-crews is in the order of strength: the whole force 2 times'],
   ],
   [
     'an order naming an entry with no effect at its stage',
-    { strength: { ...ORDERS['strength'], 'what a unit does to the unit it meets': ['wyrmscale'] } },
+    { strength: { ...ORDERS['strength'], 'what a unit does to the unit it meets': [...MEETS, 'wyrmscale'] } },
     ['the order of strength: what a unit does to the unit it meets names wyrmscale, which has no effect there'],
   ],
 ] as const)('planted, %s, is found', ([, orders, found]) => {
