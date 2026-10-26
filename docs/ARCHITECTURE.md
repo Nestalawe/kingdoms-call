@@ -386,13 +386,15 @@ the turn reads it.
   `_gmRemovedRealms`, a realm's `_gmRemoved`), and each mark the code keeps in the save (Sanctuary's, Veil's, a hidden
   lair's, …), each optional, with a comment saying what writes it. A mark a battle writes and wipes before the save
   (`_flakTargeted`, `_tacticalMult`, …) stays out, so the check finds one that leaks. What checks it:
-  `tests/unit/the-fields-the-portal-and-the-gm-page-save-parse-strictly.test.ts`. The matrix's scripted realm sends no
-  encounter plan and gives four kinds of order, and its bots never give 13 of the engine's 48, so P1-15b2 added what a human realm's orders
+  `tests/unit/the-fields-the-portal-and-the-gm-page-save-parse-strictly.test.ts`. The matrix's scripted realm sent no
+  encounter plan and gave four kinds of order then, and its bots never give 13 of the engine's 48, so P1-15b2 added what a human realm's orders
   and those orders save: an encounter plan as the portal sends it and the merge keeps it (a duel stance, an Evil hero's
   conquest doctrine, `evilMode`; no bot's `_botStance`), every mastery order's once-a-turn stamp (the schema names
   every key of `MASTERY_ORDER_KEYS`), Release Hero's `_releasedBy`, a spied hero's entry, the Grand Design's fields, a
   win by elimination, a Wild Calling's beasts; and `botDiplomacy` is optional (games begun before 26 September lack
-  it). What checks it: `tests/unit/the-fields-a-human-realm-and-the-rare-orders-save-parse-strictly.test.ts`.
+  it). What checks it: `tests/unit/the-fields-a-human-realm-and-the-rare-orders-save-parse-strictly.test.ts`. Since
+  P1-15e2 the scripted realm sends what the portal sends (a plan for every hero, in the form's names; the matrix fails
+  a game on a `[Save check]` line), so the matrix's games also save a human realm's plans, turn after turn.
 - **The version** (P1-15c): a save holds the number of its shape, `schemaVersion`, at its top level; a save without
   one is version 0 (every live save before P1-15c). Version 1 is the shape the six passes leave. The number this build
   writes is in `src/engine/saves/the-saved-games-version-this-build-writes.ts`, a file that imports nothing, so world
@@ -1117,7 +1119,8 @@ of these settings, or the strict compiler and lint settings, is missing or weake
 dangerous path.
 
 The balance matrix (`npm run balance`, `tools/balance/`, P1-02a) measures engine changes: 60 seeded games played in
-the GM portal (48 all-bot, 12 with a realm whose orders the runner writes), each game's per-turn hashes and
+the GM portal (48 all-bot, 12 with a realm whose orders the runner chooses and sends as the player portal sends them:
+`tools/balance/scripted.ts`, `tools/balance/the-orders-the-player-portal-sends.ts`, P1-15e2), each game's per-turn hashes and
 statistics compared with the committed baseline in `tests/balance/baseline/`, statistics paired by seed against the
 noise of a second seed set. One of the hashes is of every write the turn sends to the stand-in database
 (`tools/balance/writes.ts`, P1-02c), so a change to how a turn saves shows even when nothing in play changed. After every turn it checks the **invariants** (`tests/lib/invariants.ts`, P1-04b: no NaN or

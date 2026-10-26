@@ -1,9 +1,10 @@
 // ── The orders a realm submits (plan P1-10a1) ────
 // What a player's row sends the turn (game_players.orders, as JSON): the form the player portal writes
 // (ui/player/briefing-and-submit.ts) and the merge reads (engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-
-// the-realms-orders.ts). The merge reads the ten fields below. The balance matrix's scripted realm sends four of them
-// (orders, encounterPlans, forTurn, diplomacy), and every payload it sent parses; the six others are written from the
-// portal's form and the merge's reads, and are optional, as the scripted realm leaves them out. A bot sends nothing.
+// the-realms-orders.ts). The merge reads the ten fields below. The balance matrix's scripted realm sends all ten, as the
+// portal sends them (P1-15e2: tools/balance/the-orders-the-player-portal-sends.ts, held to the portal by a page test),
+// and every payload it sent parses; the six after the first four are optional, as an older page and the merge's reads
+// allow. A bot sends nothing.
 // The merge also reads an older form (the heroes' orders alone, with no encounterPlans), which no page sends now.
 //
 // Objects are z.object, so a type has exactly the keys named; the tests parse strictly (tests/lib/strict-schema.ts).
