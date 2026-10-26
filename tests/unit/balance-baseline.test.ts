@@ -31,6 +31,7 @@ import {
 import { TURN_COLUMNS } from '../../tools/balance/hash.ts';
 import { matrix } from '../../tools/balance/matrix.ts';
 import { compareRuns, meaningfulChanges } from '../../tools/balance/paired.ts';
+import { theScriptedCasesThatNeverHappened } from '../../tools/balance/run.ts';
 
 const t = (...cols: string[]) => cols.join(' ');
 const game: KeptGame = {
@@ -137,9 +138,9 @@ describe('the committed baselines', () => {
     expect(columnsNotKept(A)).toEqual([]);
   });
 
-  test('every scripted case happens at least once', () => {
-    const cases = totalCases(A);
-    for (const [k, n] of Object.entries(cases)) expect(n, k).toBeGreaterThan(0);
+  test('every scripted case happens at least once, but one a required scenario gives (P1-15e2b)', () => {
+    // the run's own check (run.ts): the held chase is required of its named scenario, no longer of the games
+    expect(theScriptedCasesThatNeverHappened(totalCases(A))).toEqual([]);
   });
 
   test('set A against set B, where every game differs: no meaningful change', () => {
