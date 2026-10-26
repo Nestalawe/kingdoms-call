@@ -1889,7 +1889,7 @@ export function botKitPre(G, pi, c, P, L) {
         humanoid &&
         P.id !== home &&
         !P._despoiled &&
-        (P.tax || 0) <= (tactics ? 4 : 3) &&
+        (P.tax || 0) <= (tactics ? 5 : 3) && // round 14: tax 5 or less (dead land pays 1 + 4g Grave Goods)
         land >= (tactics ? 3 : 4) &&
         spendIf(DESPOIL_COST)
       )
@@ -2052,7 +2052,7 @@ export function botDespoilPlan(G, pi, c, P, L, maxHops) {
   (pl.provinces || []).forEach((id) => {
     const X = G.world.provinces[id];
     if (!X || X.owner !== pi || X.id === P.id || X.id === home || X._despoiled != null) return;
-    if (X.terrain === 'sea' || String(X.race || '').startsWith('Primal') || (X.tax || 0) > 4) return;
+    if (X.terrain === 'sea' || String(X.race || '').startsWith('Primal') || (X.tax || 0) > 5) return;
     const d = botPathLen(G, pi, P, X.id, false);
     if (d == null || d > maxHops) return;
     const sc = d * 2 + (X.tax || 0); // the nearest, the poorest

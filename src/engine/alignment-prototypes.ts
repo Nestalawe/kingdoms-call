@@ -61,7 +61,7 @@ export const DARK_PACT_COST_MULT = 1.5; // Evil: 1.5 × the monster's recruit co
 export const DARK_PACT_HP = 5;
 // round 5: the mutual enemies and the beast provinces
 export const CRUSADE_VS_UNDEAD_MULT = 1.75; // Divine against Undead forces (rounds 1-4: 1.5)
-export const HATRED_MULT = 1.3; // Undead against Divine forces (rounds 2-4: 1.5)
+export const HATRED_MULT = 1.5; // Undead against Divine forces (round 14; rounds 5-13: 1.3; rounds 2-4: 1.5)
 export const UNDEAD_GARRISON_CAP = 3; // skeletal companies the dead land raises into one garrison (round 7; rounds 5-6: 2)
 export const PARLEY_MULT = 1.5; // Druidic storming an unclaimed creature province; Evil an unclaimed monster province
 const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
@@ -330,7 +330,7 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
     }
     case 'Undead': {
       // the king's x1.5 and a hero's x1.3 stay as they are; 3 despoiled provinces lift every commander to x1.5
-      if (enemyAlign === 'Divine') return { mult: HATRED_MULT, label: 'Hatred of the Light ×1.3' }; // round 2 (×1.5), round 5 ×1.3
+      if (enemyAlign === 'Divine') return { mult: HATRED_MULT, label: `Hatred of the Light ×${String(HATRED_MULT)}` }; // round 2 (×1.5), round 5 ×1.3, round 14 ×1.5
       const skel = armies.some((a) => a._isSkeletal);
       if (skel && leader && !leader.isKing && despoiledHeld(G, pi) >= RISING_TIDE_PROVINCES)
         return { mult: 1.5, label: 'The Rising Tide ×1.5' };
