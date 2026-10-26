@@ -76,13 +76,13 @@ export const COUNTING_HOUSE_CAP = 3; // round 3 (round 2: 5)
 export const GRAVE_GOODS_PER_PROVINCE = 4; // round 7 (rounds 3-6: 3; round 2: 2)
 // round 3's other tunings
 export const TRIBUTE_OF_FEAR_CAP = 5; // Evil: the most Tribute of Fear pays a turn
-export const CONDOTTIERI_MULT = 1.3; // Neutral: a hired company's strength (round 2: 1.5)
-export const DARK_PACT_QUALITY = 'Veteran'; // Evil: what the pact brings (round 2: Elite)
-export const BARROW_RISE_PER_TURN = 1; // Undead: companies a held barrow raises a turn (round 3 tried 2: too many)
+export const CONDOTTIERI_MULT = 1.5; // Neutral: a hired company's strength (round 8; rounds 3-7: 1.3)
+export const DARK_PACT_QUALITY = 'Average'; // Evil: what the pact brings (round 8; rounds 3-7: Veteran; round 2: Elite)
+export const BARROW_RISE_PER_TURN = 2; // Undead: companies a held barrow raises a turn (round 8 again; rounds 4-7: 1)
 export const OMENS_MIN_EXPLORER = 2; // Pagan: Omens double Explore only for a hero of Explorer 2 or more
 export const WOOD_WAGE_MULT = 2 / 3; // Druidic: what a beast in the woods pays of its wage (round 6; rounds 3-5: half; round 2: nothing)
 export const YEOMANRY_WAGE_MULT = 1 / 2; // Good (round 7): what a garrison company pays of its wage (rounds 4-6: two-thirds)
-export const BLOOD_HARVEST_KIT_EXTRA = 1; // Pagan (round 4): +1g a unit on Blood Harvest (2g a unit in all)
+export const BLOOD_HARVEST_KIT_EXTRA = 2; // Pagan (round 8): +2g a unit on Blood Harvest (3g a unit in all; rounds 4-7: 2g)
 export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
   'Shrine of the First Light',
@@ -219,10 +219,10 @@ export function paganFavourPoints(G: GameState, pi: number): number {
   if (!kitRealm(G, pi, 'Pagan')) return 0;
   return heldSites(G, pi, isPaganStones).length + activatedSites(G, pi);
 }
-/** The Favour of the Old Gods: the Pagan host's strength multiplier (2 points ×1.3, 3 points ×1.5). */
+/** The Favour of the Old Gods: the Pagan host's strength multiplier (2 points ×1.3, 3 points ×1.5, 4 points ×1.75). */
 export function paganFavourMult(G: GameState, pi: number): number {
   const n = paganFavourPoints(G, pi);
-  return n >= 3 ? 1.5 : n >= 2 ? 1.3 : 1; // round 3: ×1.5 at 3 points (round 2: 4)
+  return n >= 4 ? 1.75 : n >= 3 ? 1.5 : n >= 2 ? 1.3 : 1; // round 8: ×1.75 at 4 points; round 3: ×1.5 at 3
 }
 
 // ── Skills a kit lifts: the level a hero's skill counts as, over the trained and equipped level. Read by effStat.
@@ -258,6 +258,8 @@ export interface FervourSide {
   isAttacker: boolean;
   leader: Character | null | undefined;
   monsterTypes: Set<string>;
+  /** the other side's companies, when known (round 8: the Crusade against the wild reads them) */
+  enemyArmies?: Army[];
 }
 const nothing: Fervour = { mult: 1, label: '' };
 export function protoFervour(G: GameState, pi: number, armies: Army[], side: FervourSide): Fervour | null {
@@ -277,6 +279,9 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       const proclaimed = enemyPi != null && pl._crusadeVs === enemyPi && (pl._crusadeUntil ?? -1) >= G.turn; // round 2
       if (enemyAlign === 'Undead') return { mult: CRUSADE_VS_UNDEAD_MULT, label: 'Crusade against the Undead ×1.75' }; // round 5
       if (proclaimed) return { mult: 1.5, label: 'Proclaimed Crusade ×1.5' };
+      // round 8: the Crusade is against the wild too — any host with a creature or monster company in it
+      if ((side.enemyArmies ?? []).some((a) => CREATURES.has(a.type) || MONSTERS.has(a.type)))
+        return { mult: 1.5, label: 'Crusade against the wild ×1.5' };
       if (dark || (isAttacker && monsterWild) || holy || unleashed)
         return { mult: 1.5, label: holy && !dark ? 'Crusade: holy ground ×1.5' : 'Crusade ×1.5' };
       return nothing;
@@ -336,7 +341,7 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
 export function protoProvinceTaxAdd(G: GameState, pl: Realm, pv: Province, taxSoFar: number): number {
   if (pv.terrain === 'sea' || !alignProto(G, pl.alignment)) return 0;
   const base = pv.tax;
-  if (pl.alignment === 'Good' && base <= 3 && !isWild(pv)) return 2;
+  if (pl.alignment === 'Good' && base <= 3 && !isWild(pv)) return 3; // round 8: +3 (rounds 1-7: +2)
   if (pl.alignment === 'Neutral' && base >= 4) return Math.round(taxSoFar * 0.5);
   return 0;
 }

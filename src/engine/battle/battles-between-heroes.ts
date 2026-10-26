@@ -423,8 +423,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // GOOD — Righteous Defence: +10% when a Good player defends a province they own.
   if (prov.owner === def.player && G.players[def.player]?.alignment === 'Good') {
     if (alignProto(G, 'Good')) {
-      defBonus *= 1.5; // PROTOTYPE Good: the Shield of the Realm — ×1.5 defending its own province
-      narrate(narrative, `🛡 The Shield of the Realm: ${defName}'s host defends its own ground at ×1.5.`);
+      // PROTOTYPE Good: the Shield of the Realm — ×1.5 defending its own province, ×1.75 where a garrison company stands (round 8)
+      const _shield = (prov.garrisonArmies || []).length > 0 ? 1.75 : 1.5;
+      defBonus *= _shield;
+      narrate(narrative, `🛡 The Shield of the Realm: ${defName}'s host defends its own ground at ×${_shield}.`);
     } else {
       defBonus *= 1.1;
       narrate(narrative, { kind: "the defender's host defends ground held justly", defName });
@@ -499,6 +501,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     isAttacker: true,
     leader: atk,
     monsterTypes: MONSTER_ARMIES,
+    enemyArmies: defArmies,
   });
   const _pfD = protoFervour(G, def.player, defArmies, {
     enemyPi: atk.player,
@@ -506,6 +509,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     isAttacker: false,
     leader: def,
     monsterTypes: MONSTER_ARMIES,
+    enemyArmies: atkArmies,
   });
   const atkFanatic = _pfA ? false : kcRng() < _atkFanPct;
   const defFanatic = _pfD ? false : kcRng() < _defFanPct;

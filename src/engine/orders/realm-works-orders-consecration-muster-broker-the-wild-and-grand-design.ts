@@ -1,5 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto, CONSECRATE_COST, divinePower, protoBeastRoomExtra } from '../alignment-prototypes.ts';
+import {
+  alignProto,
+  CONSECRATE_COST,
+  divinePower,
+  protoAlignOf,
+  protoBeastRoomExtra,
+} from '../alignment-prototypes.ts';
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -502,9 +508,23 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   };
   c.armies = c.armies || [];
   c.armies.push(hSkel);
+  // PROTOTYPE Undead (round 8): the kit's carters raise a second company from the same field when one lies there
+  let _second = '';
+  if (protoAlignOf(G, c.player) === 'Undead' && (prov.battleGraves || []).length) {
+    const g2 = takeBestGrave(prov);
+    const s2 = {
+      type: g2.type,
+      quality: _uTierH ? KC_QUALITY_UP[g2.quality] || g2.quality : g2.quality,
+      race: 'Undead',
+      _isSkeletal: true,
+      unitName: `${g2.unitName || armyUnitName(g2.type)} (Skeletal)`,
+    };
+    c.armies.push(s2);
+    _second = ` The kit's carters raise a second: ${s2.unitName} (${s2.quality}).`;
+  }
   emit(turnContext, {
     type: 'hire',
-    text: `💀 Harvest the Field — ${c.name}'s carters work the graves of ${prov.name}: ${hSkel.unitName} (${hSkel.quality}) rises to serve, no magic required. (${_hCost}g; upkeep 1g/turn.)`,
+    text: `💀 Harvest the Field — ${c.name}'s carters work the graves of ${prov.name}: ${hSkel.unitName} (${hSkel.quality}) rises to serve, no magic required. (${_hCost}g; upkeep 1g/turn.)${_second}`,
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,

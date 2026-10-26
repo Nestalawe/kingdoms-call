@@ -397,8 +397,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // conviction (+10% to the defence of any province the Good player OWNS).
   if (prov.owner != null && prov.owner !== c.player && G.players[prov.owner]?.alignment === 'Good') {
     if (alignProto(G, 'Good')) {
-      defBonus *= 1.5; // PROTOTYPE Good: the Shield of the Realm — ×1.5 defending its own province
-      narrate(narrative, `🛡 The Shield of the Realm: the folk of ${prov.name} defend their own ground at ×1.5.`);
+      // PROTOTYPE Good: the Shield of the Realm — ×1.5 defending its own province, ×1.75 where a garrison company stands (round 8)
+      const _shield = (prov.garrisonArmies || []).length > 0 ? 1.75 : 1.5;
+      defBonus *= _shield;
+      narrate(narrative, `🛡 The Shield of the Realm: the folk of ${prov.name} defend their own ground at ×${_shield}.`);
     } else {
       defBonus *= 1.1;
       narrate(narrative, { kind: 'the defenders of a province defend ground held justly', provName: prov.name });
@@ -1288,6 +1290,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
           isAttacker: true,
           leader: c,
           monsterTypes: MONSTER_ARMIES,
+          enemyArmies: defenders,
         })
       : null;
   const fanatic = _pf

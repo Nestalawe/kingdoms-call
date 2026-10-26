@@ -130,9 +130,10 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
       const _kind = (prov.armyTypes || []).find((t) => _set.has(t));
       if (_kind) {
         const _u = { type: _kind, quality: 'Average', race: prov.race || 'Primal', unitName: armyUnitName(_kind) };
+        // round 8: only a captor with room to lead the beasts gains them (round 5-7: else into the garrison)
         const _room = beastCommandRoom(byChar, G.characters || [], protoBeastRoomExtra(G, byChar)) > 0;
-        if (_room) (byChar.armies = byChar.armies || []).push(_u);
-        else (prov.garrisonArmies = prov.garrisonArmies || []).push(_u);
+        if (!_room) return;
+        (byChar.armies = byChar.armies || []).push(_u);
         emit(turnContext, {
           type: 'hire',
           text:
