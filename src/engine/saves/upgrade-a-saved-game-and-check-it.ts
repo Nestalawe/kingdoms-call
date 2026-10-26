@@ -20,6 +20,13 @@
 // passes, each numbered step whose version is above the save's runs once, and the save is stamped with its version.
 // World generation writes the version this build writes on a new world (src/engine/world/generate.ts), so a new
 // world needs no step; the number is in a file of its own (the-saved-games-version-this-build-writes.ts).
+// A save that isn't a game in play (no provinces, no realms, no list of heroes: the new game's settings, before Turn
+// 0, say) is refused first too, before anything changes.
+// Then the check (P1-15d, Decision 4): the save, upgraded, parsed against the saved state's schema made strict
+// (src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts), which names each place it differs by its path
+// and its kind, never a value. The check is not the save: the turn plays the save as upgraded, every key kept, never
+// the parse's output (docs/traps.md). A save that differs still plays (Theo's Choice 1, "tell now, stop later"): the
+// turn's end tells the GM in the GM's log alone, and the turn's message (src/ui/gm/turn-shell.ts) says it too.
 // It draws no dice and writes no line. What it finds for the GM's log, it returns (WhatTheSavesUpgradeFound): the turn
 // keeps it on the turn's context and tells it at the turn's end, as before, and the save keeps none of it.
 // Still in the turn, not here (P1-15's second slice): the flagged passes before the first phase, the turn-start
@@ -32,6 +39,7 @@ import { backfillHomeRosters } from '../world/tables.ts';
 import { migrateItemTiers } from '../items/equipment.ts';
 import { migrateMaxHpV2, retireDiscoveries } from '../heroes/skills-and-hp.ts';
 import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from './the-saved-games-version-this-build-writes.ts';
+import { whereASavedGameDiffersFromThisBuildsSchema } from '../../schemas/where-a-saved-game-differs-from-this-builds-schema.ts';
 
 /** A hero of a save from before the earned-HP pool, carried over to it by the first upgrade: his realm is told at the
  *  turn's end. His id and his realm's index (plain numbers, as the turn's context keeps them); `old`, his maximum HP as
@@ -49,6 +57,10 @@ export interface WhatTheSavesUpgradeFound {
   retiredSageDiscoveriesRemoved: number;
   /** The heroes it carried over to the earned-HP pool (migrateMaxHpV2, on a save from before the pool only). */
   heroesCarriedOverToTheEarnedHpPool: AHeroCarriedOverToTheEarnedHpPool[];
+  /** Where the save, upgraded, differs from the saved state's schema made strict (the check): one line each, its path
+   *  and its kind, never a value (`characters.17.armies.2: a field this build doesn't know, _flakTargeted`); none if
+   *  it matches. The turn's end tells the GM (what-the-saves-check-found-in-words.ts). */
+  whereTheSaveDiffersFromThisBuildsSchema: string[];
 }
 
 /** The save as the passes leave it: two of them count what they mend on it, and the upgrade takes the counts off. */
@@ -78,6 +90,24 @@ export const THE_NUMBERED_STEPS_OF_THE_UPGRADE: readonly ANumberedStepOfTheUpgra
 /** The version a save says it is at: 0 for a save from before the version came in, which holds none. */
 const theVersionOf = (save: { readonly schemaVersion?: number | undefined }): number => save.schemaVersion ?? 0;
 
+/** Whether `save` holds a list at `key` with something in it (or, with `mayBeEmpty`, a list at all). */
+function holdsAList(holder: unknown, key: string, mayBeEmpty = false): boolean {
+  if (typeof holder !== 'object' || holder === null) return false;
+  const list: unknown = Reflect.get(holder, key);
+  return Array.isArray(list) && (mayBeEmpty || list.length > 0);
+}
+
+/** Throws, before anything changes, on a save that isn't a game in play: no provinces, no realms, or no list of heroes
+ *  (the new game's settings, before Turn 0; a save cut short). Read as it was loaded, whatever its type says. */
+function refuseASaveThatIsNotAGameInPlay(save: unknown): void {
+  const world: unknown = typeof save === 'object' && save !== null ? Reflect.get(save, 'world') : undefined;
+  if (!holdsAList(world, 'provinces') || !holdsAList(save, 'players') || !holdsAList(save, 'characters', true))
+    throw new Error(
+      "This game's save holds no game in play (no provinces, realms or list of heroes), so no turn can run on it. " +
+        'Nothing was changed.',
+    );
+}
+
 /** Throws, before anything changes, on a save from a newer build than this one: its shape is one this build doesn't
  *  know (the turn's shell puts the realms' orders back, as for any save it can't read). */
 function refuseASaveFromANewerBuild(save: GameState): void {
@@ -89,9 +119,10 @@ function refuseASaveFromANewerBuild(save: GameState): void {
     );
 }
 
-/** Brings the save, as parsed, up to date, in place, and returns what it found. Throws on a save from a newer build,
- *  before anything changes. */
+/** Brings the save, as parsed, up to date, in place, checks it, and returns what it found. Throws on a save that
+ *  isn't a game in play or is from a newer build, before anything changes. */
 export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSavesUpgradeFound {
+  refuseASaveThatIsNotAGameInPlay(save);
   refuseASaveFromANewerBuild(save);
   migrateMaxHpV2(save); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
   backfillHomeRosters(save); // home provinces recruit the king's full racial land roster
@@ -99,10 +130,8 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
   retireDiscoveries(save); // strip retired Sage discovery ids (sd34) from live saves
   migrateLegacyUnitNames(save); // pre-2026.09.06 unit-type strings → current names (idempotent)
   migrateItemTiers(save); // re-stamp saved items with their tier under the four-tier scheme
-  const found = {
-    retiredSageDiscoveriesRemoved: save._retiredDiscoveries ?? 0,
-    heroesCarriedOverToTheEarnedHpPool: save._maxHpMigration ?? [],
-  };
+  const retiredSageDiscoveriesRemoved = save._retiredDiscoveries ?? 0;
+  const heroesCarriedOverToTheEarnedHpPool = save._maxHpMigration ?? [];
   delete save._retiredDiscoveries;
   delete save._maxHpMigration;
   for (const step of THE_NUMBERED_STEPS_OF_THE_UPGRADE) {
@@ -110,5 +139,7 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
     step.upgrade(save);
     save.schemaVersion = step.version;
   }
-  return found;
+  // the check, last: what it finds is told; the save stays as upgraded (its parse's output is never used)
+  const whereTheSaveDiffersFromThisBuildsSchema = whereASavedGameDiffersFromThisBuildsSchema(save);
+  return { retiredSageDiscoveriesRemoved, heroesCarriedOverToTheEarnedHpPool, whereTheSaveDiffersFromThisBuildsSchema };
 }

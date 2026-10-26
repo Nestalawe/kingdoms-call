@@ -12,9 +12,11 @@
 // saves hold that the matrix's never do (the player portal's hero order, the GM page's fields, the marks the code keeps).
 //
 // Objects are z.object, so a type has exactly the keys named and a misspelt field fails to compile. Parsing with them
-// drops a key they don't name; the tests parse strictly (tests/lib/strict-schema.ts), so an unnamed key fails there.
-// P1-15 chooses how a live save with an unknown key is met at load. Imported as types only (`import type`) until then:
-// tests/static/pages-build.test.ts refuses a value import of src/schemas/ from src/.
+// drops a key they don't name; their strict version (the-strict-version-of-a-schema.ts) refuses it, for the tests
+// (tests/lib/strict-schema.ts) and for the check of a saved game at load (P1-15d: where-a-saved-game-differs-from-
+// this-builds-schema.ts, which the save's upgrade calls; a save that differs still plays, and the GM is told). That is
+// the one value import of src/schemas/ from src/: every other is `import type` (tests/static/pages-build.test.ts,
+// .dependency-cruiser.mts).
 import { z } from 'zod';
 import { CharacterIdSchema, ProvinceIdSchema, RealmIndexSchema } from './ids-of-provinces-heroes-and-realms.ts';
 

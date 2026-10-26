@@ -28,6 +28,9 @@ export const ENGINE_PATHS: readonly string[] = [
   'src/content/**',
   'src/ui/gm/**',
   'src/ui/shared/**',
+  // The saved state's schemas: the save's check at the turn's start parses with them (P1-15d), so the GM page's bundle
+  // holds them; one folder, every file (the orders' schema, which the page doesn't bundle yet, is types for its code).
+  'src/schemas/**',
   // The pages' templates (the GM portal's names its entry and its stylesheet), the files copied as they are, and the
   // build.
   'src/*.html',

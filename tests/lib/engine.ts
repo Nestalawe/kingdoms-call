@@ -23,7 +23,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import { KEEP_THE_CODE, ROOT } from '../../tools/build.ts';
+import { KEEP_THE_CODE, packagesFromTheRepository, ROOT } from '../../tools/build.ts';
 import { DATA_FILE, engineEntryFiles } from '../../tools/pages.ts';
 import { THE_FIELDS_RESOLVE_TURN_ADDS, type TurnContext } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
@@ -68,6 +68,8 @@ export async function buildEngineBundle(src = SRC): Promise<string> {
         resolveId: (id) => (id === ENTRY ? ENTRY : null),
         load: (id) => (id === ENTRY ? entry : null),
       },
+      // a planted copy of src/ outside the repository finds Zod in the repository's node_modules (P1-15d)
+      packagesFromTheRepository(),
     ],
     build: {
       write: false,

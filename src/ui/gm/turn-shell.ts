@@ -10,6 +10,7 @@ import { writeTurnTelemetry } from '../../db/telemetry.ts';
 import { computeNextDeadline } from './turn-mode.ts';
 import { runningBuildStamp, setAutoTurnStatus } from './auto-turn.ts';
 import { resolveTurn } from '../../engine/run-turn.ts';
+import { whatTheSavesCheckFoundInWords } from '../../engine/saves/what-the-saves-check-found-in-words.ts';
 import { buildReports } from '../../views/every-realms-report-and-the-lines-each-realm-reads.ts';
 
 // ── THE TURN SHELL (plan P1-18d, 2026-10-18) ────
@@ -81,6 +82,7 @@ export async function runTurn(opts) {
   let _turnCommitted = false;
   let G;
   let seed = null; // the turn's seed, once drawn (below): returned on success, and from the catch
+  let theSavesCheck = ''; // what the save's check found, in words (below), kept on screen after the refresh
 
   try {
     // 1. Load fresh data
@@ -233,14 +235,19 @@ export async function runTurn(opts) {
 
     // Orders and flags already cleared in step 2a, before the save was upgraded
 
+    // What the save's check found (plan P1-15d): the turn ran on the save as it was (Theo's Choice 1, tell now), and
+    // the GM is told here as in the GM's log, each place by its path and kind, never a value.
+    theSavesCheck = resolved.whereTheSaveDiffersFromThisBuildsSchema.length
+      ? kcHtml`<div class="msg-error">⚠ ${whatTheSavesCheckFoundInWords(resolved.whereTheSaveDiffersFromThisBuildsSchema)}</div>`
+      : '';
     if (reportErrors.length > 0) {
-      msg.innerHTML = kcHtml`<div class="msg-error">Turn resolved but some reports failed: ${reportErrors.join('; ')}</div>`;
+      msg.innerHTML = kcHtml`<div class="msg-error">Turn resolved but some reports failed: ${reportErrors.join('; ')}</div>${theSavesCheck}`;
     } else {
       msg.innerHTML = kcHtml`<div class="msg-success">
       ✅ Turn ${G.turn - 1} resolved! New turn reports pushed to ${reports.length} players.<br>
       <strong>Turn ${G.turn} is now open for orders.</strong> 
       ${G.gameOver ? kcHtml`<strong>Game is complete!</strong>` : ''}
-    </div>`;
+    </div>${theSavesCheck}`;
     }
   } catch (e) {
     // Every failure from the load to the save ends here (P1-18a), and only ONE kind puts the orders
@@ -310,7 +317,15 @@ export async function runTurn(opts) {
   if (viewing) {
     currentGame.turn = G.turn;
     currentGame.status = G.gameOver ? 'complete' : 'active';
-    setTimeout(() => openGame(currentGame.id), 2000);
+    // the refresh empties the message: what the save's check found is shown again once it is done
+    setTimeout(
+      () =>
+        openGame(currentGame.id).then(() => {
+          const shown = document.getElementById('detail-msg');
+          if (theSavesCheck && shown && !shown.innerHTML) shown.innerHTML = theSavesCheck;
+        }),
+      2000,
+    );
   } else if (auto && document.getElementById('sec-games')?.classList.contains('section-active')) {
     loadGames();
   }
