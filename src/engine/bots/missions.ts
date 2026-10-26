@@ -2046,7 +2046,7 @@ export function botNeutralHirePay(L, cost) {
  *  capital, not dead land yet, poor), within `maxHops` through the realm's land, while the chest can pay. {X, d, path}. */
 export function botDespoilPlan(G, pi, c, P, L, maxHops) {
   const pl = (G.players || [])[pi];
-  if (!pl || !P || (pl.provinces || []).length < 3 || L.budget < DESPOIL_COST + 2) return null;
+  if (!pl || !P || (pl.provinces || []).length < 2 || L.budget < DESPOIL_COST + 2) return null; // round 12: from the second province, 5 hops
   const home = botHomeId(G, pi);
   let best = null;
   (pl.provinces || []).forEach((id) => {

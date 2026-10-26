@@ -130,10 +130,10 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
       const _set = new Set(KC_UNIT_CLASS[_cls]);
       const _kind = (prov.armyTypes || []).find((t) => _set.has(t));
       if (_kind) {
-        // round 11: a pack that submits is Green (the pits still yield an Average company)
+        // round 11: a pack that submits is Green; round 12: so is what the pits yield
         const _u = {
           type: _kind,
-          quality: _cls === 'creature' ? 'Green' : 'Average',
+          quality: 'Green',
           race: prov.race || 'Primal',
           unitName: armyUnitName(_kind),
         };

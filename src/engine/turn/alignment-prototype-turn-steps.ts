@@ -22,7 +22,7 @@ import { newMercId } from './mercenary-ids-and-battle-records.ts';
 const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
 const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
 /** A held wild province breeds a beast into its garrison every this many turns (round 2: Druidic every 4th, Evil every 3rd). */
-export const WILD_BREED_EVERY = 5; // round 8 (rounds 1-7: 3)
+export const WILD_BREED_EVERY = 7; // round 12 (round 8-11: 5; rounds 1-7: 3)
 export const WILD_BREED_EVERY_DRUIDIC = 6; // round 8 (rounds 2-7: 4)
 /** The most companies a kit will raise into one garrison on its own. */
 export const KIT_GARRISON_CAP = 3;

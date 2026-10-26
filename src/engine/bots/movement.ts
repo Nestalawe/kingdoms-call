@@ -688,7 +688,7 @@ export function runBotMovement(G, botIdxSet, hooks) {
             (!(isLeader || c.isKing) || !botAtWar(G, pi)) &&
             hp >= mhp * 0.6
           ) {
-            const dp = _bk === 'Undead' ? botDespoilPlan(G, pi, c, P, L, 3) : null;
+            const dp = _bk === 'Undead' ? botDespoilPlan(G, pi, c, P, L, 5) : null;
             if (dp && pre.length + dp.path.length < 5) {
               const mv = [
                 ...dp.path.map((d) => botMoveOrder(d, 'To despoil ' + dp.X.name)),
