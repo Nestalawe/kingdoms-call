@@ -198,6 +198,8 @@ export function protoBeastRoomExtra(G: GameState, c: Character | null | undefine
 export function barrowsHeld(G: GameState, pi: number): number {
   return kitRealm(G, pi, 'Undead') ? heldSites(G, pi, isBarrow).length : 0;
 }
+/** round 13: the Rising Tide needs this many despoiled provinces held (rounds 1-12: 3) */
+export const RISING_TIDE_PROVINCES = 2;
 export function despoiledHeld(G: GameState, pi: number): number {
   const pl = kitRealm(G, pi, 'Undead');
   if (!pl) return 0;
@@ -330,7 +332,7 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       // the king's x1.5 and a hero's x1.3 stay as they are; 3 despoiled provinces lift every commander to x1.5
       if (enemyAlign === 'Divine') return { mult: HATRED_MULT, label: 'Hatred of the Light ×1.3' }; // round 2 (×1.5), round 5 ×1.3
       const skel = armies.some((a) => a._isSkeletal);
-      if (skel && leader && !leader.isKing && despoiledHeld(G, pi) >= 3)
+      if (skel && leader && !leader.isKing && despoiledHeld(G, pi) >= RISING_TIDE_PROVINCES)
         return { mult: 1.5, label: 'The Rising Tide ×1.5' };
       return null;
     }

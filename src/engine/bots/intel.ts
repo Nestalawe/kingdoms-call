@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   despoiledHeld,
+  RISING_TIDE_PROVINCES,
   DIVINE_POWER_UNLEASHED,
   divinePower,
   kitTactics,
@@ -470,7 +471,7 @@ export function botFervourMult(G, c, armies, defending) {
   if (kit) {
     if (kit === 'Evil' && !defending && armies.some((a) => a && BOT_MONSTER_ARMIES.has(a.type))) m = 1.5;
     if (kit === 'Undead' && armies.some((a) => a && a._isSkeletal))
-      m = Math.max(m, c.isKing || despoiledHeld(G, c.player) >= 3 ? 1.5 : 1.3);
+      m = Math.max(m, c.isKing || despoiledHeld(G, c.player) >= RISING_TIDE_PROVINCES ? 1.5 : 1.3);
     if (kit === 'Good' && defending) m *= 1.5; // the Shield, on the realm's own ground (where a bot mostly defends)
     if (kit === 'Pagan') m = Math.max(m, paganFavourMult(G, c.player));
     if (kit === 'Divine' && divinePower(G, c.player) >= DIVINE_POWER_UNLEASHED) m = Math.max(m, 1.5);
