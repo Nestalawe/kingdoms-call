@@ -1,12 +1,14 @@
 // The named balance scenarios (tools/balance/scenario.ts, P1-03c): the comparison of a scenario's runs on two builds,
-// paired by seed, in the balance report's words; the staging helpers that pick what a run measures; and the three
-// scenarios themselves (tests/balance/scenarios/): each is there, runs 400 times, and has a label for every figure.
-// Level 1 (unit): pure functions on made-up runs with a known answer. Playing the scenes is too slow for npm test
-// (about a second a run); npm run balance -- <scenario> does that.
+// paired by seed, in the balance report's words; the staging helpers that pick what a run measures; what a required
+// scenario's runs missed, and the scripted cases the games must still meet (P1-15e2b, run.ts); and the scenarios
+// themselves (tests/balance/scenarios/): each is there, runs 400 times (a required one 20), and has a label for every
+// figure. Level 1 (unit): pure functions on made-up runs with a known answer. Playing the scenes is too slow for the
+// tests (about a second a run); npm run balance does that for a required one, npm run balance -- <scenario> for any.
 import { describe, expect, test } from 'vitest';
 import type { Turn } from '../lib/scenario.js';
 import { labelOf } from '../../tools/balance/labels.ts';
 import { figureRange } from '../../tools/balance/paired.ts';
+import { CASES_A_REQUIRED_SCENARIO_GIVES, theScriptedCasesThatNeverHappened } from '../../tools/balance/run.ts';
 import {
   compareScenario,
   firstClashIn,
@@ -14,7 +16,9 @@ import {
   renderScenario,
   scenarioFile,
   scenarioNames,
+  whatAScenariosRunsMissed,
   type Scenario,
+  type ScenarioRequirement,
   type World,
 } from '../../tools/balance/scenario.ts';
 import type { Battle, Stats, TelemetryRow } from '../../tools/balance/stats.ts';
@@ -126,18 +130,101 @@ describe('what a run measures', () => {
   });
 });
 
+describe("what a required scenario's runs missed", () => {
+  const HELD = 'chases: waited for a battle | when: in Early Summer';
+  const CAUGHT = 'chases: waited for a battle | when: on the catch in Spring';
+  const everyRun: ScenarioRequirement = { figure: HELD, in: 'every run', what: 'held in Early Summer' };
+  const someRun: ScenarioRequirement = { figure: CAUGHT, in: 'some run', what: 'held on the catch' };
+  /** 20 runs: HELD in each but those in `notHeld`, CAUGHT in those in `caught`. */
+  const runs = (notHeld: number[], caught: number[]): Stats[] =>
+    Array.from({ length: 20 }, (_, i) => ({
+      [HELD]: [notHeld.includes(i) ? 0 : 1, 1],
+      [CAUGHT]: [caught.includes(i) ? 1 : 0, 1],
+    }));
+
+  test('a figure required in every run, shown in every run: nothing missed', () => {
+    expect(whatAScenariosRunsMissed({ requires: [everyRun] }, runs([], []))).toEqual([]);
+  });
+
+  test('a figure required in every run, missing from one run: missed, with how many runs showed it', () => {
+    expect(whatAScenariosRunsMissed({ requires: [everyRun] }, runs([7], []))).toEqual([
+      'held in Early Summer: in 19 of 20 runs (needed in every run)',
+    ]);
+  });
+
+  test('a figure required in some run, shown in one run only: nothing missed', () => {
+    expect(whatAScenariosRunsMissed({ requires: [someRun] }, runs([], [12]))).toEqual([]);
+  });
+
+  test('a figure required in some run, shown in none: missed', () => {
+    expect(whatAScenariosRunsMissed({ requires: [everyRun, someRun] }, runs([], []))).toEqual([
+      'held on the catch: in 0 of 20 runs (needed in some run)',
+    ]);
+  });
+
+  test('a figure no run has at all is missed, as a 0 is', () => {
+    expect(whatAScenariosRunsMissed({ requires: [someRun] }, [{}, {}])).toEqual([
+      'held on the catch: in 0 of 2 runs (needed in some run)',
+    ]);
+  });
+
+  test('a run that failed fails it, listed first, and counts as a run that showed nothing', () => {
+    const played = runs([], [3]);
+    played[3] = {}; // scenario-run.ts gives a failed run no statistics
+    expect(whatAScenariosRunsMissed({ requires: [everyRun, someRun] }, played, ['run 4: could not stage: …'])).toEqual([
+      'run 4: could not stage: …',
+      'held in Early Summer: in 19 of 20 runs (needed in every run)',
+      'held on the catch: in 0 of 20 runs (needed in some run)',
+    ]);
+  });
+
+  test('no runs at all: a figure required in every run is missed', () => {
+    expect(whatAScenariosRunsMissed({ requires: [everyRun] }, [])).toEqual([
+      'held in Early Summer: in 0 of 0 runs (needed in every run)',
+    ]);
+  });
+
+  test('a scenario with no requirements misses nothing, whatever its runs show', () => {
+    expect(whatAScenariosRunsMissed({}, runs([0, 1, 2], []))).toEqual([]);
+    expect(whatAScenariosRunsMissed({ requires: [] }, [{}])).toEqual([]);
+  });
+});
+
+describe('the scripted cases the games must meet', () => {
+  test("the games' held chase is given by a scenario: a set whose games hold no chase passes", () => {
+    expect(theScriptedCasesThatNeverHappened({ encounter: 36, battleChase: 0 })).toEqual([]);
+  });
+
+  test('a set with no Encounter Character fails, held chases or not', () => {
+    expect(theScriptedCasesThatNeverHappened({ encounter: 0, battleChase: 4 })).toEqual(['Encounter Character']);
+    expect(theScriptedCasesThatNeverHappened({ encounter: 0, battleChase: 0 })).toEqual(['Encounter Character']);
+  });
+});
+
 describe('the named scenarios', () => {
   const load = async (name: string) => ((await import(scenarioFile(name))) as { default: Scenario }).default;
 
-  test('the first three are there', () => {
-    expect(scenarioNames()).toEqual(expect.arrayContaining(['battle', 'encounter', 'lair']));
+  test('the first three are there, and the required one', () => {
+    expect(scenarioNames()).toEqual(
+      expect.arrayContaining(['battle', 'encounter', 'lair', 'a-chase-held-by-an-unresolved-battle']),
+    );
   });
 
-  test.for(scenarioNames())('%s: 400 runs, a title, and a plain-words label for every figure', async (name) => {
-    const s = await load(name);
-    expect(s.runs).toBe(400);
-    expect(s.title).not.toBe('');
-    expect(s.figures.length).toBeGreaterThan(0);
-    expect(s.figures.filter((f) => labelOf(f) == null)).toEqual([]);
+  test.for(scenarioNames())(
+    '%s: 400 runs (a required one 20), a title, and a plain-words label for every figure',
+    async (name) => {
+      const s = await load(name);
+      expect(s.runs).toBe(s.requires ? 20 : 400);
+      expect(s.title).not.toBe('');
+      expect(s.figures.length).toBeGreaterThan(0);
+      expect(s.figures.filter((f) => labelOf(f) == null)).toEqual([]);
+      expect((s.requires ?? []).filter((r) => !s.figures.includes(r.figure))).toEqual([]);
+    },
+  );
+
+  test('each scenario that gives a scripted case is there and requires figures', async () => {
+    const names = Object.values(CASES_A_REQUIRED_SCENARIO_GIVES);
+    expect(names).toEqual(['a-chase-held-by-an-unresolved-battle']);
+    for (const name of names) expect((await load(name)).requires?.length).toBeGreaterThan(0);
   });
 });

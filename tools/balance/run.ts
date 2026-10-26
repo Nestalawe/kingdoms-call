@@ -1,5 +1,8 @@
 // npm run balance: play the balance matrix (plan P1-02) and compare it with the committed baseline, game by game. It
-// fails if any game differs, if a game fails, or if a scripted case never happens.
+// fails if any game differs, if a game fails, or if a scripted case never happens. First it plays every named scenario
+// that requires figures (P1-15e2b: scenario.ts's `requires`; today a-chase-held-by-an-unresolved-battle), on this site
+// or KC_SITE's, and fails if one misses a requirement: it stages a case the games meet only by luck, so the games no
+// longer have to (CASES_A_REQUIRED_SCENARIO_GIVES). Not with --only, nor when a scenario is named.
 // npm run balance:update: play set A and set B and rewrite both baselines (tests/balance/baseline/), in the PR that
 // changes play.
 //
@@ -22,6 +25,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { pageFiles, SITE } from '../../tests/lib/boot.js';
 import { GM_PAGE, pageFiles as pageSourceFiles } from '../pages.ts';
@@ -46,9 +50,10 @@ import {
 import { isEnginePath } from './engine-paths.ts';
 import { matrix, type GameSpec, type SeedSet } from './matrix.ts';
 import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
-import { CASE_NAMES, type GameResult } from './play.ts';
+import { CASE_NAMES, type Cases, type GameResult } from './play.ts';
 import { show, showDiff, showRange } from './report.ts';
-import { playScenario } from './scenario-run.ts';
+import { playRuns, playScenario } from './scenario-run.ts';
+import { scenarioFile, scenarioNames, whatAScenariosRunsMissed, type Scenario } from './scenario.ts';
 import { buildSite, forkPool } from './sides.ts';
 import type { Job, Reply } from './worker.ts';
 
@@ -116,6 +121,49 @@ export function statesNotThePages(page: GameResult[], vm: ReportsResult[]): stri
   });
 }
 
+/** The scripted cases a required named scenario gives, by the scenario's name (P1-15e2b): the games still count and
+ *  print them, but a run whose games never meet one doesn't fail for it, because the scenario requires it. */
+export const CASES_A_REQUIRED_SCENARIO_GIVES: Readonly<Partial<Record<keyof Cases, string>>> = {
+  battleChase: 'a-chase-held-by-an-unresolved-battle',
+};
+
+/** The scripted cases that never happened in a set's games and that no required scenario gives, by name: [] if none. */
+export function theScriptedCasesThatNeverHappened(cases: Cases): string[] {
+  return Object.entries(CASE_NAMES)
+    .filter(([k]) => !(k in CASES_A_REQUIRED_SCENARIO_GIVES) && !cases[k as keyof Cases])
+    .map(([, name]) => name);
+}
+
+/** Plays every named scenario with requirements, `jobs` runs at a time, on this site (or KC_SITE's), one line each.
+ *  True if one missed a requirement, or if a scenario CASES_A_REQUIRED_SCENARIO_GIVES names requires nothing. */
+async function playTheRequiredScenarios(jobs: number): Promise<boolean> {
+  const all = await Promise.all(
+    scenarioNames().map(async (name) => ({
+      name,
+      scenario: ((await import(pathToFileURL(scenarioFile(name)).href)) as { default: Scenario }).default,
+    })),
+  );
+  const required = all.filter((s) => s.scenario.requires?.length);
+  let failed = false;
+  for (const name of Object.values(CASES_A_REQUIRED_SCENARIO_GIVES))
+    if (!required.some((s) => s.name === name)) {
+      console.log(`The scenario "${name}" is to give a scripted case, but it isn't there or requires nothing.`);
+      failed = true;
+    }
+  const where = process.env['KC_SITE'] ? ` on ${process.env['KC_SITE']}` : '';
+  for (const { name, scenario } of required) {
+    const played = await playRuns(name, scenario.runs, jobs);
+    const missed = whatAScenariosRunsMissed(scenario, played.stats, played.errors);
+    console.log(
+      `Required scenario "${name}"${where}: ${String(scenario.runs)} runs in ${played.secs.toFixed(1)} s: ${
+        missed.length ? `MISSED\n  ${missed.join('\n  ')}` : 'every requirement met'
+      }`,
+    );
+    if (missed.length) failed = true;
+  }
+  return failed;
+}
+
 const keep = (r: GameResult): KeptGame => {
   const kept: KeptGame = { id: r.id, turns: r.turns, results: r.results, stats: r.stats };
   if (r.report) kept.report = r.report;
@@ -181,6 +229,7 @@ async function main(): Promise<number> {
     const runs = Number(values.runs) || undefined;
     return playScenario(scenario, { base: values.base, jobs, ...(runs ? { runs } : {}) });
   }
+  if (!only) failed = (await playTheRequiredScenarios(jobs)) || failed;
 
   for (const set of sets) {
     const games = matrix(set).filter((g) => !only || only.includes(g.id));
@@ -203,9 +252,9 @@ async function main(): Promise<number> {
           .join(', '),
     );
     if (!only) {
-      const never = Object.entries(CASE_NAMES).filter(([k]) => !cases[k as keyof typeof cases]);
+      const never = theScriptedCasesThatNeverHappened(cases);
       if (never.length) {
-        console.log(`A scripted case never happened: ${never.map(([, n]) => n).join(', ')}.`);
+        console.log(`A scripted case never happened: ${never.join(', ')}.`);
         failed = true;
       }
     }

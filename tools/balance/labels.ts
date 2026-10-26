@@ -76,6 +76,9 @@ const SLICES: Readonly<Record<string, (value: string) => string | undefined>> = 
     const m = /^(\d+) against (\d+)$/.exec(v);
     return m ? `a hunter of Spy ${String(m[1])} after a quarry of Spy ${String(m[2])}` : undefined;
   },
+  // A named scenario's slice (tests/balance/scenarios/a-chase-held-by-an-unresolved-battle.ts):
+  // 'chases: waited for a battle | when: in Early Summer'.
+  when: (v) => (v === 'on the catch in Spring' || v === 'in Early Summer' ? v : undefined),
   // 'game: ended | by: the Reckoning': the share of the games that ended, ended this way.
   by: (v) => `by ${v}`,
 };
