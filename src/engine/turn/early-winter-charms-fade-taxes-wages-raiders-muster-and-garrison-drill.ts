@@ -6,6 +6,7 @@ import {
   protoAlignOf,
   protoProvinceTaxAdd,
   protoRealmGold,
+  WOOD_WAGE_MULT,
 } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
@@ -136,7 +137,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (gdActive(turnContext, pi, 'Good') && (pv.garrisonArmies || []).length > 0) t += 2;
       return s + t;
     }, 0);
-    // PROTOTYPE round 2: a Neutral Embargo takes 30% of the province tax; a kit may pay the realm gold of its own
+    // PROTOTYPE round 2: a Neutral Embargo takes a share of the province tax (20% since round 3); a kit may pay the realm gold of its own
     // (Pilgrims' Coin, the counting-houses, Tribute of Fear, grave goods)
     const _embargo = embargoTaxMult(G, p);
     if (_embargo < 1) income = Math.floor(income * _embargo);
@@ -206,7 +207,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     if (income > 0 || perProvBonus > 0 || titlePerkGold > 0 || thiefStipend > 0 || _kitGold.gold > 0)
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} collects ${income + taxBonus + perProvBonus + interestBonus + neutralTradeBonus + taxRecordsBonus + titlePerkGold + thiefStipend + _kitGold.gold}g in taxes${_embargo < 1 ? ' (under Embargo: −30%)' : ''}${taxRecordsBonus > 0 ? ` (+${taxRecordsBonus}g Taxation Records)` : ''}${perProvBonus > 0 ? ` (+${perProvBonus}g Merchant's Ledger)` : ''}${neutralTradeBonus > 0 ? ` (+${neutralTradeBonus}g Neutral trade bonus)` : ''}${interestBonus > 0 ? ` (+${interestBonus}g Merchant Guilds interest)` : ''}${_consecBonus > 0 ? ` (+${_consecBonus}g from consecrated ground)` : ''}${_kitGold.note}${titlePerkNote}${thiefNote}.`,
+        text: `${p.name} collects ${income + taxBonus + perProvBonus + interestBonus + neutralTradeBonus + taxRecordsBonus + titlePerkGold + thiefStipend + _kitGold.gold}g in taxes${_embargo < 1 ? ` (under Embargo: −${Math.round((1 - _embargo) * 100)}%)` : ''}${taxRecordsBonus > 0 ? ` (+${taxRecordsBonus}g Taxation Records)` : ''}${perProvBonus > 0 ? ` (+${perProvBonus}g Merchant's Ledger)` : ''}${neutralTradeBonus > 0 ? ` (+${neutralTradeBonus}g Neutral trade bonus)` : ''}${interestBonus > 0 ? ` (+${interestBonus}g Merchant Guilds interest)` : ''}${_consecBonus > 0 ? ` (+${_consecBonus}g from consecrated ground)` : ''}${_kitGold.note}${titlePerkNote}${thiefNote}.`,
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -284,10 +285,10 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
       if (a._wildHuntUntilTurn != null) return s;
       if (a._slave) return s; // PROTOTYPE Evil: slaves are paid nothing
-      if (_woodFed.has(a)) return s; // PROTOTYPE Druidic (round 2): the wood provides
       if (a._isSkeletal) return s + 1;
       let w = ARMY_COST[a.type] || 2;
       if (_yeomanry.has(a)) w = Math.max(1, Math.floor(w / 2)); // PROTOTYPE Good (round 2): the Yeomanry
+      if (_woodFed.has(a)) w = Math.max(1, Math.floor(w * WOOD_WAGE_MULT)); // PROTOTYPE Druidic: the wood provides half (round 3)
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
         const _w0 = w,
           _half = _w0 * 0.5;

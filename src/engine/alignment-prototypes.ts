@@ -29,31 +29,38 @@ export const RITE_OF_AWAKENING_COST = 10;
 export const RITE_OF_AWAKENING_TAX = 3; // round 2 (Votive Hoards): an awakened site pays +3 tax (round 1: +1)
 // round 2: the Divine Power thresholds (a held holy site counts 1, a held AND consecrated one 2)
 export const DIVINE_POWER_WHITE = 1; // every Divine hero casts White one level higher
-export const DIVINE_POWER_RETURN = 3; // a fallen hero's return spends no consecration
-export const DIVINE_POWER_UNLEASHED = 5; // the Crusade's ×1.5 in every battle
+export const DIVINE_POWER_RETURN = 2; // a fallen hero's return spends no consecration (round 2: 3)
+export const DIVINE_POWER_UNLEASHED = 4; // the Crusade's ×1.5 in every battle (round 2: 5)
 // round 2: the kings' orders and how long their effects hold
 export const KING_ORDER_EVERY: Record<string, number> = {
   proclaim_crusade: 5,
   light_beacons: 6,
-  embargo: 5,
+  embargo: 6, // round 3 (round 2: 5)
   great_sacrifice: 5,
-  dark_pact: 5,
+  dark_pact: 6, // round 3 (round 2: 5)
   spread_plague: 5,
 };
 export const CRUSADE_TURNS = 3;
 export const EMBARGO_TURNS = 3;
-export const EMBARGO_TAX_MULT = 0.7;
-export const SACRIFICE_TURNS = 3;
+export const EMBARGO_TAX_MULT = 0.8; // round 3: −20% (round 2: −30%)
+export const SACRIFICE_TURNS = 4; // round 3 (round 2: 3)
 export const PLAGUE_TURNS = 3;
 export const PROCLAIM_CRUSADE_COST = 5;
 export const DARK_PACT_COST = 10;
 export const DARK_PACT_HP = 5;
-export const BEACONS_CAP = 6;
+export const BEACONS_CAP = 4; // round 3 (round 2: 6)
 export const CALL_OF_THE_WILD_RANGE = 3;
 export const RECLAIM_TURNS = 5;
 export const PILGRIMS_COIN_PER_SITE = 3;
-export const COUNTING_HOUSE_CAP = 5;
-export const GRAVE_GOODS_PER_PROVINCE = 2;
+export const COUNTING_HOUSE_CAP = 3; // round 3 (round 2: 5)
+export const GRAVE_GOODS_PER_PROVINCE = 3; // round 3 (round 2: 2)
+// round 3's other tunings
+export const TRIBUTE_OF_FEAR_CAP = 5; // Evil: the most Tribute of Fear pays a turn
+export const CONDOTTIERI_MULT = 1.3; // Neutral: a hired company's strength (round 2: 1.5)
+export const DARK_PACT_QUALITY = 'Veteran'; // Evil: what the pact brings (round 2: Elite)
+export const BARROW_RISE_PER_TURN = 2; // Undead: companies a held barrow raises a turn (a despoiled province still 1)
+export const OMENS_MIN_EXPLORER = 2; // Pagan: Omens double Explore only for a hero of Explorer 2 or more
+export const WOOD_WAGE_MULT = 0.5; // Druidic: what a beast in the woods pays of its wage (round 2: nothing)
 export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
   'Shrine of the First Light',
@@ -142,8 +149,10 @@ export function shiningSites(G: GameState, pi: number): number {
   return heldSites(G, pi, isHolySite).filter((pv) => cons.includes(pv.id)).length;
 }
 export function divinePower(G: GameState, pi: number): number {
-  if (!kitRealm(G, pi, 'Divine')) return 0;
-  return heldSites(G, pi, isHolySite).length + shiningSites(G, pi);
+  const pl = kitRealm(G, pi, 'Divine');
+  if (!pl) return 0;
+  const crusading = (pl._crusadeUntil ?? -1) >= G.turn ? 1 : 0; // round 3: a Proclaimed Crusade is +1 Power while it lasts
+  return heldSites(G, pi, isHolySite).length + shiningSites(G, pi) + crusading;
 }
 /** Round 2: is the king's order `key` off its cooldown for realm `pl` this turn? */
 export function kingOrderReady(G: GameState, pl: Realm, key: string): boolean {
@@ -188,10 +197,10 @@ export function paganFavourPoints(G: GameState, pi: number): number {
   if (!kitRealm(G, pi, 'Pagan')) return 0;
   return heldSites(G, pi, isPaganStones).length + activatedSites(G, pi);
 }
-/** The Favour of the Old Gods: the Pagan host's strength multiplier (2 points ×1.3, 4 points ×1.5). */
+/** The Favour of the Old Gods: the Pagan host's strength multiplier (2 points ×1.3, 3 points ×1.5). */
 export function paganFavourMult(G: GameState, pi: number): number {
   const n = paganFavourPoints(G, pi);
-  return n >= 4 ? 1.5 : n >= 2 ? 1.3 : 1;
+  return n >= 3 ? 1.5 : n >= 2 ? 1.3 : 1; // round 3: ×1.5 at 3 points (round 2: 4)
 }
 
 // ── Skills a kit lifts: the level a hero's skill counts as, over the trained and equipped level. Read by effStat.
@@ -318,6 +327,7 @@ export function protoRealmGold(G: GameState, pi: number): { gold: number; note: 
       let g = 0;
       for (const pv of G.world.provinces)
         if (pv.owner != null && pv.owner !== pi && pv._terrorisedBy === pi && pv._terrorStacks) g += pv._terrorStacks;
+      g = Math.min(TRIBUTE_OF_FEAR_CAP, g); // round 3
       return { gold: g, note: g ? ` (+${String(g)}g Tribute of Fear)` : '' };
     }
     case 'Undead': {

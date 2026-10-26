@@ -14,6 +14,8 @@ import {
   CRUSADE_TURNS,
   DARK_PACT_COST,
   DARK_PACT_HP,
+  DARK_PACT_QUALITY,
+  EMBARGO_TAX_MULT,
   EMBARGO_TURNS,
   isPaganStones,
   isWild,
@@ -487,7 +489,7 @@ export function resolveCallOfTheWildOrder(turnContext: TurnContext, c: Character
 }
 
 // ── NEUTRAL: Embargo ── the League closes its markets to a realm it has met: for three turns that realm's provinces
-// pay 30% less tax.
+// pay less tax (20% since round 3).
 export function resolveEmbargoOrder(turnContext: TurnContext, c: Character, target: string): void {
   const { G } = turnContext;
   const pl = kingMay(turnContext, c, 'Neutral', 'embargo', 'declare an Embargo');
@@ -505,13 +507,13 @@ export function resolveEmbargoOrder(turnContext: TurnContext, c: Character, targ
     turnContext,
     c.player,
     'explore',
-    `⚖ ${c.name} declares an Embargo on ${foe.name}: the League's factors close their counting-houses to it. Until the end of turn ${String(foe._embargoUntil)} its provinces pay 30% less tax.`,
+    `⚖ ${c.name} declares an Embargo on ${foe.name}: the League's factors close their counting-houses to it. Until the end of turn ${String(foe._embargoUntil)} its provinces pay ${String(Math.round((1 - EMBARGO_TAX_MULT) * 100))}% less tax.`,
   );
   realmLine(
     turnContext,
     vs,
     'system',
-    `⚖ ${pl.name} has declared an Embargo against you — your markets starve for three turns (−30% tax).`,
+    `⚖ ${pl.name} has declared an Embargo against you — your markets starve for ${String(EMBARGO_TURNS)} turns (−${String(Math.round((1 - EMBARGO_TAX_MULT) * 100))}% tax).`,
   );
 }
 
@@ -544,7 +546,7 @@ export function resolveGreatSacrificeOrder(turnContext: TurnContext, c: Characte
   );
 }
 
-// ── EVIL: Dark Pact ── 10g and five of the king's hit points buy an Elite monster company, of a kind the realm's monster
+// ── EVIL: Dark Pact ── 10g and five of the king's hit points buy a Veteran (round 2: Elite) monster company, of a kind the realm's monster
 // provinces breed (else Cave Trolls), which joins his host.
 export function resolveDarkPactOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
   const { G } = turnContext;
@@ -570,14 +572,14 @@ export function resolveDarkPactOrder(turnContext: TurnContext, c: Character, pro
       .flatMap((pv) => pv.armyTypes.filter((t) => MONSTERS.has(t)))[0] ?? 'Cave Trolls';
   player.gold -= DARK_PACT_COST;
   c.hp -= DARK_PACT_HP;
-  const u: Army = { type: kind, quality: 'Elite', race: 'Primal', unitName: armyUnitNameOf(kind) };
+  const u: Army = { type: kind, quality: DARK_PACT_QUALITY, race: 'Primal', unitName: armyUnitNameOf(kind) };
   c.armies.push(u);
   noteKingOrder(G, pl, 'dark_pact');
   realmLine(
     turnContext,
     pi,
     'hire',
-    `😈 Dark Pact: ${c.name} cuts the bargain in his own blood (${String(DARK_PACT_COST)}g, −${String(DARK_PACT_HP)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, Elite) joins the king's host.`,
+    `😈 Dark Pact: ${c.name} cuts the bargain in his own blood (${String(DARK_PACT_COST)}g, −${String(DARK_PACT_HP)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, ${DARK_PACT_QUALITY}) joins the king's host.`,
     prov,
   );
 }

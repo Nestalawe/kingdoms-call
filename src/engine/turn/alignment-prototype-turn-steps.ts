@@ -5,7 +5,7 @@
 // to a Neutral realm's markets. Nothing here is a decided rule (src/engine/alignment-prototypes.ts).
 import { KC_QUALITY_TIERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import type { Army, Province } from '../../schemas/saved-game-state.ts';
-import { alignProto, isBarrow, isWild, protoAlignOf } from '../alignment-prototypes.ts';
+import { alignProto, BARROW_RISE_PER_TURN, isBarrow, isWild, protoAlignOf } from '../alignment-prototypes.ts';
 import { armyUnitNameOf } from '../dice-and-army-names.ts';
 import { kcRng } from '../rng.ts';
 import type { TurnContext } from './context.ts';
@@ -86,8 +86,12 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     // ── UNDEAD: the dead rise unbidden ── (round 2: only in dead land) a grave in a held despoiled province or at a held
     // barrow rises as a skeletal garrison company; a despoiled province raises one from its own blackened soil whether
     // graves lie there or not.
-    const deadLand = pv._despoiled != null || pv.features.some(isBarrow);
-    if (align === 'Undead' && deadLand && pv.garrisonArmies.filter((a) => a._isSkeletal).length < KIT_GARRISON_CAP) {
+    const barrow = pv.features.some(isBarrow);
+    const deadLand = pv._despoiled != null || barrow;
+    const rises = barrow ? BARROW_RISE_PER_TURN : 1; // round 3: a barrow raises two a turn
+    for (let k = 0; k < rises; k++) {
+      if (align !== 'Undead' || !deadLand || pv.garrisonArmies.filter((a) => a._isSkeletal).length >= KIT_GARRISON_CAP)
+        break;
       let u: Army | null = null;
       if ((pv.battleGraves ?? []).length) {
         const g = takeTheBestGrave(pv);
@@ -108,11 +112,10 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
           unitName: `${armyUnitNameOf('Shieldwall Levies')} (Skeletal)`,
         };
       }
-      if (u) {
-        u._kitGarrison = true; // the dead land holds them: no master needed while they garrison an Undead province
-        pv.garrisonArmies.push(u);
-        line(pi, `💀 The dead rise in ${pv.name}: ${u.unitName} (${u.quality}) joins the garrison unbidden.`, pv);
-      }
+      if (!u) break;
+      u._kitGarrison = true; // the dead land holds them: no master needed while they garrison an Undead province
+      pv.garrisonArmies.push(u);
+      line(pi, `💀 The dead rise in ${pv.name}: ${u.unitName} (${u.quality}) joins the garrison unbidden.`, pv);
     }
   }
 

@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto, protoAlignOf } from '../alignment-prototypes.ts';
+import { alignProto, CONDOTTIERI_MULT, protoAlignOf } from '../alignment-prototypes.ts';
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
@@ -732,10 +732,10 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
     str = Math.round(str * 1.5);
     if (_tr) _tr.push({ label: 'Home of the Wild ×1.5' });
   }
-  // PROTOTYPE Neutral (round 2): Condottieri — a mercenary company hired under the kit fights ×1.5
+  // PROTOTYPE Neutral (round 2): Condottieri — a mercenary company hired under the kit fights ×1.3 (round 2: ×1.5)
   if (army._merc && heroChar && protoAlignOf(turnContext.G, heroChar.player) === 'Neutral') {
-    str = Math.round(str * 1.5);
-    if (_tr) _tr.push({ label: 'Condottieri ×1.5' });
+    str = Math.round(str * CONDOTTIERI_MULT);
+    if (_tr) _tr.push({ label: `Condottieri ×${CONDOTTIERI_MULT}` });
   }
   // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies
   // +5%.

@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   RITE_OF_AWAKENING_COST,
+  OMENS_MIN_EXPLORER,
   RITE_OF_AWAKENING_TAX,
   activatedSites,
   alignProto,
@@ -80,7 +81,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
   discEff(turnContext, c.player, 'explore').forEach((e) => {
     if (!e.terrains || e.terrains.includes(prov.terrain)) _discExpl *= e.mult || 1;
   }); // explore discoveries
-  const _omens = protoAlignOf(G, c.player) === 'Pagan' ? 2 : 1; // PROTOTYPE Pagan (round 2): Omens — twice the ground
+  const _omens = protoAlignOf(G, c.player) === 'Pagan' && explorerSkill >= OMENS_MIN_EXPLORER ? 2 : 1; // PROTOTYPE Pagan: Omens — twice the ground for a seer of Explorer 2+ (round 3)
   const gain = Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * loreMult * _discExpl * _omens));
   if (!prov.exploredBy) prov.exploredBy = {};
   const before = prov.exploredBy[c.player] || 0;
