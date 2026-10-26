@@ -2,9 +2,10 @@
 // scripted realm's orders are built by a typed copy of the portal's payload (tools/balance/the-orders-the-player-portal-
 // sends.ts) from the choices it makes on the saved state (tools/balance/scripted.ts). Here the portal itself is booted
 // on the realm's turn report for each state of two scripted games of set A (scripted-05, and scripted-06, the one
-// whose scripted realm is Evil), plus one state with a research pair staged on it, and given the same choices through
-// its form: each order through its select and onActionChange, each target through its field (the Encounter Character
-// list, the Recruit Armies boxes), the plan through its inputs (each tactic's button, the pre-battle school's picker,
+// whose scripted realm is Evil), plus one state with what the games don't reach staged on it, and given the same choices
+// through its form: each order through its select and onActionChange, each target through its field and its change
+// (the Encounter Character list, the Recruit Armies boxes; P1-15e3: the Spy, Search Lair, Hire Hero, Research and
+// Practice Skill fields, a hire's card made by its change and its plan driven as a hero's), the plan through its inputs (each tactic's button, the pre-battle school's picker,
 // the battle cry, the duel stance, an Evil realm's conquest doctrine), the heir's points through allocateHeirSkill, a
 // research lead through its radio button, a declaration through its button. What the portal writes to the realm's row
 // must deep-equal the copy's payload. A choice the form doesn't offer leaves its field empty (or its button disabled),
@@ -20,6 +21,7 @@
 // only the booted portal can say what it sends. One page booted once, about 1 s, then about 0.2 s a state.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
+import { L79_ORDERS } from '../../src/ui/player/l79-orders.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
@@ -77,9 +79,10 @@ async function statesOf(id: string): Promise<{ states: AState[]; reportOn: (stat
   return { states, reportOn };
 }
 
-/** `from` with what the two scripted games don't reach staged on the scripted realm (no scripted turn researches yet,
- *  an heir is crowned only when a king falls, and no scripted realm reorders its column): a research pair, an heir
- *  with points to spend, and the column arranged in another order than the world's; its report built by the views. */
+/** `from` with what the two scripted games don't reach staged on the scripted realm (a research pair only after a
+ *  discovery, an heir is crowned only when a king falls, no scripted realm reorders its column, and no scripted hero
+ *  reaches a mastery's level): a research pair, an heir with points to spend, the column arranged in another order
+ *  than the world's, and its last hero at Tactical 7 (Feigned Retreat); its report built by the views. */
 function withWhatTheGamesDontReachStaged(from: AState, reportOn: (state: State) => Report): AState {
   const S = structuredClone(from.state);
   const mine = S.characters.filter((c) => c.alive && c.player === SCRIPTED_REALM);
@@ -95,21 +98,97 @@ function withWhatTheGamesDontReachStaged(from: AState, reportOn: (state: State) 
     },
   ];
   Object.assign(heir, { _isHeir: true, _pendingSkillAllocation: 4 });
+  const master = mine.filter((c) => !c.isKing).at(-1);
+  if (master) master.skills = { ...master.skills, tactical: 7 };
   // the column as the player arranged it: not the world's order, which the games' own columns keep
   realm.heroOrder = mine.map((c) => String(c.id)).reverse();
   return {
-    name: `${from.name}, a research pair, an heir and an arrangement staged`,
+    name: `${from.name}, a research pair, an heir, an arrangement and a master staged`,
     turn: S.turn,
     state: S,
     report: reportOn(S),
   };
 }
 
+/** States made from `from` on which each of the spare heroes' orders (P1-15e3) is given whatever the games' dice: the
+ *  realm at peace (so no hero chases), its heroes but the king unarmed in a province of its own where no one else
+ *  stands, and then: a wandering hero beside them who will serve (one hires him, the other spies on him); a rival's
+ *  hero beside them (each spies on him); a Weak lair they know there and Sage 1, on five turns running (each order
+ *  of the rest in turn: Search Lair, Research, Practice Skill, Explore, Rest); and the orders for turn 6 (a release).
+ *  Each report built by the views. */
+function theSpareHeroesOrdersStaged(from: AState, reportOn: (state: State) => Report): AState[] {
+  const moveTo = (S: State, c: State['characters'][number], to: number) => {
+    const was = S.world.provinces[c.location];
+    if (was?.characters) was.characters = was.characters.filter((id) => id !== c.id);
+    const now = S.world.provinces[to];
+    if (now) now.characters = [...(now.characters ?? []), c.id];
+    c.location = to;
+  };
+  const staged = (what: string, stage: (S: State, home: number) => void, turn = from.turn): AState => {
+    const S = structuredClone(from.state);
+    S.turn = turn;
+    S.relations = {};
+    const realm = S.players[SCRIPTED_REALM];
+    const someoneElseThere = (id: number) =>
+      S.characters.some((c) => c.alive && c.player !== SCRIPTED_REALM && c.location === id);
+    const home = (realm?.provinces ?? []).find((id) => !someoneElseThere(id));
+    const spare = S.characters.filter((c) => c.alive && c.player === SCRIPTED_REALM && !c.isKing);
+    if (home == null || spare.length < 2) throw new Error(`${from.name}: no empty province, or fewer than two heroes`);
+    for (const c of spare) {
+      moveTo(S, c, home);
+      c.armies = [];
+    }
+    stage(S, home);
+    return { name: `${from.name}, ${what} staged`, turn, state: S, report: reportOn(S) };
+  };
+  const alignment = from.state.players[SCRIPTED_REALM]?.alignment;
+  const beside = (S: State, home: number, c: State['characters'][number] | undefined, who: string) => {
+    if (!c) throw new Error(`${from.name}: no ${who} to stage`);
+    moveTo(S, c, home);
+    Object.assign(c, { armies: [], items: [], _invisTurn: undefined, _unspottedTurn: undefined });
+  };
+  return [
+    staged('a wandering hero beside the spare heroes', (S, home) => {
+      const wanderer = S.characters.find((c) => c.alive && c.player === null && !c._isNeutralGuard);
+      beside(S, home, wanderer, 'wandering hero');
+      // no Spy to slip by with, and of the realm's own alignment: he will serve
+      Object.assign(wanderer ?? {}, { skills: { melee: 1 }, alignment, _justDefeated: false });
+    }),
+    staged('a rival realm’s hero beside the spare heroes', (S, home) => {
+      const rival = S.characters.find((c) => c.alive && c.player != null && c.player !== SCRIPTED_REALM && !c.isKing);
+      beside(S, home, rival, 'rival realm’s hero');
+    }),
+    ...[0, 1, 2, 3, 4].map((i) =>
+      staged(
+        `a Weak lair the spare heroes know and Sage 1, turn ${String(from.turn + i)}`,
+        (S, home) => {
+          const p = S.world.provinces[home];
+          const like = S.world.provinces.flatMap((q) => q.features ?? []).find((f) => !f.ritualSite);
+          if (!p || !like) throw new Error(`${from.name}: no lair to copy`);
+          const lair = structuredClone(like);
+          Object.assign(lair, { cleared: false, tier: 'Weak', discoveredBy: [SCRIPTED_REALM] });
+          if (lair.monster) lair.monster.power = 'Weak';
+          p.features = [...(p.features ?? []), lair];
+          for (const c of S.characters.filter((x) => x.player === SCRIPTED_REALM && !x.isKing))
+            c.skills = { ...c.skills, sage: 1 };
+        },
+        from.turn + i,
+      ),
+    ),
+    staged('the orders for turn 6', () => undefined, 6),
+  ];
+}
+
 const fifth = await statesOf('scripted-05');
 const sixth = await statesOf('scripted-06');
 const turn5 = fifth.states.find((s) => s.turn === 5);
 if (!turn5) throw new Error('scripted-05 has no turn 5');
-const STATES = [...fifth.states, ...sixth.states, withWhatTheGamesDontReachStaged(turn5, fifth.reportOn)];
+const STATES = [
+  ...fifth.states,
+  ...sixth.states,
+  withWhatTheGamesDontReachStaged(turn5, fifth.reportOn),
+  ...theSpareHeroesOrdersStaged(turn5, fifth.reportOn),
+];
 const choicesOf = (s: AState): WhatTheRealmChose => scriptedChoices(s.state, SCRIPTED_REALM, s.turn).chose;
 
 // ── The page, on a stand-in database of its own ──
@@ -224,7 +303,8 @@ const DRIVE = `async (choseJson) => {
       if (box) box.click();
     } else {
       const field = byId('po-target-' + id + '-' + ph);
-      if (field) field.value = o.target;
+      // as a player picks: the value, then the field's own change (a Spy's or Practice Skill's odds, a hire's card)
+      if (field) { field.value = o.target; field.dispatchEvent(new Event('change')); }
     }
     run();
   });
@@ -280,15 +360,27 @@ describe('each kind of choice the copy makes is driven at least once', () => {
   const each = STATES.map((s) => ({ s, chose: choicesOf(s) }));
   const plans = each.flatMap(({ chose }) => Object.values(chose.plans));
   const picked = each.flatMap(({ chose }) => Object.values(chose.orders).flatMap((o) => o.filter((x) => x != null)));
+  const gave = (action: string, target?: (t: string) => boolean): boolean =>
+    picked.some((o) => o.action === action && (!target || target(o.target)));
+  const wanderers = new Set(
+    STATES.flatMap((s) => s.state.characters.filter((c) => c.player == null).map((c) => `char:${String(c.id)}`)),
+  );
   const kinds: [string, boolean][] = [
-    ['an Encounter Character order', picked.some((o) => o.action === 'Encounter Character')],
-    ['a Recruit Armies order', picked.some((o) => o.action === 'Recruit Armies')],
+    ['an Encounter Character order', gave('Encounter Character')],
+    ['a Recruit Armies order', gave('Recruit Armies')],
+    ['a Spy on a wandering hero', gave('Spy', (t) => wanderers.has(t))],
+    ['a Spy on a rival realm’s hero', gave('Spy', (t) => t.startsWith('char:') && !wanderers.has(t))],
+    ['a Search Lair order', gave('Search Lair')],
     [
-      'a living hero given no order',
-      each.some(({ s, chose }) =>
-        theHeroesTheFormLists(s.state, SCRIPTED_REALM).some((c) => c.alive && !chose.orders[String(c.id)]),
-      ),
+      'a Hire Hero order, with its card’s plan',
+      gave('Hire Hero') && each.some(({ chose }) => Object.keys(chose.plans).some((id) => id.startsWith('hired_'))),
     ],
+    ['a Release Hero order', gave('Release Hero')],
+    ['an Explore order', gave('Explore')],
+    ['a Rest order', gave('Rest')],
+    ['a Practice Skill order', gave('Practice Skill')],
+    ['a Research order', gave('Research')],
+    ['a mastery', picked.some((o) => o.action in L79_ORDERS)],
     [
       'a hero fallen this turn',
       each.some(({ s }) => theHeroesTheFormLists(s.state, SCRIPTED_REALM).some((c) => !c.alive)),

@@ -13,7 +13,12 @@
 // What the form does that this copies:
 // - five phase orders for **every hero the report lists**, alive or fallen this turn; a phase left at "— Choose —", a
 //   phase locked before a hero was hired, and every phase of a fallen hero (who has no form) read `Defend`, with no
-//   target. Each order's `desc` is its name, then ` — <target>` unless it is Move, Defend, Rest, Spy or Explore;
+//   target. Each order's `desc` is its name, then ` — <target>` unless it is Move, Defend, Rest, Spy or Explore; a
+//   Spy on a hero adds ` — on <his name>`. A Search Lair order also names `prov`, the province the form planned it in
+//   (where the hero stands: no order the scripted realm gives moves him in the form's reckoning, predictedLocation);
+// - for each Hire Hero order, **the hired hero's card** (`hired_<hero>_via_<hirer>_ph<phase>`): five orders, each
+//   `Defend` with an empty `desc` (the phases up to the hire are locked, and the scripted realm leaves the rest at
+//   "— Choose —"), and his plan, which has no conquest doctrine;
 // - **a plan for every living hero**: the tactics in order (`ME` when none), then `CS:<school>` if a pre-battle school
 //   is set; the battle cry; the duel stance (`refuse` by default); an Evil realm's conquest doctrine (`terror` by
 //   default), which no other realm's form has. A plan not touched is the one the report shows;
@@ -22,8 +27,8 @@
 // - the declarations, the research picks, `callReckoning` and `concede` `false` (as the matrix's realm never calls nor
 //   concedes), `messages` always `[]` (the composer was retired on 2026-09-27), the living heroes' ids in the column's
 //   order, and the turn.
-// What it doesn't copy, as the scripted realm never gives it: the hire, raise and charm cards, a Spy's ` — on <name>`,
-// a Search Lair's `prov`, a draft (doSaveOrders).
+// What it doesn't copy, as the scripted realm never gives it: the raise and charm cards, a Search Lair after a Move,
+// a hire card's own orders, a draft (doSaveOrders).
 import type { EncounterPlan, OrdersARealmSubmits, PhaseOrder } from '../../src/schemas/orders-a-realm-submits.ts';
 
 /** The phases of a turn: the form's five seasons. */
@@ -35,6 +40,8 @@ export interface HeroTheFormLists {
   player: number | null;
   alive: boolean;
   isKing?: boolean;
+  /** Where he stands: a Search Lair order's province. */
+  location?: number;
   /** Fell this turn: the report lists him, with no form. */
   killedThisTurn?: boolean;
   /** The phase he was hired in this turn: the phases up to it are locked. */
@@ -71,7 +78,8 @@ export interface APlanSet {
 export interface WhatTheRealmChose {
   /** Each hero's orders by his id, phase by phase; a phase left at "— Choose —" is null or absent. */
   orders: Record<string, (AnOrderPicked | null)[]>;
-  /** Each hero's plan by his id; a hero not named keeps the plan the report shows. */
+  /** Each hero's plan by his id, and a hired hero's by his card's id; a hero not named keeps the plan the report
+   *  shows, and a card the plan it starts with. */
   plans: Record<string, APlanSet>;
   /** An heir's points by his id, one skill a point, in the order spent. */
   heirPoints: Record<string, string[]>;
@@ -109,22 +117,41 @@ export function descOf(action: string, target: string): string {
   return action + (target && !NO_TARGET_IN_THE_DESC.has(action) ? ` — ${target}` : '');
 }
 
+/** The id of the card the form adds for a hero hired by `hirer` in phase `ph` (injectHiredHeroOrders). */
+export function hireCardId(heroId: string, hirer: number, ph: number): string {
+  return `hired_${heroId}_via_${String(hirer)}_ph${String(ph)}`;
+}
+
 const defend = (): PhaseOrder => ({ action: 'Defend', target: '', extra: '', desc: 'Defend' });
 
 /** A hero's five orders as the form sends them. */
-function ordersOf(hero: HeroTheFormLists, picked: (AnOrderPicked | null)[] | undefined): PhaseOrder[] {
+function ordersOf(
+  hero: HeroTheFormLists,
+  picked: (AnOrderPicked | null)[] | undefined,
+  everyone: HeroTheFormLists[],
+): PhaseOrder[] {
   const hired = hero.hiredInPhase ?? -1;
   return Array.from({ length: PHASES }, (_, ph) => {
     const o = picked?.[ph];
     // a fallen hero has no form, and a locked phase no select: both read Defend
     if (!o || !hero.alive || (hired >= 0 && ph <= hired)) return defend();
-    return { action: o.action, target: o.target, extra: '', desc: descOf(o.action, o.target) };
+    // a Spy on a hero names him, as the report lists him
+    const spied = o.action === 'Spy' && o.target.startsWith('char:') ? o.target.slice(5) : null;
+    const name = spied != null ? everyone.find((c) => String(c.id) === spied)?.name : undefined;
+    const order: PhaseOrder = {
+      action: o.action,
+      target: o.target,
+      extra: '',
+      desc: descOf(o.action, o.target) + (name ? ` — on ${name}` : ''),
+    };
+    if (o.action === 'Search Lair' && hero.location != null) order.prov = hero.location;
+    return order;
   });
 }
 
-/** A living hero's plan as the form sends it: the one set, or the one the report shows. */
-function planOf(hero: HeroTheFormLists, set: APlanSet | undefined, evil: boolean): EncounterPlan {
-  const shown = hero.encounterPlan ?? { tactics: ['ME'], notes: '' };
+/** A living hero's plan as the form sends it: the one set, or the one the report shows (a hire card's: `ME`). */
+function planOf(shownPlan: HeroTheFormLists['encounterPlan'], set: APlanSet | undefined, evil: boolean): EncounterPlan {
+  const shown = shownPlan ?? { tactics: ['ME'], notes: '' };
   const shownTactics = shown.tactics ?? ['ME'];
   const isSchool = (t: string) => t.toUpperCase().startsWith('CS:');
   const tactics = set ? set.tactics : shownTactics.filter((t) => !isSchool(t));
@@ -171,9 +198,18 @@ export function theOrdersThePlayerPortalSends(
   const kingSkills: NonNullable<OrdersARealmSubmits['kingSkills']> = {};
   for (const hero of heroes) {
     const id = String(hero.id);
-    orders[id] = ordersOf(hero, chose.orders[id]);
-    if (hero.alive) encounterPlans[id] = planOf(hero, chose.plans[id], evil);
+    orders[id] = ordersOf(hero, chose.orders[id], S.characters);
+    if (hero.alive) encounterPlans[id] = planOf(hero.encounterPlan, chose.plans[id], evil);
     if (hero._isHeir) kingSkills[id] = heirOf(hero, chose.heirPoints[id] ?? []);
+  }
+  // the card of each hero hired in a phase the form lets him act after: every phase Defend, with no line
+  for (const hero of heroes) {
+    orders[String(hero.id)]?.forEach((o, ph) => {
+      if (o.action !== 'Hire Hero' || !o.target || ph >= PHASES - 1) return;
+      const card = hireCardId(o.target, hero.id, ph);
+      orders[card] = Array.from({ length: PHASES }, () => ({ action: 'Defend', target: '', extra: '', desc: '' }));
+      encounterPlans[card] = planOf(undefined, chose.plans[card], false);
+    });
   }
   return {
     orders,
