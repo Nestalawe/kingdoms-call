@@ -83,7 +83,8 @@ function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): vo
     name: 'Realm' + String(i),
     kingName: 'King' + String(i),
     kingdomName: 'Realm' + String(i),
-    race: spec.races[i % spec.races.length],
+    // KC_RACE=Human (or another race): every realm plays that race, so the alignments are measured without race effects
+    race: process.env['KC_RACE'] ?? spec.races[i % spec.races.length],
     alignment: spec.alignments[i % spec.alignments.length],
     temper: 'Brave',
     skills: { melee: 1, tactical: 1, march: 1, white: 1, naval: i % 3 === 0 ? 1 : 0, sage: 1, explorer: 1 },
@@ -252,6 +253,10 @@ export async function playGame(
         unresolved,
         gameOver: final.gameOver ?? null,
         alignments: Array.from({ length: spec.realms }, (_, i) => spec.alignments[i % spec.alignments.length] ?? ''),
+        races: Array.from(
+          { length: spec.realms },
+          (_, i) => process.env['KC_RACE'] ?? spec.races[i % spec.races.length] ?? '',
+        ),
       }),
       ms: Math.round(performance.now() - t0),
     };

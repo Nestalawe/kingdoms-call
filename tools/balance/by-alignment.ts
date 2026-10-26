@@ -1,4 +1,5 @@
-// npx tsx tools/balance/by-alignment.ts BASE.json RUN.json [RUN2.json …] [--noise NOISE_B.json]
+// npx tsx tools/balance/by-alignment.ts BASE.json RUN.json [RUN2.json …] [--noise NOISE_B.json] [--slice race]
+// (--slice race: the race slices, Human / Elven / Dwarven / Orcish, instead of the alignment ones)
 // The alignment slices of the balance matrix (ideas round 1): for each run, how each alignment's realms fared against the
 // base run, paired by seed (paired.ts), with the base's set-A-against-set-B difference as the noise band. Reads run files
 // written by `npm run balance -- --out FILE`. Prints a Markdown table a turn report of the ideas can carry.
@@ -24,7 +25,13 @@ function readRun(file: string): Record<string, Stats> {
   }
   return out;
 }
-const ALIGNMENTS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'];
+const SLICE = process.argv.includes('--slice')
+  ? (process.argv[process.argv.indexOf('--slice') + 1] ?? 'alignment')
+  : 'alignment';
+const ALIGNMENTS =
+  SLICE === 'race'
+    ? ['Human', 'Elven', 'Dwarven', 'Orcish']
+    : ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'];
 const FIGURES: [string, string][] = [
   ['game: won', 'won the game'],
   ['game: realm alive at the end', 'alive at the end'],
@@ -47,7 +54,11 @@ const fmtDiff = (base: string, v: number) =>
 const args = process.argv.slice(2);
 const noiseAt = args.indexOf('--noise');
 const noiseFile = noiseAt >= 0 ? args[noiseAt + 1] : null;
-const files = args.filter((a, i) => a !== '--noise' && (noiseAt < 0 || i !== noiseAt + 1));
+const sliceAt = args.indexOf('--slice');
+const files = args.filter(
+  (a, i) =>
+    a !== '--noise' && a !== '--slice' && (noiseAt < 0 || i !== noiseAt + 1) && (sliceAt < 0 || i !== sliceAt + 1),
+);
 const [baseFile, ...runFiles] = files;
 if (!baseFile || !runFiles.length) {
   console.error('usage: by-alignment.ts BASE.json RUN.json [RUN2.json …] [--noise NOISE_B.json]');
@@ -83,7 +94,7 @@ for (const file of runFiles) {
   console.log(`|---|${ALIGNMENTS.map(() => '---').join('|')}|`);
   for (const [baseKey, label] of FIGURES) {
     const cells = ALIGNMENTS.map((al) => {
-      const key = `${baseKey} | by alignment: ${al}`;
+      const key = `${baseKey} | by ${SLICE}: ${al}`;
       const c = changeOf(changes, key);
       if (!c || Number.isNaN(c.base) || Number.isNaN(c.head)) return '–';
       const n = noise ? changeOf(noise, key) : null;
@@ -107,7 +118,7 @@ if (noise) {
   console.log(`|---|${ALIGNMENTS.map(() => '---').join('|')}|`);
   for (const [baseKey, label] of FIGURES) {
     const cells = ALIGNMENTS.map((al) => {
-      const c = changeOf(noise, `${baseKey} | by alignment: ${al}`);
+      const c = changeOf(noise, `${baseKey} | by ${SLICE}: ${al}`);
       return c && !Number.isNaN(c.diff) ? fmtDiff(baseKey, c.diff) : '–';
     });
     console.log(`| ${label} | ${cells.join(' | ')} |`);

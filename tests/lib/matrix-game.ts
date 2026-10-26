@@ -24,7 +24,7 @@ export const setupsOf = (spec: GameSpec) =>
     name: 'Realm' + String(i),
     kingName: 'King' + String(i),
     kingdomName: 'Realm' + String(i),
-    race: spec.races[i % spec.races.length],
+    race: process.env['KC_RACE'] ?? spec.races[i % spec.races.length],
     alignment: spec.alignments[i % spec.alignments.length],
     temper: 'Brave',
     skills: { melee: 1, tactical: 1, march: 1, white: 1, naval: i % 3 === 0 ? 1 : 0, sage: 1, explorer: 1 },

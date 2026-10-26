@@ -100,6 +100,8 @@ export interface GameRecord {
   gameOver: GameOver | null;
   /** Each realm's alignment, by player index (the alignment slices). */
   alignments?: string[];
+  /** Each realm's race, by player index (the race slices, ideas round 8). */
+  races?: string[];
 }
 
 /** GM log lines the chase figures are read from (the GM portal's advancePursuit). */
@@ -217,6 +219,13 @@ export function gameStats(g: GameRecord): Stats {
         add(`realms: provinces at ${when} | by alignment: ${al}`, row.post.provinces, 1);
         add(`realms: army strength at ${when} | by alignment: ${al}`, row.post.str, 1);
       }
+      // By race (ideas round 8): the same figures, one slice per race, to see how much the races move the game.
+      const rc = g.races?.[row.player_index];
+      if (rc) {
+        add(`realms: gold at ${when} | by race: ${rc}`, row.post.gold, 1);
+        add(`realms: provinces at ${when} | by race: ${rc}`, row.post.provinces, 1);
+        add(`realms: army strength at ${when} | by race: ${rc}`, row.post.str, 1);
+      }
     }
   }
   // By alignment (ideas round 4): what each realm recruited over the game (creature and monster companies), and the
@@ -250,6 +259,19 @@ export function gameStats(g: GameRecord): Stats {
       if (g.gameOver) share(`game: won | by alignment: ${al}`, g.gameOver.winner === pi);
       const row = endRows.find((r) => r.player_index === pi);
       share(`game: realm alive at the end | by alignment: ${al}`, !!row && row.post.provinces > 0);
+    });
+  }
+  if (g.races) {
+    const endRows = g.telemetry.filter((r) => r.turn === lastTurn);
+    g.races.forEach((rc, pi) => {
+      if (!rc) return;
+      if (g.gameOver) share(`game: won | by race: ${rc}`, g.gameOver.winner === pi);
+      const row = endRows.find((r) => r.player_index === pi);
+      share(`game: realm alive at the end | by race: ${rc}`, !!row && row.post.provinces > 0);
+      const rows = g.telemetry.filter((r) => r.player_index === pi);
+      let cleared = 0;
+      for (const r of rows) cleared += r.outcomes.encounters.list.filter((e) => e.pi === pi && e.won).length;
+      add(`realms: lairs cleared | by race: ${rc}`, cleared, 1);
     });
   }
   perGame(
