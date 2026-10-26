@@ -320,6 +320,11 @@ describe('the spare heroes give the orders the form offers them (P1-15e3)', () =
     expect(first(two, 1, 6)?.action).not.toBe('Release Hero');
     const armed = { ...base(), characters: base().characters.map((c) => (c.id === 1 ? { ...c, armies: army } : c)) };
     expect(first(armed, 2, 6)).toEqual({ action: 'Release Hero', target: '' });
+    // never the king, whom the form won't let release himself: here unarmed and off his land, a spare hero too
+    const kingSpare = moved(base(), 0, 2);
+    kingSpare.characters = kingSpare.characters.map((c) => (c.id === 0 ? { ...c, armies: [] } : c));
+    expect(first(kingSpare, 0, 6)?.action).not.toBe('Release Hero');
+    expect(first(kingSpare, 1, 6)).toEqual({ action: 'Release Hero', target: '' });
   });
 });
 
