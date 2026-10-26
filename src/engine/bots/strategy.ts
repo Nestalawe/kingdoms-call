@@ -498,10 +498,9 @@ export function botGarrisonTarget(G, prov, pi) {
   const home = prov.id === botHomeId(G, pi);
   const attacked = botUnderAttack(G, pi);
   if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn
-  // PROTOTYPE tactics (Good): one company in every humanoid province, since the Shield makes it fight at ×1.5; round 6:
-  // in peace only — at war the shires' companies march with the hosts (botKitBredHere lets a hero pick them up)
-  if (kitTactics(G, pi) === 'Good' && !String(prov.race || '').startsWith('Primal') && !botSafeWindow(G))
-    return botAtWar(G, pi) ? 0 : 1;
+  // PROTOTYPE tactics (Good): one company in every humanoid province, since the Shield makes it fight at ×1.5 (round 6
+  // marched them at war; round 7 keeps them home: the Shield is a defence rule)
+  if (kitTactics(G, pi) === 'Good' && !String(prov.race || '').startsWith('Primal') && !botSafeWindow(G)) return 1;
   return attacked && (prov.tax || 0) >= 7 ? 1 : 0;
 }
 export function botGarrisonType(prov) {

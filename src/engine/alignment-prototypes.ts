@@ -30,7 +30,7 @@ export const RITE_OF_AWAKENING_TAX = 3; // round 2 (Votive Hoards): an awakened 
 // round 2: the Divine Power thresholds (a held holy site counts 1, a held AND consecrated one 2)
 export const DIVINE_POWER_WHITE = 1; // every Divine hero casts White one level higher
 export const DIVINE_POWER_RETURN = 2; // a fallen hero's return spends no consecration (round 2: 3)
-export const DIVINE_POWER_UNLEASHED = 4; // the Crusade's ×1.5 in every battle (round 2: 5)
+export const DIVINE_POWER_UNLEASHED = 3; // the Crusade's ×1.5 in every battle (round 7; rounds 3-6: 4; round 2: 5)
 // round 2: the kings' orders and how long their effects hold
 // round 5 (Toby): no king's order waits more than 3 turns; a cost decides instead
 export const KING_ORDER_EVERY: Record<string, number> = {
@@ -47,7 +47,7 @@ export const EMBARGO_TAX_MULT = 0.8; // round 3: −20% (round 2: −30%)
 export const SACRIFICE_TURNS = 3; // round 5 (round 3: 4): it comes round every 3 turns now
 export const PLAGUE_TURNS = 3;
 // round 5 (Toby): what the kits' orders cost. Those that were free cost now; see the round 5 document's review.
-export const PROCLAIM_CRUSADE_COST = 8; // round 5 (rounds 2-4: 5)
+export const PROCLAIM_CRUSADE_COST = 6; // round 7 (rounds 5-6: 8; rounds 2-4: 5)
 export const CONSECRATE_COST = 5; // Divine (was free)
 export const GOOD_WORKS_COST = 2; // Good (was free)
 export const LIGHT_BEACONS_COST_PER_COMPANY = 2; // Good (was free)
@@ -62,18 +62,18 @@ export const DARK_PACT_HP = 5;
 // round 5: the mutual enemies and the beast provinces
 export const CRUSADE_VS_UNDEAD_MULT = 1.75; // Divine against Undead forces (rounds 1-4: 1.5)
 export const HATRED_MULT = 1.3; // Undead against Divine forces (rounds 2-4: 1.5)
-export const UNDEAD_GARRISON_CAP = 2; // skeletal companies the dead land raises into one garrison (rounds 1-4: 3)
+export const UNDEAD_GARRISON_CAP = 3; // skeletal companies the dead land raises into one garrison (round 7; rounds 5-6: 2)
 export const PARLEY_MULT = 1.5; // Druidic storming an unclaimed creature province; Evil an unclaimed monster province
 const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
 const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
 export const isCreatureProvince = (pv: Province): boolean => isWild(pv) && pv.armyTypes.some((t) => CREATURES.has(t));
 export const isMonsterProvince = (pv: Province): boolean => isWild(pv) && pv.armyTypes.some((t) => MONSTERS.has(t));
-export const BEACONS_CAP = 4; // round 3 (round 2: 6)
+export const BEACONS_CAP = 6; // round 7 (rounds 3-6: 4; round 2: 6)
 export const CALL_OF_THE_WILD_RANGE = 3;
 export const RECLAIM_TURNS = 5;
-export const PILGRIMS_COIN_PER_SITE = 3;
+export const PILGRIMS_COIN_PER_SITE = 4; // round 7 (rounds 2-6: 3)
 export const COUNTING_HOUSE_CAP = 3; // round 3 (round 2: 5)
-export const GRAVE_GOODS_PER_PROVINCE = 3; // round 3 (round 2: 2)
+export const GRAVE_GOODS_PER_PROVINCE = 4; // round 7 (rounds 3-6: 3; round 2: 2)
 // round 3's other tunings
 export const TRIBUTE_OF_FEAR_CAP = 5; // Evil: the most Tribute of Fear pays a turn
 export const CONDOTTIERI_MULT = 1.3; // Neutral: a hired company's strength (round 2: 1.5)
@@ -81,7 +81,7 @@ export const DARK_PACT_QUALITY = 'Veteran'; // Evil: what the pact brings (round
 export const BARROW_RISE_PER_TURN = 1; // Undead: companies a held barrow raises a turn (round 3 tried 2: too many)
 export const OMENS_MIN_EXPLORER = 2; // Pagan: Omens double Explore only for a hero of Explorer 2 or more
 export const WOOD_WAGE_MULT = 2 / 3; // Druidic: what a beast in the woods pays of its wage (round 6; rounds 3-5: half; round 2: nothing)
-export const YEOMANRY_WAGE_MULT = 2 / 3; // Good (round 4): what a garrison company pays of its wage (rounds 2-3: half)
+export const YEOMANRY_WAGE_MULT = 1 / 2; // Good (round 7): what a garrison company pays of its wage (rounds 4-6: two-thirds)
 export const BLOOD_HARVEST_KIT_EXTRA = 1; // Pagan (round 4): +1g a unit on Blood Harvest (2g a unit in all)
 export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
@@ -234,7 +234,7 @@ export function protoSkillLift(G: GameState, c: Character | null | undefined, st
   if (align === 'Evil' && (stat === 'spy' || stat === 'thief') && base >= 1) return 1; // Dread: poisoners and spies
   if (align === 'Divine' && stat === 'white' && divinePower(G, c.player) >= DIVINE_POWER_WHITE) return 1; // Divine Power
   if (align === 'Undead' && stat === 'necromancy') return (base >= 1 ? 1 : 0) + Math.min(2, barrowsHeld(G, c.player)); // round 2: necromancers +1, and the barrows held
-  if (align === 'Good' && stat === 'tactical' && base >= 1 && !c.isKing) return 1; // round 2: Captains of the Shield
+  if (align === 'Good' && stat === 'tactical' && base >= 1) return 1; // round 2: Captains of the Shield (round 7: the king too)
   if (align === 'Druidic' && stat === 'druid' && base >= 1) return 1; // round 2: the circle's craft
   if (align === 'Pagan' && stat === 'explorer' && base >= 1) return 1; // round 2: Seers
   return 0;

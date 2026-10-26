@@ -1753,8 +1753,6 @@ export function botKitBredHere(G, pi, c, X) {
       beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) > 0
     );
   if (kit === 'Undead') return garr.some((a) => a && a._isSkeletal) && (c.skills || {}).necromancy >= 1;
-  // round 6 (Good): at war the shires' garrison companies march with the realm's heroes (the capital keeps its own)
-  if (kit === 'Good') return X.id !== botHomeId(G, pi) && botAtWar(G, pi) && garr.length > 0;
   return false;
 }
 export function botKitPre(G, pi, c, P, L) {
