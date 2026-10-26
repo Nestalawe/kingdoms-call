@@ -476,6 +476,7 @@ export const RealmSchema = z.object({
   _embargoUntil: z.number().optional(), // Neutral: the last turn this realm's tax is under Embargo
   _embargoBy: z.number().optional(), // Neutral: the realm whose Embargo it is
   _sacrificeUntil: z.number().optional(), // Pagan: the last turn the Great Sacrifice's favour holds
+  _offerings: z.number().optional(), // Pagan (round 9): Blood Harvest gold not yet turned into warriors
   _spiedProvincesLastTurn: z.array(z.number()).optional(),
   _spiedProvincesThisTurn: z.array(z.number()).optional(),
   // the hero the realm watches with Clairvoyance this turn (the matrix's states hold only null)

@@ -27,7 +27,7 @@ export const WILD_BREED_EVERY_DRUIDIC = 6; // round 8 (rounds 2-7: 4)
 /** The most companies a kit will raise into one garrison on its own. */
 export const KIT_GARRISON_CAP = 3;
 export const FOREST_HEAL_SHARE = 0.25;
-export const NEUTRAL_MERC_CHANCE = 1; // round 8: a band every turn (rounds 1-7: every other turn)
+export const NEUTRAL_MERC_CHANCE = 0.5; // round 9: every other turn again (round 8's every turn overshot)
 const TIERS: readonly string[] = KC_QUALITY_TIERS;
 /** The most experienced of a province's battlefield dead, taken from its graves (as the dead are raised everywhere). */
 function takeTheBestGrave(pv: Province): Army | null {

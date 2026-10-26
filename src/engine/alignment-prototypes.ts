@@ -83,6 +83,7 @@ export const OMENS_MIN_EXPLORER = 2; // Pagan: Omens double Explore only for a h
 export const WOOD_WAGE_MULT = 2 / 3; // Druidic: what a beast in the woods pays of its wage (round 6; rounds 3-5: half; round 2: nothing)
 export const YEOMANRY_WAGE_MULT = 1 / 2; // Good (round 7): what a garrison company pays of its wage (rounds 4-6: two-thirds)
 export const BLOOD_HARVEST_KIT_EXTRA = 2; // Pagan (round 8): +2g a unit on Blood Harvest (3g a unit in all; rounds 4-7: 2g)
+export const OFFERINGS_PER_WARRIOR = 10; // Pagan (round 9): every 10g of offerings raises a company into the victor's host
 export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
   'Shrine of the First Light',
@@ -222,7 +223,7 @@ export function paganFavourPoints(G: GameState, pi: number): number {
 /** The Favour of the Old Gods: the Pagan host's strength multiplier (2 points ×1.3, 3 points ×1.5, 4 points ×1.75). */
 export function paganFavourMult(G: GameState, pi: number): number {
   const n = paganFavourPoints(G, pi);
-  return n >= 4 ? 1.75 : n >= 3 ? 1.5 : n >= 2 ? 1.3 : 1; // round 8: ×1.75 at 4 points; round 3: ×1.5 at 3
+  return n >= 3 ? 1.75 : n >= 2 ? 1.3 : 1; // round 9: ×1.75 at 3 points (round 8: at 4, never reached); 2 points ×1.3
 }
 
 // ── Skills a kit lifts: the level a hero's skill counts as, over the trained and equipped level. Read by effStat.
@@ -306,7 +307,7 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       if ((pl._sacrificeUntil ?? -1) >= G.turn) return { mult: 1.5, label: 'Great Sacrifice ×1.5' }; // round 2
       // round 4: the Old Stones — a host defending a stones province of the realm fights ×1.5 whatever the Favour
       if (!isAttacker && !!prov && prov.owner === pi && prov.features.some(isPaganStones))
-        return { mult: 1.5, label: 'The Old Stones ×1.5' };
+        return { mult: 1.75, label: 'The Old Stones ×1.75' }; // round 9 (rounds 4-8: ×1.5)
       const m = paganFavourMult(G, pi);
       return m > 1 ? { mult: m, label: `Favour of the Old Gods ×${m.toFixed(1)}` } : nothing;
     }

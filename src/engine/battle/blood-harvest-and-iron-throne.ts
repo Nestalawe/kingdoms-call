@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { BLOOD_HARVEST_KIT_EXTRA, protoAlignOf } from '../alignment-prototypes.ts';
+import { BLOOD_HARVEST_KIT_EXTRA, OFFERINGS_PER_WARRIOR, protoAlignOf } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { BLOOD_HARVEST_PER_UNIT } from '../items/tiers-and-hoards.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
@@ -24,6 +24,24 @@ export function bloodHarvest(turnContext, winner, destroyed, narrative) {
     fallenUnitsPlural: destroyed !== 1 ? 's' : '',
     offeringsGold: _take,
   });
+  // PROTOTYPE Pagan (round 9): the old gods pay in warriors — every 10g of offerings raises an Average company of the
+  // realm's own kind (its capital's first field unit) into the victor's host.
+  if (_kit > 0 && winner.alive) {
+    _pl._offerings = (_pl._offerings || 0) + _take;
+    const home = G.world.provinces[_pl.homeProvinceId];
+    const kind =
+      (home && (home.armyTypes || []).find((t) => !/garrison|fleet|galley|ironclad|longship/i.test(t))) ||
+      'Shieldwall Levies';
+    while (_pl._offerings >= OFFERINGS_PER_WARRIOR) {
+      _pl._offerings -= OFFERINGS_PER_WARRIOR;
+      const u = { type: kind, quality: 'Average', race: _pl.race || 'Human', unitName: armyUnitName(kind) };
+      (winner.armies = winner.armies || []).push(u);
+      narrate(
+        narrative,
+        `🩸 The old gods pay in warriors: ${u.unitName} (${kind}, Average) rises to ${winner.name}'s side.`,
+      );
+    }
+  }
 }
 // GRAND DESIGN — Evil (Iron Throne of Skulls): enemy units that fall in a battle you WIN have a
 // 20% chance to rise as your skeletons. Copies are pushed into the winner's WORKING array before
