@@ -174,7 +174,7 @@ export function resolveTendTheGroveOrder(turnContext: TurnContext, c: Character,
 
 // ── NEUTRAL: Trade Pact ── buy an unowned humanoid land province (this one, or a neighbour): 3g per tax and 2g per
 // defending unit; the defenders take the realm's coin and stand as its garrison. No battle, no merit.
-export const TRADE_PACT_PER_TAX = 5; // round 5 (round 4: 4; rounds 1-3: 3)
+export const TRADE_PACT_PER_TAX = 4; // round 6 (round 5: 5; round 4: 4; rounds 1-3: 3)
 export const TRADE_PACT_PER_DEFENDER = 3; // round 4 (rounds 1-3: 2)
 export function tradePactPrice(pv: Province): number {
   return TRADE_PACT_PER_TAX * pv.tax + TRADE_PACT_PER_DEFENDER * (pv.neutralDefenders.length || pv.npcArmies);
@@ -471,11 +471,7 @@ export function resolveLightTheBeaconsOrder(turnContext: TurnContext, c: Charact
 export function resolveCallOfTheWildOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
   const { G } = turnContext;
   const pl = kingMay(turnContext, c, 'Druidic', 'call_wild', 'sound the Call of the Wild');
-  if (!pl || c.player == null || !prov) return;
-  if (effStat(turnContext, c, 'druid') < 1) {
-    refuse(turnContext, c, `${c.name} has no Druid craft — the wild does not hear.`);
-    return;
-  }
+  if (!pl || c.player == null || !prov) return; // round 6: any Druidic king may sound it (round 2-5: Druid 1+)
   const pi = c.player;
   let room = beastCommandRoom(c, G.characters, protoBeastRoomExtra(G, c));
   if (room <= 0) {

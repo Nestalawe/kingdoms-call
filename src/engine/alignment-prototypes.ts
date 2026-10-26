@@ -54,10 +54,10 @@ export const LIGHT_BEACONS_COST_PER_COMPANY = 2; // Good (was free)
 export const GROW_WILD_COST = 8; // Druidic (was free)
 export const TEND_GROVE_COST = 2; // Druidic (was free)
 export const CALL_WILD_COST = 3; // Druidic (was free)
-export const EMBARGO_COST = 6; // Neutral (was free)
+export const EMBARGO_COST = 4; // Neutral (round 5: 6; was free)
 export const DESPOIL_COST = 3; // Undead (was free)
 export const PLAGUE_COST = 6; // Undead (was free)
-export const DARK_PACT_COST_MULT = 2; // Evil: twice the monster's recruit cost (rounds 2-4: a flat 10g)
+export const DARK_PACT_COST_MULT = 1.5; // Evil: 1.5 × the monster's recruit cost (round 5: 2 ×; rounds 2-4: a flat 10g)
 export const DARK_PACT_HP = 5;
 // round 5: the mutual enemies and the beast provinces
 export const CRUSADE_VS_UNDEAD_MULT = 1.75; // Divine against Undead forces (rounds 1-4: 1.5)
@@ -80,7 +80,7 @@ export const CONDOTTIERI_MULT = 1.3; // Neutral: a hired company's strength (rou
 export const DARK_PACT_QUALITY = 'Veteran'; // Evil: what the pact brings (round 2: Elite)
 export const BARROW_RISE_PER_TURN = 1; // Undead: companies a held barrow raises a turn (round 3 tried 2: too many)
 export const OMENS_MIN_EXPLORER = 2; // Pagan: Omens double Explore only for a hero of Explorer 2 or more
-export const WOOD_WAGE_MULT = 0.5; // Druidic: what a beast in the woods pays of its wage (round 2: nothing)
+export const WOOD_WAGE_MULT = 2 / 3; // Druidic: what a beast in the woods pays of its wage (round 6; rounds 3-5: half; round 2: nothing)
 export const YEOMANRY_WAGE_MULT = 2 / 3; // Good (round 4): what a garrison company pays of its wage (rounds 2-3: half)
 export const BLOOD_HARVEST_KIT_EXTRA = 1; // Pagan (round 4): +1g a unit on Blood Harvest (2g a unit in all)
 export const BEAST_FRIEND_EXTRA = 2;
@@ -306,8 +306,13 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       return m > 1 ? { mult: m, label: `Favour of the Old Gods ×${m.toFixed(1)}` } : nothing;
     }
     case 'Evil': {
-      // round 5: Dominion of the Pits — storming an unclaimed monster province, with or without monsters of your own
-      if (isAttacker && !!prov && prov.owner == null && isMonsterProvince(prov))
+      // round 5: Dominion of the Pits — storming an unclaimed monster province, with or without monsters of your own;
+      // round 6: and defending a monster province of the realm's
+      if (
+        !!prov &&
+        isMonsterProvince(prov) &&
+        ((isAttacker && prov.owner == null) || (!isAttacker && prov.owner === pi))
+      )
         return { mult: PARLEY_MULT, label: 'Dominion of the Pits ×1.5' };
       const monsters = armies.some((a) => monsterTypes.has(a.type));
       if (!monsters) return nothing;

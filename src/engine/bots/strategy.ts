@@ -351,7 +351,7 @@ export function botLedger(G, pi) {
   {
     const kit = kitTactics(G, pi);
     L.beastFund =
-      kit === 'Druidic' || kit === 'Evil' ? Math.max(0, Math.min(12, Math.floor(Math.max(0, L.budget) * 0.5))) : 0;
+      kit === 'Druidic' || kit === 'Evil' ? Math.max(0, Math.min(8, Math.floor(Math.max(0, L.budget) * 0.5))) : 0; // round 6: to 8g (round 5: 12g)
     L.budget -= L.beastFund;
   }
   L.diag = {
@@ -498,8 +498,10 @@ export function botGarrisonTarget(G, prov, pi) {
   const home = prov.id === botHomeId(G, pi);
   const attacked = botUnderAttack(G, pi);
   if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn
-  // PROTOTYPE tactics (Good): one company in every humanoid province, since the Shield makes it fight at ×1.5
-  if (kitTactics(G, pi) === 'Good' && !String(prov.race || '').startsWith('Primal') && !botSafeWindow(G)) return 1;
+  // PROTOTYPE tactics (Good): one company in every humanoid province, since the Shield makes it fight at ×1.5; round 6:
+  // in peace only — at war the shires' companies march with the hosts (botKitBredHere lets a hero pick them up)
+  if (kitTactics(G, pi) === 'Good' && !String(prov.race || '').startsWith('Primal') && !botSafeWindow(G))
+    return botAtWar(G, pi) ? 0 : 1;
   return attacked && (prov.tax || 0) >= 7 ? 1 : 0;
 }
 export function botGarrisonType(prov) {

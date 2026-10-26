@@ -1753,6 +1753,8 @@ export function botKitBredHere(G, pi, c, X) {
       beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) > 0
     );
   if (kit === 'Undead') return garr.some((a) => a && a._isSkeletal) && (c.skills || {}).necromancy >= 1;
+  // round 6 (Good): at war the shires' garrison companies march with the realm's heroes (the capital keeps its own)
+  if (kit === 'Good') return X.id !== botHomeId(G, pi) && botAtWar(G, pi) && garr.length > 0;
   return false;
 }
 export function botKitPre(G, pi, c, P, L) {
@@ -1950,7 +1952,7 @@ export function botKingKitOrder(G, pi, c, P, L) {
       botSpend(L, Math.min(L.budget, 4 * LIGHT_BEACONS_COST_PER_COMPANY));
       return { action: 'light_beacons', target: '', extra: '', desc: 'Light the Beacons' };
     case 'Druidic': {
-      if ((c.skills || {}).druid < 1 || !owned) return null;
+      if (!owned) return null; // round 6: any Druidic king
       const room = beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c));
       if (room < 2) return null;
       let n = 0;
