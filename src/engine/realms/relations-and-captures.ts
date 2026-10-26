@@ -117,7 +117,8 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
     );
   // PROTOTYPE round 5: a Druidic kit realm taking an unclaimed creature province, or an Evil one an unclaimed monster
   // province, is joined by a company of its beasts (into the captor's host if he has room to lead it, else the garrison)
-  if (prev == null && newOwner != null && byChar) {
+  if (prev == null && newOwner != null && byChar && byChar.alive) {
+    // (a dead captor leads nothing and acts no more this turn)
     const _k = protoAlignOf(G, newOwner);
     const _cls =
       _k === 'Druidic' && isCreatureProvince(prov)
@@ -142,7 +143,7 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
               : `🩸 The pits yield: ${_u.unitName} (${_kind}) of ${prov.name} are chained to ${byChar.name}${_room ? "'s host" : "'s garrison"}.`,
           audience: { actor: newOwner, realms: [newOwner] },
           province: prov.id,
-          hero: byChar.id,
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: ph != null ? ph : turnContext._currentPhase,
         });
       }
