@@ -5,8 +5,8 @@
 // was fixed but left in the list is found, and the command docs/ARCHITECTURE.md gives takes it out. knip (npm run knip,
 // knip.ts) finds a planted unused file, export and dependency, and the ratchet's count (unusedCode) rises by each.
 // Level 0 (static): the two tools read the sources of temporary copies (node_modules linked) and nothing runs; each
-// test takes a few seconds (knip about 1.5 s a run), so each has a time limit sized to its runs and copies
-// (tests/lib/time-limits.ts).
+// test takes a few seconds (knip about 1.5 s a run), so each has a time limit sized to its runs and copies, and so has
+// the clean-up that removes the copies (tests/lib/time-limits.ts).
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -20,9 +20,14 @@ const DEPCRUISE = path.join(ROOT, 'node_modules', '.bin', 'depcruise');
 const KNIP = path.join(ROOT, 'node_modules', '.bin', 'knip');
 const copies: string[] = [];
 
-afterAll(() => {
-  for (const dir of copies) fs.rmSync(dir, { recursive: true, force: true });
-});
+// Three tests below make a copy each, and the clean-up removes all three: its limit is one allowance for each copy (it
+// takes about 0.15 s on a laptop and 0.5 s on a runner, but went past Vitest's 10 s for a hook once on #239, run 40257932213).
+afterAll(
+  () => {
+    for (const dir of copies) fs.rmSync(dir, { recursive: true, force: true });
+  },
+  timeLimitForTheWork({ everyFileReads: 3 }).timeout,
+);
 
 /** A copy of the files git knows (and new ones not yet added), with this repository's node_modules linked in. */
 function copyOfTheRepository(): string {

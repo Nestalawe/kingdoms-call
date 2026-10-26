@@ -25,8 +25,8 @@ export const ALLOWANCE_MS = {
    *  config for every file it lints, or the ratchet's count (which runs knip): up to 4.6 s on a runner (three of ESLint's
    *  command line side by side took 13.7 s on the nightly run). */
   toolRuns: 20_000,
-  /** Every file of src/ (or of a copy of it, of a page, or of the tests) copied, or read by its syntax tree: up to 3.2 s
-   *  on a runner. */
+  /** Every file of src/ (or of a copy of it, of a page, of the tests or of the repository) copied, removed, or read by
+   *  its syntax tree: up to 3.2 s on a runner (three copies of the repository removed went past 10 s once, #239). */
   everyFileReads: 15_000,
 } as const;
 
