@@ -70,6 +70,7 @@ import {
   BOT_INFILTRATE_RANGE,
   botAirReach,
   botAirStrike,
+  botBeastMusterPlan,
   botConsecrateTarget,
   botInfiltrateOrders,
   botInfiltrateSchool,
@@ -647,6 +648,33 @@ export function runBotMovement(G, botIdxSet, hooks) {
           }
         }
         // ── LAIR RAIDER: a fighter walks to a beatable discovered lair within 4 hops (hoard + Monster-Bane merit). ──
+        // ── BEAST MUSTER (PROTOTYPE round 5, Toby): a Druidic or Evil realm's hero with room to lead walks to the
+        // nearest beast province of the realm's and recruits its beasts (the king and the generals too, while no war is on).
+        {
+          const _bk = kitTactics(G, pi);
+          if (
+            (_bk === 'Druidic' || _bk === 'Evil') &&
+            (!(isLeader || c.isKing) || !botAtWar(G, pi)) &&
+            hp >= mhp * 0.6
+          ) {
+            const bm = botBeastMusterPlan(G, pi, c, P, L, _bk, 4);
+            if (bm && pre.length + bm.path.length < 5) {
+              const mv = [
+                ...bm.path.map((d) => botMoveOrder(d, 'Muster the beasts of ' + bm.X.name)),
+                {
+                  action: 'recruit',
+                  target: bm.toks.join(','),
+                  extra: '',
+                  desc: 'Recruit the beasts of ' + bm.X.name,
+                  prov: bm.X.id,
+                },
+              ];
+              G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, mv);
+              assigned.add(c.id);
+              return;
+            }
+          }
+        }
         // PROTOTYPE (ideas round 4): a lair-hunting realm sends its generals too while it is not at war (never the king).
         const _hunting = G.botLairHunting === true && !botAtWar(G, pi);
         if ((_hunting || !isLeader) && !c.isKing && hp >= mhp * 0.7) {

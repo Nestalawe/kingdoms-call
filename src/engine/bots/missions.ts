@@ -82,6 +82,7 @@ import {
   botPathDirs,
   botPathLen,
   botRumourFor,
+  botBeastFundPay,
   botCanAfford,
   botSpend,
 } from './strategy.ts';
@@ -1792,15 +1793,18 @@ export function botKitPre(G, pi, c, P, L) {
         beastCommandCount({ type: t, quality: 'Average', race: P.race || 'Primal' }) &&
         (pl.alignment === 'Evil') === BOT_MONSTER_ARMIES.has(t),
     );
-    let room = beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c));
+    // beyond what he can lead, the engine musters a beast into the province's garrison (to 3 there): the Call of the
+    // Wild and the next hero through collect them
+    let room =
+      beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) +
+      Math.max(0, 3 - (P.garrisonArmies || []).filter((a) => a && beastCommandCount(a)).length);
     const toks = [];
     for (const t of kinds) {
       const cost = ARMY_COST_MASTER[t] || 4;
       let q = 0;
-      while (room > 0 && q < 2 && botCanAfford(L, cost)) {
+      while (room > 0 && q < 2 && botBeastFundPay(L, cost)) {
         q++;
         room--;
-        botSpend(L, cost);
       }
       if (q) toks.push(t + '|' + String(q));
     }
@@ -2011,4 +2015,46 @@ export function botKingKitOrder(G, pi, c, P, L) {
     }
   }
   return null;
+}
+
+// PROTOTYPE tactics (round 5, Toby): BEAST MUSTER. A Druidic or Evil realm's hero with room to lead walks to the nearest
+// beast province of the realm's own kind (within `maxHops`) and recruits there, as many as he can lead and the chest
+// allows. Returns the destination, the path and the recruit tokens, or null (the budget is left untouched then).
+export function botBeastMusterPlan(G, pi, c, P, L, kit, maxHops) {
+  const room0 = beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c));
+  if (!P) return null;
+  const pl = (G.players || [])[pi];
+  if (!pl) return null;
+  const garrRoom = (X) => Math.max(0, 3 - (X.garrisonArmies || []).filter((a) => a && beastCommandCount(a)).length);
+  const want = (t) =>
+    beastCommandCount({ type: t, quality: 'Average', race: 'Primal' }) &&
+    (kit === 'Evil') === BOT_MONSTER_ARMIES.has(t);
+  let best = null;
+  (pl.provinces || []).forEach((id) => {
+    const X = G.world.provinces[id];
+    if (!X || X.owner !== pi || X.id === P.id || !String(X.race || '').startsWith('Primal')) return;
+    const kinds = (X.armyTypes || []).filter(want);
+    if (!kinds.length || room0 + garrRoom(X) <= 0) return;
+    const cheapest = Math.min(...kinds.map((t) => ARMY_COST_MASTER[t] || 4));
+    if ((L.beastFund || 0) < cheapest && !botCanAfford(L, cheapest)) return;
+    const d = botPathLen(G, pi, P, X.id, false);
+    if (d == null || d > maxHops) return;
+    if (!best || d < best.d) best = { X, d, kinds };
+  });
+  if (!best) return null;
+  const path = best.d > 0 ? botPathDirs(G, pi, P, best.X.id, maxHops, false) || [] : [];
+  if (path.length !== best.d) return null;
+  const toks = [];
+  let room = room0 + garrRoom(best.X); // beyond what he can lead, the beasts muster into that garrison (to 3)
+  for (const t of best.kinds) {
+    const cost = ARMY_COST_MASTER[t] || 4;
+    let q = 0;
+    while (room > 0 && q < 2 && botBeastFundPay(L, cost)) {
+      q++;
+      room--;
+    }
+    if (q) toks.push(t + '|' + String(q));
+  }
+  if (!toks.length) return null;
+  return { X: best.X, d: best.d, path, toks };
 }

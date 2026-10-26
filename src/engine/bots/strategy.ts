@@ -345,6 +345,15 @@ export function botLedger(G, pi) {
     L.warChest = Math.max(0, Math.min(Math.floor(Math.max(0, L.budget) * BOT_P1.chestShare), nC * BOT_P1.chestPerHost));
     L.budget -= L.warChest;
   }
+  // PROTOTYPE tactics (round 5, Toby): BEAST FUND — a Druidic or Evil realm sets half its free gold (to 12g) aside for
+  // the beasts of its own provinces before any other muster, and that gold is spent on beasts even past the wage cap:
+  // a beast realm fields beasts before levies. botBeastMusterPlan and the kit's recruit draw on it (botBeastFundPay).
+  {
+    const kit = kitTactics(G, pi);
+    L.beastFund =
+      kit === 'Druidic' || kit === 'Evil' ? Math.max(0, Math.min(12, Math.floor(Math.max(0, L.budget) * 0.5))) : 0;
+    L.budget -= L.beastFund;
+  }
   L.diag = {
     gold: player.gold || 0,
     income,
@@ -431,6 +440,18 @@ export const BOT_NAV_CAP_FRAC = 0.2,
   BOT_AIR_CAP_MIN = 4; // 2026-09-28: see botLedger
 export function botCanAfford(L, cost) {
   return L.budget >= cost && L.upkeep + cost <= L.upkeepCap;
+}
+/** PROTOTYPE tactics (round 5): pay `cost` for a beast from the beast fund first (no wage-cap test), else from the
+ *  general budget as any recruit; false when neither can. */
+export function botBeastFundPay(L, cost) {
+  if ((L.beastFund || 0) >= cost) {
+    L.beastFund -= cost;
+    L.upkeep += cost;
+    return true;
+  }
+  if (!botCanAfford(L, cost)) return false;
+  botSpend(L, cost);
+  return true;
 }
 export function botSpend(L, cost) {
   L.budget -= cost;
