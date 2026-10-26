@@ -139,7 +139,7 @@ export function diffGame(a: KeptGame, b: KeptGame): GameDiff | null {
 
 /** The scripted cases summed over games. */
 export function totalCases(games: { cases?: Cases }[]): Cases {
-  const t: Cases = { encounter: 0, pursue: 0, battleChase: 0 };
+  const t: Cases = { encounter: 0, battleChase: 0 };
   for (const g of games) {
     if (!g.cases) continue;
     for (const k of Object.keys(t) as (keyof Cases)[]) t[k] += g.cases[k];

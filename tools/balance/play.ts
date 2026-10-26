@@ -34,17 +34,14 @@ export const BOOT_WAIT_MS = 900;
 
 /** How often each scripted case happened in a game: what bots never do, or too rarely to measure. */
 export interface Cases {
-  /** The scripted chaser set out after an enemy on an Encounter order. */
+  /** The scripted chaser set out after an enemy on an Encounter Character order. */
   encounter: number;
-  /** …on a Pursue order (the engine folds Pursue into Encounter: PHASE_ACTION_MAP). */
-  pursue: number;
   /** A scripted chase held by an unresolved battle where the chaser stood or caught up (advancePursuit's "must
    *  wait"): 0 times in 144 bot games at scoping. */
   battleChase: number;
 }
 export const CASE_NAMES: Record<keyof Cases, string> = {
-  encounter: 'Encounter',
-  pursue: 'Pursue',
+  encounter: 'Encounter Character',
   battleChase: 'a chase held by an unresolved battle',
 };
 
@@ -164,7 +161,7 @@ export async function playGame(
     const unresolved: number[] = [];
     const gmLog: LogEntry[] = [];
     const sections = new Map<string, string[]>();
-    const cases: Cases = { encounter: 0, pursue: 0, battleChase: 0 };
+    const cases: Cases = { encounter: 0, battleChase: 0 };
     let lastLog: LogEntry[] = [];
 
     for (let t = 1; t <= Math.min(MAX_TURNS, options.untilTurn ?? MAX_TURNS); t++) {
@@ -219,7 +216,7 @@ export async function playGame(
       if (plan) {
         const by = (id: number, re: RegExp) =>
           log.some((e) => e.charId === id && typeof e.text === 'string' && re.test(e.text));
-        if (plan.chaser && by(plan.chaser.heroId, LINES.chaseStart)) cases[plan.chaser.action]++;
+        if (plan.chaser && by(plan.chaser.heroId, LINES.chaseStart)) cases.encounter++;
         // Counted once a turn per hero: a held chase is logged again in each phase it waits.
         for (const c of [plan.chaser, ...plan.battleChases])
           if (c && by(c.heroId, LINES.chaseWaited)) cases.battleChase++;

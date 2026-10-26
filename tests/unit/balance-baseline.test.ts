@@ -39,7 +39,7 @@ const game: KeptGame = {
   results: 'r',
   report: { kingdom: ['k', 'kw'], lastTurnLog: ['l', 'lw'] },
   stats: { 'battles: fought': [10, 1], 'lairs: cleared': [3, 4] },
-  cases: { encounter: 1, pursue: 2, battleChase: 0 },
+  cases: { encounter: 1, battleChase: 0 },
 };
 
 describe('the file form', () => {
@@ -94,7 +94,7 @@ describe('the comparison, game by game', () => {
     expect(diffGame(game, { ...game, stats: { ...game.stats, 'lairs: cleared': [2, 4] } })?.stats).toEqual([
       'lairs: cleared',
     ]);
-    expect(diffGame(game, { ...game, cases: { encounter: 1, pursue: 2, battleChase: 1 } })).not.toBeNull();
+    expect(diffGame(game, { ...game, cases: { encounter: 1, battleChase: 1 } })).not.toBeNull();
   });
 });
 
