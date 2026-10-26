@@ -470,9 +470,10 @@ export function botGarrisonTarget(G, prov, pi) {
   // 2026-09-26 (Toby): FEWER GARRISONS, BIGGER FIELD HOST. Only the capital is garrisoned in peace (one unit);
   // once an enemy host is on the doorstep the capital takes two and a Rich province (tax 7+) one. Everything
   // else is held by the defenders and the field army — every levy not sunk into a garrison marches with the general.
-  // round 5 (Toby): no bot recruits garrison companies unless it has an ability that makes garrisons worth it (the Good
-  // kit's Shield and Yeomanry, or the Good Grand Design)
-  if (protoAlignOf(G, pi) !== 'Good' && !gdActiveFor(G, pi, 'Good')) return 0;
+  // PROTOTYPE round 5 (Toby): under the bot switch (G.botLairHunting, KC_BOT_LAIRS=1) no bot recruits garrison
+  // companies unless it has an ability that makes garrisons worth it (the Good kit's Shield and Yeomanry, or the Good
+  // Grand Design). Off, the bots garrison as they do today, so a game without the switch plays as it did.
+  if (G.botLairHunting === true && protoAlignOf(G, pi) !== 'Good' && !gdActiveFor(G, pi, 'Good')) return 0;
   const home = prov.id === botHomeId(G, pi);
   const attacked = botUnderAttack(G, pi);
   if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn
