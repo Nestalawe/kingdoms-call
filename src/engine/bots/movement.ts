@@ -72,10 +72,12 @@ import {
   botAirStrike,
   botBeastMusterPlan,
   botConsecrateTarget,
+  botDespoilPlan,
   botInfiltrateOrders,
   botInfiltrateSchool,
   botItemPre,
   botLairPlan,
+  botMarketPlan,
   botMasteryPre,
   botNearestOf,
   botOnlySkeletal,
@@ -667,6 +669,45 @@ export function runBotMovement(G, botIdxSet, hooks) {
                   extra: '',
                   desc: 'Recruit the beasts of ' + bm.X.name,
                   prov: bm.X.id,
+                },
+              ];
+              G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, mv);
+              assigned.add(c.id);
+              return;
+            }
+          }
+        }
+        // ── DESPOIL MARCH (PROTOTYPE round 11): an Undead realm's hero walks to the nearest poor province of the realm's
+        // and lets the plague loose there (the king and the generals too, while no war is on). ──
+        // ── MARKET MARCH (PROTOTYPE round 11): a Neutral realm's hero with a fat chest walks to the sell-swords standing
+        // in the realm's land and hires them. ──
+        {
+          const _bk = kitTactics(G, pi);
+          if (
+            (_bk === 'Undead' || _bk === 'Neutral') &&
+            (!(isLeader || c.isKing) || !botAtWar(G, pi)) &&
+            hp >= mhp * 0.6
+          ) {
+            const dp = _bk === 'Undead' ? botDespoilPlan(G, pi, c, P, L, 3) : null;
+            if (dp && pre.length + dp.path.length < 5) {
+              const mv = [
+                ...dp.path.map((d) => botMoveOrder(d, 'To despoil ' + dp.X.name)),
+                { action: 'despoil', target: '', extra: '', desc: 'Despoil ' + dp.X.name, prov: dp.X.id },
+              ];
+              G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, mv);
+              assigned.add(c.id);
+              return;
+            }
+            const mk = _bk === 'Neutral' ? botMarketPlan(G, pi, c, P, L, 3) : null;
+            if (mk && pre.length + mk.path.length < 5) {
+              const mv = [
+                ...mk.path.map((d) => botMoveOrder(d, 'To the market at ' + mk.X.name)),
+                {
+                  action: 'recruit',
+                  target: mk.toks.join(','),
+                  extra: '',
+                  desc: 'Hire the sell-swords in ' + mk.X.name,
+                  prov: mk.X.id,
                 },
               ];
               G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, mv);

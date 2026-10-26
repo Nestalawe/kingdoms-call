@@ -546,6 +546,23 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
       });
     }
   }
+  // PROTOTYPE round 11: the dead that rose from dead land garrison it and will not leave it.
+  {
+    const _new = (c.armies || []).filter((a) => !_pickBefore.includes(a));
+    const _bound = _new.filter((a) => a._isSkeletal === true && a._kitGarrison === true);
+    if (_bound.length) {
+      c.armies = (c.armies || []).filter((a) => !_bound.includes(a));
+      if (_pickSrc) _pickSrc.armies = (_pickSrc.armies || []).concat(_bound);
+      else prov.garrisonArmies = (prov.garrisonArmies || []).concat(_bound);
+      emit(turnContext, {
+        type: 'hire',
+        text: `💀 The dead of this soil will not leave it: ${_bound.map((a) => a.unitName || a.type).join(', ')} ${_bound.length === 1 ? 'stays' : 'stay'} in the garrison of ${prov.name}.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        province: prov.id,
+      });
+    }
+  }
   // 2026-09-23c (Toby): at sea a character takes aboard only what his ships (and flyers) can
   // carry — units taken in order while they fit; the rest go back where they came from.
   if (isOpenSea(prov) && seaLiftShortfall(c.armies || [], c) > 0) {

@@ -1382,6 +1382,10 @@ export function botSetDuelStances(G, pi, duelSim) {
 // Arms, Elven Homeward Flight, a dispersed column). A character standing in such a province takes the
 // surplus into his column with `pickup_army` target "g:<i>,g:<j>" — the best units for HIM (strength ×
 // kinship/grudge), leaving the two weakest behind as the tripwire. One sweep per province per turn.
+/** PROTOTYPE round 11: a skeletal company that rose from dead land, bound to its garrison. */
+export function botBoundDead(a) {
+  return a != null && a._isSkeletal === true && a._kitGarrison === true;
+}
 export function botPickupOrder(G, pi, c, prov) {
   if (!prov || prov.owner !== pi || prov.terrain === 'sea') return null;
   const garr = prov.garrisonArmies || [];
@@ -1391,9 +1395,13 @@ export function botPickupOrder(G, pi, c, prov) {
   cache.swept = cache.swept || new Set();
   if (cache.swept.has(prov.id)) return null;
   const val = (a) => unitBaseStrength(a) * botRaceTerrainMult(G, c, a, null, false, pi);
-  const ranked = garr.map((a, i) => ({ i, v: a ? val(a) : -1 })).sort((x, y) => y.v - x.v);
+  // PROTOTYPE round 11: the dead that rose from dead land will not leave it; they stay and count as the garrison kept
+  const ranked = garr
+    .map((a, i) => ({ i, v: a ? val(a) : -1, bound: botBoundDead(a) }))
+    .filter((x) => !x.bound)
+    .sort((x, y) => y.v - x.v);
   const take = ranked
-    .slice(0, garr.length - keep)
+    .slice(0, Math.max(0, ranked.length - Math.max(0, keep - (garr.length - ranked.length))))
     .map((x) => x.i)
     .sort((a, b) => a - b);
   if (!take.length) return null;
@@ -1416,7 +1424,8 @@ export function botOrphanHostOrders(G, pi, c, pre) {
   let best = null;
   (G.world.provinces || []).forEach((X) => {
     if (!X || X.owner !== pi || X.terrain === 'sea' || cache.orphan.has(X.id)) return;
-    const n = (X.garrisonArmies || []).length - Math.min(2, botGarrisonTarget(G, X, pi));
+    const n =
+      (X.garrisonArmies || []).filter((a) => !botBoundDead(a)).length - Math.min(2, botGarrisonTarget(G, X, pi));
     const bred = botKitBredHere(G, pi, c, X); // PROTOTYPE tactics: beasts or skeletons the kit raised here
     if (n < 3 && !(bred && n >= 1)) return;
     const d = X.id === P.id ? 0 : botPathLen(G, pi, P, X.id, true);
@@ -1752,7 +1761,9 @@ export function botKitBredHere(G, pi, c, X) {
       garr.some((a) => a && beastCommandCount(a)) &&
       beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) > 0
     );
-  if (kit === 'Undead') return garr.some((a) => a && a._isSkeletal) && (c.skills || {}).necromancy >= 1;
+  // round 11: the dead that rose from dead land garrison it and cannot be led away
+  if (kit === 'Undead')
+    return garr.some((a) => a && a._isSkeletal && a._kitGarrison !== true) && (c.skills || {}).necromancy >= 1;
   return false;
 }
 export function botKitPre(G, pi, c, P, L) {
@@ -1773,8 +1784,7 @@ export function botKitPre(G, pi, c, P, L) {
     (G.mercenaries || []).forEach((m) => {
       if (!m || m.location !== P.id || m.isSea) return;
       const cost = Math.max(1, (ARMY_COST_MASTER[m.type] || 2) - 2);
-      if (!botCanAfford(L, cost)) return;
-      botSpend(L, cost);
+      if (!botNeutralHirePay(L, cost)) return;
       toks.push('merc:' + String(m.id));
     });
     if (toks.length)
@@ -1811,9 +1821,10 @@ export function botKitPre(G, pi, c, P, L) {
     if (toks.length)
       return { action: 'recruit', target: toks.join(','), extra: '', desc: 'Recruit the beasts of ' + P.name };
   }
+  // round 11: a one-off price (an order's gold, not a wage) is tested against the chest alone, not the wage cap
   const spendIf = (cost) => {
-    if (!botCanAfford(L, cost)) return false;
-    botSpend(L, cost);
+    if (L.budget < cost) return false;
+    L.budget -= cost;
     return true;
   };
   switch (pl.alignment) {
@@ -1880,11 +1891,9 @@ export function botKitPre(G, pi, c, P, L) {
         !P._despoiled &&
         (P.tax || 0) <= (tactics ? 4 : 3) &&
         land >= (tactics ? 3 : 4) &&
-        botCanAfford(L, DESPOIL_COST)
-      ) {
-        botSpend(L, DESPOIL_COST);
+        spendIf(DESPOIL_COST)
+      )
         return { action: 'despoil', target: '', extra: '', desc: 'Despoil ' + P.name };
-      }
       if ((sk.necromancy || 0) >= 1) {
         const n = (c.armies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
         if (n >= (tactics ? 1 : 2) && L.budget >= 3 * n + (tactics ? 2 : 4)) {
@@ -2020,6 +2029,74 @@ export function botKingKitOrder(G, pi, c, P, L) {
 // PROTOTYPE tactics (round 5, Toby): BEAST MUSTER. A Druidic or Evil realm's hero with room to lead walks to the nearest
 // beast province of the realm's own kind (within `maxHops`) and recruits there, as many as he can lead and the chest
 // allows. Returns the destination, the path and the recruit tokens, or null (the budget is left untouched then).
+/** PROTOTYPE tactics (round 11): a Neutral chest above NEUTRAL_HOARD hires beyond the wage cap (the counting-houses pay
+ *  nothing more on it); below, a hire is any recruit. */
+export const NEUTRAL_HOARD = 30;
+export function botNeutralHirePay(L, cost) {
+  if (L.budget >= NEUTRAL_HOARD + cost) {
+    L.budget -= cost;
+    L.upkeep += cost;
+    return true;
+  }
+  if (!botCanAfford(L, cost)) return false;
+  botSpend(L, cost);
+  return true;
+}
+/** PROTOTYPE tactics (round 11): the nearest province of an Undead realm's that a hero should Despoil (humanoid, not the
+ *  capital, not dead land yet, poor), within `maxHops` through the realm's land, while the chest can pay. {X, d, path}. */
+export function botDespoilPlan(G, pi, c, P, L, maxHops) {
+  const pl = (G.players || [])[pi];
+  if (!pl || !P || (pl.provinces || []).length < 3 || L.budget < DESPOIL_COST + 2) return null;
+  const home = botHomeId(G, pi);
+  let best = null;
+  (pl.provinces || []).forEach((id) => {
+    const X = G.world.provinces[id];
+    if (!X || X.owner !== pi || X.id === P.id || X.id === home || X._despoiled != null) return;
+    if (X.terrain === 'sea' || String(X.race || '').startsWith('Primal') || (X.tax || 0) > 4) return;
+    const d = botPathLen(G, pi, P, X.id, false);
+    if (d == null || d > maxHops) return;
+    const sc = d * 2 + (X.tax || 0); // the nearest, the poorest
+    if (!best || sc < best.sc) best = { X, d, sc };
+  });
+  if (!best) return null;
+  const path = botPathDirs(G, pi, P, best.X.id, maxHops, false) || [];
+  if (path.length !== best.d) return null;
+  L.budget -= DESPOIL_COST;
+  return { X: best.X, d: best.d, path };
+}
+/** PROTOTYPE tactics (round 11): the nearest sell-swords in the realm's own land a Neutral hero can walk to within
+ *  `maxHops` and hire from a chest above the hoard line. {X, d, path, toks}. */
+export function botMarketPlan(G, pi, c, P, L, maxHops) {
+  if (!P || L.budget < NEUTRAL_HOARD + 2) return null;
+  const byProv = {};
+  (G.mercenaries || []).forEach((m) => {
+    if (!m || m.isSea || m.location == null || m.location === P.id) return;
+    const X = G.world.provinces[m.location];
+    if (!X || X.owner !== pi) return;
+    (byProv[X.id] = byProv[X.id] || []).push(m);
+  });
+  let best = null;
+  Object.keys(byProv).forEach((k) => {
+    const X = G.world.provinces[Number(k)];
+    const d = botPathLen(G, pi, P, X.id, false);
+    if (d == null || d > maxHops) return;
+    if (!best || d < best.d) best = { X, d, ms: byProv[k] };
+  });
+  if (!best) return null;
+  const path = botPathDirs(G, pi, P, best.X.id, maxHops, false) || [];
+  if (path.length !== best.d) return null;
+  const toks = [];
+  best.ms.forEach((m) => {
+    const cost = Math.max(1, (ARMY_COST_MASTER[m.type] || 2) - 2);
+    if (L.budget >= NEUTRAL_HOARD + cost) {
+      L.budget -= cost;
+      L.upkeep += cost;
+      toks.push('merc:' + String(m.id));
+    }
+  });
+  if (!toks.length) return null;
+  return { X: best.X, d: best.d, path, toks };
+}
 export function botBeastMusterPlan(G, pi, c, P, L, kit, maxHops) {
   const room0 = beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c));
   if (!P) return null;

@@ -130,7 +130,13 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
       const _set = new Set(KC_UNIT_CLASS[_cls]);
       const _kind = (prov.armyTypes || []).find((t) => _set.has(t));
       if (_kind) {
-        const _u = { type: _kind, quality: 'Average', race: prov.race || 'Primal', unitName: armyUnitName(_kind) };
+        // round 11: a pack that submits is Green (the pits still yield an Average company)
+        const _u = {
+          type: _kind,
+          quality: _cls === 'creature' ? 'Green' : 'Average',
+          race: prov.race || 'Primal',
+          unitName: armyUnitName(_kind),
+        };
         // round 8: only a captor with room to lead the beasts gains them (round 5-7: else into the garrison)
         const _room = beastCommandRoom(byChar, G.characters || [], protoBeastRoomExtra(G, byChar)) > 0;
         if (!_room) return;
