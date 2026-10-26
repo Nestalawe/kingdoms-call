@@ -136,7 +136,7 @@ describe('the chase', () => {
     const S = moved(moved(atWarWith1(base()), 1, 3), 2, 3);
     S.world.provinces[3] = province(3, 1, { _battleUnresolved: true });
     S.characters = S.characters.map((c) => (c.id === 2 ? { ...c, armies: army } : c));
-    S.characters.push(ch(9, 1, 3, { armies: army }), ch(10, null, 3, { armies: army }));
+    S.characters.push(ch(9, 1, 3, { armies: army }), ch(7, null, 3, { armies: army })); // the wanderer's id first
     const { chose, plan } = scriptedChoices(S, 0, 8);
     expect(plan.chaser).toEqual({ heroId: 0, quarryId: 3 }); // the king, after the nearest: realm 1's king
     expect(plan.battleChases).toEqual([{ heroId: 2, quarryId: 9, provinceId: 3 }]); // not the king (only a king may)
@@ -151,7 +151,9 @@ describe('the king recruits', () => {
       action: 'Recruit Armies',
       target: 'Pikes|1',
     });
-    expect(scriptedChoices(moved(base(), 0, 2), 0, 8).chose.orders['0']).toBeUndefined();
+    const offItsLand = moved(base(), 0, 2);
+    offItsLand.world.provinces[2] = province(2, null, { armyTypes: ['Spears'] });
+    expect(scriptedChoices(offItsLand, 0, 8).chose.orders['0']).toBeUndefined();
     const seaBeastFirst = base();
     seaBeastFirst.world.provinces[0] = province(0, 0, { armyTypes: ['Great Turtles', 'Bows'] });
     expect(scriptedChoices(seaBeastFirst, 0, 8).chose.orders['0']?.[0]?.target).toBe('Bows|1');

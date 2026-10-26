@@ -77,10 +77,10 @@ async function statesOf(id: string): Promise<{ states: AState[]; reportOn: (stat
   return { states, reportOn };
 }
 
-/** `from` with what no scripted game of the two reaches staged on the scripted realm (no scripted turn researches yet,
- *  and an heir is crowned only when a king falls): a research pair, and an heir with points to spend; its report built
- *  by the views. */
-function withAResearchPairAndAnHeirStaged(from: AState, reportOn: (state: State) => Report): AState {
+/** `from` with what the two scripted games don't reach staged on the scripted realm (no scripted turn researches yet,
+ *  an heir is crowned only when a king falls, and no scripted realm reorders its column): a research pair, an heir
+ *  with points to spend, and the column arranged in another order than the world's; its report built by the views. */
+function withWhatTheGamesDontReachStaged(from: AState, reportOn: (state: State) => Report): AState {
   const S = structuredClone(from.state);
   const mine = S.characters.filter((c) => c.alive && c.player === SCRIPTED_REALM);
   const king = mine.find((c) => c.isKing);
@@ -95,14 +95,21 @@ function withAResearchPairAndAnHeirStaged(from: AState, reportOn: (state: State)
     },
   ];
   Object.assign(heir, { _isHeir: true, _pendingSkillAllocation: 4 });
-  return { name: `${from.name}, a research pair and an heir staged`, turn: S.turn, state: S, report: reportOn(S) };
+  // the column as the player arranged it: not the world's order, which the games' own columns keep
+  realm.heroOrder = mine.map((c) => String(c.id)).reverse();
+  return {
+    name: `${from.name}, a research pair, an heir and an arrangement staged`,
+    turn: S.turn,
+    state: S,
+    report: reportOn(S),
+  };
 }
 
 const fifth = await statesOf('scripted-05');
 const sixth = await statesOf('scripted-06');
 const turn5 = fifth.states.find((s) => s.turn === 5);
 if (!turn5) throw new Error('scripted-05 has no turn 5');
-const STATES = [...fifth.states, ...sixth.states, withAResearchPairAndAnHeirStaged(turn5, fifth.reportOn)];
+const STATES = [...fifth.states, ...sixth.states, withWhatTheGamesDontReachStaged(turn5, fifth.reportOn)];
 const choicesOf = (s: AState): WhatTheRealmChose => scriptedChoices(s.state, SCRIPTED_REALM, s.turn).chose;
 
 // ── The page, on a stand-in database of its own ──
@@ -291,8 +298,11 @@ describe('each kind of choice the copy makes is driven at least once', () => {
       each.some(({ s }) => theHeroesTheFormLists(s.state, SCRIPTED_REALM).length > 1),
     ],
     [
-      'the column in a saved arrangement',
-      each.some(({ s }) => (s.state.players[SCRIPTED_REALM]?.heroOrder ?? []).length > 0),
+      'the column in an arrangement that isn’t the world’s order',
+      each.some(({ s }) => {
+        const column = theHeroesTheFormLists(s.state, SCRIPTED_REALM).map((c) => c.id);
+        return column.join() !== [...column].sort((a, b) => a - b).join();
+      }),
     ],
     ['an heir’s points', each.some(({ chose }) => Object.values(chose.heirPoints).some((p) => p.length > 0))],
     ['a research lead kept', each.some(({ chose }) => Object.keys(chose.discoveryChoices).length > 0)],
