@@ -11,10 +11,17 @@
 // - the runner stops at gameOver: runTurn doesn't stop a finished game.
 // After every turn it checks the invariants (tests/lib/invariants.ts, P1-04b) and, in a scripted game, the scripted
 // realm's report for leaks (tests/lib/report-leaks.ts, P1-04c): a breach fails the game. They only read.
+// The save's check fails a game too (P1-15e1: a-game-fails-on-the-save-check.ts): a `[Save check]` line in a turn's GM
+// log, and, after the last turn, the check of the last save. With KC_SITE the line is the other copy's and the last
+// save's check this checkout's.
 import { bootJsdom, readPage, type PageWindow } from '../../tests/lib/boot.js';
 import { checkTurn, describeBreaches } from '../../tests/lib/invariants.ts';
 import type { RealmReport } from '../../tests/lib/report-leaks.ts';
 import { makeStub, type Row } from '../../tests/lib/stub-db.js';
+import {
+  whatTheSaveCheckFindsOnTheLastSave,
+  whatTheSaveCheckFoundInATurnsLog,
+} from './a-game-fails-on-the-save-check.ts';
 import { h, reportSectionHashes, turnHashes, withoutStamps, playHash } from './hash.ts';
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM, START, type GameSpec } from './matrix.ts';
 import { scriptedOrders, type Plan, type State } from './scripted.ts';
@@ -195,6 +202,8 @@ export async function playGame(
           .map((l) => ({ realm: Number(l['player_index']), report: l['entries'] as RealmReport['report'] })),
       });
       if (breaches.length) throw fail('an invariant broke\n' + describeBreaches(`turn ${String(t)}`, breaches));
+      const places = whatTheSaveCheckFoundInATurnsLog(log);
+      if (places.length) throw fail(`the save's check, turn ${String(t)}: ${places.join('; ')}`);
       const report = scripted && me ? (JSON.parse(String(me['turn_report'])) as Record<string, unknown>) : null;
       turns.push(turnHashes({ state, gmLog: log, telemetry, report, writes: calls.splice(0) }));
       gmLog.push(...log);
@@ -217,7 +226,13 @@ export async function playGame(
       }
     }
 
-    const final = JSON.parse(String(game()['game_state'])) as { gameOver?: GameOver };
+    const lastSave = String(game()['game_state']);
+    const placesInTheLastSave = whatTheSaveCheckFindsOnTheLastSave(lastSave);
+    if (placesInTheLastSave.length)
+      throw fail(
+        `the save's check, the last save (after turn ${String(turns.length)}): ${placesInTheLastSave.join('; ')}`,
+      );
+    const final = JSON.parse(lastSave) as { gameOver?: GameOver };
     const resultRows = [...(DB['game_results'] ?? []), ...(DB['game_records'] ?? [])].map(withoutStamps);
     const result: GameResult = {
       id: spec.id,

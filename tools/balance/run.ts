@@ -6,7 +6,8 @@
 // Options (after `--`): --set B (play the noise set and compare its statistics), --jobs N (games side by side; default
 // one per core), --only id,id (some games; no baseline check of the scripted cases), --out FILE (also write this run
 // in the baseline's form, e.g. to compare two runs). It builds site/ from src/ first (tools/build.ts); KC_SITE plays
-// another copy of the site instead, as it is.
+// another copy of the site instead, as it is. A game fails on the save's check (P1-15e1, play.ts): with KC_SITE, its
+// `[Save check]` lines are that copy's and the last save's check is this checkout's.
 // npm run balance -- <scenario> plays a named scenario on the base branch's site and on this one instead (scenario-run.ts;
 // options --base REF, --runs N, --jobs N).
 // Then its second half, every realm's report (every-realm.ts, P1-12a1): the same games in the engine's vm, with a report

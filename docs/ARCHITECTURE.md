@@ -424,7 +424,9 @@ the turn reads it.
   `tests/unit/a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts` (the version-1 fixture: as it is, with
   a leaked mark, with a field of a later build, each kind, ten then a count, the refusals) and the page test
   `tests/page/turn-shell.test.ts` ("the GM page plays a turn from a version-0 save": the message, after the refresh
-  too; Turn 0 then two turns). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes (P1-15d).
+  too; Turn 0 then two turns). The balance matrix fails a game on a `[Save check]` line and on the check of its last
+  save (P1-15e1, [below](#tests)). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes
+  (P1-15d).
 
 ## The pages (`site/`)
 
@@ -1122,7 +1124,10 @@ noise of a second seed set. One of the hashes is of every write the turn sends t
 `undefined`, HP in range, unique ids, items matching the ledger of found items, armies on the map, the dead taking no
 actions, `orders_submitted` cleared), as `turn-fuzz` does, and the **report-leak check** on the scripted realm's report
 (`tests/lib/report-leaks.ts`, P1-04c: another realm's private line, an unmet realm, a hero under Invisibility); a breach
-fails the game. Its second half, **every realm's report** (`tools/balance/every-realm.ts`, P1-12a1), plays the same
+fails the game. So does the **save's check** (P1-15e1, `tools/balance/a-game-fails-on-the-save-check.ts`): a
+`[Save check]` line in a turn's GM log, and, after the last turn, the check of the last save, which no turn loads; a
+place found on `main` whose fix waits is let through by a narrow entry in its known list, empty today. Its second
+half, **every realm's report** (`tools/balance/every-realm.ts`, P1-12a1), plays the same
 games in the engine's `vm` with a report for every realm every turn, bots' too, runs the leak checks on each, and
 compares each report, hashed, with its own baseline (`tests/balance/baseline/reports.json`, both sets), so a change in
 perception shows in every realm, not only the scripted one. It isn't part of `npm test`: about 40 s on 14 cores
