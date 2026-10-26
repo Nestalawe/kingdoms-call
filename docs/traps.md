@@ -1012,6 +1012,29 @@ games.
   awarded, so changing an effect doesn't reach items players already hold. Whether it should is a
   design decision for Toby: raise it as a ruling, don't decide it in code.
 
+## A change to the save's shape needs its version
+
+Every saved game holds the number of its shape, `schemaVersion`, at its top level (P1-15c). A save without one is
+version 0: every live game held none on the day the version came in. World generation writes the version this build
+writes (`src/engine/saves/the-saved-games-version-this-build-writes.ts`), and the upgrade
+(`upgradeGameState`, [ARCHITECTURE.md](ARCHITECTURE.md#a-saved-game-its-version-its-upgrade-its-check)) stamps it on an
+older save.
+
+- **When the shape changes, the schema changes with it.** A new optional field is the schema alone. A change an older
+  save can't meet as it is (a field renamed, moved, retyped, or now required) also bumps the version: a numbered step
+  in `THE_NUMBERED_STEPS_OF_THE_UPGRADE` that mends a save of the version before, the new number, and a fixture of the
+  new version (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`). A step runs once, on a save below
+  its version, after the six passes, and stays safe to repeat.
+- **A fixture is never edited once merged** (as a merged migration): it is what a build of its day saved. The script
+  refuses to write over one. `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` upgrades every
+  fixture, parses it strictly and plays a turn on it, so an older fixture fails until a step mends it, and a version
+  without its fixture fails too.
+- **A GM page of an older build refuses a newer save.** The turn stops before anything changes ("This game was saved by
+  a newer version of Kingdoms Call (save version 2; this page knows 1). Reload this page."), and the shell puts the
+  realms' orders back. A page opened before P1-15c deployed has no such check: it would run a turn on any save. So the
+  first bump (P1-20's, version 2) deploys only once every open GM page has had time to reload onto a build with the
+  check.
+
 ## A migration waiting for approval holds every deploy
 
 A merge that adds a migration stops at `migrate-production` until Toby approves it, and the site deploys

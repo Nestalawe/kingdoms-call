@@ -693,6 +693,9 @@ export const MercenarySchema = ArmySchema.extend({ location: ProvinceIdSchema, i
 export type Mercenary = z.infer<typeof MercenarySchema>;
 
 export const GameStateSchema = z.object({
+  // the version of the save's shape (P1-15c): world generation writes it on a new world, and the upgrade
+  // (src/engine/saves/upgrade-a-saved-game-and-check-it.ts) on a save from before it, which holds none (version 0)
+  schemaVersion: z.number(),
   world: z.object({ provinces: z.array(ProvinceSchema), cols: z.number(), rows: z.number(), seaPct: z.number() }),
   players: z.array(RealmSchema),
   characters: z.array(CharacterSchema),

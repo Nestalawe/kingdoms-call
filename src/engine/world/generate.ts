@@ -11,6 +11,7 @@ import {
 import { kcRng } from '../rng.ts';
 import { UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { HOME_FLEET_BY_RACE } from '../grand-design.ts';
+import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from '../saves/the-saved-games-version-this-build-writes.ts';
 import {
   COASTAL_NAVAL_CHANCE,
   HUMANOID_FLEET_TYPES,
@@ -1924,5 +1925,6 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
   _newGameState._maxHpV3 = true;
   _newGameState._guardiansV2 = true;
   _newGameState._guardiansVer = GUARDIAN_TABLE_VER;
+  _newGameState.schemaVersion = THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES; // the save's shape, as this build writes it (P1-15c)
   return _newGameState;
 }
