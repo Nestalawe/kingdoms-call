@@ -394,7 +394,10 @@ the turn reads it.
   win by elimination, a Wild Calling's beasts; and `botDiplomacy` is optional (games begun before 26 September lack
   it). What checks it: `tests/unit/the-fields-a-human-realm-and-the-rare-orders-save-parse-strictly.test.ts`. Since
   P1-15e2 the scripted realm sends what the portal sends (a plan for every hero, in the form's names; the matrix fails
-  a game on a `[Save check]` line), so the matrix's games also save a human realm's plans, turn after turn.
+  a game on a `[Save check]` line), so the matrix's games also save a human realm's plans, turn after turn; since
+  P1-15e3 its spare heroes also give the form's other orders where they stand (Spy, Hire Hero with its card, Search
+  Lair, Research, Practice Skill, Explore, Rest, a mastery at its level, Release Hero once a game), so the games save
+  Release Hero's `_releasedBy` and a spied hero's entry too.
 - **The version** (P1-15c): a save holds the number of its shape, `schemaVersion`, at its top level; a save without
   one is version 0 (every live save before P1-15c). Version 1 is the shape the six passes leave. The number this build
   writes is in `src/engine/saves/the-saved-games-version-this-build-writes.ts`, a file that imports nothing, so world

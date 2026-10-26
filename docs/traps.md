@@ -537,9 +537,11 @@ rule there, once. Rules are still restated:
 - at order time and again at resolution time in the engine;
 - in the balance matrix's scripted realm (P1-15e2): what the player portal sends, `doSubmitOrders`
   (`src/ui/player/briefing-and-submit.ts`), is copied in `tools/balance/the-orders-the-player-portal-sends.ts`, and
-  which heroes the form lists, the Encounter Character list's sight and what Recruit Armies and the declarations
-  offer are read from the saved state in `tools/balance/scripted.ts`. The page test
-  `tests/page/the-scripted-realm-sends-what-the-player-portal-sends.test.ts` holds them to the portal: a change to the
+  which heroes the form lists, the Encounter Character list's sight, what Recruit Armies and the declarations
+  offer, and (P1-15e3) the heroes a spare hero's Spy and Hire Hero list beside him, the lairs his Search Lair lists
+  and the masteries the form offers at their level (a copy of `L79_ORDERS`, `src/ui/player/l79-orders.ts`, held
+  equal by `tests/unit/balance-scripted.test.ts`) are read from the saved state in `tools/balance/scripted.ts`. The
+  page test `tests/page/the-scripted-realm-sends-what-the-player-portal-sends.test.ts` holds them to the portal: a change to the
   form's payload or to what it offers turns it red until the copy follows;
 - in the turn-report forecast versus the end-of-turn collector;
 - in narrative strings, both rulebooks, join-screen blurbs and tooltips.
