@@ -85,11 +85,9 @@ describe('the class of change', () => {
     }
     expect(one({ ...game('bots-00'), turns: game('bots-00').turns.slice(0, 4) })).toMatchObject({ play: true });
     expect(one({ ...game('bots-00'), results: 'other' })).toMatchObject({ play: true });
-    const scripted = { ...game('bots-00'), cases: { encounter: 1, pursue: 1, battleChase: 0 } };
+    const scripted = { ...game('bots-00'), cases: { encounter: 1, battleChase: 0 } };
     const withReport = { ...scripted, report: { lastTurnLog: ['p', 'w'] as [string, string] } };
-    expect(
-      compareGames([withReport], [{ ...withReport, cases: { encounter: 2, pursue: 1, battleChase: 0 } }])[0],
-    ).toMatchObject({
+    expect(compareGames([withReport], [{ ...withReport, cases: { encounter: 2, battleChase: 0 } }])[0]).toMatchObject({
       play: true,
     });
     expect(compareGames([withReport], [{ ...withReport, report: { lastTurnLog: ['p', 'w2'] } }])[0]).toMatchObject({

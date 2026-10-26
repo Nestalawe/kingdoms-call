@@ -1,10 +1,16 @@
-// The scripted realm's orders (tools/balance/scripted.ts, P1-02a), written from a saved state with no randomness: war
-// on the nearest neighbour, the chaser's Encounter and Pursue, the chase into an unresolved battle, Recruit and Defend.
-// A tiny made-up map. Level 1 (unit): a pure function.
+// The scripted realm's choices (tools/balance/scripted.ts, P1-02a; P1-15e2: in the player portal's terms, sent as the
+// portal sends them, tools/balance/the-orders-the-player-portal-sends.ts), written from a saved state with no
+// randomness: war on the nearest realm met, the chase after the nearest enemy it sees (Encounter Character), the chase
+// into an unresolved battle, Recruit Armies, a plan for every living hero, an heir's points, a research lead, and the
+// payload's every field. A tiny made-up map, one case per kind of choice. Level 1 (unit): pure functions of a state.
+// That the portal sends the same for the same choices is the page test's
+// (tests/page/the-scripted-realm-sends-what-the-player-portal-sends.test.ts).
 import { describe, expect, test } from 'vitest';
 import {
   hexDistance,
-  nearestNeighbour,
+  nearestMetRealm,
+  planFor,
+  scriptedChoices,
   scriptedOrders,
   type Character,
   type Province,
@@ -28,29 +34,39 @@ const ch = (id: number, player: number | null, location: number, extra: Partial<
   ...extra,
 });
 const army = [{ type: 'Pikes' }];
-const world = (provinces: Province[]): State['world'] => ({ cols: 8, provinces });
 const base = (): State => ({
-  world: world([
-    province(0, 0, { armyTypes: ['Pikes', 'Bows'] }),
-    province(1, 0),
-    province(2, null),
-    province(3, 1),
-    province(4, null, { terrain: 'sea' }),
-    province(5, null),
-    province(6, 2),
-    province(7, null),
-  ]),
-  players: [{ homeProvinceId: 0 }, {}, {}],
+  turn: 8,
+  world: {
+    cols: 8,
+    rows: 1,
+    provinces: [
+      province(0, 0, { armyTypes: ['Pikes', 'Bows'] }),
+      province(1, 0),
+      province(2, null),
+      province(3, 1),
+      province(4, null, { terrain: 'sea' }),
+      province(5, null),
+      province(6, 2),
+      province(7, null),
+    ],
+  },
+  players: [{ homeProvinceId: 0, provinces: [0, 1], _encountered: [1, 2] }, { provinces: [3] }, { provinces: [6] }],
   characters: [
-    ch(1, 0, 0, { isKing: true, armies: army }),
+    ch(0, 0, 0, { isKing: true, armies: army }),
+    ch(1, 0, 1),
     ch(2, 0, 1),
-    ch(3, 0, 1),
-    ch(10, 1, 3, { isKing: true, armies: army }),
-    ch(11, 1, 3),
-    ch(20, 2, 6, { isKing: true }),
-    ch(21, 2, 6),
+    ch(3, 1, 3, { isKing: true, armies: army }),
+    ch(4, 1, 3),
+    ch(5, 2, 6, { isKing: true }),
+    ch(6, 2, 6),
   ],
   relations: {},
+});
+const atWarWith1 = (S: State): State => ({ ...S, relations: { '0-1': 'enemy' } });
+/** Moves character `id` to province `to`. */
+const moved = (S: State, id: number, to: number): State => ({
+  ...S,
+  characters: S.characters.map((c) => (c.id === id ? { ...c, location: to } : c)),
 });
 
 describe('the map', () => {
@@ -59,76 +75,180 @@ describe('the map', () => {
     expect(hexDistance(province(0, null), province(3, null), 8)).toBe(3);
   });
 
-  test('the nearest neighbour is the realm whose land is nearest the king', () => {
-    expect(nearestNeighbour(base(), 0)).toBe(2); // province 6 is 2 away across the wrap, province 3 is 3 away
+  test('the nearest realm met is the one whose land is nearest the king, of the realms met and still in the game', () => {
     const S = base();
-    S.characters = S.characters.filter((c) => c.id !== 1);
-    S.players[0] = { homeProvinceId: 1 };
-    expect(nearestNeighbour(S, 0)).toBe(1); // no king: from home, 1 → 3 is 2, 1 → 6 is 3
+    expect(nearestMetRealm(S, 0)).toBe(2); // province 6 is 2 away across the wrap, province 3 is 3 away
+    expect(nearestMetRealm({ ...S, players: [{ ...S.players[0], _encountered: [1] }, {}, {}] }, 0)).toBe(1);
+    expect(nearestMetRealm({ ...S, players: [{ ...S.players[0], _encountered: [] }, {}, {}] }, 0)).toBeNull();
+    const conceded = { ...S, players: [S.players[0] ?? {}, { provinces: [3] }, { provinces: [6], conceded: true }] };
+    expect(nearestMetRealm(conceded, 0)).toBe(1);
+    const noKing = { ...S, characters: S.characters.filter((c) => c.id !== 0) };
+    noKing.players = [{ homeProvinceId: 1, provinces: [0, 1], _encountered: [1, 2] }, {}, {}];
+    expect(nearestMetRealm(noKing, 0)).toBe(1); // from home: 1 → 3 is 2, 1 → 6 is 3
   });
 });
 
-describe('a turn of orders', () => {
-  test('before any war: war declared on the nearest neighbour, the king recruits, the rest defend', () => {
-    const { orders, plan } = scriptedOrders(base(), 0, 4);
-    expect(orders.forTurn).toBe(4);
-    expect(orders.diplomacy).toEqual({ '2': 'enemy' });
-    expect(Object.keys(orders.orders).sort()).toEqual(['1', '2', '3']);
-    expect(orders.orders['1']?.[0]).toMatchObject({ action: 'recruit', target: 'Pikes|1' });
-    expect(orders.orders['2']?.map((o) => o.action)).toEqual(['defend', 'defend', 'defend', 'defend', 'defend']);
-    expect(plan).toEqual({ chaser: null, battleChases: [] });
+describe('war', () => {
+  test('declared on the nearest realm met, never on one not met', () => {
+    expect(scriptedChoices(base(), 0, 8).chose.diplomacy).toEqual({ '2': 'enemy' });
+    const metNone = { ...base(), players: [{ homeProvinceId: 0, provinces: [0, 1] }, {}, {}] };
+    expect(scriptedChoices(metNone, 0, 8).chose.diplomacy).toEqual({});
   });
 
-  test('at war: the armed king chases the nearest enemy, Encounter on odd turns and Pursue on even ones', () => {
-    const S = base();
-    S.relations = { '0-1': 'enemy' };
-    const odd = scriptedOrders(S, 0, 5);
-    expect(odd.orders.orders['1']?.[0]).toMatchObject({ action: 'encounter', target: '10' }); // a king may hunt a king
-    expect(odd.orders.orders['1']?.slice(1).every((o) => o.action === 'defend')).toBe(true);
-    expect(odd.plan.chaser).toEqual({ heroId: 1, quarryId: 10, action: 'encounter' });
-    const even = scriptedOrders(S, 0, 6);
-    expect(even.orders.orders['1']?.[0]).toMatchObject({ action: 'pursue', target: '10' });
+  test('not declared again on a realm already at war, nor before Safe Start ends (the orders for turn 6)', () => {
+    expect(scriptedChoices({ ...base(), relations: { '0-2': 'enemy' } }, 0, 8).chose.diplomacy).toEqual({});
+    const safe = { ...base(), safeStart: true };
+    expect(scriptedChoices(safe, 0, 5).chose.diplomacy).toEqual({});
+    expect(scriptedChoices(safe, 0, 6).chose.diplomacy).toEqual({ '2': 'enemy' });
+  });
+});
+
+describe('the chase', () => {
+  test('the armed king sets out after the nearest enemy his realm sees: one in its land with troops', () => {
+    const S = moved(atWarWith1(base()), 3, 1); // realm 1's armed king in province 1, realm 0's land
+    const { chose, plan } = scriptedChoices(S, 0, 8);
+    expect(chose.orders['0']).toEqual([{ action: 'Encounter Character', target: '3' }, null, null, null, null]);
+    expect(plan.chaser).toEqual({ heroId: 0, quarryId: 3 });
+  });
+
+  test('an enemy the realm doesn’t see is not chased', () => {
+    const { chose, plan } = scriptedChoices(atWarWith1(base()), 0, 8); // realm 1's heroes stand in province 3, unseen
+    expect(plan.chaser).toBeNull();
+    expect(chose.orders['0']?.[0]?.action).toBe('Recruit Armies');
+  });
+
+  test('a hero beside one of the realm’s is seen; an Invisibility cast in the turn hides him', () => {
+    const S = moved(moved(atWarWith1(base()), 1, 3), 2, 3); // realm 0's heroes 1 and 2 stand with realm 1's king and hero
+    expect(scriptedChoices(S, 0, 8).plan.chaser).toEqual({ heroId: 0, quarryId: 3 });
+    const hidden = { ...S, characters: S.characters.map((c) => (c.id === 3 ? { ...c, _invisTurn: 7 } : c)) };
+    expect(scriptedChoices(hidden, 0, 8).plan.chaser).toEqual({ heroId: 0, quarryId: 4 });
   });
 
   test('a king without an army leaves the chase to the first hero, who may not hunt a king', () => {
-    const S = base();
-    S.relations = { '0-1': 'enemy' };
-    S.characters = S.characters.map((c) => (c.id === 1 ? { ...c, armies: [] } : c));
-    const { orders, plan } = scriptedOrders(S, 0, 5);
-    expect(plan.chaser).toEqual({ heroId: 2, quarryId: 11, action: 'encounter' });
-    expect(orders.orders['1']?.[0]?.action).toBe('recruit');
+    const S = moved(moved(atWarWith1(base()), 1, 3), 2, 3);
+    S.characters = S.characters.map((c) => (c.id === 0 ? { ...c, armies: [] } : c));
+    const { chose, plan } = scriptedChoices(S, 0, 8);
+    expect(plan.chaser).toEqual({ heroId: 1, quarryId: 4 });
+    expect(chose.orders['0']?.[0]).toEqual({ action: 'Recruit Armies', target: 'Pikes|1' });
   });
 
-  test('every other armed character pursues an armed quarry where a battle is unresolved: neutral, or an enemy', () => {
-    const S = base();
-    S.world.provinces[5] = province(5, null, { _battleUnresolved: true });
-    S.characters = S.characters.map((c) => (c.id === 3 ? { ...c, armies: army } : c));
-    S.characters.push(ch(29, 2, 5, { armies: army }), ch(30, null, 5, { armies: army }), ch(32, null, 5));
-    const { orders, plan } = scriptedOrders(S, 0, 7);
-    // No war yet, so no chaser: the armed king and the armed hero both go; realm 2's hero is at peace with us and
-    // the unarmed neutral can't be fought as a host.
-    expect(orders.orders['1']?.[0]).toMatchObject({ action: 'pursue', target: '30' });
-    expect(orders.orders['3']?.[0]).toMatchObject({ action: 'pursue', target: '30' });
-    expect(orders.orders['2']?.[0]?.action).toBe('defend');
-    expect(plan.battleChases).toEqual([
-      { heroId: 1, quarryId: 30, provinceId: 5 },
-      { heroId: 3, quarryId: 30, provinceId: 5 },
-    ]);
+  test('every other armed hero sets out after an armed enemy he sees where a battle is unresolved, never a wanderer', () => {
+    const S = moved(moved(atWarWith1(base()), 1, 3), 2, 3);
+    S.world.provinces[3] = province(3, 1, { _battleUnresolved: true });
+    S.characters = S.characters.map((c) => (c.id === 2 ? { ...c, armies: army } : c));
+    S.characters.push(ch(9, 1, 3, { armies: army }), ch(7, null, 3, { armies: army })); // the wanderer's id first
+    const { chose, plan } = scriptedChoices(S, 0, 8);
+    expect(plan.chaser).toEqual({ heroId: 0, quarryId: 3 }); // the king, after the nearest: realm 1's king
+    expect(plan.battleChases).toEqual([{ heroId: 2, quarryId: 9, provinceId: 3 }]); // not the king (only a king may)
+    expect(chose.orders['2']?.[0]).toEqual({ action: 'Encounter Character', target: '9' });
+    expect(chose.orders['1']).toBeUndefined(); // unarmed: no order, so the form's Defend
+  });
+});
+
+describe('the king recruits', () => {
+  test('one unit of the first kind the form offers, on his realm’s land only', () => {
+    expect(scriptedChoices(base(), 0, 8).chose.orders['0']?.[0]).toEqual({
+      action: 'Recruit Armies',
+      target: 'Pikes|1',
+    });
+    const offItsLand = moved(base(), 0, 2);
+    offItsLand.world.provinces[2] = province(2, null, { armyTypes: ['Spears'] });
+    expect(scriptedChoices(offItsLand, 0, 8).chose.orders['0']).toBeUndefined();
+    const seaBeastFirst = base();
+    seaBeastFirst.world.provinces[0] = province(0, 0, { armyTypes: ['Great Turtles', 'Bows'] });
+    expect(scriptedChoices(seaBeastFirst, 0, 8).chose.orders['0']?.[0]?.target).toBe('Bows|1');
+  });
+});
+
+describe('a plan for every living hero, varied by hero and turn', () => {
+  test('tactics from the form’s own, Steal only at Thief 1; a school only of his own; each duel stance in turn', () => {
+    const hero = ch(1, 0, 1, { skills: { white: 2 } });
+    const plans = [6, 7, 8, 9, 10, 11].map((turn) => planFor(hero, turn, false));
+    expect(new Set(plans.flatMap((p) => p.tactics))).toEqual(new Set(['ME', 'FI', 'FL']));
+    expect(new Set(plans.map((p) => p.duelStance))).toEqual(new Set(['challenge', 'accept', 'refuse']));
+    expect(new Set(plans.map((p) => p.school))).toEqual(new Set(['', 'white']));
+    expect(plans.some((p) => p.notes !== '')).toBe(true);
+    expect(plans.every((p) => p.evilMode === undefined)).toBe(true);
+    const thief = ch(1, 0, 1, { skills: { thief: 1 } });
+    expect([6, 7, 8, 9].flatMap((turn) => planFor(thief, turn, false).tactics)).toContain('ST');
   });
 
-  test('only a king may run down a king in an unresolved battle', () => {
+  test('an Evil realm’s heroes get each conquest doctrine in turn', () => {
+    const hero = ch(1, 0, 1);
+    expect(new Set([6, 7].map((turn) => planFor(hero, turn, true).evilMode))).toEqual(new Set(['terror', 'enslave']));
+  });
+
+  test('every living hero the form lists gets one; a fallen hero none', () => {
     const S = base();
-    S.world.provinces[5] = province(5, null, { _battleUnresolved: true });
-    S.characters = S.characters.map((c) => (c.id === 3 ? { ...c, armies: army } : c));
-    S.characters.push(ch(30, null, 5, { isKing: true, armies: army }));
-    const { orders } = scriptedOrders(S, 0, 7);
-    expect(orders.orders['1']?.[0]).toMatchObject({ action: 'pursue', target: '30' });
-    expect(orders.orders['3']?.[0]?.action).toBe('defend');
+    S.characters.push(ch(7, 0, 0, { alive: false, killedThisTurn: true }), ch(8, 0, 0, { alive: false }));
+    expect(Object.keys(scriptedChoices(S, 0, 8).chose.plans).sort()).toEqual(['0', '1', '2']);
+  });
+});
+
+describe('an heir and a research pair', () => {
+  test('an heir spends his points, no more than he has', () => {
+    const S = base();
+    S.characters = S.characters.map((c) =>
+      c.id === 1 ? { ...c, _isHeir: true, _pendingSkillAllocation: 3, skills: { melee: 1 } } : c,
+    );
+    expect(scriptedChoices(S, 0, 8).chose.heirPoints).toEqual({ '1': ['melee', 'tactical', 'melee'] });
+    const { kingSkills } = scriptedOrders(S, 0, 8).orders;
+    expect(kingSkills).toEqual({
+      '1': { skills: { melee: 3, tactical: 1 }, pending: 1, name: '', temper: '', base: { melee: 1 } },
+    });
+  });
+
+  test('the first lead of each pending research pair is kept', () => {
+    const S = base();
+    S.players[0] = {
+      ...S.players[0],
+      pendingDiscoveryChoices: [{ key: 'rc7_1_2', options: ['nope', 'sd31', 'sd60'] }],
+    };
+    expect(scriptedChoices(S, 0, 8).chose.discoveryChoices).toEqual({ rc7_1_2: 'sd31' });
+  });
+});
+
+describe('the orders, as the player portal sends them', () => {
+  test('every field: five orders for every hero listed, the form’s names and lines, a plan, the column, the flags', () => {
+    const S = moved(atWarWith1(base()), 3, 1);
+    S.characters.push(ch(7, 0, 0, { killedThisTurn: true, alive: false }));
+    S.players[0] = { ...S.players[0], heroOrder: ['2', '0'] };
+    const { orders } = scriptedOrders(S, 0, 8);
+    const defend = { action: 'Defend', target: '', extra: '', desc: 'Defend' };
+    expect(orders.orders).toEqual({
+      '0': [
+        { action: 'Encounter Character', target: '3', extra: '', desc: 'Encounter Character — 3' },
+        ...Array.from({ length: 4 }, () => defend),
+      ],
+      '1': Array.from({ length: 5 }, () => defend),
+      '2': Array.from({ length: 5 }, () => defend),
+      '7': Array.from({ length: 5 }, () => defend), // fallen this turn: listed, with no form
+    });
+    expect(Object.keys(orders.encounterPlans).sort()).toEqual(['0', '1', '2']);
+    expect(orders.encounterPlans['0']).toEqual({ tactics: ['FL', 'ME', 'FI'], notes: '', duelStance: 'refuse' });
+    expect(orders.heroOrder).toEqual(['2', '0', '1']); // the saved arrangement, then the rest in the world's order
+    expect(orders).toMatchObject({
+      kingSkills: {},
+      diplomacy: { '2': 'enemy' },
+      discoveryChoices: {},
+      callReckoning: false,
+      concede: false,
+      messages: [],
+      forTurn: 8,
+    });
+  });
+
+  test('a plan with a school puts it last; with no arrangement saved, the king heads the column', () => {
+    const S = base();
+    S.characters = S.characters.map((c) => (c.id === 1 ? { ...c, skills: { psychic: 1 } } : c));
+    S.characters.unshift(...S.characters.splice(0, 1).map((c) => ({ ...c, id: 9 })));
+    const { orders } = scriptedOrders(S, 0, 9); // hero 1 on turn 9: k = 10
+    expect(orders.encounterPlans['1']?.tactics).toEqual(['FI', 'FL', 'CS:psychic']);
+    expect(orders.heroOrder?.[0]).toBe('9');
   });
 
   test('the same state gives the same orders', () => {
-    const S = base();
-    S.relations = { '0-1': 'enemy', '0-2': 'enemy' };
+    const S = { ...base(), relations: { '0-1': 'enemy', '0-2': 'enemy' } };
     expect(scriptedOrders(S, 0, 9)).toEqual(scriptedOrders(structuredClone(S), 0, 9));
   });
 });
