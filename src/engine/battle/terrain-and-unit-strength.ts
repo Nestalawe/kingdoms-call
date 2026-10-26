@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto, CONDOTTIERI_MULT, protoAlignOf } from '../alignment-prototypes.ts';
+import { alignProto, CONDOTTIERI_MULT, CONDOTTIERI_VS_BEASTS_MULT, protoAlignOf } from '../alignment-prototypes.ts';
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
@@ -734,8 +734,14 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   }
   // PROTOTYPE Neutral (round 2): Condottieri — a mercenary company hired under the kit fights ×1.3 (round 2: ×1.5)
   if (army._merc && heroChar && protoAlignOf(turnContext.G, heroChar.player) === 'Neutral') {
-    str = Math.round(str * CONDOTTIERI_MULT);
-    if (_tr) _tr.push({ label: `Condottieri ×${CONDOTTIERI_MULT}` });
+    // round 10: ×1.75 against a host with a creature or monster company in it (the enemy force, when the caller names it)
+    const _vsBeasts =
+      ctx &&
+      Array.isArray(ctx.enemyForce) &&
+      ctx.enemyForce.some((e) => e && (CREATURE_ARMIES.has(e.type) || MONSTER_ARMIES.has(e.type)));
+    const _cm = _vsBeasts ? CONDOTTIERI_VS_BEASTS_MULT : CONDOTTIERI_MULT;
+    str = Math.round(str * _cm);
+    if (_tr) _tr.push({ label: `Condottieri ×${_cm}` });
   }
   // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies
   // +5%.

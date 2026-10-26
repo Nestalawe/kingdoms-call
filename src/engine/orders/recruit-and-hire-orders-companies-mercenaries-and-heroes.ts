@@ -1,5 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { protoAlignOf, qualityUp, protoBeastRoomExtra } from '../alignment-prototypes.ts';
+import {
+  EMBARGO_BEAST_COST_MULT,
+  embargoTaxMult,
+  protoAlignOf,
+  qualityUp,
+  protoBeastRoomExtra,
+} from '../alignment-prototypes.ts';
 import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, SKILL_LABELS } from '../army-tables.ts';
@@ -319,6 +325,10 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     let _unitCost = realmRecruitCost(G.players[c.player], armyType, ARMY_COST_P[armyType] || 2); // sd16 + recruitCost discoveries
     if (perkTier(c, 'druid') > 0 && (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType)))
       _unitCost = Math.floor(_unitCost * 0.5); // DRUID L6: creatures/monsters cost half (rounded down)
+    // PROTOTYPE Neutral (round 10): under an Embargo a realm's beasts cost double to recruit (the League's factors
+    // hold the beast-markets too)
+    if (embargoTaxMult(G, G.players[c.player]) < 1 && (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType)))
+      _unitCost *= EMBARGO_BEAST_COST_MULT;
     const unitCost = _unitCost;
     const cost = actualQty * unitCost;
     if ((player.gold || 0) < totalCost + cost) {

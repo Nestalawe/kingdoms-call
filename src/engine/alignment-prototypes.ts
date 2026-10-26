@@ -77,13 +77,15 @@ export const GRAVE_GOODS_PER_PROVINCE = 4; // round 7 (rounds 3-6: 3; round 2: 2
 // round 3's other tunings
 export const TRIBUTE_OF_FEAR_CAP = 5; // Evil: the most Tribute of Fear pays a turn
 export const CONDOTTIERI_MULT = 1.5; // Neutral: a hired company's strength (round 8; rounds 3-7: 1.3)
+export const CONDOTTIERI_VS_BEASTS_MULT = 1.75; // Neutral (round 10): against a host with a creature or monster company in it
+export const EMBARGO_BEAST_COST_MULT = 2; // Neutral (round 10): an embargoed realm's beasts cost double to recruit
 export const DARK_PACT_QUALITY = 'Average'; // Evil: what the pact brings (round 8; rounds 3-7: Veteran; round 2: Elite)
-export const BARROW_RISE_PER_TURN = 2; // Undead: companies a held barrow raises a turn (round 8 again; rounds 4-7: 1)
+export const BARROW_RISE_PER_TURN = 3; // Undead: companies a held barrow raises a turn (round 10; rounds 8-9: 2; rounds 4-7: 1)
 export const OMENS_MIN_EXPLORER = 2; // Pagan: Omens double Explore only for a hero of Explorer 2 or more
 export const WOOD_WAGE_MULT = 2 / 3; // Druidic: what a beast in the woods pays of its wage (round 6; rounds 3-5: half; round 2: nothing)
 export const YEOMANRY_WAGE_MULT = 1 / 2; // Good (round 7): what a garrison company pays of its wage (rounds 4-6: two-thirds)
 export const BLOOD_HARVEST_KIT_EXTRA = 2; // Pagan (round 8): +2g a unit on Blood Harvest (3g a unit in all; rounds 4-7: 2g)
-export const OFFERINGS_PER_WARRIOR = 10; // Pagan (round 9): every 10g of offerings raises a company into the victor's host
+export const OFFERINGS_PER_WARRIOR = 15; // Pagan (round 10; round 9: 10g): every 15g of offerings raises a company into the victor's host
 export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
   'Shrine of the First Light',

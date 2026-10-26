@@ -157,6 +157,12 @@ export function gameStats(g: GameRecord): Stats {
       share(`battles: attacker won | by kind: ${b.kind}`, b.won);
       share(`battles: attacker won | by terrain: ${b.terrain}`, b.won);
       share(`battles: attacker won | by the realm's leading unit: ${unit}`, b.won);
+      // By alignment pair (ideas round 10): how each alignment fares attacking each other, from the attacker's row only
+      if (b.side === 'atk' && g.alignments && b.defPi != null) {
+        const aa = g.alignments[row.player_index];
+        const da = g.alignments[b.defPi];
+        if (aa && da) share(`battles: attacker won | by alignments: ${aa} vs ${da}`, b.won);
+      }
       add('battles: units lost by the attacker', b.atkLost, 1);
       add('battles: units lost by the defender', b.defLost, 1);
     }
