@@ -14,6 +14,7 @@
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 interface Character {
   id: number | string;
@@ -119,27 +120,37 @@ test('one host at most loses heart, each shaken host is told once, and a slain c
   expect(seen.slain).toBeGreaterThan(0);
 });
 
-test('nobody rides out when neither commander challenges, or against a commander already dead', () => {
-  const notChallenging = side.filter((s) => s.stance !== 'challenge');
-  fc.assert(
-    fc.property(
-      fc.oneof(
-        fc.tuple(notChallenging, notChallenging, fc.constant('none')),
-        fc.tuple(side, side, fc.constantFrom('attacker', 'defender')),
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. This property's time limit is 50 ms
+// an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s. An input stages a fresh turn and writes the
+// world out twice: 1.6 ms on a laptop, 5.4 ms in CI's unit job, and over 5.1 ms on the nightly run (1,000 timed out at
+// 5 s, run 40176607802: tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
+
+test(
+  'nobody rides out when neither commander challenges, or against a commander already dead',
+  timeLimitForPropertyRuns(RUNS, 50),
+  () => {
+    const notChallenging = side.filter((s) => s.stance !== 'challenge');
+    fc.assert(
+      fc.property(
+        fc.oneof(
+          fc.tuple(notChallenging, notChallenging, fc.constant('none')),
+          fc.tuple(side, side, fc.constantFrom('attacker', 'defender')),
+        ),
+        ([a, d, dead]) => {
+          const { tc, atk, def, atkRecord, defRecord } = stage(a, d);
+          if (dead === 'attacker') atkRecord.alive = atk.alive = false;
+          if (dead === 'defender') defRecord.alive = def.alive = false;
+          const world = JSON.stringify(tc.G);
+          const narrative: unknown[] = [];
+          const r = preBattleDuel(tc, atk, def, narrative);
+          expect([r.atkMorale, r.defMorale, narrative.length]).toEqual([1, 1, 0]);
+          expect(JSON.stringify(tc.G)).toBe(world);
+        },
       ),
-      ([a, d, dead]) => {
-        const { tc, atk, def, atkRecord, defRecord } = stage(a, d);
-        if (dead === 'attacker') atkRecord.alive = atk.alive = false;
-        if (dead === 'defender') defRecord.alive = def.alive = false;
-        const world = JSON.stringify(tc.G);
-        const narrative: unknown[] = [];
-        const r = preBattleDuel(tc, atk, def, narrative);
-        expect([r.atkMorale, r.defMorale, narrative.length]).toEqual([1, 1, 0]);
-        expect(JSON.stringify(tc.G)).toBe(world);
-      },
-    ),
-  );
-});
+    );
+  },
+);
 
 test("a bot realm's commander never duels a local chieftain, and his host is shaken when he refuses one", () => {
   fc.assert(
