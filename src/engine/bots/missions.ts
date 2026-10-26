@@ -1954,7 +1954,7 @@ export function botKingKitOrder(G, pi, c, P, L) {
     case 'Druidic': {
       if (!owned) return null; // round 6: any Druidic king
       const room = beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c));
-      if (room < 2) return null;
+      if (room < 1) return null; // round 6: one beast to lead is reason enough (round 2-5: two)
       let n = 0;
       (pl.provinces || []).forEach((id) => {
         const X = G.world.provinces[id];
@@ -1963,7 +1963,7 @@ export function botKingKitOrder(G, pi, c, P, L) {
           (a) => a && beastCommandCount(a) && !BOT_MONSTER_ARMIES.has(a.type),
         ).length;
       });
-      if (n < 2 || !botCanAfford(L, CALL_WILD_COST)) return null;
+      if (n < 1 || !botCanAfford(L, CALL_WILD_COST)) return null;
       botSpend(L, CALL_WILD_COST);
       return { action: 'call_wild', target: '', extra: '', desc: 'Sound the Call of the Wild' };
     }
