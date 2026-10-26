@@ -79,6 +79,8 @@ export interface TelemetryRow {
     encounters: { list: LairFight[] };
     deaths: { list: Death[] };
     spells: { list: Spell[] };
+    /** (ideas round 4) the companies recruited or hired that turn, by class; absent in older rows */
+    recruits?: { count: number; creatures: number; monsters: number };
     delta: { items: number };
   };
 }
@@ -216,6 +218,28 @@ export function gameStats(g: GameRecord): Stats {
         add(`realms: army strength at ${when} | by alignment: ${al}`, row.post.str, 1);
       }
     }
+  }
+  // By alignment (ideas round 4): what each realm recruited over the game (creature and monster companies), and the
+  // lairs its heroes cleared (in all, and a turn from turn 3, the pace Toby sees in human players).
+  if (g.alignments) {
+    g.alignments.forEach((al, pi) => {
+      if (!al) return;
+      const rows = g.telemetry.filter((r) => r.player_index === pi);
+      if (!rows.length) return;
+      let creatures = 0,
+        monsters = 0,
+        cleared = 0;
+      for (const r of rows) {
+        creatures += r.outcomes.recruits?.creatures ?? 0;
+        monsters += r.outcomes.recruits?.monsters ?? 0;
+        cleared += r.outcomes.encounters.list.filter((e) => e.pi === pi && e.won).length;
+      }
+      add(`realms: creature companies recruited | by alignment: ${al}`, creatures, 1);
+      add(`realms: monster companies recruited | by alignment: ${al}`, monsters, 1);
+      add(`realms: lairs cleared | by alignment: ${al}`, cleared, 1);
+      add(`realms: lairs cleared a turn from turn 3 | by alignment: ${al}`, cleared / Math.max(1, lastTurn - 2), 1);
+      add('realms: lairs cleared a turn from turn 3', cleared / Math.max(1, lastTurn - 2), 1);
+    });
   }
   // Which alignment wins (ideas round 1): of the realms of each alignment in games that ended, the share that won; and
   // of the realms of each alignment, the share still holding land at the end.

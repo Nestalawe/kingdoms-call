@@ -99,6 +99,8 @@ function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): vo
     seaPct: spec.seaPct,
     alignmentPrototypes,
     alignmentPrototypeTactics: process.env['KC_ALIGN_TACTICS'] === '1',
+    // KC_BOT_LAIRS=1: the bots hunt lairs at a human player's pace (ideas round 4).
+    botLairHunting: process.env['KC_BOT_LAIRS'] === '1',
   };
   W.eval(`(function(){ const g=generateNewGame(__sp,__sz,0,__opt);
     g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};

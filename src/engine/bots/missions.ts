@@ -769,7 +769,11 @@ export function botLairStrongFor(c, g) {
   );
   return n >= BOT_LAIR_STRONG_ITEMS[g] || best >= BOT_LAIR_STRONG_SKILL[g];
 }
-export function botLairTiers(c) {
+// PROTOTYPE (ideas round 4): with `G.botLairHunting` on, a hero climbs the grades by the calendar as a human player
+// does (Weak from turn 3, Moderate from 8, Powerful from 13, Legendary from 18), as far as his strength or a kill at
+// the grade below allows; the rumour still decides whether he goes into the grade above.
+export const HUMAN_LAIR_PACE_TURNS = [3, 8, 13, 18];
+export function botLairTiers(c, G) {
   const K = c._botLairKills || {};
   const k = (g) => K[BOT_LAIR_GN[g]] || 0;
   const lad = c._botLadder || {};
@@ -783,12 +787,30 @@ export function botLairTiers(c) {
     k(cur) >= (lad.retryAt || 0)
   )
     up = cur + 1;
+  if (G && G.botLairHunting === true) {
+    const turn = G.turn || 0;
+    let byTurn = -1;
+    HUMAN_LAIR_PACE_TURNS.forEach((t, g) => {
+      if (turn >= t) byTurn = g;
+    });
+    let strong = 0;
+    for (let g = 1; g <= 3; g++) {
+      if (botLairStrongFor(c, g) || k(g - 1) >= 2)
+        strong = g; // kitted for it, or two kills at the grade below
+      else break;
+    }
+    const hc = Math.min(byTurn, Math.max(cur, strong));
+    return { cur: hc, up: hc < 3 && byTurn > hc ? hc + 1 : null, k };
+  }
   return { cur, up, k };
 }
 export function botLairPlan(G, pi, c, pre, L) {
   const sk = c.skills || {};
   const _cs = Math.max(sk.elemental || 0, sk.necromancy || 0, sk.psychic || 0);
+  // PROTOTYPE (ideas round 4): a lair-hunting realm sends any hero who can fight at all, from turn 3
+  const hunting = G.botLairHunting === true && (G.turn || 0) >= 3 && (sk.melee || 0) + (sk.archery || 0) + _cs >= 2;
   if (
+    !hunting &&
     (sk.melee || 0) < 3 &&
     (sk.archery || 0) < 3 &&
     (sk.melee || 0) + (sk.archery || 0) < 5 &&
@@ -811,7 +833,7 @@ export function botLairPlan(G, pi, c, pre, L) {
       ? r
       : null;
   }; // an assessment still good for him
-  let T = botLairTiers(c);
+  let T = botLairTiers(c, G);
   // a fresh "below 80%" on the grade above: clear two more of his own grade before he asks again
   if (
     T.up != null &&
@@ -828,7 +850,7 @@ export function botLairPlan(G, pi, c, pre, L) {
     !((lad.retryAt || 0) > T.k(T.cur))
   ) {
     lad.retryAt = T.k(T.cur) + BOT_LAIR_RETRY_EXTRA;
-    T = botLairTiers(c);
+    T = botLairTiers(c, G);
   }
   const mhp0 = c.maxHp || 20,
     hp0 = c.hp != null ? c.hp : mhp0;

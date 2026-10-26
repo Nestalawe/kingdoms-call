@@ -175,6 +175,13 @@ export function telOutcomesFor(gs, pi, tel, pre, post, rank) {
   };
   const S = (tel.spells || []).filter((x) => x.pi === pi);
   const spells = { cast: S.length, ok: S.filter((x) => x.ok).length, list: S };
+  // (ideas round 4) the companies the realm recruited or hired this turn, by class
+  const R = (tel.recruits || []).filter((x) => x.pi === pi);
+  const recruits = {
+    count: R.length,
+    creatures: R.filter((x) => x.cls === 'creature').length,
+    monsters: R.filter((x) => x.cls === 'monster').length,
+  };
   const d = (k) => (post && pre && post[k] != null && pre[k] != null ? post[k] - pre[k] : null);
   return {
     battles,
@@ -182,6 +189,7 @@ export function telOutcomesFor(gs, pi, tel, pre, post, rank) {
     captures,
     deaths,
     spells,
+    recruits,
     delta: {
       gold: d('gold'),
       provinces: d('provinces'),

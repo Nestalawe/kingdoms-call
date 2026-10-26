@@ -151,8 +151,10 @@ export function resolveTendTheGroveOrder(turnContext: TurnContext, c: Character,
 
 // ── NEUTRAL: Trade Pact ── buy an unowned humanoid land province (this one, or a neighbour): 3g per tax and 2g per
 // defending unit; the defenders take the realm's coin and stand as its garrison. No battle, no merit.
+export const TRADE_PACT_PER_TAX = 4; // round 4 (rounds 1-3: 3)
+export const TRADE_PACT_PER_DEFENDER = 3; // round 4 (rounds 1-3: 2)
 export function tradePactPrice(pv: Province): number {
-  return 3 * pv.tax + 2 * (pv.neutralDefenders.length || pv.npcArmies);
+  return TRADE_PACT_PER_TAX * pv.tax + TRADE_PACT_PER_DEFENDER * (pv.neutralDefenders.length || pv.npcArmies);
 }
 export function tradePactTargets(G: GameState, _c: Character, prov: Prov): Province[] {
   if (!prov) return [];

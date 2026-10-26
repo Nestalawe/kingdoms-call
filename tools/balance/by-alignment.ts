@@ -34,6 +34,10 @@ const FIGURES: [string, string][] = [
   ['realms: gold at the end', 'gold, end'],
   ['realms: army strength at turn 10', 'army strength, turn 10'],
   ['realms: army strength at the end', 'army strength, end'],
+  ['realms: creature companies recruited', 'creature companies recruited'],
+  ['realms: monster companies recruited', 'monster companies recruited'],
+  ['realms: lairs cleared', 'lairs cleared'],
+  ['realms: lairs cleared a turn from turn 3', 'lairs cleared a turn, from turn 3'],
 ];
 const isShare = (base: string) => base.startsWith('game: ');
 const fmt = (base: string, v: number) => (isShare(base) ? `${(100 * v).toFixed(0)}%` : v.toFixed(1));

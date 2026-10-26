@@ -37,11 +37,11 @@ export const KING_ORDER_EVERY: Record<string, number> = {
   light_beacons: 6,
   embargo: 6, // round 3 (round 2: 5)
   great_sacrifice: 5,
-  dark_pact: 6, // round 3 (round 2: 5)
+  dark_pact: 5, // round 4 (round 3: 6)
   spread_plague: 5,
 };
 export const CRUSADE_TURNS = 3;
-export const EMBARGO_TURNS = 3;
+export const EMBARGO_TURNS = 2; // round 4 (rounds 2-3: 3)
 export const EMBARGO_TAX_MULT = 0.8; // round 3: −20% (round 2: −30%)
 export const SACRIFICE_TURNS = 4; // round 3 (round 2: 3)
 export const PLAGUE_TURNS = 3;
@@ -58,9 +58,11 @@ export const GRAVE_GOODS_PER_PROVINCE = 3; // round 3 (round 2: 2)
 export const TRIBUTE_OF_FEAR_CAP = 5; // Evil: the most Tribute of Fear pays a turn
 export const CONDOTTIERI_MULT = 1.3; // Neutral: a hired company's strength (round 2: 1.5)
 export const DARK_PACT_QUALITY = 'Veteran'; // Evil: what the pact brings (round 2: Elite)
-export const BARROW_RISE_PER_TURN = 2; // Undead: companies a held barrow raises a turn (a despoiled province still 1)
+export const BARROW_RISE_PER_TURN = 1; // Undead: companies a held barrow raises a turn (round 3 tried 2: too many)
 export const OMENS_MIN_EXPLORER = 2; // Pagan: Omens double Explore only for a hero of Explorer 2 or more
 export const WOOD_WAGE_MULT = 0.5; // Druidic: what a beast in the woods pays of its wage (round 2: nothing)
+export const YEOMANRY_WAGE_MULT = 2 / 3; // Good (round 4): what a garrison company pays of its wage (rounds 2-3: half)
+export const BLOOD_HARVEST_KIT_EXTRA = 1; // Pagan (round 4): +1g a unit on Blood Harvest (2g a unit in all)
 export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
   'Shrine of the First Light',
@@ -273,6 +275,9 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       return nothing;
     case 'Pagan': {
       if ((pl._sacrificeUntil ?? -1) >= G.turn) return { mult: 1.5, label: 'Great Sacrifice ×1.5' }; // round 2
+      // round 4: the Old Stones — a host defending a stones province of the realm fights ×1.5 whatever the Favour
+      if (!isAttacker && !!prov && prov.owner === pi && prov.features.some(isPaganStones))
+        return { mult: 1.5, label: 'The Old Stones ×1.5' };
       const m = paganFavourMult(G, pi);
       return m > 1 ? { mult: m, label: `Favour of the Old Gods ×${m.toFixed(1)}` } : nothing;
     }

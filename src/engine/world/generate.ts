@@ -1918,6 +1918,7 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
       ? { alignmentPrototypes: genOpts.alignmentPrototypes.filter(Boolean) }
       : {}),
     ...(genOpts && genOpts.alignmentPrototypeTactics === true ? { alignmentPrototypeTactics: true } : {}),
+    ...(genOpts && genOpts.botLairHunting === true ? { botLairHunting: true } : {}),
     players,
     characters: allChars,
     mercenaries: [],

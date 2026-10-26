@@ -7,6 +7,7 @@ import {
   protoProvinceTaxAdd,
   protoRealmGold,
   WOOD_WAGE_MULT,
+  YEOMANRY_WAGE_MULT,
 } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
@@ -287,7 +288,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (a._slave) return s; // PROTOTYPE Evil: slaves are paid nothing
       if (a._isSkeletal) return s + 1;
       let w = ARMY_COST[a.type] || 2;
-      if (_yeomanry.has(a)) w = Math.max(1, Math.floor(w / 2)); // PROTOTYPE Good (round 2): the Yeomanry
+      if (_yeomanry.has(a)) w = Math.max(1, Math.round(w * YEOMANRY_WAGE_MULT)); // PROTOTYPE Good: the Yeomanry (two-thirds since round 4)
       if (_woodFed.has(a)) w = Math.max(1, Math.floor(w * WOOD_WAGE_MULT)); // PROTOTYPE Druidic: the wood provides half (round 3)
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
         const _w0 = w,

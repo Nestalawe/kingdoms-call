@@ -58,6 +58,7 @@ export function newWorldOf(engine: vm.Context, spec: GameSpec): string {
         .map((x) => x.trim())
         .filter(Boolean),
       alignmentPrototypeTactics: process.env['KC_ALIGN_TACTICS'] === '1',
+      botLairHunting: process.env['KC_BOT_LAIRS'] === '1',
     }),
     spec.diplomacy,
   );

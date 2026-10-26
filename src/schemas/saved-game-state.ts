@@ -726,6 +726,8 @@ export const GameStateSchema = z.object({
   alignmentPrototypes: z.array(z.string()).optional(),
   // PROTOTYPE (ideas round 1b): the bots play to their kits (src/engine/alignment-prototypes.ts, kitTactics)
   alignmentPrototypeTactics: z.boolean().optional(),
+  // PROTOTYPE (ideas round 4): the bots hunt lairs at a human player's pace (src/engine/bots/missions.ts, botLairTiers)
+  botLairHunting: z.boolean().optional(),
   // (P1-12b5: read by the realm's view, for its diplomacy) Safe Start: no diplomacy before turn SAFE_START_TURN; the
   // matrix's games don't set it
   safeStart: z.boolean().optional(),

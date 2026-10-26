@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { BLOOD_HARVEST_KIT_EXTRA, protoAlignOf } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { BLOOD_HARVEST_PER_UNIT } from '../items/tiers-and-hoards.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
@@ -13,7 +14,9 @@ export function bloodHarvest(turnContext, winner, destroyed, narrative) {
   if (!winner || winner.player == null || !(destroyed > 0)) return;
   if (G.players[winner.player]?.alignment !== 'Pagan') return;
   const _pl = G.players[winner.player];
-  const _take = destroyed * (BLOOD_HARVEST_PER_UNIT + discSum(turnContext, winner.player, 'bloodHarvest', 'gold')); // + ap09 Skull Tithe
+  const _kit = protoAlignOf(G, winner.player) === 'Pagan' ? BLOOD_HARVEST_KIT_EXTRA : 0; // PROTOTYPE Pagan (round 4)
+  const _take =
+    destroyed * (BLOOD_HARVEST_PER_UNIT + _kit + discSum(turnContext, winner.player, 'bloodHarvest', 'gold')); // + ap09 Skull Tithe
   _pl.gold = (_pl.gold || 0) + _take;
   narrate(narrative, {
     kind: 'the blood harvest claims offerings from the fallen enemy units',

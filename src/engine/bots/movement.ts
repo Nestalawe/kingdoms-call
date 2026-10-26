@@ -647,7 +647,9 @@ export function runBotMovement(G, botIdxSet, hooks) {
           }
         }
         // ── LAIR RAIDER: a fighter walks to a beatable discovered lair within 4 hops (hoard + Monster-Bane merit). ──
-        if (!isLeader && !c.isKing && hp >= mhp * 0.7) {
+        // PROTOTYPE (ideas round 4): a lair-hunting realm sends its generals and its king too while it is not at war.
+        const _hunting = G.botLairHunting === true && !botAtWar(G, pi);
+        if ((_hunting || (!isLeader && !c.isKing)) && hp >= mhp * (_hunting ? 0.6 : 0.7)) {
           const lo = botLairPlan(G, pi, c, pre, L);
           if (lo) {
             G.turnOrders[c.id] = lo;

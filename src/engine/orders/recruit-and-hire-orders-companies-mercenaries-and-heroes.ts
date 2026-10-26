@@ -172,6 +172,14 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     // and hands it straight to a colleague has still done the mustering. Garrison musters
     // count.
     creditBeastUnit(TM(c), unit, 1);
+    // TELEMETRY (ideas round 4): every company recruited or hired, with its class, so the matrix can count the beasts
+    const _telRecruits = turnContext._tel && turnContext._tel.recruits;
+    if (_telRecruits)
+      _telRecruits.push({
+        pi: c.player,
+        type: unit.type,
+        cls: CREATURE_ARMIES.has(unit.type) ? 'creature' : MONSTER_ARMIES.has(unit.type) ? 'monster' : 'other',
+      });
   };
   const _mercTokens = new Set();
   let mHired = false;
