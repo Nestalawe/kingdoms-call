@@ -793,12 +793,17 @@ export function botLairTiers(c, G) {
     HUMAN_LAIR_PACE_TURNS.forEach((t, g) => {
       if (turn >= t) byTurn = g;
     });
-    let strong = 0;
-    for (let g = 1; g <= 3; g++) {
-      if (botLairStrongFor(c, g) || k(g - 1) >= 2)
-        strong = g; // kitted for it, or two kills at the grade below
-      else break;
-    }
+    // his own grade (no rumour needed): Weak once he is a trained fighter (today's gate), each grade above once he is
+    // kitted for it AND has two kills at the grade below; anyone else hunts on a good rumour only
+    const sk0 = c.skills || {};
+    const _cs0 = Math.max(sk0.elemental || 0, sk0.necromancy || 0, sk0.psychic || 0);
+    const trained =
+      (sk0.melee || 0) >= 3 ||
+      (sk0.archery || 0) >= 3 ||
+      (sk0.melee || 0) + (sk0.archery || 0) >= 5 ||
+      ((sk0.melee || 0) >= 2 && (sk0.melee || 0) + (sk0.archery || 0) + _cs0 >= 6);
+    let strong = trained ? 0 : -1;
+    for (let g = 1; g <= 3 && strong === g - 1; g++) if (botLairStrongFor(c, g) && k(g - 1) >= 2) strong = g;
     const hc = Math.min(byTurn, Math.max(cur, strong));
     return { cur: hc, up: hc < 3 && byTurn > hc ? hc + 1 : null, k };
   }
