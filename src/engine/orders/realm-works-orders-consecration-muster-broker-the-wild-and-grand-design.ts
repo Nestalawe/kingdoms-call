@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto, divinePower, protoBeastRoomExtra } from '../alignment-prototypes.ts';
+import { alignProto, CONSECRATE_COST, divinePower, protoBeastRoomExtra } from '../alignment-prototypes.ts';
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -81,11 +81,22 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       });
       return;
     }
+    // round 5 (Toby): the rite costs gold
+    if ((player.gold || 0) < CONSECRATE_COST) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}: the consecration's oils, candles and alms cost ${CONSECRATE_COST}g — the treasury cannot pay.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    player.gold -= CONSECRATE_COST;
     _list.push(prov.id);
     const _shine = (prov.features || []).some((f) => f && f.ritualSite && f.siteKind === 'holy');
     emit(turnContext, {
       type: 'explore',
-      text: `✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, its defenders fight at ×1.5, and your fallen can return here.${_shine ? ` The holy site here shines: the realm's Divine Power is ${divinePower(G, c.player)}.` : ''} (${_list.length} consecrated.)`,
+      text: `✨ ${c.name} consecrates ${prov.name} (${CONSECRATE_COST}g)! Holy ground: +50% tax, its defenders fight at ×1.5, and your fallen can return here.${_shine ? ` The holy site here shines: the realm's Divine Power is ${divinePower(G, c.player)}.` : ''} (${_list.length} consecrated.)`,
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,

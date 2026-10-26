@@ -2,6 +2,7 @@
 import { isConsecrated } from './heroes/fame-and-consecration.ts';
 import { protoAlignOf } from './alignment-prototypes.ts';
 import { kcRng } from './rng.ts';
+import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './turn/events-and-their-audiences.ts';
 import { QUALITY_TIERS } from './army-tables.ts';
 import { unitBaseStrength } from './rules-on-plain-values/unit-types-and-base-strength.ts';
 import { effSkillOf } from './heroes/skills-and-hp.ts';
@@ -187,15 +188,25 @@ export function elvenEscapeChance(terrain) {
 export function recordBattleGraves(turnContext, prov, killedArmies, ownerPlayer) {
   const { G, _elvenEscapeQueue } = turnContext;
   if (!killedArmies || !killedArmies.length) return;
-  // PROTOTYPE Divine (round 2): Last Rites — the fallen on a Divine realm's consecrated ground are buried with rites and
-  // leave no grave for any necromancer.
-  if (
-    prov.owner != null &&
-    protoAlignOf(G, prov.owner) === 'Divine' &&
-    G.players[prov.owner] &&
-    isConsecrated(G.players[prov.owner], prov.id)
-  )
+  // PROTOTYPE Divine (round 2, widened in round 5): Last Rites — where a Divine realm's hero stands at the battle's end,
+  // or on its consecrated ground, the fallen are buried with rites and leave no grave for any necromancer.
+  const _rites =
+    (prov.owner != null &&
+      protoAlignOf(G, prov.owner) === 'Divine' &&
+      G.players[prov.owner] &&
+      isConsecrated(G.players[prov.owner], prov.id)) ||
+    (G.characters || []).find((h) => h && h.alive && h.location === prov.id && protoAlignOf(G, h.player) === 'Divine');
+  if (_rites) {
+    const _pi = typeof _rites === 'object' ? _rites.player : prov.owner;
+    emit(turnContext, {
+      type: 'system',
+      text: `✝ Last Rites: the fallen of ${prov.name} are given to the earth with prayers — no grave is left for any necromancer to open.`,
+      audience: { actor: _pi, realms: [_pi] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: prov.id,
+    });
     return;
+  }
   if (!prov.battleGraves) prov.battleGraves = [];
   const ownerIsElven = ownerPlayer != null && G.players[ownerPlayer] && G.players[ownerPlayer].race === 'Elven';
   killedArmies.forEach((a) => {

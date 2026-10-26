@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kitTactics } from '../alignment-prototypes.ts';
 import { protoAlignOf } from '../alignment-prototypes.ts';
+import { gdActiveFor } from '../grand-design.ts';
 import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
@@ -469,6 +470,9 @@ export function botGarrisonTarget(G, prov, pi) {
   // 2026-09-26 (Toby): FEWER GARRISONS, BIGGER FIELD HOST. Only the capital is garrisoned in peace (one unit);
   // once an enemy host is on the doorstep the capital takes two and a Rich province (tax 7+) one. Everything
   // else is held by the defenders and the field army — every levy not sunk into a garrison marches with the general.
+  // round 5 (Toby): no bot recruits garrison companies unless it has an ability that makes garrisons worth it (the Good
+  // kit's Shield and Yeomanry, or the Good Grand Design)
+  if (protoAlignOf(G, pi) !== 'Good' && !gdActiveFor(G, pi, 'Good')) return 0;
   const home = prov.id === botHomeId(G, pi);
   const attacked = botUnderAttack(G, pi);
   if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn

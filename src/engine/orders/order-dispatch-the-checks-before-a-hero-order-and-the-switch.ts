@@ -382,13 +382,13 @@ export function processOrder(turnContext, c, o, ph) {
       break;
     // the prototype kits' orders (alignment ideas round 1): src/engine/orders/alignment-prototype-orders.ts
     case 'good_works':
-      resolveGoodWorksOrder(turnContext, c, prov);
+      resolveGoodWorksOrder(turnContext, c, prov, player);
       break;
     case 'grow_wild':
-      resolveGrowTheWildOrder(turnContext, c, prov);
+      resolveGrowTheWildOrder(turnContext, c, prov, player);
       break;
     case 'tend_grove':
-      resolveTendTheGroveOrder(turnContext, c, prov);
+      resolveTendTheGroveOrder(turnContext, c, prov, player);
       break;
     case 'trade_pact':
       resolveTradePactOrder(turnContext, c, ph, target, prov, player);
@@ -397,7 +397,7 @@ export function processOrder(turnContext, c, o, ph) {
       resolveLayWasteOrder(turnContext, c, prov, player);
       break;
     case 'despoil':
-      resolveDespoilOrder(turnContext, c, prov);
+      resolveDespoilOrder(turnContext, c, prov, player);
       break;
     case 'bind_bones':
       resolveBindTheBonesOrder(turnContext, c, player);
@@ -407,22 +407,22 @@ export function processOrder(turnContext, c, o, ph) {
       resolveProclaimCrusadeOrder(turnContext, c, target, player);
       break;
     case 'light_beacons':
-      resolveLightTheBeaconsOrder(turnContext, c, prov);
+      resolveLightTheBeaconsOrder(turnContext, c, prov, player);
       break;
     case 'call_wild':
-      resolveCallOfTheWildOrder(turnContext, c, prov);
+      resolveCallOfTheWildOrder(turnContext, c, prov, player);
       break;
     case 'embargo':
-      resolveEmbargoOrder(turnContext, c, target);
+      resolveEmbargoOrder(turnContext, c, target, player);
       break;
     case 'great_sacrifice':
       resolveGreatSacrificeOrder(turnContext, c, prov);
       break;
     case 'dark_pact':
-      resolveDarkPactOrder(turnContext, c, prov, player);
+      resolveDarkPactOrder(turnContext, c, target, prov, player);
       break;
     case 'spread_plague':
-      resolveSpreadPlagueOrder(turnContext, c, target, prov);
+      resolveSpreadPlagueOrder(turnContext, c, target, prov, player);
       break;
     case 'research':
       resolveResearchOrder(turnContext, c, ph, target, player);

@@ -3,7 +3,7 @@
 // the game is created (the balance runner sets it from KC_ALIGN_PROTO). A kit is live for a realm only when its
 // alignment is in the list, so the matrix can measure one alignment's kit at a time against today's rules. Nothing here
 // is a decided rule: the Google Doc "Kingdoms Call - Alignments: ideas round 1" says what each kit is for.
-import { KC_QUALITY_UP } from '../content/kingdoms-call-data.ts';
+import { KC_QUALITY_UP, KC_UNIT_CLASS } from '../content/kingdoms-call-data.ts';
 import type { Army, Character, GameState, Province, ProvinceFeature, Realm } from '../schemas/saved-game-state.ts';
 
 /** Is the prototype kit of `align` switched on in this game? */
@@ -32,22 +32,42 @@ export const DIVINE_POWER_WHITE = 1; // every Divine hero casts White one level 
 export const DIVINE_POWER_RETURN = 2; // a fallen hero's return spends no consecration (round 2: 3)
 export const DIVINE_POWER_UNLEASHED = 4; // the Crusade's ×1.5 in every battle (round 2: 5)
 // round 2: the kings' orders and how long their effects hold
+// round 5 (Toby): no king's order waits more than 3 turns; a cost decides instead
 export const KING_ORDER_EVERY: Record<string, number> = {
-  proclaim_crusade: 5,
-  light_beacons: 6,
-  embargo: 6, // round 3 (round 2: 5)
-  great_sacrifice: 5,
-  dark_pact: 5, // round 4 (round 3: 6)
-  spread_plague: 5,
+  proclaim_crusade: 3,
+  light_beacons: 3,
+  embargo: 3,
+  great_sacrifice: 3,
+  dark_pact: 0, // every turn, at a price set by the monster
+  spread_plague: 3,
 };
 export const CRUSADE_TURNS = 3;
 export const EMBARGO_TURNS = 2; // round 4 (rounds 2-3: 3)
 export const EMBARGO_TAX_MULT = 0.8; // round 3: −20% (round 2: −30%)
-export const SACRIFICE_TURNS = 4; // round 3 (round 2: 3)
+export const SACRIFICE_TURNS = 3; // round 5 (round 3: 4): it comes round every 3 turns now
 export const PLAGUE_TURNS = 3;
-export const PROCLAIM_CRUSADE_COST = 5;
-export const DARK_PACT_COST = 10;
+// round 5 (Toby): what the kits' orders cost. Those that were free cost now; see the round 5 document's review.
+export const PROCLAIM_CRUSADE_COST = 8; // round 5 (rounds 2-4: 5)
+export const CONSECRATE_COST = 5; // Divine (was free)
+export const GOOD_WORKS_COST = 2; // Good (was free)
+export const LIGHT_BEACONS_COST_PER_COMPANY = 2; // Good (was free)
+export const GROW_WILD_COST = 8; // Druidic (was free)
+export const TEND_GROVE_COST = 2; // Druidic (was free)
+export const CALL_WILD_COST = 3; // Druidic (was free)
+export const EMBARGO_COST = 6; // Neutral (was free)
+export const DESPOIL_COST = 3; // Undead (was free)
+export const PLAGUE_COST = 6; // Undead (was free)
+export const DARK_PACT_COST_MULT = 2; // Evil: twice the monster's recruit cost (rounds 2-4: a flat 10g)
 export const DARK_PACT_HP = 5;
+// round 5: the mutual enemies and the beast provinces
+export const CRUSADE_VS_UNDEAD_MULT = 1.75; // Divine against Undead forces (rounds 1-4: 1.5)
+export const HATRED_MULT = 1.3; // Undead against Divine forces (rounds 2-4: 1.5)
+export const UNDEAD_GARRISON_CAP = 2; // skeletal companies the dead land raises into one garrison (rounds 1-4: 3)
+export const PARLEY_MULT = 1.5; // Druidic storming an unclaimed creature province; Evil an unclaimed monster province
+const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
+const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
+export const isCreatureProvince = (pv: Province): boolean => isWild(pv) && pv.armyTypes.some((t) => CREATURES.has(t));
+export const isMonsterProvince = (pv: Province): boolean => isWild(pv) && pv.armyTypes.some((t) => MONSTERS.has(t));
 export const BEACONS_CAP = 4; // round 3 (round 2: 6)
 export const CALL_OF_THE_WILD_RANGE = 3;
 export const RECLAIM_TURNS = 5;
@@ -255,6 +275,7 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       const holy = !isAttacker && !!prov && prov.owner === pi && (pl.consecratedProvIds ?? []).includes(prov.id);
       const unleashed = divinePower(G, pi) >= DIVINE_POWER_UNLEASHED;
       const proclaimed = enemyPi != null && pl._crusadeVs === enemyPi && (pl._crusadeUntil ?? -1) >= G.turn; // round 2
+      if (enemyAlign === 'Undead') return { mult: CRUSADE_VS_UNDEAD_MULT, label: 'Crusade against the Undead ×1.75' }; // round 5
       if (proclaimed) return { mult: 1.5, label: 'Proclaimed Crusade ×1.5' };
       if (dark || (isAttacker && monsterWild) || holy || unleashed)
         return { mult: 1.5, label: holy && !dark ? 'Crusade: holy ground ×1.5' : 'Crusade ×1.5' };
@@ -270,7 +291,10 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
         G.turn - prov._lostTurn <= RECLAIM_TURNS;
       return lost ? { mult: 1.5, label: 'Reclaim ×1.5' } : nothing;
     }
-    case 'Druidic':
+    case 'Druidic': // round 5: Parley with the Wild — storming an unclaimed creature province, the beasts half-yield
+      if (isAttacker && !!prov && prov.owner == null && isCreatureProvince(prov))
+        return { mult: PARLEY_MULT, label: 'Parley with the Wild ×1.5' };
+      return nothing;
     case 'Neutral':
       return nothing;
     case 'Pagan': {
@@ -282,13 +306,16 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       return m > 1 ? { mult: m, label: `Favour of the Old Gods ×${m.toFixed(1)}` } : nothing;
     }
     case 'Evil': {
+      // round 5: Dominion of the Pits — storming an unclaimed monster province, with or without monsters of your own
+      if (isAttacker && !!prov && prov.owner == null && isMonsterProvince(prov))
+        return { mult: PARLEY_MULT, label: 'Dominion of the Pits ×1.5' };
       const monsters = armies.some((a) => monsterTypes.has(a.type));
       if (!monsters) return nothing;
       return isAttacker ? { mult: 1.5, label: 'Savage Fury ×1.5' } : { mult: 1.25, label: 'Savage Fury ×1.25' }; // round 2: ×1.25 defending
     }
     case 'Undead': {
       // the king's x1.5 and a hero's x1.3 stay as they are; 3 despoiled provinces lift every commander to x1.5
-      if (enemyAlign === 'Divine') return { mult: 1.5, label: 'Hatred of the Light ×1.5' }; // round 2: the mortal enemy
+      if (enemyAlign === 'Divine') return { mult: HATRED_MULT, label: 'Hatred of the Light ×1.3' }; // round 2 (×1.5), round 5 ×1.3
       const skel = armies.some((a) => a._isSkeletal);
       if (skel && leader && !leader.isKing && despoiledHeld(G, pi) >= 3)
         return { mult: 1.5, label: 'The Rising Tide ×1.5' };
@@ -364,14 +391,16 @@ export function kitTargetBonus(G: GameState, pi: number, pv: Province, known: (f
       return has(isHolySite) ? 15 : 0;
     case 'Good':
       return !wild && pv.tax <= 3 ? 8 : 0;
-    case 'Druidic':
-      return (pv.terrain === 'forest' || pv.terrain === 'jungle' ? 8 : 0) + (wild ? 10 : 0);
+    case 'Druidic': // round 5: the creature provinces are the prize
+      return (
+        (pv.terrain === 'forest' || pv.terrain === 'jungle' ? 8 : 0) + (isCreatureProvince(pv) ? 30 : wild ? 10 : 0)
+      );
     case 'Neutral':
       return pv.tax >= 4 ? 8 : 0;
     case 'Pagan':
       return has(isPaganStones) ? 10 : 0;
-    case 'Evil':
-      return wild ? 10 : 0;
+    case 'Evil': // round 5: the monster provinces are the prize
+      return isMonsterProvince(pv) ? 30 : wild ? 10 : 0;
     case 'Undead':
       return has(isBarrow) ? 12 : 0;
     default:

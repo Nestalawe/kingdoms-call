@@ -1,5 +1,13 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto, protoAlignOf } from '../alignment-prototypes.ts';
+import {
+  alignProto,
+  isCreatureProvince,
+  isMonsterProvince,
+  protoAlignOf,
+  protoBeastRoomExtra,
+} from '../alignment-prototypes.ts';
+import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { beastCommandRoom } from '../world/tables.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
@@ -107,6 +115,38 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
       byChar,
       ph != null ? ph : turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,
     );
+  // PROTOTYPE round 5: a Druidic kit realm taking an unclaimed creature province, or an Evil one an unclaimed monster
+  // province, is joined by a company of its beasts (into the captor's host if he has room to lead it, else the garrison)
+  if (prev == null && newOwner != null && byChar) {
+    const _k = protoAlignOf(G, newOwner);
+    const _cls =
+      _k === 'Druidic' && isCreatureProvince(prov)
+        ? 'creature'
+        : _k === 'Evil' && isMonsterProvince(prov)
+          ? 'monster'
+          : null;
+    if (_cls) {
+      const _set = new Set(KC_UNIT_CLASS[_cls]);
+      const _kind = (prov.armyTypes || []).find((t) => _set.has(t));
+      if (_kind) {
+        const _u = { type: _kind, quality: 'Average', race: prov.race || 'Primal', unitName: armyUnitName(_kind) };
+        const _room = beastCommandRoom(byChar, G.characters || [], protoBeastRoomExtra(G, byChar)) > 0;
+        if (_room) (byChar.armies = byChar.armies || []).push(_u);
+        else (prov.garrisonArmies = prov.garrisonArmies || []).push(_u);
+        emit(turnContext, {
+          type: 'hire',
+          text:
+            _cls === 'creature'
+              ? `🐾 The pack submits: ${_u.unitName} (${_kind}) of ${prov.name} come to ${byChar.name}${_room ? "'s side" : "'s garrison"}.`
+              : `🩸 The pits yield: ${_u.unitName} (${_kind}) of ${prov.name} are chained to ${byChar.name}${_room ? "'s host" : "'s garrison"}.`,
+          audience: { actor: newOwner, realms: [newOwner] },
+          province: prov.id,
+          hero: byChar.id,
+          phase: ph != null ? ph : turnContext._currentPhase,
+        });
+      }
+    }
+  }
   if (prev == null || prev === newOwner || newOwner == null) return;
   const _ph =
     ph != null ? ph : turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase;

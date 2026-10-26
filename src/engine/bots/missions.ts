@@ -2,18 +2,26 @@
 import {
   alignProto,
   CALL_OF_THE_WILD_RANGE,
-  DARK_PACT_COST,
+  CALL_WILD_COST,
+  CONSECRATE_COST,
   DARK_PACT_HP,
+  DESPOIL_COST,
+  EMBARGO_COST,
+  GOOD_WORKS_COST,
+  GROW_WILD_COST,
   isPaganStones,
   kingOrderReady,
   kitTactics,
   kitTargetBonus,
+  LIGHT_BEACONS_COST_PER_COMPANY,
   neighboursOf,
+  PLAGUE_COST,
   PROCLAIM_CRUSADE_COST,
   protoBeastRoomExtra,
+  TEND_GROVE_COST,
 } from '../alignment-prototypes.ts';
 import { hexDistP } from '../world/map-helpers.ts';
-import { tradePactPrice, tradePactTargets } from '../orders/alignment-prototype-orders.ts';
+import { darkPactCost, darkPactKinds, tradePactPrice, tradePactTargets } from '../orders/alignment-prototype-orders.ts';
 import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
 import { beastCommandCount, beastCommandRoom } from '../world/tables.ts';
@@ -198,8 +206,9 @@ export function botConsecrateOK(G, pi, c, X) {
   const pl = (G.players || [])[pi];
   if (!pl || pl.alignment !== 'Divine' || !X || X.owner !== pi || X.terrain === 'sea') return false;
   if (alignProto(G, 'Divine')) {
-    // PROTOTYPE Divine: any hero with White 1+, on a province of the realm's bordering the home or holy ground
-    if (effSkillOf(c, 'white', G.characters || []) < 1) return false;
+    // PROTOTYPE Divine: any hero with White 1+, on a province of the realm's bordering the home or holy ground, and the
+    // rite's price in the chest (round 5)
+    if (effSkillOf(c, 'white', G.characters || []) < 1 || (pl.gold || 0) < CONSECRATE_COST) return false;
     const home = botHomeId(G, pi);
     const list = consecratedIds(pl) || [];
     if (X.id === home || list.includes(X.id)) return false;
@@ -1775,16 +1784,48 @@ export function botKitPre(G, pi, c, P, L) {
     const ko = botKingKitOrder(G, pi, c, P, L);
     if (ko) return ko;
   }
+  // PROTOTYPE tactics (round 5, Toby): a Druidic realm recruits the creatures of its own creature provinces, and an Evil
+  // realm the monsters of its monster provinces, as fast as the hero standing there can lead them and the chest allows
+  if (tactics && owned && (pl.alignment === 'Druidic' || pl.alignment === 'Evil')) {
+    const kinds = (P.armyTypes || []).filter(
+      (t) =>
+        beastCommandCount({ type: t, quality: 'Average', race: P.race || 'Primal' }) &&
+        (pl.alignment === 'Evil') === BOT_MONSTER_ARMIES.has(t),
+    );
+    let room = beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c));
+    const toks = [];
+    for (const t of kinds) {
+      const cost = ARMY_COST_MASTER[t] || 4;
+      let q = 0;
+      while (room > 0 && q < 2 && botCanAfford(L, cost)) {
+        q++;
+        room--;
+        botSpend(L, cost);
+      }
+      if (q) toks.push(t + '|' + String(q));
+    }
+    if (toks.length)
+      return { action: 'recruit', target: toks.join(','), extra: '', desc: 'Recruit the beasts of ' + P.name };
+  }
+  const spendIf = (cost) => {
+    if (!botCanAfford(L, cost)) return false;
+    botSpend(L, cost);
+    return true;
+  };
   switch (pl.alignment) {
     case 'Good':
-      if (owned && humanoid && (P._goodWorks || 0) < 2 && !c._isHeir)
+      if (owned && humanoid && (P._goodWorks || 0) < 2 && !c._isHeir && spendIf(GOOD_WORKS_COST))
         return { action: 'good_works', target: '', extra: '', desc: 'Good Works in ' + P.name };
       return null;
     case 'Druidic':
       if (!owned || (sk.druid || 0) < 1) return null;
-      if (P.terrain === 'plain' || P.terrain === 'desert')
+      if (
+        (P.terrain === 'plain' || P.terrain === 'desert') &&
+        L.budget >= GROW_WILD_COST + 4 &&
+        spendIf(GROW_WILD_COST)
+      )
         return { action: 'grow_wild', target: '', extra: '', desc: 'Grow the Wild in ' + P.name };
-      if ((P.terrain === 'forest' || P.terrain === 'jungle') && (P._tendedGrove || 0) < 2)
+      if ((P.terrain === 'forest' || P.terrain === 'jungle') && (P._tendedGrove || 0) < 2 && spendIf(TEND_GROVE_COST))
         return { action: 'tend_grove', target: '', extra: '', desc: 'Tend the Grove in ' + P.name };
       return null;
     case 'Neutral': {
@@ -1834,9 +1875,12 @@ export function botKitPre(G, pi, c, P, L) {
         P.id !== home &&
         !P._despoiled &&
         (P.tax || 0) <= (tactics ? 4 : 3) &&
-        land >= (tactics ? 3 : 4)
-      )
+        land >= (tactics ? 3 : 4) &&
+        botCanAfford(L, DESPOIL_COST)
+      ) {
+        botSpend(L, DESPOIL_COST);
         return { action: 'despoil', target: '', extra: '', desc: 'Despoil ' + P.name };
+      }
       if ((sk.necromancy || 0) >= 1) {
         const n = (c.armies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
         if (n >= (tactics ? 1 : 2) && L.budget >= 3 * n + (tactics ? 2 : 4)) {
@@ -1897,7 +1941,9 @@ export function botKingKitOrder(G, pi, c, P, L) {
       };
     }
     case 'Good':
-      if (!war || !ready('light_beacons') || !owned) return null;
+      if (!war || !ready('light_beacons') || !owned || !botCanAfford(L, 2 * LIGHT_BEACONS_COST_PER_COMPANY))
+        return null;
+      botSpend(L, Math.min(L.budget, 4 * LIGHT_BEACONS_COST_PER_COMPANY));
       return { action: 'light_beacons', target: '', extra: '', desc: 'Light the Beacons' };
     case 'Druidic': {
       if ((c.skills || {}).druid < 1 || !owned) return null;
@@ -1911,13 +1957,15 @@ export function botKingKitOrder(G, pi, c, P, L) {
           (a) => a && beastCommandCount(a) && !BOT_MONSTER_ARMIES.has(a.type),
         ).length;
       });
-      if (n < 2) return null;
+      if (n < 2 || !botCanAfford(L, CALL_WILD_COST)) return null;
+      botSpend(L, CALL_WILD_COST);
       return { action: 'call_wild', target: '', extra: '', desc: 'Sound the Call of the Wild' };
     }
     case 'Neutral': {
-      if (!war || !ready('embargo')) return null;
+      if (!war || !ready('embargo') || !botCanAfford(L, EMBARGO_COST)) return null;
       const foe = botWarFoe(G, pi);
       if (foe == null) return null;
+      botSpend(L, EMBARGO_COST);
       return {
         action: 'embargo',
         target: 'realm:' + String(foe),
@@ -1931,13 +1979,19 @@ export function botKingKitOrder(G, pi, c, P, L) {
       return { action: 'great_sacrifice', target: '', extra: '', desc: 'Make the Great Sacrifice at ' + P.name };
     }
     case 'Evil': {
-      if (!ready('dark_pact') || L.budget < DARK_PACT_COST + 4 || (c.hp || 0) <= DARK_PACT_HP + 5) return null;
+      // round 5: the dearest monster of the realm's pits the chest can pay for, every turn the king can spare the blood
+      if ((c.hp || 0) <= DARK_PACT_HP + 5) return null;
       if (beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) <= 0) return null;
-      botSpend(L, DARK_PACT_COST);
-      return { action: 'dark_pact', target: '', extra: '', desc: 'Make a Dark Pact' };
+      const kinds = darkPactKinds(G, pi)
+        .filter((k) => L.budget >= darkPactCost(k) + 4)
+        .sort((a, b) => darkPactCost(b) - darkPactCost(a));
+      const kind = kinds[0];
+      if (!kind) return null;
+      botSpend(L, darkPactCost(kind));
+      return { action: 'dark_pact', target: 'type:' + kind, extra: '', desc: 'Make a Dark Pact for ' + kind };
     }
     case 'Undead': {
-      if (!war || !ready('spread_plague')) return null;
+      if (!war || !ready('spread_plague') || !botCanAfford(L, PLAGUE_COST)) return null;
       let best = null;
       neighboursOf(G, P).forEach((X) => {
         if (X.terrain === 'sea' || String(X.race || '').startsWith('Primal') || X.owner === pi) return;
@@ -1947,6 +2001,7 @@ export function botKingKitOrder(G, pi, c, P, L) {
         if (!best || (X.tax || 0) > (best.tax || 0)) best = X;
       });
       if (!best) return null;
+      botSpend(L, PLAGUE_COST);
       return {
         action: 'spread_plague',
         target: 'prov:' + String(best.id),

@@ -5,7 +5,14 @@
 // to a Neutral realm's markets. Nothing here is a decided rule (src/engine/alignment-prototypes.ts).
 import { KC_QUALITY_TIERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import type { Army, Province } from '../../schemas/saved-game-state.ts';
-import { alignProto, BARROW_RISE_PER_TURN, isBarrow, isWild, protoAlignOf } from '../alignment-prototypes.ts';
+import {
+  alignProto,
+  BARROW_RISE_PER_TURN,
+  isBarrow,
+  isWild,
+  protoAlignOf,
+  UNDEAD_GARRISON_CAP,
+} from '../alignment-prototypes.ts';
 import { armyUnitNameOf } from '../dice-and-army-names.ts';
 import { kcRng } from '../rng.ts';
 import type { TurnContext } from './context.ts';
@@ -90,7 +97,11 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     const deadLand = pv._despoiled != null || barrow;
     const rises = barrow ? BARROW_RISE_PER_TURN : 1; // round 3: a barrow raises two a turn
     for (let k = 0; k < rises; k++) {
-      if (align !== 'Undead' || !deadLand || pv.garrisonArmies.filter((a) => a._isSkeletal).length >= KIT_GARRISON_CAP)
+      if (
+        align !== 'Undead' ||
+        !deadLand ||
+        pv.garrisonArmies.filter((a) => a._isSkeletal).length >= UNDEAD_GARRISON_CAP
+      )
         break;
       let u: Army | null = null;
       if ((pv.battleGraves ?? []).length) {
