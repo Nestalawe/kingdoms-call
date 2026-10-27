@@ -673,8 +673,8 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 
 ## `@ts-nocheck` checks nothing in the file
 
-115 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(81: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+114 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(80: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -798,6 +798,27 @@ table with a key left out.
     small reader typed as wide as the guard (`provincesOrNone`), at the same moment.
   - **A number in a line's words** is written `${String(x)}` (the same text), and `x || 1.6` on a number that may be
     missing is `Number(x) || 1.6`.
+- (P1-10b8: `discoveries.ts`, 22,225 bytes): 123 errors, 113 of them a parameter with no type (one more than the
+  scoping's 122: the return type P1-10b7 wrote on `discEff` reads `e.led`, which the content's own effect type only has
+  on some rows). The first pass wrote the forms lint asks for as it went (`a?.b` for `a && a.b`, `??` for `||` where
+  no `0`, `''` or `NaN` reaches, `Number(x) || 0` where one may); the typed lint then found 3 more, all fixed. The three return types P1-10b7 wrote there are now checked, and
+  `discEff`'s is the file's one effect type, `TheEffectOfADiscovery` (every field a row's `effect` or `effect2` may
+  set, each optional; the compiler checks every row against it where `DISC_BY_ID` is filled), which every hook hands
+  its readers. No typed reader held a suppression on its results, so `eslintSuppressions` stays 733. Five more forms:
+  - **A parameter whose kind a flag says** (`discUnitIs(cls, army, typeOnly)`: a type's name with `typeOnly` true,
+    else a unit) is a rest tuple, `...[army, typeOnly]: [army: string, typeOnly: true] | [army: AUnit | null |
+    undefined, typeOnly?: false]`: the body's `typeOnly ? army : army?.type` then narrows, the arguments are the same
+    values, and a caller that passes them on spreads the tuple (`discUnitIs(e.cls, ...unitOrItsTypesName)`).
+  - **A function that reads only the state** takes `Pick<TurnContext, 'G'>`, not the whole context, so a typed test's
+    staged `{ G }` needs no more than the state's type.
+  - **A Map a caller makes and the function reads and writes** is typed by the two methods it calls (`get` and
+    `set`), so a caller's `Map<unknown, number>` passes; a `Map<unknown, unknown>` doesn't, and its caller types the
+    values it holds.
+  - **A typed callee's parameter type that its file doesn't export** is taken as `Parameters<typeof callee>[0]`
+    (`homeFounderOf`'s state, `pcFoeCat`'s foe), so no typed file changes to export it.
+  - **`list.includes(x)` where `x` may be missing** (a ground the battle may not give) is `x == null ||
+    !list.includes(x)` in a filter that returns on a miss: `includes` of `undefined` is false, as before. A `?? 1` for
+    `|| 1` on a content number was checked against the content: no row sets it to 0.
 
 ## A battle-only mark is not part of the saved state
 

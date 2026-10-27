@@ -703,9 +703,9 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   const rk = world.reckoning;
 
   // ── Its books (P1-12b5): what its tax forecast and wages need of the world ──
-  const baseTax: unknown = realmBaseTax(state, realm);
-  const discoveryTaxAccounts = new Map<unknown, unknown>();
-  const discoveryTaxCap: unknown = taxBonusCap(baseTax);
+  const baseTax = realmBaseTax(state, realm);
+  const discoveryTaxAccounts = new Map<unknown, number>();
+  const discoveryTaxCap = taxBonusCap(baseTax);
   const discoveryTaxGoldOfEachOfItsProvinces = (player.provinces ?? []).map((pid) => {
     const pv = provinces[pid];
     return pv ? discTaxAdd(me, pv, state, realm, discoveryTaxAccounts, discoveryTaxCap) : null;

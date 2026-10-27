@@ -54,7 +54,8 @@ interface TheStateAsEarlyWinterReadsIt {
   readonly turn: number;
   readonly characters?: readonly Character[] | null;
   readonly players: readonly ARealmAsEarlyWinterReadsIt[];
-  readonly world: { readonly provinces: readonly ProvinceInABattle[] };
+  // the map's size: discTaxAdd reads it (a coastal province's discovery)
+  readonly world: { readonly cols: number; readonly rows: number; readonly provinces: readonly ProvinceInABattle[] };
 }
 /** A realm as Early Winter reads it: its provinces and heroes guarded. */
 type ARealmAsEarlyWinterReadsIt = Omit<Realm, 'provinces' | 'heroes'> & {

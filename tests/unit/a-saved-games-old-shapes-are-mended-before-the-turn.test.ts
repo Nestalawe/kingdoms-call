@@ -113,7 +113,7 @@ const aTreasuryItem = must(
   'item in the treasury',
 );
 const aHeldDiscovery = must(
-  Object.values(DISC_BY_ID as Record<string, Loose>).find((d) => d['id'] !== 'sd34'),
+  Object.values(DISC_BY_ID).find((d) => d.id !== 'sd34'),
   'discovery in the table',
 );
 
@@ -246,7 +246,7 @@ const OLD_SHAPES: OldShape[] = [
       return {
         got: { held, found, kept: '_retiredDiscoveries' in s },
         want: {
-          held: [[aHeldDiscovery['id'], aHeldDiscovery['name'], aHeldDiscovery['desc']]],
+          held: [[aHeldDiscovery.id, aHeldDiscovery.name, aHeldDiscovery.desc]],
           found: { ...NOTHING_FOUND, retiredSageDiscoveriesRemoved: 1 },
           kept: false,
         },
