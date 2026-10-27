@@ -2,7 +2,8 @@
 // abilities (src/content/unit-abilities-their-names-numbers-and-words.ts, the numbers the rule registry's effects
 // read), the ability's name, and each of its numbers as the books write it (×1.25, +10%), are in its unit's blurb in
 // the player portal (UNIT_ABILITIES) and in its roster row in the comprehensive rulebook, within the ability's own words
-// (from its name to the next ability's). So a number changed in content, and not in the books, turns this red. This
+// (from its name to the next ability's), with no digit just before or after it (×1.2 is not in "×1.25": plan P1-19f).
+// So a number changed in content, and not in the books, turns this red. This
 // family's share of plan P3-02's words helper; the older words tests (abilities-words, primal-abilities-words) keep the
 // names of the abilities the registry doesn't hold yet.
 // One gap is known and let through, each with its fix parked: the rulebook's Orcish Longships row doesn't name Reaver
@@ -56,6 +57,9 @@ function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
   }
 }
 
+/** A number as the books write it, matched with no digit just before or after it, so that a number which starts
+ *  or ends the books' number isn't taken for it (×1.2 isn't in "×1.25", 5% isn't in "15%"). */
+const theNumber = (n: string) => new RegExp(`(?<![0-9])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![0-9])`);
 const norm = (s: string) => s.replace(/[’‘]/g, "'");
 const strip = (s: string) => {
   for (let t = s; ;) {
@@ -114,7 +118,7 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
     expect(blurb, `the player portal has a blurb for ${unit}`).toBeDefined();
     const words = ownWords(blurb ?? '', name);
     expect(words, `${unit}'s blurb names ${name}`).not.toBeNull();
-    for (const n of numbers) expect(words, `${name} in ${unit}'s blurb says ${n}`).toContain(n);
+    for (const n of numbers) expect(words, `${name} in ${unit}'s blurb says ${n}`).toMatch(theNumber(n));
     for (const n of numbersLeftOut) expect(words, `${name} in ${unit}'s blurb still leaves out ${n}`).not.toContain(n);
   });
 
@@ -125,7 +129,7 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
       expect(row, `the rulebook's roster has a row for ${unit}`).not.toBeNull();
       const words = ownWords(row ?? '', name);
       expect(words, `${unit}'s roster row names ${name}`).not.toBeNull();
-      for (const n of numbers) expect(words, `${name} in ${unit}'s roster row says ${n}`).toContain(n);
+      for (const n of numbers) expect(words, `${name} in ${unit}'s roster row says ${n}`).toMatch(theNumber(n));
       for (const n of numbersLeftOut)
         expect(words, `${name} in ${unit}'s roster row still leaves out ${n}`).not.toContain(n);
     },
