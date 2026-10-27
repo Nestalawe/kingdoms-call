@@ -4,7 +4,7 @@
 // like the winged riders; and no page still promises an ability "with the beast abilities" to come.
 // The abilities the rule registry holds (plan P1-19a: Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
 // Deepwater Grasp, Wyrmscale, Air Superiority; P1-19b: Maul, Boulder Wall, Purity, Trample, Many Heads; P1-19c: Storm
-// Wings, Rooted; P1-19d: Regenerating Hide; P1-19g: Thick Hide, Shell Wall) left the table: their names and numbers are checked from their content
+// Wings, Rooted; P1-19d: Regenerating Hide; P1-19g: Thick Hide, Shell Wall; P1-19h: Through the Glades, Colossal Bulk) left the table: their names and numbers are checked from their content
 // rows by tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
 // The player portal and the data file are read from src/ by their syntax tree (tests/lib/source.ts): the blurbs as
 // entries of the object literal, the words as the strings each holds. (Until plan P1-09a they were matched in the built
@@ -20,10 +20,10 @@ const norm=s=>s.replace(/[’‘]/g,"'");
 const ABILITIES={
   'Whale Cohort':['Breach and Swamp'], 'Shark Shoals':['Feeding Frenzy'],
   'Thunderbirds':['Lightning Strike'], 'Forest Ents':['Choking Spores'], 'Great Bears':[],
-  'Stone Giants':['Boulder Barrage'], 'Unicorn Herd':['Through the Glades'], 'Mammoth Host':['Stampede'],
+  'Stone Giants':['Boulder Barrage'], 'Unicorn Herd':[], 'Mammoth Host':['Stampede'],
   'Great Turtles':['Island Back'], 'Crimson Rocs':['Thunderous Stoop'],
   'Cave Trolls':['Hurled Rubble'], 'Basilisk Brood':['Petrifying Gaze'], 'Manticore Pride':['Spine Volley'],
-  'Sea Giants':['Tidal Surge'], 'Eldritch Kraken':['Crushing Coils'], 'Titan Warbeasts':['Colossal Bulk','World-Shaking Charge'],
+  'Sea Giants':['Tidal Surge'], 'Eldritch Kraken':['Crushing Coils'], 'Titan Warbeasts':['World-Shaking Charge'],
   'Elder Dragons':['Dragonfire Breath'], 'Dread Hydras':['Venom Breath'],
 };
 ok(LIVE.every(u=>u in ABILITIES),`every live beast has its abilities listed here (missing: ${LIVE.filter(u=>!(u in ABILITIES)).join(', ')||'none'})`);

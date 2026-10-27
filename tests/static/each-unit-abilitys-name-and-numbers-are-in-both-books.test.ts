@@ -9,10 +9,11 @@
 // Three gaps are known and let through, each with its fix parked (the three fleets): the rulebook's Orcish Longships row
 // doesn't name Reaver Crews, nor its Elven Galleys row Sea Archers, nor its Dwarf Ironclads row Armoured Hulls (the test
 // fails once it does, so the exception leaves with the fix). An ability the books give no number (Rooted, Hold the Gate,
-// Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d; eight of the volley's: P1-19g) is listed below,
+// Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d; eight of the volley's: P1-19g; the three flank
+// slots of rough ground: P1-19h) is listed below,
 // and its name is checked; a number the books leave out (Driven Before Them's cap, which the units beside them never
-// reach) is checked to be still left out. A number the books write in words (double, half, two) is matched as a whole
-// word, case aside (the rulebook writes "DOUBLE volley damage").
+// reach) is checked to be still left out. A number the books write in words (double, half, two, full strength) is matched
+// as a whole word, case aside (the rulebook writes "DOUBLE volley damage").
 // Level 0 (static): the content's rows imported (plain data), the player portal's blurbs by their syntax tree
 // (tests/lib/source.ts), the rulebook as built (site/); nothing runs.
 import { describe, expect, test } from 'vitest';
@@ -48,16 +49,24 @@ const NO_NUMBER_IN_THE_BOOKS: Readonly<Record<string, string>> = {
   'armoured-hulls': 'immune to pre-battle volleys',
   'shell-wall': 'immune to pre-battle volleys, as the Ironclads',
   'sea-archers': 'your ranged units ignore the land-unit penalty at sea',
+  'through-the-trees': 'the one cavalry that takes a flank in forest and jungle',
+  'through-the-glades': 'the one cavalry, with the Stag Riders, that takes a flank in forest and jungle',
+  'crag-charge': 'the one cavalry that takes a flank in the mountains',
 };
 
 /** A count as the books write it, in words (any other count is written so that no book holds it). */
 const COUNTS_IN_WORDS: Readonly<Record<number, string>> = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five' };
 
 /** The ways the books write a number in words: matched as a whole word, case aside. */
-const IN_WORDS: ReadonlySet<ANumberOfAnAbility['theBooksWriteIt']> = new Set(['double', 'half', 'a count in words']);
+const IN_WORDS: ReadonlySet<ANumberOfAnAbility['theBooksWriteIt']> = new Set([
+  'double',
+  'half',
+  'a count in words',
+  'full strength',
+]);
 
 /** A number as the books write it: ×1.25; +10% for a fraction added (and for one the books leave out, which the test
- *  checks they still do); 30% for a chance and 55% for a share; "no penalty" for full strength, ×1, "double" for ×2 and
+ *  checks they still do); 30% for a chance and 55% for a share; "no penalty" or "full strength" for ×1, "double" for ×2 and
  *  "half" for ×0.5, and a count in words, "two" (any other value is written so that no book holds it, and the test turns
  *  red); "base strength 6" for a unit's base strength. */
 function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
@@ -78,6 +87,8 @@ function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
       return COUNTS_IN_WORDS[n.value] ?? `${String(n.value)}, a count the books write in words`;
     case 'no penalty':
       return n.value === 1 ? 'no penalty' : `×${String(n.value)}, which is not "no penalty"`;
+    case 'full strength':
+      return n.value === 1 ? 'full strength' : `×${String(n.value)}, which is not "full strength"`;
     case 'a base strength':
       return `base strength ${String(n.value)}`;
   }

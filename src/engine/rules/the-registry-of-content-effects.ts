@@ -37,6 +37,11 @@ import {
   A_BEATEN_UNIT_FAILS_ITS_DEMOTION_ROLL,
 } from './unit-abilities/a-units-fate-after-a-battle.ts';
 import {
+  A_FLYER_TAKES_AN_OPEN_FLANK_NO_RIDER_FILLS,
+  A_RIDER_TAKES_THE_FLANK_ON_ROUGH_GROUND,
+  ITS_PLACE_IN_THE_LINE,
+} from './unit-abilities/a-units-place-in-the-battle-grid.ts';
+import {
   A_SHOTS_DAMAGE,
   HOW_MANY_VOLLEYS,
   MAY_BE_SHOT_AT,
@@ -86,6 +91,21 @@ export type ARoleInTheBattleLine = 'fly' | 'cav' | 'arc' | 'foot';
 export interface AUnitInTheLine {
   readonly unitType: string | undefined;
   readonly role: ARoleInTheBattleLine;
+}
+
+/** What the stages "a rider takes the flank on rough ground" and "a flyer takes an open flank no rider fills" hand an
+ *  effect (battleGrid, as it places the flanks): a unit of the line, and the battle's ground. */
+export interface AUnitInTheLineOnItsGround {
+  readonly theUnit: AUnitInTheLine;
+  /** The battle's ground (a terrain's name), or none. */
+  readonly ground: string | null;
+}
+
+/** What the stage "its place in the line" hands an effect (battleRegrid, as it scores the grid): a unit of the line on
+ *  the battle's ground, and the line it stands in, the front or the second line (where it doesn't shoot over a fighter
+ *  of its own). */
+export interface AUnitInItsLine extends AUnitInTheLineOnItsGround {
+  readonly itsLine: 'front' | 'second';
 }
 
 /** Where two units meet (abilityFront): in the front line (facing, or met by a rider guarding the end), in a flank
@@ -291,6 +311,12 @@ export interface TheStagesOfEachHookPoint {
     readonly 'a land unit at sea': (facts: ALandUnitAtSea) => boolean;
     /** The unit's own factor from its force and the battle's facts; the runner multiplies them in the stage's order. */
     readonly 'the whole force': (facts: AUnitInItsForce) => number;
+    /** Whether a rider takes the one flank slot rough ground allows (battleGrid, through abilityFlanksRough). */
+    readonly 'a rider takes the flank on rough ground': (facts: AUnitInTheLineOnItsGround) => boolean;
+    /** Whether a flyer leaves the air for a flank slot no rider fills, on open ground (battleGrid). */
+    readonly 'a flyer takes an open flank no rider fills': (facts: AUnitInTheLineOnItsGround) => boolean;
+    /** The multiplier of the unit's place in its line, and its words, or nothing (the line's own: battleRegrid). */
+    readonly 'its place in the line': (facts: AUnitInItsLine) => AMultiplierAndItsWords | null;
     /** The unit's own matchup against the unit it meets, from the role matchup's multiplier (abilityFront). */
     readonly 'what a unit does to the unit it meets': AnEffectOnTheMultiplierSoFar<AUnitMeetingAnother>;
     /** What the unit it meets does to it, after the unit's own (abilityFront). */
@@ -382,7 +408,10 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
     strength: { 'what a unit does to the unit it meets': WHAT_A_UNIT_DOES_TO_THE_UNIT_IT_MEETS['wolves-panic-horses'] },
   },
   'stoop-on-the-horses': {
-    strength: { 'what a unit does to the unit it meets': WHAT_A_UNIT_DOES_TO_THE_UNIT_IT_MEETS['stoop-on-the-horses'] },
+    strength: {
+      'a flyer takes an open flank no rider fills': A_FLYER_TAKES_AN_OPEN_FLANK_NO_RIDER_FILLS['stoop-on-the-horses'],
+      'what a unit does to the unit it meets': WHAT_A_UNIT_DOES_TO_THE_UNIT_IT_MEETS['stoop-on-the-horses'],
+    },
   },
   harriers: { strength: { 'what a unit does to the unit it meets': WHAT_A_UNIT_DOES_TO_THE_UNIT_IT_MEETS.harriers } },
   'woodland-skirmish': {
@@ -479,6 +508,21 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'thick-hide': { volley: { 'what the target does to a shot': WHAT_THE_TARGET_DOES_TO_A_SHOT['thick-hide'] } },
   'punch-through': { volley: { 'the softening limit': THE_SOFTENING_LIMIT['punch-through'] } },
   'sea-archers': { strength: { 'a land unit at sea': A_LAND_UNIT_AT_SEA['sea-archers'] } },
+  'through-the-trees': {
+    strength: {
+      'a rider takes the flank on rough ground': A_RIDER_TAKES_THE_FLANK_ON_ROUGH_GROUND['through-the-trees'],
+    },
+  },
+  'through-the-glades': {
+    strength: {
+      'a rider takes the flank on rough ground': A_RIDER_TAKES_THE_FLANK_ON_ROUGH_GROUND['through-the-glades'],
+    },
+  },
+  'crag-charge': {
+    strength: { 'a rider takes the flank on rough ground': A_RIDER_TAKES_THE_FLANK_ON_ROUGH_GROUND['crag-charge'] },
+  },
+  'brawling-archers': { strength: { 'its place in the line': ITS_PLACE_IN_THE_LINE['brawling-archers'] } },
+  'colossal-bulk': { strength: { 'its place in the line': ITS_PLACE_IN_THE_LINE['colossal-bulk'] } },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -497,6 +541,9 @@ export const THE_ORDER_OF_EACH_STAGE = {
       'wyrmscale',
       'air-superiority',
     ],
+    'a rider takes the flank on rough ground': ['through-the-trees', 'through-the-glades', 'crag-charge'],
+    'a flyer takes an open flank no rider fills': ['stoop-on-the-horses'],
+    'its place in the line': ['brawling-archers', 'colossal-bulk'],
     'what a unit does to the unit it meets': [
       'halberds',
       'lance-charge',
@@ -688,6 +735,18 @@ const THE_SOFTENING_LIMIT_BY_UNIT = theEffectsOfEachUnitAt(
   THE_ORDER_OF_THE_VOLLEY['the softening limit'],
   (entry) => entry.volley?.['the softening limit'],
 );
+const A_RIDER_TAKES_THE_FLANK_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_STRENGTH['a rider takes the flank on rough ground'],
+  (entry) => entry.strength?.['a rider takes the flank on rough ground'],
+);
+const A_FLYER_TAKES_AN_OPEN_FLANK_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_STRENGTH['a flyer takes an open flank no rider fills'],
+  (entry) => entry.strength?.['a flyer takes an open flank no rider fills'],
+);
+const ITS_PLACE_IN_THE_LINE_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_STRENGTH['its place in the line'],
+  (entry) => entry.strength?.['its place in the line'],
+);
 type ALandUnitAtSeaEffect = TheStagesOfEachHookPoint['strength']['a land unit at sea'];
 /** The effects of "a land unit at sea", in the stage's order (each runs for every land unit at sea: Sea Archers looks
  *  for its unit in the force, and reaches its ranged units). */
@@ -847,6 +906,30 @@ export function theLineByWhichABeatenUnitHoldsItsTier(
  *  penalty for the unit (Sea Archers: the ranged units of a force with Elven Galleys). */
 export function theSeasPenaltyIsWaivedForALandUnit(facts: ALandUnitAtSea): boolean {
   return A_LAND_UNIT_AT_SEA_EFFECTS.some((effect) => effect(facts));
+}
+
+/** The runner of "strength: a rider takes the flank on rough ground" (abilityFlanksRough, in battleGrid): whether any
+ *  of the rider's abilities, in the stage's order, takes it there. */
+export function aRiderTakesTheFlankOnRoughGround(facts: AUnitInTheLineOnItsGround): boolean {
+  return (A_RIDER_TAKES_THE_FLANK_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS).some((effect) => effect(facts));
+}
+
+/** The runner of "strength: a flyer takes an open flank no rider fills" (battleGrid, on open ground): whether any of the
+ *  flyer's abilities, in the stage's order, takes it there. */
+export function aFlyerTakesAnOpenFlankNoRiderFills(facts: AUnitInTheLineOnItsGround): boolean {
+  return (A_FLYER_TAKES_AN_OPEN_FLANK_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS).some((effect) =>
+    effect(facts),
+  );
+}
+
+/** The runner of "strength: its place in the line" (battleRegrid): the multiplier and words the first of the unit's
+ *  abilities, in the stage's order, gives its place, or nothing (the line's own). */
+export function theMultiplierOfAUnitsPlaceInTheLine(facts: AUnitInItsLine): AMultiplierAndItsWords | null {
+  for (const effect of ITS_PLACE_IN_THE_LINE_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS) {
+    const placed = effect(facts);
+    if (placed !== null) return placed;
+  }
+  return null;
 }
 
 /** The runner of "volley: who shoots" (abilityMissileUnits): the units of a force that shoot though they are no ranged

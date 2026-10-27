@@ -4,7 +4,7 @@
 // Retreat, the Wyverns' Dread) are named on no page; the rulebook explains the new conditions of Shieldwall,
 // Shield Fort and Sheer Numbers. The abilities the rule registry holds (Sheer Numbers, plan P1-19a; the matchups
 // of abilityFront and abilityBack, Halberds to Arrow Fodder, P1-19b; the whole line's, Hold the Gate to Flak Gunners,
-// P1-19c; Knightly Example, P1-19d; the volley's, Prepared Ground to Raiders' Volley, P1-19g) left the table, a unit with none left keeping the check of its blurb and its roster row: their names and numbers are checked from their content rows by
+// P1-19c; Knightly Example, P1-19d; the volley's, Prepared Ground to Raiders' Volley, P1-19g; the grid's, Through the Trees, Crag Charge and Brawling Archers, P1-19h) left the table, a unit with none left keeping the check of its blurb and its roster row: their names and numbers are checked from their content rows by
 // tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
 // The player portal is read from src/ by its syntax tree (tests/lib/source.ts): its blurbs as entries of the object
 // literal, its words as the strings it holds. (Until plan P1-09a they were matched in the built page's text.)
@@ -19,10 +19,10 @@ const ABILITIES={
   'Free Lances':['Ride Them Down'], 'Gilded Lances':[], 'Noble Griffons':['Screech Dive'],
   'Human Garrison':[],
   'Forest Wardens':[], 'Elven Bowmen':[], 'Shadow Archers':[],
-  'Stag Riders':['Through the Trees','Forest Runners'], 'Eagle Riders':[], 'Elven Garrison':[],
+  'Stag Riders':['Forest Runners'], 'Eagle Riders':[], 'Elven Garrison':[],
   'Dwarven Guard':['Shield Fort'], 'Ironwood Crossbows':[], 'Mountain Guns':[],
-  'Ironhoof Rams':['Crag Charge'], 'Gnomish Gyrocopters':['Flak Screen'], 'Dwarf Garrison':['Deep Halls'],
-  'Goblin Horde':[], 'Orc Berserkers':[], 'Black Arrows':['Brawling Archers'],
+  'Ironhoof Rams':[], 'Gnomish Gyrocopters':['Flak Screen'], 'Dwarf Garrison':['Deep Halls'],
+  'Goblin Horde':[], 'Orc Berserkers':[], 'Black Arrows':[],
   'Warg Riders':['Run Them Down'], 'Wyvern Riders':['Acid Spit'], 'Orc Garrison':["Raiders' Muster"],
 };
 const norm=s=>s.replace(/[’‘]/g,"'");
