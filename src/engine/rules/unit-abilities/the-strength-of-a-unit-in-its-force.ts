@@ -1,7 +1,8 @@
 // The unit abilities at the stage "strength: the whole force" (plan P1-19a): each returns the unit's factor from its
 // force and the battle's facts, with its numbers from the content's row; the runner (the-registry-of-content-effects.ts)
 // multiplies them, in the stage's order, inside armStr (through unitAbilityMult). Until P1-19a they were written inline
-// in unitAbilityMult (src/engine/battle/strength.ts), in this order.
+// in unitAbilityMult (src/engine/battle/strength.ts), in this order. And, before them in armStr, the stage "strength: a
+// land unit at sea" (plan P1-19g): whether the unit's force waives the sea's penalty (until P1-19g inline in armStr).
 //
 // 2026-10-11 (Toby, the unit abilities): Shieldwall now lives in the line (battleFaceSide: Levies with an archer behind
 // them), and the Gilded Lances' Shock of the Charge (+40% attacking) is retired; their abilities are Lance Charge and
@@ -14,11 +15,22 @@
 // terrain is written ONCE, in TERRAIN_MODS. The multipliers that doubled a terrain row are gone (Mountain Bulwark (Stone
 // Giants), Rooted Grove (Forest Ents), Regenerating Hide's ×1.2/×1.3 (Cave Trolls)), and so is the Titans' always-on
 // ×1.3 (Colossal Bulk's place in the line comes with the beast abilities, as the humanoid units' did).
+import { KC_UNIT_CLASS } from '../../../content/kingdoms-call-data.ts';
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS as ROWS } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { UnitAbilitySlug } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { AUnitInItsForce, TheStagesOfEachHookPoint } from '../the-registry-of-content-effects.ts';
 
 type TheWholeForceEffect = TheStagesOfEachHookPoint['strength']['the whole force'];
+
+// The ranged units (the data file's class: MISSILE_ARMIES_MASTER's), which Sea Archers reaches.
+const RANGED_UNITS = new Set<string>(KC_UNIT_CLASS.missile);
+
+// A land unit at sea (each runs for every land unit at sea). ELF — Sea Archers: the ranged units of a force with Elven
+// Galleys shoot from steady decks and do not suffer the usual land-unit penalty at sea.
+export const A_LAND_UNIT_AT_SEA = {
+  'sea-archers': (facts) =>
+    facts.itsForce.some((a) => a?.type === ROWS['sea-archers'].unit) && RANGED_UNITS.has(facts.unitType),
+} satisfies Partial<Record<UnitAbilitySlug, TheStagesOfEachHookPoint['strength']['a land unit at sea']>>;
 
 /** How many other units of its force are of the types given: the units of those types, less the one it is. */
 function othersInItsForce(facts: AUnitInItsForce, types: ReadonlySet<string>): number {

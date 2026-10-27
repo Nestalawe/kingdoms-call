@@ -1,7 +1,6 @@
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
-import { MISSILE_ARMIES_MASTER } from './ladder.ts';
 import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import {
   AERIAL_TYPES,
@@ -10,7 +9,11 @@ import {
   MONSTER_ARMIES,
   SEA_TYPES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { missileCap, unitAbilityMult } from './strength.ts';
+import { missileCap, unitAbilityMult, whyEveryShotGlancesOff } from './strength.ts';
+import {
+  theDamageOfAShotAfterItsTarget,
+  theSeasPenaltyIsWaivedForALandUnit,
+} from '../rules/the-registry-of-content-effects.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT, unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
 import {
@@ -432,18 +435,18 @@ export function applyMissileHit(
   opts?: { dmgMult?: number | null } | null,
 ) {
   opts ??= {};
-  // DWARF — Armoured Hulls: arrows and bolts simply do not tell against plated warships.
-  if (target.type === 'Dwarf Ironclads')
-    return { dmg: 0, isFly: false, capped: false, immune: true, why: 'armoured hull' };
-  // PRIMAL — Shell Wall (2026-10-13, the beast abilities): nor against the Great Turtles' shells.
-  if (target.type === 'Great Turtles') return { dmg: 0, isFly: false, capped: false, immune: true, why: 'shell' };
+  // A unit immune to volleys (Armoured Hulls: plated warships; Shell Wall: the Great Turtles' shells), the rule
+  // registry's "may be shot at" (plan P1-19g): every shot glances off, with the line's words.
+  const why = whyEveryShotGlancesOff(target.type);
+  if (why !== null) return { dmg: 0, isFly: false, capped: false, immune: true, why };
   const isFly = FLYING_TYPES.has(target.type);
   let dmg = missileShotDamage(firer, archSkill, opts.dmgMult); // the SHOOTER's strength decides the hit
   if (isFly) dmg = dmg * 2; // archers are especially good against winged riders — double damage
-  // PRIMAL — Thick Hide: a volley at the Great Bears does half (rounded up).
-  const thickHide = target.type === 'Great Bears';
-  if (thickHide) dmg = Math.ceil(dmg / 2);
-  // DWARF — Punch Through: heavy bolts grind a target past the point bows can manage.
+  // What the target does to the shot, after a flyer's double (Thick Hide: half, rounded up): the registry's stage.
+  const afterTheTarget = theDamageOfAShotAfterItsTarget({ theTargetsType: target.type }, dmg);
+  dmg = afterTheTarget.damage;
+  const thickHide = afterTheTarget.theTargetsAbilityActed;
+  // The softening limit (a shooter's ability may push it: Punch Through), in missileCap.
   const cap = missileCap(target, firer);
   const already = Number(target._archeryRed) || 0;
   dmg = Math.max(0, Math.min(dmg, cap - already));
@@ -616,8 +619,8 @@ export function armStr(
   }
   // Apply terrain modifier
   if (terrain) {
-    // ELF — Sea Archers: elven missile troops aboard galleys shoot from steady decks and do not
-    // suffer the usual land-unit penalty at sea.
+    // ELF — Sea Archers: missile troops aboard elven galleys shoot from steady decks and do not
+    // suffer the usual land-unit penalty at sea (the rule registry's "a land unit at sea", below).
     let sp = seaPenalty(army.type, terrain);
     // AIRBORNE AT SEA. A force fighting in a sea province with NO naval hull or sea-beast among
     // it is there only because its flyers carried the foot soldiers. Those dangling land units
@@ -633,8 +636,7 @@ export function armStr(
       sp < 1 &&
       terrain === 'sea' &&
       ctx &&
-      (ctx.force ?? []).some((a) => a?.type === 'Elven Galleys') &&
-      MISSILE_ARMIES_MASTER.has(army.type)
+      theSeasPenaltyIsWaivedForALandUnit({ unitType: army.type, itsForce: ctx.force ?? [] })
     )
       sp = 1.0;
     if (

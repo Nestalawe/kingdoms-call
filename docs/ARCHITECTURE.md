@@ -349,8 +349,20 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   or nothing: **a beaten unit fails its death roll** (Regenerating Hide: the stage hands the dice, and the effect draws
   its die only after a lost battle, where the code drew it before), then, for a beaten unit that fails its demotion roll
   with no Shield Fort holding it, **a beaten unit fails its demotion roll** (Knightly Example, which reaches the Levies
-  and the Men-at-Arms). Every stage of `strength` and `fate` now has its signature; the other seven hook points are
-  `never` until their family's first row.
+  and the Men-at-Arms). The volley (P1-19g), the nine stages of `volley`, in the volley's helpers of
+  `battle/strength.ts` and in `applyMissileHit` (`src/engine/rules/unit-abilities/the-volley-before-the-battle.ts`):
+  **who shoots**, though it is no ranged unit (Broadside at sea, Tree Watch in the woods: those of each ability, in the
+  stage's order, after the ranged units), **who shoots first** (Bombardment, the sort kept stable), **the shooters see
+  what hides** (Eyes of the Forest), **stops the volley** (Ambush, unless the shooters see what hides), **may be shot
+  at** (Loosed From Cover hides from shooters who don't see what hides; Armoured Hulls and Shell Wall are immune, with
+  the words of the line by which a shot glances off: `missileTargetPool` asks it, and `missileCapReached` and
+  `applyMissileHit` ask it for the immunity alone, through `whyEveryShotGlancesOff`), **how many volleys** (Prepared
+  Ground, else one), **a shot's damage** (Woodland Volley, Bombardment, Raiders' Volley: the product, from ×1), **what
+  the target does to a shot** (Thick Hide, after a flyer's double), and **the softening limit** (Punch Through, else
+  the usual 40% and 80%); and `strength`'s **a land unit at sea** (Sea Archers, in `armStr` before the unit's factors
+  from its force: whether the sea's penalty is waived; its effect is in the whole force's file). Every stage of
+  `strength`, `volley` and `fate` now has its signature; the other six hook points are `never` until their family's
+  first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
   `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its
