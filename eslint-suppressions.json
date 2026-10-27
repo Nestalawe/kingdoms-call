@@ -33,13 +33,10 @@
       "count": 4
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 16
+      "count": 14
     },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 6
-    },
-    "@typescript-eslint/restrict-template-expressions": {
-      "count": 4
     }
   },
   "src/engine/battle/battles-against-province-defenders.ts": {
@@ -102,11 +99,8 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 2
     },
-    "@typescript-eslint/no-unnecessary-type-conversion": {
-      "count": 1
-    },
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 14
+      "count": 13
     },
     "@typescript-eslint/restrict-plus-operands": {
       "count": 2

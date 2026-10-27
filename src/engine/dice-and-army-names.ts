@@ -2,7 +2,7 @@ import { ARMY_UNIT_NAMES, PRIMAL_UNIT_NAMES } from '../content/kingdoms-call-dat
 import { kcRng } from './rng.ts';
 import { dispFloor } from './rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import type { UnitType } from '../content/kingdoms-call-data.ts';
-import type { Army, GameState } from '../schemas/saved-game-state.ts';
+import type { GameState } from '../schemas/saved-game-state.ts';
 
 // ── Percentage dice ────
 // d100() returns an integer 1–100. A percentage check SUCCEEDS when the rolled number is LESS THAN
@@ -148,7 +148,15 @@ export function rng(a: number, b: number) {
 
 export const pick = <T>(arr: readonly T[]) => arr[Math.floor(kcRng() * arr.length)];
 
-export function describeArmy(armies: Army[] | null | undefined) {
+/** A unit as describeArmy names it: an army, or a copy of one that a battle's line holds (theUnitsAsTheLineNamesThem). */
+export interface AUnitAsDescribeArmyNamesIt {
+  readonly unitName: string;
+  readonly type: string;
+  readonly quality: string;
+  readonly _phantom?: boolean | undefined;
+}
+
+export function describeArmy(armies: readonly AUnitAsDescribeArmyNamesIt[] | null | undefined) {
   if (!armies || armies.length === 0) return 'no armies';
   const named: string[] = [];
   const unnamed: Record<string, number> = {};

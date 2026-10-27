@@ -184,7 +184,6 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               : {
                   kind: 'commanderless survivors still contest a province',
                   survivingUnitCount: surv.length,
-                  survivingUnitsPlural: surv.length !== 1 ? 's' : '',
                   provName: prov.name,
                 },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
@@ -370,8 +369,8 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           fact: {
             kind: 'a contest for a province lapses as the realms are no longer at war',
             provName: prov.name,
-            attackersRealmName: G.players[attacker.player]?.name || 'one side',
-            defendersRealmName: G.players[defender.player]?.name || 'the other',
+            attackersRealmName: G.players[attacker.player]?.name,
+            defendersRealmName: G.players[defender.player]?.name,
           },
           audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
           hero: _ctxCharId,

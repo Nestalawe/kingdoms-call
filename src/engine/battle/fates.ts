@@ -78,9 +78,6 @@ export function rollUnitFates(
       }),
     ref = o.unitRef ?? unitRef,
     who = o.owner ?? '';
-  const dust = (a: ArmyInABattle) => (a._isSkeletal ? ' Their bones crumble to dust — gone forever.' : '');
-  const diedVerb = o.diedVerb ?? (o.won ? 'were destroyed in the fighting.' : 'were destroyed in the rout!'),
-    promoteVerb = o.promoteVerb ?? 'earn promotion to';
   const clauseOf = (a: ArmyInABattle | null | undefined) => {
     const f = o.faced;
     if (!f || !a) return '';
@@ -112,7 +109,13 @@ export function rollUnitFates(
       }
       a._died = true;
       r.died++;
-      say({ kind: 'a unit dies in the battle', unitReference: head(a), diedVerb, wordsIfSkeletal: dust(a) });
+      say({
+        kind: 'a unit dies in the battle',
+        unitReference: head(a),
+        diedVerb: o.diedVerb,
+        itsSideWon: o.won,
+        itsBonesCrumble: a._isSkeletal,
+      });
       return;
     }
     if (a._isSkeletal) {
@@ -128,7 +131,7 @@ export function rollUnitFates(
         say({
           kind: 'a unit is promoted after the battle',
           unitReferenceAtItsOldQuality: head(a, q0),
-          promoteVerb,
+          promoteVerb: o.promoteVerb,
           unitQuality: a.quality,
         });
       } else r.survived++;

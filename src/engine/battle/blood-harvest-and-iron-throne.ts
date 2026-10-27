@@ -37,7 +37,6 @@ export function bloodHarvest(
   narrate(narrative, {
     kind: 'the blood harvest claims offerings from the fallen enemy units',
     fallenUnitCount: destroyed,
-    fallenUnitsPlural: destroyed !== 1 ? 's' : '',
     offeringsGold: _take,
   });
 }

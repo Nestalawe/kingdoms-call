@@ -174,16 +174,6 @@ Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t, d]) => {
 // Top-level copy of the primal sea beasts for report/order-data builders that run outside the
 // resolution scope. Built from KC_UNIT_CLASS (kingdoms-call-data.ts), like PRIMAL_SEA_TYPES.
 export const PRIMAL_SEA_NAMES = new Set(KC_UNIT_CLASS.primalSea);
-// ── DISPLAY ROUNDING ────
-// Battle maths is done in floats (flank ×0.5, tactical ×1.2, dice = kcRng()*range), but a
-// player report should never show a decimal — "roll 7.2384719283" is noise, not information. n0()
-// is a DISPLAY-ONLY rounder: use it on every number interpolated into narrative/log text. It must
-// NEVER be used on a value that feeds back into the maths, and it is deliberately NOT applied to
-// multipliers — "× tactical ×1.2" rounded to "×1" would be meaningless.
-export function n0(x: unknown): string {
-  const v = Number(x);
-  return Number.isFinite(v) ? String(Math.round(v)) : String(x);
-}
 // ════
 // UNIT ABILITIES — single source of truth
 // ════

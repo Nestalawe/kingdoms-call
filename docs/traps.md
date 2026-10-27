@@ -392,16 +392,22 @@ check finds were made.
   those fields' words into the prose); the words a battle takes from another folder's helper (a unit disbanding, a sea
   trap, a naval hold, the wanderer's escape, a hero's death) are P1-12d's.
 - **A fact holds values, and a copy of the world, never a part of it** (P1-12d; personal combat's facts since
-  P1-12d2). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
+  P1-12d2, a battle's since P1-12d3). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
   holding a live part of the world (a hero, his item list, a status) would be read as it is then, not as it was told.
   So a fact holds a number, a flag, an id or a slug, a name, or a copy made as the line is told by a named function
-  beside the kind (`aFightersWardAsTheLineTellsIt`, `theItemsAsTheLineNamesThem`, `aListAsTheLineTellsIt`, …), and no
-  words: a plural from its count, a mark from its roll and its chance, a clause from the flag that chose it (named for
-  what it says: `againstTheUnclean`, `itsTemperBreaksItOff`), a die drawn for words as the face drawn
-  (`aDecisiveBlow: rng(0, 1)`, drawn where it was), all written in `src/views/prose/`. The static test
-  `a-lines-facts-hold-values-not-words` refuses a field holding words in an area its list names, but the fighters'
-  labels and the slugs it lists; it can't see words handed in through a parameter (a daze's `what`, a lingering harm's
-  label). Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  beside the kind (`aFightersWardAsTheLineTellsIt`, `theItemsAsTheLineNamesThem`, `aListAsTheLineTellsIt`, a battle's
+  `theUnitsAsTheLineNamesThem`, `theFortuneAsTheLineTellsIt`, …), and no words: a plural from its count, a mark from its
+  roll and its chance, a clause from the flag that chose it (named for what it says: `againstTheUnclean`,
+  `itsTemperBreaksItOff`, `thickHideHalvesIt`), a number as the number (the prose rounds it: `n0`, `toFixed`), a unit
+  ability's name from its content row (`UNIT_ABILITIES_THE_REGISTRY_HOLDS[slug].name`), all written in
+  `src/views/prose/`. **A die drawn for words stays in the engine, where it was drawn, and the fact holds which face**
+  (`aDecisiveBlow: rng(0, 1)`; a victory's verb, `winVerbIndex: Math.floor(kcRng() * THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH)`,
+  P1-12d3): the views drawing their own would move every draw after it. The table of words moves to the prose, and its
+  length is pinned to the engine's count (`satisfies { length: … }`), so the two can't drift apart. The static test
+  `a-lines-facts-hold-values-not-words` refuses a field holding words in an area its list names, but the labels (a
+  fighter's, a battle's side's, guard's, realm's or unit's), the slugs and what a later row moves (the strength ladder
+  and the grid: P1-12d4) it lists; it can't see words handed in through a parameter (a daze's `what`, a lingering
+  harm's label, the verb a battle hands a unit's fate, a force's header's verb). Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-

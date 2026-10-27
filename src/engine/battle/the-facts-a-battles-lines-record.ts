@@ -8,15 +8,58 @@
 // battle, a war front, terror, the blood harvest, and the helpers that return a line: the kinship, Druid, eagle and
 // command lines, the ladder and grid rows, the scouting and tactics lines, the units' fates, the battlecries), one
 // kind per sentence, one field per value the sentence was written with, worked out where the line is told and in the
-// sentence's order, so the words are the same by construction (TheFactOfOneOfABattlesSentences). A field may hold words
-// itself (those named wordsIf…, …Words, …Plural, …Mark, …Names, …Notes, why, a verb, the fortune, a unit's reference):
-// P1-12d moves those words into the prose and merges the kinds into facts by sense. Words a battle takes from another
-// folder's helper (a unit disbanding, a sea trap, a naval hold, the wanderer's escape, a hero's death) stay words
-// until P1-12d.
+// sentence's order, so the words are the same by construction (TheFactOfOneOfABattlesSentences). P1-12d3 (P1-12's
+// Decisions of 2026-10-26, Decisions 2 to 5) moved the words its fields held into the prose: a field holds plain values
+// (a number, a flag, a name as the world or the content holds it, a slug, and lists copied as the line is told by the
+// functions below), never a clause, a plural, a mark, a join or a number formatted for reading. What still holds words,
+// listed by the static test (tests/static/a-lines-facts-hold-values-not-words.test.ts): a side's, a guard's or a unit's
+// label (Decision 2: the facts-by-sense slice names a side), the strength ladder's and the grid's words and the clause
+// of whom a unit faced (P1-12d4), and words a caller hands in (a unit's fate's verb). Words a battle takes from another
+// folder's helper (a unit disbanding, a sea trap, a naval hold, the wanderer's escape, a hero's death) stay words until
+// P1-12d5.
 // LineFact (src/engine/turn/events-and-their-audiences.ts) is the union of every area's kinds; a kind with no words in
 // src/views/prose/ is a compile error there.
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AValueInALinesWords } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
+import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
+import type { WhyAShotGlancesOffAUnit } from '../rules/the-registry-of-content-effects.ts';
+
+// ── WHAT A BATTLE'S LINES READ, COPIED AS THE LINE IS TOLD (plan P1-12d3) ──
+// A fact holds a copy of the world's values, never a part of it: the units a line names change after it is told (they
+// die, rise a tier, leave), and its words are written at the turn's end.
+
+/** The units a line names (a beaten host's survivors, a garrison), copied as the line is told: describeArmy's words. */
+export function theUnitsAsTheLineNamesThem(units: readonly AUnitAsDescribeArmyNamesIt[]): AUnitAsDescribeArmyNamesIt[] {
+  return units.map((a) => ({ unitName: a.unitName, type: a.type, quality: a.quality, _phantom: a._phantom }));
+}
+
+/** A unit short of its commander's Druid, as the shortfall's line tells it: its type and its strength's multiplier. */
+export interface AUnitsDruidShortfall {
+  readonly unitType: string;
+  readonly penalty: number;
+}
+
+/** A unit the ground marks (its strength's multiplier below 0.85 or above 1.05), as the terrain's line tells it. */
+export interface AUnitTheTerrainMarks {
+  readonly unitType: string;
+  readonly multiplier: number;
+}
+
+/** A battle's fortune, as its line tells it: the dice's swing and the two luck multipliers it gives. */
+export interface TheFortuneAsTheLineTellsIt {
+  readonly S: number;
+  readonly atk: number;
+  readonly def: number;
+}
+
+/** A battle's fortune, copied as the line is told. */
+export function theFortuneAsTheLineTellsIt(fortune: TheFortuneAsTheLineTellsIt): TheFortuneAsTheLineTellsIt {
+  return { S: fortune.S, atk: fortune.atk, def: fortune.def };
+}
+
+/** How many verbs a victory is told with (the prose's WIN_VERBS): the engine draws which, the prose writes it
+ *  (Decision 4: a die drawn for words stays where it is drawn, and the fact holds which). */
+export const THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH = 5;
 
 /** One unit of a force drawn up for battle, as its header row shows it. */
 export interface AUnitOfAForceDrawnUp {
@@ -51,6 +94,16 @@ export interface ABattlesLossesTalliedFromItsLines {
   kind: "a battle's losses, tallied from its lines";
 }
 
+/** What a shot that weakens its target adds to its line: double against a flyer, Thick Hide's half, the shooters' own
+ *  ability's multiplier, a target softened to the limit. */
+export interface TheClausesOfAShotThatWeakensItsTarget {
+  againstAFlyer: boolean;
+  thickHideHalvesIt: boolean | undefined;
+  shootersUnitType: string;
+  shootersAbilityMultiplier: number;
+  softenedToTheLimit: boolean;
+}
+
 /** One sentence of a battle's lines, each with its kind: one kind per sentence, one field per value it was written
  *  with. Their audience: the fight's, or for those filed on their own (not in a fight's narrative), their event's. */
 export type TheFactOfOneOfABattlesSentences =
@@ -79,7 +132,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the attacker's siegecraft wears down the defenders' fortifications";
       atkName: string;
-      siegecraftReduction: string;
+      siegecraft: number;
     }
   | { kind: "the defender's host defends ground held justly"; defName: string }
   | { kind: "the defender's realm holds its own ground the harder"; defName: string; ownGroundDefencePct: number }
@@ -104,35 +157,37 @@ export type TheFactOfOneOfABattlesSentences =
       spellLevel: number;
       castChance: number;
       castRoll: number;
-      castMark: string;
     }
   | { kind: 'the spell before the battle fizzles' }
   | {
       kind: "a fireball halves the enemy's strongest units";
-      fireballTargetsWords: string;
-      fireballHitUnitNames: string;
+      fireballHitUnitNames: string[];
     }
   | { kind: "a telekinetic storm scatters the enemy commander's formations"; enemyCommanderName: string }
   | { kind: 'a telekinetic storm finds no tactical command to disrupt'; enemyCommanderName: string }
   | { kind: "a psychic blast severs the enemy commander's bond with his beasts"; enemyCommanderName: string }
-  | { kind: 'a lightning bolt weakens enemy units'; unitCount: number; unitsPlural: string }
-  | { kind: "a curse withers the enemy commander's skill"; enemyCommanderName: string; cursedSkillLabel: string }
+  | { kind: 'a lightning bolt weakens enemy units'; unitCount: number }
+  | {
+      kind: "a curse withers the enemy commander's skill";
+      enemyCommanderName: string;
+      cursedSkill: string | null | undefined;
+    }
   | {
       kind: "control undead turns an enemy undead unit to the caster's side";
       turnedUnitName: string;
       casterName: string;
     }
   | { kind: 'control undead finds no enemy undead to turn' }
-  | { kind: 'a holy symbol weakens enemy undead units'; undeadUnitCount: number; undeadUnitsPlural: string }
+  | { kind: 'a holy symbol weakens enemy undead units'; undeadUnitCount: number }
   | { kind: 'a holy symbol finds no enemy undead to smite' }
-  | { kind: 'spiritwrack halves enemy missile units'; missileUnitCount: number; missileUnitsPlural: string }
+  | { kind: 'spiritwrack halves enemy missile units'; missileUnitCount: number }
   | { kind: 'spiritwrack finds no enemy missile troops' }
   | {
       kind: "a unit's power gathers but never strikes";
       unitName: string;
       powerName: string;
       strikeChancePct: number;
-      druidWords: string;
+      druidLevel: number;
     }
   | { kind: 'a unit uses its power in battle'; unitName: string; powerName: string; powerFlavour: string }
   | { kind: "a unit's power hits all enemy units"; enemyUnitCount: number; damage: number }
@@ -142,27 +197,22 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "the hero's archery volley begins";
       heroName: string;
       missileUnitCount: number;
-      missileUnitsPlural: string;
-      wordsIfDoubleVolleys: string;
-      wordsIfOneMoreShot: string;
-      wordsIfPreparedGround: string;
+      doubleVolleys: boolean;
+      oneMoreShot: boolean;
+      preparedGround: boolean;
     }
   | {
       kind: "a unit's shot glances off its target";
       shooterName: AValueInALinesWords;
       targetUnitName: AValueInALinesWords;
-      whyTheShotGlances: AValueInALinesWords;
+      whyTheShotGlances: WhyAShotGlancesOffAUnit | undefined;
     }
-  | {
+  | ({
       kind: "a unit's shot weakens its target";
       shooterName: string;
       targetUnitName: string;
       damage: number;
-      wordsIfFlying: string;
-      wordsIfThickHide: string;
-      wordsIfAbilityMultiplier: string;
-      wordsIfSoftenedToTheLimit: string;
-    }
+    } & TheClausesOfAShotThatWeakensItsTarget)
   | {
       kind: "a unit's target is already softened as far as arrows allow";
       shooterName: AValueInALinesWords;
@@ -173,10 +223,20 @@ export type TheFactOfOneOfABattlesSentences =
       sideName: AValueInALinesWords;
       targetUnitName: AValueInALinesWords;
     }
-  | { kind: "the terrain's effect on each side"; terrain: string; terrainNotes: string }
+  | {
+      kind: "the terrain's effect on each side";
+      terrain: string;
+      atkName: string;
+      unitsTheTerrainMarksOfTheAttacker: AUnitTheTerrainMarks[] | null;
+      defName: string;
+      unitsTheTerrainMarksOfTheDefender: AUnitTheTerrainMarks[] | null;
+    }
   | {
       kind: 'hosts airborne over open water fight at a penalty';
-      airborneHostsWords: string;
+      attackersHostIsAirborne: boolean;
+      defendersHostIsAirborne: boolean;
+      atkName: string;
+      defName: string;
       seaAirborneLandPenalty: number;
       seaAirborneFlyerPenalty: number;
     }
@@ -184,7 +244,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "a side's realm discoveries strengthen its army";
       sideName: AValueInALinesWords;
-      discoveriesBonusPct: AValueInALinesWords;
+      discoveriesBonus: number;
     }
   | { kind: "the illusory ground of the province confuses a side's forces"; provName: string; sideName: string }
   | {
@@ -203,8 +263,15 @@ export type TheFactOfOneOfABattlesSentences =
       attackersAlignment: string;
     }
   | { kind: "the battle's statistics begin" }
-  | { kind: 'the fortune of the battle'; fortuneWords: string }
-  | { kind: "the battle's outcome and its margin"; winnerName: string; severity: string; marginPct: string }
+  | {
+      kind: 'the fortune of the battle';
+      atkLabel: string;
+      defLabel: string;
+      atkBase: number;
+      defBase: number;
+      fortune: TheFortuneAsTheLineTellsIt;
+    }
+  | { kind: "the battle's outcome and its margin"; winnerName: string; severity: string; margRatio: number }
   | {
       kind: "a side's war-horn of the plains lets its free lances ride in rough country";
       sideName: AValueInALinesWords;
@@ -235,14 +302,13 @@ export type TheFactOfOneOfABattlesSentences =
       loserName2: AValueInALinesWords;
     }
   | { kind: 'a unit is cut down with no escape'; unitName: string }
-  | { kind: "a side's other forces survive the engagement"; allOrAllOther: string }
+  | { kind: "a side's other forces survive the engagement"; someUnitsFateIsToldAbove: boolean }
   | { kind: 'no units were left on the field to count' }
   | {
       kind: 'the attacker wins the battle and seizes the province';
-      severityArticle: string;
       severity: string;
       atkName: string;
-      winVerb: string;
+      winVerbIndex: number;
       defName: string;
       provName: string;
     }
@@ -273,21 +339,20 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the defender's stronger host is pushed back but stays";
       defName: string;
-      stayingHostStrength: string;
-      victorsStrength: string;
+      stayingHostStrength: number;
+      victorsStrength: number;
       provName: string;
     }
   | { kind: "the loser's force is destroyed to the last"; loserName: string }
   | { kind: "the loser's dwarven guard withdraw behind a shield fort"; loserName: string }
   | { kind: 'the loser retreats to a province'; loserName: string; retreatToName: string }
-  | { kind: "the loser's surviving forces"; loserName: string; survivingForces: string }
+  | { kind: "the loser's surviving forces"; loserName: string; survivingForces: AUnitAsDescribeArmyNamesIt[] }
   | { kind: "the loser's forces are completely destroyed and he retreats alone"; loserName: string }
   | {
       kind: "the attacker wins the battle but the defender's survivors hold the province";
-      severityArticle: string;
       severity: string;
       atkName: string;
-      winVerb: string;
+      winVerbIndex: number;
       defName: string;
       defName2: string;
       provName: string;
@@ -295,23 +360,21 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the attacker's assault is repelled and driven from the province";
       atkName: string;
-      severityArticle: string;
       severity: string;
       defName: string;
       provName: string;
     }
-  | { kind: 'the attacker has nowhere to retreat'; atkName: string; howTheyAreCutDown: string }
+  | { kind: 'the attacker has nowhere to retreat'; atkName: string; atSea: boolean }
   | {
       kind: "the attacker's stronger host is thrown back but stays";
       atkName: string;
-      stayingHostStrength: string;
-      victorsStrength: string;
+      stayingHostStrength: number;
+      victorsStrength: number;
       provName: string;
     }
   | {
       kind: "the attacker's assault is repelled but not driven from the province";
       atkName: string;
-      severityArticle: string;
       severity: string;
       defName: string;
       provName: string;
@@ -337,13 +400,13 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "a side's Druid cannot fully command its units";
       sideName: string;
       unitCount: number;
-      unitsPlural: string;
-      shortfallUnitsWords: string;
+      shortfalls: AUnitsDruidShortfall[];
     }
   | {
       kind: 'the attacker moves into a province held by its defenders and a battle is initiated';
       cName: string;
-      wordsOfTheAttackersRealm: string;
+      aRealmsHero: boolean;
+      attackersRealmName: string | undefined;
       provName: string;
       heldByName: string;
     }
@@ -363,16 +426,14 @@ export type TheFactOfOneOfABattlesSentences =
       spellLevel: number;
       castChance: number;
       castRoll: number;
-      castMark: string;
     }
   | {
       kind: "a fireball engulfs the defenders' strongest units";
-      fireballTargetsWords: string;
-      fireballHitUnitNames: string;
+      fireballHitUnitNames: string[];
     }
   | { kind: 'a telekinetic storm finds no command among leaderless defenders' }
   | { kind: 'a psychic blast finds no commander among the defenders' }
-  | { kind: 'a lightning bolt sears the defending units'; unitCount: number; unitsPlural: string }
+  | { kind: 'a lightning bolt sears the defending units'; unitCount: number }
   | { kind: 'a curse finds no commander among leaderless defenders' }
   | {
       kind: "control undead turns a defending undead unit to the attacker's side";
@@ -380,13 +441,9 @@ export type TheFactOfOneOfABattlesSentences =
       cName: string;
     }
   | { kind: 'control undead finds no undead among the defenders' }
-  | {
-      kind: 'a holy symbol sears the defending undead';
-      undeadUnitCount: AValueInALinesWords;
-      undeadUnitsPlural: AValueInALinesWords;
-    }
+  | { kind: 'a holy symbol sears the defending undead'; undeadUnitCount: number }
   | { kind: 'a holy symbol finds no undead among the defenders' }
-  | { kind: "spiritwrack halves the defenders' missile units"; missileUnitCount: number; missileUnitsPlural: string }
+  | { kind: "spiritwrack halves the defenders' missile units"; missileUnitCount: number }
   | { kind: 'spiritwrack finds no missile troops among the defenders' }
   | { kind: "the attacker's spell before the battle fizzles" }
   | { kind: "a unit's power hits every defending unit"; powerName: string; unitCount: number; damage: number }
@@ -400,26 +457,21 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the attacker's archery volley begins";
       missileUnitCount: number;
-      missileUnitsPlural: string;
-      wordsIfDoubleVolleys: string;
-      wordsIfOneMoreShot: string;
+      doubleVolleys: boolean;
+      oneMoreShot: boolean;
     }
   | {
       kind: 'a unit fires at its target and the shot glances off';
       shooterName: AValueInALinesWords;
       targetUnitName: AValueInALinesWords;
-      whyTheShotGlances: AValueInALinesWords;
+      whyTheShotGlances: WhyAShotGlancesOffAUnit | undefined;
     }
-  | {
+  | ({
       kind: 'a unit fires at its target and weakens it';
       shooterName: string;
       targetUnitName: string;
       damage: number;
-      wordsIfFlying: string;
-      wordsIfThickHide: string;
-      wordsIfAbilityMultiplier: string;
-      wordsIfSoftenedToTheLimit: string;
-    }
+    } & TheClausesOfAShotThatWeakensItsTarget)
   | {
       kind: "an attacking unit's target is already softened as far as arrows allow";
       shooterName: AValueInALinesWords;
@@ -434,14 +486,13 @@ export type TheFactOfOneOfABattlesSentences =
       spellLevel: number;
       castChance: number;
       castRoll: number;
-      castMark: string;
     }
   | { kind: "a fireball halves the attackers' strongest unit"; targetUnitName: string; strengthLost: number }
-  | { kind: 'a lightning bolt sears the attacking units'; unitCount: number; unitsPlural: string }
+  | { kind: 'a lightning bolt sears the attacking units'; unitCount: number }
   | { kind: 'control undead finds no undead among the attackers' }
-  | { kind: 'a holy symbol sears the attacking undead'; undeadUnitCount: number; undeadUnitsPlural: string }
+  | { kind: 'a holy symbol sears the attacking undead'; undeadUnitCount: number }
   | { kind: 'a holy symbol finds no undead among the attackers' }
-  | { kind: "spiritwrack halves the attackers' missile units"; missileUnitCount: number; missileUnitsPlural: string }
+  | { kind: "spiritwrack halves the attackers' missile units"; missileUnitCount: number }
   | { kind: 'spiritwrack finds no missile troops among the attackers' }
   | { kind: "the defender's spell before the battle fizzles" }
   | { kind: "the attacker's lightning advance catches the defenders unready"; cName: AValueInALinesWords }
@@ -449,8 +500,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the defenders' archery volley begins";
       missileUnitCount: number;
-      missileUnitsPlural: string;
-      wordsIfPreparedGround: string;
+      preparedGround: boolean;
     }
   | {
       kind: "a defending unit's target is already softened as far as arrows allow";
@@ -460,7 +510,12 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: "the defenders' archery volley's total"; totalDamage: number; arrowSofteningCapPct: number }
   | { kind: 'a defending unit uses its power in battle'; unitName: string; powerName: string; powerFlavour: string }
   | { kind: "a unit's power hits every attacking unit"; powerName: string; unitCount: number; damage: number }
-  | { kind: "the terrain's effect on the attacker's units"; terrain: string; cName: string; terrainNotes: string }
+  | {
+      kind: "the terrain's effect on the attacker's units";
+      terrain: string;
+      cName: string;
+      unitsTheTerrainMarks: AUnitTheTerrainMarks[];
+    }
   | {
       kind: 'hosts airborne over open water fight at a penalty against the defenders';
       seaAirborneLandPenalty: number;
@@ -471,7 +526,7 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'the attacker storms ashore in a raid on the coast against the defenders'; cName: AValueInALinesWords }
   | { kind: "the attacker's monsters are driven to savage fury"; cName: string }
   | { kind: "the attacker's troops fight with fanatical zeal"; cName: string }
-  | { kind: "the attacker's realm discoveries strengthen his army"; discoveriesArmyBonusPct: AValueInALinesWords }
+  | { kind: "the attacker's realm discoveries strengthen his army"; discoveriesArmyBonus: number }
   | { kind: "the attacker's free lances find no room to ride"; cName: string; terrain: string }
   | {
       kind: 'the attacker sweeps into a province with no one left to stand against him';
@@ -480,11 +535,10 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'the attacker wins the battle against the defenders';
-      severityArticle: string;
       severity: string;
-      marginPct: string;
+      margRatio: number;
       cName: string;
-      winVerb: string;
+      winVerbIndex: number;
       guardName: string;
     }
   | { kind: "the attacker's warg riders halve his losses"; cName: string }
@@ -501,11 +555,11 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: 'the attacker is repelled by the defenders';
       cName: string;
-      severityArticle: string;
       severity: string;
-      marginPct: string;
+      margRatio: number;
       defName2: string;
-      holdWords: string;
+      aPlayersGarrison: boolean;
+      atSea: boolean;
     }
   | { kind: 'a defending unit is destroyed in the fighting'; defendingUnitName: string; facedClauseWords: string }
   | { kind: "the guard's host is destroyed and he is a masterless hero"; guardName: string; provName: string }
@@ -518,9 +572,20 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: "the attacker's corsairs take his beaten force back to the ships"; cName: AValueInALinesWords }
   | { kind: "the attacker's shield-wall holds and the infantry stand their ground"; cName: string }
   | { kind: 'the attacker has nowhere to retreat and takes further losses'; cName: string }
-  | { kind: 'an attacking unit is cut down in the rout with no escape'; unitName: string; wordsIfSkeletal: string }
+  | {
+      kind: 'an attacking unit is cut down in the rout with no escape';
+      unitName: string;
+      itsBonesCrumble: boolean | undefined;
+    }
   | { kind: "the attacker's forces retreat to a province"; cName: string; retreatToName: string }
-  | { kind: "the onlookers' summary of a battle"; provName: string; outcomeWords: string }
+  | {
+      kind: "the onlookers' summary of a battle";
+      provName: string;
+      won: boolean;
+      attackersName: string;
+      defendersName: string;
+      betweenTwoHeroesHosts: boolean;
+    }
   | {
       kind: 'the most seasoned captain takes command of the combined host';
       leaderName: string;
@@ -530,14 +595,13 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: 'the blood harvest claims offerings from the fallen enemy units';
       fallenUnitCount: number;
-      fallenUnitsPlural: string;
       offeringsGold: number;
     }
   | { kind: "the iron throne of skulls raises the enemy's fallen as skeletons"; raisedCount: AValueInALinesWords }
   | {
       kind: 'terror radiates from a province after an evil victory';
       provName: string;
-      wordsIfTheSurroundingLands: string;
+      surroundingLands: string[];
       terrorPctPerStack: number;
     }
   | {
@@ -545,14 +609,19 @@ export type TheFactOfOneOfABattlesSentences =
       provName: string;
       terrorPct: number;
       terrorStacks: number;
-      terrorStacksPlural: string;
     }
   | { kind: 'a unit is cut down and rises again by its regenerating hide'; unitReference: string }
-  | { kind: 'a unit dies in the battle'; unitReference: string; diedVerb: string; wordsIfSkeletal: string }
+  | {
+      kind: 'a unit dies in the battle';
+      unitReference: string;
+      diedVerb: string | null | undefined;
+      itsSideWon: boolean;
+      itsBonesCrumble: boolean | undefined;
+    }
   | {
       kind: 'a unit is promoted after the battle';
       unitReferenceAtItsOldQuality: string;
-      promoteVerb: string;
+      promoteVerb: string | null | undefined;
       unitQuality: string;
     }
   | { kind: 'a unit falls back behind the shield wall in good order'; unitReference: string }
@@ -568,9 +637,8 @@ export type TheFactOfOneOfABattlesSentences =
       cName: string;
       realmTag: string;
       unitCount: number;
-      unitsPlural: string;
       provName: string;
-      relationWords: string;
+      theRealmsAreAllied: boolean;
       provName2: string;
     }
   | { kind: "a hero's new host is still forming up in a province"; cName: string; provName: string }
@@ -595,18 +663,16 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'the defenders riding in were keeping watch and are already in the line';
-      ridersNames: string;
-      wasOrWere: string;
+      ridersNames: string[];
       provName: string;
-      isOrAre: string;
       cName: string;
-      whatTheHostDoes: string;
+      onAWarFront: boolean | undefined;
       provName2: string;
     }
   | {
       kind: 'the defender is reinforced by other heroes in the defence of a province';
       defenderName: string;
-      reinforcementsNames: string;
+      reinforcementsNames: string[];
       provName: string;
     }
   | {
@@ -614,8 +680,7 @@ export type TheFactOfOneOfABattlesSentences =
       provName: string;
       leaderName: string;
       garrisonUnitCount: number;
-      garrisonUnitsPlural: string;
-      garrisonWords: string;
+      garrison: AUnitAsDescribeArmyNamesIt[];
     }
   | {
       kind: 'a hero fell in the battle line beside the commander of the defence';
@@ -645,8 +710,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the province's garrison is overwhelmed as the province falls";
       provName: string;
-      overrunUnitsNames: string;
-      isOrAre: string;
+      overrunUnits: AUnitAsDescribeArmyNamesIt[];
     }
   | {
       kind: 'the hero has the better of the fighting but the guard still holds the field';
@@ -654,14 +718,12 @@ export type TheFactOfOneOfABattlesSentences =
       provName: string;
       guardName: string;
       guardUnitCount: number;
-      guardUnitsPlural: string;
     }
   | {
       kind: 'the hero has the better of the fighting but leaderless defenders still hold the field';
       hostName: AValueInALinesWords;
       provName: AValueInALinesWords;
-      leaderlessUnitCount: AValueInALinesWords;
-      leaderlessUnitsPlural: AValueInALinesWords;
+      leaderlessUnitCount: number;
     }
   | {
       kind: 'the hero has the better of the fighting but enemy forces still hold their ground';
@@ -672,7 +734,7 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "the hero has the better of the fighting but the province's garrison still holds";
       hostName: AValueInALinesWords;
       provName: AValueInALinesWords;
-      whatTheGarrisonDoes: AValueInALinesWords;
+      atSea: boolean;
     }
   | {
       kind: 'the hero overcomes the defenders and claims the province for his realm';
@@ -686,9 +748,8 @@ export type TheFactOfOneOfABattlesSentences =
       realmTag: string;
       provName: string;
       provName2: string;
-      hostWords: string;
+      heroFell: boolean;
       unitCount: number;
-      unitsPlural: string;
     }
   | {
       kind: "the province's owner learns the hero was beaten back";
@@ -700,20 +761,20 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "a beaten guard's surviving unit breaks ranks and flees as mercenaries";
       unitName: string;
-      wordsIfTheVictorsHost: string;
+      victorsHost: string | null;
       provName: string;
     }
   | {
       kind: "a beaten guard's surviving unit loses heart and is reduced a tier";
       unitNameAtItsOldQuality: string;
       unitQuality: string;
-      wordsIfTheVictorsHost: string;
+      victorsHost: string | null;
       guardName: string;
     }
   | {
       kind: "a beaten guard's surviving unit holds its ground unbroken";
       unitName: string;
-      wordsIfTheVictorsHost: string;
+      victorsHost: string | null;
       guardName: string;
     }
   | {
@@ -771,17 +832,19 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: 'the scouting side chooses the front';
       scoutName: string;
-      whyItScouts: string;
+      itsSideHasExploredMore: boolean;
+      otherSideName: string;
       scoutName2: string;
-      whatItDoesWithTheFront: string;
-      wordsIfAdjustments: string;
+      frontWidth: number;
+      frontTheDiceAllow: number;
+      adjustments: number;
     }
   | {
       kind: 'each side shifts its battle line';
       otherSideName: string;
-      otherSidesMoves: string;
+      otherSidesMoves: number;
       scoutName: string;
-      scoutsMoves: string;
+      scoutsMoves: number;
     }
   | {
       kind: "an unfinished battle against a province's defenders resumes";
@@ -792,8 +855,7 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'the guard still holds a contested province with survivors'; guardName: string; provName: string }
   | {
       kind: 'commanderless survivors still contest a province';
-      survivingUnitCount: AValueInALinesWords;
-      survivingUnitsPlural: AValueInALinesWords;
+      survivingUnitCount: number;
       provName: AValueInALinesWords;
     }
   | {
@@ -810,8 +872,8 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: 'a contest for a province lapses as the realms are no longer at war';
       provName: string;
-      attackersRealmName: string;
-      defendersRealmName: string;
+      attackersRealmName: string | undefined;
+      defendersRealmName: string | undefined;
     }
   | {
       kind: "war comes to a province two realms' hosts share";
@@ -833,18 +895,22 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'the eagle riders mark the forest wardens and spoil the ambush'; shooterName: string }
   | { kind: 'the gyrocopters harry a flying unit off its line'; targetUnitName: string; strengthLost: number }
   | { kind: "a side's gyrocopters climb to meet the enemy's flyers"; sideName: string; engagedCount: number }
-  | { kind: "a side's units fight beside their own kin"; sideName: string; kinshipWords: string }
+  | {
+      kind: "a side's units fight beside their own kin";
+      sideName: string;
+      unitsOfTheKingsRaceUnderACommanderOfThatBlood: number;
+      unitsOfTheKingsRace: number;
+      unitsOfTheirCommandersRace: number;
+    }
   | {
       kind: "a hero's host turns on a province it has shared with a realm at war";
-      attackersRealmName: string;
-      ownersRealmName: string;
+      attackersRealmName: string | undefined;
+      ownersRealmName: string | null;
       cName: string;
       realmTag: string;
       unitCount: number;
-      unitsPlural: string;
       provName: string;
       seasonName: string;
-      wordsIfTheOwnersRealm: string;
     };
 
 /** The facts a battle's lines record. */

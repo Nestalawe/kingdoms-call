@@ -3,25 +3,31 @@
 // id or a slug, a name as the world or the content holds it, a copy of a list or a record), never words the engine
 // composed (a clause, a plural, a mark, a join, a number formatted for reading). The views write every word
 // (src/views/prose/). And no facts module imports the world's types (src/schemas/): a fact never holds a part of the
-// world. P1-12d2 lists personal combat; P1-12d3 to d10 add their areas.
+// world. P1-12d2 lists personal combat, P1-12d3 the battles; P1-12d4 to d10 add theirs.
 //
 // The rule, by syntax tree: a field holds words when its value is, or holds, a string or a template with text in it,
 // reached as the value (through a conditional's two branches, +, ||, ??, &&, a template's placeholders, String(), an
 // array or an object), through a call to a word helper (its name ends in Line, Words, Word, Label, Clause, Narrative,
 // Note, Names, Tag, Verb, Plural, Text, Roll or Icon; or describeArmy, pcSkillLabel, pcWardWord, pcPerkWord,
-// monsterCatLabel, fmtRoll, hpGainLine, _pct, forceLabel, realmTag, unitRef, ownedUnitName; or join, or toFixed),
+// monsterCatLabel, fmtRoll, hpGainLine, _pct, forceLabel, realmTag, unitRef, ownedUnitName, aAn (a word's article),
+// n0 (a number rounded for reading: P1-12d3); or join, or toFixed),
 // through a table of words written in the same file, or through a variable of the same file, by its declaration or a
 // later assignment (= or +=). A string that is a call's argument or a comparison's operand is not the value's words.
 // The scoping's scanner (P1-12d) counted every string inside a field's expression, so it counted numbers (a damage
 // dealt by a call that names its spell) and missed a field handed a variable that a template built.
 //
 // What it lets through, by kind and field (Decision 2): the fighters' labels ("The Barrow Wight", a hero's name: the
-// facts-by-sense slice names a side), an item's equip note (gainedItemNote: the items' words, src/engine/items/, a later
-// row), and three slugs a string literal gives (a strike's class, its channel, a guardian's grade as the content names
-// it). It can't see words handed in through a function's parameter (pcStunTurned's `what`, a lingering harm's
-// label): see the Parked list.
+// facts-by-sense slice names a side) and a battle's side's, guard's, realm's or unit's label ("Aldric's leaderless
+// host", "the defenders of Highmoor", a realm's tag, "Aldric's Free Lances (Free Lances, Veteran)"), an item's equip
+// note (gainedItemNote: the items' words, src/engine/items/, a later row), five slugs or names a string literal gives
+// (a strike's class, its channel, a guardian's grade as the content names it, a school's name as the content names it,
+// a realm's alignment), and what P1-12d4 moves (the strength ladder's and the battle grid's words, and the clause of
+// whom a unit faced, which the grid writes). It can't see words handed in through a function's parameter
+// (pcStunTurned's `what`, a lingering harm's label, the verb a battle hands a unit's fate, a force's header's verb):
+// see the Parked list.
 //
-// Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts), as the static tests of P1-19's
+// Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
+// fields of the battles' facts), as the static tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
 import fs from 'node:fs';
@@ -33,6 +39,7 @@ import { ROOT } from '../../tools/build.ts';
 /** Each area whose facts hold no words, by its facts module, from the row that made it so. */
 const AREAS: readonly (readonly [area: string, factsModule: string, row: string])[] = [
   ['personal combat', 'src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts', 'P1-12d2'],
+  ['a battle', 'src/engine/battle/the-facts-a-battles-lines-record.ts', 'P1-12d3'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -73,6 +80,155 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
     'a fighter is ready to break away',
     'a fighter fades from sight the foe',
   ],
+  // A battle's side, as the battle names it: a hero, "Aldric's leaderless host" when he fell, "Aldric's host" (the
+  // battles' tally and the tiers find a side by these words; the facts-by-sense slice names a side)
+  name: ['a force drawn up for battle'],
+  cName: [
+    "control undead turns a defending undead unit to the attacker's side",
+    'the attacker casts a spell before the battle against the defenders',
+    'the attacker has nowhere to retreat and takes further losses',
+    'the attacker is repelled by the defenders',
+    'the attacker storms ashore in a raid on the coast against the defenders',
+    'the attacker sweeps into a province with no one left to stand against him',
+    'the attacker unfolds a grand stratagem against the defenders',
+    'the attacker wins the battle against the defenders',
+    "the attacker's Tactical command does not apply at sea",
+    "the attacker's corsairs take his beaten force back to the ships",
+    "the attacker's dwarven guard leave the defenders' free lances no broken backs",
+    "the attacker's forces retreat to a province",
+    "the attacker's free lances find no room to ride",
+    "the attacker's free lances ride down the defenders' broken companies",
+    "the attacker's monsters are driven to savage fury",
+    "the attacker's shield-wall holds and the infantry stand their ground",
+    "the attacker's troops fight with fanatical zeal",
+    "the attacker's warg riders halve his losses",
+    "the defenders' archers find no target among the attacker's forest wardens",
+    "the defenders' dwarven guard leave the attacker's free lances no broken backs",
+    "the defenders' free lances ride down the attacker's broken companies",
+    "the terrain's effect on the attacker's units",
+  ],
+  atkName: [
+    'hosts airborne over open water fight at a penalty',
+    "the attacker fights to win back his realm's capital",
+    'the attacker has nowhere to retreat',
+    'the attacker storms ashore in a raid on the coast',
+    'the attacker unfolds a grand stratagem',
+    'the attacker wins the battle and seizes the province',
+    "the attacker wins the battle but the defender's survivors hold the province",
+    "the attacker's assault is repelled and driven from the province",
+    "the attacker's assault is repelled but not driven from the province",
+    "the attacker's casualties begin",
+    "the attacker's forces fight with fanatical zeal",
+    "the attacker's siege mastery halves the defenders' fortifications",
+    "the attacker's siegecraft wears down the defenders' fortifications",
+    "the attacker's stronger host is thrown back but stays",
+    "the consecrated ground of the province weakens the attacker's host",
+    "the terrain's effect on each side",
+  ],
+  defName: [
+    'hosts airborne over open water fight at a penalty',
+    'the attacker wins the battle and seizes the province',
+    "the attacker wins the battle but the defender's survivors hold the province",
+    "the attacker's assault is repelled and driven from the province",
+    "the attacker's assault is repelled but not driven from the province",
+    'the defender has nowhere to retreat',
+    'the defender unfolds a grand stratagem',
+    "the defender's banner of the realm rallies the home defence",
+    "the defender's casualties begin",
+    "the defender's feigned retreat springs shut",
+    "the defender's forces fight with fanatical zeal",
+    "the defender's host defends ground held justly",
+    "the defender's realm holds its own ground the harder",
+    "the defender's stronger host is pushed back but stays",
+    'the defenders fight with fanatical zeal on consecrated ground',
+    "the terrain's effect on each side",
+  ],
+  loserName: [
+    'the loser retreats to a province',
+    "the loser's dwarven guard hold a shield fort with no road out",
+    "the loser's dwarven guard withdraw behind a shield fort",
+    "the loser's force is destroyed to the last",
+    "the loser's forces are completely destroyed and he retreats alone",
+    "the loser's skeletal host stands its ground in a deathless march",
+    "the loser's surviving forces",
+    "the winner's corsairs close the sea lanes to the loser",
+  ],
+  winnerName: ["the winner's corsairs close the sea lanes to the loser"],
+  sideName: [
+    "a side's monsters are driven to savage fury",
+    "a side's realm discoveries strengthen its army",
+    "a side's skeletal legions fight with fanaticism under their undead king",
+    "a side's skeletal legions know no fear",
+    "a side's war-horn of the plains lets its free lances ride in rough country",
+    "the illusory ground of the province confuses a side's forces",
+    "the sanctuary wards of the province sap a side's attackers",
+  ],
+  heroName: ["the hero's archers find no target among the forest wardens"],
+  enemyCommanderName: [
+    "a curse withers the enemy commander's skill",
+    "a psychic blast severs the enemy commander's bond with his beasts",
+    "a telekinetic storm scatters the enemy commander's formations",
+  ],
+  atkLabel: ['the fortune of the battle'],
+  defLabel: ['the fortune of the battle'],
+  attackersName: ["the onlookers' summary of a battle"],
+  hostName: [
+    'a host holds a province unopposed and secures it',
+    'the hero has the better of the fighting but enemy forces still hold their ground',
+    'the hero has the better of the fighting but leaderless defenders still hold the field',
+    'the hero has the better of the fighting but the guard still holds the field',
+    "the hero has the better of the fighting but the province's garrison still holds",
+    'the hero overcomes the defenders and claims the province for his realm',
+  ],
+  attackersHostName: [
+    "an unfinished battle against a province's defenders resumes",
+    'an unfinished battle between two hosts resumes',
+    'the attacker breaks off a stalled battle and retreats',
+    'the attacker finally overcomes the defenders and claims a province',
+    'the attacker is pinned in a province with no way out',
+    "war comes to a province two realms' hosts share",
+  ],
+  defendersHostName: [
+    'an unfinished battle between two hosts resumes',
+    "war comes to a province two realms' hosts share",
+  ],
+  winnersHostName: ['the winner of a stalled battle secures a province'],
+  victorsHost: [
+    "a beaten guard's surviving unit breaks ranks and flees as mercenaries",
+    "a beaten guard's surviving unit holds its ground unbroken",
+    "a beaten guard's surviving unit loses heart and is reduced a tier",
+  ],
+  // A guard's label: "Ulric and their forces", "the defenders of Highmoor", "the garrison of Highmoor", "the leaderless
+  // garrison", whom a province is held by
+  guardName: [
+    "a beaten guard's surviving unit holds its ground unbroken",
+    "a beaten guard's surviving unit loses heart and is reduced a tier",
+    'the attacker wins the battle against the defenders',
+  ],
+  defName2: [
+    'the attacker is repelled by the defenders',
+    "the attacker wins the battle but the defender's survivors hold the province",
+  ],
+  heldByName: ['the attacker moves into a province held by its defenders and a battle is initiated'],
+  defendersName: ["an unfinished battle against a province's defenders resumes", "the onlookers' summary of a battle"],
+  // A realm's tag, " (Westmarch)" (realmTag)
+  realmTag: [
+    "a hero not at war with the province's realm gains a host inside it",
+    "a hero's host turns on a province it has shared with a realm at war",
+    'the hero turns a newly gathered host on a province and a battle is initiated',
+    "the province's owner learns his defenders still hold against the hero",
+    "the province's owner learns the hero was beaten back",
+  ],
+  attackersRealmTag: ["war comes to a province two realms' hosts share"],
+  defendersRealmTag: ["war comes to a province two realms' hosts share"],
+  // A unit's label, "Aldric's Free Lances (Free Lances, Veteran)" (unitRef, ownedUnitName)
+  unitName: [
+    "a beaten guard's surviving unit breaks ranks and flees as mercenaries",
+    "a beaten guard's surviving unit holds its ground unbroken",
+    'a unit is cut down with no escape',
+  ],
+  defendingUnitName: ['a defending unit is destroyed in the fighting', 'a defending unit is destroyed in the rout'],
+  unitNameAtItsOldQuality: ["a beaten guard's surviving unit loses heart and is reduced a tier"],
 };
 
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
@@ -100,10 +256,29 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   ],
   // a guardian's grade as the content names it ('Weak' when it has none)
   tier: ['a fighter slips past the guardian and seizes the prize', "a fighter's theft is noticed"],
+  // a magic school's name as the content names it (SKILL_LABELS), else its slug: 'elemental' for a spell with none
+  schoolLabel: ['the defender casts a spell before the battle'],
+  // a realm's alignment as the world names it ('Neutral' when it has none): the prose writes it in lower case
+  attackersAlignment: ["the consecrated ground of the province weakens the attacker's host"],
+};
+
+/** What P1-12d4 moves into the prose (the strength ladder and the grid: P1-12's Decisions of 2026-10-26, row d4), by
+ *  field, with the kinds that hold it: the ladder's and the grid's words, and the clause of whom a unit faced, which
+ *  the grid writes (battleFacedClauses). */
+const THE_LADDERS_AND_THE_GRIDS: Readonly<Record<string, readonly string[]>> = {
+  wordsIfUnitModifiers: ["the strength ladder's units"],
+  wordsIfCommand: ["the strength ladder's command"],
+  forceModifiersWords: ["the strength ladder's force-wide modifiers"],
+  battleLinesStrengthWords: ["the strength ladder's battle lines"],
+  lineMultipliersWords: ["the strength ladder's units behind the front"],
+  frontLineCells: ["a side's front line in the battle grid"],
+  wordsIfFlanksAirOrReserve: ["a side's front line in the battle grid"],
+  secondLineCells: ["a side's second line in the battle grid"],
+  facedClauseWords: ['a defending unit is destroyed in the rout', 'a defending unit is destroyed in the fighting'],
 };
 
 const WORD_HELPER =
-  /(Line|Lines|Words|Word|Label|Clause|Clauses|Narrative|Note|Names|Tag|Verb|Plural|Text|Roll|Icon)$|^(describeArmy|pcSkillLabel|pcWardWord|pcPerkWord|monsterCatLabel|fmtRoll|hpGainLine|_pct|forceLabel|realmTag|unitRef|ownedUnitName)$/;
+  /(Line|Lines|Words|Word|Label|Clause|Clauses|Narrative|Note|Names|Tag|Verb|Plural|Text|Roll|Icon)$|^(describeArmy|pcSkillLabel|pcWardWord|pcPerkWord|monsterCatLabel|fmtRoll|hpGainLine|_pct|forceLabel|realmTag|unitRef|ownedUnitName|aAn|n0)$/;
 /** String methods whose result holds the words of the string they are called on. */
 const ON_ITS_STRING = new Set(['toLowerCase', 'toUpperCase', 'trim', 'slice', 'replace', 'padStart', 'padEnd']);
 /** Calls that write words of what they are given. */
@@ -257,7 +432,12 @@ function fieldsHoldingWords(file: string, text: string, kinds: ReadonlySet<strin
               ? field.name
               : null;
           const why = value ? whyItHoldsWords(sf, value, node.getStart(sf), new Set()) : 'a spread: its fields unseen';
-          if (why && !LABELS[name]?.includes(kind) && !NOT_WORDS[name]?.includes(kind)) {
+          if (
+            why &&
+            !LABELS[name]?.includes(kind) &&
+            !NOT_WORDS[name]?.includes(kind) &&
+            !THE_LADDERS_AND_THE_GRIDS[name]?.includes(kind)
+          ) {
             const line = sf.getLineAndCharacterOfPosition(field.getStart(sf)).line + 1;
             found.push(`${String(line)} ${kind} ${name}: ${why}`);
           }
