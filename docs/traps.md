@@ -952,13 +952,14 @@ by kind:
   `abilityBack` (the second line shooting) ask, and its six stages of the whole line (side hits, Shieldwall, Sergeants,
   Marksmen's target, Terror From Above, Dive on the Bowmen, Flak Gunners, Battering Horns, …), which `battleFaceSide`
   asks;
-- who takes a flank or shoots: `battleGrid` (`abilityFlanksRough`, Eagle Riders on an open flank, Black Arrows
-  in front) and `abilityMissileUnits`;
-- the pre-battle volley: `missileDamageMult`, `abilityVolleys`, `missileTargetPool`, `archeryBlockedBy`;
-- force-wide strength: the registry's stage "the whole force" (above), which `unitAbilityMult` asks; fates: the
-  registry's two stages of a unit's fate (Regenerating Hide, Knightly Example), which `rollUnitFates` asks, and
-  `shieldFortHolds`;
-- turn hooks inside `resolveTurn`: Prepared Ground's second volley, Raiders' Muster at turn's end.
+- who takes a flank: `battleGrid` (`abilityFlanksRough`, Eagle Riders on an open flank, Black Arrows in front);
+- the pre-battle volley: the registry's nine stages of `volley`, which `abilityMissileUnits`, `missileCap`,
+  `missileCapReached`, `missileTargetPool`, `archeryBlockedBy`, `eyesOfTheForestLine`, `missileDamageMult`,
+  `abilityVolleys` and `applyMissileHit` ask;
+- force-wide strength: the registry's stages "a land unit at sea" and "the whole force" (above), which `armStr` and
+  `unitAbilityMult` ask; fates: the registry's two stages of a unit's fate (Regenerating Hide, Knightly Example), which
+  `rollUnitFates` asks, and `shieldFortHolds`;
+- turn hooks inside `resolveTurn`: Raiders' Muster at turn's end.
 
 **One content row and one registry entry** ([ARCHITECTURE.md](ARCHITECTURE.md#the-rule-registry)): the nine
 abilities of a unit's whole force (P1-19a), Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent,
@@ -970,12 +971,14 @@ Points, Volley at the Charge, Marksmen, Armour-Piercing, Bombard and Arrow Fodde
 (P1-19c), with Unbreakable's side and Marksmen's choice of target: Rooted, Hold the Gate (every garrison, defending, as
 the engine does; the books name only the Human Garrison, a question for Toby), Shieldwall, Town
 Watch, Sergeants, Driven Before Them, Terror From Above, Dive on the Bowmen, Storm Wings, Battering Horns and Flak
-Gunners; and the two of a unit's fate after the battle (P1-19d), Regenerating Hide and Knightly Example. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
+Gunners; and the two of a unit's fate after the battle (P1-19d), Regenerating Hide and Knightly Example; and the 14 of
+the volley (P1-19g), Broadside, Tree Watch, Bombardment, Eyes of the Forest, Ambush, Loosed From Cover, Armoured Hulls,
+Shell Wall, Prepared Ground, Woodland Volley, Raiders' Volley, Thick Hide, Punch Through and Sea Archers. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
 numbers, in the same file as its unit's blurb), its effect in a file of `src/engine/rules/unit-abilities/` and its entry in the registry, in its stage's order;
 `tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts` checks its name and numbers in both books
 from its row (an ability the books give no number, Rooted for one, is listed there and its name checked). Change a
-number in its row and in both books (the blurb a few hundred lines below it, the rulebook by hand). **Still inline**: every other ability, in the places above (the family's second
-slice: the volley, the grid's flank slots, the rout, the pre-battle strikes, the turn hooks).
+number in its row and in both books (the blurb a few hundred lines below it, the rulebook by hand). **Still inline**: every other ability, in the places above (the rest of the family's second
+slice: the grid's flank slots and places, Flak Screen, Breach and Swamp, the rout, the pre-battle strikes, the turn hooks).
 
 `tests/abilities-words.test.js` holds the table of names of the abilities still inline and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and

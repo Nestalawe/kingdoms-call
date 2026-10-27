@@ -14,7 +14,10 @@ import {
   type AUnitAbilityAsTheBooksWriteIt,
   type UnitAbilitySlug,
 } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
-import { THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE } from './unit-abilities/the-strength-of-a-unit-in-its-force.ts';
+import {
+  A_LAND_UNIT_AT_SEA,
+  THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE,
+} from './unit-abilities/the-strength-of-a-unit-in-its-force.ts';
 import {
   WHAT_A_SHOOTER_DOES_TO_ITS_TARGET,
   WHAT_A_UNIT_DOES_TO_THE_UNIT_IT_MEETS,
@@ -33,6 +36,17 @@ import {
   A_BEATEN_UNIT_FAILS_ITS_DEATH_ROLL,
   A_BEATEN_UNIT_FAILS_ITS_DEMOTION_ROLL,
 } from './unit-abilities/a-units-fate-after-a-battle.ts';
+import {
+  A_SHOTS_DAMAGE,
+  HOW_MANY_VOLLEYS,
+  MAY_BE_SHOT_AT,
+  STOPS_THE_VOLLEY,
+  THE_SHOOTERS_SEE_WHAT_HIDES,
+  THE_SOFTENING_LIMIT,
+  WHAT_THE_TARGET_DOES_TO_A_SHOT,
+  WHO_SHOOTS,
+  WHO_SHOOTS_FIRST,
+} from './unit-abilities/the-volley-before-the-battle.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -55,6 +69,13 @@ export interface AUnitInItsForce {
   readonly coastal: boolean;
   /** The battle's ground (a terrain's name: 'sea', 'plain', …). */
   readonly ground: string | null | undefined;
+}
+
+/** What the stage "strength: a land unit at sea" hands an effect (armStr, where the sea's penalty would cut a land
+ *  unit's strength): the unit's type, and its force, itself among them, with the holes the battle code leaves. */
+export interface ALandUnitAtSea {
+  readonly unitType: string;
+  readonly itsForce: readonly (AUnitOfAForce | null | undefined)[];
 }
 
 /** A unit's part in the battle line: in the air, cavalry, ranged, or on foot (battleRole). */
@@ -184,6 +205,73 @@ export interface AUnitThatFailedItsDemotionRoll {
  *  word; the resolver gives it the unit's reference). */
 export type TheLineOfAUnitThatHoldsThroughItsDemotionRoll = 'a unit keeps its nerve under the knightly example';
 
+/** What the stage "who shoots" hands an effect (abilityMissileUnits): a unit of the shooters' force that is no ranged
+ *  unit, and the battle's ground. */
+export interface AUnitThatIsNoRangedUnitOnItsGround {
+  readonly unitType: string;
+  /** The battle's ground (a terrain's name), or none. */
+  readonly ground: string | null | undefined;
+}
+
+/** What the stage "who shoots first" hands an effect (abilityMissileUnits' order): a shooter's type. */
+export interface AShooter {
+  readonly theShootersType: string;
+}
+
+/** What the stage "the shooters see what hides" hands an effect: the shooters' force, with the holes the battle code
+ *  leaves in a force. */
+export interface TheShootersForce {
+  readonly theShootersForce: readonly (AUnitOfAForce | null | undefined)[];
+}
+
+/** What the stage "stops the volley" hands an effect (archeryBlockedBy): the force the volley would be shot at (the
+ *  side defending against it), the battle's ground, and whether the shooters see what hides. */
+export interface AVolleyAtAForce {
+  readonly theForceTheVolleyIsShotAt: readonly (AUnitOfAForce | null | undefined)[];
+  readonly ground: string | null | undefined;
+  readonly theShootersSeeWhatHides: boolean;
+}
+
+/** What the stage "may be shot at" hands an effect (missileTargetPool, missileCapReached, applyMissileHit): a unit of
+ *  the force shot at, and whether the shooters see what hides. */
+export interface AUnitAVolleyIsShotAt {
+  readonly theTargetsType: string;
+  readonly theShootersSeeWhatHides: boolean;
+}
+
+/** The words of the battle line by which a shot glances off a unit that is immune to volleys (whyTheShotGlances). */
+export type WhyAShotGlancesOffAUnit = 'armoured hull' | 'shell';
+
+/** Why a unit may not be shot at: it hides from these shooters, or every shot glances off it, with the line's words. */
+export type WhyAUnitMayNotBeShotAt = 'hidden' | { readonly immune: WhyAShotGlancesOffAUnit };
+
+/** What the stage "how many volleys" hands an effect (abilityVolleys): a shooter's type, and whether its side attacks. */
+export interface AShooterAndItsSide {
+  readonly theShootersType: string;
+  readonly theShootersSideAttacks: boolean;
+}
+
+/** What the stage "a shot's damage" hands an effect (missileDamageMult): the shooter's type, its target's (none when
+ *  the call gives no target), the battle's ground, and whether the shooter's side attacks. */
+export interface AShotAtItsTarget {
+  readonly theShootersType: string;
+  readonly theTargetsType: string | null;
+  readonly ground: string | null | undefined;
+  readonly theShootersSideAttacks: boolean;
+}
+
+/** What the stage "what the target does to a shot" hands an effect (applyMissileHit): the target's type. */
+export interface TheTargetOfAShot {
+  readonly theTargetsType: string;
+}
+
+/** What the stage "the softening limit" hands an effect (missileCap): the shooter's type (none when the call gives no
+ *  shooter), and whether its target is a winged rider (FLYING_TYPES). */
+export interface AShooterAndWhetherItsTargetFlies {
+  readonly theShootersType: string | undefined;
+  readonly theTargetFlies: boolean;
+}
+
 /** A multiplier, and its words in the strength ladder (the ability's name, or its own words). */
 export interface AMultiplierAndItsWords {
   readonly multiplier: number;
@@ -199,6 +287,8 @@ type AnEffectOnTheMultiplierSoFar<Facts> = (facts: Facts, theMultiplierSoFar: nu
  *  1), so an entry on it fails to compile meanwhile. */
 export interface TheStagesOfEachHookPoint {
   readonly strength: {
+    /** Whether the sea's penalty to a land unit is waived (armStr, before the unit's factors from its force). */
+    readonly 'a land unit at sea': (facts: ALandUnitAtSea) => boolean;
     /** The unit's own factor from its force and the battle's facts; the runner multiplies them in the stage's order. */
     readonly 'the whole force': (facts: AUnitInItsForce) => number;
     /** The unit's own matchup against the unit it meets, from the role matchup's multiplier (abilityFront). */
@@ -223,7 +313,28 @@ export interface TheStagesOfEachHookPoint {
     /** A unit's own ability in the air, from ×1. */
     readonly 'what a flyer does': AnEffectOnTheMultiplierSoFar<AFlyerAndTheEnemysFlyers>;
   };
-  readonly volley: never;
+  readonly volley: {
+    /** Whether a unit that is no ranged unit shoots in the volley (abilityMissileUnits, after the ranged units). */
+    readonly 'who shoots': (facts: AUnitThatIsNoRangedUnitOnItsGround) => boolean;
+    /** Whether a shooter shoots before the others (the order of abilityMissileUnits' list, a stable sort). */
+    readonly 'who shoots first': (facts: AShooter) => boolean;
+    /** Whether the shooters see what hides (missileTargetPool, archeryBlockedBy, eyesOfTheForestLine). */
+    readonly 'the shooters see what hides': (facts: TheShootersForce) => boolean;
+    /** Whether the force shot at stops the volley altogether (archeryBlockedBy, eyesOfTheForestLine). */
+    readonly 'stops the volley': (facts: AVolleyAtAForce) => boolean;
+    /** Why a unit may not be shot at, or nothing (missileTargetPool; missileCapReached and applyMissileHit read the
+     *  immunity alone). */
+    readonly 'may be shot at': (facts: AUnitAVolleyIsShotAt) => WhyAUnitMayNotBeShotAt | null;
+    /** How many volleys a shooter looses, or nothing (one: abilityVolleys). */
+    readonly 'how many volleys': (facts: AShooterAndItsSide) => number | null;
+    /** The shooter's factor on a shot's damage; the runner multiplies them in the stage's order (missileDamageMult). */
+    readonly "a shot's damage": (facts: AShotAtItsTarget) => number;
+    /** The damage of a shot after the target's ability, from the damage so far (after a flyer's double), or nothing
+     *  (applyMissileHit). */
+    readonly 'what the target does to a shot': (facts: TheTargetOfAShot, theDamageSoFar: number) => number | null;
+    /** The share of the target's strength a shooter may soften it to, or nothing (the usual limit: missileCap). */
+    readonly 'the softening limit': (facts: AShooterAndWhetherItsTargetFlies) => number | null;
+  };
   readonly fate: {
     /** Whether a unit that failed its death roll lives: the line of the battle by which it does, or nothing (it dies). */
     readonly 'a beaten unit fails its death roll': (
@@ -350,12 +461,31 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'knightly-example': {
     fate: { 'a beaten unit fails its demotion roll': A_BEATEN_UNIT_FAILS_ITS_DEMOTION_ROLL['knightly-example'] },
   },
+  broadside: { volley: { 'who shoots': WHO_SHOOTS.broadside } },
+  'tree-watch': { volley: { 'who shoots': WHO_SHOOTS['tree-watch'] } },
+  bombardment: {
+    volley: { 'who shoots first': WHO_SHOOTS_FIRST.bombardment, "a shot's damage": A_SHOTS_DAMAGE.bombardment },
+  },
+  'eyes-of-the-forest': {
+    volley: { 'the shooters see what hides': THE_SHOOTERS_SEE_WHAT_HIDES['eyes-of-the-forest'] },
+  },
+  ambush: { volley: { 'stops the volley': STOPS_THE_VOLLEY.ambush } },
+  'loosed-from-cover': { volley: { 'may be shot at': MAY_BE_SHOT_AT['loosed-from-cover'] } },
+  'armoured-hulls': { volley: { 'may be shot at': MAY_BE_SHOT_AT['armoured-hulls'] } },
+  'shell-wall': { volley: { 'may be shot at': MAY_BE_SHOT_AT['shell-wall'] } },
+  'prepared-ground': { volley: { 'how many volleys': HOW_MANY_VOLLEYS['prepared-ground'] } },
+  'woodland-volley': { volley: { "a shot's damage": A_SHOTS_DAMAGE['woodland-volley'] } },
+  'raiders-volley': { volley: { "a shot's damage": A_SHOTS_DAMAGE['raiders-volley'] } },
+  'thick-hide': { volley: { 'what the target does to a shot': WHAT_THE_TARGET_DOES_TO_A_SHOT['thick-hide'] } },
+  'punch-through': { volley: { 'the softening limit': THE_SOFTENING_LIMIT['punch-through'] } },
+  'sea-archers': { strength: { 'a land unit at sea': A_LAND_UNIT_AT_SEA['sea-archers'] } },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
  *  order before the registry took them). */
 export const THE_ORDER_OF_EACH_STAGE = {
   strength: {
+    'a land unit at sea': ['sea-archers'],
     'the whole force': [
       'sheer-numbers',
       'reaver-crews',
@@ -396,6 +526,17 @@ export const THE_ORDER_OF_EACH_STAGE = {
     'a shooter picks its target': ['marksmen'],
     'turns an anchored line': ['battering-horns'],
     'what a flyer does': ['flak-gunners'],
+  },
+  volley: {
+    'who shoots': ['broadside', 'tree-watch'],
+    'who shoots first': ['bombardment'],
+    'the shooters see what hides': ['eyes-of-the-forest'],
+    'stops the volley': ['ambush'],
+    'may be shot at': ['loosed-from-cover', 'armoured-hulls', 'shell-wall'],
+    'how many volleys': ['prepared-ground'],
+    "a shot's damage": ['woodland-volley', 'bombardment', 'raiders-volley'],
+    'what the target does to a shot': ['thick-hide'],
+    'the softening limit': ['punch-through'],
   },
   fate: {
     'a beaten unit fails its death roll': ['regenerating-hide'],
@@ -504,6 +645,56 @@ const THE_DEMOTION_ROLL_BY_UNIT = theEffectsOfEachUnitAt(
   THE_ORDER_OF_FATE['a beaten unit fails its demotion roll'],
   (entry) => entry.fate?.['a beaten unit fails its demotion roll'],
 );
+const THE_ORDER_OF_THE_VOLLEY = THE_ORDER_OF_EACH_STAGE.volley;
+type WhoShootsEffect = TheStagesOfEachHookPoint['volley']['who shoots'];
+/** The effects of "who shoots", in the stage's order, each with its row's unit. */
+const WHO_SHOOTS_EFFECTS = THE_ORDER_OF_THE_VOLLEY['who shoots'].flatMap((slug) => {
+  const effect = ENTRIES[slug].volley?.['who shoots'];
+  return effect ? [{ unit: ROWS[slug].unit, effect }] : [];
+}) satisfies readonly { unit: string; effect: WhoShootsEffect }[];
+const WHO_SHOOTS_FIRST_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_THE_VOLLEY['who shoots first'],
+  (entry) => entry.volley?.['who shoots first'],
+);
+type TheShootersSeeWhatHidesEffect = TheStagesOfEachHookPoint['volley']['the shooters see what hides'];
+/** The effects of "the shooters see what hides", in the stage's order (each looks for its unit in the shooters' force). */
+const THE_SHOOTERS_SEE_WHAT_HIDES_EFFECTS = THE_ORDER_OF_THE_VOLLEY['the shooters see what hides'].flatMap((slug) => {
+  const effect = ENTRIES[slug].volley?.['the shooters see what hides'];
+  return effect ? [effect] : [];
+}) satisfies readonly TheShootersSeeWhatHidesEffect[];
+type StopsTheVolleyEffect = TheStagesOfEachHookPoint['volley']['stops the volley'];
+/** The effects of "stops the volley", in the stage's order (each looks for its unit in the force shot at). */
+const STOPS_THE_VOLLEY_EFFECTS = THE_ORDER_OF_THE_VOLLEY['stops the volley'].flatMap((slug) => {
+  const effect = ENTRIES[slug].volley?.['stops the volley'];
+  return effect ? [effect] : [];
+}) satisfies readonly StopsTheVolleyEffect[];
+const MAY_BE_SHOT_AT_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_THE_VOLLEY['may be shot at'],
+  (entry) => entry.volley?.['may be shot at'],
+);
+const HOW_MANY_VOLLEYS_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_THE_VOLLEY['how many volleys'],
+  (entry) => entry.volley?.['how many volleys'],
+);
+const A_SHOTS_DAMAGE_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_THE_VOLLEY["a shot's damage"],
+  (entry) => entry.volley?.["a shot's damage"],
+);
+const WHAT_THE_TARGET_DOES_TO_A_SHOT_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_THE_VOLLEY['what the target does to a shot'],
+  (entry) => entry.volley?.['what the target does to a shot'],
+);
+const THE_SOFTENING_LIMIT_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_THE_VOLLEY['the softening limit'],
+  (entry) => entry.volley?.['the softening limit'],
+);
+type ALandUnitAtSeaEffect = TheStagesOfEachHookPoint['strength']['a land unit at sea'];
+/** The effects of "a land unit at sea", in the stage's order (each runs for every land unit at sea: Sea Archers looks
+ *  for its unit in the force, and reaches its ranged units). */
+const A_LAND_UNIT_AT_SEA_EFFECTS = THE_ORDER_OF_STRENGTH['a land unit at sea'].flatMap((slug) => {
+  const effect = ENTRIES[slug].strength?.['a land unit at sea'];
+  return effect ? [effect] : [];
+}) satisfies readonly ALandUnitAtSeaEffect[];
 const NO_EFFECTS: readonly never[] = [];
 
 /** A multiplier, and the words of each ability that moved it, in order. */
@@ -648,6 +839,103 @@ export function theLineByWhichABeatenUnitHoldsItsTier(
   for (const effect of THE_DEMOTION_ROLL_BY_UNIT.get(facts.unitType) ?? NO_EFFECTS) {
     const line = effect(facts);
     if (line !== null) return line;
+  }
+  return null;
+}
+
+/** The runner of "strength: a land unit at sea" (armStr): whether any ability, in the stage's order, waives the sea's
+ *  penalty for the unit (Sea Archers: the ranged units of a force with Elven Galleys). */
+export function theSeasPenaltyIsWaivedForALandUnit(facts: ALandUnitAtSea): boolean {
+  return A_LAND_UNIT_AT_SEA_EFFECTS.some((effect) => effect(facts));
+}
+
+/** The runner of "volley: who shoots" (abilityMissileUnits): the units of a force that shoot though they are no ranged
+ *  units, those of each ability in the stage's order, each in the force's order. */
+export function theUnitsThatShootThoughNoRangedUnits<U extends AUnitOfAForce>(
+  force: readonly U[],
+  ground: string | null | undefined,
+): U[] {
+  const shooters: U[] = [];
+  for (const { unit, effect } of WHO_SHOOTS_EFFECTS)
+    for (const a of force) if (a.type === unit && effect({ unitType: a.type, ground })) shooters.push(a);
+  return shooters;
+}
+
+/** The runner of "volley: who shoots first" (abilityMissileUnits' order): whether a shooter of the type given shoots
+ *  before the others. */
+export function theShooterShootsFirst(theShootersType: string): boolean {
+  return (WHO_SHOOTS_FIRST_BY_UNIT.get(theShootersType) ?? NO_EFFECTS).some((effect) => effect({ theShootersType }));
+}
+
+/** The runner of "volley: the shooters see what hides": whether any ability, in the stage's order, lets the shooters
+ *  see what hides. */
+export function theShootersSeeWhatHides(theShootersForce: TheShootersForce['theShootersForce']): boolean {
+  return THE_SHOOTERS_SEE_WHAT_HIDES_EFFECTS.some((effect) => effect({ theShootersForce }));
+}
+
+/** The runner of "volley: stops the volley" (archeryBlockedBy): whether any ability of the force shot at, in the
+ *  stage's order, stops the volley. */
+export function theVolleyIsStopped(facts: AVolleyAtAForce): boolean {
+  return STOPS_THE_VOLLEY_EFFECTS.some((effect) => effect(facts));
+}
+
+/** The runner of "volley: may be shot at": why the first of the target's abilities, in the stage's order, keeps it from
+ *  being shot at, or nothing. */
+export function whyAUnitMayNotBeShotAt(facts: AUnitAVolleyIsShotAt): WhyAUnitMayNotBeShotAt | null {
+  for (const effect of MAY_BE_SHOT_AT_BY_UNIT.get(facts.theTargetsType) ?? NO_EFFECTS) {
+    const why = effect(facts);
+    if (why !== null) return why;
+  }
+  return null;
+}
+
+/** The runner of "volley: how many volleys" (abilityVolleys): the volleys the first of the shooter's abilities, in the
+ *  stage's order, gives it, or one. */
+export function theVolleysAShooterLooses(facts: AShooterAndItsSide): number {
+  for (const effect of HOW_MANY_VOLLEYS_BY_UNIT.get(facts.theShootersType) ?? NO_EFFECTS) {
+    const volleys = effect(facts);
+    if (volleys !== null) return volleys;
+  }
+  return 1;
+}
+
+/** The runner of "volley: a shot's damage" (missileDamageMult): the product of the shooter's factors, from ×1, in the
+ *  stage's order. */
+export function theFactorOnAShotsDamage(facts: AShotAtItsTarget): number {
+  let m = 1;
+  for (const effect of A_SHOTS_DAMAGE_BY_UNIT.get(facts.theShootersType) ?? NO_EFFECTS) m *= effect(facts);
+  return m;
+}
+
+/** A shot's damage after the target's abilities, and whether one of them acted. */
+export interface TheDamageOfAShotAfterItsTarget {
+  readonly damage: number;
+  readonly theTargetsAbilityActed: boolean;
+}
+
+/** The runner of "volley: what the target does to a shot" (applyMissileHit): from the damage so far, the target's
+ *  effects in the stage's order. */
+export function theDamageOfAShotAfterItsTarget(
+  facts: TheTargetOfAShot,
+  theDamageSoFar: number,
+): TheDamageOfAShotAfterItsTarget {
+  let damage = theDamageSoFar;
+  let theTargetsAbilityActed = false;
+  for (const effect of WHAT_THE_TARGET_DOES_TO_A_SHOT_BY_UNIT.get(facts.theTargetsType) ?? NO_EFFECTS) {
+    const after = effect(facts, damage);
+    if (after === null) continue;
+    damage = after;
+    theTargetsAbilityActed = true;
+  }
+  return { damage, theTargetsAbilityActed };
+}
+
+/** The runner of "volley: the softening limit" (missileCap): the share the first of the shooter's abilities, in the
+ *  stage's order, gives, or nothing (the usual limit). */
+export function theSofteningLimitOfAShooter(facts: AShooterAndWhetherItsTargetFlies): number | null {
+  for (const effect of THE_SOFTENING_LIMIT_BY_UNIT.get(facts.theShootersType) ?? NO_EFFECTS) {
+    const limit = effect(facts);
+    if (limit !== null) return limit;
   }
   return null;
 }

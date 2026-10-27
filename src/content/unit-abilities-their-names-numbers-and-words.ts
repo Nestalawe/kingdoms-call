@@ -12,15 +12,20 @@
 import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 
 /** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1); a chance as `30%` (0.3);
- *  full strength (×1, where others fight at less) as `no penalty`; a unit's base strength as `base strength 6`. A
- *  number the books leave out (Driven Before Them's cap, which the units beside them never reach) says so, and the
- *  words test checks that they still do. */
+ *  full strength (×1, where others fight at less) as `no penalty`; a unit's base strength as `base strength 6`; a share
+ *  of a unit's strength as `55%` (0.55); ×2 as `double` and ×0.5 as `half`; a count as a word (`two`). A number the
+ *  books leave out (Driven Before Them's cap, which the units beside them never reach) says so, and the words test
+ *  checks that they still do. */
 export type HowTheBooksWriteANumber =
   | 'a multiplier'
   | 'a fraction added'
   | 'a chance'
   | 'no penalty'
   | 'a base strength'
+  | 'a share'
+  | 'double'
+  | 'half'
+  | 'a count in words'
   | 'a fraction the books leave out';
 
 /** One number of an ability, and how the books write it. */
@@ -53,7 +58,8 @@ export interface AUnitAbilityAsTheBooksWriteIt {
 
 /** The unit abilities the registry holds, in the order the battle code meets them: the strength of a unit in its
  *  whole force (plan P1-19a), then a unit meeting another or shooting over its line (P1-19b), then the whole line
- *  (P1-19c), then a unit's fate after the battle (P1-19d). */
+ *  (P1-19c), then a unit's fate after the battle (P1-19d), then the volley before the battle and a land unit at sea
+ *  (P1-19g). */
 export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // Orc: goblins are worth little alone and a great deal in a mob.
   'sheer-numbers': {
@@ -322,6 +328,67 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     numbers: {},
     reaches: ['Shieldwall Levies', 'Men-at-Arms'],
   },
+  // ── The volley before the battle (plan P1-19g: abilityMissileUnits, missileCap, missileCapReached,
+  // missileTargetPool, archeryBlockedBy, eyesOfTheForestLine, missileDamageMult, abilityVolleys, applyMissileHit) ──
+  // Who shoots, though it is no ranged unit: a galleon at sea, a floating battery; the Elven Garrison in the woods.
+  broadside: { unit: 'Galleon Fleet', name: 'Broadside', numbers: {}, onTheGround: ['sea'] },
+  'tree-watch': { unit: 'Elven Garrison', name: 'Tree Watch', numbers: {}, onTheGround: ['forest', 'jungle'] },
+  // Who shoots first: the guns, so they get the clear shot before the cap fills. And a shot's damage, below: siege guns
+  // are built for breaking fortifications (every garrison).
+  bombardment: {
+    unit: 'Mountain Guns',
+    name: 'Bombardment',
+    numbers: { againstAGarrison: { value: 0.5, theBooksWriteIt: 'a fraction added' } },
+  },
+  // The shooters see what hides: with Eagle Riders flying with them, an Ambush is spoiled and Shadow Archers are seen
+  // (2026-10-11).
+  'eyes-of-the-forest': { unit: 'Eagle Riders', name: 'Eyes of the Forest', numbers: {} },
+  // Stops the volley: Forest Wardens in the woods, attacking or defending, deny the side facing them its volley.
+  ambush: { unit: 'Forest Wardens', name: 'Ambush', numbers: {}, onTheGround: ['forest', 'jungle'] },
+  // May be shot at: Shadow Archers shoot from hiding; arrows and bolts don't tell against plated warships, nor against
+  // the Great Turtles' shells (2026-10-13, the beast abilities).
+  'loosed-from-cover': { unit: 'Shadow Archers', name: 'Loosed From Cover', numbers: {} },
+  'armoured-hulls': { unit: 'Dwarf Ironclads', name: 'Armoured Hulls', numbers: {} },
+  'shell-wall': { unit: 'Great Turtles', name: 'Shell Wall', numbers: {} },
+  // How many volleys: defending Longbows loose two.
+  'prepared-ground': {
+    unit: 'Yeoman Longbows',
+    name: 'Prepared Ground',
+    numbers: { volleysDefending: { value: 2, theBooksWriteIt: 'a count in words' } },
+  },
+  // A shot's damage: elven bows in elven woods; the guns at a garrison (Bombardment, above); the Black Arrows loose
+  // hardest going forward (2026-10-11, Toby: the Longbows' Massed Volley retired, Raiders' Volley arrives).
+  'woodland-volley': {
+    unit: 'Elven Bowmen',
+    name: 'Woodland Volley',
+    numbers: { inTheWoods: { value: 2, theBooksWriteIt: 'double' } },
+    onTheGround: ['forest', 'jungle'],
+  },
+  'raiders-volley': {
+    unit: 'Black Arrows',
+    name: "Raiders' Volley",
+    numbers: { attacking: { value: 1.5, theBooksWriteIt: 'a multiplier' } },
+  },
+  // What the target does to a shot: a volley at the Great Bears does half, rounded up, after a flyer's double.
+  'thick-hide': {
+    unit: 'Great Bears',
+    name: 'Thick Hide',
+    numbers: { aShotsDamage: { value: 0.5, theBooksWriteIt: 'half' } },
+  },
+  // The softening limit: heavy bolts grind a target past the point bows can manage (the usual limit is 40% of its
+  // strength, 80% of a winged rider's).
+  'punch-through': {
+    unit: 'Ironwood Crossbows',
+    name: 'Punch Through',
+    numbers: {
+      aTargetOnTheGround: { value: 0.55, theBooksWriteIt: 'a share' },
+      aWingedRider: { value: 0.9, theBooksWriteIt: 'a share' },
+    },
+  },
+  // A land unit at sea (strength, in armStr): the ranged units of a force with Elven Galleys shoot from steady decks and
+  // don't suffer a land unit's penalty at sea. (Its effect reads the ranged units from the data file's class: a reach
+  // named here would leave a read of the class in the player page's bundle.)
+  'sea-archers': { unit: 'Elven Galleys', name: 'Sea Archers', numbers: {} },
 } as const satisfies Record<string, AUnitAbilityAsTheBooksWriteIt>;
 
 /** The slug of an ability the registry holds. */

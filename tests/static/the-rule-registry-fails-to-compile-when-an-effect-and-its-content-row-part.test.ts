@@ -8,7 +8,8 @@
 // - an entry with an effect at a stage that has no signature yet, and at a hook point that has none (both `never`
 //   until their family's first row writes them: plan P1-19's Choice 1; TS2322). Since P1-19d every stage of `strength`
 //   and `fate` has its signature, so the copy plants a stage typed `never` in `fate` beside the entry on it: the check
-//   is of the mechanism a later family's first row leans on while it writes its stages.
+//   is of the mechanism a later family's first row leans on while it writes its stages. Since P1-19g `volley` has its
+//   signature too, so the hook point's plant is on `movementCost`, still `never`.
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
 // lower level has nothing to read. The copies hold only src/content/ and src/engine/rules/ (the registry imports nothing
 // else: npm run lint:arch), so each compiles on its own with tsconfig.json's settings. About 2 s (the data file is read
@@ -73,7 +74,7 @@ const PLANTS: Record<string, Record<string, string>> = {
     [REGISTRY]: replacedOnce(
       read(REGISTRY),
       WYRMSCALE_ENTRY,
-      "  wyrmscale: {\n    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale },\n    volley: { 'who shoots': () => true },\n  },\n",
+      "  wyrmscale: {\n    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale },\n    movementCost: { \"a unit's step\": () => 1 },\n  },\n",
     ),
   },
 };
