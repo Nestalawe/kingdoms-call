@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { UNIT_ABILITIES_THE_REGISTRY_HOLDS as ROWS } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
 import { kcRng } from '../rng.ts';
 import { carrierBerths } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
 import {
@@ -375,8 +376,10 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     c._seaLandingAt = { turn: G.turn, prov: toProv.id };
     // ORC — Reaver Crews: troops put ashore from longships hit the beach at a run and fight
     // at +25% in any battle this phase. (There is no coastal-landing PENALTY in the engine to
-    // remove, so the ability is a bonus for landing rather than a waiver — see DEV_LOG.)
-    if ((c.armies || []).some((a) => a && a.type === 'Orcish Longships')) {
+    // remove, so the ability is a bonus for landing rather than a waiver — see DEV_LOG.) The
+    // landing mark asks the content row's unit (plan P1-19k, Decision 7); the +25% is the rule
+    // registry's (strength: the whole force).
+    if ((c.armies || []).some((a) => a && a.type === ROWS['reaver-crews'].unit)) {
       c._amphibiousAssault = true;
       emit(turnContext, {
         type: 'move',

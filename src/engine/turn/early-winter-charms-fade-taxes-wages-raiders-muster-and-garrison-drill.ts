@@ -29,6 +29,7 @@ import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { isOpenSea, seaLiftShortfall, settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { setMovePool } from '../units/movement-pools.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import { theUnitsAProvinceRaisesAtTheTurnsEnd } from '../rules/the-registry-of-content-effects.ts';
 import type { TurnContext } from './context.ts';
 import type { Character, Item, Realm } from '../../schemas/saved-game-state.ts';
 
@@ -40,7 +41,8 @@ import type { Character, Item, Realm } from '../../schemas/saved-game-state.ts';
 //   3. wages: every company (in the field or in garrison) and every hero but the king is paid, after the discounts
 //      (war-spoils, Druid, discoveries, the Host-Leader); a realm that can't pay loses its rawest companies first (the
 //      dead last, ships carrying troops at sea kept), then heroes may desert;
-//   4. Raiders' Muster: an orcish province that saw an orc victory this turn gains a Goblin Horde;
+//   4. a province raises a unit (the rule registry's turnEnd): Raiders' Muster, an orcish province that saw an orc
+//      victory this turn gains a Goblin Horde;
 //   5. garrison drill: an unled garrison company may rise one grade; then any column left at sea without hulls enough
 //      is settled.
 // It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads none of the loop's values (the
@@ -557,29 +559,36 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       }
     }
   });
-  // ── RAIDERS' MUSTER (2026-10-11, Toby, the unit abilities) ── An orcish province that saw an orc
-  // victory this turn adds one Goblin Horde to its garrison for nothing: plunder feeds the horde. It
-  // is owed wages from next turn like any garrison unit. The battle set the flag; the province must
-  // still be an orc realm's at turn's end.
+  // ── A PROVINCE RAISES A UNIT (plan P1-19k: the rule registry's turnEnd) ── Raiders' Muster (2026-10-11, Toby, the
+  // unit abilities): an orcish province that saw an orc victory this turn adds one Goblin Horde to its garrison for
+  // nothing; the province must still be an orc realm's at turn's end (its effect, in src/engine/rules/unit-abilities/).
+  // The battle set the mark, which lasts its turn: it is read, then wiped (an older turn's too). The turn names each
+  // unit raised (a die), adds it to the garrison and writes the line.
   provincesOrNone().forEach((pv: AProvinceAsEarlyWinterReadsItsGarrison | null | undefined) => {
-    if (pv?._raidersMuster !== G.turn) {
-      if (pv?._raidersMuster != null && pv._raidersMuster !== G.turn) delete pv._raidersMuster;
-      return;
+    if (!pv) return;
+    const anOrcRealmWonABattleThereThisTurn = pv._raidersMuster === G.turn;
+    if (pv._raidersMuster != null) delete pv._raidersMuster;
+    if (pv.owner == null) return;
+    const owner = pv.owner;
+    const facts = {
+      theProvincesRace: pv.race,
+      theRaceOfTheRealmThatHoldsIt: G.players[owner]?.race,
+      anOrcRealmWonABattleThereThisTurn,
+    };
+    for (const raised of theUnitsAProvinceRaisesAtTheTurnsEnd(facts)) {
+      pv.garrisonArmies ??= [];
+      const unitName = armyUnitName(raised.type);
+      if (unitName === undefined) continue; // never: a unit type's pool of names is never empty
+      const unit = { type: raised.type, quality: raised.quality, race: raised.race, unitName };
+      pv.garrisonArmies.push(unit);
+      emit(turnContext, {
+        type: 'hire',
+        text: `🥁 Raiders' Muster — word of the victory at ${pv.name} draws ${unit.unitName} (${unit.type}, ${unit.quality}) to its garrison for nothing.`,
+        audience: { actor: owner, realms: [owner] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        province: pv.id,
+      });
     }
-    delete pv._raidersMuster;
-    if (pv.race !== 'Orcish' || pv.owner == null || G.players[pv.owner]?.race !== 'Orcish') return;
-    pv.garrisonArmies ??= [];
-    const _gobName = armyUnitName('Goblin Horde');
-    if (_gobName === undefined) return; // never: the Goblin Horde's pool of names is never empty
-    const _gob = { type: 'Goblin Horde', quality: 'Average', race: 'Orcish', unitName: _gobName };
-    pv.garrisonArmies.push(_gob);
-    emit(turnContext, {
-      type: 'hire',
-      text: `🥁 Raiders' Muster — word of the victory at ${pv.name} draws ${_gob.unitName} (Goblin Horde, Average) to its garrison for nothing.`,
-      audience: { actor: pv.owner, realms: [pv.owner] },
-      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-      province: pv.id,
-    });
   });
   // ── GARRISON DRILL (2026-09-23c, Toby) ── Every unled unit garrisoned in a province its realm
   // owns may rise one experience level at turn's end, at exactly the chance a commander gives by

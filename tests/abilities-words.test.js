@@ -4,7 +4,7 @@
 // Retreat, the Wyverns' Dread) are named on no page; the rulebook explains the new conditions of Shieldwall,
 // Shield Fort and Sheer Numbers. The abilities the rule registry holds (Sheer Numbers, plan P1-19a; the matchups
 // of abilityFront and abilityBack, Halberds to Arrow Fodder, P1-19b; the whole line's, Hold the Gate to Flak Gunners,
-// P1-19c; Knightly Example, P1-19d; the volley's, Prepared Ground to Raiders' Volley, P1-19g; the grid's, Through the Trees, Crag Charge and Brawling Archers, P1-19h; Flak Screen, P1-19i; the rout's, Ride Them Down, Shield Fort, Deep Halls and Run Them Down, P1-19j) left the table, a unit with none left keeping the check of its blurb and its roster row: their names and numbers are checked from their content rows by
+// P1-19c; Knightly Example, P1-19d; the volley's, Prepared Ground to Raiders' Volley, P1-19g; the grid's, Through the Trees, Crag Charge and Brawling Archers, P1-19h; Flak Screen, P1-19i; the rout's, Ride Them Down, Shield Fort, Deep Halls and Run Them Down, P1-19j; Raiders' Muster, P1-19k) left the table, a unit with none left keeping the check of its blurb and its roster row: their names and numbers are checked from their content rows by
 // tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
 // The player portal is read from src/ by its syntax tree (tests/lib/source.ts): its blurbs as entries of the object
 // literal, its words as the strings it holds. (Until plan P1-09a they were matched in the built page's text.)
@@ -23,7 +23,7 @@ const ABILITIES={
   'Dwarven Guard':[], 'Ironwood Crossbows':[], 'Mountain Guns':[],
   'Ironhoof Rams':[], 'Gnomish Gyrocopters':[], 'Dwarf Garrison':[],
   'Goblin Horde':[], 'Orc Berserkers':[], 'Black Arrows':[],
-  'Warg Riders':[], 'Wyvern Riders':['Acid Spit'], 'Orc Garrison':["Raiders' Muster"],
+  'Warg Riders':[], 'Wyvern Riders':['Acid Spit'], 'Orc Garrison':[],
 };
 const norm=s=>s.replace(/[’‘]/g,"'");
 // the player portal's blurbs

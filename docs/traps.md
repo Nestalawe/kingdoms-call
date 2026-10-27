@@ -969,7 +969,9 @@ by kind:
 - force-wide strength: the registry's stages "a land unit at sea" and "the whole force" (above), which `armStr` and
   `unitAbilityMult` ask; fates: the registry's two stages of a unit's fate (Regenerating Hide, Knightly Example), which
   `rollUnitFates` asks;
-- turn hooks inside `resolveTurn`: Raiders' Muster at turn's end.
+- the turn's end: the registry's "a province raises a unit" (Raiders' Muster, a stage of `turnEnd`), which Early Winter
+  asks for each province a realm holds; Early Winter names the unit raised, adds it to the garrison and writes the
+  line.
 
 **One content row and one registry entry** ([ARCHITECTURE.md](ARCHITECTURE.md#the-rule-registry)): the nine
 abilities of a unit's whole force (P1-19a), Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent,
@@ -987,12 +989,13 @@ Shell Wall, Prepared Ground, Woodland Volley, Raiders' Volley, Thick Hide, Punch
 Charge, Brawling Archers and Colossal Bulk, with Stoop on the Horses' flank slot; and the two before the battle
 (P1-19i), Flak Screen and Breach and Swamp; and the seven of the rout (P1-19j), Shield Fort, Deep Halls, Ride Them
 Down, Run Them Down, Feeding Frenzy, and the Corsair Fleet's Cut the Line and Keep the Sea Lanes (a retired unit's, in
-no book: the words test checks they are still in none), with Relentless Hunt's pursuit. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
+no book: the words test checks they are still in none), with Relentless Hunt's pursuit; and Raiders' Muster at the
+turn's end (P1-19k), with Reaver Crews' landing mark, which the move order sets by the row's unit. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
 numbers, in the same file as its unit's blurb), its effect in a file of `src/engine/rules/unit-abilities/` and its entry in the registry, in its stage's order;
 `tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts` checks its name and numbers in both books
 from its row (an ability the books give no number, Rooted for one, is listed there and its name checked). Change a
 number in its row and in both books (the blurb a few hundred lines below it, the rulebook by hand). **Still inline**: every other ability, in the places above (the rest of the family's second
-slice: the pre-battle strikes, the turn hooks).
+slice: the pre-battle strikes).
 
 `tests/abilities-words.test.js` holds the table of names of the abilities still inline and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and

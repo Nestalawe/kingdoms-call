@@ -15,7 +15,7 @@
 // the fix too. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes: plan P1-19j, Choice 4) are a retired unit's,
 // in no book: checked to be still in none, and nothing else. An ability the books give no number (Rooted, Hold the Gate,
 // Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d; eight of the volley's: P1-19g; the three flank
-// slots of rough ground: P1-19h; Deep Halls: P1-19j) is listed below,
+// slots of rough ground: P1-19h; Deep Halls: P1-19j; Raiders' Muster: P1-19k) is listed below,
 // and its name is checked; a number the books leave out (Driven Before Them's cap, which the units beside them never
 // reach) is checked to be still left out. A number the books write in words (double, half, two, full strength) is matched
 // as a whole word, case aside (the rulebook writes "DOUBLE volley damage").
@@ -82,6 +82,7 @@ const NO_NUMBER_IN_THE_BOOKS: Readonly<Record<string, string>> = {
   'through-the-glades': 'the one cavalry, with the Stag Riders, that takes a flank in forest and jungle',
   'crag-charge': 'the one cavalry that takes a flank in the mountains',
   'deep-halls': "a Dwarf Garrison counts as Guard for Shield Fort: Shield Fort's number",
+  'raiders-muster': 'an orcish province that sees an orc realm win there gains a Goblin Horde in its garrison',
 };
 
 /** A count as the books write it, in words (any other count is written so that no book holds it). */
