@@ -360,7 +360,13 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   Ground, else one), **a shot's damage** (Woodland Volley, Bombardment, Raiders' Volley: the product, from ×1), **what
   the target does to a shot** (Thick Hide, after a flyer's double), and **the softening limit** (Punch Through, else
   the usual 40% and 80%); and `strength`'s **a land unit at sea** (Sea Archers, in `armStr` before the unit's factors
-  from its force: whether the sea's penalty is waived; its effect is in the whole force's file). Every stage of
+  from its force: whether the sea's penalty is waived; its effect is in the whole force's file). The grid (P1-19h),
+  three stages of `strength` that place a unit (`src/engine/rules/unit-abilities/a-units-place-in-the-battle-grid.ts`),
+  each handed the unit and the ground: in `battleGrid`, **a rider takes the flank on rough ground** (Through the Trees
+  and Through the Glades in the woods, Crag Charge in the mountains: `abilityFlanksRough` asks it), then, on open ground,
+  **a flyer takes an open flank no rider fills** (Stoop on the Horses, a second stage in its entry); in `battleRegrid`,
+  **its place in the line**, handed the line too (Brawling Archers in the front, Colossal Bulk in the second line where
+  it doesn't shoot over a fighter: the multiplier and its words, else the line's own). Every stage of
   `strength`, `volley` and `fate` now has its signature; the other six hook points are `never` until their family's
   first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a

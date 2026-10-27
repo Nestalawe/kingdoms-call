@@ -8,9 +8,12 @@ import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
 import {
+  aFlyerTakesAnOpenFlankNoRiderFills,
+  aRiderTakesTheFlankOnRoughGround,
   theAbilityThatHoldsAUnitHitFromTheSide,
   theAbilityThatTurnsAnAnchoredLine,
   theMarksTheEnemyLineLeavesOnMine,
+  theMultiplierOfAUnitsPlaceInTheLine,
   theStrengthOfAFlyer,
   theStrengthOfAShooterOverTheLine,
   theStrengthOfAUnitBesideAndBehindOthers,
@@ -284,9 +287,10 @@ export function battleGrid(
   const fly = R.filter((x) => x.role === 'fly').sort(byS);
   let cav = R.filter((x) => x.role === 'cav').sort(byS);
   // Flank slots (Unit abilities, 2026-10-11): on open ground Tactical + 1 riders; on rough ground one, and
-  // only for the cavalry bred for it (Stag Riders in forest and jungle: Through the Trees; Ironhoof Rams
-  // in the mountains: Crag Charge); none at sea. On open ground a slot no rider fills may be held by
-  // Eagle Riders (Stoop on the Horses), who leave the air for the flank.
+  // only for the cavalry bred for it (the rule registry's stage "a rider takes the flank on rough ground":
+  // Through the Trees, Through the Glades, Crag Charge); none at sea. On open ground a slot no rider fills
+  // may be held by a flyer that leaves the air for the flank (the stage "a flyer takes an open flank no
+  // rider fills": Stoop on the Horses).
   const open = BATTLE_FLANK_TERRAINS.has(terrain);
   const slots = open ? tac + 1 : terrain === 'sea' ? 0 : 1;
   let flanks: GridCell[] = [];
@@ -302,7 +306,9 @@ export function battleGrid(
     }
   }
   if (open && flanks.length < slots) {
-    const eagles = fly.filter((x) => typeOfX(x) === 'Eagle Riders').slice(0, slots - flanks.length);
+    const eagles = fly
+      .filter((x) => aFlyerTakesAnOpenFlankNoRiderFills({ theUnit: inTheLine(x), ground: terrain }))
+      .slice(0, slots - flanks.length);
     eagles.forEach((e) => {
       flanks.push(e);
       fly.splice(fly.indexOf(e), 1);
@@ -389,10 +395,14 @@ export function battleRegrid(g: BattleGridCells): BattleGrid {
     units.push({ row: x.r, place, col, mult, why });
     total += x.s * mult;
   };
+  // A unit's own place in the line (the rule registry's stage "its place in the line": Brawling Archers in the front,
+  // Colossal Bulk in the second line), else the line's own.
+  const itsOwnPlace = (x: GridCell, itsLine: 'front' | 'second') =>
+    theMultiplierOfAUnitsPlaceInTheLine({ theUnit: inTheLine(x), ground: g.terrain, itsLine });
   g.front.forEach((x, c) => {
     if (!x) return;
-    if (x.role === 'arc' && typeOfX(x) === 'Black Arrows')
-      put(x, 'front', c, 1, 'Brawling Archers in the front line'); // the orcs' archers fight hand to hand at full strength
+    const own = itsOwnPlace(x, 'front');
+    if (own) put(x, 'front', c, own.multiplier, own.words);
     else
       put(
         x,
@@ -405,9 +415,12 @@ export function battleRegrid(g: BattleGridCells): BattleGrid {
   g.second.forEach((x, c) => {
     if (!x) return;
     const f = g.front[c];
-    if (x.role === 'arc' && f && f.role !== 'arc') put(x, 'second', c, 1, 'shooting over the ' + shortUnit(f.r));
-    else if (typeOfX(x) === 'Titan Warbeasts')
-      put(x, 'second', c, 1, 'Colossal Bulk: full strength from the second line'); // the Titans reach over the front (2026-10-13, the beast abilities)
+    if (x.role === 'arc' && f && f.role !== 'arc') {
+      put(x, 'second', c, 1, 'shooting over the ' + shortUnit(f.r));
+      return;
+    }
+    const own = itsOwnPlace(x, 'second');
+    if (own) put(x, 'second', c, own.multiplier, own.words);
     else put(x, 'second', c, mults[1], 'second line');
   });
   g.reserve.forEach((x, k) => {
@@ -517,11 +530,11 @@ export const backMult = (r: string) => {
 };
 // ── UNIT ABILITIES IN THE LINE (2026-10-11, Toby) ── Every humanoid unit has a matchup ability, read here
 // when a unit meets another (faces, is met by, duels, guards) or shoots over its fighter, and one more
-// ability, some of which also live here (the flank slots above; the whole line's, which battleFaceSide asks the rule
+// ability, some of which also live here (the flank slots and places above, which battleGrid and battleRegrid ask the
+// rule registry; the whole line's, which battleFaceSide asks the rule
 // registry: Shieldwall, Sergeants, Driven Before Them, Terror From Above, Dive on the Bowmen, Flak Gunners, …) and the
 // rest in the volley, fate and end-of-turn code. Each returns the multiplier and the names that moved it, for the
 // ladder and the report. tests/abilities-* hold every one of them.
-export const ABILITY_WOODS: ReadonlySet<string | null> = new Set(['forest', 'jungle']);
 /** A cell's unit type: any cell, or an empty place (null). */
 export const typeOfX = (
   x:
@@ -537,15 +550,12 @@ export const abilityHas = (
   (['front', 'second', 'reserve', 'flanks', 'fly'] satisfies (keyof BattleGridCells)[]).some((k) =>
     (g[k] ?? []).some((x) => x && typeOfX(x) === type),
   );
-// The cavalry that may take the one flank slot rough ground allows (2026-10-13, the beast abilities: the Unicorn Herd's
-// Through the Glades joins the Stag Riders in the woods).
 export const GRID_MONSTER_TYPES: ReadonlySet<string | undefined> = new Set(KC_UNIT_CLASS.monster);
+// The cavalry that may take the one flank slot rough ground allows: the rule registry's stage "a rider takes the flank
+// on rough ground" (Through the Trees and, since 2026-10-13, the beast abilities, Through the Glades in the woods; Crag
+// Charge in the mountains).
 export function abilityFlanksRough(x: GridCell, terrain: string | null) {
-  const t = typeOfX(x);
-  return (
-    (ABILITY_WOODS.has(terrain) && (t === 'Stag Riders' || t === 'Unicorn Herd')) ||
-    (terrain === 'mountain' && t === 'Ironhoof Rams')
-  );
+  return aRiderTakesTheFlankOnRoughGround({ theUnit: inTheLine(x), ground: terrain });
 }
 // x meets e (both placed cells {r, role, s}): the role matchup, then x's ability, then e's. where:
 // 'front' (facing or met), 'duel' (flank riders), 'guard' (a rider guarding a line end); meIsAtk: x's side attacks.

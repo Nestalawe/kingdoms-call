@@ -10,7 +10,8 @@
 //
 // Red on each row's base by design (unitAbilityMult held 9 on P1-19a's base; abilityFront 19 and abilityBack 6 on
 // P1-19b's; battleFaceSide 11 on P1-19c's; rollUnitFates 4 on P1-19d's; the eight volley functions of strength.ts 14
-// and applyMissileHit 3 on P1-19g's), as P1-11a4's static test was: the one exception to refactor-only's rule that new
+// and applyMissileHit 3 on P1-19g's; battleGrid 1, battleRegrid 2 and abilityFlanksRough 3 on P1-19h's), as P1-11a4's
+// static test was: the one exception to refactor-only's rule that new
 // tests pass before and after (Theo, 2026-10-25). eyesOfTheForest, the ninth volley function on P1-19g's base, went:
 // the registry's "the shooters see what hides" took its one check, and nothing else read it.
 // Level 0 (static): the files' syntax trees; nothing runs.
@@ -38,6 +39,9 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/strength.ts', 'missileDamageMult', 'P1-19g, the volley'],
   ['src/engine/battle/strength.ts', 'abilityVolleys', 'P1-19g, the volley'],
   ['src/engine/battle/terrain-and-unit-strength.ts', 'applyMissileHit', 'P1-19g, the volley'],
+  ['src/engine/battle/lines.ts', 'battleGrid', 'P1-19h, the grid'],
+  ['src/engine/battle/lines.ts', 'battleRegrid', 'P1-19h, the grid'],
+  ['src/engine/battle/lines.ts', 'abilityFlanksRough', 'P1-19h, the grid'],
 ];
 
 const UNIT_TYPE_NAMES: ReadonlySet<string> = new Set(Object.keys(KC_UNIT_TYPE));

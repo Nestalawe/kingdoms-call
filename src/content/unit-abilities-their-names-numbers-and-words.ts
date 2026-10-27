@@ -12,8 +12,9 @@
 import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 
 /** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1); a chance as `30%` (0.3);
- *  full strength (×1, where others fight at less) as `no penalty`; a unit's base strength as `base strength 6`; a share
- *  of a unit's strength as `55%` (0.55); ×2 as `double` and ×0.5 as `half`; a count as a word (`two`). A number the
+ *  full strength (×1, where others fight at less) as `no penalty`, or as `full strength` (a unit's place in the line);
+ *  a unit's base strength as `base strength 6`; a share of a unit's strength as `55%` (0.55); ×2 as `double` and ×0.5
+ *  as `half`; a count as a word (`two`). A number the
  *  books leave out (Driven Before Them's cap, which the units beside them never reach) says so, and the words test
  *  checks that they still do. */
 export type HowTheBooksWriteANumber =
@@ -21,6 +22,7 @@ export type HowTheBooksWriteANumber =
   | 'a fraction added'
   | 'a chance'
   | 'no penalty'
+  | 'full strength'
   | 'a base strength'
   | 'a share'
   | 'double'
@@ -59,7 +61,7 @@ export interface AUnitAbilityAsTheBooksWriteIt {
 /** The unit abilities the registry holds, in the order the battle code meets them: the strength of a unit in its
  *  whole force (plan P1-19a), then a unit meeting another or shooting over its line (P1-19b), then the whole line
  *  (P1-19c), then a unit's fate after the battle (P1-19d), then the volley before the battle and a land unit at sea
- *  (P1-19g). */
+ *  (P1-19g), then a unit's place in the battle grid (P1-19h). */
 export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // Orc: goblins are worth little alone and a great deal in a mob.
   'sheer-numbers': {
@@ -140,7 +142,7 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     name: 'Wolves Panic Horses',
     numbers: { facingCavalry: { value: 1.25, theBooksWriteIt: 'a multiplier' } },
   },
-  // Its matchup; the flank slot it may hold stays in the grid (battleGrid).
+  // Its matchup; and, in the grid (plan P1-19h), the open flank slot no rider fills, which it may hold.
   'stoop-on-the-horses': {
     unit: 'Eagle Riders',
     name: 'Stoop on the Horses',
@@ -389,6 +391,36 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // don't suffer a land unit's penalty at sea. (Its effect reads the ranged units from the data file's class: a reach
   // named here would leave a read of the class in the player page's bundle.)
   'sea-archers': { unit: 'Elven Galleys', name: 'Sea Archers', numbers: {} },
+  // ── A unit's place in the battle grid (plan P1-19h: battleGrid, battleRegrid, abilityFlanksRough) ──
+  // A rider takes the flank on rough ground: the one flank slot rough ground allows goes to cavalry bred for it, the
+  // Stag Riders and the Unicorn Herd in the woods, the Ironhoof Rams in the mountains (2026-10-11 and 2026-10-13). (On
+  // open ground a flank slot no rider fills may go to the Eagle Riders: Stoop on the Horses, above.)
+  'through-the-trees': {
+    unit: 'Stag Riders',
+    name: 'Through the Trees',
+    numbers: {},
+    onTheGround: ['forest', 'jungle'],
+  },
+  'through-the-glades': {
+    unit: 'Unicorn Herd',
+    name: 'Through the Glades',
+    numbers: {},
+    onTheGround: ['forest', 'jungle'],
+  },
+  'crag-charge': { unit: 'Ironhoof Rams', name: 'Crag Charge', numbers: {}, onTheGround: ['mountain'] },
+  // Its place in the line: the orcs' archers fight hand to hand at full strength in the front, where other archers
+  // fight at ×0.75; the Titans reach over the front at full strength from the second line, where others fight at ×0.5
+  // (2026-10-13, the beast abilities).
+  'brawling-archers': {
+    unit: 'Black Arrows',
+    name: 'Brawling Archers',
+    numbers: { inTheFrontLine: { value: 1, theBooksWriteIt: 'full strength' } },
+  },
+  'colossal-bulk': {
+    unit: 'Titan Warbeasts',
+    name: 'Colossal Bulk',
+    numbers: { inTheSecondLine: { value: 1, theBooksWriteIt: 'full strength' } },
+  },
 } as const satisfies Record<string, AUnitAbilityAsTheBooksWriteIt>;
 
 /** The slug of an ability the registry holds. */
