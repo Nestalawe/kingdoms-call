@@ -1,5 +1,10 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import {
+  BATTLE_ARMY_SPELLS,
+  KC_UNIT_CLASS,
+  PRIMAL_ARMY_DEFS_P,
+  SPELL_DEFS_P,
+} from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
@@ -130,22 +135,6 @@ export const ATK_VERBS = ['advances on', 'charges into', 'storms', 'attacks', 'a
 export const DEF_VERBS = ['holds the line in', 'stands firm in', 'defends', 'fortifies', 'guards'];
 export const WIN_VERBS = ['rout', 'break', 'scatter', 'overwhelm', 'destroy']; // plural — every use reads "<name>'s forces <verb>" (2026-09-23b)
 export const LOSE_VERBS = ['is repulsed by', 'retreats before', 'cannot break', 'is driven back by'];
-
-// Battle spells for special standard army units (used in pre-battle magic phase) castChance is base
-// % before druid bonus; dmg reduces a target army's effective strength
-export const BATTLE_ARMY_SPELLS = {
-  'Wyvern Riders': [
-    {
-      name: 'Acid Spit Volley',
-      dmg: [2, 5],
-      target: 'single',
-      flavour: 'A wave of caustic venom spatters across the foe!',
-    },
-  ],
-  'Noble Griffons': [
-    { name: 'Screech Dive', dmg: [2, 4], target: 'single', flavour: 'A diving screech scatters the target formation!' },
-  ],
-};
 
 export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const { G, _tel } = turnContext;

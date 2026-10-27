@@ -4,24 +4,35 @@
 // the player portal (UNIT_ABILITIES) and in its roster row in the comprehensive rulebook, within the ability's own words
 // (from its name to the next ability's), with no digit just before or after it (×1.2 is not in "×1.25": plan P1-19f).
 // So a number changed in content, and not in the books, turns this red. This
-// family's share of plan P3-02's words helper; the older words tests (abilities-words, primal-abilities-words) keep the
-// names of the abilities the registry doesn't hold yet.
+// family's share of plan P3-02's words helper. The abilities a table holds, read by the unit's type (plan P1-19l,
+// Choice 2), are checked the same way from their tables: each pre-battle strike's name and damage range (2–4, with the
+// books' en dash; PRIMAL_ARMY_DEFS_P's spells and BATTLE_ARMY_SPELLS, in content), Island Back's berths
+// (KC_CARRIER_BERTHS: "two land units") and Forest Runners' two cells of TERRAIN_MODS (read by its syntax tree: "×1.1
+// in forest", "no penalty in jungle"). A table's number is matched with what it counts or where it acts, since a bare
+// "one" or "×1" is in the books' words already ("where a fleet carries one", "×1.1"). The older words tests
+// (abilities-words, primal-abilities-words) name no ability now; they keep their other checks.
 // Three gaps are known and let through, each with its fix parked (the three fleets): the rulebook's Orcish Longships row
 // doesn't name Reaver Crews, nor its Elven Galleys row Sea Archers, nor its Dwarf Ironclads row Armoured Hulls (the test
 // fails once it does, so the exception leaves with the fix). And three numbers: the rulebook's Whale Cohort row names
 // Breach and Swamp but not its 25% chance (plan P1-19i; parked: the row's words from the blurb), and its Manticore Pride
 // row gives the Manticores' pursuit (at least half the winning force, +15%) after Spine Volley, outside Relentless
 // Hunt's words (plan P1-19j; parked likewise), each checked to be still left out there, so the exception leaves with
-// the fix too. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes: plan P1-19j, Choice 4) are a retired unit's,
+// the fix too. Of the tables: the battle report names the Wyvern Riders' strike "Acid Spit Volley", both books "Acid
+// Spit" (parked: one name), checked to be still so; and the rulebook gives Forest Runners' two numbers in its terrain
+// column, not in Forest Runners' words (a known difference: roster-words holds that column to the decided roster, and
+// roster holds TERRAIN_MODS to it), checked to be still so. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes:
+// plan P1-19j, Choice 4) are a retired unit's,
 // in no book: checked to be still in none, and nothing else. An ability the books give no number (Rooted, Hold the Gate,
 // Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d; eight of the volley's: P1-19g; the three flank
 // slots of rough ground: P1-19h; Deep Halls: P1-19j; Raiders' Muster: P1-19k) is listed below,
 // and its name is checked; a number the books leave out (Driven Before Them's cap, which the units beside them never
 // reach) is checked to be still left out. A number the books write in words (double, half, two, full strength) is matched
 // as a whole word, case aside (the rulebook writes "DOUBLE volley damage").
-// Level 0 (static): the content's rows imported (plain data), the player portal's blurbs by their syntax tree
-// (tests/lib/source.ts), the rulebook as built (site/); nothing runs.
+// Level 0 (static): the content's rows and tables imported (plain data), TERRAIN_MODS and the player portal's blurbs by
+// their syntax tree (tests/lib/source.ts), the rulebook as built (site/); nothing runs.
+import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
+import { BATTLE_ARMY_SPELLS, KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
 import {
   UNIT_ABILITIES_THE_REGISTRY_HOLDS,
   type ANumberOfAnAbility,
@@ -261,5 +272,193 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
         Object.keys(numbers).length,
       );
     }
+  });
+});
+
+// ── The abilities a table holds, read by the unit's type (plan P1-19l, Choice 2) ──
+
+/** A number of an ability a table holds, as the books write it, with what it counts or where it acts. */
+interface ANumberATableHolds {
+  readonly text: string;
+  readonly inWords: boolean;
+}
+
+/** An ability a table holds: its unit, its name as the books write it (and as its table does, where they differ), and
+ *  its numbers as the books write them. */
+interface AnAbilityATableHolds {
+  readonly table: string;
+  readonly unit: string;
+  readonly name: string;
+  readonly nameInTheTable: string;
+  readonly numbers: readonly ANumberATableHolds[];
+}
+
+/** The names a table writes otherwise than both books, each with the books' name and why: the test checks that the
+ *  table still writes it so and neither book does. */
+const NAMES_THE_BOOKS_WRITE_ANOTHER_WAY: Readonly<Record<string, { readonly books: string; readonly why: string }>> = {
+  'Acid Spit Volley': {
+    books: 'Acid Spit',
+    why: 'the battle report names the Wyvern Riders\' strike "Acid Spit Volley", both books "Acid Spit" (parked: one name)',
+  },
+};
+
+/** The abilities whose numbers the rulebook writes outside their words, each with why: the test checks that their
+ *  words in the rulebook still leave the numbers out. */
+const NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE: Readonly<Record<string, string>> = {
+  'Forest Runners':
+    "the rulebook gives Forest Runners' numbers in the Stag Riders' terrain column (Forest ×1.1; jungle unlisted, ×1), which roster-words holds to the decided roster and roster holds TERRAIN_MODS to",
+};
+
+/** A strike's damage range as the books write it: `2–4`, with the books' en dash (U+2013). */
+const aDamageRange = ([least, most]: readonly number[]): ANumberATableHolds => ({
+  text: `${String(least)}\u2013${String(most)}`,
+  inWords: false,
+});
+
+/** A number of a table, written as a row's number would be, with the words after it that say what it counts or where
+ *  it acts ("two land units", "×1.1 in forest"). */
+const withItsWords = (n: ANumberOfAnAbility, words: string): ANumberATableHolds => ({
+  text: `${asTheBooksWriteIt(n)} ${words}`,
+  inWords: IN_WORDS.has(n.theBooksWriteIt),
+});
+
+/** The pre-battle strikes, as the battle code reads them: a beast's `spells` that deal damage (PRIMAL_ARMY_DEFS_P),
+ *  and the winged riders' (BATTLE_ARMY_SPELLS). */
+interface AStrike {
+  readonly name: string;
+  readonly dmg: readonly number[];
+}
+const strikesOf = (table: string, rows: Readonly<Record<string, readonly AStrike[] | undefined>>) =>
+  Object.entries(rows).flatMap(([unit, spells]) =>
+    (spells ?? [])
+      .filter((s) => (s.dmg[1] ?? 0) > 0)
+      .map((s): AnAbilityATableHolds => ({
+        table,
+        unit,
+        name: NAMES_THE_BOOKS_WRITE_ANOTHER_WAY[s.name]?.books ?? s.name,
+        nameInTheTable: s.name,
+        numbers: [aDamageRange(s.dmg)],
+      })),
+  );
+const BEASTS_SPELLS: Readonly<Record<string, readonly AStrike[] | undefined>> = Object.fromEntries(
+  Object.entries(PRIMAL_ARMY_DEFS_P).map(([unit, d]) => [unit, 'spells' in d ? d.spells : undefined]),
+);
+const RIDERS_SPELLS: Readonly<Record<string, readonly AStrike[] | undefined>> = BATTLE_ARMY_SPELLS;
+
+/** The engine's TERRAIN_MODS, read by its syntax tree: a unit's cell on a ground, or undefined. The battle file isn't
+ *  loaded (it is the engine's); its initializer is an object literal of grounds, each an object literal of units. */
+const TERRAIN_MODS = entriesOf('engine/battle/terrain-and-unit-strength.ts', 'TERRAIN_MODS');
+function terrainCell(ground: string, unit: string): number | undefined {
+  const row = TERRAIN_MODS.find((e) => e.key === ground)?.value;
+  if (row === undefined) return undefined;
+  const tree = ts.createSourceFile('cell.ts', `(${row})`, ts.ScriptTarget.Latest);
+  const first = tree.statements[0];
+  if (!first || !ts.isExpressionStatement(first) || !ts.isParenthesizedExpression(first.expression)) return undefined;
+  const cells = first.expression.expression;
+  if (!ts.isObjectLiteralExpression(cells)) return undefined;
+  for (const p of cells.properties)
+    if (
+      ts.isPropertyAssignment(p) &&
+      (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) &&
+      p.name.text === unit &&
+      ts.isNumericLiteral(p.initializer)
+    )
+      return Number(p.initializer.text);
+  return undefined;
+}
+const FOREST_RUNNERS = { forest: terrainCell('forest', 'Stag Riders'), jungle: terrainCell('jungle', 'Stag Riders') };
+const ISLAND_BACK = KC_CARRIER_BERTHS['Great Turtles'];
+
+const TABLES: readonly AnAbilityATableHolds[] = [
+  ...strikesOf('PRIMAL_ARMY_DEFS_P', BEASTS_SPELLS),
+  ...strikesOf('BATTLE_ARMY_SPELLS', RIDERS_SPELLS),
+  {
+    table: 'KC_CARRIER_BERTHS',
+    unit: 'Great Turtles',
+    name: 'Island Back',
+    nameInTheTable: 'Island Back',
+    numbers: [
+      withItsWords(
+        { value: ISLAND_BACK, theBooksWriteIt: 'a count in words' },
+        ISLAND_BACK === 1 ? 'land unit' : 'land units',
+      ),
+    ],
+  },
+  {
+    table: 'TERRAIN_MODS',
+    unit: 'Stag Riders',
+    name: 'Forest Runners',
+    nameInTheTable: 'Forest Runners',
+    numbers: [
+      withItsWords({ value: FOREST_RUNNERS.forest ?? NaN, theBooksWriteIt: 'a multiplier' }, 'in forest'),
+      withItsWords({ value: FOREST_RUNNERS.jungle ?? NaN, theBooksWriteIt: 'no penalty' }, 'in jungle'),
+    ],
+  },
+];
+
+describe("each ability a table holds: its name and numbers in its unit's blurb and its roster row", () => {
+  test('the tables are read: the strikes of both tables, Island Back and both of Forest Runners’ cells', () => {
+    expect(TABLES.filter((r) => r.table === 'PRIMAL_ARMY_DEFS_P').length).toBeGreaterThan(0);
+    expect(TABLES.filter((r) => r.table === 'BATTLE_ARMY_SPELLS').length).toBeGreaterThan(0);
+    expect(ISLAND_BACK, "the Great Turtles' berths").toBeTypeOf('number');
+    expect(FOREST_RUNNERS.forest, "the Stag Riders' forest cell of TERRAIN_MODS").toBeTypeOf('number');
+    expect(FOREST_RUNNERS.jungle, "the Stag Riders' jungle cell of TERRAIN_MODS").toBeTypeOf('number');
+  });
+
+  test.for(TABLES)("$name ($unit, $table): the player portal's blurb", ({ unit, name, numbers }) => {
+    const blurb = blurbs.get(unit);
+    expect(blurb, `the player portal has a blurb for ${unit}`).toBeDefined();
+    const words = ownWords(blurb ?? '', name);
+    expect(words, `${unit}'s blurb names ${name}`).not.toBeNull();
+    for (const n of numbers) expect(words, `${name} in ${unit}'s blurb says ${n.text}`).toMatch(theNumber(n));
+  });
+
+  test.for(TABLES.filter((r) => !(r.name in NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE)))(
+    "$name ($unit, $table): the rulebook's roster row",
+    ({ unit, name, numbers }) => {
+      const row = rosterRow(unit);
+      expect(row, `the rulebook's roster has a row for ${unit}`).not.toBeNull();
+      const words = ownWords(row ?? '', name);
+      expect(words, `${unit}'s roster row names ${name}`).not.toBeNull();
+      for (const n of numbers) expect(words, `${name} in ${unit}'s roster row says ${n.text}`).toMatch(theNumber(n));
+    },
+  );
+
+  test.for(TABLES.filter((r) => r.name in NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE))(
+    "$name ($unit, $table): the rulebook's roster row names it, its numbers elsewhere (a known difference)",
+    ({ unit, name, numbers }) => {
+      const row = rosterRow(unit);
+      expect(row, `the rulebook's roster has a row for ${unit}`).not.toBeNull();
+      const words = ownWords(row ?? '', name);
+      expect(words, `${unit}'s roster row names ${name}`).not.toBeNull();
+      const why = String(NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE[name]);
+      for (const n of numbers)
+        expect(
+          words,
+          `${why}: now its words say ${n.text}, so take ${name} out of NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE`,
+        ).not.toMatch(theNumber(n));
+    },
+  );
+
+  test.for(TABLES.filter((r) => r.nameInTheTable !== r.name))(
+    '$nameInTheTable ($unit, $table): a name neither book writes yet (a known gap)',
+    ({ unit, name, nameInTheTable }) => {
+      const why = String(NAMES_THE_BOOKS_WRITE_ANOTHER_WAY[nameInTheTable]?.why);
+      for (const [book, text] of [
+        ['blurb', blurbs.get(unit) ?? ''],
+        ['roster row', rosterRow(unit) ?? ''],
+      ] as const)
+        expect(
+          text,
+          `${why}: now ${unit}'s ${book} names ${nameInTheTable}, not ${name}, so take it out of NAMES_THE_BOOKS_WRITE_ANOTHER_WAY`,
+        ).not.toContain(nameInTheTable);
+    },
+  );
+
+  test('each name and number listed as known is one a table holds', () => {
+    for (const name of Object.keys(NAMES_THE_BOOKS_WRITE_ANOTHER_WAY))
+      expect(TABLES.map((r) => r.nameInTheTable)).toContain(name);
+    for (const name of Object.keys(NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE))
+      expect(TABLES.map((r) => r.name)).toContain(name);
   });
 });
