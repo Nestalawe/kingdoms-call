@@ -630,7 +630,7 @@ describe('Resurrect and Charm, called directly', () => {
 
 // ── The Charm's backlash (charmBacklash) ────────────────────────────────────────────────────────────────────────
 describe('a failed Charm brings the hero down on the caster (charmBacklash), called directly', () => {
-  const backlash = (b: Board, caster: Character, t: Character, why = 'the spell fizzled') => {
+  const backlash = (b: Board, caster: Character, t: Character, why = { kind: 'the Charm fizzled' }) => {
     b.tc._logCtx = { charId: caster.id, phase: 0 };
     return fn('charmBacklash')(b.tc, b.X, caster, t, why);
   };
@@ -658,7 +658,7 @@ describe('a failed Charm brings the hero down on the caster (charmBacklash), cal
     const b = fresh();
     const { caster, t } = pair(b);
     duelEndsIn({ atkHp: 10, defHp: 10 }, (plans) => {
-      rolls([roll], () => backlash(b, caster, t, 'the Charm was resisted'));
+      rolls([roll], () => backlash(b, caster, t, { kind: 'the Charm was resisted' }));
       expect(plans.length).toBe(fights ? 1 : 0);
     });
     expect(allText(b)).toContain(
@@ -1023,7 +1023,7 @@ describe('Cast Spell, called directly: the details', () => {
     duelEndsIn({ atkHp: 9, defHp: 9 }, (plans) => {
       rolls([1], () => {
         b.tc._logCtx = { charId: caster.id, phase: 0 };
-        fn('charmBacklash')(b.tc, b.X, caster, t, 'the spell fizzled');
+        fn('charmBacklash')(b.tc, b.X, caster, t, { kind: 'the Charm fizzled' });
       });
       // a wanderer with no plan of his own is given one, as any neutral hero is (ensureEncounterPlan)
       const own = (t['encounterPlan'] as { tactics: string[]; _auto?: boolean } | undefined) ?? { tactics: [] };
@@ -1036,7 +1036,7 @@ describe('Cast Spell, called directly: the details', () => {
     const t2 = rival(b2);
     t2['encounterPlan'] = { tactics: ['XX', 'YY'], duelStance: 'accept' };
     duelEndsIn({ atkHp: 9, defHp: 9 }, (plans) => {
-      rolls([1], () => fn('charmBacklash')(b2.tc, b2.X, c2, t2, 'the spell fizzled'));
+      rolls([1], () => fn('charmBacklash')(b2.tc, b2.X, c2, t2, { kind: 'the Charm fizzled' }));
       expect(plans).toEqual([[['ME'], ['ME']]]);
     });
   });
