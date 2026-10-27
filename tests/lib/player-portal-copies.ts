@@ -54,7 +54,7 @@ import {
   LEGENDARY_ITEMS_P,
   SAGE_DISCOVERIES_P,
 } from '../../src/content/kingdoms-call-data.ts';
-import { SKILL_LABELS } from '../../src/engine/army-tables.ts';
+import { SKILL_LABELS, type ArmyInABattle, type HeroInABattle } from '../../src/engine/army-tables.ts';
 import { getSeaCapability } from '../../src/engine/units/movement-pools.ts';
 import { seaLiftOfAColumn } from '../../src/engine/rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
 import { perkTier } from '../../src/engine/titles/perks.ts';
@@ -80,7 +80,7 @@ import { beastCommandCount, druIdPenaltyMult } from '../../src/engine/world/tabl
 import { druidMasteryGain } from '../../src/engine/battle/terrain-and-unit-strength.ts';
 import { dragonTamed } from '../../src/engine/discoveries.ts';
 import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
-import { createTurnContext } from '../../src/engine/turn/context.ts';
+import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
 import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../../src/engine/titles/perks.ts';
@@ -935,11 +935,14 @@ export function armyCardMasteryAgainstTheTurn(c: Copies, w: WorldSamples): Compa
       aboutTheUnit(world, hero, unit),
       isObj(card) ? card['mastery'] : card,
       engineOn(
-        (h: Obj, u: Obj) => {
-          const gain: unknown = druidMasteryGain({ G: world.state }, h, u, alignment);
+        (h: HeroInABattle, u: ArmyInABattle, a: string | null | undefined) => {
+          // (the turn's context holds only the state the report was made from: the context's type by assertion, as
+          // stagedWorld's state; druidMasteryGain reads only its state)
+          const turn = { G: world.state } as unknown as TurnContext;
+          const gain: unknown = druidMasteryGain(turn, h, u, a);
           return isObj(gain) && typeof gain['gain'] === 'number' ? Math.round(gain['gain'] * 100) : gain;
         },
-        [hero.state, unit.state],
+        [hero.state, unit.state, alignment],
       ),
     );
   });

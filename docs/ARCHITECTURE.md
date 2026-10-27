@@ -83,8 +83,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   TypeScript with annotations alone (P1-10a3: the dice, the routes, the ladder, the visibility rule, the battle report's
   lines and more; the list is in P1-10a3's pull request), the three P1-10b2 freed (`army-tables.ts`,
   `units/movement.ts`, `battle/strength.ts`), the one P1-10b3 freed (`battle/fates.ts`), the one P1-10b4 freed
-  (`battle/lines.ts`) and the six P1-10b5 freed (`battle/fortune.ts`, `grand-design.ts`, `names.ts`, `titles/perks.ts`,
-  `world/map-helpers.ts`, `heroes/charms-and-neutrals.ts`). The other 83 of those 108 files still say `@ts-nocheck`:
+  (`battle/lines.ts`), the six P1-10b5 freed (`battle/fortune.ts`, `grand-design.ts`, `names.ts`, `titles/perks.ts`,
+  `world/map-helpers.ts`, `heroes/charms-and-neutrals.ts`) and the one P1-10b6 freed
+  (`battle/terrain-and-unit-strength.ts`). The other 82 of those 108 files still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](traps.md#ts-nocheck-checks-nothing-in-the-file)).
 - **The content's and the engine's own types** (P1-10a2), types only, so no file the build makes changes with them:
@@ -104,7 +105,10 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     fact they are written from). The freed files declare a few shapes of their own
     (`LadderRow` in `battle/ladder.ts`, `SightContext` in
     `sight/heroes-in-sight-features-discovered-and-army-size-bands.ts`, `UnitAbilityContext` in `battle/strength.ts`,
-    `UnitFateOptions` and `ABattleLinesTier` in `battle/fates.ts`);
+    `UnitFateOptions` and `ABattleLinesTier` in `battle/fates.ts`, `ArmStrContext`, what a caller tells `armStr` of the
+    battle, and `CommandMultiplier`, a command-stage multiplier a ladder row applies, in
+    `battle/terrain-and-unit-strength.ts`, whose terrain table, `TERRAIN_MODS`, ends in
+    `satisfies Record<string, Partial<Record<UnitType, number>>>`, so a misspelt unit fails to compile);
     `battle/lines.ts` declares the battle grid's: `BattleRow` (a unit's row as the grid takes it, and the marks the grid
     stamps on it, `_g` and `_faced`), `GridCell` (a placed unit: its row, its part in the line, its strength),
     `GridUnit` (a unit as it was scored), `BattleGridCells` (a side's grid as placed) and `BattleGrid` (the same grid
@@ -113,7 +117,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     Its short unit codes, `UNIT_SHORT`, end in `satisfies Record<UnitType, string>`, so a unit left out fails to
     compile;
     `army-tables.ts` declares a unit and a hero in a battle, `ArmyInABattle` and `HeroInABattle`: an `Army` or a
-    `Character` plus the marks a battle writes and wipes before the save, which the saved state's schema doesn't hold
+    `Character` plus the marks a battle writes and wipes before the save, and the turn's marks the new turn wipes
+    (P1-10b6), which the saved state's schema doesn't hold
     ([traps.md](traps.md#a-battle-only-mark-is-not-part-of-the-saved-state)). Its two master tables, the cost and the
     speed by unit type, end in `satisfies Record<HumanoidUnitType, number>` (their written part; the primal rows are
     added as the file loads), and the schemas' file names a feature

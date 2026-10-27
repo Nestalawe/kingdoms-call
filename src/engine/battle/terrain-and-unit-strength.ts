@@ -1,5 +1,5 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
 import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
@@ -26,6 +26,34 @@ import { MINOR_CAV, MINOR_HEAVY } from '../titles/reckoning.ts';
 import { discUnitMult, dragonTamed, gdActive } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { ArmyInABattle, HeroInABattle } from '../army-tables.ts';
+import type { UnitAbilityContext } from './strength.ts';
+import type { BattleGrid, BattleGridOptions } from './lines.ts';
+/** A unit of a force as the battle code hands it. */
+type ForceUnit = ArmyInABattle | null | undefined;
+/** The state as provIsCoastal reads it: its guard on a missing world stays. */
+interface TheStateAsProvIsCoastalReadsIt {
+  readonly world?: GameState['world'] | null;
+}
+/** An item as armStr's magic items read it: its guard on a missing effect stays. */
+interface AnItemAsArmStrReadsIt {
+  readonly effect?: { readonly stat?: string } | null;
+}
+/** What a caller tells armStr of the battle: unitAbilityMult's fields and armStr's own. */
+export interface ArmStrContext extends UnitAbilityContext {
+  readonly trace?: { label: string; delta?: number }[] | null;
+  readonly ownerRace?: string | null;
+  readonly ownerPi?: number | null;
+  readonly reignOfFear?: boolean | null;
+}
+/** A command-stage multiplier as the battles hand ladderRow. */
+export interface CommandMultiplier {
+  label: string;
+  key?: string;
+  m: number;
+}
 
 // ── TERRAIN, SEA AND A UNIT'S STRENGTH (plan P1-08b: lifted out of resolveTurn) ────
 // What one unit is worth in a battle: the ground it fights on (terrainMod, illusory terrain, the sea penalty), arrows
@@ -306,13 +334,15 @@ export const TERRAIN_MODS = {
     'Crimson Rocs': 1.0,
     Thunderbirds: 1.0,
   },
-};
+} satisfies Record<string, Partial<Record<UnitType, number>>>; // a misspelt or missing unit's name fails tsc
 
 // Returns terrain modifier for a given army type in given terrain
-export function terrainMod(armyType, terrain) {
+export function terrainMod(armyType: string, terrain: string | null | undefined) {
   // flyers read their row like anyone (×1 unless listed: ×0.75 in forest and jungle since item 19, 2026-10-12)
   if (SEA_TYPES.has(armyType)) return 1.0; // fleets and sea-beasts fight at 100% on land and sea alike
-  const t = TERRAIN_MODS[terrain];
+  if (terrain == null) return 1.0;
+  const mods: Record<string, Record<string, number> | undefined> = TERRAIN_MODS;
+  const t = mods[terrain];
   if (!t) return 1.0;
   return t[armyType] ?? 1.0;
 }
@@ -326,7 +356,7 @@ export function terrainMod(armyType, terrain) {
 // 2026-10-12), so the illusion takes them to ×0.75 (it was the 0.85 floor while they ignored terrain). Stacks on top of the real terrain penalty,
 // exactly as the old flat 20% did.
 export const ILLUSORY_TERRAIN_KEYS = ['plain', 'desert', 'forest', 'jungle', 'mountain'];
-export function illusoryTerrainMult(armyType) {
+export function illusoryTerrainMult(armyType: string) {
   let worst = 1.0;
   for (const t of ILLUSORY_TERRAIN_KEYS) {
     const m = terrainMod(armyType, t);
@@ -340,7 +370,7 @@ export function illusoryTerrainMult(armyType) {
 // target and cappable. Battle-magic Curse: pick the commander's best combat-affecting skill to
 // halve. Candidates are Tactical (land battles), Druid (army penalties/creature buffs) and Naval
 // (sea battles).
-export function bestCurseSkill(turnContext, hero) {
+export function bestCurseSkill(turnContext: TurnContext, hero: Character) {
   // 2026-09-09e: Druid was read RAW here while Tactical and Naval were item-boosted, so a commander
   // whose Druid came from an item had the wrong skill chosen for the Curse. All three now use the
   // same stack.
@@ -350,7 +380,7 @@ export function bestCurseSkill(turnContext, hero) {
   if (nav >= tac && nav >= dru && nav > 0) return 'naval';
   return tac >= dru ? 'tactical' : 'druid';
 }
-export function curseSkillLabel(stat) {
+export function curseSkillLabel(stat: string | null | undefined) {
   return stat === 'naval' ? 'Naval command' : stat === 'druid' ? 'Druid mastery' : 'Tactical command';
 }
 // Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
@@ -363,11 +393,17 @@ export function curseSkillLabel(stat) {
 export const MISSILE_SHOT_PCT = 0.3,
   MISSILE_ARCH_PER_LVL = 0.1,
   MISSILE_CAP_FRACTION = 0.4; // 2026-10-11 (Toby): volleys 20% → 30%
-export function missileShotDamage(firer, archSkill, dmgMult) {
+export function missileShotDamage(
+  firer: Army | null | undefined,
+  archSkill: number | null | undefined,
+  dmgMult: number | null | undefined,
+) {
   const fs = firer ? unitBaseStrength(firer) : 10;
   return Math.max(
     1,
-    Math.round(fs * MISSILE_SHOT_PCT * (1 + MISSILE_ARCH_PER_LVL * Math.max(0, archSkill || 0)) * (dmgMult || 1)),
+    Math.round(
+      fs * MISSILE_SHOT_PCT * (1 + MISSILE_ARCH_PER_LVL * Math.max(0, Number(archSkill) || 0)) * (Number(dmgMult) || 1),
+    ),
   );
 }
 // PRE-BATTLE SOFTENING FLOOR. Archery is capped per-unit at MISSILE_CAP_FRACTION, but pre-battle
@@ -378,7 +414,7 @@ export function missileShotDamage(firer, archSkill, dmgMult) {
 export const PREBATTLE_STR_FLOOR = 0.25;
 // Subtract a unit's pre-battle damage from a strength figure, never below PREBATTLE_STR_FLOOR of it.
 // Two steps, as before: this battle's damage, then any all-turn reduction.
-export function applyPrebattleDamage(army, str) {
+export function applyPrebattleDamage(army: ArmyInABattle, str: number) {
   if (army._tempStrReduction) {
     const f = Math.max(1, Math.floor(str * PREBATTLE_STR_FLOOR));
     str = Math.max(f, str - army._tempStrReduction);
@@ -389,14 +425,18 @@ export function applyPrebattleDamage(army, str) {
   } // persists all turn
   return str;
 }
-export function applyMissileHit(target, archSkill, firer, opts) {
-  opts = opts || {};
+export function applyMissileHit(
+  target: ArmyInABattle,
+  archSkill: number | null | undefined,
+  firer: Army | null | undefined,
+  opts?: { dmgMult?: number | null } | null,
+) {
+  opts ??= {};
   // DWARF — Armoured Hulls: arrows and bolts simply do not tell against plated warships.
-  if (target && target.type === 'Dwarf Ironclads')
+  if (target.type === 'Dwarf Ironclads')
     return { dmg: 0, isFly: false, capped: false, immune: true, why: 'armoured hull' };
   // PRIMAL — Shell Wall (2026-10-13, the beast abilities): nor against the Great Turtles' shells.
-  if (target && target.type === 'Great Turtles')
-    return { dmg: 0, isFly: false, capped: false, immune: true, why: 'shell' };
+  if (target.type === 'Great Turtles') return { dmg: 0, isFly: false, capped: false, immune: true, why: 'shell' };
   const isFly = FLYING_TYPES.has(target.type);
   let dmg = missileShotDamage(firer, archSkill, opts.dmgMult); // the SHOOTER's strength decides the hit
   if (isFly) dmg = dmg * 2; // archers are especially good against winged riders — double damage
@@ -405,11 +445,11 @@ export function applyMissileHit(target, archSkill, firer, opts) {
   if (thickHide) dmg = Math.ceil(dmg / 2);
   // DWARF — Punch Through: heavy bolts grind a target past the point bows can manage.
   const cap = missileCap(target, firer);
-  const already = target._archeryRed || 0;
+  const already = Number(target._archeryRed) || 0;
   dmg = Math.max(0, Math.min(dmg, cap - already));
   if (dmg > 0) {
     target._archeryRed = already + dmg;
-    target._tempStrReduction = (target._tempStrReduction || 0) + dmg;
+    target._tempStrReduction = (Number(target._tempStrReduction) || 0) + dmg;
   }
   return { dmg, isFly, capped: already + dmg >= cap, thickHide };
 }
@@ -418,8 +458,8 @@ export function applyMissileHit(target, archSkill, firer, opts) {
 // lower
 export const SEA_LAND_PENALTY = 0.75;
 
-export function isAirborneAtSea(force) {
-  const f = (force || []).filter(Boolean);
+export function isAirborneAtSea(force: readonly ForceUnit[] | null | undefined) {
+  const f = (force ?? []).filter((a): a is ArmyInABattle => Boolean(a));
   if (!f.length) return false;
   if (f.some((a) => SEA_TYPES.has(a.type))) return false;
   return f.some((a) => !FLYING_TYPES.has(a.type) && !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type));
@@ -427,32 +467,37 @@ export function isAirborneAtSea(force) {
 // the race-affinity ("kin") bonus has always been applied inside armStr, but no battle line ever
 // said so, so players could not tell it was in effect. One line per side, before the force rows.
 // ownerRace = race of the OWNING king (the province owner's for a leaderless garrison).
-export function kinNarrative(force, leader, ownerRace, sideName) {
-  const f = (force || []).filter((a) => a && a.race);
+export function kinNarrative(
+  force: readonly ForceUnit[] | null | undefined,
+  leader: Character | null | undefined,
+  ownerRace: string | null | undefined,
+  sideName: string,
+) {
+  const f = (force ?? []).filter((a): a is ArmyInABattle => Boolean(a?.race));
   if (!f.length) return null;
-  const lr = (leader && leader.race) || null;
+  const lr = (leader?.race ?? '') || null;
   const both = f.filter((a) => ownerRace && a.race === ownerRace && lr && a.race === lr).length;
   const kingOnly = f.filter((a) => ownerRace && a.race === ownerRace && !(lr && a.race === lr)).length;
   const leadOnly = f.filter((a) => lr && a.race === lr && !(ownerRace && a.race === ownerRace)).length;
   if (!both && !kingOnly && !leadOnly) return null;
-  const parts = [];
+  const parts: string[] = [];
   if (both)
     parts.push(
-      `${both} unit${both !== 1 ? 's' : ''} of the king's own race under a commander of that blood (+44% strength)`,
+      `${String(both)} unit${both !== 1 ? 's' : ''} of the king's own race under a commander of that blood (+44% strength)`,
     );
-  if (kingOnly) parts.push(`${kingOnly} unit${kingOnly !== 1 ? 's' : ''} of the king's race (+20%)`);
-  if (leadOnly) parts.push(`${leadOnly} unit${leadOnly !== 1 ? 's' : ''} of their commander's race (+20%)`);
+  if (kingOnly) parts.push(`${String(kingOnly)} unit${kingOnly !== 1 ? 's' : ''} of the king's race (+20%)`);
+  if (leadOnly) parts.push(`${String(leadOnly)} unit${leadOnly !== 1 ? 's' : ''} of their commander's race (+20%)`);
   return { kind: "a side's units fight beside their own kin", sideName, kinshipWords: parts.join('; ') };
 }
 // ownedUnitName / unitRef moved to module level beside disbandLine (2026-10-11), so rollUnitFates and the
 // tests can reach them.
 // a COASTAL province is a land province with at least one sea neighbour (used by Sea Giants' Tidal
 // Might). Module-level so every battle path and the bot model can share it.
-export function provIsCoastal(G, prov) {
-  if (!G || !G.world || !prov || prov.terrain === 'sea') return false;
-  return getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).some((n) => n && n.terrain === 'sea');
+export function provIsCoastal(G: TheStateAsProvIsCoastalReadsIt | null | undefined, prov: Province | null | undefined) {
+  if (!G?.world || !prov || prov.terrain === 'sea') return false;
+  return getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).some((n) => n.terrain === 'sea');
 }
-export function seaPenalty(armyType, terrain) {
+export function seaPenalty(armyType: string, terrain: string | null | undefined) {
   if (terrain !== 'sea') return 1.0;
   // 2026-09-23e (Toby): EVERY flyer fights normally at sea — the flying beasts (Thunderbirds,
   // Manticore Pride, Crimson Rocs, Elder Dragons: AERIAL_TYPES) included. They were caught by the
@@ -463,7 +508,12 @@ export function seaPenalty(armyType, terrain) {
 
 // DRUID MASTERY gain for one unit under one commander → {gain (0‥1), lvl, min}. runTurn scope
 // (needs effStat / dragonTamed). Mirrors the player portal's "Armies leading" panel.
-export function druidMasteryGain(turnContext, heroChar, army, playerAlignment) {
+export function druidMasteryGain(
+  turnContext: TurnContext,
+  heroChar: HeroInABattle | null | undefined,
+  army: ArmyInABattle | null | undefined,
+  playerAlignment: string | null | undefined,
+) {
   const none = { gain: 0, lvl: 0, min: 0 };
   if (!heroChar || !army || army._isSkeletal) return none;
   if (!(CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type))) return none;
@@ -472,12 +522,20 @@ export function druidMasteryGain(turnContext, heroChar, army, playerAlignment) {
   lvl = druidLevelTheMasteryCounts(lvl);
   const waived =
     druidNeedWaivedByAlignment(army.type, playerAlignment, heroChar.alignment) ||
-    !!dragonTamed(turnContext, heroChar, army);
+    dragonTamed(turnContext, heroChar, army);
   const min = waived ? 0 : getDruidLevel(army.type);
   const gain = druidMasteryGainOver(lvl, min);
   return { gain: Math.round(gain * 100) / 100, lvl, min };
 }
-export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ctx, opts) {
+export function armStr(
+  turnContext: TurnContext,
+  army: ArmyInABattle,
+  heroChar: HeroInABattle | null | undefined,
+  playerAlignment: string | null | undefined,
+  terrain: string | null | undefined,
+  ctx: ArmStrContext | null | undefined,
+  opts?: { deferDamage?: boolean } | null,
+) {
   const { G } = turnContext;
   const ARMY_STR = UNIT_BASE_STR; // alias → master (was a stale 6th copy of the strength table)
   const Q_MULT = UNIT_Q_MULT; // alias → master
@@ -486,28 +544,28 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   const _tr = ctx && Array.isArray(ctx.trace) ? ctx.trace : null;
   // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier
   // higher.
-  const Q_UP = { ...KC_QUALITY_UP };
+  const Q_UP: Record<string, string | undefined> = { ...KC_QUALITY_UP };
   let effQuality = army.quality || 'Average';
-  if (heroChar && heroChar._oratoryBoost) {
+  if (heroChar?._oratoryBoost) {
     const _oN = (heroChar._oratoryBoost === true ? 1 : heroChar._oratoryBoost | 0) || 1;
-    for (let _oi = 0; _oi < _oN; _oi++) effQuality = Q_UP[effQuality] || effQuality;
+    for (let _oi = 0; _oi < _oN; _oi++) effQuality = Q_UP[effQuality] ?? effQuality;
   } // PSYCHIC Oratory: +1 quality tier (+2 with Words of Awe, L6)
   if (
     heroChar &&
     perkTier(heroChar, 'druid') >= 3 &&
     (CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type))
   ) {
-    effQuality = Q_UP[effQuality] || effQuality;
+    effQuality = Q_UP[effQuality] ?? effQuality;
   } // DRUID L8: creatures & monsters fight one tier higher
   if (heroChar && army._isSkeletal && perkTier(heroChar, 'necromancy') >= 1) {
-    effQuality = Q_UP[effQuality] || effQuality;
+    effQuality = Q_UP[effQuality] ?? effQuality;
   } // NECROMANCY L6 (The Necromantic Arts): skeletal armies you lead fight one experience tier higher
   if (army._tacUp || army._drumUp) {
-    effQuality = Q_UP[effQuality] || effQuality;
+    effQuality = Q_UP[effQuality] ?? effQuality;
   } // TACTICAL L6 / War Drum: fight one tier higher (rolled ONCE per battle at battle start)
   if (_tr && effQuality !== (army.quality || 'Average')) {
-    const _w = [];
-    if (heroChar && heroChar._oratoryBoost) _w.push('Oratory');
+    const _w: string[] = [];
+    if (heroChar?._oratoryBoost) _w.push('Oratory');
     if (
       heroChar &&
       perkTier(heroChar, 'druid') >= 3 &&
@@ -519,7 +577,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
     if (army._drumUp) _w.push('War Drum');
     _tr.push({ label: `fights as ${effQuality}${_w.length ? ` (${_w.join(' + ')})` : ''}` });
   }
-  const baseStr = (ARMY_STR[army.type] || 4) * (Q_MULT[effQuality] || 2);
+  const baseStr = (ARMY_STR[army.type] ?? 4) * (Q_MULT[effQuality] ?? 2);
   // Apply Druid penalty
   let str = baseStr;
   if (heroChar) {
@@ -534,13 +592,8 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   // supplied (leaderless owned garrison) else the leader's player. _leaderRace: the leading
   // character's kin. All humanoid; the equality tests never fire for Primal/skeleton/monster.
   const _unitRace = army.race || null;
-  const _ownerRace =
-    ctx && ctx.ownerRace != null
-      ? ctx.ownerRace
-      : heroChar && heroChar.player != null
-        ? G.players[heroChar.player]?.race
-        : null;
-  const _leaderRace = (heroChar && heroChar.race) || null;
+  const _ownerRace = ctx?.ownerRace ?? (heroChar?.player != null ? G.players[heroChar.player]?.race : null);
+  const _leaderRace = (heroChar?.race ?? '') || null;
   // ── HUMANOID RACE AFFINITY ── Two INDEPENDENT, STACKING ×1.2 base-strength boosts:
   // • King's race: units of the same race as the owning player's king. • Leader's race: units led by
   // a character (king or hero) of the same race. A king personally leading his own-race troops → ×1.44.
@@ -555,7 +608,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   // ── RACIAL ANIMOSITY ── Elves & Dwarves, and Humans & Orcs, bear an ancient grudge: an army
   // led by a commander of the RIVAL kin fights at −20%. Keyed on unit-vs-leader race.
   if (_unitRace && _leaderRace) {
-    const _RIVAL_RACE = { ...KC_RIVAL_RACE };
+    const _RIVAL_RACE: Record<string, string | undefined> = { ...KC_RIVAL_RACE };
     if (_RIVAL_RACE[_unitRace] === _leaderRace) {
       str = Math.round(str * 0.8);
       if (_tr) _tr.push({ label: 'racial animosity ×0.8' });
@@ -580,7 +633,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
       sp < 1 &&
       terrain === 'sea' &&
       ctx &&
-      (ctx.force || []).some((a) => a && a.type === 'Elven Galleys') &&
+      (ctx.force ?? []).some((a) => a?.type === 'Elven Galleys') &&
       MISSILE_ARMIES_MASTER.has(army.type)
     )
       sp = 1.0;
@@ -612,7 +665,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   }
   // ── DWARVEN BULWARK ── Dwarven armies of a Dwarven realm defend at ×1.5 in any battle
   // (per-unit; applies only on the defending side).
-  if (_unitRace === 'Dwarven' && _ownerRace === 'Dwarven' && ctx && ctx.isAttacker === false) {
+  if (_unitRace === 'Dwarven' && _ownerRace === 'Dwarven' && ctx?.isAttacker === false) {
     str = Math.round(str * 1.5);
     if (_tr) _tr.push({ label: 'Dwarven Bulwark ×1.5' });
   }
@@ -620,13 +673,11 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   // hero being present, so an unled garrison holding forest, jungle or mountain gets the same
   // +25% the description promises — exactly as Dwarven Bulwark already does on the line above.
   {
-    const _pagPi =
-      heroChar && heroChar.player != null ? heroChar.player : ctx && ctx.ownerPi != null ? ctx.ownerPi : null;
+    const _pagPi = heroChar?.player ?? ctx?.ownerPi ?? null;
     if (
       _pagPi != null &&
       gdActive(turnContext, _pagPi, 'Pagan') &&
-      ctx &&
-      ctx.isAttacker === false &&
+      ctx?.isAttacker === false &&
       (terrain === 'forest' || terrain === 'jungle' || terrain === 'mountain')
     ) {
       str = Math.round(str * 1.25);
@@ -636,8 +687,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   // race / alignment `unitStr` discoveries (per unit; owner = leader's realm, or the garrison's
   // owner).
   {
-    const _dpi =
-      heroChar && heroChar.player != null ? heroChar.player : ctx && ctx.ownerPi != null ? ctx.ownerPi : null;
+    const _dpi = heroChar?.player ?? ctx?.ownerPi ?? null;
     if (_dpi != null) {
       const _dm = discUnitMult(turnContext, _dpi, army, terrain, ctx, heroChar);
       if (_dm !== 1) {
@@ -664,20 +714,22 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   // unit and command modifier — modifiers are fixed when the lines form (after the duel, before
   // magic and archery), and damage no longer gets multiplied by the target's Tactical, kinship,
   // terrain, items… Other callers (intel estimates, bot model) keep the old in-line subtraction.
-  if (!(opts && opts.deferDamage)) {
+  if (!opts?.deferDamage) {
     const _preTemp = str;
     str = applyPrebattleDamage(army, str);
     if (_tr && str !== _preTemp) _tr.push({ label: 'pre-battle volleys & spells', delta: str - _preTemp });
   }
   // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
-  if (heroChar && heroChar._phantasmalBonus) {
+  if (heroChar?._phantasmalBonus) {
     str = Math.round(str * (1 + heroChar._phantasmalBonus));
     if (_tr) _tr.push({ label: `Phantasmal Armies ${ladderFm(1 + heroChar._phantasmalBonus)}` });
   }
   // Magic-item army bonuses carried by the leading commander.
   const _preItems = str;
-  if (heroChar && heroChar.items && heroChar.items.length) {
-    const has = (st) => activeItems(heroChar).some((it) => it.effect && it.effect.stat === st);
+  // (a caller that keeps its ts-nocheck line may hand a hero without his list: the guard on it stays)
+  const heroItems: readonly unknown[] | null | undefined = heroChar?.items;
+  if (heroItems?.length) {
+    const has = (st: string) => activeItems(heroChar).some((it: AnItemAsArmStrReadsIt) => it.effect?.stat === st);
     const CAV_I = new Set([
       'Free Lances',
       'Gilded Lances',
@@ -698,7 +750,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
     if (has('heavyBonus') && HEAVY_I.has(army.type)) str += 4; // Engineer's Blueprint
     if (has('navalBonus') && FLEET_I.has(army.type)) {
       const _ku = Q_UP[army.quality];
-      if (_ku && _ku !== army.quality) str = Math.round((str * UNIT_Q_MULT[_ku]) / UNIT_Q_MULT[army.quality]);
+      if (_ku && _ku !== army.quality) str = Math.round((str * Number(Q_MULT[_ku])) / Number(Q_MULT[army.quality]));
     } // Kraken Figurehead: fleets fight one exp level higher
     if (activeItems(heroChar).some((it) => it.fleetStr) && FLEET_I.has(army.type)) str += 1; // Sea Chart of the Deep: fleets +1 strength
     if (hasItemBase(heroChar, "Admiral's Spyglass") && FLEET_I.has(army.type)) str += 2; // Admiral's Spyglass: fleets +2 strength
@@ -715,7 +767,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   // DRUIDIC — Home of the Wild: Creature armies of a Druidic realm fight ×1.5 in forest and
   // jungle (the long-advertised bonus, previously described but never implemented).
   if (
-    (playerAlignment === 'Druidic' || (heroChar && heroChar.alignment === 'Druidic')) &&
+    (playerAlignment === 'Druidic' || heroChar?.alignment === 'Druidic') &&
     (terrain === 'forest' || terrain === 'jungle') &&
     CREATURE_ARMIES.has(army.type)
   ) {
@@ -773,12 +825,20 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
 // 2026-09-24 (Toby): BATTLE TIMING — every unit modifier (armStr) and command multiplier is applied
 // to the UNDAMAGED unit first; only then is this battle's pre-battle damage (arrows, battle magic,
 // primal strikes, flak) subtracted. `_cmdS` = the figure before damage, `_dmg` = what came off.
-export function ladderRow(turnContext, a, hero, align, terrain, ctx, cmd) {
-  const tr = [];
+export function ladderRow(
+  turnContext: TurnContext,
+  a: ArmyInABattle,
+  hero: HeroInABattle | null | undefined,
+  align: string | null | undefined,
+  terrain: string | null | undefined,
+  ctx: ArmStrContext | null | undefined,
+  cmd: readonly (CommandMultiplier | null | undefined)[] | null | undefined,
+) {
+  const tr: { label: string; delta?: number }[] = [];
   const u = ctx
     ? armStr(turnContext, a, hero, align, terrain, Object.assign({}, ctx, { trace: tr }), { deferDamage: true })
     : armStr(turnContext, a, hero, align, terrain, undefined, { deferDamage: true });
-  const applied = (cmd || []).filter((c) => c && Math.abs(c.m - 1) > 1e-9);
+  const applied = (cmd ?? []).filter((c): c is CommandMultiplier => Boolean(c && Math.abs(c.m - 1) > 1e-9));
   let s = u;
   applied.forEach((c) => {
     s *= c.m;
@@ -792,8 +852,20 @@ export function ladderRow(turnContext, a, hero, align, terrain, ctx, cmd) {
 // the side's final strength; the rows keep every stage for the ladder.
 // opts (2026-10-11): {terrain, tac, enemy, enemyTac, out} — the grid is built here, on the finished
 // figures, and handed back through opts.out.grid for the report and the ladder.
-export function finishSide(rows, width, flank, forceMods, opts) {
-  const F = (forceMods || []).reduce((p, x) => p * (x && isFinite(x.m) ? x.m : 1), 1);
+export function finishSide(
+  rows: (ReturnType<typeof ladderRow> & { _F?: number; _fPre?: number; _fPost?: number })[],
+  width: number,
+  flank: boolean,
+  forceMods: readonly ({ m: number } | null | undefined)[] | null | undefined,
+  opts?: {
+    terrain?: string | null;
+    tac?: number | null;
+    enemy?: BattleGridOptions['enemy'];
+    enemyTac?: number | null;
+    out?: { grid?: BattleGrid } | null;
+  } | null,
+) {
+  const F = (forceMods ?? []).reduce((p, x) => p * (x && isFinite(x.m) ? x.m : 1), 1);
   rows.forEach((r) => {
     const pre = r._cmdS * F,
       post = applyPrebattleDamage(r.a, pre);
@@ -804,8 +876,8 @@ export function finishSide(rows, width, flank, forceMods, opts) {
     r.base = post;
     r.s = post;
   });
-  opts = opts || {};
-  const g = battleGrid(rows, width, opts.terrain || null, {
+  opts ??= {};
+  const g = battleGrid(rows, width, (opts.terrain ?? '') || null, {
     flank,
     tac: opts.tac,
     enemy: opts.enemy,

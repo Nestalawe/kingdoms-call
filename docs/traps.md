@@ -673,8 +673,8 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 
 ## `@ts-nocheck` checks nothing in the file
 
-117 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(83: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+116 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(82: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -687,7 +687,9 @@ table with a key left out.
 - **A file with the line still gives its callers types.** Its parameters are `any`, but a value it builds keeps the
   type TypeScript works out: `[]` is `never[]`, and `PC_RANGES[i]` is `string | undefined`. A freed caller meets them.
   Only a `?` on a parameter its callers leave out, or a return type written from what the function does
-  (`activeItems(c): Item[]`), is added to such a file for a freed caller.
+  (`activeItems(c): Item[]`, `effStat(…): number`), is added to such a file for a freed caller, and nothing else
+  there changes. A return type there is a claim too, checked once that file is freed: write in a comment beside it
+  where it doesn't hold (`effStat` gives `undefined` for a missing hero, which no typed caller passes).
 - **To free a file:** delete the line, type its parameters and its empty arrays and maps, and run
   `npm run typecheck`. Type a parameter from what its callers pass and as wide as the body's own guards (a body that
   writes `(force || []).filter((a) => a && …)` takes `readonly (Army | null | undefined)[] | null | undefined`), so
@@ -764,6 +766,19 @@ table with a key left out.
     `table[String(key)]` (the key `"undefined"`), not guarded away.
   - **An element read where the list may hold `undefined`** (`shuffleP`'s swap) is checked by its place (`k in list`),
     not by `!== undefined`, so a list holding `undefined` shuffles exactly as before.
+- (P1-10b6: `battle/terrain-and-unit-strength.ts`, 38,872 bytes): 73 errors, 60 of them a parameter with no type;
+  then 55 typed lint findings, all fixed. `effStat`'s return type, written in its file (which keeps the line), cleared
+  the one finding `battle/battle-report-lines-and-force-markers.ts` held on its result: `eslintSuppressions` fell, 734
+  to 733. Three more forms:
+  - **A guard on a field the schema requires stays where an untyped caller may still leave it out**, by reading the
+    value into a `const` typed as wide as the guard (`const heroItems: readonly unknown[] | null | undefined =
+    heroChar?.items`), or by typing a callback's parameter that way (an item's `effect`), so the parameter keeps the
+    schema's type and its other callers needn't change.
+  - **`x != null ? x : y`** becomes `x ?? y`, the same value; `(h && h.race) || null`, where `''` may reach, becomes
+    `(h?.race ?? '') || null`.
+  - **A literal table keyed by unit type** gains `satisfies Record<string, Partial<Record<UnitType, number>>>`
+    (`TERRAIN_MODS`), so a misspelt or retired unit's name fails `tsc` (TS2353). A test that reads such a table by its
+    syntax tree (`entriesOf`, `tests/lib/source.ts`) must look through the `satisfies`.
 
 ## A battle-only mark is not part of the saved state
 
@@ -771,8 +786,11 @@ A battle writes marks on its units and its commanders that last for that battle 
 the arrows took off), `_tempStrReduction` (what it lost before the clash), `_flakTargeted` (a flyer a gyrocopter
 harried), `_disbanded` (forced below Green) and `_phantomOf` (a spectral double's fighting copy: the unit it mirrors,
 P1-10b5); on a hero, `_tacticalMult` (Telekinetic Storm). The battle wipes them at its end, before the state is saved
-(a double's copy goes whole: `clearPhantomCopies`). They are typed by `ArmyInABattle` and `HeroInABattle` (`engine/army-tables.ts`),
-**not** in the saved state's schema (P1-10b2).
+(a double's copy goes whole: `clearPhantomCopies`). The turn's marks last the turn instead, and the new turn wipes them
+before the save (P1-10b6): on a unit, `_laNoTerrain` (Lightning Advance's ambushed side) and `_turnStrReduction` (set
+by nothing today); on a hero, `_oratoryBoost` (Oratory), `_phantasmalBonus` (set by nothing today), `_curseHalveStat`
+(Curse) and `_druidNegated` (Psychic Blast). Both kinds are typed by `ArmyInABattle` and `HeroInABattle`
+(`engine/army-tables.ts`), **not** in the saved state's schema (P1-10b2).
 
 - **Why not in the schema:** on 2026-09-27 `_flakTargeted` was never wiped, so it was saved, and a flyer harried once
   was immune to Flak Screen for the rest of the game. The schemas' tests parse every state of a matrix game strictly
@@ -781,7 +799,8 @@ P1-10b5); on a hero, `_tacticalMult` (Telekinetic Storm). The battle wipes them 
 - **An `Army` passes where an `ArmyInABattle` is wanted** (each mark is optional), so a caller needn't change. A
   freed function that reads or writes a mark takes `ArmyInABattle` (or `HeroInABattle`), not `Army`.
 - **A new battle-only mark** goes in the type, with a line saying what it is, and is wiped at every place the others
-  are (the comment above `applyFlakScreen`, `engine/battle/strength.ts`, names them).
+  are (the comment above `applyFlakScreen`, `engine/battle/strength.ts`, names them). A new turn's mark goes in the
+  type under the turn's marks, with a line saying who writes it and who wipes it.
 
 ## A fixed lint finding must leave the suppressions
 
