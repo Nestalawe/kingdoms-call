@@ -107,7 +107,8 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(/heroesInItsProvinceIntelligence=[^;]*\.filter\(c=>c\.player===realm\|\|enemyCharVisibleTo\(state,realm,c,provinceIntelligenceSight\)\)/.test(view)&&/const visible=p\.heroesInItsProvinceIntelligence;/.test(pci),'the province character intel uses the one sight rule (enemyCharVisibleTo)');
   ok((pci.match(/armyCount:/g)||[]).length===1&&/c\.player===pi\?\{armyCount:c\.armyCount\}:\{armyBand:c\.armyBand\}/.test(pci)&&/armyCount:own\|\|how==='everyHero'\?armies\.length:null,armyBand:own\|\|how==='everyHero'\?null:armySizeBand\(armies\.length\)/.test(view),'…and sends the exact army count for your own heroes only, the rough size for anyone else');
   ok(!/describeEnemyForce/.test(gm),'the intrusion alerts no longer read the force by the watcher\'s Spy');
-  ok(/armySizeBand\(\(ac\.armies\|\|\[\]\)\.length\)/.test(gm),'…they give its rough size');
+  // (`??` since P1-10b9 typed the warnings: the same list, or none, for a hero's armies)
+  ok(/armySizeBand\(\(ac\.armies(\|\||\?\?)\[\]\)\.length\)/.test(gm),'…they give its rough size');
 
   // ── The rulebook says the same ──
   const strip=t=>{ for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };

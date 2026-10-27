@@ -1,10 +1,50 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { discSum } from '../discoveries.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { ArmyInABattle } from '../army-tables.ts';
+import type { UnitType } from '../../content/kingdoms-call-data.ts';
+import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
+
+// Its types (plan P1-10b9): each parameter typed as wide as the body's guards (plan P1-10b's Decision 3), so each guard
+// stays. Ids are plain numbers (the schema brands them). A unit's type is a UnitType where its name is drawn
+// (armyUnitName takes one), though the schema's is any string.
+/** A unit of a conquering column: its battle marks guarded, its quality raised in place. */
+type AUnitOfTheColumn = Pick<
+  ArmyInABattle,
+  'quality' | 'unitName' | '_isSkeletal' | '_died' | '_disbanded' | '_phantom'
+> & {
+  readonly type: UnitType;
+};
+/** The hero who took a province: his name, and his column guarded. */
+interface TheConqueror {
+  readonly id: number;
+  readonly name: string;
+  readonly armies?: readonly (AUnitOfTheColumn | null | undefined)[] | null | undefined;
+}
+/** A province as a capture reads it (its ground and tax only for the turn's telemetry). */
+interface AProvinceTaken {
+  readonly id: number;
+  readonly name: string;
+  owner: number | null;
+  readonly terrain?: string | undefined;
+  readonly tax?: number | null | undefined;
+}
+/** A province an Evil hero conquers: its folk and garrison guarded, its marks written. */
+type AProvinceConquered = Pick<Province, 'name' | 'terrain' | '_evilConqTurn' | '_enslavedUntil'> & {
+  readonly id: number;
+  readonly tax?: number | null | undefined;
+  readonly race?: string | null | undefined;
+  readonly armyTypes?: readonly UnitType[] | null | undefined;
+  // a unit pressed into the garrison takes armyUnitName's name, which may be undefined (its pool never is empty)
+  garrisonArmies?:
+    (Pick<Army, 'type' | 'quality' | 'race'> & { readonly unitName: string | undefined })[] | null | undefined;
+};
+/** A hero who conquers: his realm and his conquest doctrine. */
+type AnEvilConqueror = Pick<Character, 'name' | 'encounterPlan'> & { readonly player: number };
 
 // ── RELATIONS AND CAPTURES (plan P1-08a: lifted out of resolveTurn) ────
 // Who is at war or allied with whom (G.relations, keyed "minIdx-maxIdx": see "DIPLOMACY" in resolveTurn), and what
@@ -16,7 +56,14 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-thei
 // realm) and how many units the conqueror was leading. A capture from neutral/unowned ground
 // notifies nobody. Filed with no hero (hero: null, as notifyProvinceOwner does) so the line is never the
 // conqueror's and never lands in a character section.
-export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, byChar, _ph) {
+export function breakConsecrationOnCapture(
+  turnContext: TurnContext,
+  prov: Pick<AProvinceTaken, 'id' | 'name'>,
+  prev: number,
+  newOwner: number | null | undefined,
+  byChar: TheConqueror | null | undefined,
+  _ph: number | null | undefined,
+) {
   const { G } = turnContext;
   const pl = G.players[prev];
   if (!pl) return;
@@ -34,17 +81,19 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
     form: 'bare',
   });
   if (!byChar || newOwner == null) return;
-  const units = (byChar.armies || []).filter((a) => a && !a._died && !a._disbanded && !a._phantom);
+  const units = (byChar.armies ?? []).filter(
+    (a): a is AUnitOfTheColumn => !!a && !a._died && !a._disbanded && !a._phantom,
+  );
   if (!units.length) return;
   const _pct = consecCaptureXpPct(G.players[newOwner]); // Undead 100 · Evil 50 · others 0
-  const rose = [];
+  const rose: string[] = [];
   units.forEach((a) => {
     const qi = QUALITY_TIERS.indexOf(a.quality);
     if (a._isSkeletal) return; // skeletons never change quality by any means
     if (qi < 0 || qi >= QUALITY_TIERS.length - 1) return; // Elite (or unknown) cannot rise
     if (_pct > 0 && kcRng() * 100 < _pct) {
-      a.quality = QUALITY_TIERS[qi + 1];
-      rose.push(`${a.unitName || armyUnitName(a.type)} (now ${a.quality})`);
+      a.quality = QUALITY_TIERS[qi + 1] ?? a.quality; // qi + 1 is a tier: Elite returned above
+      rose.push(`${String(a.unitName || armyUnitName(a.type))} (now ${a.quality})`);
     }
   });
   emit(turnContext, {
@@ -56,7 +105,13 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
     phase: _ph,
   });
 }
-export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
+export function setProvinceOwner(
+  turnContext: TurnContext,
+  prov: AProvinceTaken | null | undefined,
+  newOwner: number | null,
+  byChar: TheConqueror | null | undefined,
+  ph?: number | null,
+) {
   const { _tel, G } = turnContext;
   if (!prov) return;
   const prev = prov.owner;
@@ -64,10 +119,10 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
   if (prev !== newOwner) {
     try {
       _tel.captures.push({
-        ph: ph != null ? ph : (turnContext._logCtx.phase ?? turnContext._currentPhase),
+        ph: ph ?? turnContext._logCtx.phase ?? turnContext._currentPhase,
         prov: prov.id,
         terrain: prov.terrain,
-        tax: prov.tax || 0,
+        tax: Number(prov.tax) || 0,
         from: prev,
         to: newOwner,
         charId: byChar ? byChar.id : null,
@@ -84,15 +139,14 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
       prev,
       newOwner,
       byChar,
-      ph != null ? ph : turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,
+      ph ?? turnContext._logCtx.phase ?? turnContext._currentPhase,
     );
   if (prev == null || prev === newOwner || newOwner == null) return;
-  const _ph =
-    ph != null ? ph : turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase;
+  const _ph = ph ?? turnContext._logCtx.phase ?? turnContext._currentPhase;
   const who = byChar ? byChar.name : 'an unknown commander';
-  const realm = newOwner != null && G.players[newOwner] ? G.players[newOwner].name : 'an enemy realm';
-  const n = byChar ? (byChar.armies || []).filter((a) => a && !a._died && !a._disbanded && !a._phantom).length : 0;
-  const led = byChar ? (n > 0 ? `, leading ${n} unit${n !== 1 ? 's' : ''}` : ', leading no units') : '';
+  const realm = G.players[newOwner] ? G.players[newOwner].name : 'an enemy realm'; // newOwner is set: returned above
+  const n = byChar ? (byChar.armies ?? []).filter((a) => a && !a._died && !a._disbanded && !a._phantom).length : 0;
+  const led = byChar ? (n > 0 ? `, leading ${String(n)} unit${n !== 1 ? 's' : ''}` : ', leading no units') : '';
   const text = `🏴 ${prov.name} has been captured from you by ${who} (${realm})${led}.`;
   // type 'system', NOT 'combat': the report re-files combat lines under the viewer's commander
   // who fought in that province that phase (battleCommanders), which would pull this out of Realm
@@ -108,50 +162,83 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
   });
 }
 
-export function relKeyOf(a, b) {
-  return a < b ? a + '-' + b : b + '-' + a;
+export function relKeyOf(a: number, b: number) {
+  return a < b ? `${String(a)}-${String(b)}` : `${String(b)}-${String(a)}`;
 }
-export function relationBetween(turnContext, a, b) {
+export function relationBetween(
+  turnContext: Pick<TurnContext, 'G'>,
+  a: number | null | undefined,
+  b: number | null | undefined,
+) {
   const { G } = turnContext;
   if (a == null || b == null) return 'neutral';
   if (a === b) return 'self';
-  return G.relations[relKeyOf(a, b)] || 'neutral';
+  const rel = G.relations[relKeyOf(a, b)] ?? '';
+  return rel || 'neutral';
 }
-export function areEnemies(turnContext, a, b) {
+export function areEnemies(
+  turnContext: Pick<TurnContext, 'G'>,
+  a: number | null | undefined,
+  b: number | null | undefined,
+) {
   return relationBetween(turnContext, a, b) === 'enemy';
 }
-export function areAllied(turnContext, a, b) {
+export function areAllied(
+  turnContext: Pick<TurnContext, 'G'>,
+  a: number | null | undefined,
+  b: number | null | undefined,
+) {
   return relationBetween(turnContext, a, b) === 'allied';
 }
 // A realm may declare a Treat or war only on a realm it has met (its record of meetings): diplomacy's resolution reads
 // no other declaration, and the bots' grudge is recorded only from a war it would read.
-export function realmHasMet(turnContext, from, to) {
-  return (((turnContext.G.players || [])[from] || {})._encountered || []).includes(to);
+export function realmHasMet(
+  turnContext: {
+    readonly G: {
+      readonly players?:
+        | readonly ({ readonly _encountered?: readonly number[] | null | undefined } | null | undefined)[]
+        | null
+        | undefined;
+    };
+  },
+  from: number,
+  to: number,
+) {
+  return ((turnContext.G.players ?? [])[from]?._encountered ?? []).includes(to);
 }
 // a valid RETREAT destination is a FRIENDLY province — one the player owns, or one held by an
 // ally. Never a neutral or enemy province (a beaten force cannot fall back onto ground it does
 // not hold).
-export function isFriendlyProvFor(turnContext, prov, pi) {
+export function isFriendlyProvFor(
+  turnContext: Pick<TurnContext, 'G'>,
+  prov: Pick<AProvinceTaken, 'owner'> | null | undefined,
+  pi: number | null | undefined,
+) {
   return !!prov && pi != null && (prov.owner === pi || (prov.owner != null && areAllied(turnContext, pi, prov.owner)));
 }
 
 // ── EVIL conquest doctrine (loot OR enslave) ── applied whenever an Evil character CONQUERS a
 // province by force. Now every conquest site calls this. Runs once per province per turn.
-export function applyEvilConquest(turnContext, cc, prov, pl) {
+export function applyEvilConquest(
+  turnContext: TurnContext,
+  cc: AnEvilConqueror | null | undefined,
+  prov: AProvinceConquered | null | undefined,
+  pl: { gold: number } | null | undefined,
+) {
   const { G } = turnContext;
   if (!cc || !prov || !pl) return;
   if (G.players[cc.player]?.alignment !== 'Evil') return;
   if (prov._evilConqTurn === G.turn) return;
   prov._evilConqTurn = G.turn;
-  const mode = cc.encounterPlan?.evilMode || 'terror';
-  const humanoid = prov.terrain !== 'sea' && !String(prov.race || '').startsWith('Primal');
+  const mode = (cc.encounterPlan?.evilMode ?? '') || 'terror';
+  const humanoid = prov.terrain !== 'sea' && !(prov.race ?? '').startsWith('Primal');
   if (mode === 'enslave' && humanoid) {
-    const enType = (prov.armyTypes && prov.armyTypes[0]) || 'Shieldwall Levies';
-    prov.garrisonArmies = prov.garrisonArmies || [];
+    const enType = (prov.armyTypes?.[0] ?? '') || 'Shieldwall Levies';
+    prov.garrisonArmies ??= [];
     prov.garrisonArmies.push({
       type: enType,
       quality: 'Green',
-      race: prov.race || 'Human',
+      race: (prov.race ?? '') || 'Human',
       unitName: armyUnitName(enType),
     });
     prov._enslavedUntil = G.turn + 3;
@@ -172,7 +259,7 @@ export function applyEvilConquest(turnContext, cc, prov, pl) {
         province: prov.id,
       });
     const loot = Math.floor(
-      (prov.tax || 0) *
+      (Number(prov.tax) || 0) *
         (0.5 +
           discSum(turnContext, cc.player, 'plunder', 'pct', (e) => !e.terrains || e.terrains.includes(prov.terrain))),
     ); // + plunder discoveries
@@ -180,7 +267,7 @@ export function applyEvilConquest(turnContext, cc, prov, pl) {
       pl.gold = (pl.gold || 0) + loot;
       emit(turnContext, {
         type: 'combat',
-        text: `⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${loot}g seized immediately!`,
+        text: `⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${String(loot)}g seized immediately!`,
         audience: { actor: cc.player, realms: [cc.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,

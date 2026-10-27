@@ -1,7 +1,26 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { armySizeBand } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import type { TurnContext } from './context.ts';
+import type { Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
+
+// Its types (plan P1-10b9): the state as the warnings read it, each list the body guards typed as wide as the guard
+// (plan P1-10b's Decision 3), through the context; the context keeps TurnContext for the typed functions it is handed
+// to. A phase's name and a force's size are read as JavaScript reads them, `undefined` for no phase.
+/** A hero as the warnings read him: his armies guarded. Ids are plain numbers (the schema brands them). */
+type AHeroAsTheWarningsReadHim = Pick<Character, 'player' | 'alive' | 'name' | '_invisTurn' | 'skills'> & {
+  readonly id: number;
+  readonly location: number;
+  readonly armies?: readonly unknown[] | null | undefined;
+};
+/** The state as the warnings read it: a realm's provinces and the heroes guarded. */
+interface TheStateAsTheWarningsReadIt {
+  readonly players: readonly (Pick<Realm, 'name'> & { readonly provinces?: readonly number[] | null | undefined })[];
+  readonly characters?: readonly AHeroAsTheWarningsReadHim[] | null | undefined;
+  readonly relations: GameState['relations'];
+  readonly turn: number;
+  readonly world: { readonly provinces: readonly Province[] };
+}
 
 // ── INTRUSION WARNINGS (plan P1-08b: lifted out of resolveTurn) ────
 // After each phase, the warnings a realm gets of enemy heroes in its land or beside its own heroes. It takes the turn's
@@ -10,20 +29,21 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audi
 // ── INTRUSION NOTIFICATIONS ────
 // After each phase resolves, scan for situations where players need to be notified about things
 // happening in their territory or in provinces where their heroes are present.
-export function generateIntrusionNotifications(turnContext, ph) {
-  const { SEASONS, G, _intrusionAcc } = turnContext;
+export function generateIntrusionNotifications(turnContext: TurnContext, ph: number) {
+  const { SEASONS, _intrusionAcc } = turnContext;
+  const { G }: { readonly G: TheStateAsTheWarningsReadIt } = turnContext;
   const phaseLabel = SEASONS[ph];
   G.players.forEach((targetPlayer, targetPi) => {
-    const targetOwnedProvs = new Set(targetPlayer.provinces || []);
+    const targetOwnedProvs = new Set(targetPlayer.provinces ?? []);
     const targetCharProvs = new Set(
-      (G.characters || []).filter((c) => c.player === targetPi && c.alive).map((c) => c.location),
+      (G.characters ?? []).filter((c) => c.player === targetPi && c.alive).map((c) => c.location),
     );
     const targetKnownProvs = new Set([...targetOwnedProvs, ...targetCharProvs]);
 
     // Check every other player's characters
     G.players.forEach((actingPlayer, actingPi) => {
       if (actingPi === targetPi) return;
-      const actingChars = (G.characters || []).filter((c) => c.player === actingPi && c.alive);
+      const actingChars = (G.characters ?? []).filter((c) => c.player === actingPi && c.alive);
       actingChars.forEach((ac) => {
         const acProv = G.world.provinces[ac.location];
         if (!acProv) return;
@@ -35,22 +55,22 @@ export function generateIntrusionNotifications(turnContext, ph) {
         if (
           inOwnedProv &&
           !targetCharProvs.has(ac.location) &&
-          !(ac.armies || []).length &&
+          !(ac.armies ?? []).length &&
           relOfReport(G, targetPi, actingPi) === 'enemy' &&
-          !spotEnemyInOwnedProvince(G, targetPi, acProv, ac, G.turn + 1)
+          !spotEnemyInOwnedProvince(turnContext.G, targetPi, acProv, ac, G.turn + 1)
         )
           return;
         const inKnownProv = targetKnownProvs.has(ac.location);
         if (!inKnownProv) return; // target doesn't know about this province
 
         // 2026-10-15 (Toby, D1): the same rough size the map gives, whatever the watcher's Spy
-        const forceDesc = armySizeBand((ac.armies || []).length);
+        const forceDesc = armySizeBand((ac.armies ?? []).length);
 
         // Accumulate the sighting; a single consolidated line per (target, hero, province) is
         // emitted after the turn resolves (see flushIntrusionNotifications). actor is left null
         // on the eventual log so the spotted (intruding) player never receives the owner's line.
         const branch = inOwnedProv ? 'own' : 'known';
-        const key = `${targetPi}|${ac.id}|${ac.location}|${branch}`;
+        const key = `${String(targetPi)}|${String(ac.id)}|${String(ac.location)}|${branch}`;
         let rec = _intrusionAcc.get(key);
         if (!rec) {
           rec = {
@@ -75,28 +95,32 @@ export function generateIntrusionNotifications(turnContext, ph) {
   });
 }
 
-export function flushIntrusionNotifications(turnContext) {
+export function flushIntrusionNotifications(turnContext: TurnContext) {
   const { SEASONS, _intrusionAcc } = turnContext;
-  const fmtPhases = (phs) => {
+  // a phase's name, as SEASONS[p] reads it (undefined for no phase)
+  const seasonOf = (p: number | undefined) => (p === undefined ? undefined : SEASONS[p]);
+  const fmtPhases = (phs: readonly number[]) => {
     const s = [...phs].sort((a, b) => a - b);
-    if (s.length === 1) return SEASONS[s[0]];
-    const contiguous = s[s.length - 1] - s[0] === s.length - 1;
-    if (contiguous) return `${SEASONS[s[0]]}\u2013${SEASONS[s[s.length - 1]]}`; // en-dash range
+    if (s.length === 1) return seasonOf(s[0]);
+    const contiguous = Number(s[s.length - 1]) - Number(s[0]) === s.length - 1;
+    if (contiguous) return `${String(seasonOf(s[0]))}\u2013${String(seasonOf(s[s.length - 1]))}`; // en-dash range
     return s.map((p) => SEASONS[p]).join(', ');
   };
   _intrusionAcc.forEach((rec) => {
     const s = [...rec.phases].sort((a, b) => a - b);
     const lastPh = s[s.length - 1];
+    // the force seen in a phase, as forceByPhase[p] reads it (undefined for no phase)
+    const forceIn = (p: number | undefined) => (p === undefined ? undefined : rec.forceByPhase[p]);
     const uniqForces = [...new Set(s.map((p) => rec.forceByPhase[p]))];
     const forceStr =
       uniqForces.length === 1
-        ? `They appear to be leading ${uniqForces[0]}.`
-        : `Their strength shifted — most recently (${SEASONS[lastPh]}) leading ${rec.forceByPhase[lastPh]}.`;
+        ? `They appear to be leading ${String(uniqForces[0])}.`
+        : `Their strength shifted — most recently (${String(seasonOf(lastPh))}) leading ${String(forceIn(lastPh))}.`;
     const phaseStr = fmtPhases(s);
     if (rec.branch === 'own') {
       emit(turnContext, {
         type: 'combat',
-        text: `[Intelligence] ${rec.acName} of ${rec.actingName} was spotted in your province of ${rec.provName} during ${phaseStr}. ${forceStr}`,
+        text: `[Intelligence] ${rec.acName} of ${rec.actingName} was spotted in your province of ${rec.provName} during ${String(phaseStr)}. ${forceStr}`,
         audience: { actor: null, realms: [rec.targetPi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: rec.provId,
@@ -104,7 +128,7 @@ export function flushIntrusionNotifications(turnContext) {
     } else {
       emit(turnContext, {
         type: 'system',
-        text: `[Intelligence] A hero of ${rec.actingName} (${rec.acName}) shared ${rec.provName} with your forces during ${phaseStr}. ${forceStr}`,
+        text: `[Intelligence] A hero of ${rec.actingName} (${rec.acName}) shared ${rec.provName} with your forces during ${String(phaseStr)}. ${forceStr}`,
         audience: { actor: null, realms: [rec.targetPi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: rec.provId,

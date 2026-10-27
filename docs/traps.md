@@ -673,8 +673,8 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 
 ## `@ts-nocheck` checks nothing in the file
 
-114 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(80: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+109 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(75: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -819,6 +819,29 @@ table with a key left out.
   - **`list.includes(x)` where `x` may be missing** (a ground the battle may not give) is `x == null ||
     !list.includes(x)` in a filter that returns on a miss: `includes` of `undefined` is false, as before. A `?? 1` for
     `|| 1` on a content number was checked against the content: no row sets it to 0.
+- (P1-10b9: five leaves, 40,621 bytes: `heroes/fame-and-consecration.ts`, `items/tiers-and-hoards.ts`,
+  `turn/intrusion-warnings.ts`, `realms/relations-and-captures.ts`, `battle/blood-harvest-and-iron-throne.ts`): 123
+  errors, 109 of them a parameter with no type; then 109 typed lint findings (41, 20, 8, 27 and 13, in that order),
+  all fixed. No typed reader held a suppression on their results, and none met a new finding, so
+  `eslintSuppressions` stays 733. Six more forms:
+  - **`a || 'fallback'` on a string a table or a player may leave empty** (a relation, a doctrine, a race, an army
+    type, an item's lore) is `(a ?? '') || 'fallback'`, or a `const` read with `?? ''` and then `|| 'fallback'`, so
+    `''` still gives the fallback; `?? 'fallback'` alone is written only where the table has no `''` (a monster's
+    label, a lair's tier: said in a comment).
+  - **`String(x || '')` on a name typed `string | null | undefined`** is `(x ?? '')`: the same string, and lint calls
+    `String` of a string needless. A number in a key or a line's words is `${String(x)}` (P1-10b7), and
+    `a + '-' + b` on two numbers is `` `${String(a)}-${String(b)}` ``.
+  - **A spread of an element of a big content table** (`{ ...it, effect: { ...it.effect }, name }` over
+    `ALL_MAGIC_ITEMS_P`) pairs each item with any item's effect in the compiler's eyes: the copy goes through a small
+    generic function typed as the item it copies (`underAnotherName`), the same spread inside it.
+  - **A guard on a value the line before has just made sure** (`if (!_pl) return;` after the realm's alignment was
+    read through `?.`) is added where the compiler can't see it, as P1-10b2's; it changes no value.
+  - **`armyUnitName` takes a `UnitType`**, so a function that names a unit from its `type` types that field `UnitType`
+    in its own shape (a column's units, the fallen, a province's army types), though the schema's is any string. A
+    freed caller that hands it an `Army` meets the difference (P1-10b9's "for the next row").
+  - **A phase's name or a force read by an index that may be missing** (`SEASONS[s[0]]` when the list may be empty) is
+    read through a small reader, `(p) => (p === undefined ? undefined : SEASONS[p])`, as JavaScript reads it, and the
+    words take `${String(…)}`: `undefined` still reads `undefined`.
 
 ## A battle-only mark is not part of the saved state
 

@@ -86,9 +86,11 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   (`battle/lines.ts`), the six P1-10b5 freed (`battle/fortune.ts`, `grand-design.ts`, `names.ts`, `titles/perks.ts`,
   `world/map-helpers.ts`, `heroes/charms-and-neutrals.ts`), the one P1-10b6 freed
   (`battle/terrain-and-unit-strength.ts`), the one P1-10b7 freed (Early Winter's stage,
-  `turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts`) and the one P1-10b8 freed
-  (`discoveries.ts`, whose effect type, `TheEffectOfADiscovery`, every discovery hook hands its readers). The other 80
-  of those 108 files still say `@ts-nocheck`:
+  `turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts`), the one P1-10b8 freed
+  (`discoveries.ts`, whose effect type, `TheEffectOfADiscovery`, every discovery hook hands its readers) and the five
+  P1-10b9 freed (`heroes/fame-and-consecration.ts`, `items/tiers-and-hoards.ts`, `turn/intrusion-warnings.ts`,
+  `realms/relations-and-captures.ts`, `battle/blood-harvest-and-iron-throne.ts`). The other 75 of those 108 files
+  still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](traps.md#ts-nocheck-checks-nothing-in-the-file)).
 - **The content's and the engine's own types** (P1-10a2), types only, so no file the build makes changes with them:
