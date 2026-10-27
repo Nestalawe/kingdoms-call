@@ -144,15 +144,12 @@ describe('the committed baselines', () => {
   });
 
   test('set A against set B, where every game differs: no meaningful change', () => {
-    for (const group of ['bots', 'scripted']) {
-      const pick = (games: KeptGame[]) => games.filter((g) => g.id.startsWith(group)).map((g) => g.stats);
-      const changes = compareRuns(pick(A), pick(B));
-      expect(changes.length, group).toBeGreaterThan(50);
-      expect(
-        meaningfulChanges(changes).map((c) => c.key),
-        group,
-      ).toEqual([]);
-    }
+    const pick = (games: KeptGame[], group: string) => games.filter((g) => g.id.startsWith(group)).map((g) => g.stats);
+    for (const group of ['bots', 'scripted'])
+      expect(compareRuns(pick(A, group), pick(B, group)).length, group).toBeGreaterThan(50);
+    // the overall answer, as the run and the report give it (paired.ts): the bot games' changes only, the rule being
+    // set for their 48; 12 scripted games are too few for its bar (P1-15e3, Theo 2026-10-27)
+    expect(meaningfulChanges(compareRuns(pick(A, 'bots'), pick(B, 'bots'))).map((c) => c.key)).toEqual([]);
   });
 });
 
