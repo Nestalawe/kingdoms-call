@@ -26,11 +26,9 @@ import {
   battleDeploy,
   battleFacedClauses,
   battleFacing,
-  battleFacingStage,
   battleFrontWidth,
   battleGrid,
   battleGridLines,
-  battleGridStage,
   battleLegal,
   battleLineTotal,
   battleMovesLine,
@@ -40,7 +38,14 @@ import {
   battleWidthChoices,
   battleWidthLine,
   rollBattleWidth,
+  theClauseOfWhomAUnitFaced,
 } from '../../engine/battle/lines.ts';
+import {
+  battleFacingStage,
+  battleGridStage,
+  theWordsOfWhyAUnitFacesAsItDoes,
+  theWordsOfWhyAUnitStandsWhereItDoes,
+} from '../../views/prose/the-words-of-a-battles-lines.ts';
 import { shieldFortHolds } from '../../engine/units/movement.ts';
 import {
   abilityMissileUnits,
@@ -194,11 +199,11 @@ Object.assign(window, {
   battleDeploy, // engine/battle/lines.ts
   battleFacedClauses, // engine/battle/lines.ts
   battleFacing, // engine/battle/lines.ts
-  battleFacingStage, // engine/battle/lines.ts
+  battleFacingStage, // views/prose/the-words-of-a-battles-lines.ts
   battleFrontWidth, // engine/battle/lines.ts
   battleGrid, // engine/battle/lines.ts
   battleGridLines, // engine/battle/lines.ts
-  battleGridStage, // engine/battle/lines.ts
+  battleGridStage, // views/prose/the-words-of-a-battles-lines.ts
   battleLegal, // engine/battle/lines.ts
   battleLineTotal, // engine/battle/lines.ts
   battleMovesLine, // engine/battle/lines.ts
@@ -263,7 +268,10 @@ Object.assign(window, {
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
   sb, // ui/gm/config.ts
   shieldFortHolds, // engine/units/movement.ts
+  theClauseOfWhomAUnitFaced, // engine/battle/lines.ts
   theWordsOf, // views/prose/the-words-of-each-line.ts
+  theWordsOfWhyAUnitFacesAsItDoes, // views/prose/the-words-of-a-battles-lines.ts
+  theWordsOfWhyAUnitStandsWhereItDoes, // views/prose/the-words-of-a-battles-lines.ts
   unitAbilityMult, // engine/battle/strength.ts
   unitRef, // engine/army-tables.ts
   unitTypeOf, // engine/rules-on-plain-values/unit-types-and-base-strength.ts

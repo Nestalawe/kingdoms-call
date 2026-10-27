@@ -26,6 +26,8 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,1200));
   const w=dom.window; const ev=expr=>w.eval(expr);
+  // A unit's facing holds values since plan P1-12d4: the prose writes its words.
+  const facingWords=why=>ev('theWordsOfWhyAUnitFacesAsItDoes')(why);
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   for(const f of ['battleFacing','battleEngage','battleFaceSide','battleFacingStage']) ok(ev(`typeof ${f}`)==='function',`${f}() is declared at module level`);
   ok(ev('typeof BATTLE_FACING')==='object','BATTLE_FACING is declared');
@@ -66,7 +68,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   ok(near(r.me.face.total,43.2),`five against three: the two with nobody opposite wrap the ends at ×1.2 → 43.2, got ${r.me.face.total}`);
   ok(near(r.them.face.total,22.4),`…and the three's end units are hit from the side at ×0.9 → 22.4, got ${r.them.face.total}`);
   ok(r.me.front[0].r._faced.kind==='wraps'&&r.me.front[0].r._faced.vs===r.them.front[1].r&&r.me.front[4].r._faced.kind==='wraps'&&r.me.front[4].r._faced.vs===r.them.front[3].r,'the wrapping units are stamped with the end unit they wrap');
-  ok(/hit from the side/.test(r.them.front[1].r._faced.why)&&/hit from the side/.test(r.them.front[3].r._faced.why)&&!/hit from the side/.test(r.them.front[2].r._faced.why),'only the end units are hit from the side');
+  ok(/hit from the side/.test(facingWords(r.them.front[1].r._faced.why))&&/hit from the side/.test(facingWords(r.them.front[3].r._faced.why))&&!/hit from the side/.test(facingWords(r.them.front[2].r._faced.why)),'only the end units are hit from the side');
   ok(/Levy wraps the end ×1\.2 \(2 units\)/.test(stage(r.me))&&/3 even/.test(stage(r.me)),`the stage groups the matchups that moved a figure and counts the even ones: "${stage(r.me)}"`);
   ok(/Levy v Levy, hit from the side ×0\.9 \(2 units\)/.test(stage(r.them)),`…for the defender: "${stage(r.them)}"`);
   ok(stage({})===''&&stage(null)==='','no facing, no stage');
@@ -90,7 +92,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   r=fight([['Shieldwall Levies',1],['Free Lances',2],['Yeoman Longbows',2]],[['Shieldwall Levies',3],['Warg Riders',2]],3,'plain',0,1);
   ok(!r.me.face.anchored&&r.me.face.turned,'with a Free Lance holding one end the line is not anchored, and the free rider turns it');
   ok(near(r.me.face.total,43.25),`a turned line's Longbows shoot at ×0.75 on top of their matchup: 10 (Levy, Shieldwall) + 6.75 (Free Lance in the front: Spear Hedge, hit from the side) + 7.5 + 7.5 + 11.5 (the duel, Harriers) = 43.25, got ${r.me.face.total}`);
-  ok(r.me.second.filter(Boolean).every(x=>/flank turned/.test(x.r._faced.why)),'each Longbow is stamped "flank turned"');
+  ok(r.me.second.filter(Boolean).every(x=>/flank turned/.test(facingWords(x.r._faced.why))),'each Longbow is stamped "flank turned"');
   r=fight([['Shieldwall Levies',1],['Free Lances',2],['Yeoman Longbows',2]],[['Shieldwall Levies',3],['Warg Riders',2]],3,'forest',0,1);
   ok(r.them.flanks.length===0&&!r.me.face.turned&&r.them.face.free===0,'in forest there are no flank riders, so no line is ever turned');
 

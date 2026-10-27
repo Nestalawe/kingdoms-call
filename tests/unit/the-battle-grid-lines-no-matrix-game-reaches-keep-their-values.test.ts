@@ -12,7 +12,9 @@
 // - battleFacedClauses on a grid with no units, or with holes and rows without a unit;
 // - battleScout on exploration figures that are missing or not numbers;
 // - battleLineTotal told a ground that is ''.
-// Level 1 (unit): pure functions called directly on the engine's modules (plan P1-14a), with no turn played.
+// Level 1 (unit): pure functions called directly on the engine's modules (plan P1-14a), with no turn played. Since plan
+// P1-12d4 the grid's lines and a unit's facing hold values, and the prose writes their words: each line's words are
+// read through the words pass (theWordsOf), the same words as the fields held before.
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import {
@@ -33,9 +35,11 @@ import {
   faceMult,
   flankLineMults,
   rollBattleWidth,
-  shortUnit,
+  theClauseOfWhomAUnitFaced,
   typeOfX,
 } from '../../src/engine/battle/lines.ts';
+import { shortUnit, theWordsOfAnAbilityInTheLadder } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
+import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
 
 /** A unit of a type, as the grid's rows hold it. */
@@ -55,13 +59,8 @@ describe('a ground the tables do not hold reads the open plain', () => {
     for (let i = 0; i < 40; i++) expect([6, 7, 8]).toContain(rollBattleWidth('swamp'));
   });
   test("the width line names the ground as it is given, or 'ground' when it is ''", () => {
-    expect(battleWidthLine('swamp', 5)).toEqual({
-      kind: 'the ground allows a front of a width',
-      groundWords: 'swamp',
-      allowsWord: 'allows',
-      frontWidth: 5,
-    });
-    expect(battleWidthLine('', 5)).toMatchObject({ groundWords: 'ground', allowsWord: 'allows' });
+    expect(theWordsOf(battleWidthLine('swamp', 5))).toBe('📊 Battle lines — the swamp allows a front of 5.');
+    expect(theWordsOf(battleWidthLine('', 5))).toBe('📊 Battle lines — the ground allows a front of 5.');
   });
 });
 
@@ -105,13 +104,8 @@ describe('a row with no unit on it, or a type no table names', () => {
     const g = battleGrid([{ base: 5, name: 'Wild Hunt', fly: true }, { base: 3 }, null], 6, 'plain', {});
     expect(g.fly.map((x) => x.s)).toEqual([5]);
     expect(g.front.filter(Boolean).map((x) => x?.s)).toEqual([3]);
-    expect(battleGridLines('Aldric', g, false)).toEqual([
-      {
-        kind: "a side's front line in the battle grid",
-        sideLabel: 'Aldric  ',
-        frontLineCells: '·     ·     unit  ·     ·     ·    ',
-        wordsIfFlanksAirOrReserve: ' air: WildH',
-      },
+    expect(battleGridLines('Aldric', g, false).map(theWordsOf)).toEqual([
+      '📊 Aldric   1st │ ·     ·     unit  ·     ·     ·     │ air: WildH',
     ]);
   });
 });
@@ -119,13 +113,17 @@ describe('a row with no unit on it, or a type no table names', () => {
 describe("the grid print's side label", () => {
   test('its first word, eight wide; none when there is no label', () => {
     const g = battleGrid([{ a: army('Men-at-Arms'), base: 4 }], 2, 'plain', {});
-    const label = (l: string | null | undefined) => battleGridLines(l, g, true)[0];
-    expect(label(null)).toMatchObject({ sideLabel: '        ' });
-    expect(label(undefined)).toMatchObject({ sideLabel: '        ' });
-    expect(label('')).toMatchObject({ sideLabel: '        ' });
-    expect(label('Sir Aldric the Bold')).toMatchObject({ sideLabel: 'Sir     ' });
-    expect(label('  Gorbash')).toMatchObject({ sideLabel: '        ' });
-    expect(label('Bartholomew-of-the-Marsh')).toMatchObject({ sideLabel: 'Bartholo' });
+    /** The side's label in the words of its first grid line, "📊 <label> 1st │ …". */
+    const label = (l: string | null | undefined) => {
+      const line = battleGridLines(l, g, true)[0];
+      return line ? /^📊 (.{8}) 1st │/u.exec(theWordsOf(line))?.[1] : undefined;
+    };
+    expect(label(null)).toBe('        ');
+    expect(label(undefined)).toBe('        ');
+    expect(label('')).toBe('        ');
+    expect(label('Sir Aldric the Bold')).toBe('Sir     ');
+    expect(label('  Gorbash')).toBe('        ');
+    expect(label('Bartholomew-of-the-Marsh')).toBe('Bartholo');
   });
 });
 
@@ -159,9 +157,11 @@ describe('a cell or a grid with a part missing, and a facing table that is missi
   });
   test('a shot at a unit with no type takes no Armour-Piercing', () => {
     const bows = cell('Ironwood Crossbows', 'arc');
-    expect(abilityBack(bows, { r: {}, role: 'foot', s: 4 })).toEqual({ m: 1.25, why: '' });
-    expect(abilityBack(bows, { r: { a: null }, role: 'cav', s: 4 })).toEqual({ m: 0.75, why: '' });
-    expect(abilityBack(bows, cell('Stone Giants', 'foot'))).toEqual({ m: 1.25 * 1.25, why: ', Armour-Piercing' });
+    expect(abilityBack(bows, { r: {}, role: 'foot', s: 4 })).toEqual({ m: 1.25, abilities: [] });
+    expect(abilityBack(bows, { r: { a: null }, role: 'cav', s: 4 })).toEqual({ m: 0.75, abilities: [] });
+    const pierced = abilityBack(bows, cell('Stone Giants', 'foot'));
+    expect(pierced.m).toBe(1.25 * 1.25);
+    expect(pierced.abilities.map(theWordsOfAnAbilityInTheLadder)).toEqual(['Armour-Piercing']);
   });
 });
 
@@ -175,32 +175,38 @@ describe('battleFacedClauses on a grid with no units, holes, or rows without a u
     const a1 = army('Men-at-Arms'),
       a2 = army('Yeoman Longbows'),
       a3 = army('Free Lances');
+    /** A unit's facing with nothing to it but its name. */
+    const plainly = (type: string) => ({ theUnit: { a: { type } }, meets: null, itsOwnAbilities: [], marks: [] });
     const clauses = battleFacedClauses(
       {
         units: [
           null,
           undefined,
-          { row: { base: 3 }, place: 'front', col: 0, mult: 1, why: '' },
+          { row: { base: 3 }, place: 'front', col: 0, mult: 1, why: { kind: 'a unit in the front line' } },
           {
-            row: { a: a1, _faced: { m: 1, kind: 'faces', vs: { base: 2 }, why: 'MaA v ·' } },
+            row: { a: a1, _faced: { m: 1, kind: 'faces', vs: { base: 2 }, why: plainly('Men-at-Arms') } },
             place: 'front',
             col: 1,
             mult: 1,
-            why: '',
+            why: { kind: 'a unit in the front line' },
           },
           {
-            row: { a: a2, _faced: { m: 1, kind: 'even', vs: null, why: '' } },
+            row: { a: a2, _faced: { m: 1, kind: 'even', vs: null, why: plainly('Yeoman Longbows') } },
             place: 'second',
             col: 1,
             mult: 1,
-            why: '',
+            why: { kind: 'a unit in the second line' },
           },
-          { row: { a: a3 }, place: 'flank', col: 0, mult: 1, why: '' },
+          { row: { a: a3 }, place: 'flank', col: 0, mult: 1, why: { kind: 'a rider on the flank' } },
         ],
       },
       null,
     );
-    expect([...clauses.values()]).toEqual(['with nobody opposite', 'in the second line', 'with nobody opposite']);
+    expect([...clauses.values()].map(theClauseOfWhomAUnitFaced)).toEqual([
+      'with nobody opposite',
+      'in the second line',
+      'with nobody opposite',
+    ]);
     expect([...clauses.keys()]).toEqual([a1, a2, a3]);
   });
 });

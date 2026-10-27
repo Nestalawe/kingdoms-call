@@ -1,12 +1,19 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ownedUnitName } from '../army-tables.ts';
-import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import { UNIT_BASE_STR, unitTypeOf } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { DISC_BY_ID } from '../discoveries.ts';
-import type { UnitType } from '../../content/kingdoms-call-data.ts';
+import type { UnitAbilitySlug } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
-import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
+import {
+  aUnitAsTheGridNamesIt,
+  type AUnitAsTheGridNamesIt,
+  type TheFactOfOneOfABattlesSentences,
+  type WhomAUnitFaced,
+  type WhomAUnitMeets,
+  type WhyAUnitFacesAsItDoes,
+  type WhyAUnitStandsWhereItDoes,
+} from './the-facts-a-battles-lines-record.ts';
 import {
   aFlyerTakesAnOpenFlankNoRiderFills,
   aRiderTakesTheFlankOnRoughGround,
@@ -19,6 +26,7 @@ import {
   theStrengthOfAUnitBesideAndBehindOthers,
   theStrengthOfAUnitMeetingAnother,
   theTargetAShooterPicks,
+  type AnAbilityAsTheLadderNamesIt,
   type ARoleInTheBattleLine,
   type AUnitInTheLine,
   type WhereTwoUnitsMeet,
@@ -34,14 +42,14 @@ export interface GridFacing {
   m: number;
   kind: 'even' | 'faces' | 'met' | 'wraps' | 'shoots' | 'duel' | 'guards' | 'free';
   vs: BattleRow | null;
-  why: string;
+  why: WhyAUnitFacesAsItDoes;
 }
 /** A unit's place and multiplier in its grid (battleRegrid), stamped on its row as `_g`. */
 export interface GridPlace {
   place: GridPlaceName;
   col: number;
   mult: number;
-  why: string;
+  why: WhyAUnitStandsWhereItDoes;
   face?: GridFacing;
 }
 /** A unit's row as the grid takes it: the unit (none on some of the bots' estimates, which say `fly` instead), its
@@ -67,7 +75,7 @@ export interface GridUnit {
   place: GridPlaceName;
   col: number;
   mult: number;
-  why: string;
+  why: WhyAUnitStandsWhereItDoes;
 }
 /** A side's grid as battleGrid places it, before battleRegrid scores it: the front and second lines as cells per
  *  column (a swap exchanges two of them, battleBestSwap), the reserve, the flanks, the flyers. */
@@ -93,7 +101,7 @@ export interface AFacedUnit {
   m: number;
   kind: GridFacing['kind'];
   vs: BattleRow | null;
-  why: string;
+  why: WhyAUnitFacesAsItDoes;
 }
 /** A side faced against the other (battleFaceSide): `total` is the strength the dice see. */
 export interface AFacedSide {
@@ -197,66 +205,7 @@ export function battleRole(row: BattleRow | null | undefined, terrain: string | 
   if (unitTypeOf(t) === 'ranged') return 'arc';
   return 'foot';
 }
-// Short unit codes for the grid print (5 characters; a type not listed uses its first 5 letters).
-export const UNIT_SHORT: Readonly<Record<string, string | undefined>> = {
-  'Shieldwall Levies': 'Levy',
-  'Free Lances': 'FreeL',
-  'Yeoman Longbows': 'Bow',
-  'Gilded Lances': 'Gild',
-  'Noble Griffons': 'Grif',
-  'Galleon Fleet': 'Gall',
-  'Corsair Fleet': 'Cors',
-  'Human Garrison': 'Garr',
-  'Men-at-Arms': 'MaA',
-  'Elven Bowmen': 'EBow',
-  'Forest Wardens': 'Ward',
-  'Shadow Archers': 'Shad',
-  'Eagle Riders': 'Eagl',
-  'Elven Galleys': 'Gally',
-  'Elven Garrison': 'Garr',
-  'Stag Riders': 'Stag',
-  'Dwarven Guard': 'Guard',
-  'Ironwood Crossbows': 'Xbow',
-  'Mountain Guns': 'Gun',
-  'Gnomish Gyrocopters': 'Gyro',
-  'Dwarf Ironclads': 'Iron',
-  'Dwarf Garrison': 'Garr',
-  'Ironhoof Rams': 'Ram',
-  'Warg Riders': 'Warg',
-  'Orc Berserkers': 'Bers',
-  'Goblin Horde': 'Gob',
-  'Wyvern Riders': 'Wyv',
-  'Orcish Longships': 'Long',
-  'Orc Garrison': 'Garr',
-  'Black Arrows': 'BlkAr',
-  'Whale Cohort': 'Whale',
-  'Shark Shoals': 'Shark',
-  'Great Bears': 'Bear',
-  'Unicorn Herd': 'Unicn',
-  'Mammoth Host': 'Mamth',
-  'Great Turtles': 'Turtl',
-  'Stone Giants': 'Giant',
-  'Forest Ents': 'Ent',
-  Thunderbirds: 'Thund',
-  'Crimson Rocs': 'Roc',
-  'Cave Trolls': 'Troll',
-  'Manticore Pride': 'Manti',
-  'Basilisk Brood': 'Basil',
-  'Sea Giants': 'SeaGt',
-  'Eldritch Kraken': 'Krakn',
-  'Elder Dragons': 'Drago',
-  'Titan Warbeasts': 'Titan',
-  'Dread Hydras': 'Hydra',
-  'Air Elemental': 'AirEl',
-  'Fire Elemental': 'FirEl',
-  'Earth Elemental': 'ErtEl',
-  'Water Elemental': 'WatEl',
-  'Darkness Elemental': 'DrkEl',
-} satisfies Record<UnitType, string>;
-export function shortUnit(row: BattleRow | null | undefined) {
-  const t = (row?.a ? row.a.type : '') || (row?.name ?? '') || 'unit'; // a type or a name that is '' reads the next
-  return UNIT_SHORT[t] ?? t.replace(/[^A-Za-z]/g, '').slice(0, 5);
-}
+// (The grid's short unit codes, UNIT_SHORT and shortUnit, are the prose's since plan P1-12d4: src/views/prose/.)
 // Place one side and score it. rows: [{a, base, fly, …}] with `base` the unit's FINAL per-unit
 // strength (every modifier and this battle's pre-battle damage already in). opts: {tac, flank,
 // enemy, enemyTac} — `enemy` is the other side's rows (or its placed grid), needed only for the
@@ -389,7 +338,7 @@ export function battleRegrid(g: BattleGridCells): BattleGrid {
     cap = g.cap ?? Infinity;
   const units: GridUnit[] = [];
   let total = 0;
-  const put = (x: GridCell, place: GridPlaceName, col: number, mult: number, why: string) => {
+  const put = (x: GridCell, place: GridPlaceName, col: number, mult: number, why: WhyAUnitStandsWhereItDoes) => {
     const s: GridPlace = { place, col, mult, why };
     x.r._g = s;
     units.push({ row: x.r, place, col, mult, why });
@@ -402,35 +351,60 @@ export function battleRegrid(g: BattleGridCells): BattleGrid {
   g.front.forEach((x, c) => {
     if (!x) return;
     const own = itsOwnPlace(x, 'front');
-    if (own) put(x, 'front', c, own.multiplier, own.words);
+    if (own)
+      put(x, 'front', c, own.multiplier, {
+        kind: 'its ability gives it its place',
+        ability: own.ability,
+        itsLine: 'front',
+      });
     else
       put(
         x,
         'front',
         c,
         x.role === 'arc' ? BATTLE_RANGED_IN_FRONT : 1,
-        x.role === 'arc' ? 'ranged in the front line' : 'front line',
+        x.role === 'arc' ? { kind: 'a ranged unit in the front line' } : { kind: 'a unit in the front line' },
       );
   });
   g.second.forEach((x, c) => {
     if (!x) return;
     const f = g.front[c];
     if (x.role === 'arc' && f && f.role !== 'arc') {
-      put(x, 'second', c, 1, 'shooting over the ' + shortUnit(f.r));
+      put(x, 'second', c, 1, {
+        kind: 'a ranged unit shooting over its fighter',
+        theFighter: aUnitAsTheGridNamesIt(f.r),
+      });
       return;
     }
     const own = itsOwnPlace(x, 'second');
-    if (own) put(x, 'second', c, own.multiplier, own.words);
-    else put(x, 'second', c, mults[1], 'second line');
+    if (own)
+      put(x, 'second', c, own.multiplier, {
+        kind: 'its ability gives it its place',
+        ability: own.ability,
+        itsLine: 'second',
+      });
+    else put(x, 'second', c, mults[1], { kind: 'a unit in the second line' });
   });
   g.reserve.forEach((x, k) => {
-    put(x, 'reserve', k, k < W ? mults[2] : mults[3], k < W ? 'reserve' : 'deep reserve');
+    put(
+      x,
+      'reserve',
+      k,
+      k < W ? mults[2] : mults[3],
+      k < W ? { kind: 'a unit in the reserve' } : { kind: 'a unit in the deep reserve' },
+    );
   });
   g.flanks.forEach((x, k) => {
-    put(x, 'flank', k, 1, 'on the flank');
+    put(x, 'flank', k, 1, { kind: 'a rider on the flank' });
   });
   g.fly.forEach((x, k) => {
-    put(x, 'air', k, k < cap ? 1 : BATTLE_FLYER_BEYOND_CAP, k < cap ? 'in the air' : 'in the air, beyond the line');
+    put(
+      x,
+      'air',
+      k,
+      k < cap ? 1 : BATTLE_FLYER_BEYOND_CAP,
+      k < cap ? { kind: 'a flyer in the air' } : { kind: 'a flyer in the air beyond the line' },
+    );
   });
   return Object.assign(g, { units, total }); // the grid it was handed, with its units and total
 }
@@ -446,18 +420,10 @@ export function battleLineTotal(
 }
 // ── The grid in the report ── one line names the ground, then two 📊 lines a side: cells five wide,
 // "·" for an empty place, the defender's second line above its front and the attacker's below, so the
-// two fronts meet in the middle. The portals draw a 📊 line that contains "│" in monospace.
-export const GROUND_WORDS: Readonly<Record<string, readonly [string, string] | undefined>> = {
-  plain: ['open ground', 'allows'],
-  desert: ['desert', 'allows'],
-  forest: ['forest', 'allows'],
-  jungle: ['jungle', 'allows'],
-  mountain: ['mountains', 'allow'],
-  sea: ['open water', 'allows'],
-};
+// two fronts meet in the middle. The portals draw a 📊 line that contains "│" in monospace. The lines hold the units
+// each place names, copied as they are told; the prose writes the cells and the ground's words (plan P1-12d4).
 export function battleWidthLine(terrain: string, W: number): TheFactOfOneOfABattlesSentences {
-  const g: readonly [string, string] = GROUND_WORDS[terrain] ?? [terrain || 'ground', 'allows'];
-  return { kind: 'the ground allows a front of a width', groundWords: g[0], allowsWord: g[1], frontWidth: W };
+  return { kind: 'the ground allows a front of a width', terrain, frontWidth: W };
 }
 export function battleGridLines(
   label: string | null | undefined,
@@ -465,36 +431,22 @@ export function battleGridLines(
   defender: boolean | null | undefined,
 ): TheFactOfOneOfABattlesSentences[] {
   if (!g) return [];
-  const cell = (x: GridCell | null | undefined) => (x ? shortUnit(x.r) : '·').padEnd(5).slice(0, 5);
-  const firstWord = (label ?? '').split(/\s+/)[0] ?? ''; // split gives one word at least
-  const lab = firstWord.slice(0, 8).padEnd(8);
-  const extras: string[] = [];
-  if (g.flanks.length) extras.push('flanks: ' + g.flanks.map((x) => shortUnit(x.r)).join(', '));
-  if (g.fly.length) extras.push('air: ' + g.fly.map((x) => shortUnit(x.r)).join(', '));
-  if (g.reserve.length) extras.push('reserve: ' + g.reserve.map((x) => shortUnit(x.r)).join(', '));
+  const cell = (x: GridCell | null | undefined) => (x ? aUnitAsTheGridNamesIt(x.r) : null);
   const l1: TheFactOfOneOfABattlesSentences = {
     kind: "a side's front line in the battle grid",
-    sideLabel: lab,
-    frontLineCells: g.front.map(cell).join(' '),
-    wordsIfFlanksAirOrReserve: extras.length ? ' ' + extras.join(' · ') : '',
+    sideName: label,
+    theFrontLine: g.front.map(cell),
+    theFlanks: g.flanks.map((x) => aUnitAsTheGridNamesIt(x.r)),
+    theAir: g.fly.map((x) => aUnitAsTheGridNamesIt(x.r)),
+    theReserve: g.reserve.map((x) => aUnitAsTheGridNamesIt(x.r)),
   };
   const l2: TheFactOfOneOfABattlesSentences | null = g.second.some(Boolean)
-    ? { kind: "a side's second line in the battle grid", sideLabel: lab, secondLineCells: g.second.map(cell).join(' ') }
+    ? { kind: "a side's second line in the battle grid", sideName: label, theSecondLine: g.second.map(cell) }
     : null;
   const isALine = <L>(l: L | null): l is L => Boolean(l);
   return defender ? [l2, l1].filter(isALine) : [l1, l2].filter(isALine);
 }
-// The ladder's Battle-lines stage: every unit's place and multiplier, grouped.
-export function battleGridStage(g: Pick<BattleGrid, 'units'>) {
-  const groups = new Map<string, string[]>();
-  g.units.forEach((u) => {
-    const k = `${u.place} ×${String(u.mult)}`;
-    const group = groups.get(k);
-    if (group) group.push(shortUnit(u.row));
-    else groups.set(k, [shortUnit(u.row)]);
-  });
-  return [...groups].map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ');
-}
+// (The ladder's Battle-lines stage, battleGridStage, is the prose's since plan P1-12d4: src/views/prose/.)
 // ── WHO FACES WHOM (Battle lines II, 2026-10-11, Toby) ── Once both grids stand, each unit's place is
 // read against the enemy's. A front unit fights the enemy unit in its own column, and the matchup
 // counts (BATTLE_FACING.front: my role → the enemy's → multiplier). A second-line ranged unit shooting
@@ -533,8 +485,9 @@ export const backMult = (r: string) => {
 // ability, some of which also live here (the flank slots and places above, which battleGrid and battleRegrid ask the
 // rule registry; the whole line's, which battleFaceSide asks the rule
 // registry: Shieldwall, Sergeants, Driven Before Them, Terror From Above, Dive on the Bowmen, Flak Gunners, …) and the
-// rest in the volley, fate and end-of-turn code. Each returns the multiplier and the names that moved it, for the
-// ladder and the report. tests/abilities-* hold every one of them.
+// rest in the volley, fate and end-of-turn code. Each returns the multiplier and the abilities that moved it, by their
+// slugs, for the ladder and the report (the prose writes their names: plan P1-12d4). tests/abilities-* hold every one of
+// them.
 /** A cell's unit type: any cell, or an empty place (null). */
 export const typeOfX = (
   x:
@@ -559,10 +512,10 @@ export function abilityFlanksRough(x: GridCell, terrain: string | null) {
 }
 // x meets e (both placed cells {r, role, s}): the role matchup, then x's ability, then e's. where:
 // 'front' (facing or met), 'duel' (flank riders), 'guard' (a rider guarding a line end); meIsAtk: x's side attacks.
-/** A matchup's multiplier, and the names of the abilities that moved it (each after ", "). */
+/** A matchup's multiplier, and the abilities that moved it, as the ladder names them. */
 interface AMatchup {
   m: number;
-  why: string;
+  abilities: readonly AnAbilityAsTheLadderNamesIt[];
 }
 export function abilityFront(
   x: GridCell,
@@ -585,7 +538,7 @@ export function abilityFront(
     },
     faceMult(BATTLE_FACING.front, x.role, e.role),
   );
-  return { m: moved.multiplier, why: moved.words.map((n) => ', ' + n).join('') };
+  return { m: moved.multiplier, abilities: moved.abilities };
 }
 // x, a second-line ranged unit, shoots e, an enemy front unit: the shooter's ability, then the target's (the rule
 // registry's two stages, plan P1-19b).
@@ -599,7 +552,7 @@ export function abilityBack(x: GridCell, e: GridCell): AMatchup {
     },
     backMult(e.role),
   );
-  return { m: moved.multiplier, why: moved.words.map((n) => ', ' + n).join('') };
+  return { m: moved.multiplier, abilities: moved.abilities };
 }
 /** A placed unit as the rule registry's stages read it: its type and its part in the line (none for an empty place). */
 const inTheLine = (x: GridCell): AUnitInTheLine => ({ unitType: typeOfX(x), role: x.role });
@@ -674,7 +627,13 @@ export function battleFaceSide(
   const byRow = new Map<BattleRow, GridUnit>(me.units.map((u) => [u.row, u]));
   const units: AFacedUnit[] = [];
   let total = 0;
-  const put = (x: GridCell, m: number, kind: GridFacing['kind'], vs: GridCell | null | undefined, why: string) => {
+  const put = (
+    x: GridCell,
+    m: number,
+    kind: GridFacing['kind'],
+    vs: GridCell | null | undefined,
+    why: WhyAUnitFacesAsItDoes,
+  ) => {
     const u = byRow.get(x.r);
     const pm = u ? u.mult : 1;
     const f: GridFacing = { m, kind, vs: vs ? vs.r : null, why };
@@ -703,7 +662,7 @@ export function battleFaceSide(
     firstCol !== undefined && lastCol !== undefined && footish(me.front[firstCol]) && footish(me.front[lastCol]);
   const freeRiders = them.flanks.slice(theirs.duel + theirs.blocking.length);
   // Free riders that turn even an anchored line (Battering Horns: a free Ram), by the rule registry (plan P1-19c): its
-  // words, or none.
+  // slug, or none.
   const horns = theAbilityThatTurnsAnAnchoredLine({ theFreeEnemyRiders: freeRiders.map(inTheLine) });
   const turned = BATTLE_FLANK_TERRAINS.has(terrain) && freeRiders.length > 0 && (!anchored || horns !== null);
   // What the enemy's line marks on mine (Terror From Above: my strongest front unit; Dive on the Bowmen: my strongest
@@ -712,15 +671,25 @@ export function battleFaceSide(
     { theFront: me.front, theSecondLine: me.second, theAir: me.fly },
     (t) => abilityHas(them, t),
   );
-  /** The marks on a unit, in the stage's order: its multiplier and words after them. */
-  const marked = (x: GridCell, m: number, why: string): [number, string] => {
+  /** The marks on a unit, in the stage's order: its multiplier after them, and the abilities that marked it. */
+  const marked = (x: GridCell, m: number): [number, AnAbilityAsTheLadderNamesIt[]] => {
+    const marking: AnAbilityAsTheLadderNamesIt[] = [];
     for (const mark of marks)
       if (mark.theUnitsMarked.includes(x)) {
         m *= mark.factor;
-        why += ', ' + mark.words;
+        marking.push(mark.ability);
       }
-    return [m, why];
+    return [m, marking];
   };
+  /** A unit as the facing names it. */
+  const named = (x: GridCell): AUnitAsTheGridNamesIt => aUnitAsTheGridNamesIt(x.r);
+  /** Why a unit fights as it does, with nothing more than its name. */
+  const plainly = (x: GridCell): WhyAUnitFacesAsItDoes => ({
+    theUnit: named(x),
+    meets: null,
+    itsOwnAbilities: [],
+    marks: [],
+  });
   const theEnemyFront = them.front.filter((y): y is GridCell => Boolean(y));
   me.front.forEach((x, c) => {
     if (!x) return;
@@ -728,13 +697,14 @@ export function battleFaceSide(
     let m = 1,
       kind: GridFacing['kind'] = 'even',
       vs: GridCell | null | undefined = null,
-      why = shortUnit(x.r);
+      meets: WhomAUnitMeets | null = null,
+      atAWrappedEnd: { heldBy: UnitAbilitySlug | null } | null = null;
     if (e) {
       vs = e;
       const f = abilityFront(x, e, terrain, 'front', meIsAtk);
       m = f.m;
       kind = 'faces';
-      why += ` v ${shortUnit(e.r)}${f.why}`;
+      meets = { kind: 'it faces a unit', theOther: named(e), abilities: f.abilities };
     } else if (myOver.has(c)) {
       const g = guardOf.get(c);
       if (g) {
@@ -742,23 +712,23 @@ export function battleFaceSide(
         const f = abilityFront(x, g, terrain, 'front', meIsAtk);
         m = f.m;
         kind = 'met';
-        why += ` met by ${shortUnit(g.r)}${f.why}`;
+        meets = { kind: 'it is met by a rider', theOther: named(g), abilities: f.abilities };
       } else {
         const ts = theirs.span;
         vs = ts ? them.front[c < ts[0] ? ts[0] : ts[1]] : null;
         m = BATTLE_FACING.wrap;
         kind = 'wraps';
-        why += ' wraps the end';
+        meets = { kind: "it wraps the line's end" };
       }
     }
     const unit = inTheLine(x);
     if (endHit.has(c)) {
       // Never hit from the side (Unbreakable, Rooted, Hold the Gate: the rule registry's stage), or hit.
       const held = theAbilityThatHoldsAUnitHitFromTheSide({ theUnit: unit, theUnitsSideAttacks: meIsAtk });
-      if (held) why += `, ${held}`;
+      if (held) atAWrappedEnd = { heldBy: held };
       else {
         m *= BATTLE_FACING.sideHit;
-        why += ', hit from the side';
+        atAWrappedEnd = { heldBy: null };
       }
     }
     // The units beside it and behind it (Shieldwall with Town Watch, Sergeants, Driven Before Them).
@@ -771,9 +741,14 @@ export function battleFaceSide(
       m,
     );
     m = beside.multiplier;
-    why += beside.words.map((w) => ', ' + w).join('');
-    [m, why] = marked(x, m, why);
-    put(x, m, kind, vs, why);
+    const [mm, marking] = marked(x, m);
+    put(x, mm, kind, vs, {
+      theUnit: named(x),
+      meets,
+      ...(atAWrappedEnd ? { atAWrappedEnd } : {}),
+      itsOwnAbilities: beside.abilities,
+      marks: marking,
+    });
   });
   me.second.forEach((x, c) => {
     if (!x) return;
@@ -781,47 +756,60 @@ export function battleFaceSide(
     if (x.role === 'arc' && f && f.role !== 'arc') {
       let e = them.front[c];
       let m = 1,
-        why = shortUnit(x.r);
+        meets: WhomAUnitMeets;
       // A shooter that picks its target along the enemy front (Marksmen), by what each shot is worth.
       const pick = theTargetAShooterPicks(inTheLine(x), () => theEnemyFront.map((y) => abilityBack(x, y).m * y.s));
       if (pick !== null) e = theEnemyFront[pick];
       if (e) {
         const b = abilityBack(x, e);
         m = b.m;
-        why += ` shoots ${shortUnit(e.r)}${b.why}`;
-      } else why += ' shoots at an empty column';
+        meets = { kind: 'it shoots a unit', theOther: named(e), abilities: b.abilities };
+      } else meets = { kind: 'it shoots at an empty column' };
+      let flankTurned: { byAnAbility: UnitAbilitySlug | null } | null = null;
       if (turned) {
         m *= BATTLE_FACING.turned;
-        why += horns !== null && anchored ? `, flank turned (${horns})` : ', flank turned';
+        flankTurned = { byAnAbility: horns !== null && anchored ? horns : null };
       }
-      [m, why] = marked(x, m, why);
-      put(x, m, e ? 'shoots' : 'even', e ?? null, why);
-    } else put(x, 1, 'even', null, shortUnit(x.r));
+      const [mm, marking] = marked(x, m);
+      put(x, mm, e ? 'shoots' : 'even', e ?? null, {
+        theUnit: named(x),
+        meets,
+        ...(flankTurned ? { flankTurned } : {}),
+        itsOwnAbilities: [],
+        marks: marking,
+      });
+    } else put(x, 1, 'even', null, plainly(x));
   });
   me.reserve.forEach((x) => {
-    put(x, 1, 'even', null, shortUnit(x.r));
+    put(x, 1, 'even', null, plainly(x));
   });
   me.flanks.forEach((x, i) => {
     if (i < mine.duel) {
       const e = them.flanks[i];
       if (!e) return; // i < duel, the fewer of the two sides' riders: there is one
       const f = abilityFront(x, e, terrain, 'duel', meIsAtk);
-      put(x, f.m, 'duel', e, `${shortUnit(x.r)} duels ${shortUnit(e.r)}${f.why}`);
+      put(x, f.m, 'duel', e, {
+        ...plainly(x),
+        meets: { kind: 'it duels a rider', theOther: named(e), abilities: f.abilities },
+      });
     } else if (i < mine.duel + mine.blocking.length) {
       const block = mine.blocking[i - mine.duel];
       if (!block) return; // i < duel + blocking.length: there is one
       const e = them.front[block.col];
-      const f = e ? abilityFront(x, e, terrain, 'guard', meIsAtk) : { m: 1, why: '' };
-      put(x, f.m, 'guards', e ?? null, `${shortUnit(x.r)} guards the end v ${e ? shortUnit(e.r) : 'nobody'}${f.why}`);
-    } else put(x, BATTLE_FACING.freeFlank, 'free', null, `${shortUnit(x.r)} rides free`);
+      const f = e ? abilityFront(x, e, terrain, 'guard', meIsAtk) : { m: 1, abilities: [] };
+      put(x, f.m, 'guards', e ?? null, {
+        ...plainly(x),
+        meets: { kind: "it guards the line's end", theOther: e ? named(e) : null, abilities: f.abilities },
+      });
+    } else put(x, BATTLE_FACING.freeFlank, 'free', null, { ...plainly(x), meets: { kind: 'it rides free' } });
   });
   const enemyFlyers = them.fly.length > 0 || them.flanks.some((x) => x.role === 'fly');
   me.fly.forEach((x) => {
     // Its own ability in the air (Flak Gunners, against enemy flyers): a flyer whose ability acts faces them.
     const flyer = theStrengthOfAFlyer({ theFlyer: inTheLine(x), theEnemyHasFlyers: enemyFlyers });
-    const kind: GridFacing['kind'] = flyer.words.length ? 'faces' : 'even';
-    const [m, why] = marked(x, flyer.multiplier, shortUnit(x.r) + flyer.words.map((w) => ', ' + w).join(''));
-    put(x, m, kind, null, why);
+    const kind: GridFacing['kind'] = flyer.abilities.length ? 'faces' : 'even';
+    const [m, marking] = marked(x, flyer.multiplier);
+    put(x, m, kind, null, { theUnit: named(x), meets: null, itsOwnAbilities: flyer.abilities, marks: marking });
   });
   return { total, units, turned, anchored, duels: mine.duel, guarding: mine.blocking.length, free: mine.free };
 }
@@ -838,62 +826,36 @@ export function battleFacing(
   gD.face = battleFaceSide(gD, gA, E.D, E.A, terrain, false);
   return { atk: gA.face, def: gD.face };
 }
-// The ladder's stage: every matchup that moved a figure, grouped, then how many stood even.
-export function battleFacingStage(g: Pick<BattleGrid, 'face'> | null | undefined) {
-  const f = g?.face;
-  if (!f) return '';
-  const groups = new Map<string, number>();
-  let even = 0;
-  f.units.forEach((u) => {
-    if (Math.abs(u.m - 1) < 1e-9) {
-      even++;
-      return;
-    }
-    const k = `${u.why} ${ladderFm(u.m)}`;
-    groups.set(k, (groups.get(k) ?? 0) + 1);
-  });
-  const parts = [...groups].map(([k, n]) => (n > 1 ? `${k} (${String(n)} units)` : k));
-  if (even) parts.push(`${String(even)} even`);
-  return parts.join('; ');
-}
+// (The ladder's stage "who faces whom", battleFacingStage, is the prose's since plan P1-12d4: src/views/prose/.)
 // ── WHO EACH COMPANY FOUGHT (2026-10-12, Toby: the battle reports say who beat whom) ── From a faced grid, a
-// map army → the clause its fate line carries: "facing X", "shooting X over the line", "in a flank duel with
-// X", "guarding the end against X", "wrapping the line at X", "met at the end of the line by X", "riding free
-// round the flank", "fighting from the air", "in the second line", "in the reserve", "shooting at an empty
+// map army → whom it faced, for the clause its fate line carries: "facing X", "shooting X over the line", "in a flank
+// duel with X", "guarding the end against X", "wrapping the line at X", "met at the end of the line by X", "riding
+// free round the flank", "fighting from the air", "in the second line", "in the reserve", "shooting at an empty
 // column", "with nobody opposite" — X the enemy company as ownedUnitName writes it (enemyOwner is that side's
 // name). Read it right after the deploy, while the rows still carry the deploy's facing: the stay-or-retreat
-// estimate faces the survivors afresh later.
+// estimate faces the survivors afresh later. It reads the facing's kind, never its words (plan P1-12d4, P1-12's
+// Decision 8).
 export function battleFacedClauses(
   g: { readonly units?: (GridUnit | null | undefined)[] | null | undefined } | null | undefined,
   enemyOwner: string | null | undefined,
-): Map<ArmyInABattle, string> {
-  const m = new Map<ArmyInABattle, string>();
+): Map<ArmyInABattle, WhomAUnitFaced> {
+  const m = new Map<ArmyInABattle, WhomAUnitFaced>();
   if (!g || !Array.isArray(g.units)) return m;
   g.units.forEach((u) => {
     const r = u?.row,
       f = r?._faced;
     if (!u || !r?.a) return; // u is there whenever its row is
     const vs = f?.vs?.a ? ownedUnitName(enemyOwner, f.vs.a) : null;
-    let c: string | null = null;
+    let c: WhomAUnitFaced | null = null;
     if (vs && f)
       switch (f.kind) {
         case 'faces':
-          c = `facing ${vs}`;
-          break;
         case 'met':
-          c = `met at the end of the line by ${vs}`;
-          break;
         case 'wraps':
-          c = `wrapping the line at ${vs}`;
-          break;
         case 'shoots':
-          c = `shooting ${vs} over the line`;
-          break;
         case 'duel':
-          c = `in a flank duel with ${vs}`;
-          break;
         case 'guards':
-          c = `guarding the end against ${vs}`;
+          c = { kind: 'an enemy unit', how: f.kind, theEnemyUnit: vs };
           break;
         default:
           c = null;
@@ -901,18 +863,66 @@ export function battleFacedClauses(
     if (!c) {
       const k = f ? f.kind : '',
         p = u.place;
-      if (k === 'free') c = 'riding free round the flank';
-      else if (k === 'wraps') c = 'wrapping the end of the line';
-      else if (k === 'guards') c = 'guarding the end of the line';
-      else if (p === 'air' || r.fly) c = 'fighting from the air';
-      else if (p === 'reserve') c = 'in the reserve';
+      if (k === 'free') c = { kind: 'it rode free' };
+      else if (k === 'wraps') c = { kind: "it wrapped the line's end" };
+      else if (k === 'guards') c = { kind: "it guarded the line's end" };
+      else if (p === 'air' || r.fly) c = { kind: 'it fought from the air' };
+      else if (p === 'reserve') c = { kind: 'it stood in the reserve' };
       else if (p === 'second')
-        c = (f?.why ?? '').includes('empty column') ? 'shooting at an empty column' : 'in the second line';
-      else c = 'with nobody opposite';
+        c =
+          f?.why.meets?.kind === 'it shoots at an empty column'
+            ? { kind: 'it shot at an empty column' }
+            : { kind: 'it stood in the second line' };
+      else c = { kind: 'nobody stood opposite' };
     }
     m.set(r.a, c);
   });
   return m;
+}
+/** The clause a fate's line carries of whom a unit faced (battleFacedClauses). A word helper on plain values: it stays
+ *  here while a unit's disbanding is words the engine writes (disbandLine, until plan P1-12d5), and the prose imports
+ *  it (P1-12's Decision 3). */
+export function theClauseOfWhomAUnitFaced(w: WhomAUnitFaced): string {
+  switch (w.kind) {
+    case 'an enemy unit':
+      return theClauseOfHowAUnitMetAnEnemyUnit(w.how, w.theEnemyUnit);
+    case 'it rode free':
+      return 'riding free round the flank';
+    case "it wrapped the line's end":
+      return 'wrapping the end of the line';
+    case "it guarded the line's end":
+      return 'guarding the end of the line';
+    case 'it fought from the air':
+      return 'fighting from the air';
+    case 'it stood in the reserve':
+      return 'in the reserve';
+    case 'it shot at an empty column':
+      return 'shooting at an empty column';
+    case 'it stood in the second line':
+      return 'in the second line';
+    case 'nobody stood opposite':
+      return 'with nobody opposite';
+  }
+}
+/** The clause of how a unit met the enemy unit it faced, by its facing's kind. */
+function theClauseOfHowAUnitMetAnEnemyUnit(
+  how: 'faces' | 'met' | 'wraps' | 'shoots' | 'duel' | 'guards',
+  theEnemyUnit: string,
+): string {
+  switch (how) {
+    case 'faces':
+      return `facing ${theEnemyUnit}`;
+    case 'met':
+      return `met at the end of the line by ${theEnemyUnit}`;
+    case 'wraps':
+      return `wrapping the line at ${theEnemyUnit}`;
+    case 'shoots':
+      return `shooting ${theEnemyUnit} over the line`;
+    case 'duel':
+      return `in a flank duel with ${theEnemyUnit}`;
+    case 'guards':
+      return `guarding the end against ${theEnemyUnit}`;
+  }
 }
 // ── THE SCOUT'S ADVANTAGE AND THE LINE-UP (Battle lines III, 2026-10-11, Toby) ── The side that knows
 // the ground better (the higher exploration of the province; a province's own guard or garrison knows

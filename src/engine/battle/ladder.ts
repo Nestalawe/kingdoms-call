@@ -1,11 +1,21 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
-import { BATTLE_LINE_MULTS, battleFacingStage, battleGridStage, battleLineTotal, flankLineMults } from './lines.ts';
+import { BATTLE_LINE_MULTS, battleLineTotal, flankLineMults } from './lines.ts';
 import type { BattleGrid } from './lines.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { Army } from '../../schemas/saved-game-state.ts';
-import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
-import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
+import {
+  theCommandMultipliersAsTheLadderTellsThem,
+  theFacingsAsTheLadderTellsThem,
+  theForceWideModifiersAsTheLadderTellsThem,
+  theUnitsModifiersAsTheLadderTellsThem,
+  theUnitsPlacesAsTheLadderTellsThem,
+  type ACommandMultiplierOfAUnit,
+  type AForceWideModifierOfASide,
+  type AModifierOfAUnitInTheLadder,
+  type ASidesTacticalInTheLadder,
+  type TheFactOfOneOfABattlesSentences,
+} from './the-facts-a-battles-lines-record.ts';
 
 // ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
 // "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid
@@ -22,18 +32,19 @@ import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-line
 // taken off the FINISHED figure, never multiplied) → Battle lines (every unit's place) → Who faces whom
 // (each matchup, 2026-10-11) = strength.
 // Rows must have been through finishSide (runTurn). A stage that changes nothing is left out, except
-// Whole force, which always prints so the reader sees it was checked.
+// Whole force, which always prints so the reader sees it was checked. Each stage's line holds its figures and what
+// moved them, copied as the line is told; the prose names each modifier and groups them (plan P1-12d4).
 /** A unit's row in a side's ladder: ladderRow makes it, finishSide adds the whole-force stages and the damage
  *  (battle/terrain-and-unit-strength.ts). */
 export interface LadderRow {
   a: Army;
   base: number;
   fly?: boolean | undefined;
-  /** The unit's own figure (every per-unit modifier), and each modifier named. */
+  /** The unit's own figure (every per-unit modifier), and each modifier, why it moved the figure. */
   _u?: number | null | undefined;
-  _tr?: { label: string; delta?: number | null | undefined }[] | undefined;
+  _tr?: AModifierOfAUnitInTheLadder[] | undefined;
   /** The command multipliers applied, and the figure after them. */
-  _cmd?: { label: string; key?: string | undefined; m: number }[] | undefined;
+  _cmd?: ACommandMultiplierOfAUnit[] | undefined;
   _cmdS?: number | null | undefined;
   /** The figure after the whole force's multipliers, before and after the pre-battle damage, and that damage. */
   _fPre?: number | null | undefined;
@@ -41,29 +52,26 @@ export interface LadderRow {
   _dmg?: number | undefined;
 }
 export function ladderLines(
-  role: string,
+  role: 'attacker' | 'defender',
   name: string,
   rows: LadderRow[],
   width: number,
   flank: boolean,
-  forceMods: { m: number; label: string }[] | null | undefined,
+  forceMods: AForceWideModifierOfASide[] | null | undefined,
   final: number,
   opt?: {
     grid?: BattleGrid | null | undefined;
-    tact?: { mult: number; label: string } | null | undefined;
+    tact?: ASidesTacticalInTheLadder | null | undefined;
   } | null,
 ) {
   opt = opt || {};
   const nUnits = rows.length,
-    pl = (n: number, w: string) => `${n} ${w}${n !== 1 ? 's' : ''}`,
     r0 = (v: number) => Math.round(v);
   let base = 0,
     unitSum = 0,
     cmdSum = 0,
     preSum = 0,
     postSum = 0;
-  const agg = new Map<string, { label: string; n: number; d: number; delta: boolean }>(),
-    cagg = new Map<string, { label: string; key: string | undefined; n: number }>();
   rows.forEach((r) => {
     const a = r.a || {};
     base += (UNIT_BASE_STR[a.type] || 4) * (UNIT_Q_MULT[a.quality || 'Average'] || 2);
@@ -71,42 +79,22 @@ export function ladderLines(
     cmdSum += r._cmdS != null ? r._cmdS : r.base;
     preSum += r._fPre != null ? r._fPre : r.base;
     postSum += r._fPost != null ? r._fPost : r.base;
-    (r._tr || []).forEach((e) => {
-      const g = agg.get(e.label) || { label: e.label, n: 0, d: 0, delta: e.delta != null };
-      g.n++;
-      if (e.delta != null) g.d += e.delta;
-      agg.set(e.label, g);
-    });
-    (r._cmd || []).forEach((c) => {
-      const g = cagg.get(c.label) || { label: c.label, key: c.key, n: 0 };
-      g.n++;
-      cagg.set(c.label, g);
-    });
   });
-  const unitMods = [...agg.values()]
-    .filter((g) => !g.delta || Math.round(g.d) !== 0)
-    .map((g) =>
-      g.delta ? `${g.label} ${g.d >= 0 ? '+' : '−'}${Math.abs(Math.round(g.d))}` : `${g.label} (${pl(g.n, 'unit')})`,
-    );
   const lineTot = opt.grid && isFinite(opt.grid.total) ? opt.grid.total : battleLineTotal(rows, width, flank);
-  const cmd = [...cagg.values()].map((g) => `${g.label} on ${pl(g.n, g.key === 'tac' ? 'land/air unit' : 'unit')}`);
-  // Tactical never lifts fleets or sea-beasts (they take Naval) — say so whenever it leaves units
-  // out. Since 2026-09-23c it lifts flyers exactly as it lifts land units (Toby).
-  if (opt.tact && opt.tact.mult > 1) {
-    const tg = [...cagg.values()].find((g) => g.key === 'tac');
-    const left = nUnits - (tg ? tg.n : 0);
-    if (!tg) cmd.push(`${opt.tact.label} — no land or air units to command (fleets gain nothing from Tactical)`);
-    else if (left > 0) cmd.push(`fleets gain nothing from Tactical (${pl(left, 'unit')})`);
-  }
+  // The command stage is told when a unit took a command multiplier, or the side's Tactical lifts nobody or leaves
+  // units out (the prose says which), or the figure moved. Tactical never lifts fleets or sea-beasts (they take Naval);
+  // since 2026-09-23c it lifts flyers exactly as it lifts land units (Toby).
+  const tact = opt.tact && opt.tact.mult > 1 ? opt.tact : null;
+  const anyCommand = rows.some((r) => (r._cmd || []).length > 0);
   const fm = (forceMods || []).filter((x) => x && Math.abs(x.m - 1) > 1e-9);
   const hit = rows.filter((r) => (r._dmg || 0) > 1e-9);
   const ground = rows.filter((r) => !r.fly).length;
   const L: TheFactOfOneOfABattlesSentences[] = [
     {
       kind: "a side's strength ladder begins",
-      roleWords: role,
+      side: role,
       sideName: name,
-      unitsWords: pl(nUnits, 'unit'),
+      unitCount: nUnits,
       strength: r0(final),
     },
   ];
@@ -114,21 +102,23 @@ export function ladderLines(
     kind: "the strength ladder's units",
     baseStrength: r0(base),
     unitsStrength: r0(unitSum),
-    wordsIfUnitModifiers: unitMods.length ? ` (${unitMods.join('; ')})` : '',
+    theUnitsModifiers: theUnitsModifiersAsTheLadderTellsThem(rows),
   });
-  if (cmd.length || r0(cmdSum) !== r0(unitSum))
+  if (anyCommand || tact || r0(cmdSum) !== r0(unitSum))
     L.push({
       kind: "the strength ladder's command",
       unitsStrength: r0(unitSum),
       commandStrength: r0(cmdSum),
-      wordsIfCommand: cmd.length ? ` (${cmd.join('; ')})` : '',
+      theCommandMultipliers: theCommandMultipliersAsTheLadderTellsThem(rows),
+      theSidesTactical: tact ? { mult: tact.mult, reason: tact.reason } : null,
+      unitCount: nUnits,
     });
   L.push(
     fm.length
       ? {
           kind: "the strength ladder's force-wide modifiers",
           commandStrength: r0(cmdSum),
-          forceModifiersWords: fm.map((x) => `× ${x.label} ${ladderFm(x.m)}`).join(' '),
+          theForceWideModifiers: theForceWideModifiersAsTheLadderTellsThem(fm),
           wholeForceStrength: r0(preSum),
         }
       : { kind: 'the strength ladder has no force-wide modifiers', wholeForceStrength: r0(preSum) },
@@ -139,7 +129,7 @@ export function ladderLines(
       wholeForceStrength: r0(preSum),
       preBattleDamage: r0(preSum - postSum),
       afterPreBattleDamage: r0(postSum),
-      unitsHitWords: pl(hit.length, 'unit'),
+      unitsHit: hit.length,
     });
   if (opt.grid) {
     const face = opt.grid.face;
@@ -147,15 +137,16 @@ export function ladderLines(
       kind: "the strength ladder's battle lines",
       frontWidth: opt.grid.W,
       afterPreBattleDamage: r0(postSum),
-      battleLinesStrengthWords: face ? r0(lineTot) : '**' + r0(lineTot) + '**',
-      gridStageWords: battleGridStage(opt.grid),
+      battleLinesStrength: r0(lineTot),
+      whoFacesWhomFollows: Boolean(face),
+      theUnitsPlaces: theUnitsPlacesAsTheLadderTellsThem(opt.grid.units),
     });
     if (face)
       L.push({
         kind: "the strength ladder's who faces whom",
         battleLinesStrength: r0(lineTot),
         facingStrength: r0(face.total),
-        facingStageWords: battleFacingStage(opt.grid),
+        theFacings: theFacingsAsTheLadderTellsThem(face.units),
       });
   } else if (ground > width) {
     const m = flank ? flankLineMults() : BATTLE_LINE_MULTS;
@@ -163,12 +154,9 @@ export function ladderLines(
       kind: "the strength ladder's units behind the front",
       afterPreBattleDamage: r0(postSum),
       battleLinesStrength: r0(lineTot),
-      unitsBehindTheFrontWords: pl(ground - width, 'unit'),
+      unitsBehindTheFront: ground - width,
       frontWidth: width,
-      lineMultipliersWords: m
-        .slice(1)
-        .map((x) => '×' + x)
-        .join(' / '),
+      theLinesMultipliersBehindTheFront: m.slice(1),
     });
   }
   return L;

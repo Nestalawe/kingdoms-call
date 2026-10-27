@@ -28,7 +28,8 @@ import {
   missileTargetPool,
 } from '../../src/engine/battle/strength.ts';
 import { applyMissileHit, armStr } from '../../src/engine/battle/terrain-and-unit-strength.ts';
-import { ladderFm } from '../../src/engine/battle/a-multiplier-written-as-the-strength-ladder-shows-it.ts';
+import { ladderFm, theWordsOfAUnitsModifier } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
+import type { AModifierOfAUnitInTheLadder } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { TurnContext } from '../../src/engine/turn/context.ts';
 
@@ -40,11 +41,12 @@ const unit = (type: string, quality = 'Average'): ArmyInABattle => ({
   unitName: `the Test ${type}`,
 });
 const turn = { G: { players: [], characters: [] } } as unknown as TurnContext;
-/** The labels armStr names on the strength ladder of `a`, at sea, in the force given, with no hero. */
+/** The labels armStr names on the strength ladder of `a`, at sea, in the force given, with no hero (the words the
+ *  prose writes of each modifier armStr records). */
 const atSea = (a: ArmyInABattle, force: readonly ArmyInABattle[]) => {
-  const trace: { label: string }[] = [];
+  const trace: AModifierOfAUnitInTheLadder[] = [];
   armStr(turn, a, null, 'Neutral', 'sea', { force, enemyForce: [], trace });
-  return trace.map((t) => t.label).filter((l) => l.startsWith('sea terrain'));
+  return trace.map((t) => theWordsOfAUnitsModifier(t.reason)).filter((l) => l.startsWith('sea terrain'));
 };
 const THE_SEAS_PENALTY = `sea terrain ${ladderFm(0.75)}`;
 const types = (units: readonly ArmyInABattle[]) => units.map((a) => a.type);

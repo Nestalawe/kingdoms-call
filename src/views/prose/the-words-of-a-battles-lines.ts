@@ -4,6 +4,20 @@
 // `never` below) and, from an untyped caller, a throw in play.
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
+  type ACommandMultiplierInTheLadder,
+  type ACommandMultiplierOfAUnit,
+  type AFacingAsTheLadderTellsIt,
+  type AForceWideModifierInTheLadder,
+  type AModifierOfAUnitInTheLadder,
+  type ASidesTacticalInTheLadder,
+  type AUnitAsTheGridNamesIt,
+  type AUnitsModifierInTheLadder,
+  type AUnitsPlaceAsTheLadderTellsIt,
+  type WhatLiftsAUnitsQuality,
+  type WhomAUnitFaced,
+  type WhomAUnitMeets,
+  type WhyAUnitFacesAsItDoes,
+  type WhyAUnitStandsWhereItDoes,
   type AUnitTheTerrainMarks,
   type AUnitsDruidShortfall,
   type TheClausesOfAShotThatWeakensItsTarget,
@@ -13,10 +27,14 @@ import {
 import { describeArmy } from '../../engine/dice-and-army-names.ts';
 import { fortuneCdf, fortuneWinChance } from '../../engine/battle/fortune.ts';
 import { dispFloor } from '../../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
+import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import {
   UNIT_ABILITIES_THE_REGISTRY_HOLDS,
+  type AUnitAbilityAsTheBooksWriteIt,
   type UnitAbilitySlug,
 } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
+import type { AnAbilityAsTheLadderNamesIt } from '../../engine/rules/the-registry-of-content-effects.ts';
+import { theClauseOfWhomAUnitFaced } from '../../engine/battle/lines.ts';
 
 // ── THE WORDS THE ENGINE WROTE INTO A BATTLE'S FACTS, WRITTEN HERE (plan P1-12d3: P1-12's Decisions of 2026-10-26,
 // Decisions 2 to 5) ── each the same words, from the values the fact now holds; the word helpers below moved here
@@ -208,6 +226,377 @@ function theShiftsOfALine(k: number): string {
       : k === 2
         ? 'shifts the line twice'
         : `shifts the line ${String(k)} times`;
+}
+
+// ── THE WORDS OF THE STRENGTH LADDER AND THE BATTLE GRID (plan P1-12d4: P1-12's Decisions of 2026-10-26, Decisions 2,
+// 3, 5 and 8, Choice 2) ── written here from what the ladder's and the grid's lines record: each modifier's words (the
+// labels armStr, the battles and the ladder composed), each unit's short code, the ground's words, each place and
+// facing, and each ability's name from its content row. The word helpers below moved here from the engine with their
+// last engine callers (ladderFm from battle/a-multiplier-written-as-the-strength-ladder-shows-it.ts; UNIT_SHORT,
+// shortUnit, GROUND_WORDS, battleGridStage and battleFacingStage from battle/lines.ts), and the ladder's grouping of
+// its modifiers from battle/ladder.ts, which grouped them by their words.
+
+// A multiplier written as the strength ladder shows it (×1.4, ×1.375).
+export function ladderFm(v: number) {
+  let t = v.toFixed(3);
+  while (t.endsWith('0') && !/\.\d$/.test(t)) t = t.slice(0, -1);
+  return '×' + t;
+} // ×1.4, ×2.0, ×1.44, ×1.375 — exact to 3 dp so the ladder can be checked by hand
+
+/** A count and its noun, "1 unit", "3 units". */
+const pl = (n: number, w: string) => `${String(n)} ${w}${n !== 1 ? 's' : ''}`;
+
+// Short unit codes for the grid print (5 characters; a type not listed uses its first 5 letters).
+export const UNIT_SHORT: Readonly<Record<string, string | undefined>> = {
+  'Shieldwall Levies': 'Levy',
+  'Free Lances': 'FreeL',
+  'Yeoman Longbows': 'Bow',
+  'Gilded Lances': 'Gild',
+  'Noble Griffons': 'Grif',
+  'Galleon Fleet': 'Gall',
+  'Corsair Fleet': 'Cors',
+  'Human Garrison': 'Garr',
+  'Men-at-Arms': 'MaA',
+  'Elven Bowmen': 'EBow',
+  'Forest Wardens': 'Ward',
+  'Shadow Archers': 'Shad',
+  'Eagle Riders': 'Eagl',
+  'Elven Galleys': 'Gally',
+  'Elven Garrison': 'Garr',
+  'Stag Riders': 'Stag',
+  'Dwarven Guard': 'Guard',
+  'Ironwood Crossbows': 'Xbow',
+  'Mountain Guns': 'Gun',
+  'Gnomish Gyrocopters': 'Gyro',
+  'Dwarf Ironclads': 'Iron',
+  'Dwarf Garrison': 'Garr',
+  'Ironhoof Rams': 'Ram',
+  'Warg Riders': 'Warg',
+  'Orc Berserkers': 'Bers',
+  'Goblin Horde': 'Gob',
+  'Wyvern Riders': 'Wyv',
+  'Orcish Longships': 'Long',
+  'Orc Garrison': 'Garr',
+  'Black Arrows': 'BlkAr',
+  'Whale Cohort': 'Whale',
+  'Shark Shoals': 'Shark',
+  'Great Bears': 'Bear',
+  'Unicorn Herd': 'Unicn',
+  'Mammoth Host': 'Mamth',
+  'Great Turtles': 'Turtl',
+  'Stone Giants': 'Giant',
+  'Forest Ents': 'Ent',
+  Thunderbirds: 'Thund',
+  'Crimson Rocs': 'Roc',
+  'Cave Trolls': 'Troll',
+  'Manticore Pride': 'Manti',
+  'Basilisk Brood': 'Basil',
+  'Sea Giants': 'SeaGt',
+  'Eldritch Kraken': 'Krakn',
+  'Elder Dragons': 'Drago',
+  'Titan Warbeasts': 'Titan',
+  'Dread Hydras': 'Hydra',
+  'Air Elemental': 'AirEl',
+  'Fire Elemental': 'FirEl',
+  'Earth Elemental': 'ErtEl',
+  'Water Elemental': 'WatEl',
+  'Darkness Elemental': 'DrkEl',
+} satisfies Record<UnitType, string>;
+export function shortUnit(row: AUnitAsTheGridNamesIt | null | undefined) {
+  const t = (row?.a ? row.a.type : '') || (row?.name ?? '') || 'unit'; // a type or a name that is '' reads the next
+  return UNIT_SHORT[t] ?? t.replace(/[^A-Za-z]/g, '').slice(0, 5);
+}
+// The ground as the width line names it, and its verb.
+export const GROUND_WORDS: Readonly<Record<string, readonly [string, string] | undefined>> = {
+  plain: ['open ground', 'allows'],
+  desert: ['desert', 'allows'],
+  forest: ['forest', 'allows'],
+  jungle: ['jungle', 'allows'],
+  mountain: ['mountains', 'allow'],
+  sea: ['open water', 'allows'],
+};
+
+/** An ability as the strength ladder names it: its row's words in the ladder, its name with the factor its words show,
+ *  or its name (Decision 5: a line names an ability from the content). */
+export function theWordsOfAnAbilityInTheLadder(ability: AnAbilityAsTheLadderNamesIt): string {
+  const row: AUnitAbilityAsTheBooksWriteIt = UNIT_ABILITIES_THE_REGISTRY_HOLDS[ability.slug];
+  if (ability.wordsInTheLadder !== undefined) return row.wordsInTheLadder?.[ability.wordsInTheLadder] ?? row.name;
+  if (ability.factor !== undefined) return `${row.name} ×${ability.factor.toFixed(1)}`;
+  return row.name;
+}
+
+/** Each ability that moved a figure, each after ", ". */
+function theAbilitiesAfterCommas(abilities: readonly AnAbilityAsTheLadderNamesIt[]): string {
+  return abilities.map((n) => ', ' + theWordsOfAnAbilityInTheLadder(n)).join('');
+}
+
+/** Why a unit stands where it does in its grid (battleRegrid), in words. */
+export function theWordsOfWhyAUnitStandsWhereItDoes(why: WhyAUnitStandsWhereItDoes): string {
+  switch (why.kind) {
+    case 'its ability gives it its place':
+      return why.itsLine === 'front'
+        ? `${theNameOfTheAbility(why.ability.slug)} in the front line`
+        : `${theNameOfTheAbility(why.ability.slug)}: full strength from the second line`;
+    case 'a ranged unit in the front line':
+      return 'ranged in the front line';
+    case 'a unit in the front line':
+      return 'front line';
+    case 'a ranged unit shooting over its fighter':
+      return 'shooting over the ' + shortUnit(why.theFighter);
+    case 'a unit in the second line':
+      return 'second line';
+    case 'a unit in the reserve':
+      return 'reserve';
+    case 'a unit in the deep reserve':
+      return 'deep reserve';
+    case 'a rider on the flank':
+      return 'on the flank';
+    case 'a flyer in the air':
+      return 'in the air';
+    case 'a flyer in the air beyond the line':
+      return 'in the air, beyond the line';
+  }
+}
+
+/** Whom a unit meets, in words, after its own name. */
+function theWordsOfWhomAUnitMeets(meets: WhomAUnitMeets): string {
+  switch (meets.kind) {
+    case 'it faces a unit':
+      return ` v ${shortUnit(meets.theOther)}${theAbilitiesAfterCommas(meets.abilities)}`;
+    case 'it is met by a rider':
+      return ` met by ${shortUnit(meets.theOther)}${theAbilitiesAfterCommas(meets.abilities)}`;
+    case "it wraps the line's end":
+      return ' wraps the end';
+    case 'it shoots a unit':
+      return ` shoots ${shortUnit(meets.theOther)}${theAbilitiesAfterCommas(meets.abilities)}`;
+    case 'it shoots at an empty column':
+      return ' shoots at an empty column';
+    case 'it duels a rider':
+      return ` duels ${shortUnit(meets.theOther)}${theAbilitiesAfterCommas(meets.abilities)}`;
+    case "it guards the line's end":
+      return ` guards the end v ${meets.theOther ? shortUnit(meets.theOther) : 'nobody'}${theAbilitiesAfterCommas(meets.abilities)}`;
+    case 'it rides free':
+      return ' rides free';
+  }
+}
+
+/** Why a unit fights at its facing's multiplier (battleFaceSide), in words: "Levy v Bow, Halberds, hit from the side". */
+export function theWordsOfWhyAUnitFacesAsItDoes(why: WhyAUnitFacesAsItDoes): string {
+  let words = shortUnit(why.theUnit);
+  if (why.meets) words += theWordsOfWhomAUnitMeets(why.meets);
+  if (why.atAWrappedEnd)
+    words +=
+      why.atAWrappedEnd.heldBy !== null ? `, ${theNameOfTheAbility(why.atAWrappedEnd.heldBy)}` : ', hit from the side';
+  if (why.flankTurned)
+    words +=
+      why.flankTurned.byAnAbility !== null
+        ? `, flank turned (${theNameOfTheAbility(why.flankTurned.byAnAbility)})`
+        : ', flank turned';
+  words += theAbilitiesAfterCommas(why.itsOwnAbilities);
+  words += theAbilitiesAfterCommas(why.marks);
+  return words;
+}
+
+// The ladder's Battle-lines stage: every unit's place and multiplier, grouped.
+export function battleGridStage(g: { readonly units: readonly AUnitsPlaceAsTheLadderTellsIt[] }) {
+  const groups = new Map<string, string[]>();
+  g.units.forEach((u) => {
+    const k = `${u.place} ×${String(u.mult)}`;
+    const group = groups.get(k);
+    if (group) group.push(shortUnit(u.row));
+    else groups.set(k, [shortUnit(u.row)]);
+  });
+  return [...groups].map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ');
+}
+
+// The ladder's stage: every matchup that moved a figure, grouped, then how many stood even.
+export function battleFacingStage(
+  g: { readonly face?: { readonly units: readonly AFacingAsTheLadderTellsIt[] } | null | undefined } | null | undefined,
+) {
+  const f = g?.face;
+  if (!f) return '';
+  const groups = new Map<string, number>();
+  let even = 0;
+  f.units.forEach((u) => {
+    if (Math.abs(u.m - 1) < 1e-9) {
+      even++;
+      return;
+    }
+    const k = `${theWordsOfWhyAUnitFacesAsItDoes(u.why)} ${ladderFm(u.m)}`;
+    groups.set(k, (groups.get(k) ?? 0) + 1);
+  });
+  const parts = [...groups].map(([k, n]) => (n > 1 ? `${k} (${String(n)} units)` : k));
+  if (even) parts.push(`${String(even)} even`);
+  return parts.join('; ');
+}
+
+/** What lifts a unit's quality, as the ladder's units stage names it. */
+const WHAT_LIFTS_A_UNITS_QUALITY: Readonly<Record<WhatLiftsAUnitsQuality, string>> = {
+  oratory: 'Oratory',
+  druid: 'Druid mastery',
+  necromancy: 'Necromantic mastery',
+  tactical: 'Tactical mastery',
+  'war-drum': 'War Drum',
+};
+
+/** A modifier of a unit's own figure, as the ladder's units stage names it. */
+export function theWordsOfAUnitsModifier(reason: AUnitsModifierInTheLadder): string {
+  switch (reason.kind) {
+    case 'it fights at another quality':
+      return `fights as ${reason.quality}${reason.liftedBy.length ? ` (${reason.liftedBy.map((w) => WHAT_LIFTS_A_UNITS_QUALITY[w]).join(' + ')})` : ''}`;
+    case "its commander's Druid falls short":
+      return `Druid shortfall ${ladderFm(reason.multiplier)}`;
+    case 'its kin':
+      return `kinship ${reason.bothTheKingsAndTheLeaders ? '×1.44' : '×1.2'}`;
+    case 'a racial animosity':
+      return 'racial animosity ×0.8';
+    case 'the ground':
+      return `${reason.terrain} terrain ${ladderFm(reason.multiplier)}`;
+    case 'elven woodland mastery':
+      return 'Elven Woodland Mastery ×1.5';
+    case 'the dwarven bulwark':
+      return 'Dwarven Bulwark ×1.5';
+    case 'the standing stones':
+      return 'Standing Stones ×1.25';
+    case "the realm's unit discoveries":
+      return `realm unit discoveries ${ladderFm(reason.multiplier)}`;
+    case 'terror':
+      return `Terror ${ladderFm(reason.multiplier)}`;
+    case 'the reign of fear':
+      return `Reign of Fear ${ladderFm(reason.multiplier)}`;
+    case 'the pre-battle volleys and spells':
+      return 'pre-battle volleys & spells';
+    case 'phantasmal armies':
+      return `Phantasmal Armies ${ladderFm(reason.multiplier)}`;
+    case "the commander's magic items":
+      return "commander's magic items";
+    case "the unit's ability":
+      return `${reason.unitType} ability ${ladderFm(reason.multiplier)}`;
+    case 'the home of the wild':
+      return 'Home of the Wild ×1.5';
+    case "the commander's druid mastery":
+      return `Druid mastery ×${reason.multiplier.toFixed(1)}`;
+    case "a naturalist's or beastmaster's title":
+      return 'Naturalist/Beastmaster title ×1.05';
+    case "a cavalier's title":
+      return 'Cavalier title ×1.05';
+    case "an ironclad's title":
+      return 'Ironclad title ×1.05';
+  }
+}
+
+/** The units stage's modifiers, each named once with the units it reached (or the strength it added or took), in the
+ *  order the units first met them: " (kinship ×1.2 (3 units); forest terrain ×0.75 (2 units))", or nothing. */
+function theWordsOfTheUnitsModifiers(modifiers: readonly AModifierOfAUnitInTheLadder[]): string {
+  const agg = new Map<string, { label: string; n: number; d: number; delta: boolean }>();
+  modifiers.forEach((e) => {
+    const label = theWordsOfAUnitsModifier(e.reason);
+    const g = agg.get(label) ?? { label, n: 0, d: 0, delta: e.delta != null };
+    g.n++;
+    if (e.delta != null) g.d += e.delta;
+    agg.set(label, g);
+  });
+  const unitMods = [...agg.values()]
+    .filter((g) => !g.delta || Math.round(g.d) !== 0)
+    .map((g) =>
+      g.delta
+        ? `${g.label} ${g.d >= 0 ? '+' : '−'}${String(Math.abs(Math.round(g.d)))}`
+        : `${g.label} (${pl(g.n, 'unit')})`,
+    );
+  return unitMods.length ? ` (${unitMods.join('; ')})` : '';
+}
+
+/** A command multiplier, as the ladder's command stage names it. */
+export function theWordsOfACommandMultiplier(reason: ACommandMultiplierInTheLadder): string {
+  switch (reason.kind) {
+    case 'archery':
+      return `Archery ${String(reason.level)} ${ladderFm(reason.multiplier)}`;
+    case 'naval':
+      return `Naval ${String(reason.level)} ${ladderFm(reason.multiplier)}`;
+    case 'tactical':
+      return `Tactical ${ladderFm(reason.multiplier)}`;
+    case 'tactical at its level':
+      return `Tactical ${String(reason.level)} ${ladderFm(reason.multiplier)}`;
+    case 'illusory terrain':
+      return `illusory terrain ${ladderFm(reason.multiplier)}`;
+  }
+}
+
+/** The command stage's multipliers, each named once with the units it reached, and what the side's Tactical left out:
+ *  " (Tactical ×1.2 on 3 land/air units; fleets gain nothing from Tactical (1 unit))", or nothing. */
+function theWordsOfTheCommand(
+  multipliers: readonly ACommandMultiplierOfAUnit[],
+  tact: ASidesTacticalInTheLadder | null,
+  nUnits: number,
+): string {
+  const cagg = new Map<string, { label: string; key: string | undefined; n: number }>();
+  multipliers.forEach((c) => {
+    const label = theWordsOfACommandMultiplier(c.reason);
+    const g = cagg.get(label) ?? { label, key: c.key, n: 0 };
+    g.n++;
+    cagg.set(label, g);
+  });
+  const cmd = [...cagg.values()].map((g) => `${g.label} on ${pl(g.n, g.key === 'tac' ? 'land/air unit' : 'unit')}`);
+  // Tactical never lifts fleets or sea-beasts (they take Naval) — say so whenever it leaves units
+  // out. Since 2026-09-23c it lifts flyers exactly as it lifts land units (Toby).
+  if (tact && tact.mult > 1) {
+    const tg = [...cagg.values()].find((g) => g.key === 'tac');
+    const left = nUnits - (tg ? tg.n : 0);
+    if (!tg)
+      cmd.push(
+        `${theWordsOfACommandMultiplier(tact.reason)} — no land or air units to command (fleets gain nothing from Tactical)`,
+      );
+    else if (left > 0) cmd.push(`fleets gain nothing from Tactical (${pl(left, 'unit')})`);
+  }
+  return cmd.length ? ` (${cmd.join('; ')})` : '';
+}
+
+/** A multiplier of the whole force, as the ladder names it. */
+const A_FORCE_WIDE_MODIFIERS_WORDS: Readonly<Record<AForceWideModifierInTheLadder, string>> = {
+  morale: 'morale',
+  orders: 'orders',
+  'home-ground': 'home ground',
+  fanaticism: 'fanaticism',
+  discoveries: 'discoveries',
+  'consecrated-ground': 'consecrated ground',
+  'defenders-position': "defender's position",
+  home: 'home',
+  'duel-morale': 'duel morale',
+  'sanctuary-wards': 'sanctuary wards',
+};
+
+/** A side's name as its grid lines show it: its first word, eight wide. */
+function theSideAsTheGridShowsIt(label: string | null | undefined): string {
+  const firstWord = (label ?? '').split(/\s+/)[0] ?? ''; // split gives one word at least
+  return firstWord.slice(0, 8).padEnd(8);
+}
+
+/** A unit as its fate's line names it: its reference, then whom it faced, between commas. */
+function aUnitAndWhomItFaced(reference: string, whomItFaced: WhomAUnitFaced | null): string {
+  return reference + (whomItFaced ? `, ${theClauseOfWhomAUnitFaced(whomItFaced)},` : '');
+}
+
+/** A grid's place, five wide: the unit's short code, or "·" for an empty place. */
+function aCellOfTheGrid(x: AUnitAsTheGridNamesIt | null | undefined): string {
+  return (x ? shortUnit(x) : '·').padEnd(5).slice(0, 5);
+}
+
+/** What a side's front line holds beside its places: its flanks, its flyers and its reserve, or nothing. */
+function theFlanksTheAirAndTheReserve(
+  flanks: readonly AUnitAsTheGridNamesIt[],
+  air: readonly AUnitAsTheGridNamesIt[],
+  reserve: readonly AUnitAsTheGridNamesIt[],
+): string {
+  const extras: string[] = [];
+  if (flanks.length) extras.push('flanks: ' + flanks.map((x) => shortUnit(x)).join(', '));
+  if (air.length) extras.push('air: ' + air.map((x) => shortUnit(x)).join(', '));
+  if (reserve.length) extras.push('reserve: ' + reserve.map((x) => shortUnit(x)).join(', '));
+  return extras.length ? ' ' + extras.join(' · ') : '';
+}
+
+/** The ground's words and verb on the width line: a ground the table doesn't name reads as itself, or "ground". */
+function theGroundAndItsVerb(terrain: string): readonly [string, string] {
+  return GROUND_WORDS[terrain] ?? [terrain || 'ground', 'allows'];
 }
 
 /** The words of one fact of a battle's lines. */
@@ -543,7 +932,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the attacker's free lances ride down the defenders' broken companies":
       return `🐎 ${fact.cName}'s Free Lances ride down the broken companies across open ground (+${String(fact.extraLossesPct)}% losses).`;
     case 'a defending unit is destroyed in the rout':
-      return `— ${fact.defendingUnitName}${fact.facedClauseWords} were destroyed in the rout!`;
+      return `— ${fact.defendingUnitName}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the rout!`;
     case 'the defenders have nowhere to retreat and hold a shield fort':
       return `🛡 ${theNameOfTheAbility('shield-fort')} — the defenders of ${fact.provName} have nowhere to retreat, so they lock shields where they stand. None are cut down.`;
     case 'the defenders have nowhere to retreat and take further losses':
@@ -551,7 +940,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the attacker is repelled by the defenders':
       return `${fact.cName}'s forces are repelled! After ${aAn(fact.severity)} ${fact.severity} engagement (margin ${theMarginInPercent(fact.margRatio)}%), ${fact.defName2} hold their ground — ${fact.aPlayersGarrison ? (fact.atSea ? 'the garrison holds these waters!' : 'the garrison holds its walls!') : 'neutral defenders never retreat!'}`;
     case 'a defending unit is destroyed in the fighting':
-      return `— ${fact.defendingUnitName}${fact.facedClauseWords} were destroyed in the fighting.`;
+      return `— ${fact.defendingUnitName}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the fighting.`;
     case "the guard's host is destroyed and he is a masterless hero":
       return `— but every soldier of ${fact.guardName}'s band lies dead. With no host left to command, they are ${fact.provName}'s guardian no more — a masterless hero now.`;
     case "the attacker's dwarven guard leave the defenders' free lances no broken backs":
@@ -581,19 +970,19 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'terror lingers in a province and its defenders fight demoralised':
       return `💀 Terror lingers in ${fact.provName} — defenders fight at −${String(fact.terrorPct)}% strength (${String(fact.terrorStacks)} terror stack${fact.terrorStacks !== 1 ? 's' : ''} from earlier Evil victories nearby).`;
     case 'a unit is cut down and rises again by its regenerating hide':
-      return `— ${fact.unitReference} are cut down — and rise again, the ${theNameOfTheAbility('regenerating-hide')} knitting flesh as they stagger clear.`;
+      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} are cut down — and rise again, the ${theNameOfTheAbility('regenerating-hide')} knitting flesh as they stagger clear.`;
     case 'a unit dies in the battle':
-      return `— ${fact.unitReference} ${fact.diedVerb ?? (fact.itsSideWon ? 'were destroyed in the fighting.' : 'were destroyed in the rout!')}${fact.itsBonesCrumble ? ' Their bones crumble to dust — gone forever.' : ''}`;
+      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} ${fact.diedVerb ?? (fact.itsSideWon ? 'were destroyed in the fighting.' : 'were destroyed in the rout!')}${fact.itsBonesCrumble ? ' Their bones crumble to dust — gone forever.' : ''}`;
     case 'a unit is promoted after the battle':
-      return `— ${fact.unitReferenceAtItsOldQuality} ${fact.promoteVerb ?? 'earn promotion to'} ${fact.unitQuality}!`;
+      return `— ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} ${fact.promoteVerb ?? 'earn promotion to'} ${fact.unitQuality}!`;
     case 'a unit falls back behind the shield wall in good order':
-      return `— ${fact.unitReference} fall back behind the shield wall in good order.`;
+      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} fall back behind the shield wall in good order.`;
     case 'a unit keeps its nerve under the knightly example':
-      return `— ${fact.unitReference} keep their nerve under the ${theNameOfTheAbility('knightly-example')} of the Gilded Lances and lose nothing in defeat.`;
+      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} keep their nerve under the ${theNameOfTheAbility('knightly-example')} of the Gilded Lances and lose nothing in defeat.`;
     case 'a unit loses heart in defeat and is reduced a tier':
-      return `— ${fact.unitReferenceAtItsOldQuality} lost heart in defeat, reduced to ${fact.unitQuality}.`;
+      return `— ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} lost heart in defeat, reduced to ${fact.unitQuality}.`;
     case 'a unit improves a tier despite defeat':
-      return `— Despite defeat, ${fact.unitReferenceAtItsOldQuality} improved to ${fact.unitQuality}!`;
+      return `— Despite defeat, ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} improved to ${fact.unitQuality}!`;
     case "a hero not at war with the province's realm gains a host inside it":
       return `👁 ${fact.cName}${fact.realmTag} now leads ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''} inside your province of ${fact.provName}, but makes no move against it — ${fact.theRealmsAreAllied ? 'your realms are allied' : 'your realms are not at war'}. ${fact.provName2} remains yours.`;
     case "a hero's new host is still forming up in a province":
@@ -641,29 +1030,29 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a beaten guard's surviving unit holds its ground unbroken":
       return `— ${fact.unitName} hold their ground unbroken${fact.victorsHost ? ` against ${fact.victorsHost}` : ''} and rally around ${fact.guardName}.`;
     case "a side's strength ladder begins":
-      return `  ${fact.roleWords} (${fact.sideName}): ${fact.unitsWords} — strength **${String(fact.strength)}**`;
+      return `  ${fact.side === 'attacker' ? 'Attacker' : 'Defender'} (${fact.sideName}): ${pl(fact.unitCount, 'unit')} — strength **${String(fact.strength)}**`;
     case "the strength ladder's units":
-      return `    · Units: base ${String(fact.baseStrength)} → ${String(fact.unitsStrength)}${fact.wordsIfUnitModifiers}`;
+      return `    · Units: base ${String(fact.baseStrength)} → ${String(fact.unitsStrength)}${theWordsOfTheUnitsModifiers(fact.theUnitsModifiers)}`;
     case "the strength ladder's command":
-      return `    · Command: ${String(fact.unitsStrength)} → ${String(fact.commandStrength)}${fact.wordsIfCommand}`;
+      return `    · Command: ${String(fact.unitsStrength)} → ${String(fact.commandStrength)}${theWordsOfTheCommand(fact.theCommandMultipliers, fact.theSidesTactical, fact.unitCount)}`;
     case "the strength ladder's force-wide modifiers":
-      return `    · Whole force: ${String(fact.commandStrength)} ${fact.forceModifiersWords} = ${String(fact.wholeForceStrength)}`;
+      return `    · Whole force: ${String(fact.commandStrength)} ${fact.theForceWideModifiers.map((x) => `× ${A_FORCE_WIDE_MODIFIERS_WORDS[x.reason]} ${ladderFm(x.m)}`).join(' ')} = ${String(fact.wholeForceStrength)}`;
     case 'the strength ladder has no force-wide modifiers':
       return `    · Whole force: no force-wide modifiers — ${String(fact.wholeForceStrength)}`;
     case "the strength ladder's pre-battle damage":
-      return `    · Pre-battle volleys & spells: ${String(fact.wholeForceStrength)} − ${String(fact.preBattleDamage)} = ${String(fact.afterPreBattleDamage)} (${fact.unitsHitWords} hit; taken off the finished figures)`;
+      return `    · Pre-battle volleys & spells: ${String(fact.wholeForceStrength)} − ${String(fact.preBattleDamage)} = ${String(fact.afterPreBattleDamage)} (${pl(fact.unitsHit, 'unit')} hit; taken off the finished figures)`;
     case "the strength ladder's battle lines":
-      return `    · Battle lines (front of ${String(fact.frontWidth)}): ${String(fact.afterPreBattleDamage)} → ${String(fact.battleLinesStrengthWords)} (${fact.gridStageWords})`;
+      return `    · Battle lines (front of ${String(fact.frontWidth)}): ${String(fact.afterPreBattleDamage)} → ${fact.whoFacesWhomFollows ? String(fact.battleLinesStrength) : '**' + String(fact.battleLinesStrength) + '**'} (${battleGridStage({ units: fact.theUnitsPlaces })})`;
     case "the strength ladder's who faces whom":
-      return `    · Who faces whom: ${String(fact.battleLinesStrength)} → **${String(fact.facingStrength)}** (${fact.facingStageWords})`;
+      return `    · Who faces whom: ${String(fact.battleLinesStrength)} → **${String(fact.facingStrength)}** (${battleFacingStage({ face: { units: fact.theFacings } })})`;
     case "the strength ladder's units behind the front":
-      return `    · Battle lines: ${String(fact.afterPreBattleDamage)} → **${String(fact.battleLinesStrength)}** (${String(fact.unitsBehindTheFrontWords)} behind the ${String(fact.frontWidth)}-unit front at ${String(fact.lineMultipliersWords)})`;
+      return `    · Battle lines: ${String(fact.afterPreBattleDamage)} → **${String(fact.battleLinesStrength)}** (${pl(fact.unitsBehindTheFront, 'unit')} behind the ${String(fact.frontWidth)}-unit front at ${fact.theLinesMultipliersBehindTheFront.map((x) => '×' + String(x)).join(' / ')})`;
     case 'the ground allows a front of a width':
-      return `📊 Battle lines — the ${fact.groundWords} ${fact.allowsWord} a front of ${String(fact.frontWidth)}.`;
+      return `📊 Battle lines — the ${theGroundAndItsVerb(fact.terrain)[0]} ${theGroundAndItsVerb(fact.terrain)[1]} a front of ${String(fact.frontWidth)}.`;
     case "a side's front line in the battle grid":
-      return `📊 ${fact.sideLabel} 1st │ ${fact.frontLineCells} │${fact.wordsIfFlanksAirOrReserve}`;
+      return `📊 ${theSideAsTheGridShowsIt(fact.sideName)} 1st │ ${fact.theFrontLine.map(aCellOfTheGrid).join(' ')} │${theFlanksTheAirAndTheReserve(fact.theFlanks, fact.theAir, fact.theReserve)}`;
     case "a side's second line in the battle grid":
-      return `📊 ${fact.sideLabel} 2nd │ ${fact.secondLineCells} │`;
+      return `📊 ${theSideAsTheGridShowsIt(fact.sideName)} 2nd │ ${fact.theSecondLine.map(aCellOfTheGrid).join(' ')} │`;
     case 'the scouting side chooses the front':
       return `📊 Scouting — ${fact.scoutName} ${whyItScouts(fact.itsSideHasExploredMore, fact.scoutName, fact.otherSideName)}: ${fact.scoutName2} ${whatItDoesWithTheFront(fact.frontWidth, fact.frontTheDiceAllow)} and lines up second${fact.adjustments ? ` (${String(fact.adjustments)} ${fact.adjustments === 1 ? 'adjustment' : 'adjustments'})` : ''}.`;
     case 'each side shifts its battle line':

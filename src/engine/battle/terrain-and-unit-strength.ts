@@ -1,7 +1,6 @@
 import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
-import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import {
   AERIAL_TYPES,
   CREATURE_ARMIES,
@@ -34,7 +33,12 @@ import type { TurnContext } from '../turn/context.ts';
 import type { ArmyInABattle, HeroInABattle } from '../army-tables.ts';
 import type { UnitAbilityContext } from './strength.ts';
 import type { BattleGrid, BattleGridOptions } from './lines.ts';
-import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
+import type {
+  ACommandMultiplierInTheLadder,
+  AModifierOfAUnitInTheLadder,
+  TheFactOfOneOfABattlesSentences,
+  WhatLiftsAUnitsQuality,
+} from './the-facts-a-battles-lines-record.ts';
 /** A unit of a force as the battle code hands it. */
 type ForceUnit = ArmyInABattle | null | undefined;
 /** The state as provIsCoastal reads it: its guard on a missing world stays. */
@@ -47,14 +51,14 @@ interface AnItemAsArmStrReadsIt {
 }
 /** What a caller tells armStr of the battle: unitAbilityMult's fields and armStr's own. */
 export interface ArmStrContext extends UnitAbilityContext {
-  readonly trace?: { label: string; delta?: number }[] | null;
+  readonly trace?: AModifierOfAUnitInTheLadder[] | null;
   readonly ownerRace?: string | null;
   readonly ownerPi?: number | null;
   readonly reignOfFear?: boolean | null;
 }
-/** A command-stage multiplier as the battles hand ladderRow. */
+/** A command-stage multiplier as the battles hand ladderRow: why (as the ladder names it), its kind, the multiplier. */
 export interface CommandMultiplier {
-  label: string;
+  reason: ACommandMultiplierInTheLadder;
   key?: string;
   m: number;
 }
@@ -540,7 +544,8 @@ export function armStr(
   const ARMY_STR = UNIT_BASE_STR; // alias → master (was a stale 6th copy of the strength table)
   const Q_MULT = UNIT_Q_MULT; // alias → master
   // Strength-ladder trace (2026-09-23b): when the caller passes ctx.trace, every per-unit modifier
-  // that fires is named there. Recording only — never changes the figure.
+  // that fires is recorded there, by why it fired (the prose names it: plan P1-12d4). Recording only — never changes
+  // the figure.
   const _tr = ctx && Array.isArray(ctx.trace) ? ctx.trace : null;
   // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier
   // higher.
@@ -564,18 +569,18 @@ export function armStr(
     effQuality = Q_UP[effQuality] ?? effQuality;
   } // TACTICAL L6 / War Drum: fight one tier higher (rolled ONCE per battle at battle start)
   if (_tr && effQuality !== (army.quality || 'Average')) {
-    const _w: string[] = [];
-    if (heroChar?._oratoryBoost) _w.push('Oratory');
+    const _w: WhatLiftsAUnitsQuality[] = [];
+    if (heroChar?._oratoryBoost) _w.push('oratory');
     if (
       heroChar &&
       perkTier(heroChar, 'druid') >= 3 &&
       (CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type))
     )
-      _w.push('Druid mastery');
-    if (heroChar && army._isSkeletal && perkTier(heroChar, 'necromancy') >= 1) _w.push('Necromantic mastery');
-    if (army._tacUp) _w.push('Tactical mastery');
-    if (army._drumUp) _w.push('War Drum');
-    _tr.push({ label: `fights as ${effQuality}${_w.length ? ` (${_w.join(' + ')})` : ''}` });
+      _w.push('druid');
+    if (heroChar && army._isSkeletal && perkTier(heroChar, 'necromancy') >= 1) _w.push('necromancy');
+    if (army._tacUp) _w.push('tactical');
+    if (army._drumUp) _w.push('war-drum');
+    _tr.push({ reason: { kind: 'it fights at another quality', quality: effQuality, liftedBy: _w } });
   }
   const baseStr = (ARMY_STR[army.type] ?? 4) * (Q_MULT[effQuality] ?? 2);
   // Apply Druid penalty
@@ -584,7 +589,7 @@ export function armStr(
     const penalty = druIdPenaltyMult(heroChar, army, playerAlignment, dragonTamed(turnContext, heroChar, army));
     if (penalty < 1) {
       str = Math.floor(str * penalty);
-      if (_tr) _tr.push({ label: `Druid shortfall ${ladderFm(penalty)}` });
+      if (_tr) _tr.push({ reason: { kind: "its commander's Druid falls short", multiplier: penalty } });
     }
   }
   // ── RACE CONTEXT (computed once for all race modifiers) ── _unitRace: the army's kin.
@@ -602,7 +607,7 @@ export function armStr(
     if (_leaderRace && _unitRace === _leaderRace) str = Math.round(str * 1.2); // leader's-race affinity
     if (_tr) {
       const _k = (_ownerRace && _unitRace === _ownerRace ? 1 : 0) + (_leaderRace && _unitRace === _leaderRace ? 1 : 0);
-      if (_k) _tr.push({ label: `kinship ${_k === 2 ? '×1.44' : '×1.2'}` });
+      if (_k) _tr.push({ reason: { kind: 'its kin', bothTheKingsAndTheLeaders: _k === 2 } });
     }
   }
   // ── RACIAL ANIMOSITY ── Elves & Dwarves, and Humans & Orcs, bear an ancient grudge: an army
@@ -611,7 +616,7 @@ export function armStr(
     const _RIVAL_RACE: Record<string, string | undefined> = { ...KC_RIVAL_RACE };
     if (_RIVAL_RACE[_unitRace] === _leaderRace) {
       str = Math.round(str * 0.8);
-      if (_tr) _tr.push({ label: 'racial animosity ×0.8' });
+      if (_tr) _tr.push({ reason: { kind: 'a racial animosity' } });
     }
   }
   // Apply terrain modifier
@@ -654,19 +659,19 @@ export function armStr(
     // commanders and has been removed.)
     str = Math.floor(str * terrainMultFinal);
     if (_tr && Math.abs(terrainMultFinal - 1) > 1e-9)
-      _tr.push({ label: `${terrain} terrain ${ladderFm(terrainMultFinal)}` });
+      _tr.push({ reason: { kind: 'the ground', terrain, multiplier: terrainMultFinal } });
   }
   // ── ELVEN WOODLAND MASTERY ── Elven armies of an Elven realm fight +50% in forest and jungle —
   // their home ground. (Raised from +20% this session.)
   if (_unitRace === 'Elven' && _ownerRace === 'Elven' && (terrain === 'forest' || terrain === 'jungle')) {
     str = Math.round(str * 1.5);
-    if (_tr) _tr.push({ label: 'Elven Woodland Mastery ×1.5' });
+    if (_tr) _tr.push({ reason: { kind: 'elven woodland mastery' } });
   }
   // ── DWARVEN BULWARK ── Dwarven armies of a Dwarven realm defend at ×1.5 in any battle
   // (per-unit; applies only on the defending side).
   if (_unitRace === 'Dwarven' && _ownerRace === 'Dwarven' && ctx?.isAttacker === false) {
     str = Math.round(str * 1.5);
-    if (_tr) _tr.push({ label: 'Dwarven Bulwark ×1.5' });
+    if (_tr) _tr.push({ reason: { kind: 'the dwarven bulwark' } });
   }
   // GRAND DESIGN — Pagan (Standing Stones). 2026-09-14: keyed on the DEFENDING REALM, not on a
   // hero being present, so an unled garrison holding forest, jungle or mountain gets the same
@@ -680,7 +685,7 @@ export function armStr(
       (terrain === 'forest' || terrain === 'jungle' || terrain === 'mountain')
     ) {
       str = Math.round(str * 1.25);
-      if (_tr) _tr.push({ label: 'Standing Stones ×1.25' });
+      if (_tr) _tr.push({ reason: { kind: 'the standing stones' } });
     }
   }
   // race / alignment `unitStr` discoveries (per unit; owner = leader's realm, or the garrison's
@@ -691,7 +696,7 @@ export function armStr(
       const _dm = discUnitMult(turnContext, _dpi, army, terrain, ctx, heroChar);
       if (_dm !== 1) {
         str = Math.round(str * _dm);
-        if (_tr) _tr.push({ label: `realm unit discoveries ${ladderFm(_dm)}` });
+        if (_tr) _tr.push({ reason: { kind: "the realm's unit discoveries", multiplier: _dm } });
       }
     }
   }
@@ -700,13 +705,13 @@ export function armStr(
   // would have shrunk below the advertised −10%/stack, so it is applied here as the multiplier it is.
   if (army._terrorMult != null && army._terrorMult < 1) {
     str = Math.round(str * army._terrorMult);
-    if (_tr) _tr.push({ label: `Terror ${ladderFm(army._terrorMult)}` });
+    if (_tr) _tr.push({ reason: { kind: 'terror', multiplier: army._terrorMult } });
   }
   // REIGN OF FEAR (2026-10-13): an Evil realm's Monsters on ground its own Terror still grips (ctx.reignOfFear,
   // read at the call site before the Terror is consumed). 2026-10-12 (Toby): only when they ATTACK there.
   if (ctx && ctx.reignOfFear && ctx.isAttacker && playerAlignment === 'Evil' && MONSTER_ARMIES.has(army.type)) {
     str = Math.round(str * REIGN_OF_FEAR_MULT);
-    if (_tr) _tr.push({ label: `Reign of Fear ${ladderFm(REIGN_OF_FEAR_MULT)}` });
+    if (_tr) _tr.push({ reason: { kind: 'the reign of fear', multiplier: REIGN_OF_FEAR_MULT } });
   }
   // PRE-BATTLE DAMAGE (arrows, battle magic, primal strikes, flak). 2026-09-24 (Toby): in a battle
   // the ladder calls armStr with opts.deferDamage and subtracts the damage in ladderRow AFTER every
@@ -716,12 +721,13 @@ export function armStr(
   if (!opts?.deferDamage) {
     const _preTemp = str;
     str = applyPrebattleDamage(army, str);
-    if (_tr && str !== _preTemp) _tr.push({ label: 'pre-battle volleys & spells', delta: str - _preTemp });
+    if (_tr && str !== _preTemp)
+      _tr.push({ reason: { kind: 'the pre-battle volleys and spells' }, delta: str - _preTemp });
   }
   // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
   if (heroChar?._phantasmalBonus) {
     str = Math.round(str * (1 + heroChar._phantasmalBonus));
-    if (_tr) _tr.push({ label: `Phantasmal Armies ${ladderFm(1 + heroChar._phantasmalBonus)}` });
+    if (_tr) _tr.push({ reason: { kind: 'phantasmal armies', multiplier: 1 + heroChar._phantasmalBonus } });
   }
   // Magic-item army bonuses carried by the leading commander.
   const _preItems = str;
@@ -756,12 +762,12 @@ export function armStr(
     if (hasItemBase(heroChar, 'Chalice of Dawn') && playerAlignment === 'Divine') str = Math.round(str * 1.15); // Chalice of Dawn: a Divine realm's armies +15%
     if (has('undeadBonus') && army._isSkeletal) str += 4; // Black Sceptre
   }
-  if (_tr && str !== _preItems) _tr.push({ label: "commander's magic items", delta: str - _preItems });
+  if (_tr && str !== _preItems) _tr.push({ reason: { kind: "the commander's magic items" }, delta: str - _preItems });
   // ── UNIT ABILITIES (force composition) ──
   const abilityM = unitAbilityMult(army, ctx, terrain);
   if (abilityM !== 1) {
     str = Math.round(str * abilityM);
-    if (_tr) _tr.push({ label: `${army.type} ability ${ladderFm(abilityM)}` });
+    if (_tr) _tr.push({ reason: { kind: "the unit's ability", unitType: army.type, multiplier: abilityM } });
   }
   // DRUIDIC — Home of the Wild: Creature armies of a Druidic realm fight ×1.5 in forest and
   // jungle (the long-advertised bonus, previously described but never implemented).
@@ -771,7 +777,7 @@ export function armStr(
     CREATURE_ARMIES.has(army.type)
   ) {
     str = Math.round(str * 1.5);
-    if (_tr) _tr.push({ label: 'Home of the Wild ×1.5' });
+    if (_tr) _tr.push({ reason: { kind: 'the home of the wild' } });
   }
   // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies
   // +5%.
@@ -792,7 +798,7 @@ export function armStr(
     const _dm = druidMasteryGain(turnContext, heroChar, army, playerAlignment);
     if (_dm.gain > 0) {
       str = Math.round(str * (1 + _dm.gain));
-      if (_tr) _tr.push({ label: `Druid mastery ×${(1 + _dm.gain).toFixed(1)}` });
+      if (_tr) _tr.push({ reason: { kind: "the commander's druid mastery", multiplier: 1 + _dm.gain } });
     }
   }
   // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%;
@@ -801,22 +807,22 @@ export function armStr(
     const _prim = CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type);
     if (_prim && (charMinor(turnContext, heroChar, 'naturalist') || charMinor(turnContext, heroChar, 'beastmaster'))) {
       str = Math.round(str * 1.05);
-      if (_tr) _tr.push({ label: 'Naturalist/Beastmaster title ×1.05' });
+      if (_tr) _tr.push({ reason: { kind: "a naturalist's or beastmaster's title" } });
     }
     if (charMinor(turnContext, heroChar, 'cavalier') && MINOR_CAV.has(army.type)) {
       str = Math.round(str * 1.05);
-      if (_tr) _tr.push({ label: 'Cavalier title ×1.05' });
+      if (_tr) _tr.push({ reason: { kind: "a cavalier's title" } });
     }
     if (charMinor(turnContext, heroChar, 'ironclad') && MINOR_HEAVY.has(army.type)) {
       str = Math.round(str * 1.05);
-      if (_tr) _tr.push({ label: 'Ironclad title ×1.05' });
+      if (_tr) _tr.push({ reason: { kind: "an ironclad's title" } });
     }
   }
   // Evil Terror: province was terrorised last turn — defending armies -10%
   // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)
   return str;
 }
-// One battle row for the strength ladder: `_u` = the unit's armStr (every per-unit modifier, named
+// One battle row for the strength ladder: `_u` = the unit's armStr (every per-unit modifier, recorded
 // in `_tr`), `_cmd` = the command-stage multipliers that actually applied to it, `base` = the
 // unit's FINAL per-unit strength fed to battleLineTotal. The battle sites build their rows with
 // this, so the ladder and the real total are the same numbers. ctx must be a real object (a bare
@@ -833,7 +839,7 @@ export function ladderRow(
   ctx: ArmStrContext | null | undefined,
   cmd: readonly (CommandMultiplier | null | undefined)[] | null | undefined,
 ) {
-  const tr: { label: string; delta?: number }[] = [];
+  const tr: AModifierOfAUnitInTheLadder[] = [];
   const u = ctx
     ? armStr(turnContext, a, hero, align, terrain, Object.assign({}, ctx, { trace: tr }), { deferDamage: true })
     : armStr(turnContext, a, hero, align, terrain, undefined, { deferDamage: true });

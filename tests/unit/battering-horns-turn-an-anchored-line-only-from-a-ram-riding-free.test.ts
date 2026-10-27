@@ -11,6 +11,7 @@
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import { battleFacing, battleGrid, type AFacedSide, type BattleGrid } from '../../src/engine/battle/lines.ts';
+import { theWordsOfWhyAUnitFacesAsItDoes } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
 
 // The units' base strengths, as `abilities-dwarven` gives them: the Ram (12) is stronger than a Free Lance (10), so it
 // takes the first flank slot, which is the one that duels, then the one that guards an end.
@@ -59,7 +60,7 @@ describe('Battering Horns turn an anchored line only from a Ram riding free', ()
     const bows = faced(r.line, 'Yeoman Longbows');
     expect(bows).toHaveLength(3);
     for (const u of bows) {
-      expect(u.why).toMatch(/flank turned \(Battering Horns\)/);
+      expect(theWordsOfWhyAUnitFacesAsItDoes(u.why)).toMatch(/flank turned \(Battering Horns\)/);
       expect(u.m).toBeCloseTo(1.25 * 0.75, 9);
     }
   });
@@ -91,7 +92,7 @@ describe('Battering Horns turn an anchored line only from a Ram riding free', ()
     const bows = faced(r.line, 'Yeoman Longbows');
     expect(bows).toHaveLength(3);
     for (const u of bows) {
-      expect(u.why).not.toMatch(/flank turned/);
+      expect(theWordsOfWhyAUnitFacesAsItDoes(u.why)).not.toMatch(/flank turned/);
       expect(u.m).toBeCloseTo(1.25, 9);
     }
   });
@@ -127,7 +128,7 @@ describe('Battering Horns turn an anchored line only from a Ram riding free', ()
     const bows = faced(r.line, 'Yeoman Longbows');
     expect(bows.map((u) => u.kind).sort()).toEqual(['even', 'even', 'shoots', 'shoots', 'shoots']);
     for (const u of bows) {
-      expect(u.why).not.toMatch(/flank turned/);
+      expect(theWordsOfWhyAUnitFacesAsItDoes(u.why)).not.toMatch(/flank turned/);
       expect(u.m).toBeCloseTo(u.kind === 'shoots' ? 1.25 : 1, 9);
     }
   });

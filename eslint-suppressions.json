@@ -20,11 +20,6 @@
       "count": 1
     }
   },
-  "src/engine/battle/a-multiplier-written-as-the-strength-ladder-shows-it.ts": {
-    "@typescript-eslint/no-unnecessary-type-conversion": {
-      "count": 1
-    }
-  },
   "src/engine/battle/battle-report-lines-and-force-markers.ts": {
     "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
       "count": 1
@@ -100,13 +95,7 @@
       "count": 2
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 13
-    },
-    "@typescript-eslint/restrict-plus-operands": {
-      "count": 2
-    },
-    "@typescript-eslint/restrict-template-expressions": {
-      "count": 2
+      "count": 10
     }
   },
   "src/engine/battle/lines.ts": {

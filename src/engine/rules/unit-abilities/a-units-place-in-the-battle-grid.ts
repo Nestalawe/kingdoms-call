@@ -41,7 +41,7 @@ export const ITS_PLACE_IN_THE_LINE = {
     facts.itsLine === 'front' && facts.theUnit.role === 'arc'
       ? {
           multiplier: ROWS['brawling-archers'].numbers.inTheFrontLine.value,
-          words: `${ROWS['brawling-archers'].name} in the front line`,
+          ability: { slug: 'brawling-archers' },
         }
       : null,
   // PRIMAL — Colossal Bulk (2026-10-13, the beast abilities): the Titans reach over the front.
@@ -49,7 +49,7 @@ export const ITS_PLACE_IN_THE_LINE = {
     facts.itsLine === 'second'
       ? {
           multiplier: ROWS['colossal-bulk'].numbers.inTheSecondLine.value,
-          words: `${ROWS['colossal-bulk'].name}: full strength from the second line`,
+          ability: { slug: 'colossal-bulk' },
         }
       : null,
 } satisfies Partial<Record<UnitAbilitySlug, TheStrengthStages['its place in the line']>>;

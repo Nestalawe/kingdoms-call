@@ -3,7 +3,9 @@
 // id or a slug, a name as the world or the content holds it, a copy of a list or a record), never words the engine
 // composed (a clause, a plural, a mark, a join, a number formatted for reading). The views write every word
 // (src/views/prose/). And no facts module imports the world's types (src/schemas/): a fact never holds a part of the
-// world. P1-12d2 lists personal combat, P1-12d3 the battles; P1-12d4 to d10 add theirs.
+// world. P1-12d2 lists personal combat, P1-12d3 the battles, P1-12d4 the strength ladder and the grid; P1-12d5 to d10
+// add theirs. A facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a unit stands or
+// faces as it does, whom it faced, each modifier of the ladder), so a record's literal is read too.
 //
 // The rule, by syntax tree: a field holds words when its value is, or holds, a string or a template with text in it,
 // reached as the value (through a conditional's two branches, +, ||, ??, &&, a template's placeholders, String(), an
@@ -21,13 +23,14 @@
 // host", "the defenders of Highmoor", a realm's tag, "Aldric's Free Lances (Free Lances, Veteran)"), an item's equip
 // note (gainedItemNote: the items' words, src/engine/items/, a later row), five slugs or names a string literal gives
 // (a strike's class, its channel, a guardian's grade as the content names it, a school's name as the content names it,
-// a realm's alignment), and what P1-12d4 moves (the strength ladder's and the battle grid's words, and the clause of
-// whom a unit faced, which the grid writes). It can't see words handed in through a function's parameter
+// a realm's alignment, a unit's quality, the line an ability places a unit in). It can't see words handed in through a
+// function's parameter
 // (pcStunTurned's `what`, a lingering harm's label, the verb a battle hands a unit's fate, a force's header's verb):
 // see the Parked list.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
-// fields of the battles' facts), as the static tests of P1-19's
+// fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through), as the static
+// tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
 import fs from 'node:fs';
@@ -229,6 +232,8 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
   ],
   defendingUnitName: ['a defending unit is destroyed in the fighting', 'a defending unit is destroyed in the rout'],
   unitNameAtItsOldQuality: ["a beaten guard's surviving unit loses heart and is reduced a tier"],
+  // the enemy unit a unit faced, as its fate's line names it (ownedUnitName: battleFacedClauses)
+  theEnemyUnit: ['an enemy unit'],
 };
 
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
@@ -260,21 +265,10 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   schoolLabel: ['the defender casts a spell before the battle'],
   // a realm's alignment as the world names it ('Neutral' when it has none): the prose writes it in lower case
   attackersAlignment: ["the consecrated ground of the province weakens the attacker's host"],
-};
-
-/** What P1-12d4 moves into the prose (the strength ladder and the grid: P1-12's Decisions of 2026-10-26, row d4), by
- *  field, with the kinds that hold it: the ladder's and the grid's words, and the clause of whom a unit faced, which
- *  the grid writes (battleFacedClauses). */
-const THE_LADDERS_AND_THE_GRIDS: Readonly<Record<string, readonly string[]>> = {
-  wordsIfUnitModifiers: ["the strength ladder's units"],
-  wordsIfCommand: ["the strength ladder's command"],
-  forceModifiersWords: ["the strength ladder's force-wide modifiers"],
-  battleLinesStrengthWords: ["the strength ladder's battle lines"],
-  lineMultipliersWords: ["the strength ladder's units behind the front"],
-  frontLineCells: ["a side's front line in the battle grid"],
-  wordsIfFlanksAirOrReserve: ["a side's front line in the battle grid"],
-  secondLineCells: ["a side's second line in the battle grid"],
-  facedClauseWords: ['a defending unit is destroyed in the rout', 'a defending unit is destroyed in the fighting'],
+  // the quality a unit fights at, as the world names it ('Average' when it has none): armStr's trace
+  quality: ['it fights at another quality'],
+  // the line an ability places a unit in, 'front' or 'second': a slug the prose reads (battleRegrid)
+  itsLine: ['its ability gives it its place'],
 };
 
 const WORD_HELPER =
@@ -432,12 +426,7 @@ function fieldsHoldingWords(file: string, text: string, kinds: ReadonlySet<strin
               ? field.name
               : null;
           const why = value ? whyItHoldsWords(sf, value, node.getStart(sf), new Set()) : 'a spread: its fields unseen';
-          if (
-            why &&
-            !LABELS[name]?.includes(kind) &&
-            !NOT_WORDS[name]?.includes(kind) &&
-            !THE_LADDERS_AND_THE_GRIDS[name]?.includes(kind)
-          ) {
+          if (why && !LABELS[name]?.includes(kind) && !NOT_WORDS[name]?.includes(kind)) {
             const line = sf.getLineAndCharacterOfPosition(field.getStart(sf)).line + 1;
             found.push(`${String(line)} ${kind} ${name}: ${why}`);
           }

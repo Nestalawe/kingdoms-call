@@ -1,7 +1,7 @@
 // The unit abilities at the six stages of the whole line (plan P1-19c), in battleFaceSide (src/engine/battle/lines.ts):
 // held when hit from the side, beside and behind a unit in the front line, marked by the enemy's line, a shooter picking
 // its target, free riders turning an anchored line, and what a flyer does. Each is handed what its stage hands it (the
-// registry's stage types) and returns a value: its words, a new multiplier and its words, a mark on my line, or the
+// registry's stage types) and returns a value: its slug, a new multiplier and the ability, a mark on my line, or the
 // target it picks, or nothing; its numbers come from the content's row. The runners
 // (the-registry-of-content-effects.ts) run them in their stages' order. Until P1-19c they were written inline in
 // battleFaceSide, in this order.
@@ -12,7 +12,7 @@
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS as ROWS } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { UnitAbilitySlug } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type {
-  AMultiplierAndItsWords,
+  AMultiplierAndTheAbilityThatSetIt,
   AUnitInTheLine,
   AUnitPlacedInALine,
   TheStagesOfEachHookPoint,
@@ -20,10 +20,10 @@ import type {
 
 type TheStrengthStages = TheStagesOfEachHookPoint['strength'];
 
-/** The ability's multiplier, worded by its name. */
-const named = (slug: UnitAbilitySlug, multiplier: number): AMultiplierAndItsWords => ({
+/** The ability's multiplier, named by its slug (the ladder writes its name). */
+const named = (slug: UnitAbilitySlug, multiplier: number): AMultiplierAndTheAbilityThatSetIt => ({
   multiplier,
-  words: ROWS[slug].name,
+  ability: { slug },
 });
 /** Whether a unit has the ability: its type is the ability's row's unit. */
 const has = (unit: AUnitInTheLine | null, slug: UnitAbilitySlug) => unit !== null && ROWS[slug].unit === unit.unitType;
@@ -31,10 +31,10 @@ const has = (unit: AUnitInTheLine | null, slug: UnitAbilitySlug) => unit !== nul
 // Held when hit from the side (each runs only for its row's unit, or the units it reaches). Never hit from the side
 // (Rooted: the Ents, 2026-10-13).
 export const HELD_WHEN_HIT_FROM_THE_SIDE = {
-  unbreakable: () => ROWS.unbreakable.name,
-  rooted: () => ROWS.rooted.name,
+  unbreakable: () => 'unbreakable',
+  rooted: () => 'rooted',
   // Every garrison, defending (its row's reach; the books give it to the Human Garrison: a question for Toby).
-  'hold-the-gate': (facts) => (facts.theUnitsSideAttacks ? null : ROWS['hold-the-gate'].name),
+  'hold-the-gate': (facts) => (facts.theUnitsSideAttacks ? null : 'hold-the-gate'),
 } satisfies Partial<Record<UnitAbilitySlug, TheStrengthStages['held when hit from the side']>>;
 
 /** Shieldwall: ×1.25 with an archer in the second line behind the unit. */
@@ -45,7 +45,7 @@ const shieldwall: TheStrengthStages['beside and behind it in the front line'] = 
 
 export const BESIDE_AND_BEHIND_IT_IN_THE_FRONT_LINE = {
   shieldwall,
-  // Town Watch: a Human Garrison counts as Levies (its row's countsAs) for Shieldwall, and is worded as Shieldwall.
+  // Town Watch: a Human Garrison counts as Levies (its row's countsAs) for Shieldwall, and is named as Shieldwall.
   'town-watch': (facts, m) => shieldwall(facts, m),
   // Sergeants: Levies (its row's reach) with a Men-at-Arms beside them in the front line.
   sergeants: (facts, m) =>
@@ -54,11 +54,11 @@ export const BESIDE_AND_BEHIND_IT_IN_THE_FRONT_LINE = {
       : null,
   // Driven Before Them: Berserkers gain for each Goblin Horde (the units its row counts) beside them.
   'driven-before-them': (facts, m) => {
-    const { name, numbers, counts } = ROWS['driven-before-them'];
+    const { numbers, counts } = ROWS['driven-before-them'];
     const n = facts.theUnitsEitherSide.filter((u) => u !== null && counts.some((t) => t === u.unitType)).length;
     if (!n) return null;
     const g = 1 + Math.min(numbers.atMost.value, numbers.perGoblinHordeBeside.value * n);
-    return { multiplier: m * g, words: `${name} ×${g.toFixed(1)}` };
+    return { multiplier: m * g, ability: { slug: 'driven-before-them', factor: g } };
   },
 } satisfies Partial<Record<UnitAbilitySlug, TheStrengthStages['beside and behind it in the front line']>>;
 
@@ -77,8 +77,14 @@ export const MARKED_BY_THE_ENEMY_LINE = {
   // Terror From Above: with Wyvern Riders on the other side, my strongest front unit fights ×0.85.
   'terror-from-above': (myLine) => {
     const strongest = theStrongest(myLine.theFront, () => true);
-    const { name, numbers } = ROWS['terror-from-above'];
-    return strongest ? { theUnitsMarked: [strongest], factor: numbers.theStrongestFrontUnit.value, words: name } : null;
+    const { numbers } = ROWS['terror-from-above'];
+    return strongest
+      ? {
+          theUnitsMarked: [strongest],
+          factor: numbers.theStrongestFrontUnit.value,
+          ability: { slug: 'terror-from-above' },
+        }
+      : null;
   },
   // Dive on the Bowmen: with Noble Griffons on the other side, my strongest shooting archer (one standing behind a
   // fighter that isn't an archer) fights ×0.75.
@@ -87,12 +93,12 @@ export const MARKED_BY_THE_ENEMY_LINE = {
       const f = myLine.theFront[column];
       return x.role === 'arc' && !!f && f.role !== 'arc';
     });
-    const { numbers, wordsInTheLadder } = ROWS['dive-on-the-bowmen'];
+    const { numbers } = ROWS['dive-on-the-bowmen'];
     return strongest
       ? {
           theUnitsMarked: [strongest],
           factor: numbers.theStrongestSecondLineArcher.value,
-          words: wordsInTheLadder.onTheArcherTheyDiveOn,
+          ability: { slug: 'dive-on-the-bowmen', wordsInTheLadder: 'onTheArcherTheyDiveOn' },
         }
       : null;
   },
@@ -101,7 +107,7 @@ export const MARKED_BY_THE_ENEMY_LINE = {
   'storm-wings': (myLine) => ({
     theUnitsMarked: myLine.theAir,
     factor: ROWS['storm-wings'].numbers.everyUnitInTheAir.value,
-    words: ROWS['storm-wings'].name,
+    ability: { slug: 'storm-wings' },
   }),
 } satisfies Partial<Record<UnitAbilitySlug, TheStrengthStages['marked by the enemy line']>>;
 
@@ -116,7 +122,7 @@ export const A_SHOOTER_PICKS_ITS_TARGET = {
 export const TURNS_AN_ANCHORED_LINE = {
   // Battering Horns: a free Ram turns even an anchored line.
   'battering-horns': (facts) =>
-    facts.theFreeEnemyRiders.some((u) => has(u, 'battering-horns')) ? ROWS['battering-horns'].name : null,
+    facts.theFreeEnemyRiders.some((u) => has(u, 'battering-horns')) ? 'battering-horns' : null,
 } satisfies Partial<Record<UnitAbilitySlug, TheStrengthStages['turns an anchored line']>>;
 
 export const WHAT_A_FLYER_DOES = {

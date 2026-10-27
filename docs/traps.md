@@ -405,8 +405,11 @@ check finds were made.
   P1-12d3): the views drawing their own would move every draw after it. The table of words moves to the prose, and its
   length is pinned to the engine's count (`satisfies { length: … }`), so the two can't drift apart. The static test
   `a-lines-facts-hold-values-not-words` refuses a field holding words in an area its list names, but the labels (a
-  fighter's, a battle's side's, guard's, realm's or unit's), the slugs and what a later row moves (the strength ladder
-  and the grid: P1-12d4) it lists; it can't see words handed in through a parameter (a daze's `what`, a lingering
+  fighter's, a battle's side's, guard's, realm's or unit's) and the slugs it lists; a facts module's kinds include the
+  kinds of the records its facts hold (why a unit stands or faces as it does, a ladder's modifiers: P1-12d4), so a
+  record's literal is read too. **The engine reads no word it wrote:** a choice made on a line's words (the faced
+  clause once read the facing's "empty column") is made on the record's kind. It can't see words handed in through a
+  parameter (a daze's `what`, a lingering
   harm's label, the verb a battle hands a unit's fate, a force's header's verb). Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a

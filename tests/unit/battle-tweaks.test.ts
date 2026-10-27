@@ -18,7 +18,11 @@ const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
 const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
-type Trace = { label: string }[];
+type Trace = { reason: unknown }[];
+/** The words the prose writes of a modifier armStr records on the strength ladder. */
+const modifierWords = engineFn(engine, 'theWordsOfAUnitsModifier') as (reason: unknown) => string;
+/** The words the prose writes of why a unit fights as it does (battleFaceSide's why). */
+const facingWords = engineFn(engine, 'theWordsOfWhyAUnitFacesAsItDoes') as (why: unknown) => string;
 type StrengthContext = {
   force: unknown[];
   enemyForce: unknown[];
@@ -55,13 +59,13 @@ describe('Reign of Fear: only when attacking', () => {
     expect(near(def, defBase), `got ${String(def)}, without it ${String(defBase)}`).toBe(true);
     const trace: Trace = [];
     str('Cave Trolls', 'Evil', 'plain', { isAttacker: false, reignOfFear: true, trace });
-    expect(trace.map((t) => t.label).join('; ')).not.toMatch(/Reign of Fear/);
+    expect(trace.map((t) => modifierWords(t.reason)).join('; ')).not.toMatch(/Reign of Fear/);
   });
 });
 
 describe('Purity breaks a Spear Hedge or a Boulder Wall', () => {
   type Row = { a: Record<string, unknown>; base: number };
-  type Grid = { face: { units: { row: Row; m: number; why: string }[] } };
+  type Grid = { face: { units: { row: Row; m: number; why: unknown }[] } };
   const grid = engineFn(engine, 'battleGrid') as (rows: Row[], width: number, terrain: string, opts: object) => Grid;
   const facing = engineFn(engine, 'battleFacing') as (me: Grid, them: Grid, terrain: string) => void;
   const BASE: Record<string, number> = {
@@ -89,22 +93,35 @@ describe('Purity breaks a Spear Hedge or a Boulder Wall', () => {
   test("unicorns facing Levies keep cavalry's ×0.85: Purity breaks the Spear Hedge", () => {
     const u = faced(fight([['Unicorn Herd', 2]], [['Shieldwall Levies', 2]]), 'Unicorn Herd');
     expect(u).toHaveLength(2);
-    for (const x of u) expect(near(x.m, 0.85) && /Purity breaks the Spear Hedge/.test(x.why), x.why).toBe(true);
+    for (const x of u)
+      expect(near(x.m, 0.85) && /Purity breaks the Spear Hedge/.test(facingWords(x.why)), facingWords(x.why)).toBe(
+        true,
+      );
   });
   test("unicorns facing Stone Giants keep cavalry's ×0.85: Purity breaks the Boulder Wall", () => {
     const u = faced(fight([['Unicorn Herd', 2]], [['Stone Giants', 2]]), 'Unicorn Herd');
     expect(u).toHaveLength(2);
-    for (const x of u) expect(near(x.m, 0.85) && /Purity breaks the Boulder Wall/.test(x.why), x.why).toBe(true);
+    for (const x of u)
+      expect(near(x.m, 0.85) && /Purity breaks the Boulder Wall/.test(facingWords(x.why)), facingWords(x.why)).toBe(
+        true,
+      );
   });
   test('facing skeletal Levies the pure charge is not capped: ×0.85 × ×1.25', () => {
     const u = faced(fight([['Unicorn Herd', 2]], [['Shieldwall Levies', 2, { _isSkeletal: true }]]), 'Unicorn Herd');
-    for (const x of u) expect(near(x.m, 0.85 * 1.25) && /Purity breaks the Spear Hedge/.test(x.why), x.why).toBe(true);
+    for (const x of u)
+      expect(
+        near(x.m, 0.85 * 1.25) && /Purity breaks the Spear Hedge/.test(facingWords(x.why)),
+        facingWords(x.why),
+      ).toBe(true);
   });
   test('other horse still meets the Spear Hedge and the Boulder Wall at ×0.75', () => {
     for (const x of faced(fight([['Free Lances', 2]], [['Shieldwall Levies', 2]]), 'Free Lances'))
-      expect(near(x.m, 0.75) && /Spear Hedge/.test(x.why) && !/Purity/.test(x.why), x.why).toBe(true);
+      expect(
+        near(x.m, 0.75) && /Spear Hedge/.test(facingWords(x.why)) && !/Purity/.test(facingWords(x.why)),
+        facingWords(x.why),
+      ).toBe(true);
     for (const x of faced(fight([['Free Lances', 2]], [['Stone Giants', 2]]), 'Free Lances'))
-      expect(near(x.m, 0.75) && /Boulder Wall/.test(x.why), x.why).toBe(true);
+      expect(near(x.m, 0.75) && /Boulder Wall/.test(facingWords(x.why)), facingWords(x.why)).toBe(true);
   });
 });
 
@@ -137,6 +154,6 @@ describe('Item 19: flyers fight ×0.75 in forest and jungle', () => {
   test("the strength ladder names the forest's ×0.75 on a dragon", () => {
     const trace: Trace = [];
     armStr(tc, unit('Elder Dragons'), null, 'Evil', 'forest', { force: [], enemyForce: [], isAttacker: true, trace });
-    expect(trace.map((t) => t.label).join('; ')).toMatch(/forest terrain ×0\.75/);
+    expect(trace.map((t) => modifierWords(t.reason)).join('; ')).toMatch(/forest terrain ×0\.75/);
   });
 });

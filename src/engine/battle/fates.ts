@@ -1,7 +1,8 @@
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS, demoteOrDisband, disbandLine, unitRef } from '../army-tables.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
-import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
+import type { TheFactOfOneOfABattlesSentences, WhomAUnitFaced } from './the-facts-a-battles-lines-record.ts';
+import { theClauseOfWhomAUnitFaced } from './lines.ts';
 import {
   theLineByWhichABeatenUnitHoldsItsTier,
   theLineByWhichAUnitLivesThroughItsDeathRoll,
@@ -21,10 +22,10 @@ import {
 //   o.diedVerb / o.promoteVerb  the site's wording ("were annihilated in the rout!", "are hardened by
 //                victory to"); o.notable stamps a._notable on a demoted or promoted unit (the NPC loser's
 //                "All other forces survive" line reads it); o.say receives each unit's line.
-//   o.faced      (2026-10-12, Toby: who beat whom) a Map army → clause, or a function of the army, from
-//                battleFacedClauses: each line puts it after the company's own reference — "Aldric's Levies
-//                (Shieldwall Levies, Average), facing the Iron Halberds (Gorbash's Men-at-Arms), were
-//                annihilated in the rout!". Without it the lines read as they always did.
+//   o.faced      (2026-10-12, Toby: who beat whom) a Map army → whom it faced, or a function of the army, from
+//                battleFacedClauses: each line holds it beside the company's own reference, and its words put the
+//                clause after it — "Aldric's Levies (Shieldwall Levies, Average), facing the Iron Halberds (Gorbash's
+//                Men-at-Arms), were annihilated in the rout!". Without it the lines read as they always did.
 //   The unit abilities at a fate (Regenerating Hide, Knightly Example) are the rule registry's (plan P1-19d): the stages
 //   "a beaten unit fails its death roll" and "… its demotion roll" (src/engine/rules/), asked where they were inline.
 // Returns {died, promoted, demoted, disbanded, held, survived}.
@@ -45,11 +46,11 @@ interface TheOptionsOfEveryUnitsFate {
   owner?: string | null;
   diedVerb?: string | null;
   promoteVerb?: string | null;
-  /** Each unit's clause, whom it faced (battleFacedClauses): a Map army → clause (the tests' Map comes from another
-   *  window, hence the check on its get), or a function of the army. */
+  /** Whom each unit faced (battleFacedClauses): a Map army → whom (the tests' Map comes from another window, hence
+   *  the check on its get), or a function of the army. */
   faced?:
-    | ((a: ArmyInABattle) => string | null | undefined)
-    | { readonly get?: (a: ArmyInABattle) => string | null | undefined }
+    | ((a: ArmyInABattle) => WhomAUnitFaced | null | undefined)
+    | { readonly get?: (a: ArmyInABattle) => WhomAUnitFaced | null | undefined }
     | null;
   /** Stamps a._notable on a demoted or promoted unit. */
   notable?: boolean | null;
@@ -78,16 +79,14 @@ export function rollUnitFates(
       }),
     ref = o.unitRef ?? unitRef,
     who = o.owner ?? '';
-  const clauseOf = (a: ArmyInABattle | null | undefined) => {
+  const whomItFaced = (a: ArmyInABattle | null | undefined): WhomAUnitFaced | null => {
     const f = o.faced;
-    if (!f || !a) return '';
+    if (!f || !a) return null;
     const c = typeof f === 'function' ? f(a) : typeof f.get === 'function' ? f.get(a) : null;
-    return c ?? '';
+    return c ?? null;
   };
-  const head = (a: ArmyInABattle, q0?: string) => {
-    const c = clauseOf(a);
-    return ref(who, q0 ? { ...a, quality: q0 } : a) + (c ? `, ${c},` : '');
-  };
+  // A unit as its line names it (its reference, and whom it faced, which the line's words put after it).
+  const head = (a: ArmyInABattle, q0?: string) => ref(who, q0 ? { ...a, quality: q0 } : a);
   const r = { died: 0, promoted: 0, demoted: 0, disbanded: 0, held: 0, survived: 0 };
   const theForce = force ?? [];
   theForce.forEach((a) => {
@@ -104,7 +103,7 @@ export function rollUnitFates(
       });
       if (lives) {
         r.survived++;
-        say({ kind: lives, unitReference: head(a) });
+        say({ kind: lives, unitReference: head(a), whomItFaced: whomItFaced(a) });
         return;
       }
       a._died = true;
@@ -112,6 +111,7 @@ export function rollUnitFates(
       say({
         kind: 'a unit dies in the battle',
         unitReference: head(a),
+        whomItFaced: whomItFaced(a),
         diedVerb: o.diedVerb,
         itsSideWon: o.won,
         itsBonesCrumble: a._isSkeletal,
@@ -131,6 +131,7 @@ export function rollUnitFates(
         say({
           kind: 'a unit is promoted after the battle',
           unitReferenceAtItsOldQuality: head(a, q0),
+          whomItFaced: whomItFaced(a),
           promoteVerb: o.promoteVerb,
           unitQuality: a.quality,
         });
@@ -141,7 +142,11 @@ export function rollUnitFates(
     if (roll2 < o.demoteAt(a)) {
       if (o.shieldFort) {
         r.held++;
-        say({ kind: 'a unit falls back behind the shield wall in good order', unitReference: head(a) });
+        say({
+          kind: 'a unit falls back behind the shield wall in good order',
+          unitReference: head(a),
+          whomItFaced: whomItFaced(a),
+        });
         return;
       }
       // The registry's "a beaten unit fails its demotion roll" (Knightly Example): a line by which it holds, or none.
@@ -152,18 +157,20 @@ export function rollUnitFates(
       });
       if (holds) {
         r.held++;
-        say({ kind: holds, unitReference: head(a) });
+        say({ kind: holds, unitReference: head(a), whomItFaced: whomItFaced(a) });
       } else {
         const q0 = a.quality;
         if (demoteOrDisband(a)) {
           r.disbanded++;
-          say(disbandLine(who, a, clauseOf(a)));
+          const whom = whomItFaced(a);
+          say(disbandLine(who, a, whom ? theClauseOfWhomAUnitFaced(whom) : ''));
         } else {
           r.demoted++;
           if (o.notable) a._notable = true;
           say({
             kind: 'a unit loses heart in defeat and is reduced a tier',
             unitReferenceAtItsOldQuality: head(a, q0),
+            whomItFaced: whomItFaced(a),
             unitQuality: a.quality,
           });
         }
@@ -176,6 +183,7 @@ export function rollUnitFates(
       say({
         kind: 'a unit improves a tier despite defeat',
         unitReferenceAtItsOldQuality: head(a, q0),
+        whomItFaced: whomItFaced(a),
         unitQuality: a.quality,
       });
     } else r.survived++;
