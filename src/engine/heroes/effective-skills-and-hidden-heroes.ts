@@ -35,7 +35,10 @@ export function totalInit(c) {
 // Delegates to the module-level implementation (see skillBonusBreakdown) so the engine and the
 // player report cannot disagree about what a character's skills actually are. Equipped items only
 //, minus any Curse, plus the Crown of Command aura; capped 0..5.
-export function effStat(turnContext, c, stat) {
+// Its return type is written for the typed files that call it (plan P1-10b6: an annotation; this file keeps its
+// ts-nocheck line, so nothing checks it yet): a number for a hero. A missing `c` gives undefined (skillBonusBreakdown
+// returns before it counts a total); no typed caller passes one.
+export function effStat(turnContext, c, stat): number {
   const { G } = turnContext;
   return effSkillOf(c, stat, G.characters || []);
 }

@@ -11,7 +11,8 @@ import type { Army, Character, GameState, Grave } from '../schemas/saved-game-st
 // ── A UNIT AND A HERO IN A BATTLE ────
 // A battle writes marks on its units and its commanders that last for that battle only, and wipes them at the battle's
 // end, before the state is saved (2026-09-27: `_flakTargeted` was never wiped, so it was saved, and a flyer harried
-// once was immune to Flak Screen for the rest of the game). They aren't in the saved state's schema: a save that holds
+// once was immune to Flak Screen for the rest of the game). The turn's marks (below each type's battle marks) last the
+// turn, and the new turn wipes them before the save. Neither kind is in the saved state's schema: a save that holds
 // one fails the strict parse in the schemas' tests. An Army passes where an ArmyInABattle is wanted (each mark is
 // optional), so no caller changes.
 /** A unit in a battle: an army and the marks the battle writes on it. */
@@ -27,11 +28,31 @@ export type ArmyInABattle = Army & {
   /** A spectral double's fighting copy (injectPhantoms): the tag of the unit it mirrors. clearPhantomCopies drops
    *  every copy at the battle's end. */
   _phantomOf?: string | undefined;
+  // The turn's marks (armStr reads them): written during the turn, wiped by the new turn before the save.
+  /** Lightning Advance's ambushed side (March 9): no terrain bonus. Set by both battles; wiped by the battle's end and
+   *  the new turn. */
+  _laNoTerrain?: boolean;
+  /** A strength loss meant to last the whole turn (applyPrebattleDamage). Set by nothing today (Parked: the dead
+   *  marks); wiped by the new turn. */
+  _turnStrReduction?: number;
 };
 /** A hero in a battle: a character and the marks the battle writes on him. */
 export type HeroInABattle = Character & {
   /** How much of his Tactical bonus is left (tacMulted): 1 unless Telekinetic Storm halved it to 0.5. */
   _tacticalMult?: number;
+  // The turn's marks (armStr reads them): written during the turn, wiped by the new turn before the save.
+  /** Oratory's quality tiers (1, or 2 with Words of Awe): set by the spell; armStr reads `true` as 1. Wiped by the new
+   *  turn. */
+  _oratoryBoost?: number | boolean;
+  /** Phantasmal Armies' bonus to the units he leads (0.1 a caster level). Set by nothing today (Parked: the dead
+   *  marks); wiped by both battles' ends and the new turn. */
+  _phantasmalBonus?: number;
+  /** The skill a Curse halves this battle ('tactical', 'druid' or 'naval': bestCurseSkill). Cleared at each battle's
+   *  start and set by its pre-battle magic, in both battles; wiped by the new turn. */
+  _curseHalveStat?: string | null;
+  /** Psychic Blast has negated his Druid this battle. Cleared at each battle's start and set by its pre-battle magic,
+   *  in both battles; wiped by the new turn. */
+  _druidNegated?: boolean;
 };
 
 // ════
