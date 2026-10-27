@@ -5,12 +5,13 @@
 // - a ground that is missing (terrainMod), a volley with no damage multiplier or no options, arrows at an armoured hull
 //   or a shell (no matrix game shoots at Dwarf Ironclads or Great Turtles);
 // - a force carried over the sea by its flyers, and one with a hull among it (the sea penalty each unit then takes);
-// - a force or a leader that is missing, or a gap in a force (the airborne test, kinship's line, a coastal province);
+// - a force or a leader that is missing, a gap in a force, or a leader whose race is '' (the airborne test, kinship's
+//   line, a coastal province, a hero's kinship);
 // - a unit of a quality the tables don't hold (no step up, the multiplier's fallback), the Standing Stones of a Pagan
 //   Wonder defending in the woods, Phantasmal Armies' bonus (set by nothing today), a hero with no list of items or an
 //   item with no effect, and the Kraken Figurehead's step up a tier for the fleets its bearer leads;
-// - a ladder row with no command multipliers, a gap among them or one of ×1, and a side with no force multipliers or
-//   no options.
+// - a ladder row with no command multipliers, a gap among them or one of ×1, and a side with no force multipliers, no
+//   options or no ground.
 // Level 1 (unit): pure functions called directly on the engine's modules (plan P1-14a), with no turn played. None of
 // them draws a die. A hero is staged with the fields these read, so his type is given by assertion (as the views' unit
 // cases give a staged world's), and the turn's context holds only its state.
@@ -27,6 +28,7 @@ import {
   provIsCoastal,
   terrainMod,
 } from '../../src/engine/battle/terrain-and-unit-strength.ts';
+import { battleGrid } from '../../src/engine/battle/lines.ts';
 import { ladderFm } from '../../src/engine/battle/a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { ArmyInABattle, HeroInABattle } from '../../src/engine/army-tables.ts';
@@ -141,6 +143,10 @@ describe('a force, a leader or a world that is missing', () => {
       kinshipWords: "1 unit of the king's race (+20%)",
     });
   });
+  test("kinship's line: a leader whose race is '' is of no race", () => {
+    const humans = [unit('Men-at-Arms', 'Average', { race: 'Human' })];
+    expect(kinNarrative(humans, hero({ race: '' }), 'Elven', 'the attackers')).toBeNull();
+  });
   test('a province is not coastal when the state, its world or the province is missing', () => {
     const prov = { id: 0, row: 0, col: 0, terrain: 'plain' } as unknown as Province;
     expect(provIsCoastal(null, prov)).toBe(false);
@@ -177,6 +183,11 @@ describe("a unit's strength in the lines the matrix doesn't feed", () => {
     expect(labels(unit('Men-at-Arms'), hero({ _phantasmalBonus: 0.2 }), null, { force: [] })).toContain(
       `Phantasmal Armies ${ladderFm(1.2)}`,
     );
+  });
+  test("a hero whose race is '' gives no unit his kinship", () => {
+    const human = unit('Men-at-Arms', 'Average', { race: 'Human' });
+    expect(labels(human, hero({ race: '' }), null, { force: [] }).filter((l) => l.startsWith('kinship'))).toEqual([]);
+    expect(labels(human, hero({ race: 'Human' }), null, { force: [] })).toContain('kinship ×1.2');
   });
   test('a hero with no list of items, or an item with no effect, leads as one with none', () => {
     const none = armStr(turn, unit('Men-at-Arms'), hero(), 'Neutral', null, undefined);
@@ -221,5 +232,17 @@ describe('the ladder rows and a side', () => {
     expect(finishSide([row(), row()], 3, false, null, {})).toBe(total);
     expect(finishSide([row(), row()], 3, false, undefined)).toBe(total);
     expect(finishSide([row(), row()], 3, false, [null, { m: 1 }], null)).toBe(total);
+  });
+  test("a side with no ground, or a ground of '', is placed as on none (a rider flanks only on open ground)", () => {
+    const rows = () => [ladderRow(turn, unit('Free Lances'), null, 'Neutral', null, undefined, null), row(), row()];
+    const asOnNone = battleGrid(rows(), 3, null, { flank: false });
+    for (const terrain of ['', null, undefined]) {
+      const out: { grid?: ReturnType<typeof battleGrid> } = {};
+      finishSide(rows(), 3, false, [], terrain === undefined ? { out } : { terrain, out });
+      expect(out.grid?.flanks.length, String(terrain)).toBe(asOnNone.flanks.length);
+      expect(out.grid?.total).toBe(asOnNone.total);
+    }
+    expect(asOnNone.flanks).toEqual([]);
+    expect(battleGrid(rows(), 3, 'plain', { flank: false, tac: 0 }).flanks).toHaveLength(1);
   });
 });
