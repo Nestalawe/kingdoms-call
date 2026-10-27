@@ -11,7 +11,9 @@
 // - a gap among the heroes or the provinces, a province whose owner is no realm, a Raiders' Muster mark of an older
 //   turn, and a hero with a Charm's mark but no hold on him;
 // - an item with no effect, and a tax item with no bonus (each pays nothing); a blessing with no multiplier; a company of a quality the
-//   tiers don't hold, ranked as Average when a realm can't pay; a skeletal ship kept for its troops, looked at again.
+//   tiers don't hold, ranked as Average when a realm can't pay; a company of a type no table prices (2g of wages, and
+//   2g off the debt when it goes: only the required scenario's made-up companies meet it, which no baseline compares);
+//   a skeletal ship kept for its troops, looked at again.
 // Level 1 (unit): the stage is one function, called directly on the engine's modules (plan P1-14a) with a turn's
 // context of its own: the state, the GM's log and the phase. The dice are fixed for each call (kcRng.use). The states
 // are staged with the fields the stage reads, so their type is given by assertion, as the views' unit cases give a
@@ -352,6 +354,24 @@ describe('a realm that cannot pay', () => {
       0.5,
     );
     expect(((G['characters'] as Obj[])[0]?.['armies'] as Obj[]).map((a) => a['quality'])).toEqual(['Veteran']);
+  });
+
+  test('a company of a type no table prices is owed 2g, and pays off 2g of the debt when it goes', () => {
+    const king = hero(1, {
+      armies: [
+        unit('Men-at-Arms', 'Veteran'),
+        unit('Human Garrison', 'Average'),
+        unit('Unpriced Test Infantry', 'Green'),
+      ],
+    });
+    // 3g + 1g + 2g of wages, 3g in the treasury: the Green company of no price goes first (2g), then the Average
+    // garrison company (1g), and the debt is met
+    const { G, lines } = winter(
+      state({ players: [realm(0, { gold: 3 })], characters: [king], world: world([province(0)]) }),
+      0.5,
+    );
+    expect(lines).toContain('Realm 0 owes 6g wages (armies: 6g, heroes: 0g).');
+    expect(((G['characters'] as Obj[])[0]?.['armies'] as Obj[]).map((a) => a['type'])).toEqual(['Men-at-Arms']);
   });
 
   test('a skeletal ship kept for its troops, looked at again, pays off 1g of the debt', () => {
