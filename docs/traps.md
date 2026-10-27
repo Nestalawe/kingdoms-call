@@ -955,6 +955,9 @@ by kind:
 - who takes a flank and a unit's own place in the line: the registry's three stages of the grid (the flank of rough
   ground, an open flank no rider fills, its place in the line), which `battleGrid` (through `abilityFlanksRough`) and
   `battleRegrid` ask;
+- before the battle: the registry's "a flyer is harried before the battle" (Flak Screen, a stage of `strength`), which
+  `applyFlakScreen` asks, and "a hull is sunk before the battle" (Breach and Swamp, a stage of `fate`), which both
+  battles ask (`combatVsChar`'s `applyBreachAndSwamp`, and `combatVsNPC`), each handed the dice;
 - the pre-battle volley: the registry's nine stages of `volley`, which `abilityMissileUnits`, `missileCap`,
   `missileCapReached`, `missileTargetPool`, `archeryBlockedBy`, `eyesOfTheForestLine`, `missileDamageMult`,
   `abilityVolleys` and `applyMissileHit` ask;
@@ -976,12 +979,13 @@ Watch, Sergeants, Driven Before Them, Terror From Above, Dive on the Bowmen, Sto
 Gunners; and the two of a unit's fate after the battle (P1-19d), Regenerating Hide and Knightly Example; and the 14 of
 the volley (P1-19g), Broadside, Tree Watch, Bombardment, Eyes of the Forest, Ambush, Loosed From Cover, Armoured Hulls,
 Shell Wall, Prepared Ground, Woodland Volley, Raiders' Volley, Thick Hide, Punch Through and Sea Archers; and the five of the grid (P1-19h), Through the Trees, Through the Glades, Crag
-Charge, Brawling Archers and Colossal Bulk, with Stoop on the Horses' flank slot. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
+Charge, Brawling Archers and Colossal Bulk, with Stoop on the Horses' flank slot; and the two before the battle
+(P1-19i), Flak Screen and Breach and Swamp. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
 numbers, in the same file as its unit's blurb), its effect in a file of `src/engine/rules/unit-abilities/` and its entry in the registry, in its stage's order;
 `tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts` checks its name and numbers in both books
 from its row (an ability the books give no number, Rooted for one, is listed there and its name checked). Change a
 number in its row and in both books (the blurb a few hundred lines below it, the rulebook by hand). **Still inline**: every other ability, in the places above (the rest of the family's second
-slice: Flak Screen, Breach and Swamp, the rout, the pre-battle strikes, the turn hooks).
+slice: the rout, the pre-battle strikes, the turn hooks).
 
 `tests/abilities-words.test.js` holds the table of names of the abilities still inline and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and

@@ -366,7 +366,14 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   and Through the Glades in the woods, Crag Charge in the mountains: `abilityFlanksRough` asks it), then, on open ground,
   **a flyer takes an open flank no rider fills** (Stoop on the Horses, a second stage in its entry); in `battleRegrid`,
   **its place in the line**, handed the line too (Brawling Archers in the front, Colossal Bulk in the second line where
-  it doesn't shoot over a fighter: the multiplier and its words, else the line's own). Every stage of
+  it doesn't shoot over a fighter: the multiplier and its words, else the line's own). Before the battle (P1-19i,
+  `src/engine/rules/unit-abilities/a-flyer-harried-and-a-hull-sunk-before-the-battle.ts`), two stages that pick a
+  unit of the enemy's, each handed the dice and drawing them where the battle code drew them (none when nothing is
+  left to pick): `strength`'s **a flyer is harried before the battle** (Flak Screen, in `applyFlakScreen`, first of
+  `strength`: handed the unit, the enemy's flyers not yet harried and the rule of a unit's base strength; the flyer's
+  place and the strength it loses), and `fate`'s **a hull is sunk before the battle** (Breach and Swamp, first of
+  `fate`, which both battles ask: handed the unit and the enemy's hulls afloat; the hull's place). The battle code
+  marks the unit and writes the line. Every stage of
   `strength`, `volley` and `fate` now has its signature; the other six hook points are `never` until their family's
   first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a

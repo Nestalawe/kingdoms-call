@@ -42,6 +42,10 @@ import {
   ITS_PLACE_IN_THE_LINE,
 } from './unit-abilities/a-units-place-in-the-battle-grid.ts';
 import {
+  A_FLYER_IS_HARRIED_BEFORE_THE_BATTLE,
+  A_HULL_IS_SUNK_BEFORE_THE_BATTLE,
+} from './unit-abilities/a-flyer-harried-and-a-hull-sunk-before-the-battle.ts';
+import {
   A_SHOTS_DAMAGE,
   HOW_MANY_VOLLEYS,
   MAY_BE_SHOT_AT,
@@ -292,6 +296,34 @@ export interface AShooterAndWhetherItsTargetFlies {
   readonly theTargetFlies: boolean;
 }
 
+/** What the stage "a flyer is harried before the battle" hands an effect (applyFlakScreen): a unit of the force, the
+ *  enemy's flyers that no unit has harried this battle yet, in the force's order, the rule of a unit's base strength
+ *  (unitBaseStrength, as the dice, handed: an effect imports only the registry's folder and the content), and the dice
+ *  (an effect draws only when it acts and a flyer is left, as the battle code did). */
+export interface AUnitAndTheEnemyFlyersNotYetHarried {
+  readonly unitType: string;
+  readonly theEnemyFlyersNotYetHarried: readonly AUnitOfAForce[];
+  readonly theBaseStrengthOf: (flyer: AUnitOfAForce) => number;
+  readonly theDice: () => number;
+}
+
+/** The flyer a unit harries before the battle: its place among the flyers not yet harried, and the strength it loses
+ *  for the battle. */
+export interface AFlyerHarried {
+  readonly theFlyersPlace: number;
+  readonly theStrengthItLoses: number;
+}
+
+/** What the stage "a hull is sunk before the battle" hands an effect (both battles: combatVsChar's
+ *  applyBreachAndSwamp, and combatVsNPC): a unit of the force, the enemy's hulls still afloat (its units that move by
+ *  sea and aren't sunk yet), in the force's order, and the dice (an effect draws only when it acts and a hull is
+ *  afloat, as the battle code did). */
+export interface AUnitAndTheEnemyHullsAfloat {
+  readonly unitType: string;
+  readonly theEnemyHullsAfloat: readonly AUnitOfAForce[];
+  readonly theDice: () => number;
+}
+
 /** A multiplier, and its words in the strength ladder (the ability's name, or its own words). */
 export interface AMultiplierAndItsWords {
   readonly multiplier: number;
@@ -307,6 +339,11 @@ type AnEffectOnTheMultiplierSoFar<Facts> = (facts: Facts, theMultiplierSoFar: nu
  *  1), so an entry on it fails to compile meanwhile. */
 export interface TheStagesOfEachHookPoint {
   readonly strength: {
+    /** The enemy flyer a unit harries before the battle, and the strength it loses, or nothing (applyFlakScreen,
+     *  before the volley). */
+    readonly 'a flyer is harried before the battle': (
+      facts: AUnitAndTheEnemyFlyersNotYetHarried,
+    ) => AFlyerHarried | null;
     /** Whether the sea's penalty to a land unit is waived (armStr, before the unit's factors from its force). */
     readonly 'a land unit at sea': (facts: ALandUnitAtSea) => boolean;
     /** The unit's own factor from its force and the battle's facts; the runner multiplies them in the stage's order. */
@@ -362,6 +399,9 @@ export interface TheStagesOfEachHookPoint {
     readonly 'the softening limit': (facts: AShooterAndWhetherItsTargetFlies) => number | null;
   };
   readonly fate: {
+    /** The enemy hull a unit sinks before the battle: its place among the hulls afloat, or nothing (both battles, before
+     *  either side's strength is counted). */
+    readonly 'a hull is sunk before the battle': (facts: AUnitAndTheEnemyHullsAfloat) => number | null;
     /** Whether a unit that failed its death roll lives: the line of the battle by which it does, or nothing (it dies). */
     readonly 'a beaten unit fails its death roll': (
       facts: AUnitThatFailedItsDeathRoll,
@@ -523,12 +563,19 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   },
   'brawling-archers': { strength: { 'its place in the line': ITS_PLACE_IN_THE_LINE['brawling-archers'] } },
   'colossal-bulk': { strength: { 'its place in the line': ITS_PLACE_IN_THE_LINE['colossal-bulk'] } },
+  'flak-screen': {
+    strength: { 'a flyer is harried before the battle': A_FLYER_IS_HARRIED_BEFORE_THE_BATTLE['flak-screen'] },
+  },
+  'breach-and-swamp': {
+    fate: { 'a hull is sunk before the battle': A_HULL_IS_SUNK_BEFORE_THE_BATTLE['breach-and-swamp'] },
+  },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
  *  order before the registry took them). */
 export const THE_ORDER_OF_EACH_STAGE = {
   strength: {
+    'a flyer is harried before the battle': ['flak-screen'],
     'a land unit at sea': ['sea-archers'],
     'the whole force': [
       'sheer-numbers',
@@ -586,6 +633,7 @@ export const THE_ORDER_OF_EACH_STAGE = {
     'the softening limit': ['punch-through'],
   },
   fate: {
+    'a hull is sunk before the battle': ['breach-and-swamp'],
     'a beaten unit fails its death roll': ['regenerating-hide'],
     'a beaten unit fails its demotion roll': ['knightly-example'],
   },
@@ -754,6 +802,14 @@ const A_LAND_UNIT_AT_SEA_EFFECTS = THE_ORDER_OF_STRENGTH['a land unit at sea'].f
   const effect = ENTRIES[slug].strength?.['a land unit at sea'];
   return effect ? [effect] : [];
 }) satisfies readonly ALandUnitAtSeaEffect[];
+const A_FLYER_IS_HARRIED_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_STRENGTH['a flyer is harried before the battle'],
+  (entry) => entry.strength?.['a flyer is harried before the battle'],
+);
+const A_HULL_IS_SUNK_BY_UNIT = theEffectsOfEachUnitAt(
+  THE_ORDER_OF_FATE['a hull is sunk before the battle'],
+  (entry) => entry.fate?.['a hull is sunk before the battle'],
+);
 const NO_EFFECTS: readonly never[] = [];
 
 /** A multiplier, and the words of each ability that moved it, in order. */
@@ -1019,6 +1075,28 @@ export function theSofteningLimitOfAShooter(facts: AShooterAndWhetherItsTargetFl
   for (const effect of THE_SOFTENING_LIMIT_BY_UNIT.get(facts.theShootersType) ?? NO_EFFECTS) {
     const limit = effect(facts);
     if (limit !== null) return limit;
+  }
+  return null;
+}
+
+/** The runner of "strength: a flyer is harried before the battle" (applyFlakScreen): the flyer the first of the unit's
+ *  abilities, in the stage's order, harries, and the strength it loses, or nothing. An effect draws its dice only when
+ *  it runs, so a unit with no such ability draws none. */
+export function theFlyerAUnitHarriesBeforeTheBattle(facts: AUnitAndTheEnemyFlyersNotYetHarried): AFlyerHarried | null {
+  for (const effect of A_FLYER_IS_HARRIED_BY_UNIT.get(facts.unitType) ?? NO_EFFECTS) {
+    const harried = effect(facts);
+    if (harried !== null) return harried;
+  }
+  return null;
+}
+
+/** The runner of "fate: a hull is sunk before the battle" (both battles): the place, among the enemy's hulls afloat, of
+ *  the hull the first of the unit's abilities, in the stage's order, sinks, or nothing. An effect draws its dice only
+ *  when it runs, so a unit with no such ability draws none. */
+export function theHullAUnitSinksBeforeTheBattle(facts: AUnitAndTheEnemyHullsAfloat): number | null {
+  for (const effect of A_HULL_IS_SUNK_BY_UNIT.get(facts.unitType) ?? NO_EFFECTS) {
+    const sunk = effect(facts);
+    if (sunk !== null) return sunk;
   }
   return null;
 }
