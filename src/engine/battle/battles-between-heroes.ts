@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import { theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
@@ -906,15 +907,16 @@ export function combatVsChar(turnContext, atk, def, prov) {
   if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);
 
   // ── PRIMAL — Breach and Swamp ── Whale Cohorts rise beneath a hull and roll it over. 25% per
-  // cohort to sink one enemy fleet unit outright, before either side's strength is counted.
+  // cohort to sink one enemy fleet unit outright, before either side's strength is counted. The rule
+  // registry's "fate: a hull is sunk before the battle" picks the hull, with the dice it is handed
+  // (plan P1-19i); this sinks it and writes the line.
   function applyBreachAndSwamp(myForce, enemyForce, myName, narr) {
-    const pods = (myForce || []).filter((a) => a && a.type === 'Whale Cohort');
-    if (!pods.length) return;
-    pods.forEach(() => {
-      const hulls = (enemyForce || []).filter((a) => a && SEA_TYPES.has(a.type) && !a._died);
-      if (!hulls.length) return;
-      if (kcRng() >= 0.25) return;
-      const t = hulls[Math.floor(kcRng() * hulls.length)];
+    (myForce || []).forEach((a) => {
+      if (!a) return;
+      const hulls = (enemyForce || []).filter((e) => e && SEA_TYPES.has(e.type) && !e._died);
+      const at = theHullAUnitSinksBeforeTheBattle({ unitType: a.type, theEnemyHullsAfloat: hulls, theDice: kcRng });
+      if (at === null) return;
+      const t = hulls[at];
       t._died = true;
       narrate(narr, {
         kind: "a side's whale cohort sinks an enemy ship",

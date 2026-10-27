@@ -7,6 +7,7 @@ import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import {
   theFactorOnAShotsDamage,
+  theFlyerAUnitHarriesBeforeTheBattle,
   theShooterShootsFirst,
   theShootersSeeWhatHides,
   theSofteningLimitOfAShooter,
@@ -169,8 +170,9 @@ export function abilityVolleys(firer: ForceUnit, isAtk: boolean): number {
 
 // ── DWARF — Flak Screen ── Each Gyrocopter harries ONE enemy flying unit (-30%). A unit already
 // engaged by one gyrocopter cannot be picked again in the same battle, so N gyrocopters tie up N
-// distinct flyers. ── SHARED UNIT STRENGTH TABLES (MODULE TOP LEVEL — DO NOT MOVE INSIDE runTurn)
-// ──
+// distinct flyers. The rule registry's "strength: a flyer is harried before the battle" picks the
+// flyer and its loss, with the dice it is handed (plan P1-19i); this marks the flyer and writes the
+// lines. ── SHARED UNIT STRENGTH TABLES (MODULE TOP LEVEL — DO NOT MOVE INSIDE runTurn) ──
 // These were declared inside runTurn, where applyFlakScreen — a TOP-LEVEL function called from
 // combatVsNPC — could not see them. A top-level function's scope chain is [top level, global]; it
 // never includes runTurn's locals, however deep inside runTurn the CALL happens to originate. The
@@ -192,8 +194,6 @@ export function applyFlakScreen(
   myName: string,
   narr: NarrativeLine[],
 ): void {
-  const gyros = (myForce ?? []).filter((a) => a?.type === 'Gnomish Gyrocopters');
-  if (!gyros.length) return;
   const flyers = (enemyForce ?? []).filter(
     (a): a is ArmyInABattle => !!a && FLYING_TYPES.has(a.type) && !a._flakTargeted,
   );
@@ -207,13 +207,19 @@ export function applyFlakScreen(
   // sequence. Appending the summary then its details keeps the flak event in order, wherever this
   // pre-battle call sits.
   const lines: NarrativeLine[] = [];
-  gyros.forEach(() => {
-    if (!pool.length) return;
-    const idx = Math.floor(kcRng() * pool.length);
-    const t = pool.splice(idx, 1)[0];
+  (myForce ?? []).forEach((a) => {
+    if (!a) return;
+    const harried = theFlyerAUnitHarriesBeforeTheBattle({
+      unitType: a.type,
+      theEnemyFlyersNotYetHarried: pool,
+      theBaseStrengthOf: unitBaseStrength,
+      theDice: kcRng,
+    });
+    if (!harried) return;
+    const t = pool.splice(harried.theFlyersPlace, 1)[0];
     if (!t) return;
     t._flakTargeted = true;
-    const red = Math.max(1, Math.round(unitBaseStrength(t) * 0.3));
+    const red = harried.theStrengthItLoses;
     t._tempStrReduction = (Number(t._tempStrReduction) || 0) + red;
     lines.push({
       kind: 'the gyrocopters harry a flying unit off its line',

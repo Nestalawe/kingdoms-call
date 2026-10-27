@@ -8,7 +8,9 @@
 // names of the abilities the registry doesn't hold yet.
 // Three gaps are known and let through, each with its fix parked (the three fleets): the rulebook's Orcish Longships row
 // doesn't name Reaver Crews, nor its Elven Galleys row Sea Archers, nor its Dwarf Ironclads row Armoured Hulls (the test
-// fails once it does, so the exception leaves with the fix). An ability the books give no number (Rooted, Hold the Gate,
+// fails once it does, so the exception leaves with the fix). And one number: the rulebook's Whale Cohort row names
+// Breach and Swamp but not its 25% chance (plan P1-19i; parked: the row's words from the blurb), checked to be still
+// left out there, so the exception leaves with the fix too. An ability the books give no number (Rooted, Hold the Gate,
 // Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d; eight of the volley's: P1-19g; the three flank
 // slots of rough ground: P1-19h) is listed below,
 // and its name is checked; a number the books leave out (Driven Before Them's cap, which the units beside them never
@@ -30,6 +32,15 @@ const NOT_IN_THE_RULEBOOK_YET: Readonly<Record<string, string>> = {
   'reaver-crews': "the rulebook's Orcish Longships row doesn't name Reaver Crews (parked: add it to the row)",
   'sea-archers': "the rulebook's Elven Galleys row doesn't name Sea Archers (parked: add it to the row)",
   'armoured-hulls': "the rulebook's Dwarf Ironclads row doesn't name Armoured Hulls (parked: add it to the row)",
+};
+
+/** The numbers a rulebook row that names the ability leaves out, by the ability and the number, each with why: the test
+ *  checks the rulebook still leaves each out, and the blurb still gives it. */
+const NUMBERS_NOT_IN_THE_RULEBOOK_YET: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  'breach-and-swamp': {
+    toSinkAHull:
+      "the rulebook's Whale Cohort row gives Breach and Swamp no chance (parked: the row's words from the blurb)",
+  },
 };
 
 /** The abilities whose words in the books give no number, each with why: the test checks that their rows hold none,
@@ -66,7 +77,7 @@ const IN_WORDS: ReadonlySet<ANumberOfAnAbility['theBooksWriteIt']> = new Set([
 ]);
 
 /** A number as the books write it: ×1.25; +10% for a fraction added (and for one the books leave out, which the test
- *  checks they still do); 30% for a chance and 55% for a share; "no penalty" or "full strength" for ×1, "double" for ×2 and
+ *  checks they still do), −30% for one taken (the books' minus sign, U+2212); 30% for a chance and 55% for a share; "no penalty" or "full strength" for ×1, "double" for ×2 and
  *  "half" for ×0.5, and a count in words, "two" (any other value is written so that no book holds it, and the test turns
  *  red); "base strength 6" for a unit's base strength. */
 function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
@@ -76,6 +87,8 @@ function asTheBooksWriteIt(n: ANumberOfAnAbility): string {
     case 'a fraction added':
     case 'a fraction the books leave out':
       return `+${String(Number((n.value * 100).toFixed(6)))}%`;
+    case 'a fraction taken':
+      return `\u2212${String(Number((n.value * 100).toFixed(6)))}%`;
     case 'a chance':
     case 'a share':
       return `${String(Number((n.value * 100).toFixed(6)))}%`;
@@ -134,16 +147,24 @@ function ownWords(text: string, name: string): string | null {
 }
 
 const ROWS = Object.entries(UNIT_ABILITIES_THE_REGISTRY_HOLDS).map(([slug, row]) => {
-  const all = Object.values<ANumberOfAnAbility>(row.numbers);
-  const leftOut = (n: ANumberOfAnAbility) => n.theBooksWriteIt === 'a fraction the books leave out';
+  const all = Object.entries<ANumberOfAnAbility>(row.numbers);
+  const leftOut = ([, n]: [string, ANumberOfAnAbility]) => n.theBooksWriteIt === 'a fraction the books leave out';
+  const notInTheRulebookYet = NUMBERS_NOT_IN_THE_RULEBOOK_YET[slug] ?? {};
+  const asWritten = ([, n]: [string, ANumberOfAnAbility]) => ({
+    text: asTheBooksWriteIt(n),
+    inWords: IN_WORDS.has(n.theBooksWriteIt),
+  });
+  const written = all.filter((n) => !leftOut(n));
   return {
     slug,
     unit: row.unit,
     name: row.name,
-    numbers: all
-      .filter((n) => !leftOut(n))
-      .map((n) => ({ text: asTheBooksWriteIt(n), inWords: IN_WORDS.has(n.theBooksWriteIt) })),
-    numbersLeftOut: all.filter(leftOut).map(asTheBooksWriteIt),
+    numbers: written.map(asWritten),
+    numbersInTheRulebook: written.filter(([key]) => !(key in notInTheRulebookYet)).map(asWritten),
+    numbersNotInTheRulebookYet: written
+      .filter(([key]) => key in notInTheRulebookYet)
+      .map((n) => ({ ...asWritten(n), why: notInTheRulebookYet[n[0]] ?? '' })),
+    numbersLeftOut: all.filter(leftOut).map(([, n]) => asTheBooksWriteIt(n)),
   };
 });
 
@@ -169,12 +190,18 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
 
   test.for(ROWS.filter((r) => !(r.slug in NOT_IN_THE_RULEBOOK_YET)))(
     "$name ($unit): the rulebook's roster row",
-    ({ unit, name, numbers, numbersLeftOut }) => {
+    ({ slug, unit, name, numbersInTheRulebook, numbersNotInTheRulebookYet, numbersLeftOut }) => {
       const row = rosterRow(unit);
       expect(row, `the rulebook's roster has a row for ${unit}`).not.toBeNull();
       const words = ownWords(row ?? '', name);
       expect(words, `${unit}'s roster row names ${name}`).not.toBeNull();
-      for (const n of numbers) expect(words, `${name} in ${unit}'s roster row says ${n.text}`).toMatch(theNumber(n));
+      for (const n of numbersInTheRulebook)
+        expect(words, `${name} in ${unit}'s roster row says ${n.text}`).toMatch(theNumber(n));
+      for (const n of numbersNotInTheRulebookYet)
+        expect(
+          words,
+          `${n.why}: now it says ${n.text}, so take it out of NUMBERS_NOT_IN_THE_RULEBOOK_YET['${slug}']`,
+        ).not.toMatch(theNumber(n));
       for (const n of numbersLeftOut)
         expect(words, `${name} in ${unit}'s roster row still leaves out ${n}`).not.toContain(n);
     },
@@ -191,8 +218,15 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
     },
   );
 
-  test('each known gap is a row the content holds', () => {
+  test('each known gap is a row the content holds, and each number left out of the rulebook one of its row', () => {
     for (const slug of Object.keys(NOT_IN_THE_RULEBOOK_YET))
       expect(Object.keys(UNIT_ABILITIES_THE_REGISTRY_HOLDS)).toContain(slug);
+    for (const [slug, numbers] of Object.entries(NUMBERS_NOT_IN_THE_RULEBOOK_YET)) {
+      const row = ROWS.find((r) => r.slug === slug);
+      expect(row, `${slug} is a row the content holds`).toBeDefined();
+      expect(row?.numbersNotInTheRulebookYet.length, `each of ${slug}'s numbers listed is one of its row's`).toBe(
+        Object.keys(numbers).length,
+      );
+    }
   });
 });

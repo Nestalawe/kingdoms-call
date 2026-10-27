@@ -11,7 +11,8 @@
 // (ui/player/page.ts) lists this file, so the words tests read them as the page's.
 import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 
-/** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1); a chance as `30%` (0.3);
+/** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1), and one taken as `−30%`
+ *  (0.3, with the books' minus sign, U+2212); a chance as `30%` (0.3);
  *  full strength (×1, where others fight at less) as `no penalty`, or as `full strength` (a unit's place in the line);
  *  a unit's base strength as `base strength 6`; a share of a unit's strength as `55%` (0.55); ×2 as `double` and ×0.5
  *  as `half`; a count as a word (`two`). A number the
@@ -20,6 +21,7 @@ import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 export type HowTheBooksWriteANumber =
   | 'a multiplier'
   | 'a fraction added'
+  | 'a fraction taken'
   | 'a chance'
   | 'no penalty'
   | 'full strength'
@@ -61,7 +63,8 @@ export interface AUnitAbilityAsTheBooksWriteIt {
 /** The unit abilities the registry holds, in the order the battle code meets them: the strength of a unit in its
  *  whole force (plan P1-19a), then a unit meeting another or shooting over its line (P1-19b), then the whole line
  *  (P1-19c), then a unit's fate after the battle (P1-19d), then the volley before the battle and a land unit at sea
- *  (P1-19g), then a unit's place in the battle grid (P1-19h). */
+ *  (P1-19g), then a unit's place in the battle grid (P1-19h), then what a unit does to the enemy before the battle
+ *  (P1-19i). */
 export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // Orc: goblins are worth little alone and a great deal in a mob.
   'sheer-numbers': {
@@ -420,6 +423,22 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     unit: 'Titan Warbeasts',
     name: 'Colossal Bulk',
     numbers: { inTheSecondLine: { value: 1, theBooksWriteIt: 'full strength' } },
+  },
+  // ── Before the battle (plan P1-19i: applyFlakScreen, and Breach and Swamp in both battles) ──
+  // A flyer is harried before the battle (strength): each Gyrocopter engages one enemy winged rider no gyrocopter has
+  // engaged this battle, which loses 30% of its base strength for the battle (at least 1), so no two gyrocopters engage
+  // the same flyer.
+  'flak-screen': {
+    unit: 'Gnomish Gyrocopters',
+    name: 'Flak Screen',
+    numbers: { theStrengthAFlyerLoses: { value: 0.3, theBooksWriteIt: 'a fraction taken' } },
+  },
+  // A hull is sunk before the battle (fate): each Whale Cohort rises beneath an enemy hull still afloat and rolls it over,
+  // one chance in four, before either side's strength is counted.
+  'breach-and-swamp': {
+    unit: 'Whale Cohort',
+    name: 'Breach and Swamp',
+    numbers: { toSinkAHull: { value: 0.25, theBooksWriteIt: 'a chance' } },
   },
 } as const satisfies Record<string, AUnitAbilityAsTheBooksWriteIt>;
 

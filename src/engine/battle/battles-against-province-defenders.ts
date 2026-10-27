@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import { theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
@@ -695,20 +696,20 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const hasQuiver = hasItemBase(c, 'Quiver of the Hawk');
   const _manyArrows = hasItemBase(c, 'Quiver of Many Arrows'); // one extra shot per missile unit
   applyFlakScreen(armies, defenders, c.name, narrative);
-  // PRIMAL — Breach and Swamp: whale cohorts roll a hull over before a shot is fired.
+  // PRIMAL — Breach and Swamp: whale cohorts roll a hull over before a shot is fired. The rule registry's
+  // "fate: a hull is sunk before the battle" picks the hull, with the dice it is handed (plan P1-19i).
   // 2026-09-23d: defenders lost OUTSIDE the `_died` flag — hulls sunk here (spliced out of the list)
   // and units a WINNING garrison loses (`_defDied`, cleared before return) — are counted into
   // these so the returned defLost is the true figure (it pays merit when the attacker wins).
   let _npcSunkLost = 0,
     _npcDefWinLost = 0;
   (function () {
-    const pods = (armies || []).filter((a) => a && a.type === 'Whale Cohort');
-    if (!pods.length) return;
-    pods.forEach(() => {
-      const hulls = (defenders || []).filter((a) => a && SEA_TYPES.has(a.type) && !a._sunk);
-      if (!hulls.length) return;
-      if (kcRng() >= 0.25) return;
-      const t = hulls[Math.floor(kcRng() * hulls.length)];
+    (armies || []).forEach((a) => {
+      if (!a) return;
+      const hulls = (defenders || []).filter((d) => d && SEA_TYPES.has(d.type) && !d._sunk);
+      const at = theHullAUnitSinksBeforeTheBattle({ unitType: a.type, theEnemyHullsAfloat: hulls, theDice: kcRng });
+      if (at === null) return;
+      const t = hulls[at];
       t._sunk = true;
       narrate(narrative, {
         kind: 'a whale cohort sinks a defending ship before a shot is fired',
