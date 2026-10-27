@@ -286,35 +286,54 @@ const ON_ITS_STRING = new Set(['toLowerCase', 'toUpperCase', 'trim', 'slice', 'r
 /** Calls that write words of what they are given. */
 const WRITE_WORDS = new Set(['join', 'toFixed', 'concat', 'repeat']);
 
-/** Every expression a variable is given before a place in a file: its last declaration before the place, and every
- *  assignment (= or +=) to it after that declaration and before the place. */
-function whatAVariableIsGiven(sf: ts.SourceFile, name: string, before: number): ts.Expression[] {
-  let declaration: ts.VariableDeclaration | undefined;
-  const assignments: ts.BinaryExpression[] = [];
+/** Every declaration (with a value) and every assignment (= or +=) to each name in a file, in the file's order: read
+ *  once a file, for every field of every area (the rule runs over the whole engine for each area). */
+const THE_NAMES_OF_EACH_FILE = new WeakMap<
+  ts.SourceFile,
+  Map<string, { declarations: ts.VariableDeclaration[]; assignments: ts.BinaryExpression[] }>
+>();
+function theNamesOf(sf: ts.SourceFile) {
+  let names = THE_NAMES_OF_EACH_FILE.get(sf);
+  if (names) return names;
+  const found = new Map<string, { declarations: ts.VariableDeclaration[]; assignments: ts.BinaryExpression[] }>();
+  const of = (name: string) => {
+    let entry = found.get(name);
+    if (!entry) found.set(name, (entry = { declarations: [], assignments: [] }));
+    return entry;
+  };
   const visit = (node: ts.Node): void => {
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === name &&
-      node.initializer &&
-      node.getStart(sf) < before
-    )
-      declaration = !declaration || node.getStart(sf) > declaration.getStart(sf) ? node : declaration;
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer)
+      of(node.name.text).declarations.push(node);
     if (
       ts.isBinaryExpression(node) &&
       ts.isIdentifier(node.left) &&
-      node.left.text === name &&
       (node.operatorToken.kind === ts.SyntaxKind.EqualsToken ||
-        node.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken) &&
-      node.getStart(sf) < before
+        node.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken)
     )
-      assignments.push(node);
+      of(node.left.text).assignments.push(node);
     ts.forEachChild(node, visit);
   };
   visit(sf);
+  names = found;
+  THE_NAMES_OF_EACH_FILE.set(sf, names);
+  return names;
+}
+
+/** Every expression a variable is given before a place in a file: its last declaration before the place, and every
+ *  assignment (= or +=) to it after that declaration and before the place. */
+function whatAVariableIsGiven(sf: ts.SourceFile, name: string, before: number): ts.Expression[] {
+  const names = theNamesOf(sf).get(name);
+  if (!names) return [];
+  let declaration: ts.VariableDeclaration | undefined;
+  for (const node of names.declarations)
+    if (node.getStart(sf) < before && (!declaration || node.getStart(sf) > declaration.getStart(sf)))
+      declaration = node;
   if (!declaration?.initializer) return [];
   const from = declaration.getStart(sf);
-  return [declaration.initializer, ...assignments.filter((a) => a.getStart(sf) > from).map((a) => a.right)];
+  return [
+    declaration.initializer,
+    ...names.assignments.filter((a) => a.getStart(sf) < before && a.getStart(sf) > from).map((a) => a.right),
+  ];
 }
 
 /** Why a value holds words (null: it holds none). */
@@ -413,8 +432,17 @@ function kindsDeclaredIn(file: string): Set<string> {
 }
 
 /** Every field of a fact literal of the kinds given that holds words, in a file's text: "line kind field: why". */
+/** Each file's syntax tree, parsed once for every area (by its path and its text). */
+const THE_TREE_OF_EACH_FILE = new Map<string, ts.SourceFile>();
+function theTreeOf(file: string, text: string): ts.SourceFile {
+  const key = `${file}\0${text}`;
+  let sf = THE_TREE_OF_EACH_FILE.get(key);
+  if (!sf) THE_TREE_OF_EACH_FILE.set(key, (sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true)));
+  return sf;
+}
+
 function fieldsHoldingWords(file: string, text: string, kinds: ReadonlySet<string>): string[] {
-  const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const sf = theTreeOf(file, text);
   const found: string[] = [];
   const visit = (node: ts.Node): void => {
     if (ts.isObjectLiteralExpression(node)) {
