@@ -399,8 +399,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
   `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its
-  stage's order once (`tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`); each row's
-  name and numbers in both books (`tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts`); no unit
+  stage's order once (`tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`); each row's,
+  and each ability a table holds, name and numbers in both books (`tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts`); no unit
   type named in a function the registry has taken (`tests/static/the-resolvers-the-registry-has-taken-name-no-unit-type.test.ts`),
   and, outside the registry, the ratchet's `unitNameChecksInEngine`, which only falls; the layer rule above.
 - **How to add an ability** of a stage already written: its row in
@@ -410,6 +410,27 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   (`UNIT_ABILITIES`, in the same content file since P1-19e: the player portal imports it, and the player page's entry
   lists the file so that the words tests read it as the page's) and its roster row (the words test reads them). The hook points' types live in the registry's file, which holds code:
   a file only `import type` reaches is in no bundle ([traps.md](traps.md#an-effect-reads-only-what-its-hook-hands-it)).
+- **The abilities a table holds** (P1-19's second slice, Choice 2): 17 abilities stay in the tables the battle code
+  reads by the unit's type, and no resolver names them: the 15 pre-battle strikes (each beast's `spells` in
+  `PRIMAL_ARMY_DEFS_P`, and the winged riders' Screech Dive and Acid Spit in `BATTLE_ARMY_SPELLS`, beside it in
+  `src/content/kingdoms-call-data.ts` since P1-19l), Island Back (the Great Turtles' two berths, `KC_CARRIER_BERTHS`) and
+  Forest Runners (the Stag Riders' forest and jungle cells of `TERRAIN_MODS`, in `battle/terrain-and-unit-strength.ts`).
+  A strike's casting is battle magic's code (in `combatVsChar`, and twice in `combatVsNPC`), which the spells family
+  takes with the heroes' battle spells. The words test reads each table: a strike's name and damage range (`2–4`, with
+  the books' en dash), Island Back's count with what it counts ("two land units"), Forest Runners' factors with their
+  ground ("×1.1 in forest", "no penalty in jungle"; `TERRAIN_MODS` by its syntax tree). A bare "one" or "×1" would be
+  in the books' words already ("where a fleet carries one", "×1.1"), so a table's number is matched with its words.
+- **Where the books write an ability** (a trap until P1-19l): every unit ability is also in its unit's blurb
+  (`UNIT_ABILITIES`, in the content file beside the rows), in the rulebook's roster row and in the battle report's lines;
+  change a number in its row or its table and in both books. A unit appears in `UNIT_ABILITIES` once: an object literal
+  keeps the last key, so a second entry fails `npm run typecheck` (TS1117), and the words tests check it too. The words
+  tests find the blurbs as the player page's because its entry (`src/ui/player/page.ts`) lists the content file: keep
+  that import, or `fileDeclaring(PLAYER, 'UNIT_ABILITIES')` finds no file. `tests/abilities-words.test.js` and
+  `tests/primal-abilities-words.test.js` name no ability since P1-19l: they check each unit's blurb and roster row, and
+  a few of the books' sentences. The race and beast tests (`tests/abilities-human.test.js` and its elven, dwarven,
+  orcish and beasts siblings, `tests/abilities-beasts-turn.test.js`, `tests/abilities-turn.test.js`) check the numbers in
+  play. The grid's flyer set is `KC_UNIT_CLASS.aerial` (the riders and the flying beasts); the archers' first-target set
+  is `KC_UNIT_CLASS.flying` (the riders only).
 
 ## A saved game: its version, its upgrade, its check
 
@@ -730,7 +751,7 @@ portals' start-up guards are gone.
   totals are the strengths the dice see. The units' own abilities sit on the same grid: `abilityFront` and
   `abilityBack` adjust one matchup, `battleFaceSide` the cases that read the whole line, `battleGrid` who may
   take a flank; the volley helpers (`missileDamageMult`, `abilityVolleys`, `missileTargetPool`,
-  `archeryBlockedBy`) and `unitAbilityMult` carry the rest ([traps.md](traps.md#a-unit-ability-is-written-in-four-places)). Both battle paths score through deploy and facing, the stay-or-retreat
+  `archeryBlockedBy`) and `unitAbilityMult` carry the rest, each asking the rule registry ([The rule registry](#the-rule-registry)). Both battle paths score through deploy and facing, the stay-or-retreat
   estimate through grid and facing; the bots' estimates (`battleLineTotal`, at the middle width) through the
   grid alone. The report prints the grid as 📊 lines, which the portals draw in
   monospace, and the ladder names every place and matchup.
@@ -800,7 +821,7 @@ portals' start-up guards are gone.
   `reportHeroFall`, `disperseDeadCharArmies`, `engine/heroes/hero-death-and-leaderless-hosts.ts`). P1-08g: a host's
   battle against a province's defenders with no realm's hero among them (`combatVsNPC`,
   `engine/battle/battles-against-province-defenders.ts`, with the constants both battle paths read: the carry-on death
-  scaling, the airborne-at-sea penalties, the narrative verbs, `BATTLE_ARMY_SPELLS`), and the duel before a battle
+  scaling, the airborne-at-sea penalties, the narrative verbs; `BATTLE_ARMY_SPELLS`, the winged riders' strikes, is in content since P1-19l), and the duel before a battle
   (`preBattleDuel`, `engine/battle/pre-battle-duels.ts`). P1-08h: the battle between two heroes' hosts (`combatVsChar`,
   `engine/battle/battles-between-heroes.ts`). P1-08i1: the phase pipeline before anyone acts (`buildPhaseIntents`,
   `orderPhaseActors`, `applyMoveInterlocks`, with `PHASE_ACTION_MAP`, `engine/turn/phase-intents-and-dependency-ordering.ts`),

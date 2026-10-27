@@ -4,7 +4,7 @@
 // classic script is shared with the portal's own script, so every name below is visible there.
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
-// Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
+// Tables: PRIMAL_ARMY_DEFS_P, BATTLE_ARMY_SPELLS, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -262,6 +262,25 @@ export const PRIMAL_ARMY_DEFS_P = {
     desc: 'Island-backed turtles of the prosperous seas, the one Creature among the sea-beasts: they swim under their own power and, Island Back, carry two land units a hull where a fleet carries one. Shell Wall: immune to pre-battle volleys, as the Ironclads. Slow (speed 2); no special strike. Recruited where they live.',
   },
 } satisfies Partial<Record<UnitType, unknown>>;
+
+// The winged riders' pre-battle strikes, beside the beasts' (each beast's `spells` above): data the battle code reads by
+// the unit's type, moved here from the engine's battle/battles-against-province-defenders.ts (plan P1-19l). The words
+// test reads each strike's name and damage range against both books.
+// Battle spells for special standard army units (used in pre-battle magic phase) castChance is base
+// % before druid bonus; dmg reduces a target army's effective strength
+export const BATTLE_ARMY_SPELLS = {
+  'Wyvern Riders': [
+    {
+      name: 'Acid Spit Volley',
+      dmg: [2, 5],
+      target: 'single',
+      flavour: 'A wave of caustic venom spatters across the foe!',
+    },
+  ],
+  'Noble Griffons': [
+    { name: 'Screech Dive', dmg: [2, 4], target: 'single', flavour: 'A diving screech scatters the target formation!' },
+  ],
+};
 
 // when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a skill — reachable only
 // through hard experience, never the practice ground), their own report congratulates them and

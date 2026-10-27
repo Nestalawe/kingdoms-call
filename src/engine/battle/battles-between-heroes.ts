@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { BATTLE_ARMY_SPELLS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
@@ -103,7 +103,6 @@ import { raidLandedHere } from './raid-the-coast-and-landing-parties.ts';
 import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { magicItemsLine } from '../personal-combat/duels-and-character-encounters.ts';
 import {
-  BATTLE_ARMY_SPELLS,
   CARRYON_DEATH_CAP,
   CARRYON_DEATH_STEP,
   DEF_VERBS,
