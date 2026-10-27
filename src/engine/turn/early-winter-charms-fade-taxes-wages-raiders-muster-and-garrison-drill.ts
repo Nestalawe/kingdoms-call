@@ -1,6 +1,6 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
+import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
 import {
   CARRIER_TYPES,
   CREATURE_ARMIES,
@@ -29,6 +29,8 @@ import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { isOpenSea, seaLiftShortfall, settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { setMovePool } from '../units/movement-pools.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import type { TurnContext } from './context.ts';
+import type { Character, Item, Realm } from '../../schemas/saved-game-state.ts';
 
 // ── EARLY WINTER (plan P1-08k2: a stage taken out of resolveTurn's phase loop) ─────────────────────────────────────
 // After the four stages of the turn's last phase (Early Winter), the realms settle their accounts, in this order:
@@ -43,15 +45,49 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audi
 //      is settled.
 // It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads none of the loop's values (the
 // phase, the intents, where each hero stood). The body keeps the loop's indent (plan P1-08's Decisions).
+//
+// Its types (plan P1-10b7): a list the body guards (`|| []`, `hc &&`) is typed as wide as the guard, so each guard
+// stays (plan P1-10b's Decision 3), though a state the turn hands always holds it; a list it reads unguarded keeps the
+// saved state's type. A GameState passes for each.
+/** The state as Early Winter reads it. The world's provinces are read both ways (provincesOrNone, below). */
+interface TheStateAsEarlyWinterReadsIt {
+  readonly turn: number;
+  readonly characters?: readonly Character[] | null;
+  readonly players: readonly ARealmAsEarlyWinterReadsIt[];
+  readonly world: { readonly provinces: readonly ProvinceInABattle[] };
+}
+/** A realm as Early Winter reads it: its provinces and heroes guarded. */
+type ARealmAsEarlyWinterReadsIt = Omit<Realm, 'provinces' | 'heroes'> & {
+  provinces?: readonly number[] | null;
+  heroes?: number[] | null;
+};
+/** A hero where Early Winter guards his list of companies. */
+type AHeroAsEarlyWinterReadsHisArmies = Omit<Character, 'armies'> & {
+  readonly armies?: readonly ArmyInABattle[] | null;
+};
+/** A province where Early Winter guards its garrison. */
+type AProvinceAsEarlyWinterReadsItsGarrison = Omit<ProvinceInABattle, 'garrisonArmies'> & {
+  garrisonArmies?: ArmyInABattle[] | null;
+};
+/** An item where Early Winter guards its effect. */
+type AnItemAsEarlyWinterReadsIt = Omit<Item, 'effect'> & {
+  readonly effect?: { readonly stat?: string; readonly bonus?: number | undefined } | null;
+};
 
-export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(turnContext) {
-  const { G } = turnContext;
+export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(turnContext: TurnContext) {
+  const { G }: { readonly G: TheStateAsEarlyWinterReadsIt } = turnContext;
+  // The world's provinces where the body guards the list (`|| []`); where it reads them unguarded (by a province's id
+  // or a hero's location), G.world.provinces as it is.
+  const provincesOrNone = () => {
+    const theWorldAsGuarded: { readonly provinces?: readonly ProvinceInABattle[] | null } = G.world;
+    return theWorldAsGuarded.provinces ?? [];
+  };
   // ── Charm revert ── A hero whose command was seized by an enemy Charm returns to their own
   // lord as the season turns. This happens BEFORE tax and wages so the original owner (not the
   // charmer) pays their upkeep, per the spell's terms. Order/battle control has already run for
   // the turn.
-  (G.characters || []).forEach((hc) => {
-    if (hc && hc._charmTempControl && hc._charmOriginalPlayer != null) {
+  (G.characters ?? []).forEach((hc: HeroInABattle | null | undefined) => {
+    if (hc?._charmTempControl && hc._charmOriginalPlayer != null) {
       const back = hc._charmOriginalPlayer;
       if (hc.player !== back) {
         hc.player = back;
@@ -90,28 +126,28 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // collection (p.gold before any income is added), so the player sees their starting gold
     // above the tax/wages lines that follow.
     if (
-      (p.provinces || []).length > 0 ||
-      (G.characters || []).some((c) => c.player === p.id && c.alive) ||
+      (p.provinces ?? []).length > 0 ||
+      (G.characters ?? []).some((c) => c.player === p.id && c.alive) ||
       (p.gold || 0) > 0
     ) {
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} has ${p.gold || 0}g in the treasury.`,
+        text: `${p.name} has ${String(p.gold || 0)}g in the treasury.`,
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     }
-    const _taxAcc = new Map(); // capped `tax` discoveries: gold paid so far this collection
+    const _taxAcc = new Map<unknown, number>(); // capped `tax` discoveries: gold paid so far this collection
     const _baseTax = realmBaseTax(G, pi),
       _taxCap = taxBonusCap(_baseTax); // 5%-of-base ceiling (Toby 2026-09-24)
     let _consecBonus = 0; // DIVINE — Consecrate: track the +50% holy-ground uplift so the player can SEE it itemised
-    const income = (p.provinces || []).reduce((s, id) => {
-      const pv = G.world.provinces[id];
+    const income = (p.provinces ?? []).reduce((s, id) => {
+      const pv: AProvinceAsEarlyWinterReadsItsGarrison | undefined = G.world.provinces[id];
       if (!pv) return s;
       let t = pv.tax || 0;
       if (pv._earthquakeNoTax === G.turn) t = 0; // Earthquake: no revenue this turn
       if (pv._sabotagedForTurn === G.turn) t = 0; // SPY L7 Sabotage: wrecked province yields no tax this turn
-      if (pv._blessedTurn === G.turn) t = Math.round(t * (pv._blessedMult || 1.6)); // Bless Province: +60% (or +100% from a Divine king)
+      if (pv._blessedTurn === G.turn) t = Math.round(t * (Number(pv._blessedMult) || 1.6)); // Bless Province: +60% (or +100% from a Divine king)
       if (isConsecrated(p, pv.id)) {
         const _cb = t;
         t = Math.round(t * 1.5);
@@ -124,26 +160,32 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       t += discTaxAdd(p, pv, G, pi, _taxAcc, _taxCap);
       // GRAND DESIGN — Good (Free City Charter): +2 tax on every province you hold with a
       // garrison.
-      if (gdActive(turnContext, pi, 'Good') && (pv.garrisonArmies || []).length > 0) t += 2;
+      if (gdActive(turnContext, pi, 'Good') && (pv.garrisonArmies ?? []).length > 0) t += 2;
       return s + t;
     }, 0);
-    const pChars = (G.characters || []).filter((c) => c.player === p.id && c.alive);
-    const itemStat = (st) =>
+    const pChars = (G.characters ?? []).filter((c) => c.player === p.id && c.alive);
+    const itemStat = (st: string) =>
       pChars.reduce(
         (s, c) =>
-          s + activeItems(c).reduce((a, it) => a + (it.effect && it.effect.stat === st ? it.effect.bonus : 0), 0),
+          s +
+          activeItems(c).reduce(
+            (a, it: AnItemAsEarlyWinterReadsIt) => a + (it.effect?.stat === st ? Number(it.effect.bonus) : 0),
+            0,
+          ),
         0,
       );
     // Ring of Wealth & co (flat) and Merchant's Ledger (+1g per province owned, if any hero
     // carries one) pay tax gold — together they are capped at 5% of the realm's base tax income.
     const _taxBonusRaw = pChars.reduce((s, c) => s + (c.taxBonus || 0), 0) + itemStat('taxBonus');
-    const ledgers = pChars.some((c) => activeItems(c).some((it) => it.effect && it.effect.stat === 'taxPerProv'));
-    const _perProvRaw = ledgers ? (G.world.provinces || []).filter((pv) => pv.owner === p.id).length : 0;
+    const ledgers = pChars.some((c) =>
+      activeItems(c).some((it: AnItemAsEarlyWinterReadsIt) => it.effect?.stat === 'taxPerProv'),
+    );
+    const _perProvRaw = ledgers ? provincesOrNone().filter((pv) => pv.owner === p.id).length : 0;
     const _itemTax = capItemTaxGold(_taxBonusRaw, _perProvRaw, _taxCap);
     const taxBonus = _itemTax.taxBonus,
       perProvBonus = _itemTax.perProvBonus;
     const interestBonus = discEff(turnContext, pi, 'interest').reduce(
-      (s2, e) => s2 + Math.min(_taxCap, Math.floor((p.gold || 0) * (e.pct || 0))),
+      (s2, e) => s2 + Math.min(_taxCap, Math.floor((p.gold || 0) * (e.pct ?? 0))),
       0,
     ); // interest discoveries
     // Neutral trade: +20% of province income, rounded down.
@@ -168,16 +210,16 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         titlePerkNote += ` (+2g Champion of the People)`;
       }
       if (charMinor(turnContext, pc, 'castellan')) {
-        const cg = Math.floor((G.world.provinces || []).filter((pv) => pv.owner === pi).length / 5);
+        const cg = Math.floor(provincesOrNone().filter((pv) => pv.owner === pi).length / 5);
         if (cg > 0) {
           titlePerkGold += cg;
-          titlePerkNote += ` (+${cg}g the Castellan)`;
+          titlePerkNote += ` (+${String(cg)}g the Castellan)`;
         }
       }
     });
     // THIEF L6: +5g income per Thief-6 character. Pay it here.
     const thiefStipend = pChars.reduce((sm, ch) => sm + (perkTier(ch, 'thief') > 0 ? 5 : 0), 0);
-    const thiefNote = thiefStipend > 0 ? ` (+${thiefStipend}g Thief network)` : '';
+    const thiefNote = thiefStipend > 0 ? ` (+${String(thiefStipend)}g Thief network)` : '';
     p.gold =
       (p.gold || 0) +
       income +
@@ -191,7 +233,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     if (income > 0 || perProvBonus > 0 || titlePerkGold > 0 || thiefStipend > 0)
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} collects ${income + taxBonus + perProvBonus + interestBonus + neutralTradeBonus + taxRecordsBonus + titlePerkGold + thiefStipend}g in taxes${taxRecordsBonus > 0 ? ` (+${taxRecordsBonus}g Taxation Records)` : ''}${perProvBonus > 0 ? ` (+${perProvBonus}g Merchant's Ledger)` : ''}${neutralTradeBonus > 0 ? ` (+${neutralTradeBonus}g Neutral trade bonus)` : ''}${interestBonus > 0 ? ` (+${interestBonus}g Merchant Guilds interest)` : ''}${_consecBonus > 0 ? ` (+${_consecBonus}g from consecrated ground)` : ''}${titlePerkNote}${thiefNote}.`,
+        text: `${p.name} collects ${String(income + taxBonus + perProvBonus + interestBonus + neutralTradeBonus + taxRecordsBonus + titlePerkGold + thiefStipend)}g in taxes${taxRecordsBonus > 0 ? ` (+${String(taxRecordsBonus)}g Taxation Records)` : ''}${perProvBonus > 0 ? ` (+${String(perProvBonus)}g Merchant's Ledger)` : ''}${neutralTradeBonus > 0 ? ` (+${String(neutralTradeBonus)}g Neutral trade bonus)` : ''}${interestBonus > 0 ? ` (+${String(interestBonus)}g Merchant Guilds interest)` : ''}${_consecBonus > 0 ? ` (+${String(_consecBonus)}g from consecrated ground)` : ''}${titlePerkNote}${thiefNote}.`,
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -208,13 +250,13 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // `heroWageCap` discoveries are each capped at it per turn (2026-09-26, Toby). Recomputed
     // here because the collection loop is a separate pass with its own scope.
     const _taxCap = taxBonusCap(realmBaseTax(G, pi));
-    const playerChars = (G.characters || []).filter((c) => c.player === p.id && c.alive);
+    const playerChars = (G.characters ?? []).filter((c) => c.player === p.id && c.alive);
     // Army wages — every carried army costs its recruitment cost per turn
-    const allArmies = playerChars.flatMap((c) => c.armies || []);
+    const allArmies = playerChars.flatMap((c: AHeroAsEarlyWinterReadsHisArmies) => c.armies ?? []);
     // Also count garrison armies left in provinces
-    const garrisonArmies = (G.world.provinces || [])
+    const garrisonArmies = provincesOrNone()
       .filter((pv) => pv.owner === p.id)
-      .flatMap((pv) => pv.garrisonArmies || []);
+      .flatMap((pv: AProvinceAsEarlyWinterReadsItsGarrison) => pv.garrisonArmies ?? []);
     const allKingdomArmies = [...allArmies, ...garrisonArmies];
     // temporary summons (elementals) are a spell effect that dissolves at turn end — they draw
     // no wage and are never disbanded for non-payment (see the disband loop below). ORC
@@ -224,14 +266,14 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // DRUID L6 — creatures/monsters led by a Druid-6 character pay half wages. Built as a Set
     // of the actual army objects (identity), since the wage sum flattens away the leader
     // association.
-    const _druidHalfWage = new Set();
-    playerChars.forEach((ch) => {
+    const _druidHalfWage = new Set<ArmyInABattle>();
+    playerChars.forEach((ch: AHeroAsEarlyWinterReadsHisArmies) => {
       if (perkTier(ch, 'druid') > 0 || gdActive(turnContext, p.id, 'Druidic'))
-        (ch.armies || []).forEach((a) => {
+        (ch.armies ?? []).forEach((a) => {
           if (CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a);
         });
     }); // + GRAND DESIGN Druidic
-    const _upkAcc = new Map();
+    const _upkAcc = new Map<unknown, number>();
     let _discUpkeepG = 0;
     let _orcSpoilsG = 0; // 2026-09-10 item 3: itemised so the report can explain the one-off discount
     // 2026-09-27 (Toby items 8 & 9): ORC WAR-SPOILS WAS NOT PAYING 50%.
@@ -245,13 +287,13 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // (or half rounded to the nearest gold), which is what "half upkeep" has always meant.
     // The 1g floor still applies per unit, so a 1g unit is never free.
     let _orcFrac = 0;
-    let armyWages = allKingdomArmies.reduce((s, a) => {
+    let armyWages = allKingdomArmies.reduce((s, a: ArmyInABattle) => {
       if (a._temporary) return s;
       // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
       if (a._wildHuntUntilTurn != null) return s;
       if (a._isSkeletal) return s + 1;
-      let w = ARMY_COST[a.type] || 2;
+      let w = Number(ARMY_COST[a.type]) || 2;
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
         const _w0 = w,
           _half = _w0 * 0.5;
@@ -283,9 +325,11 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // leads (min 1/unit).
     let _hostLeaderG = 0;
     {
-      const hl = playerChars.find((c) => charMinor(turnContext, c, 'hostleader'));
+      const hl: AHeroAsEarlyWinterReadsHisArmies | undefined = playerChars.find((c) =>
+        charMinor(turnContext, c, 'hostleader'),
+      );
       if (hl) {
-        const led = (hl.armies || []).filter((a) => !a._temporary && a._wildHuntUntilTurn == null).length;
+        const led = (hl.armies ?? []).filter((a) => !a._temporary && a._wildHuntUntilTurn == null).length;
         _hostLeaderG = Math.min(armyWages, led);
         armyWages = Math.max(0, armyWages - led);
       }
@@ -295,7 +339,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     const heroes = playerChars.filter((c) => !c.isKing);
     // heroWage / heroWageCap discoveries (sd17 Granaries, sd38 Inspiring Leadership, creeds) —
     // one shared helper, mirrored in buildTurnReport.
-    const _hwAcc = new Map();
+    const _hwAcc = new Map<unknown, number>();
     let _heroWageDisc = 0;
     const heroWages = heroes.reduce((s, h) => {
       const raw = h.pay || 0;
@@ -332,14 +376,14 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
 
     {
       const _notes = [
-        _hostLeaderG > 0 ? `−${_hostLeaderG}g the Host-Leader` : '',
-        _orcSpoilsG > 0 ? `−${_orcSpoilsG}g Orcish war-spoils` : '',
-        _heroWageDisc > 0 ? `−${_heroWageDisc}g hero wage discounts` : '',
-        _discUpkeepG > 0 ? `−${_discUpkeepG}g army upkeep discoveries` : '',
+        _hostLeaderG > 0 ? `−${String(_hostLeaderG)}g the Host-Leader` : '',
+        _orcSpoilsG > 0 ? `−${String(_orcSpoilsG)}g Orcish war-spoils` : '',
+        _heroWageDisc > 0 ? `−${String(_heroWageDisc)}g hero wage discounts` : '',
+        _discUpkeepG > 0 ? `−${String(_discUpkeepG)}g army upkeep discoveries` : '',
       ].filter(Boolean);
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} owes ${totalWages}g wages (armies: ${armyWages}g, heroes: ${heroWages}g)${_notes.length ? ` — after ${_notes.join(', ')}` : ''}.`,
+        text: `${p.name} owes ${String(totalWages)}g wages (armies: ${String(armyWages)}g, heroes: ${String(heroWages)}g)${_notes.length ? ` — after ${_notes.join(', ')}` : ''}.`,
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -349,7 +393,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       p.gold -= totalWages;
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} pays ${totalWages}g in wages. Treasury: ${p.gold}g remaining.`,
+        text: `${p.name} pays ${String(totalWages)}g in wages. Treasury: ${String(p.gold)}g remaining.`,
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -357,7 +401,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // Can't pay in full — armies disband first (cheapest first), then heroes desert
       emit(turnContext, {
         type: 'system',
-        text: `⚠ ${p.name} cannot pay ${totalWages}g wages! Only ${p.gold || 0}g available. The rawest troops melt away first — the greenest companies anywhere in the realm, garrison or field alike — then better men as the shortfall bites. The skeletal dead ask for nothing and are the last to go. Heroes may desert.`,
+        text: `⚠ ${p.name} cannot pay ${String(totalWages)}g wages! Only ${String(p.gold || 0)}g available. The rawest troops melt away first — the greenest companies anywhere in the realm, garrison or field alike — then better men as the shortfall bites. The skeletal dead ask for nothing and are the last to go. Heroes may desert.`,
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -373,37 +417,39 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // 3. Within one experience tier the choice is RANDOM ACROSS THE WHOLE EMPIRE — no more
       // "garrisons always, field armies never". A random key is decorated onto each unit up
       // front so the comparator stays a valid (consistent) ordering.
-      const _qRank = (a) => {
-        const i = QUALITY_TIERS.indexOf(a && a.quality);
+      const _qRank = (a: ArmyInABattle) => {
+        const i = QUALITY_TIERS.indexOf(a.quality);
         return i < 0 ? 1 : i;
       }; // unknown quality ≈ Average
       const sortedArmies = [...allKingdomArmies]
         .map((a) => ({ a, skel: a._isSkeletal ? 1 : 0, q: _qRank(a), r: kcRng() }))
         .sort((x, y) => x.skel - y.skel || x.q - y.q || x.r - y.r)
         .map((x) => x.a);
-      const _sparedHulls = []; // 2026-09-23c: ships carrying troops at sea are never disbanded from under them
+      const _sparedHulls: ArmyInABattle[] = []; // 2026-09-23c: ships carrying troops at sea are never disbanded from under them
       // A hull spared earlier in this pass is looked at again every time a unit disbands: once the
       // troops it carried are gone it is no longer needed and takes its place in the queue again
       // (Toby, 2026-09-23c) — it was reached before the unit that just went, so it goes next.
       const _revisitSpared = () => {
         for (let _i = 0; _i < _sparedHulls.length && deficit > 0; _i++) {
-          const _h = _sparedHulls[_i],
-            _oc = playerChars.find((ch) => (ch.armies || []).includes(_h));
+          const _h = _sparedHulls[_i];
+          if (!_h) continue; // never: the loop has just checked _i is in the list, which holds only units
+          const _oc = playerChars.find((ch: AHeroAsEarlyWinterReadsHisArmies) => (ch.armies ?? []).includes(_h));
           if (!_oc) {
             _sparedHulls.splice(_i--, 1);
             continue;
           }
+          const theHeroAsGuarded: AHeroAsEarlyWinterReadsHisArmies = _oc;
           if (
             isOpenSea(G.world.provinces[_oc.location]) &&
             seaLiftShortfall(
-              (_oc.armies || []).filter((a) => a !== _h),
+              (theHeroAsGuarded.armies ?? []).filter((a) => a !== _h),
               _oc,
             ) > 0
           )
             continue; // still carrying
           _oc.armies.splice(_oc.armies.indexOf(_h), 1);
           _sparedHulls.splice(_i--, 1);
-          deficit -= _h._isSkeletal ? 1 : ARMY_COST[_h.type] || 2;
+          deficit -= _h._isSkeletal ? 1 : Number(ARMY_COST[_h.type]) || 2;
           emit(turnContext, {
             type: 'hire',
             text: `${_h.unitName ? _h.unitName + ' (' + _h.type + ')' : 'A ' + _h.quality + ' ' + _h.type} disbands — ${p.name} could not pay their wages, and with the troops aboard gone the ship is no longer needed to carry them.`,
@@ -412,7 +458,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           });
         }
       };
-      sortedArmies.forEach((army) => {
+      sortedArmies.forEach((army: ArmyInABattle) => {
         if (deficit <= 0) return;
         // elementals and other temporary summons are never disbanded for non-payment — they
         // dissolve on their own at turn's end (and no longer draw a wage above).
@@ -421,18 +467,20 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         if (army._isSkeletal && gdActive(turnContext, p.id, 'Undead')) return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
         // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons)
         // still free
-        const cost = army._isSkeletal ? 1 : ARMY_COST[army.type] || 2;
+        const cost = army._isSkeletal ? 1 : Number(ARMY_COST[army.type]) || 2;
         if (cost === 0) return; // other free armies never disband for non-payment
         // 2026-09-23c (Toby): a hull that is carrying land troops at sea is protected — disbanding it
         // would strand the men aboard. Judged live, so a hull made spare by a unit already gone
         // this pass can still go.
         if (CARRIER_TYPES.has(army.type)) {
-          const _oc = playerChars.find((ch) => (ch.armies || []).includes(army));
+          const _oc: AHeroAsEarlyWinterReadsHisArmies | undefined = playerChars.find(
+            (ch: AHeroAsEarlyWinterReadsHisArmies) => (ch.armies ?? []).includes(army),
+          );
           if (
             _oc &&
             isOpenSea(G.world.provinces[_oc.location]) &&
             seaLiftShortfall(
-              (_oc.armies || []).filter((a) => a !== army),
+              (_oc.armies ?? []).filter((a) => a !== army),
               _oc,
             ) > 0
           ) {
@@ -447,25 +495,25 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         // characters) is now only a lookup path — the sort above already chose WHICH unit goes,
         // and identity matching means the lookup cannot pick a different one.
         let removed = false;
-        (G.world.provinces || [])
-          .filter((pv) => pv.owner === p.id)
-          .forEach((pv) => {
-            if (removed) return;
-            const idx = (pv.garrisonArmies || []).findIndex((a) => a === army);
-            if (idx >= 0) {
-              pv.garrisonArmies.splice(idx, 1);
-              removed = true;
-            }
-          });
+        for (const pv of provincesOrNone().filter((pv) => pv.owner === p.id)) {
+          if (removed) continue;
+          const theProvinceAsGuarded: AProvinceAsEarlyWinterReadsItsGarrison = pv;
+          const idx = (theProvinceAsGuarded.garrisonArmies ?? []).findIndex((a) => a === army);
+          if (idx >= 0) {
+            pv.garrisonArmies.splice(idx, 1);
+            removed = true;
+          }
+        }
         if (!removed)
-          playerChars.forEach((c) => {
-            if (removed) return;
-            const idx = (c.armies || []).findIndex((a) => a === army);
+          for (const c of playerChars) {
+            if (removed) continue;
+            const theHeroAsGuarded: AHeroAsEarlyWinterReadsHisArmies = c;
+            const idx = (theHeroAsGuarded.armies ?? []).findIndex((a) => a === army);
             if (idx >= 0) {
               c.armies.splice(idx, 1);
               removed = true;
             }
-          });
+          }
         if (removed) {
           deficit -= cost;
           emit(turnContext, {
@@ -481,7 +529,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (_sparedHulls.length)
         emit(turnContext, {
           type: 'system',
-          text: `⚓ ${_sparedHulls.length} ship${_sparedHulls.length !== 1 ? 's' : ''} carrying troops at sea ${_sparedHulls.length !== 1 ? 'are' : 'is'} kept at the oars unpaid — disbanding ${_sparedHulls.length !== 1 ? 'them' : 'it'} would leave the men aboard stranded.`,
+          text: `⚓ ${String(_sparedHulls.length)} ship${_sparedHulls.length !== 1 ? 's' : ''} carrying troops at sea ${_sparedHulls.length !== 1 ? 'are' : 'is'} kept at the oars unpaid — disbanding ${_sparedHulls.length !== 1 ? 'them' : 'it'} would leave the men aboard stranded.`,
           audience: { actor: p.id, realms: [p.id] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -496,7 +544,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
               h.player = null;
               h.name = h.name.replace(' (wandering)', '') + ' (wandering)';
               deficit -= h.pay || 0;
-              p.heroes = (p.heroes || []).filter((id) => id !== h.id);
+              p.heroes = (p.heroes ?? []).filter((id) => id !== h.id);
               emit(turnContext, {
                 type: 'hire',
                 text: `${h.name} abandons ${p.name}'s service, unpaid and disillusioned.`,
@@ -512,16 +560,17 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
   // victory this turn adds one Goblin Horde to its garrison for nothing: plunder feeds the horde. It
   // is owed wages from next turn like any garrison unit. The battle set the flag; the province must
   // still be an orc realm's at turn's end.
-  (G.world.provinces || []).forEach((pv) => {
-    if (!pv || pv._raidersMuster !== G.turn) {
-      if (pv && pv._raidersMuster != null && pv._raidersMuster !== G.turn) delete pv._raidersMuster;
+  provincesOrNone().forEach((pv: AProvinceAsEarlyWinterReadsItsGarrison | null | undefined) => {
+    if (pv?._raidersMuster !== G.turn) {
+      if (pv?._raidersMuster != null && pv._raidersMuster !== G.turn) delete pv._raidersMuster;
       return;
     }
     delete pv._raidersMuster;
-    if (pv.race !== 'Orcish' || pv.owner == null || !G.players[pv.owner] || G.players[pv.owner].race !== 'Orcish')
-      return;
-    pv.garrisonArmies = pv.garrisonArmies || [];
-    const _gob = { type: 'Goblin Horde', quality: 'Average', race: 'Orcish', unitName: armyUnitName('Goblin Horde') };
+    if (pv.race !== 'Orcish' || pv.owner == null || G.players[pv.owner]?.race !== 'Orcish') return;
+    pv.garrisonArmies ??= [];
+    const _gobName = armyUnitName('Goblin Horde');
+    if (_gobName === undefined) return; // never: the Goblin Horde's pool of names is never empty
+    const _gob = { type: 'Goblin Horde', quality: 'Average', race: 'Orcish', unitName: _gobName };
     pv.garrisonArmies.push(_gob);
     emit(turnContext, {
       type: 'hire',
@@ -536,17 +585,18 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
   // practising: land and air units as if by Tactical 1, fleets and sea-beasts as if by Naval 1
   // (UNIT_DRILL_BASE × GARRISON_DRILL_LEVEL), doubled for Human drillmasters. After wages, so a
   // unit disbanded for want of pay never trains. Skeletal, summoned and Wild Hunt units never do.
-  (G.world.provinces || []).forEach((pv) => {
-    if (!pv || pv.owner == null || !G.players[pv.owner]) return;
-    const _up = []; // one line per province, however many rise
-    (pv.garrisonArmies || []).forEach((a) => {
+  provincesOrNone().forEach((pv: AProvinceAsEarlyWinterReadsItsGarrison | null | undefined) => {
+    if (pv?.owner == null || !G.players[pv.owner]) return;
+    const _up: string[] = []; // one line per province, however many rise
+    (pv.garrisonArmies ?? []).forEach((a: ArmyInABattle | null | undefined) => {
       if (!a || a._isSkeletal || a._temporary || a._phantom || a._wildHuntUntilTurn != null) return;
       const _qi = QUALITY_TIERS.indexOf(a.quality);
       if (_qi < 0 || _qi >= QUALITY_TIERS.length - 1) return;
-      const _ch = (UNIT_DRILL_BASE[a.quality] || 0) * GARRISON_DRILL_LEVEL * humanXPMult(a, pv.owner, G);
+      const drillBaseByQuality: Readonly<Record<string, number | undefined>> = UNIT_DRILL_BASE;
+      const _ch = (drillBaseByQuality[a.quality] ?? 0) * GARRISON_DRILL_LEVEL * humanXPMult(a, pv.owner, G);
       if (kcRng() < _ch) {
         const _q0 = a.quality;
-        a.quality = QUALITY_TIERS[_qi + 1];
+        a.quality = QUALITY_TIERS[_qi + 1] ?? a.quality;
         _up.push(`${a.unitName ? `${a.unitName} (${a.type})` : `a ${a.type}`} ${_q0} → **${a.quality}**`);
       }
     });
