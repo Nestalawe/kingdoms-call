@@ -871,7 +871,14 @@ const skillOf = (hero: Obj, skill: string): number => {
 /** The battle's Druid multiplier on a unit's strength (druIdPenaltyMult, as the battle calls it: the realm's
  *  alignment, and whether its Dragon Taming tames the unit). */
 const battleDruidMultiplier = (world: World) => (hero: Obj, unit: Obj) =>
-  druIdPenaltyMult(hero, unit, realmOf(world, hero)['alignment'], dragonTamed({ G: world.state }, hero, unit));
+  druIdPenaltyMult(
+    hero,
+    unit,
+    realmOf(world, hero)['alignment'],
+    // the staged world's state, hero and unit, given the types the battle hands it, by assertion as the staged worlds
+    // give the saved state's (dragonTamed reads the hero's realm, the unit's type and the realm's discoveries)
+    dragonTamed({ G: world.state } as unknown as TurnContext, hero as HeroInABattle, unit as ArmyInABattle),
+  );
 
 /** One Druid case compared, and the Crown's aura in the report's effective Druid of the hero, with the engine's
  *  answer for the hero trained that much higher. */
