@@ -32,12 +32,14 @@ import { recordCalls } from './writes.ts';
  *  load; any replacement is proved by identical hashes at 1 and many games side by side. */
 export const BOOT_WAIT_MS = 900;
 
-/** How often each scripted case happened in a game: what bots never do, or too rarely to measure. */
+/** How often each scripted case happened in a game: what bots never do, or too rarely to measure. run.ts fails a run
+ *  in which a case never happened, unless a required scenario gives it (run.ts's CASES_A_REQUIRED_SCENARIO_GIVES). */
 export interface Cases {
   /** The scripted chaser set out after an enemy on an Encounter Character order. */
   encounter: number;
   /** A scripted chase held by an unresolved battle where the chaser stood or caught up (advancePursuit's "must
-   *  wait"): 0 times in 144 bot games at scoping. */
+   *  wait"): 0 times in 144 bot games at scoping. Counted and printed, but required of the named scenario
+   *  `a-chase-held-by-an-unresolved-battle` (P1-15e2b), not of the games: they meet it only by luck. */
   battleChase: number;
 }
 export const CASE_NAMES: Record<keyof Cases, string> = {

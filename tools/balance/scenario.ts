@@ -7,6 +7,8 @@
 // statistics, named and labelled as the matrix's (stats.ts, labels.ts). Run n plays on a fresh page with seed n and
 // the matrix's clock, on both sides, so the runs pair by seed and the noise rule (paired.ts) judges the change as it
 // does the matrix's games. A fresh page each run: names drawn in one world survive in the page into the next (play.ts).
+// A scenario with `requires` (P1-15e2b) is also played, on this site only, by every `npm run balance`: it stages a
+// case the matrix's games meet only by luck, and a requirement it misses fails the run.
 //
 // The pure parts are here (tests/unit/balance-scenario.test.ts); scenario-run.ts plays the runs and prints the result.
 import fs from 'node:fs';
@@ -28,6 +30,33 @@ export interface Scenario {
   figures: readonly string[];
   /** Stages the scene on a fresh page and plays its turn: run `run`'s statistics. Throw if it can't be staged. */
   play(sc: Page, run: number): Promise<Stats>;
+  /** What `npm run balance` requires of it (P1-15e2b): a scenario with requirements is played on this site with every
+   *  run of the matrix, before the games, and a requirement it misses fails the run (run.ts). */
+  requires?: readonly ScenarioRequirement[];
+}
+
+/** A figure a required scenario must show (a value above 0) in every run, or in some run. */
+export interface ScenarioRequirement {
+  figure: string;
+  in: 'every run' | 'some run';
+  /** What the figure shows, in game terms: the line printed when it is missed. */
+  what: string;
+}
+
+/** What a required scenario's runs missed, one line each: every run that failed (it couldn't be staged, or the page
+ *  reported an error), then each requirement missed, with how many runs showed it. [] if it met every requirement.
+ *  `runs` holds a run that failed too (scenario-run.ts gives it no statistics). */
+export function whatAScenariosRunsMissed(
+  scenario: Pick<Scenario, 'requires'>,
+  runs: Stats[],
+  failedRuns: readonly string[] = [],
+): string[] {
+  const missed = (scenario.requires ?? []).flatMap((r) => {
+    const shown = runs.filter((s) => (s[r.figure]?.[0] ?? 0) > 0).length;
+    const met = r.in === 'every run' ? shown === runs.length && runs.length > 0 : shown > 0;
+    return met ? [] : [`${r.what}: in ${String(shown)} of ${String(runs.length)} runs (needed in ${r.in})`];
+  });
+  return [...failedRuns, ...missed];
 }
 
 /** A job for scenario-worker.ts, and its reply. */

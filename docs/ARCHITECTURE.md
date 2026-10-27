@@ -1147,7 +1147,10 @@ posts it as one comment with the default branch's `tools/github/balance-comment.
 **Named scenarios** (`npm run balance -- <scenario>`, `tools/balance/scenario.ts`, P1-03c) answer a focused question
 ("how often do these archers beat those guards in the hills?"): a scene staged in `tests/balance/scenarios/` through
 `tests/lib/scenario.js`, played 400 times on a copy of `main`'s site and on the branch, paired by seed and judged by
-the same noise rule, labels and words as the report. Run by hand, not in CI.
+the same noise rule, labels and words as the report. Run by hand, not in CI, except a scenario that **requires**
+figures (P1-15e2b, `requires`): every `npm run balance` plays it first, on this site only, and fails if it misses one, so
+CI's balance job plays it whenever it plays the matrix. Today one: `a-chase-held-by-an-unresolved-battle`, a chase held
+by an unresolved battle, which the matrix's games meet only by luck (20 runs, about 3 s).
 **The mutant scorer** (`npm run mutants -- <folder>`, `tools/mutants/run.ts`, P1-21a) measures the tests themselves:
 "if the code were wrong, would we notice?". A mutant is a small fault in `src/`, written as a patch by a mutation
 session (the plan's protocol), with an `Area:` and an `Imitates:` line (the real bug it imitates) before the diff. The
