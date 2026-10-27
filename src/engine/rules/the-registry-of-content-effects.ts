@@ -9,6 +9,7 @@
 //
 // The hook points' types live here, in a file that holds code, not in a file of types alone: a file only `import type`
 // reaches is in no page's bundle, and the build's checks refuse it (docs/traps.md).
+import type { Quality, UnitType } from '../../content/kingdoms-call-data.ts';
 import {
   UNIT_ABILITIES_THE_REGISTRY_HOLDS,
   type AUnitAbilityAsTheBooksWriteIt,
@@ -50,6 +51,7 @@ import {
   THE_BEATEN_FORCE_HOLDS,
   THE_WINNER_RUNS_THE_BEATEN_DOWN,
 } from './unit-abilities/the-rout-after-a-battle.ts';
+import { A_PROVINCE_RAISES_A_UNIT } from './unit-abilities/a-province-raises-a-unit-at-the-turns-end.ts';
 import {
   A_SHOTS_DAMAGE,
   HOW_MANY_VOLLEYS,
@@ -384,6 +386,23 @@ export interface AForceInItsBattle {
   readonly theBattle: TheBattleARoutFollows;
 }
 
+/** What the stage "a province raises a unit" hands an effect (Early Winter, for each province with a realm, after the
+ *  wages and before the garrison drill): the province's race, the race of the realm that holds it (none if no realm
+ *  does), and whether an orc realm won a battle there this turn (the mark both battles leave on an orcish province). */
+export interface AProvinceAtTheTurnsEnd {
+  readonly theProvincesRace: string | null | undefined;
+  readonly theRaceOfTheRealmThatHoldsIt: string | null | undefined;
+  readonly anOrcRealmWonABattleThereThisTurn: boolean;
+}
+
+/** A unit a province raises into its garrison at the turn's end, for nothing: its type, quality and race. Early Winter
+ *  names it, adds it and writes the line. */
+export interface AUnitAProvinceRaises {
+  readonly type: UnitType;
+  readonly quality: Quality;
+  readonly race: string;
+}
+
 /** A multiplier, and its words in the strength ladder (the ability's name, or its own words). */
 export interface AMultiplierAndItsWords {
   readonly multiplier: number;
@@ -483,7 +502,11 @@ export interface TheStagesOfEachHookPoint {
   readonly experience: never;
   readonly visibility: never;
   readonly turnStart: never;
-  readonly turnEnd: never;
+  readonly turnEnd: {
+    /** The unit a province raises into its garrison, or nothing (Early Winter, after the wages: plan P1-19's second
+     *  slice, Choice 3, the effect returns what the turn must do, and the turn does it and writes the line). */
+    readonly 'a province raises a unit': (facts: AProvinceAtTheTurnsEnd) => AUnitAProvinceRaises | null;
+  };
 }
 
 /** The nine hook points. */
@@ -652,6 +675,7 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   },
   'cut-the-line': { fate: { 'a force holds the sea lanes': A_FORCE_HOLDS_THE_SEA_LANES['cut-the-line'] } },
   'keep-the-sea-lanes': { fate: { 'a force holds the sea lanes': A_FORCE_HOLDS_THE_SEA_LANES['keep-the-sea-lanes'] } },
+  'raiders-muster': { turnEnd: { 'a province raises a unit': A_PROVINCE_RAISES_A_UNIT['raiders-muster'] } },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -722,6 +746,9 @@ export const THE_ORDER_OF_EACH_STAGE = {
     'a beaten unit fails its death roll': ['regenerating-hide'],
     'a beaten unit fails its demotion roll': ['knightly-example'],
     'a force holds the sea lanes': ['cut-the-line', 'keep-the-sea-lanes'],
+  },
+  turnEnd: {
+    'a province raises a unit': ['raiders-muster'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: { readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly UnitAbilitySlug[] };
@@ -914,6 +941,12 @@ const A_FORCE_HOLDS_THE_SEA_LANES_EFFECTS = THE_ORDER_OF_FATE['a force holds the
   const effect = ENTRIES[slug].fate?.['a force holds the sea lanes'];
   return effect ? [effect] : [];
 }) satisfies readonly AForceHoldsTheSeaLanesEffect[];
+type AProvinceRaisesAUnitEffect = TheStagesOfEachHookPoint['turnEnd']['a province raises a unit'];
+/** The effects of "a province raises a unit", in the stage's order. */
+const A_PROVINCE_RAISES_A_UNIT_EFFECTS = THE_ORDER_OF_EACH_STAGE.turnEnd['a province raises a unit'].flatMap((slug) => {
+  const effect = ENTRIES[slug].turnEnd?.['a province raises a unit'];
+  return effect ? [effect] : [];
+}) satisfies readonly AProvinceRaisesAUnitEffect[];
 const NO_EFFECTS: readonly never[] = [];
 
 /** A multiplier, and the words of each ability that moved it, in order. */
@@ -1226,4 +1259,15 @@ export function thePursuitsOfTheBeaten(facts: AWinningForceOnItsGround): readonl
  *  holds them for the force in its battle. */
 export function aForceHoldsTheSeaLanes(facts: AForceInItsBattle): boolean {
   return A_FORCE_HOLDS_THE_SEA_LANES_EFFECTS.some((effect) => effect(facts));
+}
+
+/** The runner of "turnEnd: a province raises a unit" (Early Winter): the unit each ability raises in the province, in
+ *  the stage's order. The turn names each, adds it to the garrison and writes the line. */
+export function theUnitsAProvinceRaisesAtTheTurnsEnd(facts: AProvinceAtTheTurnsEnd): readonly AUnitAProvinceRaises[] {
+  const raised: AUnitAProvinceRaises[] = [];
+  for (const effect of A_PROVINCE_RAISES_A_UNIT_EFFECTS) {
+    const unit = effect(facts);
+    if (unit !== null) raised.push(unit);
+  }
+  return raised;
 }

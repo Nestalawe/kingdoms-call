@@ -318,8 +318,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 - **Hook points** are the engine's real decisions, nine of them: `strength`, `volley`, `fate`, `movementCost`,
   `orderValidity`, `experience`, `visibility`, `turnStart`, `turnEnd` (the union `HookPointName`). Each is a set of named
   stages, in the order the engine runs them (`TheStagesOfEachHookPoint`). A stage's effect type says exactly what the
-  stage hands the effect, read-only, and what it returns; an effect changes nothing (the turn hooks will be the one
-  exception). A stage or a hook point typed `never` has no signature yet: its family's first row writes it, and an entry
+  stage hands the effect, read-only, and what it returns; an effect changes nothing, at the turn's end too (it returns
+  what the turn must do, and the turn does it: plan P1-19's second slice, Choice 3). A stage or a hook point typed `never` has no signature yet: its family's first row writes it, and an entry
   on it fails to compile meanwhile.
 - **Within a stage, the effects run in the order its list gives** (`THE_ORDER_OF_EACH_STAGE`), not by a number: a product
   of decimals, and the ladder's words, depend on the order ([traps.md](traps.md#order-is-data)). The runner finds a unit's
@@ -387,9 +387,15 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   alone); and **a force holds the sea lanes** (the Corsair Fleet's Cut the Line between heroes, and Keep the Sea Lanes
   against neutral guards: both battles' retreat asks it; a retired unit's, in no book, so their two rows are in a file
   of their own, `src/content/the-abilities-of-a-unit-no-longer-raised.ts`, read into the rows: the player page's own
-  files name no retired unit). Every stage of
-  `strength`, `volley` and `fate` now has its signature; the other six hook points are `never` until their family's
-  first row.
+  files name no retired unit). The turn's end (P1-19k,
+  `src/engine/rules/unit-abilities/a-province-raises-a-unit-at-the-turns-end.ts`), `turnEnd`'s first stage, **a
+  province raises a unit** (Raiders' Muster): Early Winter asks it for each province a realm holds, after the wages,
+  handed the province's race, the race of the realm that holds it and whether an orc realm won a battle there this turn
+  (the mark both battles leave, which Early Winter reads and wipes); the effect returns the unit raised (its type,
+  quality and race) or nothing, and Early Winter names it (a die, as before), adds it to the garrison and writes the
+  line. Reaver Crews' landing mark, which the move order sets for a column its longships put ashore, asks the content
+  row's unit (`reaver-crews`), with no stage of its own. Every stage of `strength`, `volley` and `fate`, and `turnEnd`'s
+  one, now has its signature; the other five hook points are `never` until their family's first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
   `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its

@@ -59,13 +59,15 @@ export interface AUnitAbilityAsTheBooksWriteIt {
   readonly onTheGround?: readonly string[];
   /** Its words in the strength ladder, where they differ from its name (Spear Hedge, when Purity breaks it). */
   readonly wordsInTheLadder?: Readonly<Record<string, string>>;
+  /** The unit it raises, for nothing (Raiders' Muster: a Goblin Horde in the garrison at the turn's end). */
+  readonly raises?: UnitType;
 }
 
 /** The unit abilities the registry holds, in the order the battle code meets them: the strength of a unit in its
  *  whole force (plan P1-19a), then a unit meeting another or shooting over its line (P1-19b), then the whole line
  *  (P1-19c), then a unit's fate after the battle (P1-19d), then the volley before the battle and a land unit at sea
  *  (P1-19g), then a unit's place in the battle grid (P1-19h), then what a unit does to the enemy before the battle
- *  (P1-19i), then the rout (P1-19j). */
+ *  (P1-19i), then the rout (P1-19j), then the turn's end (P1-19k). */
 export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // Orc: goblins are worth little alone and a great deal in a mob.
   'sheer-numbers': {
@@ -498,6 +500,9 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // one is among the player page's own files, which name no retired unit.
   'cut-the-line': CUT_THE_LINE,
   'keep-the-sea-lanes': KEEP_THE_SEA_LANES,
+  // The turn's end (plan P1-19k): plunder feeds the horde. An orcish province, held by an orc realm, where an orc realm
+  // won a battle this turn draws a Goblin Horde to its garrison at the turn's end, for nothing.
+  'raiders-muster': { unit: 'Orc Garrison', name: "Raiders' Muster", numbers: {}, raises: 'Goblin Horde' },
 } as const satisfies Record<string, AUnitAbilityAsTheBooksWriteIt>;
 
 /** The slug of an ability the registry holds. */
