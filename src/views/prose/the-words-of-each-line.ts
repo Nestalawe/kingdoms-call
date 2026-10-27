@@ -2,9 +2,9 @@
 // The engine files each line of the turn with its finished words or with the fact they are written from (emit,
 // src/engine/turn/events-and-their-audiences.ts). The views write every line's words here, after the turn and before
 // any realm's lines are picked (buildReports), one module per area (a battle's, personal combat's, the sea lift's in a
-// battle, a hero's death's, the wanderer's escape's, and eight order families': Encounter and Defend, the order
+// battle, a hero's death's, the wanderer's escape's, and ten order families': Encounter and Defend, the order
 // dispatch, the item orders, Research and Practice, Recruit and Hire, the army orders, the realm works, the war
-// masteries), each kind routed to its area's (theWordsOf, below). A battle's
+// masteries, espionage, explore and search), each kind routed to its area's (theWordsOf, below). A battle's
 // lines take their tiers ('k' key, 'd' detail) and its losses tally its place from those words, as emitBattle did
 // before (battleLineTiers and battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
 // as it is stored (turn_logs, player index −1), in the same form as before, key for key: the shell saves it, and the
@@ -43,6 +43,10 @@ import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_MASTERY_ORDERS_LINE } from '../../
 import { theWordsOfTheArmyOrdersLine } from './the-words-of-the-army-orders-lines.ts';
 import { theWordsOfTheRealmWorksOrdersLine } from './the-words-of-the-realm-works-orders-lines.ts';
 import { theWordsOfTheWarMasteryOrdersLine } from './the-words-of-the-war-mastery-orders-lines.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_ESPIONAGE_ORDERS_LINE } from '../../engine/orders/the-facts-the-espionage-orders-lines-record.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_EXPLORE_AND_SEARCH_ORDERS_LINE } from '../../engine/orders/the-facts-the-explore-and-search-orders-lines-record.ts';
+import { theWordsOfTheEspionageOrdersLine } from './the-words-of-the-espionage-orders-lines.ts';
+import { theWordsOfTheExploreAndSearchOrdersLine } from './the-words-of-the-explore-and-search-orders-lines.ts';
 
 // ── THE ROUTE BY KIND (plan P1-12d5: P1-12's Decisions of 2026-10-26, Decision 6) ──
 // Each area's kinds are typed beside its code, each with its audience (its audience table lists every kind it has), and
@@ -87,6 +91,11 @@ const THE_WORDS_OF_EACH_KIND: ReadonlyMap<string, (fact: LineFact) => string> = 
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_THE_ARMY_ORDERS_LINE, theWordsOfTheArmyOrdersLine),
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_THE_REALM_WORKS_ORDERS_LINE, theWordsOfTheRealmWorksOrdersLine),
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_MASTERY_ORDERS_LINE, theWordsOfTheWarMasteryOrdersLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_THE_ESPIONAGE_ORDERS_LINE, theWordsOfTheEspionageOrdersLine),
+  ...theRouteToAnArea(
+    THE_AUDIENCE_OF_EACH_KIND_OF_THE_EXPLORE_AND_SEARCH_ORDERS_LINE,
+    theWordsOfTheExploreAndSearchOrdersLine,
+  ),
 ]);
 
 /** The words of a fact, of any area: its kind's area writes them. */

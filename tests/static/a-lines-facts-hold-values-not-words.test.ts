@@ -6,11 +6,12 @@
 // world. P1-12d2 lists personal combat, P1-12d3 the battles, P1-12d4 the strength ladder and the grid, P1-12d5 the sea
 // lift's lines in a battle, a hero's death and the wanderer's escape, P1-12d6 five order families (Encounter and
 // Defend, the order dispatch, the item orders, Research and Practice, Recruit and Hire), P1-12d7 three more (the army
-// orders, the realm works, the war masteries); P1-12d8 to d10 add theirs. A
+// orders, the realm works, the war masteries), P1-12d8 two more (espionage, explore and search); P1-12d9 and d10 add
+// theirs. A
 // facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a unit stands or faces as it does,
 // whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what it is, where companies muster,
-// why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild Calling tore beasts from), so
-// a record's literal is read too, and a record's `kind` that a facts module declares
+// why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild Calling tore beasts from;
+// P1-12d8: what a thief was caught at), so a record's literal is read too, and a record's `kind` that a facts module declares
 // is the record's name, not words.
 //
 // The rule, by syntax tree: a field holds words when its value is, or holds, a string or a template with text in it,
@@ -37,7 +38,7 @@
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
-// P1-12d6's and P1-12d7's: their areas' facts modules, which their bases lack), as the static
+// P1-12d6's, P1-12d7's and P1-12d8's: their areas' facts modules, which their bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
@@ -70,6 +71,12 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
   ['the army orders', 'src/engine/orders/the-facts-the-army-orders-lines-record.ts', 'P1-12d7'],
   ['the realm works orders', 'src/engine/orders/the-facts-the-realm-works-orders-lines-record.ts', 'P1-12d7'],
   ['the war mastery orders', 'src/engine/orders/the-facts-the-war-mastery-orders-lines-record.ts', 'P1-12d7'],
+  ['the espionage orders', 'src/engine/orders/the-facts-the-espionage-orders-lines-record.ts', 'P1-12d8'],
+  [
+    'the explore and search orders',
+    'src/engine/orders/the-facts-the-explore-and-search-orders-lines-record.ts',
+    'P1-12d8',
+  ],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -87,6 +94,8 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/orders/the-facts-the-army-orders-lines-record.ts',
   'src/engine/orders/the-facts-the-realm-works-orders-lines-record.ts',
   'src/engine/orders/the-facts-the-war-mastery-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-espionage-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-explore-and-search-orders-lines-record.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -278,8 +287,14 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
 
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
 const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
-  // an item's equip note: gainedItemNote's words (src/engine/items/equipment.ts), the items' area, a later row
-  gainedItemNote: ['a gained item noted', 'a hero handed items notes how he carries them'],
+  // an item's equip note: gainedItemNote's words (src/engine/items/equipment.ts), the items' area, a later row; since
+  // P1-12d8 a thief's (what he lifted from a hero or in a Grand Heist) and a lair's finder's
+  gainedItemNote: [
+    'a gained item noted',
+    'a hero handed items notes how he carries them',
+    'a thief notes how he carries what he took',
+    'a hero notes how he carries what a lair gave up',
+  ],
   // the order's action as the order names it ('disband_army', 'rampage', …): a slug the prose reads
   action: ['a charmed hero will not carry out an order of his captor', 'a hero has already used a mastery this turn'],
   // the class of the killing strike, 'melee', 'ranged' or 'power': a slug the prose reads
@@ -324,6 +339,9 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   ],
   // the line an ability places a unit in, 'front' or 'second': a slug the prose reads (battleRegrid)
   itsLine: ['its ability gives it its place'],
+  // the class of lair Discover Lost Ruin names, as the order names it ('Weak', 'Moderate', 'Powerful', 'Legendary',
+  // 'Ritual'; 'Weak' when it names none): a slug the prose reads (P1-12d8)
+  lairClass: ['a hero finds no site of a class left to lay bare', 'a hero lays bare the sites of a class'],
 };
 
 const WORD_HELPER =
