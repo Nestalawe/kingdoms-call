@@ -29,6 +29,7 @@ import {
   terrainMod,
 } from '../../src/engine/battle/terrain-and-unit-strength.ts';
 import { battleGrid } from '../../src/engine/battle/lines.ts';
+import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { ladderFm } from '../../src/engine/battle/a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { ArmyInABattle, HeroInABattle } from '../../src/engine/army-tables.ts';
@@ -135,13 +136,15 @@ describe('a force, a leader or a world that is missing', () => {
   test("kinship's line: no force gives none; a gap in a force is passed over", () => {
     expect(kinNarrative(null, null, 'Human', 'the attackers')).toBeNull();
     expect(kinNarrative(undefined, null, 'Human', 'the attackers')).toBeNull();
-    expect(
-      kinNarrative([null, unit('Men-at-Arms', 'Average', { race: 'Human' })], null, 'Human', 'the attackers'),
-    ).toEqual({
-      kind: "a side's units fight beside their own kin",
-      sideName: 'the attackers',
-      kinshipWords: "1 unit of the king's race (+20%)",
-    });
+    // its fact holds the counts, and the views write its words (plan P1-12d3): the kind and the whole line's words
+    const line = kinNarrative(
+      [null, unit('Men-at-Arms', 'Average', { race: 'Human' })],
+      null,
+      'Human',
+      'the attackers',
+    );
+    expect(line?.kind).toBe("a side's units fight beside their own kin");
+    expect(line && theWordsOf(line)).toBe("🤝 Kinship — the attackers: 1 unit of the king's race (+20%).");
   });
   test("kinship's line: a leader whose race is '' is of no race", () => {
     const humans = [unit('Men-at-Arms', 'Average', { race: 'Human' })];

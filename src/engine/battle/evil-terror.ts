@@ -46,7 +46,7 @@ export function spreadTerror(
     narrate(narrative, {
       kind: 'terror radiates from a province after an evil victory',
       provName: battleProv.name,
-      wordsIfTheSurroundingLands: adjNames.length ? ` into the surrounding lands (${adjNames.join(', ')})` : '',
+      surroundingLands: adjNames,
       terrorPctPerStack: dispFloor((TERROR_PCT_PER_STACK + discSum(turnContext, byPlayer, 'terror', 'pct')) * 100),
     });
   }
@@ -84,7 +84,6 @@ export function consumeTerror(
       provName: prov.name,
       terrorPct: dispFloor(frac * 100),
       terrorStacks: stacks,
-      terrorStacksPlural: stacks !== 1 ? 's' : '',
     });
   delete prov._terrorStacks;
   delete prov._terrorTurn;

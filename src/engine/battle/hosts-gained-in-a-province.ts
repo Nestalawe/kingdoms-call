@@ -4,7 +4,7 @@ import { demoteOrDisband, disbandLine, unitRef } from '../army-tables.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
-import { describeArmy } from '../dice-and-army-names.ts';
+import { theUnitsAsTheLineNamesThem } from './the-facts-a-battles-lines-record.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
 import {
   narrateAt,
@@ -47,7 +47,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
   // war — it simply stands there. Only enemy-owned (or unowned) ground can be contested this way.
   if (prov.owner != null && prov.owner !== c.player && !areEnemies(turnContext, c.player, prov.owner)) {
     // The owner saw the troops appear (public cast line) — tell them what it means: nothing, yet.
-    const _rel = areAllied(turnContext, c.player, prov.owner) ? 'your realms are allied' : 'your realms are not at war';
+    const _allied = areAllied(turnContext, c.player, prov.owner);
     notifyProvinceOwner(
       turnContext,
       prov,
@@ -56,9 +56,8 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         cName: c.name,
         realmTag: realmTag(turnContext, c.player),
         unitCount: (c.armies || []).length,
-        unitsPlural: (c.armies || []).length !== 1 ? 's' : '',
         provName: prov.name,
-        relationWords: _rel,
+        theRealmsAreAllied: _allied,
         provName2: prov.name,
       },
       c.player,
@@ -208,19 +207,17 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       if (_defRiders.length > 0)
         _form.push({
           kind: 'the defenders riding in were keeping watch and are already in the line',
-          ridersNames: _defRiders.map((d) => d.name).join(' and '),
-          wasOrWere: _defRiders.length > 1 ? 'were' : 'was',
+          ridersNames: _defRiders.map((d) => d.name),
           provName: prov.name,
-          isOrAre: _defRiders.length > 1 ? 'are' : 'is',
           cName: c.name,
-          whatTheHostDoes: c._warFront ? 'host turns on the province' : 'new host forms up',
+          onAWarFront: c._warFront,
           provName2: prov.name,
         });
       if (defReinf.length > 0)
         _form.push({
           kind: 'the defender is reinforced by other heroes in the defence of a province',
           defenderName: enemyChar.name,
-          reinforcementsNames: defReinf.map((d) => d.name).join(', '),
+          reinforcementsNames: defReinf.map((d) => d.name),
           provName: prov.name,
         });
       if (_garHere.length > 0)
@@ -229,8 +226,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           provName: prov.name,
           leaderName: _rbP.leader.name,
           garrisonUnitCount: _garHere.length,
-          garrisonUnitsPlural: _garHere.length !== 1 ? 's' : '',
-          garrisonWords: describeArmy(_garHere),
+          garrison: theUnitsAsTheLineNamesThem(_garHere),
         });
       if (_rbP.changed) _form.push(commandHandoverLine(_rbP.leader, enemyChar, prov.name));
       if (_form.length) {
@@ -406,10 +402,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           fact: {
             kind: "the province's garrison is overwhelmed as the province falls",
             provName: prov.name,
-            overrunUnitsNames: _overrun
-              .map((a) => (a.unitName ? a.unitName + ' (' + a.type + ', ' + a.quality + ')' : a.quality + ' ' + a.type))
-              .join(', '),
-            isOrAre: _overrun.length === 1 ? 'is' : 'are',
+            overrunUnits: theUnitsAsTheLineNamesThem(_overrun),
           },
           audience: { actor: c.player, realms: [c.player, prov.owner].filter((x) => x != null), seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -487,7 +480,6 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           provName: prov.name,
           guardName: neutralGuard.name.replace(' (wandering)', ''),
           guardUnitCount: guardLeft,
-          guardUnitsPlural: guardLeft !== 1 ? 's' : '',
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -502,7 +494,6 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           hostName: c.alive === false ? `${c.name}'s leaderless host` : c.name,
           provName: prov.name,
           leaderlessUnitCount: llLeft,
-          leaderlessUnitsPlural: llLeft !== 1 ? 's' : '',
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -538,7 +529,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           kind: "the hero has the better of the fighting but the province's garrison still holds",
           hostName: c.alive === false ? `${c.name}'s leaderless host` : c.name,
           provName: prov.name,
-          whatTheGarrisonDoes: prov.terrain === 'sea' ? 'holds these waters' : 'mans the walls',
+          atSea: prov.terrain === 'sea',
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -580,9 +571,8 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           realmTag: realmTag(turnContext, c.player),
           provName: prov.name,
           provName2: prov.name,
-          hostWords: c.alive === false ? `${c.name} fell in the fighting; his leaderless host` : c.name,
+          heroFell: c.alive === false,
           unitCount: _n,
-          unitsPlural: _n !== 1 ? 's' : '',
         },
         c.player,
         ph,
@@ -634,7 +624,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
       tellASurvivingUnitsFate({
         kind: "a beaten guard's surviving unit breaks ranks and flees as mercenaries",
         unitName: unitRef(gname, a),
-        wordsIfTheVictorsHost: _vh ? ` before ${_vh}` : '',
+        victorsHost: _vh,
         provName: prov.name,
       }); // unified unit naming
       return;
@@ -650,7 +640,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
         kind: "a beaten guard's surviving unit loses heart and is reduced a tier",
         unitNameAtItsOldQuality: unitRef(gname, { ...a, quality: _q0 }),
         unitQuality: a.quality,
-        wordsIfTheVictorsHost: _vh ? `beaten by ${_vh}, ` : '',
+        victorsHost: _vh,
         guardName: gname,
       });
       kept.push(a);
@@ -659,7 +649,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
     tellASurvivingUnitsFate({
       kind: "a beaten guard's surviving unit holds its ground unbroken",
       unitName: unitRef(gname, a),
-      wordsIfTheVictorsHost: _vh ? ` against ${_vh}` : '',
+      victorsHost: _vh,
       guardName: gname,
     });
     kept.push(a);

@@ -185,9 +185,6 @@ export const ARCHERY_MISSILE_PCT = 0.05;
 // Undead's own zeal roll is 0%. Where several fervours apply the strongest one counts (max, never stacked).
 export const UNDEAD_SKEL_KING_FAN = 1.5,
   UNDEAD_SKEL_HERO_FAN = 1.3;
-export function aAn(w: string | null | undefined) {
-  return /^[aeiou]/i.test(String(w || '')) ? 'an' : 'a';
-} // "an annihilating battle"
 export const MISSILE_ARMIES_MASTER = new Set(KC_UNIT_CLASS.missile);
 
 // Add primal armies to ARMY_UNIT_NAMES

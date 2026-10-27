@@ -34,6 +34,7 @@ import type { TurnContext } from '../turn/context.ts';
 import type { ArmyInABattle, HeroInABattle } from '../army-tables.ts';
 import type { UnitAbilityContext } from './strength.ts';
 import type { BattleGrid, BattleGridOptions } from './lines.ts';
+import type { TheFactOfOneOfABattlesSentences } from './the-facts-a-battles-lines-record.ts';
 /** A unit of a force as the battle code hands it. */
 type ForceUnit = ArmyInABattle | null | undefined;
 /** The state as provIsCoastal reads it: its guard on a missing world stays. */
@@ -383,9 +384,6 @@ export function bestCurseSkill(turnContext: TurnContext, hero: Character) {
   if (nav >= tac && nav >= dru && nav > 0) return 'naval';
   return tac >= dru ? 'tactical' : 'druid';
 }
-export function curseSkillLabel(stat: string | null | undefined) {
-  return stat === 'naval' ? 'Naval command' : stat === 'druid' ? 'Druid mastery' : 'Tactical command';
-}
 // Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
 // SHOOTER, not the target: 30% of the firing unit's base strength (unit strength × quality — so a
 // veteran company hits harder than a green one), +10% per level of the commander's Archery,
@@ -475,7 +473,7 @@ export function kinNarrative(
   leader: Character | null | undefined,
   ownerRace: string | null | undefined,
   sideName: string,
-) {
+): TheFactOfOneOfABattlesSentences | null {
   const f = (force ?? []).filter((a): a is ArmyInABattle => Boolean(a?.race));
   if (!f.length) return null;
   const lr = (leader?.race ?? '') || null;
@@ -483,14 +481,13 @@ export function kinNarrative(
   const kingOnly = f.filter((a) => ownerRace && a.race === ownerRace && !(lr && a.race === lr)).length;
   const leadOnly = f.filter((a) => lr && a.race === lr && !(ownerRace && a.race === ownerRace)).length;
   if (!both && !kingOnly && !leadOnly) return null;
-  const parts: string[] = [];
-  if (both)
-    parts.push(
-      `${String(both)} unit${both !== 1 ? 's' : ''} of the king's own race under a commander of that blood (+44% strength)`,
-    );
-  if (kingOnly) parts.push(`${String(kingOnly)} unit${kingOnly !== 1 ? 's' : ''} of the king's race (+20%)`);
-  if (leadOnly) parts.push(`${String(leadOnly)} unit${leadOnly !== 1 ? 's' : ''} of their commander's race (+20%)`);
-  return { kind: "a side's units fight beside their own kin", sideName, kinshipWords: parts.join('; ') };
+  return {
+    kind: "a side's units fight beside their own kin",
+    sideName,
+    unitsOfTheKingsRaceUnderACommanderOfThatBlood: both,
+    unitsOfTheKingsRace: kingOnly,
+    unitsOfTheirCommandersRace: leadOnly,
+  };
 }
 // ownedUnitName / unitRef moved to module level beside disbandLine (2026-10-11), so rollUnitFates and the
 // tests can reach them.

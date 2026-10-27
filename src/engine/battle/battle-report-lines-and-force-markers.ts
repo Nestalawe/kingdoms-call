@@ -1,6 +1,5 @@
 import { druIdPenaltyMult } from '../world/tables.ts';
 import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
-import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { dragonTamed } from '../discoveries.ts';
 import {
   A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
@@ -20,6 +19,8 @@ import type { FightLine, NarrativeLine } from '../turn/events-and-their-audience
 import {
   THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
   type AForceDrawnUpForBattle,
+  type AUnitTheTerrainMarks,
+  type AUnitsDruidShortfall,
 } from './the-facts-a-battles-lines-record.ts';
 
 // ── BATTLE REPORT LINES AND FORCE MARKERS (plan P1-08c: lifted out of resolveTurn) ────
@@ -123,40 +124,34 @@ export function druidShortfallLine(
 ) {
   if (!ch) return null;
   const lvl = effStat(turnContext, ch, 'druid');
-  const m = new Map<string, number>();
+  const shortfalls: AUnitsDruidShortfall[] = [];
   (force || []).forEach((a) => {
     if (!a || a._phantom) return;
     const req = getDruidLevel(a.type);
     if (Math.max(0, req - lvl) <= 0) return;
     const pen = druIdPenaltyMult(ch, a, align, dragonTamed(turnContext, ch, a));
     if (!(pen < 1)) return;
-    const k = `${a.type} −${dispFloor((1 - pen) * 100)}%`;
-    m.set(k, (m.get(k) || 0) + 1);
+    shortfalls.push({ unitType: a.type, penalty: pen });
   });
-  if (!m.size) return null;
-  const n = [...m.values()].reduce((s, x) => s + x, 0);
+  if (!shortfalls.length) return null;
   return {
     kind: "a side's Druid cannot fully command its units",
     sideName,
-    unitCount: n,
-    unitsPlural: n !== 1 ? 's' : '',
-    shortfallUnitsWords: [...m].map(([k, c]) => (c > 1 ? `${c}× ${k}` : k)).join(', '),
+    unitCount: shortfalls.length,
+    shortfalls,
   };
 }
 // Terrain note for one side of a battle: "Free Lances +15%, 2× Forest Ents −40%" (2026-09-23d: both
 // battle paths share this — the PvP copy printed "Free Lances:+15%" and mixed both sides
 // together). Inside runTurn because terrainMod / seaPenalty are (despite their column-0 indent).
-export function terrainNoteList(force: Army[] | null | undefined, terrain: string) {
-  const m = new Map<string, number>();
+export function terrainNoteList(force: Army[] | null | undefined, terrain: string): AUnitTheTerrainMarks[] | null {
+  const marked: AUnitTheTerrainMarks[] = [];
   (force || []).forEach((a) => {
     if (!a || a._phantom) return;
     const combined = terrainMod(a.type, terrain) * seaPenalty(a.type, terrain);
-    if (combined < 0.85 || combined > 1.05) {
-      const k = `${a.type} ${combined > 1 ? '+' : '−'}${dispFloor(Math.abs(combined - 1) * 100)}%`;
-      m.set(k, (m.get(k) || 0) + 1);
-    }
+    if (combined < 0.85 || combined > 1.05) marked.push({ unitType: a.type, multiplier: combined });
   });
-  return m.size ? [...m].map(([k, n]) => (n > 1 ? `${n}× ${k}` : k)).join(', ') : null;
+  return marked.length ? marked : null;
 }
 
 export function emitBattle(

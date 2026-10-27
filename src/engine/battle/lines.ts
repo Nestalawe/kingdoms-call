@@ -1115,23 +1115,15 @@ export function battleScoutLine(
     theirs = atk ? explDef : explAtk;
   // 2026-10-13 (Toby, item 17): say WHICH side has explored the province more, never the figures —
   // a battle report must not tell a realm its rival's exploration of the province.
-  const why =
-    mine > theirs
-      ? `knows the ground better (${s}'s side has explored more of it than ${o}'s)`
-      : `knows the ground as well as the enemy (neither side has explored more of it), and the defender's claim stands`;
-  const w =
-    d.W === d.roll
-      ? `takes the front of ${String(d.W)} the dice allow`
-      : d.W > d.roll
-        ? `widens the front from ${String(d.roll)} to ${String(d.W)}`
-        : `narrows the front from ${String(d.roll)} to ${String(d.W)}`;
   return {
     kind: 'the scouting side chooses the front',
     scoutName: s,
-    whyItScouts: why,
+    itsSideHasExploredMore: mine > theirs,
+    otherSideName: o,
     scoutName2: s,
-    whatItDoesWithTheFront: w,
-    wordsIfAdjustments: d.lineup ? ` (${String(d.lineup)} ${d.lineup === 1 ? 'adjustment' : 'adjustments'})` : '',
+    frontWidth: d.W,
+    frontTheDiceAllow: d.roll,
+    adjustments: d.lineup,
   };
 }
 export function battleMovesLine(
@@ -1143,19 +1135,11 @@ export function battleMovesLine(
   const atk = d.scout === 'atk',
     s = atk ? atkName : defName,
     o = atk ? defName : atkName;
-  const n = (k: number) =>
-    k === 0
-      ? 'holds the line as it stands'
-      : k === 1
-        ? 'shifts the line once'
-        : k === 2
-          ? 'shifts the line twice'
-          : `shifts the line ${String(k)} times`;
   return {
     kind: 'each side shifts its battle line',
     otherSideName: o,
-    otherSidesMoves: n(d.moves.other),
+    otherSidesMoves: d.moves.other,
     scoutName: s,
-    scoutsMoves: n(d.moves.scout),
+    scoutsMoves: d.moves.scout,
   };
 }
