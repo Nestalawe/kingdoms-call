@@ -5,7 +5,7 @@
 // the kings' own orders: Proclaim Crusade (Divine), Light the Beacons (Good), Call of the Wild (Druidic), Embargo
 // (Neutral), Great Sacrifice (Pagan), Dark Pact (Evil), Plague (Undead). The Pagan kit's new rites live with Perform Rite
 // (explore-and-search-orders…); the Divine kit reshapes Consecrate in place.
-import { KC_QUALITY_TIERS, KC_QUALITY_UP, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_QUALITY_TIERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
 import {
   alignProto,
@@ -35,7 +35,6 @@ import {
   PROCLAIM_CRUSADE_COST,
   protoBeastRoomExtra,
   SACRIFICE_TURNS,
-  TEND_GROVE_COST,
 } from '../alignment-prototypes.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { armyUnitNameOf } from '../dice-and-army-names.ts';
@@ -55,7 +54,6 @@ function ownedBy(pv: Prov, c: Character, test: (pv: Province) => boolean): pv is
   if (!pv) return false;
   return pv.owner === c.player && test(pv);
 }
-const QUALITY_UP: Record<string, string> = KC_QUALITY_UP;
 
 function refuse(turnContext: TurnContext, c: Character, text: string): void {
   emit(turnContext, {
@@ -120,7 +118,6 @@ export function resolveGoodWorksOrder(turnContext: TurnContext, c: Character, pr
 
 // ── DRUIDIC: Grow the Wild ── a Druid (1+) in an owned plains or desert province turns it to forest or jungle for good.
 const openCountry = (pv: Province): boolean => pv.terrain === 'plain' || pv.terrain === 'desert';
-const woods = (pv: Province): boolean => pv.terrain === 'forest' || pv.terrain === 'jungle';
 export function resolveGrowTheWildOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
   const { G } = turnContext;
   if (kitOff(turnContext, c, 'Druidic', 'Grow the Wild')) return;
@@ -144,34 +141,6 @@ export function resolveGrowTheWildOrder(turnContext: TurnContext, c: Character, 
     prov,
   );
 }
-// ── DRUIDIC: Tend the Grove ── a Druid (1+) in an owned forest or jungle province: tax +1 for good, up to +2.
-export const TEND_GROVE_CAP = 2;
-export function resolveTendTheGroveOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
-  if (kitOff(turnContext, c, 'Druidic', 'Tend the Grove')) return;
-  if (effStat(turnContext, c, 'druid') < 1) {
-    refuse(turnContext, c, `${c.name} has no Druid craft — the grove will not answer.`);
-    return;
-  }
-  if (!ownedBy(prov, c, woods)) {
-    refuse(turnContext, c, `${c.name}: only a forest or jungle province of your own realm can be tended.`);
-    return;
-  }
-  if ((prov._tendedGrove ?? 0) >= TEND_GROVE_CAP) {
-    refuse(turnContext, c, `${c.name}: the groves of ${prov.name} give all they can.`);
-    return;
-  }
-  if (!pay(turnContext, c, player, TEND_GROVE_COST, 'Tend the Grove')) return; // round 5
-  prov._tendedGrove = (prov._tendedGrove ?? 0) + 1;
-  prov.tax += 1;
-  told(
-    turnContext,
-    c,
-    'explore',
-    `🍃 Tend the Grove: ${c.name} tends the woods of ${prov.name} (${String(TEND_GROVE_COST)}g) — game, honey and timber for the realm. The province pays ${String(prov.tax)} tax from now on (+1, ${String(prov._tendedGrove)}/${String(TEND_GROVE_CAP)}).`,
-    prov,
-  );
-}
-
 // ── NEUTRAL: Trade Pact ── buy an unowned humanoid land province (this one, or a neighbour): 3g per tax and 2g per
 // defending unit; the defenders take the realm's coin and stand as its garrison. No battle, no merit.
 export const TRADE_PACT_PER_TAX = 4; // round 6 (round 5: 5; round 4: 4; rounds 1-3: 3)
@@ -243,40 +212,6 @@ export function resolveTradePactOrder(
   );
 }
 
-// ── EVIL: Lay Waste ── a hero in an owned humanoid province (not the capital): 3 × its tax in gold now; its tax falls by
-// 2 for good (never below 1). Once per province.
-export function resolveLayWasteOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
-  const { G } = turnContext;
-  if (kitOff(turnContext, c, 'Evil', 'Lay Waste')) return;
-  if (!ownedBy(prov, c, humanoidLand)) {
-    refuse(
-      turnContext,
-      c,
-      `${c.name}: there is no one here to squeeze — Lay Waste needs a humanoid province of your own.`,
-    );
-    return;
-  }
-  if (prov.id === homeProvinceIdFor(G, c.player)) {
-    refuse(turnContext, c, `${c.name}: even the wicked do not burn their own hall.`);
-    return;
-  }
-  if (prov._laidWaste != null) {
-    refuse(turnContext, c, `${c.name}: ${prov.name} has nothing left to take.`);
-    return;
-  }
-  const loot = 3 * prov.tax;
-  prov._laidWaste = G.turn;
-  prov.tax = Math.max(1, prov.tax - 2);
-  player.gold += loot;
-  told(
-    turnContext,
-    c,
-    'explore',
-    `🔥 Lay Waste: ${c.name}'s soldiers strip ${prov.name} bare — ${String(loot)}g seized at once. The province pays only ${String(prov.tax)} tax from now on.`,
-    prov,
-  );
-}
-
 // ── UNDEAD: Despoil ── a hero in an owned humanoid province (not the capital): the land dies. Tax 1 for good, whoever
 // holds it; nothing left to recruit; while an Undead realm holds it, a skeletal company rises into its garrison every
 // turn (to three). Three despoiled provinces held lift every Undead commander's skeletal host to ×1.5.
@@ -307,44 +242,6 @@ export function resolveDespoilOrder(turnContext: TurnContext, c: Character, prov
     prov,
   );
 }
-// ── UNDEAD: Bind the Bones ── a necromancer (Necromancy 1+) spends 3g a company to raise every skeletal unit in his host
-// one quality tier (never past Elite). The one way the dead gain experience.
-export const BIND_BONES_COST = 3;
-export function resolveBindTheBonesOrder(turnContext: TurnContext, c: Character, player: Realm): void {
-  if (kitOff(turnContext, c, 'Undead', 'Bind the Bones')) return;
-  if (effStat(turnContext, c, 'necromancy') < 1) {
-    refuse(turnContext, c, `${c.name} has no Necromancy — the bones stay as they are.`);
-    return;
-  }
-  const dead = c.armies.filter((a) => a._isSkeletal && (QUALITY_UP[a.quality] ?? a.quality) !== a.quality);
-  if (!dead.length) {
-    refuse(turnContext, c, `${c.name} leads no skeletal company that can be bound tighter.`);
-    return;
-  }
-  const n = Math.min(dead.length, Math.floor(player.gold / BIND_BONES_COST));
-  if (n <= 0) {
-    refuse(
-      turnContext,
-      c,
-      `${c.name}: binding the bones costs ${String(BIND_BONES_COST)}g a company — the treasury cannot pay.`,
-    );
-    return;
-  }
-  const bound = dead.slice(0, n);
-  player.gold -= n * BIND_BONES_COST;
-  const words = bound.map((a) => {
-    const q0 = a.quality;
-    a.quality = QUALITY_UP[a.quality] ?? a.quality;
-    return `${a.unitName || a.type} ${q0} → ${a.quality}`;
-  });
-  emit(turnContext, {
-    type: 'hire',
-    text: `🦴 Bind the Bones: ${c.name} works grave-wax and iron wire into the dead (${String(n * BIND_BONES_COST)}g): ${words.join('; ')}.`,
-    audience: { actor: c.player, realms: [c.player] },
-    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-  });
-}
-
 // ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // ROUND 2: THE KINGS' ORDERS. Each is the king's alone, and each comes round again only after KING_ORDER_EVERY turns.
 // ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════

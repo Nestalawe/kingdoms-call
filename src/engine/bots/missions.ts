@@ -18,7 +18,6 @@ import {
   PLAGUE_COST,
   PROCLAIM_CRUSADE_COST,
   protoBeastRoomExtra,
-  TEND_GROVE_COST,
 } from '../alignment-prototypes.ts';
 import { hexDistP } from '../world/map-helpers.ts';
 import { darkPactCost, darkPactKinds, tradePactPrice, tradePactTargets } from '../orders/alignment-prototype-orders.ts';
@@ -1840,8 +1839,6 @@ export function botKitPre(G, pi, c, P, L) {
         spendIf(GROW_WILD_COST)
       )
         return { action: 'grow_wild', target: '', extra: '', desc: 'Grow the Wild in ' + P.name };
-      if ((P.terrain === 'forest' || P.terrain === 'jungle') && (P._tendedGrove || 0) < 2 && spendIf(TEND_GROVE_COST))
-        return { action: 'tend_grove', target: '', extra: '', desc: 'Tend the Grove in ' + P.name };
       return null;
     case 'Neutral': {
       if (L.sig.pact) return null;
@@ -1867,19 +1864,6 @@ export function botKitPre(G, pi, c, P, L) {
       // enslave with a small column, plunder and terrorise with a large one
       c.encounterPlan = c.encounterPlan || {};
       c.encounterPlan.evilMode = (c.armies || []).length <= 3 ? 'enslave' : 'terror';
-      if (
-        owned &&
-        humanoid &&
-        P.id !== home &&
-        !P._laidWaste &&
-        (P.tax || 0) >= 3 &&
-        (tactics ? L.budget < 4 && botAtWar(G, pi) : L.budget < 6) && // tactics: only a war chest in need
-        !L.sig.waste
-      ) {
-        L.sig.waste = 1;
-        L.budget += 3 * (P.tax || 0);
-        return { action: 'lay_waste', target: '', extra: '', desc: 'Lay Waste to ' + P.name };
-      }
       return null;
     }
     case 'Undead': {
@@ -1894,13 +1878,6 @@ export function botKitPre(G, pi, c, P, L) {
         spendIf(DESPOIL_COST)
       )
         return { action: 'despoil', target: '', extra: '', desc: 'Despoil ' + P.name };
-      if ((sk.necromancy || 0) >= 1) {
-        const n = (c.armies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
-        if (n >= (tactics ? 1 : 2) && L.budget >= 3 * n + (tactics ? 2 : 4)) {
-          L.budget -= 3 * n;
-          return { action: 'bind_bones', target: '', extra: '', desc: 'Bind the Bones' };
-        }
-      }
       return null;
     }
     case 'Pagan': {

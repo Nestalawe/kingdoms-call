@@ -51,11 +51,8 @@ export type OrderKind =
   | 'harvest_field'
   | 'good_works'
   | 'grow_wild'
-  | 'tend_grove'
   | 'trade_pact'
-  | 'lay_waste'
   | 'despoil'
-  | 'bind_bones'
   | 'proclaim_crusade'
   | 'light_beacons'
   | 'call_wild'
@@ -152,15 +149,9 @@ export const PHASE_ACTION_MAP = {
   'good works': 'good_works',
   grow_wild: 'grow_wild',
   'grow the wild': 'grow_wild',
-  tend_grove: 'tend_grove',
-  'tend the grove': 'tend_grove',
   trade_pact: 'trade_pact',
   'trade pact': 'trade_pact',
-  lay_waste: 'lay_waste',
-  'lay waste': 'lay_waste',
   despoil: 'despoil',
-  bind_bones: 'bind_bones',
-  'bind the bones': 'bind_bones',
   // the kings' orders (alignment ideas round 2)
   proclaim_crusade: 'proclaim_crusade',
   'proclaim crusade': 'proclaim_crusade',

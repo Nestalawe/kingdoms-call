@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { alignProto, protoAlignOf } from '../alignment-prototypes.ts';
+import { protoAlignOf } from '../alignment-prototypes.ts';
 import { KC_QUALITY_UP, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
@@ -788,7 +788,7 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
     // previously described but never implemented — engine now honours it), and the Divine
     // KING himself blesses at +100% — the gods answer their anointed in full.
     const _divineKingdom = G.players[c.player]?.alignment === 'Divine';
-    const _divineKingBless = c.isKing && _divineKingdom && !alignProto(G, 'Divine'); // PROTOTYPE Divine: +80% for every Divine hero, the king too
+    const _divineKingBless = c.isKing && _divineKingdom;
     targetProv._blessedMult =
       (_divineKingBless ? 2.0 : _divineKingdom ? 1.8 : 1.6) + discSum(turnContext, c.player, 'bless', 'pct'); // ad09 Rites of Plenty (+0.2)
     const _blessPct =

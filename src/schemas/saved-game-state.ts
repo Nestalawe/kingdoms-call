@@ -418,10 +418,8 @@ export const ProvinceSchema = z.object({
   _riteActivatedBy: z.number().optional(), // Pagan: the realm whose rite woke the stones here
   _awakened: z.number().optional(), // Pagan: the turn of the Rite of Awakening (its +1 tax paid once)
   _goodWorks: z.number().optional(), // Good: times Good Works raised the tax here (to 2)
-  _tendedGrove: z.number().optional(), // Druidic: times Tend the Grove raised the tax here (to 2)
   _grownWild: z.number().optional(), // Druidic: the turn Grow the Wild made this forest or jungle
   _tradePactTurn: z.number().optional(), // Neutral: the turn a Trade Pact bought the province
-  _laidWaste: z.number().optional(), // Evil: the turn Lay Waste stripped it
   _despoiled: z.number().optional(), // Undead: the turn Despoil killed the land
   // round 2
   _lostFrom: z.number().optional(), // Good: the realm this province was last taken from (Reclaim)

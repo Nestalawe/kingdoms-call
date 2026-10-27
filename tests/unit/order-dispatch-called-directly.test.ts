@@ -110,11 +110,8 @@ const HANDED: Record<string, [string, Arg[]]> = {
   // the prototype kits' orders (alignment ideas round 1, src/engine/orders/alignment-prototype-orders.ts)
   good_works: ['resolveGoodWorksOrder', ['c', 'prov', 'player']],
   grow_wild: ['resolveGrowTheWildOrder', ['c', 'prov', 'player']],
-  tend_grove: ['resolveTendTheGroveOrder', ['c', 'prov', 'player']],
   trade_pact: ['resolveTradePactOrder', ['c', 'ph', 'target', 'prov', 'player']],
-  lay_waste: ['resolveLayWasteOrder', ['c', 'prov', 'player']],
   despoil: ['resolveDespoilOrder', ['c', 'prov', 'player']],
-  bind_bones: ['resolveBindTheBonesOrder', ['c', 'player']],
   // the kings' orders (alignment ideas round 2)
   proclaim_crusade: ['resolveProclaimCrusadeOrder', ['c', 'target', 'player']],
   light_beacons: ['resolveLightTheBeaconsOrder', ['c', 'prov', 'player']],

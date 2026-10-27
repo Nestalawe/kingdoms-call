@@ -1378,7 +1378,6 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
     if (sp.alignment === 'Undead') {
       kingSkills.necromancy = (kingSkills.necromancy || 0) + 1;
     }
-    if (sp.alignment === 'Good' && _protoList.includes('Good')) kingSkills.tactical = (kingSkills.tactical || 0) + 1; // PROTOTYPE Good: the shield-wall's king
     // Normalise any mixed-case skill keys from the join form to engine keys
     const SKILL_NORM = {
       Melee: 'melee',

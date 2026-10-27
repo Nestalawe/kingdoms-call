@@ -28,7 +28,6 @@ export const HOLY_SITE_SHARE_OF_LAND = 1 / 5; // round 2: and one in five a holy
 export const RITE_OF_AWAKENING_COST = 10;
 export const RITE_OF_AWAKENING_TAX = 3; // round 2 (Votive Hoards): an awakened site pays +3 tax (round 1: +1)
 // round 2: the Divine Power thresholds (a held holy site counts 1, a held AND consecrated one 2)
-export const DIVINE_POWER_WHITE = 1; // every Divine hero casts White one level higher
 export const DIVINE_POWER_RETURN = 2; // a fallen hero's return spends no consecration (round 2: 3)
 export const DIVINE_POWER_UNLEASHED = 3; // the Crusade's ×1.5 in every battle (round 7; rounds 3-6: 4; round 2: 5)
 // round 2: the kings' orders and how long their effects hold
@@ -52,7 +51,6 @@ export const CONSECRATE_COST = 5; // Divine (was free)
 export const GOOD_WORKS_COST = 2; // Good (was free)
 export const LIGHT_BEACONS_COST_PER_COMPANY = 2; // Good (was free)
 export const GROW_WILD_COST = 8; // Druidic (was free)
-export const TEND_GROVE_COST = 2; // Druidic (was free)
 export const CALL_WILD_COST = 3; // Druidic (was free)
 export const EMBARGO_COST = 4; // Neutral (round 5: 6; was free)
 export const DESPOIL_COST = 3; // Undead (was free)
@@ -231,17 +229,26 @@ export function paganFavourMult(G: GameState, pi: number): number {
 }
 
 // ── Skills a kit lifts: the level a hero's skill counts as, over the trained and equipped level. Read by effStat.
+/** Round 15: each alignment's own skill, which the general rule lifts by one. */
+export const SIGNATURE_SKILL: Record<string, string> = {
+  Divine: 'white',
+  Good: 'tactical',
+  Druidic: 'druid',
+  Neutral: 'sage',
+  Pagan: 'explorer',
+  Evil: 'spy',
+  Undead: 'necromancy',
+};
 export function protoSkillLift(G: GameState, c: Character | null | undefined, stat: string, base: number): number {
   if (c?.player == null) return 0;
   const align = protoAlignOf(G, c.player);
   if (!align) return 0;
-  if (align === 'Neutral' && (stat === 'sage' || stat === 'spy' || stat === 'thief') && base >= 1) return 1; // Guilds
-  if (align === 'Evil' && (stat === 'spy' || stat === 'thief') && base >= 1) return 1; // Dread: poisoners and spies
-  if (align === 'Divine' && stat === 'white' && divinePower(G, c.player) >= DIVINE_POWER_WHITE) return 1; // Divine Power
-  if (align === 'Undead' && stat === 'necromancy') return (base >= 1 ? 1 : 0) + Math.min(2, barrowsHeld(G, c.player)); // round 2: necromancers +1, and the barrows held
-  if (align === 'Good' && stat === 'tactical' && base >= 1) return 1; // round 2: Captains of the Shield (round 7: the king too)
-  if (align === 'Druidic' && stat === 'druid' && base >= 1) return 1; // round 2: the circle's craft
-  if (align === 'Pagan' && stat === 'explorer' && base >= 1) return 1; // round 2: Seers
+  // Round 15 (the cut to six): one general rule in place of seven abilities. Every realm's heroes count one level
+  // higher in their alignment's own skill, where they have it at all.
+  if (stat === SIGNATURE_SKILL[align] && base >= 1)
+    return 1 + (align === 'Undead' ? Math.min(2, barrowsHeld(G, c.player)) : 0);
+  if (align === 'Undead' && stat === 'necromancy') return Math.min(2, barrowsHeld(G, c.player)); // the barrows lift even a hero with none
+  if (align === 'Neutral' && (stat === 'spy' || stat === 'thief') && base >= 1) return 1; // Guilds
   return 0;
 }
 

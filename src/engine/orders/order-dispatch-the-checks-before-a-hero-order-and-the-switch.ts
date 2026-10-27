@@ -1,6 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
-  resolveBindTheBonesOrder,
   resolveCallOfTheWildOrder,
   resolveDarkPactOrder,
   resolveDespoilOrder,
@@ -8,11 +7,9 @@ import {
   resolveGoodWorksOrder,
   resolveGreatSacrificeOrder,
   resolveGrowTheWildOrder,
-  resolveLayWasteOrder,
   resolveLightTheBeaconsOrder,
   resolveProclaimCrusadeOrder,
   resolveSpreadPlagueOrder,
-  resolveTendTheGroveOrder,
   resolveTradePactOrder,
 } from './alignment-prototype-orders.ts';
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
@@ -387,20 +384,11 @@ export function processOrder(turnContext, c, o, ph) {
     case 'grow_wild':
       resolveGrowTheWildOrder(turnContext, c, prov, player);
       break;
-    case 'tend_grove':
-      resolveTendTheGroveOrder(turnContext, c, prov, player);
-      break;
     case 'trade_pact':
       resolveTradePactOrder(turnContext, c, ph, target, prov, player);
       break;
-    case 'lay_waste':
-      resolveLayWasteOrder(turnContext, c, prov, player);
-      break;
     case 'despoil':
       resolveDespoilOrder(turnContext, c, prov, player);
-      break;
-    case 'bind_bones':
-      resolveBindTheBonesOrder(turnContext, c, player);
       break;
     // the kings' orders (alignment ideas round 2)
     case 'proclaim_crusade':

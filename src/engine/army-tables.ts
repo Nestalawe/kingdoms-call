@@ -296,11 +296,8 @@ export const ALIGNMENT_ORDER_KEYS = new Set([
   // the prototype kits' orders (alignment ideas round 1)
   'good_works',
   'grow_wild',
-  'tend_grove',
   'trade_pact',
-  'lay_waste',
   'despoil',
-  'bind_bones',
   // the kings' orders (alignment ideas round 2)
   'proclaim_crusade',
   'light_beacons',
