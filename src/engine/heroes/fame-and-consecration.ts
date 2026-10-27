@@ -1,13 +1,61 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { homeFounderOf } from '../grand-design.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { hexDistP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { discProvCoastal, discSumOf } from '../discoveries.ts';
+import type { GameState, Item, Province, SkillLevels } from '../../schemas/saved-game-state.ts';
 
-export function itemNameList(items, withDesc) {
+// Its types (plan P1-10b9): each parameter typed as wide as the body's guards (plan P1-10b's Decision 3), so each guard
+// stays, though a state the turn hands always holds what it guards. Ids are plain numbers (the schema brands them).
+/** An item as its name is listed: its name, its words and its tier (the LEGENDARY mark). */
+type AnItemAsListed = Pick<Item, 'name'> & Partial<Pick<Item, 'desc' | 'tier'>>;
+/** A realm as consecration reads it: its alignment, and its consecrated provinces (an older save's single one, which
+ *  the first read folds into the list). */
+interface ARealmAsConsecrationReadsIt {
+  readonly alignment?: string | undefined;
+  consecratedProvIds?: number[] | undefined;
+  consecratedProvId?: number | null | undefined;
+}
+/** A province as consecration and spotting read it. */
+interface AProvinceAsTheseRead {
+  readonly id: number;
+  readonly owner?: number | null | undefined;
+  readonly tax: number;
+  readonly row: number;
+  readonly col: number;
+  readonly terrain: string;
+  readonly characters?: readonly number[] | null | undefined;
+}
+/** A hero as the names' safety nets read it (a guard, a wanderer, a crown's hero). */
+interface AHeroAsTheNamesRead {
+  name?: string | null | undefined;
+  _isNeutralGuard?: boolean | undefined;
+  readonly player?: number | null | undefined;
+  readonly alive?: boolean | undefined;
+  readonly location: number;
+  readonly armies?: readonly unknown[] | null | undefined;
+}
+/** A hero as spotting reads it: a lurker's id and skills, a watcher's realm and skills (and, for the Wonders' home,
+ *  where a king stands). */
+type AHeroAsSpottingReadsIt = NonNullable<NonNullable<Parameters<typeof homeFounderOf>[0]>['characters']>[number] & {
+  readonly id: number;
+  readonly alive: boolean;
+  readonly skills?: Partial<SkillLevels> | null | undefined;
+};
+/** The state as these read it: the realms, the heroes (by id), the relations, the turn and the map. */
+interface TheStateAsTheseReadIt {
+  readonly players?: readonly (ARealmAsConsecrationReadsIt & Parameters<typeof discSumOf>[0])[] | null | undefined;
+  readonly characters: readonly AHeroAsSpottingReadsIt[];
+  readonly relations?: Readonly<Partial<Record<string, string>>> | null | undefined;
+  readonly turn: number;
+  readonly world: Pick<GameState['world'], 'cols' | 'rows'> & {
+    readonly provinces: readonly (AProvinceAsTheseRead | null | undefined)[];
+  };
+}
+
+export function itemNameList(items: readonly AnItemAsListed[] | null | undefined, withDesc?: boolean) {
   const wd = withDesc !== false;
-  return (items || [])
+  return (items ?? [])
     .map((d) => (isLegendaryItem(d) ? 'the LEGENDARY ' : 'the ') + d.name + (wd && d.desc ? ' (' + d.desc + ')' : ''))
     .join(', ');
 }
@@ -34,10 +82,12 @@ export const MITHRIL_ARMOUR = {
 // 2026-09-24 (Toby item 7): only the profane profit from casting down altars — an UNDEAD realm's
 // column always rises a level, an EVIL realm's has a 50% chance per unit, everyone else gains nothing.
 export const CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT = { Undead: 100, Evil: 50 };
-export function consecCaptureXpPct(pl) {
-  return (pl && CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT[pl.alignment]) || 0;
+export function consecCaptureXpPct(pl: { readonly alignment: string } | null | undefined) {
+  // the table read by any alignment's name
+  const pctByAlignment: Readonly<Partial<Record<string, number>>> = CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT;
+  return (pl && pctByAlignment[pl.alignment]) ?? 0; // 100 or 50, never 0
 }
-export function consecratedIds(pl) {
+export function consecratedIds(pl: ARealmAsConsecrationReadsIt | null | undefined) {
   if (!pl) return [];
   if (!Array.isArray(pl.consecratedProvIds)) {
     pl.consecratedProvIds = pl.consecratedProvId != null ? [pl.consecratedProvId] : [];
@@ -45,29 +95,33 @@ export function consecratedIds(pl) {
   }
   return pl.consecratedProvIds;
 }
-export function isConsecrated(pl, provId) {
+export function isConsecrated(pl: ARealmAsConsecrationReadsIt | null | undefined, provId: number) {
   return consecratedIds(pl).includes(provId);
 }
 // DIVINE RETURN needs holy ground. The consecrated provinces a realm still OWNS — the only places a
 // fallen Divine character can be restored. `nearestConsecratedProv` picks the one closest (hex
 // distance, ties → the richer) to where the body lies.
-export function ownedConsecratedProvs(state, pi) {
-  const pl = (state.players || [])[pi];
+export function ownedConsecratedProvs(state: TheStateAsTheseReadIt, pi: number) {
+  const pl = (state.players ?? [])[pi];
   if (!pl) return [];
   return consecratedIds(pl)
     .map((id) => state.world.provinces[id])
-    .filter((pv) => pv && pv.owner === pi);
+    .filter((pv): pv is AProvinceAsTheseRead => pv?.owner === pi);
 }
-export function nearestConsecratedProv(state, pi, fromProvId) {
+export function nearestConsecratedProv(
+  state: TheStateAsTheseReadIt,
+  pi: number,
+  fromProvId: number | null | undefined,
+): AProvinceAsTheseRead | null | undefined {
   const list = ownedConsecratedProvs(state, pi);
   if (!list.length) return null;
   const from = fromProvId != null ? state.world.provinces[fromProvId] : null;
   if (!from) return list[0];
-  let best = null,
+  let best: AProvinceAsTheseRead | null = null,
     bd = Infinity;
   list.forEach((pv) => {
     const d = hexDistP(from, pv, state.world.cols);
-    if (d < bd || (d === bd && (pv.tax || 0) > ((best && best.tax) || 0))) {
+    if (d < bd || (d === bd && (pv.tax || 0) > (Number(best?.tax) || 0))) {
       bd = d;
       best = pv;
     }
@@ -77,32 +131,30 @@ export function nearestConsecratedProv(state, pi, fromProvId) {
 // a neutral province guard becomes an ordinary wandering hero (hireable, listed under Wandering
 // Heroes, labelled "(wandering)"). Used when a guard survives the loss of his last unit, and by the
 // turn-start / pre-report safety net for any guard left troopless or standing in a player's land.
-export function demoteGuardToWanderer(h) {
+export function demoteGuardToWanderer(h: AHeroAsTheNamesRead | null | undefined) {
   if (!h) return;
   h._isNeutralGuard = false; // (armies are left as they are — the combat site has already emptied them)
-  const base = String(h.name || '')
-    .replace(/\s*\(wandering\)/gi, '')
-    .trim();
+  const base = (h.name ?? '').replace(/\s*\(wandering\)/gi, '').trim();
   h.name = base + ' (wandering)';
 }
 // the inverse of demoteGuardToWanderer. The ' (wandering)' suffix is baked into the NAME, so EVERY
 // path that puts a masterless hero into a realm's service must take it off again — the Hire order
 // did, but Charm's permanent join and Resurrect did not, leaving heroes called "Marigold the Bright
 // (wandering)" serving a crown. One helper, used by all of them.
-export function claimWandererName(h) {
+export function claimWandererName(h: Pick<AHeroAsTheNamesRead, 'name'> | null | undefined) {
   if (!h) return;
-  h.name = String(h.name || '')
-    .replace(/\s*\(wandering\)/gi, '')
-    .trim();
+  h.name = (h.name ?? '').replace(/\s*\(wandering\)/gi, '').trim();
 }
 // Safety net for saves already carrying the bug (and for any future path that forgets): no
 // character who serves a crown may wear the wandering tag. Run at turn start. Returns the number
 // repaired.
-export function normaliseOwnedNames(gs) {
+export function normaliseOwnedNames(gs: {
+  readonly characters?: readonly (AHeroAsTheNamesRead | null | undefined)[] | null | undefined;
+}) {
   let n = 0;
-  (gs.characters || []).forEach((c) => {
-    if (!c || c.player == null) return;
-    if (/\(wandering\)/i.test(String(c.name || ''))) {
+  (gs.characters ?? []).forEach((c) => {
+    if (c?.player == null) return;
+    if (/\(wandering\)/i.test(c.name ?? '')) {
       claimWandererName(c);
       n++;
     }
@@ -111,12 +163,18 @@ export function normaliseOwnedNames(gs) {
 }
 // Safety net: every living neutral "guard" who leads no troops, or who stands in a province a
 // player now owns, is really a wanderer — normalise them. Returns the number repaired.
-export function normaliseStrandedGuards(gs) {
+export function normaliseStrandedGuards(gs: {
+  readonly characters?: readonly (AHeroAsTheNamesRead | null | undefined)[] | null | undefined;
+  readonly world?:
+    | { readonly provinces?: readonly (Pick<Province, 'owner'> | null | undefined)[] | null | undefined }
+    | null
+    | undefined;
+}) {
   let n = 0;
-  (gs.characters || []).forEach((c) => {
-    if (!c || c.player !== null || !c.alive || !c._isNeutralGuard) return;
-    const pv = ((gs.world && gs.world.provinces) || [])[c.location];
-    if ((c.armies || []).length === 0 || (pv && pv.owner != null)) {
+  (gs.characters ?? []).forEach((c) => {
+    if (c?.player !== null || !c.alive || !c._isNeutralGuard) return;
+    const pv = (gs.world?.provinces ?? [])[c.location];
+    if ((c.armies ?? []).length === 0 || pv?.owner != null) {
       demoteGuardToWanderer(c);
       n++;
     }
@@ -126,24 +184,32 @@ export function normaliseStrandedGuards(gs) {
 // consecration is holy ground anyone can SEE (altars, standing stones), not a private fact of the
 // owner. This tells us whether a province is consecrated by its CURRENT owner, so the map can mark
 // it for every player who can see the province — not only the Divine king who blessed it.
-export function provinceConsecrated(gs, prov) {
-  if (!prov || prov.owner == null) return false;
-  const owner = gs && gs.players && gs.players[prov.owner];
+export function provinceConsecrated(
+  gs: Pick<TheStateAsTheseReadIt, 'players'> | null | undefined,
+  prov: Pick<AProvinceAsTheseRead, 'id' | 'owner'> | null | undefined,
+) {
+  if (prov?.owner == null) return false;
+  const owner = gs?.players?.[prov.owner];
   return !!owner && isConsecrated(owner, prov.id);
 }
 // relation lookup usable at MODULE level (buildTurnReport can't reach the runTurn-nested
 // areEnemies/relationBetween). Relations live in gs.relations keyed "min-max".
-export function relOfReport(gs, a, b) {
+export function relOfReport(
+  gs: Pick<TheStateAsTheseReadIt, 'relations'>,
+  a: number | null | undefined,
+  b: number | null | undefined,
+) {
   if (a == null || b == null || a === b) return 'neutral';
-  const k = a < b ? a + '-' + b : b + '-' + a;
-  return (gs.relations || {})[k] || 'neutral';
+  const k = a < b ? `${String(a)}-${String(b)}` : `${String(b)}-${String(a)}`;
+  const rel = gs.relations?.[k] ?? '';
+  return rel || 'neutral';
 }
 // Deterministic 0..1 roll so the same (turn, viewer, enemy, province) always resolves the same way
 // — the map is built once, but this keeps a GM preview and the saved report identical, and re-rolls
 // each turn.
-export function detRoll(turn, viewerPi, charId, provId) {
+export function detRoll(turn: number, viewerPi: number, charId: number, provId: number) {
   let h = 2166136261 >>> 0;
-  const s = turn + '|' + viewerPi + '|' + charId + '|' + provId;
+  const s = `${String(turn)}|${String(viewerPi)}|${String(charId)}|${String(provId)}`;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 16777619) >>> 0;
@@ -154,7 +220,13 @@ export function detRoll(turn, viewerPi, charId, provId) {
 // Chance = your exploration% of the province, −20%/enemy Spy level (cap L5), +10%/highest friendly
 // (own or allied) Spy level present (cap L5), clamped 5–95%. Replaces the flat _unspottedTurn cloak
 // for owned provinces. Kings roll exactly as heroes do. Returns true if spotted.
-export function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn?) {
+export function spotEnemyInOwnedProvince(
+  gs: TheStateAsTheseReadIt,
+  viewerPi: number,
+  prov: AProvinceAsTheseRead,
+  enemyChar: Pick<AHeroAsSpottingReadsIt, 'id' | 'skills'>,
+  turn?: number | null,
+) {
   // turn: the report's turn (default gs.turn)
   // 2026-09-21 — A PROVINCE YOU HOLD IS GROUND YOU KNOW.
   // This read `exploredBy[viewerPi]`, and NOTHING writes that on conquest — only marching in does,
@@ -169,13 +241,13 @@ export function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn?) {
   // happened to chart. The contest that remains is the one that was always meant to be here — the
   // lurker's Spy against the watchers'.
   const explored = 100;
-  const enemySpy = Math.min(5, (enemyChar.skills && enemyChar.skills.spy) || 0);
+  const enemySpy = Math.min(5, Number(enemyChar.skills?.spy) || 0);
   let friendlySpy = 0;
-  (prov.characters || []).forEach((cid) => {
+  (prov.characters ?? []).forEach((cid) => {
     const f = gs.characters[cid];
     if (!f || !f.alive || f.player == null) return;
     const friendly = f.player === viewerPi || relOfReport(gs, viewerPi, f.player) === 'allied';
-    if (friendly) friendlySpy = Math.max(friendlySpy, (f.skills && f.skills.spy) || 0);
+    if (friendly) friendlySpy = Math.max(friendlySpy, Number(f.skills?.spy) || 0);
   });
   friendlySpy = Math.min(5, friendlySpy);
   // …and no one hides in another realm's land indefinitely. The floor is 25%, not 5%: a Spy-5 hero
@@ -189,7 +261,7 @@ export function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn?) {
         20 * enemySpy +
         10 * friendlySpy +
         discSumOf(
-          gs.players && gs.players[viewerPi],
+          gs.players?.[viewerPi],
           'spotLurker',
           'pct',
           (e) =>
@@ -200,5 +272,5 @@ export function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn?) {
     ),
   ); // + spotLurker discoveries (sd60 Watch Houses)
   if (perkTier(enemyChar, 'illusory') >= 1) chance = Math.max(5, chance * 0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
-  return detRoll(turn != null ? turn : gs.turn, viewerPi, enemyChar.id, prov.id) * 100 < chance;
+  return detRoll(turn ?? gs.turn, viewerPi, enemyChar.id, prov.id) * 100 < chance;
 }
