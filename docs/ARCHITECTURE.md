@@ -299,8 +299,8 @@ src_ui_player_-->src_ui_shared_
 src_ui_player_-->src_shared_
 src_ui_player_-->src_db_
 src_views_-->src_engine_
-src_views_-->src_content_
 src_views_-->src_engine_rules_on_plain_values_
+src_views_-->src_content_
 src_views_-->src_schemas_
 ```
 
@@ -689,8 +689,16 @@ portals' start-up guards are gone.
   before it, a battle against a province's own defenders, a host gained in a province, a stalled battle, a war front,
   and the helpers that return a line: the kinship, Druid and command lines, the ladder and grid rows, the units' fates),
   but the few words a battle takes from another folder's helper (a unit disbanding, a sea trap, a naval hold, the
-  wanderer's escape, a hero's death: P1-12d). The rest of the engine's lines still carry their words (P1-12d), and in
-  this run a line's words are the same for every reader. Then it works out, for each played
+  wanderer's escape, a hero's death: P1-12d). **A fact holds values, never words** (P1-12d; personal combat's since
+  P1-12d2): a number, a flag, an id or a slug, a name as the world or the content holds it, and a copy of what a line's
+  words read of the world (a fighter's skill or ward, a list of items, a hit-point rise), made as the line is told by a
+  named function beside the kind; never a part of the world, and never a clause, a plural, a mark (✓, ✗), a join or a
+  number formatted for reading, which the views write. A word helper the engine no longer calls moved into the prose
+  (`pcSkillLabel`, `pcWardWord`, `pcPerkWord`, `pcWardIcon`); one it still calls (`fmtRoll`, `monsterCatLabel`,
+  `hpGainLine`) the prose imports from the engine, on plain values. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
+  checks each area done (its list grows a row at a time), but the fighters' labels it lists (P1-12d's next slice). The
+  rest of the engine's lines still carry their words (P1-12d), and in this run a line's words are the same for every
+  reader. Then it works out, for each played
   slot, the lines the realm reads (from the lines in words) and what it may see of the world, and builds its report
   from those two alone: **perception** comes first, in two functions, and the report
   reads nothing else (P1-12b5). `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines

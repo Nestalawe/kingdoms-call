@@ -3,18 +3,171 @@
 // combat/) records a fact, and the views write its words after perception (src/views/prose/the-words-of-a-personal-
 // combats-lines.ts): the engine no longer writes those words itself. One kind per sentence, one field per value the
 // sentence was written with, worked out where the line is told and in the sentence's order, so the words are the same
-// by construction. A field may hold words itself (those named wordsIf…, …Mark, …Plural, …Names, …Words, a note, the
-// odds): P1-12d moves those words into the prose and merges the kinds into facts by sense.
+// by construction. Since P1-12d2 (P1-12's Decisions of 2026-10-26, Decision 2) a field holds a value, never words: a
+// plural, a mark, a clause chosen by a flag, a joined list are written in the prose from the count, the roll and the
+// chance, the flag, the list (copied as the line is told: below). Words are still handed only in the fighters' labels
+// (`who`, `foeWho`: "The Barrow Wight") and an item's equip note (`gainedItemNote`, the items' words), and in what a
+// caller hands in through a parameter (a daze's `what`, a lingering harm's label). P1-12d's next slice merges the kinds
+// into facts by sense.
 //
 // Each kind's audience is written once, by its type (THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE): the
 // fight's (whoever the fight's lines are written for: emitNarrLine files them with the fight's event), or its hero's
 // realm alone. Two kinds are for one realm alone, inside any fight's narrative: a hero's hit-point rise
 // (heroes/experience-skill-rises-and-earned-hp.ts) and the surgeons' line for a fallen duellist's own realm
-// (battle/pre-battle-duels.ts); each names its realm, and its words (written by the heroes' code).
+// (battle/pre-battle-duels.ts); each names its realm. The rise names its hero, his name and a copy of the rise (its
+// words: hpGainLine, in the prose); the surgeons' line still holds its words (written by the heroes' code: P1-12d5).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 
 /** A value a line's words are written with: a name, a number, or words themselves. */
 export type AValueInALinesWords = string | number | boolean | null;
+
+// ── WHAT A LINE'S WORDS READ, COPIED AS THE LINE IS TOLD (plan P1-12d2: P1-12's Decisions of 2026-10-26, Decision 2) ──
+// A fact holds plain values only, never a part of the world and never words the engine composed: the views write the
+// words (src/views/prose/the-words-of-a-personal-combats-lines.ts) after the turn, when the fighters and their items
+// may have changed. So what a line's words read of a fighter, an item list or a hit-point rise is copied here, as the
+// line is told, by the functions below; the words come from those copies alone.
+
+/** A fighter as these copies read it (a combatant of personal combat, a guardian, a hero). */
+interface AFighterAsTheseCopiesReadIt {
+  readonly kind?: string | undefined;
+  readonly name?: string | undefined;
+  readonly melee?: number | undefined;
+  readonly meleeBase?: number | null | undefined;
+  readonly archery?: number | undefined;
+  readonly archeryBase?: number | null | undefined;
+  readonly _perkName?: Readonly<Partial<Record<string, string>>> | null | undefined;
+  readonly perks?: readonly unknown[] | null | undefined;
+  readonly passiveName?: string | null | undefined;
+}
+
+/** A fighter's melee or archery as a line names it: the level it fights at, and its level before a bonus raised it. */
+export interface AFightersSkillAsTheLineTellsIt {
+  readonly level: number;
+  readonly levelBeforeItsBonus: number | null | undefined;
+}
+
+/** A fighter's melee or archery, copied as the line is told. */
+export function aFightersSkillAsTheLineTellsIt(
+  fighter: AFighterAsTheseCopiesReadIt | null | undefined,
+  stat: 'melee' | 'archery',
+): AFightersSkillAsTheLineTellsIt {
+  return {
+    level: Number(fighter?.[stat]) || 0,
+    levelBeforeItsBonus: stat === 'melee' ? fighter?.meleeBase : fighter?.archeryBase,
+  };
+}
+
+/** A fighter's ward as a line names it: the fighter, whether it is a guardian, and the name of the guardian's perk that
+ *  works it (the perk named for the ward's effect, else its one passive's), if it has one. */
+export interface AFightersWardAsTheLineTellsIt {
+  readonly fighterName: string | undefined;
+  readonly isAGuardian: boolean;
+  readonly itsPerksName: string | null | undefined;
+}
+
+/** A fighter's ward for the effect named (`key`: regen, meleeDR, …), copied as the line is told. */
+export function aFightersWardAsTheLineTellsIt(
+  fighter: AFighterAsTheseCopiesReadIt,
+  key: string,
+): AFightersWardAsTheLineTellsIt {
+  return {
+    fighterName: fighter.name,
+    isAGuardian: fighter.kind === 'monster',
+    itsPerksName: theNameOfTheGuardiansPerkForAWard(fighter, key),
+  };
+}
+
+/** A guardian's perk for the effect named, else its passive when it has one perk or none: null for a hero. */
+function theNameOfTheGuardiansPerkForAWard(
+  fighter: AFighterAsTheseCopiesReadIt,
+  key: string,
+): string | null | undefined {
+  if (fighter.kind !== 'monster') return null;
+  const named = fighter._perkName?.[key];
+  if (named) return named;
+  return (fighter.perks ? fighter.perks.length : 0) <= 1 ? fighter.passiveName : null;
+}
+
+/** The name of a guardian's perk for the effect named (`key`: burn, drain, …), else of its passive, else null: copied
+ *  as the line is told. */
+export function aFightersPerkNameAsTheLineTellsIt(
+  fighter: AFighterAsTheseCopiesReadIt | null | undefined,
+  key: string,
+): string | null {
+  const named = fighter?._perkName?.[key];
+  if (named) return named;
+  const passive = fighter?.passiveName;
+  if (passive) return passive;
+  return null;
+}
+
+/** A guardian as its kind's label reads it (monsterCatLabel): its kind, if the bestiary names one, and its name. */
+export interface AGuardianAsItsKindIsRead {
+  readonly cat?: string | null | undefined;
+  readonly name?: string | undefined;
+}
+
+/** A guardian as its kind's label reads it, copied as the line is told. */
+export function aGuardianAsItsKindIsRead(guardian: AGuardianAsItsKindIsRead): AGuardianAsItsKindIsRead {
+  return { cat: guardian.cat, name: guardian.name };
+}
+
+/** A hero's maximum hit points rising after a fight, as its line tells it (hpGainLine's second argument). */
+export interface AHitPointRiseAsTheLineTellsIt {
+  readonly gain: number;
+  readonly maxHp: number;
+  readonly wound?: boolean | undefined;
+  readonly winBonus?: number | undefined;
+  readonly sd35?: boolean | undefined;
+}
+
+/** A hero's hit-point rise, copied as the line is told. */
+export function aHitPointRiseAsTheLineTellsIt(rise: AHitPointRiseAsTheLineTellsIt): AHitPointRiseAsTheLineTellsIt {
+  return { gain: rise.gain, maxHp: rise.maxHp, wound: rise.wound, winBonus: rise.winBonus, sd35: rise.sd35 };
+}
+
+/** The odds of mercy a plea shows: the chance, the roll shown, and whether mercy was granted. */
+export interface TheOddsOfMercy {
+  readonly mercy: number;
+  readonly shown: number;
+  readonly granted: boolean;
+}
+
+/** A list of names (or of any plain values), copied as the line is told. */
+export function aListAsTheLineTellsIt<Value extends string | number>(list: readonly Value[]): Value[] {
+  return [...list];
+}
+
+/** The names of a list of things (items, spells), copied as the line is told. */
+export function theNamesAsTheLineTellsThem(list: readonly { readonly name: string }[]): string[] {
+  return list.map((x) => x.name);
+}
+
+/** The names and descriptions of a list of things (a guardian's passive perks), copied as the line is told. */
+export function theNamesAndDescriptionsAsTheLineTellsThem(
+  list: readonly { readonly name: string; readonly desc: string }[],
+): { name: string; desc: string }[] {
+  return list.map((x) => ({ name: x.name, desc: x.desc }));
+}
+
+/** An item as a line names it: its name, its description and its tier (a legendary item is named so). */
+export interface AnItemAsTheLineNamesIt {
+  readonly name: string;
+  readonly desc?: string;
+  readonly tier?: number;
+}
+
+/** A list of items, each as a line names it, copied as the line is told. */
+export function theItemsAsTheLineNamesThem(
+  items: readonly { readonly name: string; readonly desc?: string | undefined; readonly tier?: number | undefined }[],
+): AnItemAsTheLineNamesIt[] {
+  return items.map((it) => {
+    const copy: { name: string; desc?: string; tier?: number } = { name: it.name };
+    if (it.desc !== undefined) copy.desc = it.desc;
+    if (it.tier !== undefined) copy.tier = it.tier;
+    return copy;
+  });
+}
 
 /** The facts a personal combat's lines record, each with its kind: one kind per sentence, one field per value it was
  *  written with. */
@@ -38,15 +191,15 @@ export type TheFactOfAPersonalCombatsLine =
   | {
       kind: "the caster calls on a school's arts, weaving a spell";
       casterName: string;
-      schoolWeave: string;
+      school: string;
       spellName: string;
       castChance: number;
-      wordsIfSw: string;
+      schoolWard: number;
+      targetsWard: AFightersWardAsTheLineTellsIt;
       castRoll: number;
-      castRollCastChanceMark: string;
     }
   | { kind: 'but the spell guts and fizzles' }
-  | { kind: "the target is open to the school's arts"; targetName: string; schoolWeave: string; targetWeakName: string }
+  | { kind: "the target is open to the school's arts"; targetName: string; school: string; targetWeakName: string }
   | {
       kind: "the caster marks the target's weakness well";
       casterName: string;
@@ -65,24 +218,24 @@ export type TheFactOfAPersonalCombatsLine =
       targetName: AValueInALinesWords;
       fbPct: AValueInALinesWords;
       burnRounds: AValueInALinesWords;
-      wordsIfFbWard: AValueInALinesWords;
+      fbWard: number;
     }
   | {
       kind: 'the caster raises a holy symbol';
       casterName: string;
       targetName: string;
       pen: number;
-      wordsIfHoly: string;
+      againstTheUnclean: boolean;
     }
   | { kind: "the light closes the caster's hurts"; casterName: string; healed: number; casterHp: number }
-  | { kind: "the holy light's damage"; wordsIfHoly: string; dealt: number; targetHp: number }
+  | { kind: "the holy light's damage"; againstTheUnclean: boolean; targetName: string; dealt: number; targetHp: number }
   | {
       kind: 'the caster binds the target with spiritwrack';
       casterName: AValueInALinesWords;
       targetName: AValueInALinesWords;
-      swR: AValueInALinesWords;
-      swRPlural: AValueInALinesWords;
-      wordsIfShr: AValueInALinesWords;
+      swR: number;
+      shr: number;
+      targetPower: string | undefined;
     }
   | { kind: "psychic blast sears the target's mind"; targetName: string; stunN: number }
   | {
@@ -115,7 +268,8 @@ export type TheFactOfAPersonalCombatsLine =
       kind: "the caster's curse withers the target";
       casterName: AValueInALinesWords;
       targetName: AValueInALinesWords;
-      bestAbility: AValueInALinesWords;
+      bestKey: string;
+      bestSchool: string;
       bestAbilityLevel: AValueInALinesWords;
     }
   | { kind: "the caster's curse finds no ability"; casterName: AValueInALinesWords; targetName: AValueInALinesWords }
@@ -144,7 +298,7 @@ export type TheFactOfAPersonalCombatsLine =
     }
   | { kind: "the caster charms the target's wits"; casterName: AValueInALinesWords; targetName: AValueInALinesWords }
   | { kind: 'the caster casts a spell'; casterName: AValueInALinesWords; spellName: AValueInALinesWords }
-  | { kind: 'a fighter uses a power'; actorName: string; spName: string; wordsIfSpFlavour: string }
+  | { kind: 'a fighter uses a power'; actorName: string; spName: string; spFlavour: string | undefined }
   | { kind: 'a power tears into the foe'; spName: string; foeName: string; dealt: number; foeHp: number }
   | { kind: 'the guardian reaches for its own wounds again but the well is dry'; actorName: AValueInALinesWords }
   | {
@@ -153,21 +307,14 @@ export type TheFactOfAPersonalCombatsLine =
       heal: AValueInALinesWords;
       actorHp: AValueInALinesWords;
     }
-  | { kind: 'the foe reels from the blow, losing actions'; foeName: string; stun: number; stunPlural: string }
-  | { kind: 'the foe is caught helpless, losing actions'; foeName: string; stun: number; stunPlural: string }
+  | { kind: 'the foe reels from the blow, losing actions'; foeName: string; stun: number }
+  | { kind: 'the foe is caught helpless, losing actions'; foeName: string; stun: number }
   | { kind: 'the foe is thrown off balance from the next round'; foeName: string; pen: number }
   | { kind: 'the foe is thrown off balance'; foeName: AValueInALinesWords; pen: AValueInALinesWords }
   | { kind: "the foe's guard is beaten down next round"; foeName: string; now: number }
   | { kind: "the foe's guard is beaten down now"; foeName: AValueInALinesWords; now: AValueInALinesWords }
   | { kind: "the guardian's melee surges"; actorName: AValueInALinesWords; actorMelee: AValueInALinesWords }
-  | {
-      kind: 'a power festers on the foe';
-      spName: string;
-      foeName: string;
-      eDmg: number;
-      eRounds: number;
-      eRoundsPlural: string;
-    }
+  | { kind: 'a power festers on the foe'; spName: string; foeName: string; eDmg: number; eRounds: number }
   | {
       kind: 'every blow against the guardian will bite back';
       actorName: AValueInALinesWords;
@@ -182,29 +329,22 @@ export type TheFactOfAPersonalCombatsLine =
     }
   | { kind: 'the foe is struck down where they stand'; foeName: AValueInALinesWords }
   | { kind: 'the foe cannot be gripped by it'; foeName: AValueInALinesWords }
-  | {
-      kind: 'the foe must hold their nerve';
-      foeName: AValueInALinesWords;
-      tc: AValueInALinesWords;
-      tr: AValueInALinesWords;
-      trTcMark: AValueInALinesWords;
-    }
+  | { kind: 'the foe must hold their nerve'; foeName: AValueInALinesWords; tc: number; tr: number }
   | { kind: 'the foe is overcome with sheer terror'; foeName: AValueInALinesWords }
   | { kind: 'the foe steels their nerve'; foeName: AValueInALinesWords }
   | { kind: 'the foe feels dragged towards the creature'; foeName: AValueInALinesWords }
-  | { kind: 'a hero bears magic items into the fight'; chName: string; itemNames: string }
+  | { kind: 'a hero bears magic items into the fight'; chName: string; items: readonly AnItemAsTheLineNamesIt[] }
   | {
       kind: 'the runner scrambles clear with a chance of dropping something';
       runnerName: string;
       chance: number;
       roll: number;
-      rollChanceMark: string;
     }
   | {
       kind: 'in the rout the runner drops an item the one who stays claims';
       runnerName: string;
       itName: string;
-      wordsIfIsLegendaryItemIt: string;
+      itIsLegendary: boolean;
       stayerName: string;
     }
   | { kind: 'a gained item noted'; gainedItemNote: string }
@@ -216,7 +356,8 @@ export type TheFactOfAPersonalCombatsLine =
       atkTemper: string;
       defName: string;
       defRace: string;
-      defRealmName: string;
+      defRealm: number | null;
+      defRealmName: string | undefined;
     }
   | {
       kind: "the attacker goes for the defender's purse and comes away with nothing";
@@ -237,29 +378,31 @@ export type TheFactOfAPersonalCombatsLine =
   | { kind: 'the one who flees breaks away and escapes'; resFledByName: string }
   | { kind: 'the attacker is overwhelmed'; atkName: string }
   | { kind: 'the defender is overcome'; defName: string }
-  | { kind: "the guardian has turned the hoard's magic to its own use"; mName: string; wieldedItemNames: string }
-  | { kind: 'the hero enters the feature'; cName: string; entryVerb: string; featureName: string; provName: string }
+  | {
+      kind: "the guardian has turned the hoard's magic to its own use";
+      mName: string;
+      wieldedItemNames: readonly string[];
+    }
+  | { kind: 'the hero enters the feature'; cName: string; featureName: string; provName: string }
   | {
       kind: 'within lurks the guardian blocking the path';
-      monHpDesc: string;
+      mPower: string | undefined;
       mName: string;
-      wordsIfMonsterCatLabelM: string;
-      powerDesc: string;
+      mKind: AGuardianAsItsKindIsRead;
+      monsterPower: string;
     }
   | {
       kind: 'the guardian is already wounded by someone before';
-      woundDesc: AValueInALinesWords;
       cName: AValueInALinesWords;
-      monHp: AValueInALinesWords;
-      monFullHp: AValueInALinesWords;
+      monHp: number;
+      monFullHp: number;
     }
   | {
       kind: "the guardian's speed and plan";
       mName: string;
       monSpeedName: string;
-      wordsIfMonSpeedNameFast: string;
-      wordsIfPcHasRangedMon: string;
-      guardianTactics: string;
+      monFightsAtRange: boolean;
+      guardianTactics: readonly string[];
     }
   | { kind: 'after tense negotiations the guardian agrees'; mName: AValueInALinesWords }
   | { kind: 'the hero slips away with the prize'; cName: string; mName: string }
@@ -268,11 +411,11 @@ export type TheFactOfAPersonalCombatsLine =
       kind: 'in the rout the hero drops an item into the hoard';
       cName: string;
       itName: string;
-      wordsIfIsLegendaryItemIt: string;
+      itIsLegendary: boolean;
       mName: string;
-      wordsIfGuardianCanUseItemMIt: string;
+      theGuardianCanUseIt: boolean;
     }
-  | { kind: 'with a final effort the guardian is defeated'; blowOrBurst: string; mName: string }
+  | { kind: 'with a final effort the guardian is defeated'; aDecisiveBlow: number; mName: string }
   | { kind: 'the hero falls to their knees overwhelmed'; cName: string; mName: string }
   | {
       kind: 'neither the hero nor the guardian gains the upper hand';
@@ -281,25 +424,35 @@ export type TheFactOfAPersonalCombatsLine =
       cName2: AValueInALinesWords;
     }
   | { kind: 'the guardian draws back into its lair'; mName: string }
-  | { kind: 'the hero seizes the opening and counterattacks'; heroName: string; src: string }
+  | {
+      kind: 'the hero seizes the opening and counterattacks';
+      heroName: string;
+      aRiposteOfItsTemper: boolean;
+      heroTemper: string;
+    }
   | { kind: 'the counterstroke strikes the foe'; foeName: string; dealt: number; foeName2: string; foeHp: number }
-  | { kind: 'the hero lunges to counterattack but the foe recovers'; heroName: string; foeName: string; src: string }
+  | {
+      kind: 'the hero lunges to counterattack but the foe recovers';
+      heroName: string;
+      foeName: string;
+      aRiposteOfItsTemper: boolean;
+      heroTemper: string;
+    }
   | { kind: "a fighter's attack fails, still reeling from a crippling wound"; actorName: string }
   | {
       kind: 'a fighter attacks with a roll to hit';
       actorName: string;
-      actorMeleeSkillLabel: string;
+      actorMelee: AFightersSkillAsTheLineTellsIt;
       hitI: number;
       roll: number;
-      rollHitIMark: string;
     }
   | { kind: 'a fighter strikes the foe'; actorName: string; foeName: string; dealt: number; foeHp: number }
   | {
       kind: 'a fighter drinks the wound';
       actorName: string;
       dr: number;
-      wordsIfSm: string;
-      actorDrainWord: string;
+      sm: number;
+      actorDrainPerk: string | null;
       actorHp: number;
     }
   | {
@@ -311,8 +464,9 @@ export type TheFactOfAPersonalCombatsLine =
     }
   | {
       kind: "the foe's thorns bite a fighter";
-      foeWardIcon: string;
-      wordsIfFoeKindMonster: string;
+      foeIsAGuardian: boolean;
+      foesThornsWard: AFightersWardAsTheLineTellsIt;
+      foeName: string;
       actorName: string;
       foeArmThorns: number;
       actorName2: string;
@@ -325,10 +479,9 @@ export type TheFactOfAPersonalCombatsLine =
       kind: "a fighter takes a free strike at the foe's back";
       actorName: string;
       foeName: string;
-      actorMeleeSkillLabel: string;
+      actorMelee: AFightersSkillAsTheLineTellsIt;
       hitI: number;
       roll: number;
-      rollHitIMark: string;
     }
   | { kind: 'a fighter lands the free strike'; actorName: string; dealt: number; foeName: string; foeHp: number }
   | {
@@ -337,21 +490,32 @@ export type TheFactOfAPersonalCombatsLine =
       foeHp: AValueInALinesWords;
     }
   | { kind: 'the free strike misses' }
-  | { kind: 'a fighter tries to flee'; lead: string; chance: number; roll: number; rollChanceMark: string }
+  | {
+      kind: 'a fighter tries to flee';
+      itsTemperBreaksItOff: boolean;
+      actorName: string;
+      actorTemper: string;
+      chance: number;
+      roll: number;
+    }
   | { kind: 'a fighter escapes the fight'; actorName: string }
   | { kind: 'a fighter fails to get clear'; actorName: string }
-  | { kind: 'a fighter advances and the combatants close'; actorName: string; advanceWords: string; stateRange: string }
+  | { kind: 'a fighter advances and the combatants close'; actorName: string; steps: number; stateRange: string }
   | { kind: 'the foe looses a parting shot as a fighter comes on'; foeName: string; actorName: string }
   | { kind: 'a fighter draws as they come and looses a snap shot'; actorName: string }
   | { kind: "a fighter's shot fails, still reeling from a crippling wound"; actorName: string }
-  | { kind: 'a fighter draws and looses a volley'; actorName: string; volley: number; actorArcherySkillLabel: string }
+  | {
+      kind: 'a fighter draws and looses a volley';
+      actorName: string;
+      volley: number;
+      actorArchery: AFightersSkillAsTheLineTellsIt;
+    }
   | {
       kind: 'a fighter shoots with a roll to hit';
       actorName: string;
-      actorArcherySkillLabel: string;
+      actorArchery: AFightersSkillAsTheLineTellsIt;
       hit: number;
       roll: number;
-      rollHitMark: string;
     }
   | { kind: "a fighter's shot hits the foe"; actorName: string; foeName: string; dealt: number; foeHp: number }
   | { kind: "a fighter's arrow impales the foe"; actorName: string; foeName: string; impDmg: number; impRounds: number }
@@ -366,8 +530,14 @@ export type TheFactOfAPersonalCombatsLine =
   | { kind: 'the victim shatters the phantom'; victimName: string }
   | { kind: 'the phantom of the victim thins to nothing'; victimName: string }
   | { kind: 'the victim is struck down by their own mirror image'; victimName: string }
-  | { kind: "a guardian's aura sears the foe"; meBurnWord: string; foeName: string; meBurn: number; foeHp: number }
-  | { kind: 'the victim sees through the illusion'; victimName: string; disbeliefPct: string }
+  | {
+      kind: "a guardian's aura sears the foe";
+      meBurnPerk: string | null;
+      foeName: string;
+      meBurn: number;
+      foeHp: number;
+    }
+  | { kind: 'the victim sees through the illusion'; victimName: string; disbelief: number }
   | { kind: 'a fighter takes a free strike at the foe'; actorName: AValueInALinesWords; foeName: AValueInALinesWords }
   | {
       kind: "a fighter's free strike lands";
@@ -383,24 +553,40 @@ export type TheFactOfAPersonalCombatsLine =
       back: number;
       cbtHp: number;
     }
-  | { kind: 'as their strength fails a fighter begs the foe for mercy'; who: string; foeWho: string; odds: string }
+  | {
+      kind: 'as their strength fails a fighter begs the foe for mercy';
+      who: string;
+      foeWho: string;
+      odds: TheOddsOfMercy;
+    }
   | {
       kind: 'as the foe draws for the killing shot a fighter begs for their life';
       foeWho: string;
       who: string;
-      odds: string;
+      odds: TheOddsOfMercy;
     }
-  | { kind: 'pinned and bleeding a fighter cries out for mercy'; who: string; odds: string }
+  | { kind: 'pinned and bleeding a fighter cries out for mercy'; who: string; odds: TheOddsOfMercy }
   | {
       kind: 'as the foe readies a power for the killing stroke a fighter begs';
       foeWho: string;
-      pow: string;
+      strikeKind: string;
+      strikeClass: string;
       who: string;
-      odds: string;
+      odds: TheOddsOfMercy;
     }
-  | { kind: 'beaten and bleeding a fighter sees the killing blow coming'; who: string; foeWho: string; odds: string }
-  | { kind: 'as the foe closes for the kill a fighter cries out for mercy'; foeWho: string; who: string; odds: string }
-  | { kind: 'a fighter drops to their knees before the final stroke'; who: string; odds: string }
+  | {
+      kind: 'beaten and bleeding a fighter sees the killing blow coming';
+      who: string;
+      foeWho: string;
+      odds: TheOddsOfMercy;
+    }
+  | {
+      kind: 'as the foe closes for the kill a fighter cries out for mercy';
+      foeWho: string;
+      who: string;
+      odds: TheOddsOfMercy;
+    }
+  | { kind: 'a fighter drops to their knees before the final stroke'; who: string; odds: TheOddsOfMercy }
   | {
       kind: 'the guardian pauses over its prey and lets a fighter crawl away';
       foeWho: string;
@@ -409,7 +595,14 @@ export type TheFactOfAPersonalCombatsLine =
     }
   | { kind: 'the foe lets a fighter go'; foeWho: AValueInALinesWords; who: AValueInALinesWords }
   | { kind: 'the foe lowers their bow and lets a fighter go'; foeWho: string; who: string }
-  | { kind: 'the foe lets a power die unspent'; foeWho: string; pow: string; who: string; who2: string }
+  | {
+      kind: 'the foe lets a power die unspent';
+      foeWho: string;
+      strikeKind: string;
+      strikeClass: string;
+      who: string;
+      who2: string;
+    }
   | { kind: 'the foe stays the blow and lets a fighter go'; foeWho: string; who: string }
   | { kind: 'the foe lowers their weapon in disgust and lets a fighter go'; foeWho: string; who: string; who2: string }
   | { kind: 'the stroke never falls and the foe spares a fighter'; foeWho: string; who: string }
@@ -419,10 +612,28 @@ export type TheFactOfAPersonalCombatsLine =
       lostName: string;
       foeName: string;
     }
-  | { kind: 'the foe knows nothing of mercy'; foeWho: string; wordsIfABlowFalls: string }
-  | { kind: 'the foe laughs at the plea'; foeWho: string; wordsIfABlowFalls: string }
-  | { kind: 'the foe is deaf to the plea'; foeWho: string; wordsIfABlowFalls: string }
-  | { kind: 'there is no pity in the foe'; foeWho: string; wordsIfABlowFalls: string }
+  | {
+      kind: 'the foe knows nothing of mercy';
+      foeWho: string;
+      aBlowFalls: boolean;
+      strikeKind: string;
+      strikeClass: string;
+    }
+  | { kind: 'the foe laughs at the plea'; foeWho: string; aBlowFalls: boolean; strikeKind: string; strikeClass: string }
+  | {
+      kind: 'the foe is deaf to the plea';
+      foeWho: string;
+      aBlowFalls: boolean;
+      strikeKind: string;
+      strikeClass: string;
+    }
+  | {
+      kind: 'there is no pity in the foe';
+      foeWho: string;
+      aBlowFalls: boolean;
+      strikeKind: string;
+      strikeClass: string;
+    }
   | { kind: 'a combat item strikes the foe'; nm: string; foeName: string; dealt: number; foeHp: number }
   | { kind: 'a fighter uses a combat item'; who: string; nm: string }
   | {
@@ -453,43 +664,50 @@ export type TheFactOfAPersonalCombatsLine =
       nm: AValueInALinesWords;
       foeName: AValueInALinesWords;
       deDmg: AValueInALinesWords;
-      deRounds: AValueInALinesWords;
-      deRoundsPlural: AValueInALinesWords;
+      deRounds: number;
     }
   | { kind: 'the foe is thrown off from the next round'; foeName: string; eHitPen: number }
-  | {
-      kind: 'the foe reels losing actions from the next round';
-      foeName: AValueInALinesWords;
-      eStun: AValueInALinesWords;
-      eStunPlural: AValueInALinesWords;
-    }
+  | { kind: 'the foe reels losing actions from the next round'; foeName: AValueInALinesWords; eStun: number }
   | {
       kind: 'a fighter drinks the stolen vigour';
       who: AValueInALinesWords;
       healed: AValueInALinesWords;
       actorHp: AValueInALinesWords;
     }
-  | { kind: 'the foe is held fast, losing actions'; foeName: string; eStun: number; eStunPlural: string }
+  | { kind: 'the foe is held fast, losing actions'; foeName: string; eStun: number }
   | { kind: 'the foe can barely see to strike'; foeName: string; eHitPen: number }
   | { kind: 'the foe can barely see to strike for now'; foeName: string; eHitPen: number }
   | {
       kind: 'the foe is sapped for the rest of the fight';
       foeName: AValueInALinesWords;
       foeMelee: AValueInALinesWords;
-      wordsIfEArchery: AValueInALinesWords;
+      eArchery: number | undefined;
+      foeArchery: number;
     }
   | { kind: 'the foe is overcome with dread and flees'; foeName: AValueInALinesWords }
   | { kind: 'the foe holds their ground badly shaken'; foeName: AValueInALinesWords; eHitPen: AValueInALinesWords }
   | { kind: "the foe's magic and powers are bound"; foeName: AValueInALinesWords; eRounds: AValueInALinesWords }
-  | { kind: 'a fighter surges with strength'; who: string; actorMelee: number; wordsIfEArchery: string }
+  | {
+      kind: 'a fighter surges with strength';
+      who: string;
+      actorMelee: number;
+      eArchery: number | undefined;
+      actorArchery: number;
+    }
   | { kind: "a fighter's eye sharpens"; who: AValueInALinesWords; eHitBonus: AValueInALinesWords }
-  | { kind: 'a ward settles over a fighter'; actorName: string; stAbsorb: number; wordsIfEReflect: string }
+  | {
+      kind: 'a ward settles over a fighter';
+      actorName: string;
+      stAbsorb: number;
+      eReflect: number | undefined;
+      stReflect: number;
+    }
   | { kind: 'shimmering doubles step out of a fighter'; eImages: AValueInALinesWords; actorName: AValueInALinesWords }
   | {
       kind: 'a fighter is ready to break away';
       who: AValueInALinesWords;
       eFleeBonus: AValueInALinesWords;
-      wordsIfEToHitReduce: AValueInALinesWords;
+      eToHitReduce: number | undefined;
     }
   | { kind: 'a fighter fades from sight the foe'; who: string; foeName: string; eToHitReduce: number }
   | { kind: 'every poison burn and blinding on a fighter lifts'; actorName: string }
@@ -498,21 +716,9 @@ export type TheFactOfAPersonalCombatsLine =
   | { kind: 'a fighter bound by spiritwrack cannot shoot and closes in'; actorName: AValueInALinesWords }
   | { kind: 'a fighter has no ranged attack and presses forward'; actorName: string }
   | { kind: 'a fighter gives ground and gets to firing range first'; actorName: string; actorTemper: string }
-  | {
-      kind: 'a fighter moves up to firing range';
-      actorName: string;
-      rangeChance: number;
-      roll: number;
-      rollChMark: string;
-    }
+  | { kind: 'a fighter moves up to firing range'; actorName: string; rangeChance: number; roll: number }
   | { kind: 'a fighter cannot close the distance in time'; actorName: string }
-  | {
-      kind: 'a fighter tries to break away to firing range';
-      actorName: string;
-      rangeChance: number;
-      roll: number;
-      rollChMark: string;
-    }
+  | { kind: 'a fighter tries to break away to firing range'; actorName: string; rangeChance: number; roll: number }
   | { kind: 'the foe stays right on top of a fighter'; foeName: string; actorName: string }
   | { kind: 'a fighter disengages to bow range'; actorName: string }
   | {
@@ -532,8 +738,8 @@ export type TheFactOfAPersonalCombatsLine =
       kind: "a fighter calls for parley with a druid's roll";
       actorName: AValueInALinesWords;
       dr: AValueInALinesWords;
-      chance: AValueInALinesWords;
-      chanceMark: AValueInALinesWords;
+      chance: number;
+      roll: number;
     }
   | { kind: 'the foe lowers its guard and stands aside'; foeName: AValueInALinesWords }
   | { kind: 'the foe answers with a roar'; foeName: AValueInALinesWords }
@@ -542,24 +748,29 @@ export type TheFactOfAPersonalCombatsLine =
   | {
       kind: 'a fighter slips past the guardian and seizes the prize';
       actorName: string;
-      tierWord: string;
+      tier: string;
       chance: number;
-      wordsIfTierPen: string;
+      tierPen: number;
     }
-  | { kind: "a fighter's theft is noticed"; actorName: string; chance: number; wordsIfTierPen: string }
+  | { kind: "a fighter's theft is noticed"; actorName: string; chance: number; tierPen: number; tier: string }
   | {
       kind: 'a fighter scouts the feature and its guardian';
       actorName: AValueInALinesWords;
       featName: AValueInALinesWords;
       foeName: AValueInALinesWords;
-      wordsIfPower: AValueInALinesWords;
+      power: string;
       curHp: AValueInALinesWords;
       fullHp: AValueInALinesWords;
-      descClause: AValueInALinesWords;
-      abilityClause: AValueInALinesWords;
-      vulnClause: AValueInALinesWords;
+      foeDesc: string | null | undefined;
+      spellNames: readonly string[];
+      passives: readonly { readonly name: string; readonly desc: string }[];
+      vulnerabilities: { readonly melee: number; readonly archery: number; readonly spell: number };
+      weakness: { readonly name: string; readonly desc: string } | null;
+      aDruidCouldTalkItDown: boolean;
       clearGold: AValueInALinesWords;
-      itemOut: AValueInALinesWords;
+      hoardItems: readonly AnItemAsTheLineNamesIt[];
+      stolenItemNames: readonly string[];
+      wieldedItemNames: readonly string[];
     }
   | { kind: 'a fighter scouts the ground but there is nothing to guard'; actorName: AValueInALinesWords }
   | {
@@ -570,30 +781,30 @@ export type TheFactOfAPersonalCombatsLine =
     }
   | {
       kind: 'the target cannot be held';
-      targetWardIcon: string;
+      targetIsAGuardian: boolean;
       targetName: string;
-      why: string;
-      wordsIfW: string;
-      what: string;
+      targetStunPerk: string | null;
+      targetArmourNames: readonly string[] | null;
+      w: number;
+      what: string | undefined;
     }
   | {
       kind: "a fighter's harm strikes a mirror image";
       srcName: AValueInALinesWords;
       harmKind: AValueInALinesWords;
       targetName: AValueInALinesWords;
-      targetStatusMirrorImages: AValueInALinesWords;
-      targetStatusMirrorImagesPlural: AValueInALinesWords;
+      targetStatusMirrorImages: number;
     }
   | {
       kind: 'the first harm to reach the target is drunk by their armour';
-      harmArrowOrBlow: AValueInALinesWords;
+      channel: string;
       targetName: AValueInALinesWords;
-      armourNames: AValueInALinesWords;
+      armourNames: readonly string[];
     }
   | {
       kind: "the target's shield takes the blow square on";
       targetName: AValueInALinesWords;
-      arrowOrBlow: AValueInALinesWords;
+      channel: string;
       armBlock: AValueInALinesWords;
     }
   | { kind: "the arrow glances off the target's shield"; targetName: string; armArrowBlock: number }
@@ -603,11 +814,11 @@ export type TheFactOfAPersonalCombatsLine =
       kind: "the target's mithril armour turns aside some of the harm";
       targetName: string;
       damageTurnedAside: number;
-      arrowOrBlow: string;
+      channel: string;
     }
   | {
       kind: "the hunter finds the target's weakness";
-      wword: string;
+      channel: string;
       targetName: string;
       targetWeakName: string;
       wb: number;
@@ -623,7 +834,7 @@ export type TheFactOfAPersonalCombatsLine =
       kind: "the target reads the beast's every move";
       targetName: string;
       damageTurnedAside: number;
-      strikeOrBlow: string;
+      channel: string;
       targetDruidBeastWard: number;
     }
   | {
@@ -649,69 +860,71 @@ export type TheFactOfAPersonalCombatsLine =
     }
   | {
       kind: "the target's armour turns aside some of the harm";
-      targetWardIcon: string;
-      targetArmourWord: string;
+      targetIsAGuardian: boolean;
+      targetsWard: AFightersWardAsTheLineTellsIt;
       damageTurnedAside: number;
-      harmArrowOrBlow: string;
-      wordsIfTargetKindMonster: string;
+      channel: string;
+      armourNames: readonly string[];
     }
   | {
       kind: 'the target turns aside all they can but the harm still lands';
       targetName: string;
-      harmArrowOrBlow: string;
+      channel: string;
       floor: number;
     }
   | {
       kind: "the target's armour will not let any single hit bite deeper";
-      targetWardIcon: string;
-      targetCapWord: string;
+      targetIsAGuardian: boolean;
+      targetsWard: AFightersWardAsTheLineTellsIt;
       capAt: number;
     }
   | {
       kind: 'the target will not go down and restores hit points';
-      targetWardIcon: string;
+      targetIsAGuardian: boolean;
       targetName: string;
-      wordsIfTargetKindMonster: string;
+      targetSecondWindPerk: string | null;
       back: number;
       targetHp: number;
     }
-  | { kind: 'a fighter ignores the daze'; cbtWardIcon: AValueInALinesWords; wordsIfCbtKindMonster: AValueInALinesWords }
+  | { kind: 'a fighter ignores the daze'; cbtIsAGuardian: boolean; cbtName: string; cbtStunPerk: string | null }
   | {
       kind: "a fighter's armour sloughs off every burn poison and bleeding";
-      cbtWardIcon: string;
-      cbtDotWardWord: string;
+      cbtIsAGuardian: boolean;
+      cbtsWard: AFightersWardAsTheLineTellsIt;
     }
   | {
       kind: "a guardian's regeneration knits its flesh";
-      cbtWardIcon: string;
-      cbtRegenWord: string;
+      cbtIsAGuardian: boolean;
+      cbtsWard: AFightersWardAsTheLineTellsIt;
       healed: number;
-      wordsIfSm: string;
+      sm: number;
       cbtHp: number;
     }
   | { kind: 'a fighter has nothing left to knit'; cbtName: string }
   | { kind: 'a fighter shrugs off the daze, held steady by their armour'; cbtName: AValueInALinesWords }
   | {
       kind: 'a lingering harm afflicts a fighter';
-      harmName: string;
+      harmLabel: string | undefined;
       cbtName: string;
       harmDealt: number;
-      wordsIfDw: string;
+      dotWard: number;
+      cbtsWard: AFightersWardAsTheLineTellsIt;
       cbtHp: number;
     }
   | {
       kind: 'a healing knits a fighter';
-      healingName: AValueInALinesWords;
+      healingLabel: string | undefined;
       cbtName: AValueInALinesWords;
       healed: AValueInALinesWords;
       cbtHp: AValueInALinesWords;
     }
-  | { kind: 'a fighter tears free of the spiritwrack'; cbtName: AValueInALinesWords; rollShown: AValueInALinesWords }
+  | { kind: 'a fighter tears free of the spiritwrack'; cbtName: AValueInALinesWords; shrugPct: number; roll: number }
   | {
       kind: "a hero's hit points rise in a fight, for his realm alone";
       realm: number;
       hero?: number | null | undefined;
-      words: string;
+      heroName: string;
+      rise: AHitPointRiseAsTheLineTellsIt;
     }
   | { kind: 'the surgeons reach a fallen duellist too late, for his realm alone'; realm: number; words: string };
 

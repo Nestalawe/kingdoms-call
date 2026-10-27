@@ -13,10 +13,15 @@ import {
   pcPromotePending,
   pcWeaknessApplies,
 } from './helpers.ts';
-import { d100, fmtRoll, rng } from '../dice-and-army-names.ts';
+import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { discDuelVs, discSum } from '../discoveries.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
+import {
+  aFightersPerkNameAsTheLineTellsIt,
+  aFightersWardAsTheLineTellsIt,
+  aListAsTheLineTellsIt,
+} from './the-facts-a-personal-combats-lines-record.ts';
 
 // ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS AND COURAGE (plan P1-08e: lifted out of resolveTurn) ────
 // The melee to-hit and damage, how a ward or a guardian's passive is named, the one door every stun lands through,
@@ -122,24 +127,6 @@ export const PC_CHANNEL = {
   counterattack: 'melee',
   arrow: 'archery',
 };
-// a guardian's ward comes from its PASSIVE, not worn armour — name it so ("the Stone Troll's
-// Troll Regeneration knits flesh…" rather than "…armour knits flesh…"). Characters keep the
-// armour/shield wording.
-// `key` names the effect (regen, meleeDR, …) so a guardian with several perks names the right one.
-export function pcWardWord(t, word, key) {
-  if (t && t.kind === 'monster') {
-    const nm = (key && t._perkName && t._perkName[key]) || ((t.perks || []).length <= 1 ? t.passiveName : null);
-    if (nm) return `${t.name}'s ${nm}`;
-    return `${t.name}'s ${word === 'armour' ? 'hide' : word}`;
-  }
-  return `${t.name}'s ${word}`;
-}
-export function pcPerkWord(t, key, dflt) {
-  return (t && t._perkName && t._perkName[key]) || (t && t.passiveName) || dflt;
-}
-export function pcWardIcon(t) {
-  return t && t.kind === 'monster' ? '🜏' : '🛡';
-}
 // ── STUNS LAND THROUGH ONE DOOR (2026-10-14, batch item 3) ────
 // "Cannot be stunned" used to be honoured only at the start of the NEXT round, so a stun cast by a
 // fighter holding the initiative still cost the "unstunnable" one that round's action, and a stun
@@ -155,18 +142,15 @@ export function pcStunWard(t) {
 export function pcStunTurned(target, narrative, what) {
   const w = pcStunWard(target);
   if (!(w >= 100 || (w > 0 && d100() <= w))) return false;
-  const _why =
-    target.kind === 'monster'
-      ? pcPerkWord(target, 'stunWard', 'its nature')
-      : (target.arm && target.arm.names && target.arm.names.join(', ')) || 'their armour';
   if (narrative)
     narrate(narrative, {
       kind: 'the target cannot be held',
-      targetWardIcon: pcWardIcon(target),
+      targetIsAGuardian: target.kind === 'monster',
       targetName: target.name,
-      why: _why,
-      wordsIfW: w < 100 ? `, ${w}%` : '',
-      what: what || 'the daze',
+      targetStunPerk: aFightersPerkNameAsTheLineTellsIt(target, 'stunWard'),
+      targetArmourNames: target.arm && target.arm.names ? aListAsTheLineTellsIt(target.arm.names) : null,
+      w,
+      what,
     });
   return true;
 }
@@ -231,7 +215,6 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
       harmKind: kind,
       targetName: target.name,
       targetStatusMirrorImages: target.status.mirrorImages,
-      targetStatusMirrorImagesPlural: target.status.mirrorImages !== 1 ? 's' : '',
     });
     return 0;
   }
@@ -244,9 +227,9 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     target._armFirstHitUsed = true;
     narrate(narrative, {
       kind: 'the first harm to reach the target is drunk by their armour',
-      harmArrowOrBlow: _chan === 'spell' ? 'harm' : _chan === 'archery' ? 'arrow' : 'blow',
+      channel: _chan,
       targetName: target.name,
-      armourNames: _arm.names.join(', '),
+      armourNames: aListAsTheLineTellsIt(_arm.names),
     });
     return 0;
   }
@@ -254,7 +237,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     narrate(narrative, {
       kind: "the target's shield takes the blow square on",
       targetName: target.name,
-      arrowOrBlow: _chan === 'archery' ? 'arrow' : 'blow',
+      channel: _chan,
       armBlock: _arm.block,
     });
     return 0;
@@ -298,7 +281,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
         kind: "the target's mithril armour turns aside some of the harm",
         targetName: target.name,
         damageTurnedAside: _b - d,
-        arrowOrBlow: PC_CHANNEL[kind] === 'archery' ? 'arrow' : 'blow',
+        channel: PC_CHANNEL[kind],
       });
   }
   // Monster nature: armoured hides turn blades, bone shrugs off arrows, magic ignores plate.
@@ -322,10 +305,9 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     if (_wapp) {
       const _wb = d;
       d = Math.max(1, Math.round(d * PC_WEAK_MULT));
-      const _wword = _chan === 'spell' ? 'spell' : _chan === 'archery' ? 'arrow' : 'blow';
       narrate(narrative, {
         kind: "the hunter finds the target's weakness",
-        wword: _wword,
+        channel: _chan,
         targetName: target.name,
         targetWeakName: target.weak.name,
         wb: _wb,
@@ -352,7 +334,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
         kind: "the target reads the beast's every move",
         targetName: target.name,
         damageTurnedAside: _bw - d,
-        strikeOrBlow: PC_CHANNEL[kind] === 'archery' ? 'strike' : 'blow',
+        channel: PC_CHANNEL[kind],
         targetDruidBeastWard: target.druidBeastWard,
       });
   }
@@ -439,15 +421,14 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     if (d < _b3)
       narrate(narrative, {
         kind: "the target's armour turns aside some of the harm",
-        targetWardIcon: pcWardIcon(target),
-        targetArmourWord: pcWardWord(
+        targetIsAGuardian: target.kind === 'monster',
+        targetsWard: aFightersWardAsTheLineTellsIt(
           target,
-          'armour',
           _chan === 'melee' ? 'meleeDR' : _chan === 'archery' ? 'arrowDR' : 'spellPct',
         ),
         damageTurnedAside: _b3 - d,
-        harmArrowOrBlow: _chan === 'spell' ? 'harm' : _chan === 'archery' ? 'arrow' : 'blow',
-        wordsIfTargetKindMonster: target.kind === 'monster' ? '' : ` (${_arm.names.join(', ')})`,
+        channel: _chan,
+        armourNames: aListAsTheLineTellsIt(_arm.names),
       });
   }
   // ── DAMAGE FLOOR ── every reduction above is now collectively limited: a landed attack keeps
@@ -460,7 +441,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
       narrate(narrative, {
         kind: 'the target turns aside all they can but the harm still lands',
         targetName: target.name,
-        harmArrowOrBlow: _chan === 'spell' ? 'harm' : _chan === 'archery' ? 'arrow' : 'blow',
+        channel: _chan,
         floor: _floor,
       });
       d = _floor;
@@ -474,8 +455,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
       d = _capAt;
       narrate(narrative, {
         kind: "the target's armour will not let any single hit bite deeper",
-        targetWardIcon: pcWardIcon(target),
-        targetCapWord: pcWardWord(target, 'armour', 'cap'),
+        targetIsAGuardian: target.kind === 'monster',
+        targetsWard: aFightersWardAsTheLineTellsIt(target, 'cap'),
         capAt: _capAt,
       });
     }
@@ -516,10 +497,9 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     target.hp = Math.min(target.maxHp || 20, target.hp + _back);
     narrate(narrative, {
       kind: 'the target will not go down and restores hit points',
-      targetWardIcon: pcWardIcon(target),
+      targetIsAGuardian: target.kind === 'monster',
       targetName: target.name,
-      wordsIfTargetKindMonster:
-        target.kind === 'monster' ? pcPerkWord(target, 'secondWind', 'its nature') : "their armour's blessing",
+      targetSecondWindPerk: aFightersPerkNameAsTheLineTellsIt(target, 'secondWind'),
       back: _back,
       targetHp: dispFloor(target.hp),
     });
@@ -536,19 +516,17 @@ export function pcRoundStart(cbt, narrative) {
       cbt.status.stun = 0;
       narrate(narrative, {
         kind: 'a fighter ignores the daze',
-        cbtWardIcon: pcWardIcon(cbt),
-        wordsIfCbtKindMonster:
-          cbt.kind === 'monster'
-            ? `${cbt.name} cannot be held (${pcPerkWord(cbt, 'stunWard', 'its nature')})`
-            : `${cbt.name}'s shield arm never wavers`,
+        cbtIsAGuardian: cbt.kind === 'monster',
+        cbtName: cbt.name,
+        cbtStunPerk: aFightersPerkNameAsTheLineTellsIt(cbt, 'stunWard'),
       });
     }
     if ((cbt.arm.dotImmune || (cbt.arm.dotWard || 0) >= 100) && (cbt.status.dot || []).length) {
       cbt.status.dot = [];
       narrate(narrative, {
         kind: "a fighter's armour sloughs off every burn poison and bleeding",
-        cbtWardIcon: pcWardIcon(cbt),
-        cbtDotWardWord: pcWardWord(cbt, 'armour', 'dotWard'),
+        cbtIsAGuardian: cbt.kind === 'monster',
+        cbtsWard: aFightersWardAsTheLineTellsIt(cbt, 'dotWard'),
       });
     }
     // a GUARDIAN's regeneration fades as the fight runs long (pcSustainMult); a character's worn
@@ -561,10 +539,10 @@ export function pcRoundStart(cbt, narrative) {
         cbt.hp += h;
         narrate(narrative, {
           kind: "a guardian's regeneration knits its flesh",
-          cbtWardIcon: pcWardIcon(cbt),
-          cbtRegenWord: pcWardWord(cbt, 'armour', 'regen'),
+          cbtIsAGuardian: cbt.kind === 'monster',
+          cbtsWard: aFightersWardAsTheLineTellsIt(cbt, 'regen'),
           healed: h,
-          wordsIfSm: _sm < 1 ? ' — the flesh is slower to close now' : '',
+          sm: _sm,
           cbtHp: dispFloor(cbt.hp),
         });
       } else if (cbt.kind === 'monster' && !cbt._sustainSpent) {
@@ -591,10 +569,11 @@ export function pcRoundStart(cbt, narrative) {
       d.rounds--;
       narrate(narrative, {
         kind: 'a lingering harm afflicts a fighter',
-        harmName: d.label || 'Lingering harm',
+        harmLabel: d.label,
         cbtName: cbt.name,
         harmDealt: _t,
-        wordsIfDw: _dw > 0 ? ` (${pcWardWord(cbt, 'hide', 'dotWard')} turns ${_dw}% of it)` : '',
+        dotWard: _dw,
+        cbtsWard: aFightersWardAsTheLineTellsIt(cbt, 'dotWard'),
         cbtHp: Math.max(0, Math.round(cbt.hp)),
       });
     }
@@ -608,7 +587,7 @@ export function pcRoundStart(cbt, narrative) {
     if (h > 0)
       narrate(narrative, {
         kind: 'a healing knits a fighter',
-        healingName: cbt.status.hot.label || 'Regeneration',
+        healingLabel: cbt.status.hot.label,
         cbtName: cbt.name,
         healed: h,
         cbtHp: dispFloor(cbt.hp),
@@ -634,7 +613,8 @@ export function pcRoundStart(cbt, narrative) {
         narrate(narrative, {
           kind: 'a fighter tears free of the spiritwrack',
           cbtName: cbt.name,
-          rollShown: fmtRoll(_pct, _r),
+          shrugPct: _pct,
+          roll: _r,
         });
       }
     } else cbt.status._swShrugPct = 0;

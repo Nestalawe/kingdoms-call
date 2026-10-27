@@ -13,7 +13,7 @@ import {
   trySkillGain,
 } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { pcSpeedOf } from './speed-encounter-plans-and-combatants.ts';
-import { pcHitChance, pcMeleeDamage, pcPerkWord, pcRoundStart, pcTakeHit } from './to-hit-wounds-stuns-and-courage.ts';
+import { pcHitChance, pcMeleeDamage, pcRoundStart, pcTakeHit } from './to-hit-wounds-stuns-and-courage.ts';
 import { pcAttemptFlee } from './melee-flight-and-archery.ts';
 import { pcAct } from './tactics-combat-items-and-actions.ts';
 import {
@@ -23,7 +23,10 @@ import {
   takeBackLinesFrom,
   narrate,
 } from '../turn/events-and-their-audiences.ts';
-import { isAPersonalCombatsLine } from './the-facts-a-personal-combats-lines-record.ts';
+import {
+  aFightersPerkNameAsTheLineTellsIt,
+  isAPersonalCombatsLine,
+} from './the-facts-a-personal-combats-lines-record.ts';
 
 // ── PERSONAL COMBAT: THE FIGHT (plan P1-08e: lifted out of resolveTurn) ────
 // resolvePersonalCombat runs a whole personal fight between two combatants, round by round. It takes the turn's
@@ -203,7 +206,7 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
           foe.hp -= me.burn;
           narrate(narrative, {
             kind: "a guardian's aura sears the foe",
-            meBurnWord: pcPerkWord(me, 'burn', 'The aura'),
+            meBurnPerk: aFightersPerkNameAsTheLineTellsIt(me, 'burn'),
             foeName: foe.name,
             meBurn: me.burn,
             foeHp: Math.max(0, Math.round(foe.hp)),
@@ -232,7 +235,7 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
         narrate(narrative, {
           kind: 'the victim sees through the illusion',
           victimName: victim.name,
-          disbeliefPct: disbelief.toFixed(0),
+          disbelief,
         });
         state.mirror = null;
         // fall through to a normal round below
@@ -389,7 +392,7 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       const who = cbt.name,
         foeWho = foe.kind === 'monster' ? `the ${foe.name}` : foe.name,
         FoeWho = foe.kind === 'monster' ? `The ${foe.name}` : foe.name;
-      const _odds = ` (${mercy}% chance of mercy) [roll ${_shown}${_granted ? ' ✓' : ' ✗'}]`;
+      const _odds = { mercy, shown: _shown, granted: _granted };
       // what kind of killing blow is coming: a weapon stroke, an arrow, or a spell / power
       const _k = String((fm && fm.kind) || '');
       const _cls = /^(blow|free strike|counterattack)$/i.test(_k)
@@ -397,7 +400,6 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
         : /arrow|shot/i.test(_k)
           ? 'ranged'
           : 'power';
-      const _pow = _k && _cls === 'power' ? _k : 'its power';
       const plea = !_blow
         ? { kind: 'as their strength fails a fighter begs the foe for mercy', who, foeWho, odds: _odds }
         : _cls === 'ranged'
@@ -409,7 +411,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
             ? {
                 kind: 'as the foe readies a power for the killing stroke a fighter begs',
                 foeWho,
-                pow: _pow,
+                strikeKind: _k,
+                strikeClass: _cls,
                 who,
                 odds: _odds,
               }
@@ -418,12 +421,6 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
                 { kind: 'as the foe closes for the kill a fighter cries out for mercy', foeWho, who, odds: _odds },
                 { kind: 'a fighter drops to their knees before the final stroke', who, odds: _odds },
               ]);
-      const _falls =
-        _cls === 'ranged'
-          ? ' The arrow flies.'
-          : _cls === 'power'
-            ? ` ${_pow === 'its power' ? 'The power' : 'The ' + _pow} is loosed.`
-            : ' The blow falls.';
       if (_granted) {
         cbt.hp = 1;
         if (cbt.ref) cbt.ref.hp = 1;
@@ -442,7 +439,14 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
               : _cls === 'ranged'
                 ? { kind: 'the foe lowers their bow and lets a fighter go', foeWho: FoeWho, who }
                 : _cls === 'power'
-                  ? { kind: 'the foe lets a power die unspent', foeWho: FoeWho, pow: _pow, who, who2: who }
+                  ? {
+                      kind: 'the foe lets a power die unspent',
+                      foeWho: FoeWho,
+                      strikeKind: _k,
+                      strikeClass: _cls,
+                      who,
+                      who2: who,
+                    }
                   : _pick([
                       { kind: 'the foe stays the blow and lets a fighter go', foeWho: FoeWho, who },
                       {
@@ -496,12 +500,30 @@ export function resolvePersonalCombat(turnContext, A, B, opts) {
       } else {
         const refused =
           foe.kind === 'monster'
-            ? { kind: 'the foe knows nothing of mercy', foeWho: FoeWho, wordsIfABlowFalls: _blow ? _falls : '' }
+            ? {
+                kind: 'the foe knows nothing of mercy',
+                foeWho: FoeWho,
+                aBlowFalls: _blow,
+                strikeKind: _k,
+                strikeClass: _cls,
+              }
             : foeAlign === 'Evil' || foeAlign === 'Undead'
-              ? { kind: 'the foe laughs at the plea', foeWho: FoeWho, wordsIfABlowFalls: _blow ? _falls : '' }
+              ? {
+                  kind: 'the foe laughs at the plea',
+                  foeWho: FoeWho,
+                  aBlowFalls: _blow,
+                  strikeKind: _k,
+                  strikeClass: _cls,
+                }
               : _pick([
-                  { kind: 'the foe is deaf to the plea', foeWho: FoeWho, wordsIfABlowFalls: _blow ? _falls : '' },
-                  { kind: 'there is no pity in the foe', foeWho, wordsIfABlowFalls: _blow ? _falls : '' },
+                  {
+                    kind: 'the foe is deaf to the plea',
+                    foeWho: FoeWho,
+                    aBlowFalls: _blow,
+                    strikeKind: _k,
+                    strikeClass: _cls,
+                  },
+                  { kind: 'there is no pity in the foe', foeWho, aBlowFalls: _blow, strikeKind: _k, strikeClass: _cls },
                 ]);
         if (_blow) {
           narrateAt(narrative, at, [plea, refused]);

@@ -390,7 +390,19 @@ check finds were made.
   takes words. **`src/engine/battle/` and `src/engine/personal-combat/` write no line's words** (P1-12c6): a new line
   there is a new kind (its words in `src/views/prose/`), or a field of one where the words are a fragment (P1-12d moves
   those fields' words into the prose); the words a battle takes from another folder's helper (a unit disbanding, a sea
-  trap, a naval hold, the wanderer's escape, a hero's death) are P1-12d's. So **the engine's log holds no words for a
+  trap, a naval hold, the wanderer's escape, a hero's death) are P1-12d's.
+- **A fact holds values, and a copy of the world, never a part of it** (P1-12d; personal combat's facts since
+  P1-12d2). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
+  holding a live part of the world (a hero, his item list, a status) would be read as it is then, not as it was told.
+  So a fact holds a number, a flag, an id or a slug, a name, or a copy made as the line is told by a named function
+  beside the kind (`aFightersWardAsTheLineTellsIt`, `theItemsAsTheLineNamesThem`, `aListAsTheLineTellsIt`, …), and no
+  words: a plural from its count, a mark from its roll and its chance, a clause from the flag that chose it (named for
+  what it says: `againstTheUnclean`, `itsTemperBreaksItOff`), a die drawn for words as the face drawn
+  (`aDecisiveBlow: rng(0, 1)`, drawn where it was), all written in `src/views/prose/`. The static test
+  `a-lines-facts-hold-values-not-words` refuses a field holding words in an area its list names, but the fighters'
+  labels and the slugs it lists; it can't see words handed in through a parameter (a daze's `what`, a lingering harm's
+  label). Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
   line.ts`), never from `resolveTurn`'s `log` or `turnContext.turnLog`. `buildReports` writes them before it picks any

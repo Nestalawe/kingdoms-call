@@ -6,21 +6,23 @@ import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { discDuelVs, discSum } from '../discoveries.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { pcHasRanged, pcRangeStep, pcSkillLabel, pcSpeedOf } from './speed-encounter-plans-and-combatants.ts';
+import { pcHasRanged, pcRangeStep, pcSpeedOf } from './speed-encounter-plans-and-combatants.ts';
 import {
   PC_HIT_MAX,
   PC_HIT_MIN,
   pcHitChance,
   pcHitSkill,
   pcMeleeDamage,
-  pcPerkWord,
   pcSkillHitPct,
   pcSustainMult,
   pcTakeHit,
-  pcWardIcon,
-  pcWardWord,
 } from './to-hit-wounds-stuns-and-courage.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
+import {
+  aFightersPerkNameAsTheLineTellsIt,
+  aFightersSkillAsTheLineTellsIt,
+  aFightersWardAsTheLineTellsIt,
+} from './the-facts-a-personal-combats-lines-record.ts';
 
 // ── PERSONAL COMBAT: MELEE, FLIGHT AND ARCHERY (plan P1-08e: lifted out of resolveTurn) ────
 // Experience from a hit, the riposte, a melee blow, flight and the free strike a failed flight gives, closing in, and
@@ -54,7 +56,7 @@ export function pcTryCounter(turnContext, hero, foe, narrative, chan) {
   if (_chance <= 0) return;
   if (hero.status && hero.status.stun > 0) return; // no riposte while stunned
   if (kcRng() >= _chance) return;
-  const _src = _temper >= _perk && _temper > 0 ? `${hero.temper} riposte` : 'Counterattack';
+  const _ofItsTemper = _temper >= _perk && _temper > 0;
   const hit = pcHitChance(turnContext, hero, foe),
     roll = kcRng() * 100;
   if (roll < hit) {
@@ -67,7 +69,12 @@ export function pcTryCounter(turnContext, hero, foe, narrative, chan) {
     // "Dracolich's shot flies wide." — reading as if the armour had stopped a missed arrow — and
     // only then did the counterattack appear. Now: announce → armour → damage, the same order as
     // an ordinary strike ("attacks … ✓" → armour → "strikes … for N").
-    narrate(narrative, { kind: 'the hero seizes the opening and counterattacks', heroName: hero.name, src: _src });
+    narrate(narrative, {
+      kind: 'the hero seizes the opening and counterattacks',
+      heroName: hero.name,
+      aRiposteOfItsTemper: _ofItsTemper,
+      heroTemper: hero.temper,
+    });
     const dealt = pcTakeHit(turnContext, foe, dmg, narrative, hero.name, 'counterattack');
     if (dealt)
       narrate(narrative, {
@@ -82,7 +89,8 @@ export function pcTryCounter(turnContext, hero, foe, narrative, chan) {
       kind: 'the hero lunges to counterattack but the foe recovers',
       heroName: hero.name,
       foeName: foe.name,
-      src: _src,
+      aRiposteOfItsTemper: _ofItsTemper,
+      heroTemper: hero.temper,
     });
   }
 }
@@ -106,10 +114,9 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
   narrate(narrative, {
     kind: 'a fighter attacks with a roll to hit',
     actorName: actor.name,
-    actorMeleeSkillLabel: pcSkillLabel(actor, 'melee'),
+    actorMelee: aFightersSkillAsTheLineTellsIt(actor, 'melee'),
     hitI,
     roll,
-    rollHitIMark: roll <= hitI ? ' ✓' : ' ✗',
   });
   if (roll <= hitI) {
     actor._didMelee = true;
@@ -136,8 +143,8 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
           kind: 'a fighter drinks the wound',
           actorName: actor.name,
           dr: _dr,
-          wordsIfSm: _sm < 1 ? ' (the thirst is running dry)' : '',
-          actorDrainWord: pcPerkWord(actor, 'drain', 'Drain'),
+          sm: _sm,
+          actorDrainPerk: aFightersPerkNameAsTheLineTellsIt(actor, 'drain'),
           actorHp: dispFloor(actor.hp),
         });
       }
@@ -158,9 +165,9 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
       actor.hp -= foe.arm.thorns;
       narrate(narrative, {
         kind: "the foe's thorns bite a fighter",
-        foeWardIcon: pcWardIcon(foe),
-        wordsIfFoeKindMonster:
-          foe.kind === 'monster' ? pcWardWord(foe, 'hide', 'thorns') : `${foe.name}'s thorned armour`,
+        foeIsAGuardian: foe.kind === 'monster',
+        foesThornsWard: aFightersWardAsTheLineTellsIt(foe, 'thorns'),
+        foeName: foe.name,
         actorName: actor.name,
         foeArmThorns: foe.arm.thorns,
         actorName2: actor.name,
@@ -210,10 +217,9 @@ export function pcFreeStrike(turnContext, actor, foe, narrative) {
     kind: "a fighter takes a free strike at the foe's back",
     actorName: actor.name,
     foeName: foe.name,
-    actorMeleeSkillLabel: pcSkillLabel(actor, 'melee'),
+    actorMelee: aFightersSkillAsTheLineTellsIt(actor, 'melee'),
     hitI,
     roll,
-    rollHitIMark: roll <= hitI ? ' ✓' : ' ✗',
   });
   if (roll <= hitI) {
     actor._didMelee = true;
@@ -243,16 +249,13 @@ export function pcAttemptFlee(turnContext, actor, foe, narrative, state, how) {
   actor._fleeAttempted = true;
   const chance = pcFleeChance(actor, foe),
     roll = d100();
-  const lead =
-    how === 'temper'
-      ? `${actor.name} (${actor.temper}) loses the stomach for the fight and tries to break off`
-      : `${actor.name} attempts to flee`;
   narrate(narrative, {
     kind: 'a fighter tries to flee',
-    lead,
+    itsTemperBreaksItOff: how === 'temper',
+    actorName: actor.name,
+    actorTemper: actor.temper,
     chance,
     roll,
-    rollChanceMark: roll <= chance ? ' ✓' : ' ✗',
   });
   if (roll <= chance) {
     state.fledBy = actor;
@@ -273,7 +276,7 @@ export function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
     narrate(narrative, {
       kind: 'a fighter advances and the combatants close',
       actorName: actor.name,
-      advanceWords: _steps > 1 ? 'surges forward' : 'advances',
+      steps: _steps,
       stateRange: state.range,
     });
     // PARTING SHOT — an archer at bow range looses one arrow as the foe comes on into melee. Only
@@ -363,7 +366,7 @@ export function pcFireShot(turnContext, actor, foe, narrative) {
       kind: 'a fighter draws and looses a volley',
       actorName: actor.name,
       volley,
-      actorArcherySkillLabel: pcSkillLabel(actor, 'archery'),
+      actorArchery: aFightersSkillAsTheLineTellsIt(actor, 'archery'),
     });
   for (let v = 0; v < volley && foe.hp > 0; v++) pcFireOne(turnContext, actor, foe, narrative);
 }
@@ -391,10 +394,9 @@ export function pcFireOne(turnContext, actor, foe, narrative) {
   narrate(narrative, {
     kind: 'a fighter shoots with a roll to hit',
     actorName: actor.name,
-    actorArcherySkillLabel: pcSkillLabel(actor, 'archery'),
+    actorArchery: aFightersSkillAsTheLineTellsIt(actor, 'archery'),
     hit,
     roll,
-    rollHitMark: roll <= hit ? ' ✓' : ' ✗',
   });
   if (roll <= hit) {
     actor._didArchery = true;

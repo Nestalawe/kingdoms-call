@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { monsterCat } from '../names.ts';
-import { guardianCanUseItem, monsterCatLabel } from '../items/tiers-and-hoards.ts';
+import { guardianCanUseItem } from '../items/tiers-and-hoards.ts';
 import { ensureLairHoard } from '../world/tables.ts';
 import { _ITEM_ALT_BASE, isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
@@ -18,6 +18,11 @@ import {
 import { resolvePersonalCombat } from './resolve-personal-combat.ts';
 import { DUEL_FLEE_DROP } from './duels-and-character-encounters.ts';
 import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
+import {
+  aGuardianAsItsKindIsRead,
+  aListAsTheLineTellsIt,
+  theNamesAsTheLineTellsThem,
+} from './the-facts-a-personal-combats-lines-record.ts';
 
 // ── PERSONAL COMBAT: LAIR GUARDIANS AND THE ODDS (plan P1-08f: lifted out of resolveTurn) ────
 // What a guardian's nature makes it weak or strong against (monsterTraits), the guardian as a combatant
@@ -125,7 +130,7 @@ export function pcBuildGuardian(turnContext, feature, m, narrative) {
       narrate(narrative, {
         kind: "the guardian has turned the hoard's magic to its own use",
         mName: m.name,
-        wieldedItemNames: _wield.map((x) => x.name).join(', '),
+        wieldedItemNames: theNamesAsTheLineTellsThem(_wield),
       });
     }
   }
@@ -231,51 +236,27 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
   const traits = monsterTraits(m);
 
   // ── Opening description ──
-  const featureDescs = {
-    'Ancient Battlefield': 'crosses the bones of a long-forgotten battle and stumbles upon',
-    'Ruined Watchtower': 'climbs the crumbling stones of',
-    'Goblin Camp': 'sneaks into the firelit clearing of',
-    'Dragon Eyrie': 'ascends a treacherous cliff to the mouth of',
-    'Buried Pyramid': 'descends into the dust-choked chambers of',
-    'Haunted Grove': 'pushes through thorned branches into',
-    'Lost City': 'wanders the weed-cracked streets of',
-    default: 'approaches',
-  };
-  const entryVerb = featureDescs[feature.name] || featureDescs.default;
   narrate(narrative, {
     kind: 'the hero enters the feature',
     cName: c.name,
-    entryVerb,
     featureName: feature.name,
     provName: prov.name,
   });
   const monsterPower = m.power || '';
-  const powerDesc = monsterPower ? ` (${monsterPower})` : '';
   // Describe the creature by its FULL stature, not its current (possibly wounded) health, so the
   // description doesn't shrink just because someone else bloodied it earlier this turn.
   const monFullHp = m._hpFull != null ? m._hpFull : m.hp || 10;
   const monHp = m.hp != null ? m.hp : monFullHp;
-  const monHpDesc =
-    { Weak: 'a dangerous', Moderate: 'a formidable', Powerful: 'a fearsome', Legendary: 'a legendary' }[m.power] ||
-    'a formidable'; // by tier (the old HP thresholds predate the rescale)
   narrate(narrative, {
     kind: 'within lurks the guardian blocking the path',
-    monHpDesc,
+    mPower: m.power,
     mName: m.name,
-    wordsIfMonsterCatLabelM: monsterCatLabel(m) ? ` — ${monsterCatLabel(m).toLowerCase()}` : '',
-    powerDesc,
+    mKind: aGuardianAsItsKindIsRead(m),
+    monsterPower,
   });
   if (monHp < monFullHp) {
-    const frac = monHp / monFullHp;
-    const woundDesc =
-      frac <= 0.25
-        ? 'grievously wounded and bleeding from a dozen cuts'
-        : frac <= 0.5
-          ? 'badly wounded, favouring one side'
-          : 'nursing fresh wounds';
     narrate(narrative, {
       kind: 'the guardian is already wounded by someone before',
-      woundDesc,
       cName: c.name,
       monHp,
       monFullHp,
@@ -296,9 +277,8 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
     kind: "the guardian's speed and plan",
     mName: m.name,
     monSpeedName: mon.speedName,
-    wordsIfMonSpeedNameFast: mon.speedName === 'fast' ? ' (it closes two ranges at a stride)' : '',
-    wordsIfPcHasRangedMon: pcHasRanged(mon) ? ', and fights at range as well as close' : '',
-    guardianTactics: mon.tactics.slice(0, 6).join(', '),
+    monFightsAtRange: pcHasRanged(mon),
+    guardianTactics: aListAsTheLineTellsIt(mon.tactics.slice(0, 6)),
   });
 
   const res = resolvePersonalCombat(turnContext, hero, mon, { maxRounds: 20, feature });
@@ -333,7 +313,6 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
           runnerName: c.name,
           chance: _chance,
           roll: _roll,
-          rollChanceMark: _roll <= _chance ? ' ✓' : ' ✗',
         });
         if (_roll <= _chance) {
           const _it = _pool[Math.floor(kcRng() * _pool.length)];
@@ -347,11 +326,9 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
             kind: 'in the rout the hero drops an item into the hoard',
             cName: c.name,
             itName: _it.name,
-            wordsIfIsLegendaryItemIt: isLegendaryItem(_it) ? ' (Legendary)' : '',
+            itIsLegendary: isLegendaryItem(_it),
             mName: m.name,
-            wordsIfGuardianCanUseItemMIt: guardianCanUseItem(m, _it)
-              ? ', and the beast will turn it against the next intruder'
-              : '',
+            theGuardianCanUseIt: guardianCanUseItem(m, _it),
           });
         }
       }
@@ -360,7 +337,7 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
     won = true;
     narrate(narrative, {
       kind: 'with a final effort the guardian is defeated',
-      blowOrBurst: rng(0, 1) ? 'decisive blow' : 'burst of effort',
+      aDecisiveBlow: rng(0, 1),
       mName: m.name,
     });
   } else if (res.winner === mon) {
