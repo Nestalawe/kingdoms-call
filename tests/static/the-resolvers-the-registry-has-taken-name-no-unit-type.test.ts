@@ -3,7 +3,10 @@
 // to has, get, includes or indexOf; its effects ask their content rows, by slug, in src/engine/rules/. Each row of
 // P1-19 adds the functions it takes. Counted by syntax tree with the ratchet's helper (tools/ratchet.ts's
 // unitNameChecksByFunction), which also counts the engine's checks outside the registry (unitNameChecksInEngine), so
-// that count only falls.
+// that count only falls. And, beside it (plan P1-19's second slice, Decision 9: P1-19f), each such function holds no
+// string naming a unit type at all, whatever it does with it: a name passed to a helper of the function's own
+// (isHalfOrMore(force, 'Warg Riders')), held in an array or a template, or in a function nested inside it, which the
+// ratchet's helper doesn't count (it counts for the nested function, or isn't a check), counts here.
 //
 // Red on each row's base by design (unitAbilityMult held 9 on P1-19a's base; abilityFront 19 and abilityBack 6 on
 // P1-19b's; battleFaceSide 11 on P1-19c's; rollUnitFates 4 on P1-19d's), as P1-11a4's static test was: the one
@@ -11,7 +14,9 @@
 // Level 0 (static): the files' syntax trees; nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
 import { expect, test } from 'vitest';
+import { KC_UNIT_TYPE } from '../../src/content/kingdoms-call-data.ts';
 import { ROOT } from '../../tools/build.ts';
 import { unitNameChecksByFunction } from '../../tools/ratchet.ts';
 
@@ -24,10 +29,51 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/fates.ts', 'rollUnitFates', 'P1-19d, fates'],
 ];
 
+const UNIT_TYPE_NAMES: ReadonlySet<string> = new Set(Object.keys(KC_UNIT_TYPE));
+
+/** Whether a node declares the function named (a function or a method, or a variable an arrow or a function is given
+ *  to: the ratchet's helper finds a function the same way). */
+function declares(node: ts.Node, fn: string): boolean {
+  if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name) return node.name.getText() === fn;
+  return (
+    ts.isVariableDeclaration(node) &&
+    ts.isIdentifier(node.name) &&
+    node.name.text === fn &&
+    node.initializer !== undefined &&
+    (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))
+  );
+}
+
+/** Every string naming a unit type of KC_UNIT_TYPE in the function named, whatever the code does with it (a string or
+ *  a template with no placeholder, in the function or in any function nested in it), in the order written; null if
+ *  the file doesn't declare the function. */
+function everyUnitNameIn(file: string, text: string, fn: string): string[] | null {
+  let found: string[] | null = null;
+  const collect = (node: ts.Node, into: string[]): void => {
+    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && UNIT_TYPE_NAMES.has(node.text))
+      into.push(node.text);
+    ts.forEachChild(node, (child) => {
+      collect(child, into);
+    });
+  };
+  const visit = (node: ts.Node): void => {
+    if (declares(node, fn)) {
+      found ??= [];
+      collect(node, found);
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true));
+  return found;
+}
+
 test.for(TAKEN)('%s: %s names no unit type (%s)', ([file, fn]) => {
-  const counts = unitNameChecksByFunction(file, fs.readFileSync(path.join(ROOT, file), 'utf8'));
+  const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const counts = unitNameChecksByFunction(file, text);
   expect(counts.has(fn), `${file} declares ${fn}`).toBe(true);
-  expect(counts.get(fn)).toBe(0);
+  expect(counts.get(fn), `${fn}'s checks of a unit by its name (the ratchet's helper)`).toBe(0);
+  expect(everyUnitNameIn(file, text, fn), `every string in ${fn} naming a unit type`).toEqual([]);
 });
 
 // The helper finds what it counts: every way of naming a unit planted in one function (an arrow with no name inside
@@ -46,4 +92,30 @@ test('the helper counts each check of a unit by its name, and nothing else', () 
     const nestedNamed = function named() { return 'Dread Hydras' === t; };`;
   const counts = unitNameChecksByFunction('planted.ts', planted);
   expect(Object.fromEntries(counts)).toEqual({ planted: 10, nested: 1, nestedNamed: 1 });
+});
+
+// And every string naming a unit in a taken function is found, whatever it does (Decision 9): a name passed to any
+// helper, held in an array, a template with no placeholder, or in a function nested inside, named or not; a string
+// that isn't a unit type's name, and a name outside the function, are not.
+test('every unit name in a function is found, whatever the code does with it', () => {
+  const planted = `
+    const before = 'Goblin Horde';
+    export function planted(force, t) {
+      const half = isHalfOrMore(force, 'Warg Riders') + countType(force, \`Free Lances\`);
+      const held = ['Cave Trolls'], label = { unit: 'Sea Giants' }, notAUnit = t === 'Garrison' || \`\${t} Riders\`;
+      const inside = () => 'Titan Warbeasts', nested = function named() { return t === 'Great Bears'; };
+      return half + held.length + label.unit + notAUnit + inside() + nested();
+    }
+    const after = 'Elder Dragons';`;
+  expect(everyUnitNameIn('planted.ts', planted, 'planted')).toEqual([
+    'Warg Riders',
+    'Free Lances',
+    'Cave Trolls',
+    'Sea Giants',
+    'Titan Warbeasts',
+    'Great Bears',
+  ]);
+  expect(everyUnitNameIn('planted.ts', planted, 'absent')).toBeNull();
+  // The ratchet's helper sees only the nested comparison, and gives it to the nested function, not to planted.
+  expect(unitNameChecksByFunction('planted.ts', planted).get('planted')).toBe(0);
 });
