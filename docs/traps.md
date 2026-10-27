@@ -354,7 +354,7 @@ check finds were made.
   (the event without its type and text: `{ audience, province, hero, phase, … }`), and files it with
   `emit(turnContext, { type, text, ...place })`. A line that may be words or a fact (a beaten guard's survivors' fates:
   facts, but a unit disbanding is still words from `army-tables.ts`; what `notifyTarget` and `notifyProvinceOwner` are
-  handed) goes in as `...theWordsOrTheFactOfALine(line)`, which gives `emit` its `text` or its `fact`. Build it as the event's own fields, never as the old `log()` meta
+  handed; each half `logSplit` is handed, since P1-12d7) goes in as `...theWordsOrTheFactOfALine(line)`, which gives `emit` its `text` or its `fact`. Build it as the event's own fields, never as the old `log()` meta
   (`targets`, `provinceId`, `charId`, `public`). A line seen by those there but with no province is seen by the world
   (`seen: 'world'`), as the report reads it: where the province may be missing, say so
   (`seen: prov ? 'there' : 'world'`).
@@ -386,8 +386,9 @@ check finds were made.
   in a battle, `src/engine/units/the-facts-the-sea-lifts-battle-lines-record.ts`, a hero's death's,
   `src/engine/heroes/the-facts-a-heros-death-lines-record.ts`, and the wanderer's escape's,
   `src/engine/the-facts-the-wanderers-escape-line-records.ts`; since P1-12d6 the Encounter and Defend orders', the order
-  dispatch's, the item orders', the Research and Practice orders' and the Recruit and Hire orders', each beside its file
-  in `src/engine/orders/`; one kind per sentence, one field per value it was written
+  dispatch's, the item orders', the Research and Practice orders' and the Recruit and Hire orders', and since P1-12d7
+  the army orders', the realm works' and the war masteries', each beside its file in `src/engine/orders/`; one kind per
+  sentence, one field per value it was written
   with, and a kind in one area only: `theWordsOf` routes a fact by its kind to its area's words, and a kind declared in
   two areas doesn't compile, where `LineFact` lists the areas), each with its fields and its audience, and
   `src/views/prose/` writes their words after the turn, one module per area (a new area adds its facts to `LineFact`'s
@@ -397,7 +398,7 @@ check finds were made.
   there is a new kind (its words in `src/views/prose/`), or a field of one where the words are a fragment (P1-12d moves
   those fields' words into the prose); since P1-12d5 the lines a battle took from another folder's helper (a unit
   disbanding, a sea trap, a naval hold and the naval split, the wanderer's escape, a hero's death) are kinds too, and
-  since P1-12d6 every line of five order families (a new line there is a new kind).
+  since P1-12d6 every line of five order families, since P1-12d7 of eight (a new line there is a new kind).
 - **A fact holds values, and a copy of the world, never a part of it** (P1-12d; personal combat's facts since
   P1-12d2, a battle's since P1-12d3). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
   holding a live part of the world (a hero, his item list, a status) would be read as it is then, not as it was told.

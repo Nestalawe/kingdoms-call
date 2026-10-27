@@ -5,10 +5,12 @@
 // (src/views/prose/). And no facts module imports the world's types (src/schemas/): a fact never holds a part of the
 // world. P1-12d2 lists personal combat, P1-12d3 the battles, P1-12d4 the strength ladder and the grid, P1-12d5 the sea
 // lift's lines in a battle, a hero's death and the wanderer's escape, P1-12d6 five order families (Encounter and
-// Defend, the order dispatch, the item orders, Research and Practice, Recruit and Hire); P1-12d7 to d10 add theirs. A
+// Defend, the order dispatch, the item orders, Research and Practice, Recruit and Hire), P1-12d7 three more (the army
+// orders, the realm works, the war masteries); P1-12d8 to d10 add theirs. A
 // facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a unit stands or faces as it does,
 // whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what it is, where companies muster,
-// why a company was not raised), so a record's literal is read too, and a record's `kind` that a facts module declares
+// why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild Calling tore beasts from), so
+// a record's literal is read too, and a record's `kind` that a facts module declares
 // is the record's name, not words.
 //
 // The rule, by syntax tree: a field holds words when its value is, or holds, a string or a template with text in it,
@@ -34,8 +36,8 @@
 // see the Parked list.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
-// fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's and
-// P1-12d6's: their areas' facts modules, which their bases lack), as the static
+// fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
+// P1-12d6's and P1-12d7's: their areas' facts modules, which their bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
@@ -65,6 +67,9 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
     'P1-12d6',
   ],
   ['the recruit and hire orders', 'src/engine/orders/the-facts-the-recruit-and-hire-orders-lines-record.ts', 'P1-12d6'],
+  ['the army orders', 'src/engine/orders/the-facts-the-army-orders-lines-record.ts', 'P1-12d7'],
+  ['the realm works orders', 'src/engine/orders/the-facts-the-realm-works-orders-lines-record.ts', 'P1-12d7'],
+  ['the war mastery orders', 'src/engine/orders/the-facts-the-war-mastery-orders-lines-record.ts', 'P1-12d7'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -79,6 +84,9 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/orders/the-facts-the-item-orders-lines-record.ts',
   'src/engine/orders/the-facts-the-research-and-practice-orders-lines-record.ts',
   'src/engine/orders/the-facts-the-recruit-and-hire-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-army-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-realm-works-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-war-mastery-orders-lines-record.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -299,8 +307,21 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   schoolLabel: ['the defender casts a spell before the battle'],
   // a realm's alignment as the world names it ('Neutral' when it has none): the prose writes it in lower case
   attackersAlignment: ["the consecrated ground of the province weakens the attacker's host"],
-  // the quality a unit fights at, as the world names it ('Average' when it has none): armStr's trace
-  quality: ['it fights at another quality'],
+  // the quality a unit fights at, as the world names it ('Average' when it has none): armStr's trace; and the quality of a
+  // company raised, as the world holds it ('Green' when no discovery raises it: Call to Arms; the grave's: Harvest the
+  // Field, P1-12d7)
+  quality: [
+    'it fights at another quality',
+    'the folk answer a Call to Arms',
+    'the corpse-carters raise a skeletal company',
+  ],
+  // the type of a company raised, as the content names it (a province's garrison type, else its race's: Call to Arms)
+  unitType: ['the folk answer a Call to Arms'],
+  // the name of a company raised, as the world holds it (the grave's company, "(Skeletal)": Harvest the Field)
+  unitName: [
+    'the corpse-carters raise a skeletal company',
+    'a raiser with no Necromancy is warned his dead will crumble',
+  ],
   // the line an ability places a unit in, 'front' or 'second': a slug the prose reads (battleRegrid)
   itsLine: ['its ability gives it its place'],
 };

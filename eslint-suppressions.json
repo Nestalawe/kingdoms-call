@@ -346,9 +346,6 @@
     },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 1
-    },
-    "@typescript-eslint/restrict-template-expressions": {
-      "count": 6
     }
   },
   "src/engine/personal-combat/helpers.ts": {

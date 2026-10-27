@@ -85,6 +85,18 @@ import {
   THE_AUDIENCE_OF_EACH_KIND_OF_THE_RECRUIT_AND_HIRE_ORDERS_LINE,
   type TheFactOfTheRecruitAndHireOrdersLine,
 } from '../orders/the-facts-the-recruit-and-hire-orders-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_ARMY_ORDERS_LINE,
+  type TheFactOfTheArmyOrdersLine,
+} from '../orders/the-facts-the-army-orders-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_REALM_WORKS_ORDERS_LINE,
+  type TheFactOfTheRealmWorksOrdersLine,
+} from '../orders/the-facts-the-realm-works-orders-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_MASTERY_ORDERS_LINE,
+  type TheFactOfTheWarMasteryOrdersLine,
+} from '../orders/the-facts-the-war-mastery-orders-lines-record.ts';
 
 /** An event's hero when the line is the deed of the hero whose order is resolving, whoever he is: emit files it under
  *  him only when the line already reaches his realm, else under no hero. The area rows of P1-12c replace it with the
@@ -94,7 +106,7 @@ export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolv
 /** Each area's facts, one per area, each typed beside its code (P1-12's Decisions of 2026-10-26, Decision 6): a
  *  battle's, personal combat's, the sea lift's in a battle, a hero's death's, the wanderer's escape's; since P1-12d6
  *  the Encounter and Defend orders', the order dispatch's, the item orders', the Research and Practice orders' and the
- *  Recruit and Hire orders'. */
+ *  Recruit and Hire orders'; since P1-12d7 the army orders', the realm works orders' and the war mastery orders'. */
 type TheFactsOfEachArea = [
   TheFactOfABattlesLine,
   TheFactOfAPersonalCombatsLine,
@@ -106,6 +118,9 @@ type TheFactsOfEachArea = [
   TheFactOfTheItemOrdersLine,
   TheFactOfTheResearchAndPracticeOrdersLine,
   TheFactOfTheRecruitAndHireOrdersLine,
+  TheFactOfTheArmyOrdersLine,
+  TheFactOfTheRealmWorksOrdersLine,
+  TheFactOfTheWarMasteryOrdersLine,
 ];
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
@@ -144,6 +159,9 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_ITEM_ORDERS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_RESEARCH_AND_PRACTICE_ORDERS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_RECRUIT_AND_HIRE_ORDERS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_ARMY_ORDERS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_REALM_WORKS_ORDERS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_MASTERY_ORDERS_LINE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */
@@ -424,12 +442,13 @@ export function notifyTarget(
 // also public, so an onlooker — the owner of the province, a spy, a hero standing there — read
 // the same second-person sentence with no province in it. `logSplit` writes the caster's line
 // privately and a third-person line for everyone else who can see the province (notFor keeps the
-// caster from reading it twice). Both carry the province so the report can place them.
+// caster from reading it twice). Both carry the province so the report can place them. Each half is its words or the
+// fact they are written from (since P1-12d7: Awaken Grove's and Wild Calling's halves are facts).
 export function logSplit(
   turnContext: TurnContext,
   type: string,
-  privText: string,
-  pubText: string,
+  privText: NarrativeLine,
+  pubText: NarrativeLine,
   place: EventButItsWords & { alsoNotFor?: (number | null)[] | undefined },
 ): void {
   const { alsoNotFor, ...line } = place;
@@ -438,7 +457,7 @@ export function logSplit(
   emit(turnContext, {
     ...line,
     type,
-    text: privText,
+    ...theWordsOrTheFactOfALine(privText),
     audience: {
       realms: line.audience.realms?.length ? line.audience.realms : [actor].filter((x) => x != null),
       actor: line.audience.actor,
@@ -447,7 +466,7 @@ export function logSplit(
   // The public half: no hero, in the bare form.
   emit(turnContext, {
     type,
-    text: pubText,
+    ...theWordsOrTheFactOfALine(pubText),
     audience: {
       actor: null,
       realms: [],

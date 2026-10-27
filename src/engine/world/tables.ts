@@ -160,12 +160,10 @@ export function beastCommandRoom(c, chars) {
   if (!c || c.player == null) return Infinity;
   return Math.max(0, (effSkillOf(c, 'druid', chars || []) | 0) - beastsLed(c));
 }
-export function beastCommandWords(c, chars) {
-  return theWordsOfABeastCommand(theBeastCommandAsALineTellsIt(c, chars));
-}
 // A commander's beast command, as a line tells it (plan P1-12d6): his name and his Druid as it counts, copied as the
-// line is told. A Recruit line's fact holds it, and the views write its words (theWordsOfABeastCommand, on these values
-// alone: the prose imports it from here while beastCommandWords has an engine caller).
+// line is told. The Recruit and Hire orders' and the army orders' facts hold it, and the views write its words
+// (theWordsOfABeastCommand, src/views/prose/the-words-of-the-army-orders-lines.ts, since P1-12d7: the army orders were
+// its words' last engine callers).
 /** A commander's beast command, as a line tells it: his name, and the Druid level that is the most beasts he leads. */
 export interface ABeastCommandAsALineTellsIt {
   readonly commanderName: string;
@@ -173,11 +171,6 @@ export interface ABeastCommandAsALineTellsIt {
 }
 export function theBeastCommandAsALineTellsIt(c, chars): ABeastCommandAsALineTellsIt {
   return { commanderName: c.name, druid: effSkillOf(c, 'druid', chars || []) | 0 };
-}
-/** The words of a commander's beast command: "Aldric can lead only 2 Creature or Monster units (Druid 2)". */
-export function theWordsOfABeastCommand(command: ABeastCommandAsALineTellsIt): string {
-  const d = command.druid;
-  return `${command.commanderName} can lead only ${d} Creature or Monster unit${d !== 1 ? 's' : ''} (Druid ${d})`;
 }
 export function druIdPenaltyMult(heroChar, army, playerAlignment, tamed) {
   // Skeletal armies never suffer Druid penalties — they are already dead
