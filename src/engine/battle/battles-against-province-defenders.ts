@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
+import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
@@ -24,12 +24,11 @@ import {
 import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, aAn, ladderLines } from './ladder.ts';
 import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import {
-  OPEN_COUNTRY,
-  countType,
-  isHalfOrMore,
-  rideThemDownBonus,
+  pursuitsOfTheBeaten,
   shieldFortHolds,
   tacMulted,
+  theFactorThePursuitsPutOnTheWinnersOwnDeathRolls,
+  theFractionThePursuitsAdd,
 } from '../units/movement.ts';
 import {
   AERIAL_TYPES,
@@ -1511,27 +1510,36 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // keeps the same flavour: Free Lances still add to enemy losses, corsairs still control the
   // line of withdrawal, wargs still finish a fight quickly, wyverns still unnerve the defence.
   const _npcTerrain = prov.terrain;
+  // The rule registry's three stages of the rout (plan P1-19j), as in a battle between heroes, against neutral guards:
+  // "fate: the winner runs the beaten down", "a force holds the sea lanes" and "the beaten force holds"
+  // (shieldFortHolds).
   // HUMAN — Ride Them Down. Neutral defenders now take the same casualty rolls as a beaten
   // player, so this works exactly as it does in a player battle: the winner's Free Lances add to
   // the LOSER's destruction chance. Symmetric — neutral defenders can field Free Lances too, and
-  // when they win, theirs bite on your force. Open country only.
-  const _npcRideAtk = rideThemDownBonus(armies, _npcTerrain, c);
-  const _npcRideDef = rideThemDownBonus(defenders, _npcTerrain, defHero);
-  if (_npcRideAtk > 0 && !OPEN_COUNTRY.has(_npcTerrain))
-    narrate(narrative, {
-      kind: "a side's war-horn of the plains lets its free lances ride in rough country",
-      sideName: cName,
-      terrain: _npcTerrain,
-    });
-  if (_npcRideAtk === 0 && countType(armies, 'Free Lances') > 0)
-    narrate(narrative, { kind: "the attacker's free lances find no room to ride", cName, terrain: _npcTerrain });
+  // when they win, theirs bite on your force. Open country only. (Against neutral guards it is the
+  // one pursuit that adds to the beaten's losses.)
+  const _npcPursuitsAtk = pursuitsOfTheBeaten(armies, _npcTerrain, c, 'a hero against neutral guards');
+  const _npcRideAtk = theFractionThePursuitsAdd(_npcPursuitsAtk);
+  const _npcRideDef = theFractionThePursuitsAdd(
+    pursuitsOfTheBeaten(defenders, _npcTerrain, defHero, 'neutral guards against a hero'),
+  );
+  for (const p of _npcPursuitsAtk)
+    if (p.onTheGround === 'by the war-horn of the plains')
+      narrate(narrative, {
+        kind: "a side's war-horn of the plains lets its free lances ride in rough country",
+        sideName: cName,
+        terrain: _npcTerrain,
+      });
+  for (const p of _npcPursuitsAtk)
+    if (p.onTheGround === 'it finds no room')
+      narrate(narrative, { kind: "the attacker's free lances find no room to ride", cName, terrain: _npcTerrain });
   // HUMAN — Cut the Line becomes Keep the Sea Lanes. Neutral guards still never withdraw, so
   // there is no enemy line of retreat to sever; a corsair-heavy force instead guarantees its OWN
   // escape back to the ships.
-  const _npcCorsairs = isHalfOrMore(armies, 'Corsair Fleet');
+  const _npcCorsairs = aForceHoldsTheSeaLanes({ theForce: armies ?? [], theBattle: 'a hero against neutral guards' });
   // ORC — Run Them Down: still nothing to pursue (neutral guards do not flee the province), so
   // the wargs simply end it fast — half casualties for your own force on a win.
-  const _npcWargs = isHalfOrMore(armies, 'Warg Riders');
+  const _npcOwnLosses = theFactorThePursuitsPutOnTheWinnersOwnDeathRolls(_npcPursuitsAtk);
   // DWARF — Shield Fort (replaces Hold the Line): a beaten Guard-heavy assault withdraws in good
   // order when a path exists, and holds trapped WITHOUT extra no-escape losses otherwise.
   const _npcSF = shieldFortHolds(armies, _dep && _dep.gA); // 2026-10-11: half the FRONT LINE is Guard
@@ -1566,12 +1574,14 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         guardName,
       });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: cName });
-    if (_npcWargs) narrate(narrative, { kind: "the attacker's warg riders halve his losses", cName });
+    for (const p of _npcPursuitsAtk)
+      if (p.line === "the warg riders halve the winner's losses")
+        narrate(narrative, { kind: "the attacker's warg riders halve his losses", cName });
     // (Run Them Down halves the death roll only; the promotion window keeps the unhalved figure, as it always has.)
     const _fw = rollUnitFates(armies, {
       owner: cName,
       won: true,
-      dieAt: (a) => winDeathChance * steelMultOf(a) * (_npcWargs ? 0.5 : 1),
+      dieAt: (a) => winDeathChance * steelMultOf(a) * _npcOwnLosses,
       promoteTo: (a) =>
         winDeathChance * steelMultOf(a) + xpChance(winXPChance * milMultOf(a), a.quality) * humanXPMult(a, c.player, G),
       faced: _facedA,

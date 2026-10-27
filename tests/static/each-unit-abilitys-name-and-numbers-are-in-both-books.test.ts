@@ -8,11 +8,14 @@
 // names of the abilities the registry doesn't hold yet.
 // Three gaps are known and let through, each with its fix parked (the three fleets): the rulebook's Orcish Longships row
 // doesn't name Reaver Crews, nor its Elven Galleys row Sea Archers, nor its Dwarf Ironclads row Armoured Hulls (the test
-// fails once it does, so the exception leaves with the fix). And one number: the rulebook's Whale Cohort row names
-// Breach and Swamp but not its 25% chance (plan P1-19i; parked: the row's words from the blurb), checked to be still
-// left out there, so the exception leaves with the fix too. An ability the books give no number (Rooted, Hold the Gate,
+// fails once it does, so the exception leaves with the fix). And three numbers: the rulebook's Whale Cohort row names
+// Breach and Swamp but not its 25% chance (plan P1-19i; parked: the row's words from the blurb), and its Manticore Pride
+// row gives the Manticores' pursuit (at least half the winning force, +15%) after Spine Volley, outside Relentless
+// Hunt's words (plan P1-19j; parked likewise), each checked to be still left out there, so the exception leaves with
+// the fix too. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes: plan P1-19j, Choice 4) are a retired unit's,
+// in no book: checked to be still in none, and nothing else. An ability the books give no number (Rooted, Hold the Gate,
 // Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d; eight of the volley's: P1-19g; the three flank
-// slots of rough ground: P1-19h) is listed below,
+// slots of rough ground: P1-19h; Deep Halls: P1-19j) is listed below,
 // and its name is checked; a number the books leave out (Driven Before Them's cap, which the units beside them never
 // reach) is checked to be still left out. A number the books write in words (double, half, two, full strength) is matched
 // as a whole word, case aside (the rulebook writes "DOUBLE volley damage").
@@ -41,6 +44,21 @@ const NUMBERS_NOT_IN_THE_RULEBOOK_YET: Readonly<Record<string, Readonly<Record<s
     toSinkAHull:
       "the rulebook's Whale Cohort row gives Breach and Swamp no chance (parked: the row's words from the blurb)",
   },
+  'relentless-hunt': {
+    theWinningForceAtLeast:
+      "the rulebook's Manticore Pride row gives the Manticores' pursuit after Spine Volley, outside Relentless Hunt's words (parked: the row's words from the blurb)",
+    theBeatenFoesRoutLosses:
+      "the rulebook's Manticore Pride row gives the Manticores' pursuit after Spine Volley, outside Relentless Hunt's words (parked: the row's words from the blurb)",
+  },
+};
+
+/** The abilities of a retired unit that no book names (no blurb, no roster row), each with why: the test checks that
+ *  neither book has the unit yet, and nothing else (plan P1-19's second slice, Choice 4). */
+const A_RETIRED_UNITS_IN_NO_BOOK: Readonly<Record<string, string>> = {
+  'cut-the-line':
+    'the Corsair Fleet left the pools on 2026-10-15, and a company raised before still fights (a question for Toby)',
+  'keep-the-sea-lanes':
+    'the Corsair Fleet left the pools on 2026-10-15, and a company raised before still fights (a question for Toby)',
 };
 
 /** The abilities whose words in the books give no number, each with why: the test checks that their rows hold none,
@@ -63,6 +81,7 @@ const NO_NUMBER_IN_THE_BOOKS: Readonly<Record<string, string>> = {
   'through-the-trees': 'the one cavalry that takes a flank in forest and jungle',
   'through-the-glades': 'the one cavalry, with the Stag Riders, that takes a flank in forest and jungle',
   'crag-charge': 'the one cavalry that takes a flank in the mountains',
+  'deep-halls': "a Dwarf Garrison counts as Guard for Shield Fort: Shield Fort's number",
 };
 
 /** A count as the books write it, in words (any other count is written so that no book holds it). */
@@ -179,7 +198,9 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
       expect(Object.keys(UNIT_ABILITIES_THE_REGISTRY_HOLDS)).toContain(slug);
   });
 
-  test.for(ROWS)("$name ($unit): the player portal's blurb", ({ unit, name, numbers, numbersLeftOut }) => {
+  const IN_THE_BOOKS = ROWS.filter((r) => !(r.slug in A_RETIRED_UNITS_IN_NO_BOOK));
+
+  test.for(IN_THE_BOOKS)("$name ($unit): the player portal's blurb", ({ unit, name, numbers, numbersLeftOut }) => {
     const blurb = blurbs.get(unit);
     expect(blurb, `the player portal has a blurb for ${unit}`).toBeDefined();
     const words = ownWords(blurb ?? '', name);
@@ -188,7 +209,7 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
     for (const n of numbersLeftOut) expect(words, `${name} in ${unit}'s blurb still leaves out ${n}`).not.toContain(n);
   });
 
-  test.for(ROWS.filter((r) => !(r.slug in NOT_IN_THE_RULEBOOK_YET)))(
+  test.for(IN_THE_BOOKS.filter((r) => !(r.slug in NOT_IN_THE_RULEBOOK_YET)))(
     "$name ($unit): the rulebook's roster row",
     ({ slug, unit, name, numbersInTheRulebook, numbersNotInTheRulebookYet, numbersLeftOut }) => {
       const row = rosterRow(unit);
@@ -218,8 +239,19 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
     },
   );
 
+  test.for(ROWS.filter((r) => r.slug in A_RETIRED_UNITS_IN_NO_BOOK))(
+    '$name ($unit): a retired unit in neither book yet (a known gap)',
+    ({ slug, unit }) => {
+      const why = String(A_RETIRED_UNITS_IN_NO_BOOK[slug]);
+      expect(blurbs.get(unit), `${why}: now the player portal has a blurb for ${unit}, so check ${slug} there`).toBe(
+        undefined,
+      );
+      expect(rosterRow(unit), `${why}: now the rulebook has a row for ${unit}, so check ${slug} there`).toBeNull();
+    },
+  );
+
   test('each known gap is a row the content holds, and each number left out of the rulebook one of its row', () => {
-    for (const slug of Object.keys(NOT_IN_THE_RULEBOOK_YET))
+    for (const slug of [...Object.keys(NOT_IN_THE_RULEBOOK_YET), ...Object.keys(A_RETIRED_UNITS_IN_NO_BOOK)])
       expect(Object.keys(UNIT_ABILITIES_THE_REGISTRY_HOLDS)).toContain(slug);
     for (const [slug, numbers] of Object.entries(NUMBERS_NOT_IN_THE_RULEBOOK_YET)) {
       const row = ROWS.find((r) => r.slug === slug);

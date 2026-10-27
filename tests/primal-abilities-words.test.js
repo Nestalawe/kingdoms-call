@@ -4,7 +4,7 @@
 // like the winged riders; and no page still promises an ability "with the beast abilities" to come.
 // The abilities the rule registry holds (plan P1-19a: Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
 // Deepwater Grasp, Wyrmscale, Air Superiority; P1-19b: Maul, Boulder Wall, Purity, Trample, Many Heads; P1-19c: Storm
-// Wings, Rooted; P1-19d: Regenerating Hide; P1-19g: Thick Hide, Shell Wall; P1-19h: Through the Glades, Colossal Bulk; P1-19i: Breach and Swamp) left the table: their names and numbers are checked from their content
+// Wings, Rooted; P1-19d: Regenerating Hide; P1-19g: Thick Hide, Shell Wall; P1-19h: Through the Glades, Colossal Bulk; P1-19i: Breach and Swamp; P1-19j: Feeding Frenzy) left the table: their names and numbers are checked from their content
 // rows by tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts.
 // The player portal and the data file are read from src/ by their syntax tree (tests/lib/source.ts): the blurbs as
 // entries of the object literal, the words as the strings each holds. (Until plan P1-09a they were matched in the built
@@ -18,7 +18,7 @@ const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=pag
 const strip=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } };
 const norm=s=>s.replace(/[’‘]/g,"'");
 const ABILITIES={
-  'Whale Cohort':[], 'Shark Shoals':['Feeding Frenzy'],
+  'Whale Cohort':[], 'Shark Shoals':[],
   'Thunderbirds':['Lightning Strike'], 'Forest Ents':['Choking Spores'], 'Great Bears':[],
   'Stone Giants':['Boulder Barrage'], 'Unicorn Herd':[], 'Mammoth Host':['Stampede'],
   'Great Turtles':['Island Back'], 'Crimson Rocs':['Thunderous Stoop'],
