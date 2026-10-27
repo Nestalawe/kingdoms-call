@@ -147,7 +147,8 @@ describe("a battle's lines in words", () => {
       kind: "a hero's hit points rise in a fight, for his realm alone",
       realm: 0,
       hero: 7,
-      words: '💪 Aldric is hardened by the wounds of battle.',
+      heroName: 'Aldric',
+      rise: { gain: 3, maxHp: 23, wound: true },
     });
     fileTheBattle(tc, narrative);
     expect(tc.turnLog.map((l) => l.bTier)).toEqual(["worked out from the words of the battle's lines", 's']);

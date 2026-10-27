@@ -20,10 +20,10 @@ import {
   pcMeleeDamage,
   pcStunTurned,
   pcTakeHit,
-  pcWardWord,
 } from './to-hit-wounds-stuns-and-courage.ts';
 import { pcCombatXP } from './melee-flight-and-archery.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
+import { aFightersWardAsTheLineTellsIt } from './the-facts-a-personal-combats-lines-record.ts';
 
 // ── PERSONAL COMBAT: COMBAT SPELLS AND GUARDIAN ABILITIES (plan P1-08e: lifted out of resolveTurn) ────
 // A spell cast in a personal fight (pcCastCombatSpell, with the spell-balance figures above it) and a guardian's
@@ -128,10 +128,6 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
   const castChance = _sw > 0 ? Math.max(5, _castBase - _sw) : _castBase;
   // narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader sees the
   // character reach for the spell, then whether the weave holds or collapses.
-  const _schoolWeave =
-    { white: 'sacred', psychic: 'psychic', illusory: 'illusory', elemental: 'elemental', necromancy: 'necromantic' }[
-      school
-    ] || school;
   // show the roll alongside the chance, and say what the chance IS (a cast, not a "hold").
   // 2026-09-10 item 1: use the canonical d100 (1–100, success on roll<=chance) so a roll equal to
   // the chance succeeds, matching every other percentage check in the engine.
@@ -140,12 +136,12 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
   narrate(narrative, {
     kind: "the caster calls on a school's arts, weaving a spell",
     casterName: caster.name,
-    schoolWeave: _schoolWeave,
+    school,
     spellName,
     castChance,
-    wordsIfSw: _sw > 0 ? `, −${_sw} for ${pcWardWord(target, 'ward', 'schoolWard')}` : '',
+    schoolWard: _sw,
+    targetsWard: aFightersWardAsTheLineTellsIt(target, 'schoolWard'),
     castRoll: _castRoll,
-    castRollCastChanceMark: _castRoll <= castChance ? '✓' : '✗',
   });
   if (_castRoll > castChance) {
     narrate(narrative, { kind: 'but the spell guts and fizzles' });
@@ -157,7 +153,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
     narrate(narrative, {
       kind: "the target is open to the school's arts",
       targetName: target.name,
-      schoolWeave: _schoolWeave,
+      school,
       targetWeakName: target.weak.name,
     });
     if (caster.player != null && pcLearnWeakness(G, caster.player, target.name))
@@ -210,7 +206,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         targetName: target.name,
         fbPct: dispFloor(_fbPct),
         burnRounds: _fbE ? _fbE.rounds : 3,
-        wordsIfFbWard: _fbWard ? ` (its ward turns ${_fbWard}% of the heat)` : '',
+        fbWard: _fbWard,
       });
       break;
     }
@@ -233,7 +229,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         casterName: caster.name,
         targetName: target.name,
         pen,
-        wordsIfHoly: holy ? ' (×1.5 against the undead and fiends)' : '',
+        againstTheUnclean: holy,
       });
       const _hsHeal = Math.max(1, Math.round(((caster.maxHp || 20) * SPELL_HOLY_HEAL_PCT) / 100));
       if (caster.hp < (caster.maxHp || 20)) {
@@ -255,9 +251,8 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         if (_dealt)
           narrate(narrative, {
             kind: "the holy light's damage",
-            wordsIfHoly: holy
-              ? `The unclean flesh of ${target.name} chars at the sight of it`
-              : `The light sears ${target.name}`,
+            againstTheUnclean: holy,
+            targetName: target.name,
             dealt: _dealt,
             targetHp: Math.max(0, Math.round(target.hp)),
           });
@@ -283,10 +278,8 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         casterName: caster.name,
         targetName: target.name,
         swR: _swR,
-        swRPlural: _swR !== 1 ? 's' : '',
-        wordsIfShr: _shr
-          ? ` (A ${String(target.power).toLowerCase()} guardian may shrug it off — ${_shr}% each round after the first.)`
-          : '',
+        shr: _shr,
+        targetPower: target.power,
       });
       break;
     }
@@ -431,7 +424,8 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
           kind: "the caster's curse withers the target",
           casterName: caster.name,
           targetName: target.name,
-          bestAbility: bestKey === 'magic' ? bestSchool + ' magic' : bestKey,
+          bestKey,
+          bestSchool,
           bestAbilityLevel:
             bestKey === 'melee' ? target.melee : bestKey === 'archery' ? target.archery : target.school[bestSchool],
         });
@@ -529,7 +523,7 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
     kind: 'a fighter uses a power',
     actorName: actor.name,
     spName: sp.name,
-    wordsIfSpFlavour: sp.flavour ? ` "${sp.flavour}"` : '',
+    spFlavour: sp.flavour,
   });
   const eff = String(sp.effect || '');
   let dealt = 0;
@@ -603,7 +597,6 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
         kind: 'the foe reels from the blow, losing actions',
         foeName: foe.name,
         stun,
-        stunPlural: stun !== 1 ? 's' : '',
       });
     else {
       foe.status.stun = (foe.status.stun || 0) + stun;
@@ -611,7 +604,6 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
         kind: 'the foe is caught helpless, losing actions',
         foeName: foe.name,
         stun,
-        stunPlural: stun !== 1 ? 's' : '',
       });
     }
   }
@@ -665,7 +657,6 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
         foeName: foe.name,
         eDmg: _e.dmg,
         eRounds: _e.rounds,
-        eRoundsPlural: _e.rounds !== 1 ? 's' : '',
       });
   }
   // ── Wards and shields ──
@@ -721,7 +712,6 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) 
         foeName: foe.name,
         tc: _tc,
         tr: _tr,
-        trTcMark: _tr <= _tc ? '✗' : '✓',
       });
       if (_tr <= _tc) {
         state.fledBy = foe;

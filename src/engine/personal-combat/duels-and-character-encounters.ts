@@ -9,6 +9,7 @@ import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.t
 import { pcCharCombatant } from './speed-encounter-plans-and-combatants.ts';
 import { resolvePersonalCombat } from './resolve-personal-combat.ts';
 import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
+import { theItemsAsTheLineNamesThem } from './the-facts-a-personal-combats-lines-record.ts';
 
 // ── PERSONAL COMBAT: DUELS AND CHARACTER ENCOUNTERS (plan P1-08f: lifted out of resolveTurn) ────
 // The magic items a fighter brings to bear (magicItemsLine), the item a character may drop when they break off a fight
@@ -45,7 +46,7 @@ export function magicItemsLine(ch) {
   return {
     kind: 'a hero bears magic items into the fight',
     chName: ch.name,
-    itemNames: its.map((it) => it.name + (isLegendaryItem(it) ? ' (Legendary)' : '')).join(', '),
+    items: theItemsAsTheLineNamesThem(its),
   };
 }
 // ── FLEE SPOILS ── A character who breaks off a duel or an Encounter against another character
@@ -69,7 +70,6 @@ export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
     runnerName: runner.name,
     chance,
     roll,
-    rollChanceMark: roll <= chance ? ' ✓' : ' ✗',
   });
   if (roll > chance) return null;
   const it = pool[Math.floor(kcRng() * pool.length)];
@@ -86,7 +86,7 @@ export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
     kind: 'in the rout the runner drops an item the one who stays claims',
     runnerName: runner.name,
     itName: it.name,
-    wordsIfIsLegendaryItemIt: isLegendaryItem(it) ? ' (Legendary)' : '',
+    itIsLegendary: isLegendaryItem(it),
     stayerName: stayer.name,
   });
   {
@@ -142,7 +142,8 @@ export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics,
     atkTemper: atk.temper,
     defName: def.name,
     defRace: def.race,
-    defRealmName: def.player !== null ? G.players[def.player]?.name : 'wandering',
+    defRealm: def.player,
+    defRealmName: G.players[def.player]?.name,
   });
   pushBattlecry(narrative, atk, def.name);
   pushBattlecry(narrative, def, atk.name);

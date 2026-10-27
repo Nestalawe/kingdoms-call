@@ -14,6 +14,7 @@ import {
   writeDeferredSkillLines,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
 } from '../turn/events-and-their-audiences.ts';
+import { aHitPointRiseAsTheLineTellsIt } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 
 // ── EXPERIENCE, SKILL RISES AND EARNED HP (plan P1-08c: lifted out of resolveTurn) ────
 // A hero's chance to raise a skill by using it (trySkillGain, and rollNavalVoyage for a voyage), the one rise a phase
@@ -336,7 +337,8 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
         kind: "a hero's hit points rise in a fight, for his realm alone",
         realm: real.player,
         hero: real.id,
-        words: line,
+        heroName: real.name,
+        rise: aHitPointRiseAsTheLineTellsIt(r),
       });
   } else {
     const prov = real.location != null ? G.world.provinces[real.location] : null;

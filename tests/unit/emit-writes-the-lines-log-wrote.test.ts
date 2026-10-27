@@ -130,7 +130,8 @@ describe("emit's forms", () => {
       kind: "a hero's hit points rise in a fight, for his realm alone",
       realm: 1,
       hero: 12,
-      words: '💪 Aldric is hardened by the wounds of battle.',
+      heroName: 'Aldric',
+      rise: { gain: 3, maxHp: 23, wound: true },
     } as const;
     narrate(narrative, 'The hosts close.');
     narrate(narrative, risen);

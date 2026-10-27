@@ -219,18 +219,6 @@ export function pcNewStatus() {
     _pending: [],
   }; // riders waiting to take hold at the start of the next round
 }
-// "Melee 6" alone looks like a bug when the sheet says 4. Show the boost and its size: "Archery 6
-// (4 +2 bonus)". Monsters and unboosted characters print the plain figure.
-export function pcSkillLabel(cbt, stat) {
-  const cur = (cbt && cbt[stat]) || 0,
-    base = cbt && cbt[stat + 'Base'];
-  const cap = stat === 'melee' ? 'Melee' : 'Archery';
-  // Only a RAISED figure is annotated. A trained level above the effect cap (e.g. Melee 9
-  // fighting as 5) prints plainly — that is the cap at work, not a penalty, and the mastery perks
-  // are named elsewhere.
-  if (base == null || cur <= base) return `${cap} ${cur}`;
-  return `${cap} ${cur} (${base} +${cur - base} bonus)`;
-}
 export function pcCharCombatant(turnContext, ch) {
   ensureEncounterPlan(turnContext, ch);
   const maxHp = ch.maxHp || 20;

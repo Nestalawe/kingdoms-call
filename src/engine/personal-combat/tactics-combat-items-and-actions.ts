@@ -2,7 +2,6 @@
 import { kcRng } from '../rng.ts';
 import { NPC_SCHOOL_SPELL, STEAL_TIER_PEN } from '../army-tables.ts';
 import { encounterClearGold, ensureLairHoard, temperOf } from '../world/tables.ts';
-import { itemNameList } from '../heroes/fame-and-consecration.ts';
 import { hasItemBase } from '../items/equipment.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { PARLEY_ENABLED, SCOUT_ENABLED, pcDeferEffect, pcLearnWeakness, pcPushDot } from './helpers.ts';
@@ -16,6 +15,12 @@ import { pcHitSkill, pcLandStun, pcStunTurned, pcTakeHit } from './to-hit-wounds
 import { pcCastCombatSpell, pcMonsterSpecial } from './combat-spells-and-guardian-abilities.ts';
 import { pcAdvanceOrStrike, pcAttemptFlee, pcFireShot, pcMeleeStrike } from './melee-flight-and-archery.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
+import {
+  aListAsTheLineTellsIt,
+  theItemsAsTheLineNamesThem,
+  theNamesAndDescriptionsAsTheLineTellsThem,
+  theNamesAsTheLineTellsThem,
+} from './the-facts-a-personal-combats-lines-record.ts';
 
 // ── PERSONAL COMBAT: TACTICS, COMBAT ITEMS AND EACH ACTION (plan P1-08e: lifted out of resolveTurn) ────
 // What a combatant does once their plan is spent (Temper), the potions, scrolls and devices carried into a fight, and
@@ -209,7 +214,6 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
             foeName: foe.name,
             deDmg: _de.dmg,
             deRounds: _de.rounds,
-            deRoundsPlural: _de.rounds !== 1 ? 's' : '',
           });
       }
       // these ride on the damage the item just dealt, so they grip from the NEXT round. (A
@@ -231,7 +235,6 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
             kind: 'the foe reels losing actions from the next round',
             foeName: foe.name,
             eStun: e.stun,
-            eStunPlural: e.stun !== 1 ? 's' : '',
           });
         }
       }
@@ -258,7 +261,6 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
           kind: 'the foe is held fast, losing actions',
           foeName: foe.name,
           eStun: e.stun || 1,
-          eStunPlural: (e.stun || 1) !== 1 ? 's' : '',
         });
       break;
     }
@@ -292,7 +294,8 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
         kind: 'the foe is sapped for the rest of the fight',
         foeName: foe.name,
         foeMelee: pcHitSkill(foe, 'melee'),
-        wordsIfEArchery: e.archery ? `, Archery ${pcHitSkill(foe, 'archery')}` : '',
+        eArchery: e.archery,
+        foeArchery: pcHitSkill(foe, 'archery'),
       });
       break;
     }
@@ -322,7 +325,8 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
         kind: 'a fighter surges with strength',
         who,
         actorMelee: actor.melee,
-        wordsIfEArchery: e.archery ? `, Archery ${actor.archery}` : '',
+        eArchery: e.archery,
+        actorArchery: actor.archery,
       });
       break;
     }
@@ -340,7 +344,8 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
         kind: 'a ward settles over a fighter',
         actorName: actor.name,
         stAbsorb: st.absorb,
-        wordsIfEReflect: e.reflect ? ` and bite back for ${st.reflect}` : '',
+        eReflect: e.reflect,
+        stReflect: st.reflect,
       });
       break;
     }
@@ -360,7 +365,7 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
         kind: 'a fighter is ready to break away',
         who,
         eFleeBonus: e.fleeBonus || 25,
-        wordsIfEToHitReduce: e.toHitReduce ? `, foe −${e.toHitReduce}% to hit` : '',
+        eToHitReduce: e.toHitReduce,
       });
       break;
     }
@@ -455,7 +460,6 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
           actorName: actor.name,
           rangeChance: ch,
           roll,
-          rollChMark: roll <= ch ? ' ✓' : ' ✗',
         });
         if (roll > ch) {
           narrate(narrative, { kind: 'a fighter cannot close the distance in time', actorName: actor.name });
@@ -475,7 +479,6 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
           actorName: actor.name,
           rangeChance: ch,
           roll,
-          rollChMark: roll <= ch ? ' ✓' : ' ✗',
         });
         if (roll > ch) {
           narrate(narrative, {
@@ -581,7 +584,7 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
           actorName: actor.name,
           dr,
           chance,
-          chanceMark: chance ? ` [roll ${roll}]${roll <= chance ? ' ✓' : ' ✗'}` : ' — it cannot be reasoned with',
+          roll,
         });
         if (chance > 0 && roll <= chance) {
           state.parley = true;
@@ -613,16 +616,17 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
         narrate(narrative, {
           kind: 'a fighter slips past the guardian and seizes the prize',
           actorName: actor.name,
-          tierWord: _tier.toLowerCase(),
+          tier: _tier,
           chance,
-          wordsIfTierPen: tierPen ? `, −${tierPen}% ${_tier}` : '',
+          tierPen,
         });
       } else
         narrate(narrative, {
           kind: "a fighter's theft is noticed",
           actorName: actor.name,
           chance,
-          wordsIfTierPen: tierPen ? `, −${tierPen}% ${_tier}` : '',
+          tierPen,
+          tier: _tier,
         });
       break;
     }
@@ -660,65 +664,38 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
         // thief has already lifted, and which the guardian has turned against challengers.
         const _hi = feat.hoardItems || [],
           _st = feat._stolenItems || [];
-        let itemOut = _hi.length ? ` and ${itemNameList(_hi)}` : '';
-        if (!_hi.length)
-          itemOut = _st.length
-            ? ` — the hoard's magic (${_st.join(', ')}) has already been lifted by a thief`
-            : ' — no magic lies here';
-        else if (_st.length) itemOut += ` (a thief has already made off with ${_st.join(', ')})`;
         const _wielded = foe.wielded || [];
-        if (_wielded.length)
-          itemOut += `. Beware: it wields ${_wielded.map((x) => x.name).join(', ')} against all comers`;
         // Abilities — the guardian's special powers (its spell list).
         const spells = (foe.ref && foe.ref.spells) || [];
-        const abilityClause =
-          (spells.length
-            ? ` It can call on ${spells
-                .slice(0, 4)
-                .map((s) => s.name)
-                .join(', ')}.`
-            : ' It has no special powers — it fights with tooth, claw and steel alone.') +
-          guardianPassives(foe.ref)
-            .map((p) => ` ${p.name}: ${p.desc}.`)
-            .join(''); // passives are scouted too
         // Weaknesses / resistances — read the guardian's damage-type vulnerabilities (0.4-1.8; >1
         // means it takes MORE from that type, <1 means it shrugs it off).
         const v = foe.vuln || { melee: 1, archery: 1, spell: 1 };
-        const LABEL = { melee: 'blades', archery: 'arrows', spell: 'magic' };
-        const weak = [],
-          tough = [];
-        ['melee', 'archery', 'spell'].forEach((k) => {
-          if (v[k] > 1.15) weak.push(LABEL[k]);
-          else if (v[k] < 0.85) tough.push(LABEL[k]);
-        });
-        let vulnClause = '';
-        if (weak.length) vulnClause += ` It is vulnerable to ${weak.join(' and ')}`;
-        if (tough.length) vulnClause += `${weak.length ? ', but' : ' It is'} resistant to ${tough.join(' and ')}`;
-        if (vulnClause) vulnClause += '.';
         // the one thing worth scouting for — the guardian's exploitable weakness. Reading it here
         // teaches the realm for good, so the flaw is on the order form next turn.
         if (foe.weak) {
-          vulnClause += ` Its weakness: ${foe.weak.name} — ${foe.weak.desc}.`;
           if (actor.player != null) pcLearnWeakness(G, actor.player, foe.name);
         }
         // the Scout report no longer offers to talk a beast down — the Talk tactic is withdrawn
         // (PARLEY_ENABLED). The `pacifiable` trait itself is left on the creature data so nothing
         // has to be re-derived when it comes back.
-        if (PARLEY_ENABLED && foe.pacifiable) vulnClause += ' A Druid could talk it down rather than fight it.';
-        const descClause = foe.ref && foe.ref.desc ? ` ${foe.ref.desc}` : '';
         narrate(narrative, {
           kind: 'a fighter scouts the feature and its guardian',
           actorName: actor.name,
           featName: feat.name,
           foeName: foe.name,
-          wordsIfPower: power ? ` (${power})` : '',
+          power,
           curHp,
           fullHp,
-          descClause,
-          abilityClause,
-          vulnClause,
+          foeDesc: foe.ref && foe.ref.desc,
+          spellNames: theNamesAsTheLineTellsThem(spells.slice(0, 4)),
+          passives: theNamesAndDescriptionsAsTheLineTellsThem(guardianPassives(foe.ref)), // passives are scouted too
+          vulnerabilities: { melee: v.melee, archery: v.archery, spell: v.spell },
+          weakness: foe.weak ? { name: foe.weak.name, desc: foe.weak.desc } : null,
+          aDruidCouldTalkItDown: PARLEY_ENABLED && foe.pacifiable,
           clearGold,
-          itemOut,
+          hoardItems: theItemsAsTheLineNamesThem(_hi),
+          stolenItemNames: aListAsTheLineTellsIt(_st),
+          wieldedItemNames: theNamesAsTheLineTellsThem(_wielded),
         });
         feat.scouted = true;
       } else {
