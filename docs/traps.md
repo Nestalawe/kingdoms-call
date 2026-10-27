@@ -673,8 +673,8 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 
 ## `@ts-nocheck` checks nothing in the file
 
-116 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(82: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+115 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(81: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -779,6 +779,25 @@ table with a key left out.
   - **A literal table keyed by unit type** gains `satisfies Record<string, Partial<Record<UnitType, number>>>`
     (`TERRAIN_MODS`), so a misspelt or retired unit's name fails `tsc` (TS2353). A test that reads such a table by its
     syntax tree (`entriesOf`, `tests/lib/source.ts`) must look through the `satisfies`.
+- (P1-10b7: Early Winter's stage, `turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts`,
+  28,831 bytes): 55 errors, 47 of them a parameter with no type; typing the context as `TurnContext` and the turn's
+  marks it reads left 14; then 87 typed lint findings, 70 once the return types of the three `discoveries.ts`
+  functions it calls were written there (`realmBaseTax` and `discUpkeepWage`: `number`; `discEff`: the content's
+  discovery effects), all fixed. Its guards test lists the schema requires (`G.characters || []`, a hero's `armies`, a
+  garrison) and some of them it also reads unguarded. Four more forms:
+  - **A `const` typed as a wide list is narrowed by its value:** `const list: readonly Army[] | null | undefined =
+    hero.armies` is `Army[]` to the compiler, so lint still calls `list ?? []` needless (P1-10b6's `heroItems` worked
+    because its value came through `?.`). Type the object instead, `const theHeroAsGuarded:
+    AHeroAsEarlyWinterReadsHisArmies = hero` (his `armies` optional), or a callback's parameter: an object's optional
+    field isn't narrowed away.
+  - **The state as one function reads it, through the context:** `const { G }: { readonly G:
+    TheStateAsEarlyWinterReadsIt } = turnContext`, so `G`'s guarded lists are typed as wide as the guards and the
+    context keeps `TurnContext` for the typed functions it is handed to.
+  - **A list the body reads both guarded and unguarded** (the world's provinces: `|| []` in six places, by a
+    province's id in three) keeps the schema's type for the unguarded reads, and the guarded ones read it through a
+    small reader typed as wide as the guard (`provincesOrNone`), at the same moment.
+  - **A number in a line's words** is written `${String(x)}` (the same text), and `x || 1.6` on a number that may be
+    missing is `Number(x) || 1.6`.
 
 ## A battle-only mark is not part of the saved state
 
@@ -789,8 +808,12 @@ P1-10b5); on a hero, `_tacticalMult` (Telekinetic Storm). The battle wipes them 
 (a double's copy goes whole: `clearPhantomCopies`). The turn's marks last the turn instead, and the new turn wipes them
 before the save (P1-10b6): on a unit, `_laNoTerrain` (Lightning Advance's ambushed side) and `_turnStrReduction` (set
 by nothing today); on a hero, `_oratoryBoost` (Oratory), `_phantasmalBonus` (set by nothing today), `_curseHalveStat`
-(Curse) and `_druidNegated` (Psychic Blast). Both kinds are typed by `ArmyInABattle` and `HeroInABattle`
-(`engine/army-tables.ts`), **not** in the saved state's schema (P1-10b2).
+(Curse) and `_druidNegated` (Psychic Blast). Early Winter reads five more (P1-10b7): on a unit, `_temporary` (a unit
+summoned for the turn; the new turn removes it); on a hero, `_charmControlFrom`, `_charmedByPlayer` and
+`_charmedForPhase` (a Charm's hold for the rest of the turn; Early Winter wipes them, the new turn the last two too);
+on a province, `_raidersMuster` (an orc victory there this turn; Early Winter wipes it). Both kinds are typed by
+`ArmyInABattle`, `HeroInABattle` and `ProvinceInABattle` (`engine/army-tables.ts`), **not** in the saved state's
+schema (P1-10b2).
 
 - **Why not in the schema:** on 2026-09-27 `_flakTargeted` was never wiped, so it was saved, and a flyer harried once
   was immune to Flak Screen for the rest of the game. The schemas' tests parse every state of a matrix game strictly

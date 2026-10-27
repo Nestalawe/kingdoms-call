@@ -83,7 +83,9 @@ export function taxRecordsGold(income, capG) {
 // or anything else. It binds each province-tax discovery, Taxation Records, and the magic items
 // that pay tax gold (their combined total). Always at least 1g, so a small realm still gains.
 export const TAX_BONUS_CAP_PCT = 0.05;
-export function realmBaseTax(gs, pi) {
+// Its return type is written for the typed files that call it (plan P1-10b7: an annotation; this file keeps its
+// ts-nocheck line, so nothing checks it yet).
+export function realmBaseTax(gs, pi): number {
   const provs = (gs && gs.world && gs.world.provinces) || [];
   return provs.reduce((s, pv) => s + (pv && pv.owner === pi ? pv.tax || 0 : 0), 0);
 }
@@ -149,7 +151,9 @@ export function discTaxAdd(pl, pv, gs, pi, acc, capG) {
 // the tax discoveries use (2026-09-26, Toby): `capG` replaces whatever fixed `max` the row carried,
 // so Goblin Warrens' old flat 1g becomes 5% of the realm's base tax income and grows with the realm.
 // `acc` tracks what each capped effect has already saved this turn.
-export function discUpkeepWage(pl, a, w, acc, capG) {
+// Its return type is written for the typed files that call it (plan P1-10b7: an annotation, as realmBaseTax's): the
+// wage `w` it is given when there is no realm, no unit or a skeleton, which every typed caller passes as a number.
+export function discUpkeepWage(pl, a, w, acc, capG): number {
   if (!pl || !a || a._isSkeletal) return w;
   let out = w;
   discEffectsOf(pl, 'upkeep').forEach((e) => {
@@ -382,7 +386,13 @@ export function dragonTamed(turnContext, heroChar, army) {
   );
 }
 // data-driven discovery effects (race / alignment discoveries).
-export function discEff(turnContext, pi, kind) {
+// Its return type is written for the typed files that call it (plan P1-10b7: an annotation, as realmBaseTax's): the
+// effects of the discoveries' rows (SAGE_DISCOVERIES_P's `effect` and `effect2`), which discEffectsOf returns.
+export function discEff(
+  turnContext,
+  pi,
+  kind,
+): NonNullable<(typeof SAGE_DISCOVERIES_P)[number]['effect' | 'effect2']>[] {
   const { G } = turnContext;
   return pi == null ? [] : discEffectsOf(G.players[pi], kind);
 }

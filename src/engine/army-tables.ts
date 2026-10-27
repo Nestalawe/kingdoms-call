@@ -6,7 +6,7 @@ import {
   PRIMAL_ARMY_DEFS_P,
 } from '../content/kingdoms-call-data.ts';
 import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
-import type { Army, Character, GameState, Grave } from '../schemas/saved-game-state.ts';
+import type { Army, Character, GameState, Grave, Province } from '../schemas/saved-game-state.ts';
 
 // ── A UNIT AND A HERO IN A BATTLE ────
 // A battle writes marks on its units and its commanders that last for that battle only, and wipes them at the battle's
@@ -35,6 +35,10 @@ export type ArmyInABattle = Army & {
   /** A strength loss meant to last the whole turn (applyPrebattleDamage). Set by nothing today (Parked: the dead
    *  marks); wiped by the new turn. */
   _turnStrReduction?: number;
+  // The turn's marks Early Winter reads (plan P1-10b7).
+  /** A unit summoned for the turn (an elemental of Summon Elemental, the Grove of Awaken Grove): it draws no wage and
+   *  is never disbanded for one. Set where it is summoned; the new turn removes the unit itself. */
+  _temporary?: boolean;
 };
 /** A hero in a battle: a character and the marks the battle writes on him. */
 export type HeroInABattle = Character & {
@@ -53,6 +57,21 @@ export type HeroInABattle = Character & {
   /** Psychic Blast has negated his Druid this battle. Cleared at each battle's start and set by its pre-battle magic,
    *  in both battles; wiped by the new turn. */
   _druidNegated?: boolean;
+  // The turn's marks Early Winter reads (plan P1-10b7): the Charm spell sets all three when it seizes an enemy hero's
+  // command for the rest of the turn (beside the saved _charmTempControl and _charmOriginalPlayer).
+  /** The phase from which he acts on his charmer's orders (actingThisPhase). Wiped by Early Winter, when he returns
+   *  to his own lord. */
+  _charmControlFrom?: number;
+  /** The realm whose hero cast the Charm. Wiped by Early Winter and the new turn. */
+  _charmedByPlayer?: number | null;
+  /** The phase the Charm took hold. Wiped by Early Winter and the new turn. */
+  _charmedForPhase?: number;
+};
+/** A province in a turn: a province and the mark a battle writes on it. */
+export type ProvinceInABattle = Province & {
+  /** Raiders' Muster: the turn an orc victory was won here (set by both battles). Early Winter reads it that turn,
+   *  adding a Goblin Horde to an orc realm's garrison, and wipes it then (an older turn's too). */
+  _raidersMuster?: number;
 };
 
 // ════
