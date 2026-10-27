@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
+import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
@@ -26,15 +26,7 @@ import {
 } from './lines.ts';
 import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, aAn, ladderLines } from './ladder.ts';
 import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
-import {
-  OPEN_COUNTRY,
-  RUN_THEM_DOWN_PCT,
-  countType,
-  isHalfOrMore,
-  rideThemDownBonus,
-  shieldFortHolds,
-  tacMulted,
-} from '../units/movement.ts';
+import { pursuitsOfTheBeaten, shieldFortHolds, tacMulted, theFractionThePursuitsAdd } from '../units/movement.ts';
 import {
   AERIAL_TYPES,
   FLYING_TYPES,
@@ -1280,30 +1272,39 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const defSteelMultOf = (a) => discDeathMult(turnContext, def.player, a, 'def');
   const atkTacMult = perkTier(atk, 'tactical') >= 3 ? 0.5 : 1; // TACTICAL L8: on a LOSS, atk's units half as likely to die/disband
   const defTacMult = perkTier(def, 'tactical') >= 3 ? 0.5 : 1;
-  // ── UNIT ABILITIES: casualty & retreat ── HUMAN — Ride Them Down: light horse are murder on a
-  // broken enemy. +6pp per Free Lances unit in the WINNING force to each losing unit's
-  // destruction roll, capped +18pp.
-  const _rideAtk = rideThemDownBonus(atkArmies, pvpTerrain, atk);
-  const _rideDef = rideThemDownBonus(defArmies, pvpTerrain, def);
-  if (_rideAtk > 0 && !OPEN_COUNTRY.has(pvpTerrain))
-    narrate(narrative, {
-      kind: "a side's war-horn of the plains lets its free lances ride in rough country",
-      sideName: atkName,
-      terrain: pvpTerrain,
-    });
-  if (_rideDef > 0 && !OPEN_COUNTRY.has(pvpTerrain))
-    narrate(narrative, {
-      kind: "a side's war-horn of the plains lets its free lances ride in rough country",
-      sideName: defName,
-      terrain: pvpTerrain,
-    });
-  if (_rideAtk === 0 && countType(atkArmies, 'Free Lances') > 0)
-    narrate(narrative, { kind: "a side's free lances find no room to ride", sideName: atkName, terrain: pvpTerrain });
-  if (_rideDef === 0 && countType(defArmies, 'Free Lances') > 0)
-    narrate(narrative, { kind: "a side's free lances find no room to ride", sideName: defName, terrain: pvpTerrain });
+  // ── UNIT ABILITIES: casualty & retreat ── The rule registry's three stages of the rout (plan P1-19j): the pursuits
+  // each force would make of the beaten as the winner ("fate: the winner runs the beaten down"), whether it holds the
+  // sea lanes ("a force holds the sea lanes") and whether it holds when beaten ("the beaten force holds",
+  // shieldFortHolds). This adds each pursuit's fraction to each beaten unit's death roll and writes the lines.
+  // HUMAN — Ride Them Down: light horse are murder on a broken enemy, in open country (the War-Horn of the Plains carries
+  // them onto rough ground); ORC — Run Them Down (2026-10-09, Toby item 7): a warg-heavy victor runs the beaten army
+  // down ON THE FIELD, on any ground — instead of the old automatic chase after the beaten commander, which marched the
+  // victor off in later phases on orders nobody gave (there is no follow-up move or pursuit now); PRIMAL (2026-10-13,
+  // the beast abilities): the Manticores hunt a broken foe down on any ground, and at sea the sharks tear into beaten
+  // crews. A Shield Fort withdrawal is immune to each.
+  const _pursuitsAtk = pursuitsOfTheBeaten(atkArmies, pvpTerrain, atk, 'between heroes');
+  const _pursuitsDef = pursuitsOfTheBeaten(defArmies, pvpTerrain, def, 'between heroes');
+  for (const [_ps, _side] of [
+    [_pursuitsAtk, atkName],
+    [_pursuitsDef, defName],
+  ])
+    for (const p of _ps)
+      if (p.onTheGround === 'by the war-horn of the plains')
+        narrate(narrative, {
+          kind: "a side's war-horn of the plains lets its free lances ride in rough country",
+          sideName: _side,
+          terrain: pvpTerrain,
+        });
+  for (const [_ps, _side] of [
+    [_pursuitsAtk, atkName],
+    [_pursuitsDef, defName],
+  ])
+    for (const p of _ps)
+      if (p.onTheGround === 'it finds no room')
+        narrate(narrative, { kind: "a side's free lances find no room to ride", sideName: _side, terrain: pvpTerrain });
   // HUMAN — Cut the Line: a corsair-heavy victor leaves no line of retreat by sea.
-  const _cutAtk = isHalfOrMore(atkArmies, 'Corsair Fleet');
-  const _cutDef = isHalfOrMore(defArmies, 'Corsair Fleet');
+  const _cutAtk = aForceHoldsTheSeaLanes({ theForce: atkArmies ?? [], theBattle: 'between heroes' });
+  const _cutDef = aForceHoldsTheSeaLanes({ theForce: defArmies ?? [], theBattle: 'between heroes' });
   // DWARF — Shield Fort (replaces Hold the Line): a Guard-heavy force never routs — it conducts a
   // FIGHTING WITHDRAWAL behind locked shields. Retreat path available: it withdraws in good order
   // (immune to Ride Them Down and to demotion-in-retreat). Trapped: it holds its ground contested
@@ -1311,56 +1312,78 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // force no longer chains itself to a lost field.
   const _sfAtk = shieldFortHolds(atkArmies, _dep && _dep.gA); // 2026-10-11 (Toby): half the FRONT LINE is Guard, a Dwarf Garrison counting
   const _sfDef = shieldFortHolds(defArmies, _dep && _dep.gD);
-  // ORC — Run Them Down (2026-10-09, Toby item 7): a warg-heavy victor runs the beaten army down ON
-  // THE FIELD. When at least half the winning force are Warg Riders, every beaten unit's chance of
-  // being destroyed in the rout rises by RUN_THEM_DOWN_PCT, on any ground — instead of the old
-  // automatic chase after the beaten commander, which marched the victor off in later phases on
-  // orders nobody gave. There is no follow-up move or pursuit now. A Shield Fort withdrawal is
-  // immune, exactly as it is to Ride Them Down.
-  const _wargAtk = isHalfOrMore(atkArmies, 'Warg Riders');
-  const _wargDef = isHalfOrMore(defArmies, 'Warg Riders');
-  // PRIMAL (2026-10-13, the beast abilities): the Manticores hunt a broken foe down on any ground, and at sea the sharks tear into
-  // beaten crews — each +RUN_THEM_DOWN_PCT to the loser's destruction rolls when at least half the winning force is theirs,
-  // as the Wargs' Run Them Down; a Shield Fort withdrawal is immune to both.
-  const _mantAtk = isHalfOrMore(atkArmies, 'Manticore Pride'),
-    _mantDef = isHalfOrMore(defArmies, 'Manticore Pride');
-  const _sharkAtk = pvpTerrain === 'sea' && isHalfOrMore(atkArmies, 'Shark Shoals'),
-    _sharkDef = pvpTerrain === 'sea' && isHalfOrMore(defArmies, 'Shark Shoals');
-  const _huntPct = (mant, shark) => (mant ? RUN_THEM_DOWN_PCT : 0) + (shark ? RUN_THEM_DOWN_PCT : 0);
-  const _huntLines = (mant, shark, sf, winner, loser, narr) => {
-    if (mant)
-      narrate(
-        narr,
-        sf
-          ? {
-              kind: "the loser's dwarven guard leave the manticore pride nothing to hunt",
-              loserName: loser,
-              winnerName: winner,
-            }
-          : {
-              kind: "the winner's manticore pride hunt the broken companies",
-              winnerName: winner,
-              runThemDownPct: dispFloor(RUN_THEM_DOWN_PCT * 100),
-              loserName: loser,
-            },
-      );
-    if (shark)
-      narrate(
-        narr,
-        sf
-          ? {
-              kind: "the loser's dwarven guard leave the shark shoals nothing in the water",
-              loserName: loser,
-              winnerName: winner,
-            }
-          : {
-              kind: "the winner's shark shoals tear into the beaten crews",
-              winnerName: winner,
-              loserName: loser,
-              runThemDownPct: dispFloor(RUN_THEM_DOWN_PCT * 100),
-              loserName2: loser,
-            },
-      );
+  // Each pursuit's line over the beaten, in the registry's order (their kinds and words stay here until plan P1-12d):
+  // as it bites, or, when a Shield Fort holds, the line by which it finds nothing to bite on.
+  const _pursuitLines = (pursuits, sf, winner, loser, narr) => {
+    for (const p of pursuits) {
+      if (!(p.theFractionAddedToEachBeatenUnitsDeathRoll > 0)) continue;
+      const pct = dispFloor(p.theFractionAddedToEachBeatenUnitsDeathRoll * 100);
+      if (p.line === 'the free lances ride the beaten down')
+        narrate(
+          narr,
+          sf
+            ? {
+                kind: "the loser's dwarven guard leave the free lances no broken backs",
+                loserName: loser,
+                winnerName: winner,
+              }
+            : {
+                kind: "the winner's free lances ride down the broken companies",
+                winnerName: winner,
+                rideDownPct: pct,
+                loserName: loser,
+              },
+        );
+      else if (p.line === 'the warg riders run the beaten down')
+        narrate(
+          narr,
+          sf
+            ? {
+                kind: "the loser's dwarven guard leave the warg riders no broken backs",
+                loserName: loser,
+                winnerName: winner,
+              }
+            : {
+                kind: "the winner's warg riders run down the broken companies",
+                winnerName: winner,
+                runThemDownPct: pct,
+                loserName: loser,
+              },
+        );
+      else if (p.line === 'the manticore pride hunts the beaten')
+        narrate(
+          narr,
+          sf
+            ? {
+                kind: "the loser's dwarven guard leave the manticore pride nothing to hunt",
+                loserName: loser,
+                winnerName: winner,
+              }
+            : {
+                kind: "the winner's manticore pride hunt the broken companies",
+                winnerName: winner,
+                runThemDownPct: pct,
+                loserName: loser,
+              },
+        );
+      else if (p.line === 'the shark shoals tear into the beaten crews')
+        narrate(
+          narr,
+          sf
+            ? {
+                kind: "the loser's dwarven guard leave the shark shoals nothing in the water",
+                loserName: loser,
+                winnerName: winner,
+              }
+            : {
+                kind: "the winner's shark shoals tear into the beaten crews",
+                winnerName: winner,
+                loserName: loser,
+                runThemDownPct: pct,
+                loserName2: loser,
+              },
+        );
+    }
   };
   // (The Eagle Riders' Skyward Retreat was retired with the unit abilities, 2026-10-11.)
   const _noEscapeRoll = (force, name, narr) => {
@@ -1496,37 +1519,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
     });
     survLine(atkArmies, _cas0);
     narrate(narrative, { kind: "the defender's casualties begin", defName });
-    const _rideAtkEff = _sfDef ? 0 : _rideAtk + (_wargAtk ? RUN_THEM_DOWN_PCT : 0) + _huntPct(_mantAtk, _sharkAtk);
-    if (_rideAtk > 0 && _sfDef)
-      narrate(narrative, {
-        kind: "the loser's dwarven guard leave the free lances no broken backs",
-        loserName: defName,
-        winnerName: atkName,
-      });
-    else if (_rideAtk > 0)
-      narrate(narrative, {
-        kind: "the winner's free lances ride down the broken companies",
-        winnerName: atkName,
-        rideDownPct: dispFloor(_rideAtk * 100),
-        loserName: defName,
-      });
-    if (_wargAtk)
-      narrate(
-        narrative,
-        _sfDef
-          ? {
-              kind: "the loser's dwarven guard leave the warg riders no broken backs",
-              loserName: defName,
-              winnerName: atkName,
-            }
-          : {
-              kind: "the winner's warg riders run down the broken companies",
-              winnerName: atkName,
-              runThemDownPct: dispFloor(RUN_THEM_DOWN_PCT * 100),
-              loserName: defName,
-            },
-      );
-    _huntLines(_mantAtk, _sharkAtk, _sfDef, atkName, defName, narrative);
+    const _rideAtkEff = _sfDef ? 0 : theFractionThePursuitsAdd(_pursuitsAtk);
+    _pursuitLines(_pursuitsAtk, _sfDef, atkName, defName, narrative);
     // Losing defender
     const _cas1 = narrative.length;
     rollUnitFates(defArmies, {
@@ -1701,37 +1695,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
       provName: prov.name,
     });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName }); // Losing attacker
-    const _rideDefEff = _sfAtk ? 0 : _rideDef + (_wargDef ? RUN_THEM_DOWN_PCT : 0) + _huntPct(_mantDef, _sharkDef);
-    if (_rideDef > 0 && _sfAtk)
-      narrate(narrative, {
-        kind: "the loser's dwarven guard leave the free lances no broken backs",
-        loserName: atkName,
-        winnerName: defName,
-      });
-    else if (_rideDef > 0)
-      narrate(narrative, {
-        kind: "the winner's free lances ride down the broken companies",
-        winnerName: defName,
-        rideDownPct: dispFloor(_rideDef * 100),
-        loserName: atkName,
-      });
-    if (_wargDef)
-      narrate(
-        narrative,
-        _sfAtk
-          ? {
-              kind: "the loser's dwarven guard leave the warg riders no broken backs",
-              loserName: atkName,
-              winnerName: defName,
-            }
-          : {
-              kind: "the winner's warg riders run down the broken companies",
-              winnerName: defName,
-              runThemDownPct: dispFloor(RUN_THEM_DOWN_PCT * 100),
-              loserName: atkName,
-            },
-      );
-    _huntLines(_mantDef, _sharkDef, _sfAtk, defName, atkName, narrative);
+    const _rideDefEff = _sfAtk ? 0 : theFractionThePursuitsAdd(_pursuitsDef);
+    _pursuitLines(_pursuitsDef, _sfAtk, defName, atkName, narrative);
     const _cas2 = narrative.length;
     rollUnitFates(atkArmies, {
       owner: atkName,

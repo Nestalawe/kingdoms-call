@@ -958,12 +958,17 @@ by kind:
 - before the battle: the registry's "a flyer is harried before the battle" (Flak Screen, a stage of `strength`), which
   `applyFlakScreen` asks, and "a hull is sunk before the battle" (Breach and Swamp, a stage of `fate`), which both
   battles ask (`combatVsChar`'s `applyBreachAndSwamp`, and `combatVsNPC`), each handed the dice;
+- the rout: the registry's three stages of `fate` after a battle, "the beaten force holds" (Shield Fort, Deep Halls),
+  which `shieldFortHolds` asks, "the winner runs the beaten down" (Ride Them Down, Run Them Down, the Manticores'
+  pursuit, Feeding Frenzy), which `pursuitsOfTheBeaten` asks for both battles (`rideThemDownBonus` keeps Ride Them
+  Down's share), and "a force holds the sea lanes" (the Corsair Fleet's Cut the Line and Keep the Sea Lanes), which both
+  battles ask; the lines stay in the battles;
 - the pre-battle volley: the registry's nine stages of `volley`, which `abilityMissileUnits`, `missileCap`,
   `missileCapReached`, `missileTargetPool`, `archeryBlockedBy`, `eyesOfTheForestLine`, `missileDamageMult`,
   `abilityVolleys` and `applyMissileHit` ask;
 - force-wide strength: the registry's stages "a land unit at sea" and "the whole force" (above), which `armStr` and
   `unitAbilityMult` ask; fates: the registry's two stages of a unit's fate (Regenerating Hide, Knightly Example), which
-  `rollUnitFates` asks, and `shieldFortHolds`;
+  `rollUnitFates` asks;
 - turn hooks inside `resolveTurn`: Raiders' Muster at turn's end.
 
 **One content row and one registry entry** ([ARCHITECTURE.md](ARCHITECTURE.md#the-rule-registry)): the nine
@@ -980,12 +985,14 @@ Gunners; and the two of a unit's fate after the battle (P1-19d), Regenerating Hi
 the volley (P1-19g), Broadside, Tree Watch, Bombardment, Eyes of the Forest, Ambush, Loosed From Cover, Armoured Hulls,
 Shell Wall, Prepared Ground, Woodland Volley, Raiders' Volley, Thick Hide, Punch Through and Sea Archers; and the five of the grid (P1-19h), Through the Trees, Through the Glades, Crag
 Charge, Brawling Archers and Colossal Bulk, with Stoop on the Horses' flank slot; and the two before the battle
-(P1-19i), Flak Screen and Breach and Swamp. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
+(P1-19i), Flak Screen and Breach and Swamp; and the seven of the rout (P1-19j), Shield Fort, Deep Halls, Ride Them
+Down, Run Them Down, Feeding Frenzy, and the Corsair Fleet's Cut the Line and Keep the Sea Lanes (a retired unit's, in
+no book: the words test checks they are still in none), with Relentless Hunt's pursuit. Each is its row in `src/content/unit-abilities-their-names-numbers-and-words.ts` (its name and
 numbers, in the same file as its unit's blurb), its effect in a file of `src/engine/rules/unit-abilities/` and its entry in the registry, in its stage's order;
 `tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts` checks its name and numbers in both books
 from its row (an ability the books give no number, Rooted for one, is listed there and its name checked). Change a
 number in its row and in both books (the blurb a few hundred lines below it, the rulebook by hand). **Still inline**: every other ability, in the places above (the rest of the family's second
-slice: the rout, the pre-battle strikes, the turn hooks).
+slice: the pre-battle strikes, the turn hooks).
 
 `tests/abilities-words.test.js` holds the table of names of the abilities still inline and checks both books; the four race tests
 (`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and

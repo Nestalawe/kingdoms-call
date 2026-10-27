@@ -24,9 +24,11 @@ import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const REGISTRY = 'src/engine/rules/the-registry-of-content-effects.ts';
 const ROWS = 'src/content/unit-abilities-their-names-numbers-and-words.ts';
-/** The files a copy holds: the content and the registry's folder. */
+/** The files a copy holds: the content and the registry's folder (since P1-19j, the rows of a unit no longer raised,
+ *  which the content's rows read). */
 const COPIED = [
   'src/content/kingdoms-call-data.ts',
+  'src/content/the-abilities-of-a-unit-no-longer-raised.ts',
   ROWS,
   ...filesUnder(path.join(ROOT, 'src', 'engine', 'rules')).map((f) => `src/engine/rules/${f}`),
 ];

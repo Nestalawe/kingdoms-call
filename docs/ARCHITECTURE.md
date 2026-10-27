@@ -373,7 +373,21 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   `strength`: handed the unit, the enemy's flyers not yet harried and the rule of a unit's base strength; the flyer's
   place and the strength it loses), and `fate`'s **a hull is sunk before the battle** (Breach and Swamp, first of
   `fate`, which both battles ask: handed the unit and the enemy's hulls afloat; the hull's place). The battle code
-  marks the unit and writes the line. Every stage of
+  marks the unit and writes the line. The rout (P1-19j, `src/engine/rules/unit-abilities/the-rout-after-a-battle.ts`),
+  three stages of `fate`, each handed the battle it follows (between heroes, a hero against neutral guards, or the
+  guards against a hero) where it matters, and each effect looking for its unit in the force: **the beaten force
+  holds** (Shield Fort, and Deep Halls counting a Dwarf Garrison as Guard in a front line placed: `shieldFortHolds`
+  asks it, handed the force and its front line's unit types, or none for an estimate); **the winner runs the beaten
+  down** (Ride Them Down, Run Them Down, Relentless Hunt's pursuit, a second stage in its entry, and Feeding Frenzy, in
+  the battle code's order: each a pursuit, the fraction it adds to each beaten unit's death roll, the factor on the
+  winner's own (Run Them Down's half against neutral guards), how the ground lets it run, and which line the battle
+  writes for it; handed the winning force, the ground and whether its commander carries the War-Horn of the Plains, asked
+  only by an effect that needs it; `pursuitsOfTheBeaten`, `src/engine/units/movement.ts`, asks it for both battles,
+  which add the fractions in order unless a Shield Fort holds, and `rideThemDownBonus` keeps Ride Them Down's share
+  alone); and **a force holds the sea lanes** (the Corsair Fleet's Cut the Line between heroes, and Keep the Sea Lanes
+  against neutral guards: both battles' retreat asks it; a retired unit's, in no book, so their two rows are in a file
+  of their own, `src/content/the-abilities-of-a-unit-no-longer-raised.ts`, read into the rows: the player page's own
+  files name no retired unit). Every stage of
   `strength`, `volley` and `fate` now has its signature; the other six hook points are `never` until their family's
   first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a

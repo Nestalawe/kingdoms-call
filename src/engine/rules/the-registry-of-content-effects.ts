@@ -46,6 +46,11 @@ import {
   A_HULL_IS_SUNK_BEFORE_THE_BATTLE,
 } from './unit-abilities/a-flyer-harried-and-a-hull-sunk-before-the-battle.ts';
 import {
+  A_FORCE_HOLDS_THE_SEA_LANES,
+  THE_BEATEN_FORCE_HOLDS,
+  THE_WINNER_RUNS_THE_BEATEN_DOWN,
+} from './unit-abilities/the-rout-after-a-battle.ts';
+import {
   A_SHOTS_DAMAGE,
   HOW_MANY_VOLLEYS,
   MAY_BE_SHOT_AT,
@@ -324,6 +329,61 @@ export interface AUnitAndTheEnemyHullsAfloat {
   readonly theDice: () => number;
 }
 
+/** The battle a rout follows, as the force handed sees it: between two heroes' forces; a hero's force against a
+ *  province's neutral guards, who never flee the province; or those neutral guards against the hero's force. */
+export type TheBattleARoutFollows =
+  'between heroes' | 'a hero against neutral guards' | 'neutral guards against a hero';
+
+/** What the stage "the beaten force holds" hands an effect (shieldFortHolds): the force, with the holes the battle code
+ *  leaves in a force, and the unit types of its front line as the battle grid placed it (its empty places left out; a
+ *  place with no unit is none), or none when no grid was placed (an estimate). */
+export interface ABeatenForceAndItsFrontLine {
+  readonly theForce: readonly (AUnitOfAForce | null | undefined)[];
+  readonly theFrontLine: readonly (string | undefined)[] | null;
+}
+
+/** What the stage "the winner runs the beaten down" hands an effect (pursuitsOfTheBeaten, for both battles' rout): the
+ *  winning force, with the holes the battle code leaves in a force, the battle's ground, whether its commander carries
+ *  the War-Horn of the Plains (an item: asked, as the dice are handed, only by an effect that needs it, as the battle
+ *  code asked it, since reading a commander's items tidies them), and the battle. */
+export interface AWinningForceOnItsGround {
+  readonly theWinningForce: readonly (AUnitOfAForce | null | undefined)[];
+  readonly ground: string | null | undefined;
+  readonly itsCommanderCarriesTheWarHornOfThePlains: () => boolean;
+  readonly theBattle: TheBattleARoutFollows;
+}
+
+/** Which line the battle writes for a pursuit (its kinds and words stay in the battle code until plan P1-12d moves
+ *  them): the line as it bites, or the line by which a Shield Fort leaves it nothing to bite on. */
+export type ThePursuitsLine =
+  | 'the free lances ride the beaten down'
+  | 'the warg riders run the beaten down'
+  | "the warg riders halve the winner's losses"
+  | 'the manticore pride hunts the beaten'
+  | 'the shark shoals tear into the beaten crews';
+
+/** How the ground lets a pursuit run: it does; only by the commander's War-Horn of the Plains (on ground it finds no room
+ *  on by itself); or it finds no room, and adds nothing (the battle writes a line before the fighting for the last two). */
+export type HowTheGroundLetsAPursuitRun = 'it runs' | 'by the war-horn of the plains' | 'it finds no room';
+
+/** A pursuit of the beaten by a winning force's ability: its line, the fraction it adds to each beaten unit's death
+ *  roll, the factor on each of the winner's own death rolls (1, but Run Them Down's half against neutral guards), and
+ *  how the ground lets it run. */
+export interface APursuitOfTheBeaten {
+  readonly line: ThePursuitsLine;
+  readonly theFractionAddedToEachBeatenUnitsDeathRoll: number;
+  readonly theFactorOnTheWinnersOwnDeathRolls: number;
+  readonly onTheGround: HowTheGroundLetsAPursuitRun;
+}
+
+/** What the stage "a force holds the sea lanes" hands an effect (both battles' retreat): the force, with the holes the
+ *  battle code leaves in a force, and the battle. Between heroes, a winner holding them closes the sea to the beaten;
+ *  against neutral guards, an attacker holding them keeps its way back to the ships when beaten. */
+export interface AForceInItsBattle {
+  readonly theForce: readonly (AUnitOfAForce | null | undefined)[];
+  readonly theBattle: TheBattleARoutFollows;
+}
+
 /** A multiplier, and its words in the strength ladder (the ability's name, or its own words). */
 export interface AMultiplierAndItsWords {
   readonly multiplier: number;
@@ -402,6 +462,11 @@ export interface TheStagesOfEachHookPoint {
     /** The enemy hull a unit sinks before the battle: its place among the hulls afloat, or nothing (both battles, before
      *  either side's strength is counted). */
     readonly 'a hull is sunk before the battle': (facts: AUnitAndTheEnemyHullsAfloat) => number | null;
+    /** Whether a beaten force holds, never routing (shieldFortHolds, before the rout). */
+    readonly 'the beaten force holds': (facts: ABeatenForceAndItsFrontLine) => boolean;
+    /** A pursuit of the beaten by the winning force, or nothing (the rout of both battles, before the beaten units'
+     *  death rolls). */
+    readonly 'the winner runs the beaten down': (facts: AWinningForceOnItsGround) => APursuitOfTheBeaten | null;
     /** Whether a unit that failed its death roll lives: the line of the battle by which it does, or nothing (it dies). */
     readonly 'a beaten unit fails its death roll': (
       facts: AUnitThatFailedItsDeathRoll,
@@ -410,6 +475,8 @@ export interface TheStagesOfEachHookPoint {
     readonly 'a beaten unit fails its demotion roll': (
       facts: AUnitThatFailedItsDemotionRoll,
     ) => TheLineOfAUnitThatHoldsThroughItsDemotionRoll | null;
+    /** Whether a force holds the sea lanes (both battles' retreat, after the units' fates). */
+    readonly 'a force holds the sea lanes': (facts: AForceInItsBattle) => boolean;
   };
   readonly movementCost: never;
   readonly orderValidity: never;
@@ -433,7 +500,10 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'sheer-numbers': { strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE['sheer-numbers'] } },
   'reaver-crews': { strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE['reaver-crews'] } },
   'shoal-swarm': { strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE['shoal-swarm'] } },
-  'relentless-hunt': { strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE['relentless-hunt'] } },
+  'relentless-hunt': {
+    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE['relentless-hunt'] },
+    fate: { 'the winner runs the beaten down': THE_WINNER_RUNS_THE_BEATEN_DOWN['relentless-hunt'] },
+  },
   'stone-deterrent': { strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE['stone-deterrent'] } },
   'tidal-might': { strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE['tidal-might'] } },
   'deepwater-grasp': { strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE['deepwater-grasp'] } },
@@ -569,6 +639,19 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'breach-and-swamp': {
     fate: { 'a hull is sunk before the battle': A_HULL_IS_SUNK_BEFORE_THE_BATTLE['breach-and-swamp'] },
   },
+  'shield-fort': { fate: { 'the beaten force holds': THE_BEATEN_FORCE_HOLDS['shield-fort'] } },
+  'deep-halls': { fate: { 'the beaten force holds': THE_BEATEN_FORCE_HOLDS['deep-halls'] } },
+  'ride-them-down': {
+    fate: { 'the winner runs the beaten down': THE_WINNER_RUNS_THE_BEATEN_DOWN['ride-them-down'] },
+  },
+  'run-them-down': {
+    fate: { 'the winner runs the beaten down': THE_WINNER_RUNS_THE_BEATEN_DOWN['run-them-down'] },
+  },
+  'feeding-frenzy': {
+    fate: { 'the winner runs the beaten down': THE_WINNER_RUNS_THE_BEATEN_DOWN['feeding-frenzy'] },
+  },
+  'cut-the-line': { fate: { 'a force holds the sea lanes': A_FORCE_HOLDS_THE_SEA_LANES['cut-the-line'] } },
+  'keep-the-sea-lanes': { fate: { 'a force holds the sea lanes': A_FORCE_HOLDS_THE_SEA_LANES['keep-the-sea-lanes'] } },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -634,8 +717,11 @@ export const THE_ORDER_OF_EACH_STAGE = {
   },
   fate: {
     'a hull is sunk before the battle': ['breach-and-swamp'],
+    'the beaten force holds': ['shield-fort', 'deep-halls'],
+    'the winner runs the beaten down': ['ride-them-down', 'run-them-down', 'relentless-hunt', 'feeding-frenzy'],
     'a beaten unit fails its death roll': ['regenerating-hide'],
     'a beaten unit fails its demotion roll': ['knightly-example'],
+    'a force holds the sea lanes': ['cut-the-line', 'keep-the-sea-lanes'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: { readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly UnitAbilitySlug[] };
@@ -810,6 +896,24 @@ const A_HULL_IS_SUNK_BY_UNIT = theEffectsOfEachUnitAt(
   THE_ORDER_OF_FATE['a hull is sunk before the battle'],
   (entry) => entry.fate?.['a hull is sunk before the battle'],
 );
+type TheBeatenForceHoldsEffect = TheStagesOfEachHookPoint['fate']['the beaten force holds'];
+/** The effects of "the beaten force holds", in the stage's order (each looks for its unit in the force). */
+const THE_BEATEN_FORCE_HOLDS_EFFECTS = THE_ORDER_OF_FATE['the beaten force holds'].flatMap((slug) => {
+  const effect = ENTRIES[slug].fate?.['the beaten force holds'];
+  return effect ? [effect] : [];
+}) satisfies readonly TheBeatenForceHoldsEffect[];
+type TheWinnerRunsTheBeatenDownEffect = TheStagesOfEachHookPoint['fate']['the winner runs the beaten down'];
+/** The effects of "the winner runs the beaten down", in the stage's order (each looks for its unit in the force). */
+const THE_WINNER_RUNS_THE_BEATEN_DOWN_EFFECTS = THE_ORDER_OF_FATE['the winner runs the beaten down'].flatMap((slug) => {
+  const effect = ENTRIES[slug].fate?.['the winner runs the beaten down'];
+  return effect ? [effect] : [];
+}) satisfies readonly TheWinnerRunsTheBeatenDownEffect[];
+type AForceHoldsTheSeaLanesEffect = TheStagesOfEachHookPoint['fate']['a force holds the sea lanes'];
+/** The effects of "a force holds the sea lanes", in the stage's order (each looks for its unit in the force). */
+const A_FORCE_HOLDS_THE_SEA_LANES_EFFECTS = THE_ORDER_OF_FATE['a force holds the sea lanes'].flatMap((slug) => {
+  const effect = ENTRIES[slug].fate?.['a force holds the sea lanes'];
+  return effect ? [effect] : [];
+}) satisfies readonly AForceHoldsTheSeaLanesEffect[];
 const NO_EFFECTS: readonly never[] = [];
 
 /** A multiplier, and the words of each ability that moved it, in order. */
@@ -1099,4 +1203,27 @@ export function theHullAUnitSinksBeforeTheBattle(facts: AUnitAndTheEnemyHullsAfl
     if (sunk !== null) return sunk;
   }
   return null;
+}
+
+/** The runner of "fate: the beaten force holds" (shieldFortHolds): whether any ability, in the stage's order, holds the
+ *  beaten force (it never routs). */
+export function theBeatenForceHolds(facts: ABeatenForceAndItsFrontLine): boolean {
+  return THE_BEATEN_FORCE_HOLDS_EFFECTS.some((effect) => effect(facts));
+}
+
+/** The runner of "fate: the winner runs the beaten down" (pursuitsOfTheBeaten): the pursuit of each ability of the
+ *  winning force that makes one, in the stage's order. */
+export function thePursuitsOfTheBeaten(facts: AWinningForceOnItsGround): readonly APursuitOfTheBeaten[] {
+  const pursuits: APursuitOfTheBeaten[] = [];
+  for (const effect of THE_WINNER_RUNS_THE_BEATEN_DOWN_EFFECTS) {
+    const pursuit = effect(facts);
+    if (pursuit !== null) pursuits.push(pursuit);
+  }
+  return pursuits;
+}
+
+/** The runner of "fate: a force holds the sea lanes" (both battles' retreat): whether any ability, in the stage's order,
+ *  holds them for the force in its battle. */
+export function aForceHoldsTheSeaLanes(facts: AForceInItsBattle): boolean {
+  return A_FORCE_HOLDS_THE_SEA_LANES_EFFECTS.some((effect) => effect(facts));
 }

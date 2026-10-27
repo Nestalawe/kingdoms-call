@@ -10,6 +10,7 @@
 // unit's abilities as the player portal shows them, keyed by unit. The player portal imports them, and its page's entry
 // (ui/player/page.ts) lists this file, so the words tests read them as the page's.
 import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
+import { CUT_THE_LINE, KEEP_THE_SEA_LANES } from './the-abilities-of-a-unit-no-longer-raised.ts';
 
 /** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1), and one taken as `−30%`
  *  (0.3, with the books' minus sign, U+2212); a chance as `30%` (0.3);
@@ -64,7 +65,7 @@ export interface AUnitAbilityAsTheBooksWriteIt {
  *  whole force (plan P1-19a), then a unit meeting another or shooting over its line (P1-19b), then the whole line
  *  (P1-19c), then a unit's fate after the battle (P1-19d), then the volley before the battle and a land unit at sea
  *  (P1-19g), then a unit's place in the battle grid (P1-19h), then what a unit does to the enemy before the battle
- *  (P1-19i). */
+ *  (P1-19i), then the rout (P1-19j). */
 export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // Orc: goblins are worth little alone and a great deal in a mob.
   'sheer-numbers': {
@@ -93,10 +94,16 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     },
     counts: ['Shark Shoals'],
   },
+  // Its strength attacking; and, in the rout (plan P1-19j), the Manticores' pursuit: when at least half the winning force
+  // are Manticores, the beaten foe takes +15% rout losses, on any ground.
   'relentless-hunt': {
     unit: 'Manticore Pride',
     name: 'Relentless Hunt',
-    numbers: { attacking: { value: 1.25, theBooksWriteIt: 'a multiplier' } },
+    numbers: {
+      attacking: { value: 1.25, theBooksWriteIt: 'a multiplier' },
+      theWinningForceAtLeast: { value: 0.5, theBooksWriteIt: 'half' },
+      theBeatenFoesRoutLosses: { value: 0.15, theBooksWriteIt: 'a fraction added' },
+    },
   },
   'stone-deterrent': {
     unit: 'Basilisk Brood',
@@ -440,6 +447,57 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     name: 'Breach and Swamp',
     numbers: { toSinkAHull: { value: 0.25, theBooksWriteIt: 'a chance' } },
   },
+  // ── The rout (plan P1-19j: shieldFortHolds and rideThemDownBonus, src/engine/units/movement.ts, and the rout of both
+  // battles) ──
+  // The beaten force holds (fate): when at least half the front line is Guard, a beaten force never routs: with a road
+  // open it withdraws in good order, trapped it holds the province contested. With no line placed (an estimate), half
+  // the force is Guard.
+  'shield-fort': {
+    unit: 'Dwarven Guard',
+    name: 'Shield Fort',
+    numbers: { theFrontLineAtLeast: { value: 0.5, theBooksWriteIt: 'half' } },
+  },
+  // A Dwarf Garrison counts as Guard for Shield Fort, in a front line placed.
+  'deep-halls': { unit: 'Dwarf Garrison', name: 'Deep Halls', numbers: {}, countsAs: 'Dwarven Guard' },
+  // The winner runs the beaten down (fate), in the battle code's order: Ride Them Down, Run Them Down, the Manticores'
+  // pursuit (Relentless Hunt's, above) and Feeding Frenzy; a Shield Fort withdrawal is immune to each. Ride Them Down:
+  // each Free Lances company adds +6% to each beaten unit's death roll, to +18%, in open country only (the commander's
+  // War-Horn of the Plains: +18% on any ground), in every battle, either side.
+  'ride-them-down': {
+    unit: 'Free Lances',
+    name: 'Ride Them Down',
+    numbers: {
+      perCompany: { value: 0.06, theBooksWriteIt: 'a fraction added' },
+      atMost: { value: 0.18, theBooksWriteIt: 'a fraction added' },
+    },
+    onTheGround: ['plain', 'desert'],
+  },
+  // When at least half the winning force are Warg Riders, each beaten unit is 15% more likely to be destroyed, on any
+  // ground; against neutral guards, who never flee, they halve the winner's own losses instead (the rulebook writes
+  // "halve").
+  'run-them-down': {
+    unit: 'Warg Riders',
+    name: 'Run Them Down',
+    numbers: {
+      theWinningForceAtLeast: { value: 0.5, theBooksWriteIt: 'half' },
+      eachBeatenUnitMoreLikelyToBeDestroyed: { value: 0.15, theBooksWriteIt: 'a chance' },
+      theWinnersOwnLossesAgainstNeutralGuards: { value: 0.5, theBooksWriteIt: 'half' },
+    },
+  },
+  // When at least half the winning force are Shark Shoals, a foe beaten at sea takes +15% rout losses.
+  'feeding-frenzy': {
+    unit: 'Shark Shoals',
+    name: 'Feeding Frenzy',
+    numbers: {
+      theWinningForceAtLeast: { value: 0.5, theBooksWriteIt: 'half' },
+      theBeatenFoesRoutLosses: { value: 0.15, theBooksWriteIt: 'a fraction added' },
+    },
+    onTheGround: ['sea'],
+  },
+  // A force holds the sea lanes (fate): a retired unit's two, in no book. Their rows are in their own file, since this
+  // one is among the player page's own files, which name no retired unit.
+  'cut-the-line': CUT_THE_LINE,
+  'keep-the-sea-lanes': KEEP_THE_SEA_LANES,
 } as const satisfies Record<string, AUnitAbilityAsTheBooksWriteIt>;
 
 /** The slug of an ability the registry holds. */
