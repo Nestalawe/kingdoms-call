@@ -35,7 +35,7 @@ export function resolveEncounterCharacterOrder(
   if (!quarry) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} casts about for a quarry to hunt down but finds no trail to follow.`,
+      fact: { kind: 'a hunter finds no quarry to hunt down', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -45,7 +45,7 @@ export function resolveEncounterCharacterOrder(
   if (quarry.id === c.id) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} cannot set out to encounter themself.`,
+      fact: { kind: 'a hero cannot set out to encounter himself', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -58,7 +58,11 @@ export function resolveEncounterCharacterOrder(
   if (c._charmTempControl && c._charmOriginalPlayer != null && quarry.player === c._charmOriginalPlayer) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} will not hunt ${quarry.name} — the Charm bends their will, but not so far as to turn them on their own lord's people.`,
+      fact: {
+        kind: "a charmed hero will not hunt a hero of his true lord's realm",
+        heroName: c.name,
+        quarryName: quarry.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -71,7 +75,7 @@ export function resolveEncounterCharacterOrder(
   if (quarry.isKing && !c.isKing && quarry.player !== c.player) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} sets out after ${quarry.name}, but a rival king does not answer to a common hero — only a king may run down another king. The chase is abandoned.`,
+      fact: { kind: 'a common hero may not run down a rival king', heroName: c.name, quarryName: quarry.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -81,7 +85,7 @@ export function resolveEncounterCharacterOrder(
   if (quarry.player !== c.player && isHiddenChar(turnContext, quarry)) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} sets out after ${quarry.name}, but they are cloaked and leave no trail to follow.`,
+      fact: { kind: 'a hunter finds no trail of a cloaked quarry', heroName: c.name, quarryName: quarry.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -96,7 +100,7 @@ export function resolveEncounterCharacterOrder(
   if (quarry._vanishTurn === G.turn && quarry.player !== c.player) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} sets out after ${quarry.name}, but there is no trail to follow — the quarry has vanished into the shadows.`,
+      fact: { kind: 'a hunter finds no trail of a quarry who has vanished', heroName: c.name, quarryName: quarry.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -107,7 +111,7 @@ export function resolveEncounterCharacterOrder(
   delete c._defend; // a chase cancels a standing Defend (AK [3.15])
   emit(turnContext, {
     type: 'move',
-    text: `${c.name} sets out to run down ${quarry.name} and will not turn aside until the matter is settled.`,
+    fact: { kind: 'a hunter sets out to run down his quarry', heroName: c.name, quarryName: quarry.name },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
@@ -125,7 +129,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
   if (defendSpentThisPhase(turnContext, c, ph)) {
     emit(turnContext, {
       type: 'move',
-      text: `🛡 ${c.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,
+      fact: { kind: "a defender's watch is spent in this season's battle", heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -154,10 +158,12 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
     // line per phase keeps every season accounted for.
     emit(turnContext, {
       type: 'move',
-      text:
-        (c.armies || []).length === 0
-          ? `🛡 ${c.name} still lies in wait about ${prov.name}.`
-          : `🛡 ${c.name} keeps the watch in ${prov.name}.`,
+      fact: {
+        kind: 'a defender keeps the watch he set in an earlier season',
+        heroName: c.name,
+        provinceName: prov.name,
+        hasNoColumn: (c.armies || []).length === 0,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -165,7 +171,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
   } else if ((c.armies || []).length === 0) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} melts into the country around ${prov.name} and lies in wait — with no column at their back they cannot bar a road, but they will try to ambush any enemy who ventures into these lands (their Spy craft decides whether they can spring the trap).`,
+      fact: { kind: 'a defender with no column lies in wait to ambush', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -173,7 +179,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
   } else if (centreProv.id === prov.id) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} makes camp in ${prov.name} and sets a watch — their column will answer any incursion into the lands about them for the rest of the year.`,
+      fact: { kind: 'a defender makes camp and sets a watch', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -181,7 +187,12 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
   } else {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} sets a watch from ${prov.name} over the country around ${centreProv.name} — their column will ride to meet any incursion there for the rest of the year.`,
+      fact: {
+        kind: 'a defender sets a watch over the country around another province',
+        heroName: c.name,
+        provinceName: prov.name,
+        centreProvinceName: centreProv.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,

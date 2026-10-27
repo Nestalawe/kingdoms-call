@@ -143,6 +143,11 @@ export const snapshot = (tc: Raw, seasons: unknown): Ctx => ({
   warFrontProvs: entries(tc['_warFrontProvs']) as number[],
 });
 
+/** A turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3): a
+ *  line that records a fact has its words there alone (P1-12d6: the orders' lines are facts). */
+const inWords = (engine: vm.Context, log: unknown): Line[] =>
+  (engineFn(engine, 'theTurnsLinesInWords') as (l: unknown) => { gmLog: Line[] })(log).gmLog;
+
 // ── Playing a case ───────────────────────────────────────────────────────────────────────────────────────────────
 const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with the case's dice; the world and the context as the first
@@ -187,7 +192,7 @@ export const playCase = (b: Board, c: BeforeCase, s: Staged, live?: (tc: Raw) =>
     });
     return {
       first: JSON.parse(must(seen.first, 'the first phase')) as World,
-      all: result.log,
+      all: inWords(b.engine, result.log),
       turn,
       record,
       ctx: must(seen.ctx, 'the context'),
@@ -229,7 +234,7 @@ export const outcomeOf = (b: Board): Outcome => {
   const tc = b.tc as unknown as Raw;
   return {
     first: json(b.G) as World,
-    all: json(tc['turnLog']) as Line[],
+    all: json(inWords(b.engine, tc['turnLog'])) as Line[],
     turn: b.G.turn,
     record: json((tc['_tel'] as Raw)['orders']) as Record<string, Raw>,
     ctx: snapshot(tc, vm.runInContext('KC_SEASONS', b.engine)),

@@ -151,6 +151,11 @@ export const rowsOf = (b: Board, s: Staged) => {
   );
 };
 
+/** A turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3): a
+ *  line that records a fact has its words there alone (P1-12d6: the orders' lines are facts). */
+const inWords = (engine: vm.Context, log: unknown): Line[] =>
+  (engineFn(engine, 'theTurnsLinesInWords') as (l: unknown) => { gmLog: Line[] })(log).gmLog;
+
 // ── Playing a case ───────────────────────────────────────────────────────────────────────────────────────────────
 const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with the case's dice; the world as the first phase began is
@@ -193,7 +198,7 @@ export const playCase = (b: Board, c: SetUpCase, s: Staged): Outcome => {
     return {
       world: JSON.parse(result.state) as World,
       first: JSON.parse(must(seen.first, 'the first phase')) as World,
-      all: result.log,
+      all: inWords(b.engine, result.log),
       turn,
       record,
     };

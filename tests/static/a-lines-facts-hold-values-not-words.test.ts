@@ -3,9 +3,13 @@
 // id or a slug, a name as the world or the content holds it, a copy of a list or a record), never words the engine
 // composed (a clause, a plural, a mark, a join, a number formatted for reading). The views write every word
 // (src/views/prose/). And no facts module imports the world's types (src/schemas/): a fact never holds a part of the
-// world. P1-12d2 lists personal combat, P1-12d3 the battles, P1-12d4 the strength ladder and the grid; P1-12d5 to d10
-// add theirs. A facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a unit stands or
-// faces as it does, whom it faced, each modifier of the ladder), so a record's literal is read too.
+// world. P1-12d2 lists personal combat, P1-12d3 the battles, P1-12d4 the strength ladder and the grid, P1-12d5 the sea
+// lift's lines in a battle, a hero's death and the wanderer's escape, P1-12d6 five order families (Encounter and
+// Defend, the order dispatch, the item orders, Research and Practice, Recruit and Hire); P1-12d7 to d10 add theirs. A
+// facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a unit stands or faces as it does,
+// whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what it is, where companies muster,
+// why a company was not raised), so a record's literal is read too, and a record's `kind` that a facts module declares
+// is the record's name, not words.
 //
 // The rule, by syntax tree: a field holds words when its value is, or holds, a string or a template with text in it,
 // reached as the value (through a conditional's two branches, +, ||, ??, &&, a template's placeholders, String(), an
@@ -21,7 +25,8 @@
 // What it lets through, by kind and field (Decision 2): the fighters' labels ("The Barrow Wight", a hero's name: the
 // facts-by-sense slice names a side) and a battle's side's, guard's, realm's or unit's label ("Aldric's leaderless
 // host", "the defenders of Highmoor", a realm's tag, "Aldric's Free Lances (Free Lances, Veteran)"), an item's equip
-// note (gainedItemNote: the items' words, src/engine/items/, a later row), five slugs or names a string literal gives
+// note (gainedItemNote: the items' words, src/engine/items/, a later row), the order's action (a slug: P1-12d6), five
+// slugs or names a string literal gives
 // (a strike's class, its channel, a guardian's grade as the content names it, a school's name as the content names it,
 // a realm's alignment, a unit's quality, the line an ability places a unit in). It can't see words handed in through a
 // function's parameter
@@ -29,7 +34,8 @@
 // see the Parked list.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
-// fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through), as the static
+// fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's and
+// P1-12d6's: their areas' facts modules, which their bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
@@ -46,6 +52,19 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
   ["the sea lift's lines in a battle", 'src/engine/units/the-facts-the-sea-lifts-battle-lines-record.ts', 'P1-12d5'],
   ["a hero's death", 'src/engine/heroes/the-facts-a-heros-death-lines-record.ts', 'P1-12d5'],
   ["the wanderer's escape", 'src/engine/the-facts-the-wanderers-escape-line-records.ts', 'P1-12d5'],
+  [
+    'the Encounter and Defend orders',
+    'src/engine/orders/the-facts-the-encounter-and-defend-orders-lines-record.ts',
+    'P1-12d6',
+  ],
+  ['the order dispatch', 'src/engine/orders/the-facts-the-order-dispatchs-lines-record.ts', 'P1-12d6'],
+  ['the item orders', 'src/engine/orders/the-facts-the-item-orders-lines-record.ts', 'P1-12d6'],
+  [
+    'the research and practice orders',
+    'src/engine/orders/the-facts-the-research-and-practice-orders-lines-record.ts',
+    'P1-12d6',
+  ],
+  ['the recruit and hire orders', 'src/engine/orders/the-facts-the-recruit-and-hire-orders-lines-record.ts', 'P1-12d6'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -55,6 +74,11 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/units/the-facts-the-sea-lifts-battle-lines-record.ts',
   'src/engine/heroes/the-facts-a-heros-death-lines-record.ts',
   'src/engine/the-facts-the-wanderers-escape-line-records.ts',
+  'src/engine/orders/the-facts-the-encounter-and-defend-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-order-dispatchs-lines-record.ts',
+  'src/engine/orders/the-facts-the-item-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-research-and-practice-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-recruit-and-hire-orders-lines-record.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -247,7 +271,9 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
 const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   // an item's equip note: gainedItemNote's words (src/engine/items/equipment.ts), the items' area, a later row
-  gainedItemNote: ['a gained item noted'],
+  gainedItemNote: ['a gained item noted', 'a hero handed items notes how he carries them'],
+  // the order's action as the order names it ('disband_army', 'rampage', …): a slug the prose reads
+  action: ['a charmed hero will not carry out an order of his captor', 'a hero has already used a mastery this turn'],
   // the class of the killing strike, 'melee', 'ranged' or 'power': a slug the prose reads
   strikeClass: [
     'as the foe readies a power for the killing stroke a fighter begs',
@@ -336,6 +362,19 @@ function whatAVariableIsGiven(sf: ts.SourceFile, name: string, before: number): 
   ];
 }
 
+/** Every kind the facts modules declare: a record's kind among them is the record's name, not words (its literal is
+ *  read as a kind of its module: P1-12d6, where the companies muster). */
+let THE_KINDS_THE_FACTS_MODULES_DECLARE: ReadonlySet<string> | undefined;
+function isTheKindOfADeclaredRecord(sf: ts.SourceFile, p: ts.ObjectLiteralElementLike): boolean {
+  THE_KINDS_THE_FACTS_MODULES_DECLARE ??= new Set(FACTS_MODULES.flatMap((file) => [...kindsDeclaredIn(file)]));
+  return (
+    ts.isPropertyAssignment(p) &&
+    p.name.getText(sf) === 'kind' &&
+    ts.isStringLiteralLike(p.initializer) &&
+    THE_KINDS_THE_FACTS_MODULES_DECLARE.has(p.initializer.text)
+  );
+}
+
 /** Why a value holds words (null: it holds none). */
 function whyItHoldsWords(
   sf: ts.SourceFile,
@@ -380,7 +419,13 @@ function whyItHoldsWords(
   if (ts.isObjectLiteralExpression(value))
     return first(
       value.properties.flatMap((p) =>
-        ts.isPropertyAssignment(p) ? [p.initializer] : ts.isShorthandPropertyAssignment(p) ? [p.name] : [],
+        isTheKindOfADeclaredRecord(sf, p)
+          ? []
+          : ts.isPropertyAssignment(p)
+            ? [p.initializer]
+            : ts.isShorthandPropertyAssignment(p)
+              ? [p.name]
+              : [],
       ),
     );
   if (ts.isElementAccessExpression(value) || ts.isPropertyAccessExpression(value)) {
@@ -536,6 +581,8 @@ test('the rule refuses every way of handing words, and lets every value through'
       anArgument: theNamesAsTheLineTellsThem(spells.slice(0, 4)),
       aKey: aFightersWardAsTheLineTellsIt(target, 'schoolWard'),
       aSlug: PC_CHANNEL[kind],
+      aRecordOfADeclaredKind: { kind: 'a hero practises alone', level: n },
+      aRecordOfNoDeclaredKind: { kind: 'words no facts module declares', level: n },
     });
     narrate(narrative, { kind: 'another area', words: 'its words' });`;
   expect(fieldsHoldingWords('planted.ts', planted, kinds).map((f) => f.split(':')[0]?.split(' ').pop())).toEqual([
@@ -555,5 +602,6 @@ test('the rule refuses every way of handing words, and lets every value through'
     'builtUp',
     'inARecord',
     '',
+    'aRecordOfNoDeclaredKind',
   ]);
 });

@@ -1,12 +1,12 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
+import { QUALITY_TIERS } from '../army-tables.ts';
 import { homeFounderOf } from '../grand-design.ts';
 import { hasItemBase } from '../items/equipment.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE, humanXPMult } from '../units/drill-and-spoils.ts';
-import { d100, fmtRoll } from '../dice-and-army-names.ts';
+import { d100 } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { provOf } from '../world/map-helpers.ts';
 import { TM, perkTier, skillLevel } from '../titles/perks.ts';
@@ -19,7 +19,7 @@ import {
   hasDisc,
 } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
-import { effStat, recalcHeroPay, skillInPlayNote } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import { effStat, recalcHeroPay, theSkillInPlayAsALineTellsIt } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
@@ -40,7 +40,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
   if (sageRaw < 1) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} pores over the archives, but without any Sage learning (Sage 1+) the pages mean nothing to them.`,
+      fact: { kind: 'a hero without Sage learning cannot research', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -71,7 +71,11 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       if (!_fields.length) {
         emit(turnContext, {
           type: 'system',
-          text: `${c.name}: every ${_rcat} discovery has already been made, set aside, or is awaiting your choice — and so has every other field your realm can study. There is nothing left to research.`,
+          fact: {
+            kind: 'every field of discovery is spent and nothing is left to research',
+            heroName: c.name,
+            field: _rcat,
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -80,7 +84,12 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       const _to = _fields[Math.floor(kcRng() * _fields.length)];
       emit(turnContext, {
         type: 'system',
-        text: `📚 ${c.name} finds the ${_rcat} archives already spent — every ${_rcat} discovery has been made, set aside, or is awaiting your choice — and turns instead to ${_to}.`,
+        fact: {
+          kind: "a field's archives are spent and the research turns to another",
+          heroName: c.name,
+          field: _rcat,
+          turnsTo: _to,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -160,7 +169,13 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         }
         emit(turnContext, {
           type: 'explore',
-          text: `💡 An unlooked-for find! Among the pages ${c.name} was not even studying, **${disc.name}** (${disc.category}) comes to light — and the ordinary course of study is set aside for it. ${disc.desc}`,
+          fact: {
+            kind: 'an unlooked-for discovery in a hidden field',
+            heroName: c.name,
+            discoveryName: disc.name,
+            discoveryCategory: disc.category,
+            discoveryDescription: disc.desc,
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -174,7 +189,16 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
   const dRoll = d100();
   emit(turnContext, {
     type: 'system',
-    text: `📊 Research${_rcat && _rcat.toLowerCase() !== 'any' ? ` (${_rcat})` : ''} — Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}${neutralSageBonus > 0 ? ', Neutral ×2' : ''}${_rStreak > 0 ? ` ×${_rPersevere.toFixed(2)} for ${_rStreak} earlier failed Research${_rStreak !== 1 ? ' orders' : ''} this turn` : ''}) — roll ${dRoll} — ${dRoll <= discoveryChance ? '✓ Success!' : '✗ No discovery this turn.'}`,
+    fact: {
+      kind: "a Sage's discovery roll",
+      field: _rcat,
+      chance: discoveryChance,
+      sageLevel,
+      neutralBonus: neutralSageBonus,
+      earlierFailures: _rStreak,
+      perseverance: _rPersevere,
+      roll: dRoll,
+    },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
@@ -212,7 +236,14 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       } // SAGE L8
       emit(turnContext, {
         type: 'explore',
-        text: `💡 ${c.name}'s research bears fruit — two discoveries come to light: **${d1.name}** (${d1.category}) and **${d2.name}** (${d2.category}). Only one can be pursued: choose which to keep in next turn's orders (the 💡 Research box just under the Realm section). The other will be lost for good.`,
+        fact: {
+          kind: 'research brings two discoveries to light and one is to be kept',
+          heroName: c.name,
+          firstName: d1.name,
+          firstCategory: d1.category,
+          secondName: d2.name,
+          secondCategory: d2.category,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -239,7 +270,13 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       } // SAGE L8 (2026-09-27, Toby item 4): +1 tax (max 10) to the province you are in — was +2
       emit(turnContext, {
         type: 'explore',
-        text: `💡 ${c.name}'s research bears fruit! **${disc.name}** (${disc.category}) discovered — the last discovery this field still holds for your realm, so there is nothing to choose between. ${disc.desc}`,
+        fact: {
+          kind: "research makes the field's last discovery",
+          heroName: c.name,
+          discoveryName: disc.name,
+          discoveryCategory: disc.category,
+          discoveryDescription: disc.desc,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -247,7 +284,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
     } else {
       emit(turnContext, {
         type: 'system',
-        text: `${c.name} researches diligently — the roll succeeded but all known discoveries have already been made by your realm.`,
+        fact: { kind: 'the research roll succeeds but every discovery is already made', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -255,7 +292,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
   } else {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} researches hard but makes no new discovery this turn.`,
+      fact: { kind: 'research makes no discovery this turn', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -293,7 +330,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
   if (_practiceMaxed) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} has trained ${SKILL_LABELS[skill] || skill} as far as drilling can take them (level 5). Higher mastery (levels 6–9) is won only through experience in the field, never the practice ground.`,
+      fact: { kind: 'a skill is drilled as far as practice can take it', heroName: c.name, skill },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -342,29 +379,37 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
     // the characters THIS one mentors (lower start-of-phase level) are named in this
     // character's own line, mirroring the trainee's 'trained by' note.
     const pupils = coTrainers.filter((t) => snapLvl(t) < current);
-    const pupilNote = pupils.length
-      ? ` — trains ${pupils.map((t) => `${t.name} (${SKILL_LABELS[skill] || skill} ${snapLvl(t)})`).join(' & ')} in ${SKILL_LABELS[skill] || skill}`
-      : '';
-    let successChance, bonusReason;
+    const _pupils = pupils.map((t) => ({ name: t.name, level: snapLvl(t) }));
+    // why the chance is what it is, and the comrades he trains: the prose writes them (P1-12d6)
+    let successChance, theChance;
     if (mentors.length > 0) {
       successChance = 1.0; // guaranteed — learning from a more skilled mentor
       const bestMentor = mentors.reduce((a, b) => (snapLvl(b) > snapLvl(a) ? b : a));
-      bonusReason = ` — trained by ${bestMentor.name} (${SKILL_LABELS[skill] || skill} ${snapLvl(bestMentor)}), a more skilled mentor`;
+      theChance = {
+        kind: 'a more skilled mentor trains a hero at practice',
+        mentorName: bestMentor.name,
+        mentorsLevel: snapLvl(bestMentor),
+      };
     } else if (peers.length > 0) {
       // Group practice among equals — the shared drilling adds a bonus equal to HALF each
       // character's normal chance of improving (i.e. total = 1.5× the solo chance).
       successChance = soloChance * 1.5;
-      bonusReason = ` — practising alongside ${peers.map((t) => t.name).join(' & ')} (base ${dispFloor(baseByLevel * 100)}% at level ${current}, +50% group bonus)`;
-      if (astroBonus > 0) bonusReason += ' incl. Astronomical Tables';
+      theChance = {
+        kind: 'a hero practises alongside peers of his level',
+        peerNames: peers.map((t) => t.name),
+        baseChance: dispFloor(baseByLevel * 100),
+        level: current,
+        astronomicalTables: astroBonus > 0,
+      };
     } else {
       successChance = soloChance; // solo practice (or only lower-skilled trainees present)
-      bonusReason =
-        ` (base ${dispFloor(baseByLevel * 100)}% at level ${current})` +
-        (astroBonus > 0 ? ' +5% (Astronomical Tables)' : '');
+      theChance = {
+        kind: 'a hero practises alone',
+        baseChance: dispFloor(baseByLevel * 100),
+        level: current,
+        astronomicalTables: astroBonus > 0,
+      };
     }
-    if (_streak > 0 && successChance < 1)
-      bonusReason += ` ×${_persevere.toFixed(2)} for ${_streak} earlier failed practice${_streak !== 1 ? 's' : ''} this turn`;
-    if (_prHuman > 1 && successChance < 1) bonusReason += ' ×1.5 (Human: Quick Learners)';
     // roll a d100 and show the success chance and the roll, like every other action.
     const _prPct = dispFloor(successChance * 100);
     const _prRoll = d100();
@@ -392,14 +437,36 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
       // a mentored improvement is guaranteed — no roll to show.
       emit(turnContext, {
         type: 'hire',
-        text: `${c.name} practises ${SKILL_LABELS[skill] || skill} and improves to level ${c.skills[skill]}${skillInPlayNote(turnContext, c, skill)}!${mentors.length > 0 ? '' : ' ' + fmtRoll(_prPct, _prRoll)}${bonusReason}${pupilNote}${_prHp > 0 ? ` (Max HP +${_prHp} → ${c.maxHp}.)` : ''}`,
+        fact: {
+          kind: 'a hero practises a skill and improves',
+          heroName: c.name,
+          skill,
+          level: c.skills[skill],
+          skillInPlay: theSkillInPlayAsALineTellsIt(turnContext, c, skill),
+          mentored: mentors.length > 0,
+          chance: _prPct,
+          roll: _prRoll,
+          theChance,
+          earlierFailures: _streak,
+          perseverance: _persevere,
+          quickLearner: _prHuman > 1,
+          belowCertain: successChance < 1,
+          pupils: _pupils,
+          maxHpRise: _prHp,
+          maxHp: c.maxHp,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       if (_prPayAfter > _prPayBefore)
         emit(turnContext, {
           type: 'hire',
-          text: `💰 ${c.name}'s growing renown raises their wage to ${_prPayAfter}g/turn (was ${_prPayBefore}g/turn).`,
+          fact: {
+            kind: "a hero's wage rises with his renown",
+            heroName: c.name,
+            wage: _prPayAfter,
+            wasWage: _prPayBefore,
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         }); // 2026-09-21: practice raised the wage silently
@@ -407,7 +474,19 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
       c._practiceFailStreak = { turn: G.turn, n: _streak + 1 }; // the next practice this turn is ×1.2 likelier
       emit(turnContext, {
         type: 'system',
-        text: `${c.name} practises ${SKILL_LABELS[skill] || skill} but makes no measurable progress this season. ${fmtRoll(_prPct, _prRoll)}${bonusReason ? ` ${bonusReason}.` : ''}${pupilNote ? ` ${pupilNote.slice(3)}.` : ''}`,
+        fact: {
+          kind: 'a hero practises a skill but makes no progress',
+          heroName: c.name,
+          skill,
+          chance: _prPct,
+          roll: _prRoll,
+          theChance,
+          earlierFailures: _streak,
+          perseverance: _persevere,
+          quickLearner: _prHuman > 1,
+          belowCertain: successChance < 1,
+          pupils: _pupils,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -440,7 +519,14 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
           army.quality = tiers[idx + 1];
           emit(turnContext, {
             type: 'hire',
-            text: `${c.name}'s ${isNaval ? 'Naval drills' : 'training drills'}: ${army.unitName || army.type} (${army.type}) advances to **${army.quality}**!`,
+            fact: {
+              kind: "a commander's drills advance a unit a tier",
+              heroName: c.name,
+              isNaval,
+              unitName: army.unitName || null,
+              unitType: army.type,
+              quality: army.quality,
+            },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -453,16 +539,14 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
     } else if (trainable.length > 0) {
       emit(turnContext, {
         type: 'system',
-        text: `${c.name}'s ${isNaval ? 'Naval drills were thorough but no crews' : 'training drills were thorough but no units'} achieved a breakthrough this season.`,
+        fact: { kind: "a commander's drills advance no unit this season", heroName: c.name, isNaval },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
     } else {
       emit(turnContext, {
         type: 'system',
-        text: isNaval
-          ? `${c.name} drills Naval theory alone — commanding fleets or sea-beasts would yield greater benefit.`
-          : `${c.name} practises Tactical theory alone — leading land armies would yield greater benefit.`,
+        fact: { kind: 'a commander drills theory alone with no troops to train', heroName: c.name, isNaval },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -499,7 +583,14 @@ export function resolveRestOrder(turnContext, c, prov) {
   c.hp = Math.min(c.maxHp || 20, c.hp + heal);
   emit(turnContext, {
     type: 'system',
-    text: `${c.name} rests and recovers. +${heal} HP (${c.hp}/${c.maxHp}${isDivineKingdom ? ' — Divine blessing lifts healing by half' : ''}).`,
+    fact: {
+      kind: 'a hero rests and recovers',
+      heroName: c.name,
+      healed: heal,
+      hp: c.hp,
+      maxHp: c.maxHp,
+      isDivine: isDivineKingdom,
+    },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
@@ -511,7 +602,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
   if (skillLevel(c, 'sage') < 7) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} lacks the Sage mastery (7) for a Research Breakthrough.`,
+      fact: { kind: 'a hero lacks the Sage mastery for a Research Breakthrough', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -524,7 +615,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
   if (available.length === 0) {
     emit(turnContext, {
       type: 'explore',
-      text: `${c.name}'s Research Breakthrough succeeds, but your scholars have already unlocked every known discovery.`,
+      fact: { kind: 'a Research Breakthrough finds every discovery already made', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -542,7 +633,13 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
   TM(c).discoveries += 1;
   emit(turnContext, {
     type: 'explore',
-    text: `💡 ${c.name} drives a Research Breakthrough — **${disc.name}** (${disc.category}) discovered! ${disc.desc}`,
+    fact: {
+      kind: 'a Research Breakthrough makes a discovery',
+      heroName: c.name,
+      discoveryName: disc.name,
+      discoveryCategory: disc.category,
+      discoveryDescription: disc.desc,
+    },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });

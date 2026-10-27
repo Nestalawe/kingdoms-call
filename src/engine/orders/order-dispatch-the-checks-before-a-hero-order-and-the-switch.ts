@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
-import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, MASTERY_ORDER_LABEL, SKILL_LABELS } from '../army-tables.ts';
+import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, SKILL_LABELS } from '../army-tables.ts';
 import { botDrillUseful } from '../bots/economy.ts';
 import { provOf } from '../world/map-helpers.ts';
 import { skillLevel } from '../titles/perks.ts';
@@ -91,7 +91,11 @@ export function processOrder(turnContext, c, o, ph) {
     // filed under the hero himself (2026-10-09, Toby item 1): with no charId it fell into Realm Events
     emit(turnContext, {
       type: 'move',
-      text: `${c.name}'s order superseded — they unified with ${G.characters.find((x) => x.id === o._unifiedWith)?.name || 'another hero'}'s forces this phase.`,
+      fact: {
+        kind: "a hero's order is superseded: he joined another hero's battle",
+        heroName: c.name,
+        joinedHeroName: G.characters.find((x) => x.id === o._unifiedWith)?.name || null,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
       phase: ph,
@@ -149,7 +153,7 @@ export function processOrder(turnContext, c, o, ph) {
   ) {
     emit(turnContext, {
       type: 'explore',
-      text: `${c.name} is too badly hurt to face another guardian this season and rests instead.`,
+      fact: { kind: 'a hero too badly hurt to face another guardian rests instead', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: c.location,
@@ -173,7 +177,11 @@ export function processOrder(turnContext, c, o, ph) {
     if (!_ok) {
       emit(turnContext, {
         type: 'explore',
-        text: `${c.name} weighs what the taverns said of the ${_f ? _f.name : 'lair'} and leaves it for another day.`,
+        fact: {
+          kind: 'a hero weighs the rumour of a lair and leaves it for another day',
+          heroName: c.name,
+          lairName: _f ? _f.name : null,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
@@ -191,7 +199,11 @@ export function processOrder(turnContext, c, o, ph) {
     const _pw = G.world.provinces[parseInt(o.prov)];
     emit(turnContext, {
       type: 'explore',
-      text: `${c.name} never reaches the lair they set out for${_pw ? ` in ${_pw.name}` : ''}, and will not go blind into another — the search is abandoned and they rest instead.`,
+      fact: {
+        kind: 'a hero never reaches the lair he set out for and rests instead',
+        heroName: c.name,
+        provinceName: _pw ? _pw.name : null,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: c.location,
@@ -239,7 +251,11 @@ export function processOrder(turnContext, c, o, ph) {
     if (_foeHere) {
       emit(turnContext, {
         type: 'combat',
-        text: `${c.name} is still locked in the unresolved battle for ${prov.name} and cannot march away — the enemy is on the field and the fight must be seen through before the column can move on.`,
+        fact: {
+          kind: 'a hero locked in an unresolved battle cannot march away',
+          heroName: c.name,
+          provinceName: prov.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         province: prov.id,
         hero: c.id,
@@ -258,18 +274,12 @@ export function processOrder(turnContext, c, o, ph) {
   // they have genuinely joined the realm and act as any other hero of it. This sits ABOVE the
   // once-per-turn charge below so a refused mastery order is not also spent.
   if (c._charmTempControl) {
-    const _why =
-      action === 'disband_army'
-        ? 'break up companies that are not theirs to disband'
-        : ALIGNMENT_ORDER_KEYS.has(action)
-          ? 'perform the rites of a realm they do not serve'
-          : MASTERY_ORDER_KEYS.has(action)
-            ? 'spend their own mastery for a crown that merely holds their mind'
-            : null;
-    if (_why) {
+    // disbanding companies, an alignment's rite, or a mastery: what he will not do (the prose says it, by the action)
+    const _refused = action === 'disband_army' || ALIGNMENT_ORDER_KEYS.has(action) || MASTERY_ORDER_KEYS.has(action);
+    if (_refused) {
       emit(turnContext, {
         type: 'system',
-        text: `${c.name} is held by an enchantment, not an oath — they will not ${_why}. The order comes to nothing.`,
+        fact: { kind: 'a charmed hero will not carry out an order of his captor', heroName: c.name, action },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -284,7 +294,7 @@ export function processOrder(turnContext, c, o, ph) {
     if (c._masteryOrderUsed[action] === G.turn) {
       emit(turnContext, {
         type: 'system',
-        text: `${c.name} has already used their ${MASTERY_ORDER_LABEL[action] || action} mastery this turn \u2014 it may be commanded but once per turn.`,
+        fact: { kind: 'a hero has already used a mastery this turn', heroName: c.name, action },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -301,7 +311,7 @@ export function processOrder(turnContext, c, o, ph) {
     if (skillLevel(c, 'march') < 7) {
       emit(turnContext, {
         type: 'system',
-        text: `${c.name} lacks the March mastery (7) for a Forced March.`,
+        fact: { kind: 'a hero lacks the March mastery for a Forced March', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
