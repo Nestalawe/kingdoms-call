@@ -10,7 +10,13 @@
 // - any other armed hero sets out after the nearest armed enemy he can see standing in a province with an unresolved
 //   battle;
 // - its king, when he isn't chasing, recruits one unit where he stands (Recruit Armies), if it is his realm's land;
-//   every other phase is left at "— Choose —", which the form sends as Defend;
+// - every other living hero (a spare one: P1-15e3, P1-15e's Decision 5) gets one order in the first phase, by hero and
+//   turn, of those the form offers him where he stands: with a wandering hero or a rival beside him, Spy on him (a
+//   wanderer first) or Hire Hero (the wanderer, with his card and its plan); else a mastery at its level (one with no
+//   target); else Search Lair on a Weak lair his realm knows there (a hero fights its guardian alone), Research (Sage
+//   1), Practice Skill, Explore or Rest, in turn.
+//   Once a game (the orders for turn 6) the realm's first unarmed hero, if it has three or more, is released;
+// - every other phase is left at "— Choose —", which the form sends as Defend;
 // - every living hero gets a plan, varied by hero and turn: tactics from the form's own (not Cast Spell, whose spell
 //   picker this doesn't drive; Steal only at Thief 1), a pre-battle school from his own schools on some turns, a
 //   battle cry on some, each duel stance in turn, and an Evil realm's conquest doctrine in turn;
@@ -19,14 +25,21 @@
 // It also gives the matrix a per-realm report to hash: all-bot games write none.
 import { PRIMAL_SEA_NAMES, SAFE_START_TURN } from '../../src/engine/army-tables.ts';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
+import { effSkillOf } from '../../src/engine/heroes/skills-and-hp.ts';
+import { heroHireWage } from '../../src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { ALL_SKILLS } from '../../src/engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import {
   encounterUntargetableReason,
   enemyCharVisibleTo,
+  featDiscovered,
   nearSpiedProvIds,
+  type SightContext,
 } from '../../src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
+import { perkTier } from '../../src/engine/titles/perks.ts';
 import type { OrdersARealmSubmits } from '../../src/schemas/orders-a-realm-submits.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import {
+  hireCardId,
   PHASES,
   theHeroesTheFormLists,
   theOrdersThePlayerPortalSends,
@@ -50,6 +63,7 @@ export interface Realm {
   homeProvinceId?: number;
   _encountered?: number[];
   alignment?: string;
+  discoveries?: { id?: string }[];
   heroOrder?: string[];
   conceded?: boolean;
   _eliminated?: boolean;
@@ -65,12 +79,30 @@ export interface Province {
   armyTypes?: string[];
   characters?: number[];
   _battleUnresolved?: boolean;
+  features?: Lair[];
+  /** How much of the province each realm has explored, by its index. */
+  exploredBy?: Record<string, number>;
+}
+/** A province's feature: a lair, or a ritual site (which can't be searched). */
+export interface Lair {
+  cleared?: boolean;
+  ritualSite?: boolean;
+  tier?: string;
+  monster?: { power?: string } | null;
+  /** Its hoard, which the matrix's invariants read. */
+  hoardItems?: { id?: unknown; name?: unknown }[];
 }
 export interface Character extends HeroTheFormLists {
   location: number;
   armies?: unknown[];
   /** The turn an Invisibility was cast: unseen that turn's report. */
   _invisTurn?: number;
+  alignment?: string;
+  _isNeutralGuard?: boolean;
+  _justDefeated?: boolean;
+  /** A charmed hero: whose skills the realm can't see, and who is held by an enchantment. */
+  _hiddenSkills?: boolean;
+  _charmEnemy?: boolean;
 }
 
 /** Which scripted orders were given this turn, by the hero that got them: for counting the scripted cases. */
@@ -78,6 +110,24 @@ export interface Plan {
   chaser: { heroId: number; quarryId: number } | null;
   battleChases: { heroId: number; quarryId: number; provinceId: number }[];
 }
+
+/** The orders for this turn release a hero, once a game. */
+const RELEASE_TURN = 6;
+/** The lairs the scripted realm sends a hero into: the weakest grade only (a hero fights a lair's guardian alone). */
+const LAIR_POWER_IT_SEARCHES = 'Weak';
+/** The masteries a hero is given at their level: the form's (L79_ORDERS, src/ui/player/l79-orders.ts) that need no
+ *  target, but the Grand Design (offered only until the realm's Wonder stands), in the form's order. A copy: the page
+ *  file isn't the matrix's to import (tools/balance/engine-paths.ts), and the unit test holds the two equal. */
+export const MASTERIES: readonly { name: string; skill: string; lvl: number }[] = [
+  { name: 'Awaken Grove', skill: 'druid', lvl: 7 },
+  { name: 'Research Breakthrough', skill: 'sage', lvl: 7 },
+  { name: 'Vanish', skill: 'thief', lvl: 9 },
+  { name: 'Feigned Retreat', skill: 'tactical', lvl: 7 },
+  { name: 'Grand Stratagem', skill: 'tactical', lvl: 9 },
+  { name: 'Lightning Advance', skill: 'march', lvl: 9 },
+  { name: 'Raid the Coast', skill: 'naval', lvl: 9 },
+  { name: 'Wild Calling', skill: 'druid', lvl: 9 },
+];
 
 /** The tactics a plan is made from: the form's own, but Cast Spell (its spell picker) and Steal (Thief 1, below). */
 const TACTICS = ['ME', 'FI', 'FL'];
@@ -164,6 +214,99 @@ export function heroesTheRealmSeesToHunt(S: State, me: number): Character[] {
   );
 }
 
+/** The sight the realm's report lists the heroes beside its own by, on the saved state (the view's hiringSight). */
+function sightBesideItsOwn(S: State, me: number): SightContext {
+  const realm = S.players[me];
+  return {
+    ownedProvIds: new Set(realm?.provinces ?? []),
+    ownCharLocs: new Set(S.characters.filter((c) => c.alive && c.player === me).map((c) => c.location)),
+    spiedThisTurn: new Set(realm?._spiedProvincesThisTurn ?? []),
+  };
+}
+
+/** The heroes of other realms, and the wanderers, standing beside `hero` that his realm's report lists (its
+ *  visibleChars: the sight rule, as the view applies it to the heroes beside its own), in id order. The report's world
+ *  has two stamps the save doesn't: an Invisibility cast in the turn, and the Spy stealth each hero rolls once the turn
+ *  is saved (run-turn.ts), which can hide a wanderer. A wanderer who might have slipped by (any Spy in play, or the
+ *  Shimmer) is left out, as the realm can't know. */
+export function heroesBesideHim(S: State, me: number, hero: Character): Character[] {
+  const world = S as unknown as GameState;
+  const sight = sightBesideItsOwn(S, me);
+  const asSaved = (c: Character) => structuredClone(c) as unknown as GameState['characters'][number];
+  const mightHaveSlippedBy = (c: Character) =>
+    c.player == null &&
+    (Math.min(5, Number(effSkillOf(asSaved(c), 'spy', S.characters)) || 0) > 0 || perkTier(c, 'illusory') >= 1);
+  return S.characters
+    .filter(
+      (c) =>
+        c.alive &&
+        c.player !== me &&
+        c.location === hero.location &&
+        c._invisTurn !== S.turn - 1 &&
+        !mightHaveSlippedBy(c) &&
+        enemyCharVisibleTo(world, me, asSaved(c), sight),
+    )
+    .sort((a, b) => a.id - b.id);
+}
+
+/** The lairs realm `me` knows where `hero` stands and may search, as the Search Lair form lists them (the report's
+ *  provinceOrderData: not cleared, not a ritual site, found by the realm or revealed by its exploring), each by its
+ *  index in the province, in order, with its grade. */
+export function lairsHeKnows(S: State, me: number, hero: Character): { index: number; power: string }[] {
+  const p = S.world.provinces[hero.location];
+  const features = p?.features ?? [];
+  const explored = p?.exploredBy?.[String(me)] ?? 0;
+  type Feature = NonNullable<GameState['world']['provinces'][number]['features']>[number];
+  return features.flatMap((f, index) => {
+    const threshold = Math.ceil(100 / features.length) * (index + 1);
+    const asSaved = structuredClone(f) as unknown as Feature;
+    const known = !f.cleared && !f.ritualSite && (featDiscovered(asSaved, me) || explored >= threshold);
+    return known ? [{ index, power: f.monster?.power ?? f.tier ?? '' }] : [];
+  });
+}
+
+/** The order a spare hero gives in the first phase, by hero and turn, of those the form offers him where he stands
+ *  (actionsFor and each order's target field); null to leave it at "— Choose —". `hired` holds the wanderers already
+ *  hired this turn, so no two heroes hire the same one. */
+function spareHeroOrder(S: State, me: number, hero: Character, turn: number, hired: Set<number>): AnOrderPicked | null {
+  // a charmed hero's choices are narrower (no mastery, no release, no items): he defends
+  if (hero._hiddenSkills || hero._charmEnemy) return null;
+  const k = hero.id + turn;
+  const skills = hero.skills ?? {};
+  const realm = S.players[me];
+  const beside = heroesBesideHim(S, me, hero);
+  const spyOn = beside.find((c) => c.player == null) ?? beside[0];
+  const sd31 = (realm?.discoveries ?? []).some((d) => d.id === 'sd31');
+  const crown = realm?.alignment ?? 'Neutral';
+  const toHire = beside.find(
+    (c) =>
+      c.player === null &&
+      !c._isNeutralGuard &&
+      !c._justDefeated &&
+      !hired.has(c.id) &&
+      heroHireWage(crown, c.alignment ?? '', sd31, c) != null,
+  );
+  // someone beside him: a Spy on him, or a hire on even turns
+  if (toHire && (k % 2 === 0 || !spyOn)) {
+    hired.add(toHire.id);
+    return { action: 'Hire Hero', target: String(toHire.id) };
+  }
+  if (spyOn) return { action: 'Spy', target: `char:${String(spyOn.id)}` };
+  // a master uses his mastery
+  const mastery = MASTERIES.find((m) => (skills[m.skill] ?? 0) >= m.lvl);
+  if (mastery) return { action: mastery.name, target: '' };
+  // else one of the rest, in turn
+  const lair = lairsHeKnows(S, me, hero).find((l) => l.power === LAIR_POWER_IT_SEARCHES);
+  const offered: AnOrderPicked[] = [
+    ...(lair ? [{ action: 'Search Lair', target: String(lair.index) }] : []),
+    ...((skills['sage'] ?? 0) >= 1 ? [{ action: 'Research', target: '' }] : []),
+    { action: 'Practice Skill', target: ALL_SKILLS[k % ALL_SKILLS.length] ?? 'melee' },
+    { action: 'Explore', target: '' },
+    { action: 'Rest', target: '' },
+  ];
+  return offered[k % offered.length] ?? null;
+}
+
 /** The first kind of unit the Recruit Armies form offers where `hero` stands: his realm's land, its kinds but a sea
  *  beast on land (the report's provinceOrderData); null if none. */
 function kindToRecruit(S: State, me: number, hero: Character): string | null {
@@ -240,11 +383,32 @@ export function scriptedChoices(S: State, me: number, turn: number): { chose: Wh
   const kind = king ? kindToRecruit(S, me, king) : null;
   if (king && kind) give(king, 'Recruit Armies', kind + '|1');
 
-  // A plan for every living hero the form lists; an heir's points; the first lead of each research pair.
+  // Every spare hero gives one order the form offers him; once a game, the first unarmed one is released.
+  const spare = mine.filter((c) => !orders[String(c.id)]);
+  const released =
+    turn === RELEASE_TURN && S.characters.filter((c) => c.alive && c.player === me).length >= 3
+      ? spare.find((c) => !c.isKing && !armed(c) && !c._hiddenSkills && !c._charmEnemy)
+      : undefined;
+  const hired = new Set<number>();
+  for (const hero of spare) {
+    const o = hero === released ? { action: 'Release Hero', target: '' } : spareHeroOrder(S, me, hero, turn, hired);
+    if (o) give(hero, o.action, o.target);
+  }
+
+  // A plan for every living hero the form lists, and each hired hero's card; an heir's points; the first lead of
+  // each research pair.
   const evil = S.players[me]?.alignment === 'Evil';
   const heroes = theHeroesTheFormLists(S, me);
   const plans: Record<string, APlanSet> = {};
   for (const hero of heroes.filter((c) => c.alive)) plans[String(hero.id)] = planFor(hero, turn, evil);
+  for (const [id, picked] of Object.entries(orders)) {
+    const o = picked[0];
+    if (o?.action !== 'Hire Hero') continue;
+    const wanderer = S.characters.find((c) => String(c.id) === o.target);
+    if (!wanderer) continue;
+    const { tactics, notes, duelStance } = planFor({ ...wanderer, skills: {} }, turn, false);
+    plans[hireCardId(o.target, Number(id), 0)] = { tactics, school: '', notes, duelStance };
+  }
   const heirPoints: Record<string, string[]> = {};
   for (const heir of heroes.filter((c) => c._isHeir))
     heirPoints[String(heir.id)] = HEIR_PICKS.slice(0, heir._pendingSkillAllocation ?? 0);
