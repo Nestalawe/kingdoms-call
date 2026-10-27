@@ -198,7 +198,9 @@ describe('the hero whose order is resolving files a line only when it already re
     narrate(narrative, {
       kind: 'the surgeons reach a fallen duellist too late, for his realm alone',
       realm: 1,
-      words: 'Your duellist falls.',
+      heroName: 'Aldric',
+      chance: 20,
+      roll: 55,
     });
     const tc = newContext(resolving, heroes);
     const fight: FightLine = {

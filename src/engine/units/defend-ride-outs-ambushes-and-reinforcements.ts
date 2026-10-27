@@ -683,7 +683,7 @@ export function runDefendAmbush(turnContext, ph) {
         if (c.hp != null && c.hp <= 0) c.hp = 1;
         emit(turnContext, {
           type: 'combat',
-          text: _garrethEscapeLine(c),
+          fact: _garrethEscapeLine(c),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
@@ -704,7 +704,7 @@ export function runDefendAmbush(turnContext, ph) {
         if (quarry.hp != null && quarry.hp <= 0) quarry.hp = 1;
         emit(turnContext, {
           type: 'combat',
-          text: _garrethEscapeLine(quarry),
+          fact: _garrethEscapeLine(quarry),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,

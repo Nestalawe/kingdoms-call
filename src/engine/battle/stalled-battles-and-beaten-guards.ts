@@ -240,7 +240,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           _nrLines.forEach((l) =>
             emit(turnContext, {
               type: 'combat',
-              text: l,
+              fact: l,
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
               phase: ph,
@@ -279,7 +279,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               if (_st)
                 emit(turnContext, {
                   type: 'combat',
-                  text: _st,
+                  fact: _st,
                   audience: { actor: attacker.player, realms: [attacker.player] },
                   hero: _ctxCharId,
                   phase: ph,
@@ -457,7 +457,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         prov._battleUnresolved = true;
         emit(turnContext, {
           type: 'combat',
-          text: navalHoldLine(
+          fact: navalHoldLine(
             turnContext,
             prov,
             _navalBlockSB,

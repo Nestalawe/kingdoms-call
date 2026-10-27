@@ -34,7 +34,6 @@ import {
   type UnitAbilitySlug,
 } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { AnAbilityAsTheLadderNamesIt } from '../../engine/rules/the-registry-of-content-effects.ts';
-import { theClauseOfWhomAUnitFaced } from '../../engine/battle/lines.ts';
 
 // ── THE WORDS THE ENGINE WROTE INTO A BATTLE'S FACTS, WRITTEN HERE (plan P1-12d3: P1-12's Decisions of 2026-10-26,
 // Decisions 2 to 5) ── each the same words, from the values the fact now holds; the word helpers below moved here
@@ -571,6 +570,65 @@ function theSideAsTheGridShowsIt(label: string | null | undefined): string {
   return firstWord.slice(0, 8).padEnd(8);
 }
 
+/** The clause a fate's line carries of whom a unit faced (battleFacedClauses). A word helper on plain values, moved here
+ *  from battle/lines.ts with its last engine caller (disbandLine, plan P1-12d5). */
+export function theClauseOfWhomAUnitFaced(w: WhomAUnitFaced): string {
+  switch (w.kind) {
+    case 'an enemy unit':
+      return theClauseOfHowAUnitMetAnEnemyUnit(w.how, w.theEnemyUnit);
+    case 'it rode free':
+      return 'riding free round the flank';
+    case "it wrapped the line's end":
+      return 'wrapping the end of the line';
+    case "it guarded the line's end":
+      return 'guarding the end of the line';
+    case 'it fought from the air':
+      return 'fighting from the air';
+    case 'it stood in the reserve':
+      return 'in the reserve';
+    case 'it shot at an empty column':
+      return 'shooting at an empty column';
+    case 'it stood in the second line':
+      return 'in the second line';
+    case 'nobody stood opposite':
+      return 'with nobody opposite';
+  }
+}
+/** The clause of how a unit met the enemy unit it faced, by its facing's kind. */
+function theClauseOfHowAUnitMetAnEnemyUnit(
+  how: 'faces' | 'met' | 'wraps' | 'shoots' | 'duel' | 'guards',
+  theEnemyUnit: string,
+): string {
+  switch (how) {
+    case 'faces':
+      return `facing ${theEnemyUnit}`;
+    case 'met':
+      return `met at the end of the line by ${theEnemyUnit}`;
+    case 'wraps':
+      return `wrapping the line at ${theEnemyUnit}`;
+    case 'shoots':
+      return `shooting ${theEnemyUnit} over the line`;
+    case 'duel':
+      return `in a flank duel with ${theEnemyUnit}`;
+    case 'guards':
+      return `guarding the end against ${theEnemyUnit}`;
+  }
+}
+/** A unit's line when it has had enough and disbands: its owner and its name or type, whom it faced (a clause, after the
+ *  name), and its fate. Moved here from army-tables.ts with its last engine callers (plan P1-12d5). */
+export function disbandLine(
+  owner: string | null | undefined,
+  a: { readonly type: string; readonly unitName?: string | null | undefined },
+  clause?: string | null,
+): string {
+  // 2026-09-23d: a unit NAMED "the …" reads "the Pale Shades (Vervain's Shadow Archers)", never
+  // "Vervain's the Pale Shades" (same rule as unitRef). `clause` (2026-10-12): whom they fought, after the name.
+  const _core =
+    a.unitName && /^the\s/i.test(a.unitName)
+      ? `${a.unitName} (${owner ? owner + "'s " : ''}${a.type})`
+      : `${owner ? owner + "'s " : ''}${a.unitName ? a.unitName + ' (' + a.type + ')' : a.type}`;
+  return `— ${_core}${clause ? `, ${clause},` : ''} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
+}
 /** A unit as its fate's line names it: its reference, then whom it faced, between commas. */
 function aUnitAndWhomItFaced(reference: string, whomItFaced: WhomAUnitFaced | null): string {
   return reference + (whomItFaced ? `, ${theClauseOfWhomAUnitFaced(whomItFaced)},` : '');
@@ -983,6 +1041,12 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
       return `— ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} lost heart in defeat, reduced to ${fact.unitQuality}.`;
     case 'a unit improves a tier despite defeat':
       return `— Despite defeat, ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} improved to ${fact.unitQuality}!`;
+    case 'a beaten unit has had enough and disbands':
+      return disbandLine(
+        fact.ownerName,
+        { type: fact.unitType, unitName: fact.unitName },
+        fact.whomItFaced ? theClauseOfWhomAUnitFaced(fact.whomItFaced) : '',
+      );
     case "a hero not at war with the province's realm gains a host inside it":
       return `👁 ${fact.cName}${fact.realmTag} now leads ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''} inside your province of ${fact.provName}, but makes no move against it — ${fact.theRealmsAreAllied ? 'your realms are allied' : 'your realms are not at war'}. ${fact.provName2} remains yours.`;
     case "a hero's new host is still forming up in a province":

@@ -382,15 +382,19 @@ check finds were made.
   every sentence of `battle/`: a battle between heroes, the duel before a battle, a battle against a province's own
   defenders, a host gained in a province, a stalled battle, a war front, and the helpers that return a line, which
   return its fact; personal combat's:
-  `src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, P1-12c4; one kind per sentence, one field
-  per value it was written with, and a kind's name unique across the areas, since `theWordsOf` routes a fact by its
-  kind), each with its fields and its audience, and `src/views/prose/` writes their words after
-  the turn, one module per area (`theWordsOf` hands each fact to its area's), a `switch` over the kinds with a `never`
-  default: a new kind with no words doesn't compile there. `forceMarker` returns its fact, and `narrate` takes it as it
+  `src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, P1-12c4; since P1-12d5 the sea lift's lines
+  in a battle, `src/engine/units/the-facts-the-sea-lifts-battle-lines-record.ts`, a hero's death's,
+  `src/engine/heroes/the-facts-a-heros-death-lines-record.ts`, and the wanderer's escape's,
+  `src/engine/the-facts-the-wanderers-escape-line-records.ts`; one kind per sentence, one field per value it was written
+  with, and a kind in one area only: `theWordsOf` routes a fact by its kind to its area's words, and a kind declared in
+  two areas doesn't compile, where `LineFact` lists the areas), each with its fields and its audience, and
+  `src/views/prose/` writes their words after the turn, one module per area (a new area adds its facts to `LineFact`'s
+  list, its audience table to the route in `the-words-of-each-line.ts` and its own words module), a `switch` over the
+  kinds with a `never` default: a new kind with no words doesn't compile there. `forceMarker` returns its fact, and `narrate` takes it as it
   takes words. **`src/engine/battle/` and `src/engine/personal-combat/` write no line's words** (P1-12c6): a new line
   there is a new kind (its words in `src/views/prose/`), or a field of one where the words are a fragment (P1-12d moves
-  those fields' words into the prose); the words a battle takes from another folder's helper (a unit disbanding, a sea
-  trap, a naval hold, the wanderer's escape, a hero's death) are P1-12d's.
+  those fields' words into the prose); since P1-12d5 the lines a battle took from another folder's helper (a unit
+  disbanding, a sea trap, a naval hold and the naval split, the wanderer's escape, a hero's death) are kinds too.
 - **A fact holds values, and a copy of the world, never a part of it** (P1-12d; personal combat's facts since
   P1-12d2, a battle's since P1-12d3). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
   holding a live part of the world (a hero, his item list, a status) would be read as it is then, not as it was told.

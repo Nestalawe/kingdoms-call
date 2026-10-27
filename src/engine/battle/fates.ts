@@ -1,8 +1,7 @@
 import { kcRng } from '../rng.ts';
-import { QUALITY_TIERS, demoteOrDisband, disbandLine, unitRef } from '../army-tables.ts';
+import { QUALITY_TIERS, demoteOrDisband, unitRef } from '../army-tables.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { TheFactOfOneOfABattlesSentences, WhomAUnitFaced } from './the-facts-a-battles-lines-record.ts';
-import { theClauseOfWhomAUnitFaced } from './lines.ts';
 import {
   theLineByWhichABeatenUnitHoldsItsTier,
   theLineByWhichAUnitLivesThroughItsDeathRoll,
@@ -163,7 +162,13 @@ export function rollUnitFates(
         if (demoteOrDisband(a)) {
           r.disbanded++;
           const whom = whomItFaced(a);
-          say(disbandLine(who, a, whom ? theClauseOfWhomAUnitFaced(whom) : ''));
+          say({
+            kind: 'a beaten unit has had enough and disbands',
+            ownerName: who,
+            unitName: a.unitName,
+            unitType: a.type,
+            whomItFaced: whom,
+          });
         } else {
           r.demoted++;
           if (o.notable) a._notable = true;

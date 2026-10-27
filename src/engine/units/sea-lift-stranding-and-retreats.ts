@@ -7,7 +7,6 @@ import {
   isAirCarriable,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
-import { describeArmy } from '../dice-and-army-names.ts';
 import { BOT_LIGHT_ARMIES } from '../bots/war.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
@@ -15,6 +14,7 @@ import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isFriendlyProvFor, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { canEnterTerrain, getSeaCapability, refreshMovePool } from './movement-pools.ts';
 import { emit, narrate } from '../turn/events-and-their-audiences.ts';
+import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
 
 // ── SEA LIFT, STRANDING AND RETREATS (plan P1-08b: lifted out of resolveTurn) ────
 // How far a column falls short of the lift to stay at sea (seaLiftShortfall; whether it can put to sea,
@@ -283,17 +283,21 @@ export function preferDryGround(list) {
 // on ground the realm does not hold — a landing thrown back off an enemy coast — have no
 // garrison to join and no commander left, so they scatter as mercenaries: the same fate the
 // engine already gives a fallen commander's host on hostile ground.
-export function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, cName) {
+// The lines of the split are facts (units/the-facts-the-sea-lifts-battle-lines-record.ts, plan P1-12d5):
+// `whyTheyAreLeftBehind` is the reason (WhyUnitsAreLeftBehind), whose words the prose writes.
+export function _navalLeaveBehind(turnContext, ch, prov, units, whyTheyAreLeftBehind, narrative, cName) {
   const { G } = turnContext;
   if (!units || !units.length) return false;
   const owner = ch._charmTempControl && ch._charmOriginalPlayer != null ? ch._charmOriginalPlayer : ch.player;
   const temps = units.filter((a) => a._temporary),
     real = units.filter((a) => !a._temporary);
   if (temps.length)
-    narrate(
-      narrative,
-      `— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} ${temps.length === 1 ? 'is' : 'are'} left behind ${why}; the binding fails and ${temps.length === 1 ? 'it dissolves' : 'they dissolve'}.`,
-    );
+    narrate(narrative, {
+      kind: 'bound units left behind on the shore dissolve',
+      sideName: cName,
+      units: theUnitsAsTheLineNamesThem(temps),
+      why: whyTheyAreLeftBehind,
+    });
   if (!real.length) return false;
   if (prov.owner === owner) {
     // 2026-09-27 (Toby): TAG THE HULLS LEFT ASHORE. These units are now sitting in the province's
@@ -317,10 +321,13 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, 
       if (prov.garrisonArmies.indexOf(a) < 0) prov.garrisonArmies.push(a);
     });
     prov._battleUnresolved = true;
-    narrate(
-      narrative,
-      `— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length === 1 ? 'is' : 'are'} left in ${prov.name} ${why} — ${real.length === 1 ? 'it holds' : 'they hold'} the ground and will fight again.`,
-    );
+    narrate(narrative, {
+      kind: "units left behind on the realm's own ground hold it",
+      sideName: cName,
+      units: theUnitsAsTheLineNamesThem(real),
+      provinceName: prov.name,
+      why: whyTheyAreLeftBehind,
+    });
     return true;
   }
   if (!G.mercenaries) G.mercenaries = [];
@@ -335,10 +342,12 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, why, narrative, 
       id: newMercId(turnContext),
     }),
   );
-  narrate(
-    narrative,
-    `— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length === 1 ? 'is' : 'are'} left behind ${why} on ground the realm does not hold — leaderless, ${real.length === 1 ? 'it scatters' : 'they scatter'} into the mercenary bands.`,
-  );
+  narrate(narrative, {
+    kind: 'units left behind on ground the realm does not hold scatter as mercenaries',
+    sideName: cName,
+    units: theUnitsAsTheLineNamesThem(real),
+    why: whyTheyAreLeftBehind,
+  });
   return false;
 }
 // ── HULLS LEFT ASHORE, AFTER THE BATTLE (2026-09-27, Toby) ───────────────────────────────────
@@ -362,13 +371,20 @@ export function clearNavalHold(prov) {
     if (a && a._navalHold != null) delete a._navalHold;
   });
 }
+// claimant: whose the ground is not while the hulls lie there (a realm's name, or a side's label); null: the hunter's.
 export function navalHoldLine(turnContext, prov, units, claimant) {
   const { G } = turnContext;
   const who =
     units[0] && units[0]._navalHold != null && G.players[units[0]._navalHold]
       ? G.players[units[0]._navalHold].name
-      : 'the enemy';
-  return `⚓ ${who}'s ${describeArmy(units)} still ${units.length === 1 ? 'lies' : 'lie'} off ${prov.name} — the ground is not ${claimant}'s while ${units.length === 1 ? 'it is' : 'they are'} there, and the fight resumes next phase.`;
+      : null;
+  return {
+    kind: 'hulls left ashore still hold a province against its claimant',
+    holdersRealmName: who,
+    units: theUnitsAsTheLineNamesThem(units),
+    provinceName: prov.name,
+    claimantName: claimant,
+  };
 }
 export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName, noSea) {
   const { G } = turnContext;
@@ -409,26 +425,32 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
     const taken = live.filter((a) => !ashore.includes(a));
     ch.armies = (ch.armies || []).filter((a) => !ashore.includes(a)); // dead/disbanded stay for the caller's own sweep
     move(dest);
-    narrate(
-      narrative,
-      `⛵ ${cName} puts to sea — the fleet stands off ${prov.name} and makes for ${dest.name}${taken.length ? ` with ${describeArmy(taken)}` : ' with the hulls alone'}.`,
-    );
+    narrate(narrative, {
+      kind: 'a beaten fleet puts to sea with what its hulls can carry',
+      sideName: cName,
+      provinceName: prov.name,
+      destinationName: dest.name,
+      units: theUnitsAsTheLineNamesThem(taken),
+    });
     if (ashore.length) {
       const shore = bestRetreat(turnContext, ch, landOwn);
       if (shore) {
         const temps = ashore.filter((a) => a._temporary),
           real = ashore.filter((a) => !a._temporary);
         if (temps.length)
-          narrate(
-            narrative,
-            `— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} cannot be carried; the binding fails and ${temps.length === 1 ? 'it dissolves' : 'they dissolve'}.`,
-          );
+          narrate(narrative, {
+            kind: 'bound units the fleet cannot carry dissolve',
+            sideName: cName,
+            units: theUnitsAsTheLineNamesThem(temps),
+          });
         if (real.length) {
           shore.garrisonArmies = (shore.garrisonArmies || []).concat(real);
-          narrate(
-            narrative,
-            `— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} cannot be carried and fall back overland to ${shore.name}, joining its garrison.`,
-          );
+          narrate(narrative, {
+            kind: 'units the fleet cannot carry fall back overland and join a garrison',
+            sideName: cName,
+            units: theUnitsAsTheLineNamesThem(real),
+            shoreName: shore.name,
+          });
         }
       } else
         stayed =
@@ -437,7 +459,7 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
             ch,
             prov,
             ashore,
-            'with no room aboard and no friendly ground to fall back to',
+            'there is no room aboard and no friendly ground to fall back to',
             narrative,
             cName,
           ) || stayed;
@@ -450,16 +472,18 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
     const dest = bestRetreat(turnContext, ch, landFriendly) || landFriendly[0];
     ch.armies = (ch.armies || []).filter((a) => !ships.includes(a));
     move(dest);
-    narrate(
-      narrative,
-      `${cName} retreats overland to ${dest.name} with ${describeArmy(goInland)} — there is no friendly water to sail to, so the ships are left behind.`,
-    );
+    narrate(narrative, {
+      kind: 'a beaten force with ships retreats overland and leaves its ships behind',
+      sideName: cName,
+      destinationName: dest.name,
+      units: theUnitsAsTheLineNamesThem(goInland),
+    });
     stayed = _navalLeaveBehind(
       turnContext,
       ch,
       prov,
       ships,
-      'because no friendly water lies alongside for them to sail to',
+      'no friendly water lies alongside for the ships to sail to',
       narrative,
       cName,
     );
@@ -470,18 +494,19 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
     // A fleet alone, with nowhere to sail: hulls cannot take to the road, so they stand and fight
     // on rather than being run down in a rout they could not have fled.
     prov._battleUnresolved = true;
-    narrate(
-      narrative,
-      `⚓ ${cName}'s ships have no friendly water to fall back to and cannot take to the road — they hold ${prov.name} and will fight again.`,
-    );
+    narrate(narrative, {
+      kind: 'a beaten fleet with no friendly water holds the province',
+      sideName: cName,
+      provinceName: prov.name,
+    });
     return 'stay';
   }
   return ''; // nothing to fall back on at all — the ordinary rules decide
 }
-// The line that explains WHY a beaten force at sea cannot fall back (null when that is not why).
+// The line (its fact) that explains WHY a beaten force at sea cannot fall back (null when that is not why).
 export function seaTrapLine(name, ch, prov, force) {
   if (!isOpenSea(prov)) return null;
   force = (force || []).filter((a) => a && !a._died && !a._disbanded);
   if (getSeaCapability(force, ch) !== 'land') return null;
-  return `⚓ ${name} has too few hulls left afloat to sail the column off ${prov.name}, and no friendly shore lies alongside to land on — there is no falling back.`;
+  return { kind: 'a beaten force at sea has too few hulls left to fall back', sideName: name, provinceName: prov.name };
 }

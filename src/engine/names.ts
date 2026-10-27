@@ -7,6 +7,10 @@ import {
 import { kcRng } from './rng.ts';
 import { shuffleP } from './battle/fortune.ts';
 import type { Character } from '../schemas/saved-game-state.ts';
+import {
+  THE_NUMBER_OF_WAYS_THE_WANDERER_ESCAPES,
+  type TheFactOfTheWanderersEscape,
+} from './the-facts-the-wanderers-escape-line-records.ts';
 
 // The name tables, read by any alignment's, guardian's or category's name.
 interface NamePartsOfAnAlignment {
@@ -155,16 +159,16 @@ export function _pickUnusedNamePart(
 export function _escapesTheEnd(ch: Pick<Character, '_unkillable'> | null | undefined) {
   return !!ch?._unkillable;
 }
-export const _GARRETH_ESCAPES = [
-  ' somehow slips the final blow and is gone before the dust settles.',
-  ' takes what should be a mortal stroke \u2014 and walks out of it without a scratch.',
-  ' should by all rights have fallen, yet somehow escapes the final blow.',
-  ' reels from a killing hit, staggers into the smoke, and simply isn\u2019t there when it clears.',
-  ' is run through \u2014 or seems to be \u2014 but slips free, whole and unbothered.',
-];
-export function _garrethEscapeLine(ch: { readonly name?: string | undefined } | null | undefined) {
-  const name = ch?.name ?? '';
-  return `\u{1F340} ${name || 'The wanderer'}${String(_GARRETH_ESCAPES[Math.floor(kcRng() * _GARRETH_ESCAPES.length)])}`;
+// The line he slips the blow with: which of its sentences a die picks, here, in its place (the prose writes the words:
+// src/views/prose/the-words-of-the-wanderers-escape.ts; plan P1-12d5).
+export function _garrethEscapeLine(
+  ch: { readonly name?: string | undefined } | null | undefined,
+): TheFactOfTheWanderersEscape {
+  return {
+    kind: 'the wanderer slips a killing blow',
+    heroName: ch?.name ?? '',
+    whichSentence: Math.floor(kcRng() * THE_NUMBER_OF_WAYS_THE_WANDERER_ESCAPES),
+  };
 }
 export const _usedHeroNames = new Set<string>();
 export function _toRoman(n: number) {

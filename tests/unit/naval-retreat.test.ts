@@ -50,11 +50,13 @@ type SplitRetreat = (
   ch: Hero,
   prov: Province,
   live: Unit[],
-  narrative: string[],
+  narrative: unknown[],
   cName: string,
   noSea?: boolean,
 ) => string;
 const navalSplitRetreat = engineFn(engine, 'navalSplitRetreat') as SplitRetreat;
+/** The words the prose writes of a line's fact (plan P1-12d5: the naval split's lines are facts). */
+const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
 const seaLiftShortfall = engineFn(engine, 'seaLiftShortfall') as (armies: Unit[], leadChar: Hero) => number;
 const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
   p: Province,
@@ -118,9 +120,9 @@ const liveUnits = (ch: Hero) => ({
   mercs: G.mercenaries.length,
 });
 const retreat = (ch: Hero, noSea?: boolean) => {
-  const narr: string[] = [];
-  const r = navalSplitRetreat(tc, ch, site, ch.armies, narr, 'Admiral Test', noSea);
-  return { r, narr };
+  const told: unknown[] = [];
+  const r = navalSplitRetreat(tc, ch, site, ch.armies, told, 'Admiral Test', noSea);
+  return { r, narr: told.map(theWordsOf) };
 };
 
 describe('the staged cases', () => {
@@ -324,8 +326,9 @@ test('fuzz: 4,000 coastal retreats, no crash, no malformed line, every unit ends
     G.characters.push(ch);
     sp.characters = [ch.id];
     try {
-      const narr: string[] = [];
-      navalSplitRetreat(tc, ch, sp, ch.armies, narr, 'Fz', i % 7 === 0);
+      const told: unknown[] = [];
+      navalSplitRetreat(tc, ch, sp, ch.armies, told, 'Fz', i % 7 === 0);
+      const narr = told.map(theWordsOf);
       const after =
         ch.armies.length +
         nb.reduce((s, p) => s + (p.garrisonArmies ?? []).length, 0) +

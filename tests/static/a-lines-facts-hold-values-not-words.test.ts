@@ -43,12 +43,18 @@ import { ROOT } from '../../tools/build.ts';
 const AREAS: readonly (readonly [area: string, factsModule: string, row: string])[] = [
   ['personal combat', 'src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts', 'P1-12d2'],
   ['a battle', 'src/engine/battle/the-facts-a-battles-lines-record.ts', 'P1-12d3'],
+  ["the sea lift's lines in a battle", 'src/engine/units/the-facts-the-sea-lifts-battle-lines-record.ts', 'P1-12d5'],
+  ["a hero's death", 'src/engine/heroes/the-facts-a-heros-death-lines-record.ts', 'P1-12d5'],
+  ["the wanderer's escape", 'src/engine/the-facts-the-wanderers-escape-line-records.ts', 'P1-12d5'],
 ];
 
 /** Every facts module (none may import the world's types). */
 const FACTS_MODULES: readonly string[] = [
   'src/engine/battle/the-facts-a-battles-lines-record.ts',
   'src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts',
+  'src/engine/units/the-facts-the-sea-lifts-battle-lines-record.ts',
+  'src/engine/heroes/the-facts-a-heros-death-lines-record.ts',
+  'src/engine/the-facts-the-wanderers-escape-line-records.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -232,6 +238,8 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
   ],
   defendingUnitName: ['a defending unit is destroyed in the fighting', 'a defending unit is destroyed in the rout'],
   unitNameAtItsOldQuality: ["a beaten guard's surviving unit loses heart and is reduced a tier"],
+  // the units' owner as a unit's disbanding names him: a side's label, or a guard's ("the defenders")
+  ownerName: ['a beaten unit has had enough and disbands'],
   // the enemy unit a unit faced, as its fate's line names it (ownedUnitName: battleFacedClauses)
   theEnemyUnit: ['an enemy unit'],
 };

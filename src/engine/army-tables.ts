@@ -197,19 +197,6 @@ export function demoteOrDisband(a: ArmyInABattle | null | undefined): boolean {
   a._disbanded = true;
   return true;
 }
-export function disbandLine(
-  owner: string | null | undefined,
-  a: Pick<Army, 'type' | 'unitName'>,
-  clause?: string | null,
-): string {
-  // 2026-09-23d: a unit NAMED "the …" reads "the Pale Shades (Vervain's Shadow Archers)", never
-  // "Vervain's the Pale Shades" (same rule as unitRef). `clause` (2026-10-12): whom they fought, after the name.
-  const _core =
-    a.unitName && /^the\s/i.test(a.unitName)
-      ? `${a.unitName} (${owner ? owner + "'s " : ''}${a.type})`
-      : `${owner ? owner + "'s " : ''}${a.unitName ? a.unitName + ' (' + a.type + ')' : a.type}`;
-  return `— ${_core}${clause ? `, ${clause},` : ''} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
-}
 // "Atk's Warg Riders" / "the Red Hand (Atk's Eagle Riders)" — an owner plus a unit's name or type,
 // never "Atk's the Red Hand" (2026-09-23d). Module level since 2026-10-11 (they were inside runTurn).
 export function ownedUnitName(

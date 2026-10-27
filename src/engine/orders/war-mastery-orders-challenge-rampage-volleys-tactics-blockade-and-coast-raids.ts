@@ -155,7 +155,7 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
       if (loser.hp <= 0) loser.hp = 1;
       emit(turnContext, {
         type: 'combat',
-        text: _garrethEscapeLine(loser),
+        fact: _garrethEscapeLine(loser),
         audience: { actor: c.player, realms: [c.player].filter((x) => x != null), seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -323,7 +323,7 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
       foe.hp = Math.max(1, foe.hp);
       emit(turnContext, {
         type: 'combat',
-        text: _garrethEscapeLine(foe),
+        fact: _garrethEscapeLine(foe),
         audience: { actor: c.player, realms: [c.player].filter((x) => x != null), seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,

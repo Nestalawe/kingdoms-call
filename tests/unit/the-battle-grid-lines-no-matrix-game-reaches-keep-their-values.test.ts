@@ -35,10 +35,13 @@ import {
   faceMult,
   flankLineMults,
   rollBattleWidth,
-  theClauseOfWhomAUnitFaced,
   typeOfX,
 } from '../../src/engine/battle/lines.ts';
-import { shortUnit, theWordsOfAnAbilityInTheLadder } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
+import {
+  shortUnit,
+  theClauseOfWhomAUnitFaced,
+  theWordsOfAnAbilityInTheLadder,
+} from '../../src/views/prose/the-words-of-a-battles-lines.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
 
