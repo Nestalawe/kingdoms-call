@@ -18,8 +18,8 @@
 //                                a file's (a page's, a declaration's) code in one canonical layout, for a regular expression
 //   stringsOf(file)              every string a file holds (each literal's value; a template's text with ${…}), not keys
 //   pageScripts(page), pageStrings(page), pageText(page)
-//                                the script files under src/ that make a published page, their strings, and those with
-//                                the page's template: every word the page can show
+//                                the script files under src/ that make a published page (its prose under views/prose/
+//                                too), their strings, and those with the page's template: every word the page can show
 //   pageSource(page)             the files that make a page (template, styles, scripts) as written: comments too
 //   fileDeclaring(page, name)    the one script file of a page that declares `name` at top level
 //   statementsFollowing(page, re, count)   the statement holding a matching message and the next `count`
@@ -37,24 +37,29 @@ import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
 import { build, ROOT } from '../../tools/build.ts';
-import { DATA_FILE, importsOf, pageEntries } from '../../tools/pages.ts';
+import { DATA_FILE, importsOf, pageEntries, pageModules } from '../../tools/pages.ts';
 
 export const SRC = path.join(ROOT, 'src');
 
 /** The files every script page shares, which it loaded beside it until the module switch (P1-09d): a page's own code is
  *  the rest. */
 const SHARED_FILES = new Set([DATA_FILE, 'ui/shared/kc-safe.ts', 'db/kc-db-guard.ts']);
+/** The folder of the views' prose: the words of every line the engine records as a fact (plan P1-12c3 to c6). A page
+ *  reaches its files through views/, never from its entry. */
+const PROSE_FOLDER = 'views/prose/';
 /** The files under src/ that make the page `page` (e.g. 'kingdoms-call-gm-portal.html') as the tests read them: its
- *  template (with its boot-failure reporter inline), its stylesheets, and its own modules in the order its entry lists
+ *  template (with its boot-failure reporter inline), its stylesheets, its own modules in the order its entry lists
  *  them (an entry that only imports, page.ts, stands for its list: the order the files ran as classic scripts), not
- *  the shared files. */
+ *  the shared files, and last the prose files its modules import, in the order they run (plan P1-12d1): the words of
+ *  a battle's or a personal combat's lines are the page's words, so a words test of the page reads them. */
 function sourcesOf(page: string): string[] {
   const { modules, styles } = pageEntries(page);
   const own = modules.flatMap((entry) => {
     const tree = treeOf(entry, fs.readFileSync(fullPath(entry), 'utf8'));
     return tree.statements.every(ts.isImportDeclaration) ? importsOf(entry) : [entry];
   });
-  return [page, ...styles, ...own.filter((f) => !SHARED_FILES.has(f))];
+  const prose = pageModules(page).filter((f) => f.startsWith(PROSE_FOLDER) && !own.includes(f));
+  return [page, ...styles, ...own.filter((f) => !SHARED_FILES.has(f)), ...prose];
 }
 
 export interface SourceOptions {
@@ -478,7 +483,8 @@ export function entriesOf(file: string, name: string, opts: SourceOptions = {}):
 }
 
 /** The script files under src/ that make the published page `page` (e.g. 'kingdoms-call-gm-portal.html'), in its
- *  order: its own code, not the files every page shares (the data file, kc-safe.ts, kc-db-guard.ts). */
+ *  order: its own code, not the files every page shares (the data file, kc-safe.ts, kc-db-guard.ts), then the prose
+ *  files under views/prose/ its code imports. */
 export function pageScripts(page: string): string[] {
   return sourcesOf(page).filter((f) => /\.[cm]?[jt]s$/.test(f));
 }
