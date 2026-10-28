@@ -153,13 +153,25 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   Blueprint, the Kraken Figurehead, the Sea Chart of the Deep, the Admiral's Spyglass, the Chalice of Dawn, the Black
   Sceptre. And `strength`'s **a land unit at sea, led** (the Tide-Caller's Horn: whether the sea's penalty to a land
   unit the bearer leads is waived; `armStr` asks it beside Naval's eighth level).
+- **The battles' stages** (P1-19n, `magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts`):
+  `strength`'s **the defenders' fortifications** (both battles, after the province's and the realm's own bonuses):
+  handed the side whose commander carries the item and whether the defenders fight at their home, and the bonus so far,
+  each effect returns the new bonus and its line, in the stage's order: the Banner of the Realm's ×1.25 for the defender
+  at his home, then the Siege Master's Ring halving what is left above ×1 for the attacker (so the order is the result's).
+  The runner asks each side's items only when an effect would act for that side (reading a commander's items tidies
+  them, as `activeItems` does), and against neutral guards it is handed no defender's items. `volley`'s **the commander
+  adds volleys** (the Quiver of the Hawk's second volley, then the Quiver of Many Arrows' extra shot, each with the line
+  the volley's opening records); `fate`'s **the commander's riders run the beaten down on any ground** (the War-Horn of
+  the Plains: the answer Ride Them Down is handed, asked only as before) and **the beaten force may retreat** (the
+  Shield-Wall Rune refuses it, in the battle against neutral guards' retreat).
 - **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
   desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
   unit, since the items in play exist only after the engine's load-time pass; the known gaps listed with their Parked
   entries); no item effect key or item named, and no item field of its own read, in a function the registry has taken
   (`tests/static/the-resolvers-the-item-registry-has-taken-name-no-item-effect.test.ts`), and, outside the registry,
-  the ratchet's `itemEffectChecksInEngine`, which only falls; the effects no matrix game meets, by a unit case each
-  (`tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts`).
+  the ratchet's `itemEffectChecksInEngine`, which only falls; the effects no matrix game meets, by a case each
+  (`tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts`, and for the battles' items, inside
+  the two battles, a whole turn each: `tests/scenario/the-battles-items-no-matrix-game-carries-keep-their-values.test.ts`).
 - **How to add an item effect** of a stage already written: its row (the key a copy carries it by, its numbers, the
   units it reaches); its effect in the stage's file under `src/engine/rules/magic-items/`, reading its numbers from its
   row; its entry and its place in the stage's order; and the numbers in the desc and lore of every item that carries it
@@ -210,7 +222,9 @@ it. A set it needs is built from content (`KC_UNIT_CLASS`, a row's `counts`) or 
 fields ranged units, from the ladder's missile set), never imported from `battle/`. Another ability is asked about by
 its slug, never by a unit's name. A magic item's effect is found by the key its row gives, from the items the resolver
 hands the items' runner (`activeItems`, in `src/engine/items/`, stays the engine's one gate, P1-19m); the hook points
-the items' rows use so far are `strength`'s two stages of the commander's items.
+the items' rows use so far are `strength` (the commander's items, a land unit at sea led, the defenders'
+fortifications), `volley` (the commander adds volleys) and `fate` (the commander's riders run the beaten down on any
+ground, the beaten force may retreat).
 
 The stage types live in the registry's own file, which holds code. **A file that only `import type` reaches is in no
 bundle**: the build's checks (`tests/static/pages-build.test.ts`, "none is left out", and the engine paths in

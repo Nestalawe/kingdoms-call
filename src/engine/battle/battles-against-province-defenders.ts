@@ -8,6 +8,11 @@ import {
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
+  theBeatenForceMayRetreatByTheCommandersItems,
+  theDefendersFortificationsAfterTheCommandersItems,
+  theVolleysTheCommandersItemsLoose,
+} from '../rules/the-registry-of-magic-item-effects.ts';
+import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
   QUALITY_TIERS,
@@ -54,7 +59,7 @@ import { homeFounderOf } from '../grand-design.ts';
 import { battleFortune, shuffleP } from './fortune.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { demoteGuardToWanderer, isConsecrated } from '../heroes/fame-and-consecration.ts';
-import { activeItems, hasItemBase } from '../items/equipment.ts';
+import { activeItems } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100, pick, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -389,9 +394,21 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     defBonus *= 1.1;
     narrate(narrative, { kind: 'the defenders of a province defend ground held justly', provName: prov.name });
   }
-  if (activeItems(c).some((it) => it.effect && it.effect.stat === 'siegeBonus')) {
-    defBonus = 1 + (defBonus - 1) * 0.5;
-    narrate(narrative, { kind: "the attacker's siege mastery halves the defenders' fortifications", atkName: cName });
+  // The attacker's items at the defenders' fortifications: the items' registry's "strength: the defenders'
+  // fortifications" (plan P1-19n: his siege mastery). Against neutral guards no defender's items are read.
+  {
+    const _fort = theDefendersFortificationsAfterTheCommandersItems(
+      { theDefendersFightAtTheirHome: false },
+      { theAttackersItems: () => activeItems(c) },
+      defBonus,
+    );
+    defBonus = _fort.theBonus;
+    for (const _line of _fort.theLines)
+      if (_line === "the attacker's siege mastery halves the defenders' fortifications")
+        narrate(narrative, {
+          kind: "the attacker's siege mastery halves the defenders' fortifications",
+          atkName: cName,
+        });
   }
   // (The Wyverns' cut to a neutral defence's bonus, Dread's stand-in here, was retired with the unit
   // abilities, 2026-10-11: Terror From Above bears on the strongest front unit, in battleFaceSide.)
@@ -678,8 +695,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // PRE-BATTLE PHASE 2: ARCHERY Each attacker missile unit fires at a random defender Quiver of
   // Many Arrows = 2 volleys per unit
   // ════
-  const hasQuiver = hasItemBase(c, 'Quiver of the Hawk');
-  const _manyArrows = hasItemBase(c, 'Quiver of Many Arrows'); // one extra shot per missile unit
+  // the items' registry's "volley: the commander adds volleys" (plan P1-19n: the Quivers)
+  const _itemVolleys = theVolleysTheCommandersItemsLoose(activeItems(c));
+  const hasQuiver = _itemVolleys.theLines.includes('each missile unit looses two volleys instead of one');
+  const _manyArrows = _itemVolleys.theLines.includes('each missile unit looses one more shot'); // one extra shot per missile unit
   applyFlakScreen(armies, defenders, c.name, narrative);
   // PRIMAL — Breach and Swamp: whale cohorts roll a hull over before a shot is fired. The rule registry's
   // "fate: a hull is sunk before the battle" picks the hull, with the dice it is handed (plan P1-19i).
@@ -724,7 +743,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       doubleVolleys: hasQuiver,
       oneMoreShot: _manyArrows,
     });
-    const volleys = (hasQuiver ? 2 : 1) + (_manyArrows ? 1 : 0);
+    const volleys = _itemVolleys.theVolleys;
     let totalArrowDmg = 0;
     missileAtk.forEach((atk) => {
       for (let v = 0; v < volleys; v++) {
@@ -1774,7 +1793,8 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     const _retLive = (c.armies || []).filter((a) => a && !a._died && !a._disbanded);
     const friendlyAdj = retreatOptions(turnContext, c, prov, _retLive); // own/allied ground it could legally enter, or the unowned sea it sailed from
     prov._hadBattleThisTurn = true;
-    const infStay = activeItems(c).some((it) => it.effect && it.effect.stat === 'infStay');
+    // the items' registry's "fate: the beaten force may retreat" (plan P1-19n: the Shield-Wall Rune refuses it)
+    const infStay = !theBeatenForceMayRetreatByTheCommandersItems(activeItems(c));
     const _npcSeaTrap = friendlyAdj.length === 0 && !infStay ? seaTrapLine(cName, c, prov, _retLive) : null;
     // HUMAN — Keep the Sea Lanes: a corsair-heavy force always has boats waiting, so long as
     // there is water to reach. They withdraw to the ships rather than being cut down.

@@ -10,8 +10,15 @@
 // row against the desc and lore of each item in play that carries it.
 import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 
-/** How an item's texts write a number: a multiplier as the share it adds (×1.25 as `+25%`); strength added as `+2`. */
-export type HowAnItemsTextsWriteANumber = 'a multiplier, as the share it adds' | 'strength added';
+/** How an item's texts write a number: a multiplier as the share it adds (×1.25 as `+25%`); strength added as `+2`; a
+ *  share in words (0.5 as "half", or "halved"); volleys in words (2 as "two volleys"); extra shots in words (1 as "one
+ *  extra shot"). */
+export type HowAnItemsTextsWriteANumber =
+  | 'a multiplier, as the share it adds'
+  | 'strength added'
+  | 'a share, in words'
+  | 'volleys, in words'
+  | 'extra shots, in words';
 
 /** One number of an item's effect, and how the item's texts write it. */
 export interface ANumberOfAnItemsEffect {
@@ -71,7 +78,8 @@ const THE_ARCHERS_THE_BOWMANS_ITEMS_REACH: readonly UnitType[] = [
 const THE_HEAVY_ENGINES_THE_ENGINEERS_ITEMS_REACH: readonly UnitType[] = ['Mountain Guns', 'Dwarf Ironclads'];
 
 /** The magic items' effects the registry holds, in the order the battle code meets them: the commander's items on
- *  each unit he leads, then his items at sea (plan P1-19m). */
+ *  each unit he leads, then his items at sea (plan P1-19m); the commanders' items at the defenders' fortifications, at
+ *  the volley and in the rout (plan P1-19n). */
 export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── The commander's items (strength, in armStr: after the unit's own modifiers, before its factors from its force),
   // each step rounded as it goes. ──
@@ -143,6 +151,50 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   'land-units-at-full-strength-at-sea': {
     name: "Tide-Caller's Horn",
     carriedAs: { field: 'landFullAtSea' },
+    numbers: {},
+  },
+  // ── The commanders' items at the defenders' fortifications (strength, in both battles, after the province's and the
+  // realm's own bonuses), in this order: the defender's, then the attacker's (the siege halves what home defence
+  // added). ──
+  // The defenders' position fights ×1.25 when they defend their founding home and the bearer leads them. Its items'
+  // texts say "+1 quality tier" or "+1 level", and some "your own provinces" (plan NEXT.md question 22; Parked "The
+  // home-defence items say a quality tier in any province of one's own; the battle gives ×1.25 at the home alone").
+  'home-defence-bonus': {
+    name: 'Banner of the Realm',
+    carriedAs: { stat: 'homeDefBonus' },
+    numbers: { multiplier: { value: 1.25, theTextsWriteIt: 'a multiplier, as the share it adds' } },
+  },
+  // The defenders' fortifications, beyond the bare ×1, are halved when the bearer attacks. Five of its items say "Siege
+  // bonus +1" (plan NEXT.md question 21).
+  'siege-bonus': {
+    name: "Siege Master's Ring",
+    carriedAs: { stat: 'siegeBonus' },
+    numbers: { theShareOfTheFortificationsLeft: { value: 0.5, theTextsWriteIt: 'a share, in words' } },
+  },
+  // ── The commander's items at the volley before the battle (volley, in both battles), in this order. ──
+  'quiver-of-the-hawk': {
+    name: 'Quiver of the Hawk',
+    carriedAs: { itemName: 'Quiver of the Hawk' },
+    numbers: { volleys: { value: 2, theTextsWriteIt: 'volleys, in words' } },
+  },
+  'quiver-of-many-arrows': {
+    name: 'Quiver of Many Arrows',
+    carriedAs: { itemName: 'Quiver of Many Arrows' },
+    numbers: { extraShots: { value: 1, theTextsWriteIt: 'extra shots, in words' } },
+  },
+  // ── The commander's items in the rout (fate). ──
+  // The Free Lances he leads ride the beaten down on any ground (Ride Them Down's share is the unit ability's).
+  'war-horn-of-the-plains': {
+    name: 'War-Horn of the Plains',
+    carriedAs: { itemName: 'War-Horn of the Plains' },
+    numbers: {},
+  },
+  // The force he leads never retreats from a lost battle against neutral guards: it stands. Its items' texts say
+  // "Shieldwall Levies" or "Infantry"; between heroes it does nothing (plan NEXT.md question 23; Parked "The
+  // Shield-Wall Rune holds only against neutral guards, and for the whole force").
+  'shield-wall-rune': {
+    name: 'Shield-Wall Rune',
+    carriedAs: { stat: 'infStay' },
     numbers: {},
   },
 } as const satisfies Record<string, AMagicItemEffectAsItsTextsWriteIt>;

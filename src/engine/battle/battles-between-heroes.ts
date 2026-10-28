@@ -3,6 +3,10 @@ import { BATTLE_ARMY_SPELLS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../con
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
+  theDefendersFortificationsAfterTheCommandersItems,
+  theVolleysTheCommandersItemsLoose,
+} from '../rules/the-registry-of-magic-item-effects.ts';
+import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
   QUALITY_TIERS,
@@ -45,7 +49,7 @@ import { homeFounderOf } from '../grand-design.ts';
 import { battleFortune, shuffleP } from './fortune.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { isConsecrated } from '../heroes/fame-and-consecration.ts';
-import { activeItems, hasItemBase } from '../items/equipment.ts';
+import { activeItems } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -440,17 +444,21 @@ export function combatVsChar(turnContext, atk, def, prov) {
       });
     }
   } // defOwn discoveries
-  if (
-    isHome &&
-    prov.owner === def.player &&
-    activeItems(def).some((it) => it.effect && it.effect.stat === 'homeDefBonus')
-  ) {
-    defBonus *= 1.25;
-    narrate(narrative, { kind: "the defender's banner of the realm rallies the home defence", defName });
-  }
-  if (activeItems(atk).some((it) => it.effect && it.effect.stat === 'siegeBonus')) {
-    defBonus = 1 + (defBonus - 1) * 0.5;
-    narrate(narrative, { kind: "the attacker's siege mastery halves the defenders' fortifications", atkName });
+  // The commanders' items at the defenders' fortifications: the items' registry's "strength: the defenders'
+  // fortifications" (plan P1-19n: the defender's banner at his home, then the attacker's siege mastery), each side's
+  // items asked only when an effect would act for it.
+  {
+    const _fort = theDefendersFortificationsAfterTheCommandersItems(
+      { theDefendersFightAtTheirHome: isHome && prov.owner === def.player },
+      { theDefendersItems: () => activeItems(def), theAttackersItems: () => activeItems(atk) },
+      defBonus,
+    );
+    defBonus = _fort.theBonus;
+    for (const _line of _fort.theLines) {
+      if (_line === "the defender's banner rallies the home defence")
+        narrate(narrative, { kind: "the defender's banner of the realm rallies the home defence", defName });
+      else narrate(narrative, { kind: "the attacker's siege mastery halves the defenders' fortifications", atkName });
+    }
   }
   if (isHome) narrate(narrative, { kind: 'the defenders fight on home ground' });
   // (2026-09-23d: "📊 X leads the defense: Tactical N" retired — the deployment line and the ladder both name it.)
@@ -845,9 +853,11 @@ export function combatVsChar(turnContext, atk, def, prov) {
     const myMissile = abilityMissileUnits(myForce, pvpTerrain);
     if (!myMissile.length || !enemyArmies.length) return;
     const archLvl = effStat(turnContext, heroChar, 'archery');
-    const hasQ = hasItemBase(heroChar, 'Quiver of the Hawk');
-    const _manyQ = hasItemBase(heroChar, 'Quiver of Many Arrows');
-    const volleys = (hasQ ? 2 : 1) + (_manyQ ? 1 : 0);
+    // the items' registry's "volley: the commander adds volleys" (plan P1-19n: the Quivers)
+    const _itemVolleys = theVolleysTheCommandersItemsLoose(activeItems(heroChar));
+    const hasQ = _itemVolleys.theLines.includes('each missile unit looses two volleys instead of one');
+    const _manyQ = _itemVolleys.theLines.includes('each missile unit looses one more shot');
+    const volleys = _itemVolleys.theVolleys;
     const _prepared = myMissile.some((a) => abilityVolleys(a, isAtk) > 1); // HUMAN — Prepared Ground: defending Longbows loose twice
     narrate(narr, {
       kind: "the hero's archery volley begins",

@@ -2,16 +2,17 @@
 // 4): each function the registry's rows have taken holds no string naming an item's effect key (a `stat` that isn't a
 // skill, a `use`, a `ward` or a rider's `ward`) or an item (its name or a second name), read from the content's tables
 // with Mithril Armour added, whatever the code does with it (compared, switched on, passed to a helper, held in a list,
-// or in a function nested inside: but the words listed with what else each is there); and it reads none of the five effects an item carries on itself, beside its
-// `effect` (`fleetStr`, `landFullAtSea`, `emberTwo`, `exploreMove`, `primalStrike`), which no string names. Its
+// or in a function nested inside: but the words listed with what else each is there); and it reads none of the six effects an item carries on itself, beside its
+// `effect` (`fleetStr`, `landFullAtSea`, `emberTwo`, `exploreMove`, `primalStrike`, `drumTierUp`), which no string
+// names, but the reads listed with the step each is left to. Its
 // effects find what an item carries by the key the content's row gives, in src/engine/rules/. Each row of the family
 // adds the functions it takes. With them, the ratchet's count of the engine's checks of an item outside the registry
 // (tools/ratchet.ts's itemEffectChecksInEngine, by its helper itemEffectChecksByFunction: a string of the vocabulary
 // compared with an item's key or name, switched on, or passed to hasItemBase, has or itemStat), so that count only
 // falls: the helper counts each such check planted, and none in src/engine/rules/ or a page's code.
 //
-// Red on its row's base by design (armStr held 9 checks, and read `fleetStr` and `landFullAtSea`, on P1-19m's base),
-// as the unit-name test was: the one exception to refactor-only's rule that new tests pass before and after (Theo,
+// Red on its row's base by design (armStr held 9 checks, and read `fleetStr` and `landFullAtSea`, on P1-19m's base; the
+// two battles' functions 8, and pursuitsOfTheBeaten 1, on P1-19n's), as the unit-name test was: the one exception to refactor-only's rule that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
 import fs from 'node:fs';
@@ -31,6 +32,10 @@ import {
 /** Each function the items' registry has taken, by its file, from the row that took it. */
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/terrain-and-unit-strength.ts', 'armStr', "P1-19m, the commander's items"],
+  ['src/engine/battle/battles-between-heroes.ts', 'combatVsChar', "P1-19n, the battles' items"],
+  ['src/engine/battle/battles-between-heroes.ts', 'applyPreBattleArchery', "P1-19n, the battles' items"],
+  ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', "P1-19n, the battles' items"],
+  ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten', "P1-19n, the battles' items"],
 ];
 
 /** The words of the vocabulary a taken function holds for something else, by the function, each with what it is (the
@@ -39,6 +44,19 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
 const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   // the ladder's reason for an Evil realm's Terror ({ kind: 'terror', multiplier }), not the combat item's use
   armStr: ['terror'],
+  // an Evil realm's doctrine after a decisive win, `(encounterPlan.evilMode || 'terror') === 'terror'`, not the use
+  combatVsChar: ['terror', 'terror'],
+  combatVsNPC: ['terror', 'terror'],
+};
+
+/** The reads of an item's own field a taken function still holds, by the function, each left to a later step (the
+ *  items family's Decisions don't take them): matched with the words above, so one more, or one gone, turns it red. */
+const READS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {
+  // `.drumTierUp`: the War Drum's chance to lift a unit a tier, which no row of the items family takes (Parked "The War
+  // Drum's tier-up is an item effect no row of P1-19's items family takes", found by P1-19n); `.emberTwo`: the Ember
+  // Rune's second Fireball, with the spells family (the items family's Decision 5)
+  combatVsChar: ['.drumTierUp', '.emberTwo'],
+  combatVsNPC: ['.drumTierUp', '.emberTwo'],
 };
 
 /** The effects an item carries on itself, beside its `effect` (Parked: one key per effect, later). */
@@ -48,6 +66,7 @@ const AN_ITEMS_OWN_FIELDS: ReadonlySet<string> = new Set([
   'emberTwo',
   'exploreMove',
   'primalStrike',
+  'drumTierUp',
 ]);
 
 /** Whether a node declares the function named (as the ratchet's helper finds a function). */
@@ -98,9 +117,10 @@ test.for(TAKEN)('%s: %s names no item effect (%s)', ([file, fn]) => {
   const counts = itemEffectChecksByFunction(file, text);
   expect(counts.has(fn), `${file} declares ${fn}`).toBe(true);
   expect(counts.get(fn), `${fn}'s checks of an item's effect or an item (the ratchet's helper)`).toBe(0);
-  expect(everyItemWordIn(file, text, fn), `every string in ${fn} naming an item's effect or an item`).toEqual(
-    WORDS_FOR_SOMETHING_ELSE[fn] ?? [],
-  );
+  expect(
+    [...(everyItemWordIn(file, text, fn) ?? [])].sort(),
+    `every string in ${fn} naming an item's effect or an item, and every read of an item's own field`,
+  ).toEqual([...(WORDS_FOR_SOMETHING_ELSE[fn] ?? []), ...(READS_LEFT_TO_A_LATER_STEP[fn] ?? [])].sort());
 });
 
 test("the vocabulary holds the content's effect keys and item names, no skill, and Mithril Armour", () => {

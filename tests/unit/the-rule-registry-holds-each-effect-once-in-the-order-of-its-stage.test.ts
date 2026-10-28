@@ -195,6 +195,7 @@ test.for([
   [
     'an entry left out of its order',
     {
+      ...ITEM_ORDERS,
       strength: {
         ...ITEM_ORDERS['strength'],
         "the commander's items": THE_COMMANDERS_ITEMS.filter((s) => s !== 'chalice-of-dawn'),
@@ -205,6 +206,7 @@ test.for([
   [
     'an order naming an entry with no effect at its stage',
     {
+      ...ITEM_ORDERS,
       strength: {
         ...ITEM_ORDERS['strength'],
         "the commander's items": [...THE_COMMANDERS_ITEMS, 'land-units-at-full-strength-at-sea'],
