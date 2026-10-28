@@ -7,12 +7,12 @@
 // lift's lines in a battle, a hero's death and the wanderer's escape, P1-12d6 five order families (Encounter and
 // Defend, the order dispatch, the item orders, Research and Practice, Recruit and Hire), P1-12d7 three more (the army
 // orders, the realm works, the war masteries), P1-12d8 two more (espionage, explore and search), P1-12d9 the Cast Spell
-// order; P1-12d10 adds its own. A
-// facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a unit stands or faces as it does,
-// whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what it is, where companies muster,
-// why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild Calling tore beasts from;
-// P1-12d8: what a thief was caught at; P1-12d9: why a charmed mind may turn on its enchanter, a company a Telekinetic
-// Storm strikes), so a record's literal is read too, and a record's `kind` that a facts module declares
+// order, P1-12d10 the move order. A facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a
+// unit stands or faces as it does, whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what
+// it is, where companies muster, why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild
+// Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why a charmed mind may turn on its enchanter,
+// a company a Telekinetic Storm strikes; P1-12d10: the troops that rally to a defender), so a record's literal is read
+// too, and a record's `kind` that a facts module declares
 // is the record's name, not words.
 //
 // The rule, by syntax tree: a field holds words when its value is, or holds, a string or a template with text in it,
@@ -39,7 +39,7 @@
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
-// P1-12d6's, P1-12d7's, P1-12d8's and P1-12d9's: their areas' facts modules, which their bases lack), as the static
+// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's and P1-12d10's: their areas' facts modules, which their bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
@@ -79,6 +79,7 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
     'P1-12d8',
   ],
   ['the Cast Spell order', 'src/engine/orders/the-facts-the-cast-spell-orders-lines-record.ts', 'P1-12d9'],
+  ['the move order', 'src/engine/orders/the-facts-the-move-orders-lines-record.ts', 'P1-12d10'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -99,6 +100,7 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/orders/the-facts-the-espionage-orders-lines-record.ts',
   'src/engine/orders/the-facts-the-explore-and-search-orders-lines-record.ts',
   'src/engine/orders/the-facts-the-cast-spell-orders-lines-record.ts',
+  'src/engine/orders/the-facts-the-move-orders-lines-record.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
