@@ -49,11 +49,18 @@ const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|w
   const atkLines=section(atkHead,nextHead(atkHead));
   ok(atkLines.every(l=>CLAUSE.test(l)),`every fate line of the attacker's names whom the company fought (${atkLines.length} lines): ${atkLines.filter(l=>!CLAUSE.test(l)).map(l=>`"${l}"`).join(' | ')||'all do'}`);
   ok(atkLines.every(l=>/^— (Despite defeat, )?(the \w+ \w+ \(.+?'s (Men-at-Arms|Yeoman Longbows|Free Lances), Elite\))/.test(l)),`the attacker's companies keep their named form first: ${atkLines.map(l=>`"${l.slice(0,70)}…"`).join(' | ')||'no lines this turn'}`);
-  // every defending company writes a line: destroyed (naming whom it faced), cut down in the trap, or eroded
-  // afterwards (naming the victor's host)
-  const defLines=all.filter(l=>l.startsWith('— ')&&DEF.some(nm=>l.includes(nm)));
+  // every defending company writes a line in the first battle: destroyed (naming whom it faced), cut down in the trap,
+  // or eroded afterwards (naming the victor's host). Its lines are the ones whose subject it is, by their form
+  // ("— <guard>'s <company> (…" or "— <company> are cut down…"), never an attacker's line that names it; and only the
+  // first battle's (from its "⚔ **Battle for" heading to the next), since survivors who hold the ground fight again in
+  // a later phase, where a company already reduced to Green that loses heart disbands, a line that names nobody. The
+  // staged companies are Average, so in the first battle none can disband.
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const battleHeads=all.flatMap((l,i)=>l.startsWith('⚔ **Battle for ')?[i]:[]);
+  const firstBattle=battleHeads.length?all.slice(battleHeads[0],battleHeads[1]):[];
   for(const nm of DEF){
-    const mine=defLines.filter(l=>l.includes(nm));
+    const itsOwn=new RegExp(`^— (${esc(guardName)}'s ${esc(nm)} \\(|${esc(nm)} are cut down with no escape!$)`);
+    const mine=firstBattle.filter(l=>itsOwn.test(l));
     ok(mine.length>=1,`${nm} gets a line`);
     const good=mine.every(l=>(/were destroyed in the rout!$/.test(l)&&CLAUSE.test(l))||/are cut down with no escape!$/.test(l)||(new RegExp(`${H.name}'s host`).test(l)&&/break ranks and flee before|beaten by|hold their ground unbroken against/.test(l)));
     ok(good,`${nm}'s line${mine.length>1?'s':''} name${mine.length>1?'':'s'} whom they fought or who beat them: ${mine.map(l=>`"${l}"`).join(' | ')}`);
