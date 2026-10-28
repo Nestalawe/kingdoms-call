@@ -2,6 +2,65 @@
 
 What a helper, an order or a stage of the turn takes, and what a test that calls one directly does first. The trap in brief: [traps.md](../traps.md#a-lifted-helper-takes-the-turns-context-first). Where each area lives: [the turn engine](the-turn-engine.md).
 
+## What `resolveTurn` calls, in order
+
+`resolveTurn` (`src/engine/run-turn.ts`) is the stages' calls. Between them it keeps only the bots' calls and the
+turn's start values. Each stage takes the context, and the phase loop's stages also take the loop's values they read.
+Search a name to find its file. In order:
+
+1. **As the save is read**, with its upgrades: `lastTurnsBattleAndDuelSwordsClearedFromTheMap(G)` clears the map's
+   crossed swords from last turn, and `everyRealmStampedBotOrHumanFromTheBotSlotRows` stamps each realm's bot flag
+   from the slot rows.
+2. **The set-up** (`engine/turn/set-up-…`): `turnStartRepairsAndAFreshSlateOfOrdersForEveryHero` (the save's repairs,
+   every hero's orders cleared), then `mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans` (orders,
+   declarations, research choices, Reckoning calls, messages, concessions, encounter plans and heirs' skills).
+3. **Before the first phase** (`engine/turn/before-the-first-phase-…`):
+   - `relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks`;
+   - the bots' diplomacy, `botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`;
+   - `warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages`;
+   - `movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan`;
+   - the bots' plan, between the move pools and the default to Defend:
+     `botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning` (eight passes);
+   - `missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart` (every empty phase Defend, the record of
+     orders, the war fronts at the start).
+4. **The phase loop**, five phases (`engine/turn/phase-stages-…`). The loop keeps the phase, where each hero stood as
+   it began, and the intents (`buildPhaseIntents`, between the first two stages). Each phase runs:
+   - `startPhaseHealingSnapshotsAndStalledBattles`;
+   - `pinAndReactToPhaseIntents`;
+   - `resolvePhaseOrdersInTwoTiersAroundTheDefendStep`, which calls `processOrder` for each hero;
+   - `endPhaseSkillRisesFallenCommandersAndProvinceMemory`;
+   - in the last phase, Early Winter, `earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill`: a charmed hero
+     goes home, then the taxes, the wages (and what a realm that can't pay loses), Raiders' Muster and the garrison
+     drill;
+   - then `syncAllMaxHp`.
+5. **After the phases:** `afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames`, then the
+   bots' diplomacy again (for a rival met late).
+6. **Diplomacy and victory:** `diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings`, then
+   `victoryTheReckoningEliminationConcessionAndTheAnnouncement`.
+7. **The new turn, in two parts:**
+   - `newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns` (the turn counter, a Divine king's lost
+     return, an heir crowned, summons and one-turn spells ending, the Grand Designs);
+   - `newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile` (drills, informants,
+     the Divine return, graves, mercenaries, the clean-up and the save's repair lines, wanderers, the turn's orders
+     cleared, the final reconcile and the stranded guards).
+8. **The titles at the turn's end** (`engine/titles/`): `imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy`
+   (each holder's intel, from turn 5), then `titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn`.
+
+**`processOrder(turnContext, c, o, ph)`** (`engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`)
+makes the checks that come before any order. In order:
+- a hero carried into another's battle this phase is superseded;
+- a bot's Practice on a skill already at 5 switches skill, and a bot's Search that can't go ahead becomes a Rest;
+- a Move or an Encounter out of an unresolved battle is refused;
+- a charmed enemy hero won't disband, perform the rites or spend a mastery;
+- a mastery is charged once a turn;
+- a Forced March becomes a Move that may slip past a battle;
+- a spell item's Use Item becomes a Cast Spell, handed to `resolveCastSpellOrder` as its last argument (`_itemCast`).
+
+Then the `switch` hands the order to its own function in `engine/orders/`. Which function and which module each
+order's is: the module map and a search for `resolve<Order>Order`.
+
+## A lifted helper takes the turn's context first
+
 A helper lifted out of `resolveTurn` that reads the turn's state takes `turnContext` as its first argument
 (`src/engine/turn/context.ts`; [the turn engine](the-turn-engine.md#the-turn-engine-gm-portal)).
 

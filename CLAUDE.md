@@ -16,7 +16,7 @@ published.
 4. [docs/traps.md](docs/traps.md): the titles, then the entries your work touches (before changing a portal or a test).
 5. When you write a test: [tests/README.md](tests/README.md), and [the list of tests](tests/every-test-its-level-and-what-it-checks.md).
 6. Only then the code you need, in `src/`: **edit `src/`, never `site/`** (it's built). Files run to a few hundred
-   lines, a few to 2,000 (`src/engine/run-turn.ts` ~230): search the long ones, and edit with unique anchors.
+   lines, a few to 2,000 (`src/engine/run-turn.ts` ~380): search the long ones, and edit with unique anchors.
 
 **Toby's rulings are in [docs/rulings/](docs/rulings/README.md)**, one file each, with an index. Before
 changing a rule, read its ruling; never "fix" what a ruling says is deliberate without a fresh one.
@@ -44,7 +44,7 @@ Every doc says what is true now; history lives in git and the PRs. A static test
 | `supabase/` | The database: `schemas/` (the structure and access rules), `migrations/` (generated, then reviewed), `tests/` (pgTAP): `supabase/README.md` |
 | `tests/` | The tests (the list and README: above); `fixtures/saves/`, a made-up save of each version |
 | `tools/` | The build, dev server, check, hooks, ratchet, lint rules, balance matrix, mutant scorer, the deploy's keep step |
-| Config at the root (`vitest.config.mts`, `tsconfig.json`, `eslint.config.js`, `.nvmrc`, …) | [The toolchain](docs/architecture/the-toolchain-the-checks-and-the-harness.md) |
+| Config at the root (`tsconfig.json`, `.nvmrc`, …) | [The toolchain; the full file map](docs/architecture/the-toolchain-the-checks-and-the-harness.md#the-repositorys-files-folder-by-folder) |
 | `.github/` | `workflows/` (`ci.yml` on every PR: `ci` and `db` are the required checks; `deploy.yml` on `main`), `dangerous-paths`, the PR template |
 
 ## Commands
@@ -177,7 +177,7 @@ database, and comments with the link: [docs/staging.md](docs/staging.md#trying-a
 
 ## Opening the PR for review
 
-Use the template in `.github/pull_request_template.md`. Write the top half for Toby, in game terms; keep engineering
+Use the template in `.github/pull_request_template.md`, and fill in every section. Write the top half for Toby, in game terms; keep engineering
 detail in the lower sections for Theo. "Staging" says whether it's needed and why; if it is, a numbered checklist he can
 follow without reading code.
 

@@ -115,7 +115,7 @@ Each page's version is in its HTML, filled in by `tools/build.ts` after Vite:
   fingerprint with the one `version.json` names for it: another one counts once this page has known of it for 10
   minutes (GitHub's cache can hand out the old page for 10 minutes after a deploy). The decision itself is a function
   on plain values (`whatVersionJsonSaysOf`). The GM tab's reload before a due turn asks it
-  ([above](the-turn-engine.md#the-turn-engine-gm-portal)), and so does the reload banner.
+  ([the turn engine](the-turn-engine.md#the-turn-engine-gm-portal)), and so does the reload banner.
 - **The reload banner** (P1-06d, `src/ui/shared/the-reload-banner.ts`), on the four pages that read the database: each
   page's entry (`page.ts`) imports it, which starts the watch as the page loads. It reads `version.json` then, every 5
   minutes, and when the tab is shown again (at most once a minute), never from the browser's cache; a failed read is no
@@ -179,7 +179,7 @@ its version (`kc_db_version()`, the newest migration applied). On an older datab
 function, or no answer after one retry, the page stops with "The game is being updated" and nothing is read
 or written.
 - **Raising `KC_DB_MIN` is how a site PR says "needs migration X".** Use it when the page can't sensibly
-  work without the change; otherwise cope ([above](../traps.md#a-new-column-must-be-optional-at-the-write-site)).
+  work without the change; otherwise cope ([traps.md](../traps.md#a-new-column-must-be-optional-at-the-write-site)).
   Raise it in every page that needs the change, not only the one you edited.
 - `npm test`'s `db-min` check fails if a `KC_DB_MIN` is newer than the newest file in
   `supabase/migrations/`: the migration must be merged, or the site branch stacked on its pull request.

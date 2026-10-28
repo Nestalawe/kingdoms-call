@@ -7,7 +7,7 @@
 // ratchet, the architecture rules (dependency-cruiser and knip, P1-13a), ESLint's bulk suppressions (P1-13b), and the
 // engine's purity, the dice and the project's own lint rules (P1-13c). It
 // runs ESLint on one file to show the suppressions hold (a few seconds). Every later step that adds a guarantee
-// adds its check here. Level 1 (static): it reads settings files and the counts, and runs no game code.
+// adds its check here. Level 0 (static): it reads settings files and the counts, and runs no game code.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The harness checks itself (P1-01b): every strict compiler flag is on, and the compiler checks every file of `src/`
@@ -17,7 +17,84 @@
 // `no-undef` is on for every module of `src/` (the engine's with none of the page's names, the rest with the
 // browser's), and every file of `src/` gets the site's own tier, ESLint's recommended and typescript-eslint's strict
 // rules, each an error, with `ban-ts-comment` an error (P1-09e), and the two type-aware sets too exactly when
-// TypeScript checks it (its first line doesn't switch the check off; a planted `
+// TypeScript checks it (its first line doesn't switch the check off; a planted `||` that should be `??` is an error in
+// such a file and not looked for in another, P1-13b), and no rule is at warn in any file ESLint lints, `public/`'s
+// scripts among them (P1-13b, P1-13c), and a type assertion (`as`, but `as const`) and a non-null assertion (`!`)
+// errors there, planted in an engine file and a page's, in every file of `src/`, with no list of files let through
+// (P1-10a1; P1-10b1 replaced the three kept from before the rule with statements, and an `as` planted in each of their
+// files is refused), `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has
+// no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; a `retry`,
+// `retries` or `repeats` planted in a test's, a describe's, a helper's or a spec's options is a lint error, and every
+// limit the static tests and the two property tests give comes from `lib/time-limits.ts`, sized to the work; Node is
+// pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow), and Node's types (`@types/node`) are for that
+// Node's major; the Claude Code hooks run after Edit and Write and before stopping, block at most three times in a row,
+// and `.claude/` is closed to agents' edits; the browser specs have no retries, no `.only`, the Node check, a fixed
+// time zone and locale, traces on failure, and a server of `site/` or `KC_SITE` that is never one already running, and
+// in the specs a focused or skipped spec or a fixed wait is an error, with Playwright's recommended rules at full
+// strength (one spec may wait for the network to go quiet); CI runs the static checks in their own job, every level and
+// the browser specs in exactly one job each, with no retries or ignored failures, `ci` and `db` keep their names, `ci`
+// needs every job but `db` and fails unless all passed, `db` lints the database's functions, and deploy waits for the
+// whole run (P1-01c); CI runs again when a label is added or removed, and a pull request has one CI run at a time: a
+// new event on it cancels its run still going, while Deploy's call has a group of its own, its run's id, and is never
+// cancelled (planted copies: no group, cancelling every run, one group for a branch, a job's own group); the "On
+// staging" comment is told the commit staging's build job built (`github.sha`, no other checkout) and the pull
+// request's last commit (planted copies: without the built commit, the head passed as built, no comment, a build of
+// another commit); each TypeScript script a workflow runs with Node says it is a module (its name ends `.mts`, or the
+// `package.json` nearest its folder, as the workflow checks it out, says `"type": "module"`: `tools/deploy/`,
+// `tools/balance/`, `tools/github/`), so Node never warns `MODULE_TYPELESS_PACKAGE_JSON` (planted copies: the keep
+// step's script in a folder without one, the folder's `package.json` gone, the balance report's sparse checkout without
+// it; renamed `.mts`, let through); the `balance` job decides first in plain Node, runs `npm ci` and the matrix only on
+// its `play=true`, and compares with a pull request's base or the commit before a push; on a pull request only, it
+// makes the balance report once the games were played and uploads it (P1-03a), CI keeps only permission to read, and
+// `balance-report.yml` posts it without checking out or running the pull request's code (only the default branch's or
+// the base commit's script, with values from the event as environment only); the engine paths are the files in `src/`
+// the GM portal's page is built from and the pages' templates (exactly those), `public/`, the build and its page list,
+// the balance code and baselines, the helpers it imports, `package-lock.json` and `.nvmrc`, and the runner uses the
+// same list and builds first (P1-02b, P1-05); both runners build `site/` before any test, `site/` is git-ignored and
+// nothing in it is tracked, every CI job that tests builds before testing, and the deploy and staging build `site/` in
+// a `build` job of their own (P1-05, P1-09d, P1-06a): it installs with `npm ci --ignore-scripts`, builds, keeps the
+// previous deploy's files (P1-06b: `tools/deploy/keep-the-previous-deploys-files.ts`, right after the build and right
+// before the upload, with no `if`, no `continue-on-error`, no `||`, and `set -euo pipefail`), uploads the artifact (the
+// deploy's kept 30 days), and may only read (no write permission, no environment, no secret); the job that publishes
+// downloads it, the deploy's runs only `deploy-pages`, in the `github-pages` environment, after the build succeeded
+// (its `if` names `!cancelled()` and `needs.build.result == 'success'`: a plain `if` is skipped whenever
+// `migrate-production` is), the deploy's keep step takes as the previous deploy the newest run whose `deploy` job
+// succeeded, and it and `migrate-production` run only on `main` (their `if` holds only with `github.ref ==
+// 'refs/heads/main'`); no job of any workflow that can write, runs in an environment or reads a secret runs `npm`,
+// `npx` or the build; every install in the deploy's and staging's jobs, and in every job that holds a secret or a
+// token, is `npm ci --ignore-scripts` and no other way; planted copies are caught (an `npm` step or the build in a
+// publishing job, a build job that can write, runs in an environment or reads a secret, a main guard dropped or let
+// through by `||`, a publishing job without `!cancelled()` or the build's result or with `always()`, the keep step's
+// newest-successful-run lookup, another environment; the keep step left out, moved after the upload, skippable, allowed
+// to fail, without `set -euo pipefail` or with `|| true`, the Pages artifact kept a day); every harness file is a
+// dangerous path (`tools/deploy/` among them, P1-06b; the architecture rules' configs and known violations among them,
+// and the files P1-13b and P1-13c add: ESLint's suppressions and the project's own rules, P1-13a), and the balance
+// baselines aren't; the mutant scorer (`tools/mutants/`, P1-21a) is a dangerous path and no workflow runs it (planted
+// copies: its line gone from the list, a workflow step running `npm run mutants` or naming `tools/mutants`); the
+// engine's purity (P1-13c): every file of `src/engine/`, `src/views/`, `src/content/`, `src/shared/` and `src/schemas/`
+// refuses the page's, the browser's, the timers', the clock's and the database's names (`no-restricted-globals`), but
+// exactly three reviewed exceptions, one name each (`bots/economy.ts` `window`, `rng.ts` `crypto`, `clock.ts` `Date`),
+// each name planted in an engine file refused and in each exception's file only its own let through, and the rest of
+// `src/` but `src/db/` refuses `supabase`; `Math.random` is refused in every file of `src/` but `rng.ts` and in
+// `public/`'s two scripts, and the project's own rules run on the same files, each of the HTML rule's reviewed
+// exceptions naming a file ESLint lints, with its reason (P1-13d); `dice-and-clock`'s planted cases (a `Math.random()`,
+// `Math['random']`, `window.Math.random`, a passed `Math.random`, `new Date()`, `Date.now()`, and the same in the real
+// `run-turn.ts`) are found and its quiet ones aren't; ESLint's suppressions (P1-13b): the list is the one ESLint's
+// command line reads by default, `npm run lint` is `eslint .`, nothing lints with another list or lets a stale entry
+// through, and on the smallest file the list names, a finding the list lacks fails (exit 1) and an entry the file no
+// longer holds fails (exit 2); no ratchet count has risen, and the ratchet counts the ts-nocheck line in two, the
+// engine's side and the UI's, a line planted in each folder raising its own count alone (P1-10b1), and the engine's
+// checks of a unit by its type's name outside the rule registry (`unitNameChecksInEngine`, P1-19a: a comparison planted
+// in `src/engine/battle/` raises it by one and fails the ratchet, one in `src/engine/rules/` or a page's code isn't
+// counted), ESLint's suppressions (P1-13b) and `public/`'s two scripts (P1-09e) and the import rules' known violations
+// (the list's entries) and knip's findings (P1-13a); `kc/narrative-lines-go-through-emit` (P1-12a2) runs, in full and
+// with no options, on every file of `src/engine/` and `src/views/` but the events file (since P1-12a4; folder by folder
+// before), and on no other file: planted lines of each kind (an event without its hero among them, P1-12c2) are refused
+// exactly there; the architecture rules (P1-13a): `npm run lint:arch` runs dependency-cruiser over `src/` with only the
+// known violations let through, from its one config, in CI's static job and in `npm run check`, every rule an error and
+// the rules exactly the plan's, the cycle rule counting only imports that bring code, type-only imports read and no
+// file of `src/` left out; knip starts from every page's entries and the balance scenarios, and leaves out only the
+// quarantine; both configs are type-checked and get the strict lint rules. TypeScript, in `static/`
 import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

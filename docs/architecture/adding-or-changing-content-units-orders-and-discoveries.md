@@ -85,7 +85,7 @@ The engine's `ARMY_COST_MASTER` and `ARMY_SPEED_MASTER` (`engine/army-tables.ts`
 Record<HumanoidUnitType, number>` too: a humanoid unit missing from either fails (a primal unit's cost and speed come
 from `PRIMAL_ARMY_DEFS_P`). The engine's other tables (`UNIT_SHORT`, `TERRAIN_MODS`, `ARMY_RACE_OF_TYPE`, …) are
 still unchecked: their files keep `@ts-nocheck`, and a `satisfies` there checks nothing
-([above](../traps.md#ts-nocheck-checks-nothing-in-the-file)). Each gets its `satisfies` when its file loses `@ts-nocheck`
+([traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file)). Each gets its `satisfies` when its file loses `@ts-nocheck`
 (P1-10b: none of those files passes with annotations alone, P1-10a3). The lists above are still the whole job.
 
 **A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.js`

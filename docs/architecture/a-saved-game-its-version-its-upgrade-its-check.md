@@ -73,7 +73,7 @@ the turn reads it.
   a leaked mark, with a field of a later build, each kind, ten then a count, the refusals) and the page test
   `tests/page/turn-shell.test.ts` ("the GM page plays a turn from a version-0 save": the message, after the refresh
   too; Turn 0 then two turns). The balance matrix fails a game on a `[Save check]` line and on the check of its last
-  save (P1-15e1, [below](the-toolchain-the-checks-and-the-harness.md)). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes.
+  save (P1-15e1, [the toolchain the checks and the harness](the-toolchain-the-checks-and-the-harness.md)). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes.
 
 ## A battle-only mark is not part of the saved state
 

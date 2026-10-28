@@ -105,7 +105,7 @@ wrapped where it's passed: `(...a)=>effStat(turnContext,...a)`. Example: a call 
 fail: every argument moves along by one and the helper quietly reads the wrong thing. A value the turn changes as it
 goes lives only in the context: read and write `turnContext._currentPhase`, never a local copy. Checks: `no-undef`
 can't see it; the balance matrix catches it in the code it runs, a direct test anywhere else. How a test calls a
-helper, an order or a stage: [the turn's context](architecture/the-turns-context-and-calling-its-helpers-and-stages-from-a-test.md).
+helper, an order or a stage: [the turn's context](architecture/the-turns-context-and-calling-its-helpers-and-stages-from-a-test.md#a-lifted-helper-takes-the-turns-context-first).
 
 ## A line goes through `emit`
 
@@ -217,7 +217,7 @@ TypeScript reports no error anywhere in a file that starts with its ts-nocheck l
 `satisfies` written there is a claim nobody checks. Example: a wrong parameter type compiles there, and so does a table
 with a key left out. A type is checked where a file without the line reads it. To free a file: delete the line, type
 it, and clear each error with a change that **keeps every value** (never `!` or `as`). Don't write the line's text in a comment. Checks: the ratchet counts the line (`tsNocheckEngineSide`,
-`tsNocheckUi`), so it only falls; `harness`. How to free a file, form by form: [freeing a file](architecture/freeing-a-file-of-its-ts-nocheck-line.md).
+`tsNocheckUi`), so it only falls; `harness`. How to free a file, form by form: [freeing a file](architecture/freeing-a-file-of-its-ts-nocheck-line.md#ts-nocheck-checks-nothing-in-the-file).
 
 ## A battle-only mark is not part of the saved state
 

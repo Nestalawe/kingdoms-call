@@ -142,8 +142,7 @@
   `archeryBlockedBy`) and `unitAbilityMult` carry the rest, each asking the rule registry ([The rule registry](the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry)). Both battle paths score through deploy and facing, the stay-or-retreat
   estimate through grid and facing; the bots' estimates (`battleLineTotal`, at the middle width) through the
   grid alone. The report prints the grid as 📊 lines, which the portals draw in
-  monospace, and the ladder names every place and matchup. **The ladder's and the grid's words are the prose's**
- : `armStr`'s trace, the command multipliers, the whole force's multipliers, each unit's place
+  monospace, and the ladder names every place and matchup. **The ladder's and the grid's words are the prose's**: `armStr`'s trace, the command multipliers, the whole force's multipliers, each unit's place
   (`battleRegrid`) and facing (`battleFaceSide`) record why a figure moved as a typed record (the records in
   `the-facts-a-battles-lines-record.ts`), and the rule registry's effects name an ability by its slug (with the key of
   its row's `wordsInTheLadder`, or the factor its words show); the ladder's lines hold copies of them, and
@@ -179,7 +178,8 @@
   `engine/orders/`, called by `processOrder(turnContext, c, o, ph)`
   (`engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`: the checks before any order, then
   the `switch`); battles in `engine/battle/`, personal combat in `engine/personal-combat/`, heroes in `engine/heroes/`,
-  the bots in `engine/bots/`, the map in `engine/world/`.
+  the bots in `engine/bots/`, the map in `engine/world/`. What `resolveTurn` calls, stage by stage, and `processOrder`'s checks:
+  [the turn's context](the-turns-context-and-calling-its-helpers-and-stages-from-a-test.md#what-resolveturn-calls-in-order).
 - **A helper that reads the turn's state takes the turn's context first**: `turnContext`, made by
   `createTurnContext(G, freshPlayers, expectedTurnToRun)` (`src/engine/turn/context.ts`, whose `TurnContext` is its
   type) just after the save is parsed. It holds the state and the GM's log (`turnLog`, which only `emit` writes: every

@@ -96,7 +96,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   stage's order once (`tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`); each row's,
   and each ability a table holds, name and numbers in both books (`tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts`); no unit
   type named in a function the registry has taken (`tests/static/the-resolvers-the-registry-has-taken-name-no-unit-type.test.ts`),
-  and, outside the registry, the ratchet's `unitNameChecksInEngine`, which only falls; the layer rule above.
+  and, outside the registry, the ratchet's `unitNameChecksInEngine`, which only falls; the layer rule ([ARCHITECTURE.md](../ARCHITECTURE.md#the-layers-and-the-module-map)).
 - **How to add an ability** of a stage already written: its row in
   `src/content/unit-abilities-their-names-numbers-and-words.ts`; its effect in the stage's file under
   `src/engine/rules/unit-abilities/`, reading its numbers from its row (another ability is asked by its slug, never by a

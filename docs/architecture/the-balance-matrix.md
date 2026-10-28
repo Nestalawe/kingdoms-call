@@ -28,7 +28,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   `--only`, nor when a scenario is named).
 - **The invariants after every turn** (`lib/invariants.ts`, P1-04b), as in `turn-fuzz`, and the **report-leak check**
   on the scripted realm's report (`lib/report-leaks.ts`, P1-04c): a breach fails the game with its turn, the check and
-  what broke ([below](how-the-tests-reach-the-site.md#how-the-tests-reach-the-site)). They only read: the games are identical with them and without.
+  what broke ([how the tests reach the site](how-the-tests-reach-the-site.md#how-the-tests-reach-the-site)). They only read: the games are identical with them and without.
   The invariants add about 11 ms a turn (about 13 s of work over set A, 1 s on 14 cores).
 - **The save's check fails a game** (P1-15e1, `tools/balance/a-game-fails-on-the-save-check.ts`): after every turn,
   a `[Save check]` line in its GM log (the check of the save the turn loaded, P1-15d: what the turn before wrote that

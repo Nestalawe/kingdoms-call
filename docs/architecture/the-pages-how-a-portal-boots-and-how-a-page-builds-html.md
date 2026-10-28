@@ -2,7 +2,7 @@
 
 ## The pages (`site/`)
 
-Built from `src/` and `public/` ([above](the-build-from-src-to-site.md#the-build-src-becomes-site)).
+Built from `src/` and `public/` ([the build from src to site](the-build-from-src-to-site.md#the-build-src-becomes-site)).
 
 | File | Size | What it is |
 |---|---|---|
@@ -12,10 +12,10 @@ Built from `src/` and `public/` ([above](the-build-from-src-to-site.md#the-build
 | `kingdoms-call-leaderboard.html` | ~120 lines; its bundle ~1,200 | Hall of Fame: leaderboard and achievement records over finished games |
 | `kingdoms-call-overlord.html` | ~110 lines; its bundle ~460 | The Overlord page: accounts (offer, withdraw and revoke GM; suspend, lift and delete: P0-32h), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose); their script opens and closes the table of contents |
-| `assets/<page>-<hash>.js`, `assets/<page>-<hash>.css` | | Each page's bundle and stylesheet, named by a hash of its content. The data file (`src/content/kingdoms-call-data.ts`), `kc-safe.ts` and `kc-db-guard.ts` are inside the bundles of the pages that use them, no longer files of their own. Older ones, which a cached page may still name, are kept for 24 hours after they stop being live ([above](the-build-from-src-to-site.md#the-build-src-becomes-site)) |
+| `assets/<page>-<hash>.js`, `assets/<page>-<hash>.css` | | Each page's bundle and stylesheet, named by a hash of its content. The data file (`src/content/kingdoms-call-data.ts`), `kc-safe.ts` and `kc-db-guard.ts` are inside the bundles of the pages that use them, no longer files of their own. Older ones, which a cached page may still name, are kept for 24 hours after they stop being live ([the build from src to site](the-build-from-src-to-site.md#the-build-src-becomes-site)) |
 | `kc-config.js`, `kc-staging-footer.js` | small | Copied as they are from `public/`: which database this copy talks to (staging writes its own), and staging's footer |
 | `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
-| `version.json` | small | Written by the build: the commit and each page's fingerprint, which open pages read ([below](the-database-and-what-it-holds.md#versions)) |
+| `version.json` | small | Written by the build: the commit and each page's fingerprint, which open pages read ([the database and what it holds](the-database-and-what-it-holds.md#versions)) |
 | `published-files.json` | small | Written by the deploy, not the build: every file of the site and when it stopped being live (`null` while it is). The next deploy reads it to know what to keep: never rename it |
 
 All pages sit in one folder and link each other relatively. Only `site/` is published, so URLs are the
@@ -103,6 +103,9 @@ Every page builds its HTML this way. The lint rule `kc/html-is-built-only-throug
 P1-13d) refuses HTML built any other way, in the editor, in `npm run lint` and in CI, and each page that builds HTML
 from data has a hostile-name test. Its reviewed exceptions are `HTML_EXCEPTIONS` in `eslint.config.js`, each with its
 reason; one that matches nothing is itself a finding. Mistakes to avoid: [traps.md](../traps.md#html-is-built-only-through-kchtml).
+
+No check makes a page import `kc-safe.ts` before it builds HTML, and none is needed: a module runs after what it
+imports, so a file that uses `kcHtml` without importing it fails `no-undef`.
 
 ## Nothing is on `window` but `globals.ts`
 

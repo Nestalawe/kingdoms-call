@@ -2,6 +2,8 @@
 
 What a file that keeps its ts-nocheck line checks (nothing), and how a file is freed so that every value stays the same. The trap in brief: [traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file).
 
+## `@ts-nocheck` checks nothing in the file
+
 109 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
 (75: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
@@ -34,7 +36,7 @@ table with a key left out.
   name, for one): a changed statement the matrix doesn't reach gets a unit case, red on a planted fault.
 - **Don't write the line's text in a comment:** the ratchet and `tests/static/harness.test.ts` count it anywhere in
   a file of `src/`. Say "its ts-nocheck line" instead.
-- **A freed file meets the type-aware lint rules** in the same PR ([below](../traps.md#a-fixed-lint-finding-must-leave-the-suppressions)):
+- **A freed file meets the type-aware lint rules** in the same PR ([traps.md](../traps.md#a-fixed-lint-finding-must-leave-the-suppressions)):
   fix every finding there, and suppress none (P1-10b's Choice 1), so `eslintSuppressions` doesn't rise. Each fix keeps
   every value too: a `||` that a `0`, `''` or `false` reaches becomes an explicit check, not `??`; a guard that a
   caller still keeping its line may need stays, its parameter typed optional; a `no-unsafe-*` finding from a callee
