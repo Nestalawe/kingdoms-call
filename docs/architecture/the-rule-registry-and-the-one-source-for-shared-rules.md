@@ -21,16 +21,16 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   other units is found under each of them: Hold the Gate under every garrison, Sergeants under the Levies). Where an
   effect needs what only the resolver's grid can say, the runner takes it from the resolver, never the effect: whether
   the enemy's line holds a unit, and the worth of each shot, worked out only for a shooter that picks its target.
-- **The stages written so far:** `strength: the whole force` (P1-19a), the unit's factor from its force (in `armStr`,
+- **The stages written so far:** `strength: the whole force`, the unit's factor from its force (in `armStr`,
   through `unitAbilityMult`): Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
-  Deepwater Grasp, Wyrmscale and Air Superiority, in that order. Facing (P1-19b), four stages that take the multiplier
+  Deepwater Grasp, Wyrmscale and Air Superiority, in that order. Facing, four stages that take the multiplier
   so far and return a new one and the ability that set it, or nothing (`src/engine/rules/unit-abilities/a-unit-meeting-another-or-shooting-over-the-line.ts`):
   in `abilityFront`, from the role matchup, **what a unit does to the unit it meets** (Halberds, Lance Charge, Frenzy,
   Wolves Panic Horses, Stoop on the Horses, Harriers, Woodland Skirmish, Bloodthirsty, Maul, Trample, Many Heads,
   Purity), then **what the unit it meets does to it** (Spear Hedge, Boulder Wall, Unbreakable, Stone Halls, Thorn
   Hedge); in `abilityBack`, from the role's multiplier, **what a shooter does to its target** (Bodkin Points, Volley at
   the Charge, Marksmen, Armour-Piercing, Bombard), then **what the target does to the shooter** (Arrow Fodder). The
-  whole line (P1-19c), six stages in `battleFaceSide`
+  whole line, six stages in `battleFaceSide`
   (`src/engine/rules/unit-abilities/a-unit-beside-behind-and-under-the-enemys-line.ts`): **turns an anchored line**
   (Battering Horns: its words, or nothing) and **marked by the enemy line** (Terror From Above, Dive on the Bowmen, Storm
   Wings: the units of my line each marks, the factor and the words, applied last where each marked unit fights), both
@@ -38,12 +38,12 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   (Unbreakable, Rooted, Hold the Gate: the first one's words, or the side hit), then **beside and behind it in the front
   line** (Shieldwall, Town Watch, Sergeants, Driven Before Them, on the multiplier so far); for a shooter, **a shooter
   picks its target** (Marksmen: its place in the enemy front's list, or nothing); for a unit in the air, **what a flyer
-  does** (Flak Gunners, from ×1). The fates (P1-19d), two stages in `rollUnitFates`
+  does** (Flak Gunners, from ×1). The fates, two stages in `rollUnitFates`
   (`src/engine/rules/unit-abilities/a-units-fate-after-a-battle.ts`), each returning the line by which a unit is spared,
   or nothing: **a beaten unit fails its death roll** (Regenerating Hide: the stage hands the dice, and the effect draws
   its die only after a lost battle, where the code drew it before), then, for a beaten unit that fails its demotion roll
   with no Shield Fort holding it, **a beaten unit fails its demotion roll** (Knightly Example, which reaches the Levies
-  and the Men-at-Arms). The volley (P1-19g), the nine stages of `volley`, in the volley's helpers of
+  and the Men-at-Arms). The volley, the nine stages of `volley`, in the volley's helpers of
   `battle/strength.ts` and in `applyMissileHit` (`src/engine/rules/unit-abilities/the-volley-before-the-battle.ts`):
   **who shoots**, though it is no ranged unit (Broadside at sea, Tree Watch in the woods: those of each ability, in the
   stage's order, after the ranged units), **who shoots first** (Bombardment, the sort kept stable), **the shooters see
@@ -54,7 +54,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   Ground, else one), **a shot's damage** (Woodland Volley, Bombardment, Raiders' Volley: the product, from ×1), **what
   the target does to a shot** (Thick Hide, after a flyer's double), and **the softening limit** (Punch Through, else
   the usual 40% and 80%); and `strength`'s **a land unit at sea** (Sea Archers, in `armStr` before the unit's factors
-  from its force: whether the sea's penalty is waived; its effect is in the whole force's file). The grid (P1-19h),
+  from its force: whether the sea's penalty is waived; its effect is in the whole force's file). The grid,
   three stages of `strength` that place a unit (`src/engine/rules/unit-abilities/a-units-place-in-the-battle-grid.ts`),
   each handed the unit and the ground: in `battleGrid`, **a rider takes the flank on rough ground** (Through the Trees
   and Through the Glades in the woods, Crag Charge in the mountains: `abilityFlanksRough` asks it), then, on open ground,
@@ -129,7 +129,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 ## `kingdoms-call-data.ts`: the one source for shared rules
 
 `src/content/kingdoms-call-data.ts`, a module every table of which is exported and imported by name where it is read
-(P1-09's Decision 4). Since P1-09d it is bundled into each portal's script, not published as a file of its own.
+(P1-09's Decision 4). It is bundled into each portal's script, not published as a file of its own.
 
 - **Content tables** (`ALL_MAGIC_ITEMS_P`, `MONSTERS_P`, `PRIMAL_ARMY_DEFS_P`, `MASTERY_UNLOCKS`, …):
   plain literals. Nothing in the file may reference portal code. `PRIMAL_ARMY_DEFS_P` is the one place a
@@ -144,7 +144,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   (`new Set(KC_UNIT_CLASS.creature)`, `KC_SEASONS.slice()`, `{...KC_SKILL_LABELS}`), so no consumer can
   mutate another's. The editing rules are at the top of that block: change a rule there; append, never
   re-sort; plain data only; `KC_` names only.
-- **Shared rule functions** (P1-11a): a rule of a hero, an army, an item, a level or a number that both portals need
+- **Shared rule functions**: a rule of a hero, an army, an item, a level or a number that both portals need
   is written once, in `src/engine/rules-on-plain-values/` (its files import only the data file and each other), and the
   player portal imports it by the engine's name through `src/shared/the-engines-rules-the-player-portal-shares.ts`,
   which re-exports only from that folder: e.g. `dispFloor`, `unitBaseStrength`, `itemSlot`, `heroHireWage`,

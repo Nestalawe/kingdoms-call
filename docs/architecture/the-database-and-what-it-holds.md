@@ -13,15 +13,15 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | Table | Holds |
 |---|---|
 | `profiles` | One row per account: display name |
-| `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below), `block_eliminated_msgs` (the GM's switch "Block eliminated realms from sending dispatches", P0-25; off by default). Created only by a Game Master, in their own name; never by the Overlord (P0-32d). The Overlord reads, saves and deletes any game, as Master GM (P0-32e); no save changes a game's GM: only `reassign_game` (Overlord only, to a Game Master) hands a game over |
-| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's (P0-32d), but the Overlord reads, changes and removes any slot and adds bot slots, as Master GM (P0-32e); one realm per slot number in a game (P0-20). Other realms' slots are meant to be seen only through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B) |
-| `turn_logs` | Per-turn log and report snapshots (`player_index: -1` is the GM's full log). Written by the game's GM or the Overlord (P0-32e) |
+| `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below), `block_eliminated_msgs` (the GM's switch "Block eliminated realms from sending dispatches", P0-25; off by default). Created only by a Game Master, in their own name; never by the Overlord. The Overlord reads, saves and deletes any game, as Master GM; no save changes a game's GM: only `reassign_game` (Overlord only, to a Game Master) hands a game over |
+| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's, but the Overlord reads, changes and removes any slot and adds bot slots, as Master GM; one realm per slot number in a game. Other realms' slots are meant to be seen only through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B) |
+| `turn_logs` | Per-turn log and report snapshots (`player_index: -1` is the GM's full log). Written by the game's GM or the Overlord |
 | `turn_events` | Telemetry: one row per realm per resolved turn (orders, before/after snapshots, outcomes) |
 | `game_results` | One row per realm when a game ends |
 | `game_records` | Hall of Fame: one precomputed row per finished game |
-| `site_admins` | The Overlord (P0-32a): at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. The GM portal asks `is_site_admin()` after sign-in (P0-32c) |
-| `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`: creating a game needs it (P0-32d), and so does every GM write (P0-32i). The player portal reads the account's own row for the offer banner (Accept / No thanks call `gm_accept_offer` / `gm_decline_offer`); the GM portal lets in only a Game Master or the Overlord (P0-32c). The Overlord offers, withdraws and revokes GM on the Overlord page (P0-32f) |
-| `game_messages`, `game_message_reads`, `message_reports` | Dispatches between players, each realm's read markers, and the dispatches players have reported (P0-24) |
+| `site_admins` | The Overlord: at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. The GM portal asks `is_site_admin()` after sign-in |
+| `game_masters` | Game Masters by offer: one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`: creating a game needs it, and so does every GM write. The player portal reads the account's own row for the offer banner (Accept / No thanks call `gm_accept_offer` / `gm_decline_offer`); the GM portal lets in only a Game Master or the Overlord. The Overlord offers, withdraws and revokes GM on the Overlord page |
+| `game_messages`, `game_message_reads`, `message_reports` | Dispatches between players, each realm's read markers, and the dispatches players have reported |
 
 ### Where a rule is enforced: access rules or database functions
 
@@ -44,11 +44,11 @@ Functions, would add a server runtime and deploy path, and isn't used):
   - it reads what the site otherwise can't (`overlord_accounts()` reads accounts' emails, for the Overlord
     only);
   - it writes what no API role may: `account_suspend()`, `account_unsuspend()` and `account_delete()` change Supabase
-    Auth's own `auth.users` (its `banned_until`, or the account itself), for the Overlord only (P0-32h). A suspended
+    Auth's own `auth.users` (its `banned_until`, or the account itself), for the Overlord only. A suspended
     account can't sign in or refresh its session; one already open lasts until its token expires (up to an hour).
 
   One function per action keeps each rule in one place to read and test, and leaves the table no other way
-  in. The examples are the Game Master functions (P0-32b) and `kc_set_overlord()` (P0-32a).
+  in. The examples are the Game Master functions and `kc_set_overlord()`.
 
 **The price of functions.** They're `security definer`: they run with the owner's rights and bypass the
 access rules, so **each must check its caller itself** (`is_site_admin()`, `auth.uid()`), set
@@ -89,16 +89,16 @@ is hidden in games with fewer than two human realms.
 A dispatch is at most 500 characters, 10 a minute and 300 a day per player per game (P0-23, enforced in the
 database). A private dispatch is read by the realms in the conversation and the Overlord. A player can
 **⚑ Report** a dispatch they received (`message_reports`); the game's GM sees reports on the game's screen
-(`gm_reported_messages`), unless the GM plays in that game, when only the Overlord does (P0-24).
+(`gm_reported_messages`), unless the GM plays in that game, when only the Overlord does.
 
 Until the game is over, a realm that has conceded or been extinguished sends no private dispatches, and none at
 all while the game's `block_eliminated_msgs` switch is on (P0-25, R-075). The player portal decides this from the
 realm's own turn report (`kingdom.conceded`, `kingdom.eliminated`) and the game's light row (`status`,
-`block_eliminated_msgs`); the database doesn't check it yet, because who is out lives in `game_state` (P2-04).
+`block_eliminated_msgs`); the database doesn't check it yet, because who is out lives in `game_state`.
 
 ## Versions
 
-Each page's version is in its HTML, filled in by `tools/build.ts` after Vite (P1-06c):
+Each page's version is in its HTML, filled in by `tools/build.ts` after Vite:
 - **The build line**, in the footer of the four pages that use the database (the GM portal, the player portal, the
   Hall of Fame, the Overlord page), where the template has `<!--kc-build-->`: `build <7-character commit> · <date and
   time, New Zealand>`, e.g. "Kingdoms Call — GM Portal · build 3f2a9c1 · 22 Oct 2026, 10:15". The commit is git's
@@ -162,7 +162,7 @@ down to ~1 KB after the fix).
 
 ## A new column must be optional at the write site
 
-Since P0-17 the live site deploys only after its migration, but a site pull request labelled `staging`
+The live site deploys only after its migration, but a site pull request labelled `staging`
 without the database pull request it needs (not stacked on it) meets a staging database without the
 change, and old copies of the site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
 (as `probeGameMeta` does), and spread `{}` instead of the field while it's absent (`metaPatch`). Readers

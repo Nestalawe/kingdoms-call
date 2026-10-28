@@ -9,7 +9,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   sea 20% or 50% × normal or hostile bots × 3 seeds, races and alignments rotating; up to 30 turns, which almost
   every game needs to reach the Reckoning) and 12 with a **scripted realm** (`tools/balance/scripted.ts`): one realm
   held by the runner, which chooses its orders from the saved state each turn, with no randomness, and sends them as
-  the player portal sends them (P1-15e2): every field of the portal's payload, five orders for every hero its report
+  the player portal sends them: every field of the portal's payload, five orders for every hero its report
   lists, a plan for every living hero, in the form's names, and only what the form offers. It does what bots don't:
   war on the nearest realm it has met, Encounter Character after the nearest enemy it sees (the armed king is the
   chaser, so the chase meets battles), a plan for every hero varied by hero and turn (tactics, a pre-battle school, a
@@ -38,7 +38,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   invariant: `checkTurn` also runs on the staged worlds of `turn-fuzz` and the fixtures test, which lack what Turn 0
   adds. A place found on `main` whose fix waits is parked and let through by a narrow entry (one path and kind) in
   its `KNOWN_PLACES_THE_SAVE_CHECK_FINDS`, empty today; its fix removes the entry. Since the scripted realm sends what
-  the portal sends (P1-15e2), the matrix also sees what a human realm's plans and orders save (a plan's duel stance
+  the portal sends, the matrix also sees what a human realm's plans and orders save (a plan's duel stance
   and doctrine, with no bot's marks), but only for the orders it gives: since P1-15e3 those above, so also Release
   Hero's `_releasedBy` and a spied hero's entry. Not the orders it never gives (Cast Spell, the item orders, the
   masteries that need a target, the Grand Design, the raise and charm cards) nor a mastery no scripted hero reaches
@@ -102,7 +102,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   - **no change:** every game identical (a pure refactor);
   - **wording only:** every game played out the same (the state, the log's structure, the telemetry, the results, the
     scripted realm's report structure), and only words differ (if the database writes changed too, it says so);
-  - **writes only** (P1-02c): every game played out the same, in the same words, and only what the turns wrote to the
+  - **writes only**: every game played out the same, in the same words, and only what the turns wrote to the
     database differs. Nothing in play changed; it lists the games and the first turn that wrote differently, and
     replays nothing. That's expected only of a change to how the game saves: P1-17's moves of these writes must come
     out "no change";

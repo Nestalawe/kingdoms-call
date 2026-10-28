@@ -4,7 +4,7 @@ A running game's save (`games.game_state`) holds what older builds wrote: its ow
 has moved on from ([traps.md](../traps.md#live-saves-keep-copies)). P1-15 brings every save up to date in one place before
 the turn reads it.
 
-- **The upgrade** (P1-15a): `upgradeGameState(save)`, in `src/engine/saves/upgrade-a-saved-game-and-check-it.ts`,
+- **The upgrade**: `upgradeGameState(save)`, in `src/engine/saves/upgrade-a-saved-game-and-check-it.ts`,
   typed. `resolveTurn` calls it on the save it has just parsed, before the turn's context is made. It runs the six
   passes the turn used to run at its start, in the same order: `migrateMaxHpV2` (which calls
   `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
@@ -23,7 +23,7 @@ the turn reads it.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
   a new world and mended; the upgrade run twice equals once; a new world changes only by a known list) and
   `corsairs-retired` (the turn passes the loaded world through the upgrade, which calls the pass).
-- **What the schema knows** (P1-15b): the saved state's schema (`src/schemas/saved-game-state.ts`) was written from the
+- **What the schema knows**: the saved state's schema (`src/schemas/saved-game-state.ts`) was written from the
   balance matrix's states, so it also names what only live play saves: the hero order the player portal sends with
   every submission (a realm's `heroOrder`), what the GM page writes between turns (`archived`, `archivedAt`,
   `_gmRemovedRealms`, a realm's `_gmRemoved`), and each mark the code keeps in the save (Sanctuary's, Veil's, a hidden
@@ -41,7 +41,7 @@ the turn reads it.
   P1-15e3 its spare heroes also give the form's other orders where they stand (Spy, Hire Hero with its card, Search
   Lair, Research, Practice Skill, Explore, Rest, a mastery at its level, Release Hero once a game), so the games save
   Release Hero's `_releasedBy` and a spied hero's entry too.
-- **The version** (P1-15c): a save holds the number of its shape, `schemaVersion`, at its top level; a save without
+- **The version**: a save holds the number of its shape, `schemaVersion`, at its top level; a save without
   one is version 0 (every live save before P1-15c). Version 1 is the shape the six passes leave. The number this build
   writes is in `src/engine/saves/the-saved-games-version-this-build-writes.ts`, a file that imports nothing, so world
   generation writes it on a new world without loading the passes. `upgradeGameState` first refuses a save from a newer
@@ -50,13 +50,13 @@ the turn reads it.
   back); then, after the passes, it runs each numbered step (`THE_NUMBERED_STEPS_OF_THE_UPGRADE`, `{ version, upgrade
   }`) whose version is above the save's, and stamps the save with it. Version 1's step is the stamp alone. When to
   bump it: [traps.md](../traps.md#a-change-to-the-saves-shape-needs-its-version).
-- **The fixtures** (P1-15c): `tests/fixtures/saves/version-<n>.json`, one per version, each a made-up game of three
+- **The fixtures**: `tests/fixtures/saves/version-<n>.json`, one per version, each a made-up game of three
   bot realms after its third turn, one line of JSON (about 0.3 MB), made by
   `tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts` with the build of its day (version 0 by P1-15c's base),
   never edited once merged. What checks them: `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts`
   (each fixture upgraded to this build's version, parsed strictly, upgraded twice as once, a turn played on it with its
   invariants; one fixture per version; a newer save refused; a new world at this build's version).
-- **The check** (P1-15d): last, `upgradeGameState` parses the upgraded save against the saved state's schema made
+- **The check**: last, `upgradeGameState` parses the upgraded save against the saved state's schema made
   strict (`src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts`), so a key the schema doesn't know is
   found, not dropped. It returns each place the save differs (`whereTheSaveDiffersFromThisBuildsSchema`), by its path and
   its kind, never a value: `characters.17.armies.2: a field this build doesn't know, _flakTargeted`; a key that isn't a
@@ -73,8 +73,7 @@ the turn reads it.
   a leaked mark, with a field of a later build, each kind, ten then a count, the refusals) and the page test
   `tests/page/turn-shell.test.ts` ("the GM page plays a turn from a version-0 save": the message, after the refresh
   too; Turn 0 then two turns). The balance matrix fails a game on a `[Save check]` line and on the check of its last
-  save (P1-15e1, [below](the-toolchain-the-checks-and-the-harness.md)). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes
-  (P1-15d).
+  save (P1-15e1, [below](the-toolchain-the-checks-and-the-harness.md)). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes.
 
 ## A battle-only mark is not part of the saved state
 
@@ -150,7 +149,7 @@ older save.
 
 ## The check is not the save
 
-Since P1-15d the turn checks the save it has just upgraded against the saved state's schema made strict
+The turn checks the save it has just upgraded against the saved state's schema made strict
 (`src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts`,
 [above](#a-saved-game-its-version-its-upgrade-its-check)). Zod's `z.object` returns a copy
 without the keys it doesn't name, and a live save may hold keys the schema doesn't know yet (a field only live play

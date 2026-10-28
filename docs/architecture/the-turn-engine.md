@@ -5,24 +5,24 @@
   `parseGameState(game)`.
 - **Turn 0.** `runTurn0` previews the bot roster; `commitTurn0` generates the world, saves it and
   pushes each realm's first report.
-- **A turn is two functions** (P1-18d): the engine works it out, and a shell around it does the database and
+- **A turn is two functions**: the engine works it out, and a shell around it does the database and
   screen work.
 - **`resolveTurn(G, freshPlayers, expectedTurnToRun, seed)`** (`src/engine/run-turn.ts`) is the turn itself. It takes
   the saved state as loaded (JSON: parsing it is the turn's copy), the slot rows, the turn being run and the turn's
-  seed (P1-08m). It
+  seed. It
   brings an older save up to the current tables ([traps.md](../traps.md#live-saves-keep-copies)), merges the
   orders, runs the bot passes, defaults missing orders to Defend, and resolves the five phases (look for
   `// 4. Run all 5 phases`) and the end of the turn. It is synchronous and reads no database, no screen and
   no clock; its dice are the seed's (below), or, given no seed, the dice in use (as a test fixes them). It returns
   `{state, log, spyStealthAndInvisibilityStampedForTheReports, whatTheReportsRead}`: the world to save, as JSON; the
   GM's log, before its words are written (a typed line has its fact and no words yet, below); the Spy-stealth step, which rolls each hero's Spy stealth and carries this turn's Invisibility into the
-  reports' turn, on the working copy, once, on the turn's dice (P1-12b2); and `whatTheReportsRead()`, which hands over,
+  reports' turn, on the working copy, once, on the turn's dice; and `whatTheReportsRead()`, which hands over,
   once, after the stealth step, what the reports are built from: the slot rows, the working copy, the turn's log, the
   turn's sight (whose heroes stood where in each phase, who fought in each battle, whom each realm watches by
-  Clairvoyance) and the telemetry's collectors (P1-12b3). Both are called only after the save. The engine imports no
+  Clairvoyance) and the telemetry's collectors. Both are called only after the save. The engine imports no
   view: the reports are the views' (below). `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
   with no page.
-- **Every realm's report** is built in `src/views/every-realms-report-and-the-lines-each-realm-reads.ts` (P1-12b3):
+- **Every realm's report** is built in `src/views/every-realms-report-and-the-lines-each-realm-reads.ts`:
   `buildReports(whatTheReportsRead)` first writes every line's words (`theTurnsLinesInWords`, `src/views/prose/`,
   P1-12c3): a typed line records a fact, not words (its kind and fields; the kinds of an area are typed beside its code,
   the battles' in `engine/battle/the-facts-a-battles-lines-record.ts`, personal combat's in
@@ -37,12 +37,12 @@
   `LineFact`, each with its
   audience: the fight's, its hero's realm alone, or for a kind filed on its own the audience its event names), and the
   views write its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words
-  is a compile error. **The route by kind** (P1-12d5): `theWordsOf` reads, for a fact's kind, its area's words, from a
+  is a compile error. **The route by kind**: `theWordsOf` reads, for a fact's kind, its area's words, from a
   table built from the areas' audience tables (each lists every kind its area has); a kind belongs to one area, and one
   declared in two is a compile error where `LineFact` is (`engine/turn/events-and-their-audiences.ts`). A new area adds
   its facts to `LineFact`'s list there, its audience table to the route and its words module beside the others. A battle's lines take their tiers (key or detail) and its losses tally its place from those words,
   as `emitBattle` did before. The result is the GM's log in words, in the form it was always stored in: `buildReports`
-  returns it as `gmLog`, and the shell saves it. Since P1-12c6, `engine/battle/` and `engine/personal-combat/` write no
+  returns it as `gmLog`, and the shell saves it. `engine/battle/` and `engine/personal-combat/` write no
   line's words: every line they tell is a kind (the force markers, personal combat, a battle between heroes and the duel
   before it, a battle against a province's own defenders, a host gained in a province, a stalled battle, a war front,
   and the helpers that return a line: the kinship, Druid and command lines, the ladder and grid rows, the units' fates),
@@ -63,7 +63,7 @@
   skill); once
   its last engine caller goes, its words move into the prose and the copy stays (`theBeastCommandAsALineTellsIt` in
   `world/tables.ts`, its words `theWordsOfABeastCommand` in the army orders' prose since P1-12d7). `logSplit`'s two
-  halves, a line for the realm and its twin for onlookers, may each be words or a fact (P1-12d7).
+  halves, a line for the realm and its twin for onlookers, may each be words or a fact.
   **A fact holds values, never words** (P1-12d; personal combat's since
   P1-12d2, a battle's since P1-12d3, the strength ladder's and the grid's since P1-12d4): a number, a flag, an id or a
   slug, a name as the world or the content holds it, and a copy of what a line's words read of the world (a fighter's
@@ -78,11 +78,11 @@
   still calls (`fmtRoll`, `monsterCatLabel`, `hpGainLine`, `describeArmy`, `strandLabel`) the prose imports from the engine, on plain
   values, and a unit ability's name comes from its content row. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
   checks each area done (its list grows a row at a time), but the labels it lists (P1-12d's next slice). The
-  rest of the engine's lines still carry their words (P1-12d), and in this run a line's words are the same for every
+  rest of the engine's lines still carry their words, and in this run a line's words are the same for every
   reader. Then it works out, for each played
   slot, the lines the realm reads (from the lines in words) and what it may see of the world, and builds its report
   from those two alone: **perception** comes first, in two functions, and the report
-  reads nothing else (P1-12b5). `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines
+  reads nothing else. `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines
   sent to it or about its heroes, the world's announcements and what happened where it had eyes at the time, unmet
   realms left nameless, its spies' lingering sight and its Clairvoyance feed. `playerView(G, realm, itsLines)`
   (`views/what-each-realm-may-see-of-the-world.ts`, P1-12b4 and P1-12b5) is what the realm may see of the world, with
@@ -113,8 +113,7 @@
      (`buildReports`' `gmLog`, with the stealth step's lines at its end), then telemetry.
 
   Steps 2–3 are **post-commit**: a failure there must never restore orders or retry the turn
-  ([traps.md](../traps.md#post-commit-work-in-runturn)). Everything from the load to the save is in one `try`
-  (P1-18a), so `runTurn` **returns** an outcome `{ok, committed, conflict, error}` on every path; it doesn't
+  ([traps.md](../traps.md#post-commit-work-in-runturn)). Everything from the load to the save is in one `try`, so `runTurn` **returns** an outcome `{ok, committed, conflict, error}` on every path; it doesn't
   throw. A failure before the save puts the orders back as they were loaded. A save that answers with an
   error may still have landed, so the catch reads the game's turn again first: if it has moved on, the turn
   counts as committed and the orders stay spent; if it can't be read, nothing is put back.
@@ -144,7 +143,7 @@
   estimate through grid and facing; the bots' estimates (`battleLineTotal`, at the middle width) through the
   grid alone. The report prints the grid as 📊 lines, which the portals draw in
   monospace, and the ladder names every place and matchup. **The ladder's and the grid's words are the prose's**
-  (P1-12d4): `armStr`'s trace, the command multipliers, the whole force's multipliers, each unit's place
+ : `armStr`'s trace, the command multipliers, the whole force's multipliers, each unit's place
   (`battleRegrid`) and facing (`battleFaceSide`) record why a figure moved as a typed record (the records in
   `the-facts-a-battles-lines-record.ts`), and the rule registry's effects name an ability by its slug (with the key of
   its row's `wordsInTheLadder`, or the factor its words show); the ladder's lines hold copies of them, and
@@ -158,20 +157,20 @@
   estimate faces the survivors afresh: whom it faced as a record, read from the facing's kind, never its words; the
   line holds it beside the company's reference, and `theClauseOfWhomAUnitFaced` writes the clause); the losses tally (`battleTallyLine`) reads a line's owner and unit
   type from the company named first in it, which is always the company's own reference.
-- **Dice and the clock** (P1-07). Every random number the GM portal's code draws (dice, shuffles, bot choices, the
+- **Dice and the clock**. Every random number the GM portal's code draws (dice, shuffles, bot choices, the
   world map, id suffixes) comes from `kcRng()` (`src/engine/rng.ts`): one sfc32 generator, the first file of the
   page's main script, seeded once per page load from `crypto.getRandomValues`, or from the seed a test gives the page.
   Since P1-18d nothing in the engine or its views reads the clock: only the turn's shell does, through `kcClock()`
   (`src/engine/clock.ts`, `Date.now()` when called), to stamp when the turn ran; the screens read `Date` as before.
   Lint keeps `Math.random` and `Date` out of the source (P1-13c, below), and `engine-purity` checks that a whole game
-  reads neither ([traps.md](../traps.md#dice-come-from-kcrng)). Each turn plays from its own seed (P1-18e): the shell
+  reads neither ([traps.md](../traps.md#dice-come-from-kcrng)). Each turn plays from its own seed: the shell
   (`runTurn`) draws a 32-bit integer from the page's dice, hands it to `resolveTurn`, and returns it (`{…, seed}`), for
-  P2-01 to record. Since P1-08m the turn takes its seed: `resolveTurn` makes the dice of it (`kcRngStream(seed)`)
+  P2-01 to record. The turn takes its seed: `resolveTurn` makes the dice of it (`kcRngStream(seed)`)
   once, lends them to itself (`kcRng.use`) and again to the Spy-stealth step, whose rolls carry on from the turn's, and
   gives back the dice in use before after each, also when it throws, so they are never lent across the
   shell's `await`s (P1-18e had the shell lend them; `tests/unit/the-turns-own-dice-from-its-seed.test.ts`). A mercenary
   band made in a turn gets its id from `newMercId()` in `resolveTurn`: `merc_t<turn>_<n>`, counted afresh each turn,
-  with no dice or clock in it (P1-18b).
+  with no dice or clock in it.
 - **The engine's functions are modules by area; `resolveTurn` holds no rule of the game.** It is the save's parse
   and upgrades, the turn's context and its start values, the stages' calls, the phase loop calling its stages, and the
   reports. Find a function with the module map ([ARCHITECTURE.md](../ARCHITECTURE.md#the-layers-and-the-module-map))

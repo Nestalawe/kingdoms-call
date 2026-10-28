@@ -10,9 +10,9 @@ Built from `src/` and `public/` ([above](the-build-from-src-to-site.md#the-build
 | `kingdoms-call-gm-portal.html` | ~300 lines; its bundle ~58,600 lines, ~2.0 MB | GM UI, world generation, the whole turn engine (`resolveTurn`, and its shell `runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, "missing from the database" messages |
 | `kingdoms-call-player-portal.html` | ~450 lines; its bundle ~10,800 lines, ~560 KB (since P1-06c: without the start-up guard, it holds only the tables it reads) | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Calls the engine's rules of a hero, an army, an item or a number through `src/shared/` (it loads no other engine file); still holds client-side projections that mirror engine rules (see [traps.md](../traps.md#a-rule-written-twice-must-change-twice)) |
 | `kingdoms-call-leaderboard.html` | ~120 lines; its bundle ~1,200 | Hall of Fame: leaderboard and achievement records over finished games |
-| `kingdoms-call-overlord.html` | ~110 lines; its bundle ~460 | The Overlord page (P0-32f): accounts (offer, withdraw and revoke GM; suspend, lift and delete: P0-32h), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
+| `kingdoms-call-overlord.html` | ~110 lines; its bundle ~460 | The Overlord page: accounts (offer, withdraw and revoke GM; suspend, lift and delete: P0-32h), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose); their script opens and closes the table of contents |
-| `assets/<page>-<hash>.js`, `assets/<page>-<hash>.css` | | Each page's bundle and stylesheet, named by a hash of its content (P1-06b). The data file (`src/content/kingdoms-call-data.ts`), `kc-safe.ts` and `kc-db-guard.ts` are inside the bundles of the pages that use them, no longer files of their own. Older ones, which a cached page may still name, are kept for 24 hours after they stop being live ([above](the-build-from-src-to-site.md#the-build-src-becomes-site)) |
+| `assets/<page>-<hash>.js`, `assets/<page>-<hash>.css` | | Each page's bundle and stylesheet, named by a hash of its content. The data file (`src/content/kingdoms-call-data.ts`), `kc-safe.ts` and `kc-db-guard.ts` are inside the bundles of the pages that use them, no longer files of their own. Older ones, which a cached page may still name, are kept for 24 hours after they stop being live ([above](the-build-from-src-to-site.md#the-build-src-becomes-site)) |
 | `kc-config.js`, `kc-staging-footer.js` | small | Copied as they are from `public/`: which database this copy talks to (staging writes its own), and staging's footer |
 | `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
 | `version.json` | small | Written by the build: the commit and each page's fingerprint, which open pages read ([below](the-database-and-what-it-holds.md#versions)) |
@@ -24,8 +24,7 @@ Google Fonts.
 
 ### supabase-js: a copy served with the site
 
-The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`, copied as it is), not from a CDN
-(P0-18), so no outside party can change the code that holds players' logins, and a CDN outage can't stop the portals
+The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`, copied as it is), not from a CDN, so no outside party can change the code that holds players' logins, and a CDN outage can't stop the portals
 loading.
 
 - **Its version and SHA-256** are in [ARCHITECTURE.md](../ARCHITECTURE.md#supabase-js-the-copy-served-with-the-site),
@@ -75,7 +74,7 @@ Order inside each portal's page, and why it matters:
 
 **Nothing is on `window` but what `globals.ts` puts there.** A module's top-level names are its own, so an inline
 `on…="…"` handler or a browser spec's `page.evaluate` can't reach them. Each script page's entry ends with
-`ui/<page>/globals.ts` (P1-09b): two `Object.assign(window, { … })` lists, the names the page's inline handlers call
+`ui/<page>/globals.ts`: two `Object.assign(window, { … })` lists, the names the page's inline handlers call
 and the names its tests reach. A variable the page's files or its tests share is a declared global instead,
 `globalThis.<name> = <value>;` where it is declared (a list's copy of a variable goes stale). `npm test`'s
 `page-globals` keeps the lists exact ([traps.md](../traps.md#nothing-is-on-window-but-globalsts)). The classic scripts
@@ -83,7 +82,7 @@ and the names its tests reach. A variable the page's files or its tests share is
 
 ## How a page builds HTML
 
-Every name and message on screen was typed by someone, so a page treats every value as text (P0-19).
+Every name and message on screen was typed by someone, so a page treats every value as text.
 `kc-safe.ts` (`src/ui/shared/kc-safe.ts`) gives each page four helpers:
 
 - **`kcHtml`**, a tagged template: in ``kcHtml`<td>${realm}</td>` `` every value is escaped, unless it is itself

@@ -11,6 +11,22 @@ The live game's database structure, under version control since plan step P0-15 
 | `seeds/staging.sql` | Staging's made-up games, for its test accounts. Run on staging only, each time a pull request goes on it ([docs/staging.md](../docs/staging.md)); never locally or in CI. |
 | `tests/` | The access-rule tests (pgTAP): `database/` has `00_privileges` (what each API role may do at all) and one file per table, `lib/world.psql` the made-up world they share. |
 
+## The rules every database change follows
+
+These are CLAUDE.md's rules for a database change, beside the how-to below. Database and site changes go in
+separate PRs ([below](#database-and-site-changes-go-separately)), database first, then site, then any removal.
+- **A migration PR** works with the site that's live now: it never loosens or removes an access-rule test of what the
+  game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of what Toby is approving.
+- **A site PR** that uses a new table or column either **copes** while it's missing (probe and fall back:
+  [traps.md](../docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), with a test that hides it
+  (`MISSING` / `MISSING_COLS` in `tests/lib/stub-db.js`; example: `tests/meta-missing-turn.test.js`), or
+  **declares** it by raising the page's `KC_DB_MIN` to the migration's version, so an older database stops
+  the page with a clear message ([traps.md](../docs/traps.md#a-site-change-that-needs-a-database-change)).
+  Cope for an optional extra; declare when the page can't work without it. Say which in the PR.
+
+Migrations are forward-only (a rollback is a new migration); a merged one is never edited (CI's `db` check
+refuses it); every migration has pgTAP tests.
+
 ## Changing the structure
 
 1. Edit the file in `schemas/` (or add one).

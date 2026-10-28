@@ -58,6 +58,16 @@ The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`)
 - **SHA-256:** `d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3`. `npm test`'s
   `vendor-supabase` check fails if the file and this line disagree.
 
+## The code's guardrails
+
+These are CLAUDE.md's rules for the code (P1-09; the steps named bring the rest): (1) `src/engine/` and `src/views/` import no
+Supabase client, `window` or UI code, so each function there runs on plain data (the imports: `npm run lint:arch`; the
+page's names: lint); (2) no `Math.random` or `Date` there (lint: `Math.random` nowhere but `rng.ts`); (3) every line enters the GM's log through `emit`, with its
+audience ([traps.md](traps.md#a-line-goes-through-emit)), and the engine emits events, never prose, which `src/views/` writes after perception (P1-12); (4) a content effect lives in the rule registry, not in an `if` on its name inside a resolver (P1-19); (5) an
+iteration order that can change a draw or the outcome is explicit; (6) all code and tests are TypeScript (P1-09e), with
+no `any`, `@ts-ignore` or `eslint-disable` without a reviewed allowlist entry, and data crossing a boundary
+(database, saved state, content) is parsed by its Zod schema (P1-10).
+
 ## The layers and the module map
 
 Which folder of `src/` may import which is checked by dependency-cruiser (P1-13a): `npm run lint:arch`, in CI's static

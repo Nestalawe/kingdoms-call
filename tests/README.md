@@ -31,8 +31,11 @@ npx playwright test -g "map"           # only browser specs whose name matches "
 npx playwright show-trace test-results/<spec>/trace.zip   # step through a failed spec (kept on failure)
 npm run balance             # the balance matrix: 60 seeded games, and every realm's report, against the baseline (about 40 s): see below
 npm run balance:update      # rewrite the balance baselines, in the PR that changes play
+npm run balance -- battle   # a named scenario (battle, lair, encounter) on main's site and here (about 1 min)
 npm run balance:report -- --base main --head <file>   # the balance report of a run (from npm run balance -- --out <file>) against main
 npm run mutants -- <folder>  # score the mutant patches in <folder> (tools/mutants/run.ts): local only, never in CI
+npm run dev                 # Vite's dev server of src/, against the local Supabase only (npm run dev -- config writes its kc-config.js)
+npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
 ```
 
 `npm test` is [Vitest](https://vitest.dev) (`vitest.config.mts`). It has one project per level: `static`, `unit`,

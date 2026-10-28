@@ -1,7 +1,7 @@
 # The build: `src/` becomes `site/`
 
-Since P1-05, `src/` is the source and `site/` is build output: git-ignored, published by the deploy, and opened by
-every test. **Edit `src/` (or `public/`), never `site/`**: the next build overwrites it. Since P1-09d the site's code is
+`src/` is the source and `site/` is build output: git-ignored, published by the deploy, and opened by
+every test. **Edit `src/` (or `public/`), never `site/`**: the next build overwrites it. The site's code is
 ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
 
 - **`npm run build`** (`tools/build.ts`, a few seconds) runs Vite once per page (P1-09's Decision 8). Every
@@ -12,7 +12,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   is: `kc-config.js`, `kc-staging-footer.js`, `vendor/`.
 - **The options**, in `tools/build.ts` (one place, for the build and for `npm run dev`): no minifying (a live error's
   stack keeps the code's names), `target: 'esnext'` and no module preload (the code is left as written, nothing is
-  added), relative paths (`base: './'`), and names with a hash of the file's content (P1-06b): a change to a page's code
+  added), relative paths (`base: './'`), and names with a hash of the file's content: a change to a page's code
   or stylesheet gives that file a new name, and an unchanged file keeps its own, so a browser keeps its cached copy.
   Two builds of the same `src/` are byte-identical (`pages-build`), names and all, when run from the folder that holds
   `src/`: Rolldown names each module in a bundle (`//#region src/…`) from the folder it runs in. Constants are not written
@@ -20,7 +20,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   still leaves out a function or constant nothing reaches, writes each top-level `const`, `let` and `class` as a `var`,
   and lays the code out its own way. It strips the types from the `.ts` files with the settings of `tsconfig.json`,
   some of which change the code it writes (`useDefineForClassFields`, for one): so `tsconfig.json` is an engine path
-  (the balance matrix plays a change to it). The rename to `.ts` (P1-09e) changed no byte of any page but the
+  (the balance matrix plays a change to it). The rename to `.ts` changed no byte of any page but the
   `//#region src/….ts` comment Rolldown writes before each module.
 - **Each page's entry is `src/ui/<page>/page.ts`** (the rulebooks': `src/rulebook/toc.ts`). It imports the page's
   files in the order they ran as classic scripts, `globals.ts` last. Each file imports by name what it reads from
@@ -49,17 +49,16 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   A new file is checked from the start. `src/globals.d.ts` declares what the modules read without importing it:
   `KC_CONFIG` and `supabase` (the pages' classic scripts), `KC_RNG_SEED` (the tests' seed) and each page's declared
   globals (`tests/static/globals-d-ts.test.ts` checks it names exactly those). No file of `src/` may claim what the
-  compiler can't check: a type assertion (`x as T`; `as const` is fine) or a non-null assertion (`x!`) is a lint error
-  (P1-10a1), in every file: the three assertions P1-11a3 wrote before the rule became statements in P1-10b1.
+  compiler can't check: a type assertion (`x as T`; `as const` is fine) or a non-null assertion (`x!`) is a lint error, in every file: the three assertions P1-11a3 wrote before the rule became statements in P1-10b1.
 - **The types of the world come from Zod schemas, in `src/schemas/`**
-  (P1-10a1): the saved game state (`saved-game-state.ts`: `GameState`, `Realm`, `Character`, `Army`, `Item`,
+ : the saved game state (`saved-game-state.ts`: `GameState`, `Realm`, `Character`, `Army`, `Item`,
   `Province`, `Grave`, `Mercenary`, and the shapes they share), the orders a realm submits (`orders-a-realm-submits.ts`:
   `OrdersARealmSubmits`, `PhaseOrder`, `EncounterPlan`) and the branded ids (`ids-of-provinces-heroes-and-realms.ts`:
   `ProvinceId`, `CharacterId`, `RealmIndex`, so a hero's id can't be passed as a province's). Each type is
   `z.infer` of its schema, so one definition types the code and checks a save at load (P1-15d,
-  [below](a-saved-game-its-version-its-upgrade-its-check.md#a-saved-game-its-version-its-upgrade-its-check)), and later a database row (P1-17). They are on today's shape, written from the balance matrix's 2,687 saved states and tidied by hand: a
+  [below](a-saved-game-its-version-its-upgrade-its-check.md#a-saved-game-its-version-its-upgrade-its-check)), and later a database row. They are on today's shape, written from the balance matrix's 2,687 saved states and tidied by hand: a
   field only some code reads is added when the file that reads it is typed (P1-10a3, P1-10b). `src/` imports them as
-  types only (`import type`) but once: the save's upgrade imports the check of a saved game for its code (P1-15d), so
+  types only (`import type`) but once: the save's upgrade imports the check of a saved game for its code, so
   the GM page's bundle holds the check, the saved state's schema and Zod, and no other page's holds any; `pages-build`
   and dependency-cruiser refuse a second value import. Their objects are `z.object`, which drops a key it doesn't name;
   their strict version (`src/schemas/the-strict-version-of-a-schema.ts`, from `tests/lib/` since P1-15d) refuses it,
@@ -78,7 +77,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file)).
-- **The content's and the engine's own types** (P1-10a2), types only, so no file the build makes changes with them:
+- **The content's and the engine's own types**, types only, so no file the build makes changes with them:
   - **In the data file:** `UnitType` (the keys of `KC_UNIT_TYPE`), `PrimalUnitType`, `ElementalUnitType` and
     `HumanoidUnitType` (the rest); `Quality`, `Skill`, `MagicSchool`, `Alignment` and `HumanoidRace` (from its lists, each
     `as const`) and `Terrain`. Its tables keyed by unit type end in `satisfies` on the part each covers, so a unit
@@ -88,7 +87,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     the GM's log, in `engine/turn/context.ts`; `OrderKind`, the 48 kinds an order's action reads as, beside
     `PHASE_ACTION_MAP` (`engine/turn/phase-intents-and-dependency-ordering.ts`). Both files keep `@ts-nocheck`, and
     TypeScript checks nothing in a file with it, these types and the map's `satisfies` included: a file is checked
-    against them once it loses `@ts-nocheck`. Since P1-10a3 the files freed of it are; where their reads disagreed with
+    against them once it loses `@ts-nocheck`. The files freed of it are; where their reads disagreed with
     `TurnContext`, the type was corrected (a line's `targets` may hold null: callers pass `[c.player]`). Beside them in
     `context.ts`: `TurnOrder` (a hero's order for a phase as the turn holds it); in the events file
     (`engine/turn/events-and-their-audiences.ts`), `NarrativeLine` (a line of a fight's narrative: its words, or the
@@ -117,7 +116,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   - `tools/pages.ts` reads a module's imports that bring code, so an `import type` (of `src/schemas/`, say) adds no file
     to a page; a package's import (Zod) adds none either: its files aren't under `src/`
     ([traps.md](../traps.md#a-package-imported-from-src)).
-- **The engine is `engine/` and `views/`** (P1-18c): nothing in them reads the screen, the database or the page's other
+- **The engine is `engine/` and `views/`**: nothing in them reads the screen, the database or the page's other
   globals, and every name they read is imported from them or the data file: P1-18d moved the last exceptions, the
   turn's database and screen work and the reports' build stamp, into the turn's shell (`ui/gm/turn-shell.ts`).
   `tests/lib/engine.ts` bundles them with Vite (the data file, then the two folders in the GM page's order:
@@ -127,8 +126,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   no page reaches fails `pages-build`; an import of a file that isn't there stops the build.
 - **Who builds:** `npm test` and `npx playwright test` before any test (`tests/setup/global.ts`; not when `KC_SITE`
   names another copy), `npm run balance` (and the base branch's copy, with that branch's own build:
-  `tools/balance/sides.ts`), every CI job that tests, and the deploy and staging, each in a `build` job of its own
-  (P1-06a). The deploy's `build` job runs just before the site is published, after production is migrated; staging's
+  `tools/balance/sides.ts`), every CI job that tests, and the deploy and staging, each in a `build` job of its own. The deploy's `build` job runs just before the site is published, after production is migrated; staging's
   runs while the staging job waits for CI. Each installs the build's tools first (`npm ci --ignore-scripts`: without
   the packages' install scripts, which the build doesn't need), builds `site/`, and hands it on as an artifact. A
   `build` job may only read: no write permission, no environment, no secret. The job that publishes (`deploy`, with
@@ -170,7 +168,7 @@ rewritten from `src/` by every test run. An edit there is never committed, and t
 
 ## A deploy keeps the files a cached page names
 
-Since P1-06b each page's bundle and stylesheet are named by their content (`assets/<page>-<hash>.js`), so a change
+Each page's bundle and stylesheet are named by their content (`assets/<page>-<hash>.js`), so a change
 renames them. GitHub Pages replaces the whole site on each deploy, and its cache hands out a page for up to 10 minutes
 after it: a page cached before the deploy asks for its old bundle, which the new build doesn't have. The build jobs
 put the old files back ([above](#the-build-src-becomes-site)).
