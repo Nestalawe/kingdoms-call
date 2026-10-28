@@ -80,16 +80,36 @@ export function oddsNote(turnContext, pi, ch, chance, roll) {
 // which reads as a bug. Rise lines now add what the skill stands at in play whenever items / aura
 // lift it above the trained level. `skillInPlayNote` returns '' when the two agree.
 export function skillInPlayNote(turnContext, ch, skill) {
+  return theWordsOfASkillInPlay(theSkillInPlayAsALineTellsIt(turnContext, ch, skill));
+}
+// The skill in play, as a line tells it (plan P1-12d6): its slug, the level it counts at, and each source that raises it
+// above his own level, copied as the line is told; null when nothing raises it. A Practice line's fact holds it, and
+// the views write its words (theWordsOfASkillInPlay, on these values alone: the prose imports it from here while
+// skillInPlayNote has an engine caller).
+/** A skill raised above a hero's own level, as a line tells it: its slug, the level it counts at, and what raises it. */
+export interface ASkillInPlayAsALineTellsIt {
+  readonly skill: string;
+  readonly total: number;
+  readonly sources: readonly { readonly label: string; readonly delta: number }[];
+}
+export function theSkillInPlayAsALineTellsIt(turnContext, ch, skill): ASkillInPlayAsALineTellsIt | null {
   const { G } = turnContext;
-  if (!ch) return '';
+  if (!ch) return null;
   const b = skillBonusBreakdown(ch, skill, G.characters || []);
   const raw = skillLevel(ch, skill);
-  if (!(b.total > raw)) return '';
-  const src = (b.sources || [])
-    .filter((s) => s && s.delta > 0)
-    .map((s) => `${s.label} +${s.delta}`)
-    .join(', ');
-  return ` (${SKILL_LABELS[skill] || skill} ${b.total} in play${src ? `, with ${src}` : ''})`;
+  if (!(b.total > raw)) return null;
+  return {
+    skill,
+    total: b.total,
+    sources: (b.sources || []).filter((s) => s && s.delta > 0).map((s) => ({ label: s.label, delta: s.delta })),
+  };
+}
+/** The words of a skill in play, " (Melee 6 in play, with Sword of Ages +1)", or none. */
+export function theWordsOfASkillInPlay(inPlay: ASkillInPlayAsALineTellsIt | null): string {
+  if (!inPlay) return '';
+  const { skill } = inPlay;
+  const src = inPlay.sources.map((s) => `${s.label} +${s.delta}`).join(', ');
+  return ` (${SKILL_LABELS[skill] || skill} ${inPlay.total} in play${src ? `, with ${src}` : ''})`;
 }
 
 // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter

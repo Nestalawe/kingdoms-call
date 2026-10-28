@@ -683,7 +683,10 @@ portals' start-up guards are gone.
   `engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, the sea lift's lines in a battle in
   `engine/units/the-facts-the-sea-lifts-battle-lines-record.ts`, a hero's death's in
   `engine/heroes/the-facts-a-heros-death-lines-record.ts`, the wanderer's escape's in
-  `engine/the-facts-the-wanderers-escape-line-records.ts`, all of them in `LineFact`, each with its
+  `engine/the-facts-the-wanderers-escape-line-records.ts`, and since P1-12d6 the small order families' in
+  `engine/orders/`, each beside its family's file (`the-facts-the-encounter-and-defend-orders-lines-record.ts`,
+  `-order-dispatchs-`, `-item-orders-`, `-research-and-practice-orders-`, `-recruit-and-hire-orders-`), all of them in
+  `LineFact`, each with its
   audience: the fight's, its hero's realm alone, or for a kind filed on its own the audience its event names), and the
   views write its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words
   is a compile error. **The route by kind** (P1-12d5): `theWordsOf` reads, for a fact's kind, its area's words, from a
@@ -697,7 +700,13 @@ portals' start-up guards are gone.
   and the helpers that return a line: the kinship, Druid and command lines, the ladder and grid rows, the units' fates),
   and since P1-12d5 the lines a battle took as words from another folder's helper are kinds too (a unit disbanding, a
   battle's; a sea trap, a naval hold and the naval split, the sea lift's; a hero's death, its own; the wanderer's
-  escape, his, whose die stays in the engine and the fact holds which sentence). **A fact holds values, never words** (P1-12d; personal combat's since
+  escape, his, whose die stays in the engine and the fact holds which sentence); since P1-12d6 the lines of five of
+  `orders/`' families are kinds too (Encounter and Defend, the order dispatch's checks, the item orders, Research and
+  Practice, Recruit and Hire: every line they write; the other seven families follow, P1-12d7 to d10). A word helper
+  that reads the world and still has an engine caller elsewhere is split in two where it is: a copy as the line tells it
+  and its words on that copy alone, which the prose imports (`theSkillInPlayAsALineTellsIt` and `theWordsOfASkillInPlay`
+  beside `skillInPlayNote`; `theBeastCommandAsALineTellsIt` and `theWordsOfABeastCommand` beside `beastCommandWords`).
+  **A fact holds values, never words** (P1-12d; personal combat's since
   P1-12d2, a battle's since P1-12d3, the strength ladder's and the grid's since P1-12d4): a number, a flag, an id or a
   slug, a name as the world or the content holds it, and a copy of what a line's words read of the world (a fighter's
   skill or ward, a list of items, a hit-point rise, the units a battle's line names, its fortune), made as the line is told by a

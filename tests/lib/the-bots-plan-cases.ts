@@ -277,6 +277,11 @@ function recording<T>(engine: vm.Context, s: Staged, r: Recorder, body: () => T)
 const ordersOf = (G: World) => json((G as World & Raw)['turnOrders']) as Record<string, unknown[]>;
 const concessions = (G: World) => G.players.map((p) => !!(p as Raw | null)?.['conceded']);
 
+/** A turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3): a
+ *  line that records a fact has its words there alone (P1-12d6: the orders' lines are facts). */
+const inWords = (engine: vm.Context, log: unknown): Line[] =>
+  (engineFn(engine, 'theTurnsLinesInWords') as (l: unknown) => { gmLog: Line[] })(log).gmLog;
+
 // ── Playing a case ───────────────────────────────────────────────────────────────────────────────────────────────
 /** resolveTurn's stages either side of the plan (P1-08k8's third and fourth), and victory (P1-08k4's). */
 const BEFORE = STAGES[2];
@@ -329,7 +334,7 @@ export const playCase = (b: Board, _c: BotsPlanCase, s: Staged): Outcome => {
         orders: must(seen.orders, 'the orders after the plan'),
         calls: must(seen.calls, 'the calls at victory'),
         conceded: must(seen.conceded, 'the concessions after the plan'),
-        all: t.log,
+        all: inWords(b.engine, t.log),
         world: JSON.parse(t.state) as World,
         whole: true,
       };
@@ -378,7 +383,7 @@ export const directCase = (b: Board, _c: BotsPlanCase, s: Staged): Outcome =>
         orders: ordersOf(b.G),
         calls: [...(tc['reckoningCalls'] as Iterable<number>)],
         conceded: concessions(b.G),
-        all: (json(tc['turnLog']) as Line[]).slice(lines),
+        all: json(inWords(b.engine, (tc['turnLog'] as unknown[]).slice(lines))) as Line[],
         world: json(b.G) as World,
         whole: false,
       };

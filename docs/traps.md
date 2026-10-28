@@ -385,7 +385,9 @@ check finds were made.
   `src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, P1-12c4; since P1-12d5 the sea lift's lines
   in a battle, `src/engine/units/the-facts-the-sea-lifts-battle-lines-record.ts`, a hero's death's,
   `src/engine/heroes/the-facts-a-heros-death-lines-record.ts`, and the wanderer's escape's,
-  `src/engine/the-facts-the-wanderers-escape-line-records.ts`; one kind per sentence, one field per value it was written
+  `src/engine/the-facts-the-wanderers-escape-line-records.ts`; since P1-12d6 the Encounter and Defend orders', the order
+  dispatch's, the item orders', the Research and Practice orders' and the Recruit and Hire orders', each beside its file
+  in `src/engine/orders/`; one kind per sentence, one field per value it was written
   with, and a kind in one area only: `theWordsOf` routes a fact by its kind to its area's words, and a kind declared in
   two areas doesn't compile, where `LineFact` lists the areas), each with its fields and its audience, and
   `src/views/prose/` writes their words after the turn, one module per area (a new area adds its facts to `LineFact`'s
@@ -394,7 +396,8 @@ check finds were made.
   takes words. **`src/engine/battle/` and `src/engine/personal-combat/` write no line's words** (P1-12c6): a new line
   there is a new kind (its words in `src/views/prose/`), or a field of one where the words are a fragment (P1-12d moves
   those fields' words into the prose); since P1-12d5 the lines a battle took from another folder's helper (a unit
-  disbanding, a sea trap, a naval hold and the naval split, the wanderer's escape, a hero's death) are kinds too.
+  disbanding, a sea trap, a naval hold and the naval split, the wanderer's escape, a hero's death) are kinds too, and
+  since P1-12d6 every line of five order families (a new line there is a new kind).
 - **A fact holds values, and a copy of the world, never a part of it** (P1-12d; personal combat's facts since
   P1-12d2, a battle's since P1-12d3). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
   holding a live part of the world (a hero, his item list, a status) would be read as it is then, not as it was told.
@@ -421,10 +424,14 @@ check finds were made.
   line.ts`), never from `resolveTurn`'s `log` or `turnContext.turnLog`. `buildReports` writes them before it picks any
   realm's lines and returns them as `gmLog`, which the shell saves; every harness that plays a turn reads them
   (`tests/lib/scenario-in-the-vm.ts`, `a-staged-turn-on-the-engines-modules.ts`, the board's `lines()` in
-  `middle-of-a-bot-world.ts`), and a test that reads a narrative, or a line a helper returns, writes a fact's words
+  `middle-of-a-bot-world.ts`, and since P1-12d6 the whole-turn case libraries `before-the-first-phase-cases.ts`,
+  `set-up-and-order-merge-cases.ts` and `the-bots-plan-cases.ts`), and a test that reads a narrative, or a line a helper returns, writes a fact's words
   with `theWordsOf` (a personal combat's: `wordsOf` or `wordsForEveryoneInTheFight`, `tests/lib/personal-combat.ts`; on
   the booted GM portal, its `theWordsOf`: `tests/battle-grid.test.js`). A test that keeps a
-  narrative's strings and drops the rest reads nothing of a typed line: read its words. In this run a
+  narrative's strings and drops the rest reads nothing of a typed line: read its words. **Never read `text` loosely**
+  (P1-12d6): a read of the engine's log that takes a missing `text` as empty (`e.text ?? ''`, `String(e.text)`,
+  `e.text || ''`, `l.text === words`) passes for nothing once its line becomes a fact, and an assertion that a line is
+  absent stays green whatever the engine writes; read the words pass. In this run a
   line's words are the same for every reader (the masking of unmet realms stays on them, R-046).
 - **A battle's tiers and its tally come from its words, in the views.** `emitBattle` files each line with its tier
   still to work out (`A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES`) and, after them, the place of its losses

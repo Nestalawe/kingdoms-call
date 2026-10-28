@@ -1,13 +1,13 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { ARMY_COST_MASTER, SKILL_LABELS } from '../army-tables.ts';
+import { ARMY_COST_MASTER } from '../army-tables.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
   PRIMAL_SEA_TYPES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { beastCommandCount, beastCommandRoom, beastCommandWords } from '../world/tables.ts';
+import { beastCommandCount, beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
 import {
   alignDistP,
   heroHireWage,
@@ -86,7 +86,12 @@ export function landHirePreOrders(turnContext, h, c, ph, player) {
     if (_applied > 0)
       emit(turnContext, {
         type: 'system',
-        text: `${h.name} takes up the orders ${player.name} laid down for them — ${_applied} phase${_applied !== 1 ? 's' : ''} of this turn remain to be acted on.`,
+        fact: {
+          kind: 'a hired hero takes up the orders his hirer laid down',
+          heroName: h.name,
+          realmName: player.name,
+          phasesLeft: _applied,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: h.id,
         phase: ph,
@@ -119,19 +124,19 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
   _rawSel = _rawSel.filter((t) => !t.startsWith('to:'));
   let _destChar = c,
     _destGarrison = false,
-    _destNote = '';
+    _destination = null; // where the companies muster, when not his own column: the prose says it (P1-12d6)
   if (_destTok && _destTok !== 'to:self') {
     if (_destTok === 'to:garrison') {
       if (prov.owner === c.player) {
         _destGarrison = true;
-        _destNote = ` (mustered directly into the garrison of ${prov.name})`;
-      } else _destNote = ' (garrison unavailable — province not controlled; troops join the recruiter)';
+        _destination = { kind: 'the companies muster straight into the garrison', provinceName: prov.name };
+      } else _destination = { kind: "the garrison is not the realm's to muster into" };
     } else {
       const _r = orderCharRef(G, _destTok.slice(3)); // plain id or pre-order hero
       if (_r && _r.alive && _r.player === c.player && _r.location === c.location) {
         _destChar = _r;
-        _destNote = ` (mustered under ${_r.name}'s banner)`;
-      } else _destNote = ' (chosen recipient is not here — troops join the recruiter)';
+        _destination = { kind: "the companies muster under a comrade's banner", heroName: _r.name };
+      } else _destination = { kind: 'the comrade named to receive the companies is not here' };
     }
   }
   const _autoGarr = []; // garrison-type recruits diverted from a character's column
@@ -154,7 +159,13 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       prov.garrisonArmies.push(unit);
       emit(turnContext, {
         type: 'hire',
-        text: `🐾 ${beastCommandWords(_destChar, G.characters)}: ${unit.unitName || unit.type} (${unit.type}) musters into the garrison of ${prov.name} instead.`,
+        fact: {
+          kind: 'a beast a full column cannot take musters into the garrison',
+          beastCommand: theBeastCommandAsALineTellsIt(_destChar, G.characters),
+          unitName: unit.unitName || null,
+          unitType: unit.type,
+          provinceName: prov.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -187,7 +198,12 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       ) {
         emit(turnContext, {
           type: 'hire',
-          text: `🐾 ${beastCommandWords(_destChar, G.characters)} — the ${merc.unitName || merc.type} mercenaries are not hired.`,
+          fact: {
+            kind: 'mercenary beasts are not hired into a full column',
+            beastCommand: theBeastCommandAsALineTellsIt(_destChar, G.characters),
+            mercenaryName: merc.unitName || null,
+            mercenaryType: merc.type,
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
@@ -205,7 +221,13 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       if ((player.gold || 0) < mCost) {
         emit(turnContext, {
           type: 'hire',
-          text: `${c.name}: cannot afford ${merc.unitName || merc.type} mercenaries (${mCost}g).`,
+          fact: {
+            kind: 'a hero cannot afford a mercenary band',
+            heroName: c.name,
+            mercenaryName: merc.unitName || null,
+            mercenaryType: merc.type,
+            cost: mCost,
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -217,7 +239,15 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       mHired = true;
       emit(turnContext, {
         type: 'hire',
-        text: `${c.name} hires mercenary band ${merc.unitName || merc.type} (${merc.quality}) for ${mCost}g${mCost < baseMercCost ? ' (Neutral discount)' : ''}.`,
+        fact: {
+          kind: 'a hero hires a mercenary band',
+          heroName: c.name,
+          mercenaryName: merc.unitName || null,
+          mercenaryType: merc.type,
+          quality: merc.quality,
+          cost: mCost,
+          baseCost: baseMercCost,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
@@ -252,7 +282,11 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
   if (!isOwned) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name} cannot recruit in ${prov.name} — you must control the province to raise troops there.`,
+      fact: {
+        kind: 'a hero cannot recruit in a province his realm does not hold',
+        heroName: c.name,
+        provinceName: prov.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -274,7 +308,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     // province, never on a coast. (Fleets remain recruitable wherever the province offers
     // them.)
     if (PRIMAL_SEA_TYPES.has(armyType) && prov.terrain !== 'sea') {
-      blocked.push(`${armyType} (can only be summoned in a sea province)`);
+      blocked.push({ kind: 'a sea beast can be summoned only in a sea province', type: armyType });
       continue;
     }
     // the ordered type must actually be OFFERED by the province the character is standing in
@@ -283,12 +317,12 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     // would still raise units that province never offered. armyTypes is the province's own
     // recruitable list (racial field units + its garrison).
     if (!(prov.armyTypes || []).includes(armyType)) {
-      blocked.push(`${armyType} (not raised in ${prov.name} — that unit isn't available here)`);
+      blocked.push({ kind: 'the province does not raise the unit', type: armyType, provinceName: prov.name });
       continue;
     }
     // Check turn-wide recruit limit
     if (!canRecruit(turnContext, armyType, prov.id, prov, c.player)) {
-      blocked.push(`${armyType} (already recruited this turn)`);
+      blocked.push({ kind: 'the unit was already recruited this turn', type: armyType });
       continue;
     }
     const limit = getRecruitLimit(turnContext, armyType, prov, c.player);
@@ -300,7 +334,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     const unitCost = _unitCost;
     const cost = actualQty * unitCost;
     if ((player.gold || 0) < totalCost + cost) {
-      blocked.push(`${armyType} (insufficient gold: need ${cost}g more)`);
+      blocked.push({ kind: 'the treasury cannot pay for the unit', type: armyType, cost });
       continue;
     }
     totalCost += cost;
@@ -321,19 +355,23 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         trySkillGain(turnContext, _destGarrison ? c : _destChar, 'druid', SKILLGAIN_COMMON); // 2026-09-21: any primal recruit (incl. into a garrison) — small chance for the recruiter
     }
     recordRecruit(turnContext, armyType, prov.id, actualQty);
-    recruited.push(`${actualQty}× ${armyType}`);
+    recruited.push({ count: actualQty, type: armyType });
   }
   if (recruited.length > 0) {
     player.gold -= totalCost;
-    const _agN = _autoGarr.length,
-      _autoGarrNote = _agN
-        ? `; ${_agN} garrison unit${_agN !== 1 ? 's' : ''} muster${_agN === 1 ? 's' : ''} straight into the garrison of ${prov.name}`
-        : '';
     emit(turnContext, {
       type: 'hire',
-      text:
-        `${c.name} recruits ${recruited.join(', ')} in ${prov.name}${_destNote}${_autoGarrNote}. Cost: ${totalCost}g. Treasury: ${player.gold}g remaining.` +
-        (blocked.length > 0 ? ` (Blocked: ${blocked.join('; ')}.)` : ''),
+      fact: {
+        kind: 'a hero recruits companies',
+        heroName: c.name,
+        recruited: recruited.map((r) => ({ ...r })),
+        provinceName: prov.name,
+        destination: _destination,
+        autoGarrisoned: _autoGarr.length,
+        cost: totalCost,
+        treasury: player.gold,
+        blocked: blocked.map((b) => ({ ...b })),
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -343,7 +381,13 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       notifyTarget(
         turnContext,
         _destChar,
-        `⚔ ${recruited.join(', ')} muster to ${_destChar.name}'s banner in ${prov.name}, raised by ${c.name}.`,
+        {
+          kind: "companies muster to a comrade's banner",
+          recruited: recruited.map((r) => ({ ...r })),
+          recipientName: _destChar.name,
+          provinceName: prov.name,
+          heroName: c.name,
+        },
         ph,
         'hire',
       );
@@ -354,7 +398,12 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
   } else {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name}'s recruitment in ${prov.name} was entirely blocked: ${blocked.join('; ')}.`,
+      fact: {
+        kind: "a hero's recruitment is entirely blocked",
+        heroName: c.name,
+        provinceName: prov.name,
+        blocked: blocked.map((b) => ({ ...b })),
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -371,7 +420,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   if (!h || h.player !== null || h.location !== c.location) {
     emit(turnContext, {
       type: 'hire',
-      text: `${c.name} tries to hire a hero but none matching that description are available in ${prov.name}.`,
+      fact: { kind: 'no hero of that description is to be hired here', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -380,7 +429,11 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   if (h._isNeutralGuard) {
     emit(turnContext, {
       type: 'hire',
-      text: `${h.name} is sworn to defend ${prov.name} and will not abandon their post — the guardian of a neutral province cannot be hired away. You must defeat them in battle to take the province.`,
+      fact: {
+        kind: "a neutral province's guardian cannot be hired away",
+        guardianName: h.name,
+        provinceName: prov.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -389,7 +442,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   if (h._justDefeated) {
     emit(turnContext, {
       type: 'hire',
-      text: `${h.name} is furious at being driven from their home — they refuse to work with you this turn. Try again next turn.`,
+      fact: { kind: 'a hero driven from his home refuses to be hired this turn', heroName: h.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -398,7 +451,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   if (h._releasedTurn === G.turn) {
     emit(turnContext, {
       type: 'hire',
-      text: `${h.name} was only just released from service and will hear no offers this turn. Try again next turn.`,
+      fact: { kind: 'a hero just released from service hears no offers this turn', heroName: h.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -414,7 +467,13 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   if (hireWage == null) {
     emit(turnContext, {
       type: 'hire',
-      text: `${h.name} (${h.alignment}) recoils from ${c.name}'s offer — ${kingdomAlign === 'Divine' ? 'no creature of the grave will serve a Divine crown' : 'the faithful will never serve an Undead throne'}. (Alignment gulf too wide: Divine and Undead cannot hire one another.)`,
+      fact: {
+        kind: 'a hero recoils from a hire across the gulf between Divine and Undead',
+        heroName: h.name,
+        alignment: h.alignment,
+        hirerName: c.name,
+        realmIsDivine: kingdomAlign === 'Divine',
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -423,7 +482,13 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   if ((player.gold || 0) < hireWage) {
     emit(turnContext, {
       type: 'hire',
-      text: `${c.name} cannot afford to hire ${h.name} — needs ${hireWage}g/turn, treasury has only ${player.gold}g.`,
+      fact: {
+        kind: 'a hero cannot afford to hire another',
+        heroName: c.name,
+        hiredName: h.name,
+        wage: hireWage,
+        treasury: player.gold,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -459,16 +524,21 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   setMovePool(turnContext, h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
   const _aDist = alignDistP(kingdomAlign, h.alignment);
   // Both hire paths now say which it is.
-  const _hActs = `They may act from ${SEASONS[ph + 1] || 'next turn'} onwards.`;
-  const _hireLine = `${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist === 0 ? 'kindred spirits — base rate' : _aDist <= 1 ? 'close in outlook — base rate' : `${_aDist} steps across the alignment spectrum`}). Skills: ${
-    Object.entries(h.skills || {})
-      .filter(([, v]) => v > 0)
-      .map(([k, v]) => `${SKILL_LABELS[k] || k} ${v}`)
-      .join(', ') || 'none yet'
-  }. ${_hActs}`;
+  // the hire's line, filed twice (the prose writes it): his skills above 0, copied as the line is told
+  const _hireFact = {
+    kind: 'a hero agrees to serve the realm',
+    heroName: h.name,
+    race: h.race,
+    alignment: h.alignment,
+    realmName: player.name,
+    wage: h.pay,
+    alignmentSteps: _aDist,
+    skills: Object.entries(h.skills || {}).filter(([, v]) => v > 0),
+    seasonTheyMayActFrom: SEASONS[ph + 1] || null,
+  };
   emit(turnContext, {
     type: 'hire',
-    text: _hireLine,
+    fact: _hireFact,
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
@@ -477,7 +547,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   // so their section opens by explaining when and how they entered service.
   emit(turnContext, {
     type: 'hire',
-    text: _hireLine,
+    fact: _hireFact,
     audience: { actor: c.player, realms: [c.player] },
     province: prov.id,
     hero: h.id,

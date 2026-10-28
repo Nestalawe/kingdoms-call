@@ -65,6 +65,26 @@ import {
   THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE,
   type TheFactOfTheWanderersEscape,
 } from '../the-facts-the-wanderers-escape-line-records.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_AN_ENCOUNTER_OR_DEFEND_ORDERS_LINE,
+  type TheFactOfAnEncounterOrDefendOrdersLine,
+} from '../orders/the-facts-the-encounter-and-defend-orders-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_ORDER_DISPATCHS_LINE,
+  type TheFactOfTheOrderDispatchsLine,
+} from '../orders/the-facts-the-order-dispatchs-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_ITEM_ORDERS_LINE,
+  type TheFactOfTheItemOrdersLine,
+} from '../orders/the-facts-the-item-orders-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_RESEARCH_AND_PRACTICE_ORDERS_LINE,
+  type TheFactOfTheResearchAndPracticeOrdersLine,
+} from '../orders/the-facts-the-research-and-practice-orders-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_RECRUIT_AND_HIRE_ORDERS_LINE,
+  type TheFactOfTheRecruitAndHireOrdersLine,
+} from '../orders/the-facts-the-recruit-and-hire-orders-lines-record.ts';
 
 /** An event's hero when the line is the deed of the hero whose order is resolving, whoever he is: emit files it under
  *  him only when the line already reaches his realm, else under no hero. The area rows of P1-12c replace it with the
@@ -72,13 +92,20 @@ import {
 export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolving';
 
 /** Each area's facts, one per area, each typed beside its code (P1-12's Decisions of 2026-10-26, Decision 6): a
- *  battle's, personal combat's, the sea lift's in a battle, a hero's death's, the wanderer's escape's. */
+ *  battle's, personal combat's, the sea lift's in a battle, a hero's death's, the wanderer's escape's; since P1-12d6
+ *  the Encounter and Defend orders', the order dispatch's, the item orders', the Research and Practice orders' and the
+ *  Recruit and Hire orders'. */
 type TheFactsOfEachArea = [
   TheFactOfABattlesLine,
   TheFactOfAPersonalCombatsLine,
   TheFactOfASeaLiftsBattleLine,
   TheFactOfAHerosDeathsLine,
   TheFactOfTheWanderersEscape,
+  TheFactOfAnEncounterOrDefendOrdersLine,
+  TheFactOfTheOrderDispatchsLine,
+  TheFactOfTheItemOrdersLine,
+  TheFactOfTheResearchAndPracticeOrdersLine,
+  TheFactOfTheRecruitAndHireOrdersLine,
 ];
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
@@ -112,6 +139,11 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_AN_ENCOUNTER_OR_DEFEND_ORDERS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_ORDER_DISPATCHS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_ITEM_ORDERS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_RESEARCH_AND_PRACTICE_ORDERS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_RECRUIT_AND_HIRE_ORDERS_LINE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */

@@ -54,7 +54,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ['a dead hero\'s possessions', /a hero takes a fallen foe.{1,2}s possessions/, 2],
     ['the mercy price', /a fighter surrenders an item to the foe as the price of mercy/, 2],
     ['a drop in the rout', /in the rout the runner drops an item the one who stays claims/, 2],
-    ['Send Item by hand', /receives \$\{_names\} from \$\{c\.name\}/, 2],
+    ['Send Item by hand', /a hero receives items from a comrade/, 2],
     ['Send Item by courier', /A courier reaches \$\{dest\.name\} with/, 2],
     ['Steal Item', /deftly lifts the \$\{stolen\.name\} from/, 2],
     ['the Grand Heist', /pulls off a Grand Heist in/, 2],
