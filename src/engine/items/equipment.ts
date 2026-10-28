@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   ALL_MAGIC_ITEMS_P,
   KC_ITEM_SLOT_CAP,
@@ -6,7 +5,6 @@ import {
   SPELL_DEFS_P,
   _VARIANT_BANK,
 } from '../../content/kingdoms-call-data.ts';
-import type { Item } from '../../schemas/saved-game-state.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
 import { HOARD_CATEGORIES } from './hoard-categories.ts';
 import { kcRng } from '../rng.ts';
@@ -23,6 +21,113 @@ import {
   itemSlot,
   itemUsableBy,
 } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import type {
+  ItemOfTheseRules,
+  RaceAndAlignment,
+} from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+
+// Its types (plan P1-10b10): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
+// stays. The load-time pass reads the content's rows through one wide shape (AnItemOfTheTreasury), and a table read by
+// any name is read through a typed local inside its function.
+/** A magic item of the content's tables (ALL_MAGIC_ITEMS_P, with the clones tiers-and-hoards.ts adds). */
+type AMagicItem = (typeof ALL_MAGIC_ITEMS_P)[number];
+/** A ward as the scores read it: an armour's effect, or a rider's. */
+interface AWardAsTheScoresReadIt {
+  readonly ward?: string | undefined;
+  readonly amt?: number | undefined;
+  readonly pct?: number | undefined;
+}
+/** A rider (an effect's `pc`) as the scores read it. */
+interface ARiderAsTheScoresReadIt extends AWardAsTheScoresReadIt {
+  readonly hitBonus?: number | undefined;
+  readonly dmgBonus?: number | undefined;
+  readonly burn?: number | undefined;
+  readonly drain?: number | undefined;
+  readonly aura?: number | undefined;
+}
+/** An item's effect as the roles, the scores, the skills and the temper read it: each field they read that a content
+ *  row's or a saved copy's effect may set, each optional (the saved item's schema allows a 0 in any of them). */
+export interface AnEffectAsTheseRulesReadIt extends AWardAsTheScoresReadIt {
+  readonly stat?: string | undefined;
+  readonly bonus?: number | undefined;
+  readonly spell?: string | undefined;
+  readonly temper?: string | undefined;
+  readonly pc?: ARiderAsTheScoresReadIt | null | undefined;
+  readonly use?: string | undefined;
+  readonly rounds?: number | undefined;
+  readonly dmg?: readonly number[] | undefined;
+  readonly times?: number | undefined;
+  readonly dot?: readonly number[] | undefined;
+  readonly stun?: number | undefined;
+  readonly hitPen?: number | undefined;
+  readonly melee?: number | undefined;
+  readonly archery?: number | undefined;
+  readonly hitBonus?: number | undefined;
+  readonly absorb?: number | undefined;
+  readonly reflect?: number | undefined;
+  readonly images?: number | undefined;
+  readonly fleeBonus?: number | undefined;
+  readonly toHitReduce?: number | undefined;
+}
+/** An item as the roles and the scores read it: these rules' item, and its effect as they read it (or none). */
+interface AnItemAsItsWorthIsRead extends ItemOfTheseRules {
+  readonly effect?: AnEffectAsTheseRulesReadIt | null | undefined;
+}
+/** A magic item of the treasury as the load-time pass reads and writes it: a content row (ALL_MAGIC_ITEMS_P, the
+ *  relics of LEGENDARY_ITEMS_P, the minted versions) through one wide shape, with the marks the pass writes on it. */
+interface AnItemOfTheTreasury extends AnItemAsItsWorthIsRead {
+  tier: number;
+  slot?: string | undefined;
+  readonly lore?: string | undefined;
+  _variantOf?: string | undefined;
+  _score?: number | undefined;
+  _drop?: boolean | undefined;
+}
+/** A bank of names a kind of item is minted from (_VARIANT_BANK's rows; a weapon's has its bows' and staves' too). */
+interface ABankOfNames {
+  readonly adj: readonly string[];
+  readonly noun: readonly string[];
+}
+/** A spell as an item's worth reads its level (no spell row sets one today, so every charm scores as level 2). */
+interface ASpellAsItsLevelIsRead {
+  readonly school: string;
+  readonly level?: number | undefined;
+  readonly lvl?: number | undefined;
+  readonly minLevel?: number | undefined;
+}
+/** An item as the slots read and write it: these rules' item, its effect as they read it, and whether it is worn. */
+export interface AnItemAsTheSlotsReadIt extends AnItemAsItsWorthIsRead {
+  equipped?: boolean | undefined;
+}
+/** A hero as his items are read: his race and alignment, and the items he carries (a gap among them, or none, in an
+ *  older save). The items' list isn't `readonly`: the body tests it with `Array.isArray`. */
+export interface AHeroAsHisItemsAreRead<AnItem extends AnItemAsTheSlotsReadIt> extends RaceAndAlignment {
+  readonly items?: (AnItem | null | undefined)[] | null | undefined;
+}
+/** An item as the save's upgrade re-stamps it: these rules' item, its tier and its words. */
+interface AnItemAsTheUpgradeReadsIt extends AnItemAsItsWorthIsRead {
+  tier?: number | undefined;
+  desc?: string | undefined;
+}
+/** A list of items as the save's upgrade reads it: a gap among them, or none. */
+type ItemsAsTheUpgradeReadsThem = readonly (AnItemAsTheUpgradeReadsIt | null | undefined)[] | null | undefined;
+/** A province as the save's upgrade reads it: its features (a gap among them, or none), each with its hoard. */
+interface AProvinceAsTheItemsTiersUpgradeReadsIt {
+  readonly features?:
+    readonly ({ readonly hoardItems?: ItemsAsTheUpgradeReadsThem } | null | undefined)[] | null | undefined;
+}
+/** A realm as the save's upgrade reads it: any realm (`object`: today's save has no vault), and the vault an older
+ *  save's may hold, tested with `Array.isArray` (so not `readonly`). */
+type ARealmAsTheItemsTiersUpgradeReadsIt = object & {
+  readonly vault?: (AnItemAsTheUpgradeReadsIt | null | undefined)[] | null | undefined;
+};
+/** The state as the save's upgrade of the items' tiers reads it: every list it guards may be missing. */
+interface TheStateAsTheItemsTiersUpgradeReadsIt {
+  readonly characters?: readonly { readonly items?: ItemsAsTheUpgradeReadsThem }[] | null | undefined;
+  readonly world?:
+    { readonly provinces?: readonly AProvinceAsTheItemsTiersUpgradeReadsIt[] | null | undefined } | null | undefined;
+  readonly players?: readonly (ARealmAsTheItemsTiersUpgradeReadsIt | null | undefined)[] | null | undefined;
+}
 
 // ── EQUIPMENT SLOTS ────
 // Worn/wielded items occupy a slot; only ONE per slot (two rings) can be EQUIPPED, and only
@@ -79,31 +184,37 @@ export const ITEM_COMBAT_STATS = new Set([
 ]);
 export const ITEM_DUEL_SCHOOLS = new Set(['elemental', 'white', 'illusory']);
 export const ITEM_FIELD_SCHOOLS = new Set(['psychic', 'necromancy']);
-export function itemRole(it) {
-  const e = (it && it.effect) || {};
+export function itemRole(it: AnItemAsItsWorthIsRead | null | undefined) {
+  const e: AnEffectAsTheseRulesReadIt = it?.effect ?? {};
   const s = e.stat;
-  if (ITEM_COMBAT_STATS.has(s) || ITEM_DUEL_SCHOOLS.has(s)) return 'combat';
+  // the sets read by any stat: an effect with no stat is in none of them
+  const combatStats: ReadonlySet<string | undefined> = ITEM_COMBAT_STATS;
+  const duelSchools: ReadonlySet<string | undefined> = ITEM_DUEL_SCHOOLS;
+  const fieldSchools: ReadonlySet<string | undefined> = ITEM_FIELD_SCHOOLS;
+  if (combatStats.has(s) || duelSchools.has(s)) return 'combat';
   // A pc RIDER outranks the stat it rides on (2026-09-27). The field-schools test used to run first
   // and return early, so a Necromancy +1 item carrying a duel effect - Rod of the Pale Court, a DR-2
   // ward against undead and fiends - was filed utility and could sit in a Weak lair, against rule 1.
   // The rider is read the same way pcCharCombatant reads it, so this cannot file anything as combat
   // for a power it does not have.
   if (e.pc) return 'combat';
-  if (ITEM_FIELD_SCHOOLS.has(s)) return (e.bonus || 0) >= 2 ? 'combat' : 'utility';
+  if (fieldSchools.has(s)) return (Number(e.bonus) || 0) >= 2 ? 'combat' : 'utility';
   return 'utility';
 }
 // the lowest ordinary tier an item may hold: combat never below Moderate
-export function itemTierFloor(it) {
+export function itemTierFloor(it: AnItemAsItsWorthIsRead | null | undefined) {
   return itemRole(it) === 'combat' ? 2 : 1;
 }
-export function itemAllowedInTier(it, t) {
+export function itemAllowedInTier(it: AnItemAsItsWorthIsRead | null | undefined, t: number) {
   return isLegendaryItem(it) ? t === 4 : t >= itemTierFloor(it) && t <= 3;
 }
 // Stock per kind, per tier, per ROLE: [utility, combat]. Weak is sized like the old 306-item tier
 // (a ten-realm map seats ~240 Weak lairs and every name is unique game-wide), all of it utility;
 // Moderate and Powerful carry a utility minority (the +2 field skills, the big ledgers and horns) beside
 // the combat kit. Weapon at Powerful stays 25: every one is a hand-written design.
-export const ITEM_TIER_TARGET = {
+export const ITEM_TIER_TARGET: Readonly<
+  Partial<Record<number, Readonly<Partial<Record<string, readonly [utility: number, combat: number]>>>>>
+> = {
   1: {
     trinket: [90, 0],
     ring: [50, 0],
@@ -138,8 +249,9 @@ export const ITEM_TIER_TARGET = {
     combat: [0, 12],
   },
 };
-export function itemTierTarget(tier, cat, role) {
-  const o = (ITEM_TIER_TARGET[tier] || {})[cat] || [0, 0];
+export function itemTierTarget(tier: number, cat: string, role: string | null | undefined) {
+  const forTier: Readonly<Partial<Record<string, readonly [number, number]>>> = ITEM_TIER_TARGET[tier] ?? {};
+  const o: readonly [number, number] = forTier[cat] ?? [0, 0];
   return role == null ? o[0] + o[1] : role === 'utility' ? o[0] : o[1];
 }
 // A COMBAT item must also be worth its band: Powerful takes nothing under 4.5 (more than a bare +1
@@ -151,87 +263,95 @@ export const ITEM_COMBAT_SCORE_FLOOR = { 3: 4.5, 2: 2.0 };
 // number per item, on a rough 0-10 scale, so that "simplest" and "strongest" mean something a
 // machine can sort. Every branch reads the SAME effect fields the combat engine reads, so an item
 // cannot score for a power it does not actually have.
-export function _wardScore(fx) {
-  if (!fx || !fx.ward) return 0;
+export function _wardScore(fx: AWardAsTheScoresReadIt | null | undefined) {
+  if (!fx?.ward) return 0;
   const w = fx.ward,
-    a = fx.amt || 0,
-    p = fx.pct || 0;
-  const FLAT = { stunImmune: 3, dotImmune: 3, firstHit: 2.5, secondWind: 4, buckler: 2.5 };
-  if (FLAT[w] != null) return FLAT[w] + (p ? p / 10 : 0);
+    a = Number(fx.amt) || 0,
+    p = Number(fx.pct) || 0;
+  const FLAT: Readonly<Partial<Record<string, number>>> = {
+    stunImmune: 3,
+    dotImmune: 3,
+    firstHit: 2.5,
+    secondWind: 4,
+    buckler: 2.5,
+  };
+  const flat = FLAT[w];
+  if (flat != null) return flat + (p ? p / 10 : 0);
   if (['meleeDR', 'arrowDR', 'natureDR', 'darkDR', 'thorns', 'regen', 'roundWard'].includes(w)) return a * 1.2; // roundWard is an AMOUNT (a ward of N a round) — it scored 0 while listed among the percentages, which dropped the Shield of the Ward-Saints from the treasury
   if (['dodge', 'block', 'arrowBlock', 'spellBlock', 'spellPct', 'cap', 'lowHp', 'openGuard', 'resist'].includes(w))
     return p / 7;
   return 2;
 }
-export function _pcScore(pc) {
+export function _pcScore(pc: ARiderAsTheScoresReadIt | null | undefined) {
   if (!pc) return 0;
   return (
-    (pc.hitBonus || 0) / 4 +
-    (pc.dmgBonus || 0) * 1.2 +
-    (pc.burn || 0) * 1.5 +
-    (pc.drain || 0) * 5 +
-    (pc.aura || 0) / 4 +
+    (Number(pc.hitBonus) || 0) / 4 +
+    (Number(pc.dmgBonus) || 0) * 1.2 +
+    (Number(pc.burn) || 0) * 1.5 +
+    (Number(pc.drain) || 0) * 5 +
+    (Number(pc.aura) || 0) / 4 +
     _wardScore(pc)
   );
 }
-export function _useScore(e) {
-  const avg = (a) => (a ? (a[0] + a[1]) / 2 : 0);
+export function _useScore(e: AnEffectAsTheseRulesReadIt) {
+  // a missing element reads as JavaScript adds it (NaN), as before
+  const avg = (a: readonly number[] | undefined) => (a ? (Number(a[0]) + Number(a[1])) / 2 : 0);
   switch (e.use) {
     case 'heal':
-      return (e.amt || 5) / 2.5;
+      return ((e.amt ?? 0) || 5) / 2.5;
     case 'hot':
-      return ((e.amt || 3) * (e.rounds || 3)) / 3;
+      return (((e.amt ?? 0) || 3) * ((e.rounds ?? 0) || 3)) / 3;
     case 'secondwind':
-      return (e.amt || 10) / 2.5 + 1;
+      return ((e.amt ?? 0) || 10) / 2.5 + 1;
     case 'dmg':
     case 'bane':
     case 'banestun':
       return (
-        (avg(e.dmg) / 3) * (e.times || 1) +
-        (e.dot ? (e.dot[0] * e.dot[1]) / 2 : 0) +
-        (e.stun || 0) * 2 +
-        (e.hitPen || 0) / 6 +
+        (avg(e.dmg) / 3) * ((e.times ?? 0) || 1) +
+        (e.dot ? (Number(e.dot[0]) * Number(e.dot[1])) / 2 : 0) +
+        (Number(e.stun) || 0) * 2 +
+        (Number(e.hitPen) || 0) / 6 +
         (e.use === 'dmg' ? 0 : -1)
       );
     case 'drain':
       return avg(e.dmg) / 2.2;
     case 'stun':
-      return (e.stun || 1) * 2.5;
+      return ((e.stun ?? 0) || 1) * 2.5;
     case 'pen':
-      return (e.hitPen || 15) / 6;
+      return ((e.hitPen ?? 0) || 15) / 6;
     case 'weak':
-      return 2.5 * ((e.melee || 0) + (e.archery || 0));
+      return 2.5 * ((Number(e.melee) || 0) + (Number(e.archery) || 0));
     case 'buff':
-      return 3 * ((e.melee || 0) + (e.archery || 0));
+      return 3 * ((Number(e.melee) || 0) + (Number(e.archery) || 0));
     case 'focus':
-      return (e.hitBonus || 10) / 4;
+      return ((e.hitBonus ?? 0) || 10) / 4;
     case 'absorb':
-      return (e.absorb || 10) / 3 + (e.reflect || 0);
+      return ((e.absorb ?? 0) || 10) / 3 + (Number(e.reflect) || 0);
     case 'mirror':
-      return (e.images || 2) * 1.5;
+      return ((e.images ?? 0) || 2) * 1.5;
     case 'flee':
-      return (e.fleeBonus || 25) / 12 + (e.toHitReduce || 0) / 8;
+      return ((e.fleeBonus ?? 0) || 25) / 12 + (Number(e.toHitReduce) || 0) / 8;
     case 'invis':
-      return (e.toHitReduce || 25) / 6;
+      return ((e.toHitReduce ?? 0) || 25) / 6;
     case 'terror':
-      return 3 + (e.hitPen || 15) / 10;
+      return 3 + ((e.hitPen ?? 0) || 15) / 10;
     case 'silence':
-      return (e.rounds || 3) * 1.2;
+      return ((e.rounds ?? 0) || 3) * 1.2;
     case 'dispel':
       return 3;
     default:
       return 3;
   }
 }
-export function itemPowerScore(it) {
+export function itemPowerScore(it: AnItemAsItsWorthIsRead | null | undefined) {
   if (!it) return 0;
-  const e = it.effect || {};
+  const e: AnEffectAsTheseRulesReadIt = it.effect ?? {};
   let s = 0;
   if (e.stat === 'combatUse') s = _useScore(e);
-  else if (e.stat === 'maxHp') s = (e.bonus || 0) * 0.7;
-  else if (e.stat === 'armour' || e.stat === 'mithrilArmour') s = _wardScore(e) + (e.bonus || 0) * 3;
+  else if (e.stat === 'maxHp') s = (Number(e.bonus) || 0) * 0.7;
+  else if (e.stat === 'armour' || e.stat === 'mithrilArmour') s = _wardScore(e) + (Number(e.bonus) || 0) * 3;
   else if (e.stat === 'pc') s = 0;
-  else if (e.stat === 'taxBonus') s = (e.bonus || 0) * 1.2;
+  else if (e.stat === 'taxBonus') s = (Number(e.bonus) || 0) * 1.2;
   else if (e.stat === 'temper') s = 3;
   else if (e.stat === 'castSpell') {
     // A charm that casts a spell once a turn: worth what the spell is worth, so a Resurrect charm
@@ -241,8 +361,10 @@ export function itemPowerScore(it) {
     // (the same trap that once hung the portal on the loading spinner), so the read is wrapped.
     let _sl = 0;
     try {
-      const sp = SPELL_DEFS_P[e.spell];
-      _sl = (sp && (sp.level || sp.lvl || sp.minLevel)) || 0;
+      // the spells read by any name (a missing one reads the key "undefined", as JavaScript reads it)
+      const spells: Readonly<Partial<Record<string, ASpellAsItsLevelIsRead>>> = SPELL_DEFS_P;
+      const sp = spells[String(e.spell)];
+      _sl = Number(sp?.level) || Number(sp?.lvl) || Number(sp?.minLevel) || 0;
     } catch (_e) {
       _sl = 0;
     }
@@ -274,37 +396,42 @@ export const _VARIANT_EPITHETS = [
 ];
 
 (function _retierAndBalanceItems() {
+  // the treasury and the relics through one wide shape (the same arrays), so the pass may write its marks on them
+  const treasury: AnItemOfTheTreasury[] = ALL_MAGIC_ITEMS_P;
+  const relics: readonly AnItemOfTheTreasury[] = LEGENDARY_ITEMS_P;
   // the legendary tier is now the curated LEGENDARY_ITEMS_P list and nothing else. Any older entry
   // bearing a relic's name (and any alt-named clone of one) is removed outright, so a relic's
   // effect exists exactly once in the whole treasury, and the relic itself is re-added from the
   // list below.
-  const curated = ALL_MAGIC_ITEMS_P.filter(
-    (it) => !it._variantOf && !LEGENDARY_NAMES_P.has(it.name) && !LEGENDARY_NAMES_P.has(_ITEM_ALT_BASE[it.name] || ''),
+  const curated = treasury.filter(
+    (it) => !it._variantOf && !LEGENDARY_NAMES_P.has(it.name) && !LEGENDARY_NAMES_P.has(_ITEM_ALT_BASE[it.name] ?? ''),
   );
-  ALL_MAGIC_ITEMS_P.length = 0;
+  treasury.length = 0;
   curated.forEach((it) => {
     it.tier = it.tier === 3 || it.tier === 4 ? 2 : it.tier;
-    ALL_MAGIC_ITEMS_P.push(it);
+    treasury.push(it);
   }); // drop the old tier-3 "legendary" hint
-  LEGENDARY_ITEMS_P.forEach((it) => ALL_MAGIC_ITEMS_P.push(it));
+  relics.forEach((it) => treasury.push(it));
 
-  const byCat = {};
-  ALL_MAGIC_ITEMS_P.forEach((it) => {
+  const byCat: Partial<Record<string, AnItemOfTheTreasury[]>> = {};
+  treasury.forEach((it) => {
     const c = itemHoardCategory(it);
-    (byCat[c] = byCat[c] || []).push(it);
+    (byCat[c] ??= []).push(it);
   });
 
   Object.keys(byCat).forEach((cat) => {
     const list = byCat[cat];
+    if (!list) return; // each key holds the list the loop above made
     // An alt-named clone must land in the same tier as its base, so tier only the BASES and let the
     // clones follow. (_ITEM_ALT_BASE maps a clone's name back to its base.)
     const bases = list.filter((it) => !_ITEM_ALT_BASE[it.name]);
-    const tierScoreOf = {};
+    const tierScoreOf: Partial<Record<string, number>> = {};
     bases.forEach((it) => {
       it._score = itemPowerScore(it);
       tierScoreOf[it.name] = it._score;
     });
-    bases.sort((a, b) => a._score - b._score || a.name.localeCompare(b.name));
+    // each base was scored just above (Number() reads a score as the subtraction did)
+    bases.sort((a, b) => Number(a._score) - Number(b._score) || a.name.localeCompare(b.name));
     // LEGENDARY is exactly the curated relic list - never a promotion by score.
     const legs = LEGENDARY_NAMES_P;
     bases.forEach((it) => {
@@ -320,29 +447,34 @@ export const _VARIANT_EPITHETS = [
     if (!ordinary.length) return;
     ordinary.forEach((it) => {
       const b = _ITEM_ALT_BASE[it.name];
-      it._score = b && tierScoreOf[b] != null ? tierScoreOf[b] : itemPowerScore(it);
+      const baseScore = b ? tierScoreOf[b] : undefined;
+      it._score = baseScore ?? itemPowerScore(it);
     });
     // Strongest first. Among items of equal worth, a CURATED design outranks a repeated name and a
     // race- or alignment-bound design outranks a plain one, so the material that gets shed is the
     // interchangeable filler rather than something written for a particular people.
-    const _rank = (it) => (_ITEM_ALT_BASE[it.name] || it._variantOf ? 2 : 0) + (it.race || it.alignment ? -1 : 0);
-    ordinary.sort((a, b) => b._score - a._score || _rank(a) - _rank(b) || a.name.localeCompare(b.name));
+    const _rank = (it: AnItemOfTheTreasury) =>
+      (_ITEM_ALT_BASE[it.name] || it._variantOf ? 2 : 0) + (it.race || it.alignment ? -1 : 0);
+    ordinary.sort((a, b) => Number(b._score) - Number(a._score) || _rank(a) - _rank(b) || a.name.localeCompare(b.name));
     ['utility', 'combat'].forEach((role) => {
       const pool = ordinary.filter((it) => itemRole(it) === role);
       let k = 0;
       [3, 2, 1].forEach((t) => {
         let n = 0;
         const want = itemTierTarget(t, cat, role);
-        const floor = (role === 'combat' && ITEM_COMBAT_SCORE_FLOOR[t]) || 0;
+        // the floors read by any tier
+        const floors: Readonly<Partial<Record<number, number>>> = ITEM_COMBAT_SCORE_FLOOR;
+        const floor = role === 'combat' ? Number(floors[t]) || 0 : 0;
         while (k < pool.length && n < want) {
           const it = pool[k];
-          if (!itemAllowedInTier(it, t) || it._score < floor) break;
+          // k is below the pool's length, so `it` is always there; each was scored above
+          if (!it || !itemAllowedInTier(it, t) || Number(it._score) < floor) break;
           it.tier = t;
           n++;
           k++;
         } // pool is strongest-first, so the first item under the band's floor ends the band
       });
-      for (; k < pool.length; k++) pool[k]._drop = true;
+      for (const dropped of pool.slice(k)) dropped._drop = true;
     });
   });
 
@@ -350,73 +482,78 @@ export const _VARIANT_EPITHETS = [
   // the surplus decided above before topping up, so a band is never filled with material that is
   // about to be thrown away.
   {
-    const keep = ALL_MAGIC_ITEMS_P.filter((it) => !it._drop);
-    ALL_MAGIC_ITEMS_P.length = 0;
+    const keep = treasury.filter((it) => !it._drop);
+    treasury.length = 0;
     keep.forEach((it) => {
       delete it._drop;
-      ALL_MAGIC_ITEMS_P.push(it);
+      treasury.push(it);
     });
   }
-  const taken = new Set(ALL_MAGIC_ITEMS_P.map((it) => it.name));
-  const minted = [];
+  // a name that may be missing is looked up as Set.has does: it is never taken
+  const taken = new Set<string | undefined>(treasury.map((it) => it.name));
+  const minted: AnItemOfTheTreasury[] = [];
   HOARD_CATEGORIES.forEach((cat) => {
-    const bank = _VARIANT_BANK[cat];
+    // the banks read by any kind's name
+    const banks: Readonly<Partial<Record<string, ABankOfNames>>> = _VARIANT_BANK;
+    const bank = banks[cat];
     if (!bank) return; // combat items have no bank: one name each, by ruling
-    const nounsFor = (seed) => {
+    const nounsFor = (seed: AnItemOfTheTreasury) => {
       if (cat !== 'weapon') return bank.noun;
-      const st = (seed.effect || {}).stat;
-      if (st === 'archery') return bank.bow;
+      const weaponBank = _VARIANT_BANK.weapon; // the bank above, its kind being 'weapon'
+      const st = seed.effect?.stat;
+      if (st === 'archery') return weaponBank.bow;
       // Magic schools AND command relics take a staff, rod or sceptre; blades and hafts are for the
       // items that sharpen the bearer's own arm.
-      if (
-        [
-          'white',
-          'psychic',
-          'illusory',
-          'elemental',
-          'necromancy',
-          'druid',
-          'undeadBonus',
-          'armyBonus',
-          'taxBonus',
-          'tactical',
-          'naval',
-          'sage',
-        ].includes(st)
-      )
-        return bank.focus;
+      const focusStats: readonly (string | undefined)[] = [
+        'white',
+        'psychic',
+        'illusory',
+        'elemental',
+        'necromancy',
+        'druid',
+        'undeadBonus',
+        'armyBonus',
+        'taxBonus',
+        'tactical',
+        'naval',
+        'sage',
+      ];
+      if (focusStats.includes(st)) return weaponBank.focus;
       return bank.noun;
     };
-    const namesFor = (seed) => {
+    const namesFor = (seed: AnItemOfTheTreasury) => {
       const nouns = nounsFor(seed),
-        out = [];
-      bank.adj.forEach((a) => nouns.forEach((nn) => out.push(a + ' ' + nn)));
-      _VARIANT_EPITHETS.forEach((e) => nouns.forEach((nn) => out.push(nn + ' ' + e)));
+        out: string[] = [];
+      bank.adj.forEach((a) => {
+        nouns.forEach((nn) => out.push(a + ' ' + nn));
+      });
+      _VARIANT_EPITHETS.forEach((e) => {
+        nouns.forEach((nn) => out.push(nn + ' ' + e));
+      });
       return out;
     };
-    [1, 2, 3].forEach((t) =>
+    [1, 2, 3].forEach((t) => {
       ['utility', 'combat'].forEach((role) => {
         const want = itemTierTarget(t, cat, role);
-        const inBand = ALL_MAGIC_ITEMS_P.filter(
-          (it) => it.tier === t && itemHoardCategory(it) === cat && itemRole(it) === role,
-        );
+        const inBand = treasury.filter((it) => it.tier === t && itemHoardCategory(it) === cat && itemRole(it) === role);
         // Seeds are of the SAME ROLE as the slots they fill (a Weak ring is minted from a Weak ring, never
         // from a duelling ring), usable by anyone, and never a combat-use item (one name each, by
         // ruling). If a band holds nothing but race- or alignment-bound designs, seed from those
         // instead and let the minted versions carry the same binding - a short band would otherwise
         // leave the stocker handing that kind's lairs an item of the wrong tier.
-        const plain = (it) => !(it.effect && it.effect.stat === 'combatUse');
+        const plain = (it: AnItemOfTheTreasury) => !(it.effect?.stat === 'combatUse');
         let seeds = inBand.filter((it) => plain(it) && !it.race && !it.alignment);
         if (!seeds.length) seeds = inBand.filter(plain);
         if (!seeds.length) return;
         let made = inBand.length,
           si = 0,
           guard = 0;
-        const cursor = {};
+        const cursor: Partial<Record<string, number>> = {};
         while (made < want && guard++ < 3000) {
           const seed = seeds[si++ % seeds.length];
+          if (!seed) continue; // seeds isn't empty, so a seed is always there
           const names = namesFor(seed);
-          let k = cursor[seed.name] || 0,
+          let k = cursor[seed.name] ?? 0, // a cursor holds a whole number
             nm = null;
           while (k < names.length) {
             const cand = names[k++];
@@ -438,20 +575,26 @@ export const _VARIANT_EPITHETS = [
           });
           made++;
         }
-      }),
-    );
+      });
+    });
   });
   minted.forEach((it) => {
     if (it.slot === undefined) delete it.slot;
-    ALL_MAGIC_ITEMS_P.push(it);
+    treasury.push(it);
   });
 
   // --- Rebuild the derived tables ----------------------------------------------------------
-  [1, 2, 3, 4].forEach((t) => {
+  const theFourTiers: readonly (1 | 2 | 3 | 4)[] = [1, 2, 3, 4];
+  theFourTiers.forEach((t) => {
     ITEMS_BY_TIER[t].length = 0;
   });
-  ALL_MAGIC_ITEMS_P.forEach((it) => {
-    ITEMS_BY_TIER[it.tier || 1].push(it);
+  // the tiers' lists read by any tier, through the treasury's wide shape (the same lists)
+  const byTier: Readonly<Partial<Record<number, AnItemOfTheTreasury[]>>> = ITEMS_BY_TIER;
+  treasury.forEach((it) => {
+    const tierList = byTier[it.tier || 1];
+    // every tier the pass gives is 1 to 4; another threw here before, reading `push` of undefined
+    if (!tierList) throw new TypeError(`No list of the items of tier ${String(it.tier)}`);
+    tierList.push(it);
     if (it.lore && !ITEM_LORE_BY_NAME[it.name]) ITEM_LORE_BY_NAME[it.name] = it.lore;
   });
 })();
@@ -460,33 +603,38 @@ export const _VARIANT_EPITHETS = [
 // Re-stamp them from the master table by name on load, so a relic won three turns ago still scores
 // as legendary and a Weak find still reads as Weak. Runs in the save's upgrade at the head of every
 // turn (engine/saves/upgrade-a-saved-game-and-check-it.ts, plan P1-15a).
-export function migrateItemTiers(gs) {
+export function migrateItemTiers(gs: TheStateAsTheItemsTiersUpgradeReadsIt | null | undefined) {
   if (!gs) return;
-  const byName = new Map();
+  // a name that may be missing is looked up as Map.get does: no item is filed under it
+  const byName = new Map<string | undefined, { readonly tier: number }>();
   ALL_MAGIC_ITEMS_P.forEach((it) => byName.set(it.name, it));
+  // the labels read by any school's name
+  const labels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
   // An item the treasury no longer carries (dropped from a band in a later re-cut) keeps its own tier,
   // but never below its ROLE's floor - a healing draught in a pack is Moderate whatever it was rolled as.
-  const fix = (it) => {
-    if (!it || !it.name) return;
-    const m = byName.get(it.name) || byName.get(_ITEM_ALT_BASE[it.name]);
+  const fix = (it: AnItemAsTheUpgradeReadsIt | null | undefined) => {
+    if (!it?.name) return;
+    const m = byName.get(it.name) ?? byName.get(_ITEM_ALT_BASE[it.name]);
     if (m) {
       if (it.tier !== m.tier) it.tier = m.tier;
-    } else if (!isLegendaryItem(it) && (it.tier || 1) < itemTierFloor(it)) it.tier = itemTierFloor(it);
+    } else if (!isLegendaryItem(it) && ((it.tier ?? 0) || 1) < itemTierFloor(it)) it.tier = itemTierFloor(it);
     // 2026-10-13 (item 7, Toby): an item rolled before the descriptions named their school with a
     // capital ("casts Charm (Psychic Magic)") carries the old lower-case copy; mend it in place.
     if (typeof it.desc === 'string')
       it.desc = it.desc.replace(
         /\((white|psychic|illusory|elemental|necromancy)\)/g,
-        (w, k) => `(${SKILL_LABELS[k] || k})`,
+        (w, k: string) => `(${(labels[k] ?? '') || k})`,
       );
   };
-  (gs.characters || []).forEach((c) => (c.items || []).forEach(fix));
-  ((gs.world && gs.world.provinces) || []).forEach((p) =>
-    (p.features || []).forEach((f) => {
-      if (f) (f.hoardItems || []).forEach(fix);
-    }),
-  );
-  (gs.players || []).forEach((pl) => {
+  (gs.characters ?? []).forEach((c) => {
+    (c.items ?? []).forEach(fix);
+  });
+  (gs.world?.provinces ?? []).forEach((p) => {
+    (p.features ?? []).forEach((f) => {
+      if (f) (f.hoardItems ?? []).forEach(fix);
+    });
+  });
+  (gs.players ?? []).forEach((pl) => {
     if (pl && Array.isArray(pl.vault)) pl.vault.forEach(fix);
   });
 }
@@ -495,9 +643,11 @@ export function migrateItemTiers(gs) {
 // first, then the first others he carries). It writes only a flag that changes (P1-12b2), so on a hero whose items
 // are already in order it is only a read: the reports read items through it (activeItems), and building them writes
 // nothing to the world.
-export function normaliseEquipment(c) {
+export function normaliseEquipment(c: AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> | null | undefined) {
   if (!c || !Array.isArray(c.items)) return;
-  const count = {};
+  // the caps read by any slot's name: a slot not in the table has none, and a count is never at or under NaN
+  const caps: Readonly<Partial<Record<string, number>>> = ITEM_SLOT_CAP;
+  const count: Partial<Record<string, number>> = {};
   c.items.forEach((it) => {
     if (it && !itemUsableBy(it, c)) {
       if (itemSlot(it) && it.equipped !== false) it.equipped = false;
@@ -505,21 +655,22 @@ export function normaliseEquipment(c) {
     }
     const sl = itemSlot(it);
     if (!sl) {
-      if (it && it.equipped !== undefined) delete it.equipped;
+      if (it?.equipped !== undefined) delete it.equipped;
       return;
     }
+    if (!it) return; // itemSlot gives no slot for no item, so `it` is always there
     if (it.equipped === true) {
-      if ((count[sl] || 0) >= ITEM_SLOT_CAP[sl]) it.equipped = false;
-      else count[sl] = (count[sl] || 0) + 1;
+      if ((count[sl] ?? 0) >= Number(caps[sl])) it.equipped = false;
+      else count[sl] = (count[sl] ?? 0) + 1;
     }
   });
   c.items.forEach((it) => {
     if (it && !itemUsableBy(it, c)) return;
     const sl = itemSlot(it);
-    if (!sl || it.equipped === true) return;
-    if ((count[sl] || 0) < ITEM_SLOT_CAP[sl]) {
+    if (!sl || !it || it.equipped === true) return; // itemSlot gives no slot for no item
+    if ((count[sl] ?? 0) < Number(caps[sl])) {
       it.equipped = true;
-      count[sl] = (count[sl] || 0) + 1;
+      count[sl] = (count[sl] ?? 0) + 1;
     } else if (it.equipped !== false) it.equipped = false;
   });
 }
@@ -538,14 +689,20 @@ export const KC_SLOT_WORDS = {
   amulet: 'amulet slot',
   combat: 'both combat-item slots',
 };
-export function gainedItemNote(ch, items) {
+export function gainedItemNote(
+  ch: (AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> & { readonly name: string }) | null | undefined,
+  items: readonly (AnItemAsTheSlotsReadIt | null | undefined)[] | null | undefined,
+) {
   if (!ch || !Array.isArray(ch.items)) return '';
-  const got = (items || []).filter((it) => it && ch.items.includes(it));
+  const carried = ch.items; // the list just tested
+  const got = (items ?? []).filter((it): it is AnItemAsTheSlotsReadIt => !!it && carried.includes(it));
   if (!got.length) return '';
   got.forEach((it) => {
     delete it.equipped;
   });
   normaliseEquipment(ch);
+  // the words read by any slot's name
+  const slotWords: Readonly<Partial<Record<string, string>>> = KC_SLOT_WORDS;
   return (
     '🎒 ' +
     got
@@ -553,56 +710,85 @@ export function gainedItemNote(ch, items) {
         const nm = 'the ' + it.name;
         if (!itemUsableBy(it, ch)) return `${ch.name} cannot use ${nm} and carries it unused.`;
         const sl = itemSlot(it);
-        if (!sl) return `${nm[0].toUpperCase() + nm.slice(1)} needs no slot: it works for ${ch.name} at once.`;
+        if (!sl) return `${(nm[0] ?? '').toUpperCase() + nm.slice(1)} needs no slot: it works for ${ch.name} at once.`;
         if (it.equipped === true) return `${ch.name} equips ${nm} at once.`;
-        const worn = ch.items
-          .filter((x) => x && x !== it && x.equipped === true && itemSlot(x) === sl)
+        const worn = carried
+          .filter((x): x is AnItemAsTheSlotsReadIt => !!x && x !== it && x.equipped === true && itemSlot(x) === sl)
           .map((x) => 'the ' + x.name);
-        return `${ch.name} has no room to equip ${nm}: ${worn.length ? `the ${KC_SLOT_WORDS[sl] || sl + ' slot'} already ${worn.length > 1 ? 'hold' : 'holds'} ${worn.join(' and ')}` : `the ${KC_SLOT_WORDS[sl] || sl + ' slot'} is full`}, so it goes in the pack (an Equip Items order can swap it in).`;
+        return `${ch.name} has no room to equip ${nm}: ${worn.length ? `the ${(slotWords[sl] ?? '') || sl + ' slot'} already ${worn.length > 1 ? 'hold' : 'holds'} ${worn.join(' and ')}` : `the ${(slotWords[sl] ?? '') || sl + ' slot'} is full`}, so it goes in the pack (an Equip Items order can swap it in).`;
       })
       .join(' ')
   );
 }
-export function activeItems(c): Item[] {
+export function activeItems<AnItem extends AnItemAsTheSlotsReadIt>(
+  c: AHeroAsHisItemsAreRead<AnItem> | null | undefined,
+): AnItem[] {
   if (!c || !Array.isArray(c.items)) return [];
   normaliseEquipment(c);
-  return c.items.filter((it) => it && itemUsableBy(it, c) && (!itemSlot(it) || it.equipped === true));
+  return c.items.filter((it): it is AnItem => !!it && itemUsableBy(it, c) && (!itemSlot(it) || it.equipped === true));
 }
 // Does the character carry (active/equipped) an item whose BASE name is `base`? Resolves the two
 // alternate names of every tier-1/2 item, so 'Falcon\'s Quiver' counts as the Quiver of the Hawk.
-export function hasItemBase(c, base) {
-  return activeItems(c).some((it) => it && it.name && (_ITEM_ALT_BASE[it.name] || it.name) === base);
+export function hasItemBase(c: AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> | null | undefined, base: string) {
+  return activeItems(c).some(
+    (it: AnItemAsTheSlotsReadIt | null | undefined) =>
+      it?.name && ((_ITEM_ALT_BASE[it.name] ?? '') || it.name) === base,
+  );
 }
 // the temper a character FIGHTS with — an equipped temper item overrides their own.
-export function effTemper(c) {
+export function effTemper(
+  c:
+    | (AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> & { readonly temper?: string | null | undefined })
+    | null
+    | undefined,
+) {
   if (!c) return 'Brave';
-  const it = activeItems(c).find((x) => x && x.effect && x.effect.stat === 'temper' && x.effect.temper);
-  return (it && it.effect.temper) || c.temper || 'Brave';
+  const it = activeItems(c).find(
+    (x: AnItemAsTheSlotsReadIt | null | undefined) => x?.effect?.stat === 'temper' && x.effect.temper,
+  );
+  return (it?.effect?.temper ?? '') || (c.temper ?? '') || 'Brave';
 }
-export function rollMagicItem(monsterPower, taken, takenEff) {
-  taken = taken || new Set();
+export function rollMagicItem(
+  monsterPower: string,
+  taken: ReadonlySet<string> | null | undefined,
+  takenEff: ReadonlySet<string> | null | undefined,
+) {
+  const takenNames = taken ?? new Set<string>();
   const t = lairItemTier(monsterPower); // the guardian's power IS the tier
+  // the tiers' lists read by any tier
+  const byTier: Readonly<Partial<Record<number, AMagicItem[]>>> = ITEMS_BY_TIER;
+  const tierList = byTier[t];
   const inTier = preferFreshEffects(
-    (ITEMS_BY_TIER[t] && ITEMS_BY_TIER[t].length ? ITEMS_BY_TIER[t] : ALL_MAGIC_ITEMS_P).filter(
-      (it) => !taken.has(it.name),
-    ),
+    (tierList?.length ? tierList : ALL_MAGIC_ITEMS_P).filter((it) => !takenNames.has(it.name)),
     takenEff,
   );
-  if (inTier.length) return inTier[Math.floor(kcRng() * inTier.length)];
-  let anyLeft = ALL_MAGIC_ITEMS_P.filter((it) => !taken.has(it.name) && itemFallbackOk(it, t));
-  if (!anyLeft.length) anyLeft = ALL_MAGIC_ITEMS_P.filter((it) => !taken.has(it.name));
+  if (inTier?.length) return inTier[Math.floor(kcRng() * inTier.length)];
+  let anyLeft: AMagicItem[] | null | undefined = ALL_MAGIC_ITEMS_P.filter(
+    (it) => !takenNames.has(it.name) && itemFallbackOk(it, t),
+  );
+  if (!anyLeft.length) anyLeft = ALL_MAGIC_ITEMS_P.filter((it) => !takenNames.has(it.name));
   anyLeft = preferFreshEffects(anyLeft, takenEff);
-  return anyLeft.length ? anyLeft[Math.floor(kcRng() * anyLeft.length)] : null;
+  return anyLeft?.length ? anyLeft[Math.floor(kcRng() * anyLeft.length)] : null;
 }
 // When a tier is spent, a WEAK lair may still take any utility item of any tier (rule 1 survives
 // exhaustion); a combat item reaches a Weak lair only when the treasury is otherwise bare.
-export function itemFallbackOk(it, t) {
+export function itemFallbackOk(it: AnItemAsItsWorthIsRead | null | undefined, t: number | null | undefined) {
   return t == null || t !== 1 || itemRole(it) === 'utility';
 }
-export function _skillItem(c, stat) {
-  const base = ((c && c.skills) || {})[stat] || 0;
+export function _skillItem(
+  c:
+    | (AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> & {
+        readonly skills?: Readonly<Partial<Record<string, number>>> | null | undefined;
+      })
+    | null
+    | undefined,
+  stat: string,
+) {
+  const skills: Readonly<Partial<Record<string, number>>> = c?.skills ?? {};
+  const base = Number(skills[stat]) || 0;
   const bonus = activeItems(c).reduce(
-    (s, it) => s + (it && it.effect && it.effect.stat === stat ? it.effect.bonus || 0 : 0),
+    (s, it: AnItemAsTheSlotsReadIt | null | undefined) =>
+      s + (it?.effect?.stat === stat ? Number(it.effect.bonus) || 0 : 0),
     0,
   ); // equipped only
   return Math.max(0, Math.min(9, base + bonus)); // TITLES count skill levels up to 9 (benefits still cap at 5 via effStat)

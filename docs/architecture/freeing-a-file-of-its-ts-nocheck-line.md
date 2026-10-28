@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-109 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(75: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+107 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(73: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -173,3 +173,24 @@ table with a key left out.
   - **A phase's name or a force read by an index that may be missing** (`SEASONS[s[0]]` when the list may be empty) is
     read through a small reader, `(p) => (p === undefined ? undefined : SEASONS[p])`, as JavaScript reads it, and the
     words take `${String(…)}`: `undefined` still reads `undefined`.
+- (P1-10b10: `items/equipment.ts` and `heroes/skills-and-hp.ts`, 42,618 bytes): 156 errors, 97 of them a parameter
+  with no type. The first pass wrote the forms lint asks for as it went; the typed lint then found 2 more, both fixed.
+  No typed reader held a suppression on their results, and none met a new finding, so `eslintSuppressions` stays 711.
+  The item's shapes the hit-point helpers and later rows take are exported from `equipment.ts` (`AnItemAsTheSlotsReadIt`,
+  `AHeroAsHisItemsAreRead`); `skillBonusBreakdown` gives `ASkillsLevelAndItsSources`. Six more forms:
+  - **`x || 5` on a number a held copy may hold as 0** (a combat item's amount, rounds, hits) is `(x ?? 0) || 5`, never
+    `x ?? 5`: the content holds no 0 there, but the saved item's schema allows one, and `|| 5` gives 5 for it.
+  - **A load-time pass that writes its marks on a content table** (`_score`, `_drop`, a minted item's `_variantOf`)
+    reads it through one wide shape, the same array: `const treasury: AnItemOfTheTreasury[] = ALL_MAGIC_ITEMS_P`. A
+    derived table typed by the content's rows (`ITEMS_BY_TIER`) is filled through a local typed the same way.
+  - **A function that hands back the items it was given** (`activeItems`) is generic in the item's type, so a caller
+    with a `Character` still gets `Item[]`, and one with its own item shape gets that shape.
+  - **A set, map or list looked up with a value that may be missing** (`ITEM_COMBAT_STATS.has(stat)` for an effect of
+    no stat) is read through a local typed `ReadonlySet<string | undefined>` (or made `new Set<string | undefined>`):
+    `has(undefined)` is false, as before, with no guard added.
+  - **A shape whose fields are all optional** is refused for a value that has none of them (TypeScript's weak-type
+    check): today's realm has no `vault` (an older save's may), and no spell row has a `level`. The realm is typed
+    `object & { vault?: … }`; the spell names `school`, which every row has.
+  - **A pair read element by element** (`a[0] + a[1]`, a list that may be short) is `Number(a[0]) + Number(a[1])`: the
+    same sum for numbers, `null` and a missing element (`NaN`). A literal table of pairs is annotated with a tuple
+    (`ITEM_TIER_TARGET`: `readonly [utility: number, combat: number]`), so its elements are numbers.

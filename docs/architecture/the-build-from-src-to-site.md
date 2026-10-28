@@ -72,7 +72,10 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   `turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts`), the one P1-10b8 freed
   (`discoveries.ts`, whose effect type, `TheEffectOfADiscovery`, every discovery hook hands its readers) and the five
   P1-10b9 freed (`heroes/fame-and-consecration.ts`, `items/tiers-and-hoards.ts`, `turn/intrusion-warnings.ts`,
-  `realms/relations-and-captures.ts`, `battle/blood-harvest-and-iron-throne.ts`). The other 75 of those 108 files
+  `realms/relations-and-captures.ts`, `battle/blood-harvest-and-iron-throne.ts`) and the two P1-10b10 freed
+  (`items/equipment.ts`, whose shapes of an item and of a hero as his items are read, `AnItemAsTheSlotsReadIt` and
+  `AHeroAsHisItemsAreRead`, the hit-point helpers take, and `heroes/skills-and-hp.ts`, whose `skillBonusBreakdown` gives
+  `ASkillsLevelAndItsSources`). The other 73 of those 108 files
   still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file)).
