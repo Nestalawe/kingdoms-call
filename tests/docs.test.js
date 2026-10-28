@@ -1,14 +1,14 @@
 // Docs check: the guides an agent starts from must not point at things that aren't there.
-//   - every relative link in CLAUDE.md, README.md, docs/**/*.md, tests/README.md and the PR template
+//   - every relative link in CLAUDE.md, README.md, docs/**/*.md, tests/README.md, the list of tests and the PR template
 //     reaches an existing file, and a #anchor into a Markdown file matches one of its headings;
 //   - every `site/…`, `src/…`, `tests/…`, `tools/…` or `.github/…` path written in backticks exists (site/ is built
 //     first: npm test builds it)
 //     (globs and placeholders such as `**`, `<name>` or `NNN` are skipped);
-//   - CLAUDE.md stays under 200 lines, so it's still a short first read.
+// How big CLAUDE.md and the other docs read first may grow is checked in bytes by
+// tests/static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts (it replaced this check's 200-line cap).
 // Nothing outside the repo is fetched.
 const fs=require('fs'), path=require('path');
 const ROOT=path.resolve(__dirname,'..');
-const MAX_CLAUDE_LINES=200;
 
 function mdFiles(dir){
   if(!fs.existsSync(dir)) return [];
@@ -17,7 +17,7 @@ function mdFiles(dir){
     return d.isDirectory()?mdFiles(p):d.name.endsWith('.md')?[p]:[];
   });
 }
-const FILES=['CLAUDE.md','README.md','tests/README.md','.github/pull_request_template.md']
+const FILES=['CLAUDE.md','README.md','tests/README.md','tests/every-test-its-level-and-what-it-checks.md','.github/pull_request_template.md']
   .map(f=>path.join(ROOT,f)).concat(mdFiles(path.join(ROOT,'docs')));
 
 // GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens, repeats get -1, -2, …
@@ -61,10 +61,6 @@ for(const file of FILES){
     if(!fs.existsSync(path.join(ROOT,p))) fail(file,`\`${p}\` doesn't exist`);
   }
 }
-
-const claudeLines=fs.readFileSync(path.join(ROOT,'CLAUDE.md'),'utf8').split('\n').length;
-checked++;
-if(claudeLines>MAX_CLAUDE_LINES) fail(path.join(ROOT,'CLAUDE.md'),`${claudeLines} lines; keep it under ${MAX_CLAUDE_LINES}`);
 
 console.log(`${FILES.length} files · ${checked} links, paths and limits checked · ${fails} problem(s)`);
 process.exit(fails?1:0);

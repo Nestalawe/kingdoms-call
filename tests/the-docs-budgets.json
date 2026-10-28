@@ -1,0 +1,29 @@
+{
+  "about": "The size budgets of the docs an agent reads, in bytes (and characters a line where it says so). tests/static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts checks them. Change a budget only with a reason written in the pull request, never to make the check pass. This file is on .github/dangerous-paths, so a change to it is seen.",
+  "files": {
+    "CLAUDE.md": 15000,
+    "docs/ARCHITECTURE.md": 15000,
+    "docs/traps.md": 30000,
+    "tests/README.md": 20000
+  },
+  "readFirst": {
+    "files": ["CLAUDE.md", "docs/ARCHITECTURE.md", "docs/traps.md"],
+    "maxBytesTogether": 60000
+  },
+  "topicFiles": {
+    "folder": "docs/architecture",
+    "maxBytesEach": 30000
+  },
+  "trapEntries": {
+    "file": "docs/traps.md",
+    "maxBytesEach": 1500
+  },
+  "claudeMdLines": {
+    "file": "CLAUDE.md",
+    "maxCharactersALineOutsideItsTables": 300
+  },
+  "testList": {
+    "file": "tests/every-test-its-level-and-what-it-checks.md",
+    "maxCharactersALine": 300
+  }
+}
