@@ -14,6 +14,18 @@
 // HeroInABattle), so a leaked one is still refused: the last cases plant one of each kind.
 // Level 1 (unit): one turn by direct import and values parsed, about 1 s; a static test can't parse a save. Red on its
 // base (P1-15a), where the schema names none of these.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// What a live save holds that the matrix's games never write, parsed strictly against the saved state's schema
+// (`lib/strict-schema.ts`): the hero order the player portal sends with every submission, as the merge stores it on the
+// realm (one turn of `scripted-05` played by `resolveTurn`, its scripted realm's orders sent with a hero order); the GM
+// page's four fields, staged on that turn's save as `removePlayer` and `setGameArchived` write them (a realm's
+// `_gmRemoved`, the save's `_gmRemovedRealms`, `archived`, `archivedAt`); and each mark the code keeps in the save,
+// staged as its writer writes it (a Philosopher's Stone destroyed, hidden lairs, leaderless defenders, Mass Confusion,
+// a mastery spell worked, a hero released, Sanctuary, Cataclysm's ruined tax, Veil). A mark a battle wipes before the
+// save is still refused where it leaked (`_flakTargeted` on a company, `_tacticalMult` on a hero). Red on its base
+// (P1-15a: 14 of 14, the schema named none of these). Level 1: one turn by direct import and values parsed, about 1 s;
+// a static test can't parse a save. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { resolveTurn } from '../../src/engine/run-turn.ts';

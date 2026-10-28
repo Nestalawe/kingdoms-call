@@ -7,6 +7,14 @@
 // It also counts how many DIFFERENT realms were shown the same line.
 // The games are played in the engine's bare vm, as the shell plays them (tests/lib/scenario-in-the-vm.ts). Until plan
 // P1-09a they were played on the booted GM portal, its buildReports wrapped from outside.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Over all-bot games with a report for every realm, every turn passes the leak check (`lib/report-leaks.ts`, P1-04c):
+// no realm reads another realm's private line, names a realm it hasn't met, or sees a hero under Invisibility, and
+// (since P1-21b) every line a realm reads comes from an event of the turn whose audience admits it (the audience check:
+// the turn's events recorded with `recordTheEvents` and passed as `perception`; red if a turn hands over none). Counts
+// the lines an onlooker may see (Harvest the Field, Consecrate, Skeletal Armies). 3 games × 10 turns, 5 realms (full: 6
+// × 20, 6). The games play in the bare `vm` (P1-09a: on the GM portal, its `buildReports` wrapped from outside)
 const {scenarioInTheVm}=require('./lib/scenario-in-the-vm.ts');
 const {checkLeaks,describeBreaches}=require('./lib/invariants.ts');
 const GAMES=+process.argv[2]||3, TURNS=+process.argv[3]||10, BOTS=+process.argv[4]||5;

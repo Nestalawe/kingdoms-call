@@ -3,6 +3,11 @@
 //   - a dispatch is at most 500 characters: the box stops there and counts down from 500;
 //   - a dispatch the database refuses for its rate (10 a minute, 300 a day) or its length shows the reason in plain
 //     words, and the text stays in the box to send later.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The Dispatches box keeps to the database's limits (P0-23, D-05): at most 500 characters, counting down from 500; a
+// dispatch refused for its rate shows the database's own words, one refused for its length says "at most 500
+// characters", and the text stays in the box (`INSERT_ERRORS` in the stand-in database)
 const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
 
 let fails=0;

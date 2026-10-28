@@ -9,6 +9,17 @@
 //
 // It fails on its base (P1-11a3) by design: there the copies are still in the portal, and src/shared/ isn't there yet.
 // The one exception to refactor-only's "new tests pass before and after" (P1-11a, Decision 7, agreed by Theo).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The player portal reaches the engine's rules only through `src/shared/` (P1-11a, Decisions 2 and 7): `src/shared/`
+// re-exports only from `src/engine/rules-on-plain-values/` (every import, of every kind, of a folder file that is
+// there) and declares nothing of its own; no file of `src/ui/player/` imports an engine or a views file, or declares
+// (at any depth) a copy P1-11a4, P1-11b3 or P1-11b4 retired (`floorNumP`, `unitBaseStrengthP`, … `beastCommandCountP`,
+// `DRUID_LEVEL_OF_P`, `TAMED_FLYERS_P`, `PO_FLYING_TYPES`, `PO_LIGHT_TYPES`, and the tables only they read) or a name
+// `src/shared/` hands it; and the player page's modules hold no engine file outside the folder, and no views file.
+// Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
+// 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
+// plants)
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';

@@ -7,6 +7,12 @@
 // the front it chose is the one drawn. A unit test can't do this: the two
 // battle paths each build their own rows and print their own report, and this checks both.
 // Nothing here depends on who wins: the grid is drawn before the dice.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// In a real turn, a realm battle and a province battle each report the front the ground allows (within the terrain's
+// range), draw a 📊 grid line per side with the attacker's Longbows behind its Levies and its cavalry on the flank of
+// open ground, and give the ladder its Battle-lines and Who-faces-whom stages, the latter ending on the strength the
+// header names; each report says who scouted and that the front it chose is the one drawn; no undefined/NaN
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const RANGE={plain:[6,8],desert:[6,8],sea:[8,10],forest:[4,6],jungle:[4,6],mountain:[2,4]};

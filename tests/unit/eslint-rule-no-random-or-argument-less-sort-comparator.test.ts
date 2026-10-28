@@ -5,6 +5,14 @@
 // with no arguments; comments, strings and a sort with no comparator pass. Where the rule runs (src/, public/, the
 // templates' scripts) is tests/static/harness.test.ts's and the templates' test's.
 // Level 1 (unit): ESLint's RuleTester runs the rule's code on snippets, which a static test, running nothing, can't.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `kc/no-random-or-argument-less-sort-comparator` (`tools/eslint-rules/`, P1-13c), the rule that replaced
+// `sort-comparators`, run by ESLint's RuleTester: a `.sort(…)` or `.toSorted(…)` whose comparator takes no arguments,
+// or whose arguments call `Math.random`, `Math['random']`, `kcRng`, `rnd`, `rng` or `random` (as a name or a method; a
+// random tie-break too) is refused; a sort with no comparator or a real one, a shuffle before the sort, a function
+// merely named `sort`, comments and strings pass; JavaScript and TypeScript. Red with the argument-less check taken
+// out. Level 1: the rule's code runs on snippets, which a static test, running nothing, can't. TypeScript, in `unit/`
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, test } from 'vitest';

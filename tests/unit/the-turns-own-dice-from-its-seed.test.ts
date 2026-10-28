@@ -17,6 +17,21 @@
 // - With no seed, the turn and its stealth draw from the dice in use; with one, never; the reports, never.
 // Level 1 (unit): resolveTurn in the bare vm (lib/engine.ts). The shell's call of it is the page's: its test is in
 // tests/page/turn-shell.test.ts.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The turn's seed, passed in (P1-08m): one turn of `scripted-05` (`lib/matrix-game.ts`), every hero a Spy 5 so the
+// Spy-stealth step rolls a die each (it was part of `buildReports()` until P1-12b2), through `resolveTurn(state, rows,
+// turn, seed)` in the bare `vm`. The same seed plays the same world, log, reports and telemetry whatever the dice in
+// use were; another seed another turn; seed 0 as seed 1 and the seed as an unsigned 32-bit integer, as `kcRngStream`
+// reads them; the result's keys in order (the state, the log, the Spy-stealth step, `whatTheReportsRead`). The turn and
+// its reports are the ones the shell played by lending the seed's dice around both calls (P1-18e), the stealth carrying
+// on from the turn's dice whatever is drawn between. The dice in use come back after the turn, after the stealth, after
+// the reports, and after a save it can't read, a stage that throws, a stealth step that throws, reports that throw and
+// a second call of either. With no seed (or `null`) the turn and its stealth draw from the dice in use, which stay in
+// use; with one, never; the reports (the views', lent no dice since P1-12b3), never. Property (fast-check): for any
+// seed and dice in use, the turn is the seed's and the dice in use carry on as if it had not run. Fails on the base
+// where it needs the seed (10 of 16). Planted faults: in the PR (P1-08m). Level 1: the engine alone; the shell's call
+// is `turn-shell`'s. TypeScript, in `unit/`
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

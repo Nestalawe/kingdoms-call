@@ -5,6 +5,13 @@
 // Level 1 (unit): resolvePersonalCombat called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it
 // was a script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal); every experience
 // roll is recorded by a stand-in for trySkillGain on its module.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 12: a hero who wins a personal fight (`resolvePersonalCombat`, the foe staged at 0 HP so no blow lands) rolls
+// once for Melee at the standard rate; in a duel the winner rolls and the fallen loser does not (batch 2026-10-14).
+// `unit/xp-fight-win.test.ts`: `resolvePersonalCombat` called directly on the engine's modules
+// (`lib/personal-combat.ts`; P1-08e: it was a code-anchor test that ran a turn on the GM portal first); every roll is
+// recorded by a stand-in for `trySkillGain` on its module (`vi.spyOn`), which calls the real one
 import { expect, test, vi } from 'vitest';
 import {
   clone,

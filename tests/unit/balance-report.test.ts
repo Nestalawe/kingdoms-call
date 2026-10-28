@@ -3,6 +3,20 @@
 // the line on every realm's report (P1-12a1). Made-up games with a known answer. Level 1 (unit): pure
 // functions on small data; playing real games (the matrix, in CI) can't stage a reshape or a slice-only change on
 // demand.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The balance report (P1-03a) on made-up games: the class of change (identical: no change; words only: wording only;
+// the database writes alone: writes only, never a reshape, while the writes beside play or words are classed as before,
+// and a base baseline without the column is compared on the rest (P1-02c); any play hash, length, results, scripted
+// case or report section: a change to play; 54 of 60 changed: a reshape, 53: a rule change; counted over the games
+// still being played at the first turn any differs, so 50 of the 52 still played at turn 18 is a reshape); the same
+// slice-only change judged both ways (a rule change names the slice in its verdict; a reshape is "no meaningful
+// change"; a reshape that moves a headline figure is a meaningful change); where two logs first differ (a flipped
+// battle with its season and battle, spacing shown in quotes, another field named, a missing line, a force line's
+// units); at most 12 replays; the season names are the data file's; log lines can't close their code block; every
+// statistic in the baselines has its own label; the comment's script knows every class; every realm's report in one
+// line under the verdict (identical, with its count; where it differs, game by game; not compared when the base has no
+// baseline of it; not played) (P1-12a1). TypeScript, in `unit/`
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';

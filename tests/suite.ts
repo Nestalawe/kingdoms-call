@@ -1,4 +1,4 @@
-// tests/suite.ts: the test scripts npm test runs, each with its level (tests/README.md says what each checks).
+// tests/suite.ts: the test scripts npm test runs, each with its level (tests/every-test-its-level-and-what-it-checks.md says what each checks).
 // tests/legacy.test.ts runs each one in its own Node process, with these arguments and environment; it passes when
 // the script exits 0. A script that checks at more than one level sits at its highest. Sizes are the scripts' own
 // command-line arguments; `full` (npm run test:full) gives the bigger runs. Moved here from tests/run.js (P1-01a);

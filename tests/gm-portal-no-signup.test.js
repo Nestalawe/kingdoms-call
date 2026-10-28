@@ -2,6 +2,10 @@
 // from accounts that already exist, so the GM portal has no sign-up form, tab or call; its sign-in sends
 // newcomers to the player portal instead. Reads the page's template and its modules in src/ (its code is in its
 // bundle since P1-09d; until then the built page, in site/).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The GM portal makes no accounts: no sign-up form, tab or `auth.signUp` call in its template or modules; its sign-in
+// says "New here? Register on the player portal" (P0-32c)
 const fs=require('fs'), path=require('path');
 const {SRC}=require('./lib/source.ts'); const {pageFiles}=require('../tools/pages.ts');
 

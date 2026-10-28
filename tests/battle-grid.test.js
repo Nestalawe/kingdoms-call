@@ -12,6 +12,14 @@
 //   • rollBattleWidth stays inside the terrain's range; battleFrontWidth is the middle of it.
 //   • battleGridLines / battleGridStage print the grid and the ladder's stage; battleLineTotal (the
 //     bots' entry point) is the grid's total.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The battle grid (`battleGrid`, module level): roles by unit type (winged riders fly, cavalry, ranged, everything else
+// foot); ranged units behind a fighter shoot over it at ×1 and fill an empty front place at ×0.75; spare units ×0.5 /
+// ×0.25 / ×0.125 (sd09 lifts them); Tactical+1 cavalry on the flanks of plains and desert only; winged riders capped at
+// the enemy's units in line and in the air, never below 2; hulls hold a sea front and no flank exists there; the width
+// roll stays in its terrain's range and `battleFrontWidth` is the middle; the grid print and the ladder stage; it reads
+// the grid's and the width line's words with the page's `theWordsOf` (the helpers return facts since P1-12c6)
 const {readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-6;

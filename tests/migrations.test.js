@@ -1,6 +1,16 @@
 // Unit tests for the migration pipeline's logic (.github/scripts/migrations.js), with no database or GitHub
 // involved: which changes to supabase/migrations/ are allowed, what each database gets, and what Toby is shown
 // before approving production.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The migration pipeline's logic: a merged migration never changes and new ones are named and ordered; a pull request
+// never changes both the database and the site; each database gets only the migrations Toby was shown before approving
+// (anything else is refused); a database that predates the pipeline has its baseline recorded, never run; an empty one
+// is refused; the summary Toby reads (production, then the site: staging isn't migrated on a merge); a failed CLI call
+// never prints the database password; a staging rebuild (`reset staging`) refuses any target but staging, the live
+// project however it's named, and any database that isn't the staging project; a connection failure says the free
+// project may have paused; its summary; and the whole rebuild run against a stand-in CLI giving the real CLI's answers
+// (JSON, except `DO` for the seed), every step in order
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,migrationKind,resetGuard,connectHint,resetSummary}=require('../.github/scripts/migrations.js');

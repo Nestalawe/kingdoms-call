@@ -1,6 +1,11 @@
 // The noise rule (tools/balance/paired.ts, P1-02a): two runs compared game by game on the same seeds, ranges from
 // resampling whole games with a fixed seed. Made-up per-game figures with a known answer. Level 1 (unit): a pure
 // function.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The noise rule on made-up per-game figures with known answers: identical runs, a shift in every game (clear), in one
+// game of 40 (noise), in a quarter of them (clear, ranges hold it), too few cases, a fixed resampling seed; the overall
+// answer ignores slices and raises its bar with the number of statistics. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { chanceOf, compareRuns, meaningfulChanges, MIN_CASES, type Change } from '../../tools/balance/paired.ts';
 import type { Stats } from '../../tools/balance/stats.ts';

@@ -14,6 +14,13 @@
 // to make the catch certain; since plan P1-08i3 pursuitCatchChance is a top-level function, wrapped on the page, and
 // since plan P1-09a (a page's functions can't be stood in once its files are modules) wrapped in the vm, where the
 // turn is played. The checks are the same.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// A chase (Encounter) obeys one battle per phase: a hunter attacked by his quarry first holds the chase over and stays
+// where he is. A chase battle the hunter wins takes the province (or says why it is still contested). TypeScript, in
+// `scenario/` (P1-08i3: it was a test script whose code-anchor hook staged a certain catch; the top-level
+// `pursuitCatchChance` was wrapped on the page instead, and since P1-09a in the bare `vm`, where the turn is played).
+// The other ways a chase is held over or met: `unit/pursuits-and-the-catch-roll.test.ts`
 import { expect, test } from 'vitest';
 import { order, plan, scenarioInTheVm } from '../lib/scenario-in-the-vm.ts';
 

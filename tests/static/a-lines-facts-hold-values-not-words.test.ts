@@ -43,6 +43,40 @@
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// A line's facts hold values, not words (plan P1-12d, P1-12's Decisions of 2026-10-26, Decisions 2 and 10): every fact
+// literal in `src/engine/` of a kind an area of its list declares (P1-12d2: personal combat; P1-12d3: a battle;
+// P1-12d4: the strength ladder and the grid, whose records' kinds the facts module declares too; P1-12d5: the sea
+// lift's lines in a battle, a hero's death, the wanderer's escape; P1-12d6: the Encounter and Defend orders, the order
+// dispatch, the item orders, the Research and Practice orders, the Recruit and Hire orders; P1-12d7: the army orders,
+// the realm works orders, the war mastery orders; P1-12d8: the espionage orders, the explore and search orders;
+// P1-12d9: the Cast Spell order; P1-12d10: the move order) holds no field whose value is, or holds, words: a string or
+// a template with text reached as the value (through a conditional's branches, `+`, `||`, `??`, `&&`, a placeholder,
+// `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
+// `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
+// assignment (`=`, `+=`); a call's argument or a comparison's operand isn't the value's words. It lets through, by kind
+// and field, the fighters' labels (`foeWho`, `who`: Decision 2) and a battle's side's, guard's, realm's and unit's
+// labels (`cName`, `atkName`, `defName`, `loserName`, `guardName`, `realmTag`, `unitName`, …: 27 fields), an item's
+// equip note (`gainedItemNote`, the items' words, a fight's and since P1-12d6 a hero handed items), the enemy unit a
+// unit faced (`theEnemyUnit`, a unit's label), a disbanding unit's owner (`ownerName`, a side's or a guard's label,
+// P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
+// `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
+// a company raised's `quality`, `unitType` and `unitName` as the world or the content holds them, Call to Arms' and
+// Harvest the Field's; since P1-12d8 the class of lair Discover Lost Ruin names, `lairClass`, and the equip note of a
+// thief's take and of a lair's finder, `gainedItemNote`; since P1-12d9 a skeletal company's `quality`, `unitType` and
+// `unitName` as the world holds them, Skeletal Armies', and the Wraiths' `unitName`, Raise Wraiths'); a record's `kind`
+// that a facts module declares is the record's name, not words (P1-12d6: where the companies muster; P1-12d7: why a
+// hand-over at sea is refused, where a Wild Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why
+// a charmed mind may turn on its enchanter, a company a Telekinetic Storm strikes; P1-12d10: the troops that rally to a
+// defender), and its literal is read as a kind of its module. And no facts module imports `src/schemas/`. Its own
+// planted file: 16 ways of handing words (and a spread) refused (a record of a kind no facts module declares among
+// them, P1-12d6), 10 values let through (a record of a declared kind). Red on its base by design (P1-12d2's base: 113
+// fields of personal combat's facts; P1-12d3's: 121 of a battle's; P1-12d4's: the 10 of the ladder and the grid it
+// listed; P1-12d5's: its three areas' facts modules, which the base lacks, and the disbanding kind; P1-12d6's: its five
+// areas' facts modules; P1-12d7's: its three; P1-12d8's: its two; P1-12d9's: its one), the one exception to
+// `refactor-only`'s rule (Theo, 2026-10-25). It can't see words handed in through a parameter. Level 0: syntax trees;
+// nothing runs. TypeScript, in `static/`
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';

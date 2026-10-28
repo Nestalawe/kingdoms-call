@@ -7,6 +7,17 @@
 // Level 1 (unit): forceMarker, emitBattle and the words pass are called on a context made in the test; nothing else of
 // the turn runs, and every case is a staged battle the test writes. Whole games (the balance matrix and every realm's
 // report, both sets) prove the same words and the same stored log in play.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The views write each line's words (P1-12c3; plan P1-12's Decisions of 2026-10-24, 2 and 3): `theWordsOf` a force
+// drawn up for battle is the header's machine form the engine wrote before, its keys in their order (a chieftain's
+// force too), and the place of a battle's tally has no words of its own; `theTurnsLinesInWords` gives a battle's lines
+// the tiers their words give and puts its losses tally where its casualty lists begin, every line with the fight's
+// audience, hero and place; a battle with nothing to tally has no tally line, one whose lines are all for one realm
+// alone files no tally place, two battles side by side keep their own; the GM's log in words has the 17 keys in their
+// order, no fact and no tier left to work out, and a line filed with its words is stored as it was filed. Red on the
+// plants of the row's PR (a force's words without `guard`, the tally always last, every tier `'k'`). Level 1:
+// `forceMarker`, `emitBattle` and the words pass on a context made in the test
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import { emitBattle, forceMarker } from '../../src/engine/battle/battle-report-lines-and-force-markers.ts';

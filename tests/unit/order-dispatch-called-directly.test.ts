@@ -10,6 +10,24 @@
 // missing his HP. Properties (fast-check): at most one order function runs for any order, and none after a refusal; a
 // mastery runs at most once a turn; a bot's switched Practice never names a skill at 5.
 // Level 1: one function, called with what the phase loop hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `processOrder` itself (P1-08j9), called directly: the whole-turn cases one phase at a time (the heroes in the phase's
+// own order, `phaseInitCompare`); then, with every order's own function stood in by a recorder in the `vm`, what it
+// hands each: every order name the game knows reaches its own function once with the values it reads (so the `switch`'s
+// `default:` is never reached), a name in capitals or with spaces, an unknown, empty or missing name as a Defend, a
+// missing target or extra as empty, a wanderer with no realm, the log's context his while the order runs; no hero, a
+// fallen one or no order does nothing; the superseded order (the leader named, or "another hero"); the battle lock's
+// foes one by one (an enemy, a wanderer, a leaderless host: held; a fallen enemy, one with no companies or elsewhere,
+// an ally, his own realm's: not), a neutral garrison (not on his own ground), the line's fields, a stale flag, no
+// companies, other orders; each charm refusal (and not spent, and told before a spent mastery); each mastery's charge
+// to this turn and second refusal; the Forced March (handed on to slip, refused below March 7 or with no skills in the
+// save, still spent); a spell item by id, number or name (and an unknown spell, another power, none, one not carried);
+// a bot's Practice read from the season's start, a comrade's level too, a fallen or idle comrade, the order copied not
+// changed, a fleet to drill, a player's hero, a wanderer or no skill named; a bot's Search on a save missing his HP.
+// Properties: at most one order function runs for any order and none after a refusal, which clears the log's context; a
+// mastery runs at most once a turn however five seasons are given; a bot's switched Practice names a skill below 5, or
+// is a Defend. Planted faults: in the PR (P1-08j9)
 import fc from 'fast-check';
 import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';

@@ -1,5 +1,12 @@
 // Unit tests for the staging deploy's logic (.github/scripts/staging.js), with no GitHub involved:
 // the kc-config.js it writes for the staging site, and the comments it posts on pull requests.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The staging deploy's logic: the `kc-config.js` it writes (staging address only, never the live one, no stray
+// characters; the pull request number and full commit it deploys, refused unless they're exactly that), its "on
+// staging" / "replaced by" comments, and the test accounts (made up, on a reserved domain; signed up then signed in
+// with the shared password; one that exists is skipped; a failure stops the deploy without printing the password; the
+// staging seed uses only their addresses)
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('vm');

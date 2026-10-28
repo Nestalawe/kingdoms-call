@@ -6,6 +6,22 @@
 // points, a research lead, and the payload's every field. A tiny made-up map, one case per kind of choice. Level 1 (unit): pure functions of a state.
 // That the portal sends the same for the same choices is the page test's
 // (tests/page/the-scripted-realm-sends-what-the-player-portal-sends.test.ts).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The scripted realm's choices on a tiny map, one case per kind (rewritten in P1-15e2 to the player portal's terms):
+// war on the nearest realm met (none on a realm not met, already at war, or before Safe Start ends), the armed king's
+// Encounter Character after the nearest enemy his realm sees (one in its land with troops, or beside one of its heroes;
+// none it doesn't see, none under an Invisibility cast in the turn), a hero when the king has no army (never after a
+// king), the chase into an unresolved battle (armed enemies it sees, never a wanderer, a king only by a king), Recruit
+// Armies of the first kind the form offers on the realm's land, a plan for every living hero varied by hero and turn
+// (Steal only at Thief 1, a school only of the hero's own, each duel stance, an Evil realm's doctrine), an heir's
+// points, the first research lead, and the payload's every field (five orders for every hero listed, a fallen one's
+// Defend, the form's lines, the saved column, the flags); the spare heroes' orders (P1-15e3): a wanderer spied on
+// before a rival, the line naming him; none on a wanderer who might have slipped by unseen; a wanderer who will serve
+// hired on even turns, once, with his card and its plan; Search Lair on a Weak lair the realm knows there, with `prov`;
+// Practice Skill, Explore and Rest in turn, Research only at Sage 1; the masteries' table equal to the form's
+// (`L79_ORDERS`) and a mastery at its level only; Release Hero once, in the orders for turn 6, of the first unarmed
+// hero of three or more, never the king; the same orders from the same state. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { L79_ORDERS } from '../../src/ui/player/l79-orders.ts';
 import {

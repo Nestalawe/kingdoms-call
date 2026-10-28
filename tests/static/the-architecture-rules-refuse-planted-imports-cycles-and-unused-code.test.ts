@@ -7,6 +7,23 @@
 // Level 0 (static): the two tools read the sources of temporary copies (node_modules linked) and nothing runs; each
 // test takes a few seconds (knip about 1.5 s a run), so each has a time limit sized to its runs and copies, and so has
 // the clean-up that removes the copies (tests/lib/time-limits.ts).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The architecture rules (P1-13a, plan P1-13 Decisions 2 to 4). dependency-cruiser (`npm run lint:arch`,
+// `.dependency-cruiser.mts`) passes on this tree with its known violations let through, and finds every one of them
+// still there. On a copy of the repository it refuses one planted import for each of its 15 rules (an engine file
+// reading the GM page's code, a cycle of two engine files through imports that bring code, the content, the rules on
+// plain values, the rule registry (`src/engine/rules/` importing the dice, P1-19a), the views, `src/shared/`, `src/db/`
+// and `ui/shared/` each importing outside what they may, a schema imported as code and re-exported with `export *`,
+// `src/rulebook/` reading `src/db/`, the player page reading the GM page's code and the engine, supabase-js outside
+// `src/db/`, a missing file), and nothing else, and `npm run lint:arch` fails there; it lets through a cycle of `import
+// type` only, a schema's type imported or re-exported as a type, the rule registry reading the rules on plain values
+// and the content, and the GM page reading the engine. A known violation fixed but left in the list is found, and `npx
+// depcruise src --baseline --baseline-mode shrink-only` takes it out. knip (`npm run knip`, `knip.ts`) finds a planted
+// unused file, export and dependency, and nothing else, and the ratchet's `unusedCode` rises by three. Red with the
+// cycle rule counting type-only imports, with the engine's rule taken out, or with knip told to skip unused files.
+// Level 0: the two tools read the sources of temporary copies and nothing runs (a few seconds a test). TypeScript, in
+// `static/`
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -8,6 +8,14 @@
 // directly on a world the engine makes in the bare vm (tests/lib/engine.ts); the words are read from the built pages.
 // It was tests/march-one-rate.test.js, which ran one turn on the GM portal for the anchor hook to hand
 // computeMovePoolMax back; the checks are the same.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 14 (2026-10-13): March and Naval have one rate of advance, +0/+0/+1/+1/+2/+3 at levels 0–5 for every unit
+// whatever its base move (the fast-column ladder is gone), and no flyer, rider or winged beast, gains from March.
+// Checked in the engine's move pools (`computeMovePoolMax`), `navalSpeedBonus`, the turn report's per-unit move rates
+// and the bots' reach; no page quotes the old ladder and the rulebook's Free Lances example says 7.
+// `unit/march-one-rate.test.ts`: `computeMovePoolMax` called directly in the bare `vm` (P1-08b; it was a code-anchor
+// test)
 import vm from 'node:vm';
 import { afterAll, describe, expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';

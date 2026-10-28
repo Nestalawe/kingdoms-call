@@ -5,6 +5,13 @@
 // Level 1 (unit): pcCastCombatSpell called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal); the cast is pinned to
 // succeed. The rulebook, the player portal and the data file are read as built.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 7 (R-113): Spiritwrack silences 1, 2, 3 and 3 rounds at White 1, 3, 5 and 9, and 4 against a guardian weak to
+// White at White 5 or 9; the rulebook, the player portal and the data file say at most 3 (4). The rounds pass before
+// and after (the duel already counted White to 5); the words fail before (batch 2026-10-15).
+// `unit/spiritwrack-five.test.ts`: `pcCastCombatSpell` called directly on the engine's modules
+// (`lib/personal-combat.ts`; P1-08e: it was a code-anchor test that ran a turn on the GM portal first)
 import { expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';

@@ -11,6 +11,12 @@
 //      was the one exception: infantry that loosed spears in the archery step. The spears are retired.)
 //   4. Each portal has a helper that
 //      answers 'infantry' for a type it has never heard of (old saves and test fixtures name such types).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `KC_UNIT_TYPE` names one of the five types for every unit with a base strength and agrees with the engine's class
+// lists (cavalry, sea → naval, aerial → flyer, missile → ranged with Goblin Horde as infantry, garrison → infantry);
+// and the engine's `unitTypeOf`, which both hold (the player portal through `src/shared/`, P1-11a4), answers `infantry`
+// for an unknown type
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 const {scriptOf}=require('./lib/source.ts');

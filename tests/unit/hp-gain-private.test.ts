@@ -10,6 +10,15 @@
 // (tests/lib/personal-combat.ts), with the turn's own log, which is what each realm's report is cut from (an entry's
 // targets and its public flag). Plan P1-08e: this was a script that took them from the "  // 4. Run all 5 phases" hook
 // after a turn on the GM portal.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 20 (2026-10-12): in a fight report a realm reads its own heroes' maximum-HP rises and never an enemy's. Two
+// rival heroes wounded in one fight each harden, and each line reaches its own realm only while the rest of the fight
+// stays shared; a battle winner's rise is private to the winner's realm; a neutral's rise is shown to nobody; a lair
+// cleared alone still tells the hero's realm. `unit/hp-gain-private.test.ts`: `resolvePersonalCombat`, `awardWinHp` and
+// the line emitters called directly on the engine's modules (`lib/personal-combat.ts`; P1-08e: it was a code-anchor
+// test that ran a turn on the GM portal first), reading the context's log in words (`theTurnsLinesInWords`: the rise in
+// a fight records a fact since P1-12c4)
 import { expect, test } from 'vitest';
 import { THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { personalCombatEngine, type Character, type Combatant, type FightResult } from '../lib/personal-combat.ts';

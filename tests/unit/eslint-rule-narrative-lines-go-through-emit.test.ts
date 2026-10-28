@@ -7,6 +7,20 @@
 // and the views but the events file, since P1-12a4) is eslint.config.js's; tests/static/harness.test.ts checks it
 // refuses a planted line there and nowhere else.
 // Level 1 (unit): ESLint's RuleTester runs the rule's code on snippets, which a static test, running nothing, can't.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `kc/narrative-lines-go-through-emit` (`tools/eslint-rules/`, P1-12a2; plan P1-12's Decision 6), run by ESLint's
+// RuleTester: a write to the GM's log (`turnLog` or `X.turnLog`: `push`, `pop`, `shift`, `unshift`, `splice`, `sort`,
+// `reverse`, `fill`, `copyWithin`, an assignment to it or inside it, `delete`, `++`) is refused, and so are a `log(…)`
+// or `X.log(…)` call (but console's and Math's, P1-12a3), a `push`, `unshift` or `splice` on `narrative`, `narr` or
+// `X.narrative`, an object literal with an `onlyPlayer` key (the option that refused only the writes to the GM's log,
+// for the folders not yet converted, went in P1-12a4), and an event written without its hero (P1-12c2: `emit`'s event,
+// or an event's place, an object literal with an `audience` as handed to `logSplit` or held in a `const` or an array,
+// with no `hero` and no spread); a hero's id, `null`, `THE_HERO_WHOSE_ORDER_IS_RESOLVING`, a spread place and an object
+// with no `audience` pass; `emit`, `narrate`, `narrateTo`, `narrateAll`, `narrateAt`, `takeBackLinesFrom`, reading the
+// log or a narrative, a context made with an empty log, another list's push, `console.log` and `Math.log` pass;
+// JavaScript and TypeScript. Each refusal is red on its planted line. Where it runs is `harness`'s. Level 1: RuleTester
+// runs the rule's code on snippets, which a static test, running nothing, can't
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, test } from 'vitest';

@@ -1,5 +1,10 @@
 // The balance matrix's statistics (tools/balance/stats.ts, P1-02a), from a small made-up game of two realms and two
 // turns whose figures are worked out by hand. Level 1 (unit): a pure function on a fixture.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The balance matrix's statistics from a small made-up game worked out by hand: battles counted once, the leading unit
+// type, lairs, deaths, spells by caster, realms at turns 10 and 20 (a shorter game with its last turn), chases; a
+// missing slice is a zero only for counts per game. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import {
   gameStats,

@@ -5,6 +5,16 @@
 // balance matrix never reaches: Forced March slipping past a battle, a friend joining the assault, a blockade, a flood,
 // the Veil, a leaderless garrison, a coastal raid's plunder, hidden lairs, Pathfinder, no road, a bad target, and a
 // hero with no move points worked out yet. Level 1: one function, called with what processOrder hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The Move's own function (`resolveMoveOrder`, P1-08j1), called directly on the same cases one phase at a time, then on
+// what the dice decide (fixed) and what the balance matrix never reaches: Forced March slipping past a guard, a hero, a
+// garrison and a leaderless garrison on a low roll (contested, no battle) and fighting on a high one; a friend marching
+// on the same province joining the assault, or missing it; an enemy blockade; a flood that turns a column back or
+// strands one; no road to a far target; a target that names nowhere; a hero whose move points were never worked out;
+// the Veil (no battle); a leaderless neutral garrison fighting on; a coastal raid's plunder; lairs hidden by a rival's
+// illusion; Pathfinder spotting one lair more. 46 planted faults in the function each turn at least one of the two
+// tests red but one (its missing-pool safety net, which changes nothing: Parked)
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {

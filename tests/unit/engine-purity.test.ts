@@ -19,6 +19,24 @@
 //   the reports; and a write to a table and a new global, which the check of the globals sees.
 // Level 1 (unit): the engine alone, with no page. It plays a whole game, world generation included, so that as much of
 // the engine runs as a game reaches.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The engine is pure (P1-18d): a whole game of the balance matrix (`scripted-05`: realm 0 on the scripted orders, three
+// bots), from world generation to the end, played in the bare `vm` through `lib/engine.ts`, each turn's `resolveTurn`
+// and then its Spy-stealth step and the views' `buildReports` on what the turn hands over (`whatTheReportsRead`,
+// P1-12b3), as the shell plays it on the page (each turn's seed from the dice, the run's time stamped; first the one
+// number the GM page draws as it loads). It is the matrix's own game (P1-09b): each turn's state, GM log and report,
+// words included, hash as `tests/balance/baseline/matrix.json` holds them (the shell's statistics rows and writes
+// aren't compared: there is no shell); one draw fewer before the world, or another starting HP, turns it red. `Date`
+// and `Math.random` are stand-ins and `document` and `sb` tripwires, each noting the reach and throwing, so a reach a
+// `try` swallows is still seen: the game reaches none, and says nothing on `console.warn` or `console.error`. A turn
+// changes no global but the five caches it seeds afresh at its start (`_usedHeroNames`, `_usedHeroFirsts`,
+// `_usedHeroEpithets`, `_usedArmyUnitNames`, `maxHpPlayers`): the tables are read-only, and no new global appears. The
+// reports are built once a turn (`whatTheReportsRead` hands over once). Planted on a copy of `src/`: `Date.now()`,
+// `Math.random()`, `document` and `sb`, each in the resolution and in the reports, turn it red, and so do a write to a
+// table and a new global. The game's setup is `lib/matrix-game.ts` (which sets up any game of the matrix for the
+// every-realm half, P1-12a1). Level 1: the engine alone, over a whole game, so that as much of it runs as a game
+// reaches. TypeScript, in `unit/`
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

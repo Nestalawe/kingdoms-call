@@ -21,6 +21,20 @@
 // Level 1 (unit): world generation and the upgrade, called directly on the engine's modules (plan P1-14a); no turn is
 // played. Not static: it runs the passes. The turn's end telling what the upgrade found is the stages' tests
 // (tests/lib/after-the-phases-cases.ts, tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `upgradeGameState` (`src/engine/saves/`), which brings a running game's save up to date before the turn reads it,
+// called on a new world made by world generation (from `KC_SEED`), each old shape staged on a copy: a hero hired last
+// turn with no earned-HP pool gets one and nothing is told; a save from before the pool has its heroes carried over,
+// returned for the turn's end to tell, none kept on the save; guardians from an older table re-read from today's; a
+// home lacking a unit of its people's roster offers it again; a pool offering the Corsair Fleet offers the Galleon (a
+// Corsair company kept); a retired Sage discovery taken and counted, none kept on the save, a held one refreshed from
+// the table; a company of a renamed unit renamed; an item's tier from today's tables. All at once, then again: the
+// second run changes nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril
+// Armour made at tier 1, raised to 2: a known defect, whose fix removes it) and find nothing. Each pass left out turns
+// its cases red (6 of 6). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
+// since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
+// settings)
 import { describe, expect, test } from 'vitest';
 import '../lib/the-whole-engine.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';

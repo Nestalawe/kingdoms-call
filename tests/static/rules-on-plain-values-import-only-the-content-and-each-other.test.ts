@@ -5,6 +5,13 @@
 // `import '…'`, `import(…)` and `require(…)` (TypeScript's preProcessFile reads them all, and only code: comments and
 // strings don't count). Until P1-13's dependency-cruiser rule does the same. Level 0 (static): it reads the sources and
 // runs nothing.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Every file of `src/engine/rules-on-plain-values/` (P1-11a, Decision 2) imports only `src/content` and the folder: no
+// other engine file, the views, a package or a bare import that would run another file's set-up as the page loads;
+// every kind of import counts (`import`, `export … from`, `import(…)`, `require(…)`, read by TypeScript's
+// `preProcessFile`, comments and strings left out), and each one names a file that is there (P1-11a3). Level 0: it
+// reads the imports and runs nothing. Until P1-13's dependency-cruiser rule takes it over
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';

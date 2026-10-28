@@ -4,6 +4,11 @@
 // the same terms" note no longer claims more than the game does.
 // Level 2 (scenario): the Consecrate order is nested inside runTurn, so a real turn runs: a Divine king
 // consecrates his capital and his title merit is read from the saved world.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 10 (R-116): a Divine king consecrates a province of his and earns no Hierophant merit; the title's description
+// and the rulebook's Titles table name Bless Province, Holy Symbol and Resurrect only; the creed note says no creed is
+// scored differently, and the Deathpriest row counts undead raised by Necromancy (batch 2026-10-15)
 const fs=require('fs');
 const {bootScenario,order,plan}=require('./lib/scenario'); const {sitePath}=require('./lib/boot');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

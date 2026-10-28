@@ -9,6 +9,13 @@
 //   • the dice are drawn exactly as the old loops drew them: one per unit, a second only for a beaten
 //     unit that neither died nor is skeletal — so a seeded game plays out as it did before;
 //   • unitRef and ownedUnitName, moved to module level with it, keep their wording.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `rollUnitFates` (module level, refactor of the four casualty loops), driven with injected dice: the winner's death
+// and promotion rolls, the loser's death, demotion, disbanding, Shield Fort fall-back and despite-defeat promotion,
+// skeletons that neither rise nor fall, the `_notable` stamp, the exact wording, and the dice drawn exactly as before
+// (one per unit, a second only for a beaten survivor that is not skeletal); `unitRef` and `ownedUnitName` keep their
+// wording; it reads each fate line's words with the page's `theWordsOf` (facts since P1-12c6)
 const {readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 

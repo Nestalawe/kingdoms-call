@@ -11,6 +11,24 @@
 // none awaiting his return, crowns exactly one heir in its richest province, one with none ends its dynasty; the Grand
 // Library gives one discovery the realm may learn and doesn't know, or says there is none; the turn moves on by one.
 // Level 1: one function, called with the context resolveTurn hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns` (P1-08k5a), called directly: the whole-turn cases
+// through the stage alone (but the three only a whole turn stages); then, with the helpers it calls stood in by
+// recorders in the `vm`, what each is handed and when: the holy ground of a fallen Divine king carrying the mark (only
+// he), the heir's name asked of the realm's creed (or Neutral), each realm's Grand Library and its blocked and eligible
+// discoveries (not past a lost Wonder); with no name-giver, "Heir of" the fallen king or "The New Monarch". Then what a
+// whole turn can't stage: a save with no turn or turn 0; a fallen hero's summons (told) and his companies' marks; the
+// Charm's marks; every mark at once; a reduction of nothing kept, a Terror of nothing cleared; a hero hired in any
+// phase; the heir's Temper drawn first, then an aptitude for each skill in order; the heir listed in his province once;
+// a realm that never had a king; the first fallen king demoted; provinces the map doesn't have or with no tax; a
+// landless Divine realm whose king awaits his return; the dice of fading illusions and lairs, province by province, the
+// first and last of the map; provinces, realms and the save missing a field; a rise owed to a hero with no companies
+// list; one Library die for each realm it serves. Properties (fast-check): every company summoned for the turn or bound
+// past its last turn leaves, every other stays, one line of each kind a hero; a realm with land and no king, none
+// awaiting his return, crowns exactly one heir in its richest province, one with none ends its dynasty, one with a king
+// crowns nobody; the Library gives one discovery the realm may learn and doesn't know, never one forgotten or awaiting
+// a choice, or says there is none; the turn moves on by exactly one. Planted faults: in the PR (P1-08k5a)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

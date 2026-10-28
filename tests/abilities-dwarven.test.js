@@ -8,6 +8,14 @@
 //   Gnomish Gyrocopters  Flak Gunners (×1.25 when the enemy has flyers) · Flak Screen (unchanged)
 //   Dwarf Garrison       Stone Halls (foot facing it in the mountains ×0.9) · Deep Halls (counts as Guard for Shield Fort)
 // Level 1 (unit): the grid, the facing and the Shield Fort gate are module-level functions of the booted GM portal.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The six dwarven units': Unbreakable (foot facing Guard ×0.85, no side hit on Guard); Shield Fort's gate reads the
+// front line, not the force (`shieldFortHolds`: half the occupied front cells Guard, a Dwarf Garrison counting; a Guard
+// reserve behind a goblin front is no fort); Armour-Piercing ×1.25 shooting base strength 6+; Bombard ×1.15 from the
+// second line; Crag Charge (Rams take the one mountain flank); Battering Horns (a free Ram turns an anchored line on
+// open ground); Flak Gunners ×1.25 against flyers in the air or on a flank; Stone Halls ×0.9 for foot facing a Dwarf
+// Garrison in the mountains
 const {readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-6;

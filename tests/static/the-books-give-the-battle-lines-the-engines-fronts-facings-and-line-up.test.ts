@@ -9,6 +9,15 @@
 // Level 0 (static): the rulebooks as built (site/), and the engine's tables from their module (src/engine/battle/
 // lines.ts), imported with the whole engine loaded (tests/lib/the-whole-engine.ts); nothing runs. Until plan P1-14b
 // this was tests/battle-lines-words.test.js, which read the tables in the engine's bare vm.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The front the ground allows is written three times and must agree: every width a rulebook (comprehensive and intro)
+// claims for a terrain is that terrain's range in the engine's `BATTLE_FRONT_RANGE`, every terrain is claimed, and the
+// old fixed-width wording (6 / 4 / 3, "four lines", flyers "always … from the front") is gone; every facing multiplier
+// in `BATTLE_FACING` appears in the rulebook's "Who faces whom" step and the intro says units fight the enemy opposite;
+// both rulebooks say the better-explored side lines up second and the rulebook's "The line-up" step ties the swaps to
+// Tactical. The engine's values are imported (the tables from `engine/battle/lines.ts`), after
+// `lib/the-whole-engine.ts`; until P1-14b they were read in the bare `vm`
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { BATTLE_FACING, BATTLE_FRONT_RANGE } from '../../src/engine/battle/lines.ts';

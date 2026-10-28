@@ -3,6 +3,12 @@
 // their own race), no place in Dragon Taming (Awaken the Wild itself was removed on 2026-10-12), and their own strikes land one time in
 // two whatever the commander's Druid. Level 1 (unit): the data file's tables, the booted GM portal's
 // getDruidLevel and primalStrikeChance, and the player portal's Druid table (the same getDruidLevel, through src/shared/).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The winged riders are soldiers of their race: Eagle Riders, Noble Griffons and Wyvern Riders are in no Creature,
+// Monster or tamed-flyer table, sit at Druid 1 with the other racial troops (`getDruidLevel` says 1 on the GM page and
+// on the player page, which loads it through `src/shared/`), and `primalStrikeChance` gives their strikes a flat 50%
+// while a beast's still runs 30% + 10% a level to 90
 const fs=require('fs'), vm=require('vm');
 const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

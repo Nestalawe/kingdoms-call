@@ -6,6 +6,13 @@
 // a stun item and a stun riding on an item's blow.
 // Level 1 (unit): the functions called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 3: a stun ward ("cannot be stunned") turns a stun the moment it lands: Psychic Blast and Control Undead cast
+// with the initiative, a Scroll of Paralysis, a Thunder Stone's daze on the next round and a guardian's dazing special
+// each leave a warded fighter unstunned (`pcCastCombatSpell`, `pcUseCombatItem`, `pcMonsterSpecial`, `pcRoundStart`),
+// while an unwarded one is still held (batch 2026-10-14). `unit/stun-ward-lands.test.ts`: each called directly on the
+// engine's modules (`lib/personal-combat.ts`; P1-08e: it was a code-anchor test that ran a turn on the GM portal first)
 import { expect, test } from 'vitest';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';

@@ -23,6 +23,39 @@
 // with nothing of the check.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.ts)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The turn's one failure path (P1-18a): with one failure staged on the stand-in database (`ERRORS`, or a save that
+// lands but answers with an error), `runTurn` returns `{ok, committed, conflict, error}` every time and never throws.
+// The GM says no: nothing runs. The orders can't be cleared: the turn doesn't run and the orders stay in. The save
+// fails, or a realm's orders are malformed JSON: the game stays on its turn and every realm's orders go back as loaded
+// (a draft stays a draft). The save errs but landed: the turn counts as saved and the orders stay spent; and if the
+// game then can't be read again, nothing is put back. The post-save guard (passed on `main` too, and P1-18d kept it): a
+// turn report that throws leaves the turn saved and advanced, the orders spent, and the GM told so. The turn's writes
+// (P1-18d; passes on `main` too): every write a turn makes, recorded in order (table, filters, payload), is the clear,
+// the conditional save, then each realm's report with its `turn_logs` snapshot, the GM's log and the telemetry; the
+// save carries the world, its summary (`meta`, of the world saved) and the new turn; each report is its snapshot,
+// stamped with the page's build (planted on copies of the site: no stamp, no summary, the GM's log on the wrong turn
+// and a snapshot before its report each turn it red). Each turn's seed (P1-18e; fails on `main`, which returns none):
+// with the page's dice pinned to a stream the test follows, each turn's seed is the page's next number as a 32-bit
+// integer in [1, 2^32), two turns get two seeds, the same page dice give the same seeds, a draw the page makes while
+// the save is out comes from its own dice, and after the turns the page carries on with them (planted on copies of the
+// site: the raw float, a reseed never given back, the dice lent across the save, and the reports off the turn's dice
+// each turn it red). The seed handed (P1-08m; fails on its base, where the shell lent the dice itself): `resolveTurn`
+// is handed, after the state, the slot rows and the turn, exactly the seed `runTurn` returns, each turn its own. The
+// same result (P1-18e; fails on `main`): one turn of `scripted-05` (`lib/matrix-game.ts`) on the page, then
+// `resolveTurn`, the Spy-stealth step and `buildReports()` in the bare `vm` from the seed the page returned, on the
+// same world and rows: the world after the turn, the GM's log and each report are the same byte for byte, once the
+// shell's stamps (the turn mode's `turnRanAt` and `nextDeadlineAt`, each report's `engineStamp`) are taken out of both
+// by one function. The check of a saved game at load (P1-15d; fails on its base, whose turn says nothing of it): the
+// page plays a turn from the version-0 fixture (`fixtures/saves/version-0.json`, an all-bot game), saved at version 1
+// with nothing of the check in the message; with a battle's mark left on a company, the turn runs and is saved, and the
+// message names the place and not its value, and does again once the page has refreshed the game; a new game's Turn 0
+// (`runTurn0`, `commitTurn0`) then two turns, each saved at version 1, no message saying anything of the check (planted
+// on copies: the message without the check, its words not shown again after the refresh, each red). Raised the
+// ratchet's `stubDbTests` by one (Theo, 2026-10-18), once for the P1-18 series; P1-15d's cases are in this file, so it
+// doesn't rise. Level 4: these are the database calls of the turn's shell (`runTurn`, `src/ui/gm/turn-shell.ts`),
+// around the engine's `resolveTurn`; the shell runs only in the booted page. TypeScript, in `page/`
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';

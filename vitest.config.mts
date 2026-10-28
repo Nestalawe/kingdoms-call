@@ -1,4 +1,4 @@
-// Vitest runs every test (npm test). One project per test level (tests/every-test-its-level-and-what-it-checks.md); each runs its level's
+// Vitest runs every test (npm test). One project per test level (tests/README.md#the-levels); each runs its level's
 // test scripts through tests/legacy.test.ts and its new tests from tests/<level>/. The quarantine project runs only
 // in npm run test:quarantine.
 //

@@ -4,6 +4,12 @@
 // maps of up to 4 realms not within 3 provinces either; each lair still holds one item of its own
 // guardian's tier. The "same effect" is the effect alone, whatever the slot or tier.
 // Simulation level: the stocking is a pass over a whole generated world.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Over generated worlds from 2 realms to the largest size, no two lairs in the same or neighbouring provinces hold an
+// item with the same effect (on maps of up to 4 realms, none within 3 provinces); "same effect" ignores slot and tier
+// (`itemEffectKey`: the Carved Bead and the Engineer's Blueprint match); every lair still holds exactly one item of its
+// guardian's tier. Simulation level: the stocking is a pass over a whole world
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{

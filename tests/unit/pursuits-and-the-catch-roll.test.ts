@@ -12,6 +12,22 @@
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The balance
 // matrix runs every one of them, but never a rendezvous, a quarry not at war, the chase battle, a closing step with no
 // road or no points, or the sentries (V8 block coverage, P1-08i3). Whole turns: scenario/pursuit-one-battle.test.ts.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// A chase (P1-08i3), called directly in the bare `vm` on the middle of a bot world cleared for each case
+// (`lib/middle-of-a-bot-world.ts`). The catch roll (`pursuitCatchChance`, a property): 70% + 5% a level of the hunter's
+// Spy − 5% a level of the quarry's (each counted to 5), 5–100%, his own realm's quarry always met. `advancePursuit`,
+// staged: a chase called off (the quarry dead, gone, veiled or Vanished; a veiled friend is still followed); held over
+// while an armed hunter has a battle on his hands this phase (a property over a stalled battle, a field battle and
+// contested ground; an unarmed hunter rides on; an earlier phase's battle doesn't hold him); closing one province a
+// phase for one point of movement, stalling with none, or with no road; at the catch, a mutual pair met once, a missed
+// roll, a friend joined, a realm not at war passed, no battle on a quarry who fought a stalled battle or on contested
+// ground, the chase battle that takes the province (R-083) or leaves it contested with its garrison, the quarry's
+// companions pinned with him; an unarmed hunter turned away by the sentries, slipping through them, or refused by a
+// king. The balance matrix never runs a rendezvous, a quarry not at war, the chase battle, a closing step with no road
+// or no points, or the sentries. Of 56 faults planted in the lifted files, 55 turn this file, the next or
+// `encounter-seventy` red; the 56th, dropping the catch roll's 5% floor, can't be seen: a Spy counts to 5, so the
+// chance never falls below 45%
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

@@ -14,6 +14,29 @@
 // its own kind; each wanderer stays or drifts to land around him; a Divine hero rises only when due, on holy ground
 // his realm held, spending it; every province ends listing exactly the heroes standing in it.
 // Level 1: one function, called with the context resolveTurn hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile` (P1-08k5b), called
+// directly, the turn moved on first as the first part leaves it: the whole-turn cases through the stage alone (but
+// those only a whole turn stages: the save's repairs counted at the turn's start, a maximum raised by Royal Physicians,
+// an heir crowned, a summons gone, the titles); then, with its helpers stood in by recorders in the `vm`, what each is
+// handed: each realm's Academy, gardens, informants and Observatory in turn, then the reconcile and the stranded
+// guards; the Academy's chance asked once per realm with companies to drill; the gardens summed per wounded hero, the
+// king's effects for the king; the Embalmers asked only on held ground; the holy ground measured from the body (or the
+// hero) and spent from the realm's list. Then what a whole turn can't stage: each company's, grave's, band's and
+// wanderer's die in turn; a nameless company; a fallen hero at home; heroes with no maximum or no HP, or past it; a
+// captain standing nowhere; a province no realm mapped or of no terrain, its list of visitors kept; no graveyard, a
+// grave whose hero is gone or that records no turn, a hero of 1 HP; a body measured from its grave; a king with no
+// ground left, or no longer marked king; a living hero with a stale grave of the turn before ("raised": Parked); graves
+// on a missing realm's ground, a grave-keeping effect with no rate; bands and wanderers standing nowhere, no mercenary
+// list; the repair counts (the retired discoveries' on the turn's context, as the save's upgrade found them, since
+// P1-15a); graves with no place; provinces with no list; guards bare, on a realm's land, holding, fallen. Properties
+// (fast-check): the Academy drills exactly the companies at home that may rise and whose die is under 7%, each told, or
+// says none rose; the gardens mend each wounded hero by what his realm knows, to his maximum; graves rot exactly at or
+// under their ground's rate; each band retires (told once) or moves on to its own kind of ground around it; each
+// wanderer stays or drifts to land around him, listed only there; a Divine hero rises only when due, on holy ground his
+// realm held, spending it, each ground once; every province ends listing exactly the heroes standing in it. Planted
+// faults: in the PR (P1-08k5b)
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

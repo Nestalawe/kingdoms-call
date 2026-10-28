@@ -15,6 +15,20 @@
 // Level 1 (unit): pure functions called directly on the engine's modules (plan P1-14a), with no turn played. None of
 // them draws a die. A hero is staged with the fields these read, so his type is given by assertion (as the views' unit
 // cases give a staged world's), and the turn's context holds only its state.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The lines P1-10b6 changed to free `battle/terrain-and-unit-strength.ts` of the ts-nocheck line that no game of the
+// balance matrix reaches, called directly on the engine's modules, each on the value it had before: a missing ground, a
+// volley with no damage multiplier or no options, arrows at an armoured hull or a shell; a force carried over the sea
+// by its flyers (the foot ×0.25, the riders ×0.5) and one with a hull among it (×0.75, the riders at full strength); a
+// missing force, leader, state, world or province, a gap in a force, and a leader whose race is `''` (the airborne
+// test, kinship's line, read as its kind and its words since P1-12d3, a coastal province, a hero's kinship); a unit of
+// a quality the tables don't hold (no step up under Oratory or Tactical mastery, the multiplier's fallback), a Pagan
+// Wonder's Standing Stones defending in the woods and only defending, Phantasmal Armies' bonus, a hero with no list of
+// items or an item with no effect, the Kraken Figurehead's step up a tier (none past Elite, none for a unit that isn't
+// a fleet); a ladder row with no command multipliers, a gap among them or one of ×1, and a side with no force
+// multipliers, no options or no ground. Since P1-12d4 `armStr`'s trace holds each modifier's reason: its labels are
+// read through the prose (`theWordsOfAUnitsModifier`).
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import {

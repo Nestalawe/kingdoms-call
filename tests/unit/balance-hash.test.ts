@@ -1,6 +1,11 @@
 // The balance matrix's hashes (tools/balance/hash.ts, P1-02a): prose is taken out of the play hash and nothing else
 // is; words, clock readings and the stand-in database's stamps are handled as the matrix needs. Level 1 (unit): pure
 // functions on small made-up values.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The balance matrix's hashes (P1-02a): the play hash leaves out prose (`text`, `desc`, `lore`, `flavour`) and nothing
+// else; clock readings, the stand-in database's stamps and the build stamp are ignored (at a row's top level only); a
+// rewording moves only the words columns; a change in the writes moves only `writes`. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import {
   playHash,

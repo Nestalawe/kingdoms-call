@@ -11,6 +11,20 @@
 // maximum, and nobody else; a realm keeps the consecration of exactly the provinces it still holds; every hero standing
 // in a province bears its name.
 // Level 1: one function, called with the context resolveTurn hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames` (P1-08k3), called directly: the
+// whole-turn cases through the stage alone (but those only a whole turn can stage); then, with its helpers stood in by
+// recorders in the `vm`, the order of its calls and what each is handed (the graves' and the neutral heroes' line
+// writers, the waiting skill rises resolved then written, a fallen commander's host dispersed knowing his killer, the
+// maximum HP resynced after the notes, a coward's host left before he moves, the provinces rebuilt after); then what a
+// whole turn can't stage: a stand-off still standing, a fallen hero's dead, a fallen commander's host still in the
+// field, waiting skill-rise lines, the Elven escape queue for two realms and an unknown one, an unknown consecrated
+// province, a note for a hero who is gone (the notes are what the save's upgrade found, on the turn's context, since
+// P1-15a), unknown HP, a hero standing nowhere, a parcel whose king has fallen too. Properties (fast-check): no
+// skeletal company left under a hero with no Necromancy or in a garrison and no living one lost; Mass Healing mends
+// each wounded friend of a master once, by half, to the maximum, and nobody else; a realm keeps the consecration of
+// exactly what it holds; every hero bears his province's name. Planted faults: in the PR (P1-08k3)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

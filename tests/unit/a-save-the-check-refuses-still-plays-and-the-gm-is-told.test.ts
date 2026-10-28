@@ -15,6 +15,22 @@
 // Level 1 (unit): the upgrade and the check are functions of a save, and one turn of the three-realm fixture, played on
 // the engine's modules imported directly, takes about a second; a static test can't parse a save, and the GM page's
 // message is the page test's (tests/page/turn-shell.test.ts, "the GM page plays a turn from a version-0 save").
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The check of a saved game at load (`upgradeGameState`'s last step: the save parsed against the saved state's schema
+// made strict, `src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts`; Theo's Choice 1, "tell now, stop
+// later"), on the version-1 fixture: as it is, it finds nothing and the GM's log says nothing; with a battle's mark
+// left on a company (`_flakTargeted`), the turn runs, the GM's log holds one `[Save check]` line (to no realm, at the
+// turn's end) naming `characters.0.armies.2: a field this build doesn't know, _flakTargeted` and never the mark's
+// value, no realm's report (every realm's, bots' too) holds any of it, and `resolveTurn` hands the shell the list; a
+// field of a later build is kept by the upgrade and in the save the turn writes (the check is not the save); a field of
+// the wrong kind holding a text, a missing field and a key that isn't a field's name (shown as "(a key)") are named
+// without their values; twelve places: all found, ten named and two counted; a save that isn't a game in play (the new
+// game's settings, a world with no realms) refused before anything changes, by the upgrade and by the turn. Fails on
+// its base (no check). Planted on copies (`/tmp`, each red): the check taken out, the turn playing the parse's output,
+// a key shown as it is, the GM's line told to a realm or left out, a save that isn't a game in play let through. Level
+// 1: the upgrade and the check are functions of a save, one turn of the fixture by direct import about a second; a
+// static test can't parse a save, and the turn's message is the page test's (`turn-shell`). TypeScript, in `unit/`
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';

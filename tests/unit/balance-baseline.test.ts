@@ -4,6 +4,18 @@
 // P1-12a1): its file form, the comparison that names the game, turn, realms and sections, and the committed file:
 // every game of both sets, a report for every realm every turn, as many turns as the page's games. Level 1 (unit): pure
 // functions, and the committed files read as data (nothing is played: npm run balance plays them).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The baselines' file form (and a run written into a folder that doesn't exist yet, as CI's `--out` does) and the
+// game-by-game comparison (first turn and columns that differ, a longer game, results, report sections, statistics);
+// and the committed baselines: every game of the matrix, every scripted case at least once but one a required scenario
+// gives (the run's own check, P1-15e2b), set A against set B "no meaningful change" in the bot games (the overall
+// answer, as the run gives it; both groups' changes computed), and every hash column there (P1-02c); a baseline from
+// before a column was added reads with it not kept, which is never a difference. Every realm's report (`reports.json`,
+// P1-12a1): its file form (one game a line; rewriting one set keeps the other), the comparison (the first turn, the
+// realms and the sections that differ, words apart; a longer game, a realm missing, a game not in the baseline), and
+// the committed file: written as its code writes it, every game of both sets in order, a report for every realm every
+// turn, and set A's games as many turns as the page's. TypeScript, in `unit/`
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

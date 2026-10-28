@@ -8,6 +8,14 @@
 // The one rule retired here is a module-level function, unitAbilityMult, which the booted portal answers
 // directly. A lower level can't do it: the agreement between a dozen tables is a property of the data, not
 // of one line of text.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The army roster as decided (`tests/lib/roster-decided.js`): every humanoid unit's type, cost, base strength, move
+// rate and terrain multipliers, read from the data file and from the GM portal's own tables (`ARMY_COST_MASTER`,
+// `ARMY_SPEED_MASTER`, `TERRAIN_MODS` and the item class sets, sliced from the source); the four new units
+// (Men-at-Arms, Stag Riders, Ironhoof Rams, Black Arrows) in every table keyed by unit, with their company names and
+// province cells appended after the old ones; the goblins' spears gone from the missile list and the Berserkers'
+// Outnumbered and Uncaring gone from `unitAbilityMult` (booted portal); both portals type and Druid-rate the new units
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 const {compactCode,pageInitializer,scriptOf}=require('./lib/source.ts');

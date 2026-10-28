@@ -7,6 +7,26 @@
 // only a whole turn plays it as a realm gives it.
 // unit/research-and-practice-orders-called-directly.test.ts calls each order's own function on the same cases, and
 // on the ones the dice decide. Below the cases, a whole turn moved down from cast-practice-assumed.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Research, Practice Skill, Rest and Research Breakthrough (P1-08j4), played through a whole turn as the Move's are
+// (`playTurn`, from plain realms: `stageCase`): each case of `lib/research-and-practice-order-cases.ts`, in game terms,
+// never what the dice gave (a case reads the chance a roll was made at, or checks that what the roll decided holds
+// together with the line that tells it; a realm that knows every Heroic and Special discovery makes no unlooked-for
+// find). Research: refused without Sage; five in a hundred a level, no more past Sage 5; doubled for a Neutral realm;
+// Open Archives and Lich Lore (own creed's field only); a hidden field can't be named; a spent field turns to another
+// before the roll, and with every field spent (the hidden ones are no field to turn to) there is nothing to research;
+// two discoveries to choose between, keyed by the phase, or the last one outright; Perseverance, ×1.2 a failure, reset
+// by a find. Practice Skill: naming no skill does nothing; 25 in a hundred alone at level 0, five less a level; Quick
+// Learners (a Human of a Human realm: `practice-human`'s checks, moved down); a better comrade at the same drill makes
+// the rise certain and names his pupil (a master at 5 too), but not an ally's hero, one elsewhere or at another skill;
+// comrades of the same level, half as likely again; 5 is the top; practice discoveries; a wage rise told; Tactical and
+// Naval drills and theory alone. Rest: three tenths of his maximum, rounded up, half as much again for a Divine realm,
+// never past the maximum; Medical Arts, Healing Hands, the Healers' Guild, Herbcraft, Longhouse Feasts, each only where
+// it applies. Research Breakthrough: Sage 7, one discovery outright (the hidden fields too), told when none is left,
+// once a turn. Below the cases, `cast-practice-assumed`'s engine part, moved down: a cast refused because the practice
+// before it failed spends no slot (the two practice rolls fixed by a wrapper around the top-level
+// `resolvePracticeSkillOrder`)
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { board, firstDie, hero, must, order, plan, playTurn, type Line } from '../lib/middle-of-a-bot-world.ts';

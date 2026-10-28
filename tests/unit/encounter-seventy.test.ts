@@ -5,6 +5,12 @@
 // directly in the bare vm (tests/lib/engine.ts); the words are read from the built pages. It was
 // tests/encounter-seventy.test.js, which ran one turn on the GM portal for the "  // 4. Run all 5 phases" hook to hand
 // pursuitCatchChance back; the checks are the same.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 11 (2026-10-13): Encounter Character corners its quarry at 70% base, +5% per level of the hunter's Spy, −5% per
+// level of the quarry's (5–100%), and always meets a quarry of its own realm (`pursuitCatchChance`); the rulebook says
+// 70% both times and the order form's hint states the chance. `unit/encounter-seventy.test.ts`: `pursuitCatchChance`
+// called directly in the bare `vm` (P1-08i3; it was a code-anchor test that ran a turn on the GM portal first)
 import { afterAll, expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';

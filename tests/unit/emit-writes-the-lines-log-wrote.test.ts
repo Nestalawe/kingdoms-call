@@ -10,6 +10,23 @@
 // went with log() in P1-12a4, as Decision 5 planned. The lines a capture writes, which went straight into turnLog
 // before: tests/unit/a-capture-tells-the-realm-that-lost-it-with-no-hero-and-no-phase.test.ts.)
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `emit`, the one door into the GM's log (`src/engine/turn/events-and-their-audiences.ts`, P1-12a2; plan P1-12's
+// Decisions 2 to 5), writes today's stored forms: 17 keys, a `'bare'` line's 14, `notFor` last; what each part of an
+// audience writes; every event names its hero (P1-12c2): a hero left out throws and writes no line, `null` is no hero
+// (even while a hero's order resolves and the line reaches his realm), and `THE_HERO_WHOSE_ORDER_IS_RESOLVING` takes
+// the hero of the order resolving; `phase` left out or null takes the phase of the order resolving (else the phase
+// resolving, else 99 once the phases are over) and `'none'` is a real null; the hero of the order resolving only when
+// the line already reaches his realm (told it, its deed, seen by the world or there; a battle's line only by being
+// told), else no hero, and a hero who serves no realm keeps his lines (P1-12c1); `narrate`, and `emitNarrLine` filing a
+// fact of a kind for its hero's realm alone to that realm alone under its hero (P1-12c4; before, `narrateTo`'s line);
+// an event records its words or its fact (P1-12c3): a fact is filed with no words yet and the fact last, an event with
+// both throws and writes no line, and `narrate` and `emitNarrLine` take a fact as they take words. From P1-12a2 to
+// P1-12a4 an oracle half (fast-check) checked `emit`, `logSplit`, `notifyProvinceOwner`, `writeDeferredSkillLines`,
+// `emitNarrLine` and `emitBattle` against copies of the code before `emit`, for any input; it went in P1-12a4 with
+// `log()` and the copies (Decision 5), once every caller was converted. Level 1: each function is called on a context
+// made in the test
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import {

@@ -8,6 +8,24 @@
 // end (the grove's Ents go home), so only a whole turn plays it as a realm gives it.
 // unit/recruit-hire-and-realm-works-orders-called-directly.test.ts calls each order's own function on the same cases,
 // and on the ones the dice decide.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Recruiting, hiring and the realm's works (P1-08j3), played through a whole turn as the Move's are (`playTurn`, from
+// plain realms: `stageCase`): each case of `lib/recruit-hire-and-realm-works-order-cases.ts`, in game terms. Recruit
+// Armies raises the companies a held province offers, Average and paid for (one of a kind a season, two in the
+// founder's home and for garrison companies), to the recruiter, a comrade here (who is told) or the garrison (named in
+// either list); it refuses ground not held, a company the province doesn't raise, a beast of the deep on land and a
+// treasury too poor; a beast for a column already leading all its Druid allows musters into the garrison; a Druid of 6
+// pays half for beasts; a band roaming here is hired (2g off for a Neutral crown), takes empty ground, and isn't hired
+// unpaid or into a full column. Hire Hero swears a wanderer for 2g, 1g per two steps between the creeds and his skills'
+// worth, refused across the Divine–Undead gulf (unless Diplomatic Protocols), to a guard, a hero just driven home or
+// just released, or an empty treasury; a dwarf gets mithril; the orders written for him land after the hire.
+// Consecrate, Call to Arms and Broker with every refusal (crown, creed, ground, home march, side by side, White skill,
+// once a turn, seen provinces, gold); Harvest the Field raises the best grave, Skeletal, warns a raiser without
+// Necromancy; Awaken Grove (its Ents gone at the turn's end), Wild Calling and Grand Design with their masteries;
+// Awaken the Wild and Call from the Pit refused in plain words. Garrison grades and a band left unhired are checked in
+// the direct test: the turn's end may drill a garrison or move a band (a die). Level 2: the order is read, checked (a
+// mastery once a turn) and carried out inside `resolveTurn`
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { board, playTurn, type Order } from '../lib/middle-of-a-bot-world.ts';

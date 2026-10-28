@@ -9,6 +9,24 @@
 // Resting, with the case's dice fixed for the whole turn. Level 2 (scenario): the stages are what the turn does between
 // the orders, so only a whole turn plays them as the game does.
 // unit/phase-stages-called-directly.test.ts plays the same cases through the four stages called one phase at a time.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The four stages of a phase (P1-08k1, when they left `resolveTurn`'s phase loop), played through a whole turn
+// (`playTurn`, from plain realms: `stageCase`): each case of `lib/phase-stage-cases.ts`, in game terms, with its dice
+// fixed for the whole turn. The start of the phase: each season's opening line, in order; Herbal Lore dressing the
+// wounds of last turn's last season (at least 1 HP, never past the maximum; not for a realm without it, another realm's
+// hero, one at his maximum, one no weaker than as the season began, or one the save has no HP for); a stale mark from
+// the save (a stalled battle fought, a hunt met) that would hold a column or stop a hunt; a hero a save carries as
+// hired in a season told he waits. Intents and reactions: a column still in last season's unresolved battle held (a
+// Move or an Encounter, not a Rest, not a lone comrade), or fought again as the season opened; a general whose province
+// is invaded before he leaves held at home in silence; a Defend given this season riding out that season; a column
+// ordered home ahead of an invader arriving first and going no further, and told where the season leaves him when the
+// invader never comes. The orders in two tiers: a host raised in a general's watch given battle at the Defend step that
+// season, and after the orders when nobody marches; companies handed to a general before he rides out; a chase
+// suspending his other orders; a coward who begged for mercy doing nothing more, told each season where it leaves him;
+// a fallen hero's orders unanswered, told once; a war front fought at the end of Spring, after its orders. The end of
+// the phase: a fallen commander's host garrisoned once its battle is over; a Move or an Encounter next season ending a
+// watch
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';

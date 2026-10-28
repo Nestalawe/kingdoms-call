@@ -19,6 +19,12 @@
 // the engine, called directly in its bare vm (tests/lib/engine.ts). Until plan P1-09a this test booted the GM portal
 // and ran a real turn so the hook at "  // 4. Run all 5 phases" could hand applyMissileHit back (it was nested inside
 // runTurn then). Nothing here needs a battle's dice (the two rolls are fed).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The beasts' battle-line abilities (2026-10-13, Creatures and Monsters V): the flying beasts fight from the air; Storm
+// Wings, Rooted, Boulder Wall, Maul, Trample, Many Heads, Purity, Through the Glades and Colossal Bulk on the faced
+// grid; Shoal Swarm in `unitAbilityMult`; Shell Wall and Thick Hide in `applyMissileHit`; Regenerating Hide in
+// `rollUnitFates` (fed rolls); it reads the fate lines' words with `theWordsOf` (facts since P1-12c6)
 const vm=require('vm'); const {loadEngine,engineFn}=require('./lib/engine.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-6;

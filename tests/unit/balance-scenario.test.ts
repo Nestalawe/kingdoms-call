@@ -4,6 +4,17 @@
 // themselves (tests/balance/scenarios/): each is there, runs 400 times (a required one 20), and has a label for every
 // figure. Level 1 (unit): pure functions on made-up runs with a known answer. Playing the scenes is too slow for the
 // tests (about a second a run); npm run balance does that for a required one, npm run balance -- <scenario> for any.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The named balance scenarios (P1-03c) on made-up runs with known answers: identical runs are "no change", with each
+// side's figure, its 95% range and its cases; 40 of 400 runs losing a win is a clear change in 40 runs, named in the
+// verdict; 2 of 400 is within the noise; too few cases says so; a run measures only the first clash in the staged
+// province; and each scenario in `balance/scenarios/` runs 400 times (a required one 20) with a label for every figure
+// and its required figures among them. What a required scenario's runs missed (P1-15e2b): a figure required in every
+// run, shown in all 20 and missing from one (its count said); required in some run, shown in one and in none; a figure
+// no run has; a failed run, listed first; no runs; no requirements, nothing missed. The scripted cases the games must
+// meet: a set with no held chase passes (a scenario gives it), one with no Encounter Character fails; the scenario that
+// gives the case is there and requires figures. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import type { Turn } from '../lib/scenario.js';
 import { labelOf } from '../../tools/balance/labels.ts';

@@ -8,6 +8,21 @@
 // never gives Blockade, Challenge, Rampage, Rain of Arrows, Sniper's Mark, Feigned Retreat or Raid the Coast, and
 // gives Grand Stratagem and Lightning Advance once a run.
 // Level 1: one function, called with what processOrder hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The eleven functions (`resolveEncounterCharacterOrder`, `resolveDefendOrder`, `resolveBlockadeOrder`,
+// `resolveChallengeOrder`, `resolveRampageOrder`, `resolveRainOfArrowsOrder`, `resolveSnipersMarkOrder`,
+// `resolveFeignedRetreatOrder`, `resolveGrandStratagemOrder`, `resolveLightningAdvanceOrder`,
+// `resolveRaidTheCoastOrder`, P1-08j8), called directly on the same cases one phase at a time with the same dice, then
+// what the cases leave to a direct call: the chase as Encounter sets it (with `advancePursuit` stood in: for this
+// phase, after the line, the watch ended), a pair already met, a Veil by phase, a lapsed charm, kings, the quarry by
+// id; the watch in each state (pinned, answered this phase or another, pre-set and ridden out or not, carried or not, a
+// lone hero's); the blockade's die at one half, every sea beside him, a sea creature, no die rolled for a refusal; the
+// Challenge's two rolls, HP of 20 by default, a kill credited; which companies fall at a low die; a flag marks this
+// turn and nothing else; a refusal changes nothing. The balance matrix never gives Blockade, Challenge, Rampage, Rain
+// of Arrows, Sniper's Mark, Feigned Retreat or Raid the Coast. Properties: the Challenge's winner and wounds; a
+// strike's companies (min(companies, 6) at Melee 9, 1 + level ÷ 2 at Archery, the rest in order, a commander bloodied
+// to 1 at the least); the Sniper's Mark's wounds and kill. Planted faults: in the PR (P1-08j8)
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

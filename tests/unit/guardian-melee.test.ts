@@ -7,6 +7,13 @@
 // Level 1 (unit): the combat functions called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it
 // was a scenario-level script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal).
 // Each blow is sampled 600 times from the seeded dice, as before.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Every guardian's melee blow rolls its grade's base (Weak 1–3, Moderate 2–5, Powerful 3–7, Legendary 4–9) + its Melee
+// (+1 a level since item 20, 2026-10-14; it was ⌈Melee÷2⌉), a hero's stays 1–3 + ⌈Melee÷2⌉; a "−1 melee for next round"
+// special lowers the hero's Melee for exactly one round. `unit/guardian-melee.test.ts`: `pcMeleeDamage`, `pcHitSkill`,
+// `pcMonsterSpecial` and `pcRoundStart` called directly on the engine's modules (`lib/personal-combat.ts`; P1-08e: it
+// was a code-anchor test that ran a turn on the GM portal first)
 import { expect, test } from 'vitest';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { personalCombatEngine, type Character, type Combatant } from '../lib/personal-combat.ts';

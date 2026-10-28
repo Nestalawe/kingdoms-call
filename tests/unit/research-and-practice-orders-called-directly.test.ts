@@ -9,6 +9,21 @@
 // Level 1: one function, called with what processOrder hands it.
 // Moved down here (plan P1-14), from tests that fixed the rolls through a hook on a line of the engine: the five
 // Research orders of research-persevere and the Human's practice of practice-human (now a whole-turn case).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The four functions (`resolveResearchOrder`, `resolvePracticeSkillOrder`, `resolveRestOrder`,
+// `resolveResearchBreakthroughOrder`, P1-08j4), called directly on the same cases one phase at a time (the skills of
+// each phase's start noted as the turn notes them), then on what the dice decide, with the rolls fixed (`rolls`: the
+// d100s in turn), and what the balance matrix never reaches: a named field, the unlooked-for find (first, instead of
+// the ordinary roll; a fifth of the chance, at most ten; 5g at Sage 6, a point of tax at Sage 8), the choice's two
+// (never the same, never hidden), the tax's limits, a roll exactly at the chance, the Loreseeker, a chance capped at a
+// hundred, the five Research orders of `research-persevere` (moved down), Perseverance of this turn only; Practice's
+// boundary, Perseverance, the turn's tally and the phase closed by a rise, a comrade who rose earlier in the phase
+// still a peer, "Practice Skill" written either way, the drills' dice (Human folk doubled, the dead never drilled,
+// Naval for fleets, the new level); the Colossus and the Iron Heart Talisman; the Breakthrough's dice. Properties: a
+// practice raises a skill by one at most, never past 5, certainly beside a better comrade; a Rest never takes HP away
+// or heals past the maximum; a Breakthrough makes one discovery of the realm's table, never one it knew. Planted
+// faults: in the PR (P1-08j4)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

@@ -1,6 +1,15 @@
 // The invariants (tests/lib/invariants.ts, P1-04b) on a small made-up turn: it keeps every invariant, and each planted
 // fault breaks exactly the invariant meant to catch it, saying what broke. Level 1 (unit): pure functions on made-up
 // values; turn-fuzz and the balance matrix run the same checks over whole games (level 3).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The invariants (`lib/invariants.ts`, P1-04b) on a small made-up turn that keeps them all; each planted fault (a NaN
+// in a log line, an `undefined` in a name, HP above the maximum or below 0, two characters, provinces, bands or items
+// with one id, a found item in two places or off the ledger, a hero or band off the map, a dead hero acting after their
+// death or before the turn, a player's realm still marked as submitted) breaks only its own invariant, saying what
+// broke; what they allow (a leaderless host's battle lines, a hero raised in the turn, a bot realm's flag);
+// `KNOWN_BREACHES` lets through only its own line. Level 1: a lower level can't run a check; turn-fuzz and the matrix
+// run them over games. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import {
   checkTurn,

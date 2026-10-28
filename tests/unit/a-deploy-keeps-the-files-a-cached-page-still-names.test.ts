@@ -12,6 +12,21 @@
 //   the site, or can't be read; run as the build job runs it, it exits 1 (so nothing is published).
 // Level 1 (unit): it runs the script on folders, and a local server for a moment; no page runs (the browser spec
 // tests/browser/a-page-opened-before-a-deploy-still-loads-its-files.spec.ts opens the pages). Static can't: it runs code.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The deploy's keep step (`tools/deploy/keep-the-previous-deploys-files.ts`, P1-06b), on real builds of `src/` and
+// planted copies (the GM page's code, the player portal's stylesheet, the Hall of Fame's code changed), deployed in a
+// row into temporary folders: a change renames exactly the files it changed; after two deploys every file the first
+// one's pages name is in the second, byte for byte (16 of 16), and with the keep left out 3 are missing; after three,
+// both older deploys' pages find all theirs; `published-files.json` lists every file, live ones `null`, kept ones with
+// when they stopped being live; a file that stopped being live is kept 24 hours, then dropped (the clock passed in);
+// the first deploy from today's unhashed names, read from a local server standing in for the live site, keeps 13 and
+// leaves none of the 16 missing (and the same from a folder); what a page and a stylesheet name (not another site, an
+// anchor or a page; `url()`s relative to the stylesheet; a planted font kept); a file the new build makes is never
+// overwritten; it stops, writing nothing, when the previous site is missing or has no page, lacks a file it must hand
+// on, names a file outside the site, or the live site answers 500, nothing, or no page; run as the build job runs it,
+// it exits 1 with an error for the job, or 0 with what it kept. Level 1: it runs the script on folders and a local
+// server; no page runs (static can't: it runs code). TypeScript, in `unit/`
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';

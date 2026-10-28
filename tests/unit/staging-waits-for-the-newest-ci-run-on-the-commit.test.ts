@@ -5,6 +5,14 @@
 // the newest run alone, staging waits for it, then goes.
 // Level 1 (unit): pure functions of the script, on made-up runs and jobs; nothing is fetched. Static can't: it runs
 // code.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Staging's wait for CI (`.github/scripts/staging.js` `wait-ci`) reads the jobs of CI's newest run on the commit alone:
+// a run cancelled by a newer one (the `staging` label starts a new CI run, which cancels the one still going; its `ci`
+// job then fails at once) never stops staging, which waits for the newer run, then goes; the newest is the highest run
+// id, in any order; no run yet means wait. Read across every run on the commit, as the check runs were, the cancelled
+// run's `ci` stops it. Level 1: pure functions of the script on made-up runs and jobs, nothing fetched (static can't:
+// it runs code). TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import staging from '../../.github/scripts/staging.js';
 

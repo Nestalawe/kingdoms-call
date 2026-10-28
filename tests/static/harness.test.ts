@@ -8,6 +8,16 @@
 // engine's purity, the dice and the project's own lint rules (P1-13c). It
 // runs ESLint on one file to show the suppressions hold (a few seconds). Every later step that adds a guarantee
 // adds its check here. Level 1 (static): it reads settings files and the counts, and runs no game code.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The harness checks itself (P1-01b): every strict compiler flag is on, and the compiler checks every file of `src/`
+// with the browser's types, each it skips saying why in its first line (P1-09e); the shared lint rules are at full
+// strength on the tests, the tools and the configs, typescript-eslint's stylistic type-aware set among them (P1-13b),
+// with only `non-nullable-type-assertion-style` off (it asks for the `!` that `no-non-null-assertion` forbids), and
+// `no-undef` is on for every module of `src/` (the engine's with none of the page's names, the rest with the
+// browser's), and every file of `src/` gets the site's own tier, ESLint's recommended and typescript-eslint's strict
+// rules, each an error, with `ban-ts-comment` an error (P1-09e), and the two type-aware sets too exactly when
+// TypeScript checks it (its first line doesn't switch the check off; a planted `
 import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

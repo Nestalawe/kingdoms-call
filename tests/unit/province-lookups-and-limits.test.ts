@@ -8,6 +8,15 @@
 // - Recruit limits (property): a province raises a unit type until its limit for the turn (1, or 2 for garrisons,
 //   humanoid fleets, Goblin Hordes and a founder's own home), then no more, and no other type or province is touched.
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Helpers lifted in P1-08b, called directly through `lib/engine.ts`: `provName` (the balance matrix never runs it)
+// gives a province's name by id, `unknown` when it has none; `provOf` the province a hero stands in. As properties
+// (fast-check): on any map the six directions of `neighborInDir` name exactly a province's neighbours, in
+// `getNeighborsP`'s order; pre-battle damage never raises a strength of at least 1 and never takes it below 1, nor,
+// from a battle's damage alone, below a quarter (`applyPrebattleDamage`); a province raises a unit type up to its limit
+// for the turn (1, or 2), then no more, touching no other type or province (`getRecruitLimit`, `canRecruit`,
+// `recordRecruit`). Each check fails on a planted fault. Level 1: each function is called on a context made in the test
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';

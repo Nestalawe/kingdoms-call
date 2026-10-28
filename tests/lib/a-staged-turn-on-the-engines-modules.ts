@@ -1,7 +1,7 @@
 // One real turn on a small staged world, played on the engine's modules, imported directly (plan P1-14a): the same
 // staging and the same results as tests/lib/scenario-in-the-vm.ts's turn() and play(), without the vm. A scenario test
 // (level 2) calls the functions it needs from their modules, and stands one in with vi.spyOn on the module that
-// exports it (tests/README.md, "How the tests reach the engine").
+// exports it (docs/architecture/how-the-tests-reach-the-site.md, "The engine's modules").
 //
 //   const sc = await aStagedTurnOnTheEnginesModules({ seed });   // fresh modules, the dice seeded `seed`
 //   const r = sc.turn({ realms: 2, prepare(S) { … }, orders: { [charId]: [o0, o1, o2, o3, o4] } });

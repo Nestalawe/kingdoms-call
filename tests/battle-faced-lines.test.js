@@ -10,6 +10,17 @@
 //     `faced` the lines read exactly as before (tests/unit-fates holds that wording);
 //   • disbandLine takes the clause the same way;
 //   • battleTallyLine credits a line to the company named FIRST, whatever the clause names after it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Who beat whom in the fate lines (module level, booted GM portal): `battleFacedClauses` turns a faced grid into one
+// clause per company ("facing X", "shooting X over the line", "in a flank duel with X", "guarding the end against X",
+// "wrapping the line at X", "met at the end of the line by X", "riding free round the flank", "fighting from the air",
+// "in the second line", "in the reserve", "shooting at an empty column", "with nobody opposite"); `rollUnitFates` puts
+// the clause after the company's own reference in every branch (death, promotion, demotion, disbanding, the Shield
+// Fort's fall-back, the Knightly Example, a rise despite defeat) and reads as before without one; `disbandLine` (the
+// prose's since P1-12d5) takes it too; `battleTallyLine` credits a line to the company named first, not to the enemy
+// its clause names; it reads each fate line's words with the page's `theWordsOf` (facts since P1-12c6), and whom a
+// company faced (a record since P1-12d4) through the page's `theClauseOfWhomAUnitFaced` (the prose's since P1-12d5)
 const {readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 

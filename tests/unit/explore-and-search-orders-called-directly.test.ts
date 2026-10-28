@@ -7,6 +7,19 @@
 // Wild Hunt unpaid or on foreign ground, the Blood Offering's graves, and the rumours of a lair with no weakness or with
 // its magic stolen. Level 1: one function, called with what processOrder hands it. A search's fight is the guardian's
 // own (resolveEncounter); where only the outcome of the fight matters, the test stands one in (`fightEndsIn`).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The explore and search orders' own functions (`resolveExploreOrder`, `resolvePerformRiteOrder`,
+// `resolveHuntingRumoursOrder`, `resolveSearchLairOrder`, `resolveChartTheUnknownOrder`,
+// `resolveDiscoverLostRuinOrder`, P1-08j2), called directly on the same cases one phase at a time, then on what the
+// dice decide (fixed) and what the balance matrix never reaches: the Explorer 8 survey of richer land (an even chance,
+// once a province, the tax base never above 10), Ancient Lore, the Philosopher's Lens, an unlisted terrain and a
+// nameless guardian; the Blood Offering's graves, borrowed and skeletal companies, the Wild Hunt unpaid or on ground
+// not the hero's own (the empty province taken); rumours paid by grade until the purse runs dry, a guardian with no
+// weakness, a hoard a thief has stripped; and what follows a fight at a lair, the fight stood in for (`fightEndsIn`): a
+// thief's haul and relic, an emptied or bare hoard, a beast pacified, the challengers' kit, a hero beaten back or fled,
+// Battlefield Surgery, and the fight's statistics record. 96 planted faults in the six functions, their calls and
+// `processOrder`'s checks each turn at least one of the two tests red, and every test goes red for at least one
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {

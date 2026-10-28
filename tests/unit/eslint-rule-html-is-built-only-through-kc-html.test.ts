@@ -6,6 +6,17 @@
 // A reviewed exception lets one finding through, and one that matches nothing is a finding. Where the rule runs
 // (src/, public/, the templates' scripts) is tests/static/harness.test.ts's and the templates' test's.
 // Level 1 (unit): ESLint's RuleTester runs the rule's code on snippets, which a static test, running nothing, can't.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `kc/html-is-built-only-through-kc-html` (`tools/eslint-rules/`, P1-13d), the rule that replaced `html-lint`, run by
+// ESLint's RuleTester: each of its six checks refuses what `html-lint` refused and lets through what it let through (an
+// untagged template with markup and a value, markup joined with `+` or `+=` to a value not escaped, `innerHTML`,
+// `outerHTML`, `insertAdjacentHTML` or `document.write` given a property read or an untagged template, `kcHtml` joined
+// with `+`, `+=` or `.map(…).join()`, an escaper inside `kcHtml`, a handler value that isn't `kcArg` or a constant); a
+// type assertion counts as the value it wraps, as `html-lint` read a module with its types stripped; a reviewed
+// exception lets only its own finding through, and one that matches nothing in its file is a finding. Each check taken
+// out, the type assertions read as they are, or a stale exception let through, turns it red. Level 1: the rule's code
+// runs on snippets, which a static test, running nothing, can't. TypeScript, in `unit/`
 import path from 'node:path';
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';

@@ -10,6 +10,23 @@
 // king nor land; never war on a foe or a Treat to an ally; a Treat to a realm held in a grudge only under a truce; every
 // human realm's war on a bot it has met remembered once, after the grudges held; under Safe Start nothing at all.
 // Level 1: one function, called with the context resolveTurn hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim` (P1-08l1), called directly, twice, with the context
+// `resolveTurn` hands it (the phases between aside): the whole-turn cases through the function alone (but those about
+// the second declarations after the phases); `resolveTurn` calling it twice with its context, between the research
+// choices and war without warning and between the stages after the phases and diplomacy; the rivals it is handed each
+// bot realm's as met when the turn began (a copy, made before the merge, kept for the turn; no human realm's); with its
+// helpers stood in by recorders in the `vm`, what it hands them (Safe Start asked of the game and the turn played,
+// first; the relations through the context, creeds, strengths and the assessment from the state; a peace offered only
+// by that rival's Treat to that bot); then what a whole turn can't stage: a declaration from a seat that is not a
+// realm's whole number, war on a bot seat the save lacks, a gap in the realms' list, a bot's rivals missing from the
+// context, the rivals read from the context not the realm's record, realms of no creed and a claim, a claim naming no
+// one, a game with no turn counter (a truce dated 0), a truce's date kept and renewed, no line written. Properties
+// (fast-check): only bots' declarations are written, each a Treat or a war, toward a realm met when the turn began that
+// stands in the game, never itself; never war on a foe or a Treat to an ally; a Treat to a realm held in a grudge only
+// under a truce; every human realm's war on a bot it has met remembered once, after the grudges held; under Safe Start
+// nothing at all. Planted faults: in the PR (P1-08l1)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

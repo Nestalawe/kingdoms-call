@@ -20,6 +20,16 @@
 // Until plan P1-14a this was tests/surgery-lines.test.js, played in the engine's vm on seed 1 only. On seeds 1 to 40
 // it failed on 22 and 28: its hero (Brave) didn't die in the duel (on seed 22 he found his second wind, then broke it
 // off).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 19 (2026-10-13): Battlefield Surgery's lines. In a real turn (`lib/a-staged-turn-on-the-engines-modules.ts`,
+// from `KC_SEED`) a hero who loses the duel before a battle to the chieftain the staging chose and set, and is saved,
+// reads "falls in the duel — at death's door, but not slain" with the surgery line straight after it, both inside that
+// battle's report (not ahead of it) and no "slain" line; one the surgeons cannot save reads "is slain in the duel!"
+// then "too late", in his own realm's built report only, its line's `targets` his realm alone (no other realm fights in
+// that battle, so the reports alone can't show it shared with the other side). Certain on every world: the hero (1 HP,
+// temper `None`) has no second wind and no urge to break off. The surgery roll is fixed by `vi.spyOn` on
+// `handleHeroDeath` and `d100`. Level 2 because the duel lives inside `resolveTurn`
 import { describe, expect, test, vi } from 'vitest';
 import { aStagedTurnOnTheEnginesModules, order, plan, type Line } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 

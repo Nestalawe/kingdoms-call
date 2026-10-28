@@ -3,6 +3,11 @@
 // portal must notice (probeGameMeta), and a turn must still resolve and save, because writing an unknown
 // column fails the whole save (docs/traps.md, "A new column must be optional at the write site").
 // Copy this shape for a new table or column: hide it (MISSING / MISSING_COLS), then use the feature.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// With the `games.meta` column hidden in the in-memory database, the GM portal notices, says so, and a turn still
+// resolves and saves without writing it. The example to copy for site code that must cope without its database change
+// ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately))
 const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
 
 let fails=0;

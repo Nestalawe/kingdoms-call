@@ -10,7 +10,7 @@
 //   (KINDS_FOR_ONE_REALM_ALONE, this check's own list) is read by another realm, whatever audience the engine gave it;
 //   where the harness records the turn's events.
 // The first three read the report's text and today's state and log metadata (an entry's actor and targets); what they
-// can't see yet is in tests/README.md.
+// can't see yet is in docs/architecture/how-the-tests-reach-the-site.md.
 //
 // Test code until P1-18's turn shell runs these checks; then it moves into src/. invariants.ts imports it, so it is
 // an engine path (tools/balance/engine-paths.ts).

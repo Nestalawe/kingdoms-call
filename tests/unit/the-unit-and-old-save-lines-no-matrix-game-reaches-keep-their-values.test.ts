@@ -8,6 +8,14 @@
 //   the holes and missing fields its guards skip, the count it logs, and a second run that changes nothing.
 // Level 1 (unit): pure functions called directly on the engine's modules (plan P1-14a), with no turn played. The
 // renames are also proved on the booted GM page by tests/primal-renames.test.js (level 1, a whole fixture game).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The lines P1-10b2 changed to free `army-tables.ts`, `units/movement.ts` and `battle/strength.ts` of the ts-nocheck
+// line that no game of the balance matrix reaches, called directly on the engine's modules: `ownedUnitName` for a unit
+// whose name doesn't start with "the", a unit with no name, and no unit ("unit"); `migrateLegacyUnitNames` on a made-up
+// older save (every place it renames: heroes' companies, a province's race, garrison, defenders, recruit pool and
+// graves, a fallen hero's companies; the holes and missing fields its guards skip; the count it logs) and a second run
+// that changes nothing. Each planted fault in those lines turns it red
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test, vi } from 'vitest';
 import { migrateLegacyUnitNames, ownedUnitName } from '../../src/engine/army-tables.ts';

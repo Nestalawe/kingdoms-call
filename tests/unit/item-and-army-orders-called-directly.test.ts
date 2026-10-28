@@ -7,6 +7,21 @@
 // Philosopher's Stone), Release Hero and Disband Army (no bot gives them), Pick Up Army's "all" and its old forms,
 // Leave/Transfer Army's refusals and its hand-overs at sea; and properties of each order.
 // Level 1: one function, called with what processOrder hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The seven functions (`resolveEquipItemsOrder`, `resolveUseItemOrder`, `resolveSendItemOrder`,
+// `resolveLeaveOrTransferArmyOrder`, `resolveReleaseHeroOrder`, `resolveDisbandArmyOrder`, `resolvePickUpArmyOrder`,
+// P1-08j5), called directly on the same cases one phase at a time (each phase's order read from the turn's list, so
+// Release Hero's dropping shows), then what the cases leave to a direct call and the balance matrix never reaches (it
+// never runs Use Item, Release Hero or Disband Army): the Stone's Sage lesson (one roll, at the common chance),
+// garrison grades, the dead and a fallen hero's companies, the world's lines, the hoards and ledgers; the courier's
+// list, a name that begins with a number, a fallen hire card, an item's maximum HP moving with it; the travelling-light
+// and leads lines' points (the new force's pace), both heroes' pools after a hand-over, a garrison at sea, beasts a
+// comrade already leads, the dead and beasts left in a garrison; a hero of no realm released, his heir's mark, hire
+// phase and chase dropped; a band's id, place and folk; "all" in a list (Disband Army reads none), "ALL", "G:1",
+// "-1:0". Properties: Send Item loses or makes no item and never moves Mithril; Leave/Transfer Army and Pick Up Army
+// lose no company but the dead refused, and give no hero beasts beyond his Druid; each company disbanded is one band;
+// no slot holds more than its limit, the first named of a slot worn. Planted faults: in the PR (P1-08j5)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

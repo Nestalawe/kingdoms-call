@@ -18,6 +18,35 @@
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
 // refactor-only: P1-12b4 adds the function (the base has none), and P1-12b5 its second part; each case is red on a
 // sight fault planted in it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `playerView` (`src/views/what-each-realm-may-see-of-the-world.ts`, P1-12b4 and P1-12b5, P1-12's Decision 11: what one
+// realm may see of the world, from which, with the lines it reads, its report is built alone), called on a 6 × 4 world
+// made in the test, on the engine's modules. One case for each sight rule it applies: its own provinces whole (the
+// founding capital, the garrison's race and march); a province once visited as it is now, its owner named only once met
+// or once the game is over (R-046; P1-23's entry 2, fixed), and its report's intelligence reading "an unknown realm"
+// before, its guard counted but not shown; the ring next to those (the order forms' facts, not the owner or garrison);
+// a hero of its own there (the heroes the sight rule shows, a rough size for another realm's, none under Invisibility;
+// the wanderers it could hire); spied (the garrison's units, not their race); next to a spied one (the map's glance,
+// not the hiring list's); next to its own land (the owner and the capital's crown); remembered; watched by
+// Clairvoyance; unseen (its place on the map only); the features it knows (discovered with the treasure, explored far
+// enough without it, a ritual site in its own land); what its lines show (spied by its lines, battles witnessed,
+// province events named; none with no turn); the heroes of its own provinces: those its sight rule shows there, as its
+// map does, not one under Invisibility nor a wanderer slipping by unspotted, and its report's list of them the same
+// (P1-23's entry 4, fixed); Illusory Terrain (the map fooled, the order forms not, as the report has it); an Evil
+// realm's Terror; and it writes nothing to a frozen world. P1-12b5's cases: its own heroes whole, alive or fallen this
+// turn (and the province where one fell named); the heroes it sees by the map's sight rule (a wanderer's public facts,
+// none of a realm's hero's, why one can't be encountered); those beside its own by the hiring list's sight (the Charm
+// card of an unarmed wanderer only, charmed last turn marked); the heroes it has ever seen still alive in a realm's
+// service; the dead it knows of (its own, known, witnessed, lying where it sees now); the mercenaries where it sees
+// now; the realms (named once met, its diplomacy only with one it has encountered, every realm named once the game is
+// over); the titles (hidden before turn 5, then worked out from the whole world, with their holders' names); last
+// turn's minor titles of its own heroes only, and the bonuses they give; its books (by the provinces' records); the
+// portal's lookup tables (every realm, every named hero but the cloaked). Level 1 because the function is called on a
+// world made in the test; the every-realm half of `npm run balance` checks the report built from it. Each case is red
+// on a sight fault planted in the view (16 plants in P1-12b4, 19 in P1-12b5, one or more cases each); several of
+// P1-12b5's change no report, because the report's own sections still ask the same of what they read: only this test
+// sees what the view holds beyond what the report reads
 import { describe, expect, test } from 'vitest';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import {

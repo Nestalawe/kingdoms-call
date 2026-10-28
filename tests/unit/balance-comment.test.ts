@@ -2,6 +2,14 @@
 // without a report, and the "What changes in play" warning. The script runs in plain Node with nothing installed, so it
 // is also run that way here, against a stand-in for GitHub's API on this machine (no network). Level 1 (unit): pure
 // functions, and the script run on its own; no lower level runs it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The balance report's comment (P1-03a): the "What changes in play" section (missing, a comment or "None" is empty; up
+// to the next section, with "Not expected"); when the warning is needed (not for "writes only"); the report file's
+// shape; the class kept in the comment, markers the report can't fake, a long report cut short; no report, with why;
+// and the script itself in plain Node (no npm imports) against a stand-in for GitHub's API: posts the report and
+// warning once, deletes the warning when the section is written, says "no report" only where a report was, leaves alone
+// another head commit, a cancelled run and a person's comment, and only warns on an API failure. TypeScript, in `unit/`
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';

@@ -9,6 +9,15 @@
 // Level 1 (unit): the figures are data in the shared file and in the GM portal's tables (ARMY_COST_MASTER and
 // ARMY_SPEED_MASTER at module level, TERRAIN_MODS inside runTurn and so read by slicing the source); the rules
 // retired or widened here are module-level functions the booted portals answer directly.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The wild roster as decided (`tests/lib/primal-decided.js`, 2026-10-13): every live Creature's and Monster's family,
+// type, cost, base strength, move, Druid level and terrain multipliers, read from the data file and the GM portal's own
+// tables (`TERRAIN_MODS` sliced from the source); terrain written once (no Mountain Bulwark, Rooted Grove, Regenerating
+// Hide or Colossal Bulk multiplier on top of a terrain row; the posture and enemy-composition ones stay); the two
+// crowns' waivers in `druIdPenaltyMult` (Evil leads Monsters free, as Druidic leads Creatures; neither gets the
+// other's) and the player portal's `druidNeedP`; the player portal's speeds built from the one primal table;
+// `KC_PIT_TIERS` in the shared file and both guards' lists; `call_pit` an alignment order
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 const {pageInitializer,scriptOf}=require('./lib/source.ts');

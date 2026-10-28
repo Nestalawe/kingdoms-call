@@ -10,6 +10,21 @@
 // the checks below them.
 // The player portal is read from src/ by its syntax tree (tests/lib/source.ts): its blurbs as entries of the object
 // literal, its words as the strings it holds. (Until plan P1-09a they were matched in the built page's text.)
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The books say what the engine does: every humanoid land unit has its player-portal blurb and its rulebook roster row
+// (until P1-19l, its two ability names in both: its matchup and its second ability; since P1-19a, not those the rule
+// registry holds, which `each-unit-abilitys-name-and-numbers-are-in-both-books` checks from their content rows: Sheer
+// Numbers, since P1-19b the matchups of the front line and the second line, Halberds to Arrow Fodder, since P1-19c the
+// whole line's, Hold the Gate to Flak Gunners, since P1-19d Knightly Example, since P1-19g the volley's, Prepared
+// Ground to Raiders' Volley, since P1-19h the grid's, Through the Trees, Crag Charge and Brawling Archers, since P1-19i
+// Flak Screen, and since P1-19j the rout's, Ride Them Down, Shield Fort, Deep Halls and Run Them Down, since P1-19k
+// Raiders' Muster, and since P1-19l the last three, Screech Dive, Acid Spit and Forest Runners, from their tables; so
+// it names no ability now). The blurbs are `UNIT_ABILITIES` (each unit declared once; since P1-19e in the content file
+// `src/content/unit-abilities-their-names-numbers-and-words.ts`, which the player page's entry lists); the Levies row
+// says Shieldwall needs an archer behind them, both books say Shield Fort needs half the front line, the Goblins row
+// counts other orc foot; the four retired abilities (Massed Volley, Shock of the Charge, Skyward Retreat, the Wyverns'
+// Dread) are on no player page
 const fs=require('fs');
 const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageText}=require('./lib/source.ts');
 const PP='kingdoms-call-player-portal.html';

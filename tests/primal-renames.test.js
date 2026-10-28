@@ -6,6 +6,15 @@
 // (`migrateLegacyUnitNames`, booted GM portal) turns a running game's companies, recruit pools, defenders,
 // graves and province races over — Leviathan companies and waters become Eldritch Kraken, a land beast being
 // unable to swim.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The three renames of 2026-10-13 (Giant Eagles → Thunderbirds, Kraken Tentacles → Eldritch Kraken, Leviathan Pods →
+// Dread Hydras): the data file's tables, company names and the four discoveries that named them carry the new names and
+// none of the old; the GM portal's grid codes, terrain rows and both copies of the world-generation pools (sliced from
+// the source) follow, the sea pass keys nothing on the Leviathans; the booted portal's `unitAbilityMult` (Thunderbirds
+// carry no Stoop on the Archers, the Kraken keep Deepwater Grasp, the Hydras nothing yet) and master tables; and
+// `migrateLegacyUnitNames` on a staged running game renames companies, recruit pools, defenders, graves, a fallen
+// hero's companies and the province races (Leviathan waters become Kraken waters), and is idempotent
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 const {compactPage,pageInitializer,scriptOf}=require('./lib/source.ts');

@@ -6,6 +6,15 @@
 // (tests/lib/personal-combat.ts). Plan P1-08f: these were the personal-combat halves of fuzz-wages-combat and
 // fuzz-advance-masking, which took the functions from the "  // 4. Run all 5 phases" hook after whole turns on the GM
 // portal (pcBuildGuardian was nested inside resolveTurn); their whole-turn halves stay in those scripts.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The personal-combat fuzz of the 2026-09-27 changes, once the second half of `fuzz-wages-combat` and of
+// `fuzz-advance-masking`: 4,000 fights each (20,000 in `npm run test:full`), heroes of every race, temper and level
+// against every guardian (built as a lair fight builds it, `pcBuildGuardian`) and, in the second, against each other
+// with every kind of Encounter Plan; no fight throws and no narrative line shows NaN or undefined (its words,
+// `wordsOf`: since P1-12c4 a fight's lines record facts). Called directly on the engine's modules
+// (`lib/personal-combat.ts`; P1-08f: `pcBuildGuardian` was nested inside `resolveTurn`, and the scripts took it from
+// the code-anchor hook after whole turns), dice seeded from `KC_SEED`
 import { expect, test } from 'vitest';
 import {
   clone,

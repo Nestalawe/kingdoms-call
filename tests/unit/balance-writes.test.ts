@@ -2,6 +2,13 @@
 // the database, when it takes its copy, and what its masking leaves out. A small fake client stands in for the
 // stand-in database (a new test may not use tests/lib/stub-db.js: tests/ratchet.json). Level 1 (unit): pure functions
 // and a recorder over a fake; the matrix (npm run balance) plays the real turns.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The matrix's `writes` column (P1-02c), on a small fake client (not `lib/stub-db.js`): every write and `rpc` recorded
+// in order with its table, operation, steps and arguments, reads not; the copy taken when the query runs; a query never
+// run not recorded; the masking (stamps at a row's top level, `game_state` and `turn_report` parsed, a `turn_logs`
+// snapshot's build stamp, clock readings); a field dropped from `meta`, a filter changed and two writes swapped each
+// change the hash. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { playHash } from '../../tools/balance/hash.ts';
 import { maskPayload, recordCalls, type Call, type Client } from '../../tools/balance/writes.ts';

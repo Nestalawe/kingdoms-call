@@ -4,6 +4,12 @@
 // hero who chooses Fire in a melee still tries to break away, as before.
 // Level 1 (unit): pcAct called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a script that
 // took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 2: every guardian with a bow, given a Fire action in a melee, strikes instead of rolling to break away (`pcAct`,
+// the roll forced to fail); at bow range it still shoots; a hero choosing Fire in a melee still tries to break away
+// (batch 2026-10-14). `unit/guardian-holds-melee.test.ts`: `pcAct` called directly on the engine's modules
+// (`lib/personal-combat.ts`; P1-08e: it was a code-anchor test that ran a turn on the GM portal first)
 import { expect, test } from 'vitest';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { clone, personalCombatEngine, type Combatant, type Guardian } from '../lib/personal-combat.ts';

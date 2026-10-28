@@ -3,6 +3,12 @@
 // database, so no network call leaves the machine. Checks: the spinner goes, there are no page errors, the links are
 // present and point at the right files, the GM portal's leaderboard functions exist and its boot order is intact, and
 // its dice seed themselves from the browser's crypto, as on the live site (P1-07).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// GM portal, player portal and Hall of Fame boot in real Chromium with no page errors; their links are present, and so
+// are the GM portal's leaderboard functions and the Hall of Fame's tabs, empty-board message and filters; the GM
+// portal, given no seed as when deployed, draws its dice from a seed it took from the browser's `crypto` (P1-07). (The
+// script's optional footer-stamp argument, never given in `npm test`, wasn't brought over.)
 import { expect, test, type Page } from '@playwright/test';
 import { routeExternal } from '../lib/boot.js';
 import { browserSource } from '../lib/stub-db.js';
