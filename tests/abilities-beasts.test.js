@@ -25,6 +25,8 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
 
 {
   const engine=loadEngine({seed:1}); const ev=expr=>vm.runInContext(expr,engine);
+  // A unit's facing and its place in the grid hold values since plan P1-12d4: the prose writes their words.
+  const facingWords=why=>ev('theWordsOfWhyAUnitFacesAsItDoes')(why), placeWords=why=>ev('theWordsOfWhyAUnitStandsWhereItDoes')(why);
   const wordsOf=l=>l==null||typeof l==='string'?l:ev('theWordsOf')(l); // a line's words: its words, or a fact's (the views write them, P1-12c6)
   const HIT=engineFn(engine,'applyMissileHit');
   const G=ev('battleGrid'), F=ev('battleFacing'), UAM=ev('unitAbilityMult'), FATES=ev('rollUnitFates');
@@ -39,7 +41,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     const them=G(rows(theirs),W,terrain,{tac:tacThem||0,enemy:rows(mine),enemyTac:tacMe||0});
     F(me,them,terrain); return {me,them}; };
   const faced=(g,type)=>g.face.units.filter(u=>u.row.a.type===type);
-  const whyOf=(g,type)=>faced(g,type).map(u=>u.why).join(' | ');
+  const whyOf=(g,type)=>faced(g,type).map(u=>facingWords(u.why)).join(' | ');
   const placed=(g,type)=>g.units.filter(u=>u.row.a.type===type);
 
   // ── The flying beasts fight from the air ──
@@ -53,49 +55,49 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   // ── Storm Wings: with Thunderbirds on the other side, every enemy unit in the air fights ×0.85 ──
   // (Noble Griffons, not Eagle Riders: on open ground an Eagle leaves the air for an empty flank slot — Stoop on the Horses.)
   r=fight([['Shieldwall Levies',2],['Thunderbirds',1]],[['Shieldwall Levies',2],['Noble Griffons',1],['Crimson Rocs',1]],2,'plain');
-  ok(faced(r.them,'Noble Griffons').every(u=>near(u.m,0.85)&&/Storm Wings/.test(u.why))&&faced(r.them,'Crimson Rocs').every(u=>near(u.m,0.85)&&/Storm Wings/.test(u.why)),`Storm Wings: the Griffons and the Rocs in the air fight ×0.85 — ${whyOf(r.them,'Noble Griffons')} | ${whyOf(r.them,'Crimson Rocs')}`);
-  ok(faced(r.them,'Shieldwall Levies').every(u=>!/Storm Wings/.test(u.why)),'…the Levies on the ground are not touched');
+  ok(faced(r.them,'Noble Griffons').every(u=>near(u.m,0.85)&&/Storm Wings/.test(facingWords(u.why)))&&faced(r.them,'Crimson Rocs').every(u=>near(u.m,0.85)&&/Storm Wings/.test(facingWords(u.why))),`Storm Wings: the Griffons and the Rocs in the air fight ×0.85 — ${whyOf(r.them,'Noble Griffons')} | ${whyOf(r.them,'Crimson Rocs')}`);
+  ok(faced(r.them,'Shieldwall Levies').every(u=>!/Storm Wings/.test(facingWords(u.why))),'…the Levies on the ground are not touched');
   ok(faced(r.me,'Thunderbirds').every(u=>near(u.m,1)),'the Thunderbirds themselves fight even in the air');
   r=fight([['Shieldwall Levies',2],['Crimson Rocs',1]],[['Shieldwall Levies',2],['Noble Griffons',1]],2,'plain');
-  ok(faced(r.them,'Noble Griffons').every(u=>near(u.m,1)&&!/Storm Wings/.test(u.why)),'no Thunderbirds, no Storm Wings');
+  ok(faced(r.them,'Noble Griffons').every(u=>near(u.m,1)&&!/Storm Wings/.test(facingWords(u.why))),'no Thunderbirds, no Storm Wings');
   // Storm Wings and Flak Gunners both tell: a Gyrocopter facing enemy flyers under Thunderbirds fights ×1.25 × ×0.85
   r=fight([['Shieldwall Levies',2],['Thunderbirds',1]],[['Shieldwall Levies',2],['Gnomish Gyrocopters',1]],2,'plain');
-  ok(faced(r.them,'Gnomish Gyrocopters').every(u=>near(u.m,1.25*0.85)&&/Flak Gunners/.test(u.why)&&/Storm Wings/.test(u.why)),`Flak Gunners and Storm Wings stack on a Gyrocopter — ${whyOf(r.them,'Gnomish Gyrocopters')}`);
+  ok(faced(r.them,'Gnomish Gyrocopters').every(u=>near(u.m,1.25*0.85)&&/Flak Gunners/.test(facingWords(u.why))&&/Storm Wings/.test(facingWords(u.why))),`Flak Gunners and Storm Wings stack on a Gyrocopter — ${whyOf(r.them,'Gnomish Gyrocopters')}`);
 
   // ── Rooted: a Forest Ents company at a wrapped end is never hit from the side ──
   r=fight([['Orc Berserkers',5]],[['Forest Ents',3]],5,'plain');
-  ok(faced(r.them,'Forest Ents').every(u=>!/hit from the side/.test(u.why))&&faced(r.them,'Forest Ents').filter(u=>/Rooted/.test(u.why)).length===2,`Rooted: both end Ents stand unshaken by the wrap — ${whyOf(r.them,'Forest Ents')}`);
+  ok(faced(r.them,'Forest Ents').every(u=>!/hit from the side/.test(facingWords(u.why)))&&faced(r.them,'Forest Ents').filter(u=>/Rooted/.test(facingWords(u.why))).length===2,`Rooted: both end Ents stand unshaken by the wrap — ${whyOf(r.them,'Forest Ents')}`);
   r=fight([['Forest Ents',3]],[['Orc Berserkers',5]],5,'plain');
-  ok(faced(r.me,'Forest Ents').filter(u=>/Rooted/.test(u.why)).length===2,'…attacking too: roots hold either way');
+  ok(faced(r.me,'Forest Ents').filter(u=>/Rooted/.test(facingWords(u.why))).length===2,'…attacking too: roots hold either way');
   r=fight([['Orc Berserkers',5]],[['Stone Giants',3]],5,'plain');
-  ok(faced(r.them,'Stone Giants').filter(u=>/hit from the side/.test(u.why)).length===2,'Stone Giants at the ends are hit from the side like anyone');
+  ok(faced(r.them,'Stone Giants').filter(u=>/hit from the side/.test(facingWords(u.why))).length===2,'Stone Giants at the ends are hit from the side like anyone');
 
   // ── Boulder Wall: cavalry facing Stone Giants fights at no better than ×0.75 ──
   r=fight([['Free Lances',2]],[['Stone Giants',2]],2,'forest');
-  ok(faced(r.me,'Free Lances').every(u=>near(u.m,0.75)&&/Boulder Wall/.test(u.why)),`Boulder Wall: Free Lances facing Giants ×0.75 — ${whyOf(r.me,'Free Lances')}`);
+  ok(faced(r.me,'Free Lances').every(u=>near(u.m,0.75)&&/Boulder Wall/.test(facingWords(u.why))),`Boulder Wall: Free Lances facing Giants ×0.75 — ${whyOf(r.me,'Free Lances')}`);
   r=fight([['Gilded Lances',2]],[['Stone Giants',2]],2,'forest');
-  ok(faced(r.me,'Gilded Lances').every(u=>near(u.m,0.75)&&/Boulder Wall/.test(u.why)),`…and it caps a Lance Charge — ${whyOf(r.me,'Gilded Lances')}`);
+  ok(faced(r.me,'Gilded Lances').every(u=>near(u.m,0.75)&&/Boulder Wall/.test(facingWords(u.why))),`…and it caps a Lance Charge — ${whyOf(r.me,'Gilded Lances')}`);
   r=fight([['Free Lances',2]],[['Forest Ents',2]],2,'forest');
-  ok(faced(r.me,'Free Lances').every(u=>near(u.m,0.85)&&!/Boulder Wall/.test(u.why)),'cavalry facing Ents keep cavalry\'s ×0.85 (no wall of boulders)');
+  ok(faced(r.me,'Free Lances').every(u=>near(u.m,0.85)&&!/Boulder Wall/.test(facingWords(u.why))),'cavalry facing Ents keep cavalry\'s ×0.85 (no wall of boulders)');
   ok(faced(r.them,'Forest Ents').every(u=>near(u.m,1.15)),'the Ents fight the horse at ×1.15 as infantry does');
 
   // ── Maul, Trample, Many Heads: ×1.15, ×1.15 and ×1.25 facing foot; nothing facing horse ──
   r=fight([['Great Bears',1],['Mammoth Host',1],['Dread Hydras',1]],[['Orc Berserkers',3]],3,'forest');
-  ok(faced(r.me,'Great Bears').every(u=>near(u.m,1.15)&&/Maul/.test(u.why)),`Maul: Great Bears facing Berserkers ×1.15 — ${whyOf(r.me,'Great Bears')}`);
-  ok(faced(r.me,'Mammoth Host').every(u=>near(u.m,1.15)&&/Trample/.test(u.why)),`Trample: the Mammoth Host facing Berserkers ×1.15 — ${whyOf(r.me,'Mammoth Host')}`);
-  ok(faced(r.me,'Dread Hydras').every(u=>near(u.m,1.25)&&/Many Heads/.test(u.why)),`Many Heads: the Dread Hydras facing Berserkers ×1.25 — ${whyOf(r.me,'Dread Hydras')}`);
+  ok(faced(r.me,'Great Bears').every(u=>near(u.m,1.15)&&/Maul/.test(facingWords(u.why))),`Maul: Great Bears facing Berserkers ×1.15 — ${whyOf(r.me,'Great Bears')}`);
+  ok(faced(r.me,'Mammoth Host').every(u=>near(u.m,1.15)&&/Trample/.test(facingWords(u.why))),`Trample: the Mammoth Host facing Berserkers ×1.15 — ${whyOf(r.me,'Mammoth Host')}`);
+  ok(faced(r.me,'Dread Hydras').every(u=>near(u.m,1.25)&&/Many Heads/.test(facingWords(u.why))),`Many Heads: the Dread Hydras facing Berserkers ×1.25 — ${whyOf(r.me,'Dread Hydras')}`);
   r=fight([['Great Bears',1],['Mammoth Host',1],['Dread Hydras',1]],[['Free Lances',3]],3,'forest');
-  ok(['Great Bears','Mammoth Host','Dread Hydras'].every(t=>faced(r.me,t).every(u=>near(u.m,1.15)&&!/Maul|Trample|Many Heads/.test(u.why))),'facing horse the three fight at infantry\'s ×1.15 with no ability of their own');
+  ok(['Great Bears','Mammoth Host','Dread Hydras'].every(t=>faced(r.me,t).every(u=>near(u.m,1.15)&&!/Maul|Trample|Many Heads/.test(facingWords(u.why)))),'facing horse the three fight at infantry\'s ×1.15 with no ability of their own');
   r=fight([['Great Bears',1],['Mammoth Host',1],['Dread Hydras',1]],[['Yeoman Longbows',3]],3,'forest');
-  ok(['Great Bears','Mammoth Host','Dread Hydras'].every(t=>faced(r.me,t).every(u=>near(u.m,1.25)&&!/Maul|Trample|Many Heads/.test(u.why))),'facing archers caught in the front they fight at infantry\'s ×1.25, no more');
+  ok(['Great Bears','Mammoth Host','Dread Hydras'].every(t=>faced(r.me,t).every(u=>near(u.m,1.25)&&!/Maul|Trample|Many Heads/.test(facingWords(u.why)))),'facing archers caught in the front they fight at infantry\'s ×1.25, no more');
 
   // ── Purity: the Unicorn Herd facing a Monster or skeletons ×1.25 on top of the matchup ──
   r=fight([['Unicorn Herd',2]],[['Cave Trolls',2]],2,'forest');
-  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85*1.25)&&/Purity/.test(u.why)),`Purity: unicorns facing Cave Trolls ×0.85 × ×1.25 — ${whyOf(r.me,'Unicorn Herd')}`);
+  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85*1.25)&&/Purity/.test(facingWords(u.why))),`Purity: unicorns facing Cave Trolls ×0.85 × ×1.25 — ${whyOf(r.me,'Unicorn Herd')}`);
   r=fight([['Unicorn Herd',2]],[['Shieldwall Levies',2,{_isSkeletal:true}]],2,'forest');
-  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85*1.25)&&/Purity breaks the Spear Hedge/.test(u.why)),`…and facing skeletal Levies Purity breaks the Spear Hedge (Toby, 2026-10-12): ×0.85 × ×1.25 — ${whyOf(r.me,'Unicorn Herd')}`);
+  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85*1.25)&&/Purity breaks the Spear Hedge/.test(facingWords(u.why))),`…and facing skeletal Levies Purity breaks the Spear Hedge (Toby, 2026-10-12): ×0.85 × ×1.25 — ${whyOf(r.me,'Unicorn Herd')}`);
   r=fight([['Unicorn Herd',2]],[['Orc Berserkers',2]],2,'forest');
-  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85)&&!/Purity/.test(u.why)),'facing living orcs the herd is plain cavalry');
+  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85)&&!/Purity/.test(facingWords(u.why))),'facing living orcs the herd is plain cavalry');
 
   // ── Through the Glades: in forest and jungle the Unicorn Herd takes the one flank slot, as the Stag Riders do ──
   r=fight([['Shieldwall Levies',2],['Unicorn Herd',1]],[['Shieldwall Levies',3]],3,'forest');
@@ -107,7 +109,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
 
   // ── Colossal Bulk: a Titan Warbeasts company in the second line fights at full strength ──
   r=fight([['Titan Warbeasts',2]],[['Shieldwall Levies',1]],1,'plain');
-  { const t=placed(r.me,'Titan Warbeasts'); ok(t.length===2&&t.some(u=>u.place==='front')&&t.some(u=>u.place==='second'&&near(u.mult,1)&&/Colossal Bulk/.test(u.why)),`Colossal Bulk: the second Titan fights from the second line at ×1 (got ${t.map(u=>u.place+' ×'+u.mult).join(', ')})`); }
+  { const t=placed(r.me,'Titan Warbeasts'); ok(t.length===2&&t.some(u=>u.place==='front')&&t.some(u=>u.place==='second'&&near(u.mult,1)&&/Colossal Bulk/.test(placeWords(u.why))),`Colossal Bulk: the second Titan fights from the second line at ×1 (got ${t.map(u=>u.place+' ×'+u.mult).join(', ')})`); }
   r=fight([['Stone Giants',2]],[['Shieldwall Levies',1]],1,'plain');
   ok(placed(r.me,'Stone Giants').some(u=>u.place==='second'&&near(u.mult,0.5)),'a second Giant behind the first fights at ×0.5, as foot in the second line does');
 

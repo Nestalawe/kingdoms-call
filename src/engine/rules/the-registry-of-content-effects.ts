@@ -179,11 +179,11 @@ export interface MyLineAsTheEnemyLineMarksIt {
 }
 
 /** A mark the enemy's line leaves on mine: the units it marks (of those my line handed), the factor each of them fights
- *  at, and its words in the ladder. */
+ *  at, and the ability as the ladder names it. */
 export interface AMarkOnMyLine {
   readonly theUnitsMarked: readonly AUnitPlacedInALine[];
   readonly factor: number;
-  readonly words: string;
+  readonly ability: AnAbilityAsTheLadderNamesIt;
 }
 
 /** What the stage "a shooter picks its target" hands an effect (battleFaceSide): a ranged unit of the second line, and
@@ -196,8 +196,8 @@ export interface AShooterAndTheEnemyFront {
 }
 
 /** What the stage "turns an anchored line" hands an effect (battleFaceSide): the enemy's riders that ride free (no duel,
- *  no line's end to guard). The effect returns its words when they turn my flank even though foot anchor both ends of
- *  my front, or nothing. */
+ *  no line's end to guard). The effect returns its slug when they turn my flank even though foot anchor both ends of my
+ *  front, or nothing. */
 export interface TheFreeEnemyRiders {
   readonly theFreeEnemyRiders: readonly AUnitInTheLine[];
 }
@@ -403,15 +403,36 @@ export interface AUnitAProvinceRaises {
   readonly race: string;
 }
 
-/** A multiplier, and its words in the strength ladder (the ability's name, or its own words). */
-export interface AMultiplierAndItsWords {
-  readonly multiplier: number;
-  readonly words: string;
+/** The keys of the words in the ladder the content's rows give (wordsInTheLadder), of every row that gives some. */
+type TheKeysOfTheWordsInTheLadder = {
+  [Slug in UnitAbilitySlug]: (typeof UNIT_ABILITIES_THE_REGISTRY_HOLDS)[Slug] extends {
+    readonly wordsInTheLadder: infer Words;
+  }
+    ? keyof Words
+    : never;
+}[UnitAbilitySlug];
+
+/** An ability as the strength ladder names it (plan P1-12d4, P1-12's Choice 2: an effect names its slug, never words):
+ *  its slug, and where its words in the ladder are not its name, the key of its row's wordsInTheLadder or the factor its
+ *  words show. The prose writes the words, from the content's row. */
+export interface AnAbilityAsTheLadderNamesIt {
+  readonly slug: UnitAbilitySlug;
+  readonly wordsInTheLadder?: TheKeysOfTheWordsInTheLadder;
+  readonly factor?: number;
 }
 
-/** The effect of a stage that takes the multiplier so far and may set or change it: the new multiplier and its words,
+/** A multiplier, and the ability that set it, as the strength ladder names it. */
+export interface AMultiplierAndTheAbilityThatSetIt {
+  readonly multiplier: number;
+  readonly ability: AnAbilityAsTheLadderNamesIt;
+}
+
+/** The effect of a stage that takes the multiplier so far and may set or change it: the new multiplier and the ability,
  *  or nothing (the ability doesn't act here). */
-type AnEffectOnTheMultiplierSoFar<Facts> = (facts: Facts, theMultiplierSoFar: number) => AMultiplierAndItsWords | null;
+type AnEffectOnTheMultiplierSoFar<Facts> = (
+  facts: Facts,
+  theMultiplierSoFar: number,
+) => AMultiplierAndTheAbilityThatSetIt | null;
 
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
@@ -431,8 +452,8 @@ export interface TheStagesOfEachHookPoint {
     readonly 'a rider takes the flank on rough ground': (facts: AUnitInTheLineOnItsGround) => boolean;
     /** Whether a flyer leaves the air for a flank slot no rider fills, on open ground (battleGrid). */
     readonly 'a flyer takes an open flank no rider fills': (facts: AUnitInTheLineOnItsGround) => boolean;
-    /** The multiplier of the unit's place in its line, and its words, or nothing (the line's own: battleRegrid). */
-    readonly 'its place in the line': (facts: AUnitInItsLine) => AMultiplierAndItsWords | null;
+    /** The multiplier of the unit's place in its line, and the ability, or nothing (the line's own: battleRegrid). */
+    readonly 'its place in the line': (facts: AUnitInItsLine) => AMultiplierAndTheAbilityThatSetIt | null;
     /** The unit's own matchup against the unit it meets, from the role matchup's multiplier (abilityFront). */
     readonly 'what a unit does to the unit it meets': AnEffectOnTheMultiplierSoFar<AUnitMeetingAnother>;
     /** What the unit it meets does to it, after the unit's own (abilityFront). */
@@ -441,8 +462,8 @@ export interface TheStagesOfEachHookPoint {
     readonly 'what a shooter does to its target': AnEffectOnTheMultiplierSoFar<AShooterAndItsTarget>;
     /** What the target does to the shooter, after the shooter's own (abilityBack). */
     readonly 'what the target does to the shooter': AnEffectOnTheMultiplierSoFar<AShooterAndItsTarget>;
-    /** Whether a unit at a wrapped end isn't hit from the side: the ability's words, or nothing (battleFaceSide). */
-    readonly 'held when hit from the side': (facts: AUnitAtAWrappedEnd) => string | null;
+    /** Whether a unit at a wrapped end isn't hit from the side: the ability's slug, or nothing (battleFaceSide). */
+    readonly 'held when hit from the side': (facts: AUnitAtAWrappedEnd) => UnitAbilitySlug | null;
     /** What the units beside and behind a front-line unit do to it, after its facing and any side hit. */
     readonly 'beside and behind it in the front line': AnEffectOnTheMultiplierSoFar<AUnitBesideAndBehindOthers>;
     /** The units of my line the enemy's ability marks, and the factor they fight at (the resolver applies each mark
@@ -450,8 +471,8 @@ export interface TheStagesOfEachHookPoint {
     readonly 'marked by the enemy line': (myLine: MyLineAsTheEnemyLineMarksIt) => AMarkOnMyLine | null;
     /** The unit of the enemy front a shooter shoots instead of the one in front of it: its place in the list. */
     readonly 'a shooter picks its target': (facts: AShooterAndTheEnemyFront) => number | null;
-    /** Whether free enemy riders turn an anchored line: the ability's words, or nothing. */
-    readonly 'turns an anchored line': (facts: TheFreeEnemyRiders) => string | null;
+    /** Whether free enemy riders turn an anchored line: the ability's slug, or nothing. */
+    readonly 'turns an anchored line': (facts: TheFreeEnemyRiders) => UnitAbilitySlug | null;
     /** A unit's own ability in the air, from ×1. */
     readonly 'what a flyer does': AnEffectOnTheMultiplierSoFar<AFlyerAndTheEnemysFlyers>;
   };
@@ -949,13 +970,13 @@ const A_PROVINCE_RAISES_A_UNIT_EFFECTS = THE_ORDER_OF_EACH_STAGE.turnEnd['a prov
 }) satisfies readonly AProvinceRaisesAUnitEffect[];
 const NO_EFFECTS: readonly never[] = [];
 
-/** A multiplier, and the words of each ability that moved it, in order. */
+/** A multiplier, and each ability that moved it, in order, as the strength ladder names it. */
 export interface AMultiplierAndTheAbilitiesThatMovedIt {
   multiplier: number;
-  readonly words: string[];
+  readonly abilities: AnAbilityAsTheLadderNamesIt[];
 }
 
-/** Runs a stage's effects in order on the multiplier so far, and adds the words of each that acts. */
+/** Runs a stage's effects in order on the multiplier so far, and adds each ability that acts. */
 function runOnTheMultiplier<Facts>(
   effects: readonly AnEffectOnTheMultiplierSoFar<Facts>[],
   facts: Facts,
@@ -965,7 +986,7 @@ function runOnTheMultiplier<Facts>(
     const moved = effect(facts, soFar.multiplier);
     if (!moved) continue;
     soFar.multiplier = moved.multiplier;
-    soFar.words.push(moved.words);
+    soFar.abilities.push(moved.ability);
   }
 }
 
@@ -975,7 +996,7 @@ export function theStrengthOfAUnitMeetingAnother(
   facts: AUnitMeetingAnother,
   theRoleMatchup: number,
 ): AMultiplierAndTheAbilitiesThatMovedIt {
-  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: theRoleMatchup, words: [] };
+  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: theRoleMatchup, abilities: [] };
   runOnTheMultiplier(WHAT_A_UNIT_DOES_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS, facts, soFar);
   runOnTheMultiplier(
     WHAT_THE_UNIT_IT_MEETS_DOES_BY_UNIT.get(facts.theUnitItMeets.unitType) ?? NO_EFFECTS,
@@ -991,18 +1012,18 @@ export function theStrengthOfAShooterOverTheLine(
   facts: AShooterAndItsTarget,
   theRolesMultiplier: number,
 ): AMultiplierAndTheAbilitiesThatMovedIt {
-  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: theRolesMultiplier, words: [] };
+  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: theRolesMultiplier, abilities: [] };
   runOnTheMultiplier(WHAT_A_SHOOTER_DOES_BY_UNIT.get(facts.theShooter.unitType) ?? NO_EFFECTS, facts, soFar);
   runOnTheMultiplier(WHAT_THE_TARGET_DOES_BY_UNIT.get(facts.theTarget.unitType) ?? NO_EFFECTS, facts, soFar);
   return soFar;
 }
 
-/** The runner of "held when hit from the side" (battleFaceSide): the words of the first of the unit's abilities that
+/** The runner of "held when hit from the side" (battleFaceSide): the slug of the first of the unit's abilities that
  *  holds it, in the stage's order, or nothing (it is hit from the side). */
-export function theAbilityThatHoldsAUnitHitFromTheSide(facts: AUnitAtAWrappedEnd): string | null {
+export function theAbilityThatHoldsAUnitHitFromTheSide(facts: AUnitAtAWrappedEnd): UnitAbilitySlug | null {
   for (const effect of HELD_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS) {
-    const words = effect(facts);
-    if (words !== null) return words;
+    const slug = effect(facts);
+    if (slug !== null) return slug;
   }
   return null;
 }
@@ -1013,7 +1034,7 @@ export function theStrengthOfAUnitBesideAndBehindOthers(
   facts: AUnitBesideAndBehindOthers,
   theMultiplierSoFar: number,
 ): AMultiplierAndTheAbilitiesThatMovedIt {
-  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: theMultiplierSoFar, words: [] };
+  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: theMultiplierSoFar, abilities: [] };
   runOnTheMultiplier(BESIDE_AND_BEHIND_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS, facts, soFar);
   return soFar;
 }
@@ -1053,19 +1074,19 @@ export function theTargetAShooterPicks(
   return null;
 }
 
-/** The runner of "turns an anchored line" (battleFaceSide): the words of the first ability, in the stage's order, by
+/** The runner of "turns an anchored line" (battleFaceSide): the slug of the first ability, in the stage's order, by
  *  which the free enemy riders turn an anchored line, or nothing. */
-export function theAbilityThatTurnsAnAnchoredLine(facts: TheFreeEnemyRiders): string | null {
+export function theAbilityThatTurnsAnAnchoredLine(facts: TheFreeEnemyRiders): UnitAbilitySlug | null {
   for (const effect of TURNS_AN_ANCHORED_LINE_EFFECTS) {
-    const words = effect(facts);
-    if (words !== null) return words;
+    const slug = effect(facts);
+    if (slug !== null) return slug;
   }
   return null;
 }
 
 /** The runner of "what a flyer does" (battleFaceSide): from ×1, the flyer's effects in the stage's order. */
 export function theStrengthOfAFlyer(facts: AFlyerAndTheEnemysFlyers): AMultiplierAndTheAbilitiesThatMovedIt {
-  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: 1, words: [] };
+  const soFar: AMultiplierAndTheAbilitiesThatMovedIt = { multiplier: 1, abilities: [] };
   runOnTheMultiplier(WHAT_A_FLYER_DOES_BY_UNIT.get(facts.theFlyer.unitType) ?? NO_EFFECTS, facts, soFar);
   return soFar;
 }
@@ -1115,9 +1136,9 @@ export function aFlyerTakesAnOpenFlankNoRiderFills(facts: AUnitInTheLineOnItsGro
   );
 }
 
-/** The runner of "strength: its place in the line" (battleRegrid): the multiplier and words the first of the unit's
- *  abilities, in the stage's order, gives its place, or nothing (the line's own). */
-export function theMultiplierOfAUnitsPlaceInTheLine(facts: AUnitInItsLine): AMultiplierAndItsWords | null {
+/** The runner of "strength: its place in the line" (battleRegrid): the multiplier the first of the unit's abilities,
+ *  in the stage's order, gives its place, and the ability, or nothing (the line's own). */
+export function theMultiplierOfAUnitsPlaceInTheLine(facts: AUnitInItsLine): AMultiplierAndTheAbilityThatSetIt | null {
   for (const effect of ITS_PLACE_IN_THE_LINE_BY_UNIT.get(facts.theUnit.unitType) ?? NO_EFFECTS) {
     const placed = effect(facts);
     if (placed !== null) return placed;

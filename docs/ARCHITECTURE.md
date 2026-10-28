@@ -301,6 +301,7 @@ src_ui_player_-->src_db_
 src_views_-->src_engine_
 src_views_-->src_content_
 src_views_-->src_engine_rules_on_plain_values_
+src_views_-->src_engine_rules_
 src_views_-->src_schemas_
 ```
 
@@ -330,7 +331,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 - **The stages written so far:** `strength: the whole force` (P1-19a), the unit's factor from its force (in `armStr`,
   through `unitAbilityMult`): Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
   Deepwater Grasp, Wyrmscale and Air Superiority, in that order. Facing (P1-19b), four stages that take the multiplier
-  so far and return a new one and its words in the ladder, or nothing (`src/engine/rules/unit-abilities/a-unit-meeting-another-or-shooting-over-the-line.ts`):
+  so far and return a new one and the ability that set it, or nothing (`src/engine/rules/unit-abilities/a-unit-meeting-another-or-shooting-over-the-line.ts`):
   in `abilityFront`, from the role matchup, **what a unit does to the unit it meets** (Halberds, Lance Charge, Frenzy,
   Wolves Panic Horses, Stoop on the Horses, Harriers, Woodland Skirmish, Bloodthirsty, Maul, Trample, Many Heads,
   Purity), then **what the unit it meets does to it** (Spear Hedge, Boulder Wall, Unbreakable, Stone Halls, Thorn
@@ -690,13 +691,15 @@ portals' start-up guards are gone.
   and the helpers that return a line: the kinship, Druid and command lines, the ladder and grid rows, the units' fates),
   but the few words a battle takes from another folder's helper (a unit disbanding, a sea trap, a naval hold, the
   wanderer's escape, a hero's death: P1-12d). **A fact holds values, never words** (P1-12d; personal combat's since
-  P1-12d2, a battle's since P1-12d3, but the strength ladder's and the grid's, P1-12d4): a number, a flag, an id or a
+  P1-12d2, a battle's since P1-12d3, the strength ladder's and the grid's since P1-12d4): a number, a flag, an id or a
   slug, a name as the world or the content holds it, and a copy of what a line's words read of the world (a fighter's
   skill or ward, a list of items, a hit-point rise, the units a battle's line names, its fortune), made as the line is told by a
   named function beside the kind; never a part of the world, and never a clause, a plural, a mark (✓, ✗), a join or a
   number formatted for reading, which the views write. A word helper the engine no longer calls moved into the prose
   (`pcSkillLabel`, `pcWardWord`, `pcPerkWord`, `pcWardIcon`; a battle's `aAn`, `n0`, `curseSkillLabel`,
-  `fortuneNarrative` and the verbs a victory is told with, whose die stays in the engine: the fact holds which); one it
+  `fortuneNarrative` and the verbs a victory is told with, whose die stays in the engine: the fact holds which; the
+  ladder's `ladderFm`, the grid's `shortUnit`, `UNIT_SHORT`, `GROUND_WORDS`, `battleGridStage` and `battleFacingStage`);
+  one it
   still calls (`fmtRoll`, `monsterCatLabel`, `hpGainLine`, `describeArmy`) the prose imports from the engine, on plain
   values, and a unit ability's name comes from its content row. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
   checks each area done (its list grows a row at a time), but the labels it lists (P1-12d's next slice). The
@@ -765,13 +768,20 @@ portals' start-up guards are gone.
   `archeryBlockedBy`) and `unitAbilityMult` carry the rest, each asking the rule registry ([The rule registry](#the-rule-registry)). Both battle paths score through deploy and facing, the stay-or-retreat
   estimate through grid and facing; the bots' estimates (`battleLineTotal`, at the middle width) through the
   grid alone. The report prints the grid as 📊 lines, which the portals draw in
-  monospace, and the ladder names every place and matchup.
+  monospace, and the ladder names every place and matchup. **The ladder's and the grid's words are the prose's**
+  (P1-12d4): `armStr`'s trace, the command multipliers, the whole force's multipliers, each unit's place
+  (`battleRegrid`) and facing (`battleFaceSide`) record why a figure moved as a typed record (the records in
+  `the-facts-a-battles-lines-record.ts`), and the rule registry's effects name an ability by its slug (with the key of
+  its row's `wordsInTheLadder`, or the factor its words show); the ladder's lines hold copies of them, and
+  `src/views/prose/the-words-of-a-battles-lines.ts` writes every label, each ability's name from its content row, and
+  groups them as the ladder did.
 - **Unit fates** (`rollUnitFates`, module level beside `disbandLine`). After a battle, each unit of a player's
   force rolls once for its fate (a beaten survivor twice); the four casualty sections (the attacker winning or
   losing against a province's guard, a realm battle's winner and loser) all call it, passing their own
   thresholds and verbs, and a test passes its own dice. Each line names whom the company fought
   (`battleFacedClauses`, a map read from the deploy's grids right after the deploy, before the stay-or-retreat
-  estimate faces the survivors afresh); the losses tally (`battleTallyLine`) reads a line's owner and unit
+  estimate faces the survivors afresh: whom it faced as a record, read from the facing's kind, never its words; the
+  line holds it beside the company's reference, and `theClauseOfWhomAUnitFaced` writes the clause); the losses tally (`battleTallyLine`) reads a line's owner and unit
   type from the company named first in it, which is always the company's own reference.
 - **Dice and the clock** (P1-07). Every random number the GM portal's code draws (dice, shuffles, bot choices, the
   world map, id suffixes) comes from `kcRng()` (`src/engine/rng.ts`): one sfc32 generator, the first file of the

@@ -2,7 +2,8 @@
 // does to the unit it meets and what the unit it meets does to it (abilityFront: a unit facing, met by, duelling or
 // guarding another), what a shooter in the second line does to its target and what the target does to the shooter
 // (abilityBack). Each is handed the two units and the battle's facts, and the multiplier so far (the role matchup, then
-// each ability before it), and returns the new multiplier and its words in the ladder, or nothing; its numbers come from
+// each ability before it), and returns the new multiplier and the ability as the ladder names it (its slug: plan P1-12d4),
+// or nothing; its numbers come from
 // the content's row. The runners (the-registry-of-content-effects.ts) run them in their stages' order. Until P1-19b they
 // were written inline in abilityFront and abilityBack (src/engine/battle/lines.ts), in this order.
 //
@@ -12,17 +13,17 @@
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS as ROWS } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { UnitAbilitySlug } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type {
-  AMultiplierAndItsWords,
+  AMultiplierAndTheAbilityThatSetIt,
   AUnitInTheLine,
   TheStagesOfEachHookPoint,
 } from '../the-registry-of-content-effects.ts';
 
 type TheStrengthStages = TheStagesOfEachHookPoint['strength'];
 
-/** The ability's multiplier, worded by its name. */
-const named = (slug: UnitAbilitySlug, multiplier: number): AMultiplierAndItsWords => ({
+/** The ability's multiplier, named by its slug (the ladder writes its name). */
+const named = (slug: UnitAbilitySlug, multiplier: number): AMultiplierAndTheAbilityThatSetIt => ({
   multiplier,
-  words: ROWS[slug].name,
+  ability: { slug },
 });
 /** Whether a unit has the ability: its type is the ability's row's unit (another ability is asked by its slug). */
 const has = (unit: AUnitInTheLine, slug: UnitAbilitySlug) => ROWS[slug].unit === unit.unitType;
@@ -69,15 +70,16 @@ export const WHAT_A_UNIT_DOES_TO_THE_UNIT_IT_MEETS = {
 } satisfies Partial<Record<UnitAbilitySlug, TheStrengthStages['what a unit does to the unit it meets']>>;
 
 // 2026-10-12 (Toby): Purity breaks a Spear Hedge or a Boulder Wall — the Unicorn Herd is never held to their ×0.75 cap.
-/** A cap on the cavalry facing the unit, which Purity breaks: the multiplier held to the cap, or Purity's words. */
+/** A cap on the cavalry facing the unit, which Purity breaks: the multiplier held to the cap, or the cap's words when
+ *  Purity breaks it. */
 const aCapOnTheCavalryFacingIt = (
   slug: 'spear-hedge' | 'boulder-wall',
   unit: AUnitInTheLine,
   m: number,
-): AMultiplierAndItsWords | null => {
+): AMultiplierAndTheAbilityThatSetIt | null => {
   const cap = ROWS[slug].numbers.cavalryFacingThemAtMost.value;
   if (!(unit.role === 'cav' && m > cap)) return null;
-  if (has(unit, 'purity')) return { multiplier: m, words: ROWS[slug].wordsInTheLadder.whenPurityBreaksIt };
+  if (has(unit, 'purity')) return { multiplier: m, ability: { slug, wordsInTheLadder: 'whenPurityBreaksIt' } };
   return named(slug, cap);
 };
 

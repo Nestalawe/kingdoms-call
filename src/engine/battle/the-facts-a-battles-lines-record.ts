@@ -13,8 +13,10 @@
 // (a number, a flag, a name as the world or the content holds it, a slug, and lists copied as the line is told by the
 // functions below), never a clause, a plural, a mark, a join or a number formatted for reading. What still holds words,
 // listed by the static test (tests/static/a-lines-facts-hold-values-not-words.test.ts): a side's, a guard's or a unit's
-// label (Decision 2: the facts-by-sense slice names a side), the strength ladder's and the grid's words and the clause
-// of whom a unit faced (P1-12d4), and words a caller hands in (a unit's fate's verb). Words a battle takes from another
+// label (Decision 2: the facts-by-sense slice names a side), and words a caller hands in (a unit's fate's verb).
+// P1-12d4 moved the strength ladder's and the grid's words into the prose too: their lines hold each modifier's reason,
+// each unit's place and facing, and whom a unit faced, as the records below (the registry's effects name an ability by
+// its slug, and the prose writes its name from the content's row). Words a battle takes from another
 // folder's helper (a unit disbanding, a sea trap, a naval hold, the wanderer's escape, a hero's death) stay words until
 // P1-12d5.
 // LineFact (src/engine/turn/events-and-their-audiences.ts) is the union of every area's kinds; a kind with no words in
@@ -22,7 +24,8 @@
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AValueInALinesWords } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
-import type { WhyAShotGlancesOffAUnit } from '../rules/the-registry-of-content-effects.ts';
+import type { AnAbilityAsTheLadderNamesIt, WhyAShotGlancesOffAUnit } from '../rules/the-registry-of-content-effects.ts';
+import type { UnitAbilitySlug } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
 
 // ── WHAT A BATTLE'S LINES READ, COPIED AS THE LINE IS TOLD (plan P1-12d3) ──
 // A fact holds a copy of the world's values, never a part of it: the units a line names change after it is told (they
@@ -55,6 +58,214 @@ export interface TheFortuneAsTheLineTellsIt {
 /** A battle's fortune, copied as the line is told. */
 export function theFortuneAsTheLineTellsIt(fortune: TheFortuneAsTheLineTellsIt): TheFortuneAsTheLineTellsIt {
   return { S: fortune.S, atk: fortune.atk, def: fortune.def };
+}
+
+// ── WHAT THE STRENGTH LADDER AND THE BATTLE GRID RECORD (plan P1-12d4: P1-12's Decisions of 2026-10-26, Decisions 2, 5
+// and 8, Choice 2) ── each reason a figure moved, and each unit a grid line or the ladder names, as plain values: a
+// slug, a number, a unit's type or name, copied as the line is told. The prose writes the words (the labels a battle
+// used to compose for them: armStr's, the commands', the whole force's, the grid's and the facing's).
+
+/** A unit as the battle grid names it (shortUnit, in the prose): its type, or its row's name where it has no unit (the
+ *  bots' estimates). */
+export interface AUnitAsTheGridNamesIt {
+  readonly a?: { readonly type: string } | null | undefined;
+  readonly name?: string | null | undefined;
+}
+
+/** A unit as the battle grid names it, copied from its row as the line is told. */
+export function aUnitAsTheGridNamesIt(row: AUnitAsTheGridNamesIt | null | undefined): AUnitAsTheGridNamesIt {
+  return { a: row?.a ? { type: row.a.type } : null, name: row?.name };
+}
+
+/** Why a unit stands where it does in its side's grid, and fights at that place's multiplier (battleRegrid). */
+export type WhyAUnitStandsWhereItDoes =
+  | {
+      readonly kind: 'its ability gives it its place';
+      readonly ability: AnAbilityAsTheLadderNamesIt;
+      readonly itsLine: 'front' | 'second';
+    }
+  | { readonly kind: 'a ranged unit in the front line' }
+  | { readonly kind: 'a unit in the front line' }
+  | { readonly kind: 'a ranged unit shooting over its fighter'; readonly theFighter: AUnitAsTheGridNamesIt }
+  | { readonly kind: 'a unit in the second line' }
+  | { readonly kind: 'a unit in the reserve' }
+  | { readonly kind: 'a unit in the deep reserve' }
+  | { readonly kind: 'a rider on the flank' }
+  | { readonly kind: 'a flyer in the air' }
+  | { readonly kind: 'a flyer in the air beyond the line' };
+
+/** Whom a unit meets in the battle line, and how (battleFaceSide), with the abilities that moved its matchup. */
+export type WhomAUnitMeets =
+  | {
+      readonly kind: 'it faces a unit' | 'it is met by a rider' | 'it shoots a unit' | 'it duels a rider';
+      readonly theOther: AUnitAsTheGridNamesIt;
+      readonly abilities: readonly AnAbilityAsTheLadderNamesIt[];
+    }
+  | {
+      readonly kind: "it guards the line's end";
+      readonly theOther: AUnitAsTheGridNamesIt | null;
+      readonly abilities: readonly AnAbilityAsTheLadderNamesIt[];
+    }
+  | { readonly kind: "it wraps the line's end" }
+  | { readonly kind: 'it shoots at an empty column' }
+  | { readonly kind: 'it rides free' };
+
+/** Why a unit fights at its facing's multiplier (battleFaceSide), as the ladder's stage "who faces whom" names it, in
+ *  the order its words take: the unit, whom it meets, a wrapped end, a turned flank, its own abilities (beside and
+ *  behind it in the front line, or in the air), and the marks the enemy's line leaves on it. */
+export interface WhyAUnitFacesAsItDoes {
+  readonly theUnit: AUnitAsTheGridNamesIt;
+  readonly meets: WhomAUnitMeets | null;
+  /** At a wrapped end of its front: held by an ability (its slug), or hit from the side (null). */
+  readonly atAWrappedEnd?: { readonly heldBy: UnitAbilitySlug | null };
+  /** Its flank turned by free riders: the ability that turned an anchored line, or none. */
+  readonly flankTurned?: { readonly byAnAbility: UnitAbilitySlug | null };
+  readonly itsOwnAbilities: readonly AnAbilityAsTheLadderNamesIt[];
+  readonly marks: readonly AnAbilityAsTheLadderNamesIt[];
+}
+
+/** Whom a unit faced, as its fate's line tells it (battleFacedClauses): an enemy unit by its label (ownedUnitName: a
+ *  unit's label stays words in this slice, Decision 2) and how it met it, or where it stood. */
+export type WhomAUnitFaced =
+  | {
+      readonly kind: 'an enemy unit';
+      readonly how: 'faces' | 'met' | 'wraps' | 'shoots' | 'duel' | 'guards';
+      readonly theEnemyUnit: string;
+    }
+  | { readonly kind: 'it rode free' }
+  | { readonly kind: "it wrapped the line's end" }
+  | { readonly kind: "it guarded the line's end" }
+  | { readonly kind: 'it fought from the air' }
+  | { readonly kind: 'it stood in the reserve' }
+  | { readonly kind: 'it shot at an empty column' }
+  | { readonly kind: 'it stood in the second line' }
+  | { readonly kind: 'nobody stood opposite' };
+
+/** A unit's place and its multiplier, as the ladder's stage "battle lines" names it (battleGridStage, in the prose). */
+export interface AUnitsPlaceAsTheLadderTellsIt {
+  readonly place: string;
+  readonly mult: number;
+  readonly row: AUnitAsTheGridNamesIt;
+}
+
+/** Every unit's place in a side's grid, copied as the ladder's line is told. */
+export function theUnitsPlacesAsTheLadderTellsThem(
+  units: readonly { readonly place: string; readonly mult: number; readonly row: AUnitAsTheGridNamesIt }[],
+): AUnitsPlaceAsTheLadderTellsIt[] {
+  return units.map((u) => ({ place: u.place, mult: u.mult, row: aUnitAsTheGridNamesIt(u.row) }));
+}
+
+/** A unit's facing, as the ladder's stage "who faces whom" names it (battleFacingStage, in the prose): its multiplier
+ *  and why. */
+export interface AFacingAsTheLadderTellsIt {
+  readonly m: number;
+  readonly why: WhyAUnitFacesAsItDoes;
+}
+
+/** Every unit's facing in a side's grid, copied as the ladder's line is told (battleFaceSide makes each why afresh). */
+export function theFacingsAsTheLadderTellsThem(
+  units: readonly { readonly m: number; readonly why: WhyAUnitFacesAsItDoes }[],
+): AFacingAsTheLadderTellsIt[] {
+  return units.map((u) => ({ m: u.m, why: u.why }));
+}
+
+/** What lifts a unit's quality for a battle, as the ladder's units stage names it. */
+export type WhatLiftsAUnitsQuality = 'oratory' | 'druid' | 'necromancy' | 'tactical' | 'war-drum';
+
+/** A modifier of a unit's own figure (armStr), as the ladder's units stage names it: the values its words are written
+ *  from. */
+export type AUnitsModifierInTheLadder =
+  | {
+      readonly kind: 'it fights at another quality';
+      readonly quality: string;
+      readonly liftedBy: readonly WhatLiftsAUnitsQuality[];
+    }
+  | { readonly kind: "its commander's Druid falls short"; readonly multiplier: number }
+  | { readonly kind: 'its kin'; readonly bothTheKingsAndTheLeaders: boolean }
+  | { readonly kind: 'a racial animosity' }
+  | { readonly kind: 'the ground'; readonly terrain: string; readonly multiplier: number }
+  | { readonly kind: 'elven woodland mastery' }
+  | { readonly kind: 'the dwarven bulwark' }
+  | { readonly kind: 'the standing stones' }
+  | { readonly kind: "the realm's unit discoveries"; readonly multiplier: number }
+  | { readonly kind: 'terror'; readonly multiplier: number }
+  | { readonly kind: 'the reign of fear'; readonly multiplier: number }
+  | { readonly kind: 'the pre-battle volleys and spells' }
+  | { readonly kind: 'phantasmal armies'; readonly multiplier: number }
+  | { readonly kind: "the commander's magic items" }
+  | { readonly kind: "the unit's ability"; readonly unitType: string; readonly multiplier: number }
+  | { readonly kind: 'the home of the wild' }
+  | { readonly kind: "the commander's druid mastery"; readonly multiplier: number }
+  | { readonly kind: "a naturalist's or beastmaster's title" }
+  | { readonly kind: "a cavalier's title" }
+  | { readonly kind: "an ironclad's title" };
+
+/** One modifier of a unit's figure in a side's ladder: why, and, for one that adds or takes strength, by how much. */
+export interface AModifierOfAUnitInTheLadder {
+  readonly reason: AUnitsModifierInTheLadder;
+  readonly delta?: number | null | undefined;
+}
+
+/** A multiplier of the command stage (the commander's Archery, Naval or Tactical, or illusory ground), as the ladder
+ *  names it. */
+export type ACommandMultiplierInTheLadder =
+  | { readonly kind: 'archery'; readonly level: number; readonly multiplier: number }
+  | { readonly kind: 'naval'; readonly level: number; readonly multiplier: number }
+  | { readonly kind: 'tactical'; readonly multiplier: number }
+  | { readonly kind: 'tactical at its level'; readonly level: number; readonly multiplier: number }
+  | { readonly kind: 'illusory terrain'; readonly multiplier: number };
+
+/** A command multiplier that applied to a unit (ladderRow): why, its kind of command, and the multiplier. */
+export interface ACommandMultiplierOfAUnit {
+  readonly reason: ACommandMultiplierInTheLadder;
+  readonly key?: string | undefined;
+  readonly m: number;
+}
+
+/** A side's Tactical, as the ladder's command stage weighs it against the units it reached. */
+export interface ASidesTacticalInTheLadder {
+  readonly mult: number;
+  readonly reason: ACommandMultiplierInTheLadder;
+}
+
+/** A multiplier of the whole force, as the ladder names it. */
+export type AForceWideModifierInTheLadder =
+  | 'morale'
+  | 'orders'
+  | 'home-ground'
+  | 'fanaticism'
+  | 'discoveries'
+  | 'consecrated-ground'
+  | 'defenders-position'
+  | 'home'
+  | 'duel-morale'
+  | 'sanctuary-wards';
+
+/** A multiplier of the whole force that moved it, and why. */
+export interface AForceWideModifierOfASide {
+  readonly reason: AForceWideModifierInTheLadder;
+  readonly m: number;
+}
+
+/** Every modifier of each unit's own figure in a side's ladder, in the units' order, copied as the line is told. */
+export function theUnitsModifiersAsTheLadderTellsThem(
+  rows: readonly { readonly _tr?: readonly AModifierOfAUnitInTheLadder[] | undefined }[],
+): AModifierOfAUnitInTheLadder[] {
+  return rows.flatMap((r) => (r._tr ?? []).map((e) => ({ reason: e.reason, delta: e.delta })));
+}
+
+/** Every command multiplier that applied to each unit of a side, in the units' order, copied as the line is told. */
+export function theCommandMultipliersAsTheLadderTellsThem(
+  rows: readonly { readonly _cmd?: readonly ACommandMultiplierOfAUnit[] | undefined }[],
+): ACommandMultiplierOfAUnit[] {
+  return rows.flatMap((r) => (r._cmd ?? []).map((c) => ({ reason: c.reason, key: c.key, m: c.m })));
+}
+
+/** The multipliers that moved a side's whole force, copied as the line is told. */
+export function theForceWideModifiersAsTheLadderTellsThem(
+  modifiers: readonly AForceWideModifierOfASide[],
+): AForceWideModifierOfASide[] {
+  return modifiers.map((x) => ({ reason: x.reason, m: x.m }));
 }
 
 /** How many verbs a victory is told with (the prose's WIN_VERBS): the engine draws which, the prose writes it
@@ -549,7 +760,7 @@ export type TheFactOfOneOfABattlesSentences =
       cName: string;
       extraLossesPct: number;
     }
-  | { kind: 'a defending unit is destroyed in the rout'; defendingUnitName: string; facedClauseWords: string }
+  | { kind: 'a defending unit is destroyed in the rout'; defendingUnitName: string; whomItFaced: WhomAUnitFaced | null }
   | { kind: 'the defenders have nowhere to retreat and hold a shield fort'; provName: string }
   | { kind: 'the defenders have nowhere to retreat and take further losses'; provName: string }
   | {
@@ -561,7 +772,11 @@ export type TheFactOfOneOfABattlesSentences =
       aPlayersGarrison: boolean;
       atSea: boolean;
     }
-  | { kind: 'a defending unit is destroyed in the fighting'; defendingUnitName: string; facedClauseWords: string }
+  | {
+      kind: 'a defending unit is destroyed in the fighting';
+      defendingUnitName: string;
+      whomItFaced: WhomAUnitFaced | null;
+    }
   | { kind: "the guard's host is destroyed and he is a masterless hero"; guardName: string; provName: string }
   | { kind: "the attacker's dwarven guard leave the defenders' free lances no broken backs"; cName: string }
   | {
@@ -610,10 +825,15 @@ export type TheFactOfOneOfABattlesSentences =
       terrorPct: number;
       terrorStacks: number;
     }
-  | { kind: 'a unit is cut down and rises again by its regenerating hide'; unitReference: string }
+  | {
+      kind: 'a unit is cut down and rises again by its regenerating hide';
+      unitReference: string;
+      whomItFaced: WhomAUnitFaced | null;
+    }
   | {
       kind: 'a unit dies in the battle';
       unitReference: string;
+      whomItFaced: WhomAUnitFaced | null;
       diedVerb: string | null | undefined;
       itsSideWon: boolean;
       itsBonesCrumble: boolean | undefined;
@@ -621,17 +841,32 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: 'a unit is promoted after the battle';
       unitReferenceAtItsOldQuality: string;
+      whomItFaced: WhomAUnitFaced | null;
       promoteVerb: string | null | undefined;
       unitQuality: string;
     }
-  | { kind: 'a unit falls back behind the shield wall in good order'; unitReference: string }
-  | { kind: 'a unit keeps its nerve under the knightly example'; unitReference: string }
+  | {
+      kind: 'a unit falls back behind the shield wall in good order';
+      unitReference: string;
+      whomItFaced: WhomAUnitFaced | null;
+    }
+  | {
+      kind: 'a unit keeps its nerve under the knightly example';
+      unitReference: string;
+      whomItFaced: WhomAUnitFaced | null;
+    }
   | {
       kind: 'a unit loses heart in defeat and is reduced a tier';
       unitReferenceAtItsOldQuality: string;
+      whomItFaced: WhomAUnitFaced | null;
       unitQuality: string;
     }
-  | { kind: 'a unit improves a tier despite defeat'; unitReferenceAtItsOldQuality: string; unitQuality: string }
+  | {
+      kind: 'a unit improves a tier despite defeat';
+      unitReferenceAtItsOldQuality: string;
+      whomItFaced: WhomAUnitFaced | null;
+      unitQuality: string;
+    }
   | {
       kind: "a hero not at war with the province's realm gains a host inside it";
       cName: string;
@@ -779,17 +1014,29 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: "a side's strength ladder begins";
-      roleWords: string;
+      side: 'attacker' | 'defender';
       sideName: string;
-      unitsWords: string;
+      unitCount: number;
       strength: number;
     }
-  | { kind: "the strength ladder's units"; baseStrength: number; unitsStrength: number; wordsIfUnitModifiers: string }
-  | { kind: "the strength ladder's command"; unitsStrength: number; commandStrength: number; wordsIfCommand: string }
+  | {
+      kind: "the strength ladder's units";
+      baseStrength: number;
+      unitsStrength: number;
+      theUnitsModifiers: AModifierOfAUnitInTheLadder[];
+    }
+  | {
+      kind: "the strength ladder's command";
+      unitsStrength: number;
+      commandStrength: number;
+      theCommandMultipliers: ACommandMultiplierOfAUnit[];
+      theSidesTactical: ASidesTacticalInTheLadder | null;
+      unitCount: number;
+    }
   | {
       kind: "the strength ladder's force-wide modifiers";
       commandStrength: number;
-      forceModifiersWords: string;
+      theForceWideModifiers: AForceWideModifierOfASide[];
       wholeForceStrength: number;
     }
   | { kind: 'the strength ladder has no force-wide modifiers'; wholeForceStrength: number }
@@ -798,37 +1045,44 @@ export type TheFactOfOneOfABattlesSentences =
       wholeForceStrength: number;
       preBattleDamage: number;
       afterPreBattleDamage: number;
-      unitsHitWords: string;
+      unitsHit: number;
     }
   | {
       kind: "the strength ladder's battle lines";
       frontWidth: number;
       afterPreBattleDamage: number;
-      battleLinesStrengthWords: number | string;
-      gridStageWords: string;
+      battleLinesStrength: number;
+      whoFacesWhomFollows: boolean;
+      theUnitsPlaces: AUnitsPlaceAsTheLadderTellsIt[];
     }
   | {
       kind: "the strength ladder's who faces whom";
       battleLinesStrength: number;
       facingStrength: number;
-      facingStageWords: string;
+      theFacings: AFacingAsTheLadderTellsIt[];
     }
   | {
       kind: "the strength ladder's units behind the front";
-      afterPreBattleDamage: AValueInALinesWords;
-      battleLinesStrength: AValueInALinesWords;
-      unitsBehindTheFrontWords: AValueInALinesWords;
-      frontWidth: AValueInALinesWords;
-      lineMultipliersWords: AValueInALinesWords;
+      afterPreBattleDamage: number;
+      battleLinesStrength: number;
+      unitsBehindTheFront: number;
+      frontWidth: number;
+      theLinesMultipliersBehindTheFront: number[];
     }
-  | { kind: 'the ground allows a front of a width'; groundWords: string; allowsWord: string; frontWidth: number }
+  | { kind: 'the ground allows a front of a width'; terrain: string; frontWidth: number }
   | {
       kind: "a side's front line in the battle grid";
-      sideLabel: string;
-      frontLineCells: string;
-      wordsIfFlanksAirOrReserve: string;
+      sideName: string | null | undefined;
+      theFrontLine: (AUnitAsTheGridNamesIt | null)[];
+      theFlanks: AUnitAsTheGridNamesIt[];
+      theAir: AUnitAsTheGridNamesIt[];
+      theReserve: AUnitAsTheGridNamesIt[];
     }
-  | { kind: "a side's second line in the battle grid"; sideLabel: string; secondLineCells: string }
+  | {
+      kind: "a side's second line in the battle grid";
+      sideName: string | null | undefined;
+      theSecondLine: (AUnitAsTheGridNamesIt | null)[];
+    }
   | {
       kind: 'the scouting side chooses the front';
       scoutName: string;

@@ -20,6 +20,8 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,1200));
   const w=dom.window; const ev=expr=>w.eval(expr);
+  // A unit's facing holds values since plan P1-12d4: the prose writes its words.
+  const facingWords=why=>ev('theWordsOfWhyAUnitFacesAsItDoes')(why);
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   const G=ev('battleGrid'), F=ev('battleFacing'), AMU=ev('abilityMissileUnits'), ABB=ev('archeryBlockedBy'), MTP=ev('missileTargetPool');
   const BASE={'Forest Wardens':8,'Elven Bowmen':10,'Shadow Archers':14,'Stag Riders':12,'Eagle Riders':12,'Elven Garrison':4,'Shieldwall Levies':8,'Yeoman Longbows':8,'Free Lances':10,'Warg Riders':10,'Orc Berserkers':12,'Goblin Horde':6};
@@ -30,7 +32,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     const them=G(rows(theirs),W,terrain,{tac:tacThem||0,enemy:rows(mine),enemyTac:tacMe||0});
     F(me,them,terrain); return {me,them}; };
   const faced=(g,type)=>g.face.units.filter(u=>u.row.a.type===type);
-  const whyOf=(g,type)=>faced(g,type).map(u=>u.why).join(' | ');
+  const whyOf=(g,type)=>faced(g,type).map(u=>facingWords(u.why)).join(' | ');
 
   // Woodland Skirmish: Wardens ×1.15 in forest and jungle, facing anyone; nothing on the plain
   let r=fight([['Forest Wardens',2]],[['Orc Berserkers',2]],2,'forest');
@@ -42,17 +44,17 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
 
   // Volley at the Charge: Bowmen shooting cavalry from the second line ×1.25 (×0.75 for other archers)
   r=fight([['Forest Wardens',2],['Elven Bowmen',2]],[['Warg Riders',2]],2,'forest');
-  ok(faced(r.me,'Elven Bowmen').every(u=>u.place==='second'&&near(u.m,1.25)&&/Volley at the Charge/.test(u.why)),`Volley at the Charge — ${whyOf(r.me,'Elven Bowmen')}`);
+  ok(faced(r.me,'Elven Bowmen').every(u=>u.place==='second'&&near(u.m,1.25)&&/Volley at the Charge/.test(facingWords(u.why))),`Volley at the Charge — ${whyOf(r.me,'Elven Bowmen')}`);
   r=fight([['Forest Wardens',2],['Elven Bowmen',2]],[['Orc Berserkers',2]],2,'forest');
-  ok(faced(r.me,'Elven Bowmen').every(u=>near(u.m,1.25)&&!/Volley at the Charge/.test(u.why)),'shooting infantry they keep the ordinary ×1.25');
+  ok(faced(r.me,'Elven Bowmen').every(u=>near(u.m,1.25)&&!/Volley at the Charge/.test(facingWords(u.why))),'shooting infantry they keep the ordinary ×1.25');
 
   // Marksmen: Shadow Archers shooting archers ×1.25, and they pick the best target along the enemy front
   r=fight([['Forest Wardens',2],['Shadow Archers',2]],[['Yeoman Longbows',2]],2,'plain');
-  ok(faced(r.me,'Shadow Archers').every(u=>near(u.m,1.25)&&/Marksmen/.test(u.why)),`Marksmen against Longbows caught in the front — ${whyOf(r.me,'Shadow Archers')}`);
+  ok(faced(r.me,'Shadow Archers').every(u=>near(u.m,1.25)&&/Marksmen/.test(facingWords(u.why))),`Marksmen against Longbows caught in the front — ${whyOf(r.me,'Shadow Archers')}`);
   r=fight([['Forest Wardens',3],['Shadow Archers',1]],[['Goblin Horde',1],['Orc Berserkers',1],['Free Lances',1]],3,'forest');
   { const sa=faced(r.me,'Shadow Archers')[0];
     // the three enemy front units: Berserkers 12 (foot ×1.25 = 15), Free Lances 10 (cav ×0.75 = 7.5), Goblins 6 (foot ×1.25 × Arrow Fodder ×0.75 = 5.6): the Berserkers are the best shot
-    ok(sa&&sa.vs&&sa.vs.a.type==='Orc Berserkers'&&near(sa.m,1.25),`the Shadow Archers pick the Berserkers (the best target along the line), not whoever stands opposite — ${sa&&sa.why}`); }
+    ok(sa&&sa.vs&&sa.vs.a.type==='Orc Berserkers'&&near(sa.m,1.25),`the Shadow Archers pick the Berserkers (the best target along the line), not whoever stands opposite — ${sa&&facingWords(sa.why)}`); }
   r=fight([['Forest Wardens',3],['Elven Bowmen',1]],[['Goblin Horde',1],['Orc Berserkers',1],['Free Lances',1]],3,'forest');
   { const eb=faced(r.me,'Elven Bowmen')[0]; const c=r.me.second.findIndex(x=>x&&x.r.a.type==='Elven Bowmen');
     ok(eb&&eb.vs===(r.them.front[c]&&r.them.front[c].r),'…while Bowmen still shoot whoever stands opposite'); }
@@ -70,7 +72,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   // Stoop on the Horses: on open ground Eagle Riders hold a flank slot no rider fills, and fight cavalry at ×1.25
   r=fight([['Forest Wardens',3],['Eagle Riders',1]],[['Orc Berserkers',3],['Warg Riders',1]],3,'plain');
   ok(r.me.flanks.length===1&&r.me.flanks[0].r.a.type==='Eagle Riders'&&r.me.fly.length===0,'with no rider of its own, the Eagle unit leaves the air for the flank');
-  ok(r.me.face.duels===1&&faced(r.me,'Eagle Riders').every(u=>u.kind==='duel'&&near(u.m,1.25)&&/Stoop on the Horses/.test(u.why)),`it duels the Warg at ×1.25 — ${whyOf(r.me,'Eagle Riders')}`);
+  ok(r.me.face.duels===1&&faced(r.me,'Eagle Riders').every(u=>u.kind==='duel'&&near(u.m,1.25)&&/Stoop on the Horses/.test(facingWords(u.why))),`it duels the Warg at ×1.25 — ${whyOf(r.me,'Eagle Riders')}`);
   r=fight([['Forest Wardens',3],['Stag Riders',1],['Eagle Riders',1]],[['Orc Berserkers',3]],3,'plain');
   ok(r.me.flanks.length===1&&r.me.flanks[0].r.a.type==='Stag Riders'&&r.me.fly.length===1,'a rider fills the slot first; the Eagles stay in the air');
   r=fight([['Forest Wardens',3],['Eagle Riders',1]],[['Orc Berserkers',3]],3,'forest');

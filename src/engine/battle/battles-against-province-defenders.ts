@@ -27,7 +27,6 @@ import {
   rollBattleWidth,
 } from './lines.ts';
 import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, ladderLines } from './ladder.ts';
-import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import {
   pursuitsOfTheBeaten,
   shieldFortHolds,
@@ -1114,19 +1113,27 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     .map((a) => {
       const cmd = [];
       if (MISSILE_ARMIES.has(a.type))
-        cmd.push({ key: 'arch', label: `Archery ${archSkillAtk} ${ladderFm(archMissileBonus)}`, m: archMissileBonus });
+        cmd.push({
+          key: 'arch',
+          reason: { kind: 'archery', level: archSkillAtk, multiplier: archMissileBonus },
+          m: archMissileBonus,
+        });
       if (SEA_TYPES.has(a.type))
-        cmd.push({ key: 'nav', label: `Naval ${navalSkillAtk} ${ladderFm(navalFleetBonus)}`, m: navalFleetBonus }); // Naval lifts fleets on land AND sea
+        cmd.push({
+          key: 'nav',
+          reason: { kind: 'naval', level: navalSkillAtk, multiplier: navalFleetBonus },
+          m: navalFleetBonus,
+        }); // Naval lifts fleets on land AND sea
       else
         cmd.push({
           key: 'tac',
-          label: `Tactical ${ladderFm(tacMulted(effectiveTactBonus, c))}`,
+          reason: { kind: 'tactical', multiplier: tacMulted(effectiveTactBonus, c) },
           m: tacMulted(effectiveTactBonus, c),
         }); // land AND air units (flyers since 2026-09-23c)
       if (_atkIllActive)
         cmd.push({
           key: 'ill',
-          label: `illusory terrain ${ladderFm(illusoryTerrainMult(a.type))}`,
+          reason: { kind: 'illusory terrain', multiplier: illusoryTerrainMult(a.type) },
           m: illusoryTerrainMult(a.type),
         });
       return ladderRow(
@@ -1181,20 +1188,20 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       if (MISSILE_ARMIES.has(a.type))
         cmd.push({
           key: 'arch',
-          label: `Archery ${archSkillDef} ${ladderFm(defArchMissileBonus)}`,
+          reason: { kind: 'archery', level: archSkillDef, multiplier: defArchMissileBonus },
           m: defArchMissileBonus,
         });
       if (SEA_TYPES.has(a.type))
         cmd.push({
           key: 'nav',
-          label: `Naval ${navalSkillDef} ${ladderFm(defNavalFleetBonus)}`,
+          reason: { kind: 'naval', level: navalSkillDef, multiplier: defNavalFleetBonus },
           m: defNavalFleetBonus,
         }); // defender's Naval, land or sea
       const landUnit = !SEA_TYPES.has(a.type); // land AND air units — flyers take Tactical since 2026-09-23c
       if (landUnit && prov.terrain !== 'sea')
         cmd.push({
           key: 'tac',
-          label: `Tactical ${ladderFm(tacMulted(defTactBonus, defHero))}`,
+          reason: { kind: 'tactical', multiplier: tacMulted(defTactBonus, defHero) },
           m: tacMulted(defTactBonus, defHero),
         });
       return ladderRow(
@@ -1314,18 +1321,18 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // 2026-09-24 (Toby): whole-force multipliers per unit BEFORE pre-battle damage (finishSide). These
   // lists are the single source of each side's force product — the ladder prints them as they are.
   const _nAtkFM = [
-    { label: 'morale', m: _npcAtkMorale },
-    { label: 'orders', m: atkOrdN },
-    { label: 'home ground', m: atkHomeBonus },
-    { label: 'fanaticism', m: fanMult },
-    { label: 'discoveries', m: finalAtkMod },
-    { label: 'consecrated ground', m: _consecNPC ? 0.85 : 1 },
+    { reason: 'morale', m: _npcAtkMorale },
+    { reason: 'orders', m: atkOrdN },
+    { reason: 'home-ground', m: atkHomeBonus },
+    { reason: 'fanaticism', m: fanMult },
+    { reason: 'discoveries', m: finalAtkMod },
+    { reason: 'consecrated-ground', m: _consecNPC ? 0.85 : 1 },
   ];
   const _nDefFM = [
-    { label: "defender's position", m: defBonus },
-    { label: 'home', m: homeBonus },
-    { label: 'morale', m: _npcDefMorale },
-    { label: 'orders', m: defOrdN },
+    { reason: 'defenders-position', m: defBonus },
+    { reason: 'home', m: homeBonus },
+    { reason: 'morale', m: _npcDefMorale },
+    { reason: 'orders', m: defOrdN },
   ];
   const _gA = {},
     _gD = {};
@@ -1408,16 +1415,19 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   narrate(narrative, { kind: "the battle's statistics begin" });
   narrateAll(
     narrative,
-    ladderLines('Attacker', cName, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {
+    ladderLines('attacker', cName, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {
       grid: _gA.grid,
-      tact: isLandBattle && _nAtkTm > 1 ? { mult: _nAtkTm, label: `Tactical ${ladderFm(_nAtkTm)}` } : null,
+      tact: isLandBattle && _nAtkTm > 1 ? { mult: _nAtkTm, reason: { kind: 'tactical', multiplier: _nAtkTm } } : null,
     }),
   );
   narrateAll(
     narrative,
-    ladderLines('Defender', _defLabelStat, defsWithStr, defLineWidth, defFlankDisc, _nDefFM, defBaseStr, {
+    ladderLines('defender', _defLabelStat, defsWithStr, defLineWidth, defFlankDisc, _nDefFM, defBaseStr, {
       grid: _gD.grid,
-      tact: prov.terrain !== 'sea' && _nDefTm > 1 ? { mult: _nDefTm, label: `Tactical ${ladderFm(_nDefTm)}` } : null,
+      tact:
+        prov.terrain !== 'sea' && _nDefTm > 1
+          ? { mult: _nDefTm, reason: { kind: 'tactical', multiplier: _nDefTm } }
+          : null,
     }),
   );
   narrate(narrative, {
@@ -1624,7 +1634,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         narrate(narrative, {
           kind: 'a defending unit is destroyed in the rout',
           defendingUnitName: unitRef(_defOwnerNm, a),
-          facedClauseWords: _fc ? `, ${_fc},` : '',
+          whomItFaced: _fc ?? null,
         });
       }
     });
@@ -1692,7 +1702,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         narrate(narrative, {
           kind: 'a defending unit is destroyed in the fighting',
           defendingUnitName: unitRef(defName2.replace(' (wandering)', ''), a),
-          facedClauseWords: _fc ? `, ${_fc},` : '',
+          whomItFaced: _fc ?? null,
         }); // item 8
       }
     });

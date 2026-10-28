@@ -24,7 +24,6 @@ import {
   rollBattleWidth,
 } from './lines.ts';
 import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, ladderLines } from './ladder.ts';
-import { ladderFm } from './a-multiplier-written-as-the-strength-ladder-shows-it.ts';
 import { pursuitsOfTheBeaten, shieldFortHolds, tacMulted, theFractionThePursuitsAdd } from '../units/movement.ts';
 import {
   AERIAL_TYPES,
@@ -588,21 +587,26 @@ export function combatVsChar(turnContext, atk, def, prov) {
       cmd = [];
     const arch = isAtk ? atkArch : defArch,
       archB = isAtk ? atkArchBonus : defArchBonus;
-    if (MISSILE_A.has(a.type)) cmd.push({ key: 'arch', label: `Archery ${arch} ${ladderFm(archB)}`, m: archB });
+    if (MISSILE_A.has(a.type))
+      cmd.push({ key: 'arch', reason: { kind: 'archery', level: arch, multiplier: archB }, m: archB });
     const isFly = FLYING_TYPES.has(a.type),
       isSea = SEA_TYPES.has(a.type);
     if (isSea) {
       const nv = isAtk ? atkNav : defNav,
         nb = isAtk ? atkNavBonus : defNavBonus;
-      cmd.push({ key: 'nav', label: `Naval ${nv} ${ladderFm(nb)}`, m: nb });
+      cmd.push({ key: 'nav', reason: { kind: 'naval', level: nv, multiplier: nb }, m: nb });
     } else if (pvpIsLand) {
       const tm = tacMulted(isAtk ? atkTactBonus : defTactBonus, hero);
-      cmd.push({ key: 'tac', label: `Tactical ${isAtk ? atkTact : defTact} ${ladderFm(tm)}`, m: tm });
+      cmd.push({
+        key: 'tac',
+        reason: { kind: 'tactical at its level', level: isAtk ? atkTact : defTact, multiplier: tm },
+        m: tm,
+      });
     }
     if (isAtk ? _atkIllActiveP : _defIllActiveP)
       cmd.push({
         key: 'ill',
-        label: `illusory terrain ${ladderFm(illusoryTerrainMult(a.type))}`,
+        reason: { kind: 'illusory terrain', multiplier: illusoryTerrainMult(a.type) },
         m: illusoryTerrainMult(a.type),
       });
     return cmd;
@@ -1103,21 +1107,21 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // 2026-09-24 (Toby): whole-force multipliers per unit BEFORE pre-battle damage (finishSide). These
   // lists are the single source of each side's force product — the ladder prints them as they are.
   const _pAtkFM = [
-    { label: 'fanaticism', m: atkFanMult },
-    { label: 'discoveries', m: atkDiscBonus },
-    { label: 'duel morale', m: atkMorale },
-    { label: 'consecrated ground', m: _consecPenalty },
-    { label: 'sanctuary wards', m: atkSanct },
-    { label: 'orders', m: atkOrd },
-    { label: 'home ground', m: atkHomeBonusP },
+    { reason: 'fanaticism', m: atkFanMult },
+    { reason: 'discoveries', m: atkDiscBonus },
+    { reason: 'duel-morale', m: atkMorale },
+    { reason: 'consecrated-ground', m: _consecPenalty },
+    { reason: 'sanctuary-wards', m: atkSanct },
+    { reason: 'orders', m: atkOrd },
+    { reason: 'home-ground', m: atkHomeBonusP },
   ];
   const _pDefFM = [
-    { label: 'fanaticism', m: defFanMult },
-    { label: "defender's position", m: defBonus },
-    { label: 'duel morale', m: defMorale },
-    { label: 'discoveries', m: defDiscBonus },
-    { label: 'sanctuary wards', m: defSanct },
-    { label: 'orders', m: defOrd },
+    { reason: 'fanaticism', m: defFanMult },
+    { reason: 'defenders-position', m: defBonus },
+    { reason: 'duel-morale', m: defMorale },
+    { reason: 'discoveries', m: defDiscBonus },
+    { reason: 'sanctuary-wards', m: defSanct },
+    { reason: 'orders', m: defOrd },
   ];
   const _gA = {},
     _gD = {};
@@ -1189,26 +1193,26 @@ export function combatVsChar(turnContext, atk, def, prov) {
   narrate(narrative, { kind: "the battle's statistics begin" });
   narrateAll(
     narrative,
-    ladderLines('Attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {
+    ladderLines('attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {
       grid: _gA.grid,
       tact:
         pvpIsLand && atkTactBonus > 1
           ? {
               mult: tacMulted(atkTactBonus, atk),
-              label: `Tactical ${atkTact} ${ladderFm(tacMulted(atkTactBonus, atk))}`,
+              reason: { kind: 'tactical at its level', level: atkTact, multiplier: tacMulted(atkTactBonus, atk) },
             }
           : null,
     }),
   );
   narrateAll(
     narrative,
-    ladderLines('Defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {
+    ladderLines('defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {
       grid: _gD.grid,
       tact:
         pvpIsLand && defTactBonus > 1
           ? {
               mult: tacMulted(defTactBonus, def),
-              label: `Tactical ${defTact} ${ladderFm(tacMulted(defTactBonus, def))}`,
+              reason: { kind: 'tactical at its level', level: defTact, multiplier: tacMulted(defTactBonus, def) },
             }
           : null,
     }),

@@ -30,7 +30,8 @@ import {
 } from '../../src/engine/battle/terrain-and-unit-strength.ts';
 import { battleGrid } from '../../src/engine/battle/lines.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
-import { ladderFm } from '../../src/engine/battle/a-multiplier-written-as-the-strength-ladder-shows-it.ts';
+import { ladderFm, theWordsOfAUnitsModifier } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
+import type { AModifierOfAUnitInTheLadder } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { ArmyInABattle, HeroInABattle } from '../../src/engine/army-tables.ts';
 import type { TurnContext } from '../../src/engine/turn/context.ts';
@@ -61,11 +62,11 @@ const G = { players: [{ alignment: 'Pagan', race: 'Human', discoveries: [{ id: '
 const turn = { G } as unknown as TurnContext;
 /** The base strength of `type` at `quality`, as the tables give it. */
 const base = (type: string, quality = 'Average') => Number(UNIT_BASE_STR[type]) * Number(UNIT_Q_MULT[quality]);
-/** The labels armStr names on its ladder for `a`. */
+/** The labels armStr names on its ladder for `a` (the words the prose writes of each modifier armStr records). */
 const labels = (a: ArmyInABattle, h: HeroInABattle | null, terrain: string | null, ctx: Record<string, unknown>) => {
-  const trace: { label: string }[] = [];
+  const trace: AModifierOfAUnitInTheLadder[] = [];
   armStr(turn, a, h, h ? 'Pagan' : 'Neutral', terrain, { enemyForce: [], ...ctx, trace });
-  return trace.map((t) => t.label);
+  return trace.map((t) => theWordsOfAUnitsModifier(t.reason));
 };
 
 describe('the ground and the volleys', () => {
@@ -223,11 +224,11 @@ describe('the ladder rows and a side', () => {
     expect(r.s).toBe(r._u);
     const withGaps = ladderRow(turn, unit('Men-at-Arms'), null, 'Neutral', null, undefined, [
       null,
-      { label: 'a banner', m: 1.2 },
+      { reason: { kind: 'illusory terrain', multiplier: 1.2 }, m: 1.2 },
       undefined,
-      { label: 'nothing', m: 1 },
+      { reason: { kind: 'illusory terrain', multiplier: 1 }, m: 1 },
     ]);
-    expect(withGaps._cmd).toEqual([{ label: 'a banner', m: 1.2 }]);
+    expect(withGaps._cmd).toEqual([{ reason: { kind: 'illusory terrain', multiplier: 1.2 }, m: 1.2 }]);
     expect(withGaps.s).toBe(withGaps._u * 1.2);
   });
   test('a side with no force multipliers, or no options, totals as one with none', () => {

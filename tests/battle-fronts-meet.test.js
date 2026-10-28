@@ -16,6 +16,8 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,1200));
   const w=dom.window; const ev=expr=>w.eval(expr);
+  // A unit's facing holds values since plan P1-12d4: the prose writes its words.
+  const facingWords=why=>ev('theWordsOfWhyAUnitFacesAsItDoes')(why);
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   const deploy=ev('battleDeploy'), RANGE=ev('BATTLE_FRONT_RANGE');
   const BASE={'Shieldwall Levies':8,'Men-at-Arms':12,'Free Lances':10,'Yeoman Longbows':8,'Orc Berserkers':12,'Goblin Horde':6,'Warg Riders':12,'Black Arrows':8,'Cave Trolls':22,'Stone Giants':26};
@@ -52,7 +54,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
       const d=deploy(A,D,{terrain:'plain',roll:7,tacA:tac,tacD:tac,flankA:false,flankD:false,scout});
       const a=span(d.gA), b=span(d.gD);
       ok(a.f===b.f&&a.l===b.l,`five against five (${scout} scouts, Tactical ${tac}): both fronts hold the same columns — attacker ${show(d.gA)} · defender ${show(d.gD)}`);
-      ok(d.gA.face.units.concat(d.gD.face.units).filter(u=>u.place==='front').every(u=>!/nobody opposite|wraps/.test(u.why||'')),'…so no front unit wraps an end or stands with nobody opposite');
+      ok(d.gA.face.units.concat(d.gD.face.units).filter(u=>u.place==='front').every(u=>!/nobody opposite|wraps/.test(facingWords(u.why)||'')),'…so no front unit wraps an end or stands with nobody opposite');
     }
   }
 
