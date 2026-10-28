@@ -159,3 +159,17 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 **No stamp, no guard** (since P1-06c). The data file is bundled into each page that uses it, so it can't be missing
 or older than the page, and a table a page imports that the data file lacks stops the build. Its stamps and the two
 portals' start-up guards are gone.
+
+## An effect reads only what its hook hands it
+
+An effect of the rule registry (`src/engine/rules/`, [above](#the-rule-registry)) reads its
+stage's facts and its content row, and returns a value: a factor, a multiplier and its words, a line or nothing. It
+imports nothing but `src/engine/rules/`, `src/engine/rules-on-plain-values/` and `src/content/` (`npm run lint:arch`
+refuses the rest), so it can't draw a die (`kcRng`), read the turn's state or write a line: what it needs, its stage hands
+it. A set it needs is built from content (`KC_UNIT_CLASS`, a row's `counts`) or handed by the stage (whether the enemy
+fields ranged units, from the ladder's missile set), never imported from `battle/`. Another ability is asked about by
+its slug, never by a unit's name.
+
+The stage types live in the registry's own file, which holds code. **A file that only `import type` reaches is in no
+bundle**: the build's checks (`tests/static/pages-build.test.ts`, "none is left out", and the engine paths in
+`tests/static/harness.test.ts`) refuse it. Only `src/globals.d.ts` and `src/schemas/` may hold types alone.

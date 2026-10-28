@@ -135,3 +135,133 @@ site, built from the pull request by a job of its own that may only read, is pub
 pointing at the staging database (`.github/workflows/staging.yml`: its `build` job, then its `staging` job). One pull request is on staging at a time, and its PR comment says so;
 merging changes nothing there. That `kc-config.js` also carries `deployed: {pr, sha}`, so every page's
 footer says which pull request and commit is on staging, linking to the pull request.
+
+## `select('*')` on big tables
+
+`games.game_state` is hundreds of KB per game, and `game_players.turn_report` tens of KB per realm.
+Selecting `*` reads those columns from disk every time, however little of the row is used. In Sept 2026
+a once-a-minute watcher doing exactly that drained the database's Disk IO budget (~810 KB per tick,
+down to ~1 KB after the fix).
+
+- Pollers, lists and anything that runs often select named columns (`gamesListCols()`) and read
+  summaries from `games.meta`.
+- Load the full world only when it's really needed (resolving a turn, opening one game), once.
+- Before adding a big column or a new poller, grep every `.select('*')` on that table. The poller is
+  the multiplier.
+- Lint refuses every column of `games`, `game_players`, `turn_logs` or `profiles` (`*`, also inside an embedded
+  `games(*)`, or `.select()` with no list, as after an insert), and `profiles`' `email`
+  (`kc/big-tables-and-profiles-are-read-by-named-columns`, P1-13c). The 17 reads of every column that were there when
+  the rule came in are in `eslint-suppressions.json`, for P1-17's access layer to take out: `db/telemetry.ts` (games
+  with `game_players(*)`); the GM page's `game-detail.ts` (opening a game, `*, game_players(*)`), `game-list.ts`
+  (after creating a game), `turn-log.ts` (the turn log), `turn-shell.ts` (the turn's game and its realms, 2) and
+  `turn-zero.ts` (3); the player page's `game-lists.ts` (its slots, and two of `games`, 3),
+  `join-and-chronicle.ts` (after joining, the chronicle's two turn logs, a game: 4) and `report.ts` (the report).
+- The leaderboard reads `game_records` with `*`. Since Oct 2026 a row keeps every realm's best for each
+  record, not just the game's: roughly 10–40 KB a row, growing with the number of realms. Fine for now;
+  if it gets slow, give the list tabs a lighter select.
+
+## A new column must be optional at the write site
+
+Since P0-17 the live site deploys only after its migration, but a site pull request labelled `staging`
+without the database pull request it needs (not stacked on it) meets a staging database without the
+change, and old copies of the site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
+(as `probeGameMeta` does), and spread `{}` instead of the field while it's absent (`metaPatch`). Readers
+prefer the new column and fall back to the old source. Prove it with a test that hides the column
+(`MISSING_COLS` in `tests/lib/stub-db.js`), as `tests/meta-missing-turn.test.js` does. This is why database
+and site changes go in separate PRs ([supabase/README.md](../../supabase/README.md#database-and-site-changes-go-separately)).
+
+## A site change that needs a database change
+
+Every page that uses the database (both portals and the Hall of Fame) declares `KC_DB_MIN`, the oldest
+database version it works with (a migration's 14-digit version), and starts through
+`kcDbGuard(sb, KC_DB_MIN)` (`src/db/kc-db-guard.ts`, P0-34). Before the first read, it asks the database for
+its version (`kc_db_version()`, the newest migration applied). On an older database, or one without the
+function, or no answer after one retry, the page stops with "The game is being updated" and nothing is read
+or written.
+- **Raising `KC_DB_MIN` is how a site PR says "needs migration X".** Use it when the page can't sensibly
+  work without the change; otherwise cope ([above](../traps.md#a-new-column-must-be-optional-at-the-write-site)).
+  Raise it in every page that needs the change, not only the one you edited.
+- `npm test`'s `db-min` check fails if a `KC_DB_MIN` is newer than the newest file in
+  `supabase/migrations/`: the migration must be merged, or the site branch stacked on its pull request.
+- Never lower `KC_DB_MIN` to get a page past the stop. It means the database is missing something the page
+  relies on.
+- The GM tab's reload before a due turn (`refreshIfNewerBuild`) boots a newer GM page when one is ready, so the
+  check runs again before that page's first turn.
+- Tests: every stand-in database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.js`).
+  `bootJsdom(..., {dbVersion})` sets another answer (an older version, `null` for a missing function, or
+  `'offline'`), as `tests/db-guard.test.js` does.
+
+## `game_state` is a string
+
+On a `games` row, `game_state` is a JSON **string**. Always use `parseGameState(game)`; never read fields
+off it directly. A function that guards with `typeof state !== 'object'` turns a raw string into a
+silent no-op. Before adding a new reader, grep for `game_state` reads that don't parse.
+
+## Hooks in the turn path must never fail a turn
+
+Telemetry and Hall-of-Fame writes inside `runTurn` are each wrapped in `try { … } catch {}`. That's a
+contract: a statistics bug must never cost a turn. The price is that a broken hook is silent, so test
+hooks by checking the rows they write.
+
+- Read hook values from the scope they're in. The NPC and player-vs-player combat paths name the same
+  thing differently.
+- Coerce numbers with `Number()` and `isFinite`, not `|| 0`: `NaN || 0` is `0`, but `'nonsense' || 0`
+  is `'nonsense'`, which reaches the page as a literal "NaN".
+- A render bug that only produces "undefined" throws nothing. Page tests scan the rendered HTML for
+  `undefined`, `NaN` and `[object Object]`.
+
+## Other realms' slots come only from `get_game_slots`
+
+The player portal reads its **own** `game_players` row directly, and every other realm's slot only through
+`fetchGameSlots` (`rpc('get_game_slots')`, P0-20): number, bot or not, orders in or not, alignment while in
+setup. From P0-21 the database answers a direct read of another realm's row with nothing, so a new feature that
+reads other slots directly would quietly see only its own. If it needs more than `get_game_slots` gives, that's
+a database change first. `tests/other-realms-slots.test.js` switches P0-21's rule on in the stand-in database
+(`RULES.ownSlotsOnly`) and fails on any read that asks for another realm's row.
+
+## Another game reads as nothing
+
+From P2-16 (ruling D-10), an account reads a running or finished game, and its turn logs, only if it runs the game
+or holds a realm in it; the Overlord reads every game. A game in setup is read by any signed-in account if it's
+public, or by the accounts it invites if it's private. Asking for any other game gives no row and no error, so a new
+feature that reads another game directly would quietly find nothing. `tests/games-for-their-players.test.js`
+switches the rule on in the stand-in database (`RULES.ownGamesOnly`) and fails on any read that asks for another
+game or its logs.
+
+The same goes for **access rules that look at `games`**: a rule's subquery on another table runs under the caller's
+own read rules on that table. "Is there no such game?" asked that way is also true of a game the caller can't read.
+Ask a `security definer` function instead, as the Hall of Fame record rules ask `game_exists`.
+
+## A migration waiting for approval holds every deploy
+
+A merge that adds a migration stops at `migrate-production` until Toby approves it, and the site deploys
+only after that ([supabase/README.md](../../supabase/README.md#how-a-migration-goes-live)). Deploys run one at a
+time, so **every later merge waits behind it**, site-only fixes included, and ships with it once approved.
+- Merge a migration when Toby can approve it soon, not ahead of an urgent site fix.
+- If he rejects it, the run fails and nothing deploys; the next push to `main` asks again, because the
+  migration is still new compared with the live site. So follow a rejection quickly with a pull request
+  whose migration undoes it: production then gets both in order and ends up unchanged
+  ([supabase/README.md](../../supabase/README.md#how-a-migration-goes-live)). (Deleting the rejected migration's
+  file also works, and CI allows it with a warning; staging is rebuilt for each pull request anyway.)
+- Approval requests expire after 30 days.
+
+## A new table is open to signed-out visitors until its migration says otherwise
+
+Supabase gives every new table, sequence and function in `public` to every API role, signed-out visitors
+(`anon`) included, with every privilege (`truncate` too, which ignores the access rules). A `grant` line in a
+schema file doesn't take those away: the file must say `REVOKE ALL … FROM "anon"` and `… FROM
+"authenticated"` first, then grant what the site uses
+([supabase/README.md](../../supabase/README.md#changing-the-structure)). Without the revokes, the generator
+doesn't just leave a new table open: it **gives back** what an earlier migration took away, the next time
+anyone generates a migration (it nearly happened in P0-29). `supabase/tests/database/00_privileges.test.sql`
+checks every table, sequence and function, so either mistake turns the `db` check red.
+
+## A stacked pull request merges into its base branch, not `main`
+
+A site pull request stacked on its database pull request ([staging.md](../staging.md#a-change-that-needs-both))
+targets the database change's branch. GitHub moves it onto `main` only when that branch is **deleted**
+after its merge. If the branch stays, merging the stacked pull request puts it on the leftover branch: GitHub
+says "Merged", nothing deploys (P0-20's site half and P0-21 did this, and were opened again as #56 and #57).
+The `merges-into-main` check (`.github/workflows/merges-into-main.yml`) is red on any pull request whose base
+isn't `main`; don't merge one while it's red. When you open a stacked pull request, say in its first line
+which pull request must be merged first.

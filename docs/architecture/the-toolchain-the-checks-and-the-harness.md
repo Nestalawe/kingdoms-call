@@ -129,3 +129,187 @@ cancelled run's `ci` job fails, and staging's wait for CI reads the newest run a
 its own, its run's id, so it is never cancelled.
 Every night `.github/workflows/nightly.yml` (P1-04d) runs `npm run test:full` (the fuzz, the invariants, the leak check
 and the property tests at full size) with a random seed it prints; a red night blocks nothing.
+
+## String-anchor harness hooks
+
+They are gone. Until then several tests reached inside the GM portal by matching **exact source lines**
+of the built page and injecting code there, and others cut code out of a page between two exact strings, or matched
+its text with a regular expression: a reformat (Prettier, P1-09c) or the module switch would have broken them,
+some silently. Now no test reads a page's source by line:
+
+- **A test that needs a piece of the site's code, or its words, asks [tests/lib/source.ts](../../tests/lib/source.ts)**,
+  which reads `src/` by its syntax tree (TypeScript's parser, for `.js` and `.ts` alike): a file's named declarations
+  as a script (`sourceOf`, `sourceFrom`, `scriptOf`, `statementsBetween`), the values it declares
+  (`initializersOf`, `entriesOf`), the strings it holds (`stringsOf`, `pageText`), its calls (`callsTo`), or its code
+  in one canonical layout for a regular expression (`compactOf`, `compactPage`, `compactDeclaration`). The answers
+  are the same however the file is laid out (`tests/unit/the-source-read-by-its-syntax-tree.test.ts` checks every
+  file as written and after Prettier). A comment is read as written (`pageSource`).
+- **A test that must change a function's behaviour stands it in where it runs:** on the engine's modules, with
+  `vi.spyOn` on the module that exports it (plan P1-14a; it reaches calls from other files only:
+  [below](../traps.md#a-stand-in-on-a-module-reaches-calls-from-other-files-only)), or, for the tests still on the engine's bare
+  vm (`tests/lib/engine.ts`; a whole turn there with `tests/lib/scenario-in-the-vm.ts`), there, where a top-level
+  function can be replaced from outside (`W.trySkillGain = …`). On a booted page it can't be, once the page's files are
+  modules: a
+  test that needs a page to fail where nothing outside can make it fail boots a page built from a planted copy of
+  `src/` (`plantedSite`, with `plantAtStart` or `plantBefore`, found by the syntax tree too).
+- Don't add a test that matches a line, an indent or a quote style of the site's code, or that writes to a page's
+  function or top-level variable from outside (`W.fn = …`, `W.eval('flag=true')`): after the module switch it would
+  do nothing, and the test could pass without testing anything.
+- **A check that picks the site's files by their name must fail when it reads none.** When the files became `.ts`
+ , `html-lint` and `sort-comparators`, which read every `src/**/*.js`, still passed reading only the templates:
+  `html-lint`'s stale allowlist entry gave it away. Both are ESLint rules now (P1-13c and P1-13d), and
+  `tests/static/harness.test.ts` checks every file of `src/` gets them. A new check of `src/` reads the pages' modules,
+  or checks it does.
+
+## A test on the engine's modules loads the whole engine first
+
+A test that imports the engine's functions from their modules imports
+[tests/lib/the-whole-engine.ts](../../tests/lib/the-whole-engine.ts) first. Some files change other files' values as they
+load: `engine/items/equipment.ts` re-tiers two of the content's tables (`ALL_MAGIC_ITEMS_P` and `LEGENDARY_ITEMS_P`).
+A test that imports only the data file, or only the files one function reaches (`world/generate.ts` reaches 44 of the
+116 files of `src/engine/` and `src/views/`), reads those tables as they were before, which neither the GM page nor
+the engine's bundle ever does. `tests/unit/engine-loads.test.ts` checks that, with the whole engine loaded, every
+export of the modules holds what the bundle holds.
+
+The modules also keep state between calls (the name pools, `_usedHeroNames` and the like): a world depends on the
+worlds made before it in the same process. A test whose outcome depends on the dice gives itself fresh modules:
+`vi.resetModules()`, then `await import(…)` of the whole engine and of what it calls, then `kcRng.seed(…)`
+([tests/lib/a-staged-turn-on-the-engines-modules.ts](../../tests/lib/a-staged-turn-on-the-engines-modules.ts) does). Then
+`-t "<name>"` repeats it. A file of tests on tables and pure functions imports statically: Vitest gives each file
+fresh modules.
+
+## A stand-in on a module reaches calls from other files only
+
+`vi.spyOn(module, 'name')` on the module that exports a function replaces it for the calls other files make, since
+Vitest reads an imported name from the exporting module each time. A call inside the function's own file goes straight
+to the real one. Found in P1-14's scoping: a spy on `d100` saw 10,362 calls in eight bot turns and changed the game when
+it answered 1, but `pctRoll`, in `d100`'s own file, kept calling the real `d100`. In the engine's vm a stand-in
+(`W.d100 = …`) reaches every caller, so a test moved off the vm can lose its stand-in without a sound.
+
+- Show the stand-in is reached: a test that stands one in has a check that fails when it isn't (its planted fault
+  turns it red).
+- A function called inside its own file is staged around (the state, or the dice with `kcRng.use`), not stood in.
+- `restoreMocks` (`vitest.config.mts`) puts every spy back after each test.
+
+## A fixed lint finding must leave the suppressions
+
+Since P1-13b every lint rule is an error. What the rules found when they came in (809 findings) is listed in
+`eslint-suppressions.json`: ESLint's bulk suppressions, which say, per file and rule, how many findings that file may
+hold. ESLint's command line reads it (`npm run lint`, `npm run check`, the edit hook); its API (`new ESLint()`, as
+`tests/static/harness.test.ts` uses) doesn't. The ratchet counts the list (`eslintSuppressions`), so it only falls.
+
+- **A new finding fails**, even of a rule the file already has suppressed findings of. Once a file holds more than
+  its count, ESLint reports every finding of that rule in the file, not only the new one: `src/db/game-meta.ts` may
+  hold five unused variables, and a sixth shows all six. Fix the new one.
+- **A fixed finding fails too, until it leaves the list.** Fix one of the five and lint stops with "There are
+  suppressions left that do not occur anymore" (exit 2). Run `npx eslint --prune-suppressions`, which lowers the
+  count, then `npm run ratchet -- --update`, and commit both with the fix. Never `--pass-on-unpruned-suppressions`.
+- **Moving code moves its findings.** A function moved to another file takes its findings with it: the old file
+  holds fewer (prune it), the new one more (it fails). Run `npx eslint --suppress-all <new file>` and
+  `npx eslint --prune-suppressions`: the total stays the same, and the ratchet refuses a rise.
+
+## A sort comparator must give the same answer every time
+
+`.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is
+not a shuffle. How often the engine calls the comparator, and so the order it produces and how many
+random numbers it uses, is up to the JavaScript engine. So the same seed gives a different world on a
+newer Node or Chrome. In Oct 2026 world generation came out different on Node 26 than on Node 24,
+because of two such sorts.
+
+- To shuffle, use `shuffleP(arr, rnd)` (Fisher-Yates; `rnd` defaults to `Math.random`).
+- To order randomly within ties, shuffle first, then sort by the real key alone: the sort is stable, so
+  ties keep their shuffled order.
+- Lint refuses a random or argument-less comparator (`kc/no-random-or-argument-less-sort-comparator`, P1-13c), in
+  `src/`, `public/`'s scripts and the templates' scripts.
+
+## String-anchor harness hooks
+
+They are gone. Until then several tests reached inside the GM portal by matching **exact source lines**
+of the built page and injecting code there, and others cut code out of a page between two exact strings, or matched
+its text with a regular expression: a reformat (Prettier, P1-09c) or the module switch would have broken them,
+some silently. Now no test reads a page's source by line:
+
+- **A test that needs a piece of the site's code, or its words, asks [tests/lib/source.ts](../../tests/lib/source.ts)**,
+  which reads `src/` by its syntax tree (TypeScript's parser, for `.js` and `.ts` alike): a file's named declarations
+  as a script (`sourceOf`, `sourceFrom`, `scriptOf`, `statementsBetween`), the values it declares
+  (`initializersOf`, `entriesOf`), the strings it holds (`stringsOf`, `pageText`), its calls (`callsTo`), or its code
+  in one canonical layout for a regular expression (`compactOf`, `compactPage`, `compactDeclaration`). The answers
+  are the same however the file is laid out (`tests/unit/the-source-read-by-its-syntax-tree.test.ts` checks every
+  file as written and after Prettier). A comment is read as written (`pageSource`).
+- **A test that must change a function's behaviour stands it in where it runs:** on the engine's modules, with
+  `vi.spyOn` on the module that exports it (plan P1-14a; it reaches calls from other files only:
+  [below](../traps.md#a-stand-in-on-a-module-reaches-calls-from-other-files-only)), or, for the tests still on the engine's bare
+  vm (`tests/lib/engine.ts`; a whole turn there with `tests/lib/scenario-in-the-vm.ts`), there, where a top-level
+  function can be replaced from outside (`W.trySkillGain = …`). On a booted page it can't be, once the page's files are
+  modules: a
+  test that needs a page to fail where nothing outside can make it fail boots a page built from a planted copy of
+  `src/` (`plantedSite`, with `plantAtStart` or `plantBefore`, found by the syntax tree too).
+- Don't add a test that matches a line, an indent or a quote style of the site's code, or that writes to a page's
+  function or top-level variable from outside (`W.fn = …`, `W.eval('flag=true')`): after the module switch it would
+  do nothing, and the test could pass without testing anything.
+- **A check that picks the site's files by their name must fail when it reads none.** When the files became `.ts`
+ , `html-lint` and `sort-comparators`, which read every `src/**/*.js`, still passed reading only the templates:
+  `html-lint`'s stale allowlist entry gave it away. Both are ESLint rules now (P1-13c and P1-13d), and
+  `tests/static/harness.test.ts` checks every file of `src/` gets them. A new check of `src/` reads the pages' modules,
+  or checks it does.
+
+## A test on the engine's modules loads the whole engine first
+
+A test that imports the engine's functions from their modules imports
+[tests/lib/the-whole-engine.ts](../../tests/lib/the-whole-engine.ts) first. Some files change other files' values as they
+load: `engine/items/equipment.ts` re-tiers two of the content's tables (`ALL_MAGIC_ITEMS_P` and `LEGENDARY_ITEMS_P`).
+A test that imports only the data file, or only the files one function reaches (`world/generate.ts` reaches 44 of the
+116 files of `src/engine/` and `src/views/`), reads those tables as they were before, which neither the GM page nor
+the engine's bundle ever does. `tests/unit/engine-loads.test.ts` checks that, with the whole engine loaded, every
+export of the modules holds what the bundle holds.
+
+The modules also keep state between calls (the name pools, `_usedHeroNames` and the like): a world depends on the
+worlds made before it in the same process. A test whose outcome depends on the dice gives itself fresh modules:
+`vi.resetModules()`, then `await import(…)` of the whole engine and of what it calls, then `kcRng.seed(…)`
+([tests/lib/a-staged-turn-on-the-engines-modules.ts](../../tests/lib/a-staged-turn-on-the-engines-modules.ts) does). Then
+`-t "<name>"` repeats it. A file of tests on tables and pure functions imports statically: Vitest gives each file
+fresh modules.
+
+## A stand-in on a module reaches calls from other files only
+
+`vi.spyOn(module, 'name')` on the module that exports a function replaces it for the calls other files make, since
+Vitest reads an imported name from the exporting module each time. A call inside the function's own file goes straight
+to the real one. Found in P1-14's scoping: a spy on `d100` saw 10,362 calls in eight bot turns and changed the game when
+it answered 1, but `pctRoll`, in `d100`'s own file, kept calling the real `d100`. In the engine's vm a stand-in
+(`W.d100 = …`) reaches every caller, so a test moved off the vm can lose its stand-in without a sound.
+
+- Show the stand-in is reached: a test that stands one in has a check that fails when it isn't (its planted fault
+  turns it red).
+- A function called inside its own file is staged around (the state, or the dice with `kcRng.use`), not stood in.
+- `restoreMocks` (`vitest.config.mts`) puts every spy back after each test.
+
+## A fixed lint finding must leave the suppressions
+
+Since P1-13b every lint rule is an error. What the rules found when they came in (809 findings) is listed in
+`eslint-suppressions.json`: ESLint's bulk suppressions, which say, per file and rule, how many findings that file may
+hold. ESLint's command line reads it (`npm run lint`, `npm run check`, the edit hook); its API (`new ESLint()`, as
+`tests/static/harness.test.ts` uses) doesn't. The ratchet counts the list (`eslintSuppressions`), so it only falls.
+
+- **A new finding fails**, even of a rule the file already has suppressed findings of. Once a file holds more than
+  its count, ESLint reports every finding of that rule in the file, not only the new one: `src/db/game-meta.ts` may
+  hold five unused variables, and a sixth shows all six. Fix the new one.
+- **A fixed finding fails too, until it leaves the list.** Fix one of the five and lint stops with "There are
+  suppressions left that do not occur anymore" (exit 2). Run `npx eslint --prune-suppressions`, which lowers the
+  count, then `npm run ratchet -- --update`, and commit both with the fix. Never `--pass-on-unpruned-suppressions`.
+- **Moving code moves its findings.** A function moved to another file takes its findings with it: the old file
+  holds fewer (prune it), the new one more (it fails). Run `npx eslint --suppress-all <new file>` and
+  `npx eslint --prune-suppressions`: the total stays the same, and the ratchet refuses a rise.
+
+## A sort comparator must give the same answer every time
+
+`.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is
+not a shuffle. How often the engine calls the comparator, and so the order it produces and how many
+random numbers it uses, is up to the JavaScript engine. So the same seed gives a different world on a
+newer Node or Chrome. In Oct 2026 world generation came out different on Node 26 than on Node 24,
+because of two such sorts.
+
+- To shuffle, use `shuffleP(arr, rnd)` (Fisher-Yates; `rnd` defaults to `Math.random`).
+- To order randomly within ties, shuffle first, then sort by the real key alone: the sort is stable, so
+  ties keep their shuffled order.
+- Lint refuses a random or argument-less comparator (`kc/no-random-or-argument-less-sort-comparator`, P1-13c), in
+  `src/`, `public/`'s scripts and the templates' scripts.

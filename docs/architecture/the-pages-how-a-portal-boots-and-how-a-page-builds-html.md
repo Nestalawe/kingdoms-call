@@ -104,3 +104,85 @@ Every page builds its HTML this way. The lint rule `kc/html-is-built-only-throug
 P1-13d) refuses HTML built any other way, in the editor, in `npm run lint` and in CI, and each page that builds HTML
 from data has a hostile-name test. Its reviewed exceptions are `HTML_EXCEPTIONS` in `eslint.config.js`, each with its
 reason; one that matches nothing is itself a finding. Mistakes to avoid: [traps.md](../traps.md#html-is-built-only-through-kchtml).
+
+## Nothing is on `window` but `globals.ts`
+
+The site's code is ES modules: a module's top-level names are its own, so an inline `on…="…"` handler, a
+browser spec's `page.evaluate` or a test's `W.eval` reaches only what the page puts on `window`. Each script page does
+that in one file, `src/ui/<page>/globals.ts`, the last its entry imports.
+
+- **A function or a constant a handler calls or a test reaches goes on a list** in `globals.ts`, the handlers' or the
+  tests', with the file that declares it, and is imported there.
+- **A variable a test (or a handler) reads or writes is a declared global**, `globalThis.<name> = <value>;` where it is
+  declared: a list copies a value once, and a variable's copy goes stale.
+- **Name it as code.** `page-globals` reads the code a test hands a page: `typeof buildGameRecords` is read, a name in a
+  string (`['buildGameRecords'].map(n=>eval(n))`) isn't, and the spec then fails only in Chromium.
+- **Don't stand a page function in from a test** (`W.f = …`): the page's own calls never see the stand-in, and the test
+  passes without testing anything. Stage what the function reads instead (the dice, `kcRng.use(…)`; the browser's
+  `fetch` or timers; a declared global's fields), stand it in in the engine's `vm` (`tests/lib/scenario-in-the-vm.ts`),
+  or build a page from a planted copy (`plantedSite`, `tests/lib/source.ts`). `npm test`'s `page-globals` fails on a
+  name missing from a list, a variable that isn't a declared global, or a page stand-in.
+- **jsdom is looser than a browser.** `tests/lib/boot.js` runs the bundle as a classic script, so in jsdom every
+  top-level function and `var` of the bundle is on `window`, listed or not: a check that passes in jsdom can fail in
+  Chromium. `page-globals` is what keeps the two the same.
+- **In the engine's `vm`** (`tests/lib/engine.ts`) the bundle's top-level names are the context's globals, so
+  `vm.runInContext('NAME', engine)` reads any of them, and `engine.f = …` stands a top-level function in (not a
+  `const`: [A lifted helper takes the turn's context first](../traps.md#a-lifted-helper-takes-the-turns-context-first)). Assert that a table was actually read, i.e. is
+  non-empty, before asserting anything about its contents.
+- jsdom has no `innerText`; use `textContent`.
+
+## HTML is built only through `kcHtml`
+
+Every name, message and record on screen was typed by someone, so it goes into a page as text (P0-19,
+[above](#how-a-page-builds-html)). The lint rule `kc/html-is-built-only-through-kc-html`
+(P1-13d; it replaced `html-lint`) catches most mistakes as you write them; these ones it can't, or they cost time:
+
+- **Markup in a value is shown as text.** In ``kcHtml`<td>${won?'<span class="pill">won</span>':''}</td>` `` the pill
+  comes out as `<span…` on screen. Make the markup `kcHtml` too: ``${won?kcHtml`<span class="pill">won</span>`:''}``.
+  The same goes for a helper that returns a plain string of markup, for a table of fixed text with markup in it (the
+  player portal's `SKILL_INFO`: write those entries as ``kcHtml`…` ``), and for an entity written in data (`'Hosts &amp;
+  armies'` now shows `&amp;`: write `&`). An attribute put in as a value breaks the same way: in
+  ``kcHtml`<div${dim?' style="opacity:.8"':''}>` `` the quotes are escaped, so write ``${dim?kcHtml` style="opacity:.8"`:''}``.
+  The lint rule can't see either mistake; `same-dom.js` (below) finds it on the screens a tour visits.
+- **Never join `kcHtml` with `+`, `+=` or `.join('')`.** Each makes a plain string, which the next `kcHtml` escapes,
+  so the markup shows as text. Collect pieces in an array and put the array in: ``kcHtml`<ul>${rows}</ul>` ``.
+  The lint rule sees this only when `kcHtml` is written in the expression: `row(a)+row(b)`, where `row` returns `kcHtml`, and
+  `.join(', ')` on a list of `kcHtml` pass it, and so do `.map(…).filter(Boolean).join('')`, `.flatMap(…).join('')`
+  and `Array.from(…).join('')`. In the player portal, a list with a separator goes in as `kcJoinP(list, ', ')` (the
+  separator is text; write ``kcHtml`<br>` `` for markup).
+- **A template with no markup of its own still needs `kcHtml` if a value in it is `kcHtml`.** In
+  ``chanceLine(`Success: ${pct(n)}`)``, where `pct` returns `<strong>`, the untagged template makes a plain string and
+  the bold shows as text. Tag it: ``chanceLine(kcHtml`Success: ${pct(n)}`)``. The lint rule only looks at templates
+  with markup in them.
+- **A helper whose result goes straight into `innerHTML` returns `kcHtml` on every path**, even a line with no
+  markup: `el.innerHTML=note(c)` reads a plain string as HTML, names and all. The orders' `exploreProjectionNote` is
+  one; the lint rule sees the sink, not what the helper returns.
+- **Markup read back as a string.** Code that searches the markup it built (the Move field finds the option that
+  opens selected with a regular expression) reads ``String(kcHtml`…`)``, which is the markup, escaped values and all.
+- **An empty list is still true.** `html||'Nothing yet'` worked while `html` was a string; once it's an array (or
+  `kcHtml`, which is always an object), the fallback never shows. The orders were full of it: `opts?select:input`,
+  `if(!charOpts)`, `if(mercRows)`. Test `html.length`, and return `''` from a helper
+  that has nothing to show.
+- **Fixed text with bold that a helper splits.** The player portal's `bulletizeDesc` splits a description into
+  sentences, so its tables write bold as `**bold**`, not `<strong>`; it shows the text as text and turns each
+  `**…**` into `<strong>`.
+- **In `runTurn`, `msg` may be the watcher's banner.** In an automatic run, every message given to `msg.innerHTML` is
+  also put inside the watcher's `kcHtml` banner, so each one is `kcHtml`, even a fixed one: a plain string shows its tags
+  there as text.
+- **No `kcEsc` (or an older escaper) inside `kcHtml`.** The value is escaped twice and `&` shows as `&amp;`.
+- **`kcArg` keeps a value's type.** `onclick="f('${id}')"` passed a string; `onclick="f(${kcArg(id)})"` passes `id` as
+  it is, so a numeric id now arrives as a number. Write `kcArg(String(id))` where the handler compares strings.
+- **`kc-safe.ts`'s four helpers are bundled into each page** (since P1-09d), so a page and its helpers are always the
+  same build; since P1-06b the bundle's name follows its content, so a page always gets its own bundle.
+- **A test that runs a slice of a page in `vm`** (the Hall of Fame record tests do) must load `kc-safe.ts` into its
+  context first if the slice calls the helpers (`scriptOf('ui/shared/kc-safe.ts')`, `tests/lib/source.ts`).
+- **Show it looks the same.** Converting a page must not change it for ordinary names: run
+  `node tests/tools/same-dom.js <main's site>` and put its output in the pull request.
+- **An exception goes in `HTML_EXCEPTIONS` (`eslint.config.js`)** with a one-line reason, for Theo to review: the
+  file, the check and a piece of the code it refuses. The rule is strict: no page may build HTML outside `kcHtml` /
+  `kcEsc`, and an exception that matches nothing fails, so the list can't go stale. The ratchet counts the list
+  (`allowlistEntries`), so it only shrinks.
+- **A `?:` followed by `+` adds the tail to one branch only.** In `h.innerHTML=!ok?'Why not.':'Who reads it.'+' 12 left.'`
+  the tail belongs to the second branch. Converting it to ``kcHtml`${!ok?…:…} 12 left.` `` adds it to both. Keep each branch
+  whole: ``!ok?kcHtml`…`:kcHtml`… 12 left.` ``. `same-dom.js` finds it when a tour reaches both branches (it did, in the player
+  portal's Dispatches).

@@ -207,3 +207,62 @@
 - A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and
   `botWorld` in `tests/lib/engine.ts`, or on the engine's modules
   ([traps.md](../traps.md#a-lifted-helper-takes-the-turns-context-first)).
+
+## Post-commit work in `runTurn`
+
+The one `try` in `runTurn`, the turn's shell (`src/ui/gm/turn-shell.ts`), runs from the load through `resolveTurn`
+to the conditional save and on to the reports. Everything after the save (reports, `turn_logs`, telemetry) runs
+after the turn is already resolved and stored. A throw there must not restore orders, re-flag `orders_submitted`,
+or let the watcher retry the turn: that combination once made live games resolve themselves once a minute.
+
+- `_turnCommitted` marks that the save succeeded. Any code added after the save must respect it.
+- **The reports are built after the save, never inside `resolveTurn`**. `resolveTurn` returns the Spy-stealth
+  step and what the reports read (`whatTheReportsRead`, P1-12b3; the views' `buildReports` builds them from
+  it: [Views never write](../traps.md#views-never-write)), and the shell calls them only once `_turnCommitted` is set. A report built before the save would
+  make every report bug a failed turn: the orders put back and the turn tried again after every cooldown, for as
+  long as the tab stayed open. `turn-shell`'s post-save guard plants a throw in `buildTurnReport` and checks that
+  the turn stays saved.
+- A save that answers with an error isn't proof that nothing was saved: a request can time out after the
+  database committed it. The catch reads the game's turn again before it restores anything.
+- `runTurn` **returns** `{ok, committed, conflict, error}` on every path; it doesn't throw. Callers must
+  check the return value. A `try/catch` around the call almost never fires. A new early exit returns an
+  outcome too, and `tests/page/turn-shell.test.ts` holds each failure's outcome.
+- A retry loop around a deterministic engine needs a cooldown, not a retry (`_autoFailUntil`).
+
+## Dice come from `kcRng()`
+
+Every random number the GM portal's own code draws comes from `kcRng()` (`src/engine/rng.ts`, P1-07): one sfc32
+generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.js`) or, on the
+live site, from `crypto.getRandomValues`. Each turn rolls its own dice: the turn's shell draws a seed from
+the page's dice and hands it to `resolveTurn`, which lends itself `kcRngStream(seed)` with `kcRng.use`, once for the
+turn and once for the Spy-stealth step, giving the dice in use back after each. The reports (the views'
+`buildReports`, since P1-12b3) are lent none: they draw none. Nothing in the engine or its views reads the time: only the
+turn's shell does, through `kcClock()` (`src/engine/clock.ts`, which reads `Date.now()` when called), to stamp when
+the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Math.random` that throw.
+
+- Don't write `Math.random` anywhere in `src/` (but `rng.ts`) or in `public/`'s scripts, or `Date` in `src/engine/`,
+  `src/views/`, `src/content/`, `src/shared/` or `src/schemas/` (but `clock.ts`): lint refuses it, in your editor and
+  in `npm run lint` (P1-13c; `window.Math.random` too). Pass the generator as `kcRng` (e.g.
+  `shuffleP(list, kcRng)`); a date is `kcClock.date()`. The page's own screens (deadlines, "x minutes ago") still read
+  `Date`.
+- Adding, removing or moving one draw shifts every draw after it, so every balance game changes
+  ([Order is data](../traps.md#order-is-data)). A pure move keeps each draw where it was.
+- A test fixes dice through the page's hook, never through the page's `Math.random`: nothing in `src/` reads it, so
+  such a test would pin nothing and still pass. `const was=W.kcRng.use(()=>0.5); try{ … } finally{ W.kcRng.use(was); }`
+  draws from your function for a while; `W.kcRng.seed(n)` starts again from seed `n`.
+- **Pinning the page's dice doesn't pin a turn's**. `runTurn` takes one number from them for the turn's seed
+  and plays the turn on dice of its own, so a test that pins the page's dice around `runTurn` fixes only that seed. A
+  test whose outcome rests on the dice is restaged instead: stage the state so that no roll decides it
+  (`mercenary-ids` hires both bands back rather than leaving one in the pool, where it may retire at the end of the
+  turn). To run a turn on chosen dice, call `resolveTurn` in Node with no seed and `kcRng.use` around it
+  (`turn-shell`'s same-result test), or hand it the seed (`the-turns-own-dice-from-its-seed`). Given a seed, a turn
+  draws nothing from the dice in use: a test's fixed dice don't reach it.
+- Never lend the dice across an `await`. Another turn (the watcher's, or the GM's button on another game) can run in
+  the gap and would draw from them, and the page could be handed the wrong dice back. `resolveTurn` lends them twice,
+  for itself and for the Spy-stealth step, two synchronous calls, and gives them back in a `finally`.
+- Code a test cuts out of the page and runs on its own needs a `kcRng` or `kcClock` of its own (`home-placement`,
+  `leaderboard-records`).
+- Keep the generator in an object's property (`_kcRng.next`), not in a top-level `let`. With a `let`, V8 (Node 24.22)
+  sometimes runs an optimised `kcRng` built against the old value: after `kcRng.seed` or `kcRng.use`, the dice quietly
+  go back to the old stream. It showed in about 1 run in 20 of `rng`'s reseed test, and in 13 of 60,000 reseeds under
+  stress; the property form showed none. P1-09 makes `rng` a module: keep the state in an object there too.

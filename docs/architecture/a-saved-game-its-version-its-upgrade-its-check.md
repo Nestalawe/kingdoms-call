@@ -75,3 +75,97 @@ the turn reads it.
   too; Turn 0 then two turns). The balance matrix fails a game on a `[Save check]` line and on the check of its last
   save (P1-15e1, [below](the-toolchain-the-checks-and-the-harness.md)). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes
   (P1-15d).
+
+## A battle-only mark is not part of the saved state
+
+A battle writes marks on its units and its commanders that last for that battle only: on a unit, `_archeryRed` (what
+the arrows took off), `_tempStrReduction` (what it lost before the clash), `_flakTargeted` (a flyer a gyrocopter
+harried), `_disbanded` (forced below Green) and `_phantomOf` (a spectral double's fighting copy: the unit it mirrors,
+P1-10b5); on a hero, `_tacticalMult` (Telekinetic Storm). The battle wipes them at its end, before the state is saved
+(a double's copy goes whole: `clearPhantomCopies`). The turn's marks last the turn instead, and the new turn wipes them
+before the save: on a unit, `_laNoTerrain` (Lightning Advance's ambushed side) and `_turnStrReduction` (set
+by nothing today); on a hero, `_oratoryBoost` (Oratory), `_phantasmalBonus` (set by nothing today), `_curseHalveStat`
+(Curse) and `_druidNegated` (Psychic Blast). Early Winter reads five more: on a unit, `_temporary` (a unit
+summoned for the turn; the new turn removes it); on a hero, `_charmControlFrom`, `_charmedByPlayer` and
+`_charmedForPhase` (a Charm's hold for the rest of the turn; Early Winter wipes them, the new turn the last two too);
+on a province, `_raidersMuster` (an orc victory there this turn; Early Winter wipes it). Both kinds are typed by
+`ArmyInABattle`, `HeroInABattle` and `ProvinceInABattle` (`engine/army-tables.ts`), **not** in the saved state's
+schema.
+
+- **Why not in the schema:** on 2026-09-27 `_flakTargeted` was never wiped, so it was saved, and a flyer harried once
+  was immune to Flak Screen for the rest of the game. The schemas' tests parse every state of a matrix game strictly
+  (`tests/lib/strict-schema.ts`), so a mark left on a unit in a save fails them; an optional field in `ArmySchema`
+  would let it through.
+- **An `Army` passes where an `ArmyInABattle` is wanted** (each mark is optional), so a caller needn't change. A
+  freed function that reads or writes a mark takes `ArmyInABattle` (or `HeroInABattle`), not `Army`.
+- **A new battle-only mark** goes in the type, with a line saying what it is, and is wiped at every place the others
+  are (the comment above `applyFlakScreen`, `engine/battle/strength.ts`, names them). A new turn's mark goes in the
+  type under the turn's marks, with a line saying who writes it and who wipes it.
+
+## Live saves keep copies
+
+A running game's saved world holds its own copies of content: awarded items, the guardians in
+uncleared lairs, held Sage discoveries, unit names. The engine reads those copies, so changing a table
+in `kingdoms-call-data.ts` changes new games only, unless a migration carries the change into running
+games.
+
+- **Migrations run at the start of every turn**, on the world `resolveTurn` has just read, in one place since P1-15a:
+  `upgradeGameState` (`src/engine/saves/upgrade-a-saved-game-and-check-it.ts`) runs `migrateMaxHpV2` (which calls
+  `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
+  `migrateLegacyUnitNames` and `migrateItemTiers`, in that order. A new pass goes there, draws no dice and writes no
+  line: what it has to tell the GM it returns, and the turn tells it ([above](#a-saved-game-its-version-its-upgrade-its-check)).
+  `ensureAllLairHoards` still runs in the turn, after the merge of the orders (it draws dice). `migrateHoardTally` runs
+  wherever the find tally is read or written. A running game picks up a change at its next turn.
+- **Every migration runs on every turn**, not once, so it must be safe to repeat (idempotent).
+- **Guardians:** `migrateLairGuardiansV2` re-stats uncleared lairs from `MONSTERS_P`, by name, only
+  when `GUARDIAN_TABLE_VER` is higher than the save's `_guardiansVer`. When you change a guardian's
+  stats, bump `GUARDIAN_TABLE_VER`, or running games keep the old guardian. The re-stat also heals a
+  wounded guardian to its new full HP.
+- **Items:** `migrateItemTiers` re-stamps only an item's tier. An item's effect stays as it was when
+  awarded, so changing an effect doesn't reach items players already hold. Whether it should is a
+  design decision for Toby: raise it as a ruling, don't decide it in code.
+
+## A change to the save's shape needs its version
+
+Every saved game holds the number of its shape, `schemaVersion`, at its top level. A save without one is
+version 0: every live game held none on the day the version came in. World generation writes the version this build
+writes (`src/engine/saves/the-saved-games-version-this-build-writes.ts`), and the upgrade
+(`upgradeGameState`, [above](#a-saved-game-its-version-its-upgrade-its-check)) stamps it on an
+older save.
+
+- **When the shape changes, the schema changes with it.** A new optional field is the schema alone. A change an older
+  save can't meet as it is (a field renamed, moved, retyped, or now required) also bumps the version: a numbered step
+  in `THE_NUMBERED_STEPS_OF_THE_UPGRADE` that mends a save of the version before, the new number, and a fixture of the
+  new version (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`). A step runs once, on a save below
+  its version, after the six passes, and stays safe to repeat.
+- **A fixture is never edited once merged** (as a merged migration): it is what a build of its day saved. The script
+  refuses to write over one. `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` upgrades every
+  fixture, parses it strictly and plays a turn on it, so an older fixture fails until a step mends it, and a version
+  without its fixture fails too.
+- **A GM page of an older build refuses a newer save.** The turn stops before anything changes ("This game was saved by
+  a newer version of Kingdoms Call (save version 2; this page knows 1). Reload this page."), and the shell puts the
+  realms' orders back. A page opened before P1-15c deployed has no such check: it would run a turn on any save. So the
+  first bump (P1-20's, version 2) deploys only once every open GM page has had time to reload onto a build with the
+  check.
+
+## The check is not the save
+
+Since P1-15d the turn checks the save it has just upgraded against the saved state's schema made strict
+(`src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts`,
+[above](#a-saved-game-its-version-its-upgrade-its-check)). Zod's `z.object` returns a copy
+without the keys it doesn't name, and a live save may hold keys the schema doesn't know yet (a field only live play
+writes, or a battle's mark that leaked into the save).
+
+- **Never play, save or return the parse's output.** The turn plays the object it upgraded, every key kept. A turn
+  that played the parse's copy would drop each such key from every live game for good. `tests/unit/a-save-the-check-
+  refuses-still-plays-and-the-gm-is-told.test.ts` keeps a field this build doesn't know through the upgrade and the
+  turn.
+- **Name a place by its path and kind, never its value.** The GM's line and the turn's message may be passed on, so
+  they hold no name or text from a game: a key that isn't a number or a name as code writes one is shown as "(a key)".
+- **A place reported is a fix of its own**: a field the code saves goes into the schema (optional, with what writes
+  it); a battle's mark that leaked is a Parked bug. Until a pull request of its own turns a difference into a stop
+  (Theo's Choice 1, after two weeks with nothing reported), the turn runs and the GM is told.
+- **A staged world in a test is not a save.** A world made by `generateNewGame` alone lacks what Turn 0 adds (the turn
+  mode, the bots' settings), and a hero a test stands on the board lacks fields a real one holds, so a turn played on
+  them has a `[Save check]` line in the GM's log. A test that reads every line of the turn's end must say which it
+  reads (the stage's own lines), as `tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts` does.

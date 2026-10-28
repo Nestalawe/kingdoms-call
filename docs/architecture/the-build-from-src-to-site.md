@@ -155,3 +155,103 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   (`tests/unit/dev-server.test.ts`). Its pages' footers say "build dev".
 - **Each page's version is filled in by the build** (P1-06c; [Versions](the-database-and-what-it-holds.md#versions)): the footer's build line and two
   metas, after Vite, and `version.json` beside the pages.
+
+## Edit `src/`, never `site/`
+
+`site/` is build output ([above](#the-build-src-becomes-site)): git-ignored, and
+rewritten from `src/` by every test run. An edit there is never committed, and the next build quietly undoes it.
+
+- Change the file in `src/` (or `public/`, for what is copied as it is). A page's files are what its entry
+  (`src/ui/<page>/page.ts`) imports, directly or not.
+- A new file is imported where it is read (and by the page's `page.ts` if it does something as it loads). A file no
+  page reaches fails `pages-build`.
+- `node tests/<name>.test.js` and a page opened in a browser read `site/` as last built: run `npm run build` first.
+  `npm run dev` serves `src/` as it is, against the local Supabase ([above](#the-build-src-becomes-site)).
+
+## A deploy keeps the files a cached page names
+
+Since P1-06b each page's bundle and stylesheet are named by their content (`assets/<page>-<hash>.js`), so a change
+renames them. GitHub Pages replaces the whole site on each deploy, and its cache hands out a page for up to 10 minutes
+after it: a page cached before the deploy asks for its old bundle, which the new build doesn't have. The build jobs
+put the old files back ([above](#the-build-src-becomes-site)).
+
+- **Never publish `site/` without the keep step** (`tools/deploy/keep-the-previous-deploys-files.ts`, between
+  `npm run build` and the upload in both build jobs). Without it, every page cached before the deploy breaks for up to
+  10 minutes: its bundle answers 404, and the page stays on "Loading…". `tests/static/harness.test.ts` checks the
+  step is there, right after the build, and that it can't be skipped or fail quietly.
+- **Never rename `published-files.json`.** The next deploy reads it from the previous site to know which older files
+  to keep for 24 hours. Under another name, the next deploy keeps only what the previous pages name, and a page two
+  deploys old (deploys can come minutes apart) loses its files.
+- **A read of the live site in the 10 minutes after a deploy can be the previous deploy**, page or file, and a query
+  string doesn't help (the cache ignores it). A check by hand or a script that reads the live site waits 10 minutes.
+- **Never rename `version.json`, and never type a version by hand.** The build writes each page's version into it
+ : the footer's build line, from the marker `<!--kc-build-->`, and the metas `kc-build` and
+  `kc-page-version`. Open pages read `version.json` to learn that their page has changed (the GM tab's reload before
+  a due turn). A page's fingerprint is its HTML before these are filled in, so another commit alone changes none.
+- **A test that compares two builds builds each from the folder that holds its `src/`.** Rolldown names each module
+  in a bundle (`//#region src/…`) from the folder it runs in, so a copy of `src/` built from elsewhere differs in every
+  bundle, and so in every name (`tests/unit/a-deploy-keeps-the-files-a-cached-page-still-names.test.ts`).
+
+## A job after a skipped job is skipped, unless its `if` says otherwise
+
+A job whose `if` names no status function (`!cancelled()`, `always()`, `success()`, `failure()`) gets GitHub's
+`success()`, which reads **every** job before it in the `needs` chain, not only the ones it names. In `deploy.yml`,
+`migrate-production` is skipped on every merge that adds no migration, so a job after it with a plain `if` is skipped
+too, and the run still shows "success". That is how the deploys of #184 to #186 published nothing.
+
+- **A job after one that may be skipped says `!cancelled()` and the results it needs**, as `build` and `deploy` do
+  (`deploy`: `!cancelled() && needs.build.result == 'success' && github.ref == 'refs/heads/main'`).
+  `tests/static/harness.test.ts` refuses `deploy` without them, or with `always()`.
+- **"Success" on a run doesn't mean it published.** Check the `deploy` job, and the live `version.json`'s commit (after
+  the 10-minute cache). The keep step finds the previous deploy the same way: the newest run whose `deploy` job
+  succeeded.
+
+## A constant read at load time must live in a leaf module
+
+The site's code is ES modules: each file runs after the files it imports. That orders almost everything by
+itself, but not a cycle: when two files import each other (the engine has none since P1-13e5; each portal's UI has one), one of
+them runs first and finds the other's top-level `const`/`let` not yet set. Read as a file loads, that is a
+temporal-dead-zone `ReferenceError`, and at the top level it stops the page: the portal hangs on its spinner (the
+boot-failure reporter shows the error). Rolldown, the bundler, writes each top-level `const` as a `var`, so in the built
+bundle the read may instead find `undefined`, silently. Inside a function, read later, a cycle is harmless.
+
+**A new cycle fails `npm run lint:arch`** (P1-13a; CI and `npm run check` run it). The two known (the GM and player pages) are
+listed in `.dependency-cruiser-known-violations.json`, and a later P1-13e row breaks each (P1-13e1 to P1-13e5 broke
+the engine's six). A cycle of `import type` only is let through: types
+are erased, so no code runs in its order.
+
+- **A constant another file reads as it loads lives in a file of its own that imports nothing** (P1-09b:
+  `engine/items/hoard-categories.ts`, `engine/bots/specialist-skills.ts`, `engine/bots/schools.ts`,
+  `ui/player/l79-orders.ts`), re-exported from its old file. A file that imports nothing always runs first.
+- **What files do as they load keeps its order through the page's entry** (`ui/<page>/page.ts` imports every file in
+  the order the classic scripts ran). The engine's bundle (`tests/lib/engine.ts`) takes the same order. Don't reorder
+  `page.ts`. The item tables no longer hang on it: they are built in `engine/items/tiers-and-hoards.ts` and then
+  re-tiered in `engine/items/equipment.ts`, which imports them, and since P1-13e2 the tiers file imports nothing that
+  reaches the equipment file, so its tables are always built first, whichever file is reached first. The no-cycle rule
+  keeps it so.
+- Code that runs at top level calls only top-level helpers. A lifted engine helper may need the turn's context
+  (`effStat(turnContext, c, stat)`; use `effSkillOf` outside a turn), and one handed to another as a value is wrapped
+  with it (`(...a)=>f(turnContext,...a)`, as the bots' duel forecast is). Declare shared helpers as hoisted
+  `function`s.
+- Prefer building lookup tables lazily inside the function that needs them over a top-level IIFE.
+- Never declare a top-level name in two files of one page: Rolldown would rename one in the bundle, and the engine's
+  bundle refuses to load (`tests/lib/engine.ts`). New shared names in the data file start `KC_`.
+- Never move a table that references portal code into the data file.
+
+`npm test`'s `boot-pages` (jsdom) and the browser spec `chromium-boot` (`npx playwright test`) catch a page that no
+longer boots.
+
+## A package imported from `src/`
+
+`src/schemas/` imports Zod, the first package `src/` imports for its code (P1-15d; supabase-js is a served copy, not
+an import). The harness reads `src/` as files, so a package needs two things:
+
+- **`tools/pages.ts`'s `importsOf` leaves a package's import out** (a name that doesn't start with `.` or `/`): its
+  files aren't under `src/`, so they are no page's sources, and `package-lock.json` (an engine path) says which version
+  a page is built with.
+- **A copy of `src/` outside the repository finds the repository's packages.** Node looks for `node_modules` from the
+  importing file's folder upwards, so a test's planted copy in a temporary folder finds none. The site's build and the
+  engine's bundle take the Vite plugin `packagesFromTheRepository()` (`tools/build.ts`), which resolves a package
+  imported from outside the repository from the repository's root; from `src/` itself it changes nothing. A new
+  builder of `src/` takes it too. A copy of the whole repository (`git archive`, `rsync`) links `node_modules` in
+  instead.
