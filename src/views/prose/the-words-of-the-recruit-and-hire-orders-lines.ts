@@ -4,8 +4,8 @@
 // recruit-and-hire-orders-lines-record.ts), in the same words the engine wrote before (orders/recruit-and-hire-orders-
 // companies-mercenaries-and-heroes.ts): where the companies muster (_destNote), why a company was not raised (the
 // blocked list), the companies raised and a sworn hero's skills are written as the engine built them there. The skills'
-// names and the words of a beast command are the engine's, read here on plain values. A kind with no words here is a
-// compile error (the `never` below).
+// names are the engine's, read here on plain values; the words of a beast command are the army orders' prose's (since
+// P1-12d7). A kind with no words here is a compile error (the `never` below).
 import type {
   CompaniesRaisedAsTheLineCountsThem,
   TheFactOfTheRecruitAndHireOrdersLine,
@@ -13,8 +13,8 @@ import type {
   WhyACompanyWasNotRaised,
 } from '../../engine/orders/the-facts-the-recruit-and-hire-orders-lines-record.ts';
 import { SKILL_LABELS } from '../../engine/army-tables.ts';
-import { theWordsOfABeastCommand } from '../../engine/world/tables.ts';
 import { theWordsInATableFor } from './the-words-of-the-order-dispatchs-lines.ts';
+import { theWordsOfABeastCommand } from './the-words-of-the-army-orders-lines.ts';
 
 /** Where the companies muster, as the engine wrote it after the province (_destNote): nothing for his own column. */
 function whereTheCompaniesMuster(destination: WhereTheCompaniesMuster | null): string {
