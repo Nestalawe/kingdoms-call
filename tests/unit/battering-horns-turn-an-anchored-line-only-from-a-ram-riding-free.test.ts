@@ -8,6 +8,15 @@
 // as `the-battle-grid-lines-no-matrix-game-reaches-keep-their-values` calls them). Not static: it runs the facing. Not a
 // scenario: who faces whom is a pure function of the two placed grids and the terrain, and a battle would only add its
 // dice on top.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Battering Horns (R-095; R-090, a line anchored by infantry at both ends can't be turned; P1-21c: the second mutation
+// session's survivor): `battleGrid` and `battleFacing` (`src/engine/battle/lines.ts`) called directly on the engine's
+// module, on open ground, three battles against Levies anchoring both ends with Longbows behind: a Ram riding free
+// turns the line (the Longbows ×0.75, named "flank turned (Battering Horns)"); a Ram tied in a flank duel, or guarding
+// an end of the enemy's wider front, while a Free Lance rides free beside it, turns nothing (the line anchored, not
+// turned, the Longbows at their full figure). A whole game seldom stages that, and the balance matrix never does. Level
+// 1: who faces whom is a pure function of the two grids and the terrain; a battle would add only its dice
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import { battleFacing, battleGrid, type AFacedSide, type BattleGrid } from '../../src/engine/battle/lines.ts';

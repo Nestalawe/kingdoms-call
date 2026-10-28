@@ -4,6 +4,14 @@
 // dice, kcRng (src/engine/rng.ts, P1-07): a run whose Math.random draws from another stream still plays the same bytes,
 // so nothing in the turn draws from Math.random. Level 4 (page): the turn runs inside the booted page (runTurn), and
 // the clock it reads (kcClock, src/engine/clock.ts) is the page's own Date.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The GM portal booted twice with the same seed and clock (`bootJsdom`'s `seed` and `now`) plays one all-bot turn the
+// same, byte for byte: the saved world, every realm's report, the turn's log and events; a run whose page `Math.random`
+// draws from another stream plays it the same, so nothing in the turn draws from `Math.random` (P1-07); a run with
+// another seed plays it differently (P1-01a). This is CI's determinism check: one seeded game run twice in the same job
+// (the page job), byte for byte. Level 4: the turn runs inside the booted page, on the page's own clock. TypeScript, in
+// `page/`
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { bootJsdom, readPage, seededRandom } from '../lib/boot.js';
 import { makeStub } from '../lib/stub-db.js';

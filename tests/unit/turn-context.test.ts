@@ -8,6 +8,19 @@
 // - Relations (property, fast-check): whatever G.relations holds, two realms stand to each other as they stand the
 //   other way round, are never both at war and allied, a realm is itself, and a missing realm is neutral.
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The turn's context and the helpers lifted with it (P1-08a), called directly through `lib/engine.ts` (`engineFn`,
+// `turnContext`): `createTurnContext` holds the state, the slot rows, the turn and an empty log, and is a plain object
+// (a value nothing has set reads as undefined; it failed while a debugging check that threw on such a read was left in,
+// #136); `emit` files a line under the hero and phase the context names when the line is written (a hero's own, then
+// the phase being resolved, then End of Turn once the phases are over); the title lookups the balance matrix never runs
+// (`charHoldsTitle`, `playerHoldsTitle`: nothing calls them today) and `charMinor` are true for the holder only; and,
+// as a property (fast-check), two realms stand to each other as they do the other way round, are never both at war and
+// allied, a realm is itself and a missing realm is neutral, whatever `G.relations` holds. Each check fails on a planted
+// fault: `log` ignoring the phase, `charHoldsTitle` comparing the realm, `playerHoldsTitle` without its guard,
+// `relationBetween` keying a pair one way only. Level 1: each function is called on a context made in the test; nothing
+// else of the turn runs
 import { types } from 'node:util';
 import vm from 'node:vm';
 import fc from 'fast-check';

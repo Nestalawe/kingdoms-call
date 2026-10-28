@@ -8,6 +8,13 @@
 //     portal's realm texts, and the data file (the two tier tables are gone, and so is Deep Roots' cheaper
 //     awakening). The portals' shared-table guard lists named them too until P1-06c removed the guards.
 // Level 2 (scenario): the order switch is nested inside runTurn; the words are level 0 and ride along here.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 22 (2026-10-12): Call from the Pit and Awaken the Wild are removed. In a real turn an Evil king in his wild
+// province and a Druidic king in his forest give the old orders: nothing rises, nothing is paid, and each realm reads
+// that the order is no more. The player portal offers neither, and no page or the data file still names them or their
+// tier tables (nor either portal's guard list, until P1-06c took the guards out); Deep Roots keeps only its defending
+// Creatures. Level 2 because the order switch lives inside `resolveTurn`.
 const fs=require('fs');
 const {bootScenario, order, plan}=require('./lib/scenario'); const {sitePath}=require('./lib/boot');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

@@ -9,6 +9,13 @@
 // A hero already over the cap keeps what he leads (nothing a realm owns is taken from it); he takes on no more.
 // Level 2 (scenario): the three orders live inside runTurn. beastsLed / beastCommandCount are module-level and are
 // checked at level 1 here too.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 24 (2026-10-12): a hero leads at most as many Creature and Monster units as his Druid level (skeletons, a
+// summoned grove and Wild Hunt beasts aside). In a real turn a beast recruited into a full column musters into the
+// garrison, a full column picks none up, a Druid-0 hero handed a column takes its goblins but not its basilisks, and a
+// hero already over the cap keeps what he leads; the books and the hero card say so (it counts with
+// `countsAgainstBeastCommand`). Level 2 because the three orders live inside `resolveTurn`.
 const {bootScenario, order, plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 

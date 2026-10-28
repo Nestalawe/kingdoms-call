@@ -9,6 +9,15 @@
 // - kcClock() reads Date.now() when it is called, so a pinned Date (bootJsdom's opts.now) pins it; kcClock.date() is
 //   one reading, as new Date() is.
 // Level 1 (unit): each file's code runs alone, with no page around it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `src/engine/rng.ts` and `src/engine/clock.ts` on their own, each in a fresh sandbox (P1-07; modules that import
+// nothing, run as classic scripts): `kcRng()` given a seed plays exactly the tests' `seededRandom` sequence (2,000
+// numbers; seeds 0, 1, 1234, the default, one above 2³², the largest); given no seed it seeds itself once from
+// `crypto.getRandomValues`, and never asks when given one; `kcRng.seed(n)` starts again from `n`; `kcRng.use(fn)` draws
+// from `fn`, and the stream it hands back carries on where it stopped; `kcClock()` reads `Date` when called (a pinned
+// `Date`, even one set later, pins it) and `kcClock.date()` is one reading. Level 1: each file runs alone. TypeScript,
+// in `unit/`
 import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import { pinnedDate, seededRandom, type KcRng } from '../lib/boot.js';

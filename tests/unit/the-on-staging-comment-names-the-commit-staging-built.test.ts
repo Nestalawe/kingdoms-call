@@ -6,6 +6,13 @@
 // Level 1 (unit): the comment's text from a pure function, and the script run as staging.yml runs it, without the
 // built commit, stopping before it reaches GitHub. Static can't: it runs code. tests/static/harness.test.ts checks
 // that staging.yml passes both commits.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The "On staging" comment (`.github/scripts/staging.js` `comment`) names the pull request's last commit (each page's
+// staging line) and the commit staging built, GitHub's test merge of it into its base (the footers' build line); the
+// script, run as `staging.yml` runs it, stops with an error for the job when either commit is missing, before it
+// reaches GitHub. Level 1: a pure function and the script run with no network (static can't: it runs code);
+// `static/harness.test.ts` checks `staging.yml` passes both. TypeScript, in `unit/`
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';

@@ -6,6 +6,12 @@
 //     turn report. That holds for a wandering hero or a local chieftain as for another realm's hero (D9).
 // Level 2 (scenario): the Spy order and applySpySuccess are nested inside runTurn, so a real turn runs. Every
 // spy has Spy 6 (Master Spy: the order cannot fail), so nothing rests on a roll.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 5 (R-111): a province Spy shows another realm's hero's army units by type and quality but records and shows no
+// skills, and puts a hero in a neighbouring province on the map and in the sightings with the rough size of their army;
+// a Spy on a hero records and reports their skills, items and army; so does a Spy on a local chieftain; the rulebook
+// says so. Spies have Spy 6, so no roll decides it (batch 2026-10-15)
 const fs=require('fs');
 const {bootScenario,order,plan}=require('./lib/scenario'); const {sitePath}=require('./lib/boot');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

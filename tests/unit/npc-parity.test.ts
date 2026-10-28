@@ -11,6 +11,12 @@
 // portal, ran a turn and took combatVsNPC from the "  // 4. Run all 5 phases" hook. Same cases, same numbers of
 // battles, same checks. The dice are the engine's, seeded from KC_SEED; every count a check needs above zero comes up
 // in about a third of the battles or more, so 120 battles never miss it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should (R-063).
+// `unit/npc-parity.test.ts`: `combatVsNPC` called directly in the bare `vm` on a world staged for each battle, the same
+// 460 battles and 20 checks (P1-08g; it was a level-2 code-anchor test that ran a turn first); it reads the narrative's
+// words (`theWordsOf` on a fact: a battle against a province's defenders records facts since P1-12c6)
 import { expect, test } from 'vitest';
 import { engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
 

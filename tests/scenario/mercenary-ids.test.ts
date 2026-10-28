@@ -5,6 +5,13 @@
 // The king hires both bands back by id in the same turn: a hire by id proves the id, and a band left in the pool could
 // retire at the end of the turn (a 1-in-4 roll), which the turn's dice decide (restaged for P1-18e, which gave each
 // turn its own dice: the first band had stayed in the pool, and survived only on the dice).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Mercenary band ids (P1-18b): bands made in a turn are `merc_t<turn>_<n>`, counted afresh each turn, with no clock or
+// dice in them. A king disbands two armies and hires both bands back by those ids in the same turn: a hire by id proves
+// the id, and no band is left in the pool, where it could retire at the end of the turn on a roll (restaged in P1-18e:
+// the first band had stayed there, and passed only on the dice). Level 2: the ids are made by a function nested in
+// `resolveTurn`, so only a real turn reaches them. TypeScript, in `scenario/`
 import { expect, test } from 'vitest';
 import { bootScenario, order, plan } from '../lib/scenario.js';
 

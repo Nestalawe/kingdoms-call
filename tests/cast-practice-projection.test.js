@@ -3,6 +3,11 @@
 // from that school, are the ones the hero may have reached by that phase. Changing an earlier
 // Practice or Cast order rebuilds the later Cast Spell dropdowns. Made-up hero; no database.
 // The dropdown is built from the live orders form, so this boots the player portal (level 4).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The Cast Spell dropdown counts each earlier Practice Skill order on a school as a success: it quotes the projected
+// level (`Lv2→3 if practice succeeds`) and opens that many spells (a school at 5 projects no rise); turning or
+// re-aiming an earlier Practice, or changing an earlier spell, rebuilds the later dropdowns at once
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{

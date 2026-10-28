@@ -6,6 +6,16 @@
 // Level 1 (unit): each function is called directly on the engine's modules (tests/lib/personal-combat.ts), on a world the
 // engine makes (plan P1-08e: they were nested inside runTurn, and the "  // 4. Run all 5 phases" hook handed them
 // back after a turn on the GM portal).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Properties of personal combat (fast-check, P1-04d), over made-up heroes (a real character with generated skills,
+// temper, hit points and items from the game's own tables, armour as often as the rest) and any guardian, each input
+// with its own dice: a blow or an arrow never does negative damage (`pcMeleeDamage`, `pcArrowDamage`); a hit taken
+// (`pcTakeHit`, any kind, any size, through mirror images, a drinking ward, Melt Armour and a shield's ward) is never
+// negative and takes exactly that from HP, unless Last-Stand Plate's second wind heals; after any fight
+// (`resolvePersonalCombat`) a hero has from 0 HP to their maximum. 2,000 inputs each (20,000 in full). Level 1: each
+// function is called directly on the engine's modules (`lib/personal-combat.ts`; until P1-08e they were nested inside
+// `resolveTurn` and a turn on the GM portal handed them back). TypeScript, in `unit/`
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant, type Guardian } from '../lib/personal-combat.ts';

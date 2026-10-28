@@ -15,6 +15,16 @@
 // there too. The engine reads no clock (unit/engine-purity.test.ts), so nothing pins one. Until plan P1-09a the turn
 // was played on the GM portal, with its clock pinned, and a code-anchor hook on syncAllMaxHp's line in the phase loop
 // read the lists.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Properties of a whole turn (fast-check, P1-04d), over made-up small worlds (2 to 4 realms, some left to the bots) and
+// any orders for the human-held heroes, as `turn-fuzz` gives them: no hero ends a phase in two provinces (at the end of
+// each phase, every living character is named in exactly one province's list of heroes, his own: the lists are rebuilt
+// from where each stands once a phase, and nothing else may disagree); no realm's report names a realm it hasn't met
+// (the leak check's rule, `lib/report-leaks.ts`, with its parked breaches). 50 turns each (500 in full). Level 2: one
+// real turn on a small staged world, in the bare `vm`; the lists are read between phases inside `resolveTurn`
+// (`syncAllMaxHp`, the phase's last call, stood in with a reader after it; P1-09a: it was a code-anchor hook on the GM
+// portal), where the reports are put together too. TypeScript, in `scenario/`
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import type { KcRng } from '../lib/boot.js';

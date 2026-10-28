@@ -17,6 +17,20 @@
 // Level 1 (unit): the upgrade and the parse are functions of a save, and one turn of a three-realm game, played on the
 // engine's modules imported directly, takes about a second; a static test can't upgrade a save, and a scenario's
 // staged world isn't a save an older build wrote.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The save fixtures (`fixtures/saves/version-<n>.json`, one per version, each a made-up game of three bot realms after
+// its third turn, made by `tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts` with the build of its day;
+// version 0 by P1-15c's base, what live games held that day). Each fixture upgraded by `upgradeGameState`: at the
+// version this build writes, parsed strictly (`lib/strict-schema.ts`), upgraded twice as once, and one turn played on
+// it by direct import (`lib/a-staged-turn-on-the-engines-modules.ts`'s `play`, on the dice of `KC_SEED`) keeping every
+// invariant (`lib/invariants.ts`). One fixture for each version from 0 to this build's, and the numbered steps numbered
+// 1 to it; a save from a newer build refused by the upgrade, unchanged, and by the turn; a new world at this build's
+// version. Red with the stamp left out, the refusal taken out, or world generation's stamp taken out; each of the six
+// passes left out leaves it green (the fixture holds no old shape:
+// `a-saved-games-old-shapes-are-mended-before-the-turn` stages them). Level 1: the upgrade and the parse are functions
+// of a save, one turn of a three-realm game about a second; a static test can't upgrade a save. A fixture is never
+// edited once merged. TypeScript, in `unit/`
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';

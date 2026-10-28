@@ -19,6 +19,30 @@
 //
 // Level 4 (page): the payload is assembled from the form's DOM (its selects, hidden inputs and the page's globals), so
 // only the booted portal can say what it sends. One page booted once, about 1 s, then about 0.2 s a state.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The balance matrix's scripted realm sends what the player portal sends (P1-15e's Decision 2): the portal booted once
+// (jsdom, on a client of the test's own that reads and updates the game's row and the realm's slot), then, for each
+// state of `scripted-05` and `scripted-06` (set A; the Evil one), played on the engine's modules imported directly, and
+// the states with what those games don't reach staged (a research pair, an heir, the column arranged in another order
+// than the world's, a hero at a mastery's level; and, P1-15e3, the spare heroes beside a wandering hero who will serve,
+// beside a rival realm's hero, by a Weak lair they know with Sage 1 on five turns running, and in the orders for turn
+// 6), 50 states in all, the realm's report opened and the form given the scripted realm's choices
+// (`tools/balance/scripted.ts`) as a player gives them: each order through its select and `onActionChange`, its target
+// through its field and its change (the Encounter Character list, the Recruit Armies boxes, the Spy, Search Lair, Hire
+// Hero, Research and Practice Skill fields; a hire's card made by its field's change and its plan driven as a hero's),
+// each tactic through its button, the school through its picker, the battle cry, the duel stance and the doctrine
+// through their inputs, the heir's points through `allocateHeirSkill`, the research lead and the declaration through
+// their buttons; the payload the portal writes deep-equals the copy's
+// (`tools/balance/the-orders-the-player-portal-sends.ts`), with no page error. A choice the form doesn't offer leaves
+// its field empty, so the copy gives only what the form offers. Each kind of choice is asserted to happen at least
+// once. Planted portals (the stance sent as the default: 43 of 43 states red; the doctrine dropped: the 24 of
+// `scripted-06`; the school put first: 42; a fallen hero's orders dropped: the 2 with one) and planted copies (the line
+// without its target: 43; the column in the world's order: the staged state) each turn it red (P1-15e2's figures, on
+// its 43 states); P1-15e3's too: a planted copy without a Spy's ` — on <name>` (9 states red), a Search Lair's `prov`
+// (8) or the hire card (2), and a planted portal without the same three (9, 8; the card's line `Defend`: 2); on the
+// base it can't load (no copy). Level 4: the payload is assembled from the form's DOM; about 0.1 s a state. TypeScript,
+// in `page/`
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
 import { L79_ORDERS } from '../../src/ui/player/l79-orders.ts';

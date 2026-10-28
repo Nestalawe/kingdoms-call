@@ -4,6 +4,12 @@
 // message must appear while they are missing (since P0-17 it carries no SQL to paste: migrations are applied by the
 // deploy) and vanish once they exist, and deleteGame must clear a game's dispatches BEFORE it removes the games row
 // (after which the delete policy would no longer let anyone touch them).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// GM portal boots; while the dispatches tables are missing, a plain error message (no SQL to paste, since P0-17)
+// appears, and it goes once they exist; deleting a game clears its dispatches first; any console error fails it (P1-06c
+// took out the one it let through, the data file's 404). (The script's optional folder and footer-stamp arguments,
+// never given in `npm test`, weren't brought over.)
 import { expect, test } from '@playwright/test';
 import { routeExternal } from '../lib/boot.js';
 import { browserSource } from '../lib/stub-db.js';

@@ -6,6 +6,12 @@
 // Level 0 (static): both rulebooks as built (site/), and the names in MASTERY_UNLOCKS from the data file's module,
 // imported with the whole engine loaded (tests/lib/the-whole-engine.ts); nothing runs. Until plan P1-14b this was
 // tests/mastery-hints-words.test.js, which read the table in the engine's bare vm.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 8 (R-114): neither rulebook names a level 6–9 perk, order or spell (read from MASTERY_UNLOCKS; "Veil" is an
+// ordinary verb), nor gives away the Explorer's lair-spotting; the vague hints at Explorer finds and Druid mastery stay
+// (batch 2026-10-15). The engine's values are imported (`MASTERY_UNLOCKS` from the data file's module), after
+// `lib/the-whole-engine.ts`; until P1-14b they were read in the bare `vm`
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { MASTERY_UNLOCKS } from '../../src/content/kingdoms-call-data.ts';

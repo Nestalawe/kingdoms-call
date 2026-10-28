@@ -6,6 +6,13 @@
 //                     turn's end, for nothing, and the realm is told.
 // Level 2 (scenario): each is staged against a neutral guard with overwhelming odds, so the outcome never
 // depends on the dice; the lines counted are deterministic whatever the fortune roll does afterwards.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The three abilities only a turn can show: Prepared Ground (a defending Longbow company fires twice in the report, an
+// attacking one once, with no header); Eyes of the Forest (Eagles flying with the shooters spoil a Wardens' Ambush in a
+// forest, with the 🦅 line; without them the Ambush holds); Raiders' Muster (an orc realm's win in an orcish province
+// adds a named Average Goblin Horde to its garrison at turn's end, with the 🥁 line; a human win adds none). Level 2
+// because the archery phases and the end-of-turn muster live inside `resolveTurn`
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{

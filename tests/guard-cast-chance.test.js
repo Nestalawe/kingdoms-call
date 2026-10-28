@@ -5,6 +5,11 @@
 // 5 do not raise it, a magic item's levels do.
 // Level 1 (unit): guardCastChance is module level, fed a hand-made guard; that the defender's battle magic calls
 // it (inside runTurn) is read from the source (level 0).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 9 (R-115): a neutral guard casts at 40/50/60/70/80% at levels 1–5 and 80% at a trained 7, exactly as a player's
+// hero does, and 95% when an item lifts the school to 7; the defender's battle magic uses `guardCastChance`; the
+// rulebook says training stops cast chance at 80% and items carry it on (batch 2026-10-15)
 const fs=require('fs');
 const {bootScenario}=require('./lib/scenario'); const {sitePath}=require('./lib/boot'); const {compactPage}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

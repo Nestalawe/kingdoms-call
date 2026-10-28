@@ -8,6 +8,13 @@
 // The rulebooks are read as site/ text; the player portal from src/ by its syntax tree (tests/lib/source.ts): its
 // words as the strings it holds, its blurbs and realm texts as entries of their object literals. (Until plan P1-09a
 // it was matched in the built page's text.)
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The books say what the tables say: the rulebook's roster rows for every live beast (family, type, cost, strength,
+// move, Druid, terrain cell), the move-rate table and the Druid ladder; Wild Ferocity on no page; the Evil section's
+// Druid +1, waiver, Monster neighbour, Reign of Fear (attacking only) and Terror's three stacks; the orders table and
+// the intro's table; the player portal's Evil texts and order list; Wyvern Riders named as a Monster nowhere; the
+// retired multipliers gone from the rows and blurbs
 const fs=require('fs');
 const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageStrings,pageText}=require('./lib/source.ts');
 const PP='kingdoms-call-player-portal.html';

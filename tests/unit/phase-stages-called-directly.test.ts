@@ -11,6 +11,22 @@
 // before the first march or Defend and after every order before it, and every other actor's order is handed over once,
 // in turn; every march cancelled in the second stage leaves a Defend in its place.
 // Level 1: four functions, called with what the phase loop hands them.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The four functions (`startPhaseHealingSnapshotsAndStalledBattles`, `pinAndReactToPhaseIntents`,
+// `resolvePhaseOrdersInTwoTiersAroundTheDefendStep`, `endPhaseSkillRisesFallenCommandersAndProvinceMemory`, P1-08k1),
+// called directly: the whole-turn cases played through the four stages one phase at a time, as the loop calls them;
+// then, with the helpers each stage calls stood in by recorders in the `vm`, what each stage hands them and in what
+// order (the Defend step's place among the actors, which an ended chase doesn't open, the war fronts in Spring only,
+// each actor's chase, mercy or fall, the log's context and the battle series cleared, after a coward or a fallen hero
+// and around each host raised); then the stages' own statements: Herbal Lore's sums (its line his and the phase's
+// whatever the log's context was left on), presence, the skills and the HP recorded as the phase opens, the marks
+// cleared, phantom companies stripped, the hired hero's line; the battle lock's conditions, the Defend written for a
+// cancelled march, a Defend's watch from the phase's start; the skill-rise lines held back, a watch ended by next
+// phase's march, a fallen commander's host kept while its battle is unresolved. Properties (fast-check): Herbal Lore
+// mends at least 1, never past the maximum; every march cancelled in the second stage leaves a pinned Defend; the
+// Defend step runs once, before the first march, chase or Defend and after every order before it, and every other order
+// is handed over once, in turn
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

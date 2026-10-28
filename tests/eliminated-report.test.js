@@ -2,6 +2,10 @@
 // lib/scenario.js): each realm's own report says whether its dynasty is extinguished (`kingdom.eliminated`), as it
 // already says whether the realm has conceded (`kingdom.conceded`). The player portal reads both to decide what the
 // realm may send in Dispatches; it never reads the world itself.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The turn report tells a realm it is out (P0-25, R-075): after a real turn, an extinguished realm's own report has
+// `kingdom.eliminated`, a conceded one `kingdom.conceded` (and not `eliminated`), a realm still in the game neither
 const {bootScenario}=require('./lib/scenario');
 
 let fails=0;

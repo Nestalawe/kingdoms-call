@@ -16,6 +16,20 @@
 //   of scripted-05, which parses strictly before anything is staged, so each case is red on its own field alone.
 // Level 1 (unit): three turns by direct import and values parsed, about 2 s; a static test can't parse a save. Red on its
 // base (P1-15c), where the schema names none of these.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// What a human realm's orders and the orders no bot gives write into the save, parsed strictly against the saved
+// state's schema (`lib/strict-schema.ts`). The staging case first: one turn of `scripted-05` played by `resolveTurn`,
+// its scripted realm sending the player portal's untouched form (every hero Defend, the default encounter plan), its
+// realm Good and then Evil (the conquest doctrine, `evilMode`): every hero's plan as the merge keeps it, and the save
+// parses strictly; a hero hired with a plan card (`applyPendingSynthPlan`). Then every key of `MASTERY_ORDER_KEYS`
+// named by the schema, so a new mastery order can't slip past, and each one's once-a-turn stamp; and the rare orders'
+// fields, each staged on the matrix's own turn (which parses strictly as it is) as its writer writes it: Release Hero's
+// `_releasedBy` on the hero and his grave (`recordHeroGrave` called), a Moderate or Legendary lair cleared,
+// Clairvoyance's and a wandering hero's spied entry, the Grand Design, a win by elimination, every realm conceded, a
+// Wild Calling's beasts, a game without `botDiplomacy`. Red on its base (P1-15c: 27 of 35; the 7 mastery orders the
+// bots give and the matrix's turn itself pass). Level 1: three turns by direct import and values parsed, about 2 s; a
+// static test can't parse a save. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { resolveTurn } from '../../src/engine/run-turn.ts';

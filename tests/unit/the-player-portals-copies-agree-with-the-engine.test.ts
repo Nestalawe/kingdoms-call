@@ -11,6 +11,44 @@
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The player portal's copies of the engine's rules that are left, and the engine's functions it now calls in their
+// place (P1-11a2, P1-11a4; the checks and the values in `lib/player-portal-copies.ts`). The copies are read from
+// `src/ui/player/` by their syntax tree and run beside the data file as a script (the content as the player page holds
+// it), with the names `src/shared/` hands the portal; the engine's functions are imported directly, with no `vm`. The
+// values: the balance matrix's game scripted-05, played with the engine's modules imported directly (its scripted
+// realm's report after every turn, and the state it was built from), and a staged world handed through the report's own
+// projection (`buildTurnReport`): every catalogue item (and each race-bound one under the race's old name), held by a
+// hero of every race and alignment; every unit type at every quality, plain, skeletal, summoned for the turn or of the
+// Wild Hunt; every column of one to three units of each kind (flyers, winged beasts, fleets, sea beasts, cavalry, light
+// and heavy foot, creatures, monsters), led with and without Naval 8; a hero beside one wearing the Crown of Command.
+// P1-11a4 swapped the 16 copies that agreed for the engine's functions, so their swap cases went; for the 9 whose value
+// the report makes from the state (`unitTypeOf`, `unitBaseStrength`, `isLegendaryItem`, `itemSlot`, `itemRaceOf`,
+// `itemUsableBy`, `topSkillOf` with `skillFameLabelM`, `isAirCarriable`, `getFlyCapability`), a projection case: the
+// engine's function on the report's value and on the state's, at 0 differences; P1-11b3's tenth,
+// `countsAgainstBeastCommand` for the retired `beastCommandCountP` (on the report's unit, its flags as the realm sees
+// them, against `beastCommandCount` on the state's); and P1-11b4's eleventh, `seaLiftOfAColumn` for `poSeaAnalysis`'s
+// own lift (on every column under its leader, the mastery worked out as `getSeaCapability` does: its answer and every
+// figure the Move notice reads, and on the state's side `getSeaCapability`'s answer; until P1-11b4 a truth case of
+// `poSeaAnalysis`'s cap). For a copy that stays, the truth (the copy on the report's value, against what the engine
+// sends): `effMagicLvl` is the report's effective level of each magic school but for the Crown of Command's aura, which
+// it leaves out (Parked). P1-11b1 added the truth of the copies that read the realm, the report's shape or the world,
+// on six more staged worlds for the Druid rule (realm 0 Good, Druidic or Evil, with and without Dragon Taming; a hero
+// of every race, alignment and Druid level 0 to 5, beside a Crown of Command and away from it, with one unit of each
+// Druid level and class, of his race and of none, alive and skeletal) and one for exploring (a hero of each Explorer
+// level, the Loremaster and the Trailblazer, in every land terrain): `druidNeedP`'s shortfall against the battle's
+// `druIdPenaltyMult`, and the army card's Druid shortfall and mastery lines (read by their statements) against it and
+// `druidMasteryGain`, agree but beside a Crown, where the portal counts the hero's Druid exactly the aura higher
+// (pinned; question 13 for Toby; since P1-11b3 both call the engine's Druid rule through `src/shared/`, so these check
+// the level of the hero's Druid each side feeds it); the turn report's own flying carry (read by its statements) agrees
+// with `isAirCarriable` and `getFlyCapability` (P1-11b2: the report calls `getFlyCapability` now, so its statement that
+// gives a column the flyers' pace is checked on every column, and the unit types' half went with the copy); the Explore
+// forecast (`exploreGainFor`) is what `resolveExploreOrder` maps but for the Loremaster, 5% more (pinned; question 15);
+// the army card's sea note is `getSeaCapability`'s answer but for a Naval 8 hero, for whom it is the answer without the
+// mastery (pinned; question 15). Every engine function leaves its input as it was (the values are frozen, so a write
+// throws). Level 1: pure functions on values; no page is needed, and a static test can't compare what two functions
+// answer. Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3, P1-11b4)
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   armyCardMasteryAgainstTheTurn,

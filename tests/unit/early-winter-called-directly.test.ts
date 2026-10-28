@@ -10,6 +10,17 @@
 // before the dead, the rawest first, field before garrison within a grade) until the debt is met, and no more; a
 // garrison company rises at most one grade, never past Elite.
 // Level 1: one function, called with what the phase loop hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill` (P1-08k2), called directly: the whole-turn cases
+// through the stage alone; then, with its helpers stood in by recorders in the `vm`, a charmed hero's movement worked
+// out afresh under his own lord (not for one already home) and the stranded settled once, last, for the last season;
+// then what a whole turn can't stage: a fallen hero's companies, pay, tax items and Thief skill; phantom and summoned
+// companies in garrison; a garrison of a realm the world doesn't have; two ships kept (the plural line); an Orcish
+// company of a realm that isn't Orcish; the Charm's lasting marks. Properties (fast-check): Orcish war-spoils halve a
+// host's 2g-and-up wages exactly, 1 for each 1g company; a realm that can pay loses nothing, one that can't loses
+// companies in order until the debt is met, and no more; a garrison company rises at most one grade, never past Elite,
+// and only in a realm-held garrison. Planted faults: in the PR (P1-08k2)
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

@@ -17,6 +17,29 @@
 // refactor-only's rule that new tests pass before and after (Theo, 2026-10-25). eyesOfTheForest, the ninth volley function on P1-19g's base, went:
 // the registry's "the shooters see what hides" took its one check, and nothing else read it.
 // Level 0 (static): the files' syntax trees; nothing runs.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Each function the rule registry has taken (plan P1-19 Decision 7; P1-19a: `unitAbilityMult`; P1-19b: `abilityFront`,
+// `abilityBack`; P1-19c: `battleFaceSide`; P1-19d: `rollUnitFates`; P1-19g: `abilityMissileUnits`, `missileCap`,
+// `missileCapReached`, `missileTargetPool`, `archeryBlockedBy`, `eyesOfTheForestLine`, `missileDamageMult`,
+// `abilityVolleys`, `applyMissileHit`; P1-19h: `battleGrid`, `battleRegrid`, `abilityFlanksRough`; P1-19i:
+// `applyFlakScreen`, `applyBreachAndSwamp`; P1-19j: `rideThemDownBonus`, `shieldFortHolds`, `combatVsChar`,
+// `combatVsNPC`; P1-19k: `earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill`, `resolveMoveOrder`) holds no
+// string naming a unit type of `KC_UNIT_TYPE` that it compares, looks up by or passes to `has`, `get`, `includes` or
+// `indexOf`, counted by syntax tree with the ratchet's helper (`tools/ratchet.ts`'s `unitNameChecksByFunction`, which
+// counts `unitNameChecksInEngine` too); the helper counts each such check planted in a function, and none of the
+// strings that aren't a check or a unit type's name. And, since P1-19f (P1-19's second slice, Decision 9), each holds
+// no string naming a unit type at all, whatever it does with it: a name passed to a helper (`isHalfOrMore(force, 'Warg
+// Riders')`), held in an array or a template, or in a function nested inside it, which the ratchet's helper doesn't
+// count; its own helper finds each such name planted in a function, and none outside it or not a unit type's. Red with
+// `isHalfOrMore(ctx.force ?? [], 'Warg Riders')`, a named nested function comparing `'Warg Riders'`, or the name in a
+// template, planted in `unitAbilityMult` (the ratchet's helper green on each). Red on its row's base by design
+// (`unitAbilityMult` held 9; `abilityFront` 19 and `abilityBack` 6; `battleFaceSide` 11; `rollUnitFates` 4; the eight
+// volley functions of `strength.ts` 14 and `applyMissileHit` 3; `battleGrid` 1, `battleRegrid` 2 and
+// `abilityFlanksRough` 3; `applyFlakScreen` 1 and `applyBreachAndSwamp` 1; by every name, `rideThemDownBonus` 2,
+// `shieldFortHolds` 3, `combatVsChar` 10 and `combatVsNPC` 3; Early Winter's 2 by every name and `resolveMoveOrder` 1),
+// the one exception to `refactor-only`'s rule (Theo, 2026-10-25). Level 0: syntax trees; nothing runs. TypeScript, in
+// `static/`
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';

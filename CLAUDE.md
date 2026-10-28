@@ -11,47 +11,50 @@ published.
 ## Read in this order
 
 1. This file.
-2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the site, the turn engine and the database fit
-   together.
-3. [docs/traps.md](docs/traps.md): standing gotchas. Read it before changing a portal or a test.
-4. [tests/README.md](tests/README.md): every test, its level, quarantine, and the code-anchor hooks.
-5. Only then the code you need, in `src/`: **edit `src/`, never `site/`** (it's built). Files run to a few hundred
-   lines, a few to 2,000 (`src/engine/run-turn.ts` ~230): search the long ones, and edit with unique anchors.
+2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the overview, one short paragraph a part, and the module map.
+3. The topic file under [docs/architecture/](docs/architecture/) for the part your work touches.
+4. [docs/traps.md](docs/traps.md): the titles, then the entries your work touches (before changing a portal or a test).
+5. When you write a test: [tests/README.md](tests/README.md), and [the list of tests](tests/every-test-its-level-and-what-it-checks.md).
+6. Only then the code you need, in `src/`: **edit `src/`, never `site/`** (it's built). Files run to a few hundred
+   lines, a few to 2,000 (`src/engine/run-turn.ts` ~380): search the long ones, and edit with unique anchors.
 
 **Toby's rulings are in [docs/rulings/](docs/rulings/README.md)**, one file each, with an index. Before
 changing a rule, read its ruling; never "fix" what a ruling says is deliberate without a fresh one.
+
+## Where documentation goes
+
+Every doc says what is true now; history lives in git and the PRs. A static test checks the budgets
+(`tests/the-docs-budgets.json`): change one only with a reason in the PR, never to make the check pass.
+
+| What | Where | Budget |
+|---|---|---|
+| The rules and the reading order | `CLAUDE.md` | 15 KB; lines ≤ 300 characters |
+| The overview, the module map | `docs/ARCHITECTURE.md` | 15 KB |
+| One part's detail | `docs/architecture/<topic>.md` | 30 KB each |
+| A trap: its rule, one example, its check | `docs/traps.md` (its full text: the topic file) | 30 KB; 1.5 KB an entry |
+| How to write and prove a test | `tests/README.md` | 20 KB |
+| One line a test (its *why*: its header) | `tests/every-test-its-level-and-what-it-checks.md` | 300 characters a line |
 
 ## File map
 
 | Path | What |
 |---|---|
-| `src/` | The site's source, TypeScript modules (most files still say `// @ts-nocheck`: P1-10 and P1-16 type them). `npm run build` (Vite) builds it into `site/` (git-ignored): what is published and what every test opens ([ARCHITECTURE.md](docs/ARCHITECTURE.md#the-build-src-becomes-site)). `*.html` (the pages' templates), `engine/` (the turn engine, bots, world generation; `engine/rules-on-plain-values/`: the rules of a hero, an army, an item or a number, which import only `src/content`; `engine/rules/`: the rule registry, each content effect's entry and its effects at the stages of the hook points, which import only that folder, the rules on plain values and `src/content`; `engine/saves/`: a saved game's version and its upgrade, run before every turn), `shared/` (the player portal's one door to them: it re-exports from that folder only), `views/` (every realm's turn report, the lines each realm reads, and what it may see of the world, `playerView`; the sight rules it applies are `engine/sight/`'s; `views/prose/`: the words of each line, which the engine records as a fact; with `engine/`, the engine: bundled and loaded alone in Node, `tests/lib/engine.ts`), `db/` (`kc-db-guard.ts`: the version guard; telemetry), `schemas/` (the saved state's and the submitted orders' Zod schemas, which give the world its types; imported for code only by the save's upgrade, whose check at load parses with them), `content/kingdoms-call-data.ts` and `content/unit-abilities-their-names-numbers-and-words.ts` (the rows of the abilities the registry holds, and every unit's ability blurb, `UNIT_ABILITIES`, which the player portal shows), `ui/<page>/` (each page's styles and code; `page.ts`, its entry, imports its files in order, `globals.ts`, last, what it keeps on `window`), `ui/shared/` (`kc-safe.ts`: `kcHtml`/`kcEsc`, the one way a page builds HTML, [ARCHITECTURE.md](docs/ARCHITECTURE.md#how-a-page-builds-html)), `rulebook/`, `globals.d.ts` (the names the modules read without importing them). `public/`: copied as it is (`kc-config.js`: which database; `kc-staging-footer.js`; `vendor/`, supabase-js, [ARCHITECTURE.md](docs/ARCHITECTURE.md#supabase-js-a-copy-served-with-the-site)) |
-| `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
-| `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `browser/*.spec.ts` (browser specs: Playwright Test, Chromium), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `lib/invariants.ts` and `lib/report-leaks.ts` (what must hold after every turn; what no report may show), `fixtures/saves/` (a made-up save of each version, `version-<n>.json`), `quarantine/` (kept, not run) |
-| `vitest.config.mts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js`, `.dependency-cruiser.mts`, `knip.ts`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, browser specs, strict TypeScript, lint (every rule an error; what the rules found when they came in is listed in `eslint-suppressions.json`), the layers and no import cycle (dependency-cruiser; what broke a rule when it came in is listed in `.dependency-cruiser-known-violations.json`), unused code (knip, `npm run knip`), formatting, the exact Node version, the Claude Code hooks |
-| `tools/` | `build.ts` (`npm run build`), `dev.ts` (`npm run dev`), `pages.ts` (which files make each page), `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `module-map.ts` (the module map in `docs/ARCHITECTURE.md`), `eslint-rules/` (the project's own lint rules, the plugin `kc`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`; its report, `npm run balance:report`; named scenarios in `tests/balance/scenarios/`, `npm run balance -- <scenario>`), `mutants/` (the mutant scorer, `npm run mutants -- <folder>`: does a fault in `src/` turn a check red? Local only, never in CI), `github/` (the script that posts the balance report on a PR), `deploy/` (what the deploy's and staging's build jobs run before the upload: it keeps the files a cached page still names), `saves/` (the script that makes a save fixture from a seeded bot game), `legacy/` (older content-export tools, kept for reference; not run by the tests), `merging/kc-merge.zsh` (shell helpers to merge a PR and wait for its deploy, sourced by hand: zsh, not TypeScript, since no build or test runs it; how to load it is in its first lines) |
-| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level, the browser specs, the balance matrix and its report when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then build `site/` in a job that can only read, and publish it to Pages from another), `balance-report.yml` (posts the balance report on a PR once CI finishes, and warns while "What changes in play" is missing), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves), `nightly.yml` (`npm run test:full` with a random seed every night; blocks nothing) |
-| `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js`, `.github/pull_request_template.md` | The dangerous-paths list and the warning's logic (see below); the PR template (fill in every section) |
-| `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
+| `src/` | The site's source, TypeScript modules; `npm run build` (Vite) builds `site/` (git-ignored), what is published and every test opens. [Its folders](docs/architecture/the-build-from-src-to-site.md) |
+| `public/` | Copied as it is: `kc-config.js` (which database), `kc-staging-footer.js`, `vendor/` (supabase-js) |
+| `supabase/` | The database: `schemas/` (the structure and access rules), `migrations/` (generated, then reviewed), `tests/` (pgTAP): `supabase/README.md` |
+| `tests/` | The tests (the list and README: above); `fixtures/saves/`, a made-up save of each version |
+| `tools/` | The build, dev server, check, hooks, ratchet, lint rules, balance matrix, mutant scorer, the deploy's keep step |
+| Config at the root (`tsconfig.json`, `.nvmrc`, …) | [The toolchain; the full file map](docs/architecture/the-toolchain-the-checks-and-the-harness.md#the-repositorys-files-folder-by-folder) |
+| `.github/` | `workflows/` (`ci.yml` on every PR: `ci` and `db` are the required checks; `deploy.yml` on `main`), `dangerous-paths`, the PR template |
 
 ## Commands
 
 Node exactly as in `.nvmrc` (24.22.0): `npm ci` and `npm test` refuse any other.
 
-```sh
-npm ci && npx playwright install chromium   # once; npm run build builds src/ into site/ with Vite (npm test builds first)
-npm test                                    # Vitest: every test, by level, side by side (about 30 s); CI runs each level in its own job
-npx playwright test                         # the browser specs (tests/browser/) in Chromium, about 20 s; not part of npm test
-npm run check                               # the quick check of what you changed, about 20 s (parts: typecheck, lint, lint:arch: the layers and no import cycle, format:check, ratchet)
-npm run dev                                 # Vite's dev server of src/, against the local Supabase only (npm run dev -- config writes its kc-config.js)
-npm run balance                             # the balance matrix: 60 seeded games against tests/balance/baseline/, then every realm's report in them and the scenarios it requires (about 40 s; CI plays it when an engine path changes); balance:update rewrites it; "-- battle" (or lair, encounter) plays a named scenario on main's site and here (about 1 min)
-npm run test:full                           # bigger fuzz and property runs, as the nightly run does (npm run test:quarantine: the quarantined harnesses, expected to fail)
-npm test -- -t fuzz                         # tests whose name matches "fuzz"; --project unit runs one level
-KC_SEED=123 KC_JOBS=1 npm test              # another seed, one test at a time; the footer says how to repeat a failure
-node tests/<name>.test.js                   # one test script on its own (after npm run build): unseeded, its own default sizes
-KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs); npx playwright test too. Tests on the engine's modules read src/: their proof is a planted copy of the branch
-npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
-```
+Once: `npm ci && npx playwright install chromium`. Then `npm test` (every test, about 30 s; it builds `site/` first),
+`npx playwright test` (the browser specs), `npm run check`, `npm run dev` (local Supabase only), `npm run balance` and
+`npx supabase@2.120.0 test db --local supabase/tests` (the access-rule tests). The rest, with `KC_SITE` for fail-first
+proofs: [tests/README.md](tests/README.md#running-the-tests).
 
 **The checks run themselves** (hooks in `.claude/settings.json`): each edit is type-checked, linted and format-checked,
 and you can't finish while `npm run check` fails (after three tries, say "`npm run check` still fails: tell Theo").
@@ -80,7 +83,7 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
 **Tests**
 - **Test first, at the lowest level that can express it:** static, then unit, scenario, simulation,
   page. Every new test gets its level, and the reason a lower one wouldn't do, in the PR (levels:
-  [tests/README.md](tests/README.md#the-tests)).
+  [tests/README.md](tests/README.md#the-levels)).
 - **Fail first.** Show that the new test fails without your change (on `main`, or on a copy via
   `KC_SITE`) and passes with it. A test that can't fail proves nothing. For a pure refactor, label the
   PR `refactor-only`; then new tests must pass both before and after, and CI fails if the balance baseline changes.
@@ -103,22 +106,28 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
 - **Design forks go to Toby:** numbered options, a recommendation, and a short example from inside the game. Don't
   invent rules. When he rules, add it in the same PR as `docs/rulings/R-NNN-name.md` plus its index row
   ([how](docs/rulings/README.md#adding-a-ruling)), and name the test that enforces it. Rulings go there only.
-- **Mirror rule changes everywhere a rule is restated** (engine, player-portal projections, rulebooks, blurbs): [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice). A function the player portal takes through `src/shared/` is written once; its copies still left are `tests/lib/player-portal-copies.ts`'s.
-- **A change to the saved game's shape changes its schema too** (`src/schemas/saved-game-state.ts`). One an older save can't meet as it is (a field renamed, moved, retyped or now required) also bumps the save's version: a numbered step in `src/engine/saves/upgrade-a-saved-game-and-check-it.ts`, the number in `the-saved-games-version-this-build-writes.ts` beside it, and a fixture of the new version (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`; never edited once merged). A new optional field is the schema alone. The fixture test fails until a step mends every older fixture ([traps.md](docs/traps.md#a-change-to-the-saves-shape-needs-its-version)).
+- **Mirror rule changes everywhere a rule is restated** (engine, player-portal projections, rulebooks, blurbs):
+  [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice). A function the player portal takes through
+  `src/shared/` is written once; its copies still left are `tests/lib/player-portal-copies.ts`'s.
+- **A change to the saved game's shape changes its schema too** (`src/schemas/saved-game-state.ts`). One an older save
+  can't meet as it is (a field renamed, moved, retyped or now required) also bumps the save's version: a numbered step
+  in `src/engine/saves/upgrade-a-saved-game-and-check-it.ts`, the number in
+  `the-saved-games-version-this-build-writes.ts` beside it, and a fixture of the new version (`npx tsx
+  tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`; never edited once merged). A new optional field is the
+  schema alone. The fixture test fails until a step mends every older fixture
+  ([traps.md](docs/traps.md#a-change-to-the-saves-shape-needs-its-version)).
 - **Dice come from `kcRng()`** and the engine's time from `kcClock()`: no `Math.random` or `Date` in the engine ([traps.md](docs/traps.md#dice-come-from-kcrng)).
 - **An engine change carries its balance report** (CI's comment). Unless it says "no change", the PR's top half has
   "What changes in play" (template): predict before the matrix runs, then write it from the report, with anything
   unpredicted under "Not expected". A reshape says "Expected: no meaningful change", and the report must agree.
-- Don't silence errors, lint or types to get green, and don't raise a count in `tests/ratchet.json` or add to a list it counts (a finding you fix leaves its list in the same PR: [the import rules'](docs/ARCHITECTURE.md#the-layers-and-the-module-map), [lint's](docs/traps.md#a-fixed-lint-finding-must-leave-the-suppressions)).
+- Don't silence errors, lint or types to get green, and don't raise a count in `tests/ratchet.json` or add to a list
+  it counts (a finding you fix leaves its list in the same PR: [the import
+  rules'](docs/ARCHITECTURE.md#the-layers-and-the-module-map),
+  [lint's](docs/traps.md#a-fixed-lint-finding-must-leave-the-suppressions)).
 - Update `docs/ARCHITECTURE.md` and `docs/traps.md` when your change makes them wrong, this file when the workflow changes.
 - Write in plain language: [ISO 24495-1:2023](#plain-language-iso-24495-12023).
-- **The code's guardrails** (P1-09; the steps named bring the rest): (1) `src/engine/` and `src/views/` import no
-  Supabase client, `window` or UI code, so each function there runs on plain data (the imports: `npm run lint:arch`; the
-  page's names: lint); (2) no `Math.random` or `Date` there (lint: `Math.random` nowhere but `rng.ts`); (3) every line enters the GM's log through `emit`, with its
-  audience ([traps.md](docs/traps.md#a-line-goes-through-emit)), and the engine emits events, never prose, which `src/views/` writes after perception (P1-12); (4) a content effect lives in the rule registry, not in an `if` on its name inside a resolver (P1-19); (5) an
-  iteration order that can change a draw or the outcome is explicit; (6) all code and tests are TypeScript (P1-09e), with
-  no `any`, `@ts-ignore` or `eslint-disable` without a reviewed allowlist entry, and data crossing a boundary
-  (database, saved state, content) is parsed by its Zod schema (P1-10).
+- **The code's guardrails** (plain data, dice, `emit`, the registry, iteration order, types):
+  [ARCHITECTURE.md](docs/ARCHITECTURE.md#the-codes-guardrails).
 
 **Never**
 1. **Never merge.** Toby merges. Never push to `main`, never force-push a shared branch, never run
@@ -149,17 +158,8 @@ never ask Toby to paste SQL.
 **Database and site changes go in separate PRs**, and each must work without the other: they go live at different
 moments, and old pages stay open ([why, with an example](supabase/README.md#database-and-site-changes-go-separately)).
 CI's `db` check refuses a PR that changes both. Database first, then site, then any removal (expand, then contract).
-- **A migration PR** works with the site that's live now: it never loosens or removes an access-rule test of what the
-  game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of what Toby is approving.
-- **A site PR** that uses a new table or column either **copes** while it's missing (probe and fall back:
-  [traps.md](docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), with a test that hides it
-  (`MISSING` / `MISSING_COLS` in `tests/lib/stub-db.js`; example: `tests/meta-missing-turn.test.js`), or
-  **declares** it by raising the page's `KC_DB_MIN` to the migration's version, so an older database stops
-  the page with a clear message ([traps.md](docs/traps.md#a-site-change-that-needs-a-database-change)).
-  Cope for an optional extra; declare when the page can't work without it. Say which in the PR.
-
-Migrations are forward-only (a rollback is a new migration); a merged one is never edited (CI's `db` check
-refuses it); every migration has pgTAP tests.
+A migration PR's rules, a site PR's that needs one, and forward-only migrations:
+[supabase/README.md](supabase/README.md#the-rules-every-database-change-follows).
 
 ## Dangerous paths: talk it through with Theo
 
@@ -172,11 +172,12 @@ nothing on GitHub enforces it.
   Theo column, or any step of a unit (e.g. the cutover). Say so in the first line of the PR description. If unsure, say
   so.
 
-Labels: `staging` (when the PR needs staging and is ready to try: it puts the PR on the staging site, with its own database, and comments with the link; `.github/workflows/staging.yml`: a build job, then the staging job), `refactor-only`.
+Labels: `staging` (when the PR needs staging and is ready to try: it puts the PR on the staging site, with its own
+database, and comments with the link: [docs/staging.md](docs/staging.md#trying-a-pull-request)), `refactor-only`.
 
 ## Opening the PR for review
 
-Use the template in `.github/pull_request_template.md`. Write the top half for Toby, in game terms; keep engineering
+Use the template in `.github/pull_request_template.md`, and fill in every section. Write the top half for Toby, in game terms; keep engineering
 detail in the lower sections for Theo. "Staging" says whether it's needed and why; if it is, a numbered checklist he can
 follow without reading code.
 

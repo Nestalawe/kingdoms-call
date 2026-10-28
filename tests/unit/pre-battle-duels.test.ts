@@ -11,6 +11,15 @@
 // Level 1 (unit): preBattleDuel called directly in the bare vm (tests/lib/engine.ts), on a fresh turn's context for
 // each input (a duel can kill, and a death changes the world). The matrix runs it about 7,600 times a set; these say
 // what holds for any input, not only the matrix's games.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Properties (fast-check, P1-08g) of the duel before a battle (`preBattleDuel`), over made-up commanders (stance,
+// temper, Melee, hit points; a realm's hero or a local chieftain defending; the real record or the battle's pooled
+// copy): each host's morale is 1 or 0.8 and never both 0.8, each shaken host is told once, at most one commander is
+// slain and he is the one whose record died; nobody rides out when neither challenges or against a commander already
+// dead (no line, the world unchanged); a bot realm's commander never duels a local chieftain, and his host is shaken
+// when he refuses one (Toby, 2026-09-28). Called directly in the bare `vm` on a fresh context for each input; it reads
+// the narrative's words (`theWordsOf` on a fact: the duel's lines record facts since P1-12c5)
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';

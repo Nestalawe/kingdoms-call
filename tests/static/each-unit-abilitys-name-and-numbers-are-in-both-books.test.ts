@@ -30,6 +30,44 @@
 // as a whole word, case aside (the rulebook writes "DOUBLE volley damage").
 // Level 0 (static): the content's rows and tables imported (plain data), TERRAIN_MODS and the player portal's blurbs by
 // their syntax tree (tests/lib/source.ts), the rulebook as built (site/); nothing runs.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Every row of the content's unit abilities (the names and numbers the rule registry's effects read, plan P1-19
+// Decision 5): its name, and each of its numbers as the books write it (`×1.25`, `+10%`, `30%` for a chance, `no
+// penalty` for ×1, `base strength 6`; since P1-19g `55%` for a share, `double`, `half` and a count in words, `two`,
+// these three as a whole word, case aside; since P1-19h `full strength` for ×1, a whole word too; since P1-19i `−30%`
+// for a fraction taken, with the books' minus sign), within the ability's own words (from its name to the next
+// ability's), with no digit just before or after it (since P1-19f: `×1.2` isn't in "×1.25"), in its unit's
+// player-portal blurb (`UNIT_ABILITIES`, by syntax tree; since P1-19e in the same content file, found as the player
+// page's) and its rulebook roster row (as built). Three gaps let through, and checked to be still there (parked, the
+// three fleets): the rulebook's Orcish Longships row doesn't name Reaver Crews, nor its Elven Galleys row Sea Archers,
+// nor its Dwarf Ironclads row Armoured Hulls (P1-19g); and the numbers the rulebook leaves out of an ability's words,
+// checked to be still left out while the blurb gives them (parked: the rulebook's Whale Cohort row gives Breach and
+// Swamp no chance, P1-19i; its Manticore Pride row gives the Manticores' pursuit, at least half the winning force and
+// +15%, after Spine Volley, outside Relentless Hunt's words, P1-19j). A retired unit's abilities in no book (the
+// Corsair Fleet's Cut the Line and Keep the Sea Lanes, P1-19j) are checked to be still in neither book, and nothing
+// else. Since P1-19l the abilities a table holds too, read by the unit's type: each pre-battle strike's name and damage
+// range (`2–4`, with the books' en dash; each beast's `spells` in `PRIMAL_ARMY_DEFS_P` and the winged riders'
+// `BATTLE_ARMY_SPELLS`, both in content), Island Back's berths (`KC_CARRIER_BERTHS`, as "two land units") and Forest
+// Runners' forest and jungle cells (`TERRAIN_MODS`, by its syntax tree, as "×1.1 in forest" and "no penalty in
+// jungle"): a table's number is matched with what it counts or where it acts, since a bare "one" or "×1" is in the
+// books' words already. Two of these are known and checked to be still so: the table names the Wyvern Riders' strike
+// "Acid Spit Volley", both books "Acid Spit" (parked); the rulebook gives Forest Runners' numbers in its terrain
+// column, not in its words. The abilities the books give no number (Rooted, Hold the Gate, Town Watch, Battering Horns,
+// P1-19c; Knightly Example, P1-19d; Broadside, Tree Watch, Eyes of the Forest, Ambush, Loosed From Cover, Armoured
+// Hulls, Shell Wall, Sea Archers, P1-19g; Through the Trees, Through the Glades, Crag Charge, P1-19h; Deep Halls,
+// P1-19j; Raiders' Muster, P1-19k) are listed, each with why: their rows hold none, every other row holds one, and
+// their names are checked; a number the books leave out (Driven Before Them's cap at +30%, which two units beside them
+// never reach) is checked to be still left out. Red with Wyrmscale ×1.26 in content (P1-19a), with Arrow Fodder ×0.8,
+// Bodkin Points' ×0.75 or Armour-Piercing's base strength 7 (P1-19b), and with Storm Wings ×0.9, Driven Before Them's
+// cap at +10% or Rooted taken off the list (P1-19c), and with Regenerating Hide at 31% or Knightly Example taken off
+// the list (P1-19d), and with Halberds ×1.2 or Deepwater Grasp ×1.3, each the start of the books' number, which the
+// test let through before (P1-19f), and with Woodland Volley ×1.9 (not "double"), Punch Through's 50% or Bombardment's
+// +40% (P1-19g), and with Colossal Bulk at ×0.5 (not "full strength", P1-19h), and with Flak Screen at −25% (both
+// books) or Breach and Swamp at 20% (the blurb, P1-19i), and with Ride Them Down at +5% a company (both books, P1-19j),
+// and with Acid Spit at 2–4, Boulder Barrage at 4–6, Island Back at one berth (both books) or Forest Runners at ×1 in
+// forest (the blurb), and with the table's strike named "Acid Spit" (P1-19l). Level 0: the content's rows and tables
+// are plain data, `TERRAIN_MODS` and the books are read; nothing runs. TypeScript, in `static/`
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 import { BATTLE_ARMY_SPELLS, KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../src/content/kingdoms-call-data.ts';

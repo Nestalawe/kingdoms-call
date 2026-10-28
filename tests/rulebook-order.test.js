@@ -3,6 +3,11 @@
 // Magic come before War, and Lairs, Sight, Mastery and Items come after it. The contents list matches the
 // chapters, the "Part" labels count up one by one, and pointers that say "above" or "below" point the right way.
 // Level 0 (static): reads both rulebooks.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Both rulebooks follow the chapter order Toby chose (2026-10-15); each contents list matches its chapters; the "Part"
+// labels count up from One with no repeats; every link that says "above" or "below" points to a chapter on that side;
+// Kings & Heroes points up to Divine; Mastery links back to The Fifteen Skills
 const fs=require('fs'); const {sitePath}=require('./lib/boot');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const read=f=>fs.readFileSync(sitePath(f),'utf8');

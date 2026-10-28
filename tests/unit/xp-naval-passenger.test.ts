@@ -7,6 +7,12 @@
 // orders, which need a fleet, do): every such call, as the function it is in and its arguments, is one of a known list.
 // This was tests/xp-naval-passenger.test.js, which ran one turn on the GM portal for the "  // 4. Run all 5 phases" hook
 // to hand rollNavalVoyage back, and hooked the first line of trySkillGain; the checks are the same.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 9: `rollNavalVoyage` rolls Naval for a hero leading ships or a sea beast and not for one with none (rolls
+// recorded by a wrapper around the top-level `trySkillGain`); statically, no voyage path calls `trySkillGain` for Naval
+// directly any more (only battle wins and the Naval 7/9 orders). `unit/xp-naval-passenger.test.ts`: `rollNavalVoyage`
+// called directly in the bare `vm` (P1-08c; it was a code-anchor test that ran a turn first) (batch 2026-10-14)
 import vm from 'node:vm';
 import { afterAll, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';

@@ -13,6 +13,16 @@
 //                       Shieldwall and anchoring)
 // Level 1 (unit): the grid, the facing and the fate rolls are module-level functions of the booted GM portal;
 // unitAbilityMult and missileDamageMult are module level too. Nothing here needs a battle's dice.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The seven human units' abilities on the battle grid (booted GM portal: `battleGrid`, `battleFacing`,
+// `unitAbilityMult`, `missileDamageMult`, `abilityVolleys`, `rollUnitFates`): Spear Hedge caps cavalry facing Levies at
+// ×0.75 (a Lance Charge too); Shieldwall ×1.25 only with an archer behind in the column; Town Watch counts a Human
+// Garrison as Levies; Halberds ×1.25 v cavalry; Sergeants ×1.1 for Levies beside Men-at-Arms; Bodkin Points shoot
+// cavalry at ×1; Harriers ×1.15 in a flank duel; Lance Charge ×1.15 v foot; Dive on the Bowmen ×0.75 on the strongest
+// second-line archer; Hold the Gate spares a defending garrison the side hit; Knightly Example keeps Levies and
+// Men-at-Arms from losing a tier; Shock of the Charge gone; it reads the fate lines' words with the page's `theWordsOf`
+// (facts since P1-12c6)
 const {readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-6;

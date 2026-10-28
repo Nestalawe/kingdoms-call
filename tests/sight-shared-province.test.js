@@ -13,6 +13,14 @@
 //     pages' text was matched).
 // Level 1 (unit): both functions are module level and take a staged world or record, so no turn needs to run;
 // the report-time Spy roll is staged by stamping its result (_unspottedTurn) on the characters.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 4 (R-110): another realm's hero beside yours is on your map and in your sightings though their Spy rolled to
+// hide, with name, realm and rough army size only (no race, alignment, renown or exact count, in your own land too);
+// Invisibility still hides them; a wandering hero who rolled to hide stays hidden; the map popup gives the rough size;
+// the province character intel (its heroes chosen by the realm's view, `playerView`, since P1-12b4; the section in
+// `views/turn-report.ts` since P1-12b5) and intrusion alerts use the same rule and size; the rulebook says so (batch
+// 2026-10-15)
 const fs=require('fs');
 const {bootScenario}=require('./lib/scenario'); const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 const {compactDeclaration,compactPage}=require('./lib/source.ts');

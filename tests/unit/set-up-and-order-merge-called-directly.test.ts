@@ -13,6 +13,34 @@
 // the written orders in their lists with their numbers read, and nothing of a payload for another turn; a conceded
 // realm's living heroes always hold; declarations are taken, or refused under Safe Start, exactly as the rule says.
 // Level 1: two functions, called with the context resolveTurn hands them.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `turnStartRepairsAndAFreshSlateOfOrdersForEveryHero` and
+// `mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans` (P1-08k7), called directly, the context given
+// the slot rows and the turn run, as `resolveTurn` calls them: the whole-turn cases through the two stages alone,
+// reading the world and the context's collectors (`staleOrderWarnings`, `diploDeclarations`, `safeStartRefused`,
+// `discoveryChoicePicks`, `reckoningCalls`, `playerMessages`), but for the turn's record of orders (the reports');
+// then, with the helpers they call stood in by recorders in the `vm`, what each is handed: the beasts' races mended
+// before the stranded guards' repair, which is handed the save once, then the names' repair once (its count kept on the
+// save as given), then each living realm hero's realm noted; Safe Start asked once per realm sending declarations, of
+// the save and the turn run; `resolveTurn` calling the repairs, then the merge, once each with its context, before any
+// line is logged and before the first phase, the six collectors in the context as the merge returns (the merge makes
+// them since P1-08l2), and its later stages reading what the merge collected. Then what a whole turn can't stage: the
+// turn run differing from the save's turn (stale orders, the concession's date, a research choice, Safe Start all
+// judged by the turn run); a slot row for a realm the save doesn't have ("a player"'s stale orders, its order of heroes
+// and concession going nowhere, its Reckoning call taken); the per-turn lists missing when the merge runs (made) or
+// holding this turn's orders already (added to); the repairs leaving the lists empty and every hero's phases a list of
+// his own; a save with no map, a gap among the provinces or a garrison's companies; a wanderer with id 0 or a negative
+// id; a hero with no realm field at all keeping a beast's race; a gap in the realms' list not stopping the conceded
+// hold; an heir named by his id as text. Properties (fast-check): the repairs leave every living realm hero, and only
+// them, five empty phases, the per-turn lists empty, each living realm hero's realm in his record once, a people's race
+// on every unclaimed hero who wore a beast's, no stranded hull's marker; the merge writes exactly the hero orders sent
+// as lists for the realm's own heroes and holds exactly the written orders with their numbers read, in order, passing
+// over the column's order; a payload for another turn writes no orders, holds none and sets no plan, one for the turn
+// run or with none does, a conceded realm's living heroes hold once a row of orders read comes at or after its
+// concession, concessions told before refusals; declarations taken unless Safe Start holds, under it a realm refused
+// exactly when it offers a Treat or declares war, declarations that aren't a table never read. Planted faults: in the
+// PR (P1-08k7)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

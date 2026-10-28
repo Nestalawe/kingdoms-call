@@ -10,6 +10,12 @@
 // loaded (tests/lib/the-whole-engine.ts); the engine's comments from src/ and the player portal's strings by their
 // syntax tree (tests/lib/source.ts); nothing runs. Until plan P1-14b this was tests/volley-thirty-words.test.js, which
 // read the constants in the engine's bare vm.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The volley's size is written three times and must agree: `MISSILE_SHOT_PCT` is 0.30 in the GM portal's source, and
+// the rulebook's Archery text and the player portal's archery blurb say "30% of the shooting unit". The engine's values
+// are imported (the constants from `engine/battle/terrain-and-unit-strength.ts`), after `lib/the-whole-engine.ts`;
+// until P1-14b they were read in the bare `vm`
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import {

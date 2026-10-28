@@ -5,6 +5,13 @@
 // Checked over many generated worlds (well over a thousand provinces): the bounds on the share of
 // three-unit provinces are many standard deviations wide, so the outcome does not depend on luck.
 // Simulation level: world generation is one long function and the property is over whole worlds.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 15 (2026-10-14): over generated worlds (4 a size; full run 10) every ordinary province offers 2 or 3 units of
+// its race that suit its terrain (its `PROVINCE_ARMIES_P` list, never another terrain's), about one in four of those
+// that could offer three does, a two-unit list gives both, every province offers its garrison and every coastal one its
+// fleet; the rulebook states the rule and its table of units by terrain and race matches the game's list. Simulation
+// level: world generation is one long function and the property is over whole worlds
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const N=+(process.argv[2]||4);

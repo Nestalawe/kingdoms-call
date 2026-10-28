@@ -6,6 +6,11 @@
 // (tests/lib/scenario-in-the-vm.ts). The roll is fixed by standing spotEnemyInOwnedProvince in there for the turn: a
 // marked hero wins it, so no luck decides it. (Until plan P1-09a the turn was played on the GM portal and a code-anchor
 // hook at the line `  const explored=100;` in spotEnemyInOwnedProvince did the same.)
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 13: the warnings follow the map's spotting roll: a lone enemy lurker in your land who wins it (fixed by standing
+// `spotEnemyInOwnedProvince` in, the turn played in the bare `vm`; P1-09a: it was a code-anchor hook on the GM portal)
+// is neither warned of nor in the sightings, while a hero of a realm at peace is both (batch 2026-10-15)
 const {scenarioInTheVm}=require('./lib/scenario-in-the-vm.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{

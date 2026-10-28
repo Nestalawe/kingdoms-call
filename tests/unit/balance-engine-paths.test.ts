@@ -3,6 +3,14 @@
 // may not change the balance baseline). The step runs before npm ci, so the file must run in plain Node: erasable
 // TypeScript, no npm imports. Level 1 (unit): pure functions, and the step itself run by plain Node on a throwaway git
 // repository made here (nothing is played, nothing reads the network).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The balance job's first step (P1-02b): which files are engine paths (the files under `src/` the GM portal and every
+// script its page loads are built from, and the build (P1-05), the balance code, baselines and named scenarios, the
+// helpers they import, `package-lock.json` and `.nvmrc`; not the other pages or tests); the decision (no engine path:
+// nothing played; refactor-only with a changed baseline: fails at once; nothing to compare with: played); and the step
+// itself in plain Node (no npm imports) on a throwaway git repository: a pull request's merge commit, a renamed file, a
+// push of several commits. TypeScript, in `unit/`
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -4,6 +4,12 @@
 // depend on the machine's speed. So every harness that runs turns (calls runTurn) stages its games in manual mode, as
 // tools/balance/play.ts does. Level 0 (static): it reads the harnesses' source and runs nothing; a page test would
 // see the watcher only when a run happened to outlast its first check.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Every harness that runs turns (`runTurn`, in `tests/` and `tools/`) stages its games in manual turn mode, so the
+// auto-turn watcher never reads the clock or runs a turn in a test (P1-04a); the screenshot tour (`lib/screens.js`) is
+// exempt, since it shows each mode on purpose. Level 0: a page test would see the watcher only when a run outlasted its
+// first check. TypeScript, in `static/`
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from 'vitest';

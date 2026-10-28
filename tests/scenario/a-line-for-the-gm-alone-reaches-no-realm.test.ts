@@ -11,6 +11,14 @@
 // The staging is certain on every world: realm 0's king carries the Stone as an older save holds it (the one a lair
 // deals today is called a passive item) and leads one Green company (so the working has something to promote), one province's lair, already stocked, holds the world's one other Stone, and no other
 // hoard holds one. Working the Stone rolls no die but a Sage lesson, which the test doesn't read.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// A line for the GM alone reaches no realm (P1-23, entry 7): in a real turn
+// (`lib/a-staged-turn-on-the-engines-modules.ts`, from `KC_SEED`, a report for every realm) a king works the
+// Philosopher's Stone (as an older save holds it) while a lair holds another; the GM's log has the note of the Stone
+// struck from the hoards, the king's realm reads its own account of the working, and neither realm's report holds the
+// note. Certain on every world: working the Stone rolls no die the test reads. Level 2 because who reads a line is
+// decided by the order that writes it and by the views that build the reports, which only a whole turn joins
 import { describe, expect, test } from 'vitest';
 import { aStagedTurnOnTheEnginesModules, order, plan } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 

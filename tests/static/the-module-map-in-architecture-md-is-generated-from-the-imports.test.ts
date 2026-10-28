@@ -1,6 +1,13 @@
 // The module map in docs/ARCHITECTURE.md is generated from the imports (plan P1-13, Decision 11): the block between
 // its two markers is exactly what tools/module-map.ts draws from src/ today, so the map can't drift from the code.
 // Level 0 (static): dependency-cruiser reads the sources and nothing runs.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The module map in `docs/ARCHITECTURE.md` (P1-13a, plan P1-13 Decision 11) is exactly what `tools/module-map.ts` draws
+// with dependency-cruiser's Mermaid reporter from `src/` today, one box a folder; when it differs, the test prints the
+// command that rewrites it (`npx tsx tools/module-map.ts --write`). Planted on a copy of `src/`: an import from the
+// Overlord page to the data file adds its arrow, so the map would no longer match. Red with one arrow taken out of the
+// docs' block. Level 0: dependency-cruiser reads the sources. TypeScript, in `static/`
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

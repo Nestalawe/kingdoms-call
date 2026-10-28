@@ -12,6 +12,15 @@
 // Shieldwall (a Levy with the Longbow behind it ×1.25, wrapping or not), Bodkin Points (the Longbow shoots
 // cavalry at ×1) and Spear Hedge (the Free Lance facing a Levy at ×0.75). The choices the deploy makes are the
 // same; each expectation below shows the sum.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The scout's advantage and the line-up (`battleDeploy`, module level): the higher exploration scouts (ties to the
+// defender); the width on offer is the roll and one either side within the terrain's range; the scout takes the width
+// that suits it; it lines up second with improving swaps; the commanders then take turns, the other side first, one
+// swap per Tactical level; a legal swap keeps the front one block of the same kinds, and since item 18 (2026-10-12) a
+// defender can no longer slide its line along to wrap an end; the two report lines (since item 17, 2026-10-13, the
+// Scouting line names the better-explored side without any exploration figure); determinism; twenty deploys of 12 v 12
+// stay under 4 s; it reads the scouting and Tactics lines' words with the page's `theWordsOf` (facts since P1-12c6)
 const {readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-6;

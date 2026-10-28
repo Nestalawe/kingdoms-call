@@ -7,6 +7,17 @@
 //     Steal Item, the Grand Heist) writes the note straight after its own line.
 //   Scenario: a real Send Item between two heroes of one realm puts the note in the recipient's
 //     report (Send Item lives inside runTurn).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 10 (2026-10-13): whenever a hero gains an item the report says whether they equip it at once, have no room
+// (naming what the slot already holds), need no slot, or cannot use it (`gainedItemNote`, module level: a free slot, a
+// full weapon slot, both ring slots, an item its last owner wore, two at once); every gain path (lair hoard, lair
+// theft, bones of the fallen, a dead hero's possessions, the mercy price, a drop in the rout, Send Item by hand and by
+// courier, Steal Item, the Grand Heist) writes the note after its own line (static; a line that is a fact is found by
+// its kind's name: a dead hero's possessions since P1-12d5, Send Item by hand since P1-12d6, the lair hoard, the lair
+// theft, the bones of the fallen, Steal Item and the Grand Heist since P1-12d8); a real Send Item puts it in the
+// recipient's report and the saved world agrees. Level 2 for the last part because Send Item is read and carried out
+// inside `resolveTurn` (`resolveSendItemOrder` since P1-08j5)
 const {readPage}=require('./lib/boot'); const {bootScenario}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{

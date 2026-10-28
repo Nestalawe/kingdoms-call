@@ -9,6 +9,19 @@
 // is suppressed. It took over the templates from tests/sort-comparators.test.js, tests/static/dice-and-clock.test.ts and
 // tests/html-lint.test.js.
 // Level 0 (static): it reads the templates and lints their text; nothing runs.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The templates' own code passes the site's lint rules (P1-13c, plan P1-13 Decision 8): each script page's template has
+// its one inline script (the boot-failure reporter) and its `on…="…"` handlers (in its markup, and in the HTML its
+// inline script writes), and the other templates none; each piece goes to ESLint's API as
+// `src/<template>/script-<n>.js` or `handler-<n>.js`, which gets exactly the block `public/`'s classic scripts get
+// (ESLint's recommended rules, no `Math.random`, the project's own rules, the HTML rule among them), a handler with its
+// page's handler names (`globals.ts`), declared globals and `event`, and every piece passes with no finding (ESLint's
+// API doesn't read the suppressions). Planted in a copy of the GM page's template: a random sort and a random tie-break
+// in a script, a read of every column of `games`, `Math.random()` and `window.Math['random']()` in a handler (also one
+// an inline script writes), a handler calling a name its page doesn't keep, and HTML built from a value not escaped (a
+// sink, a join and an untagged template), each found at its line. It took over the templates from `sort-comparators`,
+// `dice-and-clock` and `html-lint`. Level 0: it lints the templates' text; nothing runs. TypeScript, in `static/`
 import fs from 'node:fs';
 import path from 'node:path';
 import { ESLint, type Linter } from 'eslint';

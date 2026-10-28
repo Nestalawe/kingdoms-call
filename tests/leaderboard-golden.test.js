@@ -7,6 +7,11 @@
 //   gold       Thornmere 100, 250, 180    Veyholt 300, 120, 90
 //   provinces  Thornmere   3,   5,   6    Veyholt   4,   4,  2
 //   turn 2     Thornmere fights 2, wins 2, kills 5, loses 1; Veyholt fights 2, wins 0, kills 1, loses 5
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// One hand-made finished game (two realms, three turns): the Hall of Fame entry's standings, and the right realm
+// holding each record with the right number and turn (each realm's own best, best first; a realm whose best is 0 left
+// out; a tie keeps the turn first reached). Catches "keep the first value" and "one entry per game" bugs the fuzz can't
 const fs=require('fs'), vm=require('vm'); const {sourceFrom}=require('./lib/source.ts');
 // The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)

@@ -6,6 +6,13 @@
 //   • Reign of Fear: an Evil host's Monsters fight ×1.5 attacking a province under its Terror (the ladder says so), and
 //     its Druid-1 king leads Cave Trolls with no shortfall warning;
 //   • Wild Ferocity is gone: a Druidic host with Forest Ents gets no ×1.25 line; Evil's savage fury stays.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// In real worlds and a real turn: an Evil king starts with Druid +1 beside a land Monster province (three worlds; a
+// Druidic king beside a Creature one); Reign of Fear ×1.5 in the ladder of an attack on terrorised ground, with the
+// Terror still spent on the defenders and no Druid shortfall warning for the Evil king; no Wild Ferocity line for a
+// Druidic host with Ents. Level 2 because world generation, the order and the battle live inside `generateNewGame` and
+// `resolveTurn`
 const {bootScenario, order, plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 

@@ -5,6 +5,13 @@
 // Stuns still cost the round.
 // Level 1 (unit): pcAct called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a script that
 // took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 1: in a personal fight no side loses its round to a failed power (`pcAct`, rolls pinned): a guardian's special
+// that fails its roll, a hero's fizzled spell, a spell already cast or not castable, and a spell, special or bow
+// reached for under Spiritwrack each become an ordinary attack; a stun still costs the round. (batch 2026-10-14).
+// `unit/every-round-acts.test.ts`: `pcAct` called directly on the engine's modules (`lib/personal-combat.ts`; P1-08e:
+// it was a code-anchor test that ran a turn on the GM portal first)
 import { expect, test } from 'vitest';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';

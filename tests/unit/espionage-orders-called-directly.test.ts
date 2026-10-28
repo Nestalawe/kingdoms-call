@@ -8,6 +8,20 @@
 // orders share, nested in processOrder until this row (a thief caught in the act, with the duel's outcome stood in; an
 // item lifted); and properties of each order. The balance matrix never gives Sabotage, Assassinate or Vanish.
 // Level 1: one function, called with what processOrder hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The six functions (`resolveSpyOrder`, `resolveStealOrder`, `resolveSabotageOrder`, `resolveGrandHeistOrder`,
+// `resolveAssassinateOrder`, `resolveVanishOrder`, P1-08j6), called directly on the same cases one phase at a time with
+// the same dice, then each die where it falls (a spy who misses and is caught, the 5 and 95 bounds on the catch and the
+// read, a disguise at 65/66, a thief's escape at Thief × 20 up to 95, which item a hand closes on by weight, which
+// company burns, which parcel is cut and which ride on, a blade at 79/80), the gold and merits exact, The Shadow
+// (titles start at turn 5), Watchmen at a capital only, a Grand Heist already spent, a Mithril suit kept, a beating
+// floored at 1 HP; the two helpers that were nested in `processOrder` (`thiefCaughtScuffle`, with the duel stood in:
+// Vanish, a refusal, combat tactics only, either side cut down or escaping the end, a wanderer's HP; `liftRandomItem`).
+// The balance matrix never gives Sabotage, Assassinate or Vanish. Properties: Steal and the Grand Heist make and lose
+// no gold or item and never move Mithril; a caught thief or a realm's victim keeps at least 1 HP; Assassinate kills
+// exactly within the chance; Sabotage burns at most one company, only where it is aimed. Planted faults: in the PR
+// (P1-08j6)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

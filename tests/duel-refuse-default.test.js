@@ -7,6 +7,13 @@
 // (tests/lib/source.ts), in one layout whatever the file's. Until plan P1-09a a real turn was run on the GM portal
 // first, for the hook at "  // 4. Run all 5 phases" to hand duelStanceOf back, and the fallbacks were matched in the
 // built page's text.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// A hero's Duel Stance defaults to Refuse: a player's hero with no stance set refuses (`duelStanceOf`; a chosen Accept
+// or Challenge is kept, NPCs still follow Temper), every Duel stance select in the orders form opens on Refuse, and the
+// submitted plan falls back to Refuse. Level 1: `duelStanceOf` called directly in the bare `vm` (P1-09a: it was a
+// code-anchor hook after a turn on the GM portal), the fallbacks read from `src/` by their syntax tree; the form part
+// boots the player portal
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 const {loadEngine,engineFn}=require('./lib/engine.ts'); const {compactPage}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

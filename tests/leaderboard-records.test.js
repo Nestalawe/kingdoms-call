@@ -3,6 +3,11 @@
 // stub engine tables, and hammers them with malformed telemetry. The builder runs inside the turn
 // path (writeTurnTelemetry → writeGameRecord), so it must never throw and must always produce a
 // JSON-serialisable row.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The Hall-of-Fame record builder never throws and always gives a storable row, even on malformed input (empty rows
+// among them): 100 made-up games (full run: 3,000; what it catches, it catches within 50) (since 2026-10-09 each record
+// is a list with one entry per realm, as Toby confirmed)
 const fs=require('fs'), vm=require('vm'); const {sourceFrom}=require('./lib/source.ts');
 // The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)

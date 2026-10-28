@@ -8,6 +8,22 @@
 // line, gives experience back as it found it, and gives two shares of its fights, never more than all of them
 // together; for any bot realms, every pass is handed exactly those, in the plan's order.
 // Level 1: two functions, called with the context resolveTurn hands them.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The bots' plan and their duel forecast (P1-08l2), called directly with the context `resolveTurn` hands them: the
+// whole-turn cases through the plan alone (but those about the merge's collectors); `resolveTurn` calling the plan once
+// with its context, after the move pools and before the default to Defend, the forecast fought only by the movement
+// pass; with the passes stood in by recorders in the `vm`, the order whatever a pass does, the turn's context and the
+// realms' calls themselves (a line and a call written to them are the turn's), the forecast handed being the top-level
+// one with the context first, the strength figure asking the terrain and sea figures each time and multiplying them, no
+// line or return of its own; the forecast with its three helpers stood in: the shares won and fallen (a fall only at no
+// HP and without a win), twenty fights by default and for none, the two shares only, the order of the calls in each
+// fight, the copies' ids, plans (automatic, no lessons kept), a quarry's own plan kept, the tactics filtered (any case,
+// a spell named, the plain melee for none, every tactic the combat knows), deep copies; experience muted and given back
+// (off or on), a failure in any helper or a hero who can't be copied giving no forecast; a real forecast on the board.
+// Properties (fast-check): a forecast leaves any two heroes as they were, writes no line, gives experience back and
+// gives two shares of its fights, never more than all; for any bot realms every pass is handed exactly those, in the
+// plan's order. Planted faults: in the PR (P1-08l2)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

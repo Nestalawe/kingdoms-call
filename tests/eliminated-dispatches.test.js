@@ -9,6 +9,15 @@
 // GM portal: the game's screen has the switch "Block eliminated realms from sending dispatches"; it saves
 // games.block_eliminated_msgs and shows the saved state when the game is opened again, for the game's GM and for the
 // Overlord in Master GM mode.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Eliminated realms and dispatches, on screen (P0-25, R-075): opening the game as a player, a realm still in the game
+// sends privately and to All Realms, switch on or off; a realm that has conceded, or whose dynasty is extinguished,
+// can't send privately (the composer says why, on the public channel too) but writes to All Realms while the game's
+// switch is off, and sends nothing once it is on; once the game is over everyone sends privately again, to and from
+// realms that are out; the Dispatches note gives the rule. The GM's game screen has the switch "Block eliminated realms
+// from sending dispatches", which saves `games.block_eliminated_msgs` and shows it when the game is opened again, for
+// the game's GM and the Overlord in Master GM mode
 const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
 
 let fails=0;

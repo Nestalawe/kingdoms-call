@@ -8,6 +8,18 @@
 //
 // The types are checked too (by the compiler, which type-checks the tests): the branded ids keep a hero's id from
 // being passed as a province's.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The schemas of `src/schemas/` (P1-10a1) against a real game: the balance matrix's `scripted-05`, played with the
+// engine's modules imported directly (no `vm`), its new game and the state after each of its 20 turns, and the orders
+// its scripted realm sent each turn, each parsed strictly (`lib/strict-schema.ts`: every object `z.strictObject`, so a
+// key the schemas don't name fails too), and a payload with every field the merge reads, as the player portal writes
+// it. Planted faults in staged copies are refused where they are: a field of the wrong kind (the name repairs as text,
+// in every state), an unnamed key deep in a state (and the schema the code uses drops it: only the strict version
+// refuses), a missing field, and in a payload the turn as text and a phase order with an unnamed key. The branded ids
+// are checked by the compiler (`expectTypeOf`): a hero's id is not a province's. Fails on its base (no `src/schemas/`);
+// planted in the engine (a field of the wrong kind, an unnamed key, a missing field), each turns every turn's state
+// red. Level 1: one game's states parsed, about 1 s; a static test can't play a game. TypeScript, in `unit/`
 import { describe, expect, expectTypeOf, test } from 'vitest';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { resolveTurn } from '../../src/engine/run-turn.ts';

@@ -4,6 +4,11 @@
 // Level 2 (scenario): getRecruitLimit and the recruit order live inside runTurn, so only a real turn shows
 // the gate. The figure the player portal's order form shows (maxPerTurn) comes from buildTurnReport, the
 // module-level builder of a player's turn data, read on the same world.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// A province that raises Goblin Hordes turns out two in one turn and refuses a third; Orc Berserkers there stay at one;
+// the order form's `maxPerTurn` (`buildTurnReport`) says the same. Level 2 because `getRecruitLimit` and the recruit
+// order live inside `resolveTurn`
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{

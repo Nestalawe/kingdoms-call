@@ -8,6 +8,12 @@
 // Each case plays one real turn (resolveTurn, in the bare vm) on a world of two realms the engine makes, both
 // players', every other order Rest, the dice fixed for the whole turn (every roll lands, every other die at its
 // highest). Level 2 (scenario): the cost is charged by the Move order and the stalled-battle sweep over a whole turn.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Taking an undefended enemy province costs 1 movement point; pressing on with a battle against neutral defenders costs
+// 1 a phase while points remain. TypeScript, in `scenario/`, one whole turn in the bare `vm`, the dice fixed for the
+// turn (P1-08k8: it was a test script whose code-anchor hook handed back the point pools from their declaration in
+// `resolveTurn`; the pools are made by the stage before the first phase now and read from the turn's context)
 import vm from 'node:vm';
 import { expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

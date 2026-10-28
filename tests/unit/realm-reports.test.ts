@@ -12,6 +12,7 @@
 //   ends. No other test and no game of the balance matrix builds a report with a Clairvoyance watch.
 // Level 1 (unit): the function is called on a world and a turn's sight made in the test; nothing else of the turn runs.
 // The property describes the game as it is; a fault planted in a copy of the function turns it red (the PR shows it).
+// Over whole turns, the balance matrix's every-realm half and the page tests (report-privacy, concede) cover it.
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';

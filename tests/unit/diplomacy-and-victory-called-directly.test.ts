@@ -14,6 +14,25 @@
 // that hasn't conceded, or those left are all allies, announced once with a line for every realm; the bar falls one
 // step a turn exactly when it may, never below its floor.
 // Level 1: two functions, called with the context resolveTurn hands them.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings` and
+// `victoryTheReckoningEliminationConcessionAndTheAnnouncement` (P1-08k4), called directly: the whole-turn cases through
+// the two stages alone (but the two only a whole turn stages), with the realms' declarations, Reckoning calls and
+// concessions put in the context as the merge of their orders does; then, with the helpers they call wrapped by
+// recorders in the `vm`, what each is handed: the war fronts looked for once for each new war, after it is told; each
+// pair settled under its own key; each Reckoning caller weighed in turn until one claims, the bar from the realm count,
+// the steps and the bloc; the winner judged, eliminated or conceded from the whole state; the realms left after a
+// concession checked pair by pair. Then what a whole turn can't stage: an Evil or Undead realm breaking an alliance
+// goes to war (whichever of the pair), an Evil realm whose ally breaks with it is only at peace; realms and foes with
+// no name; a realm offered peace with no record of whom it has met; a host in a contested province, of a realm not
+// party to the war, or on a third realm's ground (warned only beside a living host of the new foe); phantom companies
+// counted; a nameless caller, claimant or winner; a claimant with a hero but no land; a one-realm game; a concession's
+// standings by realm index. Properties (fast-check): each pair's relation after the declarations is the rule's, each
+// realm keeps exactly the overtures it didn't answer and has met who courted it; the game ends by elimination exactly
+// when one realm is left with land or a living hero, else by concession when one realm still in it is left or all left
+// are allies, announced once with a line for every realm; the bar falls a step a turn exactly when it may, never below
+// its floor. Planted faults: in the PR (P1-08k4)
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

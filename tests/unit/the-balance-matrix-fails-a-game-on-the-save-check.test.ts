@@ -11,6 +11,20 @@
 // matrix's reading misses turns this red.
 // Level 1 (unit): both checks are functions of a log and of a save (the upgrade and the strict parse of the fixture take
 // about a second); a static test can't parse a save. The matrix's run is the row's proof, not a test.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The matrix's failure on the save's check (`tools/balance/a-game-fails-on-the-save-check.ts`, which
+// `tools/balance/play.ts` calls after every turn and after the last). A turn's GM log with no `[Save check]` line finds
+// nothing (an `[Integrity]` line beside it neither); with one, each place it names is found as the check named it, and
+// past the ten it names, their count ("and 2 more"); a line that begins as the check's but not in its words is found
+// whole. The last save, upgraded and checked on a copy: the version-1 fixture as it is finds nothing; with a battle's
+// mark left on a company, that place, never its value. The known places: each entry anchored and naming its Parked
+// entry; an entry lets exactly its place through, in a line and on the last save, and no other (the same path with
+// another kind, another field, another path), nor a count. The staged lines are the engine's own words
+// (`whatTheSavesCheckFoundInWords`). Fails on its base (no module); planted on the module, each red: the line check
+// taken out, the last save not checked, a count let through, the known list ignored, an entry matched by its path
+// alone, the places not split, the full stop kept. Level 1: both checks are functions of a log and of a save; a static
+// test can't parse a save. The matrix's run is the row's proof, not a test. TypeScript, in `unit/`
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';

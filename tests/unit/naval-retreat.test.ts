@@ -6,6 +6,12 @@
 // Level 1 (unit): navalSplitRetreat (src/engine/units/sea-lift-stranding-and-retreats.ts, plan P1-08b) is called
 // directly on a world the engine makes in the bare vm (tests/lib/engine.ts). It was tests/naval-retreat.test.js,
 // which ran one turn on the GM portal for the anchor hook to hand the function back; the checks are the same.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The naval retreat split, staged cases plus 4,000 fuzzed retreats. `unit/naval-retreat.test.ts`: `navalSplitRetreat`
+// called directly in the bare `vm` (P1-08b; it was a level-2 code-anchor test that ran a turn first). Its lines are
+// facts since P1-12d5: it reads their words through the engine's `theWordsOf` (the fuzz's check for a malformed line
+// read the facts as `[object Object]` until then)
 import { afterAll, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
 

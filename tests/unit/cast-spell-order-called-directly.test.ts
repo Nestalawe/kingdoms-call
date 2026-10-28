@@ -9,6 +9,27 @@
 // stood in); and properties of the spells. The balance matrix never gives a mastery spell, Part Sea, Holy Symbol,
 // Clairvoyance, Hide Lairs or Control Undead's scan.
 // Level 1: one function, called with what processOrder hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The function (`resolveCastSpellOrder`, P1-08j7), called directly on the same cases one phase at a time with the same
+// dice (a spell item's Use Item handed over as `processOrder` turns it into a cast), then what the cases leave to a
+// direct call: the turn's statistics for each cast; the Warlock's extra cast in his best school (titles start at turn
+// 5); a charmed hero's refusal and what it allows; a mark named by a pre-order reference (hired, raised, charmed;
+// nobody); a mastery spell worked last turn; an item's cast that leaves the Wailing Phylactery unspent; which refusals
+// spend no slot; what the turn's end takes back, seen mid-turn (Part Sea's "plains" and its mark, a Flood's, the five
+// elementals by the die, a Clairvoyance replaced, Illusory Terrain by the dice, Oratory, Curse, phantoms, Invisibility,
+// a Veil); Resurrect's guards and the orders a realm wrote for the raised hero (the caster's own card first, after the
+// cast only, Defend for the rest); Charm's (the orders, his watch dropped, his movement, the marks of an enemy seized,
+// the resistance capped at 95); the helper that was nested in `processOrder` (`charmBacklash`, handed why as a record
+// since P1-12d9, with the duel stood in: no roll for a hero gone or fallen, 50 and 51, Flee on either side, combat
+// tactics only, the HP and their floor, a wanderer's HP, the kill credited, one who can't be killed, who is told); the
+// details the planted faults asked for. The balance matrix never gives a mastery spell, Part Sea, Holy Symbol,
+// Clairvoyance, Hide Lairs or Control Undead's scan. Properties: the casting limit and the chance (the level counted to
+// 5, 10% more at level 8); a cast lands exactly within its chance; Curse halves, cast after cast; Psychic Blast takes
+// two levels in all; Telekinetic Storm strikes min(level, companies), each down a tier or gone; Dominate and Chain
+// Lightning make and lose no company; Divine Judgment's damage and its floor; Skeletal Armies and Death's Dominion
+// raise as their level allows, the best first; Bless Province's ward and tax; a hostile spell never touches his own
+// realm's hero. Planted faults: in the PR (P1-08j7)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

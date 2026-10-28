@@ -10,6 +10,12 @@
 // rulebooks are read as site/ text; the player portal as its files under src/ (tests/lib/source.ts), the data file's
 // discoveries in the vm, and the call in the turn by its syntax tree. Until plan P1-09a the portals and the data file
 // were read as site/ text, and the migration ran on the booted GM portal.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 3 (R-109): no rulebook or player-portal text names the Corsairs, Admiralty names the Galleons only, Letters of
+// Marque lifts the Galleon Fleet +30% when attacking (item 12), and `retireCorsairPools` turns a running game's Corsair
+// offer into the Galleon (once, idempotent) while keeping Corsair companies already raised (batch 2026-10-15); the turn
+// passes the loaded world through the save's upgrade, which calls it (by syntax tree; since P1-15a)
 const fs=require('fs'), path=require('path'), vm=require('vm');
 const {sitePath}=require('./lib/boot'); const {loadEngine,engineFn}=require('./lib/engine.ts');
 const {callsTo,pageScripts,pageSource}=require('./lib/source.ts');

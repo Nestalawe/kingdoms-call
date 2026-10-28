@@ -5,6 +5,13 @@
 // makes there, with the provinces staged. Plan P1-08f: this was the last part of tests/battle-faced-turn.test.js,
 // which took both from the "  // 4. Run all 5 phases" hook after a turn on the GM portal; the rest of that test (the
 // battle's lines, and erodeGuardSurvivors, still nested in resolveTurn) stays there.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// A fallen commander's host is told who slew them: `disperseDeadCharArmies` says so when the host scatters or garrisons
+// and then clears the note, keeps the old wording with no killer known, and `handleHeroDeath` stamps the killer for it
+// (the lines are facts since P1-12d5: it reads their words through the engine's `theWordsOf`). Called directly in the
+// bare `vm` on a staged world (P1-08f: it was `battle-faced-turn`'s last part, through the code-anchor hook after a
+// turn)
 import { expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
 

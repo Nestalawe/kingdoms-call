@@ -3,6 +3,11 @@
 // since P0-22). Two games still exist (the test GM's and another GM's) and one was deleted: signed in as the
 // Overlord, who runs no game, or as the test GM, the button removes the deleted game's statistics and record,
 // and nothing of the games that still exist.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The GM portal's "Forget deleted games' data" forgets only games with no `games` row, whoever runs them: signed in as
+// the Overlord (who sees every game's statistics since P0-22) or a GM, the other games' statistics and Hall of Fame
+// entries stay
 const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
 
 let fails=0;

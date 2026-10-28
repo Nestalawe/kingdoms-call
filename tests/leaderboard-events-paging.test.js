@@ -7,6 +7,12 @@
 // src/ui/gm/hall-of-fame.ts by their syntax tree (tests/lib/source.ts) and run on their own, beside a probe in
 // buildGameRecords' place that keeps what it was given. (Until plan P1-09a they ran on the booted GM portal, with its
 // buildGameRecords stood in from outside, which a page of modules doesn't allow.)
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// A game's Hall-of-Fame record is built from every one of its turn rows, read in pages in a fixed order (none skipped
+// or read twice); a page that fails stops the build, saves nothing and shows the error. `writeGameRecord` is cut out of
+// `src/` by its syntax tree and run on its own (P1-09a: on the booted GM portal, `buildGameRecords` stood in from
+// outside)
 const vm=require('vm');
 const {pagedEventsStub}=require('./lib/stub-db'); const {sourceOf}=require('./lib/source.ts');
 const HOF='ui/gm/hall-of-fame.ts';

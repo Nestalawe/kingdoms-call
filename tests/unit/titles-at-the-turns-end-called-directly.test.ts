@@ -13,6 +13,36 @@
 // the foremost mage of each school it may; a title is won only by its holder's realm and lost only by the realm that
 // held it, never both, and on the first public turn nothing is lost.
 // Level 1: two functions, called with the context resolveTurn hands them.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy` and
+// `titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn` (P1-08k6), called directly, the turn moved on first and every
+// line filed after the phases, as `resolveTurn` calls them once the new turn is done: the whole-turn cases through the
+// two stages alone (but the five only a whole turn stages: the treasuries after the taxes and wages, espionage worked
+// by an order); then, with the helpers they call stood in by recorders in the `vm`, what each is handed: the standings
+// worked out once by the intel (only once titles are public) and once by the changes, the minor titles once; the
+// Throne's own share rounded down by `dispFloor`; each company measured by its base strength; Grave-sight filing only
+// the crack and elite dead, as partial, for the holder's realm, on the new turn; and `resolveTurn` calling the intel,
+// then the changes, once each with its context, after the new turn's second part. Then what a whole turn can't stage:
+// the standings failing (nothing told, no holder kept; after a public turn every title lost to nobody), the minor
+// titles failing (no holder of either kind); a save with no turn; turn 4 and turn 5 as the stages see them; a realm
+// with no name ("Player <n>"), no record of whom it met, no treasury, a gap in the list of realms; a commander standing
+// nowhere ("unknown") or with no companies list; the Monster-Bane held with no slayer of its own; the Loremaster's copy
+// by each die in turn (0 the first, 0.5 the second) and no die with nothing to copy; a mage with no skills or standing
+// nowhere; the dead a realm saw fall this turn, graves with no place, a gap in the graveyard; a fallen hero of the
+// realm and a hero standing nowhere giving no eyes; skills with no label, equal skills in their order; Grave-sight past
+// a gap and a missing province; every act the Spymaster's ledger holds (a king, no name, no realm, its own agents,
+// ground elsewhere, a province gone, the roll by hero most acts first, two heroes of one name); a province no realm
+// mapped and a missing one; the beast censuses past the fallen, gaps, other realms' ground and a hero with no companies
+// list; title changes for a hero the roll no longer has, a realm missing from the list, a hero of no realm, a title a
+// save records held by a realm and no hero, a hero who changes realms holding his title, a realm with no living king
+// taking or holding a realm's title. Properties (fast-check): the Throne goes to the first realm of the largest tax
+// base and tells it its own share rounded down, each realm it met rounded and how many it hasn't; the Loremaster copies
+// exactly the fresh discovery the die picks of those a met realm holds and it lacks, or none; the Archmage names, per
+// school, the living mage of the highest level outside its realm, of a met realm or none, the most skilled of equals,
+// the first of those; a title is won only by the realm now holding it when it changed hands or titles are first public,
+// lost only by the realm that held it to another or to nobody, never both, nothing lost the first public turn. Planted
+// faults: in the PR (P1-08k6)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

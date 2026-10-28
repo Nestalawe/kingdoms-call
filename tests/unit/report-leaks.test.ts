@@ -5,6 +5,33 @@
 // one realm alone (P1-12c4) on the same turn. Level 1 (unit): pure
 // functions on made-up values; turn-fuzz, report-privacy and the balance matrix run the same checks over whole games
 // (level 3; the audience check where the turn's events are recorded: the matrix's every-realm half).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The report-leak check (`lib/report-leaks.ts`, P1-04c) on a small made-up turn that passes; each planted leak (an
+// enemy hero's hit-point rise, the `af9c247` leak; a private line two realms read; an unmet realm named in a line or
+// another section; an invisible hero on the map, in the list of the reader's own provinces, in a sighting, in a line
+// later in the phase he cast it or after it, in spy activity; a private line in province events, P1-12a1) breaks only
+// its own check, saying what leaked; what they allow (Clairvoyance, a line the reader is a party to, a realm met
+// through its hero, the game over, a Charm's caster, a namesake, the longest name first, lines before the cast, the
+// hero's deeds on the reader and what follows, title intelligence); `KNOWN_BREACHES` lets through only its own lines
+// (another realm's private line in spy activity, but not in the chronicle, nor a line naming no hero that two realms
+// read, P1-12a1). The audience check (P1-12b3, P1-12's Decision 12) on a made-up turn of its own, with its events and
+// sight, that passes: each line read that no event admits breaks it alone (another realm's private line; a line seen
+// there where the reader had no eyes that phase; the public half of a pair by the realm it excepts; a battle it didn't
+// fight; a line no event wrote, or in another phase; a province event; a world line made nameless from an event that
+// wasn't the world's; a Clairvoyance line from before the watch, about another hero, or with no watch; a spy's feed
+// line of another province, or from its spy's own phase; a line told to another realm, filed under the reader's hero
+// only because his order was resolving, P1-12c1); what the model admits passes (a line naming its hero; one filed under
+// the hero whose order was resolving when told to his realm then, its deed or seen there, read by the realm that holds
+// him as the report is built; one of a hero who served no realm, P1-12c1; a line seen in a battle through a spy's
+// lingering sight, an unmet realm read as "an unknown realm"); with no events recorded it checks nothing; its entry
+// lets another realm's private line through in a spy's feed, not in the chronicle. The check of a line for one realm
+// alone (P1-12c4, P1-12's Decision 6) on the same turn: its own list names the two kinds; read by its own realm, no
+// breach; planted, each breaks it alone (the surgeons' word given the battle's audience and read across the field,
+// which the audience check admits; given the world, in province events); let through: Clairvoyance, the same words from
+// a line for everyone, the realm its hero joined, no events recorded, and, by its entry, a spy's feed. Level 1: a lower
+// level can't run a check; turn-fuzz, report-privacy and the matrix (every realm's report, since P1-12a1; with the
+// audience check, since P1-12b3) run them over games. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { checkLeaks, checkTurn, type SavedState, type Turn } from '../lib/invariants.ts';
 import {

@@ -7,6 +7,11 @@
 // monsterTraits is top-level since plan P1-08f (it reads no turn state): it is called directly in the engine's bare vm
 // (tests/lib/engine.ts), beside the guardian table it reads. Until plan P1-09a this test ran a real turn on the GM
 // portal first and took monsterTraits from the hook at "  // 4. Run all 5 phases".
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// No guardian's card resists and is weak to the same thing, and no hidden category multiplier pushes against a trait on
+// the card. `monsterTraits` called directly in the bare `vm` (P1-09a: it was level 2, a turn on the GM portal first for
+// the code-anchor hook to hand it back)
 const vm=require('vm'); const {loadEngine,engineFn}=require('./lib/engine.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 {

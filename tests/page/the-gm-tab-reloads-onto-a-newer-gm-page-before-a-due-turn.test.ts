@@ -9,6 +9,17 @@
 // Level 4 (page): it reads the booted page's metas, address and session storage, with fetch and the clock stood in.
 // A lower level can't: the decision is the page's, from its own HTML. The page boots signed out, on a stand-in client
 // that answers "no session" (the GM's games aren't needed: the test calls refreshIfNewerBuild as the watcher does).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The GM tab's reload before a due turn (P1-06c, `refreshIfNewerBuild`), on the GM portal booted signed out, with
+// `fetch` and the page's clock stood in: the page's fingerprint is its `kc-page-version` meta; `version.json` naming
+// the same GM page never reloads it; another GM page reloads it once that page has been known for 10 minutes (not at 9
+// minutes 59 seconds), once per game and turn, with the watcher's line saying so; a third page deployed after the
+// second waits its own 10 minutes; a failed fetch, an error answer, an answer that isn't JSON or isn't `version.json`:
+// no reload and no `console.error`; the page reads `version.json` once as it loads (the reload banner's first check,
+// P1-06d). Level 4: the decision reads the booted page's metas, address and session storage. Red on its base (which
+// read the footer's stamp) and with the comparison or the 10-minute wait planted out (in the PR). No stand-in database
+// (`lib/stub-db.js`): a client that answers "no session"
 import { expect, test } from 'vitest';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
 

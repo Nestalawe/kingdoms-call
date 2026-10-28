@@ -4,6 +4,12 @@
 // Level 1 (unit): spreadTerror and consumeTerror (src/engine/battle/evil-terror.ts, plan P1-08c) are called directly in
 // the bare vm (tests/lib/engine.ts), on a world the engine makes. This was tests/terror-three-stacks.test.js, which ran
 // one turn on the GM portal for the "  // 4. Run all 5 phases" hook to hand them back; the checks are the same.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 21 (2026-10-12), once `battle-tweaks`' fourth block: Terror stacks at most three times (five victories leave
+// three stacks, three demoralise by −30%, a save holding five reads as three). `unit/terror-three-stacks.test.ts`:
+// `spreadTerror` and `consumeTerror` called directly in the bare `vm` (P1-08c; it was a code-anchor test that ran a
+// turn first); it reads the Terror line's words (`theWordsOf` on a fact, since P1-12c6)
 import vm from 'node:vm';
 import { afterAll, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';

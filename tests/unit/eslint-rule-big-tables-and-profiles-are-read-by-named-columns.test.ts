@@ -5,6 +5,15 @@
 // embedded. Reads of other tables, of named columns, and of a table or columns held in a variable pass. Where the rule
 // runs (src/, public/, the templates' scripts) is tests/static/harness.test.ts's and the templates' test's.
 // Level 1 (unit): ESLint's RuleTester runs the rule's code on snippets, which a static test, running nothing, can't.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `kc/big-tables-and-profiles-are-read-by-named-columns` (`tools/eslint-rules/`, P1-13c), the rule that replaced
+// `profiles-columns`, run by ESLint's RuleTester: for each of `games`, `game_players`, `turn_logs` and `profiles`,
+// `select('*')` (also as a template), `.select()` with no list after an insert or an upsert, and a `*` in an embedded
+// resource (`games(*)`, `x:games!inner(*)`) are refused, one finding a read naming each table; `profiles`' `email` too,
+// read, renamed, cast or embedded (P0-31, D-08); named columns, `email_verified_at`, other tables, and a table or
+// columns held in a variable pass. Red with embedded resources not read. Level 1: the rule's code runs on snippets,
+// which a static test, running nothing, can't. TypeScript, in `unit/`
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, test } from 'vitest';

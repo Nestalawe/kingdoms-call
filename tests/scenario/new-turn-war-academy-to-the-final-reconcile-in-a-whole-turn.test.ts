@@ -12,6 +12,37 @@
 // case's dice fixed for the whole turn. Level 2 (scenario): the stage is what the turn does after its first part,
 // before the titles, so only a whole turn plays it as the game does.
 // unit/new-turn-war-academy-to-the-final-reconcile-called-directly.test.ts calls the stage directly.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The new turn's second part (P1-08k5b, a stage taken out of `resolveTurn`'s own body), played through a whole turn
+// (`playTurn`, from plain realms each holding only its seat with a living king there: k5a's `stageCase`), each case of
+// `lib/new-turn-war-academy-to-the-final-reconcile-cases.ts`, in game terms, with the dice fixed for the whole turn.
+// The War Academy: at a die under 7% each company the realm's heroes keep at home trains a grade (each told to the
+// realm alone, hero by hero), at 7% none (told so); not an Elite company or the risen dead (then nothing said), not
+// companies away or an ally's at the home; the home is the first province the realm holds with a tax of 10 or more, in
+// the map's order; none without one, nor without the Academy; two realms each their own. The wounded mend: Physick
+// Gardens 3 HP (told, the hero named), never past the maximum; Royal Physicians 4 for the king only; nobody for another
+// realm's gardens. The Informant Network names one captain of another realm the realm can't see (an ally's too), the
+// highest die the last of the roll, the lowest the first; nothing new for a captain on the realm's land or beside its
+// hero, a king, a wanderer, the fallen; another realm's land and the realm's own fallen give it no eyes; two realms
+// each their own. The Arcane Observatory charts one unmapped province in full (99% is unmapped), the last or the first
+// by the die, says when all is mapped, after the informants and without them, each realm its own. The Divine return: a
+// hero fallen the turn before rises on his realm's consecrated ground with half his HP, no companies or items, listed
+// there, his grave gone, the ground spent; not yet when fallen this turn; with no ground (or ground taken) the grace is
+// lost (told, the grave marked, never tried again); the nearer of two grounds, the richer of equals; not another creed
+// or a wanderer; a king promised his return rises crowned (no heir), another fallen king doesn't; two heroes, one
+// ground; each realm its own. Graves rot at a die of 10% or less, 5% on an Undead realm's ground, never under the
+// Embalmers on its own. Mercenary bands retire under 25% (told to nobody, by kind when nameless) or move on to the
+// province around them the die picks (even and odd rows, the map's edge and its wrap, land or sea, none with only sea
+// around). The clean-up: the driven-from-home mark cleared; wanderers made whole (not guards, realms' heroes or the
+// fallen); the save's repairs told (names, retired discoveries, singular and plural); stale graves of the living purged
+// (a hold on the body released, another kept); each realm notes the graves it sees (in its land or beside its living
+// heroes; not a king's; once); the dead seen this turn forgotten; the turn's orders and scratch lists cleared.
+// Wanderers drift at 35% or less to land around them (the third, the first), never to sea; guards, realms' heroes and
+// the fallen never; hale where they arrive. A guard whose last company was summoned for the turn is a wanderer at the
+// end, too late to mend or drift. The order: every line in its order; the informants before the dead rise; the gardens
+// before them; stale graves before the realms take note; the titles after the drills (the Grand Marshal's strength).
+// Level 2: the stage is what the turn does after its first part, before the titles
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {

@@ -8,6 +8,14 @@
 //     accepted rather than refused at the current level's one.
 // The engine's part (a cast refused because a practice had not yet raised the school spends no casting
 // slot) moved down in plan P1-08j4: tests/scenario/research-and-practice-orders-in-a-whole-turn.test.ts.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 16 (2026-10-13): casts assume every earlier practice succeeds. The bots' order check (`botCastLimit`,
+// `runBotOrderHygiene`) counts earlier practice orders; the encounter plan's combat-spell picker offers, and accepts,
+// Psychic 2's two spells for a Psychic 1 hero practising Psychic; the rulebook says so. The engine's part (a cast
+// refused because the practice before it failed spends no casting slot, so a later successful practice opens the last
+// cast) moved down in P1-08j4 to `scenario/research-and-practice-orders-in-a-whole-turn.test.ts`, with its hook on the
+// practice roll
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db'); const {bootScenario}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{

@@ -16,7 +16,7 @@
 //
 //   const words = pc.wordsOf(res.narrative).join('\n');
 //
-// Fresh modules (tests/README.md, "How the tests reach the site"): it calls vi.resetModules() and imports the whole
+// Fresh modules (docs/architecture/how-the-tests-reach-the-site.md): it calls vi.resetModules() and imports the whole
 // engine again (tests/lib/the-whole-engine.ts) before it seeds the dice, so the world is the one the bare vm made from
 // the same seed, whatever the file made before. A module the test imports after this call (`await import(…)`: a table,
 // kcRng, a function to stand in with vi.spyOn) is the same fresh one the functions call() gives use.

@@ -7,6 +7,21 @@
 // raised, the orders written for a hired hero, the Broker's refusals, Holy Sites, Muster Rolls, the carters' discount
 // and the Undead Wonder, and Awaken Grove, Wild Calling and Grand Design, which no bot gives. Level 1: one function,
 // called with what processOrder hands it.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// The eleven functions (`resolveRecruitArmiesOrder`, `resolveHireHeroOrder`, `landHirePreOrders`,
+// `resolveConsecrateOrder`, `resolveCallToArmsOrder`, `resolveBrokerOrder`,
+// `resolveRemovedAwakenTheWildAndCallFromThePitOrders`, `resolveHarvestTheFieldOrder`, `resolveAwakenGroveOrder`,
+// `resolveWildCallingOrder`, `resolveGrandDesignOrder`, P1-08j3), called directly on the same cases one phase at a
+// time, then on what the dice decide (fixed) and what the balance matrix never reaches: a recruit's grade from Superior
+// Forging or the Druidic Wonder, the Druid's rise from a beast raised, the running cost of an order, bands hired by a
+// Recruit (named four ways, Black Market's discount, a band unpaid staying), the written orders' cards (the hirer's own
+// first, never a rival's), the Broker's refusals and its last-season hire, Holy Sites, Muster Rolls, the province's own
+// garrison company, the carters' discount and the Undead Wonder, the Grove's Ents, Wild Calling's even chance per beast
+// with the room it leaves (the settling of the province after it stood in for), and the Grand Design's Wonder by creed.
+// 192 planted faults in the functions and their calls: 191 turn at least one of the two tests red, and every test goes
+// red for at least one; the one left can't change the game (the Wild Calling's own-realm guard, which the next guard
+// covers)
 import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

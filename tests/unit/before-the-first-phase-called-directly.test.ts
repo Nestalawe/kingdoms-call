@@ -12,6 +12,30 @@
 // stands at once, every other waits; every empty phase sent is Defend, and only those; every guardian is 5 HP frailer,
 // never below 5.
 // Level 1: four functions, called with the context resolveTurn hands them.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// `relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks`,
+// `warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages`,
+// `movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan` and
+// `missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart` (P1-08k8), called directly after P1-08k7's two
+// stages, the context's values the four make afresh left stale first: the whole-turn cases through the four stages
+// alone (but those about the bots' own passes); then, with their helpers stood in by recorders in the `vm`, what each
+// is handed: each bot realm's earlier choice with leads and no pick handed to the bots' pick, which the realm pursues;
+// one die per choice the scholars settle, each value of it; a retired lead the game still lists never pursued; the
+// war's key asked of the declarer first; names by number; the standings and minor titles once each from turn 5, failing
+// or empty leaving none; Safe Start's and the stale lines in their order, public only for a concession; removals by
+// name past gaps; the log's hero kept through the messages, the copy carrying it; "all" read from the rows; a message
+// from a seat the save lacks; each living realm hero handed to the move pool with the turn's new pools; the mithril
+// once, the lairs' renaming only for an old world and told as it counts; each realm asked for its Cathedral, the home
+// looked up only when it has no province; a home off the map; gaps among provinces and features; a gap in the realms'
+// list stopping the espionage reset (Parked); a hero with no orders at all; the record's reckoning handed what each
+// realm sent, a concession dated by the turn run, a failing record warned and set aside, gaps; the war fronts as the
+// threats name them, not on ground fought over, not under a veil; and `resolveTurn` calling the merge, the first two
+// around the bots' declarations, the third after the turn's start values, the bots' passes, the fourth, then the first
+// phase, each once with its context. Properties (fast-check): a research choice settles on the pick or the die's open
+// lead, forgetting the rest, or is dropped; a message reaches exactly the realms it may, once each, with one copy; an
+// Evil or Undead realm's war on a realm met stands at once, every other waits; every empty phase sent is Defend, only
+// those; every guardian 5 HP frailer, never below 5. Planted faults: in the PR (P1-08k8)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

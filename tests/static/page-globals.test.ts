@@ -12,6 +12,18 @@
 // - and on a copy of src/ with a fault planted, and on code written here, the checks see each fault.
 // So a name a page needs and doesn't list fails here, before the switch to modules (P1-09d) would hide it.
 // Level 0 (static): it reads the sources and the tests, and runs nothing.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// What each script page keeps on `window` once its scripts are modules (P1-09b, `lib/page-globals.ts`): its
+// `globals.ts` is the last file its entry imports, and its two lists hold exactly the names its inline handlers call
+// (in its template and its `kcHtml` strings) and the other names its tests reach (by `eval`, `evaluate`, a window's
+// property, a screen tour's code, each string and each whole `+` chain of them), each a function or a constant declared
+// in the file its comment names; every variable a handler or a test reaches is a declared global; no test stands a page
+// function in (P1-09d restaged the screen tours' five); the classic scripts a page keeps read none of its module names;
+// every evaluated call's code is read, but three known ones. Planted on a copy of `src/`: a name taken off either list,
+// one nothing needs, a wrong file, a declared global put back as a `let`, a variable on a list, `globals.ts` not the
+// entry's last import; and the reading itself, on code written in the test. Level 0: it reads the sources and the
+// tests, and runs nothing. TypeScript, in `static/`
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

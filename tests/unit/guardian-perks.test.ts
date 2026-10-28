@@ -5,6 +5,16 @@
 // (pcMonsterCombatant, pcCastCombatSpell, pcRoundStart and resolvePersonalCombat).
 // Level 1 (unit): every function called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took them from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the dice pinned.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 7: every guardian has one perk per grade (Weak 1 … Legendary 4), each carrying its grade's value from the
+// decided table (which never weakens a perk at a higher grade), named and described, a quarter or more of them wards
+// against magic, none warding the school it is weak to; in the engine every perk is felt (`pcMonsterCombatant`), a
+// school ward takes its points off the cast chance, stun wards turn a blast (Legendary always, Weak on its roll), a
+// lingering-harm ward cuts a burn, a perk's tighter hit cap is not loosened by the grade's, the fight names every perk,
+// and a running game's guardian takes its new perks (`migrateLairGuardiansV2`, `GUARDIAN_TABLE_VER` 20) (batch
+// 2026-10-14). `unit/guardian-perks.test.ts`: every function called directly on the engine's modules
+// (`lib/personal-combat.ts`; P1-08e: it was a code-anchor test that ran a turn on the GM portal first)
 import { expect, test } from 'vitest';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import {

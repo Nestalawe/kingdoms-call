@@ -6,6 +6,13 @@
 // Level 1 (unit): pcCastCombatSpell called directly on the engine's modules (tests/lib/personal-combat.ts; plan P1-08e: it was a
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal), the cast pinned to
 // succeed.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 5: Holy Symbol at White 5 gives −60% to hit against every undead and fiend guardian and −40% against every other
+// (all guardians not weak to White checked, `pcCastCombatSpell`): the unclean are told by kind (the Dust Devil is not,
+// the Chaos Knight is) and bitten ×1.5 (batch 2026-10-14). `unit/holy-symbol-unclean.test.ts`: `pcCastCombatSpell`
+// called directly on the engine's modules (`lib/personal-combat.ts`; P1-08e: it was a code-anchor test that ran a turn
+// on the GM portal first)
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant, type Guardian } from '../lib/personal-combat.ts';
 

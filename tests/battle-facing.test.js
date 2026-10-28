@@ -16,6 +16,13 @@
 // (Wargs facing cavalry ×1.25) and Stoop on the Horses (an Eagle holds an open flank slot no rider fills).
 // Each expectation below names the plain matchup and the ability on top; the plain figures are kept on units
 // that carry no ability in that place (Goblins, Black Arrows).
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Who faces whom (`battleFacing`, module level): a front unit against the enemy opposite by role (cavalry v ranged
+// ×1.25, cavalry v infantry ×0.85, infantry v cavalry ×1.15, infantry v ranged-in-front ×1.25); a second-line ranged
+// unit shoots the unit opposite (infantry ×1.25, cavalry ×0.75); a wider front wraps the ends ×1.2 and the wrapped ends
+// are hit from the side ×0.9; flank duels, a spare rider guarding an end, a free rider ×1.3 turning an unanchored line
+// on open ground (second-line ranged ×0.75); no front to face; the sea; the `_faced` stamps and the ladder stage
 const {readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-6;

@@ -6,6 +6,13 @@
 // Checked over generated worlds from 2 realms to the largest size; the neutral guard leads exactly
 // those units.
 // Simulation level: world generation is one long function and the property is over whole worlds.
+//
+// In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// Item 13 (2026-10-13): in generated worlds from 2 realms to the largest size, every neutral humanoid province fields
+// the most effective mix of its own land units (the test scores every mix itself with `botBattleForce`, the bots'
+// battle estimate of a neutral province) with the number of units its wealth band gives, never a garrison or a ship,
+// and its neutral guard leads exactly those units. Simulation level: world generation is one long function and the
+// property is over whole worlds
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
