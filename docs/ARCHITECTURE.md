@@ -687,7 +687,8 @@ portals' start-up guards are gone.
   `engine/orders/`, each beside its family's file (`the-facts-the-encounter-and-defend-orders-lines-record.ts`,
   `-order-dispatchs-`, `-item-orders-`, `-research-and-practice-orders-`, `-recruit-and-hire-orders-`; since P1-12d7
   `-army-orders-`, `-realm-works-orders-`, `-war-mastery-orders-`; since P1-12d8 `-espionage-orders-`,
-  `-explore-and-search-orders-`; since P1-12d9 `-cast-spell-orders-`), all of them in `LineFact`, each with its
+  `-explore-and-search-orders-`; since P1-12d9 `-cast-spell-orders-`; since P1-12d10 `-move-orders-`), all of them in
+  `LineFact`, each with its
   audience: the fight's, its hero's realm alone, or for a kind filed on its own the audience its event names), and the
   views write its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words
   is a compile error. **The route by kind** (P1-12d5): `theWordsOf` reads, for a fact's kind, its area's words, from a
@@ -704,9 +705,11 @@ portals' start-up guards are gone.
   escape, his, whose die stays in the engine and the fact holds which sentence); since P1-12d6 the lines of five of
   `orders/`' families are kinds too (Encounter and Defend, the order dispatch's checks, the item orders, Research and
   Practice, Recruit and Hire: every line they write), since P1-12d7 three more (the army orders, the realm works, the
-  war masteries), since P1-12d8 two more (espionage, explore and search) and since P1-12d9 the Cast Spell order (every
-  spell's line, with what the realm whose hero or province it touches is told: each keeps its audience; the move order
-  follows, P1-12d10). A word helper that reads the world and still has an engine caller elsewhere is split in two where it is: a copy
+  war masteries), since P1-12d8 two more (espionage, explore and search), since P1-12d9 the Cast Spell order (every
+  spell's line, with what the realm whose hero or province it touches is told: each keeps its audience) and since
+  P1-12d10 the move order (every line of a march, a voyage and the battle on arrival it writes, the defence's forming-up
+  that the battle's narrative takes among them): `orders/` hands no line's words of its own (personal combat's lines
+  it passes on are that area's; the slain line `reportHeroFall` takes is still words its callers hand, Parked). A word helper that reads the world and still has an engine caller elsewhere is split in two where it is: a copy
   as the line tells it and its words on that copy alone, which the prose imports (`theSkillInPlayAsALineTellsIt` and
   `theWordsOfASkillInPlay` beside `skillInPlayNote`; since P1-12d8 `theStatShownAsALineTellsIt` and
   `theWordsOfAStatShown` beside `statNote`, `theOddsShownAsALineTellsIt` and `theWordsOfTheOddsShown` beside `oddsNote`:
