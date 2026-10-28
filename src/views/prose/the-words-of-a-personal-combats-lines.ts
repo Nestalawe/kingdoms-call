@@ -165,7 +165,7 @@ function theScoutsReport(
     (fact.spellNames.length
       ? ` It can call on ${fact.spellNames.join(', ')}.`
       : ' It has no special powers — it fights with tooth, claw and steel alone.') +
-    fact.passives.map((p) => ` ${p.name}: ${p.desc}.`).join(''); // passives are scouted too
+    fact.passives.map((p) => ` ${p.name}: ${String(p.desc)}.`).join(''); // passives are scouted too
   // Weaknesses / resistances — read the guardian's damage-type vulnerabilities (0.4-1.8; >1
   // means it takes MORE from that type, <1 means it shrugs it off).
   const v = fact.vulnerabilities;

@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-103 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(69: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+102 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(68: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -241,3 +241,23 @@ table with a key left out.
   - **A result the code has just made sure** (`pcRangeStep`'s range: it keeps its index within the list) is checked
     with a `return` the compiler can see; where the old code threw on the next line instead (`pcPushDot`'s none, for a
     foe of no status), the check throws the same `TypeError`.
+- (P1-10b13: `personal-combat/tactics-combat-items-and-actions.ts`, 30,058 bytes): 35 errors, 28 of them a parameter
+  with no type. The first pass wrote the forms lint asks for as it went; the typed lint then found 1 more, fixed. No
+  typed reader held a suppression on its results, so `eslintSuppressions` stays 708. The return types of the four
+  callees it meets that keep their line are written there (`encounterClearGold`: `number`; `ensureLairHoard`: `void`,
+  its `opts` optional; `pcCastCombatSpell`: `boolean`; `pcMonsterSpecial`: `void`). Five more forms:
+  - **A value a rider reads when the fight runs it later** (`pcDeferEffect`'s closure adding an item's `hitPen` or
+    `stun` next round) is read once into a `const` before the closure (`const { hitPen, stun } = e`), so the test
+    before it narrows it inside the closure too; nothing writes an item's effect, so the value is the same.
+  - **A pair the dice read** (`rng(e.dmg[0], e.dmg[1])`) goes through a small reader that hands back `[Number(a[0]),
+    Number(a[1])]` and, for no pair, throws the `TypeError` the old read threw.
+  - **An interface read by any name** (a fighter's schools, `actor.school[s]`) is copied into a local typed
+    `Readonly<Partial<Record<string, number>>>` by a spread: an interface has no index signature, a spread's object type
+    has one. The levels are read `Number(x) || 0`, as a school may hold `NaN`.
+  - **A list whose items the code tests for a gap or a missing field** (`it && it.effect && it.effect.use === use`, a
+    gap among a guardian's specials) is read through a local typed with its element as wide as the test, and the test
+    is `it?.effect?.use === use`.
+  - **A copy made through JSON can't be typed yet** (`JSON.parse(JSON.stringify(x))`, the Hunting Rumours copies of a
+    hero and a guardian in `lair-guardians-and-the-odds.ts`): `JSON.parse` gives `any`, so the copy reaches a typed
+    function only through a claim (an `as`, a type predicate that checks nothing, or a suppression), which these rows
+    refuse. That file keeps its line until a form is chosen.

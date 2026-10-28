@@ -271,6 +271,9 @@ interface AFighterAsHisStatusIsGuarded {
     | null
     | undefined;
 }
+/** A rule's switch (PARLEY_ENABLED, SCOUT_ENABLED): on or off, not the one value it holds today, so a test of it still
+ *  reads it when it is turned on (as ARCHERY_PARTING_SHOT's, melee-flight-and-archery.ts). */
+type ASwitchTurnedOnOrOff = boolean;
 /** A guardian's weakness as pcWeaknessApplies reads it. */
 interface AWeaknessAsItIsTested {
   readonly kind?: string | undefined;
@@ -334,10 +337,10 @@ interface TheStateAsTheMithrilPassesReadIt {
 export const PC_WEAK_MULT = 2;
 // the Talk/Parley encounter tactic is withdrawn. Set true to bring it back — see the 'TA' case in
 // pcRunTactic for the full checklist of what else to restore alongside it.
-export const PARLEY_ENABLED = false;
+export const PARLEY_ENABLED: ASwitchTurnedOnOrOff = false;
 // the Scout encounter tactic is withdrawn too. Same pattern — the mechanic below is intact; see the
 // 'SC' case in pcRunTactic for what else to restore alongside it.
-export const SCOUT_ENABLED = false;
+export const SCOUT_ENABLED: ASwitchTurnedOnOrOff = false;
 // ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ── the order that replaces most of what Scout
 // did, bought in the taverns rather than read off the beast. Cost per lair by grade. 2026-09-23d
 // (Toby): every fact paid for is LEARNED — the old 50% + 10%/Spy roll per fact is retired.
