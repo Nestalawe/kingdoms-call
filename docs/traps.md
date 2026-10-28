@@ -6,7 +6,7 @@ add it here in the same PR.
 
 ## Edit `src/`, never `site/`
 
-Since P1-05, `site/` is build output ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)): git-ignored, and
+Since P1-05, `site/` is build output ([ARCHITECTURE.md](architecture/the-build-from-src-to-site.md#the-build-src-becomes-site)): git-ignored, and
 rewritten from `src/` by every test run. An edit there is never committed, and the next build quietly undoes it.
 
 - Change the file in `src/` (or `public/`, for what is copied as it is). A page's files are what its entry
@@ -14,14 +14,14 @@ rewritten from `src/` by every test run. An edit there is never committed, and t
 - A new file is imported where it is read (and by the page's `page.ts` if it does something as it loads). A file no
   page reaches fails `pages-build`.
 - `node tests/<name>.test.js` and a page opened in a browser read `site/` as last built: run `npm run build` first.
-  `npm run dev` serves `src/` as it is, against the local Supabase ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)).
+  `npm run dev` serves `src/` as it is, against the local Supabase ([ARCHITECTURE.md](architecture/the-build-from-src-to-site.md#the-build-src-becomes-site)).
 
 ## A deploy keeps the files a cached page names
 
 Since P1-06b each page's bundle and stylesheet are named by their content (`assets/<page>-<hash>.js`), so a change
 renames them. GitHub Pages replaces the whole site on each deploy, and its cache hands out a page for up to 10 minutes
 after it: a page cached before the deploy asks for its old bundle, which the new build doesn't have. The build jobs
-put the old files back ([ARCHITECTURE.md](ARCHITECTURE.md#the-build-src-becomes-site)).
+put the old files back ([ARCHITECTURE.md](architecture/the-build-from-src-to-site.md#the-build-src-becomes-site)).
 
 - **Never publish `site/` without the keep step** (`tools/deploy/keep-the-previous-deploys-files.ts`, between
   `npm run build` and the upload in both build jobs). Without it, every page cached before the deploy breaks for up to
@@ -208,7 +208,7 @@ it answered 1, but `pctRoll`, in `d100`'s own file, kept calling the real `d100`
 ## A lifted helper takes the turn's context first
 
 Since P1-08a, a helper lifted out of `resolveTurn` that reads the turn's state takes `turnContext` as its first argument
-(`src/engine/turn/context.ts`; [ARCHITECTURE.md](ARCHITECTURE.md#the-turn-engine-gm-portal)).
+(`src/engine/turn/context.ts`; [ARCHITECTURE.md](architecture/the-turn-engine.md#the-turn-engine-gm-portal)).
 
 - A call that leaves it out doesn't fail: every argument moves along by one, and the helper quietly reads the wrong
   thing. `no-undef` can't see it. The balance matrix catches it in the code it runs; anywhere else, a direct test.
@@ -562,7 +562,7 @@ hooks by checking the rows they write.
 The most common root cause in this project's history is two copies of one rule disagreeing. The shared
 tables now have one source, and so do the rules of a hero, an army, an item, a level or a number that the player
 portal uses (P1-11a): it calls the engine's own function, in `src/engine/rules-on-plain-values/`, through
-`src/shared/` ([ARCHITECTURE.md](ARCHITECTURE.md#kingdoms-call-datats-the-one-source-for-shared-rules)). Change such a
+`src/shared/` ([ARCHITECTURE.md](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules)). Change such a
 rule there, once. Rules are still restated:
 - in the player portal's projections (forecasts, order validation, hints): the copies still left are the ones
   `tests/lib/player-portal-copies.ts` checks (`effMagicLvl`, the army card's sea-transport line, the
@@ -589,7 +589,7 @@ rulebooks.
 ## HTML is built only through `kcHtml`
 
 Every name, message and record on screen was typed by someone, so it goes into a page as text (P0-19,
-[ARCHITECTURE.md](ARCHITECTURE.md#how-a-page-builds-html)). The lint rule `kc/html-is-built-only-through-kc-html`
+[ARCHITECTURE.md](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#how-a-page-builds-html)). The lint rule `kc/html-is-built-only-through-kc-html`
 (P1-13d; it replaced `html-lint`) catches most mistakes as you write them; these ones it can't, or they cost time:
 
 - **Markup in a value is shown as text.** In ``kcHtml`<td>${won?'<span class="pill">won</span>':''}</td>` `` the pill
@@ -657,7 +657,7 @@ Every name, message and record on screen was typed by someone, so it goes into a
 
 ## An effect reads only what its hook hands it
 
-An effect of the rule registry (`src/engine/rules/`, [ARCHITECTURE.md](ARCHITECTURE.md#the-rule-registry)) reads its
+An effect of the rule registry (`src/engine/rules/`, [ARCHITECTURE.md](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry)) reads its
 stage's facts and its content row, and returns a value: a factor, a multiplier and its words, a line or nothing. It
 imports nothing but `src/engine/rules/`, `src/engine/rules-on-plain-values/` and `src/content/` (`npm run lint:arch`
 refuses the rest), so it can't draw a die (`kcRng`), read the turn's state or write a line: what it needs, its stage hands
@@ -1076,7 +1076,7 @@ games.
   `upgradeGameState` (`src/engine/saves/upgrade-a-saved-game-and-check-it.ts`) runs `migrateMaxHpV2` (which calls
   `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
   `migrateLegacyUnitNames` and `migrateItemTiers`, in that order. A new pass goes there, draws no dice and writes no
-  line: what it has to tell the GM it returns, and the turn tells it ([ARCHITECTURE.md](ARCHITECTURE.md#a-saved-game-its-version-its-upgrade-its-check)).
+  line: what it has to tell the GM it returns, and the turn tells it ([ARCHITECTURE.md](architecture/a-saved-game-its-version-its-upgrade-its-check.md#a-saved-game-its-version-its-upgrade-its-check)).
   `ensureAllLairHoards` still runs in the turn, after the merge of the orders (it draws dice). `migrateHoardTally` runs
   wherever the find tally is read or written. A running game picks up a change at its next turn.
 - **Every migration runs on every turn**, not once, so it must be safe to repeat (idempotent).
@@ -1093,7 +1093,7 @@ games.
 Every saved game holds the number of its shape, `schemaVersion`, at its top level (P1-15c). A save without one is
 version 0: every live game held none on the day the version came in. World generation writes the version this build
 writes (`src/engine/saves/the-saved-games-version-this-build-writes.ts`), and the upgrade
-(`upgradeGameState`, [ARCHITECTURE.md](ARCHITECTURE.md#a-saved-game-its-version-its-upgrade-its-check)) stamps it on an
+(`upgradeGameState`, [ARCHITECTURE.md](architecture/a-saved-game-its-version-its-upgrade-its-check.md#a-saved-game-its-version-its-upgrade-its-check)) stamps it on an
 older save.
 
 - **When the shape changes, the schema changes with it.** A new optional field is the schema alone. A change an older
@@ -1115,7 +1115,7 @@ older save.
 
 Since P1-15d the turn checks the save it has just upgraded against the saved state's schema made strict
 (`src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts`,
-[ARCHITECTURE.md](ARCHITECTURE.md#a-saved-game-its-version-its-upgrade-its-check)). Zod's `z.object` returns a copy
+[ARCHITECTURE.md](architecture/a-saved-game-its-version-its-upgrade-its-check.md#a-saved-game-its-version-its-upgrade-its-check)). Zod's `z.object` returns a copy
 without the keys it doesn't name, and a live save may hold keys the schema doesn't know yet (a field only live play
 writes, or a battle's mark that leaked into the save).
 

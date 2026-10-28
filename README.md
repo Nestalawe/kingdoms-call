@@ -15,7 +15,7 @@ a Hall of Fame and two rulebooks. Live at <https://nestalawe.github.io/kingdoms-
 
 Only `site/` is published, so page addresses don't change. Before you open a page locally, run `npm run build`
 (`npm test` builds first), or serve `src/` with `npm run dev`, which only ever talks to a local Supabase
-([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-build-src-becomes-site)).
+([docs/ARCHITECTURE.md](docs/architecture/the-build-from-src-to-site.md#the-build-src-becomes-site)).
 
 Every pull request runs `npm test`, the browser specs and the database's checks in GitHub Actions
 (`.github/workflows/ci.yml`). Merging to `main` runs the tests again and, if they pass, builds `site/` and publishes it to
