@@ -6,6 +6,8 @@
 // stage's effect type says exactly what the stage hands it, read-only, and an effect returns a value: it changes
 // nothing. The resolvers ask the runners at the bottom; an effect reads only what its stage hands it and the content
 // (src/engine/rules/ imports only itself, src/engine/rules-on-plain-values/ and src/content/: npm run lint:arch).
+// The magic items' effects (plan P1-19's items family) have a registry of their own, the-registry-of-magic-item-
+// effects.ts, on the same hook points and stages: their stages' types are here, in the one union.
 //
 // The hook points' types live here, in a file that holds code, not in a file of types alone: a file only `import type`
 // reaches is in no page's bundle, and the build's checks refuse it (docs/traps.md).
@@ -92,6 +94,30 @@ export interface AUnitInItsForce {
 export interface ALandUnitAtSea {
   readonly unitType: string;
   readonly itsForce: readonly (AUnitOfAForce | null | undefined)[];
+}
+
+/** What the stage "strength: the commander's items" hands an effect (armStr, after the unit's own modifiers and before
+ *  its factors from its force): the unit he leads and his realm's alignment. Which effects his items carry, the items'
+ *  runner reads from his active items, once a call (the-registry-of-magic-item-effects.ts). */
+export interface AUnitLedByACommander {
+  readonly unitType: string;
+  /** The unit's own quality (not the tier Oratory lifts it to). */
+  readonly quality: string | undefined;
+  /** Whether the unit is skeletal (the mark a raising of the dead writes on it). */
+  readonly isSkeletal: boolean;
+  /** The alignment of the realm he leads it for, if any. */
+  readonly theRealmsAlignment: string | null | undefined;
+}
+
+/** A step of the commander's items on a unit's strength: strength added, or a multiplier (with, for a step up a quality
+ *  tier, the tier's own multiplier it is divided by), the result rounded. */
+export type AStepOfTheCommandersItems =
+  { readonly adds: number } | { readonly multipliesBy: number; readonly dividedBy?: number };
+
+/** What the stage "strength: a land unit at sea, led" hands an effect (armStr, where the sea's penalty would cut a land
+ *  unit a commander leads): the unit's type. */
+export interface ALandUnitAtSeaLed {
+  readonly unitType: string;
 }
 
 /** A unit's part in the battle line: in the air, cavalry, ranged, or on foot (battleRole). */
@@ -446,6 +472,12 @@ export interface TheStagesOfEachHookPoint {
     ) => AFlyerHarried | null;
     /** Whether the sea's penalty to a land unit is waived (armStr, before the unit's factors from its force). */
     readonly 'a land unit at sea': (facts: ALandUnitAtSea) => boolean;
+    /** Whether the commander's item waives the sea's penalty to a land unit he leads (armStr, beside Naval's eighth
+     *  level; the items' registry). */
+    readonly 'a land unit at sea, led': (facts: ALandUnitAtSeaLed) => boolean;
+    /** The step an item the commander carries makes on the strength of a unit he leads, or nothing; the runner applies
+     *  the steps in the stage's order, each rounded as it goes (armStr; the items' registry). */
+    readonly "the commander's items": (facts: AUnitLedByACommander) => AStepOfTheCommandersItems | null;
     /** The unit's own factor from its force and the battle's facts; the runner multiplies them in the stage's order. */
     readonly 'the whole force': (facts: AUnitInItsForce) => number;
     /** Whether a rider takes the one flank slot rough ground allows (battleGrid, through abilityFlanksRough). */

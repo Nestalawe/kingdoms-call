@@ -65,7 +65,8 @@ since the test scripts load `site/` (built from `src/`) by file name and `vitest
 (`tools/ratchet.ts`) keeps the counts in `tests/ratchet.json` from rising: switched-off checks, allowlist entries,
 JavaScript files, quarantined tests, tests on `tests/lib/stub-db.js`, tests on the engine's `vm` loader
 (`vmLoaderTests`, P1-09d: P1-14 moves them to the engine's modules), the engine's checks of a unit by its type's name
-outside the rule registry (`unitNameChecksInEngine`, P1-19a: each row of P1-19 lowers it), ESLint's suppressed findings
+outside the rule registry (`unitNameChecksInEngine`, P1-19a: each row of P1-19 lowers it), and of an item's effect by
+its key or an item by its name outside it (`itemEffectChecksInEngine`, P1-19m: each row of the items family lowers it), ESLint's suppressed findings
 (`eslintSuppressions`, P1-13b; the site's lint warnings, `eslintWarnings`, before it), the import rules' known violations (`knownArchitectureViolations`) and what knip finds unused (`unusedCode`,
 both P1-13a). `tests/static/harness.test.ts` fails if any
 of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a

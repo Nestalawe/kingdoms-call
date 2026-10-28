@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the hand-written database stand-in, tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name and of an item's effect by its key or an item by its name, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -12,7 +12,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { z } from 'zod';
-import { KC_UNIT_TYPE } from '../src/content/kingdoms-call-data.ts';
+import {
+  _ITEM_NAME_ALTS,
+  ALL_MAGIC_ITEMS_P,
+  KC_SKILLS,
+  KC_UNIT_TYPE,
+  LEGENDARY_ITEMS_P,
+} from '../src/content/kingdoms-call-data.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const BASELINE_FILE = path.join(ROOT, 'tests', 'ratchet.json');
@@ -171,6 +177,80 @@ export function unitNameChecksInEngine(codeFiles: readonly (readonly [file: stri
   return n;
 }
 
+// The engine's checks of an item's effect by its key, or of an item by its name (plan P1-19's items family, Decision 6
+// and Choice 4): a string naming an item's effect key (a `stat` that isn't a skill, a `use`, a `ward` or a rider's
+// `pc.ward`) or an item (its name, or a second name of it), read from the content's tables, Mithril Armour added (a
+// dwarven birthright in no table), that the code compares with a `stat`, `use`, `ward` or `st`, a `.name` or
+// `_ITEM_ALT_BASE` (===, !==, ==, !=), switches on one of those, or passes to hasItemBase, has or itemStat, counted by
+// syntax tree in the files of src/engine/ outside src/engine/rules/. The items' registry takes them out row by row (an
+// effect is found by the key a held copy carries, in src/engine/rules/), so the count only falls.
+// tests/static/the-resolvers-the-item-registry-has-taken-name-no-item-effect.test.ts counts the functions the registry
+// has taken, with itemEffectChecksByFunction, at 0 each. The vocabulary is the content's tables as written: the engine's
+// load-time pass (src/engine/items/) rewrites the list of items, and this file never loads the engine.
+if (ALL_MAGIC_ITEMS_P.some((item) => '_score' in item))
+  throw new Error("tools/ratchet.ts reads the items' vocabulary as content writes it: import it before the engine.");
+const SKILLS: ReadonlySet<string> = new Set(KC_SKILLS);
+/** Every string naming an item's effect key or an item (above). */
+export const ITEM_EFFECT_VOCABULARY: ReadonlySet<string> = new Set([
+  ...[...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P].flatMap((item) => {
+    const effect: { stat?: string; use?: string; ward?: string; pc?: { ward?: string } } = item.effect;
+    return [
+      ...(SKILLS.has(effect.stat ?? '') ? [] : [effect.stat]),
+      effect.use,
+      effect.ward,
+      effect.pc?.ward,
+      item.name,
+    ].filter((word) => word !== undefined);
+  }),
+  ...Object.entries(_ITEM_NAME_ALTS).flat(2),
+  'mithrilArmour',
+  'Mithril Armour',
+]);
+/** The text of the other side of a comparison, or of a switch, that makes a string in it a check of an item. */
+const AN_ITEMS_KEY_OR_NAME = /(\.|\b)(stat|use|ward|st)\b|\.name\b|_ITEM_ALT_BASE/;
+const AN_ITEMS_LOOKUPS = new Set(['hasItemBase', 'has', 'itemStat']);
+/** Whether a string literal is a check of an item's effect by its key, or of an item by its name (above). */
+function isAnItemEffectCheck(node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral): boolean {
+  if (!ITEM_EFFECT_VOCABULARY.has(node.text)) return false;
+  const p = node.parent;
+  if (ts.isBinaryExpression(p) && COMPARISONS.has(p.operatorToken.kind))
+    return AN_ITEMS_KEY_OR_NAME.test((p.left === node ? p.right : p.left).getText());
+  if (ts.isCaseClause(p)) return AN_ITEMS_KEY_OR_NAME.test(p.parent.parent.expression.getText());
+  return (
+    ts.isCallExpression(p) &&
+    p.arguments.some((argument) => argument === node) &&
+    AN_ITEMS_LOOKUPS.has(p.expression.getText())
+  );
+}
+/** Each function of a file, by its name, with the item-effect checks in it (0 for a function with none); a check
+ *  inside a nested function that has no name counts for the named one around it, and one outside any function for
+ *  '(top)'. */
+export function itemEffectChecksByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && isAnItemEffectCheck(node))
+      counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)');
+  return counts;
+}
+/** The item-effect checks in the files of src/engine/ outside src/engine/rules/ (the files unitNameChecksInEngine
+ *  counts), for the files given as [path from the repository's root, text]. */
+export function itemEffectChecksInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    if (!countsUnitNameChecks(file)) continue;
+    for (const count of itemEffectChecksByFunction(file, text).values()) n += count;
+  }
+  return n;
+}
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -255,6 +335,7 @@ export function measure(): Counts {
     quarantinedTests: all.filter((f) => f.startsWith('tests/quarantine/') && /\.test\.[jt]s$/.test(f)).length,
     vmLoaderTests: vmLoaderTests(all),
     unitNameChecksInEngine: unitNameChecksInEngine(codeFiles),
+    itemEffectChecksInEngine: itemEffectChecksInEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),

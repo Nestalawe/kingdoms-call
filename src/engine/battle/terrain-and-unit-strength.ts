@@ -1,4 +1,4 @@
-import { KC_QUALITY_UP, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_QUALITY_UP, KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import {
@@ -21,7 +21,11 @@ import {
   druidNeedWaivedByAlignment,
   getDruidLevel,
 } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
-import { activeItems, hasItemBase } from '../items/equipment.ts';
+import { activeItems } from '../items/equipment.ts';
+import {
+  theSeasPenaltyIsWaivedByTheCommandersItems,
+  theStrengthAfterTheCommandersItems,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { MINOR_CAV, MINOR_HEAVY } from '../titles/reckoning.ts';
@@ -44,10 +48,6 @@ type ForceUnit = ArmyInABattle | null | undefined;
 /** The state as provIsCoastal reads it: its guard on a missing world stays. */
 interface TheStateAsProvIsCoastalReadsIt {
   readonly world?: GameState['world'] | null;
-}
-/** An item as armStr's magic items read it: its guard on a missing effect stays. */
-interface AnItemAsArmStrReadsIt {
-  readonly effect?: { readonly stat?: string } | null;
 }
 /** What a caller tells armStr of the battle: unitAbilityMult's fields and armStr's own. */
 export interface ArmStrContext extends UnitAbilityContext {
@@ -645,9 +645,10 @@ export function armStr(
       sp < 1 &&
       terrain === 'sea' &&
       heroChar &&
-      (perkTier(heroChar, 'naval') >= 3 || activeItems(heroChar).some((it) => it.landFullAtSea))
+      (perkTier(heroChar, 'naval') >= 3 ||
+        theSeasPenaltyIsWaivedByTheCommandersItems({ unitType: army.type }, activeItems(heroChar)))
     )
-      sp = 1.0; // NAVAL L8 / Tide-Caller's Horn: land units led at sea take no penalty
+      sp = 1.0; // NAVAL L8 / the commander's items (the Tide-Caller's Horn): land units led at sea take no penalty
     let _tmod = terrainMod(army.type, terrain);
     if (heroChar && perkTier(heroChar, 'march') >= 3) {
       _tmod = _tmod > 1 ? 1 + (_tmod - 1) * 2 : Math.max(1, _tmod);
@@ -729,38 +730,22 @@ export function armStr(
     str = Math.round(str * (1 + heroChar._phantasmalBonus));
     if (_tr) _tr.push({ reason: { kind: 'phantasmal armies', multiplier: 1 + heroChar._phantasmalBonus } });
   }
-  // Magic-item army bonuses carried by the leading commander.
+  // Magic-item army bonuses carried by the leading commander: the rule registry's "strength: the commander's items"
+  // (plan P1-19m), each effect his active items carry, in the stage's order, each step rounded as it goes.
   const _preItems = str;
   // (a caller that keeps its ts-nocheck line may hand a hero without his list: the guard on it stays)
   const heroItems: readonly unknown[] | null | undefined = heroChar?.items;
   if (heroItems?.length) {
-    const has = (st: string) => activeItems(heroChar).some((it: AnItemAsArmStrReadsIt) => it.effect?.stat === st);
-    const CAV_I = new Set([
-      'Free Lances',
-      'Gilded Lances',
-      'Warg Riders',
-      'Eagle Riders',
-      'Noble Griffons',
-      'Stag Riders',
-      'Ironhoof Rams',
-    ]);
-    const INF_I = new Set(['Shieldwall Levies', 'Dwarven Guard', 'Orc Berserkers', 'Men-at-Arms']);
-    const ARCH_I = new Set(['Yeoman Longbows', 'Elven Bowmen', 'Shadow Archers', 'Ironwood Crossbows', 'Black Arrows']);
-    const HEAVY_I = new Set(['Mountain Guns', 'Dwarf Ironclads']);
-    const FLEET_I = new Set(KC_UNIT_CLASS.carrier);
-    if (has('armyBonus')) str += 2; // Battle Standard
-    if (has('cavBonus') && CAV_I.has(army.type)) str = Math.round(str * 1.25); // Golden Spur
-    if (has('infBonus') && INF_I.has(army.type)) str = Math.round(str * 1.2); // Legionnaire's Mark
-    if (has('archerStr') && ARCH_I.has(army.type)) str = Math.round(str * 1.3); // Eagle-Eye Pendant
-    if (has('heavyBonus') && HEAVY_I.has(army.type)) str += 4; // Engineer's Blueprint
-    if (has('navalBonus') && FLEET_I.has(army.type)) {
-      const _ku = Q_UP[army.quality];
-      if (_ku && _ku !== army.quality) str = Math.round((str * Number(Q_MULT[_ku])) / Number(Q_MULT[army.quality]));
-    } // Kraken Figurehead: fleets fight one exp level higher
-    if (activeItems(heroChar).some((it) => it.fleetStr) && FLEET_I.has(army.type)) str += 1; // Sea Chart of the Deep: fleets +1 strength
-    if (hasItemBase(heroChar, "Admiral's Spyglass") && FLEET_I.has(army.type)) str += 2; // Admiral's Spyglass: fleets +2 strength
-    if (hasItemBase(heroChar, 'Chalice of Dawn') && playerAlignment === 'Divine') str = Math.round(str * 1.15); // Chalice of Dawn: a Divine realm's armies +15%
-    if (has('undeadBonus') && army._isSkeletal) str += 4; // Black Sceptre
+    str = theStrengthAfterTheCommandersItems(
+      {
+        unitType: army.type,
+        quality: army.quality,
+        isSkeletal: Boolean(army._isSkeletal),
+        theRealmsAlignment: playerAlignment,
+      },
+      activeItems(heroChar),
+      str,
+    );
   }
   if (_tr && str !== _preItems) _tr.push({ reason: { kind: "the commander's magic items" }, delta: str - _preItems });
   // ── UNIT ABILITIES (force composition) ──

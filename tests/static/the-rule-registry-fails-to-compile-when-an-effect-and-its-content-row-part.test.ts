@@ -10,9 +10,14 @@
 //   and `fate` has its signature, so the copy plants a stage typed `never` in `fate` beside the entry on it: the check
 //   is of the mechanism a later family's first row leans on while it writes its stages. Since P1-19g `volley` has its
 //   signature too, so the hook point's plant is on `movementCost`, still `never`.
+// Since P1-19m the items' registry (src/engine/rules/the-registry-of-magic-item-effects.ts) ends the same way, `satisfies
+// Record<MagicItemEffectSlug, MagicItemEffectEntry>`, on the keys of its content rows (src/content/magic-item-effects-
+// their-names-numbers-and-words.ts), and the copies plant the same two faults in it: an item's effect row with no entry
+// (TS1360) and an entry with no row (TS2353), each naming the slug.
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
-// lower level has nothing to read. The copies hold only src/content/ and src/engine/rules/ (the registry imports nothing
-// else: npm run lint:arch), so each compiles on its own with tsconfig.json's settings. About 2 s (the data file is read
+// lower level has nothing to read. The copies hold only src/content/, src/engine/rules/ and (since P1-19m)
+// src/engine/rules-on-plain-values/ (the registries import nothing else: npm run lint:arch), so each compiles on its own
+// with tsconfig.json's settings. About 2 s (the data file is read
 // once a copy), so its limit is a TypeScript program's.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -24,14 +29,23 @@ import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const REGISTRY = 'src/engine/rules/the-registry-of-content-effects.ts';
 const ROWS = 'src/content/unit-abilities-their-names-numbers-and-words.ts';
-/** The files a copy holds: the content and the registry's folder (since P1-19j, the rows of a unit no longer raised,
- *  which the content's rows read). */
+const ITEMS_REGISTRY = 'src/engine/rules/the-registry-of-magic-item-effects.ts';
+const ITEMS_ROWS = 'src/content/magic-item-effects-their-names-numbers-and-words.ts';
+/** The files a copy holds, whose errors it reads: the content and the registry's folder (since P1-19j, the rows of a
+ *  unit no longer raised, which the content's rows read; since P1-19m, the items' rows). */
 const COPIED = [
   'src/content/kingdoms-call-data.ts',
   'src/content/the-abilities-of-a-unit-no-longer-raised.ts',
   ROWS,
+  ITEMS_ROWS,
   ...filesUnder(path.join(ROOT, 'src', 'engine', 'rules')).map((f) => `src/engine/rules/${f}`),
 ];
+/** And, since P1-19m, the rules on plain values, which the items' effects read (they import only themselves and the
+ *  content): copied as they are, beside the others, and not read for errors (a copy's program holds only those the
+ *  registries reach). */
+const BESIDE = filesUnder(path.join(ROOT, 'src', 'engine', 'rules-on-plain-values')).map(
+  (f) => `src/engine/rules-on-plain-values/${f}`,
+);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-the-rule-registry-'));
 afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -47,6 +61,8 @@ function replacedOnce(text: string, from: string, to: string): string {
 const read = (file: string) => fs.readFileSync(path.join(ROOT, file), 'utf8');
 const WYRMSCALE_ENTRY =
   "  wyrmscale: { strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale } },\n";
+const UNDEAD_BONUS_ENTRY =
+  "  'undead-bonus': { strength: { \"the commander's items\": THE_COMMANDERS_ITEMS['undead-bonus'] } },\n";
 
 /** Each copy: its name, and the files it changes (by path from the repository's root) with their planted text. */
 const PLANTS: Record<string, Record<string, string>> = {
@@ -79,6 +95,20 @@ const PLANTS: Record<string, Record<string, string>> = {
       "  wyrmscale: {\n    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale },\n    movementCost: { \"a unit's step\": () => 1 },\n  },\n",
     ),
   },
+  "an item's effect row with no entry": {
+    [ITEMS_ROWS]: replacedOnce(
+      read(ITEMS_ROWS),
+      '} as const satisfies Record<string, AMagicItemEffectAsItsTextsWriteIt>;',
+      "  'planted-effect': { name: 'Planted Effect', carriedAs: { stat: 'plantedBonus' }, numbers: {} },\n} as const satisfies Record<string, AMagicItemEffectAsItsTextsWriteIt>;",
+    ),
+  },
+  "an item's effect entry with no row": {
+    [ITEMS_REGISTRY]: replacedOnce(
+      read(ITEMS_REGISTRY),
+      UNDEAD_BONUS_ENTRY,
+      UNDEAD_BONUS_ENTRY + "  'planted-effect': {},\n",
+    ),
+  },
 };
 
 /** The slug a compiler message is about: the key a `satisfies` found missing, or the key it doesn't know; else, for a
@@ -91,7 +121,7 @@ const NO_SIGNATURE = /is not assignable to type '(never|undefined)'\.$/;
 function errorsIn(copies: Record<string, Record<string, string>>): Record<string, string[]> {
   const dirOf = (name: string) => path.join(tmp, name.replace(/[^a-z]+/gi, '-'));
   for (const [name, planted] of Object.entries(copies)) {
-    for (const file of COPIED) {
+    for (const file of [...COPIED, ...BESIDE]) {
       fs.mkdirSync(path.dirname(path.join(dirOf(name), file)), { recursive: true });
       fs.writeFileSync(path.join(dirOf(name), file), planted[file] ?? read(file));
     }
@@ -108,7 +138,7 @@ function errorsIn(copies: Record<string, Record<string, string>>): Record<string
   );
   if (!config) throw new Error('tsconfig.json could not be read');
   const program = ts.createProgram(
-    Object.keys(copies).map((name) => path.join(dirOf(name), REGISTRY)),
+    Object.keys(copies).flatMap((name) => [path.join(dirOf(name), REGISTRY), path.join(dirOf(name), ITEMS_REGISTRY)]),
     config.options,
   );
   return Object.fromEntries(
@@ -138,6 +168,7 @@ test(
   () => {
     // The registry's widened view (ENTRIES, which the runners read) fails too wherever its literal does.
     const at = (declaration: string) => `${path.basename(REGISTRY)}, ${declaration}`;
+    const atTheItems = (declaration: string) => `${path.basename(ITEMS_REGISTRY)}, ${declaration}`;
     expect(errorsIn(PLANTS)).toEqual({
       'as they are': [],
       'a content row with no entry': [
@@ -152,6 +183,13 @@ test(
       'an effect at a hook point with no signature yet': [
         `TS2322 in ${at('ENTRIES')}`,
         `TS2322 in ${at('THE_REGISTRY_OF_UNIT_ABILITIES')}: never`,
+      ],
+      "an item's effect row with no entry": [
+        `TS1360 in ${atTheItems('THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS')}: planted-effect`,
+        `TS2741 in ${atTheItems('ENTRIES')}: planted-effect`,
+      ],
+      "an item's effect entry with no row": [
+        `TS2353 in ${atTheItems('THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS')}: planted-effect`,
       ],
     });
   },

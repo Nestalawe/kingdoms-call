@@ -83,7 +83,8 @@ A test that can't fail proves nothing (CLAUDE.md, "Fail first"). Show it red wit
 - **Tests that read `src/`** (`lib/engine.ts`, `lib/source.ts`, the engine's modules) ignore `KC_SITE`: their proof is
   a planted copy of the branch. Copy the branch, plant the fault in the copy's `src/`, and run the test there.
 - **A refactor** (label `refactor-only`): new tests pass both before and after, and CI fails if the balance baseline
-  changes.
+  changes. One exception: a static test that a resolver the rule registry has taken names no unit type or item effect
+  is red on its row's base by design (plan P1-19: `static/the-resolvers-the-*-has-taken-*.test.ts`).
 - **A stand-in must be reached:** a test that stands a function in has a check that fails when it isn't
   ([traps.md](../docs/traps.md#a-stand-in-on-a-module-reaches-calls-from-other-files-only)).
 

@@ -2,8 +2,8 @@
 
 ## The rule registry
 
-A **content effect** (today, a unit ability; then items, discoveries, spells, guardian perks and alignment orders, P1-19)
-is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
+A **content effect** (a unit ability, and since P1-19m a magic item's effect, [below](#the-items-registry); then
+discoveries, spells, guardian perks and alignment orders, P1-19) is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
 books write them, and the units it counts or reaches when more than its own) and **one entry in the registry**
 (`src/engine/rules/the-registry-of-content-effects.ts`), keyed by the same slug (`'sheer-numbers'`). The entry names the
 ability's **effect** at each **stage** it acts in; the effects are in `src/engine/rules/<family>/`, a file per group of
@@ -126,6 +126,46 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   play. The grid's flyer set is `KC_UNIT_CLASS.aerial` (the riders and the flying beasts); the archers' first-target set
   is `KC_UNIT_CLASS.flying` (the riders only).
 
+### The items' registry
+
+A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
+`src/content/magic-item-effects-their-names-numbers-and-words.ts` and one entry in
+`src/engine/rules/the-registry-of-magic-item-effects.ts`, keyed by the same slug (`'cavalry-bonus'`); its effects are in
+`src/engine/rules/magic-items/`, a file per group of stages. Its stages are the hook points' own (one union,
+`TheStagesOfEachHookPoint`); its orders are its own list, `THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS`, and the registry ends
+`satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>`, both ways, as the unit abilities' does.
+
+- **A held item is a copy** ([traps.md](../traps.md#live-saves-keep-copies)): a row names the key a copy carries the
+  effect by (its `effect.stat`, a field of the item's own such as `fleetStr`, or its base name, a second name counting as
+  its base's, as `hasItemBase` reads it), and holds only the numbers the code wrote inline before (×1.25, +2) and the
+  units the effect reaches. The registry reads each copy's own key, never content's copy of the item, so an old save's
+  copy works as it did, and no row changes the save's shape. P1-20's item ids name a copy, not an effect: the registry
+  never reads them.
+- **A runner finds the effects a hero's items carry once a call** (`theEffectsAnItemCarries`, from maps built as the file
+  loads), from the items the resolver hands it: his active items (`activeItems`, in `src/engine/items/`, stays the one
+  gate). An effect reads only its stage's facts and its row; which items carry it, the runner reads.
+- **The stages written so far** (P1-19m, `src/engine/rules/magic-items/the-commanders-items-in-a-battle.ts`):
+  `strength`'s **the commander's items**, in `armStr` after the unit's own modifiers and before its factors from its
+  force: handed the unit's type, its quality, whether it is skeletal and the realm's alignment, each effect returns a
+  step (strength added, or a multiplier, and for the Kraken Figurehead's step up a tier the tier's multiplier it is
+  divided by), and the runner applies them in the stage's order, each rounded as it goes (the ladder records their sum,
+  one line): the Battle Standard's +2, the Golden Spur, the Legionnaire's Mark, the Eagle-Eye Pendant, the Engineer's
+  Blueprint, the Kraken Figurehead, the Sea Chart of the Deep, the Admiral's Spyglass, the Chalice of Dawn, the Black
+  Sceptre. And `strength`'s **a land unit at sea, led** (the Tide-Caller's Horn: whether the sea's penalty to a land
+  unit the bearer leads is waived; `armStr` asks it beside Naval's eighth level).
+- **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
+  desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
+  unit, since the items in play exist only after the engine's load-time pass; the known gaps listed with their Parked
+  entries); no item effect key or item named, and no item field of its own read, in a function the registry has taken
+  (`tests/static/the-resolvers-the-item-registry-has-taken-name-no-item-effect.test.ts`), and, outside the registry,
+  the ratchet's `itemEffectChecksInEngine`, which only falls; the effects no matrix game meets, by a unit case each
+  (`tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts`).
+- **How to add an item effect** of a stage already written: its row (the key a copy carries it by, its numbers, the
+  units it reaches); its effect in the stage's file under `src/engine/rules/magic-items/`, reading its numbers from its
+  row; its entry and its place in the stage's order; and the numbers in the desc and lore of every item that carries it
+  (the words test reads them). A new stage's signature goes into `TheStagesOfEachHookPoint`, with its runner in the
+  items' registry.
+
 ## `kingdoms-call-data.ts`: the one source for shared rules
 
 `src/content/kingdoms-call-data.ts`, a module every table of which is exported and imported by name where it is read
@@ -168,7 +208,9 @@ imports nothing but `src/engine/rules/`, `src/engine/rules-on-plain-values/` and
 refuses the rest), so it can't draw a die (`kcRng`), read the turn's state or write a line: what it needs, its stage hands
 it. A set it needs is built from content (`KC_UNIT_CLASS`, a row's `counts`) or handed by the stage (whether the enemy
 fields ranged units, from the ladder's missile set), never imported from `battle/`. Another ability is asked about by
-its slug, never by a unit's name.
+its slug, never by a unit's name. A magic item's effect is found by the key its row gives, from the items the resolver
+hands the items' runner (`activeItems`, in `src/engine/items/`, stays the engine's one gate, P1-19m); the hook points
+the items' rows use so far are `strength`'s two stages of the commander's items.
 
 The stage types live in the registry's own file, which holds code. **A file that only `import type` reaches is in no
 bundle**: the build's checks (`tests/static/pages-build.test.ts`, "none is left out", and the engine paths in
