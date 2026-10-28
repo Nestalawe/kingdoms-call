@@ -133,8 +133,8 @@ export interface AGuardiansSpecial {
 export interface AGuardiansWeakness {
   readonly kind: string;
   readonly key: string;
-  readonly name?: string | undefined;
-  readonly desc?: string | undefined;
+  readonly name: string;
+  readonly desc: string;
 }
 
 /** One of a guardian's perks (its `passives`, or an older save's one `passive`): its name, its words and its riders. */

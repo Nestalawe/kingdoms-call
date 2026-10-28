@@ -80,7 +80,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   `AFighterInAPersonalCombat`, with the wards he wears, `TheWardsAFighterWears`, his status and the riders of an item
   or a guardian's perk, is declared in `helpers.ts`, beside the wards' merge: a fighter is made for each fight and never
   saved, so these are plain interfaces, not schemas, and a file of types alone would be in no page, which
-  `pages-build` refuses). The other 71 of those 108 files
+  `pages-build` refuses) and the two P1-10b12 freed (`personal-combat/to-hit-wounds-stuns-and-courage.ts` and
+  `personal-combat/melee-flight-and-archery.ts`: the hit, the round and the strikes, read on that type). The other 69
+  of those 108 files
   still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file)).

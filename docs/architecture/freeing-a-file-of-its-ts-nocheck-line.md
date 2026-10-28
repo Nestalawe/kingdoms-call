@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-105 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(71: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+103 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(69: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -216,3 +216,28 @@ table with a key left out.
   - **A list looked up with a value that may be missing** (`includes` of a stance a plan may not hold) is read through a
     local typed `readonly (string | undefined)[]`, as P1-10b10's sets are; where the found value is handed back, the
     check is `v !== undefined && list.includes(v)` (no stance is in the list), so the value keeps its type.
+- (P1-10b12: `personal-combat/to-hit-wounds-stuns-and-courage.ts` and `personal-combat/melee-flight-and-archery.ts`,
+  50,908 bytes): 90 errors, 74 of them a parameter with no type. Each fighter is `AFighterInAPersonalCombat` (or a shape
+  of it with a field the code guards made optional); the first pass wrote the forms lint asks for as it went; the
+  typed lint then found 3 more, all fixed. No typed reader held a suppression on their results, so
+  `eslintSuppressions` stays 708. `trySkillGain`'s return type (`void`) is written in its file, which keeps the line.
+  Six more forms:
+  - **A value the code guards in one place and reads unguarded in another** (a fight's narrative, a foe, a fighter's
+    status that a strike tests before it writes and the to-hit then reads unguarded) keeps its type, and the guarded
+    reads go through `asItsGuardReadsIt(value)` (to-hit-wounds-stuns-and-courage.ts: the value, typed `Value | null |
+    undefined`), as P1-10b7's `provincesOrNone` does for a list.
+  - **`x > 0` on an optional number read again after the test** (a block's percentage rolled against, a round ward
+    taken from) is `x !== undefined && x > 0`, which narrows `x` for the reads after it: `undefined > 0` and
+    `null > 0` are false, as before.
+  - **A table read by the same key several times** (`PC_CHANNEL[kind]`, eight reads in `pcTakeHit`) is read once into
+    a `const`: the same value each time, and a test of it (`kindsChannel === 'melee'`) narrows the reads after it.
+  - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`,
+    so lint doesn't call its test always true and the test still reads it when it is turned off (`: boolean` alone is
+    refused as a type inferred from the literal).
+  - **A fact's field the engine may leave `undefined`** (the druid's line's channel, for a guardian's special that no
+    channel names) has its type corrected in the facts file, `string | undefined`: the type, not the code. A shared
+    type is corrected the same way where its readers show it too wide: a guardian's weakness has its `name` and
+    `desc`, as the saved schema and every content row do.
+  - **A result the code has just made sure** (`pcRangeStep`'s range: it keeps its index within the list) is checked
+    with a `return` the compiler can see; where the old code threw on the next line instead (`pcPushDot`'s none, for a
+    foe of no status), the check throws the same `TypeError`.

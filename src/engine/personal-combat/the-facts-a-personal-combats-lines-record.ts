@@ -834,7 +834,8 @@ export type TheFactOfAPersonalCombatsLine =
       kind: "the target reads the beast's every move";
       targetName: string;
       damageTurnedAside: number;
-      channel: string;
+      /** The blow's channel: none for a guardian's special (PC_CHANNEL names the blows and the arrow only). */
+      channel: string | undefined;
       targetDruidBeastWard: number;
     }
   | {
