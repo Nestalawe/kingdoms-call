@@ -1,10 +1,11 @@
-# Tests
+# The toolchain, the checks and the harness
 
 `npm test` boots the real pages in jsdom against an in-memory Supabase stand-in, with seeded dice (`kcRng`) (and,
 where a test asks, a pinned clock). It runs whole all-bot games through the real `runTurn`. What only a real browser
 shows (layout, which requests a page makes, an image's onerror really firing) is in the browser specs:
 `npx playwright test` opens the pages in Chromium, served from one folder as deployed.
-[tests/README.md](../../tests/README.md) lists every test, its level and its origin.
+[the list of tests](../../tests/every-test-its-level-and-what-it-checks.md) gives every test, its level and what it checks;
+[tests/README.md](../../tests/README.md) says how to write one.
 
 The tools are the standard ones (P1-01): Vitest runs every test, one project per level (`vitest.config.mts`);
 Playwright Test runs the browser specs in `tests/browser/` (`playwright.config.ts`); TypeScript checks the new files

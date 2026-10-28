@@ -28,10 +28,8 @@ The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`,
 (P0-18), so no outside party can change the code that holds players' logins, and a CDN outage can't stop the portals
 loading.
 
-- **Version:** 2.117.3, the package's browser build (`dist/umd/supabase.js`) copied unchanged to
-  `public/vendor/supabase-js-2.117.3.min.js`, with its licence beside it (`supabase-js-LICENSE.txt`).
-- **SHA-256:** `d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3`. `npm test`'s
-  `vendor-supabase` check fails if the file and this line disagree.
+- **Its version and SHA-256** are in [ARCHITECTURE.md](../ARCHITECTURE.md#supabase-js-the-copy-served-with-the-site),
+  where `npm test`'s `vendor-supabase` check reads them: it fails if the file and those lines disagree.
 - **Nothing watches it for updates** (Dependabot can't see a copied file). When you touch this area, check
   `npm view @supabase/supabase-js@2 version` and upgrade if it's newer. P1-17 replaces the copy with a pinned
   npm dependency.
@@ -43,7 +41,7 @@ Theo):
 2. Copy `package/dist/umd/supabase.js` to `public/vendor/supabase-js-<version>.min.js` and `package/LICENSE` to
    `public/vendor/supabase-js-LICENSE.txt`; delete the old copy.
 3. Point the `<script src="vendor/…">` tags (in the page templates, `src/*.html`) and their boot-failure hints
-   at the new file name, and update the version and SHA-256 above (`shasum -a 256 <file>`).
+   at the new file name, and update the version and SHA-256 in `docs/ARCHITECTURE.md` (`shasum -a 256 <file>`).
 4. Read the release notes between the two versions for anything the pages use (sign-in, `rpc`, realtime).
 5. `npm test`, then try sign-in, orders and Dispatches on staging.
 

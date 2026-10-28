@@ -1,22 +1,62 @@
-
 # Architecture
 
-How Kingdoms Call works today, at the cutover build (GM portal `2026.09.30-0038`, data file
-`2026.09.29-2329`). Short on purpose: read this, then [traps.md](traps.md), then only the code you need.
-Line numbers drift; search for the names given here.
+How Kingdoms Call works now: one short paragraph a part, each linking to its topic file under
+[architecture/](architecture/), which has the detail. Read this, then the topic file your work touches, then the
+entries of [traps.md](traps.md) by title. Line numbers drift; search for the names given here.
 
 ## The shape in one paragraph
 
 A static site with no server of its own. Every published page is an HTML file and its one script and one stylesheet
-(`assets/<page>-<hash>.js`, `assets/<page>-<hash>.css`), built by Vite from the ES modules in `src/`
-([below](architecture/the-build-from-src-to-site.md#the-build-src-becomes-site)). The pages talk straight to a Supabase Postgres database from the browser, using
-supabase-js and the project's public (anon) key. **The turn engine runs in the GM's browser tab**: the
-GM portal generates worlds, runs the bots, resolves turns and writes each realm's report. Players only
-submit orders and read what they're given.
+(`assets/<page>-<hash>.js`, `assets/<page>-<hash>.css`), built by Vite from the ES modules in `src/`. The pages talk
+straight to a Supabase Postgres database from the browser, using supabase-js and the project's public (anon) key.
+**The turn engine runs in the GM's browser tab**: the GM portal generates worlds, runs the bots, resolves turns and
+writes each realm's report. Players only submit orders and read what they're given.
 
-## The build: `src/` becomes `site/`
+## The parts
 
-Moved to [the-build-from-src-to-site.md](architecture/the-build-from-src-to-site.md).
+- **The build** ([the-build-from-src-to-site.md](architecture/the-build-from-src-to-site.md)). `npm run build` (`tools/build.ts`)
+  runs Vite once per page (`src/*.html`), each page's entry `src/ui/<page>/page.ts`; `public/` is copied as it is.
+  `site/` is the output: git-ignored, published by the deploy, opened by every test. Files are named by a hash of
+  their content, and the deploy keeps the files a cached page still names. `npm run dev` serves `src/` against the
+  local Supabase only. The folders of `src/`, the TypeScript check and the deploy's build jobs are there too.
+- **The rule registry and the shared rules**
+  ([the-rule-registry-and-the-one-source-for-shared-rules.md](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md)).
+  A content effect (a unit ability today) is one row in `src/content/` and one entry in
+  `src/engine/rules/the-registry-of-content-effects.ts`, naming its effect at each stage of a hook point; the
+  resolvers ask the stage's runner. `src/content/kingdoms-call-data.ts` is the one source of the tables both portals
+  read, and `src/shared/` is the player portal's one door to the engine's rules on plain values.
+- **A saved game** ([a-saved-game-its-version-its-upgrade-its-check.md](architecture/a-saved-game-its-version-its-upgrade-its-check.md)).
+  A save holds what older builds wrote. Before every turn, `src/engine/saves/` reads its version, runs each numbered
+  upgrade step, and checks the result with the saved state's Zod schema; a save the check refuses still plays, and the
+  GM is told.
+- **The pages** ([the-pages-how-a-portal-boots-and-how-a-page-builds-html.md](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md)).
+  What each published file is, the copy of supabase-js served with the site (its version and SHA-256 are
+  [below](#supabase-js-the-copy-served-with-the-site)), the order a portal boots in, and `kcHtml` / `kcEsc`
+  (`src/ui/shared/kc-safe.ts`), the one way a page builds HTML.
+- **The turn engine** ([the-turn-engine.md](architecture/the-turn-engine.md)). A turn is two functions: `resolveTurn`
+  (`src/engine/run-turn.ts`) works it out on plain data, and `runTurn` (`src/ui/gm/turn-shell.ts`), its shell, does the
+  database and screen work: it loads the world and every slot, then saves the turn and each realm's report. Every line enters the GM's log through `emit`, as an event; `src/views/` builds each
+  realm's report from what that realm may see, and writes the words. Dice come from `kcRng()`, time from `kcClock()`.
+- **The database** ([the-database-and-what-it-holds.md](architecture/the-database-and-what-it-holds.md)). Supabase Postgres,
+  its structure in `supabase/schemas/`. A rule that stops a player is enforced inside the database (access rules or
+  database functions), since there is no server. Also the Hall of Fame's records, Dispatches, each page's version,
+  and staging. How to change it: [supabase/README.md](../supabase/README.md).
+- **The toolchain and the checks** ([the-toolchain-the-checks-and-the-harness.md](architecture/the-toolchain-the-checks-and-the-harness.md)).
+  Vitest, Playwright, TypeScript, ESLint with the project's own rules (`tools/eslint-rules/`), dependency-cruiser,
+  knip, Prettier, the Claude Code hooks, the ratchet, CI's jobs and the mutant scorer.
+- **The tests' side** ([how-the-tests-reach-the-site.md](architecture/how-the-tests-reach-the-site.md),
+  [the-balance-matrix.md](architecture/the-balance-matrix.md)). How a test loads a page, the engine or the site's code, and the
+  balance matrix that measures an engine change. How to write a test: [tests/README.md](../tests/README.md).
+
+### supabase-js: the copy served with the site
+
+The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`), not from a CDN. How to upgrade it:
+[the pages' topic file](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#supabase-js-a-copy-served-with-the-site).
+
+- **Version:** 2.117.3, the package's browser build (`dist/umd/supabase.js`) copied unchanged to
+  `public/vendor/supabase-js-2.117.3.min.js`, with its licence beside it (`supabase-js-LICENSE.txt`).
+- **SHA-256:** `d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3`. `npm test`'s
+  `vendor-supabase` check fails if the file and this line disagree.
 
 ## The layers and the module map
 
@@ -26,7 +66,7 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
 - **`content/`** (the data file) imports nothing.
 - **`engine/`** imports only `engine/` and `content/`; **`engine/rules-on-plain-values/`**, the rules the player portal
   shares, only itself and `content/`.
-- **`engine/rules/`**, the rule registry ([below](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry)), imports only itself,
+- **`engine/rules/`**, the rule registry ([the rule registry](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry)), imports only itself,
   `engine/rules-on-plain-values/` and `content/`: an effect reaches the dice, the turn's state or a report only through
   what its stage hands it (P1-19a).
 - **`views/`** imports only `views/`, `engine/` and `content/`; **`shared/`** only `shared/`, `views/`,
@@ -153,55 +193,3 @@ src_views_-->src_schemas_
 ```
 
 <!-- End of the module map. -->
-
-## The rule registry
-
-Moved to [the-rule-registry-and-the-one-source-for-shared-rules.md](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md).
-
-## A saved game: its version, its upgrade, its check
-
-Moved to [a-saved-game-its-version-its-upgrade-its-check.md](architecture/a-saved-game-its-version-its-upgrade-its-check.md).
-
-## The pages (`site/`)
-
-Moved to [the-pages-how-a-portal-boots-and-how-a-page-builds-html.md](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md).
-
-## How a portal boots
-
-Moved to [the-pages-how-a-portal-boots-and-how-a-page-builds-html.md](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md).
-
-## How a page builds HTML
-
-Moved to [the-pages-how-a-portal-boots-and-how-a-page-builds-html.md](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md).
-
-## `kingdoms-call-data.ts`: the one source for shared rules
-
-Moved to [the-rule-registry-and-the-one-source-for-shared-rules.md](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md).
-
-## The turn engine (GM portal)
-
-Moved to [the-turn-engine.md](architecture/the-turn-engine.md).
-
-## The database (Supabase)
-
-Moved to [the-database-and-what-it-holds.md](architecture/the-database-and-what-it-holds.md).
-
-## Hall of Fame
-
-Moved to [the-database-and-what-it-holds.md](architecture/the-database-and-what-it-holds.md).
-
-## Dispatches (player messaging)
-
-Moved to [the-database-and-what-it-holds.md](architecture/the-database-and-what-it-holds.md).
-
-## Versions
-
-Moved to [the-database-and-what-it-holds.md](architecture/the-database-and-what-it-holds.md).
-
-## Staging
-
-Moved to [the-database-and-what-it-holds.md](architecture/the-database-and-what-it-holds.md).
-
-## Tests
-
-Moved to [the-toolchain-the-checks-and-the-harness.md](architecture/the-toolchain-the-checks-and-the-harness.md).
