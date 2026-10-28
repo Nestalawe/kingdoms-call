@@ -1321,7 +1321,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           if (!_hostileLeft && _navalBlock.length > 0)
             emit(turnContext, {
               type: 'combat',
-              text: navalHoldLine(turnContext, toProv, _navalBlock, player.name),
+              fact: navalHoldLine(turnContext, toProv, _navalBlock, player.name),
               audience: { actor: c.player, realms: targets, seen: 'battle' },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               province: toProv.id,

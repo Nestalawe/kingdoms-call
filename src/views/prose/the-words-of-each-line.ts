@@ -1,9 +1,10 @@
 // ── THE WORDS OF EACH LINE OF THE TURN (plan P1-12c3: P1-12's Decisions of 2026-10-24, Decisions 2 and 3) ────
 // The engine files each line of the turn with its finished words or with the fact they are written from (emit,
 // src/engine/turn/events-and-their-audiences.ts). The views write every line's words here, after the turn and before
-// any realm's lines are picked (buildReports), one module per area (the-words-of-a-battles-lines.ts, the-words-of-a-personal-combats-lines.ts). A
-// battle's lines take their tiers ('k' key, 'd' detail) and its losses tally its place from those words, as emitBattle
-// did before (battleLineTiers and battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
+// any realm's lines are picked (buildReports), one module per area (a battle's, personal combat's, the sea lift's in a
+// battle, a hero's death's, the wanderer's escape's), each kind routed to its area's (theWordsOf, below). A battle's
+// lines take their tiers ('k' key, 'd' detail) and its losses tally its place from those words, as emitBattle did
+// before (battleLineTiers and battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
 // as it is stored (turn_logs, player index −1), in the same form as before, key for key: the shell saves it, and the
 // GM page and the player page's fallback read an old turn's lines and a new one's alike. In this run a line's words are
 // the same for every reader.
@@ -12,14 +13,52 @@ import {
   A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   type LineFact,
   type LogLine,
+  type TheAudienceOfAKindOfLine,
 } from '../../engine/turn/events-and-their-audiences.ts';
-import { isAPersonalCombatsLine } from '../../engine/personal-combat/the-facts-a-personal-combats-lines-record.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE } from '../../engine/personal-combat/the-facts-a-personal-combats-lines-record.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE } from '../../engine/units/the-facts-the-sea-lifts-battle-lines-record.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE } from '../../engine/heroes/the-facts-a-heros-death-lines-record.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE } from '../../engine/the-facts-the-wanderers-escape-line-records.ts';
 import { theWordsOfABattlesLine } from './the-words-of-a-battles-lines.ts';
 import { theWordsOfAPersonalCombatsLine } from './the-words-of-a-personal-combats-lines.ts';
+import { theWordsOfASeaLiftsBattleLine } from './the-words-of-the-sea-lifts-battle-lines.ts';
+import { theWordsOfAHerosDeathsLine } from './the-words-of-a-heros-deaths-lines.ts';
+import { theWordsOfTheWanderersEscape } from './the-words-of-the-wanderers-escape.ts';
 
-/** The words of a fact, of any area: each area's module writes its own kinds'. */
+// ── THE ROUTE BY KIND (plan P1-12d5: P1-12's Decisions of 2026-10-26, Decision 6) ──
+// Each area's kinds are typed beside its code, each with its audience (its audience table lists every kind it has), and
+// its words are written in its own module here. The route reads, for a fact's kind, its area's words: built from the
+// areas' audience tables, so a kind belongs to one area (one declared in two is a compile error where LineFact is,
+// src/engine/turn/events-and-their-audiences.ts).
+
+/** An area's words, as the route reads them: for each of its kinds (by its audience table), the words of its facts. */
+function theRouteToAnArea<Fact extends LineFact>(
+  audienceOfEachKind: Readonly<Record<Fact['kind'], TheAudienceOfAKindOfLine>>,
+  wordsOf: (fact: Fact) => string,
+): [string, (fact: LineFact) => string][] {
+  const isOneOfItsKinds = (fact: LineFact): fact is Fact => Object.hasOwn(audienceOfEachKind, fact.kind);
+  const words = (fact: LineFact): string => {
+    if (!isOneOfItsKinds(fact)) throw new Error(`the route took "${fact.kind}" to an area that has no such kind`);
+    return wordsOf(fact);
+  };
+  return Object.keys(audienceOfEachKind).map((kind) => [kind, words]);
+}
+
+/** Each kind's words, by its area. */
+const THE_WORDS_OF_EACH_KIND: ReadonlyMap<string, (fact: LineFact) => string> = new Map([
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE, theWordsOfABattlesLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE, theWordsOfAPersonalCombatsLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE, theWordsOfASeaLiftsBattleLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE, theWordsOfAHerosDeathsLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE, theWordsOfTheWanderersEscape),
+]);
+
+/** The words of a fact, of any area: its kind's area writes them. */
 export function theWordsOf(fact: LineFact): string {
-  return isAPersonalCombatsLine(fact) ? theWordsOfAPersonalCombatsLine(fact) : theWordsOfABattlesLine(fact);
+  const words = THE_WORDS_OF_EACH_KIND.get(fact.kind);
+  if (!words) throw new Error(`no area's prose writes the words of "${fact.kind}"`);
+  return words(fact);
 }
 
 /** The GM's log of the turn with every line's words, as it is stored and as the realms' lines are read from it; and

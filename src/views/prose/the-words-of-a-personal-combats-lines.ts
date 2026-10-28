@@ -12,6 +12,7 @@
 // isLegendaryItem) are imported from it, on plain values. Only the fighters' labels (who, foeWho: "The Barrow Wight")
 // and an item's equip note (gainedItemNote, the items' words) are still handed as words.
 import { fmtRoll } from '../../engine/dice-and-army-names.ts';
+import { theWordsOfTheSurgeonsComingTooLate } from './the-words-of-a-heros-deaths-lines.ts';
 import { itemNameList } from '../../engine/heroes/fame-and-consecration.ts';
 import { hpGainLine } from '../../engine/heroes/skills-and-hp.ts';
 import { monsterCatLabel } from '../../engine/items/tiers-and-hoards.ts';
@@ -620,7 +621,7 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
     case "a hero's hit points rise in a fight, for his realm alone":
       return hpGainLine({ name: fact.heroName }, fact.rise);
     case 'the surgeons reach a fallen duellist too late, for his realm alone':
-      return fact.words;
+      return theWordsOfTheSurgeonsComingTooLate(fact);
     default: {
       const aKindWithNoWords: never = fact;
       throw new Error(`a personal combat's line records a fact with no words: ${JSON.stringify(aKindWithNoWords)}`);

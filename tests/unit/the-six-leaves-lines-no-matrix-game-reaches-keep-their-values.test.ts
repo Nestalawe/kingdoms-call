@@ -34,6 +34,7 @@ import {
   seedUsedHeroNames,
 } from '../../src/engine/names.ts';
 import { creditMapped, itemKeyOf, noteEspionage, snapshotHeldItems } from '../../src/engine/titles/perks.ts';
+import { theWordsOfTheWanderersEscape } from '../../src/views/prose/the-words-of-the-wanderers-escape.ts';
 import {
   isCharmedNow,
   isPreOrderRef,
@@ -282,9 +283,11 @@ describe("the names' fallbacks", () => {
     expect(_pickUnusedNamePart(undefined, ['Aldwin'], new Set(['Aldwin']))).toBe(null);
   });
   test("Garreth's escape names him, or 'The wanderer' where he has no name", () => {
-    expect(_garrethEscapeLine(null).startsWith('\u{1F340} The wanderer ')).toBe(true);
-    expect(_garrethEscapeLine({ name: '' }).startsWith('\u{1F340} The wanderer ')).toBe(true);
-    expect(_garrethEscapeLine({ name: 'Garreth' }).startsWith('\u{1F340} Garreth ')).toBe(true);
+    // The escape is a fact since plan P1-12d5: its words are the prose's.
+    const words = (ch: { name?: string } | null) => theWordsOfTheWanderersEscape(_garrethEscapeLine(ch));
+    expect(words(null).startsWith('\u{1F340} The wanderer ')).toBe(true);
+    expect(words({ name: '' }).startsWith('\u{1F340} The wanderer ')).toBe(true);
+    expect(words({ name: 'Garreth' }).startsWith('\u{1F340} Garreth ')).toBe(true);
   });
   test('_toRoman, past its tables too', () => {
     expect([2, 14, 1999, 4000].map(_toRoman)).toEqual(['II', 'XIV', 'XCMXCIX', 'undefined']);

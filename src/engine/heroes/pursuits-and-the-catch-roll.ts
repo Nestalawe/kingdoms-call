@@ -395,7 +395,7 @@ export function advancePursuit(turnContext, c, ph) {
         if (!_hostileLeft && _hulls.length)
           emit(turnContext, {
             type: 'combat',
-            text: navalHoldLine(turnContext, prov, _hulls, G.players[c.player]?.name || 'the hunter'),
+            fact: navalHoldLine(turnContext, prov, _hulls, G.players[c.player]?.name || null),
             audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
@@ -557,7 +557,7 @@ export function advancePursuit(turnContext, c, ph) {
         if (c.hp != null && c.hp <= 0) c.hp = 1;
         emit(turnContext, {
           type: 'combat',
-          text: _garrethEscapeLine(c),
+          fact: _garrethEscapeLine(c),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
@@ -578,7 +578,7 @@ export function advancePursuit(turnContext, c, ph) {
         if (quarry.hp != null && quarry.hp <= 0) quarry.hp = 1;
         emit(turnContext, {
           type: 'combat',
-          text: _garrethEscapeLine(quarry),
+          fact: _garrethEscapeLine(quarry),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,

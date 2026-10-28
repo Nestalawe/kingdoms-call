@@ -51,7 +51,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ['lair hoard', /hauls out \$\{itemNameList\(baseDrops,false\)\}/, 4],
     ['lair theft', /out from under the guardian's nose!/, 2],
     ['bones of the fallen', /Among the bones of the fallen, \$\{c\.name\} recovers/, 3],
-    ['a dead hero\'s possessions', /takes \$\{deadChar\.name\}'s possessions from the fallen/, 2],
+    ['a dead hero\'s possessions', /a hero takes a fallen foe.{1,2}s possessions/, 2],
     ['the mercy price', /a fighter surrenders an item to the foe as the price of mercy/, 2],
     ['a drop in the rout', /in the rout the runner drops an item the one who stays claims/, 2],
     ['Send Item by hand', /receives \$\{_names\} from \$\{c\.name\}/, 2],

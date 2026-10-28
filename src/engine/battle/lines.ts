@@ -879,51 +879,6 @@ export function battleFacedClauses(
   });
   return m;
 }
-/** The clause a fate's line carries of whom a unit faced (battleFacedClauses). A word helper on plain values: it stays
- *  here while a unit's disbanding is words the engine writes (disbandLine, until plan P1-12d5), and the prose imports
- *  it (P1-12's Decision 3). */
-export function theClauseOfWhomAUnitFaced(w: WhomAUnitFaced): string {
-  switch (w.kind) {
-    case 'an enemy unit':
-      return theClauseOfHowAUnitMetAnEnemyUnit(w.how, w.theEnemyUnit);
-    case 'it rode free':
-      return 'riding free round the flank';
-    case "it wrapped the line's end":
-      return 'wrapping the end of the line';
-    case "it guarded the line's end":
-      return 'guarding the end of the line';
-    case 'it fought from the air':
-      return 'fighting from the air';
-    case 'it stood in the reserve':
-      return 'in the reserve';
-    case 'it shot at an empty column':
-      return 'shooting at an empty column';
-    case 'it stood in the second line':
-      return 'in the second line';
-    case 'nobody stood opposite':
-      return 'with nobody opposite';
-  }
-}
-/** The clause of how a unit met the enemy unit it faced, by its facing's kind. */
-function theClauseOfHowAUnitMetAnEnemyUnit(
-  how: 'faces' | 'met' | 'wraps' | 'shoots' | 'duel' | 'guards',
-  theEnemyUnit: string,
-): string {
-  switch (how) {
-    case 'faces':
-      return `facing ${theEnemyUnit}`;
-    case 'met':
-      return `met at the end of the line by ${theEnemyUnit}`;
-    case 'wraps':
-      return `wrapping the line at ${theEnemyUnit}`;
-    case 'shoots':
-      return `shooting ${theEnemyUnit} over the line`;
-    case 'duel':
-      return `in a flank duel with ${theEnemyUnit}`;
-    case 'guards':
-      return `guarding the end against ${theEnemyUnit}`;
-  }
-}
 // ── THE SCOUT'S ADVANTAGE AND THE LINE-UP (Battle lines III, 2026-10-11, Toby) ── The side that knows
 // the ground better (the higher exploration of the province; a province's own guard or garrison knows
 // it fully; ties go to the defender) takes the rolled front or one wider or narrower, whichever suits

@@ -16,9 +16,11 @@
 // label (Decision 2: the facts-by-sense slice names a side), and words a caller hands in (a unit's fate's verb).
 // P1-12d4 moved the strength ladder's and the grid's words into the prose too: their lines hold each modifier's reason,
 // each unit's place and facing, and whom a unit faced, as the records below (the registry's effects name an ability by
-// its slug, and the prose writes its name from the content's row). Words a battle takes from another
-// folder's helper (a unit disbanding, a sea trap, a naval hold, the wanderer's escape, a hero's death) stay words until
-// P1-12d5.
+// its slug, and the prose writes its name from the content's row). P1-12d5 made the lines a battle took as words from
+// another folder's helper kinds: a unit disbanding is a battle's (below; disbandLine moved into the prose), a sea trap,
+// a naval hold and the naval split the sea lift's (units/the-facts-the-sea-lifts-battle-lines-record.ts), a hero's
+// death its own area's (heroes/the-facts-a-heros-death-lines-record.ts), the wanderer's escape his
+// (the-facts-the-wanderers-escape-line-records.ts).
 // LineFact (src/engine/turn/events-and-their-audiences.ts) is the union of every area's kinds; a kind with no words in
 // src/views/prose/ is a compile error there.
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
@@ -868,6 +870,14 @@ export type TheFactOfOneOfABattlesSentences =
       unitQuality: string;
     }
   | {
+      kind: 'a beaten unit has had enough and disbands';
+      /** The units' owner, as the battle names him (a side's or a guard's label); '' or null: none named. */
+      ownerName: string | null;
+      unitName: string | null | undefined;
+      unitType: string;
+      whomItFaced: WhomAUnitFaced | null;
+    }
+  | {
       kind: "a hero not at war with the province's realm gains a host inside it";
       cName: string;
       realmTag: string;
@@ -1364,6 +1374,7 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   'a unit keeps its nerve under the knightly example': "the fight's",
   'a unit loses heart in defeat and is reduced a tier': "the fight's",
   'a unit improves a tier despite defeat': "the fight's",
+  'a beaten unit has had enough and disbands': "the fight's",
   "a hero not at war with the province's realm gains a host inside it": "its event's",
   "a hero's new host is still forming up in a province": "its event's",
   'no one stands to defend a province and the hero takes control of it': "its event's",

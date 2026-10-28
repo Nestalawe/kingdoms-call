@@ -7,7 +7,9 @@ import { recordBattleGraves, recordHeroGrave } from '../graves.ts';
 import { ownedConsecratedProvs } from './fame-and-consecration.ts';
 import { gainedItemNote } from '../items/equipment.ts';
 import { _KC_LOOT_GAINED, applyItemMaxHp, transferableItems } from '../personal-combat/helpers.ts';
-import { d100, fmtRoll } from '../dice-and-army-names.ts';
+import { d100 } from '../dice-and-army-names.ts';
+import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
+import { theNamesAsTheLineTellsThem } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM } from '../titles/perks.ts';
 import { discParam, hasDisc } from '../discoveries.ts';
@@ -35,10 +37,13 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
   // armies, would never find it and it would linger forever).
   const tempArmies = (deadChar.armies || []).filter((a) => a._temporary);
   if (tempArmies.length > 0) {
-    const _tn = tempArmies.map((a) => `${a.unitName || a.type}${a.unitName ? ` (${a.type})` : ''}`).join(', ');
     emit(turnContext, {
       type: 'explore',
-      text: `✨ With ${deadChar.name} fallen, the binding fails and ${_tn} ${tempArmies.length === 1 ? 'dissolves' : 'dissolve'} back into the ${tempArmies.length === 1 ? 'realm that' : 'realms that'} spawned ${tempArmies.length === 1 ? 'it' : 'them'}.`,
+      fact: {
+        kind: "the binding of a fallen hero's summoned units fails",
+        heroName: deadChar.name,
+        units: theUnitsAsTheLineNamesThem(tempArmies),
+      },
       audience: {
         actor: deadChar.player,
         realms: deadChar.player != null ? [deadChar.player] : [],
@@ -51,8 +56,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
   const deadArmies = (deadChar.armies || []).filter((a) => !a._isSkeletal && !a._temporary);
   const skelArmies = (deadChar.armies || []).filter((a) => a._isSkeletal && !a._temporary);
   // Who slew the commander (handleHeroDeath stamps it; 2026-10-12, Toby): the host's line says so.
-  const _by = deadChar._slainBy || null,
-    _fell = _by ? `after their commander fell to ${_by}` : 'after their fall';
+  const _by = deadChar._slainBy || null;
   // Skeletal armies crumble — record to graves
   if (skelArmies.length > 0 && prov) recordBattleGraves(turnContext, prov, skelArmies);
   if (deadArmies.length > 0 && prov) {
@@ -72,9 +76,12 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
       });
       emit(turnContext, {
         type: 'system',
-        text: _by
-          ? `${deadChar.name}'s armies, their commander slain by ${_by}, scatter — they wander as mercenaries near ${prov?.name || 'their last position'}.`
-          : `${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name || 'their last position'}.`,
+        fact: {
+          kind: "a fallen hero's armies scatter as mercenaries",
+          heroName: deadChar.name,
+          slainBy: _by,
+          provinceName: prov?.name,
+        },
         audience: { actor: deadChar.player, realms: deadChar.player != null ? [deadChar.player] : [] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -87,7 +94,12 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
       prov.garrisonArmies = (prov.garrisonArmies || []).concat(deadArmies);
       emit(turnContext, {
         type: 'system',
-        text: `${deadChar.name}'s armies garrison in ${prov.name} ${_fell}.`,
+        fact: {
+          kind: "a fallen hero's armies garrison his realm's province",
+          heroName: deadChar.name,
+          provinceName: prov.name,
+          slainBy: _by,
+        },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -105,7 +117,13 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
       prov.garrisonArmies = (prov.garrisonArmies || []).concat(deadArmies);
       emit(turnContext, {
         type: 'system',
-        text: `${deadChar.name}'s armies hold ${prov.name} ${_fell} — the water is claimed for ${_pl ? _pl.name : 'the realm'} and they garrison it.`,
+        fact: {
+          kind: "a fallen hero's armies hold the open sea and claim it for his realm",
+          heroName: deadChar.name,
+          provinceName: prov.name,
+          slainBy: _by,
+          realmName: _pl ? _pl.name : null,
+        },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -130,9 +148,12 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         safeProv.garrisonArmies = (safeProv.garrisonArmies || []).concat(deadArmies);
         emit(turnContext, {
           type: 'system',
-          text: _by
-            ? `${deadChar.name}'s leaderless armies retreat to ${safeProv.name}, their commander slain by ${_by}.`
-            : `${deadChar.name}'s leaderless armies retreat to ${safeProv.name}.`,
+          fact: {
+            kind: "a fallen hero's leaderless armies retreat to his realm's ground",
+            heroName: deadChar.name,
+            provinceName: safeProv.name,
+            slainBy: _by,
+          },
           audience: { actor: deadChar.player, realms: [deadChar.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: safeProv.id,
@@ -169,7 +190,6 @@ export function abandonHostOnFlight(turnContext, c) {
     left = all.filter((a) => !a._temporary);
   c.armies = bound;
   if (left.length === 0) return 0;
-  const _n = `${left.length} unit${left.length !== 1 ? 's' : ''}`;
   const _who = c.name.replace(' (wandering)', '');
   const heir = (G.characters || [])
     .filter(
@@ -187,7 +207,13 @@ export function abandonHostOnFlight(turnContext, c) {
     heir.armies = (heir.armies || []).concat(left);
     emit(turnContext, {
       type: 'system',
-      text: `🏳 ${_who} begged for his life and is gone, but his host does not follow him: ${_n} hold their ground in ${prov.name} and fall in under ${heir.name}.`,
+      fact: {
+        kind: "a spared coward's host falls in under another commander",
+        heroName: _who,
+        unitCount: left.length,
+        provinceName: prov.name,
+        heirName: heir.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: heir.id,
       province: prov.id,
@@ -198,7 +224,12 @@ export function abandonHostOnFlight(turnContext, c) {
     prov.garrisonArmies = (prov.garrisonArmies || []).concat(left);
     emit(turnContext, {
       type: 'system',
-      text: `🏳 ${_who} abandons his command in ${prov.name} — with no officer left to lead them, ${_n} of his host take their place in the province garrison.`,
+      fact: {
+        kind: "a spared coward's host takes its place in the province's garrison",
+        heroName: _who,
+        unitCount: left.length,
+        provinceName: prov.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -207,7 +238,12 @@ export function abandonHostOnFlight(turnContext, c) {
   }
   emit(turnContext, {
     type: 'system',
-    text: `🏳 ${_who} slips away from ${prov.name} with his life, leaving ${_n} leaderless on ground the realm does not hold.`,
+    fact: {
+      kind: 'a spared coward slips away and leaves his host leaderless',
+      heroName: _who,
+      unitCount: left.length,
+      provinceName: prov.name,
+    },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
@@ -234,11 +270,11 @@ export function reportHeroFall(turnContext, dead, killer, slainLine, place, hopt
   if (o.outcome === 'surgery')
     emit(turnContext, {
       type: 'combat',
-      text: `\u{1FA79} ${dead.name} is struck down — at death's door, but not slain.`,
+      fact: { kind: "a hero is struck down at death's door but not slain", heroName: dead.name },
       ...place,
     });
   else if (o.outcome === 'died' || o.outcome == null) emit(turnContext, { type: 'combat', text: slainLine, ...place });
-  o.lines.forEach((l) => emit(turnContext, { type: l.type, text: l.text, ...l.place }));
+  o.lines.forEach((l) => emit(turnContext, { type: l.type, fact: l.fact, ...l.place }));
   return res;
 }
 export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
@@ -274,7 +310,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     deadChar.killedThisTurn = false;
     emit(turnContext, {
       type: 'combat',
-      text: `🌫 The blow meant for ${deadChar.name} passes through shadow — they vanished, and cannot be touched this season.`,
+      fact: { kind: 'the blow meant for a vanished hero passes through shadow', heroName: deadChar.name },
       audience: {
         actor: killerChar && killerChar.player != null ? killerChar.player : null,
         realms: deadChar.player != null ? [deadChar.player] : [],
@@ -293,7 +329,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     deadChar.killedThisTurn = false;
     emit(turnContext, {
       type: 'combat',
-      text: _garrethEscapeLine(deadChar),
+      fact: _garrethEscapeLine(deadChar),
       audience: {
         actor: killerChar && killerChar.player != null ? killerChar.player : null,
         realms: [],
@@ -315,9 +351,9 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   // logged at once, so the caller can say "at death's door, but not slain" instead of "slain" and
   // put the surgery line straight after it (reportHeroFall; preBattleDuel's battle narrative).
   // `opts.outcome` tells the caller what happened: 'vanished', 'escaped', 'surgery' or 'died'.
-  const _surgLog = (text, place, priv) => {
-    if (Array.isArray(opts.lines)) opts.lines.push({ type: 'combat', text, place, priv });
-    else emit(turnContext, { type: 'combat', text, ...place });
+  const _surgLog = (fact, place, priv) => {
+    if (Array.isArray(opts.lines)) opts.lines.push({ type: 'combat', fact, place, priv });
+    else emit(turnContext, { type: 'combat', fact, ...place });
   };
   if (
     !opts.noSave &&
@@ -333,7 +369,13 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
       deadChar.killedThisTurn = false;
       opts.outcome = 'surgery';
       _surgLog(
-        `\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing ? 'the king' : 'them'} back with 1 HP. ${fmtRoll(_bsPct, _sRoll)}`,
+        {
+          kind: 'Battlefield Surgery saves a fallen hero',
+          heroName: deadChar.name,
+          isKing: !!deadChar.isKing,
+          chance: _bsPct,
+          roll: _sRoll,
+        },
         {
           audience: {
             actor: deadChar.player,
@@ -351,7 +393,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
       return false;
     } else {
       _surgLog(
-        `\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(_bsPct, _sRoll)}`,
+        { kind: 'the surgeons reach a fallen hero too late', heroName: deadChar.name, chance: _bsPct, roll: _sRoll },
         {
           audience: { actor: deadChar.player, realms: [deadChar.player] },
           hero: deadChar.id,
@@ -398,7 +440,11 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     deadChar._leaderlessHost = true;
     emit(turnContext, {
       type: 'combat',
-      text: `⚑ ${deadChar.name} has fallen, but the battle for ${prov.name} is not done — the senior captain takes up the banner and the host fights on.`,
+      fact: {
+        kind: "a fallen commander's host fights on under its senior captain",
+        heroName: deadChar.name,
+        provinceName: prov.name,
+      },
       audience: { actor: deadChar.player, realms: deadChar.player != null ? [deadChar.player] : [], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -447,14 +493,24 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         });
       emit(turnContext, {
         type: 'system',
-        text: `${deadChar.name}'s possessions — ${deadItems.map((i) => i.name).join(', ')} — pass to ${recipient.name}.`,
+        fact: {
+          kind: "a fallen hero's possessions pass on",
+          heroName: deadChar.name,
+          itemNames: theNamesAsTheLineTellsThem(deadItems),
+          recipientName: recipient.name,
+        },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       if (recipient.player != null && recipient.player !== deadChar.player)
         emit(turnContext, {
           type: 'system',
-          text: `🗡 ${recipient.name} takes ${deadChar.name}'s possessions from the fallen: ${deadItems.map((i) => i.name).join(', ')}.`,
+          fact: {
+            kind: "a hero takes a fallen foe's possessions",
+            recipientName: recipient.name,
+            heroName: deadChar.name,
+            itemNames: theNamesAsTheLineTellsThem(deadItems),
+          },
           audience: { actor: recipient.player, realms: [recipient.player] },
           hero: recipient.id,
           phase: turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,
@@ -475,7 +531,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     } else {
       emit(turnContext, {
         type: 'system',
-        text: `${deadChar.name}'s possessions are lost — no heir to receive them.`,
+        fact: { kind: "a fallen hero's possessions are lost with no heir", heroName: deadChar.name },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -518,7 +574,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
       deadChar._divineReturn = true;
       emit(turnContext, {
         type: 'system',
-        text: `✨ ${deadChar.name}, monarch of a Divine realm, has fallen — but the divine do not abandon their anointed while the realm keeps holy ground. No heir will be crowned: the crown lies empty for one full turn, and ${deadChar.name} will rise again at the start of the turn after next, in the nearest consecrated province (which gives up its consecration to restore them), at half health, without armies or items. Should the realm lose all its consecrated ground first, the grace is lost and an heir is crowned. Until then the realm has no king: no diplomacy may be declared and no Reckoning called.`,
+        fact: { kind: 'a fallen Divine monarch will rise again on holy ground', heroName: deadChar.name },
         audience: {
           actor: deadChar.player,
           realms: [deadChar.player],
@@ -530,7 +586,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     } else if (pKing && pKing.alignment === 'Divine') {
       emit(turnContext, {
         type: 'system',
-        text: `✨ ${deadChar.name}, monarch of a Divine realm, has fallen — and the realm holds no consecrated ground to which the divine could return them. An heir must take the crown.`,
+        fact: { kind: 'a fallen Divine monarch has no holy ground to return to', heroName: deadChar.name },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: deadChar.location != null ? deadChar.location : undefined,

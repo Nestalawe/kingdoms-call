@@ -53,14 +53,45 @@ import {
   type TheFactOfAFightsLineForItsHerosRealmAlone,
   type TheFactOfAPersonalCombatsLine,
 } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE,
+  type TheFactOfASeaLiftsBattleLine,
+} from '../units/the-facts-the-sea-lifts-battle-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE,
+  type TheFactOfAHerosDeathsLine,
+} from '../heroes/the-facts-a-heros-death-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE,
+  type TheFactOfTheWanderersEscape,
+} from '../the-facts-the-wanderers-escape-line-records.ts';
 
 /** An event's hero when the line is the deed of the hero whose order is resolving, whoever he is: emit files it under
  *  him only when the line already reaches his realm, else under no hero. The area rows of P1-12c replace it with the
  *  hero each fact names. */
 export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolving';
 
+/** Each area's facts, one per area, each typed beside its code (P1-12's Decisions of 2026-10-26, Decision 6): a
+ *  battle's, personal combat's, the sea lift's in a battle, a hero's death's, the wanderer's escape's. */
+type TheFactsOfEachArea = [
+  TheFactOfABattlesLine,
+  TheFactOfAPersonalCombatsLine,
+  TheFactOfASeaLiftsBattleLine,
+  TheFactOfAHerosDeathsLine,
+  TheFactOfTheWanderersEscape,
+];
+
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
-export type LineFact = TheFactOfABattlesLine | TheFactOfAPersonalCombatsLine;
+export type LineFact = TheFactsOfEachArea[number];
+
+/** The kinds two of the areas both declare: none, for a kind belongs to one area, whose prose writes its words (the
+ *  views' route, theWordsOf). */
+type TheKindsInTwoAreas<Areas extends readonly { kind: string }[]> = Areas extends readonly [
+  infer First extends { kind: string },
+  ...infer Rest extends { kind: string }[],
+]
+  ? (First['kind'] & Rest[number]['kind']) | TheKindsInTwoAreas<Rest>
+  : never;
 
 /** Who may read a kind of line, as its area's module says beside the kind: the fight's audience (whoever the fight's
  *  lines are written for), its hero's realm alone (a line that names the realm: a hero's hit-point rise in a fight,
@@ -68,10 +99,19 @@ export type LineFact = TheFactOfABattlesLine | TheFactOfAPersonalCombatsLine;
  *  names; in a fight's narrative, the fight's). */
 export type TheAudienceOfAKindOfLine = "the fight's" | "its hero's realm alone" | "its event's";
 
-/** Each kind's audience, of every area's kinds. */
-const THE_AUDIENCE_OF_EACH_KIND: Readonly<Record<LineFact['kind'], TheAudienceOfAKindOfLine>> = {
+/** Each kind's audience, of every area's kinds, while each kind is in one area; else a table that names the kinds in
+ *  two (and has no audiences), so a kind declared in two areas is a compile error. */
+type TheAudienceOfEachKindIfEachIsInOneArea = [TheKindsInTwoAreas<TheFactsOfEachArea>] extends [never]
+  ? Readonly<Record<LineFact['kind'], TheAudienceOfAKindOfLine>>
+  : { readonly 'these kinds are declared in two areas': TheKindsInTwoAreas<TheFactsOfEachArea> };
+
+/** Each kind's audience, of every area's kinds (each kind in one area). */
+const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */

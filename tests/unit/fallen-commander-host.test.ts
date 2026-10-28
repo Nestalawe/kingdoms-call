@@ -67,11 +67,13 @@ const dead = (loc: Province, extra: Record<string, unknown> = {}) => ({
   skills: {},
   ...extra,
 });
-/** The GM's log lines written while fn runs. */
+/** The words the prose writes of a line's fact (plan P1-12d5: a hero's death's lines are facts). */
+const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+/** The GM's log lines written while fn runs, in words. */
 const linesOf = (fn: () => unknown): string[] => {
   const n0 = tc.turnLog.length;
   fn();
-  return tc.turnLog.slice(n0).map((e) => String(e['text']));
+  return tc.turnLog.slice(n0).map((e) => (e['fact'] === undefined ? String(e['text']) : theWordsOf(e['fact'])));
 };
 
 test('a scattered host says who slew its commander, and so does one that garrisons; the note is then cleared', () => {

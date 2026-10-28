@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
-import { demoteOrDisband, disbandLine, unitRef } from '../army-tables.ts';
+import { demoteOrDisband, unitRef } from '../army-tables.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
@@ -516,7 +516,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       prov._battleUnresolved = true;
       emit(turnContext, {
         type: 'combat',
-        text: navalHoldLine(turnContext, prov, _navalBlockUG, player.name),
+        fact: navalHoldLine(turnContext, prov, _navalBlockUG, player.name),
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -633,7 +633,13 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
     if (kcRng() < GUARD_DEMOTE_CHANCE) {
       const _q0 = a.quality;
       if (demoteOrDisband(a)) {
-        tellASurvivingUnitsFate(disbandLine(gname, a));
+        tellASurvivingUnitsFate({
+          kind: 'a beaten unit has had enough and disbands',
+          ownerName: gname,
+          unitName: a.unitName,
+          unitType: a.type,
+          whomItFaced: null,
+        });
         return;
       }
       tellASurvivingUnitsFate({

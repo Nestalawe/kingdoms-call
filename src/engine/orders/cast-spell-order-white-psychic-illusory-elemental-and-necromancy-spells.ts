@@ -156,7 +156,7 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
       if (t.hp != null && t.hp <= 0) t.hp = 1;
       emit(turnContext, {
         type: 'combat',
-        text: _garrethEscapeLine(t),
+        fact: _garrethEscapeLine(t),
         audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -177,7 +177,7 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
       if (caster.hp != null && caster.hp <= 0) caster.hp = 1;
       emit(turnContext, {
         type: 'combat',
-        text: _garrethEscapeLine(caster),
+        fact: _garrethEscapeLine(caster),
         audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,

@@ -680,17 +680,24 @@ portals' start-up guards are gone.
   `buildReports(whatTheReportsRead)` first writes every line's words (`theTurnsLinesInWords`, `src/views/prose/`,
   P1-12c3): a typed line records a fact, not words (its kind and fields; the kinds of an area are typed beside its code,
   the battles' in `engine/battle/the-facts-a-battles-lines-record.ts`, personal combat's in
-  `engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, all of them in `LineFact`, each with its
+  `engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, the sea lift's lines in a battle in
+  `engine/units/the-facts-the-sea-lifts-battle-lines-record.ts`, a hero's death's in
+  `engine/heroes/the-facts-a-heros-death-lines-record.ts`, the wanderer's escape's in
+  `engine/the-facts-the-wanderers-escape-line-records.ts`, all of them in `LineFact`, each with its
   audience: the fight's, its hero's realm alone, or for a kind filed on its own the audience its event names), and the
   views write its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words
-  is a compile error. A battle's lines take their tiers (key or detail) and its losses tally its place from those words,
+  is a compile error. **The route by kind** (P1-12d5): `theWordsOf` reads, for a fact's kind, its area's words, from a
+  table built from the areas' audience tables (each lists every kind its area has); a kind belongs to one area, and one
+  declared in two is a compile error where `LineFact` is (`engine/turn/events-and-their-audiences.ts`). A new area adds
+  its facts to `LineFact`'s list there, its audience table to the route and its words module beside the others. A battle's lines take their tiers (key or detail) and its losses tally its place from those words,
   as `emitBattle` did before. The result is the GM's log in words, in the form it was always stored in: `buildReports`
   returns it as `gmLog`, and the shell saves it. Since P1-12c6, `engine/battle/` and `engine/personal-combat/` write no
   line's words: every line they tell is a kind (the force markers, personal combat, a battle between heroes and the duel
   before it, a battle against a province's own defenders, a host gained in a province, a stalled battle, a war front,
   and the helpers that return a line: the kinship, Druid and command lines, the ladder and grid rows, the units' fates),
-  but the few words a battle takes from another folder's helper (a unit disbanding, a sea trap, a naval hold, the
-  wanderer's escape, a hero's death: P1-12d). **A fact holds values, never words** (P1-12d; personal combat's since
+  and since P1-12d5 the lines a battle took as words from another folder's helper are kinds too (a unit disbanding, a
+  battle's; a sea trap, a naval hold and the naval split, the sea lift's; a hero's death, its own; the wanderer's
+  escape, his, whose die stays in the engine and the fact holds which sentence). **A fact holds values, never words** (P1-12d; personal combat's since
   P1-12d2, a battle's since P1-12d3, the strength ladder's and the grid's since P1-12d4): a number, a flag, an id or a
   slug, a name as the world or the content holds it, and a copy of what a line's words read of the world (a fighter's
   skill or ward, a list of items, a hit-point rise, the units a battle's line names, its fortune), made as the line is told by a
@@ -698,9 +705,10 @@ portals' start-up guards are gone.
   number formatted for reading, which the views write. A word helper the engine no longer calls moved into the prose
   (`pcSkillLabel`, `pcWardWord`, `pcPerkWord`, `pcWardIcon`; a battle's `aAn`, `n0`, `curseSkillLabel`,
   `fortuneNarrative` and the verbs a victory is told with, whose die stays in the engine: the fact holds which; the
-  ladder's `ladderFm`, the grid's `shortUnit`, `UNIT_SHORT`, `GROUND_WORDS`, `battleGridStage` and `battleFacingStage`);
+  ladder's `ladderFm`, the grid's `shortUnit`, `UNIT_SHORT`, `GROUND_WORDS`, `battleGridStage` and `battleFacingStage`;
+  a unit's `disbandLine` and `theClauseOfWhomAUnitFaced`; the wanderer's sentences, `_GARRETH_ESCAPES`);
   one it
-  still calls (`fmtRoll`, `monsterCatLabel`, `hpGainLine`, `describeArmy`) the prose imports from the engine, on plain
+  still calls (`fmtRoll`, `monsterCatLabel`, `hpGainLine`, `describeArmy`, `strandLabel`) the prose imports from the engine, on plain
   values, and a unit ability's name comes from its content row. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
   checks each area done (its list grows a row at a time), but the labels it lists (P1-12d's next slice). The
   rest of the engine's lines still carry their words (P1-12d), and in this run a line's words are the same for every

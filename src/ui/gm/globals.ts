@@ -14,7 +14,6 @@ import {
   ARMY_COST_MASTER,
   ARMY_SPEED_MASTER,
   LEGACY_UNIT_RENAMES,
-  disbandLine,
   migrateLegacyUnitNames,
   ownedUnitName,
   unitRef,
@@ -38,11 +37,12 @@ import {
   battleWidthChoices,
   battleWidthLine,
   rollBattleWidth,
-  theClauseOfWhomAUnitFaced,
 } from '../../engine/battle/lines.ts';
 import {
   battleFacingStage,
   battleGridStage,
+  disbandLine,
+  theClauseOfWhomAUnitFaced,
   theWordsOfWhyAUnitFacesAsItDoes,
   theWordsOfWhyAUnitStandsWhereItDoes,
 } from '../../views/prose/the-words-of-a-battles-lines.ts';
@@ -220,7 +220,7 @@ Object.assign(window, {
   buildGameRecords, // ui/gm/hall-of-fame.ts
   buildTurnReport, // views/turn-report.ts
   castChanceFor, // engine/chances-and-lair-grades.ts
-  disbandLine, // engine/army-tables.ts
+  disbandLine, // views/prose/the-words-of-a-battles-lines.ts
   druIdPenaltyMult, // engine/world/tables.ts
   gainedItemNote, // engine/items/equipment.ts
   generateBotSetups, // engine/bots/setup.ts
@@ -268,7 +268,7 @@ Object.assign(window, {
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
   sb, // ui/gm/config.ts
   shieldFortHolds, // engine/units/movement.ts
-  theClauseOfWhomAUnitFaced, // engine/battle/lines.ts
+  theClauseOfWhomAUnitFaced, // views/prose/the-words-of-a-battles-lines.ts
   theWordsOf, // views/prose/the-words-of-each-line.ts
   theWordsOfWhyAUnitFacesAsItDoes, // views/prose/the-words-of-a-battles-lines.ts
   theWordsOfWhyAUnitStandsWhereItDoes, // views/prose/the-words-of-a-battles-lines.ts

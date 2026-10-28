@@ -9,6 +9,10 @@ import type { Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { EventButItsWords, NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
+import type {
+  TheFactOfAHerosDeathsLine,
+  TheSurgeonsReachAFallenHeroTooLate,
+} from '../heroes/the-facts-a-heros-death-lines-record.ts';
 
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
 // The single combat between the two commanders before an army battle, and the morale each host carries into the battle
@@ -121,7 +125,10 @@ export function preBattleDuel(
     // was logged at once, so it came before the whole battle report.
     const _dOpts: {
       keepArmies: boolean;
-      lines: { type: string; text: string; place?: EventButItsWords; priv?: number | null }[];
+      lines: (
+        | { type: string; fact: TheFactOfAHerosDeathsLine; place?: EventButItsWords; priv?: undefined }
+        | { type: string; fact: TheSurgeonsReachAFallenHeroTooLate; place?: EventButItsWords; priv: number }
+      )[];
       outcome?: string;
     } = { keepArmies: true, lines: [] };
     const _duelDied = handleHeroDeath(turnContext, realLoser, realWinner, _dOpts);
@@ -137,9 +144,11 @@ export function preBattleDuel(
         narrate(narrative, {
           kind: 'the surgeons reach a fallen duellist too late, for his realm alone',
           realm: l.priv,
-          words: l.text,
+          heroName: l.fact.heroName,
+          chance: l.fact.chance,
+          roll: l.fact.roll,
         });
-      else narrate(narrative, l.text);
+      else narrate(narrative, l.fact);
     });
     demoralise(loser, `their commander fell in single combat`);
     if (_duelDied === false) {

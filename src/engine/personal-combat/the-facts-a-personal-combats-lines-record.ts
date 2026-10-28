@@ -15,7 +15,7 @@
 // realm alone. Two kinds are for one realm alone, inside any fight's narrative: a hero's hit-point rise
 // (heroes/experience-skill-rises-and-earned-hp.ts) and the surgeons' line for a fallen duellist's own realm
 // (battle/pre-battle-duels.ts); each names its realm. The rise names its hero, his name and a copy of the rise (its
-// words: hpGainLine, in the prose); the surgeons' line still holds its words (written by the heroes' code: P1-12d5).
+// words: hpGainLine, in the prose); the surgeons' line holds the values a hero's death records for it (P1-12d5).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 
 /** A value a line's words are written with: a name, a number, or words themselves. */
@@ -926,7 +926,15 @@ export type TheFactOfAPersonalCombatsLine =
       heroName: string;
       rise: AHitPointRiseAsTheLineTellsIt;
     }
-  | { kind: 'the surgeons reach a fallen duellist too late, for his realm alone'; realm: number; words: string };
+  | {
+      kind: 'the surgeons reach a fallen duellist too late, for his realm alone';
+      realm: number;
+      /** The surgeons' line's values, as a hero's death records them (heroes/the-facts-a-heros-death-lines-record.ts:
+       *  the fallen duellist's name, Battlefield Surgery's chance and the roll against it). */
+      heroName: string;
+      chance: number;
+      roll: number;
+    };
 
 /** The kinds of a fight's line whose audience is its hero's realm alone. */
 type TheKindsForItsHerosRealmAlone =

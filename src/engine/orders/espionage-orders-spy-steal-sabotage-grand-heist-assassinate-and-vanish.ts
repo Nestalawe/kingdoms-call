@@ -115,7 +115,7 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
       if (thief.hp != null && thief.hp <= 0) thief.hp = 1;
       emit(turnContext, {
         type: 'combat',
-        text: _garrethEscapeLine(thief),
+        fact: _garrethEscapeLine(thief),
         audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -136,7 +136,7 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, what) {
       if (victim.hp != null && victim.hp <= 0) victim.hp = 1;
       emit(turnContext, {
         type: 'combat',
-        text: _garrethEscapeLine(victim),
+        fact: _garrethEscapeLine(victim),
         audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -943,7 +943,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
     if (_escapesTheEnd(victim)) {
       emit(turnContext, {
         type: 'combat',
-        text: _garrethEscapeLine(victim),
+        fact: _garrethEscapeLine(victim),
         audience: { actor: c.player, realms: [c.player].filter((x) => x != null), seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
