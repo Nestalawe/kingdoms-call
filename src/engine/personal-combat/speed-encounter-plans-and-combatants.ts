@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { NPC_SCHOOL_SPELL } from '../army-tables.ts';
 import { temperOf } from '../world/tables.ts';
 import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd, monsterCat } from '../names.ts';
@@ -10,6 +9,44 @@ import { pcSkillCap, perkTier, skillLevel } from '../titles/perks.ts';
 import { discSum, hasDisc } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import type { Character } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type {
+  AFighterInAPersonalCombat,
+  AFightersStatus,
+  AGuardianAsHisFighterIsBuilt,
+  AGuardiansSpecial,
+  TheRidersOfAnItemOrAPerk,
+} from './helpers.ts';
+
+// Its types (plan P1-10b11): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
+// stays; the fighter both builders make is AFighterInAPersonalCombat (a-fighter-in-a-personal-combat-and-the-wards-he-
+// wears.ts), and a table read by any name is read through a typed local inside its function.
+/** A hero as his fighter is built from him: the saved hero, and the speed bonus an older save may hold. */
+type AHeroAsHisFighterIsBuilt = Character & { readonly _speedBonus?: number | undefined };
+/** A hero as the builder guards his hit points: a hero staged without them enters at his maximum. */
+interface AHeroAsHisHitPointsAreGuarded {
+  readonly hp?: number | null | undefined;
+}
+/** A fighter as the speed and range rules read him. */
+type AFighterAsHisSpeedIsRead = Pick<
+  AFighterInAPersonalCombat,
+  'kind' | 'speedName' | 'speedBonus' | 'archery' | 'archeryRaw' | 'ranged' | 'temper'
+>;
+/** The turn's context as the encounter plans read it: the state, and the bots' realms (none in a context a caller
+ *  stages without them). */
+type TheContextAsTheEncounterPlansReadIt = Pick<TurnContext, 'G'> & {
+  readonly _botPlayerIdx?: ReadonlySet<number> | null | undefined;
+};
+/** An item as the riders are read from it: its name and its effect's rider. */
+interface AnItemAsItsRidersAreRead {
+  readonly name?: string | undefined;
+  readonly effect?: { readonly pc?: TheRidersOfAnItemOrAPerk | null | undefined } | null | undefined;
+}
+/** An item as the fighter's builder tests its kind. */
+interface AnItemAsItsKindIsTested {
+  readonly effect?: { readonly stat?: string | undefined } | null | undefined;
+}
 
 // ── PERSONAL COMBAT: SPEED, ENCOUNTER PLANS AND COMBATANTS (plan P1-08e: lifted out of resolveTurn) ────
 // The engine's overview, then who acts first and who can change range (speed), the plan an un-ordered character fights
@@ -46,18 +83,19 @@ import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 // Numeric speed decides who acts first each round and whether a combatant can change range
 // (advance to firing range, or break away from melee to fire).
 // monsters: fast 3 / medium 2 / slow 1 characters: 2 + any bonus
-export function pcSpeedOf(cbt) {
+export function pcSpeedOf(cbt: AFighterAsHisSpeedIsRead | null | undefined) {
   if (!cbt) return 2;
-  if (cbt.kind === 'monster') return { fast: 3, medium: 2, slow: 1 }[cbt.speedName || 'medium'] || 2;
-  return 2 + (cbt.speedBonus || 0);
+  const speeds: Readonly<Partial<Record<string, number>>> = { fast: 3, medium: 2, slow: 1 };
+  if (cbt.kind === 'monster') return (speeds[(cbt.speedName ?? '') || 'medium'] ?? 0) || 2;
+  return 2 + (Number(cbt.speedBonus) || 0);
 }
-export function pcHasRanged(cbt) {
+export function pcHasRanged(cbt: AFighterAsHisSpeedIsRead | null | undefined) {
   if (!cbt) return false;
   if (cbt.kind === 'monster') return (cbt.archery || 0) > 0 || !!cbt.ranged;
   return (cbt.archery || 0) > 0;
 }
 export const PC_RANGES = ['spell', 'bow', 'melee'];
-export function pcRangeStep(from, dir) {
+export function pcRangeStep(from: string, dir: number) {
   const i = Math.max(0, Math.min(2, PC_RANGES.indexOf(from) + dir));
   return PC_RANGES[i];
 }
@@ -66,7 +104,7 @@ export function pcRangeStep(from, dir) {
 export const ARCHERY_FIELDCRAFT_PCT = 5;
 // Chance to change range. Advancing into firing range is a test of one's own speed; breaking back
 // out of melee is an opposed contest — a faster foe pins you in place.
-export function pcMoveCheck(actor, foe, mode) {
+export function pcMoveCheck(actor: AFighterAsHisSpeedIsRead, foe: AFighterAsHisSpeedIsRead, mode: string) {
   const a = pcSpeedOf(actor),
     f = pcSpeedOf(foe);
   // a slow guardian is not penalised when ADVANCING to firing range (counts as medium).
@@ -74,7 +112,7 @@ export function pcMoveCheck(actor, foe, mode) {
   let chance = mode === 'withdraw' ? 40 + 15 * (a - f) + temperOf(actor.temper).withdrawMod : 60 + 15 * (aAdv - 2);
   // FIELDCRAFT — a trained archer is good at KEEPING range, not only at shooting from it.
   if (actor.kind === 'character') {
-    const _arc = actor.archeryRaw != null ? actor.archeryRaw : actor.archery || 0;
+    const _arc = actor.archeryRaw ?? (actor.archery || 0);
     if (_arc > 0) chance += ARCHERY_FIELDCRAFT_PCT * _arc;
   }
   return Math.max(10, Math.min(90, chance));
@@ -88,7 +126,8 @@ export function pcMoveCheck(actor, foe, mode) {
 // Cautious and Cowardly open with Flee, so they REFUSE a challenge rather than risk single combat
 // — trading 20% of their force's strength for their commander's life.
 export const NPC_SPELL_BY_SCHOOL = { ...NPC_SCHOOL_SPELL };
-export function autoEncounterPlan(turnContext, ch) {
+export function autoEncounterPlan(turnContext: Pick<TurnContext, 'G'>, ch: Character) {
+  const spellOfSchool: Readonly<Partial<Record<string, string>>> = NPC_SPELL_BY_SCHOOL;
   const melee = effStat(turnContext, ch, 'melee'),
     arch = effStat(turnContext, ch, 'archery');
   // NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
@@ -110,9 +149,9 @@ export function autoEncounterPlan(turnContext, ch) {
     .sort((a, b) => effStat(turnContext, ch, b) - effStat(turnContext, ch, a))
     .map((s) => 'CS:' + s);
   // ── PERSONAL-COMBAT tactics (the 6-action budget). ──
-  const plan = [];
+  const plan: string[] = [];
   // A CA: spell so they also cast in a personal encounter/duel (the plan-filter keeps CA:).
-  if (magic > 0) plan.push('CA:' + NPC_SPELL_BY_SCHOOL[bestSchool]);
+  if (magic > 0) plan.push(`CA:${String(spellOfSchool[bestSchool])}`);
   // Sept 2026 (bot hunter tactics): a player-led (bot) character readies a SECOND spell — the
   // per-fight cap allows two from level 2 — from a second school they know.
   // 2026-09-27 (Toby item 2): ONE ATTEMPT PER DISTINCT SPELL. The old line pushed the SAME spell
@@ -123,14 +162,14 @@ export function autoEncounterPlan(turnContext, ch) {
     const second = schools
       .filter((s) => s !== bestSchool && effStat(turnContext, ch, s) > 0)
       .sort((x, y) => effStat(turnContext, ch, y) - effStat(turnContext, ch, x))[0];
-    if (second && NPC_SPELL_BY_SCHOOL[second] && NPC_SPELL_BY_SCHOOL[second] !== NPC_SPELL_BY_SCHOOL[bestSchool])
-      plan.push('CA:' + NPC_SPELL_BY_SCHOOL[second]);
+    if (second && spellOfSchool[second] && spellOfSchool[second] !== spellOfSchool[bestSchool])
+      plan.push(`CA:${spellOfSchool[second]}`);
   }
   // Final guard on the spell slots (2026-09-27, Toby item 2): whatever built the list above, no
   // spell may be attempted twice in one plan. Done here, before the bow and blade actions fill
   // the budget, so a dropped duplicate frees a real action rather than leaving a short plan.
   {
-    const _seen = new Set();
+    const _seen = new Set<string>();
     for (let i = plan.length - 1; i >= 0; i--) {
       const s = String(plan[i]).toUpperCase();
       if (!s.startsWith('CA:')) continue;
@@ -162,35 +201,41 @@ export const NPC_DUEL_STANCE_BY_TEMPER = {
   Cautious: 'accept',
   Cowardly: 'refuse',
 };
-export function duelStanceOf(ch) {
-  const v = ch && ch.encounterPlan && ch.encounterPlan.duelStance;
-  if (DUEL_STANCES_P.includes(v)) return v;
+export function duelStanceOf(ch: Character | null | undefined) {
+  const stanceOfTemper: Readonly<Partial<Record<string, string>>> = NPC_DUEL_STANCE_BY_TEMPER;
+  const v = ch?.encounterPlan?.duelStance;
+  if (v !== undefined && DUEL_STANCES_P.includes(v)) return v; // no stance is in the list
   // NPC commanders have no orders, so Temper decides — across all THREE stances, not just the two
   // extremes. Berserk and Brave ride out and demand single combat; Cautious will answer a
   // challenge but won't issue one; only the Cowardly refuse outright and shame their own ranks.
-  if (ch && ch.player === null) return NPC_DUEL_STANCE_BY_TEMPER[effTemper(ch)] || 'accept';
+  if (ch?.player === null) return (stanceOfTemper[effTemper(ch)] ?? '') || 'accept';
   return 'refuse';
 }
 
 // Give any un-ordered character (player === null) a plan the moment one is needed.
-export function ensureEncounterPlan(turnContext, ch) {
+export function ensureEncounterPlan(
+  turnContext: TheContextAsTheEncounterPlansReadIt,
+  ch: Character | null | undefined,
+) {
   const { _botPlayerIdx } = turnContext;
   if (!ch) return null;
-  const t = ch.encounterPlan && ch.encounterPlan.tactics;
+  const stances: readonly (string | undefined)[] = DUEL_STANCES_P; // a stance that may be missing is looked up as it is
+  const stanceOfTemper: Readonly<Partial<Record<string, string>>> = NPC_DUEL_STANCE_BY_TEMPER;
+  const t = ch.encounterPlan?.tactics;
   // Auto-plan NEUTRAL characters (NPCs) — and BOT-controlled ones, which never submit a plan
   // through the portal. Without this a bot commander casts no battle magic and fights duels with
   // no tactics.
-  const isBotCh = ch.player != null && _botPlayerIdx && _botPlayerIdx.has(ch.player);
+  const isBotCh = ch.player != null && _botPlayerIdx?.has(ch.player);
   if ((ch.player === null || isBotCh) && (!Array.isArray(t) || t.length === 0)) {
     const kept =
-      ch.encounterPlan && ch.encounterPlan._botStance && DUEL_STANCES_P.includes(ch.encounterPlan.duelStance)
+      ch.encounterPlan?._botStance && stances.includes(ch.encounterPlan.duelStance)
         ? ch.encounterPlan.duelStance
         : null; // Sept 2026: a bot's own stance (botSetDuelStances) is a judgement, not a temper
     ch.encounterPlan = {
       tactics: autoEncounterPlan(turnContext, ch),
       notes: '',
       _auto: true,
-      duelStance: kept || NPC_DUEL_STANCE_BY_TEMPER[effTemper(ch)] || 'accept',
+      duelStance: (kept ?? '') || (stanceOfTemper[effTemper(ch)] ?? '') || 'accept',
       _botStance: !!kept,
     };
   }
@@ -198,7 +243,7 @@ export function ensureEncounterPlan(turnContext, ch) {
 }
 
 // --- Combatant builders -----------------------------------------------------
-export function pcNewStatus() {
+export function pcNewStatus(): AFightersStatus {
   return {
     stun: 0,
     hitPenalty: 0,
@@ -219,13 +264,14 @@ export function pcNewStatus() {
     _pending: [],
   }; // riders waiting to take hold at the start of the next round
 }
-export function pcCharCombatant(turnContext, ch) {
+export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterIsBuilt) {
   ensureEncounterPlan(turnContext, ch);
+  const theHeroAsHisHitPointsAreGuarded: AHeroAsHisHitPointsAreGuarded = ch;
   const maxHp = ch.maxHp || 20;
   // Rage (AK §2.4): a Berserker shrugs off pain.
   const rg = temperOf(effTemper(ch)).rageHp;
   const rageHp = rg ? rng(rg[0], rg[1]) : 0;
-  const cbt = {
+  const cbt: AFighterInAPersonalCombat = {
     kind: 'character',
     ref: ch,
     name: ch.name,
@@ -233,11 +279,9 @@ export function pcCharCombatant(turnContext, ch) {
     // the unkillable wanderer never enters a fight at 0 HP (a stale 0 from a past escape would
     // end it before round 1).
     hp:
-      ((ch.hp != null ? ch.hp : maxHp) <= 0 && _escapesTheEnd(ch)
+      ((theHeroAsHisHitPointsAreGuarded.hp ?? maxHp) <= 0 && _escapesTheEnd(ch)
         ? Math.max(1, Math.round(maxHp / 2))
-        : ch.hp != null
-          ? ch.hp
-          : maxHp) + rageHp,
+        : (theHeroAsHisHitPointsAreGuarded.hp ?? maxHp)) + rageHp,
     maxHp: maxHp + rageHp,
     // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
     // 2026-09-26 (Toby item 3) — THE CEILING OF 9 IS THE CEILING. effSkillOf already clamps
@@ -296,15 +340,17 @@ export function pcCharCombatant(turnContext, ch) {
       elemental: effStat(turnContext, ch, 'elemental'),
       necromancy: effStat(turnContext, ch, 'necromancy'),
     },
-    tactics: ((ch.encounterPlan && ch.encounterPlan.tactics) || ['ME']).slice(),
+    tactics: (ch.encounterPlan?.tactics ?? ['ME']).slice(),
     tacIdx: 0,
     planExhausted: false,
     neverFlees: false,
-    speedBonus: ch._speedBonus || 0,
+    speedBonus: Number(ch._speedBonus) || 0,
     specials: [],
-    mithril: activeItems(ch).some((it) => it.effect && it.effect.stat === 'mithrilArmour'), // −2 melee damage taken
+    mithril: activeItems(ch).some((it: AnItemAsItsKindIsTested) => it.effect?.stat === 'mithrilArmour'), // −2 melee damage taken
     mithrilDR: 2 + (ch.player != null ? discSum(turnContext, ch.player, 'mithril', 'extra') : 0), // rd08 Mithril Craft — 3 instead of 2
-    combatItems: dedupeItemsByName(activeItems(ch)).filter((it) => it.effect && it.effect.stat === 'combatUse'), // once-per-fight potions/scrolls
+    combatItems: dedupeItemsByName(activeItems(ch)).filter(
+      (it: AnItemAsItsKindIsTested) => it.effect?.stat === 'combatUse',
+    ), // once-per-fight potions/scrolls
     arm: pcArmourOf(activeItems(ch)), // worn armour wards (see pcArmourOf / pcTakeHit)
     status: pcNewStatus(),
     castSpells: [],
@@ -332,22 +378,23 @@ export function pcCharCombatant(turnContext, ch) {
 // would heal.
 // (A `drain` PASSIVE — Undying Thirst, Sanguine Feeding — is not an ability on the plan and is not
 // covered here; it leeches a share of each melee blow and is unchanged.)
-export function pcSpecialHealsSelf(sp) {
-  const eff = String((sp && sp.effect) || '');
+export function pcSpecialHealsSelf(sp: Pick<AGuardiansSpecial, 'effect'> | null | undefined) {
+  const eff = sp?.effect ?? '';
   return /heals half/i.test(eff) || /(?:regains|gains)\s*\+?\d+\s*HP/i.test(eff) || /heal|regenerat/i.test(eff);
 }
-export function pcMonsterPlan(m) {
+export function pcMonsterPlan(m: Pick<AGuardianAsHisFighterIsBuilt, 'spells' | 'archery' | 'ranged'>) {
   // A GUARDIAN DOES NOT OPEN BY HEALING. Now healing abilities are pulled out of the rotation
   // entirely and appended ONCE at the very end of the plan, so a guardian reaches for them only
   // if the fight has run long. pcMonsterSpecial enforces the once-per-combat rule as well, so two
   // different heal abilities cannot both fire.
-  const all = m.spells || [];
+  const all = m.spells ?? [];
   const heals = all.filter(pcSpecialHealsSelf).map((s) => 'MS:' + s.name);
   const specials = all.filter((s) => !pcSpecialHealsSelf(s)).map((s) => 'MS:' + s.name);
-  const ranged = (m.archery || 0) > 0 || !!m.ranged;
+  const ranged = (m.archery ?? 0) > 0 || !!m.ranged;
   const room = Math.max(1, 12 - heals.length); // leave the tail free for the heals
-  const plan = [];
-  if (specials.length) plan.push(specials[0]);
+  const plan: string[] = [];
+  const first = specials[0];
+  if (first !== undefined) plan.push(first); // there is a first special exactly when the list isn't empty
   if (ranged) plan.push('FI');
   plan.push('ME');
   let si = 1,
@@ -356,7 +403,8 @@ export function pcMonsterPlan(m) {
     plan.push('ME');
     if (ranged && plan.length % 4 === 0) plan.push('FI');
     if (specials.length && plan.length % 3 === 0) {
-      plan.push(specials[si % specials.length]);
+      const next = specials[si % specials.length];
+      if (next !== undefined) plan.push(next); // si % length is a place in the list: always there
       si++;
     }
   }
@@ -368,44 +416,57 @@ export function pcMonsterPlan(m) {
 // read by the engine directly. 2026-09-11: ONE applier for every fx table — guardian passives AND
 // the new items' `effect.pc` riders. Stacking: wards merge, aura/drain take the best,
 // burn/hitBonus/dmgBonus add.
-export function pcApplyFx(cbt, fx, name) {
+export function pcApplyFx(
+  cbt: AFighterInAPersonalCombat | null | undefined,
+  fx: TheRidersOfAnItemOrAPerk | null | undefined,
+  name: string | null | undefined,
+) {
   if (!cbt || !fx) return;
+  // each rider read once, as a number (a missing one is not above 0, as before)
+  const { aura = 0, burn = 0, drain = 0, hitBonus = 0, dmgBonus = 0 } = fx;
   if (fx.ward) cbt.arm = pcArmourMerge(cbt.arm, fx, name);
-  if (fx.aura > 0) cbt.aura = Math.max(cbt.aura || 0, fx.aura); // foe −N% to hit for the whole fight (status.auraPenalty)
-  if (fx.burn > 0) cbt.burn = (cbt.burn || 0) + fx.burn; // foe at melee range takes N each round
-  if (fx.drain > 0) cbt.drain = Math.max(cbt.drain || 0, fx.drain); // heals this fraction of melee damage dealt
-  if (fx.hitBonus > 0) cbt.status.hitBonus = (cbt.status.hitBonus || 0) + fx.hitBonus;
-  if (fx.dmgBonus > 0) cbt.dmgBonus = (cbt.dmgBonus || 0) + fx.dmgBonus;
+  if (aura > 0) cbt.aura = Math.max(Number(cbt.aura) || 0, aura); // foe −N% to hit for the whole fight (status.auraPenalty)
+  if (burn > 0) cbt.burn = (Number(cbt.burn) || 0) + burn; // foe at melee range takes N each round
+  if (drain > 0) cbt.drain = Math.max(Number(cbt.drain) || 0, drain); // heals this fraction of melee damage dealt
+  if (hitBonus > 0) cbt.status.hitBonus = (Number(cbt.status.hitBonus) || 0) + hitBonus;
+  if (dmgBonus > 0) cbt.dmgBonus = (Number(cbt.dmgBonus) || 0) + dmgBonus;
 }
-export function pcApplyMonsterPassive(cbt, m) {
+export function pcApplyMonsterPassive(cbt: AFighterInAPersonalCombat, m: AGuardianAsHisFighterIsBuilt) {
   // 2026-10-14 (batch item 7): every perk of the guardian, not just one. `passiveName` stays the
   // first (its signature perk); `_perkName` names the perk behind each effect for the narrative.
   const ps = guardianPassives(m);
-  if (!ps.length) return;
-  cbt.perks = ps.map((p) => ({ name: p.name, desc: p.desc || '' }));
-  cbt._perkName = {};
-  cbt.passiveName = ps[0].name;
-  cbt.passiveDesc = ps[0].desc || '';
+  const first = ps[0];
+  if (!first) return; // guardianPassives keeps no gap: a first perk exactly when there is one
+  cbt.perks = ps.map((p) => ({ name: p.name, desc: p.desc ?? '' }));
+  const perkName: Partial<Record<string, string>> = {};
+  cbt._perkName = perkName;
+  cbt.passiveName = first.name;
+  cbt.passiveDesc = first.desc ?? '';
   ps.forEach((p) => {
-    const k = p.fx.ward || Object.keys(p.fx)[0];
-    if (k && !cbt._perkName[k]) cbt._perkName[k] = p.name;
-    pcApplyFx(cbt, p.fx, p.name);
+    const fx = p.fx;
+    if (!fx) return; // guardianPassives keeps only a perk with an effect
+    const k = (fx.ward ?? '') || Object.keys(fx)[0];
+    if (k && !perkName[k]) perkName[k] = p.name;
+    pcApplyFx(cbt, fx, p.name);
   });
 }
 // Items a CHARACTER wears that carry a personal-combat rider (`effect.pc`) — one copy of each
 // name counts.
-export function pcApplyItemFx(cbt, items) {
-  dedupeItemsByName(items || []).forEach((it) => {
-    if (it && it.effect && it.effect.pc) pcApplyFx(cbt, it.effect.pc, it.name);
+export function pcApplyItemFx(
+  cbt: AFighterInAPersonalCombat,
+  items: readonly (AnItemAsItsRidersAreRead | null | undefined)[] | null | undefined,
+) {
+  dedupeItemsByName(items ?? []).forEach((it: AnItemAsItsRidersAreRead | null | undefined) => {
+    if (it?.effect?.pc) pcApplyFx(cbt, it.effect.pc, it.name);
   });
 }
-export function pcMonsterCombatant(m) {
+export function pcMonsterCombatant(m: AGuardianAsHisFighterIsBuilt) {
   // a guardian enters EVERY fight at full health — it heals completely at the end of each combat
   // (see resolveEncounter). _hpFull is the creature's undamaged total; m.hp is only consulted
   // when _hpFull was never set (fresh table creature).
-  const maxHp = m._hpFull != null ? m._hpFull : m.hp || 10;
+  const maxHp = m._hpFull ?? ((m.hp ?? 0) || 10);
   const curHp = maxHp;
-  const nm = m.name || 'creature';
+  const nm = (m.name ?? '') || 'creature';
   const undeadWords = [
     'Lich',
     'Vampi',
@@ -422,21 +483,21 @@ export function pcMonsterCombatant(m) {
     'Banshee',
     'Dracolich',
   ];
-  const cbt = {
+  const cbt: AFighterInAPersonalCombat = {
     kind: 'monster',
     ref: m,
     name: nm,
     player: null,
     hp: curHp,
     maxHp,
-    melee: m.melee || 1,
-    archery: m.archery || 0,
+    melee: (m.melee ?? 0) || 1,
+    archery: Number(m.archery) || 0,
     ranged: !!m.ranged,
     temper: 'None',
     neverFlees: true, // guardians carry no hero-style temper (no second wind, no "(Brave)")
     school: { white: 0, psychic: 0, illusory: 0, elemental: 0, necromancy: 0 },
-    specials: (m.spells || []).slice(),
-    speedName: m.speed || 'medium',
+    specials: (m.spells ?? []).slice(),
+    speedName: (m.speed ?? '') || 'medium',
     tactics: pcMonsterPlan(m),
     tacIdx: 0,
     planExhausted: false,
@@ -448,17 +509,19 @@ export function pcMonsterCombatant(m) {
     isUndead: monsterCat(m) === 'undead' || undeadWords.some((w) => nm.includes(w)),
     cat: monsterCat(m),
     weak: m.weak ? { ...m.weak } : null, // the flaw a player can learn and exploit
-    power: m.power || 'Weak', // 2026-09-26: read by the Spiritwrack shrug (Powerful / Legendary guardians)
+    power: (m.power ?? '') || 'Weak', // 2026-09-26: read by the Spiritwrack shrug (Powerful / Legendary guardians)
   };
   pcApplyMonsterPassive(cbt, m);
   // band-wide body cap — see GUARDIAN_BODY_CAP_PCT. Merged AFTER the creature's own passive so
   // pcArmourMerge can reconcile the two; the merge keeps the looser of the two caps, which is
   // correct here because the band figure is a floor on toughness, not a ceiling on it.
   {
-    const _bandCap = GUARDIAN_BODY_CAP_PCT[m.power] || 0;
-    const _ownCap = (cbt.arm && cbt.arm.cap) || 0;
+    const bodyCapOfGrade: Readonly<Partial<Record<string, number>>> = GUARDIAN_BODY_CAP_PCT;
+    const _bandCap = Number(bodyCapOfGrade[String(m.power)]) || 0;
+    const _ownCap = Number(cbt.arm?.cap) || 0;
     if (_bandCap > 0) cbt.arm = pcArmourMerge(cbt.arm, { ward: 'cap', pct: _bandCap }, 'its sheer bulk');
-    if (_ownCap > 0 && _ownCap < _bandCap) cbt.arm.cap = _ownCap;
+    // the band's cap has just been merged, so there is a table
+    if (_ownCap > 0 && _ownCap < _bandCap && cbt.arm) cbt.arm.cap = _ownCap;
   } // a perk's tighter cap (Elder Titan, Kraken: 15%) is never loosened by the grade's
   return cbt;
 }
