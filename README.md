@@ -10,7 +10,7 @@ a Hall of Fame and two rulebooks. Live at <https://nestalawe.github.io/kingdoms-
 | `src/` | The site's source: the pages' templates (`src/*.html`) and their code, ES modules (each page's entry is `src/ui/<page>/page.ts`), and `kingdoms-call-data.ts`. |
 | `public/` | What is published as it is: `kc-config.js` (which database the site talks to), the staging footer, and `vendor/` (supabase-js). |
 | `site/` | The site as it is published, built from `src/` and `public/` by Vite (`npm run build`). Not in git: never edit it. |
-| `tests/` | The automated checks. [tests/README.md](tests/README.md) lists them. |
+| `tests/` | The automated checks: [one line each](tests/every-test-its-level-and-what-it-checks.md), and [how to write one](tests/README.md). |
 | `tools/` | The build (`tools/build.ts`) and the dev server (`tools/dev.ts`, `npm run dev`), the checks an agent runs, the balance matrix. `tools/legacy/`: older content tools, kept for reference. |
 
 Only `site/` is published, so page addresses don't change. Before you open a page locally, run `npm run build`
