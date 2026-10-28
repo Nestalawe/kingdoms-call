@@ -45,19 +45,20 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // ── Static: every gain path writes the note ──
   // Each gain line is found by its message in the GM portal's code, and the note must come within the given number of
   // statements after it (innermost statements, in the order they start), whatever the lines (tests/lib/source.ts;
-  // until plan P1-09a it was the same number of lines of the built page).
+  // until plan P1-09a it was the same number of lines of the built page). A line that is a fact is found by its kind's
+  // name (since P1-12d6 Send Item by hand; since P1-12d8 the lair's, the bones', Steal Item's and the Grand Heist's).
   const {statementsFollowing}=require('./lib/source.ts');
   const PATHS=[
-    ['lair hoard', /hauls out \$\{itemNameList\(baseDrops,false\)\}/, 4],
-    ['lair theft', /out from under the guardian's nose!/, 2],
-    ['bones of the fallen', /Among the bones of the fallen, \$\{c\.name\} recovers/, 3],
+    ['lair hoard', /a hero clears a lair and hauls out its magic/, 4],
+    ['lair theft', /a thief slips a magic item from a lair.{1,2}s hoard/, 2],
+    ['bones of the fallen', /among the bones a hero recovers what the fallen left/, 3],
     ['a dead hero\'s possessions', /a hero takes a fallen foe.{1,2}s possessions/, 2],
     ['the mercy price', /a fighter surrenders an item to the foe as the price of mercy/, 2],
     ['a drop in the rout', /in the rout the runner drops an item the one who stays claims/, 2],
     ['Send Item by hand', /a hero receives items from a comrade/, 2],
     ['Send Item by courier', /A courier reaches \$\{dest\.name\} with/, 2],
-    ['Steal Item', /deftly lifts the \$\{stolen\.name\} from/, 2],
-    ['the Grand Heist', /pulls off a Grand Heist in/, 2],
+    ['Steal Item', /a thief lifts a magic item from a hero/, 2],
+    ['the Grand Heist', /a thief pulls off a Grand Heist/, 2],
   ];
   PATHS.forEach(([what,re,within])=>{ const at=statementsFollowing('kingdoms-call-gm-portal.html',re,within);
     ok(!!at,`found the ${what} line`);
