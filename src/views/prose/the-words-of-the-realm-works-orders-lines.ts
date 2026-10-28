@@ -9,8 +9,9 @@ import type {
   WhereAWildCallingToreBeastsFrom,
 } from '../../engine/orders/the-facts-the-realm-works-orders-lines-record.ts';
 
-/** A realm's tag after its hero's name, as realmTag wrote it: " (Westmarch)", or nothing for no realm. */
-function theRealmsTag(realmName: string | null): string {
+/** A realm's tag after its hero's name, as realmTag wrote it: " (Westmarch)", or nothing for no realm (the Cast Spell
+ *  order's prose writes it too). */
+export function theRealmsTag(realmName: string | null): string {
   return realmName !== null ? ` (${realmName})` : '';
 }
 
