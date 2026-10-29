@@ -148,3 +148,23 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   - `lair`: a young hero (Melee 2, 20 HP, no items) searches the Weak lair in their home: cleared, fled, killed;
   - `encounter`: Encounter Character on an enemy hero in the same province, catch rolls by Spy level (0 or 3 each
     side, 100 runs each).
+
+## What the games don't reach, and the proof tools
+
+The matrix sees only the code its games run. A change to a line no game reaches changes no hash, so the run says "no
+change" without having looked. Four local tools in `tools/proof/` (its
+[README](../../tools/proof/README.md); none runs in CI) cover that gap:
+
+- `npm run proof:coverage`: the 120 games (both sets, as every realm's report plays them) under Node's V8 coverage,
+  turned into lines by c8 through the engine's bundle's source map. It writes `coverage/matrix/`: each line of
+  `src/engine/` and `src/views/` with how often the games ran it, and c8's report. About 60 s on 14 cores.
+- `npm run proof:unreached -- --base <ref>`: the lines a branch changed that no game reaches, or reaches only in part
+  (the right of a `??`, an `else` no game took). Each needs a unit case that fails on a fault planted in that line.
+- `npm run proof:plant -- <patch>`: a fault planted in a copy of the tree, then both sets, every realm's report and the
+  tests named: which games and reports differ, and which tests are red.
+- `npm run proof:gm-logs -- --base <ref>` and `npm run proof:two-engines -- --cases <module> --base <ref>`: the GM log
+  of every game, byte for byte, base against branch; and two engines, each in its own process, on the staged cases a
+  row brings, for the lines no game reaches.
+
+The coverage is measured on the vm's half only. The page's half plays the same games and saves the same states, but it
+also runs the portal's shell, so a line only the page reaches reads "not reached".
