@@ -321,6 +321,9 @@ describe('the start of a round', () => {
     const once = 30 - pcPenaltyFade(30);
     expect(kinds(round(f, 0))).toEqual(['a fighter shrugs off the daze, held steady by their armour']);
     expect([f.status.hitPenalty, f.status.stun]).toEqual([once - pcPenaltyFade(once), 0]);
+    // a draw of half is not under half: the daze holds (plan P1-19r)
+    const g = fighter({ arm: { names: ['Steadfast Harness'], resist: true }, status: status({ stun: 1 }) });
+    expect([kinds(round(g, 0.5)), g.status.stun]).toEqual([[], 1]);
   });
   // (plan P1-19r) a hero: his regeneration doesn't fade with the fight
   test('as a round starts: a fresh round ward, every lingering harm sloughed off, and a hero regenerates', () => {
