@@ -8,7 +8,8 @@
 // Defend, the order dispatch, the item orders, Research and Practice, Recruit and Hire), P1-12d7 three more (the army
 // orders, the realm works, the war masteries), P1-12d8 two more (espionage, explore and search), P1-12d9 the Cast Spell
 // order, P1-12d10 the move order, P1-12d11 a hero slain outside a battle (reportHeroFall's 12 callers, in a hero's
-// death's area). A facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a
+// death's area), P1-12d12 a chase and a hero's experience and hit points (and the equip note at a death). A facts
+// module's kinds include the kinds of the records its facts hold (P1-12d4: why a
 // unit stands or faces as it does, whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what
 // it is, where companies muster, why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild
 // Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why a charmed mind may turn on its enchanter,
@@ -41,7 +42,8 @@
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
-// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's and P1-12d10's: their areas' facts modules, which their bases lack), as the static
+// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's and P1-12d12's: their areas' facts modules, which their
+// bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
 // Level 0 (static): the files' syntax trees; nothing runs.
@@ -53,7 +55,8 @@
 // lift's lines in a battle, a hero's death, the wanderer's escape; P1-12d6: the Encounter and Defend orders, the order
 // dispatch, the item orders, the Research and Practice orders, the Recruit and Hire orders; P1-12d7: the army orders,
 // the realm works orders, the war mastery orders; P1-12d8: the espionage orders, the explore and search orders;
-// P1-12d9: the Cast Spell order; P1-12d10: the move order) holds no field whose value is, or holds, words: a string or
+// P1-12d9: the Cast Spell order; P1-12d10: the move order; P1-12d12: a chase, a hero's experience and hit points) holds
+// no field whose value is, or holds, words: a string or
 // a template with text reached as the value (through a conditional's branches, `+`, `||`, `??`, `&&`, a placeholder,
 // `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
 // `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
@@ -68,7 +71,9 @@
 // Harvest the Field's; since P1-12d8 the class of lair Discover Lost Ruin names, `lairClass`, and the equip note of a
 // thief's take and of a lair's finder, `gainedItemNote`; since P1-12d9 a skeletal company's `quality`, `unitType` and
 // `unitName` as the world holds them, Skeletal Armies', and the Wraiths' `unitName`, Raise Wraiths'; since P1-12d11
-// the way a hero slain outside a battle fell, `how`, each of reportHeroFall's 12 callers'); a record's `kind`
+// the way a hero slain outside a battle fell, `how`, each of reportHeroFall's 12 callers'; since P1-12d12 the realm's
+// tag of a challenger his quarry's realm learns of, `realmTag`, and the equip note of a hero who takes a fallen foe's
+// possessions, `gainedItemNote`); a record's `kind`
 // that a facts module declares is the record's name, not words (P1-12d6: where the companies muster; P1-12d7: why a
 // hand-over at sea is refused, where a Wild Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why
 // a charmed mind may turn on its enchanter, a company a Telekinetic Storm strikes; P1-12d10: the troops that rally to a
@@ -77,7 +82,8 @@
 // them, P1-12d6), 10 values let through (a record of a declared kind). Red on its base by design (P1-12d2's base: 113
 // fields of personal combat's facts; P1-12d3's: 121 of a battle's; P1-12d4's: the 10 of the ladder and the grid it
 // listed; P1-12d5's: its three areas' facts modules, which the base lacks, and the disbanding kind; P1-12d6's: its five
-// areas' facts modules; P1-12d7's: its three; P1-12d8's: its two; P1-12d9's: its one), the one exception to
+// areas' facts modules; P1-12d7's: its three; P1-12d8's: its two; P1-12d9's: its one; P1-12d12's: its two), the one
+// exception to
 // `refactor-only`'s rule (Theo, 2026-10-25). It can't see words handed in through a parameter. Level 0: syntax trees;
 // nothing runs. TypeScript, in `static/`
 import fs from 'node:fs';
@@ -117,6 +123,8 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
   ],
   ['the Cast Spell order', 'src/engine/orders/the-facts-the-cast-spell-orders-lines-record.ts', 'P1-12d9'],
   ['the move order', 'src/engine/orders/the-facts-the-move-orders-lines-record.ts', 'P1-12d10'],
+  ['a chase', 'src/engine/heroes/the-facts-a-chases-lines-record.ts', 'P1-12d12'],
+  ["a hero's experience and hit points", 'src/engine/heroes/the-facts-a-heros-experience-lines-record.ts', 'P1-12d12'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -138,6 +146,8 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/orders/the-facts-the-explore-and-search-orders-lines-record.ts',
   'src/engine/orders/the-facts-the-cast-spell-orders-lines-record.ts',
   'src/engine/orders/the-facts-the-move-orders-lines-record.ts',
+  'src/engine/heroes/the-facts-a-chases-lines-record.ts',
+  'src/engine/heroes/the-facts-a-heros-experience-lines-record.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -310,6 +320,7 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
     'the hero turns a newly gathered host on a province and a battle is initiated',
     "the province's owner learns his defenders still hold against the hero",
     "the province's owner learns the hero was beaten back",
+    "a quarry's realm learns a lone challenger came for him",
   ],
   attackersRealmTag: ["war comes to a province two realms' hosts share"],
   defendersRealmTag: ["war comes to a province two realms' hosts share"],
@@ -336,6 +347,7 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
     'a hero handed items notes how he carries them',
     'a thief notes how he carries what he took',
     'a hero notes how he carries what a lair gave up',
+    "a hero notes how he carries a fallen foe's possessions",
   ],
   // the order's action as the order names it ('disband_army', 'rampage', …): a slug the prose reads
   action: ['a charmed hero will not carry out an order of his captor', 'a hero has already used a mastery this turn'],

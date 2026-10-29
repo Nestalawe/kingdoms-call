@@ -13,7 +13,12 @@ import {
 } from '../turn/events-and-their-audiences.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
-import { effStat, isHiddenChar, oddsNote, statNote } from './effective-skills-and-hidden-heroes.ts';
+import {
+  effStat,
+  isHiddenChar,
+  theOddsShownAsALineTellsIt,
+  theStatShownAsALineTellsIt,
+} from './effective-skills-and-hidden-heroes.ts';
 import { clearNavalHold, navalHeldIn, navalHoldLine } from '../units/sea-lift-stranding-and-retreats.ts';
 import {
   SKILLGAIN_COMMON,
@@ -35,7 +40,9 @@ import { stepToward } from '../world/routes-and-distances.ts';
 // turn (advancePursuit, called from processOrder and the phase loop), rolls to corner him once they stand together
 // (pursuitCatchChance), and fights or meets him when he does; endPursuit ends the chase. An unarmed challenger
 // reaching an armed quarry slips past the sentries on the ENC_BREAK_RANKS_* chance. pursuitCatchChance and
-// advancePursuit take the turn's context first (src/engine/turn/context.ts); endPursuit takes none.
+// advancePursuit take the turn's context first (src/engine/turn/context.ts); endPursuit takes none. Every line the
+// chase writes is a fact (plan P1-12d12): a chase's kinds (heroes/the-facts-a-chases-lines-record.ts); the prose writes
+// the words.
 // Encounter Character: an UNARMED challenger reaching an ARMED quarry (see advancePursuit).
 export const ENC_BREAK_RANKS_BASE = 60,
   ENC_BREAK_RANKS_PER_UNIT = 8,
@@ -77,7 +84,7 @@ export function advancePursuit(turnContext, c, ph) {
   if (!quarry || !quarry.alive) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name}'s quarry is beyond catching now — the chase is called off.`,
+      fact: { kind: "a chaser's quarry is beyond catching", heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: here ? here.id : null,
@@ -95,7 +102,12 @@ export function advancePursuit(turnContext, c, ph) {
   if (isHiddenChar(turnContext, quarry) && quarry.player !== c.player) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} follows the trail of ${quarry.name} into ${here ? here.name : 'the wilds'} and loses it utterly — the man seems to leave no track at all.`,
+      fact: {
+        kind: 'a chaser loses the trail of a quarry who leaves no track',
+        heroName: c.name,
+        quarryName: quarry.name,
+        provinceName: here ? here.name : null,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: here ? here.id : null,
@@ -108,7 +120,7 @@ export function advancePursuit(turnContext, c, ph) {
   if (quarry._vanishTurn === G.turn && quarry.player !== c.player) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} presses the chase after ${quarry.name}, but the quarry melts into the shadows and is gone. (Vanish)`,
+      fact: { kind: "a chaser's quarry vanishes into the shadows", heroName: c.name, quarryName: quarry.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: here ? here.id : null,
@@ -131,7 +143,12 @@ export function advancePursuit(turnContext, c, ph) {
   ) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} has a battle on their hands in ${here ? here.name : 'the field'} this season — the chase after ${quarry.name} must wait.`,
+      fact: {
+        kind: 'a chaser with a battle on his hands holds the chase over',
+        heroName: c.name,
+        provinceName: here ? here.name : null,
+        quarryName: quarry.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: here ? here.id : null,
@@ -146,7 +163,7 @@ export function advancePursuit(turnContext, c, ph) {
     if ((pool[c.id] ?? 0) <= 0 && (movePoints[c.id] ?? 0) <= 0 && (seaMovePoints[c.id] ?? 0) <= 0) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} can drive their horses no further this year — the chase after ${quarry.name} stalls.`,
+        fact: { kind: "a chaser's horses can go no further this year", heroName: c.name, quarryName: quarry.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: here ? here.id : null,
@@ -158,7 +175,7 @@ export function advancePursuit(turnContext, c, ph) {
     if (!step) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} can find no road that brings them closer to ${quarry.name} — the trail goes cold.`,
+        fact: { kind: 'a chaser finds no road closer to his quarry', heroName: c.name, quarryName: quarry.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: here ? here.id : null,
@@ -171,7 +188,11 @@ export function advancePursuit(turnContext, c, ph) {
       if ((seaMovePoints[c.id] ?? 0) <= 0) {
         emit(turnContext, {
           type: 'move',
-          text: `${c.name} has no ships left to follow ${quarry.name} out onto the water.`,
+          fact: {
+            kind: 'a chaser has no ships left to follow his quarry to sea',
+            heroName: c.name,
+            quarryName: quarry.name,
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: here ? here.id : null,
@@ -184,7 +205,7 @@ export function advancePursuit(turnContext, c, ph) {
       if ((movePoints[c.id] ?? 0) <= 0) {
         emit(turnContext, {
           type: 'move',
-          text: `${c.name}'s column is spent and can march no further after ${quarry.name}.`,
+          fact: { kind: "a chaser's column is spent", heroName: c.name, quarryName: quarry.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: here ? here.id : null,
@@ -207,7 +228,12 @@ export function advancePursuit(turnContext, c, ph) {
     if (c.location !== quarry.location) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} presses on into ${step.name}, hard on the trail of ${quarry.name}.`,
+        fact: {
+          kind: "a chaser presses on hard on his quarry's trail",
+          heroName: c.name,
+          provinceName: step.name,
+          quarryName: quarry.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: step.id,
@@ -216,7 +242,12 @@ export function advancePursuit(turnContext, c, ph) {
     }
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} rides into ${step.name} and finds ${quarry.name} there.`,
+      fact: {
+        kind: 'a chaser rides in and finds his quarry',
+        heroName: c.name,
+        provinceName: step.name,
+        quarryName: quarry.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: step.id,
@@ -234,14 +265,26 @@ export function advancePursuit(turnContext, c, ph) {
   const roll = d100();
   emit(turnContext, {
     type: 'system',
-    text: `📊 Pursuit — ${c.name} (Spy ${effStat(turnContext, c, 'spy')}) closing on ${quarry.name}${statNote(turnContext, c.player, quarry, 'spy')}: ${oddsNote(turnContext, c.player, quarry, chance, roll)}`,
+    fact: {
+      kind: 'a chaser rolls to close on his quarry',
+      heroName: c.name,
+      spy: effStat(turnContext, c, 'spy'),
+      quarryName: quarry.name,
+      quarrysSpy: theStatShownAsALineTellsIt(turnContext, c.player, quarry, 'spy'),
+      odds: theOddsShownAsALineTellsIt(turnContext, c.player, quarry, chance, roll),
+    },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
   if (roll > chance) {
     emit(turnContext, {
       type: 'move',
-      text: `${quarry.name} slips away through the country around ${prov.name} — ${c.name} keeps the trail but cannot close.`,
+      fact: {
+        kind: "a chaser's quarry slips away",
+        quarryName: quarry.name,
+        provinceName: prov.name,
+        heroName: c.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -253,7 +296,12 @@ export function advancePursuit(turnContext, c, ph) {
   if (quarry.player != null && quarry.player === c.player) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} catches up with ${quarry.name} in ${prov.name} and the two columns join company.`,
+      fact: {
+        kind: 'a chaser catches up with a quarry of his own realm and the columns join',
+        heroName: c.name,
+        quarryName: quarry.name,
+        provinceName: prov.name,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -267,7 +315,14 @@ export function advancePursuit(turnContext, c, ph) {
   if (quarry.player != null && !areEnemies(turnContext, c.player, quarry.player)) {
     emit(turnContext, {
       type: 'move',
-      text: `${c.name} overtakes ${quarry.name} in ${prov.name}, but ${G.players[quarry.player]?.name || 'their realm'} is not at war with ${G.players[c.player]?.name || 'us'} — the two columns pass without bloodshed.`,
+      fact: {
+        kind: 'a chaser overtakes a quarry whose realm is not at war with his',
+        heroName: c.name,
+        quarryName: quarry.name,
+        provinceName: prov.name,
+        quarrysRealmName: G.players[quarry.player]?.name || null,
+        chasersRealmName: G.players[c.player]?.name || null,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -282,7 +337,12 @@ export function advancePursuit(turnContext, c, ph) {
     if (quarry._foughtStalledBattlePhase === ph || prov._battleUnresolved) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} closes on ${quarry.name} in ${prov.name}, but the ground is already a battlefield this season — the reckoning must wait.`,
+        fact: {
+          kind: 'a chaser closes on his quarry on ground already a battlefield',
+          heroName: c.name,
+          quarryName: quarry.name,
+          provinceName: prov.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -304,7 +364,12 @@ export function advancePursuit(turnContext, c, ph) {
     const targetsPi = [c.player, quarry.player].filter((x) => x != null);
     emit(turnContext, {
       type: 'combat',
-      text: `⚔ ${c.name} runs ${quarry.name} to ground in ${prov.name} and forces battle!`,
+      fact: {
+        kind: 'a chaser runs his quarry to ground and forces battle',
+        heroName: c.name,
+        quarryName: quarry.name,
+        provinceName: prov.name,
+      },
       audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -384,10 +449,12 @@ export function advancePursuit(turnContext, c, ph) {
         prov._battleUnresolved = true;
         emit(turnContext, {
           type: 'combat',
-          text:
-            _garrison && !_hostileLeft && !_hulls.length
-              ? `${c.name} carries the field at ${prov.name}, but its garrison still holds the province — the fight for it resumes next season.`
-              : `${c.name} carries the field at ${prov.name}, but enemy forces still hold their ground — the province remains contested.`,
+          fact: {
+            kind: 'a chaser carries the field but the province is still held',
+            heroName: c.name,
+            provinceName: prov.name,
+            onlyItsGarrisonHolds: _garrison && !_hostileLeft && !_hulls.length,
+          },
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
@@ -412,7 +479,12 @@ export function advancePursuit(turnContext, c, ph) {
         if (_wp && !_wp.provinces.includes(prov.id)) _wp.provinces.push(prov.id);
         emit(turnContext, {
           type: 'combat',
-          text: `${c.name} claims ${prov.name} for ${_wp ? _wp.name : 'their realm'}!`,
+          fact: {
+            kind: 'a chaser claims the province for his realm',
+            heroName: c.name,
+            provinceName: prov.name,
+            realmName: _wp ? _wp.name : null,
+          },
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
@@ -451,7 +523,15 @@ export function advancePursuit(turnContext, c, ph) {
       const _roll = d100();
       emit(turnContext, {
         type: 'system',
-        text: `📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units !== 1 ? 's' : ''}${statNote(turnContext, c.player, quarry, 'tactical')}: ${oddsNote(turnContext, c.player, quarry, _pct, _roll)}`,
+        fact: {
+          kind: "a lone challenger rolls to break the ranks of his quarry's camp",
+          heroName: c.name,
+          spy: _spy,
+          quarryName: quarry.name,
+          unitCount: _units,
+          quarrysTactical: theStatShownAsALineTellsIt(turnContext, c.player, quarry, 'tactical'),
+          odds: theOddsShownAsALineTellsIt(turnContext, c.player, quarry, _pct, _roll),
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -459,7 +539,12 @@ export function advancePursuit(turnContext, c, ph) {
       if (_roll > _pct) {
         emit(turnContext, {
           type: 'system',
-          text: `${c.name} runs ${quarry.name} to ground in ${prov.name}, but the sentries of their column are awake — the challenger is turned away from the lines before reaching the commander, and the chase is abandoned.`,
+          fact: {
+            kind: 'a lone challenger is turned away by the sentries',
+            heroName: c.name,
+            quarryName: quarry.name,
+            provinceName: prov.name,
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: c.id,
           province: prov.id,
@@ -467,7 +552,13 @@ export function advancePursuit(turnContext, c, ph) {
         notifyTarget(
           turnContext,
           quarry,
-          `👁 ${c.name}${realmTag(turnContext, c.player)} came for ${quarry.name} in ${prov.name} — a lone challenger, turned away by the sentries before reaching the tent.`,
+          {
+            kind: "a quarry's realm learns a lone challenger came for him",
+            heroName: c.name,
+            realmTag: realmTag(turnContext, c.player),
+            quarryName: quarry.name,
+            provinceName: prov.name,
+          },
           ph,
           'system',
         );
@@ -476,7 +567,12 @@ export function advancePursuit(turnContext, c, ph) {
       }
       emit(turnContext, {
         type: 'system',
-        text: `${c.name} slips through the picket lines of ${quarry.name}'s column in ${prov.name} and forces the matter before the commander can rally the guard.`,
+        fact: {
+          kind: 'a lone challenger slips through the picket lines',
+          heroName: c.name,
+          quarryName: quarry.name,
+          provinceName: prov.name,
+        },
         audience: { actor: c.player, realms: [c.player, quarry.player].filter((x) => x != null) },
         hero: c.id,
         heroes: [c.id, quarry.id],
@@ -496,7 +592,12 @@ export function advancePursuit(turnContext, c, ph) {
       if (!_mutual) {
         emit(turnContext, {
           type: 'system',
-          text: `${c.name} corners ${quarry.name} in ${prov.name}, but a crowned head does not stoop to answer every challenge — the King rides on.`,
+          fact: {
+            kind: "a crowned quarry will not answer a commoner's challenge",
+            heroName: c.name,
+            quarryName: quarry.name,
+            provinceName: prov.name,
+          },
           audience: { actor: c.player, realms: [c.player, quarry.player].filter((x) => x != null) },
           hero: c.id,
           heroes: [c.id, quarry.id],
@@ -520,7 +621,12 @@ export function advancePursuit(turnContext, c, ph) {
     const _duelChars = [c.id, quarry.id]; // the duel belongs in BOTH duellists' report sections
     emit(turnContext, {
       type: 'combat',
-      text: `⚔ ${c.name} finally corners ${quarry.name} in ${prov.name}.`,
+      fact: {
+        kind: 'a chaser finally corners his quarry',
+        heroName: c.name,
+        quarryName: quarry.name,
+        provinceName: prov.name,
+      },
       audience: { actor: c.player, realms: targetsPi, seen: prov.owner !== null ? 'battle' : undefined },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,

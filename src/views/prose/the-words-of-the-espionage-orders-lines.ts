@@ -3,8 +3,8 @@
 // espionage-orders-lines-record.ts), in the same words the engine wrote before (orders/espionage-orders-spy-steal-
 // sabotage-grand-heist-assassinate-and-vanish.ts). The skills' names, fmtRoll and describeArmy are the engine's, and
 // so are the words of a rival's skill and of the odds as a realm is shown them (theWordsOfAStatShown,
-// theWordsOfTheOddsShown, heroes/effective-skills-and-hidden-heroes.ts, while statNote and oddsNote keep engine
-// callers). A kind with no words here is a compile error (the `never` below).
+// theWordsOfTheOddsShown, heroes/effective-skills-and-hidden-heroes.ts). A kind with no words here is a compile error
+// (the `never` below).
 import type {
   TheFactOfTheEspionageOrdersLine,
   TheHaulOfAGrandHeist,

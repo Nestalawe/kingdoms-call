@@ -28,10 +28,10 @@
       "count": 4
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 14
+      "count": 13
     },
     "@typescript-eslint/prefer-optional-chain": {
-      "count": 6
+      "count": 5
     }
   },
   "src/engine/battle/battles-against-province-defenders.ts": {

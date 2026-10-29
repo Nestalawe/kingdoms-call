@@ -121,6 +121,8 @@ export function theWordsOfAHerosDeathsLine(fact: TheFactOfAHerosDeathsLine): str
       return `${fact.heroName}'s possessions — ${fact.itemNames.join(', ')} — pass to ${fact.recipientName}.`;
     case "a hero takes a fallen foe's possessions":
       return `🗡 ${fact.recipientName} takes ${fact.heroName}'s possessions from the fallen: ${fact.itemNames.join(', ')}.`;
+    case "a hero notes how he carries a fallen foe's possessions":
+      return fact.gainedItemNote;
     case "a fallen hero's possessions are lost with no heir":
       return `${fact.heroName}'s possessions are lost — no heir to receive them.`;
     case 'a fallen Divine monarch will rise again on holy ground':

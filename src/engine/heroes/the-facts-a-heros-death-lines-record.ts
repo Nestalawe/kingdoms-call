@@ -14,6 +14,8 @@
 // he fell a value (`how`, one for each caller of reportHeroFall, in orders/, heroes/ and units/), told where its caller
 // tells it (its event's); and who slew a hero is a record, not words (TheOneWhoSlewAHero: handleHeroDeath keeps it on
 // the dead hero as `_slainBy`, and his host's lines hold it), so a lair's guardian is its name and its province.
+// Since P1-12d12: the note of how a hero carries a fallen foe's possessions he takes is a kind too, holding
+// gainedItemNote's words (the items' area: a later slice), listed by the static test.
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
 
@@ -125,6 +127,11 @@ export type TheFactOfAHerosDeathsLine =
   | { kind: "a fallen commander's host fights on under its senior captain"; heroName: string; provinceName: string }
   | { kind: "a fallen hero's possessions pass on"; heroName: string; itemNames: string[]; recipientName: string }
   | { kind: "a hero takes a fallen foe's possessions"; recipientName: string; heroName: string; itemNames: string[] }
+  | {
+      kind: "a hero notes how he carries a fallen foe's possessions";
+      /** gainedItemNote's words (the items' area: a later slice). */
+      gainedItemNote: string;
+    }
   | { kind: "a fallen hero's possessions are lost with no heir"; heroName: string }
   | { kind: 'a fallen Divine monarch will rise again on holy ground'; heroName: string }
   | { kind: 'a fallen Divine monarch has no holy ground to return to'; heroName: string };
@@ -149,6 +156,7 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE: Readonly<
   "a fallen commander's host fights on under its senior captain": "its event's",
   "a fallen hero's possessions pass on": "its event's",
   "a hero takes a fallen foe's possessions": "its event's",
+  "a hero notes how he carries a fallen foe's possessions": "its event's",
   "a fallen hero's possessions are lost with no heir": "its event's",
   'a fallen Divine monarch will rise again on holy ground': "its event's",
   'a fallen Divine monarch has no holy ground to return to': "its event's",

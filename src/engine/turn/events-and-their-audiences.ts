@@ -66,6 +66,14 @@ import {
   type TheFactOfTheWanderersEscape,
 } from '../the-facts-the-wanderers-escape-line-records.ts';
 import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_CHASES_LINE,
+  type TheFactOfAChasesLine,
+} from '../heroes/the-facts-a-chases-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE,
+  type TheFactOfAHerosExperienceLine,
+} from '../heroes/the-facts-a-heros-experience-lines-record.ts';
+import {
   THE_AUDIENCE_OF_EACH_KIND_OF_AN_ENCOUNTER_OR_DEFEND_ORDERS_LINE,
   type TheFactOfAnEncounterOrDefendOrdersLine,
 } from '../orders/the-facts-the-encounter-and-defend-orders-lines-record.ts';
@@ -124,7 +132,7 @@ export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolv
  *  the Encounter and Defend orders', the order dispatch's, the item orders', the Research and Practice orders' and the
  *  Recruit and Hire orders'; since P1-12d7 the army orders', the realm works orders' and the war mastery orders'; since
  *  P1-12d8 the espionage orders' and the explore and search orders'; since P1-12d9 the Cast Spell order's; since
- *  P1-12d10 the move order's. */
+ *  P1-12d10 the move order's; since P1-12d12 a chase's and a hero's experience and hit points'. */
 type TheFactsOfEachArea = [
   TheFactOfABattlesLine,
   TheFactOfAPersonalCombatsLine,
@@ -143,6 +151,8 @@ type TheFactsOfEachArea = [
   TheFactOfTheExploreAndSearchOrdersLine,
   TheFactOfTheCastSpellOrdersLine,
   TheFactOfTheMoveOrdersLine,
+  TheFactOfAChasesLine,
+  TheFactOfAHerosExperienceLine,
 ];
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
@@ -188,6 +198,8 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_EXPLORE_AND_SEARCH_ORDERS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_CAST_SPELL_ORDERS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_CHASES_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */
@@ -547,7 +559,7 @@ export function writeDeferredSkillLines(
   const blocks = new Map<string, { p: number; ph: TurnEvent['phase']; ents: LogLine[] }>();
   (list ?? []).forEach(([msg, place]) => {
     const { afterBattleIn: p, ...line } = place;
-    emit(turnContext, { ...line, type: 'system', text: msg });
+    emit(turnContext, { ...line, type: 'system', ...theWordsOrTheFactOfALine(msg) });
     if (p == null || inPlace) return;
     const k = String(p) + '|' + String(line.phase);
     let block = blocks.get(k);

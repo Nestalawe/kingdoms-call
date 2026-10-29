@@ -41,7 +41,8 @@ check finds were made.
   `emit(turnContext, { type, text, ...place })`. `reportHeroFall` takes the line as a fact, as `notifyTarget` does
   (since P1-12d11: one kind, "a hero is slain outside a battle", the way he fell a value, `how`, one for each of its 12
   callers), and who slew a hero is a record (`TheOneWhoSlewAHero`: a killer's name, or a lair's guardian and its
-  province), not words. A line that may be words or a fact (a beaten guard's survivors' fates:
+  province), not words. The skill rises held back (`_deferredSkillLogs`) hold their facts (since P1-12d12: a hero's
+  experience lines' kinds) until `writeDeferredSkillLines` files each. A line that may be words or a fact (a beaten guard's survivors' fates:
   facts, but a unit disbanding is still words from `army-tables.ts`; what `notifyTarget` and `notifyProvinceOwner` are
   handed; each half `logSplit` is handed, since P1-12d7) goes in as `...theWordsOrTheFactOfALine(line)`, which gives `emit` its `text` or its `fact`. Build it as the event's own fields, never as the old `log()` meta
   (`targets`, `provinceId`, `charId`, `public`). A line seen by those there but with no province is seen by the world
@@ -78,19 +79,23 @@ check finds were made.
   dispatch's, the item orders', the Research and Practice orders' and the Recruit and Hire orders', since P1-12d7
   the army orders', the realm works' and the war masteries', since P1-12d8 the espionage orders' and the explore and
   search orders', since P1-12d9 the Cast Spell order's, and since P1-12d10 the move order's, each beside its file in
-  `src/engine/orders/`; one kind per
+  `src/engine/orders/`; since P1-12d12 a chase's, `src/engine/heroes/the-facts-a-chases-lines-record.ts`, and a hero's
+  experience and hit points', `src/engine/heroes/the-facts-a-heros-experience-lines-record.ts`; one kind per
   sentence, one field per value it was written
   with, and a kind in one area only: `theWordsOf` routes a fact by its kind to its area's words, and a kind declared in
   two areas doesn't compile, where `LineFact` lists the areas), each with its fields and its audience, and
   `src/views/prose/` writes their words after the turn, one module per area (a new area adds its facts to `LineFact`'s
   list, its audience table to the route in `the-words-of-each-line.ts` and its own words module), a `switch` over the
-  kinds with a `never` default: a new kind with no words doesn't compile there. `forceMarker` returns its fact, and `narrate` takes it as it
+  kinds with a `never` default: a new kind with no words doesn't compile there. TypeScript can't reduce the union of
+  every kind (over a thousand since P1-12d12): `||`, `??` or `?:` on a `NarrativeLine` makes it try, and fails with
+  TS2590 ("too complex to represent"); read such a value with an `if` (as `emitBattle` reads its summary line). `forceMarker` returns its fact, and `narrate` takes it as it
   takes words. **`src/engine/battle/` and `src/engine/personal-combat/` write no line's words**: a new line
   there is a new kind (its words in `src/views/prose/`), or a field of one where the words are a fragment (P1-12d moves
   those fields' words into the prose); since P1-12d5 the lines a battle took from another folder's helper (a unit
   disbanding, a sea trap, a naval hold and the naval split, the wanderer's escape, a hero's death) are kinds too, and
   since P1-12d6 every line of five order families, since P1-12d7 of eight, since P1-12d8 of ten, since P1-12d9 of eleven,
-  since P1-12d10 of all twelve: `src/engine/orders/` writes no line's words (a new line there is a new kind).
+  since P1-12d10 of all twelve: `src/engine/orders/` writes no line's words (a new line there is a new kind); since
+  P1-12d12 neither does `src/engine/heroes/` (a chase, a hero's experience and hit points, a hero's death).
 - **A fact holds values, and a copy of the world, never a part of it** (P1-12d; personal combat's facts since
   P1-12d2, a battle's since P1-12d3). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
   holding a live part of the world (a hero, his item list, a status) would be read as it is then, not as it was told.
