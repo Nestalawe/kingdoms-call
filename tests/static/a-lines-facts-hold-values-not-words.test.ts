@@ -11,7 +11,8 @@
 // death's area), P1-12d12 a chase and a hero's experience and hit points (and the equip note at a death), P1-12d13
 // the title intelligence, P1-12d14 the Defend watch, a stranding at sea and the war-spoils, P1-12d15 the lines before
 // the first phase, the new turn, a phase's stages and intents, the intrusion warnings, a Defend watch met in battle and a
-// silent hero's season. A facts
+// silent hero's season, P1-12d16 the season's close (the lines after the phases, diplomacy's and victory's, and Early
+// Winter's: their records too, the crumbling companies, a title's perk of gold, a garrison company drilled). A facts
 // module's kinds include the kinds of the records its facts hold (P1-12d4: why a
 // unit stands or faces as it does, whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what
 // it is, where companies muster, why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild
@@ -46,7 +47,8 @@
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
-// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's, P1-12d12's, P1-12d13's, P1-12d14's and P1-12d15's: their areas' facts modules, which their
+// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's, P1-12d12's, P1-12d13's, P1-12d14's, P1-12d15's and
+// P1-12d16's: their areas' facts modules, which their
 // bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
@@ -62,7 +64,7 @@
 // P1-12d9: the Cast Spell order; P1-12d10: the move order; P1-12d12: a chase, a hero's experience and hit points;
 // P1-12d13: the title intelligence; P1-12d14: the Defend watch, a stranding at sea, the war-spoils; P1-12d15: the lines
 // before the first phase, the new turn, a phase's stages and intents, the intrusion warnings, a Defend watch met in
-// battle, a silent hero's season) holds
+// battle, a silent hero's season; P1-12d16: the lines after the phases, diplomacy's and victory's, Early Winter's) holds
 // no field whose value is, or holds, words: a string or
 // a template with text reached as the value (through a conditional's branches, `+`, `||`, `??`, `&&`, a placeholder,
 // `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
@@ -80,7 +82,8 @@
 // `unitName` as the world holds them, Skeletal Armies', and the Wraiths' `unitName`, Raise Wraiths'; since P1-12d11
 // the way a hero slain outside a battle fell, `how`, each of reportHeroFall's 12 callers'; since P1-12d12 the realm's
 // tag of a challenger his quarry's realm learns of, `realmTag`, and the equip note of a hero who takes a fallen foe's
-// possessions, `gainedItemNote`; since P1-12d15 an heir's name as the engine names him, `heirName`); a record's `kind`
+// possessions, `gainedItemNote`; since P1-12d15 an heir's name as the engine names him, `heirName`; since P1-12d16 the
+// equip note of a hero a courier's parcel reaches, `gainedItemNote`); a record's `kind`
 // that a facts module declares is the record's name, not words (P1-12d6: where the companies muster; P1-12d7: why a
 // hand-over at sea is refused, where a Wild Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why
 // a charmed mind may turn on its enchanter, a company a Telekinetic Storm strikes; P1-12d10: the troops that rally to a
@@ -90,7 +93,7 @@
 // fields of personal combat's facts; P1-12d3's: 121 of a battle's; P1-12d4's: the 10 of the ladder and the grid it
 // listed; P1-12d5's: its three areas' facts modules, which the base lacks, and the disbanding kind; P1-12d6's: its five
 // areas' facts modules; P1-12d7's: its three; P1-12d8's: its two; P1-12d9's: its one; P1-12d12's: its two;
-// P1-12d13's: its one; P1-12d14's: its three; P1-12d15's: its six), the one
+// P1-12d13's: its one; P1-12d14's: its three; P1-12d15's: its six; P1-12d16's: its three), the one
 // exception to
 // `refactor-only`'s rule (Theo, 2026-10-25). It can't see words handed in through a parameter. Level 0: syntax trees;
 // nothing runs. TypeScript, in `static/`
@@ -151,6 +154,9 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
     'P1-12d15',
   ],
   ["a silent hero's season", 'src/engine/turn/the-facts-a-silent-heros-season-line-records.ts', 'P1-12d15'],
+  ['the lines after the phases', 'src/engine/turn/the-facts-the-lines-after-the-phases-record.ts', 'P1-12d16'],
+  ["diplomacy's and victory's lines", 'src/engine/turn/the-facts-diplomacy-and-victorys-lines-record.ts', 'P1-12d16'],
+  ["Early Winter's lines", 'src/engine/turn/the-facts-early-winters-lines-record.ts', 'P1-12d16'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -184,6 +190,9 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/turn/the-facts-the-intrusion-warnings-lines-record.ts',
   'src/engine/turn/the-facts-a-defend-watch-met-in-battle-lines-record.ts',
   'src/engine/turn/the-facts-a-silent-heros-season-line-records.ts',
+  'src/engine/turn/the-facts-the-lines-after-the-phases-record.ts',
+  'src/engine/turn/the-facts-diplomacy-and-victorys-lines-record.ts',
+  'src/engine/turn/the-facts-early-winters-lines-record.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -378,13 +387,15 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
 const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   // an item's equip note: gainedItemNote's words (src/engine/items/equipment.ts), the items' area, a later row; since
-  // P1-12d8 a thief's (what he lifted from a hero or in a Grand Heist) and a lair's finder's
+  // P1-12d8 a thief's (what he lifted from a hero or in a Grand Heist) and a lair's finder's; since P1-12d16 a hero a
+  // courier's parcel reaches
   gainedItemNote: [
     'a gained item noted',
     'a hero handed items notes how he carries them',
     'a thief notes how he carries what he took',
     'a hero notes how he carries what a lair gave up',
     "a hero notes how he carries a fallen foe's possessions",
+    "a hero a courier's parcel reaches notes how he carries it",
   ],
   // the order's action as the order names it ('disband_army', 'rampage', …): a slug the prose reads
   action: ['a charmed hero will not carry out an order of his captor', 'a hero has already used a mastery this turn'],

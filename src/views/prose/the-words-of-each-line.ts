@@ -7,7 +7,8 @@
 // masteries, espionage, explore and search, Cast Spell, the move order; and since P1-12d12 a chase's and a hero's
 // experience and hit points', since P1-12d13 the title intelligence's, since P1-12d14 the Defend watch's, a stranding
 // at sea's and the war-spoils', since P1-12d15 the lines before the first phase, the new turn's, a phase's, the intrusion
-// warnings', a Defend watch met in battle's and a silent hero's season's), each kind routed to its area's (theWordsOf,
+// warnings', a Defend watch met in battle's and a silent hero's season's, since P1-12d16 the lines after the phases,
+// diplomacy's and victory's, and Early Winter's), each kind routed to its area's (theWordsOf,
 // below). A battle's
 // lines take their tiers ('k' key, 'd' detail) and its losses tally its place from those words, as emitBattle did
 // before (battleLineTiers and battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
@@ -79,6 +80,12 @@ import { THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE } from 
 import { theWordsOfADefendWatchMetInBattlesLine } from './the-words-of-a-defend-watch-met-in-battle-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_SILENT_HEROS_SEASON_LINE } from '../../engine/turn/the-facts-a-silent-heros-season-line-records.ts';
 import { theWordsOfASilentHerosSeasonLine } from './the-words-of-a-silent-heros-season-line.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_LINE_AFTER_THE_PHASES } from '../../engine/turn/the-facts-the-lines-after-the-phases-record.ts';
+import { theWordsOfALineAfterThePhases } from './the-words-of-the-lines-after-the-phases.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_DIPLOMACY_OR_VICTORY_LINE } from '../../engine/turn/the-facts-diplomacy-and-victorys-lines-record.ts';
+import { theWordsOfADiplomacyOrVictoryLine } from './the-words-of-diplomacy-and-victorys-lines.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_AN_EARLY_WINTERS_LINE } from '../../engine/turn/the-facts-early-winters-lines-record.ts';
+import { theWordsOfAnEarlyWintersLine } from './the-words-of-early-winters-lines.ts';
 
 // ── THE ROUTE BY KIND (plan P1-12d5: P1-12's Decisions of 2026-10-26, Decision 6) ──
 // Each area's kinds are typed beside its code, each with its audience (its audience table lists every kind it has), and
@@ -145,6 +152,9 @@ const THE_WORDS_OF_EACH_KIND: ReadonlyMap<string, (fact: LineFact) => string> = 
     theWordsOfADefendWatchMetInBattlesLine,
   ),
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_SILENT_HEROS_SEASON_LINE, theWordsOfASilentHerosSeasonLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_LINE_AFTER_THE_PHASES, theWordsOfALineAfterThePhases),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_DIPLOMACY_OR_VICTORY_LINE, theWordsOfADiplomacyOrVictoryLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_AN_EARLY_WINTERS_LINE, theWordsOfAnEarlyWintersLine),
 ]);
 
 /** The words of a fact, of any area: its kind's area writes them. */

@@ -32,6 +32,7 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audi
 import { theUnitsAProvinceRaisesAtTheTurnsEnd } from '../rules/the-registry-of-content-effects.ts';
 import { theTaxTheHeroesItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
 import type { TurnContext } from './context.ts';
+import type { AGarrisonCompanyDrilledAGrade, ATitlesPerkOfGold } from './the-facts-early-winters-lines-record.ts';
 import type { Character, Realm } from '../../schemas/saved-game-state.ts';
 
 // ── EARLY WINTER (plan P1-08k2: a stage taken out of resolveTurn's phase loop) ─────────────────────────────────────
@@ -47,7 +48,8 @@ import type { Character, Realm } from '../../schemas/saved-game-state.ts';
 //   5. garrison drill: an unled garrison company may rise one grade; then any column left at sea without hulls enough
 //      is settled.
 // It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads none of the loop's values (the
-// phase, the intents, where each hero stood). The body keeps the loop's indent (plan P1-08's Decisions).
+// phase, the intents, where each hero stood). Each line is a fact (since P1-12d16: the-facts-early-winters-lines-
+// record.ts), its words written in the views. The body keeps the loop's indent (plan P1-08's Decisions).
 //
 // Its types (plan P1-10b7): a list the body guards (`|| []`, `hc &&`) is typed as wide as the guard, so each guard
 // stays (plan P1-10b's Decision 3), though a state the turn hands always holds it; a list it reads unguarded keeps the
@@ -101,7 +103,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (hc.alive)
         emit(turnContext, {
           type: 'system',
-          text: `As the season turns, the enchantment on ${hc.name} fades and they return to their own lord.`,
+          fact: { kind: "a hero's enchantment fades and he returns to his own lord", heroName: hc.name },
           audience: { actor: back, realms: [back] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -116,7 +118,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
   // Tax collection (before wages)
   emit(turnContext, {
     type: 'system',
-    text: '═ Tax collection ═',
+    fact: { kind: 'the tax collection begins' },
     audience: {},
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
@@ -132,7 +134,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     ) {
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} has ${String(p.gold || 0)}g in the treasury.`,
+        fact: { kind: "a realm's treasury before the taxes", realmName: p.name, gold: p.gold || 0 },
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -189,28 +191,28 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g
     // per 5 provinces.
     // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
-    let titlePerkGold = 0,
-      titlePerkNote = '';
+    // (each perk that adds gold is noted on the tax line: its fact holds them, in the order the heroes hold them)
+    let titlePerkGold = 0;
+    const titlePerks: ATitlesPerkOfGold[] = [];
     pChars.forEach((pc) => {
       if (charMinor(turnContext, pc, 'cutpurse')) {
         titlePerkGold += 2;
-        titlePerkNote += ` (+2g the Cutpurse)`;
+        titlePerks.push({ kind: "the Cutpurse's two gold" });
       }
       if (charMinor(turnContext, pc, 'champion')) {
         titlePerkGold += 2;
-        titlePerkNote += ` (+2g Champion of the People)`;
+        titlePerks.push({ kind: "the Champion of the People's two gold" });
       }
       if (charMinor(turnContext, pc, 'castellan')) {
         const cg = Math.floor(provincesOrNone().filter((pv) => pv.owner === pi).length / 5);
         if (cg > 0) {
           titlePerkGold += cg;
-          titlePerkNote += ` (+${String(cg)}g the Castellan)`;
+          titlePerks.push({ kind: "the Castellan's gold for every five provinces", gold: cg });
         }
       }
     });
     // THIEF L6: +5g income per Thief-6 character. Pay it here.
     const thiefStipend = pChars.reduce((sm, ch) => sm + (perkTier(ch, 'thief') > 0 ? 5 : 0), 0);
-    const thiefNote = thiefStipend > 0 ? ` (+${String(thiefStipend)}g Thief network)` : '';
     p.gold =
       (p.gold || 0) +
       income +
@@ -224,14 +226,33 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     if (income > 0 || perProvBonus > 0 || titlePerkGold > 0 || thiefStipend > 0)
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} collects ${String(income + taxBonus + perProvBonus + interestBonus + neutralTradeBonus + taxRecordsBonus + titlePerkGold + thiefStipend)}g in taxes${taxRecordsBonus > 0 ? ` (+${String(taxRecordsBonus)}g Taxation Records)` : ''}${perProvBonus > 0 ? ` (+${String(perProvBonus)}g Merchant's Ledger)` : ''}${neutralTradeBonus > 0 ? ` (+${String(neutralTradeBonus)}g Neutral trade bonus)` : ''}${interestBonus > 0 ? ` (+${String(interestBonus)}g Merchant Guilds interest)` : ''}${_consecBonus > 0 ? ` (+${String(_consecBonus)}g from consecrated ground)` : ''}${titlePerkNote}${thiefNote}.`,
+        fact: {
+          kind: 'a realm collects its taxes',
+          realmName: p.name,
+          collected:
+            income +
+            taxBonus +
+            perProvBonus +
+            interestBonus +
+            neutralTradeBonus +
+            taxRecordsBonus +
+            titlePerkGold +
+            thiefStipend,
+          taxationRecords: taxRecordsBonus,
+          merchantsLedger: perProvBonus,
+          neutralTrade: neutralTradeBonus,
+          guildsInterest: interestBonus,
+          consecratedGround: _consecBonus,
+          titlePerks,
+          thiefNetwork: thiefStipend,
+        },
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
   });
   emit(turnContext, {
     type: 'system',
-    text: '═ Army wages & hero wages ═',
+    fact: { kind: 'the wages are reckoned' },
     audience: {},
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
@@ -358,33 +379,35 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     if (totalWages === 0) {
       emit(turnContext, {
         type: 'system',
-        text: `${p.name}: no wages to pay.`,
+        fact: { kind: 'a realm has no wages to pay', realmName: p.name },
         audience: {},
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
       return;
     }
 
-    {
-      const _notes = [
-        _hostLeaderG > 0 ? `−${String(_hostLeaderG)}g the Host-Leader` : '',
-        _orcSpoilsG > 0 ? `−${String(_orcSpoilsG)}g Orcish war-spoils` : '',
-        _heroWageDisc > 0 ? `−${String(_heroWageDisc)}g hero wage discounts` : '',
-        _discUpkeepG > 0 ? `−${String(_discUpkeepG)}g army upkeep discoveries` : '',
-      ].filter(Boolean);
-      emit(turnContext, {
-        type: 'system',
-        text: `${p.name} owes ${String(totalWages)}g wages (armies: ${String(armyWages)}g, heroes: ${String(heroWages)}g)${_notes.length ? ` — after ${_notes.join(', ')}` : ''}.`,
-        audience: { actor: p.id, realms: [p.id] },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-      });
-    }
+    emit(turnContext, {
+      type: 'system',
+      fact: {
+        kind: 'a realm owes its wages',
+        realmName: p.name,
+        wages: totalWages,
+        armyWages,
+        heroWages,
+        hostLeader: _hostLeaderG,
+        orcishWarSpoils: _orcSpoilsG,
+        heroWageDiscounts: _heroWageDisc,
+        armyUpkeepDiscoveries: _discUpkeepG,
+      },
+      audience: { actor: p.id, realms: [p.id] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    });
 
     if ((p.gold || 0) >= totalWages) {
       p.gold -= totalWages;
       emit(turnContext, {
         type: 'system',
-        text: `${p.name} pays ${String(totalWages)}g in wages. Treasury: ${String(p.gold)}g remaining.`,
+        fact: { kind: 'a realm pays its wages', realmName: p.name, wages: totalWages, treasury: p.gold },
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -392,7 +415,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // Can't pay in full — armies disband first (cheapest first), then heroes desert
       emit(turnContext, {
         type: 'system',
-        text: `⚠ ${p.name} cannot pay ${String(totalWages)}g wages! Only ${String(p.gold || 0)}g available. The rawest troops melt away first — the greenest companies anywhere in the realm, garrison or field alike — then better men as the shortfall bites. The skeletal dead ask for nothing and are the last to go. Heroes may desert.`,
+        fact: { kind: 'a realm cannot pay its wages', realmName: p.name, wages: totalWages, available: p.gold || 0 },
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -443,7 +466,13 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           deficit -= _h._isSkeletal ? 1 : Number(ARMY_COST[_h.type]) || 2;
           emit(turnContext, {
             type: 'hire',
-            text: `${_h.unitName ? _h.unitName + ' (' + _h.type + ')' : 'A ' + _h.quality + ' ' + _h.type} disbands — ${p.name} could not pay their wages, and with the troops aboard gone the ship is no longer needed to carry them.`,
+            fact: {
+              kind: 'a ship disbands unpaid once the troops it carried are gone',
+              unitName: _h.unitName ? _h.unitName : null,
+              unitType: _h.type,
+              quality: _h.quality,
+              realmName: p.name,
+            },
             audience: { actor: p.id, realms: [p.id] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -509,7 +538,13 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           deficit -= cost;
           emit(turnContext, {
             type: 'hire',
-            text: `${army.unitName ? army.unitName + ' (' + army.type + ')' : 'A ' + army.quality + ' ' + army.type} disbands — ${p.name} could not pay their wages.`,
+            fact: {
+              kind: 'a company disbands unpaid',
+              unitName: army.unitName ? army.unitName : null,
+              unitType: army.type,
+              quality: army.quality,
+              realmName: p.name,
+            },
             audience: { actor: p.id, realms: [p.id] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -520,7 +555,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (_sparedHulls.length)
         emit(turnContext, {
           type: 'system',
-          text: `⚓ ${String(_sparedHulls.length)} ship${_sparedHulls.length !== 1 ? 's' : ''} carrying troops at sea ${_sparedHulls.length !== 1 ? 'are' : 'is'} kept at the oars unpaid — disbanding ${_sparedHulls.length !== 1 ? 'them' : 'it'} would leave the men aboard stranded.`,
+          fact: { kind: 'ships carrying troops at sea are kept at the oars unpaid', shipCount: _sparedHulls.length },
           audience: { actor: p.id, realms: [p.id] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -538,7 +573,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
               p.heroes = (p.heroes ?? []).filter((id) => id !== h.id);
               emit(turnContext, {
                 type: 'hire',
-                text: `${h.name} abandons ${p.name}'s service, unpaid and disillusioned.`,
+                fact: { kind: "a hero abandons a realm's service unpaid", heroName: h.name, realmName: p.name },
                 audience: { actor: p.id, realms: [p.id] },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               });
@@ -571,7 +606,13 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       pv.garrisonArmies.push(unit);
       emit(turnContext, {
         type: 'hire',
-        text: `🥁 Raiders' Muster — word of the victory at ${pv.name} draws ${unit.unitName} (${unit.type}, ${unit.quality}) to its garrison for nothing.`,
+        fact: {
+          kind: "a victory draws a company to a province's garrison at Raiders' Muster",
+          provinceName: pv.name,
+          unitName: unit.unitName,
+          unitType: unit.type,
+          quality: unit.quality,
+        },
         audience: { actor: owner, realms: [owner] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: pv.id,
@@ -585,7 +626,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
   // unit disbanded for want of pay never trains. Skeletal, summoned and Wild Hunt units never do.
   provincesOrNone().forEach((pv: AProvinceAsEarlyWinterReadsItsGarrison | null | undefined) => {
     if (pv?.owner == null || !G.players[pv.owner]) return;
-    const _up: string[] = []; // one line per province, however many rise
+    const _up: AGarrisonCompanyDrilledAGrade[] = []; // one line per province, however many rise
     (pv.garrisonArmies ?? []).forEach((a: ArmyInABattle | null | undefined) => {
       if (!a || a._isSkeletal || a._temporary || a._phantom || a._wildHuntUntilTurn != null) return;
       const _qi = QUALITY_TIERS.indexOf(a.quality);
@@ -595,13 +636,19 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (kcRng() < _ch) {
         const _q0 = a.quality;
         a.quality = QUALITY_TIERS[_qi + 1] ?? a.quality;
-        _up.push(`${a.unitName ? `${a.unitName} (${a.type})` : `a ${a.type}`} ${_q0} → **${a.quality}**`);
+        _up.push({
+          kind: 'a garrison company rises a grade',
+          unitName: a.unitName ? a.unitName : null,
+          unitType: a.type,
+          from: _q0,
+          to: a.quality,
+        });
       }
     });
     if (_up.length)
       emit(turnContext, {
         type: 'hire',
-        text: `🎖 Garrison drills in ${pv.name}: ${_up.join('; ')}.`,
+        fact: { kind: "a province's garrison drills", provinceName: pv.name, drilled: _up },
         audience: { actor: pv.owner, realms: [pv.owner] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: pv.id,
