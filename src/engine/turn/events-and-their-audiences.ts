@@ -74,6 +74,10 @@ import {
   type TheFactOfAHerosExperienceLine,
 } from '../heroes/the-facts-a-heros-experience-lines-record.ts';
 import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_TITLE_INTELLIGENCE_LINE,
+  type TheFactOfATitleIntelligenceLine,
+} from '../titles/the-facts-the-title-intelligence-lines-record.ts';
+import {
   THE_AUDIENCE_OF_EACH_KIND_OF_AN_ENCOUNTER_OR_DEFEND_ORDERS_LINE,
   type TheFactOfAnEncounterOrDefendOrdersLine,
 } from '../orders/the-facts-the-encounter-and-defend-orders-lines-record.ts';
@@ -132,7 +136,8 @@ export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolv
  *  the Encounter and Defend orders', the order dispatch's, the item orders', the Research and Practice orders' and the
  *  Recruit and Hire orders'; since P1-12d7 the army orders', the realm works orders' and the war mastery orders'; since
  *  P1-12d8 the espionage orders' and the explore and search orders'; since P1-12d9 the Cast Spell order's; since
- *  P1-12d10 the move order's; since P1-12d12 a chase's and a hero's experience and hit points'. */
+ *  P1-12d10 the move order's; since P1-12d12 a chase's and a hero's experience and hit points'; since P1-12d13 the
+ *  title intelligence's. */
 type TheFactsOfEachArea = [
   TheFactOfABattlesLine,
   TheFactOfAPersonalCombatsLine,
@@ -153,6 +158,7 @@ type TheFactsOfEachArea = [
   TheFactOfTheMoveOrdersLine,
   TheFactOfAChasesLine,
   TheFactOfAHerosExperienceLine,
+  TheFactOfATitleIntelligenceLine,
 ];
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
@@ -200,6 +206,7 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_CHASES_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_TITLE_INTELLIGENCE_LINE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */

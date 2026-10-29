@@ -80,7 +80,8 @@ check finds were made.
   the army orders', the realm works' and the war masteries', since P1-12d8 the espionage orders' and the explore and
   search orders', since P1-12d9 the Cast Spell order's, and since P1-12d10 the move order's, each beside its file in
   `src/engine/orders/`; since P1-12d12 a chase's, `src/engine/heroes/the-facts-a-chases-lines-record.ts`, and a hero's
-  experience and hit points', `src/engine/heroes/the-facts-a-heros-experience-lines-record.ts`; one kind per
+  experience and hit points', `src/engine/heroes/the-facts-a-heros-experience-lines-record.ts`; since P1-12d13 the title
+  intelligence's, `src/engine/titles/the-facts-the-title-intelligence-lines-record.ts`; one kind per
   sentence, one field per value it was written
   with, and a kind in one area only: `theWordsOf` routes a fact by its kind to its area's words, and a kind declared in
   two areas doesn't compile, where `LineFact` lists the areas), each with its fields and its audience, and
@@ -95,7 +96,10 @@ check finds were made.
   disbanding, a sea trap, a naval hold and the naval split, the wanderer's escape, a hero's death) are kinds too, and
   since P1-12d6 every line of five order families, since P1-12d7 of eight, since P1-12d8 of ten, since P1-12d9 of eleven,
   since P1-12d10 of all twelve: `src/engine/orders/` writes no line's words (a new line there is a new kind); since
-  P1-12d12 neither does `src/engine/heroes/` (a chase, a hero's experience and hit points, a hero's death).
+  P1-12d12 neither does `src/engine/heroes/` (a chase, a hero's experience and hit points, a hero's death), since
+  P1-12d13 nor `src/engine/titles/` (the title intelligence: each line opens with its title's bracketed name, "[The
+  Throne] ", written by the prose; the player page groups the title lines by it, `TITLE_INTEL_RE`, from the words
+  stored, so a title's name changes there only with the page's grouping).
 - **A fact holds values, and a copy of the world, never a part of it** (P1-12d; personal combat's facts since
   P1-12d2, a battle's since P1-12d3). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
   holding a live part of the world (a hero, his item list, a status) would be read as it is then, not as it was told.

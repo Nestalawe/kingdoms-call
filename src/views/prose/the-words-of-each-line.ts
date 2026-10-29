@@ -5,7 +5,7 @@
 // battle, a hero's death's, the wanderer's escape's, and twelve order families': Encounter and Defend, the order
 // dispatch, the item orders, Research and Practice, Recruit and Hire, the army orders, the realm works, the war
 // masteries, espionage, explore and search, Cast Spell, the move order; and since P1-12d12 a chase's and a hero's
-// experience and hit points'), each kind routed to its area's (theWordsOf,
+// experience and hit points', since P1-12d13 the title intelligence's), each kind routed to its area's (theWordsOf,
 // below). A battle's
 // lines take their tiers ('k' key, 'd' detail) and its losses tally its place from those words, as emitBattle did
 // before (battleLineTiers and battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
@@ -57,6 +57,8 @@ import { THE_AUDIENCE_OF_EACH_KIND_OF_A_CHASES_LINE } from '../../engine/heroes/
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE } from '../../engine/heroes/the-facts-a-heros-experience-lines-record.ts';
 import { theWordsOfAChasesLine } from './the-words-of-a-chases-lines.ts';
 import { theWordsOfAHerosExperienceLine } from './the-words-of-a-heros-experience-lines.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_TITLE_INTELLIGENCE_LINE } from '../../engine/titles/the-facts-the-title-intelligence-lines-record.ts';
+import { theWordsOfATitleIntelligenceLine } from './the-words-of-the-title-intelligence-lines.ts';
 
 // ── THE ROUTE BY KIND (plan P1-12d5: P1-12's Decisions of 2026-10-26, Decision 6) ──
 // Each area's kinds are typed beside its code, each with its audience (its audience table lists every kind it has), and
@@ -110,6 +112,7 @@ const THE_WORDS_OF_EACH_KIND: ReadonlyMap<string, (fact: LineFact) => string> = 
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE, theWordsOfTheMoveOrdersLine),
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_CHASES_LINE, theWordsOfAChasesLine),
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE, theWordsOfAHerosExperienceLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_TITLE_INTELLIGENCE_LINE, theWordsOfATitleIntelligenceLine),
 ]);
 
 /** The words of a fact, of any area: its kind's area writes them. */
