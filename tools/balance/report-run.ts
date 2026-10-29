@@ -10,6 +10,9 @@
 //   out, with a note (a pull request that changes the runner can do that).
 // Options: --out DIR (default balance-report/: report.md and report.json), --jobs N (default one per core).
 // With GITHUB_STEP_SUMMARY set, it adds the report to the job's summary too.
+// What it writes and prints counts each replayed game's GM-log lines and quotes none (report.ts, theReportsOutputs):
+// on CI (CI or GITHUB_ACTIONS set) the files, the summary and the log are public. Run anywhere else, it also writes
+// report-with-the-lines.md, which quotes where each game's two logs part, and prints that.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -25,7 +28,7 @@ import {
   compareGames,
   firstDifference,
   gamesToReplay,
-  renderReport,
+  theReportsOutputs,
   type FirstDiff,
 } from './report.ts';
 import { playAll } from './run.ts';
@@ -128,14 +131,20 @@ async function main(): Promise<number> {
   const everyRealm = compareEveryRealm(baseReports, headReports);
 
   const report = buildReport({ base, head, firstDiffs, replayNotes, baselineStale, everyRealm });
-  const markdown = renderReport(report);
+  const onCi = Boolean(process.env['CI']) || process.env['GITHUB_ACTIONS'] === 'true';
+  const { published, log, withTheLines } = theReportsOutputs(report, { onCi });
   fs.mkdirSync(values.out, { recursive: true });
-  fs.writeFileSync(path.join(values.out, 'report.md'), markdown);
-  const file: ReportFile = { version: 1, class: report.class, verdict: report.verdict, markdown };
+  fs.writeFileSync(path.join(values.out, 'report.md'), published);
+  const file: ReportFile = { version: 1, class: report.class, verdict: report.verdict, markdown: published };
   fs.writeFileSync(path.join(values.out, 'report.json'), JSON.stringify(file, null, 2) + '\n');
+  const withTheLinesFile = path.join(values.out, 'report-with-the-lines.md');
+  if (withTheLines != null) fs.writeFileSync(withTheLinesFile, withTheLines);
   const summary = process.env['GITHUB_STEP_SUMMARY'];
-  if (summary) fs.appendFileSync(summary, markdown);
-  console.log(`\n${markdown}\nWrote ${path.join(values.out, 'report.md')} and report.json (${report.class}).`);
+  if (summary) fs.appendFileSync(summary, published);
+  console.log(
+    `\n${log}\nWrote ${path.join(values.out, 'report.md')} and report.json (${report.class})` +
+      (withTheLines != null ? `, and ${withTheLinesFile}, which quotes the lines.` : '.'),
+  );
   return 0;
 }
 
