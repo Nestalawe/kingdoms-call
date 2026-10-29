@@ -30,8 +30,9 @@ import { isOpenSea, seaLiftShortfall, settleStrandedAtSea } from '../units/sea-l
 import { setMovePool } from '../units/movement-pools.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 import { theUnitsAProvinceRaisesAtTheTurnsEnd } from '../rules/the-registry-of-content-effects.ts';
+import { theTaxTheHeroesItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
 import type { TurnContext } from './context.ts';
-import type { Character, Item, Realm } from '../../schemas/saved-game-state.ts';
+import type { Character, Realm } from '../../schemas/saved-game-state.ts';
 
 // ── EARLY WINTER (plan P1-08k2: a stage taken out of resolveTurn's phase loop) ─────────────────────────────────────
 // After the four stages of the turn's last phase (Early Winter), the realms settle their accounts, in this order:
@@ -71,10 +72,6 @@ type AHeroAsEarlyWinterReadsHisArmies = Omit<Character, 'armies'> & {
 /** A province where Early Winter guards its garrison. */
 type AProvinceAsEarlyWinterReadsItsGarrison = Omit<ProvinceInABattle, 'garrisonArmies'> & {
   garrisonArmies?: ArmyInABattle[] | null;
-};
-/** An item where Early Winter guards its effect. */
-type AnItemAsEarlyWinterReadsIt = Omit<Item, 'effect'> & {
-  readonly effect?: { readonly stat?: string; readonly bonus?: number | undefined } | null;
 };
 
 export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(turnContext: TurnContext) {
@@ -167,23 +164,14 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       return s + t;
     }, 0);
     const pChars = (G.characters ?? []).filter((c) => c.player === p.id && c.alive);
-    const itemStat = (st: string) =>
-      pChars.reduce(
-        (s, c) =>
-          s +
-          activeItems(c).reduce(
-            (a, it: AnItemAsEarlyWinterReadsIt) => a + (it.effect?.stat === st ? Number(it.effect.bonus) : 0),
-            0,
-          ),
-        0,
-      );
     // Ring of Wealth & co (flat) and Merchant's Ledger (+1g per province owned, if any hero
     // carries one) pay tax gold — together they are capped at 5% of the realm's base tax income.
-    const _taxBonusRaw = pChars.reduce((s, c) => s + (c.taxBonus || 0), 0) + itemStat('taxBonus');
-    const ledgers = pChars.some((c) =>
-      activeItems(c).some((it: AnItemAsEarlyWinterReadsIt) => it.effect?.stat === 'taxPerProv'),
-    );
-    const _perProvRaw = ledgers ? provincesOrNone().filter((pv) => pv.owner === p.id).length : 0;
+    // (Which items pay, and how much: the items' registry, plan P1-19o.)
+    const theHeroesItems = theTaxTheHeroesItemsAdd(pChars.map((c) => activeItems(c)));
+    const _taxBonusRaw = pChars.reduce((s, c) => s + (c.taxBonus || 0), 0) + theHeroesItems.theGold;
+    const _perProvRaw = theHeroesItems.theGoldForEachProvince
+      ? provincesOrNone().filter((pv) => pv.owner === p.id).length * theHeroesItems.theGoldForEachProvince
+      : 0;
     const _itemTax = capItemTaxGold(_taxBonusRaw, _perProvRaw, _taxCap);
     const taxBonus = _itemTax.taxBonus,
       perProvBonus = _itemTax.perProvBonus;

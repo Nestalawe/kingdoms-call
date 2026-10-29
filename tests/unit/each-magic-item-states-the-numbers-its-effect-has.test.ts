@@ -3,12 +3,14 @@
 // (src/content/magic-item-effects-their-names-numbers-and-words.ts, the numbers the items' registry reads), every item in
 // play that carries it (found as the registry finds it: theEffectsAnItemCarries, by its effect's key, a field of its own
 // or its base name) states each of the row's numbers as the item's texts write it (×1.25 as `+25%`, strength added as
-// `+2`, a share as "half" or "halved", volleys as "two volleys", extra shots as "one extra shot"), in its desc and in
+// `+2`, a share as "half" or "halved", volleys as "two volleys", extra shots as "one extra shot", a share as a
+// percentage as `10%`, gold for each province as `+1g`, `+1 gold` or "1 extra gold"), in its desc and in
 // its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
 // alone. Each row with numbers is carried by some item in play (else this would check nothing). The rows with no number
 // (the Kraken Figurehead's step up a tier, which no item in play carries; the Tide-Caller's Horn's waiver at sea; the
-// War-Horn's pursuit on any ground; the Shield-Wall Rune's refusal to retreat) are listed, so a number added to one is
-// checked.
+// War-Horn's pursuit on any ground; the Shield-Wall Rune's refusal to retreat; the tax items' and the Traveller's
+// Cloak's numbers, which each copy carries itself; the Crystal Orb's sure Spy, the Philosopher's Lens's lair and the
+// Philosopher's Stone's power) are listed, so a number added to one is checked.
 // The known gaps are listed by name, each with its Parked entry, and checked to be still gaps (so the exception leaves
 // with the fix): the two relic standards say +4 and +6 and give +2 (NEXT.md question 20; Parked "The two relic
 // standards give +2, not their +4 and +6"); five siege items say "Siege bonus +1" (question 21: Parked "Thirty items'
@@ -65,6 +67,11 @@ const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
   'land-units-at-full-strength-at-sea': "a waiver of the sea's penalty",
   'war-horn-of-the-plains': "a pursuit on any ground (Ride Them Down's share is the unit ability's)",
   'shield-wall-rune': 'a refusal to retreat',
+  'tax-bonus': "the gold each copy carries itself (its effect's bonus)",
+  'crystal-orb': 'a Spy order without a roll (and no item in play carries it)',
+  'philosophers-lens': 'one more lair revealed (the order draws which)',
+  'travellers-cloak': 'the share of a province each copy carries itself (its exploreMove)',
+  'philosophers-stone': 'a step up a quality tier, from the tables (and no item in play carries it)',
 };
 
 /** A count or a share in words, as the texts write it (a value with no word here writes as itself: no text matches). */
@@ -73,7 +80,8 @@ const inWords = (value: number) => IN_WORDS[value] ?? String(value);
 
 /** A number as an item's texts write it (any of the forms given): a multiplier as the share it adds (×1.25 as +25%),
  *  strength added as +2, a share in words (0.5 as "half" or "halved"), volleys in words (2 as "two volleys"), extra
- *  shots in words (1 as "one extra shot"). */
+ *  shots in words (1 as "one extra shot"), a share as a percentage (0.1 as 10%), gold for each province (1 as +1g,
+ *  +1 gold or "1 extra gold"). */
 function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
   switch (n.theTextsWriteIt) {
     case 'a multiplier, as the share it adds':
@@ -86,6 +94,10 @@ function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
       return [`${inWords(n.value)} volleys`];
     case 'extra shots, in words':
       return [`${inWords(n.value)} extra shot${n.value === 1 ? '' : 's'}`];
+    case 'a share, as a percentage':
+      return [`${String(Number((n.value * 100).toFixed(6)))}%`];
+    case 'gold, for each province':
+      return [`+${String(n.value)}g`, `+${String(n.value)} gold`, `${String(n.value)} extra gold`];
   }
 }
 /** A number as the texts write it, with no digit or letter just before it, nor a digit, a letter, a `%` or a decimal
@@ -148,6 +160,12 @@ test('a number is matched as the texts write it, and not inside another', () => 
   expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'volleys, in words' })).toEqual(['two volleys']);
   expect(asTheTextsWriteIt({ value: 1, theTextsWriteIt: 'extra shots, in words' })).toEqual(['one extra shot']);
   expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'extra shots, in words' })).toEqual(['two extra shots']);
+  expect(asTheTextsWriteIt({ value: 0.1, theTextsWriteIt: 'a share, as a percentage' })).toEqual(['10%']);
+  expect(asTheTextsWriteIt({ value: 1, theTextsWriteIt: 'gold, for each province' })).toEqual([
+    '+1g',
+    '+1 gold',
+    '1 extra gold',
+  ]);
   expect(theNumber('+2').test('Every army you lead fights +2.')).toBe(true);
   expect(theNumber('+2').test('strength +25%')).toBe(false);
   expect(theNumber('+2').test('strength +2.5')).toBe(false);
@@ -156,4 +174,8 @@ test('a number is matched as the texts write it, and not inside another', () => 
   expect(states('a halfling', ['half', 'halved'])).toBe(false);
   expect(states('fire two volleys instead of one', ['two volleys'])).toBe(true);
   expect(states('on behalf of the realm', ['half', 'halved'])).toBe(false);
+  expect(states('+10% HP recovered', ['10%'])).toBe(true);
+  expect(states('+110% HP recovered', ['10%'])).toBe(false);
+  expect(states('+1g collected per province', ['+1g', '+1 gold'])).toBe(true);
+  expect(states('+1gold', ['+1g'])).toBe(false);
 });

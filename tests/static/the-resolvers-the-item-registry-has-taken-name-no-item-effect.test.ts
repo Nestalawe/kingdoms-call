@@ -2,7 +2,8 @@
 // 4): each function the registry's rows have taken holds no string naming an item's effect key (a `stat` that isn't a
 // skill, a `use`, a `ward` or a rider's `ward`) or an item (its name or a second name), read from the content's tables
 // with Mithril Armour added, whatever the code does with it (compared, switched on, passed to a helper, held in a list,
-// or in a function nested inside: but the words listed with what else each is there); and it reads none of the six effects an item carries on itself, beside its
+// or in a function nested inside: but the words listed with what else each is there, and the checks listed with the
+// step each is left to); and it reads none of the six effects an item carries on itself, beside its
 // `effect` (`fleetStr`, `landFullAtSea`, `emberTwo`, `exploreMove`, `primalStrike`, `drumTierUp`), which no string
 // names, but the reads listed with the step each is left to. Its
 // effects find what an item carries by the key the content's row gives, in src/engine/rules/. Each row of the family
@@ -12,7 +13,8 @@
 // falls: the helper counts each such check planted, and none in src/engine/rules/ or a page's code.
 //
 // Red on its row's base by design (armStr held 9 checks, and read `fleetStr` and `landFullAtSea`, on P1-19m's base; the
-// two battles' functions 8, and pursuitsOfTheBeaten 1, on P1-19n's), as the unit-name test was: the one exception to refactor-only's rule that new tests pass before and after (Theo,
+// two battles' functions 8, and pursuitsOfTheBeaten 1, on P1-19n's; Early Winter 2 and the orders' and the bots' plan
+// 5, and resolveMoveOrder's read of `exploreMove`, on P1-19o's), as the unit-name test was: the one exception to refactor-only's rule that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
 import fs from 'node:fs';
@@ -36,6 +38,37 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/battles-between-heroes.ts', 'applyPreBattleArchery', "P1-19n, the battles' items"],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', "P1-19n, the battles' items"],
   ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten', "P1-19n, the battles' items"],
+  [
+    'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
+    'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
+    "P1-19o, the turn's items",
+  ],
+  [
+    'src/engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts',
+    'resolveSpyOrder',
+    "P1-19o, the orders' items",
+  ],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolveExploreOrder',
+    "P1-19o, the orders' items",
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolveRestOrder',
+    "P1-19o, the orders' items",
+  ],
+  [
+    'src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts',
+    'resolveMoveOrder',
+    "P1-19o, the orders' items",
+  ],
+  [
+    'src/engine/orders/item-orders-equip-use-and-send-magic-items.ts',
+    'resolveUseItemOrder',
+    "P1-19o, the orders' items",
+  ],
+  ['src/engine/bots/missions.ts', 'botItemPre', "P1-19o, the orders' items"],
 ];
 
 /** The words of the vocabulary a taken function holds for something else, by the function, each with what it is (the
@@ -57,6 +90,15 @@ const READS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = 
   // Rune's second Fireball, with the spells family (the items family's Decision 5)
   combatVsChar: ['.drumTierUp', '.emberTwo'],
   combatVsNPC: ['.drumTierUp', '.emberTwo'],
+};
+
+/** The checks of an item's effect a taken function still holds, by the function, each left to a later step (the items
+ *  family's Decisions don't take them): the ratchet's helper counts exactly these, and their words are matched with
+ *  the words above, so one more, or one gone, turns it red. */
+const CHECKS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {
+  // `'hidden'`: an older save's Cloak of Many Faces, which a spy can't fix on, with P1-23's `visibility` (the items
+  // family's Decision 5)
+  resolveSpyOrder: ['hidden'],
 };
 
 /** The effects an item carries on itself, beside its `effect` (Parked: one key per effect, later). */
@@ -116,11 +158,12 @@ test.for(TAKEN)('%s: %s names no item effect (%s)', ([file, fn]) => {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
   const counts = itemEffectChecksByFunction(file, text);
   expect(counts.has(fn), `${file} declares ${fn}`).toBe(true);
-  expect(counts.get(fn), `${fn}'s checks of an item's effect or an item (the ratchet's helper)`).toBe(0);
+  const left = CHECKS_LEFT_TO_A_LATER_STEP[fn] ?? [];
+  expect(counts.get(fn), `${fn}'s checks of an item's effect or an item (the ratchet's helper)`).toBe(left.length);
   expect(
     [...(everyItemWordIn(file, text, fn) ?? [])].sort(),
     `every string in ${fn} naming an item's effect or an item, and every read of an item's own field`,
-  ).toEqual([...(WORDS_FOR_SOMETHING_ELSE[fn] ?? []), ...(READS_LEFT_TO_A_LATER_STEP[fn] ?? [])].sort());
+  ).toEqual([...(WORDS_FOR_SOMETHING_ELSE[fn] ?? []), ...(READS_LEFT_TO_A_LATER_STEP[fn] ?? []), ...left].sort());
 });
 
 test("the vocabulary holds the content's effect keys and item names, no skill, and Mithril Armour", () => {

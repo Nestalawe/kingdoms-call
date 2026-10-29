@@ -16,6 +16,14 @@ import {
 } from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import {
+  A_HEROS_ITEMS_ADD_TO_THE_REALMS_TAX,
+  A_LAIR_REVEALED_WHEN_EXPLORING,
+  A_MOVES_EXPLORATION,
+  A_RESTS_HEAL,
+  A_SPYS_SURE_SUCCESS,
+  AN_ITEMS_POWER_USED,
+} from './magic-items/a-heros-items-in-the-realms-tax-and-in-his-orders.ts';
+import {
   THE_BEATEN_FORCE_MAY_RETREAT,
   THE_COMMANDER_ADDS_VOLLEYS,
   THE_COMMANDERS_RIDERS_RUN_THE_BEATEN_DOWN_ON_ANY_GROUND,
@@ -23,12 +31,14 @@ import {
 } from './magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts';
 import { A_LAND_UNIT_AT_SEA_LED, THE_COMMANDERS_ITEMS } from './magic-items/the-commanders-items-in-a-battle.ts';
 import type {
+  AHeroAtRest,
   ALandUnitAtSeaLed,
   AUnitLedByACommander,
   HookPointName,
   TheDefendersFortificationsAndACommandersSide,
   TheFortificationsLine,
   TheStagesOfEachHookPoint,
+  ThePowerAnItemWorksWhenUsed,
   TheVolleysLine,
 } from './the-registry-of-content-effects.ts';
 
@@ -66,6 +76,19 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
     },
   },
   'shield-wall-rune': { fate: { 'the beaten force may retreat': THE_BEATEN_FORCE_MAY_RETREAT['shield-wall-rune'] } },
+  'tax-bonus': {
+    turnEnd: { "a hero's items add to the realm's tax": A_HEROS_ITEMS_ADD_TO_THE_REALMS_TAX['tax-bonus'] },
+  },
+  'tax-per-province': {
+    turnEnd: { "a hero's items add to the realm's tax": A_HEROS_ITEMS_ADD_TO_THE_REALMS_TAX['tax-per-province'] },
+  },
+  'crystal-orb': { orderOutcome: { "a spy's sure success": A_SPYS_SURE_SUCCESS['crystal-orb'] } },
+  'philosophers-lens': {
+    orderOutcome: { 'a lair revealed when exploring': A_LAIR_REVEALED_WHEN_EXPLORING['philosophers-lens'] },
+  },
+  'iron-heart-talisman': { orderOutcome: { "a rest's heal": A_RESTS_HEAL['iron-heart-talisman'] } },
+  'travellers-cloak': { orderOutcome: { "a move's exploration": A_MOVES_EXPLORATION['travellers-cloak'] } },
+  'philosophers-stone': { orderOutcome: { "an item's power used": AN_ITEMS_POWER_USED['philosophers-stone'] } },
 } satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -93,6 +116,15 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     "the commander's riders run the beaten down on any ground": ['war-horn-of-the-plains'],
     'the beaten force may retreat': ['shield-wall-rune'],
   },
+  // the flat gold first, as Early Winter added it: the gold for each province is counted apart
+  turnEnd: { "a hero's items add to the realm's tax": ['tax-bonus', 'tax-per-province'] },
+  orderOutcome: {
+    "a spy's sure success": ['crystal-orb'],
+    'a lair revealed when exploring': ['philosophers-lens'],
+    "a rest's heal": ['iron-heart-talisman'],
+    "a move's exploration": ['travellers-cloak'],
+    "an item's power used": ['philosophers-stone'],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly MagicItemEffectSlug[];
@@ -107,7 +139,7 @@ const ENTRIES: Readonly<Record<MagicItemEffectSlug, MagicItemEffectEntry>> = THE
  *  carried by (each guarded: a copy may lack any of them). */
 export type AMagicItemAsTheRegistryReadsIt = {
   readonly name?: string | null;
-  readonly effect?: { readonly stat?: string | null } | null;
+  readonly effect?: { readonly stat?: string | null; readonly bonus?: unknown } | null;
 } & Partial<Readonly<Record<AnItemsOwnField, unknown>>>;
 
 // Built once, as the file loads, from the content: which effects a key, a field or a base name carries.
@@ -257,4 +289,95 @@ export function theBeatenForceMayRetreatByTheCommandersItems(
   return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.fate['the beaten force may retreat'].every(
     (slug) => !carried.has(slug) || ENTRIES[slug].fate?.['the beaten force may retreat']?.() !== false,
   );
+}
+
+/** What a realm's heroes' items add to its tax at the turn's end, before the realm's ceiling on bonus gold. */
+export interface TheTaxTheHeroesItemsAdd {
+  /** The gold of every item, summed hero by hero. */
+  readonly theGold: number;
+  /** The most any one item gives for each province the realm holds (0 when none does): counted once. */
+  readonly theGoldForEachProvince: number;
+}
+
+/** The runner of "turnEnd: a hero's items add to the realm's tax" (Early Winter): handed each hero's active items, in
+ *  the realm's order of its heroes; each item's effects in the stage's order. */
+export function theTaxTheHeroesItemsAdd(
+  theItemsOfEachHero: readonly (readonly AMagicItemAsTheRegistryReadsIt[])[],
+): TheTaxTheHeroesItemsAdd {
+  const order = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.turnEnd["a hero's items add to the realm's tax"];
+  let theGoldForEachProvince = 0;
+  const theGoldOf = (item: AMagicItemAsTheRegistryReadsIt): number => {
+    const carried = theEffectsAnItemCarries(item);
+    let gold = 0;
+    for (const slug of order) {
+      if (!carried.includes(slug)) continue;
+      const added = ENTRIES[slug].turnEnd?.["a hero's items add to the realm's tax"]?.(item);
+      if (!added) continue;
+      if ('gold' in added) gold += added.gold;
+      else theGoldForEachProvince = Math.max(theGoldForEachProvince, added.goldForEachProvince);
+    }
+    return gold;
+  };
+  const theGold = theItemsOfEachHero.reduce((s, items) => s + items.reduce((a, it) => a + theGoldOf(it), 0), 0);
+  return { theGold, theGoldForEachProvince };
+}
+
+/** The runner of "orderOutcome: a spy's sure success" (resolveSpyOrder): whether an effect the spy's items carry, in the
+ *  stage's order, makes his Spy order succeed without a roll. */
+export function theSpysItemsMakeHisSpySure(theSpysItems: readonly AMagicItemAsTheRegistryReadsIt[]): boolean {
+  const carried = theEffectsTheseItemsCarry(theSpysItems);
+  return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.orderOutcome["a spy's sure success"].some(
+    (slug) => carried.has(slug) && ENTRIES[slug].orderOutcome?.["a spy's sure success"]?.() === true,
+  );
+}
+
+/** The runner of "orderOutcome: a lair revealed when exploring" (resolveExploreOrder): whether an effect the explorer's
+ *  items carry, in the stage's order, reveals one more lair. */
+export function theExplorersItemsRevealALair(theExplorersItems: readonly AMagicItemAsTheRegistryReadsIt[]): boolean {
+  const carried = theEffectsTheseItemsCarry(theExplorersItems);
+  return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.orderOutcome['a lair revealed when exploring'].some(
+    (slug) => carried.has(slug) && ENTRIES[slug].orderOutcome?.['a lair revealed when exploring']?.() === true,
+  );
+}
+
+/** The runner of "orderOutcome: a rest's heal" (resolveRestOrder): the hit points the effects the resting hero's items
+ *  carry add, each once, in the stage's order. */
+export function theHealTheRestersItemsAdd(
+  facts: AHeroAtRest,
+  theRestersItems: readonly AMagicItemAsTheRegistryReadsIt[],
+): number {
+  const carried = theEffectsTheseItemsCarry(theRestersItems);
+  let heal = 0;
+  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.orderOutcome["a rest's heal"]) {
+    if (!carried.has(slug)) continue;
+    heal += ENTRIES[slug].orderOutcome?.["a rest's heal"]?.(facts) ?? 0;
+  }
+  return heal;
+}
+
+/** The runner of "orderOutcome: a move's exploration" (resolveMoveOrder): the share of the province the mover's items
+ *  explore more, item by item in the order he holds them, each item's effects in the stage's order. */
+export function theExplorationTheMoversItemsAdd(theMoversItems: readonly AMagicItemAsTheRegistryReadsIt[]): number {
+  const order = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.orderOutcome["a move's exploration"];
+  let share = 0;
+  for (const item of theMoversItems) {
+    const carried = theEffectsAnItemCarries(item);
+    for (const slug of order) {
+      if (!carried.includes(slug)) continue;
+      share += ENTRIES[slug].orderOutcome?.["a move's exploration"]?.(item) ?? 0;
+    }
+  }
+  return share;
+}
+
+/** The runner of "orderOutcome: an item's power used" (resolveUseItemOrder; botItemPre): the power the first effect a
+ *  held item carries, in the stage's order, works when it is used, or nothing (a passive item). */
+export function thePowerAnItemWorksWhenUsed(item: AMagicItemAsTheRegistryReadsIt): ThePowerAnItemWorksWhenUsed | null {
+  const carried = theEffectsAnItemCarries(item);
+  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.orderOutcome["an item's power used"]) {
+    if (!carried.includes(slug)) continue;
+    const power = ENTRIES[slug].orderOutcome?.["an item's power used"]?.();
+    if (power) return power;
+  }
+  return null;
 }

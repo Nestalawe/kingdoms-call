@@ -12,7 +12,7 @@
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 82,
     "unitNameChecksInEngine": 9,
-    "itemEffectChecksInEngine": 128,
+    "itemEffectChecksInEngine": 121,
     "eslintSuppressions": 708,
     "knownArchitectureViolations": 105,
     "unusedCode": 23

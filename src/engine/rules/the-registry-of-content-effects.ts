@@ -153,6 +153,27 @@ export interface TheVolleysAnItemAdds {
   readonly theLine: TheVolleysLine;
 }
 
+/** A held copy of a magic item, as a stage that reads the copy's own numbers hands it to an effect (plan P1-19's items
+ *  family, Decision 2: the copy's number, not content's, so an old save's copy works as it did): its effect's `bonus`
+ *  and the share of a province it explores on a move (`exploreMove`, a field of its own), each guarded. */
+export interface AHeldCopysOwnNumbers {
+  readonly effect?: { readonly bonus?: unknown } | null;
+  readonly exploreMove?: unknown;
+}
+
+/** What a hero's item adds to his realm's tax at the turn's end: gold, or gold for each province the realm holds (the
+ *  runner adds the gold of every item, and the most any one item gives for each province, once). */
+export type WhatAnItemAddsToTheRealmsTax = { readonly gold: number } | { readonly goldForEachProvince: number };
+
+/** What the stage "orderOutcome: a rest's heal" hands an effect (resolveRestOrder): the resting hero's maximum hit
+ *  points (20 where he has none). */
+export interface AHeroAtRest {
+  readonly hisMaximumHp: number;
+}
+
+/** The power a held item works when it is used (a Use Item order; the bots' plan reads it to choose one). */
+export type ThePowerAnItemWorksWhenUsed = 'every unit of the realm rises a quality tier';
+
 /** A unit's part in the battle line: in the air, cavalry, ranged, or on foot (battleRole). */
 export type ARoleInTheBattleLine = 'fly' | 'cav' | 'arc' | 'foot';
 
@@ -607,10 +628,31 @@ export interface TheStagesOfEachHookPoint {
     /** The unit a province raises into its garrison, or nothing (Early Winter, after the wages: plan P1-19's second
      *  slice, Choice 3, the effect returns what the turn must do, and the turn does it and writes the line). */
     readonly 'a province raises a unit': (facts: AProvinceAtTheTurnsEnd) => AUnitAProvinceRaises | null;
+    /** What a held item adds to its realm's tax (Early Winter, after the provinces' own tax; the items' registry: the
+     *  runner sums them over the realm's heroes, and capItemTaxGold caps the sum as before). */
+    readonly "a hero's items add to the realm's tax": (theItem: AHeldCopysOwnNumbers) => WhatAnItemAddsToTheRealmsTax;
+  };
+  /** An order's outcome a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19o, typed it). */
+  readonly orderOutcome: {
+    /** Whether an item the spy carries makes his Spy order succeed without a roll (resolveSpyOrder; the items'
+     *  registry). */
+    readonly "a spy's sure success": () => boolean;
+    /** Whether an item the explorer carries reveals one more lair of the province the map hasn't reached
+     *  (resolveExploreOrder, after the province's own finds: the order draws which, as before; the items' registry). */
+    readonly 'a lair revealed when exploring': () => boolean;
+    /** The hit points an item the resting hero carries adds to his heal (resolveRestOrder, after the discoveries'; the
+     *  items' registry: the runner adds each effect once, however many of its items he carries). */
+    readonly "a rest's heal": (facts: AHeroAtRest) => number;
+    /** The share of a province a held item explores more as its bearer moves in (resolveMoveOrder, with his Explorer
+     *  skill's; the items' registry: the runner adds every item's). */
+    readonly "a move's exploration": (theItem: AHeldCopysOwnNumbers) => number;
+    /** The power a held item works when it is used (resolveUseItemOrder; the bots' plan, botItemPre, to choose it; the
+     *  items' registry). */
+    readonly "an item's power used": () => ThePowerAnItemWorksWhenUsed;
   };
 }
 
-/** The nine hook points. */
+/** The ten hook points. */
 export type HookPointName = keyof TheStagesOfEachHookPoint;
 
 /** An entry: the ability's effect at each stage it acts in. */

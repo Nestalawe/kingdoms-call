@@ -13,6 +13,7 @@ import {
 import { senseGravesUnderfoot } from '../graves.ts';
 import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { activeItems } from '../items/equipment.ts';
+import { theExplorationTheMoversItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
@@ -552,7 +553,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     const explGainMove =
       10 +
       5 * explLvlMove +
-      activeItems(c).reduce((sm, it) => sm + ((it && it.exploreMove) || 0), 0) +
+      theExplorationTheMoversItemsAdd(activeItems(c)) +
       (perkTier(c, 'march') > 0 ? 2 * (c.armies || []).length : 0); // Traveller's Cloak +20% · MARCH L6 +2%/army led (Loremaster explore bonus removed \u2014 now an intel line)
     // (The old Elven "Pathfinder" forest/jungle exploration doubling is REPLACED this session by
     // the Elven escape ability — no exploration bonus now.)
