@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { PC_MAX_LINGER_ROUNDS, pcPushDot } from './helpers.ts';
@@ -10,6 +9,7 @@ import { pcHasRanged, pcRangeStep, pcSpeedOf } from './speed-encounter-plans-and
 import {
   PC_HIT_MAX,
   PC_HIT_MIN,
+  asItsGuardReadsIt,
   pcHitChance,
   pcHitSkill,
   pcMeleeDamage,
@@ -23,6 +23,37 @@ import {
   aFightersSkillAsTheLineTellsIt,
   aFightersWardAsTheLineTellsIt,
 } from './the-facts-a-personal-combats-lines-record.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { AFighterInAPersonalCombat } from './helpers.ts';
+
+// Its types (plan P1-10b12): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
+// stays; a fighter is AFighterInAPersonalCombat (helpers.ts). A fighter's status, a foe or the state's range that the
+// code guards here but reads unguarded elsewhere is read through asItsGuardReadsIt (to-hit-wounds-stuns-and-courage.ts).
+/** A hero as his experience is rolled (pcCombatXP): the skill rises waiting to be drawn this phase, which a guardian
+ *  has none of (the save holds none: they are drawn before it is written). */
+type AHeroAsHisPendingRisesAreRead = object & {
+  readonly _sgPending?:
+    | { readonly list?: readonly ({ readonly skill?: string | undefined } | null | undefined)[] | null | undefined }
+    | null
+    | undefined;
+};
+/** A fighter as his experience is rolled: his hero may be missing (the code guards it). */
+interface AFighterAsHisExperienceIsRolled {
+  readonly kind: AFighterInAPersonalCombat['kind'];
+  readonly ref?: AHeroAsHisPendingRisesAreRead | null | undefined;
+  _xpGained?: boolean | undefined;
+}
+/** A rule's switch (ARCHERY_PARTING_SHOT): on or off, not the one value it holds today. */
+type ASwitchTurnedOnOrOff = boolean;
+/** The fight's state as flight reads and writes it: who fled. */
+interface TheFightAsFlightReadsIt {
+  fledBy?: AFighterInAPersonalCombat | null | undefined;
+}
+/** The fight's state as an advance reads and writes it: the range the fighters stand at. */
+interface TheFightAsAnAdvanceReadsIt {
+  range: string;
+}
 
 // ── PERSONAL COMBAT: MELEE, FLIGHT AND ARCHERY (plan P1-08e: lifted out of resolveTurn) ────
 // Experience from a hit, the riposte, a melee blow, flight and the free strike a failed flight gives, closing in, and
@@ -41,20 +72,31 @@ import {
 // first roll that succeeds ends it: no further experience rolls for that combatant in this fight.
 // (The success becomes a phase candidate in trySkillGain; the one-rise-per-phase draw and every
 // other guard there still apply.)
-export function pcCombatXP(turnContext, cbt, skill, narrative) {
-  if (!cbt || cbt.kind !== 'character' || !cbt.ref || cbt._xpGained) return;
-  const _had = !!(cbt.ref._sgPending && (cbt.ref._sgPending.list || []).some((e) => e && e.skill === skill));
+export function pcCombatXP(
+  turnContext: TurnContext,
+  cbt: AFighterAsHisExperienceIsRolled | null | undefined,
+  skill: string,
+  narrative: NarrativeLine[],
+) {
+  if (cbt?.kind !== 'character' || !cbt.ref || cbt._xpGained) return;
+  const _had = !!(cbt.ref._sgPending && (cbt.ref._sgPending.list ?? []).some((e) => e?.skill === skill));
   trySkillGain(turnContext, cbt.ref, skill, SKILLGAIN_STD, narrative);
   const _p = cbt.ref._sgPending;
-  if (!_had && _p && (_p.list || []).some((e) => e && e.skill === skill)) cbt._xpGained = true;
+  if (!_had && _p && (_p.list ?? []).some((e) => e?.skill === skill)) cbt._xpGained = true;
 }
-export function pcTryCounter(turnContext, hero, foe, narrative, chan) {
+export function pcTryCounter(
+  turnContext: TurnContext,
+  hero: AFighterInAPersonalCombat | null | undefined,
+  foe: AFighterInAPersonalCombat | null | undefined,
+  narrative: NarrativeLine[],
+  chan: string,
+) {
   if (!hero || !foe || hero.hp <= 0 || foe.hp <= 0) return;
   const _perk = hero.perkCounter ? 0.5 : 0;
   const _temper = chan === 'melee' ? temperOf(hero.temper).riposte || 0 : 0;
   const _chance = Math.max(_perk, _temper);
   if (_chance <= 0) return;
-  if (hero.status && hero.status.stun > 0) return; // no riposte while stunned
+  if ((asItsGuardReadsIt(hero.status)?.stun ?? 0) > 0) return; // no riposte while stunned
   if (kcRng() >= _chance) return;
   const _ofItsTemper = _temper >= _perk && _temper > 0;
   const hit = pcHitChance(turnContext, hero, foe),
@@ -94,11 +136,17 @@ export function pcTryCounter(turnContext, hero, foe, narrative, chan) {
     });
   }
 }
-export function pcMeleeStrike(turnContext, actor, foe, narrative) {
+export function pcMeleeStrike(
+  turnContext: TurnContext,
+  actor: AFighterInAPersonalCombat,
+  foe: AFighterInAPersonalCombat,
+  narrative: NarrativeLine[],
+) {
   // ARCHERY L8 (Trueshot) aftermath: a foe struck in a vital point sees their very next attack
   // fail.
-  if (actor.status && actor.status.nextAttackFails > 0) {
-    actor.status.nextAttackFails--;
+  const _actorsStatus = asItsGuardReadsIt(actor.status);
+  if (_actorsStatus && _actorsStatus.nextAttackFails > 0) {
+    _actorsStatus.nextAttackFails--;
     narrate(narrative, {
       kind: "a fighter's attack fails, still reeling from a crippling wound",
       actorName: actor.name,
@@ -134,7 +182,7 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
     // guardian passive (Undying Thirst, Sanguine Feeding…) 2026-09-15: the thirst fades with the
     // fight, exactly as regeneration does — see pcSustainMult. A vampire drinks deep early and
     // runs dry if the duel is drawn out.
-    if (dealt && actor.drain > 0 && actor.hp < (actor.maxHp || 20)) {
+    if (dealt && actor.drain !== undefined && actor.drain > 0 && actor.hp < (actor.maxHp || 20)) {
       const _sm = pcSustainMult(actor),
         _dr = Math.min(Math.round(dealt * actor.drain * _sm), (actor.maxHp || 20) - actor.hp);
       if (_dr > 0) {
@@ -160,7 +208,7 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
         actorHp: Math.max(0, Math.round(actor.hp)),
       });
     }
-    if (dealt && foe.arm && foe.arm.thorns > 0) {
+    if (dealt && foe.arm?.thorns !== undefined && foe.arm.thorns > 0) {
       // Thornwood Cuirass
       actor.hp -= foe.arm.thorns;
       narrate(narrative, {
@@ -187,7 +235,7 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
 // A FAILED escape turns the runner's back: the foe takes a bonus free melee attack. Only one flee
 // attempt per combatant per round — an action-phase attempt suppresses the end-of-round
 // break-off, so nobody eats two free strikes in one round.
-export function pcFleeChance(actor, foe) {
+export function pcFleeChance(actor: AFighterInAPersonalCombat, foe: AFighterInAPersonalCombat) {
   const spd = foe.kind === 'monster' ? pcSpeedOf(foe) : 2;
   let chance =
     30 +
@@ -198,16 +246,22 @@ export function pcFleeChance(actor, foe) {
   if (actor.status.fleeDoubled) chance *= 2; // Charm combat effect
   return Math.max(5, Math.min(95, dispFloor(chance)));
 }
-export function pcFreeStrike(turnContext, actor, foe, narrative) {
+export function pcFreeStrike(
+  turnContext: TurnContext,
+  actor: AFighterInAPersonalCombat | null | undefined,
+  foe: AFighterInAPersonalCombat | null | undefined,
+  narrative: NarrativeLine[],
+) {
   // A bonus melee attack outside the normal exchange. No riposte on a miss (the target is
   // running).
   if (!actor || !foe || actor.hp <= 0 || foe.hp <= 0) return;
-  if (actor.status && actor.status.stun > 0) {
+  const _actorsStatus = asItsGuardReadsIt(actor.status);
+  if (_actorsStatus && _actorsStatus.stun > 0) {
     narrate(narrative, { kind: 'but a fighter is too dazed to punish it', actorName: actor.name });
     return;
   }
-  if (actor.status && actor.status.nextAttackFails > 0) {
-    actor.status.nextAttackFails--;
+  if (_actorsStatus && _actorsStatus.nextAttackFails > 0) {
+    _actorsStatus.nextAttackFails--;
     narrate(narrative, { kind: 'but a fighter is still reeling and the chance is lost', actorName: actor.name });
     return;
   }
@@ -244,7 +298,14 @@ export function pcFreeStrike(turnContext, actor, foe, narrative) {
     }
   } else narrate(narrative, { kind: 'the free strike misses' });
 }
-export function pcAttemptFlee(turnContext, actor, foe, narrative, state, how) {
+export function pcAttemptFlee(
+  turnContext: TurnContext,
+  actor: AFighterInAPersonalCombat,
+  foe: AFighterInAPersonalCombat,
+  narrative: NarrativeLine[],
+  state: TheFightAsFlightReadsIt,
+  how?: string,
+) {
   if (actor.neverFlees) return false;
   actor._fleeAttempted = true;
   const chance = pcFleeChance(actor, foe),
@@ -266,13 +327,21 @@ export function pcAttemptFlee(turnContext, actor, foe, narrative, state, how) {
   pcFreeStrike(turnContext, foe, actor, narrative);
   return false;
 }
-export function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
+export function pcAdvanceOrStrike(
+  turnContext: TurnContext,
+  actor: AFighterInAPersonalCombat,
+  foe: AFighterInAPersonalCombat,
+  narrative: NarrativeLine[],
+  state: TheFightAsAnAdvanceReadsIt,
+) {
   if (state.range !== 'melee') {
     //a FAST guardian closes two range slots in one advance (spell → melee at once);
     // everyone else, slow guardians included, closes one — slowness is no penalty to advancing.
     const _steps = actor.kind === 'monster' && pcSpeedOf(actor) >= 3 ? 2 : 1;
     const _from = state.range;
-    state.range = pcRangeStep(state.range, +_steps);
+    const _to = pcRangeStep(state.range, _steps);
+    if (_to === undefined) return; // (made sure: pcRangeStep keeps its index within the three ranges)
+    state.range = _to;
     narrate(narrative, {
       kind: 'a fighter advances and the combatants close',
       actorName: actor.name,
@@ -287,11 +356,11 @@ export function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
       ARCHERY_PARTING_SHOT &&
       state.range === 'melee' &&
       _from !== 'melee' &&
-      foe &&
+      asItsGuardReadsIt(foe) &&
       foe.kind === 'character' &&
       pcHasRanged(foe) &&
-      !(foe.status && foe.status.stun > 0) &&
-      !(foe.status && foe.status.silenceRounds > 0) &&
+      !((asItsGuardReadsIt(foe.status)?.stun ?? 0) > 0) &&
+      !((asItsGuardReadsIt(foe.status)?.silenceRounds ?? 0) > 0) &&
       foe.hp > 0
     ) {
       narrate(narrative, {
@@ -311,13 +380,13 @@ export function pcAdvanceOrStrike(turnContext, actor, foe, narrative, state) {
     // rounds of standing still before they could swing. Both sides gain this alike.)
     // A shot or a blow is still refused to anyone stunned this round or bound by Spiritwrack, and
     // a foe already down is not struck again.
-    if (!foe || foe.hp <= 0 || actor.hp <= 0) return;
-    if (actor.status && actor.status.stun > 0) return;
+    if (!asItsGuardReadsIt(foe) || foe.hp <= 0 || actor.hp <= 0) return;
+    if ((asItsGuardReadsIt(actor.status)?.stun ?? 0) > 0) return;
     if (state.range === 'melee') {
       pcMeleeStrike(turnContext, actor, foe, narrative);
       return;
     }
-    if (state.range === 'bow' && pcHasRanged(actor) && !(actor.status && actor.status.silenceRounds > 0)) {
+    if (state.range === 'bow' && pcHasRanged(actor) && !((asItsGuardReadsIt(actor.status)?.silenceRounds ?? 0) > 0)) {
       narrate(narrative, { kind: 'a fighter draws as they come and looses a snap shot', actorName: actor.name });
       pcFireOne(turnContext, actor, foe, narrative);
     }
@@ -345,18 +414,24 @@ export const ARCHERY_VOLLEY_AT = 3; // arrows per Fire action becomes 2 at this 
 // bow looses one arrow first (the mirror of the free strike a fleeing enemy eats). Characters only:
 // it is a perk of the skill, not a property of every creature that can spit.
 // Bow vs Stone Golem 85% → 99%, vs Sea Wyrm 81% → 100%; Blade / Sword & bow / Archmage figures unchanged.
-export const ARCHERY_PARTING_SHOT = true;
-export function pcVolleySize(cbt) {
+export const ARCHERY_PARTING_SHOT: ASwitchTurnedOnOrOff = true; // typed a switch, so its test still reads it when it is off
+export function pcVolleySize(cbt: Pick<AFighterInAPersonalCombat, 'archery'>) {
   return (cbt.archery || 0) >= ARCHERY_VOLLEY_AT ? 2 : 1;
 }
-export function pcArrowDamage(cbt) {
-  const _ask = cbt.archeryRaw != null ? cbt.archeryRaw : cbt.archery || 0;
+export function pcArrowDamage(cbt: Pick<AFighterInAPersonalCombat, 'archery' | 'archeryRaw'>) {
+  const _ask = cbt.archeryRaw ?? (cbt.archery || 0);
   return rng(1, 3) + Math.ceil(_ask / 2);
 } // Sept 2026 redesign: was floor(Archery/3); raw skill (1–9) for characters · 2026-10-14 (Toby item 20): base 1–3, was 2–5
-export function pcFireShot(turnContext, actor, foe, narrative) {
+export function pcFireShot(
+  turnContext: TurnContext,
+  actor: AFighterInAPersonalCombat,
+  foe: AFighterInAPersonalCombat,
+  narrative: NarrativeLine[],
+) {
   // ARCHERY L8 (Trueshot) aftermath: a crippled foe's whole volley goes to nothing.
-  if (actor.status && actor.status.nextAttackFails > 0) {
-    actor.status.nextAttackFails--;
+  const _actorsStatus = asItsGuardReadsIt(actor.status);
+  if (_actorsStatus && _actorsStatus.nextAttackFails > 0) {
+    _actorsStatus.nextAttackFails--;
     narrate(narrative, { kind: "a fighter's shot fails, still reeling from a crippling wound", actorName: actor.name });
     return;
   }
@@ -377,18 +452,28 @@ export function pcFireShot(turnContext, actor, foe, narrative) {
 // on a miss. The defender's temper GUARD does not turn arrows — guard is a melee trait.
 // 2026-09-12: archery follows melee exactly — +5%/level past 5, modifiers off the real figure,
 // hard 80% ceiling.
-export function pcArrowHitChance(turnContext, actor, foe) {
+export function pcArrowHitChance(
+  turnContext: Pick<TurnContext, 'G'>,
+  actor: AFighterInAPersonalCombat,
+  foe: AFighterInAPersonalCombat,
+) {
   let chance = pcSkillHitPct(pcHitSkill(actor, 'archery'));
   chance += temperOf(actor.temper).archeryHit;
-  chance -= (actor.status.hitPenalty || 0) + (actor.status.hitPenaltyFixed || 0) + (actor.status.auraPenalty || 0);
-  chance += actor.status.hitBonus || 0;
-  chance -= foe.status.toHitReduce || 0;
-  chance -= (foe.arm && foe.arm.dodge) || 0;
+  chance -=
+    (actor.status.hitPenalty || 0) + (actor.status.hitPenaltyFixed || 0) + (Number(actor.status.auraPenalty) || 0);
+  chance += Number(actor.status.hitBonus) || 0;
+  chance -= Number(foe.status.toHitReduce) || 0;
+  chance -= Number(foe.arm?.dodge) || 0;
   if (actor.player != null) chance += discSum(turnContext, actor.player, 'duelHit', 'pct', (e) => discDuelVs(e, foe)); // duelHit discoveries
   chance = chance * (foe.status.dodge || 1);
   return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX, dispFloor(chance)));
 }
-export function pcFireOne(turnContext, actor, foe, narrative) {
+export function pcFireOne(
+  turnContext: TurnContext,
+  actor: AFighterInAPersonalCombat,
+  foe: AFighterInAPersonalCombat,
+  narrative: NarrativeLine[],
+) {
   const hit = pcArrowHitChance(turnContext, actor, foe),
     roll = d100();
   narrate(narrative, {
@@ -415,6 +500,8 @@ export function pcFireOne(turnContext, actor, foe, narrative) {
     // at three rounds.
     if (dealt && actor.perkImpale && foe.hp > 0 && kcRng() < 0.5) {
       const _imp = pcPushDot(foe, rng(1, 3), PC_MAX_LINGER_ROUNDS, `${actor.name}'s impaling arrow`);
+      // (pcPushDot gives none only for a foe of no status, whose line below threw before: it throws here)
+      if (!_imp) throw new TypeError("Cannot read properties of null (reading 'dmg')");
       narrate(narrative, {
         kind: "a fighter's arrow impales the foe",
         actorName: actor.name,

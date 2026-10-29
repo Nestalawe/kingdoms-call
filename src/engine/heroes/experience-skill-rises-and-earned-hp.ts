@@ -49,7 +49,8 @@ export function flushDeferredSkillLogsFor(turnContext, charId) {
   writeDeferredSkillLines(turnContext, mine, true);
 }
 
-export function trySkillGain(turnContext, char, skill, base, narr?, mult?) {
+// Its return type written for its typed callers (plan P1-10b12): every path returns nothing.
+export function trySkillGain(turnContext, char, skill, base, narr?, mult?): void {
   const { G } = turnContext;
   if (!char || turnContext._pcSimulating) return;
   mult = mult > 0 ? mult : 1;

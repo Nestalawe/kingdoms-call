@@ -1,8 +1,7 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { GUARDIAN_MELEE_BASE, PC_HIT_CAP_FRAC } from '../names.ts';
-import { hasItemBase } from '../items/equipment.ts';
+import { hasItemBase, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 import {
   PC_DMG_FLOOR_FRACTION,
   PC_SPELL_SCHOOL_MAP,
@@ -22,6 +21,69 @@ import {
   aFightersWardAsTheLineTellsIt,
   aListAsTheLineTellsIt,
 } from './the-facts-a-personal-combats-lines-record.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type {
+  AFighterInAPersonalCombat,
+  AFightersSchools,
+  AFightersStatus,
+  ALingeringHarm,
+  TheWardsAFighterWears,
+} from './helpers.ts';
+
+// Its types (plan P1-10b12): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
+// stays; a fighter is AFighterInAPersonalCombat (helpers.ts), and a table read by any name is read through a typed local
+// inside its function.
+/** A fighter as his skill for the to-hit and his blow are read: his status and his hero may be missing (the code
+ *  guards them). */
+type AFighterAsHisBlowIsRead = Omit<AFighterInAPersonalCombat, 'status' | 'ref'> & {
+  readonly status?: Pick<AFightersStatus, 'meleeDown' | 'meleeHalvedRounds'> | null | undefined;
+  readonly ref?: (object & AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt>) | null | undefined;
+};
+/** The wards as a stun's door reads them: their names may be missing (the code guards them). */
+type TheWardsAsAStunsDoorReadsThem = Omit<TheWardsAFighterWears, 'names'> & {
+  readonly names?: readonly string[] | null | undefined;
+};
+/** A fighter as the stun's ward reads him: none, or one with no wards. */
+type AFighterAsHisStunWardIsRead =
+  { readonly arm?: TheWardsAsAStunsDoorReadsThem | null | undefined } | null | undefined;
+/** A fighter as a stun lands on him: his status and his wards' names may be missing (the code guards them). */
+type AFighterAsAStunLandsOnHim = Omit<AFighterInAPersonalCombat, 'status' | 'arm'> & {
+  readonly status?: AFightersStatus | null | undefined;
+  readonly arm?: TheWardsAsAStunsDoorReadsThem | null | undefined;
+};
+/** A fighter as the courage test reads him: his schools may be missing (the code guards them). */
+type AFighterAsTheCourageTestReadsHim = Pick<
+  AFighterInAPersonalCombat,
+  'meleeRaw' | 'melee' | 'archeryRaw' | 'archery' | 'temper'
+> & {
+  readonly school?: Partial<AFightersSchools> | null | undefined;
+};
+/** A fighter as the courage test reads his foe: his hero or guardian may be missing, and so may a grade (a hero has
+ *  none). */
+interface AFighterAsTheCourageTestReadsHisFoe {
+  readonly ref?: (object & { readonly power?: string | undefined }) | null | undefined;
+}
+/** A fighter as a hit reads him: his status may be missing (the code guards every read of it). */
+type AFighterAsAHitReadsHim = Omit<AFighterInAPersonalCombat, 'status'> & {
+  readonly status?: AFightersStatus | null | undefined;
+};
+/** The striker as a guardian's weakness reads him: his hero's race (a guardian has none, and the code guards the hero)
+ *  and his realm. */
+interface AStrikerAsTheWeaknessReadsHim {
+  readonly name: string;
+  readonly player: AFighterInAPersonalCombat['player'];
+  readonly ref?: (object & { readonly race?: string | null | undefined }) | null | undefined;
+}
+/** A fighter as his round starts: his lingering harms may be missing (the code guards them). */
+type AFighterAsHisRoundStarts = Omit<AFighterInAPersonalCombat, 'status'> & {
+  readonly status: Omit<AFightersStatus, 'dot'> & { dot?: ALingeringHarm[] | null | undefined };
+};
+/** A value where the code guards it as if it may be missing (a narrative, a foe or a status no caller leaves out
+ *  today), read as it is: the guard stays, and the value keeps its type where the code reads it unguarded. */
+export function asItsGuardReadsIt<Value>(value: Value): Value | null | undefined {
+  return value;
+}
 
 // ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS AND COURAGE (plan P1-08e: lifted out of resolveTurn) ────
 // The melee to-hit and damage, how a ward or a guardian's passive is named, the one door every stun lands through,
@@ -48,20 +110,24 @@ export const PC_MELEE_HIT_BASE = 30,
 // stat
 // (guardians carry their melee/archery straight). effStat caps at 5, so meleeRaw is what carries
 // mastery into the hit chance now that levels past 5 are worth something.
-export function pcHitSkill(cbt, which) {
+export function pcHitSkill(cbt: AFighterAsHisBlowIsRead, which: string) {
   const raw = which === 'archery' ? cbt.archeryRaw : cbt.meleeRaw;
   const base = which === 'archery' ? cbt.archery || 0 : cbt.melee || 0;
-  const down = which === 'archery' ? 0 : (cbt.status && cbt.status.meleeDown) || 0; // "−1 melee for next round"
-  return Math.max(0, Math.max(raw != null ? raw : 0, base) - down);
+  const down = which === 'archery' ? 0 : Number(cbt.status?.meleeDown) || 0; // "−1 melee for next round"
+  return Math.max(0, Math.max(raw ?? 0, base) - down);
 }
-export function pcSkillHitPct(lvl) {
+export function pcSkillHitPct(lvl: number) {
   return (
     PC_MELEE_HIT_BASE +
     PC_MELEE_HIT_PER_LVL * Math.min(PC_HIT_SKILL_CAP, lvl) +
     PC_HIT_PER_LVL_ABOVE * Math.max(0, lvl - PC_HIT_SKILL_CAP)
   );
 }
-export function pcHitChance(turnContext, attacker, defender) {
+export function pcHitChance(
+  turnContext: Pick<TurnContext, 'G'>,
+  attacker: AFighterInAPersonalCombat,
+  defender: AFighterInAPersonalCombat,
+) {
   let chance = pcSkillHitPct(pcHitSkill(attacker, 'melee'));
   // ── AK §2.4 Tempers ── the attacker's aggression against the defender's guard. A Berserk has a
   // negative `defence`: they attack wide open and are easier to hit.
@@ -69,10 +135,10 @@ export function pcHitChance(turnContext, attacker, defender) {
   chance -= temperOf(defender.temper).defence;
   chance -= attacker.status.hitPenalty || 0;
   chance -= attacker.status.hitPenaltyFixed || 0; // "for the rest of the fight" penalties (Flash Powder, Clinging Pitch)
-  chance -= attacker.status.auraPenalty || 0; // a guardian's passive aura (Dread / Petrifying…) — never decays
-  chance += attacker.status.hitBonus || 0; // Elixir of Focus and kin
-  chance -= defender.status.toHitReduce || 0; // Invisibility: flat \u221225 to hit (floored at 40 below)
-  chance -= (defender.arm && defender.arm.dodge) || 0; // Quicksilver Mail: −10% to be hit
+  chance -= Number(attacker.status.auraPenalty) || 0; // a guardian's passive aura (Dread / Petrifying…) — never decays
+  chance += Number(attacker.status.hitBonus) || 0; // Elixir of Focus and kin
+  chance -= Number(defender.status.toHitReduce) || 0; // Invisibility: flat \u221225 to hit (floored at 40 below)
+  chance -= Number(defender.arm?.dodge) || 0; // Quicksilver Mail: −10% to be hit
   if (attacker.player != null)
     chance += discSum(turnContext, attacker.player, 'duelHit', 'pct', (e) => discDuelVs(e, defender)); // duelHit discoveries (sd33 Duelling Code …)
   chance = chance * (defender.status.dodge || 1); // (no effect currently sets status.dodge — kept as a hook)
@@ -90,26 +156,25 @@ export function pcHitChance(turnContext, attacker, defender) {
   const _guardCap = Math.max(0, temperOf(defender.temper).defence || 0);
   return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX - _guardCap, dispFloor(chance))); // hard ceiling, applied AFTER every modifier
 }
-export function pcMeleeDamage(attacker, defender) {
+export function pcMeleeDamage(attacker: AFighterAsHisBlowIsRead, defender: unknown) {
   // Sept 2026 redesign: blows scale with the striker's OWN skill (+ceil(Melee/2)).
   // 2026-09-26: base roll cut from 2–5 to 1–3 and the skill-gap bonus (+max(0, yourMelee − theirMelee))
   // removed — out-skilling a foe now shows up only in hit chance, not in damage per blow.
   // For characters the bonus reads the RAW skill level (1–9, `meleeRaw`) — combat hit-chance
   // stays on the 0–5 scale, but mastery past 5 lands heavier blows. Guardians use their melee
   // stat.
-  const _dsk = Math.max(
-    0,
-    (attacker.meleeRaw != null ? attacker.meleeRaw : attacker.melee || 0) -
-      ((attacker.status && attacker.status.meleeDown) || 0),
-  );
+  const baseOfGrade: Readonly<Partial<Record<string, readonly number[]>>> = GUARDIAN_MELEE_BASE;
+  const _dsk = Math.max(0, (attacker.meleeRaw ?? (attacker.melee || 0)) - (Number(attacker.status?.meleeDown) || 0));
   const _gd = attacker.kind === 'monster';
-  const _base = (_gd && GUARDIAN_MELEE_BASE[attacker.power]) || [1, 3]; // a guardian's base grows with its tier
+  const _base = (_gd ? baseOfGrade[String(attacker.power)] : undefined) ?? [1, 3]; // a guardian's base grows with its tier (each row a list: never falsy)
   // 2026-10-14 (Toby, item 20): a guardian adds +1 for every level of its Melee; a hero still adds ⌈Melee ÷ 2⌉.
   let dmg = Math.max(
     1,
-    rng(_base[0], _base[1]) + (_gd ? _dsk : Math.ceil(_dsk / 2)) + temperOf(attacker.temper).meleeDamage,
+    rng(Number(_base[0]), Number(_base[1])) +
+      (_gd ? _dsk : Math.ceil(_dsk / 2)) +
+      temperOf(attacker.temper).meleeDamage,
   );
-  if (attacker.status && attacker.status.meleeHalvedRounds > 0) dmg = Math.max(1, Math.floor(dmg / 2));
+  if ((attacker.status?.meleeHalvedRounds ?? 0) > 0) dmg = Math.max(1, Math.floor(dmg / 2));
   // 2026-09-12b: the defender's temper soak MOVED to pcTakeHit. It is a reduction like any other
   // ward, and applying it here put it outside the half-damage floor — a Cautious hero in Mithril
   // was still taking 1-damage hits because the guard had already scraped the blow down before
@@ -133,13 +198,17 @@ export const PC_CHANNEL = {
 // riding on a blow (promoted after the round-start check) cost one more. Every stun now arrives
 // through pcLandStun, which asks the target's ward first. pcStunWard is the chance (0–100) that a
 // stun is shrugged off as it lands; 100 means it never takes hold.
-export function pcStunWard(t) {
-  const a = t && t.arm;
+export function pcStunWard(t: AFighterAsHisStunWardIsRead) {
+  const a = t?.arm;
   if (!a) return 0;
-  return a.stunImmune ? 100 : Math.max(0, Math.min(100, a.stunWard || 0));
+  return a.stunImmune ? 100 : Math.max(0, Math.min(100, Number(a.stunWard) || 0));
 }
 // pcStunTurned rolls the ward once and says so when it turns the stun.
-export function pcStunTurned(target, narrative, what) {
+export function pcStunTurned(
+  target: AFighterAsAStunLandsOnHim,
+  narrative: NarrativeLine[] | null | undefined,
+  what: string | undefined,
+) {
   const w = pcStunWard(target);
   if (!(w >= 100 || (w > 0 && d100() <= w))) return false;
   if (narrative)
@@ -148,15 +217,20 @@ export function pcStunTurned(target, narrative, what) {
       targetIsAGuardian: target.kind === 'monster',
       targetName: target.name,
       targetStunPerk: aFightersPerkNameAsTheLineTellsIt(target, 'stunWard'),
-      targetArmourNames: target.arm && target.arm.names ? aListAsTheLineTellsIt(target.arm.names) : null,
+      targetArmourNames: target.arm?.names ? aListAsTheLineTellsIt(target.arm.names) : null,
       w,
       what,
     });
   return true;
 }
 // Returns true if the stun takes hold (and adds it), false if the ward turns it.
-export function pcLandStun(target, n, narrative, what) {
-  if (!target || !target.status || !(n > 0)) return false;
+export function pcLandStun(
+  target: AFighterAsAStunLandsOnHim | null | undefined,
+  n: number,
+  narrative: NarrativeLine[] | null | undefined,
+  what: string | undefined,
+) {
+  if (!target?.status || !(n > 0)) return false;
   if (pcStunTurned(target, narrative, what)) return false;
   target.status.stun = (target.status.stun || 0) + n;
   return true;
@@ -177,14 +251,16 @@ export const PC_TERROR_BASE = 55,
   PC_TERROR_MAX = 70;
 export const PC_TERROR_TEMPER = { Berserk: -15, Brave: -10, Cautious: -5, Cowardly: 10 };
 export const PC_TERROR_BY_POWER = { Weak: 0, Moderate: 0, Powerful: 5, Legendary: 15 };
-export function pcCourageChance(foe, actor) {
-  const nerve = Math.max(
-    foe.meleeRaw != null ? foe.meleeRaw : foe.melee || 0,
-    foe.archeryRaw != null ? foe.archeryRaw : foe.archery || 0,
-  );
-  const faith = 5 * Math.min(2, (foe.school && foe.school.white) || 0);
-  const stature = PC_TERROR_BY_POWER[(actor && actor.ref && actor.ref.power) || ''] || 0;
-  const c = PC_TERROR_BASE + stature - PC_TERROR_PER_LVL * nerve - faith + (PC_TERROR_TEMPER[foe.temper] || 0);
+export function pcCourageChance(
+  foe: AFighterAsTheCourageTestReadsHim,
+  actor: AFighterAsTheCourageTestReadsHisFoe | null | undefined,
+) {
+  const terrorOfPower: Readonly<Partial<Record<string, number>>> = PC_TERROR_BY_POWER;
+  const terrorOfTemper: Readonly<Partial<Record<string, number>>> = PC_TERROR_TEMPER;
+  const nerve = Math.max(foe.meleeRaw ?? (foe.melee || 0), foe.archeryRaw ?? (foe.archery || 0));
+  const faith = 5 * Math.min(2, Number(foe.school?.white) || 0);
+  const stature = terrorOfPower[actor?.ref?.power ?? ''] ?? 0; // the table holds no NaN; a grade '' is the key '' as before
+  const c = PC_TERROR_BASE + stature - PC_TERROR_PER_LVL * nerve - faith + (terrorOfTemper[foe.temper] ?? 0);
   return Math.max(PC_TERROR_MIN, Math.min(PC_TERROR_MAX, Math.round(c)));
 }
 // ── SELF-SUSTAIN FADE ────
@@ -195,17 +271,27 @@ export function pcCourageChance(foe, actor) {
 // equipment the player paid for, and this is a fix for guardian pacing, not an item nerf.
 export const PC_SUSTAIN_FULL_ROUNDS = 4,
   PC_SUSTAIN_HALF_ROUNDS = 8;
-export function pcSustainMult(cbt) {
-  if (!cbt || cbt.kind !== 'monster') return 1;
-  const r = cbt._roundNo || 1;
+export function pcSustainMult(cbt: Pick<AFighterInAPersonalCombat, 'kind' | '_roundNo'> | null | undefined) {
+  if (cbt?.kind !== 'monster') return 1;
+  const r = Number(cbt._roundNo) || 1;
   return r <= PC_SUSTAIN_FULL_ROUNDS ? 1 : r <= PC_SUSTAIN_HALF_ROUNDS ? 0.5 : 0;
 }
-export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
+export function pcTakeHit(
+  turnContext: Pick<TurnContext, 'G'>,
+  target: AFighterAsAHitReadsHim,
+  dmg: number,
+  narrative: NarrativeLine[],
+  srcName: string,
+  kind: string,
+) {
   const { G } = turnContext;
+  const channelOf: Readonly<Partial<Record<string, string>>> = PC_CHANNEL;
+  const schoolOfSpell: Readonly<Partial<Record<string, string>>> = PC_SPELL_SCHOOL_MAP;
+  const kindsChannel = channelOf[kind]; // PC_CHANNEL[kind], read once
   // Beg-for-Mercy narration (2026-09-21): remember WHERE in the narrative a character's fatal blow
   // began, so a Cowardly plea can be told just before that blow lands (see resolvePersonalCombat).
-  const _mkHpIn = target ? target.hp : 0,
-    _mkIdx = (narrative && narrative.length) || 0;
+  const _mkHpIn = target.hp, // (a missing target throws on its status below, as before)
+    _mkIdx = asItsGuardReadsIt(narrative)?.length ?? 0;
   // Mirror images soak a hit first.
   if (target.status && target.status.mirrorImages > 0) {
     target.status.mirrorImages--;
@@ -221,9 +307,9 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   let d = dmg;
   // ── ARMOUR ── outright negations first: the Blood-Bound Cuirass takes the first landed hit of
   // the fight in full; the Tower Shield blocks one melee blow or arrow in five.
-  const _arm = target.arm || null,
-    _chan = PC_CHANNEL[kind] || 'spell';
-  if (_arm && _arm.firstHit && !target._armFirstHitUsed) {
+  const _arm = target.arm ?? null,
+    _chan = (kindsChannel ?? '') || 'spell';
+  if (_arm?.firstHit && !target._armFirstHitUsed) {
     target._armFirstHitUsed = true;
     narrate(narrative, {
       kind: 'the first harm to reach the target is drunk by their armour',
@@ -233,7 +319,12 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     });
     return 0;
   }
-  if (_arm && _arm.block > 0 && (_chan === 'melee' || _chan === 'archery') && d100() <= _arm.block) {
+  if (
+    _arm?.block !== undefined &&
+    _arm.block > 0 &&
+    (_chan === 'melee' || _chan === 'archery') &&
+    d100() <= _arm.block
+  ) {
     narrate(narrative, {
       kind: "the target's shield takes the blow square on",
       targetName: target.name,
@@ -242,7 +333,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     });
     return 0;
   }
-  if (_arm && _arm.arrowBlock > 0 && _chan === 'archery' && d100() <= _arm.arrowBlock) {
+  if (_arm?.arrowBlock !== undefined && _arm.arrowBlock > 0 && _chan === 'archery' && d100() <= _arm.arrowBlock) {
     narrate(narrative, {
       kind: "the arrow glances off the target's shield",
       targetName: target.name,
@@ -250,7 +341,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     });
     return 0;
   }
-  if (_arm && _arm.spellBlock > 0 && _chan === 'spell' && d100() <= _arm.spellBlock) {
+  if (_arm?.spellBlock !== undefined && _arm.spellBlock > 0 && _chan === 'spell' && d100() <= _arm.spellBlock) {
     narrate(narrative, {
       kind: "the target's shield turns the harm away",
       targetName: target.name,
@@ -259,7 +350,13 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     });
     return 0;
   }
-  if (_arm && _arm.roundWard > 0 && (target._roundWardLeft || 0) > 0 && d > 0) {
+  if (
+    _arm?.roundWard !== undefined &&
+    _arm.roundWard > 0 &&
+    target._roundWardLeft !== undefined &&
+    target._roundWardLeft > 0 &&
+    d > 0
+  ) {
     const _rw = Math.min(target._roundWardLeft, d);
     target._roundWardLeft -= _rw;
     d -= _rw;
@@ -273,34 +370,35 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   // Mithril Armour turns aside 2 points of any MELEE or ARROW blow that lands
   // (a magic sword-arm or spell still ignores it), never below 1 damage — and it announces itself
   // each time it saves the wearer harm.
-  if (target.mithril && (PC_CHANNEL[kind] === 'melee' || PC_CHANNEL[kind] === 'archery') && d > 1) {
+  if (target.mithril && (kindsChannel === 'melee' || kindsChannel === 'archery') && d > 1) {
     const _b = d;
-    d = Math.max(1, d - (target.mithrilDR || 2));
+    d = Math.max(1, d - ((target.mithrilDR ?? 0) || 2));
     if (d < _b)
       narrate(narrative, {
         kind: "the target's mithril armour turns aside some of the harm",
         targetName: target.name,
         damageTurnedAside: _b - d,
-        channel: PC_CHANNEL[kind],
+        channel: kindsChannel,
       });
   }
   // Monster nature: armoured hides turn blades, bone shrugs off arrows, magic ignores plate.
   if (target.vuln) {
-    const ch = PC_CHANNEL[kind] || 'spell';
-    d = Math.max(1, Math.round(d * (target.vuln[ch] || 1)));
+    const vulnOf: Readonly<Partial<Record<string, number>>> = target.vuln;
+    const ch = (kindsChannel ?? '') || 'spell';
+    d = Math.max(1, Math.round(d * ((vulnOf[ch] ?? 0) || 1)));
   }
   // ── WEAKNESS ── the guardian's one exploitable flaw. Doubles the damage of the attack it is
   // open to; percentage-of-max-HP spells are exempt (they get a doubled take-hold chance
   // instead). The first time it bites, the striker's realm learns the flaw for the rest of the
   // game.
   if (target.kind === 'monster' && target.weak && d > 0 && !PC_WEAK_NO_DMG_DOUBLE.has(kind)) {
-    const _wsrc = target._foe || null;
+    const _wsrc: AStrikerAsTheWeaknessReadsHim | null = target._foe ?? null;
+    const _wsrcRealm = _wsrc?.player != null ? G.players[_wsrc.player] : undefined; // read once, as it was tested
     const _wapp = pcWeaknessApplies(target.weak, {
       chan: _chan,
-      school: PC_SPELL_SCHOOL_MAP[kind] || null,
-      race: _wsrc && _wsrc.ref ? _wsrc.ref.race || null : null,
-      align:
-        _wsrc && _wsrc.player != null && G.players[_wsrc.player] ? G.players[_wsrc.player].alignment || null : null,
+      school: (schoolOfSpell[kind] ?? '') || null,
+      race: _wsrc?.ref ? (_wsrc.ref.race ?? '') || null : null,
+      align: _wsrcRealm ? _wsrcRealm.alignment || null : null,
     });
     if (_wapp) {
       const _wb = d;
@@ -313,7 +411,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
         wb: _wb,
         damage: d,
       });
-      if (_wsrc && _wsrc.player != null && pcLearnWeakness(G, _wsrc.player, target.name))
+      if (_wsrc?.player != null && pcLearnWeakness(G, _wsrc.player, target.name))
         narrate(narrative, {
           kind: "the hunter sees the target's weakness plainly now",
           wsrcName: _wsrc.name,
@@ -334,7 +432,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
         kind: "the target reads the beast's every move",
         targetName: target.name,
         damageTurnedAside: _bw - d,
-        channel: PC_CHANNEL[kind],
+        channel: kindsChannel,
         targetDruidBeastWard: target.druidBeastWard,
       });
   }
@@ -344,7 +442,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   // landed hit below 1. ── Temper: a guarded stance ── Cautious rolls with the blow rather than
   // taking it square on. Melee only: a guard turns a blade, not an arrow or a spell.
   const _tSoak = temperOf(target.temper).damageSoak || 0;
-  if (_tSoak > 0 && PC_CHANNEL[kind] === 'melee' && d > 1) {
+  if (_tSoak > 0 && kindsChannel === 'melee' && d > 1) {
     const _tb = d;
     d = Math.max(1, d - _tSoak);
     if (d < _tb)
@@ -356,7 +454,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
       });
   }
   const _soakPct = temperOf(target.temper).hitSoakPct || 0;
-  if (_soakPct > 0 && (PC_CHANNEL[kind] === 'melee' || PC_CHANNEL[kind] === 'archery')) {
+  if (_soakPct > 0 && (kindsChannel === 'melee' || kindsChannel === 'archery')) {
     const _before = d;
     d = Math.max(1, Math.round(d * (1 - _soakPct)));
     if (d < _before)
@@ -377,8 +475,8 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   }
   // MELEE L6 (Parry): a master swordsman turns part of a melee blow aside — 50% chance to shave
   // 1..⌊melee/2⌋ off a landed melee/free/counter strike, never below 1.
-  if (target.perkParry && PC_CHANNEL[kind] === 'melee' && d > 1 && kcRng() < 0.5) {
-    const _cut = rng(1, Math.max(1, Math.floor((target.meleeRaw || 0) / 2)));
+  if (target.perkParry && kindsChannel === 'melee' && d > 1 && kcRng() < 0.5) {
+    const _cut = rng(1, Math.max(1, Math.floor((Number(target.meleeRaw) || 0) / 2)));
     const _b = d;
     d = Math.max(1, d - _cut);
     if (d < _b)
@@ -406,7 +504,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   // a percentage off spells, a percentage off everything while badly hurt, then the hard cap.
   if (_arm && d > 0) {
     const _b3 = d;
-    const _src = target._foeCat || null;
+    const _src = (target._foeCat ?? '') || null;
     if (_chan === 'melee' && _arm.meleeDR) d = Math.max(1, d - _arm.meleeDR);
     if (_chan === 'archery' && _arm.arrowDR) d = Math.max(1, d - _arm.arrowDR);
     if (_arm.natureDR && (_src === 'beast' || _src === 'vermin' || _src === 'dragon'))
@@ -414,9 +512,9 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     if (_arm.darkDR && (_src === 'undead' || _src === 'fiend')) d = Math.max(1, d - _arm.darkDR);
     if (_chan === 'spell' && _arm.spellPct) d = Math.max(1, Math.round(d * (1 - _arm.spellPct / 100)));
     if (_arm.lowHp && target.hp < (target.maxHp || 20) * 0.5) d = Math.max(1, Math.round(d * (1 - _arm.lowHp / 100)));
-    if (_arm.openGuardHits && (target._openGuardUsed || 0) < _arm.openGuardHits) {
-      target._openGuardUsed = (target._openGuardUsed || 0) + 1;
-      d = Math.max(1, Math.round(d * (1 - (_arm.openGuardPct || 50) / 100)));
+    if (_arm.openGuardHits && (Number(target._openGuardUsed) || 0) < _arm.openGuardHits) {
+      target._openGuardUsed = (Number(target._openGuardUsed) || 0) + 1;
+      d = Math.max(1, Math.round(d * (1 - ((_arm.openGuardPct ?? 0) || 50) / 100)));
     }
     if (d < _b3)
       narrate(narrative, {
@@ -449,7 +547,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   }
   // The hard CAP ward (Abyssal Bulk and kin) is the last word — it is a ceiling on any single hit
   // rather than a reduction, so the floor is never allowed to lift a blow back over it.
-  if (_arm && _arm.cap && d > 0) {
+  if (_arm?.cap && d > 0) {
     const _capAt = Math.max(1, Math.round(((target.maxHp || 20) * _arm.cap) / 100));
     if (d > _capAt) {
       d = _capAt;
@@ -476,7 +574,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     if (d > _gCap) d = _gCap;
   }
   target.hp -= d;
-  if (_mkHpIn > 0 && target.hp <= 0 && target.kind === 'character' && narrative)
+  if (_mkHpIn > 0 && target.hp <= 0 && target.kind === 'character' && asItsGuardReadsIt(narrative))
     target._fatalMark = {
       arr: narrative,
       idx: _mkIdx,
@@ -485,13 +583,7 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
     };
   // Last-Stand Plate: once per fight, the first time the wearer drops below 30% they recover 25%
   // of max.
-  if (
-    _arm &&
-    _arm.secondWind &&
-    !target._armSecondWindUsed &&
-    target.hp > 0 &&
-    target.hp < (target.maxHp || 20) * 0.3
-  ) {
+  if (_arm?.secondWind && !target._armSecondWindUsed && target.hp > 0 && target.hp < (target.maxHp || 20) * 0.3) {
     target._armSecondWindUsed = true;
     const _back = Math.max(1, Math.round(((target.maxHp || 20) * _arm.secondWind) / 100));
     target.hp = Math.min(target.maxHp || 20, target.hp + _back);
@@ -506,12 +598,12 @@ export function pcTakeHit(turnContext, target, dmg, narrative, srcName, kind) {
   }
   return d;
 }
-export function pcRoundStart(cbt, narrative) {
+export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: NarrativeLine[]) {
   // ── ARMOUR ── Ashen Plate: lingering harm never takes hold; Troll-Hide: regenerate; Steadfast
   // Harness: aim penalties fade twice as fast and half of all stuns are shrugged off.
-  cbt._roundNo = (cbt._roundNo || 0) + 1;
+  cbt._roundNo = (Number(cbt._roundNo) || 0) + 1;
   if (cbt.arm) {
-    if (cbt.arm.roundWard > 0) cbt._roundWardLeft = cbt.arm.roundWard; // Shield of the Ward-Saints: a fresh ward each round
+    if ((cbt.arm.roundWard ?? 0) > 0) cbt._roundWardLeft = cbt.arm.roundWard; // Shield of the Ward-Saints: a fresh ward each round
     if (pcStunWard(cbt) >= 100 && cbt.status.stun > 0) {
       cbt.status.stun = 0;
       narrate(narrative, {
@@ -521,7 +613,7 @@ export function pcRoundStart(cbt, narrative) {
         cbtStunPerk: aFightersPerkNameAsTheLineTellsIt(cbt, 'stunWard'),
       });
     }
-    if ((cbt.arm.dotImmune || (cbt.arm.dotWard || 0) >= 100) && (cbt.status.dot || []).length) {
+    if ((cbt.arm.dotImmune || (Number(cbt.arm.dotWard) || 0) >= 100) && (cbt.status.dot ?? []).length) {
       cbt.status.dot = [];
       narrate(narrative, {
         kind: "a fighter's armour sloughs off every burn poison and bleeding",
@@ -531,7 +623,7 @@ export function pcRoundStart(cbt, narrative) {
     }
     // a GUARDIAN's regeneration fades as the fight runs long (pcSustainMult); a character's worn
     // regeneration is untouched and returns a multiplier of 1.
-    if (cbt.arm.regen > 0 && cbt.hp > 0 && cbt.hp < (cbt.maxHp || 20)) {
+    if (cbt.arm.regen !== undefined && cbt.arm.regen > 0 && cbt.hp > 0 && cbt.hp < (cbt.maxHp || 20)) {
       const _sm = pcSustainMult(cbt),
         _rg = Math.round(cbt.arm.regen * _sm);
       if (_rg > 0) {
@@ -561,8 +653,8 @@ export function pcRoundStart(cbt, narrative) {
   }
   // Damage-over-time
   // a guardian's lingering-harm ward (dotWard, batch item 7) takes its share off every tick
-  const _dw = Math.min(100, (cbt.arm && cbt.arm.dotWard) || 0);
-  (cbt.status.dot || []).forEach((d) => {
+  const _dw = Math.min(100, Number(cbt.arm?.dotWard) || 0);
+  (cbt.status.dot ?? []).forEach((d) => {
     if (d.rounds > 0) {
       const _t = _dw > 0 ? Math.round(d.dmg * (1 - _dw / 100)) : d.dmg;
       cbt.hp -= _t;
@@ -578,7 +670,7 @@ export function pcRoundStart(cbt, narrative) {
       });
     }
   });
-  cbt.status.dot = (cbt.status.dot || []).filter((d) => d.rounds > 0);
+  cbt.status.dot = (cbt.status.dot ?? []).filter((d) => d.rounds > 0);
   // Heal-over-time (Potion of Regeneration and kin)
   if (cbt.status.hot && cbt.status.hot.rounds > 0) {
     const h = Math.min(cbt.status.hot.amt, Math.max(0, (cbt.maxHp || 20) - cbt.hp));
@@ -598,11 +690,12 @@ export function pcRoundStart(cbt, narrative) {
   if (cbt.status.hitPenalty > 0)
     cbt.status.hitPenalty = Math.max(0, cbt.status.hitPenalty - pcPenaltyFade(cbt.status.hitPenalty));
   if (cbt.status.meleeHalvedRounds > 0) cbt.status.meleeHalvedRounds--;
-  if (cbt.status.meleeDownRounds > 0 && --cbt.status.meleeDownRounds === 0) cbt.status.meleeDown = 0; // a chill lasts one round
+  if (cbt.status.meleeDownRounds !== undefined && cbt.status.meleeDownRounds > 0 && --cbt.status.meleeDownRounds === 0)
+    cbt.status.meleeDown = 0; // a chill lasts one round
   if (cbt.status.silenceRounds > 0) cbt.status.silenceRounds--;
   // 2026-09-26 (Toby item 3): a Powerful / Legendary guardian bound by Spiritwrack rolls to throw
   // the binding off at the start of every round after the first in which it held.
-  if (cbt.status._swShrugPct > 0) {
+  if (cbt.status._swShrugPct !== undefined && cbt.status._swShrugPct > 0) {
     if (cbt.status.silenceRounds > 0) {
       const _r = d100(),
         _pct = cbt.status._swShrugPct;
