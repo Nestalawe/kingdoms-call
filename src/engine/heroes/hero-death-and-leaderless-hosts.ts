@@ -19,6 +19,7 @@ import { effStat, isVanished } from './effective-skills-and-hidden-heroes.ts';
 import { isOpenSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { flushDeferredSkillLogsFor } from './experience-skill-rises-and-earned-hp.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import type { AHeroIsSlainOutsideABattle } from './the-facts-a-heros-death-lines-record.ts';
 
 // ── HERO DEATH AND LEADERLESS HOSTS (plan P1-08f: lifted out of resolveTurn) ────
 // What becomes of a dead commander's armies (disperseDeadCharArmies) and of the host a spared coward leaves behind
@@ -263,8 +264,9 @@ export function abandonHostOnFlight(turnContext, c) {
 // It resolves the death FIRST, then writes the line: "slain" only when the hero really died; "at
 // death's door, but not slain" when Battlefield Surgery saves them, with the surgery line
 // straight after it; nothing of its own when they vanished or escaped (those write their own
-// line). Returns what handleHeroDeath returns (false = they live).
-export function reportHeroFall(turnContext, dead, killer, slainLine, place, hopts?) {
+// line). Returns what handleHeroDeath returns (false = they live). The caller hands the line's fact ("a hero is slain
+// outside a battle", the way he fell a value: P1-12d11) and its place (audience, hero, province), as notifyTarget does.
+export function reportHeroFall(turnContext, dead, killer, slain: AHeroIsSlainOutsideABattle, place, hopts?) {
   const o = { ...(hopts || {}), lines: [] };
   const res = handleHeroDeath(turnContext, dead, killer, o);
   if (o.outcome === 'surgery')
@@ -273,7 +275,7 @@ export function reportHeroFall(turnContext, dead, killer, slainLine, place, hopt
       fact: { kind: "a hero is struck down at death's door but not slain", heroName: dead.name },
       ...place,
     });
-  else if (o.outcome === 'died' || o.outcome == null) emit(turnContext, { type: 'combat', text: slainLine, ...place });
+  else if (o.outcome === 'died' || o.outcome == null) emit(turnContext, { type: 'combat', fact: slain, ...place });
   o.lines.forEach((l) => emit(turnContext, { type: l.type, fact: l.fact, ...l.place }));
   return res;
 }
@@ -418,12 +420,13 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     }
   }
   const prov = G.world.provinces[deadChar.location];
-  // Who slew them (2026-10-12, Toby: the battle reports say who beat whom): the killer's name, or the cause a
-  // caller gives (opts.slainBy, e.g. a lair's guardian). Read by disperseDeadCharArmies, which clears it.
+  // Who slew them (2026-10-12, Toby: the battle reports say who beat whom): a record of the killer's name, or the one
+  // a caller gives (opts.slainBy: a lair's guardian and its province), TheOneWhoSlewAHero (P1-12d11). Read by
+  // disperseDeadCharArmies, which clears it.
   {
     const _by =
       killerChar && killerChar.name
-        ? String(killerChar.name).replace(' (wandering)', '')
+        ? { killerName: String(killerChar.name).replace(' (wandering)', '') }
         : (opts && opts.slainBy) || null;
     if (_by) deadChar._slainBy = _by;
     else delete deadChar._slainBy;

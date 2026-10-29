@@ -14,8 +14,8 @@
 // One field holds words still: the note of how a thief carries what he took (gainedItemNote, src/engine/items/
 // equipment.ts, which also settles what he wears: the items' area, a later slice), listed by the static test. Each is
 // filed on its own, with the audience its event names (Decision 6: its event's): no audience changes. A hero slain by a
-// cornered thief or an assassin is told by reportHeroFall (heroes/), which still takes his line's words from its
-// caller: the Parked "words a caller hands in".
+// cornered thief or an assassin is told by reportHeroFall (heroes/), as a hero's death's kind "a hero is slain outside
+// a battle", the way he fell a value (P1-12d11).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
 import type {

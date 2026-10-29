@@ -564,12 +564,23 @@ export function advancePursuit(turnContext, c, ph) {
           heroes: _duelChars,
         });
       } else {
-        reportHeroFall(turnContext, c, quarry, `${c.name} has been slain at the end of the chase!`, {
-          audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          province: prov.id,
-          heroes: _duelChars,
-        });
+        reportHeroFall(
+          turnContext,
+          c,
+          quarry,
+          {
+            kind: 'a hero is slain outside a battle',
+            heroName: c.name,
+            how: 'at the end of the chase',
+            killerName: null,
+          },
+          {
+            audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            province: prov.id,
+            heroes: _duelChars,
+          },
+        );
         awardKillXP(turnContext, quarry, c);
       }
     }
@@ -585,12 +596,23 @@ export function advancePursuit(turnContext, c, ph) {
           heroes: _duelChars,
         });
       } else {
-        reportHeroFall(turnContext, quarry, c, `${quarry.name} is run down and slain!`, {
-          audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          province: prov.id,
-          heroes: _duelChars,
-        });
+        reportHeroFall(
+          turnContext,
+          quarry,
+          c,
+          {
+            kind: 'a hero is slain outside a battle',
+            heroName: quarry.name,
+            how: 'run down in the chase',
+            killerName: null,
+          },
+          {
+            audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            province: prov.id,
+            heroes: _duelChars,
+          },
+        );
         awardKillXP(turnContext, c, quarry);
       }
     }

@@ -38,7 +38,10 @@ check finds were made.
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
   `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
   (the event without its type and text: `{ audience, province, hero, phase, … }`), and files it with
-  `emit(turnContext, { type, text, ...place })`. A line that may be words or a fact (a beaten guard's survivors' fates:
+  `emit(turnContext, { type, text, ...place })`. `reportHeroFall` takes the line as a fact, as `notifyTarget` does
+  (since P1-12d11: one kind, "a hero is slain outside a battle", the way he fell a value, `how`, one for each of its 12
+  callers), and who slew a hero is a record (`TheOneWhoSlewAHero`: a killer's name, or a lair's guardian and its
+  province), not words. A line that may be words or a fact (a beaten guard's survivors' fates:
   facts, but a unit disbanding is still words from `army-tables.ts`; what `notifyTarget` and `notifyProvinceOwner` are
   handed; each half `logSplit` is handed, since P1-12d7) goes in as `...theWordsOrTheFactOfALine(line)`, which gives `emit` its `text` or its `fact`. Build it as the event's own fields, never as the old `log()` meta
   (`targets`, `provinceId`, `charId`, `public`). A line seen by those there but with no province is seen by the world
