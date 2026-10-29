@@ -24,6 +24,11 @@ import {
   AN_ITEMS_POWER_USED,
 } from './magic-items/a-heros-items-in-the-realms-tax-and-in-his-orders.ts';
 import {
+  A_HEROS_MAXIMUM_HP,
+  A_SKILLS_AURA_IN_THE_PROVINCE,
+  THE_TEMPER_HE_FIGHTS_WITH,
+} from './magic-items/a-heros-items-in-his-standing.ts';
+import {
   THE_BEATEN_FORCE_MAY_RETREAT,
   THE_COMMANDER_ADDS_VOLLEYS,
   THE_COMMANDERS_RIDERS_RUN_THE_BEATEN_DOWN_ON_ANY_GROUND,
@@ -35,6 +40,7 @@ import type {
   ALandUnitAtSeaLed,
   AUnitLedByACommander,
   HookPointName,
+  TheAuraAnItemSpreads,
   TheDefendersFortificationsAndACommandersSide,
   TheFortificationsLine,
   TheStagesOfEachHookPoint,
@@ -89,6 +95,11 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'iron-heart-talisman': { orderOutcome: { "a rest's heal": A_RESTS_HEAL['iron-heart-talisman'] } },
   'travellers-cloak': { orderOutcome: { "a move's exploration": A_MOVES_EXPLORATION['travellers-cloak'] } },
   'philosophers-stone': { orderOutcome: { "an item's power used": AN_ITEMS_POWER_USED['philosophers-stone'] } },
+  'maximum-hp': { aHerosStanding: { 'maximum HP': A_HEROS_MAXIMUM_HP['maximum-hp'] } },
+  temper: { aHerosStanding: { 'the temper he fights with': THE_TEMPER_HE_FIGHTS_WITH.temper } },
+  'crown-of-command': {
+    aHerosStanding: { "a skill's aura in the province": A_SKILLS_AURA_IN_THE_PROVINCE['crown-of-command'] },
+  },
 } satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -125,6 +136,11 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     "a move's exploration": ['travellers-cloak'],
     "an item's power used": ['philosophers-stone'],
   },
+  aHerosStanding: {
+    'maximum HP': ['maximum-hp'],
+    'the temper he fights with': ['temper'],
+    "a skill's aura in the province": ['crown-of-command'],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly MagicItemEffectSlug[];
@@ -138,8 +154,15 @@ const ENTRIES: Readonly<Record<MagicItemEffectSlug, MagicItemEffectEntry>> = THE
 /** A held copy of an item, as the registry reads it: its name, its effect's key and the fields of its own an effect is
  *  carried by (each guarded: a copy may lack any of them). */
 export type AMagicItemAsTheRegistryReadsIt = {
-  readonly name?: string | null;
-  readonly effect?: { readonly stat?: string | null; readonly bonus?: unknown } | null;
+  readonly name?: string | null | undefined;
+  readonly effect?:
+    | {
+        readonly stat?: string | null | undefined;
+        readonly bonus?: unknown;
+        readonly temper?: string | null | undefined;
+      }
+    | null
+    | undefined;
 } & Partial<Readonly<Record<AnItemsOwnField, unknown>>>;
 
 // Built once, as the file loads, from the content: which effects a key, a field or a base name carries.
@@ -378,6 +401,60 @@ export function thePowerAnItemWorksWhenUsed(item: AMagicItemAsTheRegistryReadsIt
     if (!carried.includes(slug)) continue;
     const power = ENTRIES[slug].orderOutcome?.["an item's power used"]?.();
     if (power) return power;
+  }
+  return null;
+}
+
+/** The runner of "aHerosStanding: maximum HP" (itemMaxHpBonus): the hit points a hero's items add to his maximum, item
+ *  by item in the order he holds them, each item's effects in the stage's order; a second copy of a name that has
+ *  added counts no more. */
+export function theMaximumHpAHerosItemsAdd(theHerosItems: readonly AMagicItemAsTheRegistryReadsIt[]): number {
+  const order = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.aHerosStanding['maximum HP'];
+  const seen = new Set<string | null | undefined>();
+  let hp = 0;
+  for (const item of theHerosItems) {
+    const carried = theEffectsAnItemCarries(item).filter((slug) => order.some((s) => s === slug));
+    if (!carried.length || seen.has(item.name)) continue;
+    seen.add(item.name);
+    for (const slug of order)
+      if (carried.includes(slug)) hp += ENTRIES[slug].aHerosStanding?.['maximum HP']?.(item) ?? 0;
+  }
+  return hp;
+}
+
+/** Whether a held item carries an effect at "aHerosStanding: maximum HP" (applyItemMaxHp: an item granted or lost that
+ *  carries none leaves the maximum as it is). */
+export function anItemChangesAHerosMaximumHp(item: AMagicItemAsTheRegistryReadsIt): boolean {
+  const order: readonly MagicItemEffectSlug[] = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.aHerosStanding['maximum HP'];
+  return theEffectsAnItemCarries(item).some((slug) => order.includes(slug));
+}
+
+/** The runner of "aHerosStanding: the temper he fights with" (effTemper): the temper the first of a hero's items, in
+ *  the order he holds them, gives him (its first effect in the stage's order that gives one), or nothing. */
+export function theTemperAHerosItemsGiveHim(theHerosItems: readonly AMagicItemAsTheRegistryReadsIt[]): string | null {
+  const order = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.aHerosStanding['the temper he fights with'];
+  for (const item of theHerosItems) {
+    const carried = theEffectsAnItemCarries(item);
+    for (const slug of order) {
+      if (!carried.includes(slug)) continue;
+      const temper = ENTRIES[slug].aHerosStanding?.['the temper he fights with']?.(item);
+      if (temper) return temper;
+    }
+  }
+  return null;
+}
+
+/** The runner of "aHerosStanding: a skill's aura in the province" (skillBonusBreakdown, asked of each hero of the
+ *  realm in the province in turn): the aura the first effect a hero's items carry, in the stage's order, spreads, or
+ *  nothing. */
+export function theAuraAHerosItemsSpread(
+  theHerosItems: readonly AMagicItemAsTheRegistryReadsIt[],
+): TheAuraAnItemSpreads | null {
+  const carried = theEffectsTheseItemsCarry(theHerosItems);
+  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.aHerosStanding["a skill's aura in the province"]) {
+    if (!carried.has(slug)) continue;
+    const aura = ENTRIES[slug].aHerosStanding?.["a skill's aura in the province"]?.();
+    if (aura) return aura;
   }
   return null;
 }

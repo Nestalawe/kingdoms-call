@@ -2,6 +2,7 @@ import { KC_RUMOUR_COST_BY_POWER } from '../../content/kingdoms-call-data.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
+import { anItemChangesAHerosMaximumHp } from '../rules/the-registry-of-magic-item-effects.ts';
 import type { Character, GameState, Item, Realm } from '../../schemas/saved-game-state.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 
@@ -615,7 +616,7 @@ export function applyItemMaxHp(
   item: { readonly effect?: { readonly stat?: string | undefined } | null | undefined } | null | undefined,
 ) {
   if (!ch) return;
-  if (item?.effect && item.effect.stat !== 'maxHp') return;
+  if (item?.effect && !anItemChangesAHerosMaximumHp(item)) return; // the items' registry (plan P1-19p)
   syncMaxHp(ch, undefined); // no realms: syncMaxHp reads maxHpPlayers' (its second argument was left out)
 }
 export function grantMithrilTo(
