@@ -22,7 +22,9 @@ import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-
 // carry it (stranding), where a beaten force may fall back and which ground it prefers, and a fleet's retreat to water
 // with the hulls left ashore (naval holds). settleStrandedAtSea, retreatValue, bestRetreat, retreatOptions,
 // _navalLeaveBehind, navalHoldLine and navalSplitRetreat take the turn's context first (src/engine/turn/context.ts);
-// the rest read no turn state.
+// the rest read no turn state. Their lines are facts, their words written in the views: the stranding's since P1-12d14
+// (the-facts-a-stranding-at-seas-lines-record.ts), the rest's since P1-12d5 (the-facts-the-sea-lifts-battle-lines-
+// record.ts).
 // ── STRANDED AT SEA (2026-09-23c, Toby) ──────────────────────────────────────────────────────
 // A column standing on open water must stay CARRIED: its hulls (and humanoid flyers) must lift
 // every land unit it leads — the rule getSeaCapability applies to putting to sea. When hulls are
@@ -128,7 +130,7 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
     if (!out.length) return;
     c.armies = (c.armies || []).filter((a) => !out.includes(a));
     const owner = c._charmTempControl && c._charmOriginalPlayer != null ? c._charmOriginalPlayer : c.player; // a seized hero's troops stay his own lord's
-    const why = cause || 'too few hulls left afloat to carry the whole column';
+    const why = cause || null; // the words a caller hands in (the safety net after the wages), else the prose's
     const place = {
       audience: { actor: owner, realms: [owner] },
       hero: c.id,
@@ -140,13 +142,14 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
     if (temps.length)
       emit(turnContext, {
         type: 'move',
-        text: `✨ ${c.name}'s ${temps.map(strandLabel).join(', ')} cannot be carried over open water — the binding fails and ${temps.length === 1 ? 'it dissolves' : 'they dissolve'}.`,
+        fact: {
+          kind: 'bound units a column cannot carry over open water dissolve',
+          heroName: c.name,
+          units: theUnitsAsTheLineNamesThem(temps),
+        },
         ...place,
       });
     if (units.length) {
-      const lbl = units.map(strandLabel).join(', '),
-        are = units.length === 1 ? 'is' : 'are',
-        join = units.length === 1 ? 'joins' : 'join';
       const shore = getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).filter(
         (p2) => p2 && p2.owner === owner && p2.terrain !== 'sea',
       );
@@ -166,14 +169,26 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
         dest.garrisonArmies = (dest.garrisonArmies || []).concat(units);
         emit(turnContext, {
           type: 'move',
-          text: `⚓ ${c.name} has ${why}: ${lbl} ${are} put ashore at ${dest.name} and ${join} its garrison (the weakest go first).`,
+          fact: {
+            kind: 'units a column cannot carry are put ashore and join a garrison',
+            heroName: c.name,
+            why,
+            units: theUnitsAsTheLineNamesThem(units),
+            shoreName: dest.name,
+          },
           ...place,
         });
       } else if (prov.owner === owner) {
         prov.garrisonArmies = (prov.garrisonArmies || []).concat(units);
         emit(turnContext, {
           type: 'move',
-          text: `⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name} as its garrison (the weakest go first).`,
+          fact: {
+            kind: "units a column cannot carry hold the realm's sea province",
+            heroName: c.name,
+            why,
+            units: theUnitsAsTheLineNamesThem(units),
+            provinceName: prov.name,
+          },
           ...place,
         });
       } else if (prov.owner == null && !(prov.neutralDefenders || []).length) {
@@ -186,17 +201,27 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
         prov.garrisonArmies = (prov.garrisonArmies || []).concat(units);
         emit(turnContext, {
           type: 'move',
-          text: `⚓ ${c.name} has ${why}, and no shore of the realm lies alongside: ${lbl} ${are} left holding ${prov.name}, which they claim for ${_pl ? _pl.name : 'the realm'} as its garrison (the weakest go first).`,
+          fact: {
+            kind: 'units a column cannot carry hold and claim an unowned sea province',
+            heroName: c.name,
+            why,
+            units: theUnitsAsTheLineNamesThem(units),
+            provinceName: prov.name,
+            realmName: _pl ? _pl.name : null,
+          },
           ...place,
         });
       } else {
-        const _whose =
-          prov.owner != null
-            ? `${(G.players[prov.owner] || {}).name || 'another realm'}'s waters`
-            : 'waters its neutral defenders still hold';
         emit(turnContext, {
           type: 'move',
-          text: `⚓ ${c.name} has ${why}, no shore of the realm lies alongside and ${prov.name} is ${_whose}: ${lbl} ${are} lost at sea.`,
+          fact: {
+            kind: 'units a column cannot carry are lost at sea',
+            heroName: c.name,
+            why,
+            units: theUnitsAsTheLineNamesThem(units),
+            provinceName: prov.name,
+            waters: prov.owner != null ? { realmName: (G.players[prov.owner] || {}).name || null } : null,
+          },
           ...place,
         });
       }

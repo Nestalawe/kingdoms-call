@@ -78,6 +78,18 @@ import {
   type TheFactOfATitleIntelligenceLine,
 } from '../titles/the-facts-the-title-intelligence-lines-record.ts';
 import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCHS_LINE,
+  type TheFactOfADefendWatchsLine,
+} from '../units/the-facts-the-defend-watchs-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_STRANDING_AT_SEAS_LINE,
+  type TheFactOfAStrandingAtSeasLine,
+} from '../units/the-facts-a-stranding-at-seas-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE,
+  type TheFactOfTheWarSpoilsLine,
+} from '../units/the-facts-the-war-spoils-line-records.ts';
+import {
   THE_AUDIENCE_OF_EACH_KIND_OF_AN_ENCOUNTER_OR_DEFEND_ORDERS_LINE,
   type TheFactOfAnEncounterOrDefendOrdersLine,
 } from '../orders/the-facts-the-encounter-and-defend-orders-lines-record.ts';
@@ -137,7 +149,7 @@ export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolv
  *  Recruit and Hire orders'; since P1-12d7 the army orders', the realm works orders' and the war mastery orders'; since
  *  P1-12d8 the espionage orders' and the explore and search orders'; since P1-12d9 the Cast Spell order's; since
  *  P1-12d10 the move order's; since P1-12d12 a chase's and a hero's experience and hit points'; since P1-12d13 the
- *  title intelligence's. */
+ *  title intelligence's; since P1-12d14 the Defend watch's, a stranding at sea's and the war-spoils'. */
 type TheFactsOfEachArea = [
   TheFactOfABattlesLine,
   TheFactOfAPersonalCombatsLine,
@@ -159,6 +171,9 @@ type TheFactsOfEachArea = [
   TheFactOfAChasesLine,
   TheFactOfAHerosExperienceLine,
   TheFactOfATitleIntelligenceLine,
+  TheFactOfADefendWatchsLine,
+  TheFactOfAStrandingAtSeasLine,
+  TheFactOfTheWarSpoilsLine,
 ];
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
@@ -207,6 +222,9 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_CHASES_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_TITLE_INTELLIGENCE_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCHS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_STRANDING_AT_SEAS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */

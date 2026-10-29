@@ -138,6 +138,9 @@ const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
   ps: Province[],
 ) => Province[];
 const kcRng = vm.runInContext('kcRng', engine) as { use(next: () => number): () => number };
+/** The turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3):
+ *  since P1-12d14 the Defend watch's lines are facts, their words there alone. */
+const theTurnsLinesInWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => { gmLog: Line[] };
 
 const must = <T>(x: T | undefined | null, what: string): T => {
   if (x == null) throw new Error('missing ' + what);
@@ -203,7 +206,7 @@ function board() {
     p.owner = pi;
     if (pi != null) must(G.players[pi], 'realm ' + String(pi)).provinces.push(p.id);
   };
-  const lines = () => tc.turnLog as unknown as Line[];
+  const lines = () => theTurnsLinesInWords(tc.turnLog).gmLog;
   return { tc, G, X, ring1, ring2, near, nbrs, own, lines };
 }
 type Board = ReturnType<typeof board>;

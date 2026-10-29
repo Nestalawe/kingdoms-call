@@ -9,7 +9,8 @@ import { narrate } from '../turn/events-and-their-audiences.ts';
 // an ATTACKING force. The wage pass at end of turn halves that turn's upkeep for any unit stamped
 // with the current turn (stale stamps from earlier turns are simply ignored).
 // 2026-09-24 (Toby item 3): when `battle` is passed, a closing line is appended to its narrative
-// naming how many Orcish units earned the spoils — so it is called BEFORE emitBattle.
+// naming how many Orcish units earned the spoils — so it is called BEFORE emitBattle. The line is a fact (since
+// P1-12d14: the-facts-the-war-spoils-line-records.ts), its words written in the views.
 export function markOrcAttackWin(ch, gs, battle) {
   if (!ch || ch.player == null || !gs.players[ch.player] || gs.players[ch.player].race !== 'Orcish') return 0;
   let n = 0;
@@ -20,10 +21,11 @@ export function markOrcAttackWin(ch, gs, battle) {
     }
   });
   if (n > 0 && battle && Array.isArray(battle.narrative))
-    narrate(
-      battle.narrative,
-      `🪓 **Orcish war-spoils**: ${n} Orcish unit${n !== 1 ? 's' : ''} of ${ch.name.replace(' (wandering)', '')}'s host plunder${n === 1 ? 's' : ''} the field — their wages are halved this turn.`,
-    );
+    narrate(battle.narrative, {
+      kind: 'Orcish units plunder the field of a battle won attacking',
+      heroName: ch.name,
+      units: n,
+    });
   return n;
 }
 
