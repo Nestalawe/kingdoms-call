@@ -7,7 +7,11 @@
 // - a number a `||` gave its fallback for, which `??` alone would keep: a 0 or a missing Mithril ward, open guard's
 //   percentage, nature's factor, count of guards used, round, raw level; a grade or temper the tables lack;
 // - the wards no game sees take effect (P1-19's count: a block, a first hit, a resist, a dodge, the Warbringer worn),
-//   a hit's cap, the Mithril ward, and a fighter of no status, which throws where it threw.
+//   a hit's cap, the Mithril ward, and a fighter of no status, which throws where it threw;
+// - and what each ward does that no game of the matrix sees (plan P1-19r, which moved them into the items' registry,
+//   extends these: P1-19's count: a buckler, a cap, a low-HP cut, thorns, a second wind; and the arrow and spell
+//   blocks, the flat and spell cuts, and a round's fresh ward, sloughing and regeneration), each from a ward table or
+//   a merge as the fight builds it.
 // Level 1 (unit): each is a plain function on a staged fighter, called on the engine's modules (tests/lib/
 // personal-combat.ts, for the turn's context), the dice pinned with kcRng.use (pc.pinned); a static check can't run
 // them, and no game reaches these lines.
@@ -36,7 +40,7 @@ const { pcAdvanceOrStrike, pcArrowHitChance, pcCombatXP, pcFireShot, pcFreeStrik
   await import('../../src/engine/personal-combat/melee-flight-and-archery.ts');
 const { pcMonsterCombatant, pcNewStatus } =
   await import('../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts');
-const { pcPenaltyFade } = await import('../../src/engine/personal-combat/helpers.ts');
+const { pcArmourMerge, pcPenaltyFade } = await import('../../src/engine/personal-combat/helpers.ts');
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
 
 type Staged = Record<string, unknown>;
@@ -214,6 +218,64 @@ describe('a hit taken', () => {
     expect([hit(f, 8), f._openGuardUsed, hit(f, 8)]).toEqual([4, 1, 8]);
     expect([hit(guard(0), 8), hit(guard(25), 8)]).toEqual([4, 6]);
   });
+  // (plan P1-19r) a plain fighter of 20 HP; a spell ('Fireball') meets no temper, nature or perk of his
+  test('a buckler worn: a melee blow deals 1 less, not an arrow; a blow and an arrow have 5% less chance to hit', () => {
+    const arm = pcArmourMerge(null, { ward: 'buckler' }, 'Bronze Buckler');
+    expect([hit(fighter({ arm }), 4), hit(fighter({ arm }), 4, 'arrow')]).toEqual([3, 4]);
+    expect(pcHitChance(tc, fighter(), fighter({ arm }))).toBe(45);
+    expect(pcArrowHitChance(tc, fighter({ archery: 2 }), fighter({ arm }))).toBe(45);
+  });
+  test('an arrow block of 100 takes every arrow, not a blow; a spell block every spell, not a blow', () => {
+    const arrows = fighter({ arm: { names: ['Kite Shield of the Marches'], arrowBlock: 100 } });
+    expect([hit(arrows, 4, 'arrow'), hit(arrows, 4)]).toEqual([0, 4]);
+    const spells = fighter({ arm: { names: ['Mirror-Bright Shield'], spellBlock: 100 } });
+    expect([hit(spells, 4, 'Fireball'), hit(spells, 4)]).toEqual([0, 4]);
+  });
+  test('the cuts: melee off a blow, arrow off an arrow, dark against the undead, a spell ward off a spell', () => {
+    const arm = { names: ['Grave-Iron Plate'], meleeDR: 2, arrowDR: 1, spellPct: 50 };
+    expect([hit(fighter({ arm }), 6), hit(fighter({ arm }), 6, 'arrow'), hit(fighter({ arm }), 8, 'Fireball')]).toEqual(
+      [4, 5, 4],
+    );
+    const dark = { names: ['Grave-Iron Plate'], darkDR: 1 };
+    expect([
+      hit(fighter({ arm: dark, _foeCat: 'undead' }), 6, 'Fireball'),
+      hit(fighter({ arm: dark }), 6, 'Fireball'),
+    ]).toEqual([5, 6]);
+  });
+  test('a low-HP ward: below half his maximum HP, a hit deals its share less; at half, none', () => {
+    const arm = { names: ["Warden's Scale"], lowHp: 25 };
+    expect([hit(fighter({ hp: 9, arm }), 8, 'Fireball'), hit(fighter({ hp: 10, arm }), 8, 'Fireball')]).toEqual([6, 8]);
+  });
+  test('a cap ward: no hit deals more than its share of his maximum HP; a hit under it is whole', () => {
+    const arm = { names: ['Bulwark Breastplate'], cap: 25 };
+    expect([hit(fighter({ arm }), 8, 'Fireball'), hit(fighter({ arm }), 4, 'Fireball')]).toEqual([5, 4]);
+  });
+  test('a second wind: the first hit to leave him below 30% of his maximum gives back its share, once a fight', () => {
+    const arm = { names: ['Last-Stand Plate'], secondWind: 25 };
+    const f = fighter({ hp: 8, arm });
+    expect([hit(f, 3, 'Fireball'), f.hp, f._armSecondWindUsed]).toEqual([3, 10, true]);
+    hit(f, 5, 'Fireball');
+    expect(f.hp).toBe(5);
+    // left at 30% exactly: not below it
+    const g = fighter({ hp: 9, arm });
+    hit(g, 3, 'Fireball');
+    expect([g.hp, g._armSecondWindUsed]).toEqual([6, undefined]);
+  });
+  test('thorns: whoever lands a melee blow on the wearer takes them back', () => {
+    const strike = (foe: AFighterInAPersonalCombat) => {
+      const actor = fighter();
+      const narrative: NarrativeLine[] = [];
+      pc.pinned(0, () => {
+        pcMeleeStrike(tc, actor, foe, narrative);
+      });
+      return [actor.hp, kinds(narrative).at(-1)];
+    };
+    expect(strike(fighter({ arm: { names: ['Thornwood Cuirass'], thorns: 2 } }))).toEqual([
+      18,
+      "the foe's thorns bite a fighter",
+    ]);
+    expect(strike(fighter())).toEqual([20, 'a fighter strikes the foe']);
+  });
   test('a hero’s fatal blow with no narrative leaves no mark; with one, the mark', () => {
     const f = fighter({ kind: 'character', hp: 3 });
     pc.pinned(0, () => pcTakeHit(tc, f, 5, none, 'a foe', 'blow'));
@@ -259,6 +321,20 @@ describe('the start of a round', () => {
     const once = 30 - pcPenaltyFade(30);
     expect(kinds(round(f, 0))).toEqual(['a fighter shrugs off the daze, held steady by their armour']);
     expect([f.status.hitPenalty, f.status.stun]).toEqual([once - pcPenaltyFade(once), 0]);
+  });
+  // (plan P1-19r) a hero: his regeneration doesn't fade with the fight
+  test('as a round starts: a fresh round ward, every lingering harm sloughed off, and a hero regenerates', () => {
+    const f = fighter({
+      kind: 'character',
+      hp: 10,
+      arm: { names: ['Ashen Plate'], regen: 2, roundWard: 3, dotImmune: true },
+      status: status({ dot: [{ dmg: 2, rounds: 2, label: 'a burn' }] }),
+    });
+    expect(kinds(round(f))).toEqual([
+      "a fighter's armour sloughs off every burn poison and bleeding",
+      "a guardian's regeneration knits its flesh",
+    ]);
+    expect([f.hp, f._roundWardLeft, f.status.dot]).toEqual([12, 3, []]);
   });
 });
 

@@ -104,7 +104,8 @@ const THE_HEAVY_ENGINES_THE_ENGINEERS_ITEMS_REACH: readonly UnitType[] = ['Mount
  *  each unit he leads, then his items at sea (plan P1-19m); the commanders' items at the defenders' fortifications, at
  *  the volley and in the rout (plan P1-19n); then a hero's items in the realm's tax at the turn's end, and in his orders
  *  (plan P1-19o); then a hero's items in his own standing: his maximum hit points, his temper and his skills (plan
- *  P1-19p); then what a fighter wears in personal combat: his wards, his riders and the Mithril suit (plan P1-19q). */
+ *  P1-19p); then what a fighter wears in personal combat: his wards, his riders and the Mithril suit (plan P1-19q),
+ *  with the numbers the fight wrote for what each does (plan P1-19r). */
 export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── The commander's items (strength, in armStr: after the unit's own modifiers, before its factors from its force),
   // each step rounded as it goes. ──
@@ -298,7 +299,8 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // into one table (pcArmourMerge: an amount adds, a percentage takes the best, a flag is set), and his items' other
   // riders (pcApplyFx). A guardian's perk of the same ward or rider reaches the same effect. Each copy carries its own
   // amount, percentage or hits (the copy's number, not content's: no number here), but where a row says. What each
-  // ward does in a fight is the fight's (pcTakeHit, pcRoundStart, the chance to hit and the blow). ──
+  // ward does in a fight (pcTakeHit, pcRoundStart, the chance to hit, the blow, a stun, a spell's burn: plan P1-19r)
+  // reads the same copy's numbers, and here the ones the code wrote itself. ──
   'melee-damage-turned-aside': { name: 'Dwarf-Forged Hauberk', carriedAs: { ward: 'meleeDR' }, numbers: {} },
   'arrow-damage-turned-aside': { name: 'Arrow-Turning Brigandine', carriedAs: { ward: 'arrowDR' }, numbers: {} },
   // against a beast, vermin or a dragon
@@ -311,12 +313,27 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   dodge: { name: 'Quicksilver Mail', carriedAs: { ward: 'dodge' }, numbers: {} },
   block: { name: 'Tower Shield of the Wall', carriedAs: { ward: 'block' }, numbers: {} },
   'a-hits-damage-capped': { name: 'Bulwark Breastplate', carriedAs: { ward: 'cap' }, numbers: {} },
-  'second-wind': { name: 'Last-Stand Plate', carriedAs: { ward: 'secondWind' }, numbers: {} },
-  'damage-cut-at-low-hp': { name: "Warden's Scale", carriedAs: { ward: 'lowHp' }, numbers: {} },
+  // Once a fight, the first time a hit leaves him below this share of his maximum HP, he recovers the copy's share.
+  'second-wind': {
+    name: 'Last-Stand Plate',
+    carriedAs: { ward: 'secondWind' },
+    numbers: { belowThisShareOfHisMaximumHp: { value: 0.3, theTextsWriteIt: 'a share, as a percentage' } },
+  },
+  // While he is below this share of his maximum HP, every hit on him deals the copy's share less.
+  'damage-cut-at-low-hp': {
+    name: "Warden's Scale",
+    carriedAs: { ward: 'lowHp' },
+    numbers: { belowThisShareOfHisMaximumHp: { value: 0.5, theTextsWriteIt: 'a share, in words' } },
+  },
   'the-first-hit-drunk': { name: 'Blood-Bound Cuirass', carriedAs: { ward: 'firstHit' }, numbers: {} },
   'lingering-harm-turned-aside': { name: 'Ashen Plate', carriedAs: { ward: 'dotImmune' }, numbers: {} },
-  // No item in play carries it: the engine's load-time pass rewrites its one item.
-  resist: { name: 'Steadfast Harness', carriedAs: { ward: 'resist' }, numbers: {} },
+  // A to-hit penalty fades twice as fast, and a daze is shrugged off at the start of a round on this chance. No item in
+  // play carries it: the engine's load-time pass rewrites its one item.
+  resist: {
+    name: 'Steadfast Harness',
+    carriedAs: { ward: 'resist' },
+    numbers: { theChanceToShrugOffADaze: { value: 0.5, theTextsWriteIt: 'a share, in words' } },
+  },
   'arrow-block': { name: 'Kite Shield of the Marches', carriedAs: { ward: 'arrowBlock' }, numbers: {} },
   // Melee blows deal 1 less, and foes have 5% less chance to hit (the best dodge worn): whatever the copy carries.
   buckler: {
@@ -348,9 +365,14 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   'hit-bonus-rider': { name: "Warden's Poleaxe", carriedAs: { rider: 'hitBonus' }, numbers: {} },
   // His blows' damage: his add.
   'damage-bonus-rider': { name: 'Kingsteel Longsword', carriedAs: { rider: 'dmgBonus' }, numbers: {} },
-  // A dwarven birthright in no table (src/engine/heroes/fame-and-consecration.ts): he fights in Mithril. What the suit
-  // turns aside is the fight's (pcCharCombatant's mithrilDR, read by pcTakeHit).
-  'mithril-armour': { name: 'Mithril Armour', carriedAs: { stat: 'mithrilArmour' }, numbers: {} },
+  // A dwarven birthright in no table (src/engine/heroes/fame-and-consecration.ts): he fights in Mithril, and every melee
+  // blow or arrow that lands on him deals this much less (never below 1), whatever the copy's own bonus; a realm's
+  // Mithril Craft adds to it (pcCharCombatant's mithrilDR, which pcTakeHit reads).
+  'mithril-armour': {
+    name: 'Mithril Armour',
+    carriedAs: { stat: 'mithrilArmour' },
+    numbers: { damageTurnedAside: { value: 2, theTextsWriteIt: 'damage turned aside' } },
+  },
 } as const satisfies Record<string, AMagicItemEffectAsItsTextsWriteIt>;
 
 /** The slug of an effect the registry holds. */

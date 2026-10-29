@@ -5,7 +5,11 @@
 // or in a function nested inside: but the words listed with what else each is there, and the checks listed with the
 // step each is left to); and it reads none of the six effects an item carries on itself, beside its
 // `effect` (`fleetStr`, `landFullAtSea`, `emberTwo`, `exploreMove`, `primalStrike`, `drumTierUp`), which no string
-// names, but the reads listed with the step each is left to. Its
+// names, but the reads listed with the step each is left to; and, from P1-19r, it uses no field of the wards a fighter
+// wears (`x.arm.meleeDR`, `x.arm?.dodge`, or through a name bound to `x.arm` in the function: the table pcArmourMerge
+// builds, whose names alone are the lines'), but a guardian's perks' own wards (stunWard, dotWard, schoolWard), listed
+// with the step each is left to; nor does any other function of src/engine/ outside rules/, but the guardian's build,
+// listed. Its
 // effects find what an item carries by the key the content's row gives, in src/engine/rules/. Each row of the family
 // adds the functions it takes. With them, the ratchet's count of the engine's checks of an item outside the registry
 // (tools/ratchet.ts's itemEffectChecksInEngine, by its helper itemEffectChecksByFunction: a string of the vocabulary
@@ -16,7 +20,8 @@
 // two battles' functions 8, and pursuitsOfTheBeaten 1, on P1-19n's; Early Winter 2 and the orders' and the bots' plan
 // 5, and resolveMoveOrder's read of `exploreMove`, on P1-19o's; itemMaxHpBonus, applyItemMaxHp, effTemper and
 // skillBonusBreakdown 1 each, and skillBonusBreakdown's 'Crown of Command', on P1-19p's; pcArmourMerge 21, pcArmourOf
-// 1 and pcCharCombatant's Mithril 1 on P1-19q's), as the unit-name test was: the one exception to refactor-only's rule
+// 1 and pcCharCombatant's Mithril 1 on P1-19q's; the uses of a ward's field, 57 in eight functions, 50 of an item's
+// ward, and pcMeleeStrike's 'thorns', pcTakeHit's 5 and pcRoundStart's 'regen', on P1-19r's), as the unit-name test was: the one exception to refactor-only's rule
 // that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
@@ -89,6 +94,22 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'pcCharCombatant',
     'P1-19q, what a fighter wears',
   ],
+  ['src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts', 'pcHitChance', 'P1-19r, what a ward does'],
+  ['src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts', 'pcStunWard', 'P1-19r, what a ward does'],
+  ['src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts', 'pcTakeHit', 'P1-19r, what a ward does'],
+  ['src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts', 'pcRoundStart', 'P1-19r, what a ward does'],
+  ['src/engine/personal-combat/melee-flight-and-archery.ts', 'pcMeleeStrike', 'P1-19r, what a ward does'],
+  ['src/engine/personal-combat/melee-flight-and-archery.ts', 'pcArrowHitChance', 'P1-19r, what a ward does'],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'pcCastCombatSpell',
+    'P1-19r, what a ward does',
+  ],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'pcMonsterSpecial',
+    'P1-19r, what a ward does',
+  ],
 ];
 
 /** The words of the vocabulary a taken function holds for something else, by the function, each with what it is (the
@@ -102,6 +123,10 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   combatVsNPC: ['terror', 'terror'],
   // the kind of source the portals colour a skill's bonus by ({ kind: 'aura' }), not the Crown of Command's key
   skillBonusBreakdown: ['aura'],
+  // the key a guardian's perk is named by in the drain's line (`_perkName.drain`), not a check of an item: what a
+  // drain rider does in the fight (`actor.drain`, a field of his riders) no row of the items family takes (Parked
+  // "What an item's riders do in a personal combat is read inline: no row of P1-19's items family takes it")
+  pcMeleeStrike: ['drain'],
 };
 
 /** The reads of an item's own field a taken function still holds, by the function, each left to a later step (the
@@ -123,6 +148,24 @@ const CHECKS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> =
   resolveSpyOrder: ['hidden'],
   // `'combatUse'`: the combat items a hero carries into a fight, which P1-19s takes (the items family's row s)
   pcCharCombatant: ['combatUse'],
+  // the Dreamstone's stun and the Death's Finger Ring's bite: items that change a spell, with the spells family (the
+  // items family's Decision 5)
+  pcCastCombatSpell: ['Dreamstone', "Death's Finger Ring"],
+};
+
+/** The uses of a field of the wards a fighter wears that a function of src/engine/ outside rules/ still holds, by the
+ *  function, each left to a later step: a guardian's perks' own wards and a guardian's grade's cap, with the guardian
+ *  family (the items family's "Parked for later"; P1-19q left their merge in pcArmourMerge). Every other function holds
+ *  none: one more, or one gone, turns it red. */
+const WARD_USES_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {
+  // a guardian's perk's chance to shrug off a stun
+  pcStunWard: ['stunWard'],
+  // a guardian's perk's share off a lingering harm, and its whole (100)
+  pcRoundStart: ['dotWard', 'dotWard'],
+  // a guardian's perk's ward against one school of magic
+  pcCastCombatSpell: ['schoolWard', 'schoolWard'],
+  // a guardian's own cap beside its grade's bulk (the guardian's build)
+  pcMonsterCombatant: ['cap', 'cap'],
 };
 
 /** The effects an item carries on itself, beside its `effect` (Parked: one key per effect, later). */
@@ -135,16 +178,85 @@ const AN_ITEMS_OWN_FIELDS: ReadonlySet<string> = new Set([
   'drumTierUp',
 ]);
 
-/** Whether a node declares the function named (as the ratchet's helper finds a function). */
-function declares(node: ts.Node, fn: string): boolean {
-  if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name) return node.name.getText() === fn;
-  return (
-    ts.isVariableDeclaration(node) &&
+/** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
+ *  finds a function). */
+function aFunctionsName(node: ts.Node): string | null {
+  if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name) return node.name.getText();
+  return ts.isVariableDeclaration(node) &&
     ts.isIdentifier(node.name) &&
-    node.name.text === fn &&
     node.initializer !== undefined &&
     (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))
-  );
+    ? node.name.text
+    : null;
+}
+
+/** An expression without its parentheses, its `!` and the right of a `??` (`target.arm ?? null` is the table). */
+function bare(node: ts.Expression): ts.Expression {
+  if (ts.isParenthesizedExpression(node) || ts.isNonNullExpression(node)) return bare(node.expression);
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken)
+    return bare(node.left);
+  return node;
+}
+
+/** Each use of a field of the wards a fighter wears in a function, in the order written: `x.arm.f`, `x.arm?.f`,
+ *  `x.arm['f']`, or the same through a name the function binds to `x.arm` (`const a = t?.arm`); not `names` (what gave
+ *  them, the lines'). */
+function everyWardUseIn(fn: ts.Node): string[] {
+  const boundToTheWards = new Set<string>();
+  const isTheWards = (node: ts.Expression): boolean => {
+    const b = bare(node);
+    return (
+      (ts.isPropertyAccessExpression(b) && b.name.text === 'arm') || (ts.isIdentifier(b) && boundToTheWards.has(b.text))
+    );
+  };
+  const bind = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      isTheWards(node.initializer)
+    )
+      boundToTheWards.add(node.name.text);
+    ts.forEachChild(node, bind);
+  };
+  bind(fn);
+  const uses: string[] = [];
+  const collect = (node: ts.Node): void => {
+    if (ts.isPropertyAccessExpression(node) && node.name.text !== 'names' && isTheWards(node.expression))
+      uses.push(node.name.text);
+    if (
+      ts.isElementAccessExpression(node) &&
+      ts.isStringLiteral(node.argumentExpression) &&
+      node.argumentExpression.text !== 'names' &&
+      isTheWards(node.expression)
+    )
+      uses.push(node.argumentExpression.text);
+    ts.forEachChild(node, collect);
+  };
+  collect(fn);
+  return uses;
+}
+
+/** In a file: each function's uses of a ward's field (as everyWardUseIn), for the functions that hold one (a function
+ *  inside another counts for the outer one). */
+function everyWardUseByFunction(file: string, text: string): Map<string, string[]> {
+  const byFunction = new Map<string, string[]>();
+  const visit = (node: ts.Node): void => {
+    const name = aFunctionsName(node);
+    if (name !== null) {
+      const uses = everyWardUseIn(node);
+      if (uses.length) byFunction.set(name, [...(byFunction.get(name) ?? []), ...uses]);
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true));
+  return byFunction;
+}
+
+/** Whether a node declares the function named (as the ratchet's helper finds a function). */
+function declares(node: ts.Node, fn: string): boolean {
+  return aFunctionsName(node) === fn;
 }
 
 /** In the function named: every string naming an item's effect key or an item, whatever the code does with it, and
@@ -188,6 +300,35 @@ test.for(TAKEN)('%s: %s names no item effect (%s)', ([file, fn]) => {
     [...(everyItemWordIn(file, text, fn) ?? [])].sort(),
     `every string in ${fn} naming an item's effect or an item, and every read of an item's own field`,
   ).toEqual([...(WORDS_FOR_SOMETHING_ELSE[fn] ?? []), ...(READS_LEFT_TO_A_LATER_STEP[fn] ?? []), ...left].sort());
+  expect(
+    everyWardUseByFunction(file, text).get(fn) ?? [],
+    `every use in ${fn} of a field of the wards a fighter wears (his arm)`,
+  ).toEqual(WARD_USES_LEFT_TO_A_LATER_STEP[fn] ?? []);
+});
+
+// No function of src/engine/ outside rules/ uses a field of the wards a fighter wears, but the ones listed: what each
+// ward does is its entry's in the items' registry (src/engine/rules/, not counted), and the table is read by its runners.
+test("no function of the engine outside the registries uses a ward's field, but the guardian's listed", () => {
+  const uses: Record<string, string[]> = {};
+  for (const [file, text] of theCodeFiles())
+    if (file.startsWith('src/engine/') && !file.startsWith('src/engine/rules/'))
+      for (const [fn, found] of everyWardUseByFunction(file, text)) uses[fn] = [...(uses[fn] ?? []), ...found];
+  expect(uses).toEqual(WARD_USES_LEFT_TO_A_LATER_STEP);
+});
+
+test("every use of a ward's field is found: on the table, through a name bound to it, and none other", () => {
+  const planted = `
+    export function planted(t, cbt, f) {
+      const a = t?.arm, b = (cbt.arm ?? null), c = f.status;
+      const nested = () => f.arm.thorns;
+      return t.arm.meleeDR + t.arm?.dodge + cbt.arm['block'] + a.stunImmune + b?.cap + nested() + f.arm.names.length
+        + c.dodge + f.dodge + f.armour.block + a.names;
+    }
+    const after = (x) => x.arm.regen;`;
+  expect(Object.fromEntries(everyWardUseByFunction('planted.ts', planted))).toEqual({
+    planted: ['thorns', 'meleeDR', 'dodge', 'block', 'stunImmune', 'cap'],
+    after: ['regen'],
+  });
 });
 
 test("the vocabulary holds the content's effect keys and item names, no skill, and Mithril Armour", () => {
