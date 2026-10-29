@@ -144,12 +144,18 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, caughtAt) {
         heroes: _duelChars,
       });
     } else {
-      reportHeroFall(turnContext, thief, victim, `${thief.name} is cut down — a thief's end.`, {
-        audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        province: prov.id,
-        heroes: _duelChars,
-      });
+      reportHeroFall(
+        turnContext,
+        thief,
+        victim,
+        { kind: 'a hero is slain outside a battle', heroName: thief.name, how: "a thief's end", killerName: null },
+        {
+          audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          province: prov.id,
+          heroes: _duelChars,
+        },
+      );
       awardKillXP(turnContext, victim, thief);
     }
   }
@@ -165,12 +171,23 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, caughtAt) {
         heroes: _duelChars,
       });
     } else {
-      reportHeroFall(turnContext, victim, thief, `${victim.name} is slain by the cornered thief!`, {
-        audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        province: prov.id,
-        heroes: _duelChars,
-      });
+      reportHeroFall(
+        turnContext,
+        victim,
+        thief,
+        {
+          kind: 'a hero is slain outside a battle',
+          heroName: victim.name,
+          how: 'by the cornered thief',
+          killerName: null,
+        },
+        {
+          audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          province: prov.id,
+          heroes: _duelChars,
+        },
+      );
       awardKillXP(turnContext, thief, victim);
     }
   }
@@ -1167,7 +1184,12 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
         turnContext,
         victim,
         c,
-        `🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,
+        {
+          kind: 'a hero is slain outside a battle',
+          heroName: victim.name,
+          how: "by an assassin's blade",
+          killerName: c.name,
+        },
         {
           audience: { actor: c.player, realms: [c.player, victim.player].filter((x) => x != null), seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,

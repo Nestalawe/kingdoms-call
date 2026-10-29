@@ -13,6 +13,7 @@ import type {
   TheFactOfAHerosDeathsLine,
   TheSurgeonsReachAFallenHeroTooLate,
 } from '../heroes/the-facts-a-heros-death-lines-record.ts';
+import type { WhyACommandersForceIsDemoralised } from './the-facts-a-battles-lines-record.ts';
 
 // ── THE DUEL BEFORE A BATTLE (plan P1-08g: lifted out of resolveTurn) ────
 // The single combat between the two commanders before an army battle, and the morale each host carries into the battle
@@ -43,7 +44,7 @@ export function preBattleDuel(
   // THIEF L9 Vanish: no one rides out against a commander who is not there, and none may call him
   // out.
   if (isVanished(turnContext, atk) || isVanished(turnContext, def)) return { atkMorale, defMorale };
-  const demoralise = (who: Character, why: string) => {
+  const demoralise = (who: Character, why: WhyACommandersForceIsDemoralised) => {
     if (who === atk) atkMorale = DUEL_MORALE_PENALTY;
     else defMorale = DUEL_MORALE_PENALTY;
     narrate(narrative, { kind: "a commander's force is demoralised", commanderName: who.name, why });
@@ -79,7 +80,7 @@ export function preBattleDuel(
   });
   if (challengedStance === 'refuse') {
     narrate(narrative, { kind: 'the challenged commander will not answer the call', challengedName: challenged.name });
-    demoralise(challenged, `their commander refused the challenge`);
+    demoralise(challenged, 'he refused the challenge');
     return { atkMorale, defMorale };
   }
   narrate(narrative, {
@@ -110,7 +111,7 @@ export function preBattleDuel(
       if (loser !== realLoser && (loser.hp == null || loser.hp <= 0)) loser.hp = realLoser.hp;
       realLoser.alive = true;
       realLoser.killedThisTurn = false;
-      demoralise(loser, `their commander was driven from the field`);
+      demoralise(loser, 'he was driven from the field');
       return { atkMorale, defMorale };
     }
     // alive===true, so its "saved victim" guard bailed and a pre-battle duel kill never paid out.
@@ -150,7 +151,7 @@ export function preBattleDuel(
         });
       else narrate(narrative, l.fact);
     });
-    demoralise(loser, `their commander fell in single combat`);
+    demoralise(loser, 'he fell in single combat');
     if (_duelDied === false) {
       // saved (Battlefield Surgery) — the REAL record lives; keep the copy in step with it so no
       // half-dead doppelganger fights on. Beaten, so the host is still shaken.
@@ -173,7 +174,7 @@ export function preBattleDuel(
     return { atkMorale, defMorale, atkSlain, defSlain };
   } else if (duelResult.fled) {
     // Breaking off the duel is losing it — the runner's own troops saw them go.
-    demoralise(duelResult.fled, `their commander broke off the duel`);
+    demoralise(duelResult.fled, 'he broke off the duel');
     if (duelResult.heldField) awardWinHp(turnContext, duelResult.heldField, narrative, 'duel'); // holding the field in a pre-battle duel is a win
   } else {
     narrate(narrative, { kind: 'the duel ends inconclusively' });

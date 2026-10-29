@@ -178,12 +178,23 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
         heroes: _duelChars,
       });
     } else {
-      reportHeroFall(turnContext, t, caster, `${t.name} is cut down by the enchanter they turned on.`, {
-        audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        province: prov.id,
-        heroes: _duelChars,
-      });
+      reportHeroFall(
+        turnContext,
+        t,
+        caster,
+        {
+          kind: 'a hero is slain outside a battle',
+          heroName: t.name,
+          how: 'by the enchanter he turned on',
+          killerName: null,
+        },
+        {
+          audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          province: prov.id,
+          heroes: _duelChars,
+        },
+      );
       awardKillXP(turnContext, caster, t);
     }
   }
@@ -199,12 +210,23 @@ export function charmBacklash(turnContext, prov, caster, t, why) {
         heroes: _duelChars,
       });
     } else {
-      reportHeroFall(turnContext, caster, t, `${caster.name} is slain — the failed Charm was their last spell.`, {
-        audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        province: prov.id,
-        heroes: _duelChars,
-      });
+      reportHeroFall(
+        turnContext,
+        caster,
+        t,
+        {
+          kind: 'a hero is slain outside a battle',
+          heroName: caster.name,
+          how: 'by his failed Charm',
+          killerName: null,
+        },
+        {
+          audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          province: prov.id,
+          heroes: _duelChars,
+        },
+      );
       awardKillXP(turnContext, t, caster);
     }
   }

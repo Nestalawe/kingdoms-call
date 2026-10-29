@@ -159,7 +159,7 @@ const everything = () => {
   seat(b, 0, b.X);
   const h = at(b);
   const fallen = leads(at(b, {}, { at: ring1(b, 1) }), companies(1));
-  Object.assign(fallen, { alive: false, hp: 0, _slainBy: 'Some Rival', _leaderlessHost: true });
+  Object.assign(fallen, { alive: false, hp: 0, _slainBy: { killerName: 'Some Rival' }, _leaderlessHost: true });
   const away = ring1(b, 0);
   const coward = spared(at(b, {}, { at: away }), b.G.turn);
   const fallenAlone = at(b, {}, { at: ring1(b, 2) });
@@ -226,7 +226,7 @@ describe('After the phases: what it calls', () => {
         seen = [x['_slainBy'], '_leaderlessHost' in x];
       },
     });
-    expect(seen).toEqual(['Some Rival', false]);
+    expect(seen).toEqual([{ killerName: 'Some Rival' }, false]);
     expect('_slainBy' in fallen).toBe(false);
   });
 
@@ -363,7 +363,7 @@ describe('After the phases: what only a direct call can stage', () => {
     const b = fresh();
     holdsOnly(b, 0, [b.X, 0]);
     const d = leads(at(b), companies(2));
-    Object.assign(d, { alive: false, hp: 0, _slainBy: 'Some Rival' });
+    Object.assign(d, { alive: false, hp: 0, _slainBy: { killerName: 'Some Rival' } });
     after(b);
     expect(d.armies).toEqual([]);
     expect(b.X.garrisonArmies.map((u) => u.unitName)).toEqual(['Men-at-Arms c0', 'Men-at-Arms c1']);

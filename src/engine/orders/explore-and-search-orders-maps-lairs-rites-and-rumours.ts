@@ -689,13 +689,18 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       turnContext,
       c,
       null,
-      `💀 ${c.name} has been slain by the ${f.monster?.name || 'creature'}!`,
+      {
+        kind: 'a hero is slain outside a battle',
+        heroName: c.name,
+        how: "by a lair's guardian",
+        killerName: f.monster?.name || null,
+      },
       {
         audience: { actor: c.player, realms: [c.player], seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       },
-      { slainBy: `the ${f.monster?.name || 'guardian'} of ${prov.name}` },
+      { slainBy: { guardianName: f.monster?.name || null, provinceName: prov.name } },
     ); // the host is told what slew its commander (2026-10-12)
     if (_lairDied === false) {
       c.items = _lairHeld;

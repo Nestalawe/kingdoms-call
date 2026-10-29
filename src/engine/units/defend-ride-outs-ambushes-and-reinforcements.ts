@@ -690,12 +690,23 @@ export function runDefendAmbush(turnContext, ph) {
           heroes: _duelChars,
         });
       } else {
-        reportHeroFall(turnContext, c, quarry, `${c.name} is cut down in the ambush they laid!`, {
-          audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          province: prov.id,
-          heroes: _duelChars,
-        });
+        reportHeroFall(
+          turnContext,
+          c,
+          quarry,
+          {
+            kind: 'a hero is slain outside a battle',
+            heroName: c.name,
+            how: 'in the ambush he laid',
+            killerName: null,
+          },
+          {
+            audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            province: prov.id,
+            heroes: _duelChars,
+          },
+        );
         awardKillXP(turnContext, quarry, c);
       }
     }
@@ -711,12 +722,18 @@ export function runDefendAmbush(turnContext, ph) {
           heroes: _duelChars,
         });
       } else {
-        reportHeroFall(turnContext, quarry, c, `${quarry.name} is struck down in the ambush!`, {
-          audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          province: prov.id,
-          heroes: _duelChars,
-        });
+        reportHeroFall(
+          turnContext,
+          quarry,
+          c,
+          { kind: 'a hero is slain outside a battle', heroName: quarry.name, how: 'in the ambush', killerName: null },
+          {
+            audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            province: prov.id,
+            heroes: _duelChars,
+          },
+        );
         awardKillXP(turnContext, c, quarry);
       }
     }

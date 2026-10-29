@@ -7,7 +7,8 @@
 // lift's lines in a battle, a hero's death and the wanderer's escape, P1-12d6 five order families (Encounter and
 // Defend, the order dispatch, the item orders, Research and Practice, Recruit and Hire), P1-12d7 three more (the army
 // orders, the realm works, the war masteries), P1-12d8 two more (espionage, explore and search), P1-12d9 the Cast Spell
-// order, P1-12d10 the move order. A facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a
+// order, P1-12d10 the move order, P1-12d11 a hero slain outside a battle (reportHeroFall's 12 callers, in a hero's
+// death's area). A facts module's kinds include the kinds of the records its facts hold (P1-12d4: why a
 // unit stands or faces as it does, whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what
 // it is, where companies muster, why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild
 // Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why a charmed mind may turn on its enchanter,
@@ -32,7 +33,8 @@
 // note (gainedItemNote: the items' words, src/engine/items/, a later row), the order's action (a slug: P1-12d6), five
 // slugs or names a string literal gives
 // (a strike's class, its channel, a guardian's grade as the content names it, a school's name as the content names it,
-// a realm's alignment, a unit's quality, the line an ability places a unit in). It can't see words handed in through a
+// a realm's alignment, a unit's quality, the line an ability places a unit in; since P1-12d11 the way a hero slain
+// outside a battle fell, `how`). It can't see words handed in through a
 // function's parameter
 // (pcStunTurned's `what`, a lingering harm's label, the verb a battle hands a unit's fate, a force's header's verb):
 // see the Parked list.
@@ -65,7 +67,8 @@
 // a company raised's `quality`, `unitType` and `unitName` as the world or the content holds them, Call to Arms' and
 // Harvest the Field's; since P1-12d8 the class of lair Discover Lost Ruin names, `lairClass`, and the equip note of a
 // thief's take and of a lair's finder, `gainedItemNote`; since P1-12d9 a skeletal company's `quality`, `unitType` and
-// `unitName` as the world holds them, Skeletal Armies', and the Wraiths' `unitName`, Raise Wraiths'); a record's `kind`
+// `unitName` as the world holds them, Skeletal Armies', and the Wraiths' `unitName`, Raise Wraiths'; since P1-12d11
+// the way a hero slain outside a battle fell, `how`, each of reportHeroFall's 12 callers'); a record's `kind`
 // that a facts module declares is the record's name, not words (P1-12d6: where the companies muster; P1-12d7: why a
 // hand-over at sea is refused, where a Wild Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why
 // a charmed mind may turn on its enchanter, a company a Telekinetic Storm strikes; P1-12d10: the troops that rally to a
@@ -387,6 +390,9 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   // the class of lair Discover Lost Ruin names, as the order names it ('Weak', 'Moderate', 'Powerful', 'Legendary',
   // 'Ritual'; 'Weak' when it names none): a slug the prose reads (P1-12d8)
   lairClass: ['a hero finds no site of a class left to lay bare', 'a hero lays bare the sites of a class'],
+  // the way a hero slain outside a battle fell, one for each caller of reportHeroFall ('in the duel', "a thief's end",
+  // …): a slug the prose reads (P1-12d11)
+  how: ['a hero is slain outside a battle'],
 };
 
 const WORD_HELPER =

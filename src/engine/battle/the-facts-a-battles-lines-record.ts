@@ -317,6 +317,11 @@ export interface TheClausesOfAShotThatWeakensItsTarget {
   softenedToTheLimit: boolean;
 }
 
+/** Why a commander's force is demoralised by the duel before a battle (preBattleDuel's demoralise; P1-12d11): a slug
+ *  the prose reads. */
+export type WhyACommandersForceIsDemoralised =
+  'he refused the challenge' | 'he was driven from the field' | 'he fell in single combat' | 'he broke off the duel';
+
 /** One sentence of a battle's lines, each with its kind: one kind per sentence, one field per value it was written
  *  with. Their audience: the fight's, or for those filed on their own (not in a fight's narrative), their event's. */
 export type TheFactOfOneOfABattlesSentences =
@@ -592,7 +597,7 @@ export type TheFactOfOneOfABattlesSentences =
       defName: string;
       provName: string;
     }
-  | { kind: "a commander's force is demoralised"; commanderName: string; why: string }
+  | { kind: "a commander's force is demoralised"; commanderName: string; why: WhyACommandersForceIsDemoralised }
   | {
       kind: 'a commander rides out and challenges the other to single combat';
       challengerName: string;

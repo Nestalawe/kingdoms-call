@@ -23,6 +23,7 @@ import {
   type TheClausesOfAShotThatWeakensItsTarget,
   type TheFactOfABattlesLine,
   type TheFortuneAsTheLineTellsIt,
+  type WhyACommandersForceIsDemoralised,
 } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
 import { describeArmy } from '../../engine/dice-and-army-names.ts';
 import { fortuneCdf, fortuneWinChance } from '../../engine/battle/fortune.ts';
@@ -657,6 +658,14 @@ function theGroundAndItsVerb(terrain: string): readonly [string, string] {
   return GROUND_WORDS[terrain] ?? [terrain || 'ground', 'allows'];
 }
 
+/** Why a commander's force is demoralised, in words (P1-12d11: the words preBattleDuel handed in before). */
+const THE_WORDS_OF_WHY_A_FORCE_IS_DEMORALISED: Readonly<Record<WhyACommandersForceIsDemoralised, string>> = {
+  'he refused the challenge': 'their commander refused the challenge',
+  'he was driven from the field': 'their commander was driven from the field',
+  'he fell in single combat': 'their commander fell in single combat',
+  'he broke off the duel': 'their commander broke off the duel',
+};
+
 /** The words of one fact of a battle's lines. */
 export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
   switch (fact.kind) {
@@ -856,7 +865,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the attacker's assault is repelled but not driven from the province":
       return `${fact.atkName}'s assault is repelled! After ${aAn(fact.severity)} ${fact.severity} engagement, ${fact.defName} throws the attackers back — but they are not yet driven from ${fact.provName}.`;
     case "a commander's force is demoralised":
-      return `\u{1F4C9} ${fact.commanderName}'s force is demoralised — ${fact.why} (−20% strength this battle).`;
+      return `\u{1F4C9} ${fact.commanderName}'s force is demoralised — ${THE_WORDS_OF_WHY_A_FORCE_IS_DEMORALISED[fact.why]} (−20% strength this battle).`;
     case 'a commander rides out and challenges the other to single combat':
       return `— ${fact.challengerName} rides out and challenges ${fact.challengedName} to single combat. —`;
     case 'the challenged commander will not answer the call':

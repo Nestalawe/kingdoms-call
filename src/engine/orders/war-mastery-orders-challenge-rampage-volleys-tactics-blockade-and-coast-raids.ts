@@ -168,11 +168,17 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
         province: prov.id,
       });
     } else {
-      reportHeroFall(turnContext, loser, winner, `${loser.name} falls in the duel!`, {
-        audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        province: prov.id,
-      });
+      reportHeroFall(
+        turnContext,
+        loser,
+        winner,
+        { kind: 'a hero is slain outside a battle', heroName: loser.name, how: 'in the duel', killerName: null },
+        {
+          audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          province: prov.id,
+        },
+      );
       awardKillXP(turnContext, winner, loser);
     }
   }
@@ -358,11 +364,17 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
       });
     } else {
       foe.hp = 0;
-      reportHeroFall(turnContext, foe, c, `${foe.name} is felled by the shot!`, {
-        audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        province: prov.id,
-      });
+      reportHeroFall(
+        turnContext,
+        foe,
+        c,
+        { kind: 'a hero is slain outside a battle', heroName: foe.name, how: 'by the shot', killerName: null },
+        {
+          audience: { actor: c.player, realms: [c.player, foe.player].filter((x) => x != null), seen: 'battle' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          province: prov.id,
+        },
+      );
       awardKillXP(turnContext, c, foe);
       c.merits = (c.merits || 0) + 2;
     }

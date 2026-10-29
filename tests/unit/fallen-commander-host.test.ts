@@ -1,6 +1,7 @@
 // 2026-10-12 (Toby, the battle reports: who beat whom) — a fallen commander's host is told who slew them:
 // handleHeroDeath stamps the killer, and disperseDeadCharArmies says it when the host garrisons or scatters, then
-// clears it; with no killer known the old wording stands.
+// clears it; with no killer known the old wording stands. Since P1-12d11 the killer is a record (TheOneWhoSlewAHero): a
+// killer's name, or a lair's guardian and its province.
 // Level 1 (unit): disperseDeadCharArmies and handleHeroDeath called directly in the bare vm, on a world the engine
 // makes there, with the provinces staged. Plan P1-08f: this was the last part of tests/battle-faced-turn.test.js,
 // which took both from the "  // 4. Run all 5 phases" hook after a turn on the GM portal; the rest of that test (the
@@ -9,9 +10,10 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // A fallen commander's host is told who slew them: `disperseDeadCharArmies` says so when the host scatters or garrisons
 // and then clears the note, keeps the old wording with no killer known, and `handleHeroDeath` stamps the killer for it
-// (the lines are facts since P1-12d5: it reads their words through the engine's `theWordsOf`). Called directly in the
-// bare `vm` on a staged world (P1-08f: it was `battle-faced-turn`'s last part, through the code-anchor hook after a
-// turn)
+// (the lines are facts since P1-12d5: it reads their words through the engine's `theWordsOf`), and since P1-12d11 who
+// slew him is a record: a lair's guardian is named with its province ("the Barrow Wight of Highmoor"), or "the guardian
+// of Highmoor" when it has no name (no game reaches it). Called directly in the bare `vm` on a staged world (P1-08f: it
+// was `battle-faced-turn`'s last part, through the code-anchor hook after a turn)
 import { expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
 
@@ -85,11 +87,11 @@ const linesOf = (fn: () => unknown): string[] => {
 
 test('a scattered host says who slew its commander, and so does one that garrisons; the note is then cleared', () => {
   G.mercenaries = [];
-  expect(linesOf(() => disperseDeadCharArmies(tc, dead(enemyProv, { _slainBy: 'Gorbash' })))).toContain(
+  expect(linesOf(() => disperseDeadCharArmies(tc, dead(enemyProv, { _slainBy: { killerName: 'Gorbash' } })))).toContain(
     `Tamsin's armies, their commander slain by Gorbash, scatter — they wander as mercenaries near ${enemyProv.name}.`,
   );
   expect(G.mercenaries).toHaveLength(1);
-  const d2 = dead(homeProv, { _slainBy: 'Gorbash' });
+  const d2 = dead(homeProv, { _slainBy: { killerName: 'Gorbash' } });
   expect(linesOf(() => disperseDeadCharArmies(tc, d2))).toContain(
     `Tamsin's armies garrison in ${homeProv.name} after their commander fell to Gorbash.`,
   );
@@ -137,4 +139,39 @@ test("handleHeroDeath stamps the killer, and the slain commander's host names th
   const lines = linesOf(() => handleHeroDeath(tc, ch, killer, {}));
   expect(ch.alive).toBe(false);
   expect(lines).toContain(`Rowan's armies garrison in ${homeProv.name} after their commander fell to Gorbash.`);
+});
+
+// P1-12d11 (P1-12's Decisions of 2026-10-29, Choice 2): a lair's guardian is a record, its name and its province, and
+// the host's line writes "the Barrow Wight of Highmoor", or "the guardian of Highmoor" for a guardian with no name. No
+// game of the matrix and none of the nearest tests reaches a host whose commander fell to a guardian.
+test.for([
+  ['a named guardian', 'Barrow Wight', 'the Barrow Wight of'],
+  ['a guardian with no name', null, 'the guardian of'],
+] as const)("a host whose commander fell to a lair's guardian names it and its province (%s)", ([, guardian, by]) => {
+  const ch = {
+    id: 9104,
+    name: 'Isolde',
+    player: 0,
+    alive: true,
+    hp: 0,
+    maxHp: 15,
+    race: 'Human',
+    temper: 'Brave',
+    skills: {},
+    items: [],
+    armies: named('Shieldwall Levies', 'Average', ['Levy I1']),
+    location: homeProv.id,
+    tm: {},
+  };
+  G.characters = G.characters.filter((c) => c['id'] !== 9104).concat([ch]);
+  homeProv.characters = [...(homeProv.characters ?? []).filter((id) => id !== 9104), ch.id];
+  delete homeProv._battleUnresolved;
+  const lines = linesOf(() =>
+    handleHeroDeath(tc, ch, null, { slainBy: { guardianName: guardian, provinceName: homeProv.name } }),
+  );
+  expect(ch.alive).toBe(false);
+  expect(lines).toContain(
+    `Isolde's armies garrison in ${homeProv.name} after their commander fell to ${by} ${homeProv.name}.`,
+  );
+  expect(ch).not.toHaveProperty('_slainBy');
 });

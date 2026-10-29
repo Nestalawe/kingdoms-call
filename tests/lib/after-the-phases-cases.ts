@@ -819,7 +819,7 @@ export const LOOSE_ENDS_CASES: AfterThePhasesCase[] = [
     name: 'a commander who fell with no host keeps no note of his killer, nor a leaderless-host mark',
     stage(b) {
       const h = at(b);
-      Object.assign(h, { alive: false, hp: 0, _slainBy: 'Some Rival', _leaderlessHost: true });
+      Object.assign(h, { alive: false, hp: 0, _slainBy: { killerName: 'Some Rival' }, _leaderlessHost: true });
       b.X.characters = [];
       return { hero: h, orders: [] };
     },

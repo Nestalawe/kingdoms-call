@@ -2,16 +2,63 @@
 // The views write the words of each fact a hero's death lines record (src/engine/heroes/the-facts-a-heros-death-lines-
 // record.ts), in the same words the engine wrote before (heroes/hero-death-and-leaderless-hosts.ts). fmtRoll, which the
 // engine still calls elsewhere, is imported from it. A kind with no words here is a compile error (the `never` below).
+// Since P1-12d11 (P1-12's Decisions of 2026-10-29, Choices 1 and 2): the line of a hero slain outside a battle, in the
+// words each caller of reportHeroFall handed in before (the chase, the ambush, the thief, the assassin, a failed Charm,
+// a Challenge, a Sniper's Mark, a lair's guardian), and who slew the dead commander, written from its record.
 import type {
   TheFactOfAHerosDeathsLine,
   TheSurgeonsReachAFallenHeroTooLate,
+  TheOneWhoSlewAHero,
+  AHeroIsSlainOutsideABattle,
 } from '../../engine/heroes/the-facts-a-heros-death-lines-record.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../../engine/dice-and-army-names.ts';
 import { fmtRoll } from '../../engine/dice-and-army-names.ts';
 
+/** Who slew the dead commander, in words: the killer's name, or "the Barrow Wight of Highmoor" for a lair's guardian
+ *  ("the guardian of Highmoor" when the guardian has no name); null when the death recorded no one. */
+function whoSlewHim(by: TheOneWhoSlewAHero | null): string | null {
+  if (!by) return null;
+  return 'killerName' in by ? by.killerName : `the ${by.guardianName ?? 'guardian'} of ${by.provinceName}`;
+}
+
+/** The words of a hero slain outside a battle, one sentence for each way he fell (each caller of reportHeroFall). */
+function theWordsOfAHeroSlainOutsideABattle(fact: AHeroIsSlainOutsideABattle): string {
+  switch (fact.how) {
+    case 'at the end of the chase':
+      return `${fact.heroName} has been slain at the end of the chase!`;
+    case 'run down in the chase':
+      return `${fact.heroName} is run down and slain!`;
+    case 'in the ambush he laid':
+      return `${fact.heroName} is cut down in the ambush they laid!`;
+    case 'in the ambush':
+      return `${fact.heroName} is struck down in the ambush!`;
+    case "a thief's end":
+      return `${fact.heroName} is cut down — a thief's end.`;
+    case 'by the cornered thief':
+      return `${fact.heroName} is slain by the cornered thief!`;
+    case "by an assassin's blade":
+      return `🗡 ${String(fact.killerName)}'s blade finds ${fact.heroName} in the dark — the hero is slain!`;
+    case 'by the enchanter he turned on':
+      return `${fact.heroName} is cut down by the enchanter they turned on.`;
+    case 'by his failed Charm':
+      return `${fact.heroName} is slain — the failed Charm was their last spell.`;
+    case 'in the duel':
+      return `${fact.heroName} falls in the duel!`;
+    case 'by the shot':
+      return `${fact.heroName} is felled by the shot!`;
+    case "by a lair's guardian":
+      return `💀 ${fact.heroName} has been slain by the ${fact.killerName ?? 'creature'}!`;
+    default: {
+      const aWayWithNoWords: never = fact.how;
+      throw new Error(`a hero slain outside a battle has no words for ${JSON.stringify(aWayWithNoWords)}`);
+    }
+  }
+}
+
 /** How the dead commander fell, as his host's line says it: to whom, when known. */
-function howTheyFell(slainBy: string | null): string {
-  return slainBy ? `after their commander fell to ${slainBy}` : 'after their fall';
+function howTheyFell(slainBy: TheOneWhoSlewAHero | null): string {
+  const by = whoSlewHim(slainBy);
+  return by ? `after their commander fell to ${by}` : 'after their fall';
 }
 
 /** The summoned units whose binding fails, named: each its name and its type, or its type. */
@@ -32,24 +79,30 @@ export function theWordsOfTheSurgeonsComingTooLate(fact: Omit<TheSurgeonsReachAF
 /** The words of one fact of a hero's death lines. */
 export function theWordsOfAHerosDeathsLine(fact: TheFactOfAHerosDeathsLine): string {
   switch (fact.kind) {
+    case 'a hero is slain outside a battle':
+      return theWordsOfAHeroSlainOutsideABattle(fact);
     case 'the surgeons reach a fallen hero too late':
       return theWordsOfTheSurgeonsComingTooLate(fact);
     case "the binding of a fallen hero's summoned units fails": {
       const one = fact.units.length === 1;
       return `✨ With ${fact.heroName} fallen, the binding fails and ${theSummonedUnits(fact.units)} ${one ? 'dissolves' : 'dissolve'} back into the ${one ? 'realm that' : 'realms that'} spawned ${one ? 'it' : 'them'}.`;
     }
-    case "a fallen hero's armies scatter as mercenaries":
-      return fact.slainBy
-        ? `${fact.heroName}'s armies, their commander slain by ${fact.slainBy}, scatter — they wander as mercenaries near ${fact.provinceName || 'their last position'}.`
+    case "a fallen hero's armies scatter as mercenaries": {
+      const by = whoSlewHim(fact.slainBy);
+      return by
+        ? `${fact.heroName}'s armies, their commander slain by ${by}, scatter — they wander as mercenaries near ${fact.provinceName || 'their last position'}.`
         : `${fact.heroName}'s armies scatter — they wander as mercenaries near ${fact.provinceName || 'their last position'}.`;
+    }
     case "a fallen hero's armies garrison his realm's province":
       return `${fact.heroName}'s armies garrison in ${fact.provinceName} ${howTheyFell(fact.slainBy)}.`;
     case "a fallen hero's armies hold the open sea and claim it for his realm":
       return `${fact.heroName}'s armies hold ${fact.provinceName} ${howTheyFell(fact.slainBy)} — the water is claimed for ${fact.realmName ?? 'the realm'} and they garrison it.`;
-    case "a fallen hero's leaderless armies retreat to his realm's ground":
-      return fact.slainBy
-        ? `${fact.heroName}'s leaderless armies retreat to ${fact.provinceName}, their commander slain by ${fact.slainBy}.`
+    case "a fallen hero's leaderless armies retreat to his realm's ground": {
+      const by = whoSlewHim(fact.slainBy);
+      return by
+        ? `${fact.heroName}'s leaderless armies retreat to ${fact.provinceName}, their commander slain by ${by}.`
         : `${fact.heroName}'s leaderless armies retreat to ${fact.provinceName}.`;
+    }
     case "a spared coward's host falls in under another commander":
       return `🏳 ${fact.heroName} begged for his life and is gone, but his host does not follow him: ${theUnits(fact.unitCount)} hold their ground in ${fact.provinceName} and fall in under ${fact.heirName}.`;
     case "a spared coward's host takes its place in the province's garrison":

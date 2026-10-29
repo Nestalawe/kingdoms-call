@@ -13,7 +13,7 @@
 // prose writes every word (src/views/prose/the-words-of-the-cast-spell-orders-lines.ts). Each is filed on its own, with
 // the audience its event names (Decision 6: its event's): no audience, hero, `spy` flag or province changes, so every
 // realm is told exactly what it was told before. A hero slain by the enchanter he turned on is told by reportHeroFall
-// (heroes/), which still takes his line's words from its caller: the Parked "words a caller hands in".
+// (heroes/), as a hero's death's kind "a hero is slain outside a battle", the way he fell a value (P1-12d11).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AnItemAsTheLineNamesIt } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 
