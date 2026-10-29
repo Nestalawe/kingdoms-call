@@ -3,6 +3,13 @@
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a).
 import { KC_ITEM_RACE_ALIAS, _ITEM_NAME_ALTS } from '../../content/kingdoms-call-data.ts';
+import {
+  MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS,
+  THE_STAT_OF_A_COMBAT_ITEM,
+} from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
+
+/** The stat the Mithril suit carries its effect by (its row's: plan P1-19t). */
+const THE_STAT_OF_THE_MITHRIL_SUIT = MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS['mithril-armour'].carriedAs.stat;
 
 /** An item as these rules read it: its name and tier, the slot and effect it may carry, and the race or alignment
  *  it may be bound to. */
@@ -78,8 +85,8 @@ export function itemSlot(it: ItemOfTheseRules | null | undefined): string | null
   // a SHIELD is a shield even when its power is a once-per-fight ward - the Anvil-Brand Shield is
   // strapped to the arm, not drunk. The shield test therefore comes first.
   if (_SHIELD_BASES.has(_ITEM_ALT_BASE[it.name] || it.name)) return 'shield';
-  if (it.effect && it.effect.stat === 'combatUse') return 'combat'; // every other potion, scroll or device is a COMBAT ITEM and takes a Combat Item slot (two per character). This test runs BEFORE `it.slot` is read, so items saved with the old inline slot:'consumable' re-resolve here with no migration.
-  if (it.effect && it.effect.stat === 'mithrilArmour') return 'armour'; // Mithril is worn in the armour slot // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
+  if (it.effect && it.effect.stat === THE_STAT_OF_A_COMBAT_ITEM) return 'combat'; // every other potion, scroll or device is a COMBAT ITEM and takes a Combat Item slot (two per character). This test runs BEFORE `it.slot` is read, so items saved with the old inline slot:'consumable' re-resolve here with no migration.
+  if (it.effect && it.effect.stat === THE_STAT_OF_THE_MITHRIL_SUIT) return 'armour'; // Mithril is worn in the armour slot // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
   if (it.slot !== undefined) return it.slot || null;
   const altBase = _ITEM_ALT_BASE[it.name]; // the item's base name, when this is its second name
   return ITEM_SLOT_OF[it.name] || (altBase === undefined ? undefined : ITEM_SLOT_OF[altBase]) || null;

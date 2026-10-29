@@ -17,7 +17,7 @@
 // itself; the wards and riders a fighter wears, whose amounts, percentages and hits each copy carries itself, but the
 // buckler's, the second wind's and the low-HP ward's shares of his maximum HP; the combat items, whose numbers each
 // copy carries itself, but the terror's chance, bane's double, the Lock-Pick's steal and the Warbringer Gauntlets' blow
-// (plan P1-19s)) are listed, so a number added to one is checked.
+// (plan P1-19s); the kinds of item the treasury weighs as a whole, whose worth no text states (plan P1-19t)) are listed, so a number added to one is checked.
 // The known gaps are listed by name, each with its Parked entry, and checked to be still gaps (so the exception leaves
 // with the fix): the two relic standards say +4 and +6 and give +2 (NEXT.md question 20; Parked "The two relic
 // standards give +2, not their +4 and +6"); five siege items say "Siege bonus +1" (question 21: Parked "Thirty items'
@@ -160,6 +160,12 @@ const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
     ]),
   ),
   'combat-item-dispels': "what lingers lifts (content's number is the fighter's judgement of when to reach for it)",
+  ...Object.fromEntries(
+    (['an-item-worn-as-armour', 'a-combat-item', 'an-item-of-riders-alone', 'a-spell-charm'] as const).map((slug) => [
+      slug,
+      "a kind of item the treasury weighs as a whole (content's numbers are its worth, which no text states)",
+    ]),
+  ),
 };
 
 /** A count or a share in words, as the texts write it (a value with no word here writes as itself: no text matches). */

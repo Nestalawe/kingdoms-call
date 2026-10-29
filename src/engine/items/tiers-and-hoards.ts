@@ -3,6 +3,7 @@ import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS, monsterCat } from '../names.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { isLegendaryItem, itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { anItemIsACombatItem } from '../rules/the-registry-of-magic-item-effects.ts';
 import type { ItemOfTheseRules } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import type { Item } from '../../schemas/saved-game-state.ts';
 
@@ -169,7 +170,7 @@ export const FEATURE_POOLS_P = {
   });
   ALL_MAGIC_ITEMS_P.forEach((it) => {
     if (it.tier !== 1 && it.tier !== 2) return;
-    if (it.effect.stat === 'combatUse') return; // ONE version of each combat item — no clones (their alt names stay in _ITEM_ALT_BASE so items already in saves still resolve)
+    if (anItemIsACombatItem(it)) return; // ONE version of each combat item — no clones (their alt names stay in _ITEM_ALT_BASE so items already in saves still resolve)
     (altNames[it.name] ?? []).forEach((nm) => {
       extra.push(underAnotherName(it, nm)); // same effect/desc/tier, new name
     });

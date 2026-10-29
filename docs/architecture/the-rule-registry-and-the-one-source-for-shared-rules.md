@@ -9,10 +9,11 @@ books write them, and the units it counts or reaches when more than its own) and
 ability's **effect** at each **stage** it acts in; the effects are in `src/engine/rules/<family>/`, a file per group of
 stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, and asks the stage's **runner**.
 
-- **Hook points** are the engine's real decisions, twelve of them: `strength`, `volley`, `fate`, `movementCost`,
+- **Hook points** are the engine's real decisions, thirteen of them: `strength`, `volley`, `fate`, `movementCost`,
   `orderValidity`, `experience`, `visibility`, `turnStart`, `turnEnd`, `orderOutcome` (an order's outcome a hero's
   item changes: P1-19o, the first of the items family's four new ones), `aHerosStanding` (a hero's own figures his
-  item changes: P1-19p) and `personalCombat` (a fighter in a personal combat: P1-19q) (the union `HookPointName`). Each is a set of named
+  item changes: P1-19p), `personalCombat` (a fighter in a personal combat: P1-19q) and `treasury` (what an item is for and
+  worth: P1-19t) (the union `HookPointName`). Each is a set of named
   stages, in the order the engine runs them (`TheStagesOfEachHookPoint`). A stage's effect type says exactly what the
   stage hands the effect, read-only, and what it returns; an effect changes nothing, at the turn's end too (it returns
   what the turn must do, and the turn does it: plan P1-19's second slice, Choice 3). A stage or a hook point typed `never` has no signature yet: its family's first row writes it, and an entry
@@ -91,8 +92,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   quality and race) or nothing, and Early Winter names it (a die, as before), adds it to the garrison and writes the
   line. Reaver Crews' landing mark, which the move order sets for a column its longships put ashore, asks the content
   row's unit (`reaver-crews`), with no stage of its own. Every stage of `strength`, `volley` and `fate`, and `turnEnd`'s
-  one, now has its signature (and since P1-19o `turnEnd`'s second and `orderOutcome`'s, since P1-19p
-  `aHerosStanding`'s, since P1-19q `personalCombat`'s, the items' below); the other
+  one, now has its signature (and the items' hook points', below); the other
   five hook points are `never` until their family's first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
@@ -208,6 +208,11 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   `{ effectField: 'doubleVs' }`), **a guardian wields its hoard** (`pcBuildGuardian`: maximum HP, the gauntlets' flag),
   **a steal's chance** (the Lock-Pick's +20) and **a blow's damage** (the Warbringer Gauntlets' +2). A copy's own
   numbers act; the row's where it carries none.
+- **The treasury** (P1-19t, `magic-items/an-items-role-and-worth-in-the-treasury.ts`), read at load (each item's tier)
+  and by a bot choosing what to carry: `treasury`'s **an item's role** (`itemRole`; the skills' and riders' stay its)
+  and **an item's worth** by kind (`itemPowerScore`; four kind rows keyed by a stat: armour, a combat item, riders
+  alone, a spell charm), then **: a combat use**, **: a ward**, **: a rider**. The weights are each row's
+  `theWorthOfItInTheTreasury`; a key no row holds stays `equipment.ts`'s. `itemSlot` reads content's keys.
 - **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
   desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
   unit, since the items in play exist only after the engine's load-time pass; the known gaps listed with their Parked
@@ -218,6 +223,7 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   cases), a hero's standing (the hit points' and skills' cases, and the portal's parity test on the Crown; the temper
   items by the matrix alone), what a fighter wears, what a ward does, and the combat items, a steal, a blow and a
   guardian's hoard (`tests/unit/the-combat-item-and-guardian-lines-no-matrix-game-reaches-keep-their-values.test.ts`);
+  the treasury by its properties (`tests/unit/an-items-role-and-worth-follow-its-effect.test.ts`) and the matrix;
   [the test list](../../tests/every-test-its-level-and-what-it-checks.md) names each file.
 - **How to add an item effect** of a stage already written: its row (the key a copy carries it by, its numbers, the
   units it reaches); its effect in the stage's file under `src/engine/rules/magic-items/`, reading its numbers from its
@@ -268,14 +274,8 @@ refuses the rest), so it can't draw a die (`kcRng`), read the turn's state or wr
 it. A set it needs is built from content (`KC_UNIT_CLASS`, a row's `counts`) or handed by the stage (whether the enemy
 fields ranged units, from the ladder's missile set), never imported from `battle/`. Another ability is asked about by
 its slug, never by a unit's name. A magic item's effect is found by the key its row gives, from the items the resolver
-hands the items' runner (`activeItems`, in `src/engine/items/`, stays the engine's one gate, P1-19m); the hook points
-the items' rows use so far are `strength` (the commander's items, a land unit at sea led, the defenders'
-fortifications), `volley` (the commander adds volleys), `fate` (the commander's riders run the beaten down on any
-ground, the beaten force may retreat), `turnEnd` (a hero's items add to the realm's tax), `orderOutcome` (a spy's sure
-success, a lair revealed when exploring, a rest's heal, a move's exploration, an item's power used), `aHerosStanding`
-(maximum HP, the temper he fights with, a skill's aura in the province) and `personalCombat` (what a fighter wears;
-what a ward does to a blow's chance, a hit, a blow, a round, a stun or terror, a spell's burn; the combat items, a
-guardian's hoard, a steal, a blow). An effect that reads a copy's own number is
+hands the items' runner (`activeItems`, in `src/engine/items/`, stays the engine's one gate, P1-19m); the items'
+stages are listed [above](#the-items-registry). An effect that reads a copy's own number is
 handed the copy (its `effect.bonus` or `effect.temper`, its `exploreMove`), never the hero.
 
 The stage types live in the registry's own file, which holds code. **A file that only `import type` reaches is in no

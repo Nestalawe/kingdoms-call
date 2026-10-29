@@ -22,8 +22,9 @@
 // skillBonusBreakdown 1 each, and skillBonusBreakdown's 'Crown of Command', on P1-19p's; pcArmourMerge 21, pcArmourOf
 // 1 and pcCharCombatant's Mithril 1 on P1-19q's; the uses of a ward's field, 57 in eight functions, 50 of an item's
 // ward, and pcMeleeStrike's 'thorns', pcTakeHit's 5 and pcRoundStart's 'regen', on P1-19r's; pcCombatItemWanted 19,
-// pcUseCombatItem 19, pcAct 1, pcMeleeDamage 1, pcBuildGuardian 4 and pcCharCombatant's 'combatUse' 1 on P1-19s's), as
-// the unit-name test was: the one exception to refactor-only's rule
+// pcUseCombatItem 19, pcAct 1, pcMeleeDamage 1, pcBuildGuardian 4 and pcCharCombatant's 'combatUse' 1 on P1-19s's;
+// _useScore 20, itemPowerScore 8, itemSlot 2, plain 1, tiers-and-hoards.ts' copy pass 1, and the 7 item effects in
+// ITEM_COMBAT_STATS, on P1-19t's), as the unit-name test was: the one exception to refactor-only's rule
 // that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
@@ -122,6 +123,30 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19s, the Warbringer Gauntlets' blow",
   ],
   ['src/engine/personal-combat/lair-guardians-and-the-odds.ts', 'pcBuildGuardian', "P1-19s, a guardian's hoard"],
+  ['src/engine/items/equipment.ts', 'itemRole', "P1-19t, the treasury: an item's role"],
+  ['src/engine/items/equipment.ts', 'itemPowerScore', "P1-19t, the treasury: an item's worth"],
+  ['src/engine/items/equipment.ts', '_useScore', "P1-19t, the treasury: a combat use's worth"],
+  ['src/engine/items/equipment.ts', '_wardScore', "P1-19t, the treasury: a ward's worth"],
+  ['src/engine/items/equipment.ts', '_pcScore', "P1-19t, the treasury: a rider's worth"],
+  ['src/engine/items/equipment.ts', 'plain', 'P1-19t, the treasury: the seeds of a minted item'],
+  [
+    'src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts',
+    'itemSlot',
+    "P1-19t, the treasury: a combat item's and the Mithril suit's slot",
+  ],
+];
+
+/** The passes that build the treasury as the engine loads, each a named function run at once (`(function name()
+ *  {…})()`), which the ratchet's helper counts at the top of its file, by the file: the registry has taken them. */
+const TAKEN_PASSES: readonly (readonly [file: string, fn: string, row: string])[] = [
+  ['src/engine/items/tiers-and-hoards.ts', '_tripleLowerTierItems', "P1-19t, the treasury: a combat item isn't copied"],
+];
+
+/** The sets of stats itemRole reads, each by its file: the skills' alone (an item effect's role is the registry's). */
+const THE_SETS_OF_STATS_ITEM_ROLE_READS: readonly (readonly [file: string, name: string])[] = [
+  ['src/engine/items/equipment.ts', 'ITEM_COMBAT_STATS'],
+  ['src/engine/items/equipment.ts', 'ITEM_DUEL_SCHOOLS'],
+  ['src/engine/items/equipment.ts', 'ITEM_FIELD_SCHOOLS'],
 ];
 
 /** The words of the vocabulary a taken function holds for something else, by the function, each with what it is (the
@@ -139,6 +164,8 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   // drain rider does in the fight (`actor.drain`, a field of his riders) no row of the items family takes (Parked
   // "What an item's riders do in a personal combat is read inline: no row of P1-19's items family takes it")
   pcMeleeStrike: ['drain'],
+  // the armour slot the Mithril suit is worn in (`return 'armour'`), not an armour's stat
+  itemSlot: ['armour'],
 };
 
 /** The reads of an item's own field a taken function still holds, by the function, each left to a later step (the
@@ -264,9 +291,10 @@ function everyWardUseByFunction(file: string, text: string): Map<string, string[
   return byFunction;
 }
 
-/** Whether a node declares the function named (as the ratchet's helper finds a function). */
+/** Whether a node declares the function named (as the ratchet's helper finds a function), or is a function expression
+ *  of that name (a pass run at once, which the helper counts at the top of its file). */
 function declares(node: ts.Node, fn: string): boolean {
-  return aFunctionsName(node) === fn;
+  return aFunctionsName(node) === fn || (ts.isFunctionExpression(node) && node.name?.text === fn);
 }
 
 /** In the function named: every string naming an item's effect key or an item, whatever the code does with it, and
@@ -314,6 +342,33 @@ test.for(TAKEN)('%s: %s names no item effect (%s)', ([file, fn]) => {
     everyWardUseByFunction(file, text).get(fn) ?? [],
     `every use in ${fn} of a field of the wards a fighter wears (his arm)`,
   ).toEqual(WARD_USES_LEFT_TO_A_LATER_STEP[fn] ?? []);
+});
+
+test.for(TAKEN_PASSES)('%s: %s names no item effect (%s)', ([file, fn]) => {
+  const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  expect(itemEffectChecksByFunction(file, text).get('(top)') ?? 0, `the checks at the top of ${file}`).toBe(0);
+  expect(everyItemWordIn(file, text, fn), `every string in ${fn} naming an item's effect or an item`).toEqual([]);
+});
+
+test.for(THE_SETS_OF_STATS_ITEM_ROLE_READS)('%s: %s names no item effect (P1-19t, the treasury)', ([file, name]) => {
+  const source = ts.createSourceFile(
+    file,
+    fs.readFileSync(path.join(ROOT, file), 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const words: string[] = [];
+  const collect = (node: ts.Node): void => {
+    if (ts.isStringLiteral(node) && ITEM_EFFECT_VOCABULARY.has(node.text)) words.push(node.text);
+    ts.forEachChild(node, collect);
+  };
+  const found = source.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((statement) => [...statement.declarationList.declarations])
+    .find((d) => ts.isIdentifier(d.name) && d.name.text === name);
+  expect(found, `${file} declares ${name}`).toBeDefined();
+  if (found) collect(found);
+  expect(words).toEqual([]);
 });
 
 // No function of src/engine/ outside rules/ uses a field of the wards a fighter wears, but the ones listed: what each
