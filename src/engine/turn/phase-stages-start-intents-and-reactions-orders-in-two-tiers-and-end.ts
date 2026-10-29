@@ -42,13 +42,14 @@ import { processOrder } from '../orders/order-dispatch-the-checks-before-a-hero-
 //   4. the end of the phase: skill rises told, a standing Defend cancelled by a later Move, intrusions told, the hosts
 //      of fallen commanders dispersed, and the map and each realm's view of it brought up to date.
 // Each takes the turn's context first (src/engine/turn/context.ts), then the loop's values it reads: the phase, the
-// intents, where every hero stood as the phase began. The bodies keep the loop's indent (plan P1-08's Decisions).
+// intents, where every hero stood as the phase began. The bodies keep the loop's indent (plan P1-08's Decisions). Each
+// line they write is a fact (since P1-12d15: the-facts-a-phases-lines-record.ts), its words written in the views.
 
 export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   const { SEASONS, G, presenceByPhase, _warFrontProvs } = turnContext;
   emit(turnContext, {
     type: 'system',
-    text: `— ${SEASONS[ph]} —`,
+    fact: { kind: 'a phase begins', seasonName: SEASONS[ph] },
     audience: {},
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   });
@@ -76,7 +77,14 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
         // order resolves.
         emit(turnContext, {
           type: 'system',
-          text: `🌿 Herbal Lore: ${c.name}'s wounds from the previous season are dressed with healing herbs — 40% of the ${_dmg} damage taken is mended. +${_heal} HP (${c.hp}/${c.maxHp || 20}).`,
+          fact: {
+            kind: "Herbal Lore dresses a hero's wounds from the previous season",
+            heroName: c.name,
+            damage: _dmg,
+            healed: _heal,
+            hp: c.hp,
+            maxHp: c.maxHp || 20,
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: c.id,
           phase: ph,
@@ -133,7 +141,7 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
     if (c.player !== null && c.alive && c.hiredInPhase === ph) {
       emit(turnContext, {
         type: 'hire',
-        text: `${c.name} was hired this phase and will be ready to act from the next phase.`,
+        fact: { kind: 'a hero hired this phase will act from the next', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -166,9 +174,13 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
     it.cancelReason = 'battleLocked';
     emit(turnContext, {
       type: 'combat',
-      text: _stillContested
-        ? `${it.c.name} is still locked in the unresolved battle for ${here.name} and cannot march away — the fight must be seen through before they can move on.`
-        : `${it.c.name} has already fought a battle this phase and cannot march on to start another — one battle per phase.`,
+      fact: _stillContested
+        ? {
+            kind: 'a march is cancelled while the hero is locked in an unresolved battle',
+            heroName: it.c.name,
+            provinceName: here.name,
+          }
+        : { kind: 'a march is cancelled because the hero has fought a battle this phase', heroName: it.c.name },
       audience: { actor: it.player, realms: [it.player] },
       province: it.fromId,
       hero: it.id,
@@ -294,7 +306,7 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph,
         c._fallenOrderNoted = true;
         emit(turnContext, {
           type: 'system',
-          text: `${c.name} has fallen — their remaining orders for this turn go unanswered.`,
+          fact: { kind: "a fallen hero's remaining orders go unanswered", heroName: c.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: c.id,
           phase: ph,

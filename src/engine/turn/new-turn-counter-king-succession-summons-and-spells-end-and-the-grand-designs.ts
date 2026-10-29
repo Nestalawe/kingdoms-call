@@ -21,7 +21,8 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audi
 //   5. the Grand Designs: the Iron Throne's skeleton rises join their winners, and the Grand Library gives each Neutral
 //      realm that has it one Sage discovery.
 // It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads no value of the phase loop's. The
-// body keeps resolveTurn's indent (plan P1-08's Decisions).
+// body keeps resolveTurn's indent (plan P1-08's Decisions). Each line it writes is a fact (since P1-12d15: the-facts-the-
+// new-turns-lines-record.ts), its words written in the views.
 
 export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns(turnContext) {
   const { G } = turnContext;
@@ -40,7 +41,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
         delete k._divineReturn;
         emit(turnContext, {
           type: 'system',
-          text: `✨ The realm's last consecrated ground is gone, and with it the way back for ${k.name}: the divine cannot restore a monarch where no holy ground remains. An heir takes the crown.`,
+          fact: { kind: 'a Divine king cannot return with no consecrated ground left', kingName: k.name },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -84,7 +85,10 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
         p._eliminatedTurn = G.turn;
         emit(turnContext, {
           type: 'system',
-          text: `⚠ ${p.name}'s king has fallen and no lands remain — their dynasty is extinguished.`,
+          fact: {
+            kind: "a realm's king has fallen with no lands left and the dynasty is extinguished",
+            realmName: p.name,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -140,7 +144,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     if (!heirProv.characters.includes(heir.id)) heirProv.characters.push(heir.id);
     emit(turnContext, {
       type: 'system',
-      text: `👑 With the old king fallen, ${heir.name} is crowned in ${heirProv.name}. Name them, choose their Temper and allocate their 4 remaining skill points before submitting orders.`,
+      fact: { kind: 'an heir is crowned', heirName: heir.name, provinceName: heirProv.name },
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: heirProv.id,
@@ -174,10 +178,13 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       // filtered out silently and the player simply found them missing next turn.
       const _gone = c.armies.filter((a) => a._temporary);
       c.armies = c.armies.filter((a) => !a._temporary);
-      const _names = _gone.map((a) => `${a.unitName || a.type}${a.unitName ? ` (${a.type})` : ''}`).join(', ');
       emit(turnContext, {
         type: 'explore',
-        text: `\u2728 As the season turns, ${_names} ${_gone.length === 1 ? 'is' : 'are'} released from ${_gone.length === 1 ? 'its' : 'their'} bonds and ${_gone.length === 1 ? 'returns' : 'return'} to the Elemental Realm, leaving ${c.name}'s host.`,
+        fact: {
+          kind: 'summoned elementals are released as the season turns',
+          elementals: _gone.map((a) => ({ unitName: a.unitName || null, unitType: a.type })),
+          heroName: c.name,
+        },
         audience: { actor: c.player, realms: [c.player].filter((x) => x !== null) },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
@@ -190,10 +197,13 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     if ((c.armies || []).some((a) => a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn)) {
       const _wild = c.armies.filter((a) => a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn);
       c.armies = c.armies.filter((a) => !(a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn));
-      const _wnames = _wild.map((a) => `${a.unitName || a.type} (${a.type})`).join(', ');
       emit(turnContext, {
         type: 'explore',
-        text: `\u{1F43E} The Wild Hunt is done — ${_wnames} slip the binding and melt back into the wilds, leaving ${c.name}'s host.`,
+        fact: {
+          kind: "the Wild Hunt's beasts slip the binding",
+          beasts: _wild.map((a) => ({ unitName: a.unitName || null, unitType: a.type })),
+          heroName: c.name,
+        },
         audience: { actor: c.player, realms: [c.player].filter((x) => x !== null) },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
@@ -314,7 +324,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     if (_avail.length === 0) {
       emit(turnContext, {
         type: 'system',
-        text: `\ud83d\udcda Grand Library: your scholars have already unlocked every known discovery.`,
+        fact: { kind: 'the Grand Library has no discovery left to unlock' },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -324,7 +334,12 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     pl.discoveries.push({ id: _d.id, name: _d.name, category: _d.category, desc: _d.desc, turnDiscovered: G.turn });
     emit(turnContext, {
       type: 'explore',
-      text: `\ud83d\udcda Grand Library: this turn your scholars uncover \u2014 **${_d.name}** (${_d.category}). ${_d.desc}`,
+      fact: {
+        kind: "the Grand Library's scholars uncover a discovery",
+        discoveryName: _d.name,
+        category: _d.category,
+        description: _d.desc,
+      },
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });

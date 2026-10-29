@@ -11,7 +11,8 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audi
 // (orderPhaseActors: initiative in tiers, the AK [3.0] dependencies first), and the defenders an enemy column pins by
 // arriving before they can march out (applyMoveInterlocks). PHASE_ACTION_MAP turns an order's name into the action key
 // processOrder and the pipeline share. They take the turn's context first (src/engine/turn/context.ts); normaliseAction and
-// _phaseActionTier take none.
+// _phaseActionTier take none. A pinned column's line is a fact (since P1-12d15: the-facts-a-phases-lines-record.ts), its
+// words written in the views.
 // ════
 // PHASE PIPELINE — intent table, dependency ordering, movement interlocks
 // ════
@@ -457,7 +458,13 @@ export function applyMoveInterlocks(turnContext, ph, intents) {
       // still forming up and has to turn and fight on its own ground.
       emit(turnContext, {
         type: 'move',
-        text: `${def.c.name} breaks camp for ${dest.name}, but ${swapPartner.c.name}'s banners are already cresting the hills toward ${home ? home.name : 'the province'} — there is no time to march past one another. ${def.c.name} turns their column about and stands to defend.`,
+        fact: {
+          kind: "a march is pinned head-on by an enemy column marching into the hero's province",
+          heroName: def.c.name,
+          destinationName: dest.name,
+          foeName: swapPartner.c.name,
+          provinceName: home ? home.name : null,
+        },
         audience: { actor: def.player, realms: [def.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: def.fromId,
@@ -465,7 +472,12 @@ export function applyMoveInterlocks(turnContext, ph, intents) {
     } else {
       emit(turnContext, {
         type: 'move',
-        text: `${def.c.name} is under orders to march on ${dest.name}, but an enemy force enters ${home ? home.name : 'the province'} before the column can clear the gates. ${def.c.name} stays to defend.`,
+        fact: {
+          kind: "a march is pinned by an enemy force entering the hero's province first",
+          heroName: def.c.name,
+          destinationName: dest.name,
+          provinceName: home ? home.name : null,
+        },
         audience: { actor: def.player, realms: [def.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: def.fromId,

@@ -90,6 +90,30 @@ import {
   type TheFactOfTheWarSpoilsLine,
 } from '../units/the-facts-the-war-spoils-line-records.ts';
 import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_LINE_BEFORE_THE_FIRST_PHASE,
+  type TheFactOfALineBeforeTheFirstPhase,
+} from './the-facts-the-lines-before-the-first-phase-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_NEW_TURNS_LINE,
+  type TheFactOfANewTurnsLine,
+} from './the-facts-the-new-turns-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_PHASES_LINE,
+  type TheFactOfAPhasesLine,
+} from './the-facts-a-phases-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_AN_INTRUSION_WARNINGS_LINE,
+  type TheFactOfAnIntrusionWarningsLine,
+} from './the-facts-the-intrusion-warnings-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE,
+  type TheFactOfADefendWatchMetInBattlesLine,
+} from './the-facts-a-defend-watch-met-in-battle-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_SILENT_HEROS_SEASON_LINE,
+  type TheFactOfASilentHerosSeasonLine,
+} from './the-facts-a-silent-heros-season-line-records.ts';
+import {
   THE_AUDIENCE_OF_EACH_KIND_OF_AN_ENCOUNTER_OR_DEFEND_ORDERS_LINE,
   type TheFactOfAnEncounterOrDefendOrdersLine,
 } from '../orders/the-facts-the-encounter-and-defend-orders-lines-record.ts';
@@ -149,7 +173,9 @@ export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolv
  *  Recruit and Hire orders'; since P1-12d7 the army orders', the realm works orders' and the war mastery orders'; since
  *  P1-12d8 the espionage orders' and the explore and search orders'; since P1-12d9 the Cast Spell order's; since
  *  P1-12d10 the move order's; since P1-12d12 a chase's and a hero's experience and hit points'; since P1-12d13 the
- *  title intelligence's; since P1-12d14 the Defend watch's, a stranding at sea's and the war-spoils'. */
+ *  title intelligence's; since P1-12d14 the Defend watch's, a stranding at sea's and the war-spoils'; since P1-12d15 the
+ *  lines before the first phase, the new turn's, a phase's, the intrusion warnings', a Defend watch met in battle's and
+ *  a silent hero's season's. */
 type TheFactsOfEachArea = [
   TheFactOfABattlesLine,
   TheFactOfAPersonalCombatsLine,
@@ -174,6 +200,12 @@ type TheFactsOfEachArea = [
   TheFactOfADefendWatchsLine,
   TheFactOfAStrandingAtSeasLine,
   TheFactOfTheWarSpoilsLine,
+  TheFactOfALineBeforeTheFirstPhase,
+  TheFactOfANewTurnsLine,
+  TheFactOfAPhasesLine,
+  TheFactOfAnIntrusionWarningsLine,
+  TheFactOfADefendWatchMetInBattlesLine,
+  TheFactOfASilentHerosSeasonLine,
 ];
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
@@ -225,6 +257,12 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCHS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_STRANDING_AT_SEAS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_LINE_BEFORE_THE_FIRST_PHASE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_NEW_TURNS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_PHASES_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_AN_INTRUSION_WARNINGS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_SILENT_HEROS_SEASON_LINE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */

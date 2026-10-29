@@ -9,7 +9,9 @@
 // orders, the realm works, the war masteries), P1-12d8 two more (espionage, explore and search), P1-12d9 the Cast Spell
 // order, P1-12d10 the move order, P1-12d11 a hero slain outside a battle (reportHeroFall's 12 callers, in a hero's
 // death's area), P1-12d12 a chase and a hero's experience and hit points (and the equip note at a death), P1-12d13
-// the title intelligence, P1-12d14 the Defend watch, a stranding at sea and the war-spoils. A facts
+// the title intelligence, P1-12d14 the Defend watch, a stranding at sea and the war-spoils, P1-12d15 the lines before
+// the first phase, the new turn, a phase's stages and intents, the intrusion warnings, a Defend watch met in battle and a
+// silent hero's season. A facts
 // module's kinds include the kinds of the records its facts hold (P1-12d4: why a
 // unit stands or faces as it does, whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what
 // it is, where companies muster, why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild
@@ -36,14 +38,15 @@
 // slugs or names a string literal gives
 // (a strike's class, its channel, a guardian's grade as the content names it, a school's name as the content names it,
 // a realm's alignment, a unit's quality, the line an ability places a unit in; since P1-12d11 the way a hero slain
-// outside a battle fell, `how`). It can't see words handed in through a
+// outside a battle fell, `how`; since P1-12d15 an heir's name as the engine names him, `heirName`). It can't see words
+// handed in through a
 // function's parameter
 // (pcStunTurned's `what`, a lingering harm's label, the verb a battle hands a unit's fate, a force's header's verb):
 // see the Parked list.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
-// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's, P1-12d12's, P1-12d13's and P1-12d14's: their areas' facts modules, which their
+// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's, P1-12d12's, P1-12d13's, P1-12d14's and P1-12d15's: their areas' facts modules, which their
 // bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
@@ -57,7 +60,9 @@
 // dispatch, the item orders, the Research and Practice orders, the Recruit and Hire orders; P1-12d7: the army orders,
 // the realm works orders, the war mastery orders; P1-12d8: the espionage orders, the explore and search orders;
 // P1-12d9: the Cast Spell order; P1-12d10: the move order; P1-12d12: a chase, a hero's experience and hit points;
-// P1-12d13: the title intelligence; P1-12d14: the Defend watch, a stranding at sea, the war-spoils) holds
+// P1-12d13: the title intelligence; P1-12d14: the Defend watch, a stranding at sea, the war-spoils; P1-12d15: the lines
+// before the first phase, the new turn, a phase's stages and intents, the intrusion warnings, a Defend watch met in
+// battle, a silent hero's season) holds
 // no field whose value is, or holds, words: a string or
 // a template with text reached as the value (through a conditional's branches, `+`, `||`, `??`, `&&`, a placeholder,
 // `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
@@ -75,7 +80,7 @@
 // `unitName` as the world holds them, Skeletal Armies', and the Wraiths' `unitName`, Raise Wraiths'; since P1-12d11
 // the way a hero slain outside a battle fell, `how`, each of reportHeroFall's 12 callers'; since P1-12d12 the realm's
 // tag of a challenger his quarry's realm learns of, `realmTag`, and the equip note of a hero who takes a fallen foe's
-// possessions, `gainedItemNote`); a record's `kind`
+// possessions, `gainedItemNote`; since P1-12d15 an heir's name as the engine names him, `heirName`); a record's `kind`
 // that a facts module declares is the record's name, not words (P1-12d6: where the companies muster; P1-12d7: why a
 // hand-over at sea is refused, where a Wild Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why
 // a charmed mind may turn on its enchanter, a company a Telekinetic Storm strikes; P1-12d10: the troops that rally to a
@@ -85,7 +90,7 @@
 // fields of personal combat's facts; P1-12d3's: 121 of a battle's; P1-12d4's: the 10 of the ladder and the grid it
 // listed; P1-12d5's: its three areas' facts modules, which the base lacks, and the disbanding kind; P1-12d6's: its five
 // areas' facts modules; P1-12d7's: its three; P1-12d8's: its two; P1-12d9's: its one; P1-12d12's: its two;
-// P1-12d13's: its one; P1-12d14's: its three), the one
+// P1-12d13's: its one; P1-12d14's: its three; P1-12d15's: its six), the one
 // exception to
 // `refactor-only`'s rule (Theo, 2026-10-25). It can't see words handed in through a parameter. Level 0: syntax trees;
 // nothing runs. TypeScript, in `static/`
@@ -132,6 +137,20 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
   ['the Defend watch', 'src/engine/units/the-facts-the-defend-watchs-lines-record.ts', 'P1-12d14'],
   ['a stranding at sea', 'src/engine/units/the-facts-a-stranding-at-seas-lines-record.ts', 'P1-12d14'],
   ['the war-spoils', 'src/engine/units/the-facts-the-war-spoils-line-records.ts', 'P1-12d14'],
+  [
+    'the lines before the first phase',
+    'src/engine/turn/the-facts-the-lines-before-the-first-phase-record.ts',
+    'P1-12d15',
+  ],
+  ['the new turn', 'src/engine/turn/the-facts-the-new-turns-lines-record.ts', 'P1-12d15'],
+  ["a phase's stages and intents", 'src/engine/turn/the-facts-a-phases-lines-record.ts', 'P1-12d15'],
+  ['the intrusion warnings', 'src/engine/turn/the-facts-the-intrusion-warnings-lines-record.ts', 'P1-12d15'],
+  [
+    'a Defend watch met in battle',
+    'src/engine/turn/the-facts-a-defend-watch-met-in-battle-lines-record.ts',
+    'P1-12d15',
+  ],
+  ["a silent hero's season", 'src/engine/turn/the-facts-a-silent-heros-season-line-records.ts', 'P1-12d15'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -159,6 +178,12 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/units/the-facts-the-defend-watchs-lines-record.ts',
   'src/engine/units/the-facts-a-stranding-at-seas-lines-record.ts',
   'src/engine/units/the-facts-the-war-spoils-line-records.ts',
+  'src/engine/turn/the-facts-the-lines-before-the-first-phase-record.ts',
+  'src/engine/turn/the-facts-the-new-turns-lines-record.ts',
+  'src/engine/turn/the-facts-a-phases-lines-record.ts',
+  'src/engine/turn/the-facts-the-intrusion-warnings-lines-record.ts',
+  'src/engine/turn/the-facts-a-defend-watch-met-in-battle-lines-record.ts',
+  'src/engine/turn/the-facts-a-silent-heros-season-line-records.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -417,6 +442,9 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   // the way a hero slain outside a battle fell, one for each caller of reportHeroFall ('in the duel', "a thief's end",
   // …): a slug the prose reads (P1-12d11)
   how: ['a hero is slain outside a battle'],
+  // an heir's name, as the engine names him and the world then holds it (nextHeroName; its fallbacks, "Heir of …" and
+  // "The New Monarch", are the name the world would hold too): a name, not the line's words (P1-12d15)
+  heirName: ['an heir is crowned'],
 };
 
 const WORD_HELPER =

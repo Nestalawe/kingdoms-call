@@ -36,7 +36,9 @@ export const telSpell = (turnContext, ch, spell, school, lvl, chance, roll, ctx)
 // a pooled host, a stalled battle resumed by the strongest force); his season then read as if he
 // did nothing. Run at the end of each phase: a living realm hero with no line of his own for the
 // phase — by charId, by charIds, or as a commander of one of its battles (the same tests the report
-// uses to file a line under him) — gets a plain line saying where the season leaves him.
+// uses to file a line under him) — gets a plain line saying where the season leaves him. The line is a fact (since
+// P1-12d15: the-facts-a-silent-heros-season-line-records.ts), each province's name as the world holds it (none where
+// the line says "the field"), its words written in the views.
 export function noteSilentHeroes(turnContext, ph, startLoc) {
   const { turnLog, battleCommanders, G } = turnContext;
   const heard = new Set();
@@ -48,20 +50,26 @@ export function noteSilentHeroes(turnContext, ph, startLoc) {
   Object.keys(battleCommanders).forEach((k) => {
     if (k.endsWith('@' + ph)) (battleCommanders[k] || []).forEach((id) => heard.add(id));
   });
-  const pname = (id) => {
-    const p = id != null ? G.world.provinces[id] : null;
-    return (p && p.name) || 'the field';
-  };
   (G.characters || []).forEach((c) => {
     if (!c || !c.alive || c.player == null || heard.has(c.id)) return;
     const from = startLoc ? startLoc[c.id] : undefined;
-    const text =
-      from != null && from !== c.location
-        ? `${c.name} leaves ${pname(from)} and ends the season in ${pname(c.location)}.`
-        : `${c.name} remains in ${pname(c.location)} this season.`;
     emit(turnContext, {
       type: 'move',
-      text,
+      fact:
+        from != null && from !== c.location
+          ? {
+              kind: 'a hero with no line of his own leaves a province and ends the season in another',
+              heroName: c.name,
+              fromProvinceName: (G.world.provinces[from] && G.world.provinces[from].name) || null,
+              provinceName:
+                (c.location != null && G.world.provinces[c.location] && G.world.provinces[c.location].name) || null,
+            }
+          : {
+              kind: 'a hero with no line of his own remains where he is this season',
+              heroName: c.name,
+              provinceName:
+                (c.location != null && G.world.provinces[c.location] && G.world.provinces[c.location].name) || null,
+            },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
       phase: ph,

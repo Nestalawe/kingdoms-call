@@ -37,7 +37,8 @@
   `engine/orders/`, each beside its family's file (`the-facts-the-encounter-and-defend-orders-lines-record.ts`,
   `-order-dispatchs-`, `-item-orders-`, `-research-and-practice-orders-`, `-recruit-and-hire-orders-`; since P1-12d7
   `-army-orders-`, `-realm-works-orders-`, `-war-mastery-orders-`; since P1-12d8 `-espionage-orders-`,
-  `-explore-and-search-orders-`; since P1-12d9 `-cast-spell-orders-`; since P1-12d10 `-move-orders-`), all of them in
+  `-explore-and-search-orders-`; since P1-12d9 `-cast-spell-orders-`; since P1-12d10 `-move-orders-`), since P1-12d15
+  six of `engine/turn/`'s beside its files (the turn's opening, the new turn, a phase's), all of them in
   `LineFact`, each with its
   audience: the fight's, its hero's realm alone, or for a kind filed on its own the audience its event names), and the
   views write its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words
@@ -62,7 +63,8 @@
   it passes on are that area's; the slain line `reportHeroFall` takes is a fact since P1-12d11), and since P1-12d12 nor
   does `heroes/`, since P1-12d13 nor `titles/` (the Spymaster's line still holds what an agent did as the ledger stores
   it, the saved game's words), since P1-12d14 nor `units/` (a stranding at sea's line still holds why the column is short
-  as Early Winter's safety net hands it in, words through a parameter). A word helper that reads the world and still has an engine caller elsewhere is split in two where it is: a copy
+  as Early Winter's safety net hands it in, words through a parameter), since P1-12d15 nor `turn/`'s opening, new turn
+  and phases (a line the order merge held, `staleOrderWarnings`, is still its words). A word helper that reads the world and still has an engine caller elsewhere is split in two where it is: a copy
   as the line tells it and its words on that copy alone, which the prose imports (`theSkillInPlayAsALineTellsIt` and
   `theWordsOfASkillInPlay` beside `skillInPlayNote`; since P1-12d8 `theStatShownAsALineTellsIt` and
   `theWordsOfAStatShown` beside `statNote`, `theOddsShownAsALineTellsIt` and `theWordsOfTheOddsShown` beside `oddsNote`:

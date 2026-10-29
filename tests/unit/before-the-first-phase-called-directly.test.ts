@@ -98,7 +98,10 @@ const run = (tc: Raw, names: readonly string[], dice = LANDS) => {
     for (const f of names) stage(f)(tc);
   });
 };
-const lines = (b: Board) => (b.tc as unknown as Raw)['turnLog'] as Line[];
+/** The turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3):
+ *  since P1-12d15 the lines before the first phase are facts, their words there alone. */
+const theTurnsLinesInWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => { gmLog: Line[] };
+const lines = (b: Board) => theTurnsLinesInWords((b.tc as unknown as Raw)['turnLog']).gmLog;
 
 /** The cases a direct call can stage, by part (those about the bots' own passes need a whole turn). */
 const DIRECT_CASES = BEFORE_CASES.map(([part, cases]) => [part, cases.filter((c) => !c.wholeTurnOnly)] as const).filter(

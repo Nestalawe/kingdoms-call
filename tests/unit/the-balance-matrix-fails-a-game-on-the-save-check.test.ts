@@ -7,7 +7,11 @@
 //   as it is finds nothing; with a key the schema doesn't know (a battle's mark left on a company), that place;
 // - the list of known places: each entry is anchored and names its Parked entry; an entry lets exactly its place through
 //   (in a line and in the last save) and no other place, not even its path with another kind, nor a count.
-// The staged lines are made by the engine's own words (whatTheSavesCheckFoundInWords), so a change to them that the
+// - the turn's line, written from its fact by the views (since P1-12d15 the line is a fact: the-words-of-the-new-turns-
+//   lines.ts), is the line the other cases stage, begins as the matrix reads it (THE_SAVE_CHECKS_LINE_BEGINS), and the
+//   matrix finds its places in it: no game writes the line, so a change to its words that the matrix's reading misses is
+//   caught here alone.
+// The staged lines are made by the save's check's own words (whatTheSavesCheckFoundInWords), so a change to them that the
 // matrix's reading misses turns this red.
 // Level 1 (unit): both checks are functions of a log and of a save (the upgrade and the strict parse of the fixture take
 // about a second); a static test can't parse a save. The matrix's run is the row's proof, not a test.
@@ -21,7 +25,9 @@
 // mark left on a company, that place, never its value. The known places: each entry anchored and naming its Parked
 // entry; an entry lets exactly its place through, in a line and on the last save, and no other (the same path with
 // another kind, another field, another path), nor a count. The staged lines are the engine's own words
-// (`whatTheSavesCheckFoundInWords`). Fails on its base (no module); planted on the module, each red: the line check
+// (`whatTheSavesCheckFoundInWords`); since P1-12d15 a case checks that the views' words of the turn's fact (`theWordsOf`)
+// are the staged line, begin with `THE_SAVE_CHECKS_LINE_BEGINS`, and give the matrix its places (red on a planted
+// prefix). Fails on its base (no module); planted on the module, each red: the line check
 // taken out, the last save not checked, a count let through, the known list ignored, an entry matched by its path
 // alone, the places not split, the full stop kept. Level 1: both checks are functions of a log and of a save; a static
 // test can't parse a save. The matrix's run is the row's proof, not a test. TypeScript, in `unit/`
@@ -39,14 +45,19 @@ import {
   THE_CHECKS_FINDINGS_NAMED_AT_MOST,
   whatTheSavesCheckFoundInWords,
 } from '../../src/engine/saves/what-the-saves-check-found-in-words.ts';
+import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
 const FIXTURE = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/saves/version-1.json'), 'utf8');
 
-/** The turn's line for the GM, as the engine writes it (engine/turn/new-turn-war-academy-…-the-final-reconcile.ts). */
+/** The turn's line for the GM, as the GM's log stores it (the turn files a fact, engine/turn/new-turn-war-academy-…-the-
+ *  final-reconcile.ts; the views write its words: the case below keeps the two the same). */
 const theSaveChecksLine = (places: string[]) => ({
   type: 'system',
   text: `[Save check] ${whatTheSavesCheckFoundInWords(places)}`,
 });
+/** The fact the turn files when the save it loaded differs from this build's schema. */
+const theSaveChecksFact = (places: string[]) =>
+  ({ kind: "the save the turn loaded differs from this build's schema", places }) as const;
 /** A turn's GM log around it: lines of the turn's end that aren't the check's. */
 const aTurnsLog = (...lines: { type: string; text: string }[]) => [
   { type: 'system', text: 'Turn 7 begins.' },
@@ -106,6 +117,13 @@ describe("a turn's GM log", () => {
       ...twelve.slice(0, THE_CHECKS_FINDINGS_NAMED_AT_MOST),
       'and 2 more',
     ]);
+  });
+
+  test('the turn’s line, written from its fact, begins as the matrix reads it, and the matrix finds its places', () => {
+    const words = theWordsOf(theSaveChecksFact([THE_LEAKED_MARK, A_MISSING_FIELD]));
+    expect(words).toBe(theSaveChecksLine([THE_LEAKED_MARK, A_MISSING_FIELD]).text);
+    expect(words.startsWith(THE_SAVE_CHECKS_LINE_BEGINS)).toBe(true);
+    expect(whatTheSaveCheckFoundInATurnsLog([{ text: words }])).toEqual([THE_LEAKED_MARK, A_MISSING_FIELD]);
   });
 
   test('a line that begins as the check’s but not in its words is found whole', () => {
