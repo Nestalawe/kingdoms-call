@@ -61,7 +61,7 @@ export const SPELL_HOD_BITE_PCT = 40,
 export const SPELL_MIRROR_HP_PCT = 40,
   SPELL_MIRROR_ROUNDS = 3; // Mirror Image, see the case below
 export const PC_CAST_BASE = SPELL_CAST_BASE; // personal-combat casting is 30 + school level × 10 · 2026-09-11: every path now shares SPELL_CAST_BASE
-export function pcCastCombatSpell(turnContext, caster, target, spellName, narrative, state) {
+export function pcCastCombatSpell(turnContext, caster, target, spellName, narrative, state): boolean {
   const { G } = turnContext;
   const SPELL_SCHOOL = PC_SPELL_SCHOOL_MAP; // one shared table (pcTakeHit reads it too)
   const school = SPELL_SCHOOL[spellName];
@@ -518,7 +518,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
 // special is its equivalent of a Cast action: it appears in the creature's action plan as
 // MS:<name> and resolves here. Effects are parsed from the ability's `effect` text so new
 // monsters can be added as data without touching the engine.
-export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state) {
+export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state): void {
   narrate(narrative, {
     kind: 'a fighter uses a power',
     actorName: actor.name,

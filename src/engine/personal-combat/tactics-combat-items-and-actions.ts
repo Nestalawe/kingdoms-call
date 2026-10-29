@@ -1,8 +1,7 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { NPC_SCHOOL_SPELL, STEAL_TIER_PEN } from '../army-tables.ts';
 import { encounterClearGold, ensureLairHoard, temperOf } from '../world/tables.ts';
-import { hasItemBase } from '../items/equipment.ts';
+import { hasItemBase, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { PARLEY_ENABLED, SCOUT_ENABLED, pcDeferEffect, pcLearnWeakness, pcPushDot } from './helpers.ts';
 import { pcFoeCat } from '../titles/perks.ts';
@@ -21,6 +20,77 @@ import {
   theNamesAndDescriptionsAsTheLineTellsThem,
   theNamesAsTheLineTellsThem,
 } from './the-facts-a-personal-combats-lines-record.ts';
+import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { Item } from '../../schemas/saved-game-state.ts';
+import type {
+  AFighterInAPersonalCombat,
+  AFightersSchools,
+  AFightersStatus,
+  AGuardiansPerk,
+  AGuardiansSpecial,
+} from './helpers.ts';
+
+// Its types (plan P1-10b13): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
+// stays; a fighter is AFighterInAPersonalCombat (helpers.ts). A fighter's hero or guardian, his foe or a field of his
+// that the code guards here but reads unguarded elsewhere is read through asItsGuardReadsIt
+// (to-hit-wounds-stuns-and-courage.ts).
+/** A combat item as these read it: its name, its words, and its effect (the saved item's), which the code guards. */
+interface ACombatItemAsItIsUsed {
+  readonly name: string;
+  readonly desc?: string | undefined;
+  readonly effect?: Item['effect'] | null | undefined;
+}
+/** A combat item's effect as these read it: the saved item's, or none (`{}`). */
+type ACombatItemsEffect = Partial<Item['effect']>;
+/** A fighter as his items are weighed and used: his hero or guardian may be missing (the code guards it). */
+type AFighterAsHisItemsAreUsed = Omit<AFighterInAPersonalCombat, 'ref'> & {
+  readonly ref?: AFighterInAPersonalCombat['ref'] | null | undefined;
+};
+/** A fighter as an item's moment is weighed: his status may be missing too (the code guards it). */
+type AFighterAsHisItemsMomentIsWeighed = Omit<AFighterAsHisItemsAreUsed, 'status'> & {
+  readonly status?: AFightersStatus | null | undefined;
+};
+/** The foe as an item's moment is weighed against him: his specials and schools may be missing (the code guards
+ *  them). */
+type AFoeAsAnItemsMomentIsWeighed = Omit<AFighterInAPersonalCombat, 'specials' | 'school'> & {
+  readonly specials?: readonly unknown[] | null | undefined;
+  readonly school?: Partial<AFightersSchools> | null | undefined;
+};
+/** A lair as the Scout reads it: its name, its hoard and what thieves took from it. */
+interface ALairAsTheScoutReadsIt {
+  readonly name: string;
+  readonly hoardItems?: Item[] | null | undefined;
+  readonly _stolenItems?: string[] | null | undefined;
+  scouted?: boolean | undefined;
+}
+/** The fight's state as an action reads and writes it: the range, who fled, stole or talked the guardian down, and the
+ *  lair (none in a duel). */
+interface TheFightAsAnActionReadsIt {
+  range: string;
+  fledBy?: AFighterInAPersonalCombat | null | undefined;
+  stoleBy?: AFighterInAPersonalCombat | null | undefined;
+  parley?: boolean | undefined;
+  readonly feature?: ALairAsTheScoutReadsIt | null | undefined;
+}
+/** A fighter's hero or guardian as the theft and the Scout read a guardian's fields (a hero has none of them). */
+type AGuardianAsTheTheftAndTheScoutReadHim = object & {
+  readonly power?: string | undefined;
+  readonly hp?: number | undefined;
+  readonly _hpFull?: number | null | undefined;
+  readonly spells?: readonly AGuardiansSpecial[] | null | undefined;
+  readonly desc?: string | undefined;
+  readonly passives?: (AGuardiansPerk | null | undefined)[] | null | undefined;
+  readonly passive?: AGuardiansPerk | null | undefined;
+};
+
+/** A damage range as the dice read it (`dmg[0]`, `dmg[1]`): an element missing is NaN to the dice, as `undefined` was;
+ *  an item of no range threw there, and still does, the same TypeError. */
+function aDamageRangeAsTheDiceReadIt(range: readonly number[] | null | undefined): [low: number, high: number] {
+  if (!range) throw new TypeError(`Cannot read properties of ${String(range)} (reading '0')`);
+  return [Number(range[0]), Number(range[1])];
+}
 
 // ── PERSONAL COMBAT: TACTICS, COMBAT ITEMS AND EACH ACTION (plan P1-08e: lifted out of resolveTurn) ────
 // What a combatant does once their plan is spent (Temper), the potions, scrolls and devices carried into a fight, and
@@ -29,7 +99,7 @@ import {
 // --- Tactic selection -------------------------------------------------------- Once a plan is
 // spent, Temper takes over: fight on, or look for a way out. Monsters never flee — they fight to
 // the last.
-export function pcTemperFallback(actor, foe) {
+export function pcTemperFallback(actor: AFighterInAPersonalCombat, foe: AFighterInAPersonalCombat) {
   const tt = temperOf(actor.temper);
   const ratio = actor.hp / (actor.maxHp || 20);
   // once a character's chosen encounter actions are spent, they DEFAULT to attacking with melee
@@ -44,11 +114,11 @@ export function pcTemperFallback(actor, foe) {
   if ((tt.fleeUrge || 0) > 0 && kcRng() < tt.fleeUrge) return 'FL';
   return 'ME';
 }
-export function pcNextTactic(actor, foe) {
+export function pcNextTactic(actor: AFighterInAPersonalCombat, foe: AFighterInAPersonalCombat) {
   if (actor.tacIdx < actor.tactics.length) {
     const t = actor.tactics[actor.tacIdx];
     actor.tacIdx++;
-    return t || 'ME';
+    return (t ?? '') || 'ME';
   }
   if (!actor.planExhausted) {
     actor.planExhausted = true;
@@ -82,34 +152,42 @@ export const _CI_PRIORITY = [
   'dmg',
   'drain',
 ];
-export function pcCombatItemWanted(actor, foe, it, state) {
-  const e = it.effect || {};
+export function pcCombatItemWanted(
+  actor: AFighterAsHisItemsMomentIsWeighed,
+  foe: AFoeAsAnItemsMomentIsWeighed,
+  it: ACombatItemAsItIsUsed,
+  state: unknown,
+) {
+  const e: ACombatItemsEffect = it.effect ?? {};
   const ratio = actor.hp / (actor.maxHp || 20);
-  const st = actor.status || {};
+  const st: Partial<AFightersStatus> = actor.status ?? {};
   switch (e.use) {
     case 'heal':
-      return ratio < (e.below || 0.5);
+      return ratio < ((e.below ?? 0) || 0.5);
     case 'hot':
-      return ratio < (e.below || 0.7) && !(st.hot && st.hot.rounds > 0);
+      return ratio < ((e.below ?? 0) || 0.7) && !(st.hot && st.hot.rounds > 0);
     case 'secondwind':
-      return ratio < (e.below || 0.6) && ((st.dot || []).length > 0 || (st.hitPenalty || 0) >= 10 || ratio < 0.4);
+      return (
+        ratio < ((e.below ?? 0) || 0.6) &&
+        ((st.dot ?? []).length > 0 || (Number(st.hitPenalty) || 0) >= 10 || ratio < 0.4)
+      );
     case 'absorb':
-      return actor.hp < (actor.maxHp || 20) && !(st.absorb > 0);
+      return actor.hp < (actor.maxHp || 20) && !(st.absorb !== undefined && st.absorb > 0);
     case 'invis':
-      return ratio < (e.below || 0.5) && !(st.toHitReduce > 0);
+      return ratio < ((e.below ?? 0) || 0.5) && !(st.toHitReduce !== undefined && st.toHitReduce > 0);
     case 'mirror':
-      return ratio < (e.below || 0.7) && !(st.mirrorImages > 0);
+      return ratio < ((e.below ?? 0) || 0.7) && !(st.mirrorImages !== undefined && st.mirrorImages > 0);
     case 'flee':
-      return ratio < (e.below || 0.35) && !actor.neverFlees;
+      return ratio < ((e.below ?? 0) || 0.35) && !actor.neverFlees;
     case 'dispel':
-      return (st.dot || []).length > 0 || (st.hitPenalty || 0) >= 15;
+      return (st.dot ?? []).length > 0 || (Number(st.hitPenalty) || 0) >= 15;
     case 'bane':
     case 'banestun':
-      return (e.vs || []).includes(pcFoeCat(foe));
+      return (e.vs ?? []).includes(pcFoeCat(foe));
     case 'silence':
-      return (foe.specials || []).length > 0 || Object.values(foe.school || {}).some((v) => (v || 0) > 0);
+      return (foe.specials ?? []).length > 0 || Object.values(foe.school ?? {}).some((v) => (v || 0) > 0);
     case 'drain':
-      return ratio < (e.below || 0.75);
+      return ratio < ((e.below ?? 0) || 0.75);
     case 'buff':
     case 'focus':
     case 'stun':
@@ -121,37 +199,45 @@ export function pcCombatItemWanted(actor, foe, it, state) {
   }
   return false;
 }
-export function pcTryCombatItem(turnContext, actor, foe, narrative, state) {
-  const list = actor.combatItems || [];
+export function pcTryCombatItem(
+  turnContext: TurnContext,
+  actor: AFighterAsHisItemsAreUsed,
+  foe: AFighterInAPersonalCombat,
+  narrative: NarrativeLine[],
+  state: TheFightAsAnActionReadsIt,
+) {
+  const list: readonly (ACombatItemAsItIsUsed | null | undefined)[] = actor.combatItems ?? [];
   if (!list.length) return false;
-  actor._itemsUsed = actor._itemsUsed || new Set();
-  let pick = null;
+  const itemsUsed = (actor._itemsUsed ??= new Set());
+  let pick: ACombatItemAsItIsUsed | null | undefined = null;
   for (const use of _CI_PRIORITY) {
     pick = list.find(
-      (it) =>
-        it &&
-        it.effect &&
-        it.effect.use === use &&
-        !actor._itemsUsed.has(it.name) &&
-        pcCombatItemWanted(actor, foe, it, state),
+      (it) => it?.effect?.use === use && !itemsUsed.has(it.name) && pcCombatItemWanted(actor, foe, it, state),
     );
     if (pick) break;
   }
   if (!pick) return false;
-  actor._itemsUsed.add(pick.name);
+  itemsUsed.add(pick.name);
   pcUseCombatItem(turnContext, actor, foe, pick, narrative, state);
   if (actor.kind === 'character' && actor.ref)
     trySkillGain(turnContext, actor.ref, 'sage', SKILLGAIN_COMMON, narrative); // 2026-09-21: using a magic item may teach Sage (small chance)
   return true;
 }
-export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
-  const e = it.effect || {};
+export function pcUseCombatItem(
+  turnContext: Pick<TurnContext, 'G'>,
+  actor: AFighterAsHisItemsAreUsed,
+  foe: AFighterInAPersonalCombat,
+  it: ACombatItemAsItIsUsed,
+  narrative: NarrativeLine[],
+  state: TheFightAsAnActionReadsIt,
+) {
+  const e: ACombatItemsEffect = it.effect ?? {};
   const nm = it.name;
   const st = actor.status;
   const fs = foe.status;
   const who = actor.kind === 'monster' ? `The ${actor.name}` : actor.name;
-  const hurt = (d, label) => {
-    const dealt = pcTakeHit(turnContext, foe, d, narrative, actor.name, label || nm);
+  const hurt = (d: number, label?: string) => {
+    const dealt = pcTakeHit(turnContext, foe, d, narrative, actor.name, (label ?? '') || nm);
     if (dealt)
       narrate(narrative, {
         kind: 'a combat item strikes the foe',
@@ -165,13 +251,13 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
   narrate(narrative, { kind: 'a fighter uses a combat item', who, nm });
   switch (e.use) {
     case 'heal': {
-      const h = Math.min(e.amt || 5, Math.max(0, (actor.maxHp || 20) - actor.hp));
+      const h = Math.min((e.amt ?? 0) || 5, Math.max(0, (actor.maxHp || 20) - actor.hp));
       actor.hp += h;
       narrate(narrative, { kind: 'a fighter recovers hit points', who, healed: h, actorHp: dispFloor(actor.hp) });
       break;
     }
     case 'hot': {
-      st.hot = { amt: e.amt || 3, rounds: e.rounds || 3, label: nm };
+      st.hot = { amt: (e.amt ?? 0) || 3, rounds: (e.rounds ?? 0) || 3, label: nm };
       narrate(narrative, {
         kind: 'warmth spreads through a fighter each round',
         actorName: actor.name,
@@ -181,7 +267,7 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
       break;
     }
     case 'secondwind': {
-      const h = Math.min(e.amt || 10, Math.max(0, (actor.maxHp || 20) - actor.hp));
+      const h = Math.min((e.amt ?? 0) || 10, Math.max(0, (actor.maxHp || 20) - actor.hp));
       actor.hp += h;
       st.dot = [];
       st.hitPenalty = 0;
@@ -196,10 +282,10 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
     }
     case 'dmg':
     case 'bane': {
-      const times = e.times || 1;
+      const times = (e.times ?? 0) || 1;
       for (let i = 0; i < times && foe.hp > 0; i++) {
-        let d = rng(e.dmg[0], e.dmg[1]);
-        if ((e.doubleVs || []).includes(pcFoeCat(foe))) {
+        let d = rng(...aDamageRangeAsTheDiceReadIt(e.dmg));
+        if ((e.doubleVs ?? []).includes(pcFoeCat(foe))) {
           d *= 2;
           narrate(narrative, { kind: 'a combat item blazes twice as bright against the foe', nm, foeName: foe.name });
         }
@@ -218,30 +304,31 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
       }
       // these ride on the damage the item just dealt, so they grip from the NEXT round. (A
       // pure-penalty or pure-stun item — case 'pen' / 'stun' below — still bites now.)
-      if (e.hitPen && foe.hp > 0) {
+      const { hitPen, stun } = e; // read once, for the riders below (no fight writes an item's effect)
+      if (hitPen && foe.hp > 0) {
         pcDeferEffect(foe, () => {
-          fs.hitPenalty = (fs.hitPenalty || 0) + e.hitPen;
+          fs.hitPenalty = (fs.hitPenalty || 0) + hitPen;
         });
-        narrate(narrative, { kind: 'the foe is thrown off from the next round', foeName: foe.name, eHitPen: e.hitPen });
+        narrate(narrative, { kind: 'the foe is thrown off from the next round', foeName: foe.name, eHitPen: hitPen });
       }
-      if (e.stun && foe.hp > 0) {
+      if (stun && foe.hp > 0) {
         if (pcStunTurned(foe, narrative, `the ${nm}'s daze`)) {
           /* turned (batch item 3) */
         } else {
           pcDeferEffect(foe, () => {
-            fs.stun = (fs.stun || 0) + e.stun;
+            fs.stun = (fs.stun || 0) + stun;
           });
           narrate(narrative, {
             kind: 'the foe reels losing actions from the next round',
             foeName: foe.name,
-            eStun: e.stun,
+            eStun: stun,
           });
         }
       }
       break;
     }
     case 'drain': {
-      const d = rng(e.dmg[0], e.dmg[1]);
+      const d = rng(...aDamageRangeAsTheDiceReadIt(e.dmg));
       const dealt = hurt(d);
       const h = Math.min(dealt, Math.max(0, (actor.maxHp || 20) - actor.hp));
       actor.hp += h;
@@ -256,25 +343,29 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
     }
     case 'stun':
     case 'banestun': {
-      if (pcLandStun(foe, e.stun || 1, narrative, `the ${nm}`))
+      if (pcLandStun(foe, (e.stun ?? 0) || 1, narrative, `the ${nm}`))
         narrate(narrative, {
           kind: 'the foe is held fast, losing actions',
           foeName: foe.name,
-          eStun: e.stun || 1,
+          eStun: (e.stun ?? 0) || 1,
         });
       break;
     }
     case 'pen': {
       // an item that says "for the rest of the fight" no longer fades 5% a round
-      if (/rest of the fight/i.test(it.desc || '')) {
-        fs.hitPenaltyFixed = (fs.hitPenaltyFixed || 0) + (e.hitPen || 15);
-        narrate(narrative, { kind: 'the foe can barely see to strike', foeName: foe.name, eHitPen: e.hitPen || 15 });
+      if (/rest of the fight/i.test(it.desc ?? '')) {
+        fs.hitPenaltyFixed = (fs.hitPenaltyFixed || 0) + ((e.hitPen ?? 0) || 15);
+        narrate(narrative, {
+          kind: 'the foe can barely see to strike',
+          foeName: foe.name,
+          eHitPen: (e.hitPen ?? 0) || 15,
+        });
       } else {
-        fs.hitPenalty = (fs.hitPenalty || 0) + (e.hitPen || 15);
+        fs.hitPenalty = (fs.hitPenalty || 0) + ((e.hitPen ?? 0) || 15);
         narrate(narrative, {
           kind: 'the foe can barely see to strike for now',
           foeName: foe.name,
-          eHitPen: e.hitPen || 15,
+          eHitPen: (e.hitPen ?? 0) || 15,
         });
       }
       break;
@@ -304,18 +395,22 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
         state.fledBy = foe;
         narrate(narrative, { kind: 'the foe is overcome with dread and flees', foeName: foe.name });
       } else {
-        fs.hitPenalty = (fs.hitPenalty || 0) + (e.hitPen || 15);
+        fs.hitPenalty = (fs.hitPenalty || 0) + ((e.hitPen ?? 0) || 15);
         narrate(narrative, {
           kind: 'the foe holds their ground badly shaken',
           foeName: foe.name,
-          eHitPen: e.hitPen || 15,
+          eHitPen: (e.hitPen ?? 0) || 15,
         });
       }
       break;
     }
     case 'silence': {
-      fs.silenceRounds = (fs.silenceRounds || 0) + (e.rounds || 3);
-      narrate(narrative, { kind: "the foe's magic and powers are bound", foeName: foe.name, eRounds: e.rounds || 3 });
+      fs.silenceRounds = (fs.silenceRounds || 0) + ((e.rounds ?? 0) || 3);
+      narrate(narrative, {
+        kind: "the foe's magic and powers are bound",
+        foeName: foe.name,
+        eRounds: (e.rounds ?? 0) || 3,
+      });
       break;
     }
     case 'buff': {
@@ -331,12 +426,12 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
       break;
     }
     case 'focus': {
-      st.hitBonus = (st.hitBonus || 0) + (e.hitBonus || 10);
-      narrate(narrative, { kind: "a fighter's eye sharpens", who, eHitBonus: e.hitBonus || 10 });
+      st.hitBonus = (Number(st.hitBonus) || 0) + ((e.hitBonus ?? 0) || 10);
+      narrate(narrative, { kind: "a fighter's eye sharpens", who, eHitBonus: (e.hitBonus ?? 0) || 10 });
       break;
     }
     case 'absorb': {
-      st.absorb = (st.absorb || 0) + (e.absorb || 10);
+      st.absorb = (st.absorb || 0) + ((e.absorb ?? 0) || 10);
       if (e.reflect) {
         st.reflect = (st.reflect || 0) + e.reflect;
       }
@@ -350,32 +445,32 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
       break;
     }
     case 'mirror': {
-      st.mirrorImages = (st.mirrorImages || 0) + (e.images || 2);
+      st.mirrorImages = (st.mirrorImages || 0) + ((e.images ?? 0) || 2);
       narrate(narrative, {
         kind: 'shimmering doubles step out of a fighter',
-        eImages: e.images || 2,
+        eImages: (e.images ?? 0) || 2,
         actorName: actor.name,
       });
       break;
     }
     case 'flee': {
-      st.fleeBonus = (st.fleeBonus || 0) + (e.fleeBonus || 25);
-      if (e.toHitReduce) st.toHitReduce = (st.toHitReduce || 0) + e.toHitReduce;
+      st.fleeBonus = (st.fleeBonus || 0) + ((e.fleeBonus ?? 0) || 25);
+      if (e.toHitReduce) st.toHitReduce = (Number(st.toHitReduce) || 0) + e.toHitReduce;
       narrate(narrative, {
         kind: 'a fighter is ready to break away',
         who,
-        eFleeBonus: e.fleeBonus || 25,
+        eFleeBonus: (e.fleeBonus ?? 0) || 25,
         eToHitReduce: e.toHitReduce,
       });
       break;
     }
     case 'invis': {
-      st.toHitReduce = (st.toHitReduce || 0) + (e.toHitReduce || 25);
+      st.toHitReduce = (Number(st.toHitReduce) || 0) + ((e.toHitReduce ?? 0) || 25);
       narrate(narrative, {
         kind: 'a fighter fades from sight the foe',
         who,
         foeName: foe.name,
-        eToHitReduce: e.toHitReduce || 25,
+        eToHitReduce: (e.toHitReduce ?? 0) || 25,
       });
       break;
     }
@@ -393,7 +488,13 @@ export function pcUseCombatItem(turnContext, actor, foe, it, narrative, state) {
 
 // --- One combatant performs their next action against the foe --------------- Actions alternate
 // strictly, one per combatant per round, in initiative order.
-export function pcAct(turnContext, actor, foe, narrative, state) {
+export function pcAct(
+  turnContext: TurnContext,
+  actor: AFighterInAPersonalCombat,
+  foe: AFighterInAPersonalCombat,
+  narrative: NarrativeLine[],
+  state: TheFightAsAnActionReadsIt,
+) {
   const { G } = turnContext;
   if (actor.status.stun > 0) {
     narrate(narrative, {
@@ -496,7 +597,8 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
     }
     case 'MS': {
       // monster special ability — the creature's equivalent of Cast
-      const sp = (actor.specials || []).find((s) => s && s.name === arg);
+      const specials: readonly (AGuardiansSpecial | null | undefined)[] = asItsGuardReadsIt(actor.specials) ?? [];
+      const sp = specials.find((s) => s?.name === arg);
       if (!sp) {
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
@@ -514,7 +616,7 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
-      const cc = sp.castChance != null ? sp.castChance : 50;
+      const cc = sp.castChance ?? 50;
       if (kcRng() * 100 >= cc) {
         narrate(narrative, {
           kind: 'a fighter gathers itself for a power but the moment slips away',
@@ -538,13 +640,16 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
         break;
       }
       // Choose the spell: explicit CA:Name, else best available combat spell.
-      let name = arg;
+      let name: string | null | undefined = arg;
       if (!name) {
+        // the schools and the spell of each read by any school's name
+        const levelIn: Readonly<Partial<Record<string, number>>> = { ...actor.school };
+        const spellOf: Readonly<Partial<Record<string, string>>> = NPC_SCHOOL_SPELL;
         const best = ['elemental', 'necromancy', 'white', 'psychic', 'illusory'].reduce(
-          (b, s) => ((actor.school[s] || 0) > (actor.school[b] || 0) ? s : b),
+          (b, s) => ((Number(levelIn[s]) || 0) > (Number(levelIn[b]) || 0) ? s : b),
           'elemental',
         );
-        name = NPC_SCHOOL_SPELL[best];
+        name = spellOf[best];
       } // tie-break ORDER — deliberately not KC_MAGIC_SCHOOLS
       if (!pcCastCombatSpell(turnContext, actor, foe, name, narrative, state))
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
@@ -604,12 +709,17 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
       }
       let bonus = temperOf(actor.temper).stealMod;
       if (actor.castSpells.includes('Invisibility')) bonus += 15;
-      if (actor.ref && hasItemBase(actor.ref, 'Lock-Pick of Legends')) bonus += 20; // Lock-Pick of Legends: +20% steal chance
+      const actorsHero: (object & AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt>) | null | undefined =
+        asItsGuardReadsIt(actor.ref);
+      if (actorsHero && hasItemBase(actorsHero, 'Lock-Pick of Legends')) bonus += 20; // Lock-Pick of Legends: +20% steal chance
       // Tougher guardians watch their hoard more closely — a flat penalty by tier. A master thief
       // can still rob a Legendary beast, but a novice has little hope of it.
-      const STEAL_TIER_PENALTY = { ...STEAL_TIER_PEN };
-      const _tier = (foe && foe.ref && foe.ref.power) || 'Weak';
-      const tierPen = STEAL_TIER_PENALTY[_tier] || 0;
+      const STEAL_TIER_PENALTY: Readonly<Partial<Record<string, number>>> = { ...STEAL_TIER_PEN };
+      const foesGuardian: AGuardianAsTheTheftAndTheScoutReadHim | null | undefined = asItsGuardReadsIt(
+        asItsGuardReadsIt(foe)?.ref,
+      );
+      const _tier = (foesGuardian?.power ?? '') || 'Weak';
+      const tierPen = STEAL_TIER_PENALTY[_tier] ?? 0; // the table holds no NaN
       const chance = Math.max(5, Math.min(95, 50 + 10 * Math.min(th, 5) + bonus - tierPen));
       if (kcRng() * 100 < chance) {
         state.stoleBy = actor;
@@ -649,12 +759,11 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
       // also still steadies the hand for the current exchange (Explorer × 5% off the hit
       // penalty).
       const feat = state.feature;
-      if (feat && foe && foe.kind === 'monster') {
-        const power = (foe.ref && foe.ref.power) || '';
-        const curHp = Math.max(0, Math.round(foe.hp != null ? foe.hp : (foe.ref && foe.ref.hp) || 0));
-        const fullHp = Math.round(
-          foe.ref && foe.ref._hpFull != null ? foe.ref._hpFull : (foe.ref && foe.ref.hp) || curHp,
-        );
+      if (feat && asItsGuardReadsIt(foe)?.kind === 'monster') {
+        const foesGuardian: AGuardianAsTheTheftAndTheScoutReadHim | null | undefined = asItsGuardReadsIt(foe.ref);
+        const power = foesGuardian?.power ?? ''; // a grade '' or none: '', as before
+        const curHp = Math.max(0, Math.round(asItsGuardReadsIt(foe.hp) ?? (Number(foesGuardian?.hp) || 0)));
+        const fullHp = Math.round(foesGuardian?._hpFull ?? ((foesGuardian?.hp ?? 0) || curHp));
         // report the EXACT gold a clearer will take (rolled and locked now), plus only the
         // magic-item outlook — no more double gold statement (a "hoard of about Xg" AND a "~3-8g"
         // range).
@@ -662,14 +771,14 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
         const clearGold = encounterClearGold(feat);
         // the hoard is fixed at world gen, so Scout names the ACTUAL items — and notes any a
         // thief has already lifted, and which the guardian has turned against challengers.
-        const _hi = feat.hoardItems || [],
-          _st = feat._stolenItems || [];
-        const _wielded = foe.wielded || [];
+        const _hi = feat.hoardItems ?? [],
+          _st = feat._stolenItems ?? [];
+        const _wielded = foe.wielded ?? [];
         // Abilities — the guardian's special powers (its spell list).
-        const spells = (foe.ref && foe.ref.spells) || [];
+        const spells = foesGuardian?.spells ?? [];
         // Weaknesses / resistances — read the guardian's damage-type vulnerabilities (0.4-1.8; >1
         // means it takes MORE from that type, <1 means it shrugs it off).
-        const v = foe.vuln || { melee: 1, archery: 1, spell: 1 };
+        const v = foe.vuln ?? { melee: 1, archery: 1, spell: 1 };
         // the one thing worth scouting for — the guardian's exploitable weakness. Reading it here
         // teaches the realm for good, so the flaw is on the order form next turn.
         if (foe.weak) {
@@ -686,9 +795,9 @@ export function pcAct(turnContext, actor, foe, narrative, state) {
           power,
           curHp,
           fullHp,
-          foeDesc: foe.ref && foe.ref.desc,
+          foeDesc: foesGuardian === null ? null : foesGuardian?.desc, // a hero or guardian of none: none, as before
           spellNames: theNamesAsTheLineTellsThem(spells.slice(0, 4)),
-          passives: theNamesAndDescriptionsAsTheLineTellsThem(guardianPassives(foe.ref)), // passives are scouted too
+          passives: theNamesAndDescriptionsAsTheLineTellsThem(guardianPassives(foesGuardian)), // passives are scouted too
           vulnerabilities: { melee: v.melee, archery: v.archery, spell: v.spell },
           weakness: foe.weak ? { name: foe.weak.name, desc: foe.weak.desc } : null,
           aDruidCouldTalkItDown: PARLEY_ENABLED && foe.pacifiable,

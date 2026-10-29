@@ -145,8 +145,8 @@ export function theNamesAsTheLineTellsThem(list: readonly { readonly name: strin
 
 /** The names and descriptions of a list of things (a guardian's passive perks), copied as the line is told. */
 export function theNamesAndDescriptionsAsTheLineTellsThem(
-  list: readonly { readonly name: string; readonly desc: string }[],
-): { name: string; desc: string }[] {
+  list: readonly { readonly name: string; readonly desc?: string | undefined }[],
+): { name: string; desc: string | undefined }[] {
   return list.map((x) => ({ name: x.name, desc: x.desc }));
 }
 
@@ -645,8 +645,8 @@ export type TheFactOfAPersonalCombatsLine =
   | {
       kind: 'warmth spreads through a fighter each round';
       actorName: AValueInALinesWords;
-      eAmt: AValueInALinesWords;
-      eRounds: AValueInALinesWords;
+      eAmt: AValueInALinesWords | undefined;
+      eRounds: AValueInALinesWords | undefined;
     }
   | {
       kind: 'a fighter recovers hit points and every lingering affliction lifts';
@@ -763,10 +763,10 @@ export type TheFactOfAPersonalCombatsLine =
       fullHp: AValueInALinesWords;
       foeDesc: string | null | undefined;
       spellNames: readonly string[];
-      passives: readonly { readonly name: string; readonly desc: string }[];
+      passives: readonly { readonly name: string; readonly desc: string | undefined }[];
       vulnerabilities: { readonly melee: number; readonly archery: number; readonly spell: number };
       weakness: { readonly name: string; readonly desc: string } | null;
-      aDruidCouldTalkItDown: boolean;
+      aDruidCouldTalkItDown: boolean | undefined;
       clearGold: AValueInALinesWords;
       hoardItems: readonly AnItemAsTheLineNamesIt[];
       stolenItemNames: readonly string[];

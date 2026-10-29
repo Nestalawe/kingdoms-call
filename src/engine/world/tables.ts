@@ -242,7 +242,7 @@ export function setFeatureTreasure(f, v) {
 // cache it on the feature, so a Scout can report the EXACT figure a clearer will receive and the
 // victory branch pays out that same amount (rolled here if the site was never scouted).
 export const ENCOUNTER_CLEAR_GOLD_BANDS = { Weak: [5, 8], Moderate: [12, 18], Powerful: [20, 30], Legendary: [40, 60] }; // was 5–12 / 14–28 / 30–50 / 55–90
-export function encounterClearGold(feat) {
+export function encounterClearGold(feat): number {
   if (!feat) return 0;
   if (feat._hoardV2) return featureTreasure(feat); // the one hoard figure
   if (feat._clearGold == null) {
@@ -251,7 +251,7 @@ export function encounterClearGold(feat) {
   }
   return feat._clearGold;
 }
-export function ensureLairHoard(f, gs, opts) {
+export function ensureLairHoard(f, gs, opts?): void {
   if (!f || f.ritualSite) return;
   const _noItems = !!(opts && opts.noItems); // balanced stocking (ensureAllLairHoards) fills items itself
   f.hoardItems = Array.isArray(f.hoardItems) ? f.hoardItems : [];

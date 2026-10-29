@@ -81,7 +81,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   or a guardian's perk, is declared in `helpers.ts`, beside the wards' merge: a fighter is made for each fight and never
   saved, so these are plain interfaces, not schemas, and a file of types alone would be in no page, which
   `pages-build` refuses) and the two P1-10b12 freed (`personal-combat/to-hit-wounds-stuns-and-courage.ts` and
-  `personal-combat/melee-flight-and-archery.ts`: the hit, the round and the strikes, read on that type). The other 69
+  `personal-combat/melee-flight-and-archery.ts`: the hit, the round and the strikes, read on that type) and the one
+  P1-10b13 freed (`personal-combat/tactics-combat-items-and-actions.ts`: the tactics, the combat items and each action).
+  The other 68
   of those 108 files
   still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
