@@ -9,7 +9,7 @@
 // orders, the realm works, the war masteries), P1-12d8 two more (espionage, explore and search), P1-12d9 the Cast Spell
 // order, P1-12d10 the move order, P1-12d11 a hero slain outside a battle (reportHeroFall's 12 callers, in a hero's
 // death's area), P1-12d12 a chase and a hero's experience and hit points (and the equip note at a death), P1-12d13
-// the title intelligence. A facts
+// the title intelligence, P1-12d14 the Defend watch, a stranding at sea and the war-spoils. A facts
 // module's kinds include the kinds of the records its facts hold (P1-12d4: why a
 // unit stands or faces as it does, whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what
 // it is, where companies muster, why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild
@@ -43,7 +43,7 @@
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
-// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's, P1-12d12's and P1-12d13's: their areas' facts modules, which their
+// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's, P1-12d12's, P1-12d13's and P1-12d14's: their areas' facts modules, which their
 // bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
@@ -57,7 +57,7 @@
 // dispatch, the item orders, the Research and Practice orders, the Recruit and Hire orders; P1-12d7: the army orders,
 // the realm works orders, the war mastery orders; P1-12d8: the espionage orders, the explore and search orders;
 // P1-12d9: the Cast Spell order; P1-12d10: the move order; P1-12d12: a chase, a hero's experience and hit points;
-// P1-12d13: the title intelligence) holds
+// P1-12d13: the title intelligence; P1-12d14: the Defend watch, a stranding at sea, the war-spoils) holds
 // no field whose value is, or holds, words: a string or
 // a template with text reached as the value (through a conditional's branches, `+`, `||`, `??`, `&&`, a placeholder,
 // `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
@@ -85,7 +85,7 @@
 // fields of personal combat's facts; P1-12d3's: 121 of a battle's; P1-12d4's: the 10 of the ladder and the grid it
 // listed; P1-12d5's: its three areas' facts modules, which the base lacks, and the disbanding kind; P1-12d6's: its five
 // areas' facts modules; P1-12d7's: its three; P1-12d8's: its two; P1-12d9's: its one; P1-12d12's: its two;
-// P1-12d13's: its one), the one
+// P1-12d13's: its one; P1-12d14's: its three), the one
 // exception to
 // `refactor-only`'s rule (Theo, 2026-10-25). It can't see words handed in through a parameter. Level 0: syntax trees;
 // nothing runs. TypeScript, in `static/`
@@ -129,6 +129,9 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
   ['a chase', 'src/engine/heroes/the-facts-a-chases-lines-record.ts', 'P1-12d12'],
   ["a hero's experience and hit points", 'src/engine/heroes/the-facts-a-heros-experience-lines-record.ts', 'P1-12d12'],
   ['the title intelligence', 'src/engine/titles/the-facts-the-title-intelligence-lines-record.ts', 'P1-12d13'],
+  ['the Defend watch', 'src/engine/units/the-facts-the-defend-watchs-lines-record.ts', 'P1-12d14'],
+  ['a stranding at sea', 'src/engine/units/the-facts-a-stranding-at-seas-lines-record.ts', 'P1-12d14'],
+  ['the war-spoils', 'src/engine/units/the-facts-the-war-spoils-line-records.ts', 'P1-12d14'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -153,6 +156,9 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/heroes/the-facts-a-chases-lines-record.ts',
   'src/engine/heroes/the-facts-a-heros-experience-lines-record.ts',
   'src/engine/titles/the-facts-the-title-intelligence-lines-record.ts',
+  'src/engine/units/the-facts-the-defend-watchs-lines-record.ts',
+  'src/engine/units/the-facts-a-stranding-at-seas-lines-record.ts',
+  'src/engine/units/the-facts-the-war-spoils-line-records.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -326,6 +332,7 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
     "the province's owner learns his defenders still hold against the hero",
     "the province's owner learns the hero was beaten back",
     "a quarry's realm learns a lone challenger came for him",
+    'a defender rides in to meet a host raised in a province of his realm',
   ],
   attackersRealmTag: ["war comes to a province two realms' hosts share"],
   defendersRealmTag: ["war comes to a province two realms' hosts share"],

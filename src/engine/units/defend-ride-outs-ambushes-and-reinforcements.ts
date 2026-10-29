@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
-import { d100, fmtRoll, rng } from '../dice-and-army-names.ts';
+import { d100, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { realmTag } from '../turn/log-line-helpers.ts';
@@ -33,7 +33,8 @@ import { isHostileInvasion, phaseInitCompare } from '../turn/phase-intents-and-d
 // is told when no battle came of it (reconcileDefendRideOuts); a hero with no troops lies in wait to ambush an enemy
 // who marches in (runDefendAmbush); and a column already marching to its own invaded province is hurried in ahead of
 // the invader (runReinforcementArrivals). resolveTurn's phase loop calls them, and resolveUnitGainInProvince calls
-// defendAnswerUnitGain. They take the turn's context first (src/engine/turn/context.ts).
+// defendAnswerUnitGain. They take the turn's context first (src/engine/turn/context.ts). Each line they write is a fact
+// (since P1-12d14: the-facts-the-defend-watchs-lines-record.ts), its words written in the views.
 // ── DEFEND (AK [3.15]) ────
 // A general ordered to Defend keeps watch for the REST OF THE TURN. He reacts to an enemy
 // invasion of a province that is adjacent to both where he is standing and the centre of the
@@ -90,7 +91,11 @@ export function runDefendReactions(turnContext, ph, intents) {
     if (here.terrain === 'sea' && !(seaMoveActive[c.id] && (seaMovePoints[c.id] ?? 0) > 0)) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,
+        fact: {
+          kind: 'a defender on drowned ground is stranded and cannot ride out',
+          heroName: c.name,
+          provinceName: here.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         province: here.id,
         hero: c.id,
@@ -104,7 +109,11 @@ export function runDefendReactions(turnContext, ph, intents) {
     if (threat.has(c.location)) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} holds ${here.name} rather than march to its neighbours — the enemy is already at this gate.`,
+        fact: {
+          kind: 'a defender holds his own province with the enemy at its gate',
+          heroName: c.name,
+          provinceName: here.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         province: here.id,
         hero: c.id,
@@ -129,7 +138,12 @@ export function runDefendReactions(turnContext, ph, intents) {
     if (defendBattleLocked(turnContext, c, here)) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} is still locked in the unresolved battle for ${here.name} and cannot ride out to ${cands[0].prov.name} — the fight here must be seen through first.`,
+        fact: {
+          kind: 'a defender held by an unresolved battle cannot ride out',
+          heroName: c.name,
+          provinceName: here.name,
+          threatenedProvinceName: cands[0].prov.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         province: here.id,
         hero: c.id,
@@ -172,7 +186,12 @@ export function runDefendReactions(turnContext, ph, intents) {
     c._defendRideOut = { ph, provId: P.id, fromId: here.id, names: target.names.slice() }; // reconciled at the end of the phase
     emit(turnContext, {
       type: 'move',
-      text: `🛡 ${c.name} is standing watch — word reaches them that ${target.names.join(' and ')} ${target.names.length > 1 ? 'are' : 'is'} crossing into ${P.name}. They break camp at once and march to meet the threat.`,
+      fact: {
+        kind: 'a defender rides out to meet a column crossing into a province of his realm',
+        heroName: c.name,
+        invaderNames: [...target.names],
+        provinceName: P.name,
+      },
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
       province: P.id,
       hero: c.id,
@@ -223,7 +242,12 @@ export function reconcileDefendRideOuts(turnContext, ph) {
     if (c.location === P.id && !enemyHere) {
       emit(turnContext, {
         type: 'move',
-        text: `🛡 ${c.name} reaches ${P.name} in battle order, but ${r.names.join(' and ')} never crossed the border — no battle is fought, and they hold ${P.name} for the rest of the season.`,
+        fact: {
+          kind: 'a defender rides out but the column never crosses the border',
+          heroName: c.name,
+          provinceName: P.name,
+          invaderNames: [...r.names],
+        },
         audience: { actor: c.player, realms: [c.player] },
         province: P.id,
         hero: c.id,
@@ -232,7 +256,11 @@ export function reconcileDefendRideOuts(turnContext, ph) {
     } else if (c.location === P.id && enemyHere) {
       emit(turnContext, {
         type: 'move',
-        text: `🛡 ${c.name} stands in ${P.name} facing an enemy column, but no battle was joined this season — the contest will be settled next phase.`,
+        fact: {
+          kind: 'a defender rides out and faces a column but no battle is joined',
+          heroName: c.name,
+          provinceName: P.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         province: P.id,
         hero: c.id,
@@ -311,7 +339,14 @@ export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
     if (!prov.visitedBy.includes(d.player)) prov.visitedBy.push(d.player);
     emit(turnContext, {
       type: 'move',
-      text: `🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(turnContext, raiser.player)} ${raiser._warFront ? 'is turning the host camped inside ' + prov.name + ' on the province' : 'is gathering a host inside ' + prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
+      fact: {
+        kind: 'a defender rides in to meet a host raised in a province of his realm',
+        heroName: d.name,
+        raiserName: raiser.name,
+        realmTag: realmTag(turnContext, raiser.player),
+        turningAWarFront: !!raiser._warFront,
+        provinceName: prov.name,
+      },
       audience: { actor: d.player, realms: [d.player], seen: 'there' },
       province: prov.id,
       hero: d.id,
@@ -345,7 +380,11 @@ export function runDefendMaterializedReactions(turnContext, ph) {
     if (here.terrain === 'sea' && !(seaMoveActive[c.id] && (seaMovePoints[c.id] ?? 0) > 0)) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,
+        fact: {
+          kind: 'a defender on drowned ground is stranded and cannot ride out',
+          heroName: c.name,
+          provinceName: here.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         province: here.id,
         hero: c.id,
@@ -410,7 +449,11 @@ export function runDefendMaterializedReactions(turnContext, ph) {
       if (!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
       emit(turnContext, {
         type: 'move',
-        text: `🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. They break camp and march to meet it.`,
+        fact: {
+          kind: 'a defender rides out to meet a host risen in his watch',
+          heroName: c.name,
+          provinceName: prov.name,
+        },
         audience: { actor: c.player, realms: [c.player], seen: 'there' },
         province: prov.id,
         hero: c.id,
@@ -421,7 +464,11 @@ export function runDefendMaterializedReactions(turnContext, ph) {
     } else {
       emit(turnContext, {
         type: 'move',
-        text: `🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — they form their line to give battle.`,
+        fact: {
+          kind: 'a defender forms his line against a host taking shape where he stands',
+          heroName: c.name,
+          provinceName: prov.name,
+        },
         audience: { actor: c.player, realms: [c.player], seen: 'there' },
         province: prov.id,
         hero: c.id,
@@ -447,7 +494,12 @@ export function runDefendMaterializedReactions(turnContext, ph) {
     const targetsPi = [c.player, quarry.player].filter((x) => x != null);
     emit(turnContext, {
       type: 'combat',
-      text: `⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`,
+      fact: {
+        kind: 'a defender falls upon a host in his watch',
+        heroName: c.name,
+        quarryName: quarry.name,
+        provinceName: prov.name,
+      },
       audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -533,7 +585,12 @@ export function runDefendMaterializedReactions(turnContext, ph) {
         delete prov._takenByUnitGain;
         emit(turnContext, {
           type: 'combat',
-          text: `${c.name} drives the interlopers out and secures ${prov.name} for ${wp ? wp.name : 'their realm'}!`,
+          fact: {
+            kind: 'a defender drives the interlopers out and secures the province',
+            heroName: c.name,
+            provinceName: prov.name,
+            realmName: wp ? wp.name : null,
+          },
           audience: { actor: c.player, realms: [], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
@@ -605,7 +662,15 @@ export function runDefendAmbush(turnContext, ph) {
     const targetsPi = [c.player, quarry.player].filter((x) => x != null);
     emit(turnContext, {
       type: 'system',
-      text: `📊 Ambush — ${c.name} (Spy ${spy}) lies in wait for ${quarry.name}${guarded ? ' (guarded — halved)' : ''}: ${fmtRoll(chance, roll)}`,
+      fact: {
+        kind: "the odds of a lone defender's ambush",
+        heroName: c.name,
+        spy,
+        quarryName: quarry.name,
+        guarded,
+        chance,
+        roll,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: quarryProv.id,
@@ -613,7 +678,12 @@ export function runDefendAmbush(turnContext, ph) {
     if (roll > chance) {
       emit(turnContext, {
         type: 'move',
-        text: `${c.name} watches ${quarry.name} pass through ${quarryProv.name} but cannot find the opening to strike.`,
+        fact: {
+          kind: 'a lone defender finds no opening to strike',
+          heroName: c.name,
+          quarryName: quarry.name,
+          provinceName: quarryProv.name,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: quarryProv.id,
@@ -649,7 +719,12 @@ export function runDefendAmbush(turnContext, ph) {
     const _duelChars = [c.id, quarry.id];
     emit(turnContext, {
       type: 'combat',
-      text: `⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`,
+      fact: {
+        kind: 'a lone defender springs his ambush',
+        heroName: c.name,
+        quarryName: quarry.name,
+        provinceName: prov.name,
+      },
       audience: { actor: c.player, realms: targetsPi, seen: prov.owner !== null ? 'battle' : undefined },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -794,7 +869,7 @@ export function runReinforcementArrivals(turnContext, ph, intents) {
     it.cancelReason = 'reinforced';
     emit(turnContext, {
       type: 'move',
-      text: `${it.c.name} force-marches into ${P.name} ahead of the enemy — their troops are in the line before the first banners appear over the ridge.`,
+      fact: { kind: 'a column is hurried in ahead of the enemy', heroName: it.c.name, provinceName: P.name },
       audience: { actor: it.player, realms: [it.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: P.id,
