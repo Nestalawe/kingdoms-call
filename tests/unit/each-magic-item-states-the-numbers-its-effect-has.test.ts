@@ -5,7 +5,8 @@
 // or its base name) states each of the row's numbers as the item's texts write it (×1.25 as `+25%`, strength added as
 // `+2`, a share as "half" or "halved", volleys as "two volleys", extra shots as "one extra shot", a share as a
 // percentage as `10%`, gold for each province as `+1g`, `+1 gold` or "1 extra gold", skill levels added as `+1` or
-// "one level", damage turned aside as "1 less", a chance in percentage points as `5%`), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
+// "one level", damage turned aside as "1 less", a chance in percentage points as `5%`, a multiplier in words as
+// "doubled", damage added as `+2 damage` or "2 extra damage"), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
 // alone. The items read are the items in play and the Mithril suit (a dwarven birthright in no table, granted: plan
 // P1-19r). Each row with numbers is carried by some item read (else this would check nothing), but the steadfast ward's
 // (resist), which no item in play carries, listed. The rows with no number
@@ -14,8 +15,9 @@
 // Cloak's numbers, which each copy carries itself; the Crystal Orb's sure Spy, the Philosopher's Lens's lair and the
 // Philosopher's Stone's power; the maximum-HP items' hit points and the temper items' temper, which each copy carries
 // itself; the wards and riders a fighter wears, whose amounts, percentages and hits each copy carries itself, but the
-// buckler's, the second wind's and the low-HP ward's shares of his maximum HP) are listed, so a number added to one is
-// checked.
+// buckler's, the second wind's and the low-HP ward's shares of his maximum HP; the combat items, whose numbers each
+// copy carries itself, but the terror's chance, bane's double, the Lock-Pick's steal and the Warbringer Gauntlets' blow
+// (plan P1-19s)) are listed, so a number added to one is checked.
 // The known gaps are listed by name, each with its Parked entry, and checked to be still gaps (so the exception leaves
 // with the fix): the two relic standards say +4 and +6 and give +2 (NEXT.md question 20; Parked "The two relic
 // standards give +2, not their +4 and +6"); five siege items say "Siege bonus +1" (question 21: Parked "Thirty items'
@@ -23,7 +25,8 @@
 // Parked "The home-defence items say a quality tier in any province of one's own; the battle gives ×1.25 at the home
 // alone"); six second-wind items don't say it acts below 30% of the bearer's maximum HP, two of them saying it saves
 // him from a killing blow at 1 HP (question 25: Parked "Six second-wind items don't say the 30% it acts below; two
-// describe another rule"). The units an item reaches are words this test can't match to a set (question 21).
+// describe another rule"); neither terror item says a foe flees half the time (question 26: Parked "The two terror
+// items don't say a foe flees half the time"). The units an item reaches are words this test can't match to a set (question 21).
 // Level 1 (unit), not static: the items in play exist only after the engine's load-time pass (src/engine/items/
 // equipment.ts and tiers-and-hoards.ts rewrite the list: 711 items), so the whole engine is imported first.
 import '../lib/the-whole-engine.ts';
@@ -44,6 +47,7 @@ const HOME_DEFENCE_WORDS =
   'Parked "The home-defence items say a quality tier in any province of one\'s own; the battle gives ×1.25 at the home alone" (NEXT.md question 22)';
 const SECOND_WIND_WORDS =
   'Parked "Six second-wind items don\'t say the 30% it acts below; two describe another rule" (NEXT.md question 25)';
+const TERROR_WORDS = 'Parked "The two terror items don\'t say a foe flees half the time" (NEXT.md question 26)';
 const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, string>>>> = {
   'army-bonus': {
     'Battle Standard': 'Parked "The two relic standards give +2, not their +4 and +6" (NEXT.md question 20)',
@@ -78,6 +82,7 @@ const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, st
     'Pendant of the Ten Thousand Eyes': SECOND_WIND_WORDS,
     'Grey Mantlet': SECOND_WIND_WORDS,
   },
+  'combat-item-terrifies': { 'Scroll of Terror': TERROR_WORDS, 'Wailing Horn': TERROR_WORDS },
 };
 /** The rows with numbers no item read carries, each with why (so one carried is checked). */
 const ROWS_NO_ITEM_CARRIES: Partial<Record<MagicItemEffectSlug, string>> = {
@@ -124,11 +129,44 @@ const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
       "the amount each copy's rider carries itself",
     ]),
   ),
+  ...Object.fromEntries(
+    (
+      [
+        'combat-item-heals',
+        'combat-item-second-wind',
+        'combat-item-heals-over-time',
+        'combat-item-wards',
+        'combat-item-hides',
+        'combat-item-mirror-images',
+        'combat-item-flight',
+        'combat-item-bane',
+        'combat-item-bane-stun',
+        'combat-item-focuses',
+        'combat-item-silences',
+        'combat-item-stuns',
+        'combat-item-blinds',
+        'combat-item-damages',
+        'combat-item-drains',
+      ] as const
+    ).map((slug) => [
+      slug,
+      "the numbers each copy carries itself (content's are for a copy that carries none, and the fighter's judgement of when to reach for it)",
+    ]),
+  ),
+  ...Object.fromEntries(
+    (['combat-item-strengthens', 'combat-item-weakens'] as const).map((slug) => [
+      slug,
+      'the Melee and Archery each copy carries itself',
+    ]),
+  ),
+  'combat-item-dispels': "what lingers lifts (content's number is the fighter's judgement of when to reach for it)",
 };
 
 /** A count or a share in words, as the texts write it (a value with no word here writes as itself: no text matches). */
 const IN_WORDS: Readonly<Record<number, string>> = { 0.5: 'half', 1: 'one', 2: 'two', 3: 'three' };
 const inWords = (value: number) => IN_WORDS[value] ?? String(value);
+/** A multiplier in words, as the texts write it (a value with no word here writes as itself: no text matches). */
+const IN_WORDS_AS_A_MULTIPLIER: Readonly<Record<number, string>> = { 2: 'doubled', 3: 'tripled' };
 
 /** A number as an item's texts write it (any of the forms given): a multiplier as the share it adds (×1.25 as +25%),
  *  strength added as +2, a share in words (0.5 as "half" or "halved"), volleys in words (2 as "two volleys"), extra
@@ -157,6 +195,10 @@ function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
       return [`${String(n.value)} less`];
     case 'a chance, in percentage points':
       return [`${String(n.value)}%`];
+    case 'a multiplier, in words':
+      return [IN_WORDS_AS_A_MULTIPLIER[n.value] ?? `×${String(n.value)}`];
+    case 'damage added':
+      return [`+${String(n.value)} damage`, `${String(n.value)} extra damage`];
   }
 }
 /** A number as the texts write it, with no digit or letter just before it, nor a digit, a letter, a `%` or a decimal
@@ -237,6 +279,8 @@ test('a number is matched as the texts write it, and not inside another', () => 
   expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'skill levels added' })).toEqual(['+2', 'two levels']);
   expect(asTheTextsWriteIt({ value: 1, theTextsWriteIt: 'damage turned aside' })).toEqual(['1 less']);
   expect(asTheTextsWriteIt({ value: 5, theTextsWriteIt: 'a chance, in percentage points' })).toEqual(['5%']);
+  expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'a multiplier, in words' })).toEqual(['doubled']);
+  expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'damage added' })).toEqual(['+2 damage', '2 extra damage']);
   expect(theNumber('+2').test('Every army you lead fights +2.')).toBe(true);
   expect(theNumber('+2').test('strength +25%')).toBe(false);
   expect(theNumber('+2').test('strength +2.5')).toBe(false);
@@ -255,4 +299,8 @@ test('a number is matched as the texts write it, and not inside another', () => 
   expect(states('melee blows deal 11 less damage', ['1 less'])).toBe(false);
   expect(states('foes have −5% to hit you', ['5%'])).toBe(true);
   expect(states('foes have −15% to hit you', ['5%'])).toBe(false);
+  expect(states('8-14 damage, doubled against undead', ['doubled'])).toBe(true);
+  expect(states('a redoubled guard', ['doubled'])).toBe(false);
+  expect(states('Melee +1, +2 damage per hit', ['+2 damage'])).toBe(true);
+  expect(states('deals 12 extra damage', ['2 extra damage'])).toBe(false);
 });

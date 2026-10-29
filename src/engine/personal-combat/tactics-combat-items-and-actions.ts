@@ -1,7 +1,14 @@
 import { kcRng } from '../rng.ts';
 import { NPC_SCHOOL_SPELL, STEAL_TIER_PEN } from '../army-tables.ts';
 import { encounterClearGold, ensureLairHoard, temperOf } from '../world/tables.ts';
-import { hasItemBase, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
+import { activeItems, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
+import {
+  aFighterReachesForTheCombatItemNow,
+  theChanceAThiefsItemsAddToHisSteal,
+  theMultiplierOfACombatItemsBlowAgainst,
+  theUsesOfTheCombatItemsInTheOrderAFighterReachesForThem,
+  whatACombatItemDoesWhenUsed,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { PARLEY_ENABLED, SCOUT_ENABLED, pcDeferEffect, pcLearnWeakness, pcPushDot } from './helpers.ts';
 import { pcFoeCat } from '../titles/perks.ts';
@@ -131,27 +138,7 @@ export function pcNextTactic(actor: AFighterInAPersonalCombat, foe: AFighterInAP
 // into a personal fight. Each fires ONCE per fight (never consumed), costs the user's action, and
 // only when it makes sense — the trigger table below. Characters bring their equipped/active
 // combatUse items; a guardian brings the lair's items its category lets it wield.
-export const _CI_PRIORITY = [
-  'heal',
-  'secondwind',
-  'hot',
-  'absorb',
-  'invis',
-  'mirror',
-  'flee',
-  'dispel',
-  'bane',
-  'banestun',
-  'buff',
-  'focus',
-  'silence',
-  'stun',
-  'pen',
-  'weak',
-  'terror',
-  'dmg',
-  'drain',
-];
+export const _CI_PRIORITY = theUsesOfTheCombatItemsInTheOrderAFighterReachesForThem(); // the items' registry's order (plan P1-19s)
 export function pcCombatItemWanted(
   actor: AFighterAsHisItemsMomentIsWeighed,
   foe: AFoeAsAnItemsMomentIsWeighed,
@@ -161,43 +148,16 @@ export function pcCombatItemWanted(
   const e: ACombatItemsEffect = it.effect ?? {};
   const ratio = actor.hp / (actor.maxHp || 20);
   const st: Partial<AFightersStatus> = actor.status ?? {};
-  switch (e.use) {
-    case 'heal':
-      return ratio < ((e.below ?? 0) || 0.5);
-    case 'hot':
-      return ratio < ((e.below ?? 0) || 0.7) && !(st.hot && st.hot.rounds > 0);
-    case 'secondwind':
-      return (
-        ratio < ((e.below ?? 0) || 0.6) &&
-        ((st.dot ?? []).length > 0 || (Number(st.hitPenalty) || 0) >= 10 || ratio < 0.4)
-      );
-    case 'absorb':
-      return actor.hp < (actor.maxHp || 20) && !(st.absorb !== undefined && st.absorb > 0);
-    case 'invis':
-      return ratio < ((e.below ?? 0) || 0.5) && !(st.toHitReduce !== undefined && st.toHitReduce > 0);
-    case 'mirror':
-      return ratio < ((e.below ?? 0) || 0.7) && !(st.mirrorImages !== undefined && st.mirrorImages > 0);
-    case 'flee':
-      return ratio < ((e.below ?? 0) || 0.35) && !actor.neverFlees;
-    case 'dispel':
-      return (st.dot ?? []).length > 0 || (Number(st.hitPenalty) || 0) >= 15;
-    case 'bane':
-    case 'banestun':
-      return (e.vs ?? []).includes(pcFoeCat(foe));
-    case 'silence':
-      return (foe.specials ?? []).length > 0 || Object.values(foe.school ?? {}).some((v) => (v || 0) > 0);
-    case 'drain':
-      return ratio < ((e.below ?? 0) || 0.75);
-    case 'buff':
-    case 'focus':
-    case 'stun':
-    case 'pen':
-    case 'weak':
-    case 'terror':
-    case 'dmg':
-      return true;
-  }
-  return false;
+  // whether the item's moment has come: its use's effect in the items' registry (plan P1-19s)
+  return aFighterReachesForTheCombatItemNow(e, {
+    theShareOfHisHpLeft: ratio,
+    hisHp: actor.hp,
+    hisMaximumHp: actor.maxHp || 20,
+    hisStatus: st,
+    heNeverFlees: actor.neverFlees,
+    theFoesKind: () => pcFoeCat(foe),
+    theFoeHasPowers: () => (foe.specials ?? []).length > 0 || Object.values(foe.school ?? {}).some((v) => (v || 0) > 0),
+  });
 }
 export function pcTryCombatItem(
   turnContext: TurnContext,
@@ -249,15 +209,22 @@ export function pcUseCombatItem(
     return dealt;
   };
   narrate(narrative, { kind: 'a fighter uses a combat item', who, nm });
-  switch (e.use) {
-    case 'heal': {
-      const h = Math.min((e.amt ?? 0) || 5, Math.max(0, (actor.maxHp || 20) - actor.hp));
+  // what the item's use does: its effect in the items' registry (plan P1-19s); the fight applies it, draws its dice
+  // where it drew them and tells its lines
+  const does = whatACombatItemDoesWhenUsed({ desc: it.desc, effect: e });
+  if (!does) {
+    narrate(narrative, { kind: 'but nothing happens' });
+    return;
+  }
+  switch (does.does) {
+    case 'restores his hit points': {
+      const h = Math.min(does.theHp, Math.max(0, (actor.maxHp || 20) - actor.hp));
       actor.hp += h;
       narrate(narrative, { kind: 'a fighter recovers hit points', who, healed: h, actorHp: dispFloor(actor.hp) });
       break;
     }
-    case 'hot': {
-      st.hot = { amt: (e.amt ?? 0) || 3, rounds: (e.rounds ?? 0) || 3, label: nm };
+    case 'warms him each round': {
+      st.hot = { amt: does.theHp, rounds: does.theRounds, label: nm };
       narrate(narrative, {
         kind: 'warmth spreads through a fighter each round',
         actorName: actor.name,
@@ -266,8 +233,8 @@ export function pcUseCombatItem(
       });
       break;
     }
-    case 'secondwind': {
-      const h = Math.min((e.amt ?? 0) || 10, Math.max(0, (actor.maxHp || 20) - actor.hp));
+    case 'restores his hit points and lifts every lingering harm': {
+      const h = Math.min(does.theHp, Math.max(0, (actor.maxHp || 20) - actor.hp));
       actor.hp += h;
       st.dot = [];
       st.hitPenalty = 0;
@@ -280,19 +247,20 @@ export function pcUseCombatItem(
       });
       break;
     }
-    case 'dmg':
-    case 'bane': {
-      const times = (e.times ?? 0) || 1;
+    case 'strikes the foe': {
+      const times = does.theTimes;
       for (let i = 0; i < times && foe.hp > 0; i++) {
-        let d = rng(...aDamageRangeAsTheDiceReadIt(e.dmg));
-        if ((e.doubleVs ?? []).includes(pcFoeCat(foe))) {
-          d *= 2;
+        let d = rng(...aDamageRangeAsTheDiceReadIt(does.theDamageRange));
+        const _twice = theMultiplierOfACombatItemsBlowAgainst(e, pcFoeCat(foe)); // bane's double (the items' registry)
+        if (_twice !== null) {
+          d *= _twice;
           narrate(narrative, { kind: 'a combat item blazes twice as bright against the foe', nm, foeName: foe.name });
         }
         hurt(d);
       }
-      if (e.dot && foe.hp > 0) {
-        const _de = pcPushDot(foe, e.dot[0], e.dot[1], nm);
+      const lingering = does.theLingeringHarm;
+      if (lingering && foe.hp > 0) {
+        const _de = pcPushDot(foe, lingering[0], lingering[1], nm);
         if (_de)
           narrate(narrative, {
             kind: 'a combat item keeps burning on the foe',
@@ -303,8 +271,9 @@ export function pcUseCombatItem(
           });
       }
       // these ride on the damage the item just dealt, so they grip from the NEXT round. (A
-      // pure-penalty or pure-stun item — case 'pen' / 'stun' below — still bites now.)
-      const { hitPen, stun } = e; // read once, for the riders below (no fight writes an item's effect)
+      // pure-penalty or pure-stun item — 'holds the foe' / 'blinds the foe' below — still bites now.)
+      const hitPen = does.thePenaltyFromTheNextRound; // read once, for the riders below (no fight writes an item's effect)
+      const stun = does.theDazeFromTheNextRound;
       if (hitPen && foe.hp > 0) {
         pcDeferEffect(foe, () => {
           fs.hitPenalty = (fs.hitPenalty || 0) + hitPen;
@@ -327,8 +296,8 @@ export function pcUseCombatItem(
       }
       break;
     }
-    case 'drain': {
-      const d = rng(...aDamageRangeAsTheDiceReadIt(e.dmg));
+    case 'drains the foe': {
+      const d = rng(...aDamageRangeAsTheDiceReadIt(does.theDamageRange));
       const dealt = hurt(d);
       const h = Math.min(dealt, Math.max(0, (actor.maxHp || 20) - actor.hp));
       actor.hp += h;
@@ -341,148 +310,146 @@ export function pcUseCombatItem(
         });
       break;
     }
-    case 'stun':
-    case 'banestun': {
-      if (pcLandStun(foe, (e.stun ?? 0) || 1, narrative, `the ${nm}`))
+    case 'holds the foe': {
+      if (pcLandStun(foe, does.theRounds, narrative, `the ${nm}`))
         narrate(narrative, {
           kind: 'the foe is held fast, losing actions',
           foeName: foe.name,
-          eStun: (e.stun ?? 0) || 1,
+          eStun: does.theRounds,
         });
       break;
     }
-    case 'pen': {
+    case 'blinds the foe': {
       // an item that says "for the rest of the fight" no longer fades 5% a round
-      if (/rest of the fight/i.test(it.desc ?? '')) {
-        fs.hitPenaltyFixed = (fs.hitPenaltyFixed || 0) + ((e.hitPen ?? 0) || 15);
+      if (does.forTheRestOfTheFight) {
+        fs.hitPenaltyFixed = (fs.hitPenaltyFixed || 0) + does.thePenalty;
         narrate(narrative, {
           kind: 'the foe can barely see to strike',
           foeName: foe.name,
-          eHitPen: (e.hitPen ?? 0) || 15,
+          eHitPen: does.thePenalty,
         });
       } else {
-        fs.hitPenalty = (fs.hitPenalty || 0) + ((e.hitPen ?? 0) || 15);
+        fs.hitPenalty = (fs.hitPenalty || 0) + does.thePenalty;
         narrate(narrative, {
           kind: 'the foe can barely see to strike for now',
           foeName: foe.name,
-          eHitPen: (e.hitPen ?? 0) || 15,
+          eHitPen: does.thePenalty,
         });
       }
       break;
     }
     // 2026-10-08 (item 2): a character's to-hit and damage read the RAW skill (meleeRaw /
     // archeryRaw), so sap those too — lowering only `melee` did nothing to a hero.
-    case 'weak': {
-      if (e.melee) {
-        foe.melee = Math.max(0, (foe.melee || 0) - e.melee);
-        if (foe.meleeRaw != null) foe.meleeRaw = Math.max(0, foe.meleeRaw - e.melee);
+    case 'saps the foe': {
+      const { theMelee, theArchery } = does;
+      if (theMelee) {
+        foe.melee = Math.max(0, (foe.melee || 0) - theMelee);
+        if (foe.meleeRaw != null) foe.meleeRaw = Math.max(0, foe.meleeRaw - theMelee);
       }
-      if (e.archery) {
-        foe.archery = Math.max(0, (foe.archery || 0) - e.archery);
-        if (foe.archeryRaw != null) foe.archeryRaw = Math.max(0, foe.archeryRaw - e.archery);
+      if (theArchery) {
+        foe.archery = Math.max(0, (foe.archery || 0) - theArchery);
+        if (foe.archeryRaw != null) foe.archeryRaw = Math.max(0, foe.archeryRaw - theArchery);
       }
       narrate(narrative, {
         kind: 'the foe is sapped for the rest of the fight',
         foeName: foe.name,
         foeMelee: pcHitSkill(foe, 'melee'),
-        eArchery: e.archery,
+        eArchery: theArchery,
         foeArchery: pcHitSkill(foe, 'archery'),
       });
       break;
     }
-    case 'terror': {
-      if (!foe.neverFlees && kcRng() < 0.5) {
+    case 'may send the foe fleeing': {
+      if (!foe.neverFlees && kcRng() < does.theChanceTheFoeFlees) {
         state.fledBy = foe;
         narrate(narrative, { kind: 'the foe is overcome with dread and flees', foeName: foe.name });
       } else {
-        fs.hitPenalty = (fs.hitPenalty || 0) + ((e.hitPen ?? 0) || 15);
+        fs.hitPenalty = (fs.hitPenalty || 0) + does.thePenaltyIfHeHolds;
         narrate(narrative, {
           kind: 'the foe holds their ground badly shaken',
           foeName: foe.name,
-          eHitPen: (e.hitPen ?? 0) || 15,
+          eHitPen: does.thePenaltyIfHeHolds,
         });
       }
       break;
     }
-    case 'silence': {
-      fs.silenceRounds = (fs.silenceRounds || 0) + ((e.rounds ?? 0) || 3);
+    case "binds the foe's powers": {
+      fs.silenceRounds = (fs.silenceRounds || 0) + does.theRounds;
       narrate(narrative, {
         kind: "the foe's magic and powers are bound",
         foeName: foe.name,
-        eRounds: (e.rounds ?? 0) || 3,
+        eRounds: does.theRounds,
       });
       break;
     }
-    case 'buff': {
-      if (e.melee) actor.melee = (actor.melee || 0) + e.melee;
-      if (e.archery) actor.archery = (actor.archery || 0) + e.archery;
+    case 'strengthens him': {
+      if (does.theMelee) actor.melee = (actor.melee || 0) + does.theMelee;
+      if (does.theArchery) actor.archery = (actor.archery || 0) + does.theArchery;
       narrate(narrative, {
         kind: 'a fighter surges with strength',
         who,
         actorMelee: actor.melee,
-        eArchery: e.archery,
+        eArchery: does.theArchery,
         actorArchery: actor.archery,
       });
       break;
     }
-    case 'focus': {
-      st.hitBonus = (Number(st.hitBonus) || 0) + ((e.hitBonus ?? 0) || 10);
-      narrate(narrative, { kind: "a fighter's eye sharpens", who, eHitBonus: (e.hitBonus ?? 0) || 10 });
+    case 'sharpens his eye': {
+      st.hitBonus = (Number(st.hitBonus) || 0) + does.theBonus;
+      narrate(narrative, { kind: "a fighter's eye sharpens", who, eHitBonus: does.theBonus });
       break;
     }
-    case 'absorb': {
-      st.absorb = (st.absorb || 0) + ((e.absorb ?? 0) || 10);
-      if (e.reflect) {
-        st.reflect = (st.reflect || 0) + e.reflect;
+    case 'wards him': {
+      st.absorb = (st.absorb || 0) + does.theWard;
+      if (does.theReflect) {
+        st.reflect = (st.reflect || 0) + does.theReflect;
       }
       narrate(narrative, {
         kind: 'a ward settles over a fighter',
         actorName: actor.name,
         stAbsorb: st.absorb,
-        eReflect: e.reflect,
+        eReflect: does.theReflect,
         stReflect: st.reflect,
       });
       break;
     }
-    case 'mirror': {
-      st.mirrorImages = (st.mirrorImages || 0) + ((e.images ?? 0) || 2);
+    case 'sends his images out': {
+      st.mirrorImages = (st.mirrorImages || 0) + does.theImages;
       narrate(narrative, {
         kind: 'shimmering doubles step out of a fighter',
-        eImages: (e.images ?? 0) || 2,
+        eImages: does.theImages,
         actorName: actor.name,
       });
       break;
     }
-    case 'flee': {
-      st.fleeBonus = (st.fleeBonus || 0) + ((e.fleeBonus ?? 0) || 25);
-      if (e.toHitReduce) st.toHitReduce = (Number(st.toHitReduce) || 0) + e.toHitReduce;
+    case 'readies him to break away': {
+      st.fleeBonus = (st.fleeBonus || 0) + does.theFleeBonus;
+      if (does.theUnseen) st.toHitReduce = (Number(st.toHitReduce) || 0) + does.theUnseen;
       narrate(narrative, {
         kind: 'a fighter is ready to break away',
         who,
-        eFleeBonus: (e.fleeBonus ?? 0) || 25,
-        eToHitReduce: e.toHitReduce,
+        eFleeBonus: does.theFleeBonus,
+        eToHitReduce: does.theUnseen,
       });
       break;
     }
-    case 'invis': {
-      st.toHitReduce = (Number(st.toHitReduce) || 0) + ((e.toHitReduce ?? 0) || 25);
+    case 'hides him': {
+      st.toHitReduce = (Number(st.toHitReduce) || 0) + does.theUnseen;
       narrate(narrative, {
         kind: 'a fighter fades from sight the foe',
         who,
         foeName: foe.name,
-        eToHitReduce: (e.toHitReduce ?? 0) || 25,
+        eToHitReduce: does.theUnseen,
       });
       break;
     }
-    case 'dispel': {
+    case 'lifts every lingering harm': {
       st.dot = [];
       st.hitPenalty = 0;
       st.hitPenaltyFixed = 0;
       narrate(narrative, { kind: 'every poison burn and blinding on a fighter lifts', actorName: actor.name });
       break;
     }
-    default:
-      narrate(narrative, { kind: 'but nothing happens' });
   }
 }
 
@@ -711,7 +678,7 @@ export function pcAct(
       if (actor.castSpells.includes('Invisibility')) bonus += 15;
       const actorsHero: (object & AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt>) | null | undefined =
         asItsGuardReadsIt(actor.ref);
-      if (actorsHero && hasItemBase(actorsHero, 'Lock-Pick of Legends')) bonus += 20; // Lock-Pick of Legends: +20% steal chance
+      if (actorsHero) bonus += theChanceAThiefsItemsAddToHisSteal(activeItems(actorsHero)); // Lock-Pick of Legends: +20% steal chance (the items' registry, plan P1-19s)
       // Tougher guardians watch their hoard more closely — a flat penalty by tier. A master thief
       // can still rob a Legendary beast, but a novice has little hope of it.
       const STEAL_TIER_PENALTY: Readonly<Partial<Record<string, number>>> = { ...STEAL_TIER_PEN };

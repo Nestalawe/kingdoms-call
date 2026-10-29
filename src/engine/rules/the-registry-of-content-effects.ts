@@ -692,6 +692,108 @@ export interface TheHarmAWardBitesBackWith {
   readonly theWardTheLineNames: string;
 }
 
+/** A combat item's own numbers, as its effects read them (its saved `effect`, plan P1-19s): each guarded, as a copy may
+ *  lack any (where it carries none, or 0, an effect takes its row's). */
+export interface ACombatItemsOwnNumbers {
+  readonly below?: number | undefined;
+  readonly amt?: number | undefined;
+  readonly rounds?: number | undefined;
+  readonly dmg?: readonly number[] | null | undefined;
+  readonly times?: number | undefined;
+  readonly doubleVs?: readonly string[] | undefined;
+  readonly dot?: readonly number[] | undefined;
+  readonly hitPen?: number | undefined;
+  readonly stun?: number | undefined;
+  readonly melee?: number | undefined;
+  readonly archery?: number | undefined;
+  readonly hitBonus?: number | undefined;
+  readonly absorb?: number | undefined;
+  readonly reflect?: number | undefined;
+  readonly images?: number | undefined;
+  readonly fleeBonus?: number | undefined;
+  readonly toHitReduce?: number | undefined;
+  readonly vs?: readonly string[] | undefined;
+}
+
+/** A combat item as the stage "a combat item is used" hands it to its effect: its words (an item that says "for the
+ *  rest of the fight" blinds for good) and its own numbers. */
+export interface ACombatItemAsItsUseReadsIt {
+  readonly desc?: string | undefined;
+  readonly effect: ACombatItemsOwnNumbers;
+}
+
+/** A fighter's status as he weighs a combat item: what lingers on him, his penalty to hit, and the ward, warmth,
+ *  unseeing and images he holds (each guarded). */
+export interface AFightersStatusAsHeWeighsACombatItem {
+  readonly hot?: { readonly rounds: number } | undefined;
+  readonly dot?: readonly unknown[] | undefined;
+  readonly hitPenalty?: unknown;
+  readonly absorb?: number | undefined;
+  readonly toHitReduce?: number | undefined;
+  readonly mirrorImages?: number | undefined;
+}
+
+/** What the stage "a fighter reaches for a combat item" hands an effect (pcCombatItemWanted): the share of his maximum
+ *  hit points left (his maximum, or 20), his hit points and that maximum, his status, whether he never flees, and,
+ *  asked only when an effect needs it, the foe's kind and whether the foe has a power or a school of magic. */
+export interface AMomentAsAFighterWeighsACombatItem {
+  readonly theShareOfHisHpLeft: number;
+  readonly hisHp: number;
+  readonly hisMaximumHp: number;
+  readonly hisStatus: AFightersStatusAsHeWeighsACombatItem;
+  readonly heNeverFlees: boolean | undefined;
+  readonly theFoesKind: () => string;
+  readonly theFoeHasPowers: () => boolean;
+}
+
+/** What a combat item does when used (pcUseCombatItem applies it, draws its dice where it drew them and tells its
+ *  lines): each with the numbers its effect read, the copy's or, where it carries none, its row's. */
+export type WhatACombatItemDoes =
+  | { readonly does: 'restores his hit points'; readonly theHp: number }
+  | { readonly does: 'restores his hit points and lifts every lingering harm'; readonly theHp: number }
+  | { readonly does: 'warms him each round'; readonly theHp: number; readonly theRounds: number }
+  | {
+      readonly does: 'strikes the foe';
+      readonly theTimes: number;
+      readonly theDamageRange: readonly number[] | null | undefined;
+      readonly theLingeringHarm: readonly number[] | undefined;
+      readonly thePenaltyFromTheNextRound: number | undefined;
+      readonly theDazeFromTheNextRound: number | undefined;
+    }
+  | { readonly does: 'drains the foe'; readonly theDamageRange: readonly number[] | null | undefined }
+  | { readonly does: 'holds the foe'; readonly theRounds: number }
+  | { readonly does: 'blinds the foe'; readonly thePenalty: number; readonly forTheRestOfTheFight: boolean }
+  | { readonly does: 'saps the foe'; readonly theMelee: number | undefined; readonly theArchery: number | undefined }
+  | {
+      readonly does: 'may send the foe fleeing';
+      readonly theChanceTheFoeFlees: number;
+      readonly thePenaltyIfHeHolds: number;
+    }
+  | { readonly does: "binds the foe's powers"; readonly theRounds: number }
+  | {
+      readonly does: 'strengthens him';
+      readonly theMelee: number | undefined;
+      readonly theArchery: number | undefined;
+    }
+  | { readonly does: 'sharpens his eye'; readonly theBonus: number }
+  | { readonly does: 'wards him'; readonly theWard: number; readonly theReflect: number | undefined }
+  | { readonly does: 'sends his images out'; readonly theImages: number }
+  | {
+      readonly does: 'readies him to break away';
+      readonly theFleeBonus: number;
+      readonly theUnseen: number | undefined;
+    }
+  | { readonly does: 'hides him'; readonly theUnseen: number }
+  | { readonly does: 'lifts every lingering harm' };
+
+/** What an item of a lair's hoard does for the guardian who wields it (pcBuildGuardian), beside its skill, its combat
+ *  use, its armour and its riders: the hit points it adds to his maximum, if he is at full health, and whether it drives
+ *  his melee blows home (his flag, which "a blow's damage" reads). Each effect sets its own field. */
+export interface WhatAHoardsItemDoesForItsGuardian {
+  readonly theHpItAddsAtFullHealth?: number;
+  readonly itDrivesHisBlowsHome?: true;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -890,6 +992,25 @@ export interface TheStagesOfEachHookPoint {
     /** The percentage a ward cuts a spell's burn by (pcCastCombatSpell's Fireball: the burn ticks outside pcTakeHit),
      *  or nothing. */
     readonly "a spell's burn takes hold": (theWards: TheWardsAsTheirEffectsReadThem) => number | undefined;
+    /** Whether a fighter reaches for a combat item now (pcCombatItemWanted, asked by pcTryCombatItem in the stage's
+     *  order, the item's use's: plan P1-19s wrote this stage and the five after it). */
+    readonly 'a fighter reaches for a combat item': (
+      theItem: ACombatItemsOwnNumbers,
+      theMoment: AMomentAsAFighterWeighsACombatItem,
+    ) => boolean;
+    /** What a combat item does when used (pcUseCombatItem: its use's effect). */
+    readonly 'a combat item is used': (theItem: ACombatItemAsItsUseReadsIt) => WhatACombatItemDoes;
+    /** What a combat item's blow is multiplied by against a foe of the kind given (pcUseCombatItem, each blow, after
+     *  its draw), or nothing. */
+    readonly "a combat item's blow lands": (theItem: ACombatItemsOwnNumbers, theFoesKind: string) => number | null;
+    /** What an item of a lair's hoard does for the guardian who wields it (pcBuildGuardian). */
+    readonly 'a guardian wields its hoard': (theItem: AHeldCopysOwnNumbers) => WhatAHoardsItemDoesForItsGuardian;
+    /** The percentage points an item a thief carries adds to his chance to steal (pcAct's theft, after his skill and
+     *  his temper, before the guardian's grade). */
+    readonly "a steal's chance": () => number;
+    /** The damage an item its bearer strikes with adds to a melee blow he lands (pcMeleeDamage, after a halving, before
+     *  a guardian's perk). */
+    readonly "a blow's damage": () => number;
   };
 }
 

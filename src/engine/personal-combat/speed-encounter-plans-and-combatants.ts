@@ -5,6 +5,7 @@ import { activeItems, effTemper } from '../items/equipment.ts';
 import { dedupeItemsByName, guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, pcArmourOf } from './helpers.ts';
 import {
+  anItemIsACombatItem,
   theDamageAMithrilSuitTurnsAside,
   theItemsMakeTheirBearerFightInMithril,
   whatRidersSetInTheRidersAFighterWears,
@@ -354,9 +355,7 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterI
     mithril: theItemsMakeTheirBearerFightInMithril(activeItems(ch)), // −2 melee damage taken (the items' registry, plan P1-19q)
     mithrilDR:
       theDamageAMithrilSuitTurnsAside() + (ch.player != null ? discSum(turnContext, ch.player, 'mithril', 'extra') : 0), // the suit's 2 (the items' registry); rd08 Mithril Craft — 3 instead of 2
-    combatItems: dedupeItemsByName(activeItems(ch)).filter(
-      (it: AnItemAsItsKindIsTested) => it.effect?.stat === 'combatUse',
-    ), // once-per-fight potions/scrolls
+    combatItems: dedupeItemsByName(activeItems(ch)).filter((it: AnItemAsItsKindIsTested) => anItemIsACombatItem(it)), // once-per-fight potions/scrolls (the items' registry, plan P1-19s)
     arm: pcArmourOf(activeItems(ch)), // worn armour wards (see pcArmourOf / pcTakeHit)
     status: pcNewStatus(),
     castSpells: [],

@@ -8,7 +8,11 @@
 //   rounds, count, penalty, bonus or images; a school's missing or NaN level; a grade the table lacks;
 // - the uses no game sees take effect (P1-19's count: a healing, a draining, a silence's rounds, a terror, bane's
 //   double, the Lock-Pick of Legends), a stun item, a daze riding a blow, and an item of no damage range, which throws
-//   where it threw.
+//   where it threw;
+// - and, since plan P1-19s moved the combat items into the items' registry (src/engine/rules/), the lines its planted
+//   faults showed no test or game sees: a bane-stun against its kinds only, the order a fighter reaches for his items
+//   in, and a guardian taking up its lair's hoard (its maximum HP at full health, its combat items, its armour, the
+//   Warbringer Gauntlets and the blow they drive home).
 // Level 1 (unit): each is a plain function on a staged fighter and item, called on the engine's modules (tests/lib/
 // personal-combat.ts, for the turn's context), the dice pinned with kcRng.use (pc.pinned); a static check can't run
 // them, and no game reaches these lines.
@@ -26,6 +30,8 @@ const { pcAct, pcCombatItemWanted, pcNextTactic, pcTryCombatItem, pcUseCombatIte
 const { pcCharCombatant, pcMonsterCombatant, pcNewStatus } =
   await import('../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts');
 const { pcPromotePending } = await import('../../src/engine/personal-combat/helpers.ts');
+const { pcBuildGuardian } = await import('../../src/engine/personal-combat/lair-guardians-and-the-odds.ts');
+const { pcMeleeDamage } = await import('../../src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts');
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
 
 type Staged = Record<string, unknown>;
@@ -131,6 +137,11 @@ describe('whether a combat item is wanted now', () => {
     expect(wanted(20, { use: 'bane' })).toBe(false);
     expect(wanted(20, { use: 'bane', vs: ['beast'] })).toBe(true);
   });
+  test('a bane-stun: of no kinds, or of another kind, never wanted; of the foe’s kind, wanted', () => {
+    expect(wanted(20, { use: 'banestun' })).toBe(false);
+    expect(wanted(20, { use: 'banestun', vs: ['undead'] })).toBe(false);
+    expect(wanted(20, { use: 'banestun', vs: ['beast'] })).toBe(true);
+  });
   test('a silence: a foe of no specials or schools is not worth it; a caster is', () => {
     expect(wanted(20, { use: 'silence' }, {}, fighter({ specials: undefined, school: undefined }))).toBe(false);
     expect(wanted(20, { use: 'silence' }, {}, fighter({ specials: [], school: { white: 1 } }))).toBe(true);
@@ -146,6 +157,14 @@ describe('the item a fighter reaches for', () => {
     expect([f.hp, [...(f._itemsUsed ?? [])]]).toEqual([13, ['Potion of Healing']]);
     const g = at(5, { combatItems: [{ name: 'A made-up charm' }] });
     expect(pcTryCombatItem(tc, g, fighter(), [], fight())).toBe(false);
+  });
+  test('of two items wanted now, the one of the use reached for first: a healing before a second wind', () => {
+    const f = at(5, {
+      status: status({ hitPenalty: 10 }),
+      combatItems: [item('Elixir of Second Wind'), item('Potion of Healing')],
+    });
+    expect(pc.pinned(0, () => pcTryCombatItem(tc, f, fighter(), [], fight()))).toBe(true);
+    expect([...(f._itemsUsed ?? [])]).toEqual(['Potion of Healing']);
   });
 });
 
@@ -232,6 +251,10 @@ describe('a combat item used', () => {
       held(made({ use: 'stun' })),
       held(made({ use: 'stun', stun: 0 })),
     ]).toEqual([2, 1, 1]);
+    expect([held(item('Beastbane Snare')), held(made({ use: 'banestun', vs: ['beast'] }))]).toEqual([
+      item('Beastbane Snare').effect?.stun,
+      1,
+    ]);
   });
   test('a blinding: of no words or other words it fades, "for the rest of the fight" it stays; 15 where it has none', () => {
     const blinded = (it: AnItem) => {
@@ -358,5 +381,42 @@ describe('an action in the fight', () => {
       Number(weak) + 30,
       0,
     ]);
+  });
+});
+
+describe('a guardian takes up its lair’s hoard', () => {
+  /** A guardian of a kind that may wield anything (a made-up humanoid at full health), built as a lair fight builds it
+   *  from a lair whose hoard is `hoard` (its hoard stocked already: no draw), and the lines. */
+  const guardian = (hoard: AnItem[]) => {
+    const m = { name: 'Made-up Ogre', cat: 'humanoid', power: 'Weak', hp: 20, melee: 2 };
+    const narrative: NarrativeLine[] = [];
+    const g = pcBuildGuardian(
+      tc,
+      { name: 'Made-up Ruin', monster: m, hoardItems: hoard, _hoardV2: true },
+      m,
+      narrative,
+    );
+    return { g, narrative };
+  };
+  test('an item of maximum HP adds its own to a guardian at full health', () => {
+    const amulet = item('Amulet of Fortitude');
+    const bonus = Number(amulet.effect?.bonus);
+    expect(bonus).toBeGreaterThan(0);
+    const { g, narrative } = guardian([amulet]);
+    expect([g.maxHp, g.hp, g._hpItemBonus]).toEqual([20 + bonus, 20 + bonus, bonus]);
+    expect(kinds(narrative)).toEqual(["the guardian has turned the hoard's magic to its own use"]);
+  });
+  test('a combat item joins its combat items; armour, its wards', () => {
+    const { g } = guardian([item('Potion of Healing'), item('Dwarf-Forged Hauberk')]);
+    expect((g.combatItems ?? []).map((it) => it.name)).toEqual(['Potion of Healing']);
+    expect(g.arm?.meleeDR).toBe(item('Dwarf-Forged Hauberk').effect?.amt);
+  });
+  test('the Warbringer Gauntlets drive its blows home: 2 more damage a blow', () => {
+    const { g } = guardian([item('Warbringer Gauntlets')]);
+    expect(g.gauntlets).toBe(true);
+    const blow = () => pc.pinned(0, () => pcMeleeDamage(g, fighter()));
+    const driven = blow();
+    g.gauntlets = false;
+    expect(driven - blow()).toBe(2);
   });
 });

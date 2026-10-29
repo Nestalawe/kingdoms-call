@@ -3,7 +3,12 @@ import { kcRng } from '../rng.ts';
 import { monsterCat } from '../names.ts';
 import { guardianCanUseItem } from '../items/tiers-and-hoards.ts';
 import { ensureLairHoard } from '../world/tables.ts';
-import { _ITEM_ALT_BASE, isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import {
+  anItemIsACombatItem,
+  anItemIsWornAsArmour,
+  whatAHoardsItemDoesForTheGuardianWhoWieldsIt,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, transferableItems } from './helpers.ts';
 import { d100 } from '../dice-and-army-names.ts';
@@ -116,16 +121,17 @@ export function pcBuildGuardian(turnContext, feature, m, narrative) {
       mon._hpItemBonus = 0;
       _wield.forEach((it) => {
         const e = it.effect || {};
+        const _does = whatAHoardsItemDoesForTheGuardianWhoWieldsIt(it); // its hit points and its gauntlets: the items' registry (plan P1-19s)
         if (e.stat === 'melee') mon.melee = (mon.melee || 0) + (e.bonus || 0);
         else if (e.stat === 'archery') mon.archery = (mon.archery || 0) + (e.bonus || 0);
-        else if (e.stat === 'maxHp' && mon.hp >= mon.maxHp) {
-          mon.maxHp += e.bonus;
-          mon.hp += e.bonus;
-          mon._hpItemBonus += e.bonus;
-        } else if (e.stat === 'combatUse') mon.combatItems.push(it);
-        else if (e.stat === 'armour') mon.arm = pcArmourMerge(mon.arm, e, it.name); // a guardian in the hoard's armour
+        else if (_does.theHpItAddsAtFullHealth !== undefined && mon.hp >= mon.maxHp) {
+          mon.maxHp += _does.theHpItAddsAtFullHealth;
+          mon.hp += _does.theHpItAddsAtFullHealth;
+          mon._hpItemBonus += _does.theHpItAddsAtFullHealth;
+        } else if (anItemIsACombatItem(it)) mon.combatItems.push(it);
+        else if (anItemIsWornAsArmour(it)) mon.arm = pcArmourMerge(mon.arm, e, it.name); // a guardian in the hoard's armour
         if (e.pc) pcApplyFx(mon, e.pc, it.name); // a guardian wearing a new rider item feels it too
-        if ((_ITEM_ALT_BASE[it.name] || it.name) === 'Warbringer Gauntlets') mon.gauntlets = true;
+        if (_does.itDrivesHisBlowsHome) mon.gauntlets = true;
       });
       narrate(narrative, {
         kind: "the guardian has turned the hoard's magic to its own use",
