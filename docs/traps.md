@@ -191,9 +191,10 @@ visits. Every mistake it can't see: [here](architecture/the-pages-how-a-portal-b
 reorder a character's `items` (Send Item addresses them by index). A stage of the rule registry runs its effects in the
 order of `THE_ORDER_OF_EACH_STAGE` (the items', `THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS`), not of the entries or the
 content's rows: the commander's items round each step as it goes, so the Battle Standard's +2 comes before the Golden
-Spur's ×1.25; the siege halves what home defence added, so the Banner of the Realm comes first. Example: moving
-Shieldwall after Sergeants in that list changed 9 of the matrix's 60 games. Checks: the balance matrix, when a game
-meets the order; the commander's items' unit cases, the battles' items' scenario cases.
+Spur's ×1.25; the siege halves what home defence added, so the Banner of the Realm comes first; a fighter reaches for
+his combat items in the stage's order, a healing before a second wind. Example: moving Shieldwall after Sergeants in
+that list changed 9 of the matrix's 60 games. Checks: the balance matrix, when a game meets the order; the commander's
+items' unit cases, the battles' items' scenario cases, the combat items' unit case.
 
 ## An effect reads only what its hook hands it
 

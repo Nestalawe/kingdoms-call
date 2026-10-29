@@ -10,7 +10,9 @@
 // copy of the item (Decision 2: an old save's copy works as it did).
 import {
   MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS,
+  THE_STAT_OF_A_COMBAT_ITEM,
   THE_STAT_OF_AN_ITEM_WORN_AS_ARMOUR,
+  type AFieldOfACombatItemsEffect,
   type AMagicItemEffectAsItsTextsWriteIt,
   type AnItemsOwnField,
   type ARiderAnItemCarries,
@@ -43,6 +45,14 @@ import {
   A_WARD_A_FIGHTER_WEARS,
 } from './magic-items/what-a-fighter-wears-in-a-personal-combat.ts';
 import {
+  A_BLOWS_DAMAGE,
+  A_COMBAT_ITEM_IS_USED,
+  A_COMBAT_ITEMS_BLOW_LANDS,
+  A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM,
+  A_GUARDIAN_WIELDS_ITS_HOARD,
+  A_STEALS_CHANCE,
+} from './magic-items/the-combat-items-a-steal-and-a-blow-in-a-personal-combat.ts';
+import {
   A_BLOW_LANDS,
   A_BLOWS_CHANCE_TO_HIT,
   A_HIT_LANDS_AFTER_IT,
@@ -55,6 +65,11 @@ import {
   THE_DAMAGE_A_MITHRIL_SUIT_TURNS_ASIDE,
 } from './magic-items/what-a-ward-does-in-a-personal-combat.ts';
 import type {
+  ACombatItemAsItsUseReadsIt,
+  ACombatItemsOwnNumbers,
+  AMomentAsAFighterWeighsACombatItem,
+  WhatACombatItemDoes,
+  WhatAHoardsItemDoesForItsGuardian,
   AFighterAsHisWardsMeetHimAfterAHit,
   AHitAsAFightersWardsCapIt,
   AHitAsAFightersWardsCutIt,
@@ -129,7 +144,10 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'iron-heart-talisman': { orderOutcome: { "a rest's heal": A_RESTS_HEAL['iron-heart-talisman'] } },
   'travellers-cloak': { orderOutcome: { "a move's exploration": A_MOVES_EXPLORATION['travellers-cloak'] } },
   'philosophers-stone': { orderOutcome: { "an item's power used": AN_ITEMS_POWER_USED['philosophers-stone'] } },
-  'maximum-hp': { aHerosStanding: { 'maximum HP': A_HEROS_MAXIMUM_HP['maximum-hp'] } },
+  'maximum-hp': {
+    aHerosStanding: { 'maximum HP': A_HEROS_MAXIMUM_HP['maximum-hp'] },
+    personalCombat: { 'a guardian wields its hoard': A_GUARDIAN_WIELDS_ITS_HOARD['maximum-hp'] },
+  },
   temper: { aHerosStanding: { 'the temper he fights with': THE_TEMPER_HE_FIGHTS_WITH.temper } },
   'crown-of-command': {
     aHerosStanding: { "a skill's aura in the province": A_SKILLS_AURA_IN_THE_PROVINCE['crown-of-command'] },
@@ -272,6 +290,132 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['mithril-armour'],
     },
   },
+  'combat-item-heals': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-heals'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-heals'],
+    },
+  },
+  'combat-item-second-wind': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-second-wind'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-second-wind'],
+    },
+  },
+  'combat-item-heals-over-time': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-heals-over-time'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-heals-over-time'],
+    },
+  },
+  'combat-item-wards': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-wards'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-wards'],
+    },
+  },
+  'combat-item-hides': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-hides'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-hides'],
+    },
+  },
+  'combat-item-mirror-images': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-mirror-images'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-mirror-images'],
+    },
+  },
+  'combat-item-flight': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-flight'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-flight'],
+    },
+  },
+  'combat-item-dispels': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-dispels'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-dispels'],
+    },
+  },
+  'combat-item-bane': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-bane'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-bane'],
+    },
+  },
+  'combat-item-bane-stun': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-bane-stun'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-bane-stun'],
+    },
+  },
+  'combat-item-strengthens': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-strengthens'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-strengthens'],
+    },
+  },
+  'combat-item-focuses': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-focuses'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-focuses'],
+    },
+  },
+  'combat-item-silences': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-silences'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-silences'],
+    },
+  },
+  'combat-item-stuns': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-stuns'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-stuns'],
+    },
+  },
+  'combat-item-blinds': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-blinds'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-blinds'],
+    },
+  },
+  'combat-item-weakens': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-weakens'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-weakens'],
+    },
+  },
+  'combat-item-terrifies': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-terrifies'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-terrifies'],
+    },
+  },
+  'combat-item-damages': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-damages'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-damages'],
+    },
+  },
+  'combat-item-drains': {
+    personalCombat: {
+      'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-drains'],
+      'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-drains'],
+    },
+  },
+  'combat-item-doubled-against-its-kinds': {
+    personalCombat: {
+      "a combat item's blow lands": A_COMBAT_ITEMS_BLOW_LANDS['combat-item-doubled-against-its-kinds'],
+    },
+  },
+  'lock-pick-of-legends': { personalCombat: { "a steal's chance": A_STEALS_CHANCE['lock-pick-of-legends'] } },
+  'warbringer-gauntlets': {
+    personalCombat: {
+      'a guardian wields its hoard': A_GUARDIAN_WIELDS_ITS_HOARD['warbringer-gauntlets'],
+      "a blow's damage": A_BLOWS_DAMAGE['warbringer-gauntlets'],
+    },
+  },
 } satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -372,6 +516,55 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     'a round starts': ['round-ward', 'lingering-harm-turned-aside', 'regeneration', 'resist'],
     'a stun or a terror takes hold': ['stun-immunity'],
     "a spell's burn takes hold": ['spell-damage-cut'],
+    // the combat items (plan P1-19s): the order a fighter reaches for them in (pcTryCombatItem's), then the order of
+    // pcUseCombatItem's cases (an item has one use, so one effect acts)
+    'a fighter reaches for a combat item': [
+      'combat-item-heals',
+      'combat-item-second-wind',
+      'combat-item-heals-over-time',
+      'combat-item-wards',
+      'combat-item-hides',
+      'combat-item-mirror-images',
+      'combat-item-flight',
+      'combat-item-dispels',
+      'combat-item-bane',
+      'combat-item-bane-stun',
+      'combat-item-strengthens',
+      'combat-item-focuses',
+      'combat-item-silences',
+      'combat-item-stuns',
+      'combat-item-blinds',
+      'combat-item-weakens',
+      'combat-item-terrifies',
+      'combat-item-damages',
+      'combat-item-drains',
+    ],
+    'a combat item is used': [
+      'combat-item-heals',
+      'combat-item-heals-over-time',
+      'combat-item-second-wind',
+      'combat-item-damages',
+      'combat-item-bane',
+      'combat-item-drains',
+      'combat-item-stuns',
+      'combat-item-bane-stun',
+      'combat-item-blinds',
+      'combat-item-weakens',
+      'combat-item-terrifies',
+      'combat-item-silences',
+      'combat-item-strengthens',
+      'combat-item-focuses',
+      'combat-item-wards',
+      'combat-item-mirror-images',
+      'combat-item-flight',
+      'combat-item-hides',
+      'combat-item-dispels',
+    ],
+    "a combat item's blow lands": ['combat-item-doubled-against-its-kinds'],
+    // the hit points first, as pcBuildGuardian's branches ran, then the gauntlets
+    'a guardian wields its hoard': ['maximum-hp', 'warbringer-gauntlets'],
+    "a steal's chance": ['lock-pick-of-legends'],
+    "a blow's damage": ['warbringer-gauntlets'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -390,6 +583,8 @@ export type AMagicItemAsTheRegistryReadsIt = {
   readonly effect?:
     | {
         readonly stat?: string | null | undefined;
+        readonly use?: string | null | undefined;
+        readonly doubleVs?: readonly string[] | null | undefined;
         readonly bonus?: unknown;
         readonly temper?: string | null | undefined;
         readonly ward?: string | null | undefined;
@@ -406,6 +601,8 @@ const BY_FIELD: [AnItemsOwnField, MagicItemEffectSlug][] = [];
 const BY_ITEM_NAME = new Map<string, MagicItemEffectSlug[]>();
 const BY_WARD = new Map<string, MagicItemEffectSlug>();
 const BY_RIDER: [ARiderAnItemCarries, MagicItemEffectSlug][] = [];
+const BY_USE = new Map<string, MagicItemEffectSlug>();
+const BY_EFFECT_FIELD: [AFieldOfACombatItemsEffect, MagicItemEffectSlug][] = [];
 const SLUGS = Object.keys(ROWS).filter((slug): slug is MagicItemEffectSlug => slug in ROWS);
 for (const slug of SLUGS) {
   const key = ROWS[slug].carriedAs;
@@ -413,14 +610,18 @@ for (const slug of SLUGS) {
   else if ('field' in key) BY_FIELD.push([key.field, slug]);
   else if ('itemName' in key) BY_ITEM_NAME.set(key.itemName, [...(BY_ITEM_NAME.get(key.itemName) ?? []), slug]);
   else if ('ward' in key) BY_WARD.set(key.ward, slug);
-  else BY_RIDER.push([key.rider, slug]);
+  else if ('rider' in key) BY_RIDER.push([key.rider, slug]);
+  else if ('use' in key) BY_USE.set(key.use, slug);
+  else BY_EFFECT_FIELD.push([key.effectField, slug]);
 }
 /** The effect a ward carries, by its kind, or none. */
 const theEffectAWardCarries = (ward: string | null | undefined) => (ward == null ? undefined : BY_WARD.get(ward));
+/** The effect a combat item's use carries, or none. */
+const theEffectAUseCarries = (use: string | null | undefined) => (use == null ? undefined : BY_USE.get(use));
 
 /** The effects a held copy of an item carries: by its effect's key, by a field of its own that is set, by its base
- *  name (a second name counts as its base's, as hasItemBase reads it), by its armour's ward and its rider's, and by
- *  each rider it carries above 0. */
+ *  name (a second name counts as its base's, as hasItemBase reads it), by its armour's ward and its rider's, by each
+ *  rider it carries above 0, by its combat use, and by a field of its effect that is set. */
 export function theEffectsAnItemCarries(item: AMagicItemAsTheRegistryReadsIt): MagicItemEffectSlug[] {
   const stat = item.effect?.stat;
   const carried = [...((stat == null ? undefined : BY_STAT.get(stat)) ?? [])];
@@ -434,6 +635,9 @@ export function theEffectsAnItemCarries(item: AMagicItemAsTheRegistryReadsIt): M
     if (ridden) carried.push(ridden);
     for (const [rider, slug] of BY_RIDER) if ((pc[rider] ?? 0) > 0) carried.push(slug);
   }
+  const used = theEffectAUseCarries(item.effect?.use);
+  if (used) carried.push(used);
+  for (const [field, slug] of BY_EFFECT_FIELD) if (item.effect?.[field]) carried.push(slug);
   return carried;
 }
 
@@ -441,6 +645,12 @@ export function theEffectsAnItemCarries(item: AMagicItemAsTheRegistryReadsIt): M
  *  wears (pcArmourOf). */
 export function anItemIsWornAsArmour(item: AMagicItemAsTheRegistryReadsIt): boolean {
   return item.effect?.stat === THE_STAT_OF_AN_ITEM_WORN_AS_ARMOUR;
+}
+
+/** Whether a held item is a combat item: a potion, scroll or device a fighter carries into a personal combat (a hero
+ *  his active ones, pcCharCombatant; a guardian those of its lair's hoard it wields, pcBuildGuardian). */
+export function anItemIsACombatItem(item: AMagicItemAsTheRegistryReadsIt): boolean {
+  return item.effect?.stat === THE_STAT_OF_A_COMBAT_ITEM;
 }
 
 /** The effects a hero's items carry, all of them, once. */
@@ -883,4 +1093,98 @@ export function theShareAFightersWardsCutASpellsBurnBy(
     if (cut) return cut;
   }
   return 0;
+}
+
+// ── The combat items, a steal and a blow (plan P1-19s): a runner a stage; personal combat applies what they return. ──
+
+/** The combat items' uses, in the order a fighter reaches for them (pcTryCombatItem's _CI_PRIORITY): the uses of the
+ *  effects of "personalCombat: a fighter reaches for a combat item", in the stage's order. */
+export function theUsesOfTheCombatItemsInTheOrderAFighterReachesForThem(): string[] {
+  return THE_WARDS_STAGES['a fighter reaches for a combat item'].map(
+    (slug) => MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS[slug].carriedAs.use,
+  );
+}
+
+/** The runner of "personalCombat: a fighter reaches for a combat item" (pcCombatItemWanted): whether the effect of the
+ *  item's use says its moment has come (an item of no use the registry holds: never). */
+export function aFighterReachesForTheCombatItemNow(
+  theItem: ACombatItemsOwnNumbers & { readonly use?: string | null | undefined },
+  theMoment: AMomentAsAFighterWeighsACombatItem,
+): boolean {
+  const slug = theEffectAUseCarries(theItem.use);
+  const reaches =
+    slug === undefined ? undefined : ENTRIES[slug].personalCombat?.['a fighter reaches for a combat item'];
+  return reaches ? reaches(theItem, theMoment) : false;
+}
+
+/** The runner of "personalCombat: a combat item is used" (pcUseCombatItem): what the effect of the item's use does, or
+ *  nothing (an item of no use the registry holds: "but nothing happens"). */
+export function whatACombatItemDoesWhenUsed(
+  theItem: ACombatItemAsItsUseReadsIt & { readonly effect: { readonly use?: string | null | undefined } },
+): WhatACombatItemDoes | null {
+  const slug = theEffectAUseCarries(theItem.effect.use);
+  const used = slug === undefined ? undefined : ENTRIES[slug].personalCombat?.['a combat item is used'];
+  return used ? used(theItem) : null;
+}
+
+/** The runner of "personalCombat: a combat item's blow lands" (pcUseCombatItem, each blow): what the first effect the
+ *  item's effect carries, in the stage's order, multiplies the blow by against a foe of the kind given, or nothing. */
+export function theMultiplierOfACombatItemsBlowAgainst(
+  theItemsEffect: ACombatItemsOwnNumbers,
+  theFoesKind: string,
+): number | null {
+  const carried = new Set(BY_EFFECT_FIELD.filter(([field]) => theItemsEffect[field]).map(([, slug]) => slug));
+  for (const slug of THE_WARDS_STAGES["a combat item's blow lands"]) {
+    if (!carried.has(slug)) continue;
+    const multiplier = ENTRIES[slug].personalCombat?.["a combat item's blow lands"]?.(theItemsEffect, theFoesKind);
+    if (multiplier != null) return multiplier;
+  }
+  return null;
+}
+
+/** The runner of "personalCombat: a guardian wields its hoard" (pcBuildGuardian, each item it wields): what the
+ *  effects the item carries do for the guardian, each effect's field in the stage's order. */
+export function whatAHoardsItemDoesForTheGuardianWhoWieldsIt(
+  theItem: AMagicItemAsTheRegistryReadsIt,
+): WhatAHoardsItemDoesForItsGuardian {
+  const carried = theEffectsAnItemCarries(theItem);
+  let done: WhatAHoardsItemDoesForItsGuardian = {};
+  for (const slug of THE_WARDS_STAGES['a guardian wields its hoard']) {
+    if (!carried.includes(slug)) continue;
+    const effect = ENTRIES[slug].personalCombat?.['a guardian wields its hoard'];
+    if (effect) done = { ...done, ...effect(theItem) };
+  }
+  return done;
+}
+
+/** The runner of "personalCombat: a steal's chance" (pcAct's theft): the percentage points the effects a thief's items
+ *  carry add to his chance to steal, each once, in the stage's order. */
+export function theChanceAThiefsItemsAddToHisSteal(theThiefsItems: readonly AMagicItemAsTheRegistryReadsIt[]): number {
+  const carried = theEffectsTheseItemsCarry(theThiefsItems);
+  let added = 0;
+  for (const slug of THE_WARDS_STAGES["a steal's chance"]) {
+    if (!carried.has(slug)) continue;
+    added += ENTRIES[slug].personalCombat?.["a steal's chance"]?.() ?? 0;
+  }
+  return added;
+}
+
+/** The runner of "personalCombat: a blow's damage" (pcMeleeDamage): the damage the effects the striker strikes with add
+ *  to a melee blow he lands, each once, in the stage's order: those a hero's active items carry, and, for a guardian
+ *  whose hoard drives his blows home (his flag, which "a guardian wields its hoard" sets), those the effects that set it
+ *  carry. */
+export function theDamageAStrikersItemsAddToHisBlow(
+  theStrikersItems: readonly AMagicItemAsTheRegistryReadsIt[],
+  hisHoardDrivesHisBlowsHome: boolean,
+): number {
+  const carried = theEffectsTheseItemsCarry(theStrikersItems);
+  const fromTheHoard: readonly MagicItemEffectSlug[] = hisHoardDrivesHisBlowsHome
+    ? THE_WARDS_STAGES['a guardian wields its hoard']
+    : [];
+  let added = 0;
+  for (const slug of THE_WARDS_STAGES["a blow's damage"]) {
+    if (!carried.has(slug) && !fromTheHoard.includes(slug)) continue;
+    added += ENTRIES[slug].personalCombat?.["a blow's damage"]?.() ?? 0;
+  }
+  return added;
 }

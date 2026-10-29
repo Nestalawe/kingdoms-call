@@ -1,7 +1,7 @@
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { GUARDIAN_MELEE_BASE, PC_HIT_CAP_FRAC } from '../names.ts';
-import { hasItemBase, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
+import { activeItems, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 import {
   PC_DMG_FLOOR_FRACTION,
   PC_SPELL_SCHOOL_MAP,
@@ -23,6 +23,7 @@ import {
 } from './the-facts-a-personal-combats-lines-record.ts';
 import {
   aFightersWardsRefuseAStunOrATerror,
+  theDamageAStrikersItemsAddToHisBlow,
   theCapAFightersWardsPutOnAHit,
   theHpAFightersWardsGiveBackAfterAHit,
   whatAFightersWardsDoAsARoundStarts,
@@ -188,7 +189,10 @@ export function pcMeleeDamage(attacker: AFighterAsHisBlowIsRead, defender: unkno
   // ward, and applying it here put it outside the half-damage floor — a Cautious hero in Mithril
   // was still taking 1-damage hits because the guard had already scraped the blow down before
   // pcTakeHit ever saw its "original" value. Every reduction now lives in one place.
-  if ((attacker.ref && hasItemBase(attacker.ref, 'Warbringer Gauntlets')) || attacker.gauntlets) dmg += 2; // Warbringer Gauntlets: +2 damage per successful melee attack (a guardian wielding them too)
+  dmg += theDamageAStrikersItemsAddToHisBlow(
+    attacker.ref ? activeItems(attacker.ref) : [],
+    attacker.gauntlets === true,
+  ); // Warbringer Gauntlets: +2 damage per successful melee attack (a guardian wielding them too; the items' registry, plan P1-19s)
   if (attacker.dmgBonus) dmg += attacker.dmgBonus; // guardian passive (Brute Strength, Savage Jaws…)
   return dmg;
 }

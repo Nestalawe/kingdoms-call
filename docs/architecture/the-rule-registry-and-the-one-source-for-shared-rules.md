@@ -153,9 +153,7 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   force: handed the unit's type, its quality, whether it is skeletal and the realm's alignment, each effect returns a
   step (strength added, or a multiplier, and for the Kraken Figurehead's step up a tier the tier's multiplier it is
   divided by), and the runner applies them in the stage's order, each rounded as it goes (the ladder records their sum,
-  one line): the Battle Standard's +2, the Golden Spur, the Legionnaire's Mark, the Eagle-Eye Pendant, the Engineer's
-  Blueprint, the Kraken Figurehead, the Sea Chart of the Deep, the Admiral's Spyglass, the Chalice of Dawn, the Black
-  Sceptre. And `strength`'s **a land unit at sea, led** (the Tide-Caller's Horn: whether the sea's penalty to a land
+  one line): ten items, from the Battle Standard's +2 to the Black Sceptre, in the stage's order. And `strength`'s **a land unit at sea, led** (the Tide-Caller's Horn: whether the sea's penalty to a land
   unit the bearer leads is waived; `armStr` asks it beside Naval's eighth level).
 - **The battles' stages** (P1-19n, `magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts`):
   `strength`'s **the defenders' fortifications** (both battles, after the province's and the realm's own bonuses):
@@ -177,8 +175,7 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   Philosopher's Lens: the order still draws which lair), **a rest's heal** (the Iron Heart Talisman: a tenth of his
   maximum, rounded, once however many he carries), **a move's exploration** (the Traveller's Cloak: the copy's own
   `exploreMove`, every item's added) and **an item's power used** (an older save's Philosopher's Stone, `massPromote`:
-  the Use Item order and the bots' plan both ask it, and the order does the promoting). Where a copy carries its own
-  number (the tax rings, the Cloak), the stage hands the effect the copy, and the row holds no number.
+  the Use Item order and the bots' plan both ask it, and the order does the promoting).
 - **A hero's standing's stages** (P1-19p, `magic-items/a-heros-items-in-his-standing.ts`): `aHerosStanding`'s **maximum
   HP** (`itemMaxHpBonus`: handed each held copy, the Amulet of Fortitude and its kin give the copy's own `effect.bonus`;
   the runner counts two copies of one name once; `applyItemMaxHp` asks whether an item granted or lost carries an effect
@@ -204,21 +201,24 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   takes hold**. Each is handed his wards and its moment and returns what it does; the fight applies it, rolls where it
   rolled and tells the line. Low HP's half, the second wind's 30%, resist's half and Mithril's 2 are the rows'. The
   guardian's own wards are still read in the fight, listed.
+- **The combat items, a steal and a blow** (P1-19s, `magic-items/the-combat-items-a-steal-and-a-blow-in-a-personal-combat.ts`):
+  `personalCombat`'s **a fighter reaches for a combat item** (`pcCombatItemWanted`; its order is
+  `pcTryCombatItem`'s), **a combat item is used** (`pcUseCombatItem`: 19 uses keyed `{ use }`, each
+  returning what it does; the fight draws and applies it), **a combat item's blow lands** (bane's double, keyed
+  `{ effectField: 'doubleVs' }`), **a guardian wields its hoard** (`pcBuildGuardian`: maximum HP, the gauntlets' flag),
+  **a steal's chance** (the Lock-Pick's +20) and **a blow's damage** (the Warbringer Gauntlets' +2). A copy's own
+  numbers act; the row's where it carries none.
 - **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
   desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
   unit, since the items in play exist only after the engine's load-time pass; the known gaps listed with their Parked
-  entries); no item effect key or item named, and no item field of its own read, in a function the registry has taken
-  (`tests/static/the-resolvers-the-item-registry-has-taken-name-no-item-effect.test.ts`), and, outside the registry,
-  the ratchet's `itemEffectChecksInEngine`, which only falls; the effects no matrix game meets, by a case each
-  (`tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts`, and for the battles' items, inside
-  the two battles, a whole turn each: `tests/scenario/the-battles-items-no-matrix-game-carries-keep-their-values.test.ts`;
-  the orders' items, by their orders' own cases, and the bots' plan working an older save's Stone, in
-  `tests/unit/item-and-army-orders-called-directly.test.ts`; a hero's standing, by the hit points' and skills' unit
-  cases, Steal's and Grand Heist's, and the player portal's parity test on the Crown; the temper items, by the matrix
-  alone; what a fighter wears, by each ward kind's merge over every ward in play, from an item and a guardian's perk,
-  in `tests/unit/the-wards-and-riders-a-fighter-wears.test.ts`; what a ward does, by a case each in
-  `tests/unit/the-hit-and-round-lines-no-matrix-game-reaches-keep-their-values.test.ts`, and the static test above
-  refuses a ward's field read outside the registry, but the guardian's listed).
+  entries); no item effect key or item named, no item field of its own and no ward's field read, in a function the
+  registry has taken (`tests/static/the-resolvers-the-item-registry-has-taken-name-no-item-effect.test.ts`), and,
+  outside the registry, the ratchet's `itemEffectChecksInEngine`, which only falls; the effects no matrix game meets, by
+  a case each: the commander's items, the battles' (a whole turn each, in `tests/scenario/`), the orders' (their orders'
+  cases), a hero's standing (the hit points' and skills' cases, and the portal's parity test on the Crown; the temper
+  items by the matrix alone), what a fighter wears, what a ward does, and the combat items, a steal, a blow and a
+  guardian's hoard (`tests/unit/the-combat-item-and-guardian-lines-no-matrix-game-reaches-keep-their-values.test.ts`);
+  [the test list](../../tests/every-test-its-level-and-what-it-checks.md) names each file.
 - **How to add an item effect** of a stage already written: its row (the key a copy carries it by, its numbers, the
   units it reaches); its effect in the stage's file under `src/engine/rules/magic-items/`, reading its numbers from its
   row; its entry and its place in the stage's order; and the numbers in the desc and lore of every item that carries it
@@ -274,7 +274,8 @@ fortifications), `volley` (the commander adds volleys), `fate` (the commander's 
 ground, the beaten force may retreat), `turnEnd` (a hero's items add to the realm's tax), `orderOutcome` (a spy's sure
 success, a lair revealed when exploring, a rest's heal, a move's exploration, an item's power used), `aHerosStanding`
 (maximum HP, the temper he fights with, a skill's aura in the province) and `personalCombat` (what a fighter wears;
-what a ward does to a blow's chance, a hit, a blow, a round, a stun or terror, a spell's burn). An effect that reads a copy's own number is
+what a ward does to a blow's chance, a hit, a blow, a round, a stun or terror, a spell's burn; the combat items, a
+guardian's hoard, a steal, a blow). An effect that reads a copy's own number is
 handed the copy (its `effect.bonus` or `effect.temper`, its `exploreMove`), never the hero.
 
 The stage types live in the registry's own file, which holds code. **A file that only `import type` reaches is in no
