@@ -197,7 +197,9 @@ table with a key left out.
 - (P1-10b11: `personal-combat/helpers.ts` and `personal-combat/speed-encounter-plans-and-combatants.ts`, 39,073
   bytes): 96 errors, 67 of them a parameter with no type. The fighter both builders make is one interface,
   `AFighterInAPersonalCombat`, declared in `helpers.ts` with `TheWardsAFighterWears`, his status and
-  `TheRidersOfAnItemOrAPerk` (the riders of an item's `effect.pc` and of a guardian's perk): the fields both builders
+  `TheRidersOfAnItemOrAPerk` (the riders of an item's `effect.pc` and of a guardian's perk; since P1-19q these two and
+  a ward are the items' registry's stage types, in `rules/the-registry-of-content-effects.ts`, and `helpers.ts` exports
+  them by the same names): the fields both builders
   set are required, a field one kind has or the fight writes later is optional. A file of types alone would be in no
   page's bundle, which `tests/static/pages-build.test.ts` refuses (only `src/globals.d.ts` and `src/schemas/` are
   types for the code alone), so a type goes in the file whose code it types most. `temperOf`'s return type is written in

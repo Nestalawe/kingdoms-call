@@ -4,6 +4,10 @@ import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd, monsterCat } from '../names.ts';
 import { activeItems, effTemper } from '../items/equipment.ts';
 import { dedupeItemsByName, guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, pcArmourOf } from './helpers.ts';
+import {
+  theItemsMakeTheirBearerFightInMithril,
+  whatRidersSetInTheRidersAFighterWears,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import { rng } from '../dice-and-army-names.ts';
 import { pcSkillCap, perkTier, skillLevel } from '../titles/perks.ts';
 import { discSum, hasDisc } from '../discoveries.ts';
@@ -346,7 +350,7 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterI
     neverFlees: false,
     speedBonus: Number(ch._speedBonus) || 0,
     specials: [],
-    mithril: activeItems(ch).some((it: AnItemAsItsKindIsTested) => it.effect?.stat === 'mithrilArmour'), // −2 melee damage taken
+    mithril: theItemsMakeTheirBearerFightInMithril(activeItems(ch)), // −2 melee damage taken (the items' registry, plan P1-19q)
     mithrilDR: 2 + (ch.player != null ? discSum(turnContext, ch.player, 'mithril', 'extra') : 0), // rd08 Mithril Craft — 3 instead of 2
     combatItems: dedupeItemsByName(activeItems(ch)).filter(
       (it: AnItemAsItsKindIsTested) => it.effect?.stat === 'combatUse',
@@ -415,21 +419,27 @@ export function pcMonsterPlan(m: Pick<AGuardianAsHisFighterIsBuilt, 'spells' | '
 // combatant's `arm` table exactly like worn armour; aura / burn / drain / hitBonus / dmgBonus are
 // read by the engine directly. 2026-09-11: ONE applier for every fx table — guardian passives AND
 // the new items' `effect.pc` riders. Stacking: wards merge, aura/drain take the best,
-// burn/hitBonus/dmgBonus add.
+// burn/hitBonus/dmgBonus add: each ward's and each rider's effect in the items' registry (plan P1-19q).
 export function pcApplyFx(
   cbt: AFighterInAPersonalCombat | null | undefined,
   fx: TheRidersOfAnItemOrAPerk | null | undefined,
   name: string | null | undefined,
 ) {
   if (!cbt || !fx) return;
-  // each rider read once, as a number (a missing one is not above 0, as before)
-  const { aura = 0, burn = 0, drain = 0, hitBonus = 0, dmgBonus = 0 } = fx;
   if (fx.ward) cbt.arm = pcArmourMerge(cbt.arm, fx, name);
-  if (aura > 0) cbt.aura = Math.max(Number(cbt.aura) || 0, aura); // foe −N% to hit for the whole fight (status.auraPenalty)
-  if (burn > 0) cbt.burn = (Number(cbt.burn) || 0) + burn; // foe at melee range takes N each round
-  if (drain > 0) cbt.drain = Math.max(Number(cbt.drain) || 0, drain); // heals this fraction of melee damage dealt
-  if (hitBonus > 0) cbt.status.hitBonus = (Number(cbt.status.hitBonus) || 0) + hitBonus;
-  if (dmgBonus > 0) cbt.dmgBonus = (Number(cbt.dmgBonus) || 0) + dmgBonus;
+  // the riders it carries (each above 0), from those he wears, in the registry's order; each set where it was
+  const { aura, burn, drain, hitBonus, dmgBonus } = whatRidersSetInTheRidersAFighterWears(fx, {
+    aura: cbt.aura,
+    burn: cbt.burn,
+    drain: cbt.drain,
+    hitBonus: cbt.status.hitBonus,
+    dmgBonus: cbt.dmgBonus,
+  });
+  if (aura !== undefined) cbt.aura = aura; // foe −N% to hit for the whole fight (status.auraPenalty)
+  if (burn !== undefined) cbt.burn = burn; // foe at melee range takes N each round
+  if (drain !== undefined) cbt.drain = drain; // heals this fraction of melee damage dealt
+  if (hitBonus !== undefined) cbt.status.hitBonus = hitBonus;
+  if (dmgBonus !== undefined) cbt.dmgBonus = dmgBonus;
 }
 export function pcApplyMonsterPassive(cbt: AFighterInAPersonalCombat, m: AGuardianAsHisFighterIsBuilt) {
   // 2026-10-14 (batch item 7): every perk of the guardian, not just one. `passiveName` stays the

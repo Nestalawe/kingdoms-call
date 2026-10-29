@@ -9,10 +9,10 @@ books write them, and the units it counts or reaches when more than its own) and
 ability's **effect** at each **stage** it acts in; the effects are in `src/engine/rules/<family>/`, a file per group of
 stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, and asks the stage's **runner**.
 
-- **Hook points** are the engine's real decisions, eleven of them: `strength`, `volley`, `fate`, `movementCost`,
+- **Hook points** are the engine's real decisions, twelve of them: `strength`, `volley`, `fate`, `movementCost`,
   `orderValidity`, `experience`, `visibility`, `turnStart`, `turnEnd`, `orderOutcome` (an order's outcome a hero's
-  item changes: P1-19o, the first of the items family's four new ones) and `aHerosStanding` (a hero's own figures his
-  item changes: P1-19p) (the union `HookPointName`). Each is a set of named
+  item changes: P1-19o, the first of the items family's four new ones), `aHerosStanding` (a hero's own figures his
+  item changes: P1-19p) and `personalCombat` (a fighter in a personal combat: P1-19q) (the union `HookPointName`). Each is a set of named
   stages, in the order the engine runs them (`TheStagesOfEachHookPoint`). A stage's effect type says exactly what the
   stage hands the effect, read-only, and what it returns; an effect changes nothing, at the turn's end too (it returns
   what the turn must do, and the turn does it: plan P1-19's second slice, Choice 3). A stage or a hook point typed `never` has no signature yet: its family's first row writes it, and an entry
@@ -92,7 +92,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   line. Reaver Crews' landing mark, which the move order sets for a column its longships put ashore, asks the content
   row's unit (`reaver-crews`), with no stage of its own. Every stage of `strength`, `volley` and `fate`, and `turnEnd`'s
   one, now has its signature (and since P1-19o `turnEnd`'s second and `orderOutcome`'s, since P1-19p
-  `aHerosStanding`'s, the items' below); the other
+  `aHerosStanding`'s, since P1-19q `personalCombat`'s, the items' below); the other
   five hook points are `never` until their family's first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
@@ -186,6 +186,17 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   items that gives one, over his own) and **a skill's aura in the province** (`skillBonusBreakdown`: the Crown of
   Command's +1 to every skill, and the name his sources of a skill show it by, both the row's; the first hero of his
   realm in his province whose items spread one). The player portal's copy of the breakdown reads the report's.
+- **What a fighter wears** (P1-19q, `magic-items/what-a-fighter-wears-in-a-personal-combat.ts`): `personalCombat`'s
+  **what a fighter wears: a ward** (`pcArmourMerge`: handed the ward, his armour's or a rider's, and the wards he wears
+  so far; returns the fields it sets: the 21 ward kinds an item carries, each its own row keyed `{ ward }`, an amount
+  added, a percentage the best, a flag set; the buckler's 1 and 5, and the open guard's 2 hits and 50% for a copy that
+  carries none, are the rows'), **a rider** (`pcApplyFx`: the aura and drain the best, the burn, hit bonus and damage
+  bonus added, each carried above 0, keyed `{ rider }`) and **Mithril** (`pcCharCombatant`'s flag). `pcArmourOf` asks
+  whether an item is worn as armour. A guardian's perk of the same ward or rider reaches the same effect (`pcApplyFx` is
+  the one applier); a guardian's perks' own three wards (`stunWard`, `dotWard`, `schoolWard`) stay in `pcArmourMerge`
+  for the guardian family. The fighter's ward table, a ward and the riders (`TheWardsAFighterWears`,
+  `AWardAsTheMergeReadsIt`, `TheRidersOfAnItemOrAPerk`) are this stage's types, in the registry's file, and
+  `personal-combat/helpers.ts` exports them by the same names. What each ward does in a fight is still the fight's.
 - **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
   desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
   unit, since the items in play exist only after the engine's load-time pass; the known gaps listed with their Parked
@@ -197,7 +208,8 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   the orders' items, by their orders' own cases, and the bots' plan working an older save's Stone, in
   `tests/unit/item-and-army-orders-called-directly.test.ts`; a hero's standing, by the hit points' and skills' unit
   cases, Steal's and Grand Heist's, and the player portal's parity test on the Crown; the temper items, by the matrix
-  alone).
+  alone; what a fighter wears, by each ward kind's merge over every ward in play, from an item and a guardian's perk,
+  in `tests/unit/the-wards-and-riders-a-fighter-wears.test.ts`).
 - **How to add an item effect** of a stage already written: its row (the key a copy carries it by, its numbers, the
   units it reaches); its effect in the stage's file under `src/engine/rules/magic-items/`, reading its numbers from its
   row; its entry and its place in the stage's order; and the numbers in the desc and lore of every item that carries it
@@ -251,8 +263,9 @@ hands the items' runner (`activeItems`, in `src/engine/items/`, stays the engine
 the items' rows use so far are `strength` (the commander's items, a land unit at sea led, the defenders'
 fortifications), `volley` (the commander adds volleys), `fate` (the commander's riders run the beaten down on any
 ground, the beaten force may retreat), `turnEnd` (a hero's items add to the realm's tax), `orderOutcome` (a spy's sure
-success, a lair revealed when exploring, a rest's heal, a move's exploration, an item's power used) and `aHerosStanding`
-(maximum HP, the temper he fights with, a skill's aura in the province). An effect that reads a copy's own number is
+success, a lair revealed when exploring, a rest's heal, a move's exploration, an item's power used), `aHerosStanding`
+(maximum HP, the temper he fights with, a skill's aura in the province) and `personalCombat` (what a fighter wears: a
+ward, a rider, Mithril). An effect that reads a copy's own number is
 handed the copy (its `effect.bonus` or `effect.temper`, its `exploreMove`), never the hero.
 
 The stage types live in the registry's own file, which holds code. **A file that only `import type` reaches is in no

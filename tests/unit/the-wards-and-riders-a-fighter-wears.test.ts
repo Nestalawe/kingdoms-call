@@ -9,6 +9,9 @@
 // - a number a `||` gave its fallback for, which `??` alone would keep: a 0 or a missing amount, percentage or hit
 //   count (the content holds none: the saved item's schema allows one), a speed or a temper the table lacks;
 // - the ward kinds no game merges (resist, which no item or perk has), and each kind merged onto one already worn.
+// Since plan P1-19q each ward's and each rider's merge, and the Mithril suit, are the items' registry's
+// (src/engine/rules/magic-items/what-a-fighter-wears-in-a-personal-combat.ts), reached through the same functions: the
+// cases read them as before, and one more, a hero who wears the suit fights in Mithril.
 // Level 1 (unit): each is a plain function on a staged fighter, ward or hero, called on the engine's modules (the
 // hero's builder through tests/lib/personal-combat.ts, for the turn's context); a static check can't run them, and no
 // game reaches these lines. No line here draws a die (no temper has a rage); a staged table is put back as it was.
@@ -322,6 +325,13 @@ describe('the riders an item or a perk gives a fighter', () => {
     pcApplyItemFx(f, [torc, torc]);
     expect(f.burn).toBe(2);
   });
+
+  test('a hero’s item whose rider is a ward: it merges into his wards, once a name', () => {
+    const f = aPlainFighter();
+    const charm = { name: 'Made-up Charm', effect: { pc: { ward: 'thorns', amt: 2 } } };
+    pcApplyItemFx(f, [charm, charm]);
+    expect(f.arm).toEqual({ names: ['Made-up Charm'], thorns: 2 });
+  });
 });
 
 // ── The fighter's build ──
@@ -420,6 +430,15 @@ describe('a hero’s fighter', () => {
     const hero = aHero();
     const f = heroFighter({ ...hero, items: [{ name: 'Made-up Pebble', desc: '', lore: '', tier: 1, id: 900 }] });
     expect([f.mithril, f.combatItems]).toEqual([false, []]);
+  });
+
+  test('a hero who wears the Mithril suit fights in Mithril (the suit is no ward of his table)', () => {
+    const hero = aHero();
+    const suit = { name: 'Mithril Armour', desc: '', lore: '', tier: 1, id: 902, effect: { stat: 'mithrilArmour' } };
+    expect([heroFighter({ ...hero, items: [suit] }).mithril, heroFighter({ ...hero, items: [suit] }).arm]).toEqual([
+      true,
+      null,
+    ]);
   });
 
   test('keeping range: a hero of no trained archery level counts his bow’s', () => {

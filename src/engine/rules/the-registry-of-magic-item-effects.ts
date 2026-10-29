@@ -10,8 +10,10 @@
 // copy of the item (Decision 2: an old save's copy works as it did).
 import {
   MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS,
+  THE_STAT_OF_AN_ITEM_WORN_AS_ARMOUR,
   type AMagicItemEffectAsItsTextsWriteIt,
   type AnItemsOwnField,
+  type ARiderAnItemCarries,
   type MagicItemEffectSlug,
 } from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
@@ -35,17 +37,26 @@ import {
   THE_DEFENDERS_FORTIFICATIONS,
 } from './magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts';
 import { A_LAND_UNIT_AT_SEA_LED, THE_COMMANDERS_ITEMS } from './magic-items/the-commanders-items-in-a-battle.ts';
+import {
+  A_FIGHTER_IN_MITHRIL,
+  A_RIDER_A_FIGHTER_WEARS,
+  A_WARD_A_FIGHTER_WEARS,
+} from './magic-items/what-a-fighter-wears-in-a-personal-combat.ts';
 import type {
   AHeroAtRest,
   ALandUnitAtSeaLed,
   AUnitLedByACommander,
+  AWardAsTheMergeReadsIt,
   HookPointName,
   TheAuraAnItemSpreads,
   TheDefendersFortificationsAndACommandersSide,
   TheFortificationsLine,
   TheStagesOfEachHookPoint,
   ThePowerAnItemWorksWhenUsed,
+  TheRidersAFighterWears,
   TheVolleysLine,
+  TheWardsAFighterWears,
+  WhatAWardSets,
 } from './the-registry-of-content-effects.ts';
 
 /** An entry: the item effect's effect at each stage it acts in. */
@@ -100,6 +111,55 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'crown-of-command': {
     aHerosStanding: { "a skill's aura in the province": A_SKILLS_AURA_IN_THE_PROVINCE['crown-of-command'] },
   },
+  'melee-damage-turned-aside': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['melee-damage-turned-aside'] },
+  },
+  'arrow-damage-turned-aside': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['arrow-damage-turned-aside'] },
+  },
+  'nature-damage-turned-aside': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['nature-damage-turned-aside'] },
+  },
+  'dark-damage-turned-aside': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['dark-damage-turned-aside'] },
+  },
+  thorns: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.thorns } },
+  regeneration: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.regeneration } },
+  'spell-damage-cut': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['spell-damage-cut'] },
+  },
+  dodge: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.dodge } },
+  block: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.block } },
+  'a-hits-damage-capped': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['a-hits-damage-capped'] },
+  },
+  'second-wind': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['second-wind'] } },
+  'damage-cut-at-low-hp': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['damage-cut-at-low-hp'] },
+  },
+  'the-first-hit-drunk': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['the-first-hit-drunk'] },
+  },
+  'lingering-harm-turned-aside': {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['lingering-harm-turned-aside'] },
+  },
+  resist: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.resist } },
+  'arrow-block': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['arrow-block'] } },
+  buckler: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.buckler } },
+  'open-guard': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['open-guard'] } },
+  'spell-block': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['spell-block'] } },
+  'round-ward': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['round-ward'] } },
+  'stun-immunity': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['stun-immunity'] } },
+  'aura-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['aura-rider'] } },
+  'burn-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['burn-rider'] } },
+  'drain-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['drain-rider'] } },
+  'hit-bonus-rider': {
+    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['hit-bonus-rider'] },
+  },
+  'damage-bonus-rider': {
+    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['damage-bonus-rider'] },
+  },
+  'mithril-armour': { personalCombat: { 'what a fighter wears: Mithril': A_FIGHTER_IN_MITHRIL['mithril-armour'] } },
 } satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -141,6 +201,41 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     'the temper he fights with': ['temper'],
     "a skill's aura in the province": ['crown-of-command'],
   },
+  personalCombat: {
+    // a ward meets one effect, its own kind's: the order is pcArmourMerge's cases'
+    'what a fighter wears: a ward': [
+      'melee-damage-turned-aside',
+      'arrow-damage-turned-aside',
+      'nature-damage-turned-aside',
+      'dark-damage-turned-aside',
+      'thorns',
+      'regeneration',
+      'spell-damage-cut',
+      'dodge',
+      'block',
+      'a-hits-damage-capped',
+      'second-wind',
+      'damage-cut-at-low-hp',
+      'the-first-hit-drunk',
+      'lingering-harm-turned-aside',
+      'resist',
+      'arrow-block',
+      'buckler',
+      'open-guard',
+      'spell-block',
+      'round-ward',
+      'stun-immunity',
+    ],
+    // as pcApplyFx wrote them: the aura, the burn, the drain, the hit bonus, the damage bonus (each its own field)
+    'what a fighter wears: a rider': [
+      'aura-rider',
+      'burn-rider',
+      'drain-rider',
+      'hit-bonus-rider',
+      'damage-bonus-rider',
+    ],
+    'what a fighter wears: Mithril': ['mithril-armour'],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly MagicItemEffectSlug[];
@@ -151,8 +246,8 @@ const ROWS: Readonly<Record<MagicItemEffectSlug, AMagicItemEffectAsItsTextsWrite
   MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS;
 const ENTRIES: Readonly<Record<MagicItemEffectSlug, MagicItemEffectEntry>> = THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS;
 
-/** A held copy of an item, as the registry reads it: its name, its effect's key and the fields of its own an effect is
- *  carried by (each guarded: a copy may lack any of them). */
+/** A held copy of an item, as the registry reads it: its name, its effect's key, its armour's ward and its riders, and
+ *  the fields of its own an effect is carried by (each guarded: a copy may lack any of them). */
 export type AMagicItemAsTheRegistryReadsIt = {
   readonly name?: string | null | undefined;
   readonly effect?:
@@ -160,31 +255,55 @@ export type AMagicItemAsTheRegistryReadsIt = {
         readonly stat?: string | null | undefined;
         readonly bonus?: unknown;
         readonly temper?: string | null | undefined;
+        readonly ward?: string | null | undefined;
+        readonly pc?: (TheRidersAFighterWears & { readonly ward?: string | null | undefined }) | null | undefined;
       }
     | null
     | undefined;
 } & Partial<Readonly<Record<AnItemsOwnField, unknown>>>;
 
-// Built once, as the file loads, from the content: which effects a key, a field or a base name carries.
+// Built once, as the file loads, from the content: which effects a key, a field, a base name, a ward or a rider
+// carries (one effect a ward: the content's rows name each ward once).
 const BY_STAT = new Map<string, MagicItemEffectSlug[]>();
 const BY_FIELD: [AnItemsOwnField, MagicItemEffectSlug][] = [];
 const BY_ITEM_NAME = new Map<string, MagicItemEffectSlug[]>();
+const BY_WARD = new Map<string, MagicItemEffectSlug>();
+const BY_RIDER: [ARiderAnItemCarries, MagicItemEffectSlug][] = [];
 const SLUGS = Object.keys(ROWS).filter((slug): slug is MagicItemEffectSlug => slug in ROWS);
 for (const slug of SLUGS) {
   const key = ROWS[slug].carriedAs;
   if ('stat' in key) BY_STAT.set(key.stat, [...(BY_STAT.get(key.stat) ?? []), slug]);
   else if ('field' in key) BY_FIELD.push([key.field, slug]);
-  else BY_ITEM_NAME.set(key.itemName, [...(BY_ITEM_NAME.get(key.itemName) ?? []), slug]);
+  else if ('itemName' in key) BY_ITEM_NAME.set(key.itemName, [...(BY_ITEM_NAME.get(key.itemName) ?? []), slug]);
+  else if ('ward' in key) BY_WARD.set(key.ward, slug);
+  else BY_RIDER.push([key.rider, slug]);
 }
+/** The effect a ward carries, by its kind, or none. */
+const theEffectAWardCarries = (ward: string | null | undefined) => (ward == null ? undefined : BY_WARD.get(ward));
 
-/** The effects a held copy of an item carries: by its effect's key, by a field of its own that is set, and by its base
- *  name (a second name counts as its base's, as hasItemBase reads it). */
+/** The effects a held copy of an item carries: by its effect's key, by a field of its own that is set, by its base
+ *  name (a second name counts as its base's, as hasItemBase reads it), by its armour's ward and its rider's, and by
+ *  each rider it carries above 0. */
 export function theEffectsAnItemCarries(item: AMagicItemAsTheRegistryReadsIt): MagicItemEffectSlug[] {
   const stat = item.effect?.stat;
   const carried = [...((stat == null ? undefined : BY_STAT.get(stat)) ?? [])];
   for (const [field, slug] of BY_FIELD) if (item[field]) carried.push(slug);
   if (item.name) carried.push(...(BY_ITEM_NAME.get((_ITEM_ALT_BASE[item.name] ?? '') || item.name) ?? []));
+  const worn = anItemIsWornAsArmour(item) ? theEffectAWardCarries(item.effect?.ward) : undefined;
+  if (worn) carried.push(worn);
+  const pc = item.effect?.pc;
+  if (pc) {
+    const ridden = theEffectAWardCarries(pc.ward);
+    if (ridden) carried.push(ridden);
+    for (const [rider, slug] of BY_RIDER) if ((pc[rider] ?? 0) > 0) carried.push(slug);
+  }
   return carried;
+}
+
+/** Whether a held item is worn as armour: its effect is a ward, which personal combat merges into the wards its bearer
+ *  wears (pcArmourOf). */
+export function anItemIsWornAsArmour(item: AMagicItemAsTheRegistryReadsIt): boolean {
+  return item.effect?.stat === THE_STAT_OF_AN_ITEM_WORN_AS_ARMOUR;
 }
 
 /** The effects a hero's items carry, all of them, once. */
@@ -457,4 +576,42 @@ export function theAuraAHerosItemsSpread(
     if (aura) return aura;
   }
   return null;
+}
+
+/** The runner of "personalCombat: what a fighter wears: a ward" (pcArmourMerge: his armour, an item's rider or a
+ *  guardian's perk): what the effect of the ward's own kind sets in the wards he wears, from the wards so far, or
+ *  nothing when the registry holds no effect of its kind (a guardian's perks' own wards, merged by pcArmourMerge). */
+export function whatAWardSetsInTheWardsAFighterWears(
+  theWard: AWardAsTheMergeReadsIt,
+  theWardsSoFar: Readonly<TheWardsAFighterWears>,
+): WhatAWardSets | null {
+  const slug = theEffectAWardCarries(theWard.ward);
+  const effect = slug === undefined ? undefined : ENTRIES[slug].personalCombat?.['what a fighter wears: a ward'];
+  return effect ? effect(theWard, theWardsSoFar) : null;
+}
+
+/** The runner of "personalCombat: what a fighter wears: a rider" (pcApplyFx: an item's riders or a guardian's perk's):
+ *  what the riders carried, each above 0, set in the riders he wears, from the riders so far, in the stage's order
+ *  (each sets its own field: the fields none sets are left out). */
+export function whatRidersSetInTheRidersAFighterWears(
+  theRiders: TheRidersAFighterWears,
+  theRidersSoFar: TheRidersAFighterWears,
+): TheRidersAFighterWears {
+  const carried = new Set(BY_RIDER.filter(([rider]) => (theRiders[rider] ?? 0) > 0).map(([, slug]) => slug));
+  let set: TheRidersAFighterWears = {};
+  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.personalCombat['what a fighter wears: a rider']) {
+    if (!carried.has(slug)) continue;
+    const effect = ENTRIES[slug].personalCombat?.['what a fighter wears: a rider'];
+    if (effect) set = { ...set, ...effect(theRiders, theRidersSoFar) };
+  }
+  return set;
+}
+
+/** The runner of "personalCombat: what a fighter wears: Mithril" (pcCharCombatant): whether an effect his items carry,
+ *  in the stage's order, makes him fight in Mithril. */
+export function theItemsMakeTheirBearerFightInMithril(theItems: readonly AMagicItemAsTheRegistryReadsIt[]): boolean {
+  const carried = theEffectsTheseItemsCarry(theItems);
+  return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.personalCombat['what a fighter wears: Mithril'].some(
+    (slug) => carried.has(slug) && ENTRIES[slug].personalCombat?.['what a fighter wears: Mithril']?.() === true,
+  );
 }

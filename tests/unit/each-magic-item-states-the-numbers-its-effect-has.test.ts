@@ -5,14 +5,14 @@
 // or its base name) states each of the row's numbers as the item's texts write it (×1.25 as `+25%`, strength added as
 // `+2`, a share as "half" or "halved", volleys as "two volleys", extra shots as "one extra shot", a share as a
 // percentage as `10%`, gold for each province as `+1g`, `+1 gold` or "1 extra gold", skill levels added as `+1` or
-// "one level"), in its desc and in
-// its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
+// "one level", damage turned aside as "1 less", a chance in percentage points as `5%`), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
 // alone. Each row with numbers is carried by some item in play (else this would check nothing). The rows with no number
 // (the Kraken Figurehead's step up a tier, which no item in play carries; the Tide-Caller's Horn's waiver at sea; the
 // War-Horn's pursuit on any ground; the Shield-Wall Rune's refusal to retreat; the tax items' and the Traveller's
 // Cloak's numbers, which each copy carries itself; the Crystal Orb's sure Spy, the Philosopher's Lens's lair and the
 // Philosopher's Stone's power; the maximum-HP items' hit points and the temper items' temper, which each copy carries
-// itself) are listed, so a number added to one is checked.
+// itself; the wards and riders a fighter wears, whose amounts, percentages and hits each copy carries itself, but the
+// buckler's; the Mithril suit, in no table) are listed, so a number added to one is checked.
 // The known gaps are listed by name, each with its Parked entry, and checked to be still gaps (so the exception leaves
 // with the fix): the two relic standards say +4 and +6 and give +2 (NEXT.md question 20; Parked "The two relic
 // standards give +2, not their +4 and +6"); five siege items say "Siege bonus +1" (question 21: Parked "Thirty items'
@@ -76,6 +76,45 @@ const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
   'philosophers-stone': 'a step up a quality tier, from the tables (and no item in play carries it)',
   'maximum-hp': "the hit points each copy carries itself (its effect's bonus)",
   temper: "the temper each copy carries itself (its effect's temper)",
+  ...Object.fromEntries(
+    (
+      [
+        'melee-damage-turned-aside',
+        'arrow-damage-turned-aside',
+        'nature-damage-turned-aside',
+        'dark-damage-turned-aside',
+        'thorns',
+        'regeneration',
+        'round-ward',
+      ] as const
+    ).map((slug) => [slug, "the amount each copy's ward carries itself"]),
+  ),
+  ...Object.fromEntries(
+    (
+      [
+        'spell-damage-cut',
+        'dodge',
+        'block',
+        'a-hits-damage-capped',
+        'second-wind',
+        'damage-cut-at-low-hp',
+        'arrow-block',
+        'spell-block',
+      ] as const
+    ).map((slug) => [slug, "the percentage each copy's ward carries itself"]),
+  ),
+  'the-first-hit-drunk': 'a flag',
+  'lingering-harm-turned-aside': 'a flag',
+  resist: 'a flag (and no item in play carries it)',
+  'stun-immunity': 'a flag',
+  'open-guard': "the hits and percentage each copy carries itself (content's are for a copy that carries none)",
+  ...Object.fromEntries(
+    (['aura-rider', 'burn-rider', 'drain-rider', 'hit-bonus-rider', 'damage-bonus-rider'] as const).map((slug) => [
+      slug,
+      "the amount each copy's rider carries itself",
+    ]),
+  ),
+  'mithril-armour': "a dwarven birthright in no table (what it turns aside is the fight's)",
 };
 
 /** A count or a share in words, as the texts write it (a value with no word here writes as itself: no text matches). */
@@ -85,7 +124,8 @@ const inWords = (value: number) => IN_WORDS[value] ?? String(value);
 /** A number as an item's texts write it (any of the forms given): a multiplier as the share it adds (×1.25 as +25%),
  *  strength added as +2, a share in words (0.5 as "half" or "halved"), volleys in words (2 as "two volleys"), extra
  *  shots in words (1 as "one extra shot"), a share as a percentage (0.1 as 10%), gold for each province (1 as +1g,
- *  +1 gold or "1 extra gold"), skill levels added (1 as +1 or "one level"). */
+ *  +1 gold or "1 extra gold"), skill levels added (1 as +1 or "one level"), damage turned aside (1 as "1 less"), a
+ *  chance in percentage points (5 as 5%). */
 function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
   switch (n.theTextsWriteIt) {
     case 'a multiplier, as the share it adds':
@@ -104,6 +144,10 @@ function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
       return [`+${String(n.value)}g`, `+${String(n.value)} gold`, `${String(n.value)} extra gold`];
     case 'skill levels added':
       return [`+${String(n.value)}`, `${inWords(n.value)} level${n.value === 1 ? '' : 's'}`];
+    case 'damage turned aside':
+      return [`${String(n.value)} less`];
+    case 'a chance, in percentage points':
+      return [`${String(n.value)}%`];
   }
 }
 /** A number as the texts write it, with no digit or letter just before it, nor a digit, a letter, a `%` or a decimal
@@ -174,6 +218,8 @@ test('a number is matched as the texts write it, and not inside another', () => 
   ]);
   expect(asTheTextsWriteIt({ value: 1, theTextsWriteIt: 'skill levels added' })).toEqual(['+1', 'one level']);
   expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'skill levels added' })).toEqual(['+2', 'two levels']);
+  expect(asTheTextsWriteIt({ value: 1, theTextsWriteIt: 'damage turned aside' })).toEqual(['1 less']);
+  expect(asTheTextsWriteIt({ value: 5, theTextsWriteIt: 'a chance, in percentage points' })).toEqual(['5%']);
   expect(theNumber('+2').test('Every army you lead fights +2.')).toBe(true);
   expect(theNumber('+2').test('strength +25%')).toBe(false);
   expect(theNumber('+2').test('strength +2.5')).toBe(false);
@@ -188,4 +234,8 @@ test('a number is matched as the texts write it, and not inside another', () => 
   expect(states('+1gold', ['+1g'])).toBe(false);
   expect(states('fights and works one level better', ['+1', 'one level'])).toBe(true);
   expect(states('one levels', ['+1', 'one level'])).toBe(false);
+  expect(states('melee blows deal 1 less damage', ['1 less'])).toBe(true);
+  expect(states('melee blows deal 11 less damage', ['1 less'])).toBe(false);
+  expect(states('foes have −5% to hit you', ['5%'])).toBe(true);
+  expect(states('foes have −15% to hit you', ['5%'])).toBe(false);
 });
