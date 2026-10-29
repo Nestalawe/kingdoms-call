@@ -14,7 +14,8 @@ import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-
 import { recordBattleGraves, recordDeadHeroSighting } from '../graves.ts';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.ts';
 import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
-import { gainedItemNote, hasItemBase } from '../items/equipment.ts';
+import { activeItems, gainedItemNote } from '../items/equipment.ts';
+import { theExplorersItemsRevealALair } from '../rules/the-registry-of-magic-item-effects.ts';
 import { RUMOUR_COST_BY_POWER, applyItemMaxHp, noteLairRumour, pcLearnWeakness } from '../personal-combat/helpers.ts';
 import { armyUnitName, d100, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
@@ -132,8 +133,8 @@ export function resolveExploreOrder(turnContext, c, prov) {
       }
     });
   }
-  // Philosopher's Lens: reveals one random still-undiscovered lair here.
-  if (hasItemBase(c, "Philosopher's Lens")) {
+  // Philosopher's Lens: reveals one random still-undiscovered lair here (the items' registry, plan P1-19o).
+  if (theExplorersItemsRevealALair(activeItems(c))) {
     const _lensPool = (prov.features || []).filter(
       (f) => f && !featDiscovered(f, c.player) && !(f._hidden && f._hiddenBy !== c.player),
     );

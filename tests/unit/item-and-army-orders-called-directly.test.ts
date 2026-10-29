@@ -14,7 +14,8 @@
 // P1-08j5), called directly on the same cases one phase at a time (each phase's order read from the turn's list, so
 // Release Hero's dropping shows), then what the cases leave to a direct call and the balance matrix never reaches (it
 // never runs Use Item, Release Hero or Disband Army): the Stone's Sage lesson (one roll, at the common chance),
-// garrison grades, the dead and a fallen hero's companies, the world's lines, the hoards and ledgers; the courier's
+// garrison grades, the dead and a fallen hero's companies, the world's lines, the hoards and ledgers, and the bots'
+// plan working it (`botItemPre`: at eight companies, not seven, nor today's copy; P1-19o); the courier's
 // list, a name that begins with a number, a fallen hire card, an item's maximum HP moving with it; the travelling-light
 // and leads lines' points (the new force's pace), both heroes' pools after a hand-over, a garrison at sea, beasts a
 // comrade already leads, the dead and beasts left in a garrison; a hero of no realm released, his heir's mark, hire
@@ -286,6 +287,26 @@ describe('Use Item, called directly: the Philosopher’s Stone (an older save’
         { name: STONE, turn: b.G.turn, by: h.name, player: 0 },
       ],
     });
+  });
+
+  // The bots' plan for their items (botItemPre) works the Stone too: no game of the balance matrix holds an older
+  // save's copy, so no game sees it (plan P1-19o: the plan asks the items' registry for the item's power).
+  test('a bot works it once his realm has eight companies, and not with seven, nor the copy a lair deals today', () => {
+    const plan = (b: Board, h: Character) => fn('botItemPre')(b.G, 0, h, null) as Order | null;
+    const b = fresh();
+    const h = bearer(b, companies(8, 'Men-at-Arms', 'Green'));
+    const stone = must(h.items[0], 'the Stone');
+    expect(plan(b, h)).toEqual({
+      action: 'use_item',
+      target: String(stone['id'] ?? stone['name']),
+      extra: '',
+      desc: `Use ${STONE}`,
+    });
+    h.armies = companies(7, 'Men-at-Arms', 'Green');
+    expect(plan(b, h)?.action).not.toBe('use_item');
+    h.armies = companies(8, 'Men-at-Arms', 'Green');
+    h.items = [item(b, STONE)];
+    expect(plan(b, h)?.action).not.toBe('use_item');
   });
 });
 

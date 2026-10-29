@@ -5,6 +5,7 @@ import { homeFounderOf, homeProvinceIdFor } from '../grand-design.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.ts';
 import { activeItems, gainedItemNote } from '../items/equipment.ts';
+import { theSpysItemsMakeHisSpySure } from '../rules/the-registry-of-magic-item-effects.ts';
 import { applyItemMaxHp, transferableItems } from '../personal-combat/helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -207,7 +208,7 @@ export function liftRandomItem(turnContext, thief, victim) {
 // Spy: the province he stands in (what it holds, and the realm's secrets if it is a capital), or a hero beside him (every skill, item and company); a hero spied on may catch the spy.
 export function resolveSpyOrder(turnContext, c, target, prov) {
   const { G } = turnContext;
-  const hasCrystalOrb = activeItems(c).some((it) => it.effect?.stat === 'oracle');
+  const hasCrystalOrb = theSpysItemsMakeHisSpySure(activeItems(c)); // the items' registry (plan P1-19o)
   // sd21 Forgery Arts: +15% spy success chance
   const targetProvForSpy = G.world.provinces[parseInt(target)];
   // spy / counterSpy discoveries — optionally scoped to the TARGET province's terrain, to coastal

@@ -8,6 +8,7 @@ import { consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { itemSlot, itemUsableBy } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { ITEM_SLOT_CAP, activeItems, itemPowerScore } from '../items/equipment.ts';
+import { thePowerAnItemWorksWhenUsed } from '../rules/the-registry-of-magic-item-effects.ts';
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { RUMOUR_COST_BY_POWER, isMithril } from '../personal-combat/helpers.ts';
 import {
@@ -369,7 +370,9 @@ export function botItemPre(G, pi, c, roles) {
   const items = (c.items || []).filter(Boolean);
   if (!items.length) return null;
   // 1. Philosopher's Stone — every unit of the realm one tier up, once per game
-  const stone = items.find((it) => it.effect && it.effect.stat === 'massPromote' && !it._spent);
+  const stone = items.find(
+    (it) => thePowerAnItemWorksWhenUsed(it) === 'every unit of the realm rises a quality tier' && !it._spent,
+  );
   if (stone) {
     let units = 0;
     (G.characters || []).forEach((x) => {

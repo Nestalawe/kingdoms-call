@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
 import { ITEM_SLOT_CAP, gainedItemNote, normaliseEquipment } from '../items/equipment.ts';
+import { thePowerAnItemWorksWhenUsed } from '../rules/the-registry-of-magic-item-effects.ts';
 import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { applyItemMaxHp, isMithril } from '../personal-combat/helpers.ts';
@@ -101,8 +102,8 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
     });
     return;
   }
-  const st = it.effect?.stat;
-  if (st === 'massPromote') {
+  // the power it works, by the items' registry (plan P1-19o)
+  if (thePowerAnItemWorksWhenUsed(it) === 'every unit of the realm rises a quality tier') {
     // ── PHILOSOPHER'S STONE ────
     // Once per game: promote EVERY unit of the realm one quality tier — those marching under
     // your commanders AND those standing in your garrisons. Skeletal armies are excluded; the

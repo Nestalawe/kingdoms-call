@@ -3,7 +3,8 @@ import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { homeFounderOf } from '../grand-design.ts';
-import { hasItemBase } from '../items/equipment.ts';
+import { activeItems } from '../items/equipment.ts';
+import { theHealTheRestersItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE, humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100 } from '../dice-and-army-names.ts';
@@ -579,7 +580,7 @@ export function resolveRestOrder(turnContext, c, prov) {
       (!e.home || (prov.owner === c.player && homeFounderOf(G, prov.id) === c.player)) &&
       (!e.terrains || e.terrains.includes(prov.terrain)),
   ); // rest discoveries
-  if (hasItemBase(c, 'Iron Heart Talisman')) heal += Math.round((c.maxHp || 20) * 0.1); // Iron Heart Talisman: +10% of max HP recovered
+  heal += theHealTheRestersItemsAdd({ hisMaximumHp: c.maxHp || 20 }, activeItems(c)); // Iron Heart Talisman: +10% of max HP recovered (the items' registry, plan P1-19o)
   c.hp = Math.min(c.maxHp || 20, c.hp + heal);
   emit(turnContext, {
     type: 'system',
