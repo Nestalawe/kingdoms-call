@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-107 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(73: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+105 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(71: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -194,3 +194,25 @@ table with a key left out.
   - **A pair read element by element** (`a[0] + a[1]`, a list that may be short) is `Number(a[0]) + Number(a[1])`: the
     same sum for numbers, `null` and a missing element (`NaN`). A literal table of pairs is annotated with a tuple
     (`ITEM_TIER_TARGET`: `readonly [utility: number, combat: number]`), so its elements are numbers.
+- (P1-10b11: `personal-combat/helpers.ts` and `personal-combat/speed-encounter-plans-and-combatants.ts`, 39,073
+  bytes): 96 errors, 67 of them a parameter with no type. The fighter both builders make is one interface,
+  `AFighterInAPersonalCombat`, declared in `helpers.ts` with `TheWardsAFighterWears`, his status and
+  `TheRidersOfAnItemOrAPerk` (the riders of an item's `effect.pc` and of a guardian's perk): the fields both builders
+  set are required, a field one kind has or the fight writes later is optional. A file of types alone would be in no
+  page's bundle, which `tests/static/pages-build.test.ts` refuses (only `src/globals.d.ts` and `src/schemas/` are
+  types for the code alone), so a type goes in the file whose code it types most. `temperOf`'s return type is written in
+  `world/tables.ts`, which keeps the line. The first pass wrote the forms lint asks for as it went; the typed lint then
+  found 1 more, fixed. Typing `duelStanceOf` and `ensureEncounterPlan` cleared 3 of the findings
+  `battle/pre-battle-duels.ts` held on their results, so `eslintSuppressions` fell, 711 to 708. Five more forms:
+  - **A function that guards a field the shared type requires** (`pcPushDot`'s `!cbt.status`, a list there that may be
+    missing) takes a small shape of its own with that field optional ("a fighter as his status is guarded"), so the
+    guard stays and every caller's fighter passes.
+  - **`x > 0` on an optional number** read several times is read once: `const { aura = 0, burn = 0 } = fx`, then
+    `aura > 0` (a missing one is not above 0, as before; a default takes only `undefined`, so a `null` compares as it
+    did).
+  - **`parseInt(n)` on a number** is `parseInt(String(n))`: parseInt reads its argument as a string.
+  - **A `let` set inside a `forEach` callback and handed back** (`pcArmourOf`'s table) keeps the callback, with the
+    function's return type written (`TheWardsAFighterWears | null`): the compiler sees only the `null` it started at.
+  - **A list looked up with a value that may be missing** (`includes` of a stance a plan may not hold) is read through a
+    local typed `readonly (string | undefined)[]`, as P1-10b10's sets are; where the found value is handed back, the
+    check is `v !== undefined && list.includes(v)` (no stance is in the list), so the value keeps its type.

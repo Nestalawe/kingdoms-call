@@ -215,7 +215,13 @@ export function druIdPenaltyMult(heroChar, army, playerAlignment, tamed) {
   return strengthLeftByADruidShortfall(shortfall);
 }
 export const TEMPERS_P = KC_TEMPERS.slice();
-export function temperOf(t) {
+/** A temper's traits as the fights read them: a row of TEMPER_TRAITS, its rage the [min, max] extra hit points the
+ *  table's notes give it, or null (no row has one today). temperOf's return type, written for its typed callers
+ *  (plan P1-10b11), so it is checked once this file is freed. */
+type TheTraitsOfATemper = Omit<(typeof TEMPER_TRAITS)['Brave'], 'rageHp'> & {
+  readonly rageHp: readonly [min: number, max: number] | null;
+};
+export function temperOf(t): TheTraitsOfATemper {
   return TEMPER_TRAITS[t] || TEMPER_TRAITS.Brave;
 }
 // A feature's steal-able treasure as a plain number. Tolerates the legacy {gold:n} shape that
