@@ -23,6 +23,10 @@ import {
   aFightersSkillAsTheLineTellsIt,
   aFightersWardAsTheLineTellsIt,
 } from './the-facts-a-personal-combats-lines-record.ts';
+import {
+  whatAFightersWardsBiteBackWith,
+  whatAFightersWardsTakeOffAChanceToHitHim,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { AFighterInAPersonalCombat } from './helpers.ts';
@@ -208,16 +212,17 @@ export function pcMeleeStrike(
         actorHp: Math.max(0, Math.round(actor.hp)),
       });
     }
-    if (dealt && foe.arm?.thorns !== undefined && foe.arm.thorns > 0) {
+    const _bite = dealt ? whatAFightersWardsBiteBackWith(foe.arm) : null; // each ward's effect in the items' registry (plan P1-19r)
+    if (_bite) {
       // Thornwood Cuirass
-      actor.hp -= foe.arm.thorns;
+      actor.hp -= _bite.theHarm;
       narrate(narrative, {
         kind: "the foe's thorns bite a fighter",
         foeIsAGuardian: foe.kind === 'monster',
-        foesThornsWard: aFightersWardAsTheLineTellsIt(foe, 'thorns'),
+        foesThornsWard: aFightersWardAsTheLineTellsIt(foe, _bite.theWardTheLineNames),
         foeName: foe.name,
         actorName: actor.name,
-        foeArmThorns: foe.arm.thorns,
+        foeArmThorns: _bite.theHarm,
         actorName2: actor.name,
         actorHp: Math.max(0, Math.round(actor.hp)),
       });
@@ -463,7 +468,7 @@ export function pcArrowHitChance(
     (actor.status.hitPenalty || 0) + (actor.status.hitPenaltyFixed || 0) + (Number(actor.status.auraPenalty) || 0);
   chance += Number(actor.status.hitBonus) || 0;
   chance -= Number(foe.status.toHitReduce) || 0;
-  chance -= Number(foe.arm?.dodge) || 0;
+  chance -= whatAFightersWardsTakeOffAChanceToHitHim(foe.arm);
   if (actor.player != null) chance += discSum(turnContext, actor.player, 'duelHit', 'pct', (e) => discDuelVs(e, foe)); // duelHit discoveries
   chance = chance * (foe.status.dodge || 1);
   return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX, dispFloor(chance)));

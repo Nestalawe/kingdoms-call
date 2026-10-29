@@ -196,7 +196,14 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   the one applier); a guardian's perks' own three wards (`stunWard`, `dotWard`, `schoolWard`) stay in `pcArmourMerge`
   for the guardian family. The fighter's ward table, a ward and the riders (`TheWardsAFighterWears`,
   `AWardAsTheMergeReadsIt`, `TheRidersOfAnItemOrAPerk`) are this stage's types, in the registry's file, and
-  `personal-combat/helpers.ts` exports them by the same names. What each ward does in a fight is still the fight's.
+  `personal-combat/helpers.ts` exports them by the same names.
+- **What a ward does** (P1-19r, `magic-items/what-a-ward-does-in-a-personal-combat.ts`): `personalCombat`'s **a blow's
+  chance to hit** (dodge); **a hit lands on a fighter** in `pcTakeHit`'s order: **before all else** (first hit, blocks,
+  round ward, Mithril), **his wards cut it** (flat and spell cuts, low HP, open guard), **his wards cap it**, **after
+  it** (second wind); **a blow lands** (thorns); **a round starts**; **a stun or a terror takes hold**; **a spell's burn
+  takes hold**. Each is handed his wards and its moment and returns what it does; the fight applies it, rolls where it
+  rolled and tells the line. Low HP's half, the second wind's 30%, resist's half and Mithril's 2 are the rows'. The
+  guardian's own wards are still read in the fight, listed.
 - **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
   desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
   unit, since the items in play exist only after the engine's load-time pass; the known gaps listed with their Parked
@@ -209,7 +216,9 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   `tests/unit/item-and-army-orders-called-directly.test.ts`; a hero's standing, by the hit points' and skills' unit
   cases, Steal's and Grand Heist's, and the player portal's parity test on the Crown; the temper items, by the matrix
   alone; what a fighter wears, by each ward kind's merge over every ward in play, from an item and a guardian's perk,
-  in `tests/unit/the-wards-and-riders-a-fighter-wears.test.ts`).
+  in `tests/unit/the-wards-and-riders-a-fighter-wears.test.ts`; what a ward does, by a case each in
+  `tests/unit/the-hit-and-round-lines-no-matrix-game-reaches-keep-their-values.test.ts`, and the static test above
+  refuses a ward's field read outside the registry, but the guardian's listed).
 - **How to add an item effect** of a stage already written: its row (the key a copy carries it by, its numbers, the
   units it reaches); its effect in the stage's file under `src/engine/rules/magic-items/`, reading its numbers from its
   row; its entry and its place in the stage's order; and the numbers in the desc and lore of every item that carries it
@@ -264,8 +273,8 @@ the items' rows use so far are `strength` (the commander's items, a land unit at
 fortifications), `volley` (the commander adds volleys), `fate` (the commander's riders run the beaten down on any
 ground, the beaten force may retreat), `turnEnd` (a hero's items add to the realm's tax), `orderOutcome` (a spy's sure
 success, a lair revealed when exploring, a rest's heal, a move's exploration, an item's power used), `aHerosStanding`
-(maximum HP, the temper he fights with, a skill's aura in the province) and `personalCombat` (what a fighter wears: a
-ward, a rider, Mithril). An effect that reads a copy's own number is
+(maximum HP, the temper he fights with, a skill's aura in the province) and `personalCombat` (what a fighter wears;
+what a ward does to a blow's chance, a hit, a blow, a round, a stun or terror, a spell's burn). An effect that reads a copy's own number is
 handed the copy (its `effect.bonus` or `effect.temper`, its `exploreMove`), never the hero.
 
 The stage types live in the registry's own file, which holds code. **A file that only `import type` reaches is in no

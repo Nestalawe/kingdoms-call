@@ -24,6 +24,10 @@ import {
 import { pcCombatXP } from './melee-flight-and-archery.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import { aFightersWardAsTheLineTellsIt } from './the-facts-a-personal-combats-lines-record.ts';
+import {
+  aFightersWardsRefuseAStunOrATerror,
+  theShareAFightersWardsCutASpellsBurnBy,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 
 // ── PERSONAL COMBAT: COMBAT SPELLS AND GUARDIAN ABILITIES (plan P1-08e: lifted out of resolveTurn) ────
 // A spell cast in a personal fight (pcCastCombatSpell, with the spell-balance figures above it) and a guardian's
@@ -197,7 +201,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       // 2026-10-14 (batch item 6): 10% + 2% a level (12% at Elemental 1, 20% at 5). A spell ward
       // (spellPct) cuts the burn as it cuts any spell's harm — the burn ticks outside pcTakeHit, so
       // the ward is applied here.
-      const _fbWard = (target.arm && target.arm.spellPct) || 0;
+      const _fbWard = theShareAFightersWardsCutASpellsBurnBy(target.arm); // the ward's effect in the items' registry (plan P1-19r)
       const _fbPct = (SPELL_FIREBALL_BASE_PCT + SPELL_FIREBALL_PCT_PER_LVL * lvlEff) * wx * (1 - _fbWard / 100);
       const _fbD = Math.max(1, Math.round((target.maxHp * _fbPct) / 100));
       const _fbE = pcPushDot(target, _fbD, 3, 'Fireball burns');
@@ -702,7 +706,7 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state):
   // pcCourageChance): nerve comes from martial mastery, temper and faith, and the creature's own
   // stature sets how hard it presses.
   if (/courage test or flee/i.test(eff) && !foe.neverFlees) {
-    if (foe.arm && foe.arm.stunImmune) {
+    if (aFightersWardsRefuseAStunOrATerror(foe.arm)) {
       narrate(narrative, { kind: 'the foe cannot be gripped by it', foeName: foe.name });
     } else {
       const _tc = pcCourageChance(foe, actor),

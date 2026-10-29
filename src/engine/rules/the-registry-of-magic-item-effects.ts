@@ -42,7 +42,29 @@ import {
   A_RIDER_A_FIGHTER_WEARS,
   A_WARD_A_FIGHTER_WEARS,
 } from './magic-items/what-a-fighter-wears-in-a-personal-combat.ts';
+import {
+  A_BLOW_LANDS,
+  A_BLOWS_CHANCE_TO_HIT,
+  A_HIT_LANDS_AFTER_IT,
+  A_HIT_LANDS_BEFORE_ALL_ELSE,
+  A_HIT_LANDS_HIS_WARDS_CAP_IT,
+  A_HIT_LANDS_HIS_WARDS_CUT_IT,
+  A_ROUND_STARTS,
+  A_SPELLS_BURN_TAKES_HOLD,
+  A_STUN_OR_A_TERROR_TAKES_HOLD,
+  THE_DAMAGE_A_MITHRIL_SUIT_TURNS_ASIDE,
+} from './magic-items/what-a-ward-does-in-a-personal-combat.ts';
 import type {
+  AFighterAsHisWardsMeetHimAfterAHit,
+  AHitAsAFightersWardsCapIt,
+  AHitAsAFightersWardsCutIt,
+  AHitAsAFightersWardsMeetItFirst,
+  AWardsCapOnAHit,
+  TheHarmAWardBitesBackWith,
+  TheHpAWardGivesBack,
+  WhatAFightersWardsDoAsARoundStarts,
+  WhatAFightersWardsLeaveOfAHit,
+  WhatAWardDoesToAHitFirst,
   AHeroAtRest,
   ALandUnitAtSeaLed,
   AUnitLedByACommander,
@@ -56,6 +78,7 @@ import type {
   TheRidersAFighterWears,
   TheVolleysLine,
   TheWardsAFighterWears,
+  TheWardsAsTheirEffectsReadThem,
   WhatAWardSets,
 } from './the-registry-of-content-effects.ts';
 
@@ -112,44 +135,128 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
     aHerosStanding: { "a skill's aura in the province": A_SKILLS_AURA_IN_THE_PROVINCE['crown-of-command'] },
   },
   'melee-damage-turned-aside': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['melee-damage-turned-aside'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['melee-damage-turned-aside'],
+      'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['melee-damage-turned-aside'],
+    },
   },
   'arrow-damage-turned-aside': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['arrow-damage-turned-aside'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['arrow-damage-turned-aside'],
+      'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['arrow-damage-turned-aside'],
+    },
   },
   'nature-damage-turned-aside': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['nature-damage-turned-aside'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['nature-damage-turned-aside'],
+      'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['nature-damage-turned-aside'],
+    },
   },
   'dark-damage-turned-aside': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['dark-damage-turned-aside'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['dark-damage-turned-aside'],
+      'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['dark-damage-turned-aside'],
+    },
   },
-  thorns: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.thorns } },
-  regeneration: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.regeneration } },
+  thorns: {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.thorns,
+      'a blow lands': A_BLOW_LANDS.thorns,
+    },
+  },
+  regeneration: {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.regeneration,
+      'a round starts': A_ROUND_STARTS.regeneration,
+    },
+  },
   'spell-damage-cut': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['spell-damage-cut'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['spell-damage-cut'],
+      'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['spell-damage-cut'],
+      "a spell's burn takes hold": A_SPELLS_BURN_TAKES_HOLD['spell-damage-cut'],
+    },
   },
-  dodge: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.dodge } },
-  block: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.block } },
+  dodge: {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.dodge,
+      "a blow's chance to hit": A_BLOWS_CHANCE_TO_HIT.dodge,
+    },
+  },
+  block: {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.block,
+      'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE.block,
+    },
+  },
   'a-hits-damage-capped': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['a-hits-damage-capped'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['a-hits-damage-capped'],
+      'a hit lands on a fighter: his wards cap it': A_HIT_LANDS_HIS_WARDS_CAP_IT['a-hits-damage-capped'],
+    },
   },
-  'second-wind': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['second-wind'] } },
+  'second-wind': {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['second-wind'],
+      'a hit lands on a fighter: after it': A_HIT_LANDS_AFTER_IT['second-wind'],
+    },
+  },
   'damage-cut-at-low-hp': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['damage-cut-at-low-hp'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['damage-cut-at-low-hp'],
+      'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['damage-cut-at-low-hp'],
+    },
   },
   'the-first-hit-drunk': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['the-first-hit-drunk'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['the-first-hit-drunk'],
+      'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['the-first-hit-drunk'],
+    },
   },
   'lingering-harm-turned-aside': {
-    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['lingering-harm-turned-aside'] },
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['lingering-harm-turned-aside'],
+      'a round starts': A_ROUND_STARTS['lingering-harm-turned-aside'],
+    },
   },
-  resist: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.resist } },
-  'arrow-block': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['arrow-block'] } },
+  resist: {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.resist,
+      'a round starts': A_ROUND_STARTS.resist,
+    },
+  },
+  'arrow-block': {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['arrow-block'],
+      'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['arrow-block'],
+    },
+  },
   buckler: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.buckler } },
-  'open-guard': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['open-guard'] } },
-  'spell-block': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['spell-block'] } },
-  'round-ward': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['round-ward'] } },
-  'stun-immunity': { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['stun-immunity'] } },
+  'open-guard': {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['open-guard'],
+      'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['open-guard'],
+    },
+  },
+  'spell-block': {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['spell-block'],
+      'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['spell-block'],
+    },
+  },
+  'round-ward': {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['round-ward'],
+      'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['round-ward'],
+      'a round starts': A_ROUND_STARTS['round-ward'],
+    },
+  },
+  'stun-immunity': {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['stun-immunity'],
+      'a stun or a terror takes hold': A_STUN_OR_A_TERROR_TAKES_HOLD['stun-immunity'],
+    },
+  },
   'aura-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['aura-rider'] } },
   'burn-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['burn-rider'] } },
   'drain-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['drain-rider'] } },
@@ -159,7 +266,12 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'damage-bonus-rider': {
     personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['damage-bonus-rider'] },
   },
-  'mithril-armour': { personalCombat: { 'what a fighter wears: Mithril': A_FIGHTER_IN_MITHRIL['mithril-armour'] } },
+  'mithril-armour': {
+    personalCombat: {
+      'what a fighter wears: Mithril': A_FIGHTER_IN_MITHRIL['mithril-armour'],
+      'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['mithril-armour'],
+    },
+  },
 } satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -235,6 +347,31 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
       'damage-bonus-rider',
     ],
     'what a fighter wears: Mithril': ['mithril-armour'],
+    // what each ward does in the fight (plan P1-19r), each stage in the code's order
+    "a blow's chance to hit": ['dodge'],
+    'a hit lands on a fighter: before all else': [
+      'the-first-hit-drunk',
+      'block',
+      'arrow-block',
+      'spell-block',
+      'round-ward',
+      'mithril-armour',
+    ],
+    'a hit lands on a fighter: his wards cut it': [
+      'melee-damage-turned-aside',
+      'arrow-damage-turned-aside',
+      'nature-damage-turned-aside',
+      'dark-damage-turned-aside',
+      'spell-damage-cut',
+      'damage-cut-at-low-hp',
+      'open-guard',
+    ],
+    'a hit lands on a fighter: his wards cap it': ['a-hits-damage-capped'],
+    'a hit lands on a fighter: after it': ['second-wind'],
+    'a blow lands': ['thorns'],
+    'a round starts': ['round-ward', 'lingering-harm-turned-aside', 'regeneration', 'resist'],
+    'a stun or a terror takes hold': ['stun-immunity'],
+    "a spell's burn takes hold": ['spell-damage-cut'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -614,4 +751,136 @@ export function theItemsMakeTheirBearerFightInMithril(theItems: readonly AMagicI
   return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.personalCombat['what a fighter wears: Mithril'].some(
     (slug) => carried.has(slug) && ENTRIES[slug].personalCombat?.['what a fighter wears: Mithril']?.() === true,
   );
+}
+
+// ── What each ward does in the fight (plan P1-19r): a runner a stage, each running the stage's effects in its order on
+// the wards the fighter wears (pcArmourMerge's table); personal combat applies what they return. ──
+const THE_WARDS_STAGES = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.personalCombat;
+
+/** What the Mithril suit turns aside of a melee blow or an arrow, before a realm's Mithril Craft (pcCharCombatant's
+ *  mithrilDR). */
+export function theDamageAMithrilSuitTurnsAside(): number {
+  return THE_DAMAGE_A_MITHRIL_SUIT_TURNS_ASIDE;
+}
+
+/** The runner of "personalCombat: a blow's chance to hit" (pcHitChance, pcArrowHitChance): what the wards he wears
+ *  take off a blow's or an arrow's chance to hit him, each effect's share in the stage's order (none worn: 0). */
+export function whatAFightersWardsTakeOffAChanceToHitHim(
+  theWards: TheWardsAsTheirEffectsReadThem | null | undefined,
+): number {
+  let taken = 0;
+  if (!theWards) return taken;
+  for (const slug of THE_WARDS_STAGES["a blow's chance to hit"]) {
+    const effect = ENTRIES[slug].personalCombat?.["a blow's chance to hit"];
+    if (effect) taken += effect(theWards);
+  }
+  return taken;
+}
+
+/** The runner of "personalCombat: a hit lands on a fighter: before all else" (pcTakeHit): what each ward does to the
+ *  hit, in the stage's order, each handed the damage the ones before it left. pcTakeHit applies them in that order and
+ *  stops where one ends the hit (it rolls a shield's chance where it rolled it). */
+export function whatAFightersWardsDoToAHitBeforeAllElse(
+  theHit: AHitAsAFightersWardsMeetItFirst,
+): WhatAWardDoesToAHitFirst[] {
+  const done: WhatAWardDoesToAHitFirst[] = [];
+  let theDamageSoFar = theHit.theDamageSoFar;
+  for (const slug of THE_WARDS_STAGES['a hit lands on a fighter: before all else']) {
+    const effect = ENTRIES[slug].personalCombat?.['a hit lands on a fighter: before all else'];
+    const step = effect ? effect({ ...theHit, theDamageSoFar }) : null;
+    if (!step) continue;
+    done.push(step);
+    if ('theDamageAfter' in step) theDamageSoFar = step.theDamageAfter;
+  }
+  return done;
+}
+
+/** The runner of "personalCombat: a hit lands on a fighter: his wards cut it" (pcTakeHit): what the wards he wears
+ *  leave of the hit, each effect cutting what the ones before it left, in the stage's order; whether his open guard
+ *  took it; and the ward the line names (the harm's channel's: melee, arrow, else spell). */
+export function whatAFightersWardsLeaveOfAHit(theHit: AHitAsAFightersWardsCutIt): WhatAFightersWardsLeaveOfAHit {
+  let theDamageSoFar = theHit.theDamageSoFar;
+  let hisOpenGuardTookIt = false;
+  for (const slug of THE_WARDS_STAGES['a hit lands on a fighter: his wards cut it']) {
+    const effect = ENTRIES[slug].personalCombat?.['a hit lands on a fighter: his wards cut it'];
+    const cut = effect ? effect({ ...theHit, theDamageSoFar }) : null;
+    if (!cut) continue;
+    theDamageSoFar = cut.theDamageAfter;
+    if (cut.hisOpenGuardTakesIt) hisOpenGuardTookIt = true;
+  }
+  const theWardTheLineNames =
+    theHit.theChannel === 'melee' ? 'meleeDR' : theHit.theChannel === 'archery' ? 'arrowDR' : 'spellPct';
+  return { theDamageAfter: theDamageSoFar, hisOpenGuardTookIt, theWardTheLineNames };
+}
+
+/** The runner of "personalCombat: a hit lands on a fighter: his wards cap it" (pcTakeHit): the first ward's ceiling,
+ *  in the stage's order, on a hit that would bite deeper, or nothing. */
+export function theCapAFightersWardsPutOnAHit(theHit: AHitAsAFightersWardsCapIt): AWardsCapOnAHit | null {
+  for (const slug of THE_WARDS_STAGES['a hit lands on a fighter: his wards cap it']) {
+    const cap = ENTRIES[slug].personalCombat?.['a hit lands on a fighter: his wards cap it']?.(theHit);
+    if (cap) return cap;
+  }
+  return null;
+}
+
+/** The runner of "personalCombat: a hit lands on a fighter: after it" (pcTakeHit): the hit points the first ward, in
+ *  the stage's order, gives back once the hit is dealt, or nothing. */
+export function theHpAFightersWardsGiveBackAfterAHit(
+  theFighter: AFighterAsHisWardsMeetHimAfterAHit,
+): TheHpAWardGivesBack | null {
+  for (const slug of THE_WARDS_STAGES['a hit lands on a fighter: after it']) {
+    const back = ENTRIES[slug].personalCombat?.['a hit lands on a fighter: after it']?.(theFighter);
+    if (back) return back;
+  }
+  return null;
+}
+
+/** The runner of "personalCombat: a blow lands" (pcMeleeStrike): what the first ward of the struck fighter, in the
+ *  stage's order, bites back with at the striker, or nothing (none worn: nothing). */
+export function whatAFightersWardsBiteBackWith(
+  theWards: TheWardsAsTheirEffectsReadThem | null | undefined,
+): TheHarmAWardBitesBackWith | null {
+  if (!theWards) return null;
+  for (const slug of THE_WARDS_STAGES['a blow lands']) {
+    const bite = ENTRIES[slug].personalCombat?.['a blow lands']?.(theWards);
+    if (bite) return bite;
+  }
+  return null;
+}
+
+/** The runner of "personalCombat: a round starts" (pcRoundStart): what the wards he wears do as the round starts, each
+ *  effect's fields in the stage's order. */
+export function whatAFightersWardsDoAsARoundStarts(
+  theWards: TheWardsAsTheirEffectsReadThem,
+): WhatAFightersWardsDoAsARoundStarts {
+  let done: WhatAFightersWardsDoAsARoundStarts = {};
+  for (const slug of THE_WARDS_STAGES['a round starts']) {
+    const effect = ENTRIES[slug].personalCombat?.['a round starts'];
+    if (effect) done = { ...done, ...effect(theWards) };
+  }
+  return done;
+}
+
+/** The runner of "personalCombat: a stun or a terror takes hold" (pcStunWard, pcMonsterSpecial): whether a ward he
+ *  wears, in the stage's order, refuses it outright (none worn: no). */
+export function aFightersWardsRefuseAStunOrATerror(
+  theWards: TheWardsAsTheirEffectsReadThem | null | undefined,
+): boolean {
+  if (!theWards) return false;
+  return THE_WARDS_STAGES['a stun or a terror takes hold'].some(
+    (slug) => ENTRIES[slug].personalCombat?.['a stun or a terror takes hold']?.(theWards) === true,
+  );
+}
+
+/** The runner of "personalCombat: a spell's burn takes hold" (pcCastCombatSpell's Fireball): the percentage the first
+ *  ward he wears, in the stage's order, cuts the burn by (none worn, or none set: 0). */
+export function theShareAFightersWardsCutASpellsBurnBy(
+  theWards: TheWardsAsTheirEffectsReadThem | null | undefined,
+): number {
+  if (!theWards) return 0;
+  for (const slug of THE_WARDS_STAGES["a spell's burn takes hold"]) {
+    const cut = ENTRIES[slug].personalCombat?.["a spell's burn takes hold"]?.(theWards);
+    if (cut) return cut;
+  }
+  return 0;
 }

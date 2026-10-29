@@ -6,19 +6,24 @@
 // `+2`, a share as "half" or "halved", volleys as "two volleys", extra shots as "one extra shot", a share as a
 // percentage as `10%`, gold for each province as `+1g`, `+1 gold` or "1 extra gold", skill levels added as `+1` or
 // "one level", damage turned aside as "1 less", a chance in percentage points as `5%`), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
-// alone. Each row with numbers is carried by some item in play (else this would check nothing). The rows with no number
+// alone. The items read are the items in play and the Mithril suit (a dwarven birthright in no table, granted: plan
+// P1-19r). Each row with numbers is carried by some item read (else this would check nothing), but the steadfast ward's
+// (resist), which no item in play carries, listed. The rows with no number
 // (the Kraken Figurehead's step up a tier, which no item in play carries; the Tide-Caller's Horn's waiver at sea; the
 // War-Horn's pursuit on any ground; the Shield-Wall Rune's refusal to retreat; the tax items' and the Traveller's
 // Cloak's numbers, which each copy carries itself; the Crystal Orb's sure Spy, the Philosopher's Lens's lair and the
 // Philosopher's Stone's power; the maximum-HP items' hit points and the temper items' temper, which each copy carries
 // itself; the wards and riders a fighter wears, whose amounts, percentages and hits each copy carries itself, but the
-// buckler's; the Mithril suit, in no table) are listed, so a number added to one is checked.
+// buckler's, the second wind's and the low-HP ward's shares of his maximum HP) are listed, so a number added to one is
+// checked.
 // The known gaps are listed by name, each with its Parked entry, and checked to be still gaps (so the exception leaves
 // with the fix): the two relic standards say +4 and +6 and give +2 (NEXT.md question 20; Parked "The two relic
 // standards give +2, not their +4 and +6"); five siege items say "Siege bonus +1" (question 21: Parked "Thirty items'
 // texts name fewer units, or another rule, than the battle gives"); no home-defence item states its ×1.25 (question 22:
 // Parked "The home-defence items say a quality tier in any province of one's own; the battle gives ×1.25 at the home
-// alone"). The units an item reaches are words this test can't match to a set (question 21).
+// alone"); six second-wind items don't say it acts below 30% of the bearer's maximum HP, two of them saying it saves
+// him from a killing blow at 1 HP (question 25: Parked "Six second-wind items don't say the 30% it acts below; two
+// describe another rule"). The units an item reaches are words this test can't match to a set (question 21).
 // Level 1 (unit), not static: the items in play exist only after the engine's load-time pass (src/engine/items/
 // equipment.ts and tiers-and-hoards.ts rewrite the list: 711 items), so the whole engine is imported first.
 import '../lib/the-whole-engine.ts';
@@ -30,12 +35,15 @@ import {
   type MagicItemEffectSlug,
 } from '../../src/content/magic-item-effects-their-names-numbers-and-words.ts';
 import { theEffectsAnItemCarries } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
+import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts';
 
 /** The items whose texts don't state their effect's number yet, by the row's slug, each with its Parked entry. */
 const SIEGE_WORDS =
   'Parked "Thirty items\' texts name fewer units, or another rule, than the battle gives" (NEXT.md question 21)';
 const HOME_DEFENCE_WORDS =
   'Parked "The home-defence items say a quality tier in any province of one\'s own; the battle gives ×1.25 at the home alone" (NEXT.md question 22)';
+const SECOND_WIND_WORDS =
+  'Parked "Six second-wind items don\'t say the 30% it acts below; two describe another rule" (NEXT.md question 25)';
 const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, string>>>> = {
   'army-bonus': {
     'Battle Standard': 'Parked "The two relic standards give +2, not their +4 and +6" (NEXT.md question 20)',
@@ -62,6 +70,18 @@ const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, st
     'Travelworn Robe': HOME_DEFENCE_WORDS,
     'Plain Round': HOME_DEFENCE_WORDS,
   },
+  'second-wind': {
+    'Amulet of Second Breath': SECOND_WIND_WORDS,
+    'Mantle of the Second Wind': SECOND_WIND_WORDS,
+    'Ring of the Unbroken Pulse': SECOND_WIND_WORDS,
+    'Great Helm of the Deathless': SECOND_WIND_WORDS,
+    'Pendant of the Ten Thousand Eyes': SECOND_WIND_WORDS,
+    'Grey Mantlet': SECOND_WIND_WORDS,
+  },
+};
+/** The rows with numbers no item read carries, each with why (so one carried is checked). */
+const ROWS_NO_ITEM_CARRIES: Partial<Record<MagicItemEffectSlug, string>> = {
+  resist: "the engine's load-time pass rewrites its one item",
 };
 /** The rows with no number, each with why. */
 const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
@@ -90,22 +110,12 @@ const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
     ).map((slug) => [slug, "the amount each copy's ward carries itself"]),
   ),
   ...Object.fromEntries(
-    (
-      [
-        'spell-damage-cut',
-        'dodge',
-        'block',
-        'a-hits-damage-capped',
-        'second-wind',
-        'damage-cut-at-low-hp',
-        'arrow-block',
-        'spell-block',
-      ] as const
-    ).map((slug) => [slug, "the percentage each copy's ward carries itself"]),
+    (['spell-damage-cut', 'dodge', 'block', 'a-hits-damage-capped', 'arrow-block', 'spell-block'] as const).map(
+      (slug) => [slug, "the percentage each copy's ward carries itself"],
+    ),
   ),
   'the-first-hit-drunk': 'a flag',
   'lingering-harm-turned-aside': 'a flag',
-  resist: 'a flag (and no item in play carries it)',
   'stun-immunity': 'a flag',
   'open-guard': "the hits and percentage each copy carries itself (content's are for a copy that carries none)",
   ...Object.fromEntries(
@@ -114,7 +124,6 @@ const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
       "the amount each copy's rider carries itself",
     ]),
   ),
-  'mithril-armour': "a dwarven birthright in no table (what it turns aside is the fight's)",
 };
 
 /** A count or a share in words, as the texts write it (a value with no word here writes as itself: no text matches). */
@@ -160,13 +169,13 @@ const states = (text: string, forms: readonly string[]) => forms.some((form) => 
 const ROWS = Object.entries(MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS).map(([slug, row]) => ({
   slug,
   numbers: Object.values<ANumberOfAnItemsEffect>(row.numbers).map(asTheTextsWriteIt),
-  items: ALL_MAGIC_ITEMS_P.filter((item) => theEffectsAnItemCarries(item).some((s) => s === slug)),
+  items: [...ALL_MAGIC_ITEMS_P, MITHRIL_ARMOUR].filter((item) => theEffectsAnItemCarries(item).some((s) => s === slug)),
   gaps: KNOWN_GAPS[slug as MagicItemEffectSlug] ?? {},
 }));
 
 describe('each item in play states the numbers of the effects it carries, in its desc and its lore', () => {
-  test.for(ROWS.filter((row) => row.numbers.length))('%s', (row) => {
-    expect(row.items.length, `the items in play that carry ${row.slug}`).toBeGreaterThan(0);
+  test.for(ROWS.filter((row) => row.numbers.length && !(row.slug in ROWS_NO_ITEM_CARRIES)))('%s', (row) => {
+    expect(row.items.length, `the items read that carry ${row.slug}`).toBeGreaterThan(0);
     const stated = row.items
       .filter((item) => !(item.name in row.gaps))
       .map((item) => ({
@@ -193,6 +202,14 @@ describe('the known gaps are still gaps (each leaves with its fix)', () => {
       );
     },
   );
+});
+
+test('the rows with numbers no item read carries are the ones listed', () => {
+  expect(
+    ROWS.filter((row) => row.numbers.length && !row.items.length)
+      .map((row) => row.slug)
+      .sort(),
+  ).toEqual(Object.keys(ROWS_NO_ITEM_CARRIES).sort());
 });
 
 test('the rows with no number are the ones listed', () => {

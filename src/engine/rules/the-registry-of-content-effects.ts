@@ -581,6 +581,117 @@ export interface TheWardsAFighterWears {
 /** What a ward a fighter puts on sets in the wards he wears: each field it changes, with its new value. */
 export type WhatAWardSets = Partial<Omit<TheWardsAFighterWears, 'names'>>;
 
+/** The wards a fighter wears as their effects in the fight read them (plan P1-19r): the table, without the names of
+ *  what gave them (the lines' alone). */
+export type TheWardsAsTheirEffectsReadThem = Readonly<Omit<TheWardsAFighterWears, 'names'>>;
+
+/** The channel of a harm as a fighter's wards meet it: a melee blow, an arrow, or anything else (a spell, a guardian's
+ *  special), which pcTakeHit calls 'spell'. */
+export type TheChannelOfAHarm = string;
+
+/** What the stage "a hit lands on a fighter: before all else" hands an effect (pcTakeHit, after a mirror image): the
+ *  wards he wears (none: null), the harm's channel, the damage so far (each effect before it in the stage's order has
+ *  taken its share), whether his first-hit ward has drunk a hit this fight, what is left of this round's ward, and
+ *  whether he fights in Mithril with what his suit turns aside (pcCharCombatant's `mithrilDR`). */
+export interface AHitAsAFightersWardsMeetItFirst {
+  readonly theWards: TheWardsAsTheirEffectsReadThem | null;
+  readonly theChannel: TheChannelOfAHarm;
+  readonly theDamageSoFar: number;
+  readonly theFirstHitHasBeenDrunk: boolean | undefined;
+  readonly theRoundWardLeft: number | undefined;
+  readonly heFightsInMithril: boolean | undefined;
+  readonly theDamageHisMithrilTurnsAside: number | undefined;
+}
+
+/** What a ward does to a hit before all else: drinks the first hit of the fight whole; may turn it aside whole (a
+ *  shield's chance, which pcTakeHit rolls where it rolled: against a blow or an arrow, an arrow, or a spell); soaks some
+ *  of it with this round's ward; or turns aside some of a blow or an arrow (the Mithril suit). Each gives the damage
+ *  after it, where it changes it. */
+export type WhatAWardDoesToAHitFirst =
+  | { readonly does: 'drinks the first hit of the fight' }
+  | {
+      readonly does: 'may turn it aside whole';
+      readonly against: 'a blow or an arrow' | 'an arrow' | 'a spell';
+      readonly theChance: number;
+    }
+  | { readonly does: "soaks some with this round's ward"; readonly theSoak: number; readonly theDamageAfter: number }
+  | { readonly does: 'turns aside some of a blow or an arrow'; readonly theDamageAfter: number };
+
+/** What the stage "a hit lands on a fighter: his wards cut it" hands an effect (pcTakeHit, after his own nature, his
+ *  temper and his perks, when he wears wards and the hit still deals damage): the wards he wears, the harm's channel,
+ *  the striker's kind (beast, undead, …, or none), his hit points and his maximum as the fight reads it, the hits his
+ *  open guard has taken so far, and the damage so far (each effect before it in the stage's order has cut it). */
+export interface AHitAsAFightersWardsCutIt {
+  readonly theWards: TheWardsAsTheirEffectsReadThem;
+  readonly theChannel: TheChannelOfAHarm;
+  readonly theStrikersKind: string | null;
+  readonly hisHp: number;
+  readonly hisMaximumHp: number;
+  readonly theHitsHisOpenGuardHasTaken: number;
+  readonly theDamageSoFar: number;
+}
+
+/** What a ward's cut leaves of a hit, and whether his open guard takes it (one hit more counted). */
+export interface WhatAWardCutsOffAHit {
+  readonly theDamageAfter: number;
+  readonly hisOpenGuardTakesIt?: true;
+}
+
+/** What the wards he wears leave of a hit, whether his open guard took it, and the ward the line names (the one of the
+ *  harm's channel: a guardian's perk is named for it). */
+export interface WhatAFightersWardsLeaveOfAHit {
+  readonly theDamageAfter: number;
+  readonly hisOpenGuardTookIt: boolean;
+  readonly theWardTheLineNames: string;
+}
+
+/** What the stage "a hit lands on a fighter: his wards cap it" hands an effect (pcTakeHit, after the damage floor):
+ *  the wards he wears (none: null), his maximum hit points as the fight reads it, and the damage so far. */
+export interface AHitAsAFightersWardsCapIt {
+  readonly theWards: TheWardsAsTheirEffectsReadThem | null;
+  readonly hisMaximumHp: number;
+  readonly theDamageSoFar: number;
+}
+
+/** A ward's ceiling on a hit that would bite deeper: the damage it lets through, and the ward the line names. */
+export interface AWardsCapOnAHit {
+  readonly theDamageAfter: number;
+  readonly theWardTheLineNames: string;
+}
+
+/** What the stage "a hit lands on a fighter: after it" hands an effect (pcTakeHit, once the hit is dealt): the wards he
+ *  wears (none: null), whether his second wind has been used this fight, and his hit points and maximum as the fight
+ *  reads them. */
+export interface AFighterAsHisWardsMeetHimAfterAHit {
+  readonly theWards: TheWardsAsTheirEffectsReadThem | null;
+  readonly hisSecondWindHasBeenUsed: boolean | undefined;
+  readonly hisHp: number;
+  readonly hisMaximumHp: number;
+}
+
+/** The hit points a ward gives back after a hit (once a fight), and the ward the line names. */
+export interface TheHpAWardGivesBack {
+  readonly theHp: number;
+  readonly theWardTheLineNames: string;
+}
+
+/** What the wards he wears do as a round starts (pcRoundStart): a fresh ward for the round, every lingering harm
+ *  sloughed off, the hit points he regenerates (before a guardian's fading sustain) with the ward the line names, and
+ *  whether he holds steady (a to-hit penalty fades twice, and a daze is shrugged off on a draw under the chance, which
+ *  pcRoundStart draws where it drew). Each effect sets its own field. */
+export interface WhatAFightersWardsDoAsARoundStarts {
+  readonly theFreshWardThisRound?: number;
+  readonly everyLingeringHarmSloughsOff?: true;
+  readonly heRegenerates?: TheHpAWardGivesBack;
+  readonly heHoldsSteady?: { readonly theChanceToShrugOffADaze: number };
+}
+
+/** The thorns a fighter's wards bite back with at whoever lands a melee blow on him, and the ward the line names. */
+export interface TheHarmAWardBitesBackWith {
+  readonly theHarm: number;
+  readonly theWardTheLineNames: string;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -748,6 +859,37 @@ export interface TheStagesOfEachHookPoint {
     /** Whether a held item makes its bearer fight in Mithril (pcCharCombatant's flag, which the fight reads; the items'
      *  registry). */
     readonly 'what a fighter wears: Mithril': () => boolean;
+    /** What the wards he wears take off a blow's or an arrow's chance to hit him (pcHitChance, pcArrowHitChance:
+     *  after the unseen, before the discoveries; plan P1-19r wrote the rest of these stages). */
+    readonly "a blow's chance to hit": (theWards: TheWardsAsTheirEffectsReadThem) => number;
+    /** What a ward does to a hit on him before all else (pcTakeHit, after a mirror image: the stage's order is the
+     *  code's), or nothing. */
+    readonly 'a hit lands on a fighter: before all else': (
+      theHit: AHitAsAFightersWardsMeetItFirst,
+    ) => WhatAWardDoesToAHitFirst | null;
+    /** What a ward cuts off a hit on him (pcTakeHit, after his nature, his temper and his perks, before the damage
+     *  floor), or nothing. */
+    readonly 'a hit lands on a fighter: his wards cut it': (
+      theHit: AHitAsAFightersWardsCutIt,
+    ) => WhatAWardCutsOffAHit | null;
+    /** A ward's ceiling on a hit that would bite deeper (pcTakeHit, after the damage floor), or nothing. */
+    readonly 'a hit lands on a fighter: his wards cap it': (
+      theHit: AHitAsAFightersWardsCapIt,
+    ) => AWardsCapOnAHit | null;
+    /** The hit points a ward gives back once the hit is dealt (pcTakeHit), or nothing. */
+    readonly 'a hit lands on a fighter: after it': (
+      theFighter: AFighterAsHisWardsMeetHimAfterAHit,
+    ) => TheHpAWardGivesBack | null;
+    /** What a ward bites back with at whoever lands a melee blow on him (pcMeleeStrike, once the blow deals damage), or
+     *  nothing. */
+    readonly 'a blow lands': (theWards: TheWardsAsTheirEffectsReadThem) => TheHarmAWardBitesBackWith | null;
+    /** What a ward does as a round starts (pcRoundStart): the fields it sets. */
+    readonly 'a round starts': (theWards: TheWardsAsTheirEffectsReadThem) => WhatAFightersWardsDoAsARoundStarts;
+    /** Whether a ward refuses a stun, or a guardian's terror, outright (pcStunWard, pcMonsterSpecial). */
+    readonly 'a stun or a terror takes hold': (theWards: TheWardsAsTheirEffectsReadThem) => boolean;
+    /** The percentage a ward cuts a spell's burn by (pcCastCombatSpell's Fireball: the burn ticks outside pcTakeHit),
+     *  or nothing. */
+    readonly "a spell's burn takes hold": (theWards: TheWardsAsTheirEffectsReadThem) => number | undefined;
   };
 }
 

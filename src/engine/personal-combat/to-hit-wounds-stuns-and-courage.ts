@@ -21,6 +21,15 @@ import {
   aFightersWardAsTheLineTellsIt,
   aListAsTheLineTellsIt,
 } from './the-facts-a-personal-combats-lines-record.ts';
+import {
+  aFightersWardsRefuseAStunOrATerror,
+  theCapAFightersWardsPutOnAHit,
+  theHpAFightersWardsGiveBackAfterAHit,
+  whatAFightersWardsDoAsARoundStarts,
+  whatAFightersWardsDoToAHitBeforeAllElse,
+  whatAFightersWardsLeaveOfAHit,
+  whatAFightersWardsTakeOffAChanceToHitHim,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type {
@@ -138,7 +147,7 @@ export function pcHitChance(
   chance -= Number(attacker.status.auraPenalty) || 0; // a guardian's passive aura (Dread / Petrifying…) — never decays
   chance += Number(attacker.status.hitBonus) || 0; // Elixir of Focus and kin
   chance -= Number(defender.status.toHitReduce) || 0; // Invisibility: flat \u221225 to hit (floored at 40 below)
-  chance -= Number(defender.arm?.dodge) || 0; // Quicksilver Mail: −10% to be hit
+  chance -= whatAFightersWardsTakeOffAChanceToHitHim(defender.arm); // Quicksilver Mail: −10% to be hit
   if (attacker.player != null)
     chance += discSum(turnContext, attacker.player, 'duelHit', 'pct', (e) => discDuelVs(e, defender)); // duelHit discoveries (sd33 Duelling Code …)
   chance = chance * (defender.status.dodge || 1); // (no effect currently sets status.dodge — kept as a hook)
@@ -201,7 +210,7 @@ export const PC_CHANNEL = {
 export function pcStunWard(t: AFighterAsHisStunWardIsRead) {
   const a = t?.arm;
   if (!a) return 0;
-  return a.stunImmune ? 100 : Math.max(0, Math.min(100, Number(a.stunWard) || 0));
+  return aFightersWardsRefuseAStunOrATerror(a) ? 100 : Math.max(0, Math.min(100, Number(a.stunWard) || 0));
 }
 // pcStunTurned rolls the ward once and says so when it turns the stun.
 export function pcStunTurned(
@@ -309,77 +318,77 @@ export function pcTakeHit(
   // the fight in full; the Tower Shield blocks one melee blow or arrow in five.
   const _arm = target.arm ?? null,
     _chan = (kindsChannel ?? '') || 'spell';
-  if (_arm?.firstHit && !target._armFirstHitUsed) {
-    target._armFirstHitUsed = true;
-    narrate(narrative, {
-      kind: 'the first harm to reach the target is drunk by their armour',
-      channel: _chan,
-      targetName: target.name,
-      armourNames: aListAsTheLineTellsIt(_arm.names),
-    });
-    return 0;
-  }
-  if (
-    _arm?.block !== undefined &&
-    _arm.block > 0 &&
-    (_chan === 'melee' || _chan === 'archery') &&
-    d100() <= _arm.block
-  ) {
-    narrate(narrative, {
-      kind: "the target's shield takes the blow square on",
-      targetName: target.name,
-      channel: _chan,
-      armBlock: _arm.block,
-    });
-    return 0;
-  }
-  if (_arm?.arrowBlock !== undefined && _arm.arrowBlock > 0 && _chan === 'archery' && d100() <= _arm.arrowBlock) {
-    narrate(narrative, {
-      kind: "the arrow glances off the target's shield",
-      targetName: target.name,
-      armArrowBlock: _arm.arrowBlock,
-    });
-    return 0;
-  }
-  if (_arm?.spellBlock !== undefined && _arm.spellBlock > 0 && _chan === 'spell' && d100() <= _arm.spellBlock) {
-    narrate(narrative, {
-      kind: "the target's shield turns the harm away",
-      targetName: target.name,
-      harmKind: kind,
-      armSpellBlock: _arm.spellBlock,
-    });
-    return 0;
-  }
-  if (
-    _arm?.roundWard !== undefined &&
-    _arm.roundWard > 0 &&
-    target._roundWardLeft !== undefined &&
-    target._roundWardLeft > 0 &&
-    d > 0
-  ) {
-    const _rw = Math.min(target._roundWardLeft, d);
-    target._roundWardLeft -= _rw;
-    d -= _rw;
-    narrate(narrative, {
-      kind: "the ward on the target's shield soaks some of the harm",
-      targetName: target.name,
-      rw: _rw,
-    });
-    if (d <= 0) return 0;
-  }
-  // Mithril Armour turns aside 2 points of any MELEE or ARROW blow that lands
-  // (a magic sword-arm or spell still ignores it), never below 1 damage — and it announces itself
-  // each time it saves the wearer harm.
-  if (target.mithril && (kindsChannel === 'melee' || kindsChannel === 'archery') && d > 1) {
-    const _b = d;
-    d = Math.max(1, d - ((target.mithrilDR ?? 0) || 2));
-    if (d < _b)
+  // each ward's effect in the items' registry, in its stage's order (plan P1-19r): the shields' chances are rolled here,
+  // where they were, and only when the ward and the channel hold
+  for (const _done of whatAFightersWardsDoToAHitBeforeAllElse({
+    theWards: _arm,
+    theChannel: _chan,
+    theDamageSoFar: d,
+    theFirstHitHasBeenDrunk: target._armFirstHitUsed,
+    theRoundWardLeft: target._roundWardLeft,
+    heFightsInMithril: target.mithril,
+    theDamageHisMithrilTurnsAside: target.mithrilDR,
+  })) {
+    if (_done.does === 'drinks the first hit of the fight' && _arm) {
+      target._armFirstHitUsed = true;
       narrate(narrative, {
-        kind: "the target's mithril armour turns aside some of the harm",
+        kind: 'the first harm to reach the target is drunk by their armour',
+        channel: _chan,
         targetName: target.name,
-        damageTurnedAside: _b - d,
-        channel: kindsChannel,
+        armourNames: aListAsTheLineTellsIt(_arm.names),
       });
+      return 0;
+    }
+    if (_done.does === 'may turn it aside whole') {
+      if (!(d100() <= _done.theChance)) continue;
+      if (_done.against === 'a blow or an arrow')
+        narrate(narrative, {
+          kind: "the target's shield takes the blow square on",
+          targetName: target.name,
+          channel: _chan,
+          armBlock: _done.theChance,
+        });
+      else if (_done.against === 'an arrow')
+        narrate(narrative, {
+          kind: "the arrow glances off the target's shield",
+          targetName: target.name,
+          armArrowBlock: _done.theChance,
+        });
+      else
+        narrate(narrative, {
+          kind: "the target's shield turns the harm away",
+          targetName: target.name,
+          harmKind: kind,
+          armSpellBlock: _done.theChance,
+        });
+      return 0;
+    }
+    if (_done.does === "soaks some with this round's ward") {
+      const _rw = _done.theSoak;
+      target._roundWardLeft = (target._roundWardLeft ?? 0) - _rw;
+      d -= _rw;
+      narrate(narrative, {
+        kind: "the ward on the target's shield soaks some of the harm",
+        targetName: target.name,
+        rw: _rw,
+      });
+      if (d <= 0) return 0;
+      continue;
+    }
+    // Mithril Armour turns aside 2 points of any MELEE or ARROW blow that lands
+    // (a magic sword-arm or spell still ignores it), never below 1 damage — and it announces itself
+    // each time it saves the wearer harm.
+    if (_done.does === 'turns aside some of a blow or an arrow') {
+      const _b = d;
+      d = _done.theDamageAfter;
+      if (d < _b)
+        narrate(narrative, {
+          kind: "the target's mithril armour turns aside some of the harm",
+          targetName: target.name,
+          damageTurnedAside: _b - d,
+          channel: _chan, // a blow's or an arrow's: the suit turns aside no other
+        });
+    }
   }
   // Monster nature: armoured hides turn blades, bone shrugs off arrows, magic ignores plate.
   if (target.vuln) {
@@ -505,25 +514,22 @@ export function pcTakeHit(
   if (_arm && d > 0) {
     const _b3 = d;
     const _src = (target._foeCat ?? '') || null;
-    if (_chan === 'melee' && _arm.meleeDR) d = Math.max(1, d - _arm.meleeDR);
-    if (_chan === 'archery' && _arm.arrowDR) d = Math.max(1, d - _arm.arrowDR);
-    if (_arm.natureDR && (_src === 'beast' || _src === 'vermin' || _src === 'dragon'))
-      d = Math.max(1, d - _arm.natureDR);
-    if (_arm.darkDR && (_src === 'undead' || _src === 'fiend')) d = Math.max(1, d - _arm.darkDR);
-    if (_chan === 'spell' && _arm.spellPct) d = Math.max(1, Math.round(d * (1 - _arm.spellPct / 100)));
-    if (_arm.lowHp && target.hp < (target.maxHp || 20) * 0.5) d = Math.max(1, Math.round(d * (1 - _arm.lowHp / 100)));
-    if (_arm.openGuardHits && (Number(target._openGuardUsed) || 0) < _arm.openGuardHits) {
-      target._openGuardUsed = (Number(target._openGuardUsed) || 0) + 1;
-      d = Math.max(1, Math.round(d * (1 - ((_arm.openGuardPct ?? 0) || 50) / 100)));
-    }
+    const _cut = whatAFightersWardsLeaveOfAHit({
+      theWards: _arm,
+      theChannel: _chan,
+      theStrikersKind: _src,
+      hisHp: target.hp,
+      hisMaximumHp: target.maxHp || 20,
+      theHitsHisOpenGuardHasTaken: Number(target._openGuardUsed) || 0,
+      theDamageSoFar: d,
+    });
+    if (_cut.hisOpenGuardTookIt) target._openGuardUsed = (Number(target._openGuardUsed) || 0) + 1;
+    d = _cut.theDamageAfter;
     if (d < _b3)
       narrate(narrative, {
         kind: "the target's armour turns aside some of the harm",
         targetIsAGuardian: target.kind === 'monster',
-        targetsWard: aFightersWardAsTheLineTellsIt(
-          target,
-          _chan === 'melee' ? 'meleeDR' : _chan === 'archery' ? 'arrowDR' : 'spellPct',
-        ),
+        targetsWard: aFightersWardAsTheLineTellsIt(target, _cut.theWardTheLineNames),
         damageTurnedAside: _b3 - d,
         channel: _chan,
         armourNames: aListAsTheLineTellsIt(_arm.names),
@@ -547,17 +553,20 @@ export function pcTakeHit(
   }
   // The hard CAP ward (Abyssal Bulk and kin) is the last word — it is a ceiling on any single hit
   // rather than a reduction, so the floor is never allowed to lift a blow back over it.
-  if (_arm?.cap && d > 0) {
-    const _capAt = Math.max(1, Math.round(((target.maxHp || 20) * _arm.cap) / 100));
-    if (d > _capAt) {
-      d = _capAt;
-      narrate(narrative, {
-        kind: "the target's armour will not let any single hit bite deeper",
-        targetIsAGuardian: target.kind === 'monster',
-        targetsWard: aFightersWardAsTheLineTellsIt(target, 'cap'),
-        capAt: _capAt,
-      });
-    }
+  const _capped = theCapAFightersWardsPutOnAHit({
+    theWards: _arm,
+    hisMaximumHp: target.maxHp || 20,
+    theDamageSoFar: d,
+  });
+  if (_capped) {
+    const _capAt = _capped.theDamageAfter;
+    d = _capAt;
+    narrate(narrative, {
+      kind: "the target's armour will not let any single hit bite deeper",
+      targetIsAGuardian: target.kind === 'monster',
+      targetsWard: aFightersWardAsTheLineTellsIt(target, _capped.theWardTheLineNames),
+      capAt: _capAt,
+    });
   }
   // ── DAMAGE CEILING ────
   // 2026-10-08 (Toby item 4a): no single blow, arrow, special or spell in personal combat may take
@@ -583,15 +592,21 @@ export function pcTakeHit(
     };
   // Last-Stand Plate: once per fight, the first time the wearer drops below 30% they recover 25%
   // of max.
-  if (_arm?.secondWind && !target._armSecondWindUsed && target.hp > 0 && target.hp < (target.maxHp || 20) * 0.3) {
+  const _wind = theHpAFightersWardsGiveBackAfterAHit({
+    theWards: _arm,
+    hisSecondWindHasBeenUsed: target._armSecondWindUsed,
+    hisHp: target.hp,
+    hisMaximumHp: target.maxHp || 20,
+  });
+  if (_wind) {
     target._armSecondWindUsed = true;
-    const _back = Math.max(1, Math.round(((target.maxHp || 20) * _arm.secondWind) / 100));
+    const _back = _wind.theHp;
     target.hp = Math.min(target.maxHp || 20, target.hp + _back);
     narrate(narrative, {
       kind: 'the target will not go down and restores hit points',
       targetIsAGuardian: target.kind === 'monster',
       targetName: target.name,
-      targetSecondWindPerk: aFightersPerkNameAsTheLineTellsIt(target, 'secondWind'),
+      targetSecondWindPerk: aFightersPerkNameAsTheLineTellsIt(target, _wind.theWardTheLineNames),
       back: _back,
       targetHp: dispFloor(target.hp),
     });
@@ -603,7 +618,8 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
   // Harness: aim penalties fade twice as fast and half of all stuns are shrugged off.
   cbt._roundNo = (Number(cbt._roundNo) || 0) + 1;
   if (cbt.arm) {
-    if ((cbt.arm.roundWard ?? 0) > 0) cbt._roundWardLeft = cbt.arm.roundWard; // Shield of the Ward-Saints: a fresh ward each round
+    const _wards = whatAFightersWardsDoAsARoundStarts(cbt.arm); // each ward's effect in the items' registry (plan P1-19r)
+    if (_wards.theFreshWardThisRound !== undefined) cbt._roundWardLeft = _wards.theFreshWardThisRound; // Shield of the Ward-Saints: a fresh ward each round
     if (pcStunWard(cbt) >= 100 && cbt.status.stun > 0) {
       cbt.status.stun = 0;
       narrate(narrative, {
@@ -613,7 +629,10 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
         cbtStunPerk: aFightersPerkNameAsTheLineTellsIt(cbt, 'stunWard'),
       });
     }
-    if ((cbt.arm.dotImmune || (Number(cbt.arm.dotWard) || 0) >= 100) && (cbt.status.dot ?? []).length) {
+    if (
+      (_wards.everyLingeringHarmSloughsOff || (Number(cbt.arm.dotWard) || 0) >= 100) &&
+      (cbt.status.dot ?? []).length
+    ) {
       cbt.status.dot = [];
       narrate(narrative, {
         kind: "a fighter's armour sloughs off every burn poison and bleeding",
@@ -623,16 +642,16 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
     }
     // a GUARDIAN's regeneration fades as the fight runs long (pcSustainMult); a character's worn
     // regeneration is untouched and returns a multiplier of 1.
-    if (cbt.arm.regen !== undefined && cbt.arm.regen > 0 && cbt.hp > 0 && cbt.hp < (cbt.maxHp || 20)) {
+    if (_wards.heRegenerates && cbt.hp > 0 && cbt.hp < (cbt.maxHp || 20)) {
       const _sm = pcSustainMult(cbt),
-        _rg = Math.round(cbt.arm.regen * _sm);
+        _rg = Math.round(_wards.heRegenerates.theHp * _sm);
       if (_rg > 0) {
         const h = Math.min(_rg, (cbt.maxHp || 20) - cbt.hp);
         cbt.hp += h;
         narrate(narrative, {
           kind: "a guardian's regeneration knits its flesh",
           cbtIsAGuardian: cbt.kind === 'monster',
-          cbtsWard: aFightersWardAsTheLineTellsIt(cbt, 'regen'),
+          cbtsWard: aFightersWardAsTheLineTellsIt(cbt, _wards.heRegenerates.theWardTheLineNames),
           healed: h,
           sm: _sm,
           cbtHp: dispFloor(cbt.hp),
@@ -642,10 +661,10 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
         narrate(narrative, { kind: 'a fighter has nothing left to knit', cbtName: cbt.name });
       }
     }
-    if (cbt.arm.resist) {
+    if (_wards.heHoldsSteady) {
       if (cbt.status.hitPenalty > 0)
         cbt.status.hitPenalty = Math.max(0, cbt.status.hitPenalty - pcPenaltyFade(cbt.status.hitPenalty)); // Steadfast Harness: a second helping of the same fade
-      if (cbt.status.stun > 0 && kcRng() < 0.5) {
+      if (cbt.status.stun > 0 && kcRng() < _wards.heHoldsSteady.theChanceToShrugOffADaze) {
         cbt.status.stun = 0;
         narrate(narrative, { kind: 'a fighter shrugs off the daze, held steady by their armour', cbtName: cbt.name });
       }
