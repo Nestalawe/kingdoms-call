@@ -13,7 +13,8 @@ import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 /** How an item's texts write a number: a multiplier as the share it adds (×1.25 as `+25%`); strength added as `+2`; a
  *  share in words (0.5 as "half", or "halved"); volleys in words (2 as "two volleys"); extra shots in words (1 as "one
  *  extra shot"); a share as a percentage (0.1 as `10%`); gold for each province (1 as `+1g`, `+1 gold` or "1 extra
- *  gold"); skill levels added (1 as `+1`, or "one level"). */
+ *  gold"); skill levels added (1 as `+1`, or "one level"); damage turned aside (1 as "1 less"); a chance in
+ *  percentage points (5 as `5%`). */
 export type HowAnItemsTextsWriteANumber =
   | 'a multiplier, as the share it adds'
   | 'strength added'
@@ -22,7 +23,9 @@ export type HowAnItemsTextsWriteANumber =
   | 'extra shots, in words'
   | 'a share, as a percentage'
   | 'gold, for each province'
-  | 'skill levels added';
+  | 'skill levels added'
+  | 'damage turned aside'
+  | 'a chance, in percentage points';
 
 /** One number of an item's effect, and how the item's texts write it. */
 export interface ANumberOfAnItemsEffect {
@@ -33,10 +36,23 @@ export interface ANumberOfAnItemsEffect {
 /** The three effects a held copy carries on the item itself, beside its `effect` (Parked: one key per effect, later). */
 export type AnItemsOwnField = 'fleetStr' | 'landFullAtSea' | 'exploreMove';
 
+/** The riders a held copy carries for personal combat (its `effect.pc`), beside a ward: each carried when above 0. */
+export type ARiderAnItemCarries = 'aura' | 'burn' | 'drain' | 'hitBonus' | 'dmgBonus';
+
+/** The `effect.stat` of an item worn as armour: its effect is a ward (`effect.ward`, with its amount, percentage or
+ *  hits), which personal combat merges into the wards its bearer wears. */
+export const THE_STAT_OF_AN_ITEM_WORN_AS_ARMOUR = 'armour';
+
 /** The key a held copy of an item carries an effect by: its `effect.stat`, a field of the item's own (true when set),
- *  or the item's base name (a second name of a tier-1 or tier-2 item counts as its base's, as hasItemBase reads it). */
+ *  the item's base name (a second name of a tier-1 or tier-2 item counts as its base's, as hasItemBase reads it), a
+ *  ward (its armour's `effect.ward`, or its rider's `effect.pc.ward`: a guardian's perk of the same ward reaches the
+ *  same effect), or a rider (its `effect.pc`'s, above 0). */
 export type TheKeyAnItemCarriesItsEffectBy =
-  { readonly stat: string } | { readonly field: AnItemsOwnField } | { readonly itemName: string };
+  | { readonly stat: string }
+  | { readonly field: AnItemsOwnField }
+  | { readonly itemName: string }
+  | { readonly ward: string }
+  | { readonly rider: ARiderAnItemCarries };
 
 /** A row: what the registry's effect and the items' texts read of one effect. */
 export interface AMagicItemEffectAsItsTextsWriteIt {
@@ -52,6 +68,9 @@ export interface AMagicItemEffectAsItsTextsWriteIt {
   readonly reaches?: readonly string[] | 'the skeletal units';
   /** The realm's alignment it needs, when it acts for one realm only. */
   readonly forARealmThatIs?: string;
+  /** The numbers the code takes when a held copy carries none of its own (no item's texts state them: each item in play
+   *  carries its own). */
+  readonly theNumbersOfACopyThatCarriesNone?: Readonly<Record<string, number>>;
 }
 
 // The cavalry, infantry, archers and heavy engines the commander's items reach (until P1-19m armStr's CAV_I, INF_I,
@@ -85,7 +104,7 @@ const THE_HEAVY_ENGINES_THE_ENGINEERS_ITEMS_REACH: readonly UnitType[] = ['Mount
  *  each unit he leads, then his items at sea (plan P1-19m); the commanders' items at the defenders' fortifications, at
  *  the volley and in the rout (plan P1-19n); then a hero's items in the realm's tax at the turn's end, and in his orders
  *  (plan P1-19o); then a hero's items in his own standing: his maximum hit points, his temper and his skills (plan
- *  P1-19p). */
+ *  P1-19p); then what a fighter wears in personal combat: his wards, his riders and the Mithril suit (plan P1-19q). */
 export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── The commander's items (strength, in armStr: after the unit's own modifiers, before its factors from its force),
   // each step rounded as it goes. ──
@@ -275,6 +294,63 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { stat: 'aura' },
     numbers: { theLevelsItAddsToEverySkill: { value: 1, theTextsWriteIt: 'skill levels added' } },
   },
+  // ── What a fighter wears in personal combat (personalCombat): the wards of his armour and of his items' riders, merged
+  // into one table (pcArmourMerge: an amount adds, a percentage takes the best, a flag is set), and his items' other
+  // riders (pcApplyFx). A guardian's perk of the same ward or rider reaches the same effect. Each copy carries its own
+  // amount, percentage or hits (the copy's number, not content's: no number here), but where a row says. What each
+  // ward does in a fight is the fight's (pcTakeHit, pcRoundStart, the chance to hit and the blow). ──
+  'melee-damage-turned-aside': { name: 'Dwarf-Forged Hauberk', carriedAs: { ward: 'meleeDR' }, numbers: {} },
+  'arrow-damage-turned-aside': { name: 'Arrow-Turning Brigandine', carriedAs: { ward: 'arrowDR' }, numbers: {} },
+  // against a beast, vermin or a dragon
+  'nature-damage-turned-aside': { name: 'Serpent-Scale Coat', carriedAs: { ward: 'natureDR' }, numbers: {} },
+  // against the undead or a fiend
+  'dark-damage-turned-aside': { name: 'Grave-Iron Plate', carriedAs: { ward: 'darkDR' }, numbers: {} },
+  thorns: { name: 'Thornwood Cuirass', carriedAs: { ward: 'thorns' }, numbers: {} },
+  regeneration: { name: 'Troll-Hide Jerkin', carriedAs: { ward: 'regen' }, numbers: {} },
+  'spell-damage-cut': { name: 'Spellwarded Robe', carriedAs: { ward: 'spellPct' }, numbers: {} },
+  dodge: { name: 'Quicksilver Mail', carriedAs: { ward: 'dodge' }, numbers: {} },
+  block: { name: 'Tower Shield of the Wall', carriedAs: { ward: 'block' }, numbers: {} },
+  'a-hits-damage-capped': { name: 'Bulwark Breastplate', carriedAs: { ward: 'cap' }, numbers: {} },
+  'second-wind': { name: 'Last-Stand Plate', carriedAs: { ward: 'secondWind' }, numbers: {} },
+  'damage-cut-at-low-hp': { name: "Warden's Scale", carriedAs: { ward: 'lowHp' }, numbers: {} },
+  'the-first-hit-drunk': { name: 'Blood-Bound Cuirass', carriedAs: { ward: 'firstHit' }, numbers: {} },
+  'lingering-harm-turned-aside': { name: 'Ashen Plate', carriedAs: { ward: 'dotImmune' }, numbers: {} },
+  // No item in play carries it: the engine's load-time pass rewrites its one item.
+  resist: { name: 'Steadfast Harness', carriedAs: { ward: 'resist' }, numbers: {} },
+  'arrow-block': { name: 'Kite Shield of the Marches', carriedAs: { ward: 'arrowBlock' }, numbers: {} },
+  // Melee blows deal 1 less, and foes have 5% less chance to hit (the best dodge worn): whatever the copy carries.
+  buckler: {
+    name: 'Bronze Buckler',
+    carriedAs: { ward: 'buckler' },
+    numbers: {
+      meleeDamageTurnedAside: { value: 1, theTextsWriteIt: 'damage turned aside' },
+      dodge: { value: 5, theTextsWriteIt: 'a chance, in percentage points' },
+    },
+  },
+  // The first hits of a fight to land deal a share less: the copy's own hits and percentage (every item in play
+  // carries both), or these.
+  'open-guard': {
+    name: 'Oaken Roundshield',
+    carriedAs: { ward: 'openGuard' },
+    numbers: {},
+    theNumbersOfACopyThatCarriesNone: { hits: 2, pct: 50 },
+  },
+  'spell-block': { name: 'Mirror-Bright Shield', carriedAs: { ward: 'spellBlock' }, numbers: {} },
+  'round-ward': { name: 'Shield of the Ward-Saints', carriedAs: { ward: 'roundWard' }, numbers: {} },
+  'stun-immunity': { name: 'Dragonbone Shield', carriedAs: { ward: 'stunImmune' }, numbers: {} },
+  // His foes have less chance to hit him, the whole fight: the best of his counts.
+  'aura-rider': { name: "Oathkeeper's Blade", carriedAs: { rider: 'aura' }, numbers: {} },
+  // A foe at melee range takes this much each round: his add.
+  'burn-rider': { name: 'Brand of the Salamander', carriedAs: { rider: 'burn' }, numbers: {} },
+  // He heals a share of the melee damage he deals: the best of his counts.
+  'drain-rider': { name: 'Grave-Cold Blade', carriedAs: { rider: 'drain' }, numbers: {} },
+  // His chance to hit: his add.
+  'hit-bonus-rider': { name: "Warden's Poleaxe", carriedAs: { rider: 'hitBonus' }, numbers: {} },
+  // His blows' damage: his add.
+  'damage-bonus-rider': { name: 'Kingsteel Longsword', carriedAs: { rider: 'dmgBonus' }, numbers: {} },
+  // A dwarven birthright in no table (src/engine/heroes/fame-and-consecration.ts): he fights in Mithril. What the suit
+  // turns aside is the fight's (pcCharCombatant's mithrilDR, read by pcTakeHit).
+  'mithril-armour': { name: 'Mithril Armour', carriedAs: { stat: 'mithrilArmour' }, numbers: {} },
 } as const satisfies Record<string, AMagicItemEffectAsItsTextsWriteIt>;
 
 /** The slug of an effect the registry holds. */

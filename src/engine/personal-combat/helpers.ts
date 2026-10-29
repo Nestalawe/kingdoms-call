@@ -2,69 +2,33 @@ import { KC_RUMOUR_COST_BY_POWER } from '../../content/kingdoms-call-data.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
-import { anItemChangesAHerosMaximumHp } from '../rules/the-registry-of-magic-item-effects.ts';
+import {
+  anItemChangesAHerosMaximumHp,
+  anItemIsWornAsArmour,
+  whatAWardSetsInTheWardsAFighterWears,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import type { Character, GameState, Item, Realm } from '../../schemas/saved-game-state.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type {
+  AWardAsTheMergeReadsIt,
+  TheRidersOfAnItemOrAPerk,
+  TheWardsAFighterWears,
+} from '../rules/the-registry-of-content-effects.ts';
 
-// ── A FIGHTER IN A PERSONAL COMBAT, THE WARDS HE WEARS, HIS STATUS AND HIS RIDERS (plan P1-10b11, P1-10's Choice 1 of
-// 2026-10-29) ── types only. A fighter is made fresh for each fight (pcCharCombatant for a hero, pcMonsterCombatant for a
-// guardian, in speed-encounter-plans-and-combatants.ts) and never saved, so these are plain interfaces, not schemas. One
-// shape every function of the fight reads: the fields both builders set are required; a field only one kind of fighter
-// has, or one the fight writes later, is optional, so a read of it that the code guards stays guarded. They are declared
-// here, in the file of the wards' merge, not in a file of their own: a file under src/ that no page bundles fails the
-// harness (tests/static/pages-build.test.ts, "every file under src/ is in a page").
-/** A ward as the merge reads it (pcArmourMerge): an armour's effect, a rider's (an item's `effect.pc`), a guardian's
- *  perk's (`fx`), or a guardian's grade's cap. Every field optional: the saved item's schema allows any of them out. */
-export interface AWardAsTheMergeReadsIt {
-  readonly ward?: string | undefined;
-  readonly amt?: number | undefined;
-  readonly pct?: number | undefined;
-  readonly hits?: number | undefined;
-  readonly school?: string | undefined;
-}
-
-/** The riders (pcApplyFx's `fx`): an item's `effect.pc` and a guardian's perk's `fx`, one type for both. A ward among
- *  them merges into the fighter's wards; the others are read by the fight directly. */
-export interface TheRidersOfAnItemOrAPerk extends AWardAsTheMergeReadsIt {
-  readonly aura?: number | undefined;
-  readonly burn?: number | undefined;
-  readonly drain?: number | undefined;
-  readonly hitBonus?: number | undefined;
-  readonly dmgBonus?: number | undefined;
-}
-
-/** The wards a fighter wears (his `arm`): every worn armour's ward and every ward rider merged into one table by
- *  pcArmourMerge (flat reductions add, percentages take the best, flags are set once), with the names of what gave
- *  them. A fighter who wears none has `null` (a hero) or no table (a guardian). */
-export interface TheWardsAFighterWears {
-  names: string[];
-  meleeDR?: number | undefined;
-  arrowDR?: number | undefined;
-  natureDR?: number | undefined;
-  darkDR?: number | undefined;
-  thorns?: number | undefined;
-  regen?: number | undefined;
-  spellPct?: number | undefined;
-  dodge?: number | undefined;
-  block?: number | undefined;
-  cap?: number | undefined;
-  secondWind?: number | undefined;
-  lowHp?: number | undefined;
-  firstHit?: boolean | undefined;
-  dotImmune?: boolean | undefined;
-  resist?: boolean | undefined;
-  arrowBlock?: number | undefined;
-  openGuardHits?: number | undefined;
-  openGuardPct?: number | undefined;
-  spellBlock?: number | undefined;
-  roundWard?: number | undefined;
-  stunImmune?: boolean | undefined;
-  stunWard?: number | undefined;
-  dotWard?: number | undefined;
-  /** A guardian perk's ward against one school of magic: the school, and what it takes off that school's cast chance. */
-  schoolWard?: Partial<Record<string, number>> | undefined;
-}
-
+// ── A FIGHTER IN A PERSONAL COMBAT, HIS STATUS AND HIS RIDERS (plan P1-10b11, P1-10's Choice 1 of 2026-10-29) ── types
+// only. A fighter is made fresh for each fight (pcCharCombatant for a hero, pcMonsterCombatant for a guardian, in
+// speed-encounter-plans-and-combatants.ts) and never saved, so these are plain interfaces, not schemas. One shape every
+// function of the fight reads: the fields both builders set are required; a field only one kind of fighter has, or one
+// the fight writes later, is optional, so a read of it that the code guards stays guarded. They are declared here, in
+// the file of the wards' merge, not in a file of their own: a file under src/ that no page bundles fails the harness
+// (tests/static/pages-build.test.ts, "every file under src/ is in a page"). The wards he wears, a ward and the riders as
+// the merge reads them are the items' registry's stage types since plan P1-19q (src/engine/rules/ imports nothing from
+// here: npm run lint:arch), and are exported from here too, by the same names.
+export type {
+  AWardAsTheMergeReadsIt,
+  TheRidersOfAnItemOrAPerk,
+  TheWardsAFighterWears,
+} from '../rules/the-registry-of-content-effects.ts';
 /** A lingering harm on a fighter (a damage-over-time: a bleed, a burn), added by pcPushDot. */
 export interface ALingeringHarm {
   dmg: number;
@@ -498,9 +462,11 @@ export function noteLairRumour(
   if (!pl._lairRumours || typeof pl._lairRumours !== 'object') pl._lairRumours = {};
   pl._lairRumours[lairRumourKey(provId, idx)] = rec;
 }
-// ── ARMOUR ── fold every worn `stat:'armour'` item into one ward table for personal combat. Flat
-// reductions add, percentages take the best, flags OR. Used by pcCharCombatant and by a guardian
-// wielding a hoard's armour (resolveEncounter).
+// ── ARMOUR ── fold every worn armour item into one ward table for personal combat. Flat reductions add, percentages
+// take the best, flags OR: each ward's own effect in the items' registry (plan P1-19q), which a guardian's perk of the
+// same ward reaches too; a guardian's perks' own three wards are merged here (the guardian family's, later). Used by
+// pcCharCombatant, by pcApplyFx (an item's rider, a guardian's perk) and by a guardian wielding a hoard's armour
+// (resolveEncounter).
 export function pcArmourMerge(
   a: TheWardsAFighterWears | null | undefined,
   e: AWardAsTheMergeReadsIt | null | undefined,
@@ -508,90 +474,27 @@ export function pcArmourMerge(
 ): TheWardsAFighterWears {
   a ??= { names: [] };
   e ??= {};
-  switch (e.ward) {
-    case 'meleeDR':
-      a.meleeDR = (Number(a.meleeDR) || 0) + (e.amt ?? 0);
-      break;
-    case 'arrowDR':
-      a.arrowDR = (Number(a.arrowDR) || 0) + (e.amt ?? 0);
-      break;
-    case 'natureDR':
-      a.natureDR = (Number(a.natureDR) || 0) + (e.amt ?? 0);
-      break;
-    case 'darkDR':
-      a.darkDR = (Number(a.darkDR) || 0) + (e.amt ?? 0);
-      break;
-    case 'thorns':
-      a.thorns = (Number(a.thorns) || 0) + (e.amt ?? 0);
-      break;
-    case 'regen':
-      a.regen = (Number(a.regen) || 0) + (e.amt ?? 0);
-      break;
-    case 'spellPct':
-      a.spellPct = Math.max(Number(a.spellPct) || 0, e.pct ?? 0);
-      break;
-    case 'dodge':
-      a.dodge = Math.max(Number(a.dodge) || 0, e.pct ?? 0);
-      break;
-    case 'block':
-      a.block = Math.max(Number(a.block) || 0, e.pct ?? 0);
-      break;
-    case 'cap':
-      a.cap = Math.max(Number(a.cap) || 0, e.pct ?? 0);
-      break;
-    case 'secondWind':
-      a.secondWind = Math.max(Number(a.secondWind) || 0, e.pct ?? 0);
-      break;
-    case 'lowHp':
-      a.lowHp = Math.max(Number(a.lowHp) || 0, e.pct ?? 0);
-      break;
-    case 'firstHit':
-      a.firstHit = true;
-      break;
-    case 'dotImmune':
-      a.dotImmune = true;
-      break;
-    case 'resist':
-      a.resist = true;
-      break;
-    // shields, second batch
-    case 'arrowBlock':
-      a.arrowBlock = Math.max(Number(a.arrowBlock) || 0, e.pct ?? 0);
-      break;
-    case 'buckler':
-      a.meleeDR = (Number(a.meleeDR) || 0) + 1;
-      a.dodge = Math.max(Number(a.dodge) || 0, 5);
-      break;
-    case 'openGuard':
-      a.openGuardHits = Math.max(Number(a.openGuardHits) || 0, (e.hits ?? 0) || 2);
-      a.openGuardPct = Math.max(Number(a.openGuardPct) || 0, (e.pct ?? 0) || 50);
-      break;
-    case 'spellBlock':
-      a.spellBlock = Math.max(Number(a.spellBlock) || 0, e.pct ?? 0);
-      break;
-    case 'roundWard':
-      a.roundWard = (Number(a.roundWard) || 0) + (e.amt ?? 0);
-      break;
-    case 'stunImmune':
-      a.stunImmune = true;
-      break;
-    // guardian perks (2026-10-14, batch item 7): graded wards
-    case 'stunWard':
-      a.stunWard = Math.max(Number(a.stunWard) || 0, e.pct ?? 0);
-      break; // % of stuns turned as they land (100: never stunned)
-    case 'dotWard':
-      a.dotWard = Math.max(Number(a.dotWard) || 0, e.pct ?? 0);
-      break; // % off every tick of lingering harm (100: immune)
-    case 'schoolWard':
-      if (e.school) {
-        const schoolWard: Partial<Record<string, number>> = { ...(a.schoolWard ?? {}) };
-        a.schoolWard = schoolWard;
-        schoolWard[e.school] = Math.max(Number(schoolWard[e.school]) || 0, e.pct ?? 0);
-      }
-      break; // −N to that school's cast chance
-    default:
-      return a;
-  }
+  const set = whatAWardSetsInTheWardsAFighterWears(e, a);
+  if (set) Object.assign(a, set);
+  else
+    switch (e.ward) {
+      // guardian perks (2026-10-14, batch item 7): graded wards
+      case 'stunWard':
+        a.stunWard = Math.max(Number(a.stunWard) || 0, e.pct ?? 0);
+        break; // % of stuns turned as they land (100: never stunned)
+      case 'dotWard':
+        a.dotWard = Math.max(Number(a.dotWard) || 0, e.pct ?? 0);
+        break; // % off every tick of lingering harm (100: immune)
+      case 'schoolWard':
+        if (e.school) {
+          const schoolWard: Partial<Record<string, number>> = { ...(a.schoolWard ?? {}) };
+          a.schoolWard = schoolWard;
+          schoolWard[e.school] = Math.max(Number(schoolWard[e.school]) || 0, e.pct ?? 0);
+        }
+        break; // −N to that school's cast chance
+      default:
+        return a;
+    }
   if (name && !a.names.includes(name)) a.names.push(name);
   return a;
 }
@@ -602,7 +505,7 @@ export function pcArmourOf(
   let a: TheWardsAFighterWears | null = null;
   const seen = new Set<string>();
   (items ?? []).forEach((it) => {
-    if (it?.effect?.stat !== 'armour') return;
+    if (!it || !anItemIsWornAsArmour(it)) return; // the items' registry (plan P1-19q)
     const base = (_ITEM_ALT_BASE[it.name] ?? '') || it.name;
     if (seen.has(base)) return;
     seen.add(base); // a clone of the same piece counts once

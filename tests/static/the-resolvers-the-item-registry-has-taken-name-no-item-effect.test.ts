@@ -15,7 +15,9 @@
 // Red on its row's base by design (armStr held 9 checks, and read `fleetStr` and `landFullAtSea`, on P1-19m's base; the
 // two battles' functions 8, and pursuitsOfTheBeaten 1, on P1-19n's; Early Winter 2 and the orders' and the bots' plan
 // 5, and resolveMoveOrder's read of `exploreMove`, on P1-19o's; itemMaxHpBonus, applyItemMaxHp, effTemper and
-// skillBonusBreakdown 1 each, and skillBonusBreakdown's 'Crown of Command', on P1-19p's), as the unit-name test was: the one exception to refactor-only's rule that new tests pass before and after (Theo,
+// skillBonusBreakdown 1 each, and skillBonusBreakdown's 'Crown of Command', on P1-19p's; pcArmourMerge 21, pcArmourOf
+// 1 and pcCharCombatant's Mithril 1 on P1-19q's), as the unit-name test was: the one exception to refactor-only's rule
+// that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
 import fs from 'node:fs';
@@ -74,6 +76,19 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/personal-combat/helpers.ts', 'applyItemMaxHp', "P1-19p, a hero's standing"],
   ['src/engine/items/equipment.ts', 'effTemper', "P1-19p, a hero's standing"],
   ['src/engine/heroes/skills-and-hp.ts', 'skillBonusBreakdown', "P1-19p, a hero's standing"],
+  ['src/engine/personal-combat/helpers.ts', 'pcArmourMerge', 'P1-19q, what a fighter wears'],
+  ['src/engine/personal-combat/helpers.ts', 'pcArmourOf', 'P1-19q, what a fighter wears'],
+  ['src/engine/personal-combat/speed-encounter-plans-and-combatants.ts', 'pcApplyFx', 'P1-19q, what a fighter wears'],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcApplyItemFx',
+    'P1-19q, what a fighter wears',
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcCharCombatant',
+    'P1-19q, what a fighter wears',
+  ],
 ];
 
 /** The words of the vocabulary a taken function holds for something else, by the function, each with what it is (the
@@ -106,6 +121,8 @@ const CHECKS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> =
   // `'hidden'`: an older save's Cloak of Many Faces, which a spy can't fix on, with P1-23's `visibility` (the items
   // family's Decision 5)
   resolveSpyOrder: ['hidden'],
+  // `'combatUse'`: the combat items a hero carries into a fight, which P1-19s takes (the items family's row s)
+  pcCharCombatant: ['combatUse'],
 };
 
 /** The effects an item carries on itself, beside its `effect` (Parked: one key per effect, later). */

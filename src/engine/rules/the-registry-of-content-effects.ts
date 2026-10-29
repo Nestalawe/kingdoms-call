@@ -1,7 +1,7 @@
 // The rule registry of content effects (plan P1-19, Decisions 2, 3 and 6). A content effect (today a unit ability) is
 // one row in src/content/ (its unit, name and numbers: unit-abilities-their-names-numbers-and-words.ts) and one entry
 // here, keyed by the same slug, naming its effect at each stage of a hook point. A hook point is one of the engine's
-// real decisions (the eleven below); its stages run in the battle code's order, and within a stage the effects run in the
+// real decisions (the twelve below); its stages run in the battle code's order, and within a stage the effects run in the
 // order its list gives (THE_ORDER_OF_EACH_STAGE): a product of decimals, and the ladder's words, depend on it. Each
 // stage's effect type says exactly what the stage hands it, read-only, and an effect returns a value: it changes
 // nothing. The resolvers ask the runners at the bottom; an effect reads only what its stage hands it and the content
@@ -521,6 +521,66 @@ type AnEffectOnTheMultiplierSoFar<Facts> = (
   theMultiplierSoFar: number,
 ) => AMultiplierAndTheAbilityThatSetIt | null;
 
+/** A ward as the merge reads it (pcArmourMerge): an armour's effect, a rider's (an item's `effect.pc`), a guardian's
+ *  perk's (`fx`), or a guardian's grade's cap. Every field optional: the saved item's schema allows any of them out.
+ *  (Plan P1-10b11 wrote it in src/engine/personal-combat/helpers.ts; plan P1-19q moved it here, the stage's type.) */
+export interface AWardAsTheMergeReadsIt {
+  readonly ward?: string | undefined;
+  readonly amt?: number | undefined;
+  readonly pct?: number | undefined;
+  readonly hits?: number | undefined;
+  readonly school?: string | undefined;
+}
+
+/** The riders a fighter wears beside his wards (pcApplyFx writes them on him, the hit bonus on his status). */
+export interface TheRidersAFighterWears {
+  readonly aura?: number | undefined;
+  readonly burn?: number | undefined;
+  readonly drain?: number | undefined;
+  readonly hitBonus?: number | undefined;
+  readonly dmgBonus?: number | undefined;
+}
+
+/** The riders (pcApplyFx's `fx`): an item's `effect.pc` and a guardian's perk's `fx`, one type for both. A ward among
+ *  them merges into the fighter's wards; the others are the riders he wears. */
+export interface TheRidersOfAnItemOrAPerk extends AWardAsTheMergeReadsIt, TheRidersAFighterWears {}
+
+/** The wards a fighter wears (his `arm`): every worn armour's ward and every ward rider merged into one table by
+ *  pcArmourMerge (flat reductions add, percentages take the best, flags are set once), with the names of what gave
+ *  them. A fighter who wears none has `null` (a hero) or no table (a guardian). (Plan P1-10b11 wrote it in
+ *  src/engine/personal-combat/helpers.ts; plan P1-19q moved it here, the stage's type.) */
+export interface TheWardsAFighterWears {
+  names: string[];
+  meleeDR?: number | undefined;
+  arrowDR?: number | undefined;
+  natureDR?: number | undefined;
+  darkDR?: number | undefined;
+  thorns?: number | undefined;
+  regen?: number | undefined;
+  spellPct?: number | undefined;
+  dodge?: number | undefined;
+  block?: number | undefined;
+  cap?: number | undefined;
+  secondWind?: number | undefined;
+  lowHp?: number | undefined;
+  firstHit?: boolean | undefined;
+  dotImmune?: boolean | undefined;
+  resist?: boolean | undefined;
+  arrowBlock?: number | undefined;
+  openGuardHits?: number | undefined;
+  openGuardPct?: number | undefined;
+  spellBlock?: number | undefined;
+  roundWard?: number | undefined;
+  stunImmune?: boolean | undefined;
+  stunWard?: number | undefined;
+  dotWard?: number | undefined;
+  /** A guardian perk's ward against one school of magic: the school, and what it takes off that school's cast chance. */
+  schoolWard?: Partial<Record<string, number>> | undefined;
+}
+
+/** What a ward a fighter puts on sets in the wards he wears: each field it changes, with its new value. */
+export type WhatAWardSets = Partial<Omit<TheWardsAFighterWears, 'names'>>;
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -670,9 +730,28 @@ export interface TheStagesOfEachHookPoint {
      *  heroes, his first such effect). */
     readonly "a skill's aura in the province": () => TheAuraAnItemSpreads | null;
   };
+  /** A fighter in a personal combat (plan P1-19's items family, Choice 1: its first row, P1-19q, typed it). A guardian's
+   *  perks reach the same effects at "what a fighter wears" as a hero's items: one applier for both (pcApplyFx). */
+  readonly personalCombat: {
+    /** What a ward he puts on sets in the wards he wears, from the wards so far (pcArmourMerge: his armour, an item's
+     *  rider or a guardian's perk; the items' registry: the effect of the ward's own kind). */
+    readonly 'what a fighter wears: a ward': (
+      theWard: AWardAsTheMergeReadsIt,
+      theWardsSoFar: Readonly<TheWardsAFighterWears>,
+    ) => WhatAWardSets;
+    /** What a rider he puts on sets in the riders he wears, from the riders so far (pcApplyFx, after the rider's ward;
+     *  the items' registry: each rider carried, above 0, in the stage's order). */
+    readonly 'what a fighter wears: a rider': (
+      theRiders: TheRidersAFighterWears,
+      theRidersSoFar: TheRidersAFighterWears,
+    ) => TheRidersAFighterWears;
+    /** Whether a held item makes its bearer fight in Mithril (pcCharCombatant's flag, which the fight reads; the items'
+     *  registry). */
+    readonly 'what a fighter wears: Mithril': () => boolean;
+  };
 }
 
-/** The eleven hook points. */
+/** The twelve hook points. */
 export type HookPointName = keyof TheStagesOfEachHookPoint;
 
 /** An entry: the ability's effect at each stage it acts in. */

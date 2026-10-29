@@ -78,7 +78,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   `ASkillsLevelAndItsSources`) and the two P1-10b11 freed (`personal-combat/helpers.ts` and
   `personal-combat/speed-encounter-plans-and-combatants.ts`, which build the fighter of a personal combat; his type,
   `AFighterInAPersonalCombat`, with the wards he wears, `TheWardsAFighterWears`, his status and the riders of an item
-  or a guardian's perk, is declared in `helpers.ts`, beside the wards' merge: a fighter is made for each fight and never
+  or a guardian's perk, is declared in `helpers.ts`, beside the wards' merge (since P1-19q the wards and the riders are
+  the items' registry's stage types, which `helpers.ts` exports by the same names): a fighter is made for each fight and never
   saved, so these are plain interfaces, not schemas, and a file of types alone would be in no page, which
   `pages-build` refuses) and the two P1-10b12 freed (`personal-combat/to-hit-wounds-stuns-and-courage.ts` and
   `personal-combat/melee-flight-and-archery.ts`: the hit, the round and the strikes, read on that type) and the one
