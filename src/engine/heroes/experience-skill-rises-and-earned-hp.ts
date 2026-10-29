@@ -1,12 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { SKILL_LABELS } from '../army-tables.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { hpGainLine, rollHpGain, syncMaxHp } from './skills-and-hp.ts';
-import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
+import { rollHpGain, syncMaxHp } from './skills-and-hp.ts';
 import { discSum, hasDisc } from '../discoveries.ts';
-import { recalcHeroPay, skillInPlayNote } from './effective-skills-and-hidden-heroes.ts';
+import { recalcHeroPay, theSkillInPlayAsALineTellsIt } from './effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
 import {
   narrate,
@@ -24,7 +21,9 @@ import { aHitPointRiseAsTheLineTellsIt } from '../personal-combat/the-facts-a-pe
 // awardHpRoll), and every hero's current HP kept in step with his maximum after each phase (syncAllMaxHp, plan
 // P1-08i3, below). Each takes the turn's context first (src/engine/turn/context.ts). The reassigned values they read,
 // _deferredSkillLogs, _pcSimulating, _combatSkillProv, _chieftainDuelGain and _duelFoes, are read and written as
-// turnContext.<name>, as resolveTurn reads them.
+// turnContext.<name>, as resolveTurn reads them. Every line they write is a fact (plan P1-12d12): a hero's experience
+// lines' kinds (heroes/the-facts-a-heros-experience-lines-record.ts), and a hit-point rise in a fight personal
+// combat's; the prose writes the words.
 // ── SKILL GAIN THROUGH EXPERIENCE ────
 // Characters may improve a skill by performing the matching action. Base 10% at level 0, easing
 // off slightly as the skill rises. Common actions (move/explore) use a lower base because they
@@ -199,12 +198,17 @@ export function resolvePendingSkillGain(turnContext, real) {
   // duel says against whom — the duel itself is folded inside the battle's full report, so a
   // player reading the short account would otherwise never learn why the skill went up.
   const _riseProv = e.prov != null && G.world && G.world.provinces ? G.world.provinces[e.prov] : null;
-  const _why = e.duelWith
-    ? ` in single combat with ${e.duelWith}${_riseProv ? ` before the Battle for ${_riseProv.name}` : ''}`
-    : _riseProv
-      ? ` in the fighting at ${_riseProv.name}`
-      : '';
-  const line = `📈 ${real.name}'s ${SKILL_LABELS[skill] || skill} rises to level ${lvl + 1} through hard-won experience${_why}${skillInPlayNote(turnContext, real, skill)}.${_hpRise > 0 ? ` (Max HP +${_hpRise} → ${real.maxHp}.)` : ''}`;
+  const line = {
+    kind: "a hero's skill rises through experience",
+    heroName: real.name,
+    skill,
+    level: lvl + 1,
+    duelWith: e.duelWith || null,
+    provinceName: _riseProv ? _riseProv.name : null,
+    skillInPlay: theSkillInPlayAsALineTellsIt(turnContext, real, skill),
+    maxHpRise: _hpRise,
+    maxHp: real.maxHp,
+  };
   // Battle-driven gains pass the battle narrative: the line then appears at the point it is
   // pushed (end of the battle report), not before the battle even starts in the chronicle. the
   // deferred (non-battle) skill-rise carries the character's id and the phase it happened in,
@@ -221,7 +225,7 @@ export function resolvePendingSkillGain(turnContext, real) {
   if (real.player == null) {
     emit(turnContext, {
       type: 'system',
-      text: `📜 ${String(real.name || '').replace(/\s*\(wandering\)/i, '')} learns from the fighting — ${SKILL_LABELS[skill] || skill} rises to ${lvl + 1}.`,
+      fact: { kind: 'a wandering hero learns from the fighting', heroName: real.name || '', skill, level: lvl + 1 },
       audience: { realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: e.prov != null ? e.prov : real.location,
@@ -237,8 +241,7 @@ export function resolvePendingSkillGain(turnContext, real) {
     // available. Fires exactly once per crossing (each gain is a single level).
     const _newLvl = lvl + 1;
     if (_newLvl >= 6) {
-      const _mu = (MASTERY_UNLOCKS[skill] || {})[_newLvl];
-      const _mline = `🎉 ${real.name} attains mastery of ${SKILL_LABELS[skill] || skill} — level ${_newLvl}!${_mu ? ' ' + _mu : ''}`;
+      const _mline = { kind: 'a hero attains mastery of a skill', heroName: real.name, skill, level: _newLvl };
       turnContext._deferredSkillLogs.push([
         _mline,
         { audience: { actor: real.player, realms: [real.player] }, hero: _skCharId, phase: _skPhase, ..._after },
@@ -248,7 +251,12 @@ export function resolvePendingSkillGain(turnContext, real) {
   // when the higher skill raises the hero's wage, say so in the player's report. (A neutral has
   // no realm to tell, and their wage is set by the hire itself, so this is player-led only.)
   if (real.player != null && _payAfter > _payBefore) {
-    const wline = `💰 ${real.name}'s growing renown raises their wage to ${_payAfter}g/turn (was ${_payBefore}g/turn).`;
+    const wline = {
+      kind: "a hero's growing renown raises his wage",
+      heroName: real.name,
+      wageBefore: _payBefore,
+      wageAfter: _payAfter,
+    };
     turnContext._deferredSkillLogs.push([
       wline,
       { audience: { actor: real.player, realms: [real.player] }, hero: _skCharId, phase: _skPhase, ..._after },
@@ -326,11 +334,12 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
     ch.pay = real.pay;
     if (r.gain > 0 && ch.hp != null) ch.hp = Math.min(real.maxHp, ch.hp + r.gain);
   }
-  const line = hpGainLine(real, r);
+  // A roll that gains nothing has no line (hpGainLine, which writes its words in the prose, writes none for it).
+  const aRise = r.gain > 0;
   // 2026-10-12 (Toby item 20): a hero's maximum-HP rise is his own realm's news. Inside a shared fight
   // narrative it rides as a private line (emitNarrLine logs it to that realm alone, in its place in the
   // fight); a neutral's rise is nobody's, so it is not put in the shared report at all.
-  if (!line) {
+  if (!aRise) {
     /* nothing gained — nothing to say */
   } else if (Array.isArray(narrative)) {
     if (real.player != null)
@@ -345,7 +354,7 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
     const prov = real.location != null ? G.world.provinces[real.location] : null;
     emit(turnContext, {
       type: 'combat',
-      text: line,
+      fact: { kind: 'a hero is hardened after a fight', heroName: real.name, rise: aHitPointRiseAsTheLineTellsIt(r) },
       audience: { actor: real.player != null ? real.player : -1, realms: real.player != null ? [real.player] : [] },
       hero: real.id,
       province: prov ? prov.id : undefined,
@@ -374,10 +383,16 @@ export function syncAllMaxHp(turnContext) {
         : { audience: { actor: -1, realms: [] }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING };
     emit(turnContext, {
       type: 'system',
-      text:
+      fact:
         d > 0
-          ? `💪 ${ch.name}'s maximum HP rises by ${d} to ${ch.maxHp} (current HP ${dispFloor(ch.hp)}).`
-          : `${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`,
+          ? {
+              kind: "a hero's maximum hit points rise as the phase ends",
+              heroName: ch.name,
+              by: d,
+              maxHp: ch.maxHp,
+              hp: ch.hp,
+            }
+          : { kind: "a hero's maximum hit points fall as the phase ends", heroName: ch.name, by: -d, maxHp: ch.maxHp },
       ...tgt,
     });
   });

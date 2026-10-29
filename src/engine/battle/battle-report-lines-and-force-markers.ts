@@ -207,6 +207,8 @@ export function emitBattle(
       fact: THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
       battle: { id: _bid, tier: 't' },
     });
-  const sTxt = opts.summaryText || (battle && battle.summaryText);
+  // Read with an `if`, not `||` (P1-12d12): TypeScript can't reduce the union `||` makes of every kind of line.
+  let sTxt = opts.summaryText;
+  if (!sTxt && battle) sTxt = battle.summaryText;
   if (sTxt) emit(turnContext, { ...fight, ...theWordsOrTheFactOfALine(sTxt), battle: { id: _bid, tier: 's' } });
 }

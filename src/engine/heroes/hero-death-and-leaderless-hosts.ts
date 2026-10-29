@@ -524,7 +524,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         if (_gn)
           emit(turnContext, {
             type: 'system',
-            text: _gn,
+            fact: { kind: "a hero notes how he carries a fallen foe's possessions", gainedItemNote: _gn },
             audience: { actor: recipient.player, realms: [recipient.player] },
             hero: recipient.id,
             phase: turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,

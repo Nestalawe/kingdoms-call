@@ -28,7 +28,8 @@
   the battles' in `engine/battle/the-facts-a-battles-lines-record.ts`, personal combat's in
   `engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, the sea lift's lines in a battle in
   `engine/units/the-facts-the-sea-lifts-battle-lines-record.ts`, a hero's death's in
-  `engine/heroes/the-facts-a-heros-death-lines-record.ts`, the wanderer's escape's in
+  `engine/heroes/the-facts-a-heros-death-lines-record.ts` (since P1-12d12 a chase's and a hero's experience and hit
+  points' beside it, `the-facts-a-chases-lines-record.ts`, `the-facts-a-heros-experience-lines-record.ts`), the wanderer's escape's in
   `engine/the-facts-the-wanderers-escape-line-records.ts`, and since P1-12d6 the small order families' in
   `engine/orders/`, each beside its family's file (`the-facts-the-encounter-and-defend-orders-lines-record.ts`,
   `-order-dispatchs-`, `-item-orders-`, `-research-and-practice-orders-`, `-recruit-and-hire-orders-`; since P1-12d7
@@ -55,12 +56,14 @@
   spell's line, with what the realm whose hero or province it touches is told: each keeps its audience) and since
   P1-12d10 the move order (every line of a march, a voyage and the battle on arrival it writes, the defence's forming-up
   that the battle's narrative takes among them): `orders/` hands no line's words of its own (personal combat's lines
-  it passes on are that area's; the slain line `reportHeroFall` takes is still words its callers hand, Parked). A word helper that reads the world and still has an engine caller elsewhere is split in two where it is: a copy
+  it passes on are that area's; the slain line `reportHeroFall` takes is a fact since P1-12d11), and since P1-12d12 nor
+  does `heroes/`. A word helper that reads the world and still has an engine caller elsewhere is split in two where it is: a copy
   as the line tells it and its words on that copy alone, which the prose imports (`theSkillInPlayAsALineTellsIt` and
   `theWordsOfASkillInPlay` beside `skillInPlayNote`; since P1-12d8 `theStatShownAsALineTellsIt` and
   `theWordsOfAStatShown` beside `statNote`, `theOddsShownAsALineTellsIt` and `theWordsOfTheOddsShown` beside `oddsNote`:
   the copy holds only what the realm told may know, so a spy's Detection line's fact never holds a rival's hidden
-  skill); once
+  skill; the three helpers went in P1-12d12 with their last engine callers, the chase's rolls and the skill rise, and
+  the three pairs stay in `heroes/effective-skills-and-hidden-heroes.ts`, their words not yet moved); once
   its last engine caller goes, its words move into the prose and the copy stays (`theBeastCommandAsALineTellsIt` in
   `world/tables.ts`, its words `theWordsOfABeastCommand` in the army orders' prose since P1-12d7). `logSplit`'s two
   halves, a line for the realm and its twin for onlookers, may each be words or a fact.

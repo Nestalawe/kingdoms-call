@@ -53,14 +53,11 @@ export function skillsKnownTo(turnContext, pi, ch) {
   const { G } = turnContext;
   return pi != null && botKnownSkills(G, pi, ch) !== null;
 }
-// " (Spy 3)" when this viewer may know it, "" when they may not.
-export function statNote(turnContext, pi, ch, stat, label) {
-  return theWordsOfAStatShown(theStatShownAsALineTellsIt(turnContext, pi, ch, stat, label));
-}
 // The skill as a line shows it to a viewer (plan P1-12d8): its label as the caller names it (null: the skill's own),
 // its slug and the level it counts at, when this viewer may know it; null when they may not, so the fact a Detection
-// line records never holds what the viewer has not earned. Its words are theWordsOfAStatShown, on these values alone
-// (the prose imports it from here while statNote has engine callers).
+// line records never holds what the viewer has not earned. Its words are theWordsOfAStatShown, " (Spy 3)" or none, on
+// these values alone (the prose imports it from here; statNote, its engine caller's helper, went with its last caller
+// in P1-12d12).
 /** A hero's skill as a line shows it to a viewer who may know it: the label the caller gives (null: the skill's own),
  *  the skill's slug and the level it counts at. */
 export interface AStatShownAsALineTellsIt {
@@ -89,12 +86,9 @@ export function theWordsOfAStatShown(shown: AStatShownAsALineTellsIt | null): st
 // block exists to prevent. A viewer who has not earned the knowledge now learns only whether the
 // attempt landed; a known rival (own hero, wanderer, spied within 8 turns) still gets the full
 // working, unchanged.
-export function oddsNote(turnContext, pi, ch, chance, roll) {
-  return theWordsOfTheOddsShown(theOddsShownAsALineTellsIt(turnContext, pi, ch, chance, roll));
-}
 // The odds as a line shows them to a viewer (plan P1-12d8): the chance and the roll, and whether this viewer may know
 // the rival's skill (then the full working, else only whether it landed). Its words are theWordsOfTheOddsShown, on these
-// values alone (the prose imports it from here while oddsNote has engine callers).
+// values alone (the prose imports it from here; oddsNote went with its last engine caller in P1-12d12).
 /** An opposed roll as a line shows it to a viewer: the chance, the roll, and whether the viewer may know the rival's
  *  skill (the full working), else only whether it landed. */
 export interface TheOddsShownAsALineTellsIt {
@@ -115,14 +109,11 @@ export function theWordsOfTheOddsShown(odds: TheOddsShownAsALineTellsIt): string
 // own TRAINED level, while the cast line one row above quoted the level IN PLAY (training + items
 // + aura). A hero with Illusory 0 and a +3 diadem cast "(Illusory 3)" and then "rose to level 1",
 // which reads as a bug. Rise lines now add what the skill stands at in play whenever items / aura
-// lift it above the trained level. `skillInPlayNote` returns '' when the two agree.
-export function skillInPlayNote(turnContext, ch, skill) {
-  return theWordsOfASkillInPlay(theSkillInPlayAsALineTellsIt(turnContext, ch, skill));
-}
+// lift it above the trained level. The skill in play is null (no words) when the two agree.
 // The skill in play, as a line tells it (plan P1-12d6): its slug, the level it counts at, and each source that raises it
 // above his own level, copied as the line is told; null when nothing raises it. A Practice line's fact holds it, and
-// the views write its words (theWordsOfASkillInPlay, on these values alone: the prose imports it from here while
-// skillInPlayNote has an engine caller).
+// the views write its words (theWordsOfASkillInPlay, on these values alone: the prose imports it from here;
+// skillInPlayNote went with its last engine caller in P1-12d12).
 /** A skill raised above a hero's own level, as a line tells it: its slug, the level it counts at, and what raises it. */
 export interface ASkillInPlayAsALineTellsIt {
   readonly skill: string;
