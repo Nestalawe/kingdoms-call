@@ -21,10 +21,11 @@ writes each realm's report. Players only submit orders and read what they're giv
   local Supabase only. The folders of `src/`, the TypeScript check and the deploy's build jobs are there too.
 - **The rule registry and the shared rules**
   ([the-rule-registry-and-the-one-source-for-shared-rules.md](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md)).
-  A content effect (a unit ability today) is one row in `src/content/` and one entry in
-  `src/engine/rules/the-registry-of-content-effects.ts`, naming its effect at each stage of a hook point; the
-  resolvers ask the stage's runner. `src/content/kingdoms-call-data.ts` is the one source of the tables both portals
-  read, and `src/shared/` is the player portal's one door to the engine's rules on plain values.
+  A content effect (a unit ability; since P1-19m a magic item's) is one row in `src/content/` and one entry in
+  `src/engine/rules/the-registry-of-content-effects.ts` (an item's, `the-registry-of-magic-item-effects.ts`), naming
+  its effect at each stage of a hook point; the resolvers ask the stage's runner. `src/content/kingdoms-call-data.ts`
+  is the one source of the tables both portals read, and `src/shared/` is the player portal's one door to the engine's
+  rules on plain values.
 - **A saved game** ([a-saved-game-its-version-its-upgrade-its-check.md](architecture/a-saved-game-its-version-its-upgrade-its-check.md)).
   A save holds what older builds wrote. Before every turn, `src/engine/saves/` reads its version, runs each numbered
   upgrade step, and checks the result with the saved state's Zod schema; a save the check refuses still plays, and the
@@ -77,8 +78,8 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
 - **`engine/`** imports only `engine/` and `content/`; **`engine/rules-on-plain-values/`**, the rules the player portal
   shares, only itself and `content/`.
 - **`engine/rules/`**, the rule registry ([the rule registry](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry)), imports only itself,
-  `engine/rules-on-plain-values/` and `content/`: an effect reaches the dice, the turn's state or a report only through
-  what its stage hands it (P1-19a).
+  `engine/rules-on-plain-values/` and `content/`: an effect reaches the dice, the turn's state, a report or a hero's
+  items only through what its stage and its runner are handed (P1-19a; the items' registry and `magic-items/`, P1-19m).
 - **`views/`** imports only `views/`, `engine/` and `content/`; **`shared/`** only `shared/`, `views/`,
   `engine/rules-on-plain-values/` and `content/`.
 - **`schemas/`** holds the world's types: any folder may import it with `import type` (TypeScript erases it), and none
@@ -180,6 +181,7 @@ src_engine_-->src_schemas_
 src_engine_-->src_engine_rules_
 src_engine_rules_on_plain_values_-->src_content_
 src_engine_rules_-->src_content_
+src_engine_rules_-->src_engine_rules_on_plain_values_
 src_shared_-->src_engine_rules_on_plain_values_
 src_ui_gm_-->src_content_
 src_ui_gm_-->src_db_

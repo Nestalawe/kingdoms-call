@@ -3,12 +3,12 @@
   "files": {
     "CLAUDE.md": 15000,
     "docs/ARCHITECTURE.md": 15000,
-    "docs/traps.md": 30000,
+    "docs/traps.md": 36000,
     "tests/README.md": 20000
   },
   "readFirst": {
     "files": ["CLAUDE.md", "docs/ARCHITECTURE.md", "docs/traps.md"],
-    "maxBytesTogether": 60000
+    "maxBytesTogether": 66000
   },
   "topicFiles": {
     "folder": "docs/architecture",

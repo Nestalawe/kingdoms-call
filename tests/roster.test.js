@@ -3,8 +3,9 @@
 // Stag Riders, Ironhoof Rams, Black Arrows) in every table that is keyed by unit; the goblins' thrown
 // spears and the Berserkers' Outnumbered and Uncaring retired.
 // Level 1 (unit). The figures are data: the shared file's tables, and the GM portal's own
-// (ARMY_COST_MASTER and ARMY_SPEED_MASTER at module level; TERRAIN_MODS and the magic-item class sets
-// inside runTurn, so they are read by slicing the source — pure literals, evaluated beside the data file).
+// (ARMY_COST_MASTER and ARMY_SPEED_MASTER at module level; TERRAIN_MODS inside runTurn, so it is read by slicing the
+// source — pure literals, evaluated beside the data file), and the units the magic items reach (since P1-19m, the
+// items' registry's content rows, run beside the data file).
 // The one rule retired here is a module-level function, unitAbilityMult, which the booted portal answers
 // directly. A lower level can't do it: the agreement between a dozen tables is a property of the data, not
 // of one line of text.
@@ -12,13 +13,14 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The army roster as decided (`tests/lib/roster-decided.js`): every humanoid unit's type, cost, base strength, move
 // rate and terrain multipliers, read from the data file and from the GM portal's own tables (`ARMY_COST_MASTER`,
-// `ARMY_SPEED_MASTER`, `TERRAIN_MODS` and the item class sets, sliced from the source); the four new units
+// `ARMY_SPEED_MASTER` and `TERRAIN_MODS`, sliced from the source, and the units the magic items reach, from the items'
+// registry's content rows since P1-19m); the four new units
 // (Men-at-Arms, Stag Riders, Ironhoof Rams, Black Arrows) in every table keyed by unit, with their company names and
 // province cells appended after the old ones; the goblins' spears gone from the missile list and the Berserkers'
 // Outnumbered and Uncaring gone from `unitAbilityMult` (booted portal); both portals type and Druid-rate the new units
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
-const {compactCode,pageInitializer,scriptOf}=require('./lib/source.ts');
+const {pageInitializer,scriptOf}=require('./lib/source.ts');
 const R=require('./lib/roster-decided'); const {ROSTER,LAND_TERRAINS,NEW_UNITS,NEW_UNIT_PROVINCES,isLand}=R;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
@@ -103,12 +105,14 @@ const CELLS_BEFORE={
   ok(isSet(cls.cavalry)&&typed('cavalry').every(u=>cls.cavalry.has(u)),'DISC_CLS_SETS.cavalry (discovery effects) reaches every cavalry unit, Stag Riders and Ironhoof Rams included');
   ok(isSet(cls.infantry)&&['Shieldwall Levies','Men-at-Arms','Dwarven Guard','Orc Berserkers'].every(u=>cls.infantry.has(u)),'DISC_CLS_SETS.infantry reaches Men-at-Arms beside Levies, Guard and Berserkers');
   ok(isSet(cls.missile)&&typed('ranged').every(u=>cls.missile.has(u))&&!cls.missile.has('Goblin Horde'),'DISC_CLS_SETS.missile is the ranged units, Black Arrows in and Goblin Horde out');
-  // The magic items' class sets inside runTurn (Golden Spur, Legionnaire's Mark, Eagle-Eye Pendant).
-  const itemSet=name=>{ const s=pageInitializer('kingdoms-call-gm-portal.html',name); if(!s||!/^new Set\(\[[^\]]*\]\);?$/.test(compactCode(s))) return null; try{ return vm.runInContext(s,ctx); }catch(e){ return null; } };
-  const CAV_I=itemSet('CAV_I'), INF_I=itemSet('INF_I'), ARCH_I=itemSet('ARCH_I');
-  ok(CAV_I&&typed('cavalry').every(u=>CAV_I.has(u)),"the Golden Spur's cavalry set (CAV_I) has every cavalry unit");
-  ok(INF_I&&INF_I.has('Men-at-Arms'),"the Legionnaire's Mark's infantry set (INF_I) has Men-at-Arms");
-  ok(ARCH_I&&ARCH_I.has('Black Arrows')&&!ARCH_I.has('Goblin Horde'),"the Eagle-Eye Pendant's archer set (ARCH_I) has Black Arrows");
+  // The units the magic items reach (Golden Spur, Legionnaire's Mark, Eagle-Eye Pendant): until P1-19m armStr's class
+  // sets (CAV_I, INF_I, ARCH_I), since then their rows in the items' registry's content, run beside the data file.
+  vm.runInContext(scriptOf('content/magic-item-effects-their-names-numbers-and-words.ts'),ctx);
+  const itemReach=slug=>{ try{ const r=vm.runInContext(`MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS[${JSON.stringify(slug)}].reaches`,ctx); return Array.isArray(r)?new Set(r):null; }catch(e){ return null; } };
+  const CAV_I=itemReach('cavalry-bonus'), INF_I=itemReach('infantry-bonus'), ARCH_I=itemReach('archer-bonus');
+  ok(CAV_I&&typed('cavalry').every(u=>CAV_I.has(u)),"the Golden Spur's cavalry (the cavalry-bonus row's reach) has every cavalry unit");
+  ok(INF_I&&INF_I.has('Men-at-Arms'),"the Legionnaire's Mark's infantry (the infantry-bonus row's reach) has Men-at-Arms");
+  ok(ARCH_I&&ARCH_I.has('Black Arrows')&&!ARCH_I.has('Goblin Horde'),"the Eagle-Eye Pendant's archers (the archer-bonus row's reach) have Black Arrows");
 
   // ── The booted portals ──
   const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+page,
