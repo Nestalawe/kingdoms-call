@@ -120,6 +120,39 @@ export interface ALandUnitAtSeaLed {
   readonly unitType: string;
 }
 
+/** What the stage "strength: the defenders' fortifications" hands an effect (both battles, once the province's and the
+ *  realm's own bonuses are counted): the side of the battle whose commander carries the item, and whether the defenders
+ *  fight at their home (the province is the defender's founding home and he holds it; between heroes only: against
+ *  neutral guards no defender's items are read). Which effects each commander's items carry, the items' runner reads
+ *  from his active items, only when an effect would act for his side. */
+export interface TheDefendersFortificationsAndACommandersSide {
+  readonly hisSide: 'the attacker' | 'the defender';
+  readonly theDefendersFightAtTheirHome: boolean;
+}
+
+/** Which line the battle writes for a commander's item at the defenders' fortifications (its words stay in the battle
+ *  code until plan P1-12d moves them). */
+export type TheFortificationsLine =
+  | "the defender's banner rallies the home defence"
+  | "the attacker's siege mastery halves the defenders' fortifications";
+
+/** The defenders' fortifications after a commander's item: the new bonus, and the line the battle writes for it. */
+export interface TheFortificationsAfterAnItem {
+  readonly theBonus: number;
+  readonly theLine: TheFortificationsLine;
+}
+
+/** Which line the battle writes for a commander's item at the volley before the battle (the volley's opening line
+ *  records each: its words stay in the battle code). */
+export type TheVolleysLine =
+  'each missile unit looses two volleys instead of one' | 'each missile unit looses one more shot';
+
+/** The volleys a commander's item adds to each missile unit he leads, and the line the battle writes for it. */
+export interface TheVolleysAnItemAdds {
+  readonly theVolleysAdded: number;
+  readonly theLine: TheVolleysLine;
+}
+
 /** A unit's part in the battle line: in the air, cavalry, ranged, or on foot (battleRole). */
 export type ARoleInTheBattleLine = 'fly' | 'cav' | 'arc' | 'foot';
 
@@ -478,6 +511,12 @@ export interface TheStagesOfEachHookPoint {
     /** The step an item the commander carries makes on the strength of a unit he leads, or nothing; the runner applies
      *  the steps in the stage's order, each rounded as it goes (armStr; the items' registry). */
     readonly "the commander's items": (facts: AUnitLedByACommander) => AStepOfTheCommandersItems | null;
+    /** The defenders' fortifications after an item a commander of the battle carries, from the bonus so far, or nothing
+     *  (both battles, after the realm's own bonuses; the items' registry). */
+    readonly "the defenders' fortifications": (
+      facts: TheDefendersFortificationsAndACommandersSide,
+      theBonusSoFar: number,
+    ) => TheFortificationsAfterAnItem | null;
     /** The unit's own factor from its force and the battle's facts; the runner multiplies them in the stage's order. */
     readonly 'the whole force': (facts: AUnitInItsForce) => number;
     /** Whether a rider takes the one flank slot rough ground allows (battleGrid, through abilityFlanksRough). */
@@ -522,6 +561,9 @@ export interface TheStagesOfEachHookPoint {
     readonly 'may be shot at': (facts: AUnitAVolleyIsShotAt) => WhyAUnitMayNotBeShotAt | null;
     /** How many volleys a shooter looses, or nothing (one: abilityVolleys). */
     readonly 'how many volleys': (facts: AShooterAndItsSide) => number | null;
+    /** The volleys an item the commander carries adds to each missile unit he leads (both battles' volley; the items'
+     *  registry: the runner adds them to the one volley each looses). */
+    readonly 'the commander adds volleys': () => TheVolleysAnItemAdds;
     /** The shooter's factor on a shot's damage; the runner multiplies them in the stage's order (missileDamageMult). */
     readonly "a shot's damage": (facts: AShotAtItsTarget) => number;
     /** The damage of a shot after the target's ability, from the damage so far (after a flyer's double), or nothing
@@ -539,6 +581,9 @@ export interface TheStagesOfEachHookPoint {
     /** A pursuit of the beaten by the winning force, or nothing (the rout of both battles, before the beaten units'
      *  death rolls). */
     readonly 'the winner runs the beaten down': (facts: AWinningForceOnItsGround) => APursuitOfTheBeaten | null;
+    /** Whether an item the winning commander carries lets his riders' pursuit run on any ground (the answer the stage
+     *  above is handed, asked by Ride Them Down; the items' registry). */
+    readonly "the commander's riders run the beaten down on any ground": () => boolean;
     /** Whether a unit that failed its death roll lives: the line of the battle by which it does, or nothing (it dies). */
     readonly 'a beaten unit fails its death roll': (
       facts: AUnitThatFailedItsDeathRoll,
@@ -549,6 +594,9 @@ export interface TheStagesOfEachHookPoint {
     ) => TheLineOfAUnitThatHoldsThroughItsDemotionRoll | null;
     /** Whether a force holds the sea lanes (both battles' retreat, after the units' fates). */
     readonly 'a force holds the sea lanes': (facts: AForceInItsBattle) => boolean;
+    /** Whether an item the beaten commander carries lets his force retreat (the battle against neutral guards'
+     *  retreat, after the units' fates; the items' registry: false refuses every retreat, and the force stands). */
+    readonly 'the beaten force may retreat': () => boolean;
   };
   readonly movementCost: never;
   readonly orderValidity: never;

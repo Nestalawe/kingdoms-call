@@ -15,12 +15,21 @@ import {
   type MagicItemEffectSlug,
 } from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import {
+  THE_BEATEN_FORCE_MAY_RETREAT,
+  THE_COMMANDER_ADDS_VOLLEYS,
+  THE_COMMANDERS_RIDERS_RUN_THE_BEATEN_DOWN_ON_ANY_GROUND,
+  THE_DEFENDERS_FORTIFICATIONS,
+} from './magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts';
 import { A_LAND_UNIT_AT_SEA_LED, THE_COMMANDERS_ITEMS } from './magic-items/the-commanders-items-in-a-battle.ts';
 import type {
   ALandUnitAtSeaLed,
   AUnitLedByACommander,
   HookPointName,
+  TheDefendersFortificationsAndACommandersSide,
+  TheFortificationsLine,
   TheStagesOfEachHookPoint,
+  TheVolleysLine,
 } from './the-registry-of-content-effects.ts';
 
 /** An entry: the item effect's effect at each stage it acts in. */
@@ -42,6 +51,21 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'land-units-at-full-strength-at-sea': {
     strength: { 'a land unit at sea, led': A_LAND_UNIT_AT_SEA_LED['land-units-at-full-strength-at-sea'] },
   },
+  'home-defence-bonus': {
+    strength: { "the defenders' fortifications": THE_DEFENDERS_FORTIFICATIONS['home-defence-bonus'] },
+  },
+  'siege-bonus': { strength: { "the defenders' fortifications": THE_DEFENDERS_FORTIFICATIONS['siege-bonus'] } },
+  'quiver-of-the-hawk': { volley: { 'the commander adds volleys': THE_COMMANDER_ADDS_VOLLEYS['quiver-of-the-hawk'] } },
+  'quiver-of-many-arrows': {
+    volley: { 'the commander adds volleys': THE_COMMANDER_ADDS_VOLLEYS['quiver-of-many-arrows'] },
+  },
+  'war-horn-of-the-plains': {
+    fate: {
+      "the commander's riders run the beaten down on any ground":
+        THE_COMMANDERS_RIDERS_RUN_THE_BEATEN_DOWN_ON_ANY_GROUND['war-horn-of-the-plains'],
+    },
+  },
+  'shield-wall-rune': { fate: { 'the beaten force may retreat': THE_BEATEN_FORCE_MAY_RETREAT['shield-wall-rune'] } },
 } satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -61,6 +85,13 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
       'undead-bonus',
     ],
     'a land unit at sea, led': ['land-units-at-full-strength-at-sea'],
+    // the defender's item first: the siege halves what home defence added
+    "the defenders' fortifications": ['home-defence-bonus', 'siege-bonus'],
+  },
+  volley: { 'the commander adds volleys': ['quiver-of-the-hawk', 'quiver-of-many-arrows'] },
+  fate: {
+    "the commander's riders run the beaten down on any ground": ['war-horn-of-the-plains'],
+    'the beaten force may retreat': ['shield-wall-rune'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -135,5 +166,95 @@ export function theSeasPenaltyIsWaivedByTheCommandersItems(
   const carried = theEffectsTheseItemsCarry(theCommandersItems);
   return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.strength['a land unit at sea, led'].some(
     (slug) => carried.has(slug) && ENTRIES[slug].strength?.['a land unit at sea, led']?.(facts) === true,
+  );
+}
+
+/** The items of each side of a battle, as the runner of the defenders' fortifications asks them: each asked only when an
+ *  effect would act for that side, and once (reading a commander's items tidies them: the battle code asked them
+ *  so). Against neutral guards no defender's items are handed. */
+export interface TheItemsOfEachSide {
+  readonly theDefendersItems?: () => readonly AMagicItemAsTheRegistryReadsIt[];
+  readonly theAttackersItems: () => readonly AMagicItemAsTheRegistryReadsIt[];
+}
+
+/** The runner of "strength: the defenders' fortifications" (both battles): the defenders' bonus after the effects
+ *  each side's commander's items carry, in the stage's order, from the bonus so far, and the lines the battle writes
+ *  for them, in that order. */
+export function theDefendersFortificationsAfterTheCommandersItems(
+  facts: Pick<TheDefendersFortificationsAndACommandersSide, 'theDefendersFightAtTheirHome'>,
+  theItemsOfEachSide: TheItemsOfEachSide,
+  theBonusSoFar: number,
+): { readonly theBonus: number; readonly theLines: readonly TheFortificationsLine[] } {
+  const sides = [
+    ['the defender', theItemsOfEachSide.theDefendersItems],
+    ['the attacker', theItemsOfEachSide.theAttackersItems],
+  ] as const;
+  const carried = new Map<TheDefendersFortificationsAndACommandersSide['hisSide'], ReadonlySet<MagicItemEffectSlug>>();
+  const carriedBy = (
+    side: TheDefendersFortificationsAndACommandersSide['hisSide'],
+    items: () => readonly AMagicItemAsTheRegistryReadsIt[],
+  ) => {
+    const known = carried.get(side);
+    if (known) return known;
+    const found = theEffectsTheseItemsCarry(items());
+    carried.set(side, found);
+    return found;
+  };
+  let theBonus = theBonusSoFar;
+  const theLines: TheFortificationsLine[] = [];
+  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.strength["the defenders' fortifications"]) {
+    for (const [hisSide, items] of sides) {
+      if (!items) continue;
+      const after = ENTRIES[slug].strength?.["the defenders' fortifications"]?.({ ...facts, hisSide }, theBonus);
+      if (!after || !carriedBy(hisSide, items).has(slug)) continue;
+      theBonus = after.theBonus;
+      theLines.push(after.theLine);
+    }
+  }
+  return { theBonus, theLines };
+}
+
+/** The runner of "volley: the commander adds volleys" (both battles' volley before the battle): the volleys each
+ *  missile unit the commander leads looses (one, and those the effects his items carry add, in the stage's order),
+ *  and the lines the battle's opening line records, in that order. */
+export function theVolleysTheCommandersItemsLoose(theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[]): {
+  readonly theVolleys: number;
+  readonly theLines: readonly TheVolleysLine[];
+} {
+  const carried = theEffectsTheseItemsCarry(theCommandersItems);
+  let theVolleys = 1;
+  const theLines: TheVolleysLine[] = [];
+  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.volley['the commander adds volleys']) {
+    if (!carried.has(slug)) continue;
+    const added = ENTRIES[slug].volley?.['the commander adds volleys']?.();
+    if (!added) continue;
+    theVolleys += added.theVolleysAdded;
+    theLines.push(added.theLine);
+  }
+  return { theVolleys, theLines };
+}
+
+/** The runner of "fate: the commander's riders run the beaten down on any ground" (the rout's answer, handed to Ride
+ *  Them Down): whether an effect the winning commander's items carry, in the stage's order, lets the pursuit run on any
+ *  ground. */
+export function theCommandersItemsLetHisRidersRunTheBeatenDownOnAnyGround(
+  theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[],
+): boolean {
+  const carried = theEffectsTheseItemsCarry(theCommandersItems);
+  return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.fate["the commander's riders run the beaten down on any ground"].some(
+    (slug) =>
+      carried.has(slug) &&
+      ENTRIES[slug].fate?.["the commander's riders run the beaten down on any ground"]?.() === true,
+  );
+}
+
+/** The runner of "fate: the beaten force may retreat" (the battle against neutral guards' retreat): whether the beaten
+ *  commander's force may retreat, unless an effect his items carry, in the stage's order, refuses it. */
+export function theBeatenForceMayRetreatByTheCommandersItems(
+  theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[],
+): boolean {
+  const carried = theEffectsTheseItemsCarry(theCommandersItems);
+  return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.fate['the beaten force may retreat'].every(
+    (slug) => !carried.has(slug) || ENTRIES[slug].fate?.['the beaten force may retreat']?.() !== false,
   );
 }

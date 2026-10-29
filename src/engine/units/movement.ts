@@ -2,12 +2,13 @@ import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { typeOfX } from '../battle/lines.ts';
 import type { GridCell } from '../battle/lines.ts';
-import { hasItemBase } from '../items/equipment.ts';
+import { activeItems } from '../items/equipment.ts';
 import { discEffectsOf, discUnitMatch } from '../discoveries.ts';
 import type { HeroInABattle } from '../army-tables.ts';
 import type { Army, Character, Realm } from '../../schemas/saved-game-state.ts';
 import { theBeatenForceHolds, thePursuitsOfTheBeaten } from '../rules/the-registry-of-content-effects.ts';
 import type { APursuitOfTheBeaten, TheBattleARoutFollows } from '../rules/the-registry-of-content-effects.ts';
+import { theCommandersItemsLetHisRidersRunTheBeatenDownOnAnyGround } from '../rules/the-registry-of-magic-item-effects.ts';
 
 /** A unit in a force as the battle code passes it: an army, or a hole the guards skip. */
 type ForceUnit = Pick<Army, 'type'> | null | undefined;
@@ -50,7 +51,8 @@ export function navalSpeedBonus(baseSpeed: number, navalLevel: number | null | u
 // ── THE ROUT ── The pursuits a winning force makes of the beaten: the rule registry's "fate: the winner runs the
 // beaten down" (plan P1-19j: Ride Them Down, Run Them Down, the Manticores' pursuit and Feeding Frenzy, in that order),
 // handed whether the commander carries the War-Horn of the Plains (asked only for a force with Free Lances, as before:
-// reading a commander's items tidies them). The battles add the fractions to each beaten unit's death roll, unless a
+// reading a commander's items tidies them), as the items' registry's "fate: the commander's riders run the beaten down
+// on any ground" answers it (plan P1-19n). The battles add the fractions to each beaten unit's death roll, unless a
 // Shield Fort holds, and write each pursuit's line.
 export function pursuitsOfTheBeaten(
   force: readonly ForceUnit[] | null | undefined,
@@ -61,7 +63,8 @@ export function pursuitsOfTheBeaten(
   return thePursuitsOfTheBeaten({
     theWinningForce: force ?? [],
     ground: terrain,
-    itsCommanderCarriesTheWarHornOfThePlains: () => !!cmdr && hasItemBase(cmdr, 'War-Horn of the Plains'),
+    itsCommanderCarriesTheWarHornOfThePlains: () =>
+      !!cmdr && theCommandersItemsLetHisRidersRunTheBeatenDownOnAnyGround(activeItems(cmdr)),
     theBattle: battle,
   });
 }
