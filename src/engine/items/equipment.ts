@@ -2,13 +2,20 @@ import {
   ALL_MAGIC_ITEMS_P,
   KC_ITEM_SLOT_CAP,
   LEGENDARY_ITEMS_P,
-  SPELL_DEFS_P,
   _VARIANT_BANK,
 } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
 import { HOARD_CATEGORIES } from './hoard-categories.ts';
 import { kcRng } from '../rng.ts';
-import { theTemperAHerosItemsGiveHim } from '../rules/the-registry-of-magic-item-effects.ts';
+import {
+  anItemIsACombatItem,
+  theRoleAnItemsEffectsGiveIt,
+  theTemperAHerosItemsGiveHim,
+  theWorthOfACombatUse,
+  theWorthOfAnItemsEffect,
+  theWorthOfAnItemsRiders,
+  theWorthOfAWard,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import {
   ITEMS_BY_TIER,
   ITEM_LORE_BY_NAME,
@@ -89,13 +96,6 @@ interface ABankOfNames {
   readonly adj: readonly string[];
   readonly noun: readonly string[];
 }
-/** A spell as an item's worth reads its level (no spell row sets one today, so every charm scores as level 2). */
-interface ASpellAsItsLevelIsRead {
-  readonly school: string;
-  readonly level?: number | undefined;
-  readonly lvl?: number | undefined;
-  readonly minLevel?: number | undefined;
-}
 /** An item as the slots read and write it: these rules' item, its effect as they read it, and whether it is worn. */
 export interface AnItemAsTheSlotsReadIt extends AnItemAsItsWorthIsRead {
   equipped?: boolean | undefined;
@@ -172,17 +172,9 @@ export const LEGENDARY_NAMES_P = new Set(LEGENDARY_ITEMS_P.map((it) => it.name))
 // A combat item's floor is Moderate; a utility item may sit anywhere. Toby's ruling: a utility item in a
 // weapon/armour/shield slot (Boots of the Wind, Tyrant's Sceptre) stays eligible for Weak — giving up
 // the slot to carry it is the trade.
-export const ITEM_COMBAT_STATS = new Set([
-  'melee',
-  'archery',
-  'maxHp',
-  'armour',
-  'mithrilArmour',
-  'pc',
-  'combatUse',
-  'temper',
-  'aura',
-]);
+// The role an item effect gives (maxHp, armour, mithrilArmour, pc, combatUse, temper, aura) is the items' registry's
+// (treasury, "an item's role": plan P1-19t); the skills' items' roles are these.
+export const ITEM_COMBAT_STATS = new Set(['melee', 'archery']);
 export const ITEM_DUEL_SCHOOLS = new Set(['elemental', 'white', 'illusory']);
 export const ITEM_FIELD_SCHOOLS = new Set(['psychic', 'necromancy']);
 export function itemRole(it: AnItemAsItsWorthIsRead | null | undefined) {
@@ -192,6 +184,8 @@ export function itemRole(it: AnItemAsItsWorthIsRead | null | undefined) {
   const combatStats: ReadonlySet<string | undefined> = ITEM_COMBAT_STATS;
   const duelSchools: ReadonlySet<string | undefined> = ITEM_DUEL_SCHOOLS;
   const fieldSchools: ReadonlySet<string | undefined> = ITEM_FIELD_SCHOOLS;
+  const itsEffectsRole = it ? theRoleAnItemsEffectsGiveIt(it) : null;
+  if (itsEffectsRole) return itsEffectsRole;
   if (combatStats.has(s) || duelSchools.has(s)) return 'combat';
   // A pc RIDER outranks the stat it rides on (2026-09-27). The field-schools test used to run first
   // and return early, so a Necromancy +1 item carrying a duel effect - Rod of the Pale Court, a DR-2
@@ -266,112 +260,29 @@ export const ITEM_COMBAT_SCORE_FLOOR = { 3: 4.5, 2: 2.0 };
 // cannot score for a power it does not actually have.
 export function _wardScore(fx: AWardAsTheScoresReadIt | null | undefined) {
   if (!fx?.ward) return 0;
-  const w = fx.ward,
-    a = Number(fx.amt) || 0,
-    p = Number(fx.pct) || 0;
-  const FLAT: Readonly<Partial<Record<string, number>>> = {
-    stunImmune: 3,
-    dotImmune: 3,
-    firstHit: 2.5,
-    secondWind: 4,
-    buckler: 2.5,
-  };
-  const flat = FLAT[w];
-  if (flat != null) return flat + (p ? p / 10 : 0);
-  if (['meleeDR', 'arrowDR', 'natureDR', 'darkDR', 'thorns', 'regen', 'roundWard'].includes(w)) return a * 1.2; // roundWard is an AMOUNT (a ward of N a round) — it scored 0 while listed among the percentages, which dropped the Shield of the Ward-Saints from the treasury
-  if (['dodge', 'block', 'arrowBlock', 'spellBlock', 'spellPct', 'cap', 'lowHp', 'openGuard', 'resist'].includes(w))
-    return p / 7;
-  return 2;
+  // the items' registry weighs each ward of its own (treasury, "an item's worth: a ward": plan P1-19t); a ward it holds
+  // no effect for is worth 2
+  return theWorthOfAWard(fx) ?? 2;
 }
 export function _pcScore(pc: ARiderAsTheScoresReadIt | null | undefined) {
   if (!pc) return 0;
-  return (
-    (Number(pc.hitBonus) || 0) / 4 +
-    (Number(pc.dmgBonus) || 0) * 1.2 +
-    (Number(pc.burn) || 0) * 1.5 +
-    (Number(pc.drain) || 0) * 5 +
-    (Number(pc.aura) || 0) / 4 +
-    _wardScore(pc)
-  );
+  // the items' registry weighs each rider (treasury, "an item's worth: a rider": plan P1-19t), then the riders' ward
+  return theWorthOfAnItemsRiders(pc) + _wardScore(pc);
 }
 export function _useScore(e: AnEffectAsTheseRulesReadIt) {
-  // a missing element reads as JavaScript adds it (NaN), as before
-  const avg = (a: readonly number[] | undefined) => (a ? (Number(a[0]) + Number(a[1])) / 2 : 0);
-  switch (e.use) {
-    case 'heal':
-      return ((e.amt ?? 0) || 5) / 2.5;
-    case 'hot':
-      return (((e.amt ?? 0) || 3) * ((e.rounds ?? 0) || 3)) / 3;
-    case 'secondwind':
-      return ((e.amt ?? 0) || 10) / 2.5 + 1;
-    case 'dmg':
-    case 'bane':
-    case 'banestun':
-      return (
-        (avg(e.dmg) / 3) * ((e.times ?? 0) || 1) +
-        (e.dot ? (Number(e.dot[0]) * Number(e.dot[1])) / 2 : 0) +
-        (Number(e.stun) || 0) * 2 +
-        (Number(e.hitPen) || 0) / 6 +
-        (e.use === 'dmg' ? 0 : -1)
-      );
-    case 'drain':
-      return avg(e.dmg) / 2.2;
-    case 'stun':
-      return ((e.stun ?? 0) || 1) * 2.5;
-    case 'pen':
-      return ((e.hitPen ?? 0) || 15) / 6;
-    case 'weak':
-      return 2.5 * ((Number(e.melee) || 0) + (Number(e.archery) || 0));
-    case 'buff':
-      return 3 * ((Number(e.melee) || 0) + (Number(e.archery) || 0));
-    case 'focus':
-      return ((e.hitBonus ?? 0) || 10) / 4;
-    case 'absorb':
-      return ((e.absorb ?? 0) || 10) / 3 + (Number(e.reflect) || 0);
-    case 'mirror':
-      return ((e.images ?? 0) || 2) * 1.5;
-    case 'flee':
-      return ((e.fleeBonus ?? 0) || 25) / 12 + (Number(e.toHitReduce) || 0) / 8;
-    case 'invis':
-      return ((e.toHitReduce ?? 0) || 25) / 6;
-    case 'terror':
-      return 3 + ((e.hitPen ?? 0) || 15) / 10;
-    case 'silence':
-      return ((e.rounds ?? 0) || 3) * 1.2;
-    case 'dispel':
-      return 3;
-    default:
-      return 3;
-  }
+  // the items' registry weighs each combat use (treasury, "an item's worth: a combat use": plan P1-19t); a use it holds
+  // no effect for is worth 3
+  return theWorthOfACombatUse(e) ?? 3;
 }
 export function itemPowerScore(it: AnItemAsItsWorthIsRead | null | undefined) {
   if (!it) return 0;
   const e: AnEffectAsTheseRulesReadIt = it.effect ?? {};
-  let s = 0;
-  if (e.stat === 'combatUse') s = _useScore(e);
-  else if (e.stat === 'maxHp') s = (Number(e.bonus) || 0) * 0.7;
-  else if (e.stat === 'armour' || e.stat === 'mithrilArmour') s = _wardScore(e) + (Number(e.bonus) || 0) * 3;
-  else if (e.stat === 'pc') s = 0;
-  else if (e.stat === 'taxBonus') s = (Number(e.bonus) || 0) * 1.2;
-  else if (e.stat === 'temper') s = 3;
-  else if (e.stat === 'castSpell') {
-    // A charm that casts a spell once a turn: worth what the spell is worth, so a Resurrect charm
-    // is
-    // not filed beside a +1 trinket. SPELL_DEFS_P is a `const` declared FURTHER DOWN the file, and this
-    // pass runs at load - `typeof` does NOT save you from a temporal-dead-zone const, it throws too
-    // (the same trap that once hung the portal on the loading spinner), so the read is wrapped.
-    let _sl = 0;
-    try {
-      // the spells read by any name (a missing one reads the key "undefined", as JavaScript reads it)
-      const spells: Readonly<Partial<Record<string, ASpellAsItsLevelIsRead>>> = SPELL_DEFS_P;
-      const sp = spells[String(e.spell)];
-      _sl = Number(sp?.level) || Number(sp?.lvl) || Number(sp?.minLevel) || 0;
-    } catch (_e) {
-      _sl = 0;
-    }
-    s = 3 + (_sl || 2) * 1.2;
-  } else if (typeof e.bonus === 'number') s = (e.bonus || 0) * 3;
-  else s = 3; // a one-off power with no number to read
+  // The items' registry weighs an item by its kind (treasury, "an item's worth": a combat item its use, armour its ward
+  // and its bonus, a charm its spell, ... plan P1-19t); a skill's item, or one the registry holds no worth for, is worth
+  // so much a point of its bonus, or a one-off power with no number to read.
+  let s =
+    theWorthOfAnItemsEffect(it, e, { ofItsCombatUse: () => _useScore(e), ofItsWard: () => _wardScore(e) }) ??
+    (typeof e.bonus === 'number' ? (e.bonus || 0) * 3 : 3);
   if (e.pc) s += _pcScore(e.pc);
   // A realm-wide effect (a banner worth +25 army strength, say) would otherwise swamp the scale;
   // the ordering is all that matters here, so the top end is clamped. NOTE: this means two
@@ -542,7 +453,7 @@ export const _VARIANT_EPITHETS = [
         // ruling). If a band holds nothing but race- or alignment-bound designs, seed from those
         // instead and let the minted versions carry the same binding - a short band would otherwise
         // leave the stocker handing that kind's lairs an item of the wrong tier.
-        const plain = (it: AnItemOfTheTreasury) => !(it.effect?.stat === 'combatUse');
+        const plain = (it: AnItemOfTheTreasury) => !anItemIsACombatItem(it);
         let seeds = inBand.filter((it) => plain(it) && !it.race && !it.alignment);
         if (!seeds.length) seeds = inBand.filter(plain);
         if (!seeds.length) return;

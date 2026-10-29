@@ -202,7 +202,7 @@ An effect of the rule registry reads its stage's facts and its content row and r
 `src/engine/rules/`, `src/engine/rules-on-plain-values/` and `src/content/`, so it can't draw a die, read the turn's
 state or write a line. A set it needs is built from content or handed by the stage, and another ability is asked about
 by its slug, never a unit's name; an item's effect is found by its row's key, from the items the resolver hands the
-runner (`activeItems` stays the engine's), asked only where the battle code asked them (reading them tidies them); one that reads a copy's own number is handed the copy. Hook points so far: `strength`, `volley`, `fate`, `turnEnd`, `orderOutcome`, `aHerosStanding`, `personalCombat`. Example: whether
+runner (`activeItems` stays the engine's), asked only where the battle code asked them (reading them tidies them); one that reads a copy's own number is handed the copy. Hook points so far: `strength`, `volley`, `fate`, `turnEnd`, `orderOutcome`, `aHerosStanding`, `personalCombat`, `treasury`. Example: whether
 the enemy fields ranged units comes from the stage (the ladder's missile set), never from an import of `battle/`. Only `src/globals.d.ts` and `src/schemas/` may hold types alone
 (a file only `import type` reaches is in no bundle). Checks: `npm run lint:arch`; `pages-build`. Detail: [the rule registry](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry).
 
@@ -325,7 +325,8 @@ unit names), so a change to a table reaches running games only through a migrati
 at the start of every turn and must be safe to repeat. Example: change a guardian's stats without bumping
 `GUARDIAN_TABLE_VER` and running games keep the old guardian. Whether a changed item effect reaches items already held
 is a ruling for Toby, not a code decision: the items' registry reads each held copy's own key and numbers, and its
-content rows only the numbers the code wrote inline (P1-19m). Checks: `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts`
+content rows hold only the numbers the code wrote inline (P1-19m–t), so a held copy acts, fights and is weighed (its
+role, its tier's floor) by what it carries. Checks: `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts`
 for the upgrade; nothing for a missed migration. [Detail](architecture/a-saved-game-its-version-its-upgrade-its-check.md#live-saves-keep-copies).
 
 ## A change to the save's shape needs its version

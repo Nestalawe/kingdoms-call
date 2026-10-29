@@ -1,7 +1,7 @@
 // The rule registry of content effects (plan P1-19, Decisions 2, 3 and 6). A content effect (today a unit ability) is
 // one row in src/content/ (its unit, name and numbers: unit-abilities-their-names-numbers-and-words.ts) and one entry
 // here, keyed by the same slug, naming its effect at each stage of a hook point. A hook point is one of the engine's
-// real decisions (the twelve below); its stages run in the battle code's order, and within a stage the effects run in the
+// real decisions (the thirteen below); its stages run in the battle code's order, and within a stage the effects run in the
 // order its list gives (THE_ORDER_OF_EACH_STAGE): a product of decimals, and the ladder's words, depend on it. Each
 // stage's effect type says exactly what the stage hands it, read-only, and an effect returns a value: it changes
 // nothing. The resolvers ask the runners at the bottom; an effect reads only what its stage hands it and the content
@@ -794,6 +794,57 @@ export interface WhatAHoardsItemDoesForItsGuardian {
   readonly itDrivesHisBlowsHome?: true;
 }
 
+/** What an item is for (plan P1-19t): a combat item helps a hero in a fight, and never sits in a Weak lair; a utility
+ *  item helps him lead, spy, steal, explore or run the purse. */
+export type TheRoleOfAnItem = 'combat' | 'utility';
+
+/** An item's effect as the treasury weighs it (itemPowerScore, _useScore): its stat, and each number its worth reads,
+ *  each optional (a copy may lack any; the saved item's schema allows a 0 in any). */
+export interface AnEffectAsTheTreasuryWeighsIt {
+  readonly stat?: string | null | undefined;
+  readonly bonus?: number | undefined;
+  readonly spell?: string | undefined;
+  readonly use?: string | undefined;
+  readonly amt?: number | undefined;
+  readonly rounds?: number | undefined;
+  readonly dmg?: readonly number[] | undefined;
+  readonly times?: number | undefined;
+  readonly dot?: readonly number[] | undefined;
+  readonly stun?: number | undefined;
+  readonly hitPen?: number | undefined;
+  readonly melee?: number | undefined;
+  readonly archery?: number | undefined;
+  readonly hitBonus?: number | undefined;
+  readonly absorb?: number | undefined;
+  readonly reflect?: number | undefined;
+  readonly images?: number | undefined;
+  readonly fleeBonus?: number | undefined;
+  readonly toHitReduce?: number | undefined;
+}
+
+/** A ward as the treasury weighs it (_wardScore): an armour's effect, or a rider's; its amount or its percentage. */
+export interface AWardAsTheTreasuryWeighsIt {
+  readonly ward?: string | null | undefined;
+  readonly amt?: number | undefined;
+  readonly pct?: number | undefined;
+}
+
+/** An item's riders as the treasury weighs them (_pcScore): each rider's amount. */
+export interface TheRidersAsTheTreasuryWeighsThem {
+  readonly hitBonus?: number | undefined;
+  readonly dmgBonus?: number | undefined;
+  readonly burn?: number | undefined;
+  readonly drain?: number | undefined;
+  readonly aura?: number | undefined;
+}
+
+/** The worth of an item's parts, as its kind's worth asks them (each asked only when the kind needs it): its combat
+ *  use's, and its ward's, each with the treasury's worth of one the registry holds no effect for. */
+export interface TheWorthOfAnItemsParts {
+  readonly ofItsCombatUse: () => number;
+  readonly ofItsWard: () => number;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1012,9 +1063,27 @@ export interface TheStagesOfEachHookPoint {
      *  a guardian's perk). */
     readonly "a blow's damage": () => number;
   };
+  /** The treasury (plan P1-19's items family, Choice 1: its first row, P1-19t, typed it): what an item is for and what
+   *  it is worth, read as the engine loads (the load-time pass tiers each item by them, so which lairs hold it) and by a
+   *  bot choosing what to carry. */
+  readonly treasury: {
+    /** The role an item's effect gives it (itemRole, before the skills' and its riders'). */
+    readonly "an item's role": () => TheRoleOfAnItem;
+    /** What an item's effect is worth, by its kind (itemPowerScore, before its riders'; a skill's item is generic). */
+    readonly "an item's worth": (
+      theEffect: AnEffectAsTheTreasuryWeighsIt,
+      theWorthOfItsParts: TheWorthOfAnItemsParts,
+    ) => number;
+    /** What a combat item's use is worth (_useScore). */
+    readonly "an item's worth: a combat use": (theEffect: AnEffectAsTheTreasuryWeighsIt) => number;
+    /** What a ward is worth, an armour's or a rider's (_wardScore). */
+    readonly "an item's worth: a ward": (theWard: AWardAsTheTreasuryWeighsIt) => number;
+    /** What a rider is worth (_pcScore: each rider in the stage's order, before the rider's ward). */
+    readonly "an item's worth: a rider": (theRiders: TheRidersAsTheTreasuryWeighsThem) => number;
+  };
 }
 
-/** The twelve hook points. */
+/** The thirteen hook points. */
 export type HookPointName = keyof TheStagesOfEachHookPoint;
 
 /** An entry: the ability's effect at each stage it acts in. */

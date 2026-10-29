@@ -53,6 +53,13 @@ import {
   A_STEALS_CHANCE,
 } from './magic-items/the-combat-items-a-steal-and-a-blow-in-a-personal-combat.ts';
 import {
+  A_COMBAT_USES_WORTH,
+  A_RIDERS_WORTH,
+  A_WARDS_WORTH,
+  AN_ITEMS_ROLE,
+  AN_ITEMS_WORTH,
+} from './magic-items/an-items-role-and-worth-in-the-treasury.ts';
+import {
   A_BLOW_LANDS,
   A_BLOWS_CHANCE_TO_HIT,
   A_HIT_LANDS_AFTER_IT,
@@ -65,6 +72,11 @@ import {
   THE_DAMAGE_A_MITHRIL_SUIT_TURNS_ASIDE,
 } from './magic-items/what-a-ward-does-in-a-personal-combat.ts';
 import type {
+  AnEffectAsTheTreasuryWeighsIt,
+  AWardAsTheTreasuryWeighsIt,
+  TheRidersAsTheTreasuryWeighsThem,
+  TheRoleOfAnItem,
+  TheWorthOfAnItemsParts,
   ACombatItemAsItsUseReadsIt,
   ACombatItemsOwnNumbers,
   AMomentAsAFighterWeighsACombatItem,
@@ -133,6 +145,7 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'shield-wall-rune': { fate: { 'the beaten force may retreat': THE_BEATEN_FORCE_MAY_RETREAT['shield-wall-rune'] } },
   'tax-bonus': {
     turnEnd: { "a hero's items add to the realm's tax": A_HEROS_ITEMS_ADD_TO_THE_REALMS_TAX['tax-bonus'] },
+    treasury: { "an item's worth": AN_ITEMS_WORTH['tax-bonus'] },
   },
   'tax-per-province': {
     turnEnd: { "a hero's items add to the realm's tax": A_HEROS_ITEMS_ADD_TO_THE_REALMS_TAX['tax-per-province'] },
@@ -147,46 +160,57 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'maximum-hp': {
     aHerosStanding: { 'maximum HP': A_HEROS_MAXIMUM_HP['maximum-hp'] },
     personalCombat: { 'a guardian wields its hoard': A_GUARDIAN_WIELDS_ITS_HOARD['maximum-hp'] },
+    treasury: { "an item's role": AN_ITEMS_ROLE['maximum-hp'], "an item's worth": AN_ITEMS_WORTH['maximum-hp'] },
   },
-  temper: { aHerosStanding: { 'the temper he fights with': THE_TEMPER_HE_FIGHTS_WITH.temper } },
+  temper: {
+    aHerosStanding: { 'the temper he fights with': THE_TEMPER_HE_FIGHTS_WITH.temper },
+    treasury: { "an item's role": AN_ITEMS_ROLE.temper, "an item's worth": AN_ITEMS_WORTH.temper },
+  },
   'crown-of-command': {
     aHerosStanding: { "a skill's aura in the province": A_SKILLS_AURA_IN_THE_PROVINCE['crown-of-command'] },
+    treasury: { "an item's role": AN_ITEMS_ROLE['crown-of-command'] },
   },
   'melee-damage-turned-aside': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['melee-damage-turned-aside'],
       'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['melee-damage-turned-aside'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['melee-damage-turned-aside'] },
   },
   'arrow-damage-turned-aside': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['arrow-damage-turned-aside'],
       'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['arrow-damage-turned-aside'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['arrow-damage-turned-aside'] },
   },
   'nature-damage-turned-aside': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['nature-damage-turned-aside'],
       'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['nature-damage-turned-aside'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['nature-damage-turned-aside'] },
   },
   'dark-damage-turned-aside': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['dark-damage-turned-aside'],
       'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['dark-damage-turned-aside'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['dark-damage-turned-aside'] },
   },
   thorns: {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.thorns,
       'a blow lands': A_BLOW_LANDS.thorns,
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH.thorns },
   },
   regeneration: {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.regeneration,
       'a round starts': A_ROUND_STARTS.regeneration,
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH.regeneration },
   },
   'spell-damage-cut': {
     personalCombat: {
@@ -194,73 +218,88 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['spell-damage-cut'],
       "a spell's burn takes hold": A_SPELLS_BURN_TAKES_HOLD['spell-damage-cut'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['spell-damage-cut'] },
   },
   dodge: {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.dodge,
       "a blow's chance to hit": A_BLOWS_CHANCE_TO_HIT.dodge,
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH.dodge },
   },
   block: {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.block,
       'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE.block,
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH.block },
   },
   'a-hits-damage-capped': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['a-hits-damage-capped'],
       'a hit lands on a fighter: his wards cap it': A_HIT_LANDS_HIS_WARDS_CAP_IT['a-hits-damage-capped'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['a-hits-damage-capped'] },
   },
   'second-wind': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['second-wind'],
       'a hit lands on a fighter: after it': A_HIT_LANDS_AFTER_IT['second-wind'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['second-wind'] },
   },
   'damage-cut-at-low-hp': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['damage-cut-at-low-hp'],
       'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['damage-cut-at-low-hp'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['damage-cut-at-low-hp'] },
   },
   'the-first-hit-drunk': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['the-first-hit-drunk'],
       'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['the-first-hit-drunk'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['the-first-hit-drunk'] },
   },
   'lingering-harm-turned-aside': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['lingering-harm-turned-aside'],
       'a round starts': A_ROUND_STARTS['lingering-harm-turned-aside'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['lingering-harm-turned-aside'] },
   },
   resist: {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.resist,
       'a round starts': A_ROUND_STARTS.resist,
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH.resist },
   },
   'arrow-block': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['arrow-block'],
       'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['arrow-block'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['arrow-block'] },
   },
-  buckler: { personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.buckler } },
+  buckler: {
+    personalCombat: { 'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS.buckler },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH.buckler },
+  },
   'open-guard': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['open-guard'],
       'a hit lands on a fighter: his wards cut it': A_HIT_LANDS_HIS_WARDS_CUT_IT['open-guard'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['open-guard'] },
   },
   'spell-block': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['spell-block'],
       'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['spell-block'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['spell-block'] },
   },
   'round-ward': {
     personalCombat: {
@@ -268,26 +307,43 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['round-ward'],
       'a round starts': A_ROUND_STARTS['round-ward'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['round-ward'] },
   },
   'stun-immunity': {
     personalCombat: {
       'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['stun-immunity'],
       'a stun or a terror takes hold': A_STUN_OR_A_TERROR_TAKES_HOLD['stun-immunity'],
     },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['stun-immunity'] },
   },
-  'aura-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['aura-rider'] } },
-  'burn-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['burn-rider'] } },
-  'drain-rider': { personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['drain-rider'] } },
+  'aura-rider': {
+    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['aura-rider'] },
+    treasury: { "an item's worth: a rider": A_RIDERS_WORTH['aura-rider'] },
+  },
+  'burn-rider': {
+    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['burn-rider'] },
+    treasury: { "an item's worth: a rider": A_RIDERS_WORTH['burn-rider'] },
+  },
+  'drain-rider': {
+    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['drain-rider'] },
+    treasury: { "an item's worth: a rider": A_RIDERS_WORTH['drain-rider'] },
+  },
   'hit-bonus-rider': {
     personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['hit-bonus-rider'] },
+    treasury: { "an item's worth: a rider": A_RIDERS_WORTH['hit-bonus-rider'] },
   },
   'damage-bonus-rider': {
     personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['damage-bonus-rider'] },
+    treasury: { "an item's worth: a rider": A_RIDERS_WORTH['damage-bonus-rider'] },
   },
   'mithril-armour': {
     personalCombat: {
       'what a fighter wears: Mithril': A_FIGHTER_IN_MITHRIL['mithril-armour'],
       'a hit lands on a fighter: before all else': A_HIT_LANDS_BEFORE_ALL_ELSE['mithril-armour'],
+    },
+    treasury: {
+      "an item's role": AN_ITEMS_ROLE['mithril-armour'],
+      "an item's worth": AN_ITEMS_WORTH['mithril-armour'],
     },
   },
   'combat-item-heals': {
@@ -295,114 +351,133 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-heals'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-heals'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-heals'] },
   },
   'combat-item-second-wind': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-second-wind'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-second-wind'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-second-wind'] },
   },
   'combat-item-heals-over-time': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-heals-over-time'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-heals-over-time'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-heals-over-time'] },
   },
   'combat-item-wards': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-wards'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-wards'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-wards'] },
   },
   'combat-item-hides': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-hides'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-hides'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-hides'] },
   },
   'combat-item-mirror-images': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-mirror-images'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-mirror-images'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-mirror-images'] },
   },
   'combat-item-flight': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-flight'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-flight'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-flight'] },
   },
   'combat-item-dispels': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-dispels'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-dispels'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-dispels'] },
   },
   'combat-item-bane': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-bane'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-bane'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-bane'] },
   },
   'combat-item-bane-stun': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-bane-stun'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-bane-stun'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-bane-stun'] },
   },
   'combat-item-strengthens': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-strengthens'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-strengthens'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-strengthens'] },
   },
   'combat-item-focuses': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-focuses'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-focuses'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-focuses'] },
   },
   'combat-item-silences': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-silences'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-silences'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-silences'] },
   },
   'combat-item-stuns': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-stuns'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-stuns'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-stuns'] },
   },
   'combat-item-blinds': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-blinds'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-blinds'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-blinds'] },
   },
   'combat-item-weakens': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-weakens'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-weakens'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-weakens'] },
   },
   'combat-item-terrifies': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-terrifies'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-terrifies'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-terrifies'] },
   },
   'combat-item-damages': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-damages'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-damages'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-damages'] },
   },
   'combat-item-drains': {
     personalCombat: {
       'a fighter reaches for a combat item': A_FIGHTER_REACHES_FOR_A_COMBAT_ITEM['combat-item-drains'],
       'a combat item is used': A_COMBAT_ITEM_IS_USED['combat-item-drains'],
     },
+    treasury: { "an item's worth: a combat use": A_COMBAT_USES_WORTH['combat-item-drains'] },
   },
   'combat-item-doubled-against-its-kinds': {
     personalCombat: {
@@ -416,6 +491,22 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       "a blow's damage": A_BLOWS_DAMAGE['warbringer-gauntlets'],
     },
   },
+  'an-item-worn-as-armour': {
+    treasury: {
+      "an item's role": AN_ITEMS_ROLE['an-item-worn-as-armour'],
+      "an item's worth": AN_ITEMS_WORTH['an-item-worn-as-armour'],
+    },
+  },
+  'a-combat-item': {
+    treasury: { "an item's role": AN_ITEMS_ROLE['a-combat-item'], "an item's worth": AN_ITEMS_WORTH['a-combat-item'] },
+  },
+  'an-item-of-riders-alone': {
+    treasury: {
+      "an item's role": AN_ITEMS_ROLE['an-item-of-riders-alone'],
+      "an item's worth": AN_ITEMS_WORTH['an-item-of-riders-alone'],
+    },
+  },
+  'a-spell-charm': { treasury: { "an item's worth": AN_ITEMS_WORTH['a-spell-charm'] } },
 } satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -565,6 +656,75 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     'a guardian wields its hoard': ['maximum-hp', 'warbringer-gauntlets'],
     "a steal's chance": ['lock-pick-of-legends'],
     "a blow's damage": ['warbringer-gauntlets'],
+  },
+  // the treasury (plan P1-19t): each in the order itemRole's set of combat stats, itemPowerScore's kinds, _useScore's
+  // cases, _wardScore's three sorts (a flag, an amount, a percentage) and _pcScore's sum named them. An item's kind is
+  // one stat (one effect acts), but the riders are summed: their order is the sum's
+  treasury: {
+    "an item's role": [
+      'maximum-hp',
+      'an-item-worn-as-armour',
+      'mithril-armour',
+      'an-item-of-riders-alone',
+      'a-combat-item',
+      'temper',
+      'crown-of-command',
+    ],
+    "an item's worth": [
+      'a-combat-item',
+      'maximum-hp',
+      'an-item-worn-as-armour',
+      'mithril-armour',
+      'an-item-of-riders-alone',
+      'tax-bonus',
+      'temper',
+      'a-spell-charm',
+    ],
+    "an item's worth: a combat use": [
+      'combat-item-heals',
+      'combat-item-heals-over-time',
+      'combat-item-second-wind',
+      'combat-item-damages',
+      'combat-item-bane',
+      'combat-item-bane-stun',
+      'combat-item-drains',
+      'combat-item-stuns',
+      'combat-item-blinds',
+      'combat-item-weakens',
+      'combat-item-strengthens',
+      'combat-item-focuses',
+      'combat-item-wards',
+      'combat-item-mirror-images',
+      'combat-item-flight',
+      'combat-item-hides',
+      'combat-item-terrifies',
+      'combat-item-silences',
+      'combat-item-dispels',
+    ],
+    "an item's worth: a ward": [
+      'stun-immunity',
+      'lingering-harm-turned-aside',
+      'the-first-hit-drunk',
+      'second-wind',
+      'buckler',
+      'melee-damage-turned-aside',
+      'arrow-damage-turned-aside',
+      'nature-damage-turned-aside',
+      'dark-damage-turned-aside',
+      'thorns',
+      'regeneration',
+      'round-ward',
+      'dodge',
+      'block',
+      'arrow-block',
+      'spell-block',
+      'spell-damage-cut',
+      'a-hits-damage-capped',
+      'damage-cut-at-low-hp',
+      'open-guard',
+      'resist',
+    ],
+    "an item's worth: a rider": ['hit-bonus-rider', 'damage-bonus-rider', 'burn-rider', 'drain-rider', 'aura-rider'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -1187,4 +1347,64 @@ export function theDamageAStrikersItemsAddToHisBlow(
     added += ENTRIES[slug].personalCombat?.["a blow's damage"]?.() ?? 0;
   }
   return added;
+}
+
+// ── The treasury (plan P1-19t): a runner a stage; the items' tiers (src/engine/items/equipment.ts) read what they return,
+// as the engine loads and as a bot chooses what to carry. ──
+const THE_TREASURYS_STAGES = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.treasury;
+
+/** The runner of "treasury: an item's role" (itemRole): the role the first effect a held item carries, in the stage's
+ *  order, gives it, or nothing (its skill, its riders or nothing decide: itemRole's). */
+export function theRoleAnItemsEffectsGiveIt(item: AMagicItemAsTheRegistryReadsIt): TheRoleOfAnItem | null {
+  const carried = theEffectsAnItemCarries(item);
+  for (const slug of THE_TREASURYS_STAGES["an item's role"]) {
+    if (!carried.includes(slug)) continue;
+    const role = ENTRIES[slug].treasury?.["an item's role"]?.();
+    if (role) return role;
+  }
+  return null;
+}
+
+/** The runner of "treasury: an item's worth" (itemPowerScore): what the first effect a held item carries, in the
+ *  stage's order, makes its effect worth (its kind's: the worth of its combat use and of its ward asked of the parts
+ *  handed, when its kind needs them), or nothing (a skill's item, or a key the registry holds no worth for: generic). */
+export function theWorthOfAnItemsEffect(
+  item: AMagicItemAsTheRegistryReadsIt,
+  theEffect: AnEffectAsTheTreasuryWeighsIt,
+  theWorthOfItsParts: TheWorthOfAnItemsParts,
+): number | null {
+  const carried = theEffectsAnItemCarries(item);
+  for (const slug of THE_TREASURYS_STAGES["an item's worth"]) {
+    if (!carried.includes(slug)) continue;
+    const worth = ENTRIES[slug].treasury?.["an item's worth"];
+    if (worth) return worth(theEffect, theWorthOfItsParts);
+  }
+  return null;
+}
+
+/** The runner of "treasury: an item's worth: a combat use" (_useScore): what the effect of a combat item's use is
+ *  worth, or nothing (a use the registry holds no effect for). */
+export function theWorthOfACombatUse(theEffect: AnEffectAsTheTreasuryWeighsIt): number | null {
+  const slug = theEffectAUseCarries(theEffect.use);
+  const worth = slug === undefined ? undefined : ENTRIES[slug].treasury?.["an item's worth: a combat use"];
+  return worth ? worth(theEffect) : null;
+}
+
+/** The runner of "treasury: an item's worth: a ward" (_wardScore): what the effect of a ward's own kind makes it worth,
+ *  an armour's or a rider's, or nothing (a ward the registry holds no effect for). */
+export function theWorthOfAWard(theWard: AWardAsTheTreasuryWeighsIt): number | null {
+  const slug = theEffectAWardCarries(theWard.ward);
+  const worth = slug === undefined ? undefined : ENTRIES[slug].treasury?.["an item's worth: a ward"];
+  return worth ? worth(theWard) : null;
+}
+
+/** The runner of "treasury: an item's worth: a rider" (_pcScore, before the riders' ward): the riders' worth, each
+ *  effect's added in the stage's order, from 0. */
+export function theWorthOfAnItemsRiders(theRiders: TheRidersAsTheTreasuryWeighsThem): number {
+  let worth = 0;
+  for (const slug of THE_TREASURYS_STAGES["an item's worth: a rider"]) {
+    const effect = ENTRIES[slug].treasury?.["an item's worth: a rider"];
+    if (effect) worth += effect(theRiders);
+  }
+  return worth;
 }
