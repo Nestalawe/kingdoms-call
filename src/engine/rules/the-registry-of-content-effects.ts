@@ -1,7 +1,7 @@
 // The rule registry of content effects (plan P1-19, Decisions 2, 3 and 6). A content effect (today a unit ability) is
 // one row in src/content/ (its unit, name and numbers: unit-abilities-their-names-numbers-and-words.ts) and one entry
 // here, keyed by the same slug, naming its effect at each stage of a hook point. A hook point is one of the engine's
-// real decisions (the nine below); its stages run in the battle code's order, and within a stage the effects run in the
+// real decisions (the eleven below); its stages run in the battle code's order, and within a stage the effects run in the
 // order its list gives (THE_ORDER_OF_EACH_STAGE): a product of decimals, and the ladder's words, depend on it. Each
 // stage's effect type says exactly what the stage hands it, read-only, and an effect returns a value: it changes
 // nothing. The resolvers ask the runners at the bottom; an effect reads only what its stage hands it and the content
@@ -155,10 +155,17 @@ export interface TheVolleysAnItemAdds {
 
 /** A held copy of a magic item, as a stage that reads the copy's own numbers hands it to an effect (plan P1-19's items
  *  family, Decision 2: the copy's number, not content's, so an old save's copy works as it did): its effect's `bonus`
- *  and the share of a province it explores on a move (`exploreMove`, a field of its own), each guarded. */
+ *  and `temper`, and the share of a province it explores on a move (`exploreMove`, a field of its own), each guarded. */
 export interface AHeldCopysOwnNumbers {
-  readonly effect?: { readonly bonus?: unknown } | null;
+  readonly effect?: { readonly bonus?: unknown; readonly temper?: string | null | undefined } | null | undefined;
   readonly exploreMove?: unknown;
+}
+
+/** The aura a hero's item spreads over his realm's heroes in his province: the levels it adds to every skill, and the
+ *  name a hero's sources of a skill show it by. */
+export interface TheAuraAnItemSpreads {
+  readonly theLevelsItAddsToEverySkill: number;
+  readonly itsName: string;
 }
 
 /** What a hero's item adds to his realm's tax at the turn's end: gold, or gold for each province the realm holds (the
@@ -650,9 +657,22 @@ export interface TheStagesOfEachHookPoint {
      *  items' registry). */
     readonly "an item's power used": () => ThePowerAnItemWorksWhenUsed;
   };
+  /** A hero's own figures a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19p, typed it). */
+  readonly aHerosStanding: {
+    /** The hit points a held item adds to its bearer's maximum (itemMaxHpBonus, and applyItemMaxHp to know whether
+     *  an item granted or lost changes it; the items' registry: the runner counts two copies of one name once). */
+    readonly 'maximum HP': (theItem: AHeldCopysOwnNumbers) => number;
+    /** The temper a held item makes its bearer fight with in personal combat, over his own, or nothing (effTemper;
+     *  the items' registry: the first of his items that gives one). */
+    readonly 'the temper he fights with': (theItem: AHeldCopysOwnNumbers) => string | null;
+    /** The aura a held item spreads over its bearer's realm's heroes in his province, him too, or nothing
+     *  (skillBonusBreakdown, after a hero's items and curses; the items' registry: the first such bearer among the
+     *  heroes, his first such effect). */
+    readonly "a skill's aura in the province": () => TheAuraAnItemSpreads | null;
+  };
 }
 
-/** The ten hook points. */
+/** The eleven hook points. */
 export type HookPointName = keyof TheStagesOfEachHookPoint;
 
 /** An entry: the ability's effect at each stage it acts in. */

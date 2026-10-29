@@ -13,7 +13,7 @@ import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
 /** How an item's texts write a number: a multiplier as the share it adds (×1.25 as `+25%`); strength added as `+2`; a
  *  share in words (0.5 as "half", or "halved"); volleys in words (2 as "two volleys"); extra shots in words (1 as "one
  *  extra shot"); a share as a percentage (0.1 as `10%`); gold for each province (1 as `+1g`, `+1 gold` or "1 extra
- *  gold"). */
+ *  gold"); skill levels added (1 as `+1`, or "one level"). */
 export type HowAnItemsTextsWriteANumber =
   | 'a multiplier, as the share it adds'
   | 'strength added'
@@ -21,7 +21,8 @@ export type HowAnItemsTextsWriteANumber =
   | 'volleys, in words'
   | 'extra shots, in words'
   | 'a share, as a percentage'
-  | 'gold, for each province';
+  | 'gold, for each province'
+  | 'skill levels added';
 
 /** One number of an item's effect, and how the item's texts write it. */
 export interface ANumberOfAnItemsEffect {
@@ -83,7 +84,8 @@ const THE_HEAVY_ENGINES_THE_ENGINEERS_ITEMS_REACH: readonly UnitType[] = ['Mount
 /** The magic items' effects the registry holds, in the order the battle code meets them: the commander's items on
  *  each unit he leads, then his items at sea (plan P1-19m); the commanders' items at the defenders' fortifications, at
  *  the volley and in the rout (plan P1-19n); then a hero's items in the realm's tax at the turn's end, and in his orders
- *  (plan P1-19o). */
+ *  (plan P1-19o); then a hero's items in his own standing: his maximum hit points, his temper and his skills (plan
+ *  P1-19p). */
 export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── The commander's items (strength, in armStr: after the unit's own modifiers, before its factors from its force),
   // each step rounded as it goes. ──
@@ -250,6 +252,28 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     name: "Philosopher's Stone",
     carriedAs: { stat: 'massPromote' },
     numbers: {},
+  },
+  // ── A hero's standing (aHerosStanding): his maximum hit points, the temper he fights with, and his skills. ──
+  // His maximum hit points rise by each copy's own `effect.bonus` (the copy's number, not content's: no number here); two
+  // copies of one name count once.
+  'maximum-hp': {
+    name: 'Amulet of Fortitude',
+    carriedAs: { stat: 'maxHp' },
+    numbers: {},
+  },
+  // He fights with the copy's own `effect.temper` in personal combat, over his own (the copy's word: no number here); the
+  // first of his items that carries one.
+  temper: {
+    name: 'Warmask of the Red Rage',
+    carriedAs: { stat: 'temper' },
+    numbers: {},
+  },
+  // Every hero of the bearer's realm in his province, the bearer too, has this many levels more in every skill, whatever
+  // the copy's own bonus (one bearer counts: two give no more). The skill's ceiling caps it, as it caps every bonus.
+  'crown-of-command': {
+    name: 'Crown of Command',
+    carriedAs: { stat: 'aura' },
+    numbers: { theLevelsItAddsToEverySkill: { value: 1, theTextsWriteIt: 'skill levels added' } },
   },
 } as const satisfies Record<string, AMagicItemEffectAsItsTextsWriteIt>;
 

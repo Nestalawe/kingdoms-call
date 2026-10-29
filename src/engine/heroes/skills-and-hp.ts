@@ -4,6 +4,8 @@ import { ITEM_UNCAPPED_SKILLS, SKILL_BENEFIT_CAP, SKILL_MAX } from '../army-tabl
 import { activeItems } from '../items/equipment.ts';
 import type { AHeroAsHisItemsAreRead, AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 import { DISC_BY_ID, discMaxHpFor } from '../discoveries.ts';
+import { theAuraAHerosItemsSpread, theMaximumHpAHerosItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
+import type { TheAuraAnItemSpreads } from '../rules/the-registry-of-content-effects.ts';
 
 // Its types (plan P1-10b10): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
 // stays. A table read by any name is read through a typed local inside its function.
@@ -170,18 +172,22 @@ export function skillBonusBreakdown(
     out.sources.push({ label: 'Curse', delta: -_cur, kind: 'curse' });
   }
   if (c.location != null && Array.isArray(chars)) {
-    const bearer = chars.find(
-      (o) =>
-        o?.alive &&
-        o.player === c.player &&
-        o.location === c.location &&
-        activeItems(o).some((it) => it.effect?.stat === 'aura'),
-    );
-    if (bearer) {
-      out.aura = 1;
+    // the first hero of his realm in his province whose items spread an aura (the items' registry, plan P1-19p)
+    let bearer: AHeroAsHisSkillIsRead | null = null;
+    let theAura: TheAuraAnItemSpreads | null = null;
+    for (const o of chars) {
+      if (!(o?.alive && o.player === c.player && o.location === c.location)) continue;
+      theAura = theAuraAHerosItemsSpread(activeItems(o));
+      if (theAura) {
+        bearer = o;
+        break;
+      }
+    }
+    if (bearer && theAura) {
+      out.aura = theAura.theLevelsItAddsToEverySkill;
       out.sources.push({
-        label: bearer.id === c.id ? 'Crown of Command' : `Crown of Command (${String(bearer.name)})`,
-        delta: 1,
+        label: bearer.id === c.id ? theAura.itsName : `${theAura.itsName} (${String(bearer.name)})`,
+        delta: theAura.theLevelsItAddsToEverySkill,
         kind: 'aura',
       });
     }
@@ -255,15 +261,7 @@ export function hpEarnedBase(ch: AHeroAsHisHitPointsAreRead | null | undefined, 
   return hpStartOf(ch, players) + Math.max(0, Math.round(Number(ch?.hpEarned) || 0));
 }
 export function itemMaxHpBonus(ch: AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> | null | undefined) {
-  const seen = new Set<string>();
-  let b = 0;
-  activeItems(ch).forEach((it: AnItemAsTheSlotsReadIt | null | undefined) => {
-    if (it?.effect?.stat === 'maxHp' && !seen.has(it.name)) {
-      seen.add(it.name);
-      b += Number(it.effect.bonus) || 0;
-    }
-  });
-  return b;
+  return theMaximumHpAHerosItemsAdd(activeItems(ch)); // the items' registry (plan P1-19p)
 }
 export function computeMaxHp(ch: AHeroAsHisHitPointsAreRead | null | undefined, players: TheRealmsAsTheMaxHpReadsThem) {
   if (!ch) return HPGAIN_START;

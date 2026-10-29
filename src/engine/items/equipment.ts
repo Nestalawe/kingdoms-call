@@ -8,6 +8,7 @@ import {
 import { SKILL_LABELS } from '../army-tables.ts';
 import { HOARD_CATEGORIES } from './hoard-categories.ts';
 import { kcRng } from '../rng.ts';
+import { theTemperAHerosItemsGiveHim } from '../rules/the-registry-of-magic-item-effects.ts';
 import {
   ITEMS_BY_TIER,
   ITEM_LORE_BY_NAME,
@@ -743,10 +744,8 @@ export function effTemper(
     | undefined,
 ) {
   if (!c) return 'Brave';
-  const it = activeItems(c).find(
-    (x: AnItemAsTheSlotsReadIt | null | undefined) => x?.effect?.stat === 'temper' && x.effect.temper,
-  );
-  return (it?.effect?.temper ?? '') || (c.temper ?? '') || 'Brave';
+  // the items' registry (plan P1-19p)
+  return theTemperAHerosItemsGiveHim(activeItems(c)) ?? ((c.temper ?? '') || 'Brave');
 }
 export function rollMagicItem(
   monsterPower: string,

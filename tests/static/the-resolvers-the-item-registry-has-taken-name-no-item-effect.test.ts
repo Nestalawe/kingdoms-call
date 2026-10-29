@@ -14,7 +14,8 @@
 //
 // Red on its row's base by design (armStr held 9 checks, and read `fleetStr` and `landFullAtSea`, on P1-19m's base; the
 // two battles' functions 8, and pursuitsOfTheBeaten 1, on P1-19n's; Early Winter 2 and the orders' and the bots' plan
-// 5, and resolveMoveOrder's read of `exploreMove`, on P1-19o's), as the unit-name test was: the one exception to refactor-only's rule that new tests pass before and after (Theo,
+// 5, and resolveMoveOrder's read of `exploreMove`, on P1-19o's; itemMaxHpBonus, applyItemMaxHp, effTemper and
+// skillBonusBreakdown 1 each, and skillBonusBreakdown's 'Crown of Command', on P1-19p's), as the unit-name test was: the one exception to refactor-only's rule that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
 import fs from 'node:fs';
@@ -69,6 +70,10 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19o, the orders' items",
   ],
   ['src/engine/bots/missions.ts', 'botItemPre', "P1-19o, the orders' items"],
+  ['src/engine/heroes/skills-and-hp.ts', 'itemMaxHpBonus', "P1-19p, a hero's standing"],
+  ['src/engine/personal-combat/helpers.ts', 'applyItemMaxHp', "P1-19p, a hero's standing"],
+  ['src/engine/items/equipment.ts', 'effTemper', "P1-19p, a hero's standing"],
+  ['src/engine/heroes/skills-and-hp.ts', 'skillBonusBreakdown', "P1-19p, a hero's standing"],
 ];
 
 /** The words of the vocabulary a taken function holds for something else, by the function, each with what it is (the
@@ -80,6 +85,8 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   // an Evil realm's doctrine after a decisive win, `(encounterPlan.evilMode || 'terror') === 'terror'`, not the use
   combatVsChar: ['terror', 'terror'],
   combatVsNPC: ['terror', 'terror'],
+  // the kind of source the portals colour a skill's bonus by ({ kind: 'aura' }), not the Crown of Command's key
+  skillBonusBreakdown: ['aura'],
 };
 
 /** The reads of an item's own field a taken function still holds, by the function, each left to a later step (the
