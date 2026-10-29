@@ -1,5 +1,4 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import {
   RECKONING_CALLER_MIN_FRAC,
   RECKONING_DECAY_FROM_TURN,
@@ -11,7 +10,6 @@ import {
   reckoningThresholdPct,
 } from '../titles/perks.ts';
 import {
-  _TITLE_LABEL,
   alliedBloc,
   reckoningBlocShare,
   reckoningCallEligibility,
@@ -38,8 +36,9 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audi
 //      Legacy standings.
 // Each takes the turn's context (src/engine/turn/context.ts) and nothing else: they read no value of the phase loop's.
 // The realms' declarations and Reckoning calls are collected where the realms' orders are merged, in resolveTurn, and
-// read here from the context (turnContext.diploDeclarations, turnContext.reckoningCalls). The bodies keep resolveTurn's
-// indent (plan P1-08's Decisions).
+// read here from the context (turnContext.diploDeclarations, turnContext.reckoningCalls). Each line is a fact (since
+// P1-12d16: the-facts-diplomacy-and-victorys-lines-record.ts), its words written in the views. The bodies keep
+// resolveTurn's indent (plan P1-08's Decisions).
 
 export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings(turnContext) {
   const { G, diploDeclarations } = turnContext;
@@ -94,14 +93,11 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             next = cur;
           } else next = wouldBe;
         }
-        const na = G.players[a]?.name || 'Realm ' + (a + 1),
-          nb = G.players[b]?.name || 'Realm ' + (b + 1);
         // ── OVERTURES RECEIVED ── A realm that is offered peace or an alliance is TOLD SO, whether
         // or not it answered in kind. The word used matches what the offer would actually achieve
-        // from the current relation.
-        const _offerWord = cur === 'enemy' ? 'peace' : 'an alliance';
+        // from the current relation (each line's fact holds a realm's name, or its seat where it has none).
         const _mutual = da === 'treat' && db === 'treat';
-        const _tellOffered = (to, from, fromName) => {
+        const _tellOffered = (to, from) => {
           // 2026-10-08 (Toby item 3a/3c): being courted counts as MEETING the realm that sent it, so
           // the courted realm can answer (only met realms are on the Diplomacy card, and only met
           // realms may be treated with). The offer is also kept for the Diplomacy card.
@@ -117,25 +113,38 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             (_tp._overturesIn = _tp._overturesIn || []).push({ from, kind: cur === 'enemy' ? 'peace' : 'alliance' }); // still awaiting an answer
           emit(turnContext, {
             type: 'system',
-            text: `🕊 ${fromName} has sent you an overture of ${_offerWord}.${_mutual ? ' You answered in kind.' : ` Declare a Treat toward ${fromName} with next turn's orders to answer it.`}`,
+            fact: {
+              kind: 'a realm is sent an overture',
+              from: { realmName: G.players[from]?.name || null, seat: from },
+              ofPeace: cur === 'enemy',
+              answeredInKind: _mutual,
+            },
             audience: { actor: null, realms: [to] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
         };
-        if (da === 'treat') _tellOffered(b, a, na);
-        if (db === 'treat') _tellOffered(a, b, nb);
+        if (da === 'treat') _tellOffered(b, a);
+        if (db === 'treat') _tellOffered(a, b);
         if (blockedAlliance) {
           emit(turnContext, {
             type: 'system',
-            text: `${na} and ${nb} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,
+            fact: {
+              kind: 'two realms both seek an alliance so few kings may not forge',
+              realm: { realmName: G.players[a]?.name || null, seat: a },
+              otherRealm: { realmName: G.players[b]?.name || null, seat: b },
+            },
             audience: { actor: null, realms: [a] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
           });
           emit(turnContext, {
             type: 'system',
-            text: `${nb} and ${na} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,
+            fact: {
+              kind: 'two realms both seek an alliance so few kings may not forge',
+              realm: { realmName: G.players[b]?.name || null, seat: b },
+              otherRealm: { realmName: G.players[a]?.name || null, seat: a },
+            },
             audience: { actor: null, realms: [b] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
@@ -148,7 +157,12 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           if (da === 'treat')
             emit(turnContext, {
               type: 'system',
-              text: `${na}'s overture of ${cur === 'enemy' ? 'peace' : 'alliance'} to ${nb} went unanswered this year — relations are unchanged.`,
+              fact: {
+                kind: "a realm's overture goes unanswered",
+                realm: { realmName: G.players[a]?.name || null, seat: a },
+                otherRealm: { realmName: G.players[b]?.name || null, seat: b },
+                ofPeace: cur === 'enemy',
+              },
               audience: { actor: null, realms: [a] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               system: true,
@@ -156,7 +170,12 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           if (db === 'treat')
             emit(turnContext, {
               type: 'system',
-              text: `${nb}'s overture of ${cur === 'enemy' ? 'peace' : 'alliance'} to ${na} went unanswered this year — relations are unchanged.`,
+              fact: {
+                kind: "a realm's overture goes unanswered",
+                realm: { realmName: G.players[b]?.name || null, seat: b },
+                otherRealm: { realmName: G.players[a]?.name || null, seat: a },
+                ofPeace: cur === 'enemy',
+              },
               audience: { actor: null, realms: [b] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               system: true,
@@ -165,30 +184,51 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         }
         if (next === 'neutral') delete G.relations[key];
         else G.relations[key] = next;
+        // the line each realm is told (a fact: both realms read the same one but for an alliance, which names the realm
+        // told first)
         let mA, mB;
         if (next === 'enemy') {
-          mA = mB = `⚔ War now stands between ${na} and ${nb}. Their armies may cross the frontier and give battle.`;
+          mA = mB = {
+            kind: 'war now stands between two realms',
+            first: { realmName: G.players[a]?.name || null, seat: a },
+            second: { realmName: G.players[b]?.name || null, seat: b },
+          };
         } else if (next === 'allied') {
-          mA = `🤝 ${na} and ${nb} are now ALLIED — your armies may pass freely through one another's lands and will never come to blows.`;
-          mB = `🤝 ${nb} and ${na} are now ALLIED — your armies may pass freely through one another's lands and will never come to blows.`;
+          mA = {
+            kind: 'two realms are now allied',
+            first: { realmName: G.players[a]?.name || null, seat: a },
+            second: { realmName: G.players[b]?.name || null, seat: b },
+          };
+          mB = {
+            kind: 'two realms are now allied',
+            first: { realmName: G.players[b]?.name || null, seat: b },
+            second: { realmName: G.players[a]?.name || null, seat: a },
+          };
         } else if (_brokenPact) {
-          const _breaker = da === 'enemy' && db === 'enemy' ? `${na} and ${nb}` : da === 'enemy' ? na : nb;
-          mA =
-            mB = `💔 ${_breaker} ${da === 'enemy' && db === 'enemy' ? 'have' : 'has'} broken the alliance between ${na} and ${nb} — the two realms are NEUTRAL once more. Neither may march an army across the other's border; a further declaration of war would open hostilities.`;
+          mA = mB = {
+            kind: 'an alliance is broken and two realms are neutral once more',
+            first: { realmName: G.players[a]?.name || null, seat: a },
+            second: { realmName: G.players[b]?.name || null, seat: b },
+            brokenByFirst: da === 'enemy',
+            brokenBySecond: db === 'enemy',
+          };
         } else {
-          mA =
-            mB = `🕊 ${na} and ${nb} have made peace and are now NEUTRAL — neither may march an army across the other's border.`;
+          mA = mB = {
+            kind: 'two realms make peace and are neutral',
+            first: { realmName: G.players[a]?.name || null, seat: a },
+            second: { realmName: G.players[b]?.name || null, seat: b },
+          };
         }
         emit(turnContext, {
           type: 'system',
-          text: mA,
+          fact: mA,
           audience: { actor: null, realms: [a] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
         });
         emit(turnContext, {
           type: 'system',
-          text: mB,
+          fact: mB,
           audience: { actor: null, realms: [b] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
@@ -208,12 +248,17 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               (o) => o && o.alive && o.location === pv.id && o.player === foe && (o.armies || []).length > 0,
             );
             if (!onFoeLand && !besideFoe) return;
-            const n = (c.armies || []).length,
-              foeNm = G.players[foe]?.name || 'the enemy',
-              ownNm = G.players[c.player]?.name || 'the enemy';
+            const n = (c.armies || []).length;
             emit(turnContext, {
               type: 'system',
-              text: `⚠ War front: ${c.name}'s host (${n} unit${n !== 1 ? 's' : ''}) stands in ${pv.name}, ${onFoeLand ? `land of ${foeNm}` : `face to face with a host of ${foeNm}`}. If it is still there at the end of next Spring it will give battle for the province — march it out in Spring to avoid the fight, or reinforce it.`,
+              fact: {
+                kind: "a host stands on a new foe's war front",
+                heroName: c.name,
+                unitCount: n,
+                provinceName: pv.name,
+                onTheFoesLand: onFoeLand,
+                foeRealmName: G.players[foe]?.name || null,
+              },
               audience: { actor: null, realms: [c.player] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               system: true,
@@ -222,7 +267,14 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             if (c._invisTurn !== G.turn)
               emit(turnContext, {
                 type: 'system',
-                text: `⚠ War front: ${c.name} (${ownNm}) holds a host of ${n} unit${n !== 1 ? 's' : ''} ${onFoeLand ? `inside your province of ${pv.name}` : `beside your host in ${pv.name}`}. Unless it withdraws, it will attack at the end of next Spring — reinforce ${pv.name}, or keep a general on Defend next door to ride in.`,
+                fact: {
+                  kind: "a new foe's host stands on the realm's war front",
+                  heroName: c.name,
+                  realmName: G.players[c.player]?.name || null,
+                  unitCount: n,
+                  provinceName: pv.name,
+                  onTheRealmsLand: onFoeLand,
+                },
                 audience: { actor: null, realms: [foe] },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
                 system: true,
@@ -245,7 +297,11 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       for (const pi of reckoningCalls) {
         emit(turnContext, {
           type: 'system',
-          text: `${G.players[pi]?.name || 'A king'} calls for the Reckoning, but the throne cannot be claimed before Turn ${RECKONING_MIN_TURN} — the realms are barely settled and the world will not yet be judged. The claim may be lodged again from that turn.`,
+          fact: {
+            kind: 'a realm calls the Reckoning before the throne may be claimed',
+            realmName: G.players[pi]?.name || null,
+            firstTurn: RECKONING_MIN_TURN,
+          },
           audience: { actor: null, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
@@ -258,7 +314,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
         if (!kingAlive) {
           emit(turnContext, {
             type: 'system',
-            text: `Only a king may call the Reckoning.`,
+            fact: { kind: 'a realm with no living king calls the Reckoning' },
             audience: { actor: null, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
@@ -282,15 +338,20 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             resolveAtTurn: G.turn + 2,
             thrPct: reckoningThresholdPct(G.players.length, reckoningDecayOf(G), bloc.length),
           };
-          const nm = G.players[pi]?.name || 'Realm ' + (pi + 1);
           const allies = bloc
             .filter((b) => b !== pi)
             .map((b) => G.players[b]?.name)
             .filter(Boolean);
-          const blocNm = allies.length ? ` and their allies (${allies.join(', ')})` : '';
           emit(turnContext, {
             type: 'system',
-            text: `👑 THE RECKONING IS CALLED. ${nm}${blocNm} lay claim to the vacant Imperial throne, commanding ${dispFloor(share * 100)}% of the world${allies.length ? ` — a bar of ${dispFloor(thr * 100)}%, raised by ${allies.length} all${allies.length === 1 ? 'y' : 'ies'} standing with the claim` : ''}. The realms have TWO turns to contest it — drive ${nm}'s bloc below ${dispFloor(thr * 100)}% and the claim collapses. Otherwise the world is judged at the end of Turn ${G.reckoning.resolveAtTurn}.`,
+            fact: {
+              kind: 'the Reckoning is called',
+              claimant: { realmName: G.players[pi]?.name || null, seat: pi },
+              allyNames: allies,
+              share,
+              bar: thr,
+              judgedAtTurn: G.reckoning.resolveAtTurn,
+            },
             audience: { actor: null, realms: [], seen: 'world' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
@@ -301,7 +362,13 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           // sliver of the world cannot be the one to claim the throne on the bloc's strength.
           emit(turnContext, {
             type: 'system',
-            text: `${G.players[pi]?.name || 'A king'} calls for the Reckoning on the strength of their alliance, but their OWN realm commands only ${dispFloor(_el.ownShare * 100)}% of the world — a claimant must personally hold at least ${dispFloor(_el.callerMin * 100)}% (half the ${dispFloor(thr * 100)}% bar) to press the claim. The throne is not won by riding a stronger ally's coat-tails; let the bloc's greatest realm lodge it.`,
+            fact: {
+              kind: "a realm calls the Reckoning on its alliance's strength but holds too little itself",
+              realmName: G.players[pi]?.name || null,
+              ownShare: _el.ownShare,
+              callerMinimum: _el.callerMin,
+              bar: thr,
+            },
             audience: { actor: null, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
@@ -309,7 +376,12 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
         } else {
           emit(turnContext, {
             type: 'system',
-            text: `${G.players[pi]?.name || 'A king'} calls for the Reckoning, but commands only ${dispFloor(share * 100)}% of the world — short of the ${dispFloor(thr * 100)}% needed to press the claim.`,
+            fact: {
+              kind: 'a realm calls the Reckoning but commands too little of the world',
+              realmName: G.players[pi]?.name || null,
+              share,
+              bar: thr,
+            },
             audience: { actor: null, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             system: true,
@@ -332,7 +404,12 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       if (!claimantAlive || share < thr) {
         emit(turnContext, {
           type: 'system',
-          text: `The claim to the throne collapses — ${G.players[G.reckoning.by]?.name || 'the claimant'}'s bloc no longer commands the world (${dispFloor(share * 100)}% < ${dispFloor(thr * 100)}%). The Reckoning is called off; the war goes on.`,
+          fact: {
+            kind: "the claim to the throne collapses as the claimant's bloc falls below the bar",
+            claimantName: G.players[G.reckoning.by]?.name || null,
+            share,
+            bar: thr,
+          },
           audience: { actor: null, realms: [], seen: 'world' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
@@ -341,7 +418,12 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       } else if (_ownNow < _minNow) {
         emit(turnContext, {
           type: 'system',
-          text: `The claim to the throne collapses — ${G.players[G.reckoning.by]?.name || 'the claimant'} has been cut down to ${dispFloor(_ownNow * 100)}% of the world in their own right, beneath the ${dispFloor(_minNow * 100)}% a claimant must personally hold. Their allies still stand, but the claim was theirs to carry and they can no longer carry it. The Reckoning is called off; the war goes on.`,
+          fact: {
+            kind: 'the claim to the throne collapses as the claimant falls below his own floor',
+            claimantName: G.players[G.reckoning.by]?.name || null,
+            ownShare: _ownNow,
+            ownMinimum: _minNow,
+          },
           audience: { actor: null, realms: [], seen: 'world' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
@@ -371,7 +453,14 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
         const after = reckoningThresholdPct(nP, reckoningDecayOf(G));
         emit(turnContext, {
           type: 'system',
-          text: `⏳ The world grows weary of the long war. No throne has been claimed, and the crown's price falls: a realm standing alone now needs only ${after}% of the world's tax base to Call the Reckoning — down from ${before}%. (A claim carried by allies still costs ${reckoningAllyStepPct(nP)} points more for every ally standing with it.)${after <= RECKONING_FLOOR_PCT ? ' It will fall no further.' : ` It will fall another ${RECKONING_DECAY_STEP_PCT}% at the end of next turn.`}`,
+          fact: {
+            kind: "the Reckoning's bar falls as the world grows weary",
+            barBefore: before,
+            barNow: after,
+            allyStep: reckoningAllyStepPct(nP),
+            fallsNoFurther: after <= RECKONING_FLOOR_PCT,
+            nextFall: RECKONING_DECAY_STEP_PCT,
+          },
           audience: { actor: null, realms: [], seen: 'world' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
@@ -427,7 +516,11 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       const _nOut = (G.players || []).filter((p) => p && p.conceded).length;
       emit(turnContext, {
         type: 'system',
-        text: `👑 THE RECKONING IS CALLED — ${_nOut} realm${_nOut !== 1 ? 's have' : ' has'} conceded and ${live.length <= 1 ? 'only one crown still contests the world' : 'the last crowns standing are sworn to one another'}. The throne is settled here and now; the Legacy of every realm, titles and relics counted, is set down below.`,
+        fact: {
+          kind: 'the Reckoning is called at once as the rivals concede',
+          concededCount: _nOut,
+          oneCrownLeft: live.length <= 1,
+        },
         audience: { actor: null, realms: [], seen: 'world' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
@@ -441,15 +534,14 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
   if (G.gameOver && !G.gameOver._announced) {
     G.gameOver._announced = true;
     const wi = G.gameOver.winner;
-    const wn = wi != null ? G.players[wi]?.name || 'Realm ' + (wi + 1) : 'No-one';
-    const how = G.gameOver.byElimination
-      ? 'the last realm standing in a world of ruins'
-      : G.gameOver.byConcession
-        ? 'the last crown still contesting the world — every rival has conceded'
-        : 'judged supreme at the Reckoning';
     emit(turnContext, {
       type: 'system',
-      text: `🏆 THE GAME IS DECIDED — ${wn} is ${how}!`,
+      fact: {
+        kind: 'the game is decided',
+        winner: wi != null ? { realmName: G.players[wi]?.name || null, seat: wi } : null,
+        byElimination: Boolean(G.gameOver.byElimination),
+        byConcession: Boolean(G.gameOver.byConcession),
+      },
       audience: { actor: null, realms: [], seen: 'world' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       system: true,
@@ -459,13 +551,16 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       .slice()
       .sort((a, b) => b.score - a.score)
       .forEach((st, i) => {
-        const tHeld = (st.titles || []).map((k) => _TITLE_LABEL[k] || k).join(', ');
-        const relicTxt = st.relics
-          ? `${st.titles && st.titles.length ? ', ' : ''}${st.relics} relic${st.relics !== 1 ? 's' : ''}`
-          : '';
         emit(turnContext, {
           type: 'system',
-          text: `   ${i + 1}. ${st.name} — ${st.score} Legacy${tHeld || relicTxt ? ` (${tHeld}${relicTxt})` : ''}`,
+          fact: {
+            kind: "a realm's place in the final Legacy standings",
+            place: i + 1,
+            realmName: st.name,
+            score: st.score,
+            titleKeys: [...(st.titles || [])],
+            relics: st.relics,
+          },
           audience: { actor: null, realms: [], seen: 'world' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,

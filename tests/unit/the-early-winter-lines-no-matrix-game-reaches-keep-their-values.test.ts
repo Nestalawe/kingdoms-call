@@ -24,6 +24,8 @@ import { earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill } from '..
 import { kcRng } from '../../src/engine/rng.ts';
 import { ALL_MAGIC_ITEMS_P } from '../../src/content/kingdoms-call-data.ts';
 import type { TurnContext } from '../../src/engine/turn/context.ts';
+import type { LogLine } from '../../src/engine/turn/events-and-their-audiences.ts';
+import { theTurnsLinesInWords } from '../../src/views/prose/the-words-of-each-line.ts';
 
 const TURN = 7;
 type Obj = Record<string, unknown>;
@@ -82,7 +84,7 @@ const state = (s: Obj): Obj => ({ turn: TURN, players: [], characters: [], ...s 
 function winter(G: Obj, die = 0.99) {
   const turnContext = {
     G,
-    turnLog: [] as { text: string | null }[],
+    turnLog: [] as LogLine[],
     _logCtx: { charId: null, phase: null },
     _currentPhase: 4,
   };
@@ -92,7 +94,8 @@ function winter(G: Obj, die = 0.99) {
   } finally {
     kcRng.use(was);
   }
-  return { lines: turnContext.turnLog.map((l) => l.text), G };
+  // the lines in words, as the views write them and the GM's log stores them (since P1-12d16 they are facts)
+  return { lines: theTurnsLinesInWords(turnContext.turnLog).gmLog.map((l) => l.text), G };
 }
 /** The state as JSON, with each list in `lists` (a path of keys, `*` for every element) written [] where it is missing,
  *  so a state staged without a list compares with one staged with it empty. */

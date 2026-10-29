@@ -114,6 +114,18 @@ import {
   type TheFactOfASilentHerosSeasonLine,
 } from './the-facts-a-silent-heros-season-line-records.ts';
 import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_LINE_AFTER_THE_PHASES,
+  type TheFactOfALineAfterThePhases,
+} from './the-facts-the-lines-after-the-phases-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_DIPLOMACY_OR_VICTORY_LINE,
+  type TheFactOfADiplomacyOrVictoryLine,
+} from './the-facts-diplomacy-and-victorys-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_AN_EARLY_WINTERS_LINE,
+  type TheFactOfAnEarlyWintersLine,
+} from './the-facts-early-winters-lines-record.ts';
+import {
   THE_AUDIENCE_OF_EACH_KIND_OF_AN_ENCOUNTER_OR_DEFEND_ORDERS_LINE,
   type TheFactOfAnEncounterOrDefendOrdersLine,
 } from '../orders/the-facts-the-encounter-and-defend-orders-lines-record.ts';
@@ -175,7 +187,7 @@ export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolv
  *  P1-12d10 the move order's; since P1-12d12 a chase's and a hero's experience and hit points'; since P1-12d13 the
  *  title intelligence's; since P1-12d14 the Defend watch's, a stranding at sea's and the war-spoils'; since P1-12d15 the
  *  lines before the first phase, the new turn's, a phase's, the intrusion warnings', a Defend watch met in battle's and
- *  a silent hero's season's. */
+ *  a silent hero's season's; since P1-12d16 the lines after the phases, diplomacy's and victory's, and Early Winter's. */
 type TheFactsOfEachArea = [
   TheFactOfABattlesLine,
   TheFactOfAPersonalCombatsLine,
@@ -206,6 +218,9 @@ type TheFactsOfEachArea = [
   TheFactOfAnIntrusionWarningsLine,
   TheFactOfADefendWatchMetInBattlesLine,
   TheFactOfASilentHerosSeasonLine,
+  TheFactOfALineAfterThePhases,
+  TheFactOfADiplomacyOrVictoryLine,
+  TheFactOfAnEarlyWintersLine,
 ];
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
@@ -263,6 +278,9 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_AN_INTRUSION_WARNINGS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_SILENT_HEROS_SEASON_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_LINE_AFTER_THE_PHASES,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_DIPLOMACY_OR_VICTORY_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_AN_EARLY_WINTERS_LINE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */

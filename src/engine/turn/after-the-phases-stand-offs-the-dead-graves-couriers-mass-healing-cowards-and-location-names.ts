@@ -30,6 +30,7 @@ import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.ts
 //   8. a coward spared on the field makes his way home, his host left behind, and the provinces' lists are rebuilt;
 //   9. every hero's location name is brought up to date.
 // It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads no value of the phase loop's.
+// Each line is a fact (since P1-12d16: the-facts-the-lines-after-the-phases-record.ts), its words written in the views.
 // The body keeps resolveTurn's indent (plan P1-08's Decisions).
 
 export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames(turnContext) {
@@ -54,10 +55,11 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // picking it up in phase 3 is a legitimate manoeuvre, and an end-of-phase sweep would destroy the
   // host mid-handover.
   {
-    const _crumbled = {}; // playerIndex -> [ "N unit(s) under X in Y" ]
-    const _note = (pi, txt) => {
+    // playerIndex -> [ the companies that crumbled, each a record of where (since P1-12d16: the line's fact holds them) ]
+    const _crumbled = {};
+    const _note = (pi, where) => {
       if (pi == null) return;
-      (_crumbled[pi] = _crumbled[pi] || []).push(txt);
+      (_crumbled[pi] = _crumbled[pi] || []).push(where);
     };
     // (a) led by a character with no Necromancy
     (G.characters || []).forEach((c) => {
@@ -67,10 +69,12 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       if (!dead.length) return;
       c.armies = c.armies.filter((a) => !(a && a._isSkeletal));
       const pv = G.world.provinces[c.location];
-      _note(
-        c.player,
-        `${dead.length} skeletal unit${dead.length !== 1 ? 's' : ''} under ${c.name}${pv ? ` in ${pv.name}` : ''} — ${c.name} has no Necromancy to hold them together`,
-      );
+      _note(c.player, {
+        kind: 'skeletal companies crumble under a hero with no Necromancy',
+        unitCount: dead.length,
+        heroName: c.name,
+        provinceName: pv ? pv.name : null,
+      });
     });
     // (b) set down as a garrison, where no character leads them at all
     (G.world.provinces || []).forEach((pv) => {
@@ -78,18 +82,17 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       const dead = pv.garrisonArmies.filter((a) => a && a._isSkeletal);
       if (!dead.length) return;
       pv.garrisonArmies = pv.garrisonArmies.filter((a) => !(a && a._isSkeletal));
-      _note(
-        pv.owner,
-        `${dead.length} skeletal unit${dead.length !== 1 ? 's' : ''} left to garrison ${pv.name} — no one was left to command them`,
-      );
+      _note(pv.owner, {
+        kind: 'skeletal companies left to garrison a province crumble',
+        unitCount: dead.length,
+        provinceName: pv.name,
+      });
     });
     Object.keys(_crumbled).forEach((k) => {
-      const pi = +k,
-        lines = _crumbled[k];
-      const total = lines.length;
+      const pi = +k;
       emit(turnContext, {
         type: 'hire',
-        text: `\u{1F480} The dead will not stand alone. ${lines.join('; ')}. ${total === 1 ? 'It crumbles' : 'They crumble'} to dust — a skeletal host holds together only while a character of at least Necromancy 1 leads it.`,
+        fact: { kind: 'skeletal companies crumble with no necromancer to hold them', crumbled: _crumbled[k] },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
@@ -113,7 +116,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
     senseGravesUnderfoot(G, c, pv, (p2) =>
       emit(turnContext, {
         type: 'explore',
-        text: `💀 ${c.name} feels the dead of ${p2.name} stirring underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,
+        fact: { kind: 'a necromancer senses graves underfoot', heroName: c.name, provinceName: p2.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: p2.id,
@@ -136,7 +139,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   progressNeutralHeroes(G, (txt, pv) =>
     emit(turnContext, {
       type: 'system',
-      text: txt,
+      fact: { kind: 'a neutral hero learns a skill', words: txt },
       audience: { realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: pv ? pv.id : null,
@@ -163,7 +166,11 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
           if (pv)
             emit(turnContext, {
               type: 'system',
-              text: `✨ The consecration of ${pv.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
+              fact: {
+                kind: 'a consecration is broken as its province passes from the realm',
+                provinceName: pv.name,
+                realmName: pl.name,
+              },
               audience: { actor: pi, realms: [pi], seen: 'there' },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               province: pid,
@@ -188,12 +195,17 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         const pi = _orig ? _orig.player : null;
         dest = pi != null ? (G.characters || []).find((ch) => ch && ch.alive && ch.player === pi && ch.isKing) : null;
       }
+      // the parcel's items by name, joined: a lost parcel whose items have no names is told of by no line
       const nm = (d.items || []).map((it) => it.name).join(', ');
       if (!dest) {
         if (nm)
           emit(turnContext, {
             type: 'hire',
-            text: `📦 A courier bearing ${nm}${d.fromName ? ` from ${d.fromName}` : ''} finds no one left to receive it — the parcel is lost.`,
+            fact: {
+              kind: "a courier's parcel finds no one left to receive it",
+              itemNames: (d.items || []).map((it) => it.name),
+              senderName: d.fromName || null,
+            },
             audience: { actor: null, realms: [] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: 99,
@@ -207,7 +219,12 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       });
       emit(turnContext, {
         type: 'hire',
-        text: `📦 A courier reaches ${dest.name} with ${nm}${d.fromName ? ` from ${d.fromName}` : ''} — delivered as the season closes, ready to use next turn.`,
+        fact: {
+          kind: "a courier's parcel reaches its hero as the season closes",
+          heroName: dest.name,
+          itemNames: (d.items || []).map((it) => it.name),
+          senderName: d.fromName || null,
+        },
         audience: { actor: dest.player, realms: [dest.player] },
         hero: dest.id,
         phase: 99,
@@ -217,7 +234,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         if (_gn)
           emit(turnContext, {
             type: 'hire',
-            text: _gn,
+            fact: { kind: "a hero a courier's parcel reaches notes how he carries it", gainedItemNote: _gn },
             audience: { actor: dest.player, realms: [dest.player] },
             hero: dest.id,
             phase: 99,
@@ -245,7 +262,11 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       if (!dest) {
         emit(turnContext, {
           type: 'combat',
-          text: `🍃 ${units.length} Elven unit${units.length !== 1 ? 's' : ''} broke free of battle and made for home — but ${G.players[pi]?.name || 'the realm'} holds no land left to return to, and they scatter into the wild, lost.`,
+          fact: {
+            kind: 'Elven companies that slipped a battle scatter with no land to return to',
+            unitCount: units.length,
+            realmName: G.players[pi]?.name || null,
+          },
           audience: { actor: null, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: 99,
@@ -256,7 +277,11 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       units.forEach((u) => dest.garrisonArmies.push(u));
       emit(turnContext, {
         type: 'combat',
-        text: `🍃 ${units.map((u) => u.unitName || u.type).join(', ')} (${units.length} unit${units.length !== 1 ? 's' : ''}) slipped away from battle and have found their way home to ${dest.name}, rejoining the garrison there.`,
+        fact: {
+          kind: 'Elven companies that slipped a battle find their way home',
+          unitNames: units.map((u) => u.unitName || u.type),
+          provinceName: dest.name,
+        },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: dest.id,
@@ -315,7 +340,15 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
           _mhDone.add(t.id);
           emit(turnContext, {
             type: 'system',
-            text: `✨ ${healer.name}'s Mass Healing washes over ${t.id === healer.id ? 'them' : t.name} — ${t.id === healer.id ? 'their' : t.name + "'s"} wounds close (+${t.hp - _before} HP → ${t.hp}/${max}${t.hp >= max ? ', fully restored' : ''}).`,
+            fact: {
+              kind: "a master's Mass Healing mends a friend's wounds",
+              healerName: healer.name,
+              healedName: t.name,
+              healsHimself: t.id === healer.id,
+              hpGained: t.hp - _before,
+              hp: t.hp,
+              maxHp: max,
+            },
             audience: { actor: t.player, realms: [t.player] },
             hero: t.id,
             province: t.location,
@@ -338,7 +371,12 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
     if (!ch) return;
     emit(turnContext, {
       type: 'system',
-      text: `📜 A new reckoning of vigour: ${ch.name}'s maximum HP is now earned in battle rather than set by skill — ${r.old} becomes ${r.nu}. Victories over lair guardians and enemy commanders will raise it from here.`,
+      fact: {
+        kind: "a hero's maximum hit points are now earned in battle",
+        heroName: ch.name,
+        oldMaxHp: r.old,
+        newMaxHp: r.nu,
+      },
       audience: { actor: r.player, realms: [r.player], seen: 'world' },
       hero: ch.id,
     });
@@ -364,7 +402,11 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       c.location = dest;
       emit(turnContext, {
         type: 'system',
-        text: `🏳 ${c.name}, spared on the field, makes their way back to ${G.world.provinces[dest]?.name || 'safety'}.`,
+        fact: {
+          kind: 'a coward spared on the field makes his way home',
+          heroName: c.name,
+          provinceName: G.world.provinces[dest]?.name || null,
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: c.id,
         province: dest,
