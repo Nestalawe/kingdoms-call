@@ -83,7 +83,10 @@ check finds were made.
   experience and hit points', `src/engine/heroes/the-facts-a-heros-experience-lines-record.ts`; since P1-12d13 the title
   intelligence's, `src/engine/titles/the-facts-the-title-intelligence-lines-record.ts`; since P1-12d14 the Defend
   watch's, a stranding at sea's and the war-spoils', `src/engine/units/the-facts-the-defend-watchs-lines-record.ts`,
-  `the-facts-a-stranding-at-seas-lines-record.ts` and `the-facts-the-war-spoils-line-records.ts`; one kind per
+  `the-facts-a-stranding-at-seas-lines-record.ts` and `the-facts-the-war-spoils-line-records.ts`; since P1-12d15 six
+  areas of the turn's own lines in `src/engine/turn/`: the lines before the first phase, the new turn's, a phase's
+  stages and intents', the intrusion warnings', a Defend watch met in battle's and a silent hero's season's
+  (`the-facts-the-lines-before-the-first-phase-record.ts`, `the-facts-the-new-turns-lines-record.ts`, …); one kind per
   sentence, one field per value it was written
   with, and a kind in one area only: `theWordsOf` routes a fact by its kind to its area's words, and a kind declared in
   two areas doesn't compile, where `LineFact` lists the areas), each with its fields and its audience, and
@@ -103,7 +106,15 @@ check finds were made.
   Throne] ", written by the prose; the player page groups the title lines by it, `TITLE_INTEL_RE`, from the words
   stored, so a title's name changes there only with the page's grouping), since P1-12d14 nor `src/engine/units/` (the
   Defend watch, a stranding at sea, and the war-spoils, told in a battle's narrative as its words were; one field of a
-  stranding's still holds words a caller hands in: why the column is short, from Early Winter's safety net).
+  stranding's still holds words a caller hands in: why the column is short, from Early Winter's safety net), since
+  P1-12d15 nor `src/engine/turn/` but the season's close (diplomacy and victory, Early Winter, after the phases).
+  One field there still holds words handed in: a line the order merge held (`staleOrderWarnings`, the set-up's words).
+  **Words others read stay the same by construction**: the save check's line begins "[Save check] ", written by the
+  prose (`the-words-of-the-new-turns-lines.ts`), and the balance matrix finds it by those words in the log stored
+  (`THE_SAVE_CHECKS_LINE_BEGINS`, `tools/balance/a-game-fails-on-the-save-check.ts`); no game writes the line, so a
+  unit case keeps the two the same (`tests/unit/the-balance-matrix-fails-a-game-on-the-save-check.test.ts`); the
+  intrusion warnings and the Informant Network's lines open "[Intelligence] ", as the report's filter and the GM page
+  read them.
 - **A fact holds values, and a copy of the world, never a part of it** (P1-12d; personal combat's facts since
   P1-12d2, a battle's since P1-12d3). Its words are written after the turn, when the fighter, his items or the units may have changed: a field
   holding a live part of the world (a hero, his item list, a status) would be read as it is then, not as it was told.

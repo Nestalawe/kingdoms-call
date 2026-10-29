@@ -223,7 +223,10 @@ function stage(p: Phase) {
   const G = tc.G as unknown as { world: { provinces: Province[] }; characters: Character[] };
   return { tc, provinces: G.world.provinces, characters: G.characters };
 }
-const lines = (tc: TurnContext) => tc.turnLog as unknown as Line[];
+/** The turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3):
+ *  since P1-12d15 a phase's lines are facts, their words there alone. */
+const theTurnsLinesInWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => { gmLog: Line[] };
+const lines = (tc: TurnContext) => theTurnsLinesInWords(tc.turnLog).gmLog;
 
 describe('normaliseAction', () => {
   test('every order name in the map gives its action, whatever its case and spacing', () => {

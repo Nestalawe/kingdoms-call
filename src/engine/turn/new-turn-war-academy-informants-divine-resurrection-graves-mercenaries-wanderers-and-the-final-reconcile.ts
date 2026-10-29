@@ -5,7 +5,6 @@ import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from 
 import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
-import { whatTheSavesCheckFoundInWords } from '../saves/what-the-saves-check-found-in-words.ts';
 
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
 // Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts:
@@ -24,7 +23,9 @@ import { whatTheSavesCheckFoundInWords } from '../saves/what-the-saves-check-fou
 //   9. the turn's orders and scratch lists cleared, every province's list of heroes rebuilt from where each stands, and
 //      a neutral guard with no companies, or standing in a realm's land, made a wanderer.
 // It takes the turn's context (src/engine/turn/context.ts) and nothing else: it reads no value of the phase loop's. The
-// body keeps resolveTurn's indent (plan P1-08's Decisions).
+// body keeps resolveTurn's indent (plan P1-08's Decisions). Each line it writes is a fact (since P1-12d15: the-facts-the-
+// new-turns-lines-record.ts), its words written in the views (the save check's line among them: its words begin
+// "[Save check] ", which the balance matrix reads).
 
 export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile(
   turnContext,
@@ -52,7 +53,13 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         _waPromoted++;
         emit(turnContext, {
           type: 'system',
-          text: `War Academy: ${army.unitName ? army.unitName + ' (' + army.type + ')' : 'a ' + army.type} in ${homeProv.name} trains to ${army.quality}!`,
+          fact: {
+            kind: 'the War Academy drills a company up a grade',
+            unitName: army.unitName || null,
+            unitType: army.type,
+            provinceName: homeProv.name,
+            quality: army.quality,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -61,7 +68,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (_waPromoted === 0)
       emit(turnContext, {
         type: 'system',
-        text: `War Academy: the drills in ${homeProv.name} produced no promotions this turn.`,
+        fact: { kind: "the War Academy's drills produce no promotion", provinceName: homeProv.name },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -81,7 +88,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       c.hp += h;
       emit(turnContext, {
         type: 'system',
-        text: `🌿 ${c.name}'s wounds knit in the physick gardens: +${h} HP (${c.hp}/${mx}).`,
+        fact: { kind: "a hero's wounds knit in the physick gardens", heroName: c.name, healed: h, hp: c.hp, maxHp: mx },
         audience: { actor: pi, realms: [pi] },
         hero: c.id,
         phase: 99,
@@ -107,7 +114,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (enemyChars.length === 0) {
       emit(turnContext, {
         type: 'system',
-        text: `[Intelligence] Your informants surface nothing new — every enemy captain they could name is already within your sight.`,
+        fact: { kind: 'the informants surface no enemy captain unseen' },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -117,7 +124,12 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     const tProv = G.world.provinces[target.location];
     emit(turnContext, {
       type: 'system',
-      text: `[Intelligence] Informant Network reports: ${target.name} of ${G.players[target.player]?.name} \u2014 unseen by your own eyes \u2014 was last in ${tProv?.name || 'unknown'}.`,
+      fact: {
+        kind: 'the Informant Network names where an unseen enemy captain was last',
+        heroName: target.name,
+        realmName: G.players[target.player]?.name,
+        provinceName: tProv?.name || null,
+      },
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -130,7 +142,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (_unseen.length === 0) {
       emit(turnContext, {
         type: 'explore',
-        text: `\ud83d\udd2d Arcane Observatory: your astronomers find no uncharted province left to study \u2014 the whole known world is already mapped in full.`,
+        fact: { kind: 'the Arcane Observatory finds no uncharted province left' },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: 99,
@@ -144,7 +156,11 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (!Array.isArray(_pk.visitedBy)) _pk.visitedBy = [];
     emit(turnContext, {
       type: 'explore',
-      text: `\ud83d\udd2d Arcane Observatory: your astronomers chart **${_pk.name}** (${_pk.terrain || 'unknown terrain'}) in full from afar \u2014 the province is now 100% explored.`,
+      fact: {
+        kind: 'the Arcane Observatory charts a province in full',
+        provinceName: _pk.name,
+        terrain: _pk.terrain || null,
+      },
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: _pk.id,
@@ -182,7 +198,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         if (_wasKing) delete hero._divineReturn;
         emit(turnContext, {
           type: 'explore',
-          text: `✨ ${hero.name} does not return. The divine restore the fallen only upon consecrated ground, and the realm holds none — the grace is lost. (The body remains where it lies; a Resurrect spell may yet reach it.)`,
+          fact: { kind: 'a Divine hero does not return with no consecrated ground held', heroName: hero.name },
           audience: { actor: grave.player, realms: [grave.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -211,7 +227,13 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       const turnLog = G.turnLog || [];
       emit(turnContext, {
         type: 'explore',
-        text: `✨ **Divine Resurrection**: ${hero.name}${_wasKing ? ', your monarch,' : ''} returns to life by the grace of the divine! They appear in ${homeProv.name}, the nearest consecrated ground, with ${hero.hp} HP — no armies or items, but their spirit and skills endure. The miracle spends the province's consecration: ${homeProv.name} is holy ground no longer, and the crown may sanctify new ground in its place.${_wasKing ? ' The crown is worn once more.' : ''}`,
+        fact: {
+          kind: 'a Divine hero returns to life on the nearest consecrated ground',
+          heroName: hero.name,
+          wasKing: _wasKing,
+          provinceName: homeProv.name,
+          hp: hero.hp,
+        },
         audience: {
           actor: grave.player,
           realms: [grave.player],
@@ -257,7 +279,11 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       if (kcRng() < 0.25) {
         emit(turnContext, {
           type: 'system',
-          text: `The mercenary band ${merc.unitName || merc.type} in ${G.world.provinces[merc.location]?.name || 'unknown'} has retired and dispersed.`,
+          fact: {
+            kind: 'a mercenary band retires and disperses',
+            bandName: merc.unitName || merc.type,
+            provinceName: G.world.provinces[merc.location]?.name || null,
+          },
           audience: { actor: null, realms: [] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -302,7 +328,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   if (G._nameRepairs > 0) {
     emit(turnContext, {
       type: 'system',
-      text: `[Integrity] ${G._nameRepairs} hero${G._nameRepairs !== 1 ? 'es' : ''} in a realm's service still bore the \u201c(wandering)\u201d tag \u2014 the name has been corrected.`,
+      fact: { kind: "the heroes' wandering tags are corrected", heroes: G._nameRepairs },
       audience: { actor: null, realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -313,7 +339,10 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   if (retiredSageDiscoveriesRemoved > 0) {
     emit(turnContext, {
       type: 'system',
-      text: `[Integrity] ${retiredSageDiscoveriesRemoved} retired Sage discover${retiredSageDiscoveriesRemoved !== 1 ? 'ies were' : 'y was'} removed from realm records.`,
+      fact: {
+        kind: 'retired Sage discoveries are removed from the realms',
+        discoveries: retiredSageDiscoveriesRemoved,
+      },
       audience: { actor: null, realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -324,7 +353,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   if (whereTheSaveDiffers.length > 0) {
     emit(turnContext, {
       type: 'system',
-      text: `[Save check] ${whatTheSavesCheckFoundInWords(whereTheSaveDiffers)}`,
+      fact: { kind: "the save the turn loaded differs from this build's schema", places: [...whereTheSaveDiffers] },
       audience: { actor: null, realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -341,7 +370,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       _ghosts.forEach((g) => {
         emit(turnContext, {
           type: 'system',
-          text: `[Integrity] ${g.name} was listed in the graveyard while alive — the stale grave has been removed.`,
+          fact: { kind: 'a stale grave of a living hero is removed', heroName: g.name },
           audience: { actor: null, realms: [] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });

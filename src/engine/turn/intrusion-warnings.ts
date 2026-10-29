@@ -25,7 +25,8 @@ interface TheStateAsTheWarningsReadIt {
 // ── INTRUSION WARNINGS (plan P1-08b: lifted out of resolveTurn) ────
 // After each phase, the warnings a realm gets of enemy heroes in its land or beside its own heroes. It takes the turn's
 // context first (src/engine/turn/context.ts): the state, the seasons' names and the turn's warnings so far
-// (_intrusionAcc), which flushIntrusionNotifications (plan P1-08i1, below) writes into the log after the phases.
+// (_intrusionAcc), which flushIntrusionNotifications (plan P1-08i1, below) writes into the log after the phases, each
+// line a fact (since P1-12d15: the-facts-the-intrusion-warnings-lines-record.ts), its words written in the views.
 // ── INTRUSION NOTIFICATIONS ────
 // After each phase resolves, scan for situations where players need to be notified about things
 // happening in their territory or in provinces where their heroes are present.
@@ -97,30 +98,25 @@ export function generateIntrusionNotifications(turnContext: TurnContext, ph: num
 
 export function flushIntrusionNotifications(turnContext: TurnContext) {
   const { SEASONS, _intrusionAcc } = turnContext;
-  // a phase's name, as SEASONS[p] reads it (undefined for no phase)
-  const seasonOf = (p: number | undefined) => (p === undefined ? undefined : SEASONS[p]);
-  const fmtPhases = (phs: readonly number[]) => {
-    const s = [...phs].sort((a, b) => a - b);
-    if (s.length === 1) return seasonOf(s[0]);
-    const contiguous = Number(s[s.length - 1]) - Number(s[0]) === s.length - 1;
-    if (contiguous) return `${String(seasonOf(s[0]))}\u2013${String(seasonOf(s[s.length - 1]))}`; // en-dash range
-    return s.map((p) => SEASONS[p]).join(', ');
-  };
   _intrusionAcc.forEach((rec) => {
     const s = [...rec.phases].sort((a, b) => a - b);
     const lastPh = s[s.length - 1];
-    // the force seen in a phase, as forceByPhase[p] reads it (undefined for no phase)
-    const forceIn = (p: number | undefined) => (p === undefined ? undefined : rec.forceByPhase[p]);
-    const uniqForces = [...new Set(s.map((p) => rec.forceByPhase[p]))];
-    const forceStr =
-      uniqForces.length === 1
-        ? `They appear to be leading ${String(uniqForces[0])}.`
-        : `Their strength shifted — most recently (${String(seasonOf(lastPh))}) leading ${String(forceIn(lastPh))}.`;
-    const phaseStr = fmtPhases(s);
+    // Each line is a fact (since P1-12d15: the-facts-the-intrusion-warnings-lines-record.ts): the phases he was seen in
+    // and each one's name (as SEASONS reads it), each force size seen and the last (as forceByPhase reads it: none for
+    // no phase); its words are written in the views.
     if (rec.branch === 'own') {
       emit(turnContext, {
         type: 'combat',
-        text: `[Intelligence] ${rec.acName} of ${rec.actingName} was spotted in your province of ${rec.provName} during ${String(phaseStr)}. ${forceStr}`,
+        fact: {
+          kind: "an enemy hero is spotted in a province of the realm's own",
+          heroName: rec.acName,
+          realmName: rec.actingName,
+          provinceName: rec.provName,
+          phases: s,
+          seasonNames: s.map((p) => SEASONS[p]),
+          sizesSeen: [...new Set(s.map((p) => rec.forceByPhase[p]))],
+          lastSize: lastPh === undefined ? undefined : rec.forceByPhase[lastPh],
+        },
         audience: { actor: null, realms: [rec.targetPi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: rec.provId,
@@ -128,7 +124,16 @@ export function flushIntrusionNotifications(turnContext: TurnContext) {
     } else {
       emit(turnContext, {
         type: 'system',
-        text: `[Intelligence] A hero of ${rec.actingName} (${rec.acName}) shared ${rec.provName} with your forces during ${String(phaseStr)}. ${forceStr}`,
+        fact: {
+          kind: "a hero of another realm shares a province with the realm's forces",
+          heroName: rec.acName,
+          realmName: rec.actingName,
+          provinceName: rec.provName,
+          phases: s,
+          seasonNames: s.map((p) => SEASONS[p]),
+          sizesSeen: [...new Set(s.map((p) => rec.forceByPhase[p]))],
+          lastSize: lastPh === undefined ? undefined : rec.forceByPhase[lastPh],
+        },
         audience: { actor: null, realms: [rec.targetPi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: rec.provId,

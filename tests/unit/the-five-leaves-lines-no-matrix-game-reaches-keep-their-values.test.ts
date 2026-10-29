@@ -23,6 +23,7 @@ import { ARMY_COST_MASTER } from '../../src/engine/army-tables.ts';
 import { ARMY_UNIT_NAMES } from '../../src/content/kingdoms-call-data.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
+import { theTurnsLinesInWords } from '../../src/views/prose/the-words-of-each-line.ts';
 import {
   MITHRIL_ARMOUR,
   claimWandererName,
@@ -394,7 +395,8 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
       tc._intrusionAcc.set('b', sighting('known', [7], {}));
       tc._intrusionAcc.set('c', sighting('own', [3, 1], { 1: 'a modest band' }));
       flushIntrusionNotifications(tc);
-      expect(tc.turnLog.map((l) => l.text)).toEqual([
+      // the lines in words, as the views write them and the GM's log stores them (since P1-12d15 they are facts)
+      expect(theTurnsLinesInWords(tc.turnLog).gmLog.map((l) => l.text)).toEqual([
         '[Intelligence] Thorn of Varn was spotted in your province of Wendmeadow during . Their strength shifted — most recently (undefined) leading undefined.',
         '[Intelligence] A hero of Varn (Thorn) shared Wendmeadow with your forces during undefined. They appear to be leading undefined.',
         '[Intelligence] Thorn of Varn was spotted in your province of Wendmeadow during Summer, Late Autumn. Their strength shifted — most recently (Late Autumn) leading undefined.',

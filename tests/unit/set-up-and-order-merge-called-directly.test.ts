@@ -259,7 +259,13 @@ describe('The set-up: what it calls', () => {
       r: unknown,
       t: number,
     ) => { state: string; log: { text: string }[] };
-    const r = withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), inVm(rowsOf(b, s)), b.G.turn));
+    // the turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3):
+    // since P1-12d15 a line the merge held is a fact, its words there alone
+    const theTurnsLinesInWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => {
+      gmLog: { text: string }[];
+    };
+    const played = withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), inVm(rowsOf(b, s)), b.G.turn));
+    const r = { ...played, log: theTurnsLinesInWords(played.log).gmLog };
     const after = JSON.parse(r.state) as Board['G'];
     expect(after.relations['1-2']).toBe('enemy');
     expect(r.log.filter((l) => l.text === conceded(realm(b, 1).name)).length).toBe(1);

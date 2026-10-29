@@ -1,7 +1,8 @@
 // ── MERCENARY BAND IDS AND WHO FOUGHT (plan P1-08a: lifted out of resolveTurn) ────
 // A new band's id, and the turn's records of who fought where: the commanders of each battle, the phase each hero last
 // stood in a field battle, and the Defend watches a battle fulfils. Each takes the turn's context first
-// (src/engine/turn/context.ts).
+// (src/engine/turn/context.ts). A watch's end is a fact (since P1-12d15: the-facts-a-defend-watch-met-in-battle-lines-
+// record.ts), its words written in the views.
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from './context.ts';
 import type { NarrativeLine } from './events-and-their-audiences.ts';
@@ -67,12 +68,18 @@ export function completeDefendWatches(
     real._defend.active = false;
     real._defendSpent = { turn: G.turn, ph };
     if (wasOn && real.alive !== false) {
-      const msg = `🛡 ${real.name}'s Defend order is fulfilled — the threat has been met in battle, and they keep no further watch unless ordered to Defend again.`;
-      if (narrative) narrate(narrative, msg);
+      if (narrative)
+        narrate(narrative, {
+          kind: "a defender's Defend order is fulfilled once the threat is met in battle",
+          heroName: real.name,
+        });
       else
         emit(turnContext, {
           type: 'move',
-          text: msg,
+          fact: {
+            kind: "a defender's Defend order is fulfilled once the threat is met in battle",
+            heroName: real.name,
+          },
           audience: { actor: real.player, realms: [real.player] },
           hero: real.id,
           province: real.location ?? null,
@@ -94,12 +101,11 @@ export function noteBattleLoss(
   const real = (G.characters || []).find((x) => x && x.id === charId);
   if (!real || !real._defend || !real._defend.active) return;
   real._defend.active = false;
-  const msg = `${real.name}'s defensive watch is broken by this defeat — they will hold no further ground this turn.`;
-  if (narrative) narrate(narrative, msg);
+  if (narrative) narrate(narrative, { kind: "a defender's watch is broken by a defeat", heroName: real.name });
   else
     emit(turnContext, {
       type: 'move',
-      text: msg,
+      fact: { kind: "a defender's watch is broken by a defeat", heroName: real.name },
       audience: { actor: real.player, realms: [real.player] },
       hero: real.id,
       province: real.location ?? null,

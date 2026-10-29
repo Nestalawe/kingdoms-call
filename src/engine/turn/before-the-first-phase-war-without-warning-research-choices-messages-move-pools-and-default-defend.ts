@@ -33,7 +33,9 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audi
 //      turn's statistics, and the hosts standing on a war front as the turn begins.
 // Each takes the turn's context (src/engine/turn/context.ts) and nothing else: they read the merge's collectors from it
 // (plan P1-08k7), and the third and fourth make the values the phases read and join them to it (the move pools,
-// SEASONS, the trackers, the war fronts). The bodies keep resolveTurn's indent (plan P1-08's Decisions). The comment
+// SEASONS, the trackers, the war fronts). Each line they write is a fact (since P1-12d15: the-facts-the-lines-before-
+// the-first-phase-record.ts), its words written in the views. The bodies keep resolveTurn's indent (plan P1-08's
+// Decisions). The comment
 // above the bots' research picks describes the war without warning (the second stage) and the bots' declarations,
 // which resolveTurn makes between the first two; the notes on the army tables and the title perks are older: both
 // moved as they were.
@@ -83,10 +85,18 @@ export function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPi
       lost.forEach((id) => {
         if (!pl.forgottenDiscoveries.includes(id)) pl.forgottenDiscoveries.push(id);
       });
-      const lostNames = lost.map((id) => (DISC_BY_ID[id] && DISC_BY_ID[id].name) || id).join(', ');
       emit(turnContext, {
         type: 'explore',
-        text: `💡 ${opts.includes(want) ? `${pl.name} pursues` : `No choice was sent, so ${pl.name}'s scholars choose for themselves and pursue`} **${d.name}** (${d.category}), found by ${p.charName || 'a scholar'} last turn. ${d.desc}${lostNames ? ` The other lead — ${lostNames} — is set aside and forgotten for good.` : ''}`,
+        fact: {
+          kind: 'a realm pursues one of the leads its scholars found last turn',
+          realmName: pl.name,
+          chosenByTheRealm: opts.includes(want),
+          discoveryName: d.name,
+          category: d.category,
+          description: d.desc,
+          finderName: p.charName || null,
+          leadsSetAsideNames: lost.map((id) => (DISC_BY_ID[id] && DISC_BY_ID[id].name) || id),
+        },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: 0,
@@ -110,11 +120,14 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         const key = relKeyOf(a, b);
         if ((G.relations[key] || 'neutral') === 'enemy') continue;
         G.relations[key] = 'enemy';
-        const na = pa.name || 'Realm ' + (a + 1),
-          nb = G.players[b]?.name || 'Realm ' + (b + 1);
         emit(turnContext, {
           type: 'system',
-          text: `⚔ ${na} declares war on ${nb} and marches without warning — ${pa.alignment === 'Undead' ? 'the dead keep no truce' : 'the wicked keep no faith'}. War stands between the two realms from this very season.`,
+          fact: {
+            kind: 'an Evil or Undead realm declares war without warning',
+            declarer: { realmName: pa.name || null, seat: a },
+            foe: { realmName: G.players[b]?.name || null, seat: b },
+            undead: pa.alignment === 'Undead',
+          },
           audience: { actor: null, realms: [a, b] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
@@ -150,7 +163,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
   safeStartRefused.forEach((pi) =>
     emit(turnContext, {
       type: 'system',
-      text: `🕊 Safe Start: no Treat or declaration of war may be made before the orders for Turn ${SAFE_START_TURN}. Your diplomacy this turn was set aside — relations are unchanged.`,
+      fact: { kind: "a realm's diplomacy is set aside before the Safe Start ends", safeStartTurn: SAFE_START_TURN },
       audience: { actor: null, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       system: true,
@@ -160,7 +173,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
     staleOrderWarnings.forEach((w) =>
       emit(turnContext, {
         type: 'system',
-        text: w,
+        fact: { kind: "a line the order merge held until the turn's log was ready", words: w },
         audience: { actor: -1, realms: [], seen: w.startsWith('\u{1F3F3}') ? 'world' : undefined },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
@@ -178,7 +191,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
       if (!_pl) return;
       emit(turnContext, {
         type: 'system',
-        text: `\u{1F3F3} ${_pl.name} has withdrawn from the game and CONCEDES. Its heroes lay down their ambitions and will only defend what they hold from now on.`,
+        fact: { kind: 'a realm the GM removed withdraws and concedes', realmName: _pl.name },
         audience: { actor: -1, realms: [], seen: 'world' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,
@@ -201,7 +214,6 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
       });
     Object.keys(playerMessages).forEach((sk) => {
       const senderPi = parseInt(sk);
-      const senderName = G.players[senderPi]?.name || 'Player ' + (senderPi + 1);
       (playerMessages[senderPi] || []).forEach((msg) => {
         if (!msg || typeof msg.text !== 'string') return;
         const text = msg.text.trim().slice(0, 1000);
@@ -218,7 +230,6 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         }
         rcpts = [...new Set(rcpts)];
         if (rcpts.length === 0) return;
-        const rcptNames = rcpts.map((i) => G.players[i]?.name || 'Player ' + (i + 1));
         // The addressee's copy must NOT name the sender as `actor`: the report filter shows a
         // player every entry where actor===them, so the sender was being handed the
         // incoming-dispatch line as well as their own sent-confirmation — reading their own words
@@ -226,7 +237,11 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         rcpts.forEach((rpi) => {
           emit(turnContext, {
             type: 'message',
-            text: `📨 Dispatch from ${senderName}: “${text}”`,
+            fact: {
+              kind: 'a dispatch reaches a realm',
+              sender: { realmName: G.players[senderPi]?.name || null, seat: senderPi },
+              message: text,
+            },
             audience: { actor: null, realms: [rpi] },
             hero: null,
             phase: 99,
@@ -235,7 +250,11 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         // Sender's own copy (confirmation of what they sent, and to whom).
         emit(turnContext, {
           type: 'message',
-          text: `📨 You sent to ${rcptNames.join(', ')}: “${text}”`,
+          fact: {
+            kind: 'a realm keeps a copy of the dispatch it sent',
+            recipients: rcpts.map((i) => ({ realmName: G.players[i]?.name || null, seat: i })),
+            message: text,
+          },
           audience: { actor: senderPi, realms: [senderPi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: 99,
@@ -365,7 +384,7 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
     if (_rn > 0)
       emit(turnContext, {
         type: 'system',
-        text: `\u{1F5FA} The chronicles are corrected: ${_rn} lair${_rn !== 1 ? 's are' : ' is'} now recorded under a name befitting what dwells there.`,
+        fact: { kind: 'the chronicles record the lairs under fitting names', lairs: _rn },
         audience: { actor: null, realms: [] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -391,7 +410,7 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
     if (_gh > 0)
       emit(turnContext, {
         type: 'system',
-        text: `\u{1F489} The world's guardians are re-measured: ${_gh} lair-keeper${_gh !== 1 ? 's'.concat(' are') : ' is'} 5 hit points frailer than before.`,
+        fact: { kind: "the world's guardians are re-measured five hit points frailer", guardians: _gh },
         audience: { actor: null, realms: [] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
